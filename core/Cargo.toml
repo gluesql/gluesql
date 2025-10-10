@@ -42,3 +42,6 @@ features = ["v4"]
 
 [dev-dependencies]
 pretty_assertions = "1"
+
+[lints]
+workspace = true

@@ -729,15 +729,15 @@ impl Value {
         }
 
         match self {
-            I8(a) => factorial_function(*a as i128).map(I128),
-            I16(a) => factorial_function(*a as i128).map(I128),
-            I32(a) => factorial_function(*a as i128).map(I128),
-            I64(a) => factorial_function(*a as i128).map(I128),
+            I8(a) => factorial_function(i128::from(*a)).map(I128),
+            I16(a) => factorial_function(i128::from(*a)).map(I128),
+            I32(a) => factorial_function(i128::from(*a)).map(I128),
+            I64(a) => factorial_function(i128::from(*a)).map(I128),
             I128(a) => factorial_function(*a).map(I128),
-            U8(a) => factorial_function(*a as i128).map(I128),
-            U16(a) => factorial_function(*a as i128).map(I128),
-            U32(a) => factorial_function(*a as i128).map(I128),
-            U64(a) => factorial_function(*a as i128).map(I128),
+            U8(a) => factorial_function(i128::from(*a)).map(I128),
+            U16(a) => factorial_function(i128::from(*a)).map(I128),
+            U32(a) => factorial_function(i128::from(*a)).map(I128),
+            U64(a) => factorial_function(i128::from(*a)).map(I128),
             U128(a) => factorial_function(*a as i128).map(I128),
             F32(_) => Err(ValueError::FactorialOnNonInteger.into()),
             F64(_) => Err(ValueError::FactorialOnNonInteger.into()),

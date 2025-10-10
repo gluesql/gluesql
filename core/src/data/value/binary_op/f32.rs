@@ -15,13 +15,13 @@ impl PartialEq<Value> for f32 {
         let lhs = *self;
 
         match *other {
-            I8(rhs) => (lhs - (rhs as f32)).abs() < f32::EPSILON,
-            I16(rhs) => (lhs - (rhs as f32)).abs() < f32::EPSILON,
+            I8(rhs) => (lhs - f32::from(rhs)).abs() < f32::EPSILON,
+            I16(rhs) => (lhs - f32::from(rhs)).abs() < f32::EPSILON,
             I32(rhs) => (lhs - (rhs as f32)).abs() < f32::EPSILON,
             I64(rhs) => (lhs - (rhs as f32)).abs() < f32::EPSILON,
             I128(rhs) => (lhs - (rhs as f32)).abs() < f32::EPSILON,
-            U8(rhs) => (lhs - (rhs as f32)).abs() < f32::EPSILON,
-            U16(rhs) => (lhs - (rhs as f32)).abs() < f32::EPSILON,
+            U8(rhs) => (lhs - f32::from(rhs)).abs() < f32::EPSILON,
+            U16(rhs) => (lhs - f32::from(rhs)).abs() < f32::EPSILON,
             U32(rhs) => (lhs - (rhs as f32)).abs() < f32::EPSILON,
             U64(rhs) => (lhs - (rhs as f32)).abs() < f32::EPSILON,
             U128(rhs) => (lhs - (rhs as f32)).abs() < f32::EPSILON,
@@ -38,13 +38,13 @@ impl PartialEq<Value> for f32 {
 impl PartialOrd<Value> for f32 {
     fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
         match *other {
-            I8(rhs) => self.partial_cmp(&(rhs as f32)),
-            I16(rhs) => self.partial_cmp(&(rhs as f32)),
+            I8(rhs) => self.partial_cmp(&f32::from(rhs)),
+            I16(rhs) => self.partial_cmp(&f32::from(rhs)),
             I32(rhs) => self.partial_cmp(&(rhs as f32)),
             I64(rhs) => self.partial_cmp(&(rhs as f32)),
             I128(rhs) => self.partial_cmp(&(rhs as f32)),
-            U8(rhs) => self.partial_cmp(&(rhs as f32)),
-            U16(rhs) => self.partial_cmp(&(rhs as f32)),
+            U8(rhs) => self.partial_cmp(&f32::from(rhs)),
+            U16(rhs) => self.partial_cmp(&f32::from(rhs)),
             U32(rhs) => self.partial_cmp(&(rhs as f32)),
             U64(rhs) => self.partial_cmp(&(rhs as f32)),
             U128(rhs) => self.partial_cmp(&(rhs as f32)),
@@ -65,13 +65,13 @@ impl TryBinaryOperator for f32 {
         let lhs = *self;
 
         match *rhs {
-            I8(rhs) => Ok(F32(lhs + rhs as f32)),
-            I16(rhs) => Ok(F32(lhs + rhs as f32)),
+            I8(rhs) => Ok(F32(lhs + f32::from(rhs))),
+            I16(rhs) => Ok(F32(lhs + f32::from(rhs))),
             I32(rhs) => Ok(F32(lhs + rhs as f32)),
             I64(rhs) => Ok(F32(lhs + rhs as f32)),
             I128(rhs) => Ok(F32(lhs + rhs as f32)),
-            U8(rhs) => Ok(F32(lhs + rhs as f32)),
-            U16(rhs) => Ok(F32(lhs + rhs as f32)),
+            U8(rhs) => Ok(F32(lhs + f32::from(rhs))),
+            U16(rhs) => Ok(F32(lhs + f32::from(rhs))),
             U32(rhs) => Ok(F32(lhs + rhs as f32)),
             U64(rhs) => Ok(F32(lhs + rhs as f32)),
             U128(rhs) => Ok(F32(lhs + rhs as f32)),
@@ -96,13 +96,13 @@ impl TryBinaryOperator for f32 {
         let lhs = *self;
 
         match *rhs {
-            I8(rhs) => Ok(F32(lhs - rhs as f32)),
-            I16(rhs) => Ok(F32(lhs - rhs as f32)),
+            I8(rhs) => Ok(F32(lhs - f32::from(rhs))),
+            I16(rhs) => Ok(F32(lhs - f32::from(rhs))),
             I32(rhs) => Ok(F32(lhs - rhs as f32)),
             I64(rhs) => Ok(F32(lhs - rhs as f32)),
             I128(rhs) => Ok(F32(lhs - rhs as f32)),
-            U8(rhs) => Ok(F32(lhs - rhs as f32)),
-            U16(rhs) => Ok(F32(lhs - rhs as f32)),
+            U8(rhs) => Ok(F32(lhs - f32::from(rhs))),
+            U16(rhs) => Ok(F32(lhs - f32::from(rhs))),
             U32(rhs) => Ok(F32(lhs - rhs as f32)),
             U64(rhs) => Ok(F32(lhs - rhs as f32)),
             U128(rhs) => Ok(F32(lhs - rhs as f32)),
@@ -127,13 +127,13 @@ impl TryBinaryOperator for f32 {
         let lhs = *self;
 
         match *rhs {
-            I8(rhs) => Ok(F32(lhs * rhs as f32)),
-            I16(rhs) => Ok(F32(lhs * rhs as f32)),
+            I8(rhs) => Ok(F32(lhs * f32::from(rhs))),
+            I16(rhs) => Ok(F32(lhs * f32::from(rhs))),
             I32(rhs) => Ok(F32(lhs * rhs as f32)),
             I64(rhs) => Ok(F32(lhs * rhs as f32)),
             I128(rhs) => Ok(F32(lhs * rhs as f32)),
-            U8(rhs) => Ok(F32(lhs * rhs as f32)),
-            U16(rhs) => Ok(F32(lhs * rhs as f32)),
+            U8(rhs) => Ok(F32(lhs * f32::from(rhs))),
+            U16(rhs) => Ok(F32(lhs * f32::from(rhs))),
             U32(rhs) => Ok(F32(lhs * rhs as f32)),
             U64(rhs) => Ok(F32(lhs * rhs as f32)),
             U128(rhs) => Ok(F32(lhs * rhs as f32)),
@@ -159,13 +159,13 @@ impl TryBinaryOperator for f32 {
         let lhs = *self;
 
         match *rhs {
-            I8(rhs) => Ok(F32(lhs / rhs as f32)),
-            I16(rhs) => Ok(F32(lhs / rhs as f32)),
+            I8(rhs) => Ok(F32(lhs / f32::from(rhs))),
+            I16(rhs) => Ok(F32(lhs / f32::from(rhs))),
             I32(rhs) => Ok(F32(lhs / rhs as f32)),
             I64(rhs) => Ok(F32(lhs / rhs as f32)),
             I128(rhs) => Ok(F32(lhs / rhs as f32)),
-            U8(rhs) => Ok(F32(lhs / rhs as f32)),
-            U16(rhs) => Ok(F32(lhs / rhs as f32)),
+            U8(rhs) => Ok(F32(lhs / f32::from(rhs))),
+            U16(rhs) => Ok(F32(lhs / f32::from(rhs))),
             U32(rhs) => Ok(F32(lhs / rhs as f32)),
             U64(rhs) => Ok(F32(lhs / rhs as f32)),
             U128(rhs) => Ok(F32(lhs / rhs as f32)),
@@ -190,13 +190,13 @@ impl TryBinaryOperator for f32 {
         let lhs = *self;
 
         match *rhs {
-            I8(rhs) => Ok(F32(lhs % rhs as f32)),
-            I16(rhs) => Ok(F32(lhs % rhs as f32)),
+            I8(rhs) => Ok(F32(lhs % f32::from(rhs))),
+            I16(rhs) => Ok(F32(lhs % f32::from(rhs))),
             I32(rhs) => Ok(F32(lhs % rhs as f32)),
             I64(rhs) => Ok(F32(lhs % rhs as f32)),
             I128(rhs) => Ok(F32(lhs % rhs as f32)),
-            U8(rhs) => Ok(F32(lhs % rhs as f32)),
-            U16(rhs) => Ok(F32(lhs % rhs as f32)),
+            U8(rhs) => Ok(F32(lhs % f32::from(rhs))),
+            U16(rhs) => Ok(F32(lhs % f32::from(rhs))),
             U32(rhs) => Ok(F32(lhs % rhs as f32)),
             U64(rhs) => Ok(F32(lhs % rhs as f32)),
             U128(rhs) => Ok(F32(lhs % rhs as f32)),

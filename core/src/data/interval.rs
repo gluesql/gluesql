@@ -156,8 +156,8 @@ impl Interval {
 
     pub fn extract(&self, field: &DateTimeField) -> Result<Value> {
         let value = match (field, *self) {
-            (DateTimeField::Year, Interval::Month(i)) => i as i64 / 12,
-            (DateTimeField::Month, Interval::Month(i)) => i as i64,
+            (DateTimeField::Year, Interval::Month(i)) => i64::from(i) / 12,
+            (DateTimeField::Month, Interval::Month(i)) => i64::from(i),
             (DateTimeField::Day, Interval::Microsecond(i)) => i / DAY,
             (DateTimeField::Hour, Interval::Microsecond(i)) => i / HOUR,
             (DateTimeField::Minute, Interval::Microsecond(i)) => i / MINUTE,
@@ -171,15 +171,15 @@ impl Interval {
     }
 
     pub fn days(days: i32) -> Self {
-        Interval::Microsecond(days as i64 * DAY)
+        Interval::Microsecond(i64::from(days) * DAY)
     }
 
     pub fn hours(hours: i32) -> Self {
-        Interval::Microsecond(hours as i64 * HOUR)
+        Interval::Microsecond(i64::from(hours) * HOUR)
     }
 
     pub fn minutes(minutes: i32) -> Self {
-        Interval::Microsecond(minutes as i64 * MINUTE)
+        Interval::Microsecond(i64::from(minutes) * MINUTE)
     }
 
     pub fn seconds(seconds: i64) -> Self {
@@ -226,12 +226,12 @@ impl Interval {
             let time = NaiveTime::from_str(v)
                 .map_err(|_| IntervalError::FailedToParseTime(value.to_owned()))?;
 
-            let msec = time.hour() as i64 * HOUR
-                + time.minute() as i64 * MINUTE
-                + time.second() as i64 * SECOND
-                + time.nanosecond() as i64 / 1000;
+            let msec = i64::from(time.hour()) * HOUR
+                + i64::from(time.minute()) * MINUTE
+                + i64::from(time.second()) * SECOND
+                + i64::from(time.nanosecond()) / 1000;
 
-            Ok(Interval::Microsecond(sign as i64 * msec))
+            Ok(Interval::Microsecond(i64::from(sign) * msec))
         };
 
         match (leading_field, last_field) {

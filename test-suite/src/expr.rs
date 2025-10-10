@@ -1,2 +1,9 @@
+pub mod arithmetic;
 pub mod between;
+pub mod bitwise_and;
+pub mod bitwise_shift_left;
+pub mod bitwise_shift_right;
+pub mod case;
+pub mod concat;
 pub mod in_list;
+pub mod unary_operator;

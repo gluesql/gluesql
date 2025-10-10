@@ -38,3 +38,6 @@ gloo-utils = { version = "0.1.6", features = ["serde"] }
 
 [dev-dependencies]
 test-suite.workspace = true
+
+[lints]
+workspace = true
