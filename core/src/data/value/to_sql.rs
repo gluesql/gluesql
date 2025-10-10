@@ -26,7 +26,7 @@ impl ToSql for Value {
             Value::U32(value) => value.to_string(),
             Value::U64(value) => value.to_string(),
             Value::U128(value) => value.to_string(),
-            Value::F32(value) => format_float(BigDecimal::from_f32(*value), *value as f64),
+            Value::F32(value) => format_float(BigDecimal::from_f32(*value), f64::from(*value)),
             Value::F64(value) => format_float(BigDecimal::from_f64(*value), *value),
             Value::Decimal(value) => value.to_string(),
             Value::Str(value) => quote(value),

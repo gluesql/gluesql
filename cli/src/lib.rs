@@ -172,16 +172,16 @@ pub fn dump_database(storage: &mut SledStorage, dump_path: PathBuf) -> Result<()
                 let rows_sql = rows
                     .into_iter()
                     .map(|result| {
-                        result.and_then(|data_row| {
+                        result.map(|data_row| {
                             let values = match data_row {
                                 DataRow::Vec(values) => values,
                                 DataRow::Map(values) => vec![Value::Map(values)],
                             };
 
-                            Ok(values
+                            values
                                 .into_iter()
                                 .map(|value| value.to_sql())
-                                .collect::<Vec<_>>())
+                                .collect::<Vec<_>>()
                         })
                     })
                     .collect::<std::result::Result<Vec<_>, _>>()?;
