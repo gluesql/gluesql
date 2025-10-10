@@ -109,23 +109,83 @@ mod tests {
     use super::Vector;
 
     #[test]
-    fn test_len() {
-        let mut vector = Vector::new();
+    fn new_and_default_are_empty() {
+        let vector = Vector::<i32>::new();
+        assert!(vector.is_empty());
         assert_eq!(vector.len(), 0);
 
-        vector = vector.push(1);
-        assert_eq!(vector.len(), 1);
-
-        vector = vector.push(2);
-        assert_eq!(vector.len(), 2);
+        let default_vector = Vector::<i32>::default();
+        assert!(default_vector.is_empty());
+        assert_eq!(default_vector.len(), 0);
     }
 
     #[test]
-    fn test_is_empty() {
-        let mut vector = Vector::new();
+    fn push_update_remove_and_get() {
+        let vector = Vector::new().push(1).push(2).push(3);
+        assert_eq!(vector.len(), 3);
+        assert_eq!(vector.get(0), Some(&1));
+        assert_eq!(vector.get(2), Some(&3));
+
+        let vector = vector.update(1, 10);
+        assert_eq!(vector.get(1), Some(&10));
+
+        let vector = vector.remove(0);
+        assert_eq!(vector.len(), 2);
+        assert_eq!(vector.get(0), Some(&10));
+        assert_eq!(vector.get(1), Some(&3));
+    }
+
+    #[test]
+    fn reverse_sort_and_sort_by() {
+        let vector = Vector::new().push(3).push(1).push(2);
+        let vector = vector.reverse();
+        assert_eq!(vector.get(0), Some(&2));
+        assert_eq!(vector.get(1), Some(&1));
+        assert_eq!(vector.get(2), Some(&3));
+
+        let vector = vector.sort();
+        assert_eq!(vector.get(0), Some(&1));
+        assert_eq!(vector.get(1), Some(&2));
+        assert_eq!(vector.get(2), Some(&3));
+
+        let vector = vector.sort_by(|a, b| b.cmp(a));
+        assert_eq!(vector.get(0), Some(&3));
+        assert_eq!(vector.get(1), Some(&2));
+        assert_eq!(vector.get(2), Some(&1));
+    }
+
+    #[test]
+    fn pop_returns_removed_value() {
+        let vector = Vector::new().push(1).push(2);
+        let (vector, popped) = vector.pop();
+        assert_eq!(popped, Some(2));
+        assert_eq!(vector.len(), 1);
+
+        let (vector, popped) = vector.pop();
+        assert_eq!(popped, Some(1));
         assert!(vector.is_empty());
 
-        vector = vector.push(1);
-        assert!(!vector.is_empty());
+        let (_, popped) = Vector::<i32>::new().pop();
+        assert_eq!(popped, None);
+    }
+
+    #[test]
+    fn conversions_cover_all_variants() {
+        let base = vec![1, 2, 3];
+
+        let vector_from_vec = Vector::from(base.clone());
+        assert_eq!(vector_from_vec.len(), base.len());
+
+        let vec_from_vector: Vec<_> = Vector::from(base.clone()).into();
+        assert_eq!(vec_from_vector, base);
+
+        let vector_from_iter: Vector<_> = base.clone().into_iter().collect();
+        assert_eq!(vector_from_iter.len(), base.len());
+
+        let vec_from_iter_vector: Vec<_> = vector_from_iter.into();
+        assert_eq!(vec_from_iter_vector, base);
+
+        let iterated: Vec<_> = Vector::from(vec![1, 2, 3]).into_iter().collect();
+        assert_eq!(iterated, vec![1, 2, 3]);
     }
 }
