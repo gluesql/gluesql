@@ -74,8 +74,9 @@ where
             expr::typed_string(data_type, Cow::Borrowed(value))
         }
         Expr::Identifier(ident) => {
-            let context = context
-                .ok_or_else(|| EvaluateError::ContextRequiredForIdentEvaluation(expr.clone()))?;
+            let context = context.ok_or_else(|| {
+                EvaluateError::ContextRequiredForIdentEvaluation(Box::new(expr.clone()))
+            })?;
 
             match context.get_value(ident) {
                 Some(value) => Ok(value.clone()),
@@ -85,8 +86,9 @@ where
         }
         Expr::Nested(expr) => eval(expr).await,
         Expr::CompoundIdentifier { alias, ident } => {
-            let context = context
-                .ok_or_else(|| EvaluateError::ContextRequiredForIdentEvaluation(expr.clone()))?;
+            let context = context.ok_or_else(|| {
+                EvaluateError::ContextRequiredForIdentEvaluation(Box::new(expr.clone()))
+            })?;
 
             match context.get_alias_value(alias, ident) {
                 Some(value) => Ok(value.clone()),
@@ -99,8 +101,8 @@ where
             .map(Evaluated::Value)
         }
         Expr::Subquery(query) => {
-            let storage =
-                storage.ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(expr.clone()))?;
+            let storage = storage
+                .ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(Box::new(expr.clone())))?;
 
             let evaluations = select(storage, query, context.as_ref().map(Arc::clone))
                 .await?
@@ -153,7 +155,7 @@ where
             .and_then(|aggregated| aggregated.get(aggr.as_ref()))
         {
             Some(value) => Ok(Evaluated::Value(value.clone())),
-            None => Err(EvaluateError::UnreachableEmptyAggregateValue(*aggr.clone()).into()),
+            None => Err(EvaluateError::UnreachableEmptyAggregateValue(aggr.clone()).into()),
         },
         Expr::Function(func) => {
             let context = context.as_ref().map(Arc::clone);
@@ -185,8 +187,8 @@ where
             subquery,
             negated,
         } => {
-            let storage =
-                storage.ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(expr.clone()))?;
+            let storage = storage
+                .ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(Box::new(expr.clone())))?;
             let target = eval(target_expr).await?;
 
             select(storage, subquery, context)
@@ -258,8 +260,8 @@ where
             })
         }
         Expr::Exists { subquery, negated } => {
-            let storage =
-                storage.ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(expr.clone()))?;
+            let storage = storage
+                .ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(Box::new(expr.clone())))?;
 
             select(storage, subquery, context)
                 .await?
