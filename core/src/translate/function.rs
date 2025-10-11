@@ -715,6 +715,129 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             let list = translate_expr(args[0])?;
             Ok(Expr::Function(Box::new(Function::Dedup(list))))
         }
+        // --- vector functions ---
+        "VECTOR_DOT" => {
+            check_len(name, args.len(), 2)?;
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::VectorDot {
+                left,
+                right,
+            })))
+        }
+        "VECTOR_MAGNITUDE" => translate_function_one_arg(Function::VectorMagnitude, args, name),
+        "VECTOR_NORMALIZE" => translate_function_one_arg(Function::VectorNormalize, args, name),
+        "VECTOR_ADD" => {
+            check_len(name, args.len(), 2)?;
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::VectorAdd {
+                left,
+                right,
+            })))
+        }
+        "VECTOR_SUB" => {
+            check_len(name, args.len(), 2)?;
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::VectorSub {
+                left,
+                right,
+            })))
+        }
+        "VECTOR_SCALAR_MUL" => {
+            check_len(name, args.len(), 2)?;
+            let vector = translate_expr(args[0])?;
+            let scalar = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::VectorScalarMul {
+                vector,
+                scalar,
+            })))
+        }
+        "VECTOR_EUCLIDEAN_DIST" => {
+            check_len(name, args.len(), 2)?;
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::VectorEuclideanDist {
+                left,
+                right,
+            })))
+        }
+        "VECTOR_COSINE_SIM" => {
+            check_len(name, args.len(), 2)?;
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::VectorCosineSim {
+                left,
+                right,
+            })))
+        }
+        "VECTOR_DIMENSION" => translate_function_one_arg(Function::VectorDimension, args, name),
+        "VECTOR_AT" => {
+            check_len(name, args.len(), 2)?;
+            let vector = translate_expr(args[0])?;
+            let index = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::VectorAt {
+                vector,
+                index,
+            })))
+        }
+        "VECTOR_MANHATTAN_DIST" => {
+            check_len(name, args.len(), 2)?;
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::VectorManhattanDist {
+                left,
+                right,
+            })))
+        }
+        "VECTOR_CHEBYSHEV_DIST" => {
+            check_len(name, args.len(), 2)?;
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::VectorChebyshevDist {
+                left,
+                right,
+            })))
+        }
+        "VECTOR_HAMMING_DIST" => {
+            check_len(name, args.len(), 2)?;
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::VectorHammingDist {
+                left,
+                right,
+            })))
+        }
+        "VECTOR_JACCARD_SIM" => {
+            check_len(name, args.len(), 2)?;
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::VectorJaccardSim {
+                left,
+                right,
+            })))
+        }
+        "VECTOR_MINKOWSKI_DIST" => {
+            check_len(name, args.len(), 3)?;
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+            let p = translate_expr(args[2])?;
+            Ok(Expr::Function(Box::new(Function::VectorMinkowskiDist {
+                left,
+                right,
+                p,
+            })))
+        }
+        "VECTOR_CANBERRA_DIST" => {
+            check_len(name, args.len(), 2)?;
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::VectorCanberraDist {
+                left,
+                right,
+            })))
+        }
         _ => {
             let exprs = args
                 .into_iter()
@@ -731,6 +854,49 @@ mod tests {
         super::*,
         crate::{ast::DataType, parse_sql::parse_expr},
     };
+
+    #[test]
+    fn vector_functions() {
+        use crate::ast::AstLiteral;
+        use bigdecimal::BigDecimal;
+        use std::str::FromStr;
+        
+        let expr = |sql| parse_expr(sql).and_then(|parsed| translate_expr(&parsed));
+        
+        // Test vector function parsing
+        let actual = expr("VECTOR_MAGNITUDE('[1.0, 2.0, 3.0]')");
+        let expected = Ok(Expr::Function(Box::new(Function::VectorMagnitude(
+            Expr::Literal(AstLiteral::QuotedString("[1.0, 2.0, 3.0]".to_owned()))
+        ))));
+        assert_eq!(actual, expected);
+        
+        // Test vector function with wrong argument count
+        let actual = expr("VECTOR_DOT('[1.0, 2.0]')");
+        let expected = Err(TranslateError::FunctionArgsLengthNotMatching {
+            name: "VECTOR_DOT".to_owned(),
+            found: 1,
+            expected: 2,
+        }.into());
+        assert_eq!(actual, expected);
+        
+        // Test Minkowski distance with correct argument count
+        let actual = expr("VECTOR_MINKOWSKI_DIST('[1.0, 2.0]', '[3.0, 4.0]', 2.0)");
+        let expected = Ok(Expr::Function(Box::new(Function::VectorMinkowskiDist {
+            left: Expr::Literal(AstLiteral::QuotedString("[1.0, 2.0]".to_owned())),
+            right: Expr::Literal(AstLiteral::QuotedString("[3.0, 4.0]".to_owned())),
+            p: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2.0").unwrap())),
+        })));
+        assert_eq!(actual, expected);
+        
+        // Test Minkowski distance with wrong argument count
+        let actual = expr("VECTOR_MINKOWSKI_DIST('[1.0, 2.0]', '[3.0, 4.0]')");
+        let expected = Err(TranslateError::FunctionArgsLengthNotMatching {
+            name: "VECTOR_MINKOWSKI_DIST".to_owned(),
+            found: 2,
+            expected: 3,
+        }.into());
+        assert_eq!(actual, expected);
+    }
 
     #[test]
     fn cast() {

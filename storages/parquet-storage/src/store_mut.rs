@@ -62,7 +62,7 @@ static GLUESQL_TO_PARQUET_DATA_TYPE_MAPPING: LazyLock<HashMap<DataType, &'static
         m.insert(DataType::List, "List");
         m.insert(DataType::Decimal, "Decimal");
         m.insert(DataType::Point, "Point");
-
+        m.insert(DataType::FloatVector, "FloatVector");
         m
     });
 
@@ -722,7 +722,8 @@ impl ParquetStorage {
             | DataType::Interval
             | DataType::Decimal
             | DataType::Timestamp
-            | DataType::Bytea => (Type::BYTE_ARRAY, None),
+            | DataType::Bytea
+            | DataType::FloatVector => (Type::BYTE_ARRAY, None),
         }
     }
 }

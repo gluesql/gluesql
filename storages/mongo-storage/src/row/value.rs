@@ -3,7 +3,7 @@ use {
     gluesql_core::{
         ast::{Expr, ToSql},
         chrono::{NaiveDate, NaiveDateTime, TimeZone, Utc},
-        data::{Interval, Point, Value},
+        data::{FloatVector, Interval, Point, Value},
         parse_sql::parse_interval,
         prelude::DataType,
         translate::translate_expr,
@@ -79,6 +79,22 @@ impl IntoValue for Bson {
                 }
             }
             (Bson::String(string), _) => Value::Str(string),
+            (Bson::Array(array), DataType::FloatVector) => {
+                let floats: Result<Vec<f32>> = array
+                    .into_iter()
+                    .map(|bson| match bson {
+                        Bson::Double(f) => Ok(f as f32),
+                        Bson::Int32(i) => Ok(i as f32),
+                        Bson::Int64(i) => Ok(i as f32),
+                        _ => Err(MongoStorageError::UnsupportedBsonType),
+                    })
+                    .collect();
+
+                let floats = floats?;
+                let float_vector =
+                    FloatVector::new(floats).map_err(|_| MongoStorageError::UnsupportedBsonType)?;
+                Value::FloatVector(float_vector)
+            }
             (Bson::Array(array), _) => {
                 let values = array
                     .into_iter()
@@ -267,6 +283,110 @@ impl IntoBson for Value {
             }
 
             Value::Interval(val) => Ok(Bson::String(val.to_sql_str())),
+            Value::FloatVector(val) => {
+                let bson = val
+                    .data()
+                    .iter()
+                    .map(|&f| Bson::Double(f.into()))
+                    .collect::<Vec<_>>();
+
+                Ok(Bson::Array(bson))
+            }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::{IntoValue, IntoBson},
+        gluesql_core::{ast::DataType, data::{FloatVector, Value}},
+        mongodb::bson::{Bson, Binary},
+    };
+
+    #[test]
+    fn float_vector_bson_to_value() {
+        // Test BSON Array with Double values to FloatVector
+        let bson_array = Bson::Array(vec![
+            Bson::Double(1.0),
+            Bson::Double(2.5),
+            Bson::Double(3.0),
+        ]);
+        
+        let result = bson_array.into_value(&DataType::FloatVector).unwrap();
+        if let Value::FloatVector(vec) = result {
+            assert_eq!(vec.data(), &[1.0, 2.5, 3.0]);
+            assert_eq!(vec.dimension(), 3);
+        } else {
+            panic!("Expected FloatVector value");
+        }
+
+        // Test BSON Array with mixed Int32, Int64, Double to FloatVector
+        let bson_mixed = Bson::Array(vec![
+            Bson::Int32(1),
+            Bson::Double(2.5),
+            Bson::Int64(3),
+        ]);
+        
+        let result = bson_mixed.into_value(&DataType::FloatVector).unwrap();
+        if let Value::FloatVector(vec) = result {
+            assert_eq!(vec.data(), &[1.0, 2.5, 3.0]);
+        } else {
+            panic!("Expected FloatVector value");
+        }
+
+        // Test BSON Array with unsupported type should return error
+        let bson_invalid = Bson::Array(vec![
+            Bson::Double(1.0),
+            Bson::String("invalid".to_owned()),
+        ]);
+        
+        let result = bson_invalid.into_value(&DataType::FloatVector);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn float_vector_value_to_bson() {
+        // Test FloatVector to BSON Array conversion
+        let float_vector = FloatVector::new(vec![1.5, 2.5, 3.5]).unwrap();
+        let value = Value::FloatVector(float_vector);
+        
+        let result = value.into_bson().unwrap();
+        if let Bson::Array(arr) = result {
+            assert_eq!(arr.len(), 3);
+            assert_eq!(arr[0], Bson::Double(1.5));
+            assert_eq!(arr[1], Bson::Double(2.5));
+            assert_eq!(arr[2], Bson::Double(3.5));
+        } else {
+            panic!("Expected BSON Array");
+        }
+
+        // Test single element FloatVector
+        let single_vector = FloatVector::new(vec![42.0]).unwrap();
+        let single_value = Value::FloatVector(single_vector);
+        
+        let result = single_value.into_bson().unwrap();
+        if let Bson::Array(arr) = result {
+            assert_eq!(arr.len(), 1);
+            assert_eq!(arr[0], Bson::Double(42.0));
+        } else {
+            panic!("Expected BSON Array with single element");
+        }
+    }
+
+    #[test]
+    fn float_vector_error_cases() {
+        // Test empty BSON Array should fail FloatVector creation
+        let empty_array = Bson::Array(vec![]);
+        let result = empty_array.into_value(&DataType::FloatVector);
+        assert!(result.is_err());
+
+        // Test BSON Array with only invalid types
+        let invalid_array = Bson::Array(vec![
+            Bson::String("not_a_number".to_owned()),
+            Bson::Binary(Binary { subtype: bson::spec::BinarySubtype::Generic, bytes: vec![1, 2, 3] }),
+        ]);
+        let result = invalid_array.into_value(&DataType::FloatVector);
+        assert!(result.is_err());
     }
 }

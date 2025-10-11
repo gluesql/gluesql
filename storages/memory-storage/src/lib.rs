@@ -144,9 +144,12 @@ impl StoreMut for MemoryStorage {
     }
 
     async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
-        if let Some(item) = self.items.get_mut(table_name) {
+        if self.items.contains_key(table_name) {
             for (key, row) in rows {
-                item.rows.insert(key, row);
+                // Insert the row
+                if let Some(item) = self.items.get_mut(table_name) {
+                    item.rows.insert(key, row);
+                }
             }
         }
 
@@ -154,6 +157,16 @@ impl StoreMut for MemoryStorage {
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
+        // Collect rows to delete first to avoid borrowing issues
+        let _rows_to_delete: Vec<(Key, DataRow)> = if let Some(item) = self.items.get(table_name) {
+            keys.iter()
+                .filter_map(|key| item.rows.get(key).map(|row| (key.clone(), row.clone())))
+                .collect()
+        } else {
+            Vec::new()
+        };
+
+        // Now remove the rows
         if let Some(item) = self.items.get_mut(table_name) {
             for key in keys {
                 item.rows.remove(&key);

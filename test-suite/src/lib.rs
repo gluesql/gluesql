@@ -9,6 +9,7 @@ pub mod column_alias;
 pub mod custom_function;
 pub mod data_type;
 pub mod default;
+pub mod executor;
 pub mod delete;
 pub mod dictionary;
 pub mod dictionary_index;
@@ -198,6 +199,43 @@ macro_rules! generate_store_tests {
         glue!(int64, data_type::int64::int64);
         glue!(int128, data_type::int128::int128);
         glue!(float32, data_type::float32::float32);
+        glue!(float_vector, data_type::float_vector::float_vector);
+        glue!(
+            float_vector_data_type_validation,
+            data_type::float_vector::float_vector_data_type_validation
+        );
+        glue!(
+            float_vector_json_serialization,
+            data_type::float_vector::float_vector_json_serialization
+        );
+        glue!(
+            vector_functions_basic,
+            data_type::float_vector::vector_functions_basic
+        );
+        glue!(
+            vector_functions_arithmetic,
+            data_type::float_vector::vector_functions_arithmetic
+        );
+        glue!(
+            vector_functions_distance,
+            data_type::float_vector::vector_functions_distance
+        );
+        glue!(
+            vector_functions_with_tables,
+            data_type::float_vector::vector_functions_with_tables
+        );
+        glue!(
+            vector_functions_normalize,
+            data_type::float_vector::vector_functions_normalize
+        );
+        glue!(
+            vector_functions_advanced_distances,
+            data_type::float_vector::vector_functions_advanced_distances
+        );
+        glue!(
+            vector_functions_advanced_with_tables,
+            data_type::float_vector::vector_functions_advanced_with_tables
+        );
         glue!(uint16, data_type::uint16::uint16);
         glue!(uint8, data_type::uint8::uint8);
         glue!(uint64, data_type::uint64::uint64);
@@ -239,6 +277,13 @@ macro_rules! generate_store_tests {
         glue!(column_alias, column_alias::column_alias);
         glue!(function_splice, function::splice::splice);
         glue!(function_dedup, function::dedup::dedup);
+
+        // executor error testing
+        glue!(vector_function_error_cases, executor::vector_error_cases::vector_function_error_cases);
+        glue!(vector_function_edge_cases, executor::vector_error_cases::vector_function_edge_cases);
+        glue!(vector_function_null_handling, executor::vector_error_cases::vector_function_null_handling);
+        glue!(vector_function_type_coercion_errors, executor::vector_error_cases::vector_function_type_coercion_errors);
+        glue!(vector_function_complex_error_scenarios, executor::vector_error_cases::vector_function_complex_error_scenarios);
 
         // ast-builder
         glue!(ast_builder_basic, ast_builder::basic::basic);
@@ -327,6 +372,10 @@ macro_rules! generate_store_tests {
         glue!(
             ast_builder_function_text_position_and_indexing,
             ast_builder::function::text::position_and_indexing
+        );
+        glue!(
+            ast_builder_function_vector_functions_ast,
+            ast_builder::function::vector::vector_functions_ast
         );
         glue!(ast_builder_index_by, ast_builder::index_by::index_by);
         glue!(
