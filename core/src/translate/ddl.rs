@@ -1,6 +1,7 @@
 use {
     super::{
-        TranslateError, data_type::translate_data_type, expr::translate_expr, translate_object_name,
+        ParamLiteral, TranslateError, data_type::translate_data_type,
+        expr::translate_expr_with_params, translate_object_name,
     },
     crate::{
         ast::{AlterTableOperation, ColumnDef, ColumnUniqueOption, OperateFunctionArg},
@@ -13,13 +14,14 @@ use {
     },
 };
 
-pub fn translate_alter_table_operation(
+pub(crate) fn translate_alter_table_operation_with_params(
     sql_alter_table_operation: &SqlAlterTableOperation,
+    params: &[ParamLiteral],
 ) -> Result<AlterTableOperation> {
     match sql_alter_table_operation {
         SqlAlterTableOperation::AddColumn { column_def, .. } => {
             Ok(AlterTableOperation::AddColumn {
-                column_def: translate_column_def(column_def)?,
+                column_def: translate_column_def_with_params(column_def, params)?,
             })
         }
         SqlAlterTableOperation::DropColumn {
@@ -49,7 +51,10 @@ pub fn translate_alter_table_operation(
     }
 }
 
-pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> {
+pub(crate) fn translate_column_def_with_params(
+    sql_column_def: &SqlColumnDef,
+    params: &[ParamLiteral],
+) -> Result<ColumnDef> {
     let SqlColumnDef {
         name,
         data_type,
@@ -64,7 +69,7 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> 
                 SqlColumnOption::Null => Ok((nullable, default, unique, comment)),
                 SqlColumnOption::NotNull => Ok((false, default, unique, comment)),
                 SqlColumnOption::Default(default) => {
-                    let default = translate_expr(default).map(Some)?;
+                    let default = translate_expr_with_params(default, params).map(Some)?;
 
                     Ok((nullable, default, unique, comment))
                 }
@@ -94,14 +99,26 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> 
     })
 }
 
-pub fn translate_operate_function_arg(arg: &SqlOperateFunctionArg) -> Result<OperateFunctionArg> {
+pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> {
+    const NO_PARAMS: [ParamLiteral; 0] = [];
+    translate_column_def_with_params(sql_column_def, &NO_PARAMS)
+}
+
+pub(crate) fn translate_operate_function_arg_with_params(
+    arg: &SqlOperateFunctionArg,
+    params: &[ParamLiteral],
+) -> Result<OperateFunctionArg> {
     let name = arg
         .name
         .as_ref()
         .map(|v| v.value.to_owned())
         .ok_or(TranslateError::UnNamedFunctionArgNotSupported)?;
     let data_type = translate_data_type(&arg.data_type)?;
-    let default = arg.default_expr.as_ref().map(translate_expr).transpose()?;
+    let default = arg
+        .default_expr
+        .as_ref()
+        .map(|expr| translate_expr_with_params(expr, params))
+        .transpose()?;
     Ok(OperateFunctionArg {
         name,
         data_type,
