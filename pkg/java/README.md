@@ -26,7 +26,7 @@ dependencies {
 </dependency>
 ```
 
-## Usage
+## Quick Start
 
 ### Java
 
@@ -38,13 +38,13 @@ import org.gluesql.uniffi.QueryResult;
 public class Example {
     public static void main(String[] args) throws Exception {
         GlueSQLClient client = new GlueSQLClient(StorageFactory.memory());
-        
+
         client.query("CREATE TABLE User (id INTEGER, name TEXT)");
         client.query("INSERT INTO User VALUES (1, 'Hello'), (2, 'World')");
-        
+
         List<QueryResult> results = client.query("SELECT * FROM User");
         QueryResult.Select selectResult = (QueryResult.Select) results.get(0);
-        
+
         System.out.println(selectResult.getResult().getRows());
     }
 }
@@ -59,23 +59,74 @@ import kotlinx.coroutines.runBlocking
 
 fun main() = runBlocking {
     val client = GlueSQLClient(StorageFactory.memory())
-    
+
     client.query("CREATE TABLE User (id INTEGER, name TEXT)")
     client.query("INSERT INTO User VALUES (1, 'Hello'), (2, 'World')")
-    
+
     val results = client.query("SELECT * FROM User")
     val selectResult = results[0] as QueryResult.Select
-    
+
     println(selectResult.result.rows)
 }
 ```
 
-## Storage Types
+## Storage Backends
 
-- `StorageFactory.memory()` - In-memory storage
-- `StorageFactory.json(path)` - JSON file storage
-- `StorageFactory.sled(config)` - Sled database storage
-- `StorageFactory.sharedMemory()` - Shared memory storage
+GlueSQL supports multiple storage backends:
+
+- **Memory** - In-memory storage (data lost on restart)
+  ```kotlin
+  StorageFactory.memory()
+  ```
+
+- **JSON File** - Simple file-based storage
+  ```kotlin
+  StorageFactory.json("/path/to/database.json")
+  ```
+
+- **Sled** - Embedded key-value database
+  ```kotlin
+  val config = SledConfigBuilder.create("/path/to/db")
+      .cacheCapacity(4096L)
+      .mode(Mode.HIGH_THROUGHPUT)
+      .build()
+  StorageFactory.sled(config)
+  ```
+
+- **Shared Memory** - Shared memory storage
+  ```kotlin
+  StorageFactory.sharedMemory()
+  ```
+
+## Platform Support
+
+The JAR includes native libraries for all major platforms:
+- Linux (x86-64)
+- macOS (x86-64 Intel)
+- macOS (ARM64 Apple Silicon)
+- Windows (x86-64)
+
+**The correct native library is automatically loaded at runtime** - no configuration needed!
+
+## Development
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for:
+- Setting up the development environment
+- Building from source
+- Running tests
+- Code formatting guidelines
+- Contributing guidelines
+
+## How It Works
+
+GlueSQL Java bindings use:
+- **Rust** for the core database engine (high performance, memory safe)
+- **UniFFI** to generate Kotlin/Java bindings automatically
+- **JNA** to load native libraries at runtime
+
+The distribution JAR is a "Fat JAR" containing native libraries for all platforms. At runtime, JNA detects your platform and automatically extracts and loads the appropriate library.
+
+For more details, see [NATIVE_LOADING.md](NATIVE_LOADING.md).
 
 ## License
 
