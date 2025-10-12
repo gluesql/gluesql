@@ -52,6 +52,10 @@ val platforms = listOf(
 )
 
 // Helper to get current platform's library extension
+fun currentPlatformLibName(): String = when {
+    OperatingSystem.current().isWindows -> "gluesql_java"
+    else -> "libgluesql_java"
+}
 fun currentPlatformLibExtension(): String = when {
     OperatingSystem.current().isLinux -> "so"
     OperatingSystem.current().isMacOsX -> "dylib"
@@ -64,7 +68,7 @@ val buildRustLib = tasks.register("buildRustLib") {
     group = "build"
     description = "Build the Rust library for local platform (debug mode)"
 
-    val debugLibPath = file("../../target/debug/libgluesql_java.${currentPlatformLibExtension()}")
+    val debugLibPath = file("../../target/debug/${currentPlatformLibName()}.${currentPlatformLibExtension()}")
     outputs.file(debugLibPath)
 
     // Only rebuild if source files changed

@@ -157,3 +157,88 @@ jobs:
         with:
           name: gluesql-jar
           path: pkg/java/build/libs/*.jar
+
+  test-fat-jar:
+    name: Test Fat JAR on ${{ matrix.platform }}
+    needs: build-and-publish
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: Linux x86-64
+          - os: macos-13
+            platform: macOS Intel
+          - os: macos-latest
+            platform: macOS ARM
+          - os: windows-latest
+            platform: Windows x86-64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+
+      - name: Download JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: gluesql-jar
+          path: jar/
+
+      - name: List JAR contents
+        shell: bash
+        run: |
+          echo "=== JAR Contents - Natives ==="
+          jar tf jar/gluesql-*.jar | grep natives || echo "No natives found"
+
+      - name: Check platform-specific library
+        shell: bash
+        run: |
+          echo "=== Checking Platform-Specific Library ==="
+          echo "OS: ${{ runner.os }}"
+          echo "Platform: ${{ matrix.platform }}"
+
+          case "${{ runner.os }}" in
+            Linux)
+              echo "Expected: natives/linux-x86-64/libgluesql_java.so"
+              jar tf jar/gluesql-*.jar | grep "natives/linux-x86-64/libgluesql_java.so" && echo "✓ Found" || echo "✗ NOT FOUND"
+              ;;
+            macOS)
+              if [[ "$(uname -m)" == "arm64" ]]; then
+                echo "Expected: natives/darwin-aarch64/libgluesql_java.dylib"
+                jar tf jar/gluesql-*.jar | grep "natives/darwin-aarch64/libgluesql_java.dylib" && echo "✓ Found" || echo "✗ NOT FOUND"
+              else
+                echo "Expected: natives/darwin-x86-64/libgluesql_java.dylib"
+                jar tf jar/gluesql-*.jar | grep "natives/darwin-x86-64/libgluesql_java.dylib" && echo "✓ Found" || echo "✗ NOT FOUND"
+              fi
+              ;;
+            Windows)
+              echo "Expected: natives/win32-x86-64/gluesql_java.dll"
+              jar tf jar/gluesql-*.jar | grep "natives/win32-x86-64/gluesql_java.dll" && echo "✓ Found" || echo "✗ NOT FOUND"
+              ;;
+          esac
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Make gradlew executable (Unix)
+        if: runner.os != 'Windows'
+        run: chmod +x pkg/java/gradlew
+
+      - name: Run all tests on ${{ matrix.platform }}
+        working-directory: pkg/java
+        run: ./gradlew test
+
+      - name: Test summary
+        if: always()
+        run: |
+          echo "=== Test Summary for ${{ matrix.platform }} ==="
+          echo "Platform: ${{ matrix.platform }}"
+          echo "Java Version:"
+          java -version
