@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.js.inline.clean.removeUnusedImports
+import org.gradle.internal.os.OperatingSystem
 
 plugins {
     kotlin("jvm") version "1.9.20"
@@ -50,23 +51,33 @@ val generateBindings = tasks.register("generateBindings") {
     group = "build"
     description = "Generate UniFFI bindings"
     dependsOn(buildRustLib)
-    
+
     val generatedDir = layout.buildDirectory.dir("generated/source/uniffi/kotlin").get().asFile
-    
+
     outputs.dir(generatedDir)
-    
+
     doFirst {
         generatedDir.mkdirs()
     }
-    
+
     doLast {
+        // Determine the library extension based on the OS
+        val libExtension = when {
+            OperatingSystem.current().isLinux -> "so"
+            OperatingSystem.current().isMacOsX -> "dylib"
+            OperatingSystem.current().isWindows -> "dll"
+            else -> throw GradleException("Unsupported operating system")
+        }
+
+        val libPath = "../../target/debug/libgluesql_java.$libExtension"
+
         exec {
             workingDir = projectDir
             commandLine(
                 "cargo", "run", "--bin", "uniffi-bindgen", "generate",
                 "--language", "kotlin",
                 "--out-dir", generatedDir.absolutePath,
-                "--library", "../../target/debug/libgluesql_java.dylib"
+                "--library", libPath
             )
         }
     }
