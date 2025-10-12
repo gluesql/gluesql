@@ -8,8 +8,10 @@ use {
     chrono::{Datelike, Duration, Months},
     md5::{Digest, Md5},
     rand::{Rng, SeedableRng, rngs::StdRng},
-    std::borrow::Cow,
-    std::ops::ControlFlow::{self as StdControlFlow, Break, Continue},
+    std::{
+        borrow::Cow,
+        ops::ControlFlow::{self as StdControlFlow, Break, Continue},
+    },
     uuid::Uuid,
 };
 
@@ -1125,8 +1127,7 @@ pub fn select_arrow_value(base: &Value, selector: &Value) -> Result<Value> {
                 Value::U128(value) => Cow::Owned(value.to_string()),
                 _ => {
                     return Err(EvaluateError::ArrowSelectorRequiresIntegerOrString(format!(
-                        "{:?}",
-                        selector
+                        "{selector:?}"
                     ))
                     .into());
                 }
