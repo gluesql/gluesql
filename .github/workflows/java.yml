@@ -2,12 +2,12 @@ name: Java
 
 on:
   push:
-#    branches: [main, release-*]
-#    paths-ignore:
-#      - 'docs/**'
-#  pull_request:
-#    paths-ignore:
-#      - 'docs/**'
+    branches: [main, release-*]
+    paths-ignore:
+      - 'docs/**'
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
 
 env:
   CARGO_TERM_COLOR: always
