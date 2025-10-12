@@ -77,7 +77,8 @@ val generateBindings = tasks.register("generateBindings") {
                 "cargo", "run", "--bin", "uniffi-bindgen", "generate",
                 "--language", "kotlin",
                 "--out-dir", generatedDir.absolutePath,
-                "--library", libPath
+                "--library", libPath,
+                "--no-format"
             )
         }
     }
