@@ -31,14 +31,14 @@ pub enum AlterError {
 
     // validate index expr
     #[error("unsupported index expr: {0:#?}")]
-    UnsupportedIndexExpr(Expr),
+    UnsupportedIndexExpr(Box<Expr>),
 
     // validate index expr
     #[error("unsupported unnamed argument")]
     UnsupportedUnnamedArg,
 
     #[error("identifier not found: {0:#?}")]
-    IdentifierNotFound(Expr),
+    IdentifierNotFound(Box<Expr>),
 
     #[error("duplicate column name: {0}")]
     DuplicateColumnName(String),

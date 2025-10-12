@@ -52,7 +52,7 @@ pub enum IntervalError {
     FailedToExtract,
 
     #[error("parse supported only literal, expected: \"'1 1' DAY TO HOUR\", but got: {expr}", expr = expr.to_sql())]
-    ParseSupportedOnlyLiteral { expr: Expr },
+    ParseSupportedOnlyLiteral { expr: Box<Expr> },
 
     #[error("unreachable")]
     Unreachable,

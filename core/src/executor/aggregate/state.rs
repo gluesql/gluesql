@@ -486,7 +486,7 @@ impl<'a, T: GStore> State<'a, T> {
             AggregateFunction::Count(CountArgExpr::Wildcard) => {
                 if aggr.distinct {
                     let context = filter_context.as_ref().ok_or_else(|| {
-                        EvaluateError::FilterContextRequiredForAggregate(aggr.clone())
+                        EvaluateError::FilterContextRequiredForAggregate(Box::new(aggr.clone()))
                     })?;
                     let entries = context.get_all_entries();
                     let values: Vec<Value> = entries.into_iter().map(|(_, v)| v).collect();
