@@ -139,8 +139,16 @@ jobs:
       - name: Generate UniFFI bindings
         working-directory: pkg/java
         run: |
-          cargo build
-          ./gradlew generateBindings
+          # Use already-built Linux library instead of building debug version
+          mkdir -p ../../target/release
+          cp src/main/resources/natives/linux-x86-64/libgluesql_java.so ../../target/release/
+
+          # Generate Kotlin bindings from the release library
+          cargo run --bin uniffi-bindgen generate \
+            --language kotlin \
+            --out-dir build/generated/source/uniffi/kotlin \
+            --library ../../target/release/libgluesql_java.so \
+            --no-format
 
       - name: Build JAR
         working-directory: pkg/java
