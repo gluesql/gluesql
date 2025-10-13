@@ -3,8 +3,8 @@ import org.gradle.internal.os.OperatingSystem
 plugins {
     kotlin("jvm") version "1.9.20"
     `java-library`
-    `maven-publish`
     id("com.diffplug.spotless") version "6.25.0"
+    id("com.vanniktech.maven.publish") version "0.28.0"
 }
 
 group = "org.gluesql"
@@ -180,6 +180,11 @@ tasks.compileKotlin {
     dependsOn(generateBindings)
 }
 
+// Ensure sources JAR includes generated bindings
+tasks.named("kotlinSourcesJar") {
+    dependsOn(generateBindings)
+}
+
 tasks.test {
     useJUnitPlatform()
     dependsOn(buildRustLib)
@@ -208,38 +213,39 @@ spotless {
     }
 }
 
-// Maven publishing
-publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            from(components["java"])
+// Maven Central publishing configuration using vanniktech plugin
+mavenPublishing {
+    publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL)
 
-            pom {
-                name.set("GlueSQL Java Bindings")
-                description.set("Java/Kotlin bindings for GlueSQL")
-                url.set("https://github.com/gluesql/gluesql")
+    coordinates(group.toString(), "gluesql", version.toString())
 
-                licenses {
-                    license {
-                        name.set("Apache License 2.0")
-                        url.set("https://www.apache.org/licenses/LICENSE-2.0")
-                    }
-                }
+    pom {
+        name.set("GlueSQL Java Bindings")
+        description.set("Java/Kotlin bindings for GlueSQL - SQL database engine as a library")
+        inceptionYear.set("2024")
+        url.set("https://github.com/gluesql/gluesql")
 
-                developers {
-                    developer {
-                        id.set("junghoon-ban")
-                        name.set("Junghoon Ban")
-                        email.set("junghoon.ban@gmail.com")
-                    }
-                }
-
-                scm {
-                    connection.set("scm:git:git://github.com/gluesql/gluesql.git")
-                    developerConnection.set("scm:git:ssh://github.com:gluesql/gluesql.git")
-                    url.set("https://github.com/gluesql/gluesql")
-                }
+        licenses {
+            license {
+                name.set("Apache License 2.0")
+                url.set("https://www.apache.org/licenses/LICENSE-2.0")
+                distribution.set("https://www.apache.org/licenses/LICENSE-2.0")
             }
+        }
+
+        developers {
+            developer {
+                id.set("junghoon-ban")
+                name.set("Junghoon Ban")
+                email.set("junghoon.ban@gmail.com")
+                url.set("https://github.com/gluesql/gluesql")
+            }
+        }
+
+        scm {
+            url.set("https://github.com/gluesql/gluesql")
+            connection.set("scm:git:git://github.com/gluesql/gluesql.git")
+            developerConnection.set("scm:git:ssh://git@github.com/gluesql/gluesql.git")
         }
     }
 }

@@ -1,7 +1,16 @@
 name: Publish Java
 
 on:
-  push:
+  workflow_dispatch:
+    inputs:
+      # Latest commit to include with the release. If omitted, use the latest commit on the main branch.
+      sha:
+        description: Commit SHA
+        type: string
+      dry_run:
+        description: Dry run
+        type: boolean
+        default: true
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -84,8 +93,8 @@ jobs:
           path: target/${{ matrix.target }}/release/artifact/${{ matrix.platform }}/*
           retention-days: 1
 
-  build-and-publish:
-    name: Build and Publish JAR
+  build-jar:
+    name: Build JAR
     needs: build-natives
     runs-on: ubuntu-latest
 
@@ -165,3 +174,41 @@ jobs:
         with:
           name: gluesql-jar
           path: pkg/java/build/libs/*.jar
+
+  publish-to-maven:
+    name: Publish to Maven Central
+    needs: build-jar
+    if: inputs.dry_run == false
+    runs-on: ubuntu-latest
+    environment:
+      name: release-java
+      url: https://central.sonatype.com/artifact/org.gluesql/gluesql
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.sha }}
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+
+      - name: Download Fat JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: gluesql-jar
+          path: pkg/java/build/libs
+
+      - name: Make gradlew executable
+        run: chmod +x pkg/java/gradlew
+
+      - name: Publish to Maven Central
+        working-directory: pkg/java
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_SIGNING_PASSWORD }}
+        run: ./gradlew publishToMavenCentral --no-configuration-cache
