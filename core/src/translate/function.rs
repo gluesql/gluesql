@@ -234,6 +234,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
     match name.as_str() {
         "SUM" => translate_aggregate_one_arg(Aggregate::Sum, args, name),
+        "TOTAL" => translate_aggregate_one_arg(Aggregate::Total, args, name),
         "MIN" => translate_aggregate_one_arg(Aggregate::Min, args, name),
         "MAX" => translate_aggregate_one_arg(Aggregate::Max, args, name),
         "AVG" => translate_aggregate_one_arg(Aggregate::Avg, args, name),

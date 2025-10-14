@@ -221,6 +221,7 @@ mod tests {
         test!("taste IS NULL", false);
         test!("(1 + random) IS NOT NULL", false);
         test!("SUM(1)", true);
+        test!("TOTAL(1)", true);
         test!("COUNT(*)", true);
         test!("MAX(rate)", true);
         test!("MIN(anywhere)", false);
