@@ -6,4 +6,5 @@ pub mod max;
 pub mod min;
 pub mod stdev;
 pub mod sum;
+pub mod total;
 pub mod variance;
