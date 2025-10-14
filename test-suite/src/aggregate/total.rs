@@ -1,4 +1,4 @@
-use {crate::*, gluesql_core::{prelude::Value::*, sqlparser::keywords::NULL}};
+use {crate::*, gluesql_core::prelude::Value::*};
 
 test_case!(total, {
     let g = get_tester!();
