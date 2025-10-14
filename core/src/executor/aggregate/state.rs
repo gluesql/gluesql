@@ -23,6 +23,7 @@ enum AggrValue {
         count: i64,
     },
     Sum(Value),
+    Total(Value),
     Min(Value),
     Max(Value),
     Avg {
@@ -55,6 +56,7 @@ impl AggrValue {
                 count: i64::from(!value.is_null()),
             },
             Aggregate::Sum(_) => AggrValue::Sum(value),
+            Aggregate::Total(_) => AggrValue::Total(value),
             Aggregate::Min(_) => AggrValue::Min(value),
             Aggregate::Max(_) => AggrValue::Max(value),
             Aggregate::Avg(_) => AggrValue::Avg {
@@ -89,6 +91,19 @@ impl AggrValue {
                 }
             }
             Self::Sum(value) => Ok(Some(Self::Sum(value.add(new_value)?))),
+            Self::Total(value) => {
+                if new_value.is_null() {
+                    return Ok(None);
+                }
+            
+                let value_f64 = if value.is_null() {
+                    Value::F64(0.0)
+                } else {
+                    value.clone()
+                };
+                let total = value_f64.add(new_value)?;
+                Ok(Some(Self::Total(total.cast(&DataType::Float)?)))
+            },
             Self::Min(value) => match &value.evaluate_cmp(new_value) {
                 Some(Ordering::Greater) => Ok(Some(Self::Min(new_value.clone()))),
                 _ => Ok(None),
@@ -135,9 +150,15 @@ impl AggrValue {
         match self {
             Self::Count { count, .. } => Ok(Value::I64(count)),
             Self::Sum(value) | Self::Min(value) | Self::Max(value) => Ok(value),
+            Self::Total(value) => {
+                if value.is_null() {
+                    Ok(Value::F64(0.0))
+                } else {
+                    value.cast(&DataType::Float)
+                }
+            },            
             Self::Avg { sum, count } => {
                 let sum = sum.cast(&DataType::Float)?;
-
                 sum.divide(&Value::I64(count))
             }
             Self::Variance {
@@ -250,6 +271,7 @@ impl<'a, T: GStore> State<'a, T> {
             Aggregate::Count(CountArgExpr::Wildcard) => Value::Null,
             Aggregate::Count(CountArgExpr::Expr(expr))
             | Aggregate::Sum(expr)
+            | Aggregate::Total(expr)
             | Aggregate::Min(expr)
             | Aggregate::Max(expr)
             | Aggregate::Avg(expr)
