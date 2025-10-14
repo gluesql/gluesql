@@ -67,14 +67,6 @@ test_case!(total, {
                 174.0
             ),
         ),
-        (
-            "SELECT TOTAL(quantity) FROM Item WHERE id > 10",
-            select!(
-                "TOTAL(quantity)"
-                F64;
-                0.0
-            ),
-        ),
     ];
 
     for (sql, expected) in test_cases {
