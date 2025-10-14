@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "Gluesql", // The name of your package
+    name: "gluesql", // The name of your package
     platforms: [
         .iOS(.v18),
         // .macOS(.v11)
