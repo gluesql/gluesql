@@ -21,7 +21,7 @@ enum GlueStorage {
     SharedMemoryStorage(RustGlue<SharedMemoryStorage>),
 }
 
-#[derive(uniffi::Enum, Clone, Copy)]
+#[derive(uniffi::Enum, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum GlueStorageKind {
     MemoryStorage,
     SharedMemoryStorage,
@@ -375,68 +375,213 @@ impl Glue {
         }
         res_vec
     }
-    async fn add_dummy_data(&self) -> Vec<Payload> {
-        let sqls = vec![
-            "DROP TABLE IF EXISTS OrderDetails;
-DROP TABLE IF EXISTS Orders;
-DROP TABLE IF EXISTS Products;
-DROP TABLE IF EXISTS Customers;".into(),
-            "CREATE TABLE Customers (
-    CustomerID INT PRIMARY KEY,
-    FirstName TEXT,
-    LastName TEXT,
-    Email TEXT UNIQUE,
-    RegistrationDate DATE
-);".into(),
-            "CREATE TABLE Products (
-    ProductID INT PRIMARY KEY,
-    ProductName TEXT,
-    Category TEXT,
-    Price DECIMAL
-);".into(),
-            "CREATE TABLE Orders (
-    OrderID INT PRIMARY KEY,
-    CustomerID INT,
-    OrderDate DATE,
-    TotalAmount DECIMAL,
-    FOREIGN KEY (CustomerID) REFERENCES Customers(CustomerID)
-);".into(),
-            "CREATE TABLE OrderDetails (
-    OrderDetailID INT PRIMARY KEY,
-    OrderID INT,
-    ProductID INT,
-    Quantity INT,
-    PricePerUnit DECIMAL,
-    FOREIGN KEY (OrderID) REFERENCES Orders(OrderID),
-    FOREIGN KEY (ProductID) REFERENCES Products(ProductID)
-);".into(),
-            "INSERT INTO Customers (CustomerID, FirstName, LastName, Email, RegistrationDate) VALUES
-(1, 'John', 'Smith', 'john.smith@email.com', '2022-01-15'),
-(2, 'Jane', 'Doe', 'jane.doe@email.com', '2022-02-20'),
-(3, 'Peter', 'Jones', 'peter.jones@email.com', '2022-03-10'),
-(4, 'Maria', 'Garcia', 'maria.garcia@email.com', '2023-05-01');
-".into(),
-            "INSERT INTO Products (ProductID, ProductName, Category, Price) VALUES
-(101, 'Laptop', 'Electronics', 1200.00),
-(102, 'Smartphone', 'Electronics', 800.00),
-(103, 'Coffee Maker', 'Home Goods', 75.50),
-(104, 'Desk Chair', 'Furniture', 250.00),
-(105, 'SQL for Beginners', 'Books', 45.99);".into(),
-            "INSERT INTO Orders (OrderID, CustomerID, OrderDate, TotalAmount) VALUES
-(1001, 1, '2023-04-10', 1245.99),
-(1002, 2, '2023-04-12', 800.00),
-(1003, 1, '2023-05-21', 75.50),
-(1004, 3, '2023-06-01', 295.99);".into(),
-            "INSERT INTO OrderDetails (OrderDetailID, OrderID, ProductID, Quantity, PricePerUnit) VALUES
-(1, 1001, 101, 1, 1200.00),
-(2, 1001, 105, 1, 45.99),
-(3, 1002, 102, 1, 800.00),
-(4, 1003, 103, 1, 75.50),
-(5, 1004, 104, 1, 250.00),
-(6, 1004, 105, 1, 45.99);
+}
 
-".into(),
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_create_memory_storage() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+        let kind = glue.get_kind().await;
+        assert_eq!(kind, GlueStorageKind::MemoryStorage);
+    }
+
+    #[tokio::test]
+    async fn test_create_shared_memory_storage() {
+        let glue = Glue::new(GlueStorageKind::SharedMemoryStorage).await;
+        let kind = glue.get_kind().await;
+        assert_eq!(kind, GlueStorageKind::SharedMemoryStorage);
+    }
+
+    #[tokio::test]
+    async fn test_create_table() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+        let queries = vec!["CREATE TABLE users (id INTEGER, name TEXT)".to_string()];
+        let results = glue.query(queries).await;
+
+        assert_eq!(results.len(), 1);
+        assert!(matches!(results[0], Payload::Create));
+    }
+
+    #[tokio::test]
+    async fn test_insert_and_select() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let queries = vec![
+            "CREATE TABLE users (id INTEGER, name TEXT, age INTEGER)".to_string(),
+            "INSERT INTO users VALUES (1, 'Alice', 30)".to_string(),
+            "INSERT INTO users VALUES (2, 'Bob', 25)".to_string(),
+            "SELECT * FROM users".to_string(),
         ];
-        self.query(sqls).await
+
+        let results = glue.query(queries).await;
+
+        assert_eq!(results.len(), 4);
+        assert!(matches!(results[0], Payload::Create));
+        assert!(matches!(results[1], Payload::Insert(1)));
+        assert!(matches!(results[2], Payload::Insert(1)));
+
+        if let Payload::Select { labels, rows } = &results[3] {
+            assert_eq!(labels.len(), 3);
+            assert_eq!(labels, &vec!["id", "name", "age"]);
+            assert_eq!(rows.len(), 2);
+        } else {
+            panic!("Expected Select payload");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_update_records() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let queries = vec![
+            "CREATE TABLE users (id INTEGER, name TEXT)".to_string(),
+            "INSERT INTO users VALUES (1, 'Alice')".to_string(),
+            "UPDATE users SET name = 'Alice Updated' WHERE id = 1".to_string(),
+            "SELECT * FROM users".to_string(),
+        ];
+
+        let results = glue.query(queries).await;
+
+        assert!(matches!(results[2], Payload::Update(1)));
+
+        if let Payload::Select { rows, .. } = &results[3] {
+            assert_eq!(rows.len(), 1);
+            if let Value::Str(name) = &rows[0][1] {
+                assert_eq!(name, "Alice Updated");
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_delete_records() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let queries = vec![
+            "CREATE TABLE users (id INTEGER, name TEXT)".to_string(),
+            "INSERT INTO users VALUES (1, 'Alice')".to_string(),
+            "INSERT INTO users VALUES (2, 'Bob')".to_string(),
+            "DELETE FROM users WHERE id = 1".to_string(),
+            "SELECT * FROM users".to_string(),
+        ];
+
+        let results = glue.query(queries).await;
+
+        assert!(matches!(results[3], Payload::Delete(1)));
+
+        if let Payload::Select { rows, .. } = &results[4] {
+            assert_eq!(rows.len(), 1);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_drop_table() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let queries = vec![
+            "CREATE TABLE temp_table (id INTEGER)".to_string(),
+            "DROP TABLE temp_table".to_string(),
+        ];
+
+        let results = glue.query(queries).await;
+        assert!(matches!(results[1], Payload::DropTable(_)));
+    }
+
+    #[tokio::test]
+    async fn test_data_type_conversions() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let queries = vec![
+            "CREATE TABLE data_types (
+                bool_val BOOLEAN,
+                int_val INTEGER,
+                float_val FLOAT,
+                text_val TEXT
+            )"
+            .to_string(),
+            "INSERT INTO data_types VALUES (TRUE, 42, 3.14, 'test')".to_string(),
+            "SELECT * FROM data_types".to_string(),
+        ];
+
+        let results = glue.query(queries).await;
+
+        if let Payload::Select { rows, .. } = &results[2] {
+            assert!(matches!(rows[0][0], Value::Bool(true)));
+            assert!(matches!(rows[0][1], Value::I64(42)));
+            assert!(matches!(rows[0][2], Value::F64(_)));
+            assert!(matches!(rows[0][3], Value::Str(_)));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_show_columns() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let queries = vec![
+            "CREATE TABLE users (id INTEGER, name TEXT, active BOOLEAN)".to_string(),
+            "SHOW COLUMNS FROM users".to_string(),
+        ];
+
+        let results = glue.query(queries).await;
+
+        if let Payload::ShowColumns(columns) = &results[1] {
+            assert_eq!(columns.len(), 3);
+            assert_eq!(columns[0].field, "id");
+            assert!(matches!(columns[0].data_type, DataType::Int));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_null_values() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let queries = vec![
+            "CREATE TABLE nullable (id INTEGER, value TEXT)".to_string(),
+            "INSERT INTO nullable VALUES (1, NULL)".to_string(),
+            "SELECT * FROM nullable".to_string(),
+        ];
+
+        let results = glue.query(queries).await;
+
+        if let Payload::Select { rows, .. } = &results[2] {
+            assert!(matches!(rows[0][1], Value::Null));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_multiple_queries_in_sequence() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let queries = vec![
+            "CREATE TABLE test1 (id INTEGER)".to_string(),
+            "CREATE TABLE test2 (id INTEGER)".to_string(),
+            "CREATE TABLE test3 (id INTEGER)".to_string(),
+        ];
+
+        let results = glue.query(queries).await;
+        assert_eq!(results.len(), 3);
+        assert!(results.iter().all(|r| matches!(r, Payload::Create)));
+    }
+
+    #[tokio::test]
+    async fn test_select_map_payload() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let queries = vec![
+            "CREATE TABLE products (id INTEGER, name TEXT, price FLOAT)".to_string(),
+            "INSERT INTO products VALUES (1, 'Widget', 9.99)".to_string(),
+            "SELECT id, name, price FROM products".to_string(),
+        ];
+
+        let results = glue.query(queries).await;
+
+        if let Payload::Select { labels, rows } = &results[2] {
+            assert!(labels.contains(&"id".to_string()));
+            assert!(labels.contains(&"name".to_string()));
+            assert!(labels.contains(&"price".to_string()));
+            assert!(!rows.is_empty());
+        }
     }
 }

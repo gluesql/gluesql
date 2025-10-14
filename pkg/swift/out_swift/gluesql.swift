@@ -352,19 +352,29 @@ private func uniffiTraitInterfaceCallWithError<T, E>(
         callStatus.pointee.errorBuf = FfiConverterString.lower(String(describing: error))
     }
 }
+// Initial value and increment amount for handles. 
+// These ensure that SWIFT handles always have the lowest bit set
+fileprivate let UNIFFI_HANDLEMAP_INITIAL: UInt64 = 1
+fileprivate let UNIFFI_HANDLEMAP_DELTA: UInt64 = 2
+
 fileprivate final class UniffiHandleMap<T>: @unchecked Sendable {
     // All mutation happens with this lock held, which is why we implement @unchecked Sendable.
     private let lock = NSLock()
     private var map: [UInt64: T] = [:]
-    private var currentHandle: UInt64 = 1
+    private var currentHandle: UInt64 = UNIFFI_HANDLEMAP_INITIAL
 
     func insert(obj: T) -> UInt64 {
         lock.withLock {
-            let handle = currentHandle
-            currentHandle += 1
-            map[handle] = obj
-            return handle
+            return doInsert(obj)
         }
+    }
+
+    // Low-level insert function, this assumes `lock` is held.
+    private func doInsert(_ obj: T) -> UInt64 {
+        let handle = currentHandle
+        currentHandle += UNIFFI_HANDLEMAP_DELTA
+        map[handle] = obj
+        return handle
     }
 
      func get(handle: UInt64) throws -> T {
@@ -373,6 +383,15 @@ fileprivate final class UniffiHandleMap<T>: @unchecked Sendable {
                 throw UniffiInternalError.unexpectedStaleHandle
             }
             return obj
+        }
+    }
+
+     func clone(handle: UInt64) throws -> UInt64 {
+        try lock.withLock {
+            guard let obj = map[handle] else {
+                throw UniffiInternalError.unexpectedStaleHandle
+            }
+            return doInsert(obj)
         }
     }
 
@@ -645,21 +664,19 @@ fileprivate struct FfiConverterData: FfiConverterRustBuffer {
 
 public protocol GlueProtocol: AnyObject, Sendable {
     
-    func addDummyData() async  -> [Payload]
-    
     func getKind() async  -> GlueStorageKind
     
     func query(query: [String]) async  -> [Payload]
     
 }
 open class Glue: GlueProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -669,82 +686,60 @@ open class Glue: GlueProtocol, @unchecked Sendable {
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_gluesql_fn_clone_glue(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_gluesql_fn_clone_glue(self.handle, $0) }
     }
 public convenience init(kind: GlueStorageKind)async  {
-    let pointer =
+    let handle =
         try!  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_gluesql_fn_constructor_glue_new(FfiConverterTypeGlueStorageKind_lower(kind)
                 )
             },
-            pollFunc: ffi_gluesql_rust_future_poll_pointer,
-            completeFunc: ffi_gluesql_rust_future_complete_pointer,
-            freeFunc: ffi_gluesql_rust_future_free_pointer,
+            pollFunc: ffi_gluesql_rust_future_poll_u64,
+            completeFunc: ffi_gluesql_rust_future_complete_u64,
+            freeFunc: ffi_gluesql_rust_future_free_u64,
             liftFunc: FfiConverterTypeGlue_lift,
             errorHandler: nil
             
         )
         
-        .uniffiClonePointer()
-    self.init(unsafeFromRawPointer: pointer)
+        .uniffiCloneHandle()
+    self.init(unsafeFromHandle: handle)
 }
 
     deinit {
-        guard let pointer = pointer else {
-            return
-        }
-
-        try! rustCall { uniffi_gluesql_fn_free_glue(pointer, $0) }
+        try! rustCall { uniffi_gluesql_fn_free_glue(handle, $0) }
     }
 
     
 
-    
-open func addDummyData()async  -> [Payload]  {
-    return
-        try!  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_gluesql_fn_method_glue_add_dummy_data(
-                    self.uniffiClonePointer()
-                    
-                )
-            },
-            pollFunc: ffi_gluesql_rust_future_poll_rust_buffer,
-            completeFunc: ffi_gluesql_rust_future_complete_rust_buffer,
-            freeFunc: ffi_gluesql_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterSequenceTypePayload.lift,
-            errorHandler: nil
-            
-        )
-}
     
 open func getKind()async  -> GlueStorageKind  {
     return
         try!  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_gluesql_fn_method_glue_get_kind(
-                    self.uniffiClonePointer()
+                    self.uniffiCloneHandle()
                     
                 )
             },
@@ -762,7 +757,7 @@ open func query(query: [String])async  -> [Payload]  {
         try!  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_gluesql_fn_method_glue_query(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterSequenceString.lower(query)
                 )
             },
@@ -776,6 +771,7 @@ open func query(query: [String])async  -> [Payload]  {
 }
     
 
+    
 }
 
 
@@ -783,33 +779,24 @@ open func query(query: [String])async  -> [Payload]  {
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypeGlue: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = Glue
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> Glue {
-        return Glue(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> Glue {
+        return Glue(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: Glue) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: Glue) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Glue {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: Glue, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -817,21 +804,21 @@ public struct FfiConverterTypeGlue: FfiConverter {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeGlue_lift(_ pointer: UnsafeMutableRawPointer) throws -> Glue {
-    return try FfiConverterTypeGlue.lift(pointer)
+public func FfiConverterTypeGlue_lift(_ handle: UInt64) throws -> Glue {
+    return try FfiConverterTypeGlue.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeGlue_lower(_ value: Glue) -> UnsafeMutableRawPointer {
+public func FfiConverterTypeGlue_lower(_ value: Glue) -> UInt64 {
     return FfiConverterTypeGlue.lower(value)
 }
 
 
 
 
-public struct ColumnMeta {
+public struct ColumnMeta: Equatable, Hashable {
     public var field: String
     public var dataType: DataType
 
@@ -841,31 +828,13 @@ public struct ColumnMeta {
         self.field = field
         self.dataType = dataType
     }
+
+    
 }
 
 #if compiler(>=6)
 extension ColumnMeta: Sendable {}
 #endif
-
-
-extension ColumnMeta: Equatable, Hashable {
-    public static func ==(lhs: ColumnMeta, rhs: ColumnMeta) -> Bool {
-        if lhs.field != rhs.field {
-            return false
-        }
-        if lhs.dataType != rhs.dataType {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(field)
-        hasher.combine(dataType)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -901,7 +870,7 @@ public func FfiConverterTypeColumnMeta_lower(_ value: ColumnMeta) -> RustBuffer 
 }
 
 
-public struct I128 {
+public struct I128: Equatable, Hashable {
     public var high: UInt64
     public var low: UInt64
 
@@ -911,31 +880,13 @@ public struct I128 {
         self.high = high
         self.low = low
     }
+
+    
 }
 
 #if compiler(>=6)
 extension I128: Sendable {}
 #endif
-
-
-extension I128: Equatable, Hashable {
-    public static func ==(lhs: I128, rhs: I128) -> Bool {
-        if lhs.high != rhs.high {
-            return false
-        }
-        if lhs.low != rhs.low {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(high)
-        hasher.combine(low)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -971,7 +922,7 @@ public func FfiConverterTypeI128_lower(_ value: I128) -> RustBuffer {
 }
 
 
-public struct Ipv4Addr {
+public struct Ipv4Addr: Equatable, Hashable {
     public var octets: Data
 
     // Default memberwise initializers are never public by default, so we
@@ -979,27 +930,13 @@ public struct Ipv4Addr {
     public init(octets: Data) {
         self.octets = octets
     }
+
+    
 }
 
 #if compiler(>=6)
 extension Ipv4Addr: Sendable {}
 #endif
-
-
-extension Ipv4Addr: Equatable, Hashable {
-    public static func ==(lhs: Ipv4Addr, rhs: Ipv4Addr) -> Bool {
-        if lhs.octets != rhs.octets {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(octets)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -1033,7 +970,7 @@ public func FfiConverterTypeIpv4Addr_lower(_ value: Ipv4Addr) -> RustBuffer {
 }
 
 
-public struct Ipv6Addr {
+public struct Ipv6Addr: Equatable, Hashable {
     public var octets: Data
 
     // Default memberwise initializers are never public by default, so we
@@ -1041,27 +978,13 @@ public struct Ipv6Addr {
     public init(octets: Data) {
         self.octets = octets
     }
+
+    
 }
 
 #if compiler(>=6)
 extension Ipv6Addr: Sendable {}
 #endif
-
-
-extension Ipv6Addr: Equatable, Hashable {
-    public static func ==(lhs: Ipv6Addr, rhs: Ipv6Addr) -> Bool {
-        if lhs.octets != rhs.octets {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(octets)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -1095,7 +1018,7 @@ public func FfiConverterTypeIpv6Addr_lower(_ value: Ipv6Addr) -> RustBuffer {
 }
 
 
-public struct Point {
+public struct Point: Equatable, Hashable {
     public var x: Double
     public var y: Double
 
@@ -1105,31 +1028,13 @@ public struct Point {
         self.x = x
         self.y = y
     }
+
+    
 }
 
 #if compiler(>=6)
 extension Point: Sendable {}
 #endif
-
-
-extension Point: Equatable, Hashable {
-    public static func ==(lhs: Point, rhs: Point) -> Bool {
-        if lhs.x != rhs.x {
-            return false
-        }
-        if lhs.y != rhs.y {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(x)
-        hasher.combine(y)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -1165,7 +1070,7 @@ public func FfiConverterTypePoint_lower(_ value: Point) -> RustBuffer {
 }
 
 
-public struct U128 {
+public struct U128: Equatable, Hashable {
     public var high: UInt64
     public var low: UInt64
 
@@ -1175,31 +1080,13 @@ public struct U128 {
         self.high = high
         self.low = low
     }
+
+    
 }
 
 #if compiler(>=6)
 extension U128: Sendable {}
 #endif
-
-
-extension U128: Equatable, Hashable {
-    public static func ==(lhs: U128, rhs: U128) -> Bool {
-        if lhs.high != rhs.high {
-            return false
-        }
-        if lhs.low != rhs.low {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(high)
-        hasher.combine(low)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -1237,7 +1124,7 @@ public func FfiConverterTypeU128_lower(_ value: U128) -> RustBuffer {
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 
-public enum DataType {
+public enum DataType: Equatable, Hashable {
     
     case boolean
     case int8
@@ -1264,8 +1151,10 @@ public enum DataType {
     case list
     case decimal
     case point
-}
 
+
+
+}
 
 #if compiler(>=6)
 extension DataType: Sendable {}
@@ -1458,22 +1347,17 @@ public func FfiConverterTypeDataType_lower(_ value: DataType) -> RustBuffer {
 }
 
 
-extension DataType: Equatable, Hashable {}
-
-
-
-
-
-
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 
-public enum GlueStorageKind {
+public enum GlueStorageKind: Equatable, Hashable {
     
     case memoryStorage
     case sharedMemoryStorage
-}
 
+
+
+}
 
 #if compiler(>=6)
 extension GlueStorageKind: Sendable {}
@@ -1528,24 +1412,19 @@ public func FfiConverterTypeGlueStorageKind_lower(_ value: GlueStorageKind) -> R
 }
 
 
-extension GlueStorageKind: Equatable, Hashable {}
-
-
-
-
-
-
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 
-public enum Interval {
+public enum Interval: Equatable, Hashable {
     
     case month(Int32
     )
     case microsecond(Int64
     )
-}
 
+
+
+}
 
 #if compiler(>=6)
 extension Interval: Sendable {}
@@ -1604,24 +1483,19 @@ public func FfiConverterTypeInterval_lower(_ value: Interval) -> RustBuffer {
 }
 
 
-extension Interval: Equatable, Hashable {}
-
-
-
-
-
-
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 
-public enum IpAddr {
+public enum IpAddr: Equatable, Hashable {
     
     case v4(Ipv4Addr
     )
     case v6(Ipv6Addr
     )
-}
 
+
+
+}
 
 #if compiler(>=6)
 extension IpAddr: Sendable {}
@@ -1680,17 +1554,10 @@ public func FfiConverterTypeIpAddr_lower(_ value: IpAddr) -> RustBuffer {
 }
 
 
-extension IpAddr: Equatable, Hashable {}
-
-
-
-
-
-
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 
-public enum Payload {
+public enum Payload: Equatable, Hashable {
     
     case showColumns([ColumnMeta]
     )
@@ -1716,8 +1583,10 @@ public enum Payload {
     case rollback
     case showVariable(PayloadVariable
     )
-}
 
+
+
+}
 
 #if compiler(>=6)
 extension Payload: Sendable {}
@@ -1873,17 +1742,10 @@ public func FfiConverterTypePayload_lower(_ value: Payload) -> RustBuffer {
 }
 
 
-extension Payload: Equatable, Hashable {}
-
-
-
-
-
-
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 
-public enum PayloadVariable {
+public enum PayloadVariable: Equatable, Hashable {
     
     case tables([String]
     )
@@ -1891,8 +1753,10 @@ public enum PayloadVariable {
     )
     case version(String
     )
-}
 
+
+
+}
 
 #if compiler(>=6)
 extension PayloadVariable: Sendable {}
@@ -1959,17 +1823,10 @@ public func FfiConverterTypePayloadVariable_lower(_ value: PayloadVariable) -> R
 }
 
 
-extension PayloadVariable: Equatable, Hashable {}
-
-
-
-
-
-
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 
-public enum Value {
+public enum Value: Equatable, Hashable {
     
     case bool(Bool
     )
@@ -2022,8 +1879,10 @@ public enum Value {
     case point(Point
     )
     case null
-}
 
+
+
+}
 
 #if compiler(>=6)
 extension Value: Sendable {}
@@ -2272,13 +2131,6 @@ public func FfiConverterTypeValue_lower(_ value: Value) -> RustBuffer {
 }
 
 
-extension Value: Equatable, Hashable {}
-
-
-
-
-
-
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -2455,7 +2307,7 @@ fileprivate struct FfiConverterDictionaryStringTypeValue: FfiConverterRustBuffer
     }
 }
 private let UNIFFI_RUST_FUTURE_POLL_READY: Int8 = 0
-private let UNIFFI_RUST_FUTURE_POLL_MAYBE_READY: Int8 = 1
+private let UNIFFI_RUST_FUTURE_POLL_WAKE: Int8 = 1
 
 fileprivate let uniffiContinuationHandleMap = UniffiHandleMap<UnsafeContinuation<Int8, Never>>()
 
@@ -2479,7 +2331,9 @@ fileprivate func uniffiRustCallAsync<F, T>(
         pollResult = await withUnsafeContinuation {
             pollFunc(
                 rustFuture,
-                uniffiFutureContinuationCallback,
+                { handle, pollResult in
+                    uniffiFutureContinuationCallback(handle: handle, pollResult: pollResult)
+                },
                 uniffiContinuationHandleMap.insert(obj: $0)
             )
         }
@@ -2510,14 +2364,11 @@ private enum InitializationResult {
 // the code inside is only computed once.
 private let initializationResult: InitializationResult = {
     // Get the bindings contract version from our ComponentInterface
-    let bindings_contract_version = 29
+    let bindings_contract_version = 30
     // Get the scaffolding contract version by calling the into the dylib
     let scaffolding_contract_version = ffi_gluesql_uniffi_contract_version()
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
-    }
-    if (uniffi_gluesql_checksum_method_glue_add_dummy_data() != 56064) {
-        return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_gluesql_checksum_method_glue_get_kind() != 20428) {
         return InitializationResult.apiChecksumMismatch
