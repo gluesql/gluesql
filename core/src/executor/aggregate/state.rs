@@ -290,7 +290,7 @@ impl AggrValue {
                 if new_value.is_null() {
                     return Ok(None);
                 }
-            
+
                 let value_f64 = if value.is_null() {
                     Value::F64(0.0)
                 } else {

@@ -1,5 +1,5 @@
 use {
-    super::{ast_literal::TrimWhereField, DataType, DateTimeField, Expr},
+    super::{DataType, DateTimeField, Expr, ast_literal::TrimWhereField},
     crate::ast::ToSql,
     serde::{Deserialize, Serialize},
     strum_macros::Display,

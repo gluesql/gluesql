@@ -103,7 +103,7 @@ impl<'a> ExprNode<'a> {
     pub fn sum_distinct(self) -> ExprNode<'a> {
         ExprNode::Aggregate(Box::new(AggregateNode::Sum(self, true)))
     }
-  
+
     pub fn total(self) -> ExprNode<'a> {
         ExprNode::Aggregate(Box::new(AggregateNode::Total(self, false)))
     }
@@ -127,7 +127,7 @@ impl<'a> ExprNode<'a> {
     pub fn avg(self) -> ExprNode<'a> {
         ExprNode::Aggregate(Box::new(AggregateNode::Avg(self, false)))
     }
-    
+
     pub fn avg_distinct(self) -> ExprNode<'a> {
         ExprNode::Aggregate(Box::new(AggregateNode::Avg(self, true)))
     }
@@ -213,7 +213,7 @@ pub fn stdev_distinct<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
 mod tests {
     use crate::ast_builder::{
         avg, avg_distinct, col, count, count_distinct, max, max_distinct, min, min_distinct, stdev,
-        stdev_distinct, sum, sum_distinct, total, test_expr, variance, variance_distinct,
+        stdev_distinct, sum, sum_distinct, test_expr, total, variance, variance_distinct,
     };
 
     #[test]
@@ -257,7 +257,7 @@ mod tests {
         let actual = sum_distinct("amount");
         let expected = "SUM(DISTINCT amount)";
         test_expr(actual, expected);
-      
+
         let actual = total("amount");
         let expected = "TOTAL(amount)";
         test_expr(actual, expected);

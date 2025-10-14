@@ -55,7 +55,7 @@ test_case!(total, {
             "SELECT TOTAL(1 + 2) FROM Item;",
             select!(
                 "TOTAL(1 + 2)"
-                F64; 
+                F64;
                 15.0
             ),
         ),
