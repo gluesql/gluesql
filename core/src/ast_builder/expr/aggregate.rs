@@ -12,6 +12,7 @@ use {
 pub enum AggregateNode<'a> {
     Count(CountArgExprNode<'a>),
     Sum(ExprNode<'a>),
+    Total(ExprNode<'a>),
     Min(ExprNode<'a>),
     Max(ExprNode<'a>),
     Avg(ExprNode<'a>),
@@ -62,6 +63,7 @@ impl<'a> TryFrom<AggregateNode<'a>> for Aggregate {
                 count_arg_expr_node.try_into().map(Aggregate::Count)
             }
             AggregateNode::Sum(expr_node) => expr_node.try_into().map(Aggregate::Sum),
+            AggregateNode::Total(expr_node) => expr_node.try_into().map(Aggregate::Total),
             AggregateNode::Min(expr_node) => expr_node.try_into().map(Aggregate::Min),
             AggregateNode::Max(expr_node) => expr_node.try_into().map(Aggregate::Max),
             AggregateNode::Avg(expr_node) => expr_node.try_into().map(Aggregate::Avg),
@@ -78,6 +80,10 @@ impl<'a> ExprNode<'a> {
 
     pub fn sum(self) -> Self {
         sum(self)
+    }
+
+    pub fn total(self) -> Self {
+        total(self)
     }
 
     pub fn min(self) -> Self {
@@ -109,6 +115,10 @@ pub fn sum<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Aggregate(Box::new(AggregateNode::Sum(expr.into())))
 }
 
+pub fn total<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Aggregate(Box::new(AggregateNode::Total(expr.into())))
+}
+
 pub fn min<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Aggregate(Box::new(AggregateNode::Min(expr.into())))
 }
@@ -131,7 +141,7 @@ pub fn stdev<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{avg, col, count, max, min, stdev, sum, test_expr, variance};
+    use crate::ast_builder::{avg, col, count, max, min, stdev, sum, total, test_expr, variance};
 
     #[test]
     fn aggregate() {
@@ -153,6 +163,10 @@ mod tests {
 
         let actual = sum("amount");
         let expected = "SUM(amount)";
+        test_expr(actual, expected);
+
+        let actual = total("amount");
+        let expected = "TOTAL(amount)";
         test_expr(actual, expected);
 
         let actual = col("budget").min();

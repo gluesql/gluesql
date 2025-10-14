@@ -34,7 +34,7 @@ pub use expr::{
 };
 /// Available aggregate or normal SQL functions
 pub use expr::{
-    aggregate::{AggregateNode, avg, count, max, min, stdev, sum, variance},
+    aggregate::{AggregateNode, avg, count, max, min, stdev, sum, total, variance},
     function,
 };
 /// Functions for building transaction statements

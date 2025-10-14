@@ -515,6 +515,7 @@ impl ToSql for Function {
 pub enum Aggregate {
     Count(CountArgExpr),
     Sum(Expr),
+    Total(Expr),
     Max(Expr),
     Min(Expr),
     Avg(Expr),
@@ -527,6 +528,7 @@ impl ToSql for Aggregate {
         match self {
             Aggregate::Count(cae) => format!("COUNT({})", cae.to_sql()),
             Aggregate::Sum(e) => format!("SUM({})", e.to_sql()),
+            Aggregate::Total(e) => format!("TOTAL({})", e.to_sql()),
             Aggregate::Max(e) => format!("MAX({})", e.to_sql()),
             Aggregate::Min(e) => format!("MIN({})", e.to_sql()),
             Aggregate::Avg(e) => format!("AVG({})", e.to_sql()),
@@ -1440,6 +1442,14 @@ mod tests {
         assert_eq!(
             r#"SUM("price")"#,
             &Expr::Aggregate(Box::new(Aggregate::Sum(Expr::Identifier(
+                "price".to_owned()
+            ))))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"TOTAL("price")"#,
+            &Expr::Aggregate(Box::new(Aggregate::Total(Expr::Identifier(
                 "price".to_owned()
             ))))
             .to_sql()
