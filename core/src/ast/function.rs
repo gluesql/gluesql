@@ -1,6 +1,6 @@
 use {
     super::{ast_literal::TrimWhereField, DataType, DateTimeField, Expr},
-    crate::{ast::ToSql, ast_builder::function::exp},
+    crate::ast::ToSql,
     serde::{Deserialize, Serialize},
     strum_macros::Display,
 };
