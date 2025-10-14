@@ -30,7 +30,10 @@ enum AggrValue {
         value: Value,
         distinct_values: Option<HashSet<Value>>,
     },
-    Total(Value),
+    Total {
+        value: Value,
+        distinct_values: Option<HashSet<Value>>,
+    },
     Min {
         value: Value,
         distinct_values: Option<HashSet<Value>>,
@@ -126,7 +129,22 @@ impl AggrValue {
                     distinct_values,
                 }
             }
-            Aggregate::Total(_) => AggrValue::Total(value),
+            AggregateFunction::Total(_) => {
+                let mut distinct_values = if aggr.distinct {
+                    Some(HashSet::new())
+                } else {
+                    None
+                };
+
+                if let Some(ref mut set) = distinct_values {
+                    set.insert(value.clone());
+                }
+
+                AggrValue::Total {
+                    value: value.clone(),
+                    distinct_values,
+                }
+            }
             AggregateFunction::Min(_) => {
                 let mut distinct_values = if aggr.distinct {
                     Some(HashSet::new())
@@ -259,7 +277,16 @@ impl AggrValue {
                     distinct_values,
                 }))
             }
-            Self::Total(value) => {
+            Self::Total {
+                value,
+                distinct_values,
+            } => {
+                let (should_process, distinct_values) =
+                    Self::check_distinct(distinct_values.clone(), new_value);
+                if !should_process {
+                    return Ok(None);
+                }
+
                 if new_value.is_null() {
                     return Ok(None);
                 }
@@ -269,8 +296,12 @@ impl AggrValue {
                 } else {
                     value.clone()
                 };
+
                 let total = value_f64.add(new_value)?;
-                Ok(Some(Self::Total(total.cast(&DataType::Float)?)))
+                Ok(Some(Self::Total {
+                    value: total.cast(&DataType::Float)?,
+                    distinct_values,
+                }))
             }
             Self::Min {
                 value,
@@ -387,7 +418,7 @@ impl AggrValue {
             Self::Sum { value, .. } | Self::Min { value, .. } | Self::Max { value, .. } => {
                 Ok(value)
             }
-            Self::Total(value) => {
+            Self::Total { value, .. } => {
                 if value.is_null() {
                     Ok(Value::F64(0.0))
                 } else {
@@ -519,7 +550,7 @@ impl<'a, T: GStore> State<'a, T> {
             }
             AggregateFunction::Count(CountArgExpr::Expr(expr))
             | AggregateFunction::Sum(expr)
-            | Aggregate::Total(expr)
+            | AggregateFunction::Total(expr)
             | AggregateFunction::Min(expr)
             | AggregateFunction::Max(expr)
             | AggregateFunction::Avg(expr)

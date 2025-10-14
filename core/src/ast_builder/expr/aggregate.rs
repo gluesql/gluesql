@@ -12,7 +12,7 @@ use {
 pub enum AggregateNode<'a> {
     Count(CountArgExprNode<'a>, bool), // second field is distinct
     Sum(ExprNode<'a>, bool),
-    Total(ExprNode<'a>),
+    Total(ExprNode<'a>, bool),
     Min(ExprNode<'a>, bool),
     Max(ExprNode<'a>, bool),
     Avg(ExprNode<'a>, bool),
@@ -65,9 +65,9 @@ impl<'a> TryFrom<AggregateNode<'a>> for Aggregate {
             AggregateNode::Sum(expr_node, distinct) => expr_node
                 .try_into()
                 .map(|expr| Aggregate::sum(expr, distinct)),
-            AggregateNode::Total(expr_node) => expr_node
+            AggregateNode::Total(expr_node, distinct) => expr_node
                 .try_into()
-                .map(Aggregate::Total),
+                .map(|expr| Aggregate::total(expr, distinct)),
             AggregateNode::Min(expr_node, distinct) => expr_node
                 .try_into()
                 .map(|expr| Aggregate::min(expr, distinct)),
@@ -105,7 +105,7 @@ impl<'a> ExprNode<'a> {
     }
   
     pub fn total(self) -> ExprNode<'a> {
-        ExprNode::Aggregate(Box::new(AggregateNode::Total(self)))
+        ExprNode::Aggregate(Box::new(AggregateNode::Total(self, false)))
     }
 
     pub fn min(self) -> ExprNode<'a> {
@@ -166,7 +166,7 @@ pub fn sum_distinct<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
 }
 
 pub fn total<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
-    ExprNode::Aggregate(Box::new(AggregateNode::Total(expr.into())))
+    ExprNode::Aggregate(Box::new(AggregateNode::Total(expr.into(), false)))
 }
 
 pub fn min<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {

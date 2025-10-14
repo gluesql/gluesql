@@ -1,6 +1,6 @@
 use {
-    super::{DataType, DateTimeField, Expr, ast_literal::TrimWhereField},
-    crate::ast::ToSql,
+    super::{ast_literal::TrimWhereField, DataType, DateTimeField, Expr},
+    crate::{ast::ToSql, ast_builder::function::exp},
     serde::{Deserialize, Serialize},
     strum_macros::Display,
 };
@@ -544,6 +544,10 @@ impl Aggregate {
         Self::new(AggregateFunction::Sum(expr), distinct)
     }
 
+    pub fn total(expr: Expr, distinct: bool) -> Self {
+        Self::new(AggregateFunction::Total(expr), distinct)
+    }
+
     pub fn max(expr: Expr, distinct: bool) -> Self {
         Self::new(AggregateFunction::Max(expr), distinct)
     }
@@ -570,6 +574,7 @@ impl AggregateFunction {
         let (name, arg) = match self {
             AggregateFunction::Count(expr) => ("COUNT", expr.to_sql()),
             AggregateFunction::Sum(expr) => ("SUM", expr.to_sql()),
+            AggregateFunction::Total(expr) => ("TOTAL", expr.to_sql()),
             AggregateFunction::Max(expr) => ("MAX", expr.to_sql()),
             AggregateFunction::Min(expr) => ("MIN", expr.to_sql()),
             AggregateFunction::Avg(expr) => ("AVG", expr.to_sql()),
@@ -586,16 +591,6 @@ impl AggregateFunction {
 
 impl ToSql for Aggregate {
     fn to_sql(&self) -> String {
-        match self {
-            Aggregate::Count(cae) => format!("COUNT({})", cae.to_sql()),
-            Aggregate::Sum(e) => format!("SUM({})", e.to_sql()),
-            Aggregate::Total(e) => format!("TOTAL({})", e.to_sql()),
-            Aggregate::Max(e) => format!("MAX({})", e.to_sql()),
-            Aggregate::Min(e) => format!("MIN({})", e.to_sql()),
-            Aggregate::Avg(e) => format!("AVG({})", e.to_sql()),
-            Aggregate::Variance(e) => format!("VARIANCE({})", e.to_sql()),
-            Aggregate::Stdev(e) => format!("STDEV({})", e.to_sql()),
-        }
         self.func.to_sql_with_distinct(self.distinct)
     }
 }
@@ -1569,9 +1564,10 @@ mod tests {
 
         assert_eq!(
             r#"TOTAL("price")"#,
-            &Expr::Aggregate(Box::new(Aggregate::Total(Expr::Identifier(
-                "price".to_owned()
-            ))))
+            &Expr::Aggregate(Box::new(Aggregate::total(
+                Expr::Identifier("price".to_owned()),
+                false
+            )))
             .to_sql()
         );
 
