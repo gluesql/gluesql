@@ -202,7 +202,7 @@ impl<'a, W: Write> Print<W> {
                     }
                 }
             }
-        };
+        }
 
         Ok(())
     }
@@ -226,7 +226,7 @@ impl<'a, W: Write> Print<W> {
     fn write_lf(&mut self, payload: impl Display, lf: &str) -> IOResult<()> {
         if let Some(file) = &self.spool_file {
             writeln!(file.to_owned(), "{payload}{lf}")?;
-        };
+        }
 
         writeln!(self.output, "{payload}{lf}")
     }

@@ -259,7 +259,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
 
             if name.to_uppercase() == "PRIMARY" {
                 return Err(TranslateError::ReservedIndexName(name).into());
-            };
+            }
 
             Ok(Statement::CreateIndex {
                 name,
@@ -286,7 +286,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
 
             if name.to_uppercase() == "PRIMARY" {
                 return Err(TranslateError::CannotDropPrimary.into());
-            };
+            }
 
             Ok(Statement::DropIndex { name, table_name })
         }

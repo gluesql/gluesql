@@ -143,7 +143,7 @@ pub fn run() -> Result<()> {
             && let Err(e) = cli.load(path.as_path())
         {
             println!("[error] {e}\n");
-        };
+        }
 
         if let Err(e) = cli.run() {
             eprintln!("{e}");
