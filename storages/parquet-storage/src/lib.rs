@@ -14,7 +14,7 @@ use {
     },
     serde_json::from_str,
     std::{
-        collections::HashMap,
+        collections::BTreeMap,
         fs::{self, File},
         path::{Path, PathBuf},
     },
@@ -31,7 +31,7 @@ mod store_mut;
 mod transaction;
 mod value;
 
-type RowIter = Box<dyn Iterator<Item = Result<(Key, DataRow)>>>;
+type RowIter = Box<dyn Iterator<Item = Result<(Key, DataRow)>> + Send>;
 
 #[derive(Debug, Clone)]
 pub struct ParquetStorage {
@@ -39,6 +39,11 @@ pub struct ParquetStorage {
 }
 
 impl ParquetStorage {
+    /// Create a parquet storage rooted at the given path.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the directory cannot be created.
     pub fn new<T: AsRef<Path>>(path: T) -> Result<Self> {
         let path = path.as_ref();
         fs::create_dir_all(path).map_storage_err()?;
@@ -63,11 +68,11 @@ impl ParquetStorage {
         let mut foreign_keys = Vec::new();
         let mut comment = None;
         if let Some(metadata) = key_value_file_metadata {
-            for kv in metadata.iter() {
+            for kv in metadata {
                 if kv.key == "schemaless" {
                     is_schemaless = matches!(kv.value.as_deref(), Some("true"));
                 } else if kv.key == "comment" {
-                    comment.clone_from(&kv.value)
+                    comment.clone_from(&kv.value);
                 } else if kv.key.starts_with("foreign_key") {
                     let fk = kv
                         .value
@@ -160,7 +165,7 @@ impl ParquetStorage {
             let tmp_schema = Self::generate_temp_schema();
             for record in row_iter {
                 let record: Row = record.map_storage_err()?;
-                let mut data_map = HashMap::new();
+                let mut data_map = BTreeMap::new();
 
                 for (_, field) in record.get_column_iter() {
                     let value = ParquetField(field.clone()).to_value(&tmp_schema, 0)?;

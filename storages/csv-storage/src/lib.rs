@@ -16,14 +16,14 @@ use {
         translate::translate_data_type,
     },
     std::{
-        collections::HashMap,
+        collections::BTreeMap,
         fs::{self, File},
         io::Read,
         path::{Path, PathBuf},
     },
 };
 
-type RowIter = Box<dyn Iterator<Item = Result<(Key, DataRow)>>>;
+type RowIter = Box<dyn Iterator<Item = Result<(Key, DataRow)>> + Send>;
 
 pub struct CsvStorage {
     pub path: PathBuf,
@@ -218,7 +218,7 @@ impl CsvStorage {
 
                             Some(value.map(|value| (column.clone(), value)))
                         })
-                        .collect::<Result<HashMap<String, Value>>>()
+                        .collect::<Result<BTreeMap<String, Value>>>()
                         .map(DataRow::Map)
                         .map(|row| (key, row))
                 },
@@ -240,7 +240,7 @@ impl CsvStorage {
                             .into_iter()
                             .zip(columns.iter())
                             .map(|(value, column)| (column.clone(), Value::Str(value.to_owned())))
-                            .collect::<HashMap<String, Value>>();
+                            .collect::<BTreeMap<String, Value>>();
 
                         Ok((key, DataRow::Map(row)))
                     })

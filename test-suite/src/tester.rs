@@ -18,21 +18,6 @@ pub fn expr(sql: &str) -> Expr {
     translate_expr(&parsed).unwrap()
 }
 
-pub async fn run<T: GStore + GStoreMut>(
-    sql: &str,
-    glue: &mut Glue<T>,
-    indexes: Option<Vec<IndexItem>>,
-) -> Result<Payload> {
-    println!("[SQL] {}", sql);
-    let parsed = parse(sql)?;
-    let statement = translate(&parsed[0])?;
-    let statement = plan(&glue.storage, statement).await?;
-
-    test_indexes(&statement, indexes);
-
-    glue.execute_stmt(&statement).await
-}
-
 pub fn test_indexes(statement: &Statement, indexes: Option<Vec<IndexItem>>) {
     if let Some(expected) = indexes {
         let found = find_indexes(statement);
@@ -47,7 +32,7 @@ pub fn test_indexes(statement: &Statement, indexes: Option<Vec<IndexItem>>) {
 
         for expected_index in expected {
             if !found.contains(&(&expected_index)) {
-                panic!("index does not exist: {:#?}", expected_index)
+                panic!("index does not exist: {expected_index:#?}")
             }
         }
     }
@@ -121,10 +106,9 @@ pub fn type_match(expected: &[DataType], found: Result<Payload>) {
             .zip(expected.iter())
             .for_each(|(value, data_type)| match value.validate_type(data_type) {
                 Ok(_) => {}
-                Err(_) => panic!(
-                    "[err: type match failed]\n found {:?}\n expected {:?}\n",
-                    value, data_type
-                ),
+                Err(_) => {
+                    panic!("[err: type match failed]\n found {value:?}\n expected {data_type:?}\n")
+                }
             })
     }
 }

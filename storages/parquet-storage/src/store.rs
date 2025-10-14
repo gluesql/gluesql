@@ -13,7 +13,7 @@ use {
     std::{ffi::OsStr, fs},
 };
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Store for ParquetStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         self.fetch_schema(table_name)

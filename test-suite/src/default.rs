@@ -60,7 +60,10 @@ test_case!(default, {
         ),
         (
             "INSERT INTO FunctionTest VALUES (GENERATE_UUID(), (SELECT id FROM Foo))",
-            Err(EvaluateError::UnsupportedStatelessExpr(expr("(SELECT id FROM Foo)")).into()),
+            Err(
+                EvaluateError::UnsupportedStatelessExpr(Box::new(expr("(SELECT id FROM Foo)")))
+                    .into(),
+            ),
         ),
     ];
 

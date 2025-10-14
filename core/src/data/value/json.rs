@@ -4,38 +4,38 @@ use {
     chrono::{TimeZone, offset::Utc},
     core::str::FromStr,
     serde_json::{Map as JsonMap, Number as JsonNumber, Value as JsonValue},
-    std::collections::HashMap,
+    std::collections::BTreeMap,
     uuid::Uuid,
 };
 
-pub trait HashMapJsonExt {
-    fn parse_json_object(value: &str) -> Result<HashMap<String, Value>>;
+pub trait BTreeMapJsonExt {
+    fn parse_json_object(value: &str) -> Result<BTreeMap<String, Value>>;
 
-    fn try_from_json_map(json_map: JsonMap<String, JsonValue>) -> Result<HashMap<String, Value>>;
+    fn try_from_json_map(json_map: JsonMap<String, JsonValue>) -> Result<BTreeMap<String, Value>>;
 }
 
-impl HashMapJsonExt for HashMap<String, Value> {
-    fn parse_json_object(value: &str) -> Result<HashMap<String, Value>> {
+impl BTreeMapJsonExt for BTreeMap<String, Value> {
+    fn parse_json_object(value: &str) -> Result<BTreeMap<String, Value>> {
         let value = serde_json::from_str(value)
             .map_err(|_| ValueError::InvalidJsonString(value.to_owned()))?;
 
         match value {
-            JsonValue::Object(json_map) => HashMap::try_from_json_map(json_map),
+            JsonValue::Object(json_map) => BTreeMap::try_from_json_map(json_map),
             _ => Err(ValueError::JsonObjectTypeRequired.into()),
         }
     }
 
-    fn try_from_json_map(json_map: JsonMap<String, JsonValue>) -> Result<HashMap<String, Value>> {
+    fn try_from_json_map(json_map: JsonMap<String, JsonValue>) -> Result<BTreeMap<String, Value>> {
         json_map
             .into_iter()
             .map(|(key, value)| value.try_into().map(|value| (key, value)))
-            .collect::<Result<HashMap<String, Value>>>()
+            .collect::<Result<BTreeMap<String, Value>>>()
     }
 }
 
 impl Value {
     pub fn parse_json_map(value: &str) -> Result<Value> {
-        HashMap::parse_json_object(value).map(Value::Map)
+        BTreeMap::parse_json_object(value).map(Value::Map)
     }
 
     pub fn parse_json_list(value: &str) -> Result<Value> {
@@ -124,7 +124,7 @@ impl TryFrom<JsonValue> for Value {
             JsonValue::Object(json_map) => json_map
                 .into_iter()
                 .map(|(key, value)| value.try_into().map(|value| (key, value)))
-                .collect::<Result<HashMap<String, Value>>>()
+                .collect::<Result<BTreeMap<String, Value>>>()
                 .map(Value::Map),
         }
     }
@@ -194,7 +194,7 @@ mod tests {
         assert_eq!(
             Value::F32(1.23_f32).try_into(),
             Ok(JsonValue::Number(
-                JsonNumber::from_f64(1.23_f32 as f64).unwrap()
+                JsonNumber::from_f64(f64::from(1.23_f32)).unwrap()
             ))
         );
         assert_eq!(
@@ -274,42 +274,51 @@ mod tests {
     #[test]
     fn json_to_value() {
         assert!(Value::try_from(JsonValue::Null).unwrap().is_null());
-        assert!(
+        use utils::Tribool::True;
+        assert_eq!(
+            True,
             Value::try_from(JsonValue::Bool(false))
                 .unwrap()
                 .evaluate_eq(&Value::Bool(false))
         );
-        assert!(
+        assert_eq!(
+            True,
             Value::try_from(JsonValue::Number(54321.into()))
                 .unwrap()
                 .evaluate_eq(&Value::I32(54321))
         );
-        assert!(
+        assert_eq!(
+            True,
             Value::try_from(JsonValue::Number(54321.into()))
                 .unwrap()
                 .evaluate_eq(&Value::I64(54321))
         );
-        assert!(
+        assert_eq!(
+            True,
             Value::try_from(JsonValue::Number(54321.into()))
                 .unwrap()
                 .evaluate_eq(&Value::I128(54321))
         );
-        assert!(
+        assert_eq!(
+            True,
             Value::try_from(JsonValue::Number(JsonNumber::from_f64(3.21).unwrap()))
                 .unwrap()
                 .evaluate_eq(&Value::F64(3.21))
         );
-        assert!(
+        assert_eq!(
+            True,
             Value::try_from(JsonValue::String("world".to_owned()))
                 .unwrap()
                 .evaluate_eq(&Value::Str("world".to_owned()))
         );
-        assert!(
+        assert_eq!(
+            True,
             Value::try_from(JsonValue::Array(vec![JsonValue::Bool(true)]))
                 .unwrap()
                 .evaluate_eq(&Value::List(vec![Value::Bool(true)]))
         );
-        assert!(
+        assert_eq!(
+            True,
             Value::try_from(json!({ "a": true }))
                 .unwrap()
                 .evaluate_eq(&Value::Map(

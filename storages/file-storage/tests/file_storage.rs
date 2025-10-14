@@ -16,7 +16,7 @@ impl Tester<FileStorage> for FileStorageTester {
         let path = format!("tmp/{namespace}");
 
         if let Err(e) = remove_dir_all(&path) {
-            println!("fs::remove_file {:?}", e);
+            println!("fs::remove_file {e:?}");
         };
 
         let storage = FileStorage::new(&path).expect("FileStorage::new");
@@ -41,7 +41,7 @@ async fn scan_data_to_ignore_directory_items() {
     glue.execute("CREATE TABLE Foo (id INTEGER);")
         .await
         .unwrap();
-    glue.execute("INSERT TABLE Foo VALUES (1), (2), (3);")
+    glue.execute("INSERT INTO Foo VALUES (1), (2), (3);")
         .await
         .unwrap();
 

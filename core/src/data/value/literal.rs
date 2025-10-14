@@ -1,6 +1,6 @@
 use {
     super::{
-        Value,
+        Tribool, Value,
         date::{parse_date, parse_time, parse_timestamp},
         error::ValueError,
     },
@@ -49,51 +49,77 @@ impl TryFrom<Literal<'_>> for Value {
 }
 
 impl Value {
-    pub fn evaluate_eq_with_literal(&self, other: &Literal<'_>) -> bool {
+    pub fn evaluate_eq_with_literal(&self, other: &Literal<'_>) -> Tribool {
         match (self, other) {
-            (Value::Bool(l), Literal::Boolean(r)) => l == r,
-            (Value::I8(l), Literal::Number(r)) => r.to_i8().map(|r| *l == r).unwrap_or(false),
-            (Value::I16(l), Literal::Number(r)) => r.to_i16().map(|r| *l == r).unwrap_or(false),
-            (Value::I32(l), Literal::Number(r)) => r.to_i32().map(|r| *l == r).unwrap_or(false),
-            (Value::I64(l), Literal::Number(r)) => r.to_i64().map(|r| *l == r).unwrap_or(false),
-            (Value::I128(l), Literal::Number(r)) => r.to_i128().map(|r| *l == r).unwrap_or(false),
-            (Value::U8(l), Literal::Number(r)) => r.to_u8().map(|r| *l == r).unwrap_or(false),
-            (Value::U16(l), Literal::Number(r)) => r.to_u16().map(|r| *l == r).unwrap_or(false),
-            (Value::U32(l), Literal::Number(r)) => r.to_u32().map(|r| *l == r).unwrap_or(false),
-            (Value::U64(l), Literal::Number(r)) => r.to_u64().map(|r| *l == r).unwrap_or(false),
-            (Value::U128(l), Literal::Number(r)) => r.to_u128().map(|r| *l == r).unwrap_or(false),
-            (Value::F32(l), Literal::Number(r)) => r.to_f32().map(|r| *l == r).unwrap_or(false),
-            (Value::F64(l), Literal::Number(r)) => r.to_f64().map(|r| *l == r).unwrap_or(false),
-            (Value::Str(l), Literal::Text(r)) => l == r.as_ref(),
-            (Value::Bytea(l), Literal::Bytea(r)) => l == r,
+            (Value::Bool(l), Literal::Boolean(r)) => Tribool::from(l == r),
+            (Value::I8(l), Literal::Number(r)) => {
+                Tribool::from(r.to_i8().map(|r| *l == r).unwrap_or(false))
+            }
+            (Value::I16(l), Literal::Number(r)) => {
+                Tribool::from(r.to_i16().map(|r| *l == r).unwrap_or(false))
+            }
+            (Value::I32(l), Literal::Number(r)) => {
+                Tribool::from(r.to_i32().map(|r| *l == r).unwrap_or(false))
+            }
+            (Value::I64(l), Literal::Number(r)) => {
+                Tribool::from(r.to_i64().map(|r| *l == r).unwrap_or(false))
+            }
+            (Value::I128(l), Literal::Number(r)) => {
+                Tribool::from(r.to_i128().map(|r| *l == r).unwrap_or(false))
+            }
+            (Value::U8(l), Literal::Number(r)) => {
+                Tribool::from(r.to_u8().map(|r| *l == r).unwrap_or(false))
+            }
+            (Value::U16(l), Literal::Number(r)) => {
+                Tribool::from(r.to_u16().map(|r| *l == r).unwrap_or(false))
+            }
+            (Value::U32(l), Literal::Number(r)) => {
+                Tribool::from(r.to_u32().map(|r| *l == r).unwrap_or(false))
+            }
+            (Value::U64(l), Literal::Number(r)) => {
+                Tribool::from(r.to_u64().map(|r| *l == r).unwrap_or(false))
+            }
+            (Value::U128(l), Literal::Number(r)) => {
+                Tribool::from(r.to_u128().map(|r| *l == r).unwrap_or(false))
+            }
+            (Value::F32(l), Literal::Number(r)) => {
+                Tribool::from(r.to_f32().map(|r| *l == r).unwrap_or(false))
+            }
+            (Value::F64(l), Literal::Number(r)) => {
+                Tribool::from(r.to_f64().map(|r| *l == r).unwrap_or(false))
+            }
+            (Value::Str(l), Literal::Text(r)) => Tribool::from(l == r.as_ref()),
+            (Value::Bytea(l), Literal::Bytea(r)) => Tribool::from(l == r),
             (Value::Date(l), Literal::Text(r)) => match r.parse::<NaiveDate>() {
-                Ok(r) => l == &r,
-                Err(_) => false,
+                Ok(r) => Tribool::from(l == &r),
+                Err(_) => Tribool::from(false),
             },
             (Value::Timestamp(l), Literal::Text(r)) => match parse_timestamp(r) {
-                Some(r) => l == &r,
-                None => false,
+                Some(r) => Tribool::from(l == &r),
+                None => Tribool::from(false),
             },
             (Value::Time(l), Literal::Text(r)) => match parse_time(r) {
-                Some(r) => l == &r,
-                None => false,
+                Some(r) => Tribool::from(l == &r),
+                None => Tribool::from(false),
             },
-            (Value::Uuid(l), Literal::Text(r)) => parse_uuid(r).map(|r| l == &r).unwrap_or(false),
+            (Value::Uuid(l), Literal::Text(r)) => {
+                Tribool::from(parse_uuid(r).map(|r| l == &r).unwrap_or(false))
+            }
             (Value::Inet(l), Literal::Text(r)) => match IpAddr::from_str(r) {
-                Ok(x) => l == &x,
-                Err(_) => false,
+                Ok(x) => Tribool::from(l == &x),
+                Err(_) => Tribool::from(false),
             },
             (Value::Inet(l), Literal::Number(r)) => {
                 if let Some(x) = r.to_u32() {
-                    l == &Ipv4Addr::from(x)
+                    Tribool::from(l == &Ipv4Addr::from(x))
                 } else if let Some(x) = r.to_u128() {
-                    l == &Ipv6Addr::from(x)
+                    Tribool::from(l == &Ipv6Addr::from(x))
                 } else {
-                    false
+                    Tribool::from(false)
                 }
             }
-            (Value::Null, Literal::Null) => false,
-            _ => false,
+            (Value::Null, _) | (_, Literal::Null) => Tribool::Null,
+            _ => Tribool::from(false),
         }
     }
 
@@ -112,7 +138,7 @@ impl Value {
             (Value::F32(l), Literal::Number(r)) => l.partial_cmp(&r.to_f32()?),
             (Value::F64(l), Literal::Number(r)) => l.partial_cmp(&r.to_f64()?),
             (Value::Decimal(l), Literal::Number(r)) => {
-                BigDecimal::new(l.mantissa().into(), l.scale() as i64).partial_cmp(r)
+                BigDecimal::new(l.mantissa().into(), i64::from(l.scale())).partial_cmp(r)
             }
             (Value::Str(l), Literal::Text(r)) => Some(l.as_str().cmp(r)),
             (Value::Date(l), Literal::Text(r)) => l.partial_cmp(&r.parse::<NaiveDate>().ok()?),
@@ -223,7 +249,7 @@ impl Value {
             (_, Literal::Null) => Ok(Value::Null),
             _ => Err(ValueError::IncompatibleLiteralForDataType {
                 data_type: data_type.clone(),
-                literal: format!("{:?}", literal),
+                literal: format!("{literal:?}"),
             }
             .into()),
         }
@@ -479,7 +505,7 @@ impl Value {
             (DataType::List, Literal::Text(v)) => Value::parse_json_list(v),
             _ => Err(ValueError::UnimplementedLiteralCast {
                 data_type: data_type.clone(),
-                literal: format!("{:?}", literal),
+                literal: format!("{literal:?}"),
             }
             .into()),
         }
@@ -519,6 +545,8 @@ mod tests {
 
     #[test]
     fn evaluate_eq_with_literal() {
+        use utils::Tribool::*;
+
         macro_rules! num {
             ($num: expr) => {
                 &Literal::Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
@@ -537,42 +565,92 @@ mod tests {
         let bytea = || hex::decode("123456").unwrap();
         let inet = |v: &str| Value::Inet(IpAddr::from_str(v).unwrap());
 
-        assert!(Value::Bool(true).evaluate_eq_with_literal(&Literal::Boolean(true)));
-        assert!(Value::I8(8).evaluate_eq_with_literal(num!("8")));
-        assert!(Value::I32(32).evaluate_eq_with_literal(num!("32")));
-        assert!(Value::I16(16).evaluate_eq_with_literal(num!("16")));
-        assert!(Value::I32(32).evaluate_eq_with_literal(num!("32")));
-        assert!(Value::I64(64).evaluate_eq_with_literal(num!("64")));
-        assert!(Value::I128(128).evaluate_eq_with_literal(num!("128")));
-        assert!(Value::U8(7).evaluate_eq_with_literal(num!("7")));
-        assert!(Value::U16(64).evaluate_eq_with_literal(num!("64")));
-        assert!(Value::U32(64).evaluate_eq_with_literal(num!("64")));
-        assert!(Value::U64(64).evaluate_eq_with_literal(num!("64")));
-        assert!(Value::U128(64).evaluate_eq_with_literal(num!("64")));
-        assert!(Value::F32(7.123).evaluate_eq_with_literal(num!("7.123")));
-        assert!(Value::F64(7.123).evaluate_eq_with_literal(num!("7.123")));
-        assert!(Value::Str("Hello".to_owned()).evaluate_eq_with_literal(text!("Hello")));
-        assert!(Value::Bytea(bytea()).evaluate_eq_with_literal(&Literal::Bytea(bytea())));
-        assert!(inet("127.0.0.1").evaluate_eq_with_literal(text!("127.0.0.1")));
-        assert!(inet("::1").evaluate_eq_with_literal(text!("::1")));
-        assert!(inet("0.0.0.0").evaluate_eq_with_literal(num!("0")));
-        assert!(!inet("::1").evaluate_eq_with_literal(num!("0")));
-        assert!(inet("::2:4cb0:16ea").evaluate_eq_with_literal(num!("9876543210")));
-        assert!(!inet("::1").evaluate_eq_with_literal(text!("-1")));
-        assert!(!inet("::1").evaluate_eq_with_literal(num!("-1")));
-        assert!(Value::Date(date(2021, 11, 20)).evaluate_eq_with_literal(text!("2021-11-20")));
-        assert!(!Value::Date(date(2021, 11, 20)).evaluate_eq_with_literal(text!("202=abcdef")));
-        assert!(
+        assert_eq!(
+            True,
+            Value::Bool(true).evaluate_eq_with_literal(&Literal::Boolean(true))
+        );
+        assert_eq!(True, Value::I8(8).evaluate_eq_with_literal(num!("8")));
+        assert_eq!(True, Value::I32(32).evaluate_eq_with_literal(num!("32")));
+        assert_eq!(True, Value::I16(16).evaluate_eq_with_literal(num!("16")));
+        assert_eq!(True, Value::I32(32).evaluate_eq_with_literal(num!("32")));
+        assert_eq!(True, Value::I64(64).evaluate_eq_with_literal(num!("64")));
+        assert_eq!(True, Value::I128(128).evaluate_eq_with_literal(num!("128")));
+        assert_eq!(True, Value::U8(7).evaluate_eq_with_literal(num!("7")));
+        assert_eq!(True, Value::U16(64).evaluate_eq_with_literal(num!("64")));
+        assert_eq!(True, Value::U32(64).evaluate_eq_with_literal(num!("64")));
+        assert_eq!(True, Value::U64(64).evaluate_eq_with_literal(num!("64")));
+        assert_eq!(True, Value::U128(64).evaluate_eq_with_literal(num!("64")));
+        assert_eq!(
+            True,
+            Value::F32(7.123).evaluate_eq_with_literal(num!("7.123"))
+        );
+        assert_eq!(
+            True,
+            Value::F64(7.123).evaluate_eq_with_literal(num!("7.123"))
+        );
+        assert_eq!(
+            True,
+            Value::Str("Hello".to_owned()).evaluate_eq_with_literal(text!("Hello"))
+        );
+        assert_eq!(
+            True,
+            Value::Bytea(bytea()).evaluate_eq_with_literal(&Literal::Bytea(bytea()))
+        );
+        assert_eq!(
+            True,
+            inet("127.0.0.1").evaluate_eq_with_literal(text!("127.0.0.1"))
+        );
+        assert_eq!(True, inet("::1").evaluate_eq_with_literal(text!("::1")));
+        assert_eq!(True, inet("0.0.0.0").evaluate_eq_with_literal(num!("0")));
+        assert_eq!(False, inet("::1").evaluate_eq_with_literal(num!("0")));
+        assert_eq!(
+            True,
+            inet("::2:4cb0:16ea").evaluate_eq_with_literal(num!("9876543210"))
+        );
+        assert_eq!(False, inet("::1").evaluate_eq_with_literal(text!("-1")));
+        assert_eq!(False, inet("::1").evaluate_eq_with_literal(num!("-1")));
+        assert_eq!(
+            True,
+            Value::Date(date(2021, 11, 20)).evaluate_eq_with_literal(text!("2021-11-20"))
+        );
+        assert_eq!(
+            False,
+            Value::Date(date(2021, 11, 20)).evaluate_eq_with_literal(text!("202=abcdef"))
+        );
+        assert_eq!(
+            True,
             Value::Timestamp(date_time(2021, 11, 20, 10, 0, 0, 0))
                 .evaluate_eq_with_literal(text!("2021-11-20T10:00:00Z"))
         );
-        assert!(
-            !Value::Timestamp(date_time(2021, 11, 20, 10, 0, 0, 0))
+        assert_eq!(
+            False,
+            Value::Timestamp(date_time(2021, 11, 20, 10, 0, 0, 0))
                 .evaluate_eq_with_literal(text!("2021-11-Hello"))
         );
-        assert!(Value::Time(time(10, 0, 0, 0)).evaluate_eq_with_literal(text!("10:00:00")));
-        assert!(!Value::Time(time(10, 0, 0, 0)).evaluate_eq_with_literal(text!("FALSE")));
-        assert!(Value::Uuid(uuid).evaluate_eq_with_literal(text!(uuid_text)));
+        assert_eq!(
+            True,
+            Value::Time(time(10, 0, 0, 0)).evaluate_eq_with_literal(text!("10:00:00"))
+        );
+        assert_eq!(
+            False,
+            Value::Time(time(10, 0, 0, 0)).evaluate_eq_with_literal(text!("FALSE"))
+        );
+        assert_eq!(
+            True,
+            Value::Uuid(uuid).evaluate_eq_with_literal(text!(uuid_text))
+        );
+        // NULL-handling
+        assert_eq!(Null, Value::Null.evaluate_eq_with_literal(&Literal::Null));
+        assert_eq!(Null, Value::Null.evaluate_eq_with_literal(text!("STRING")));
+        assert_eq!(Null, Value::Null.evaluate_eq_with_literal(num!("123.456")));
+        assert_eq!(
+            Null,
+            Value::I128(1024).evaluate_eq_with_literal(&Literal::Null)
+        );
+        assert_eq!(
+            Null,
+            Value::Str("STRING".into()).evaluate_eq_with_literal(&Literal::Null)
+        );
     }
 
     #[test]
@@ -870,7 +948,10 @@ mod tests {
 
         macro_rules! test {
             ($from: expr, $expected: expr) => {
-                assert!(Value::try_from($from).unwrap().evaluate_eq(&$expected));
+                assert_eq!(
+                    utils::Tribool::True,
+                    Value::try_from($from).unwrap().evaluate_eq(&$expected)
+                );
             };
         }
 

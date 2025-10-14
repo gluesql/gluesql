@@ -4,7 +4,7 @@ use {
     gluesql_core::prelude::{Glue, Payload, Value},
     gluesql_mongo_storage::MongoStorage,
     serde_json::json,
-    std::collections::HashMap,
+    std::collections::BTreeMap,
 };
 
 #[tokio::test]
@@ -33,11 +33,11 @@ async fn mongo_schemaless() {
 
     let actual = glue.execute("SELECT * FROM Logs").await;
     let expected = Ok(vec![Payload::SelectMap(vec![
-        HashMap::from([
+        BTreeMap::from([
             ("id".to_owned(), Value::I64(1)),
             ("value".to_owned(), Value::I64(30)),
         ]),
-        HashMap::from([
+        BTreeMap::from([
             ("id".to_owned(), Value::I64(2)),
             ("rate".to_owned(), Value::F64(3.5)),
             (
@@ -45,7 +45,7 @@ async fn mongo_schemaless() {
                 Value::List(vec![Value::I64(1), Value::I64(2), Value::I64(3)]),
             ),
         ]),
-        HashMap::from([
+        BTreeMap::from([
             ("id".to_owned(), Value::I64(3)),
             ("optional".to_owned(), Value::Null),
         ]),

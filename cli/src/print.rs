@@ -2,7 +2,7 @@ use {
     crate::command::{SetOption, ShowOption},
     gluesql_core::prelude::{Payload, PayloadVariable},
     std::{
-        collections::{HashMap, HashSet},
+        collections::{BTreeMap, HashSet},
         fmt::Display,
         fs::File,
         io::{Result as IOResult, Write},
@@ -169,7 +169,7 @@ impl<'a, W: Write> Print<W> {
             Payload::SelectMap(rows) => {
                 let mut labels = rows
                     .iter()
-                    .flat_map(HashMap::keys)
+                    .flat_map(BTreeMap::keys)
                     .map(AsRef::as_ref)
                     .collect::<HashSet<&str>>()
                     .into_iter()
@@ -282,7 +282,7 @@ impl<'a, W: Write> Print<W> {
         }
         let table = self.build_table(table);
 
-        writeln!(self.output, "{}\n", table)
+        writeln!(self.output, "{table}\n")
     }
 
     pub fn spool_on<P: AsRef<Path>>(&mut self, filename: P) -> IOResult<()> {

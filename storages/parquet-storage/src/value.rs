@@ -7,7 +7,7 @@ use {
         prelude::{DataType, Error, Result},
     },
     parquet::record::Field,
-    std::collections::HashMap,
+    std::collections::BTreeMap,
 };
 
 #[derive(Debug)]
@@ -18,6 +18,12 @@ impl ParquetField {
         &self.0
     }
 
+    #[allow(clippy::too_many_lines)]
+    /// Convert the inner parquet [`Field`] into a `GlueSQL` [`Value`].
+    ///
+    /// # Errors
+    ///
+    /// Returns an [`Error::StorageMsg`] when deserialization or type conversion fails.
     pub fn to_value(&self, schema: &Schema, idx: usize) -> Result<Value> {
         match self.as_field() {
             Field::Bool(v) => Ok(Value::Bool(*v)),
@@ -25,28 +31,30 @@ impl ParquetField {
             Field::Short(v) => Ok(Value::I16(*v)),
             Field::Int(v) => Ok(Value::I32(*v)),
             Field::Long(v) => {
-                if let Some(columns) = &schema.column_defs {
-                    if let Some(column) = columns.get(idx) {
-                        if column.data_type == DataType::Time {
-                            // Convert from microseconds since midnight to NaiveTime
-                            let total_seconds = v / 1_000_000;
-                            let hours = (total_seconds / 3600) % 24;
-                            let minutes = (total_seconds / 60) % 60;
-                            let seconds = total_seconds % 60;
-                            let micros = v % 1_000_000;
+                if let Some(columns) = &schema.column_defs
+                    && let Some(column) = columns.get(idx)
+                    && column.data_type == DataType::Time
+                {
+                    // Convert from microseconds since midnight to NaiveTime
+                    let micros_in_day = 86_400_i64 * 1_000_000;
+                    let micros_since_midnight = v.rem_euclid(micros_in_day);
+                    let total_seconds = micros_since_midnight / 1_000_000;
 
-                            return NaiveTime::from_hms_micro_opt(
-                                hours as u32,
-                                minutes as u32,
-                                seconds as u32,
-                                micros as u32,
-                            )
-                            .map_storage_err(Error::StorageMsg(
-                                "Failed to convert to NaiveTime".to_owned(),
-                            ))
-                            .map(Value::Time);
-                        }
-                    }
+                    let hours = u32::try_from(total_seconds / 3_600)
+                        .map_err(|_| Error::StorageMsg("Invalid hour component".to_owned()))?;
+                    let minutes = u32::try_from((total_seconds / 60) % 60)
+                        .map_err(|_| Error::StorageMsg("Invalid minute component".to_owned()))?;
+                    let seconds = u32::try_from(total_seconds % 60)
+                        .map_err(|_| Error::StorageMsg("Invalid second component".to_owned()))?;
+                    let micros = micros_since_midnight.rem_euclid(1_000_000);
+                    let micros = u32::try_from(micros)
+                        .unwrap_or_else(|_| unreachable!("rem_euclid ensures micros fits u32"));
+
+                    return NaiveTime::from_hms_micro_opt(hours % 24, minutes, seconds, micros)
+                        .map_storage_err(Error::StorageMsg(
+                            "Failed to convert to NaiveTime".to_owned(),
+                        ))
+                        .map(Value::Time);
                 }
                 Ok(Value::I64(*v))
             }
@@ -58,64 +66,64 @@ impl ParquetField {
             Field::Double(v) => Ok(Value::F64(*v)),
             Field::Str(v) => Ok(Value::Str(v.clone())),
             Field::Bytes(v) => {
-                if let Some(columns) = &schema.column_defs {
-                    if let Some(column) = columns.get(idx) {
-                        match column.data_type {
-                            DataType::Timestamp => {
-                                let timestamp = bincode::deserialize(v.data()).map_storage_err()?;
-                                return Ok(Value::Timestamp(timestamp));
-                            }
-                            DataType::Uuid => {
-                                let uuid = bincode::deserialize(v.data()).map_storage_err()?;
-                                return Ok(Value::Uuid(uuid));
-                            }
-                            DataType::Uint128 => {
-                                let uint128 = bincode::deserialize(v.data()).map_storage_err()?;
-                                return Ok(Value::U128(uint128));
-                            }
-                            DataType::Int128 => {
-                                let int128 = bincode::deserialize(v.data()).map_storage_err()?;
-                                return Ok(Value::I128(int128));
-                            }
-                            DataType::Interval => {
-                                let interval = bincode::deserialize(v.data()).map_storage_err()?;
-                                return Ok(Value::Interval(interval));
-                            }
-                            DataType::Decimal => {
-                                let decimal = bincode::deserialize(v.data()).map_storage_err()?;
-                                return Ok(Value::Decimal(decimal));
-                            }
-                            DataType::Map => {
-                                let map: HashMap<String, Value> =
-                                    bincode::deserialize(v.data()).map_storage_err()?;
-                                return Ok(Value::Map(map));
-                            }
-                            DataType::List => {
-                                let list: Vec<Value> =
-                                    bincode::deserialize(v.data()).map_storage_err()?;
-                                return Ok(Value::List(list));
-                            }
-                            DataType::Inet => {
-                                let inet = bincode::deserialize(v.data()).map_storage_err()?;
-                                return Ok(Value::Inet(inet));
-                            }
-                            DataType::Point => {
-                                let point = bincode::deserialize(v.data()).map_storage_err()?;
-                                return Ok(Value::Point(point));
-                            }
-                            _ => {}
+                if let Some(columns) = &schema.column_defs
+                    && let Some(column) = columns.get(idx)
+                {
+                    match column.data_type {
+                        DataType::Timestamp => {
+                            let timestamp = bincode::deserialize(v.data()).map_storage_err()?;
+                            return Ok(Value::Timestamp(timestamp));
                         }
+                        DataType::Uuid => {
+                            let uuid = bincode::deserialize(v.data()).map_storage_err()?;
+                            return Ok(Value::Uuid(uuid));
+                        }
+                        DataType::Uint128 => {
+                            let uint128 = bincode::deserialize(v.data()).map_storage_err()?;
+                            return Ok(Value::U128(uint128));
+                        }
+                        DataType::Int128 => {
+                            let int128 = bincode::deserialize(v.data()).map_storage_err()?;
+                            return Ok(Value::I128(int128));
+                        }
+                        DataType::Interval => {
+                            let interval = bincode::deserialize(v.data()).map_storage_err()?;
+                            return Ok(Value::Interval(interval));
+                        }
+                        DataType::Decimal => {
+                            let decimal = bincode::deserialize(v.data()).map_storage_err()?;
+                            return Ok(Value::Decimal(decimal));
+                        }
+                        DataType::Map => {
+                            let map: BTreeMap<String, Value> =
+                                bincode::deserialize(v.data()).map_storage_err()?;
+                            return Ok(Value::Map(map));
+                        }
+                        DataType::List => {
+                            let list: Vec<Value> =
+                                bincode::deserialize(v.data()).map_storage_err()?;
+                            return Ok(Value::List(list));
+                        }
+                        DataType::Inet => {
+                            let inet = bincode::deserialize(v.data()).map_storage_err()?;
+                            return Ok(Value::Inet(inet));
+                        }
+                        DataType::Point => {
+                            let point = bincode::deserialize(v.data()).map_storage_err()?;
+                            return Ok(Value::Point(point));
+                        }
+                        _ => {}
                     }
                 }
                 Ok(Value::Bytea(v.data().to_vec()))
             }
             Field::Date(v) => {
                 let epoch = NaiveDate::from_ymd_opt(1970, 1, 1).expect("Invalid epoch date");
-                let result_date = epoch + Duration::days(*v as i64);
+                let result_date = epoch + Duration::days(i64::from(*v));
                 Ok(Value::Date(result_date))
             }
             Field::Group(v) => {
-                let mut map = HashMap::new();
+                let mut map = BTreeMap::new();
                 for (name, field) in v.get_column_iter() {
                     let value: Value = ParquetField(field.clone()).to_value(schema, idx)?;
                     map.insert(name.clone(), value);
@@ -165,7 +173,7 @@ impl ParquetField {
                 }
             }
             Field::MapInternal(m) => {
-                let mut result_map = HashMap::new();
+                let mut result_map = BTreeMap::new();
                 for (key_field, value_field) in m.entries() {
                     match key_field {
                         Field::Str(key_str) => {
@@ -175,8 +183,7 @@ impl ParquetField {
                         }
                         _ => {
                             return Err(ParquetStorageError::UnexpectedKeyTypeForMap(format!(
-                                "{:?}",
-                                key_field
+                                "{key_field:?}"
                             ))
                             .into());
                         }

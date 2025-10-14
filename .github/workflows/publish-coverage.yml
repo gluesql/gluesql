@@ -1,0 +1,140 @@
+name: Publish Coverage
+
+on:
+  workflow_run:
+    workflows: ["Coverage"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Run ID of the triggering Coverage workflow"
+        required: true
+        type: string
+      pr_number:
+        description: "Pull Request number"
+        required: true
+        type: string
+      commit_sha:
+        description: "Head commit SHA for the PR run"
+        required: true
+        type: string
+      artifact_name:
+        description: "Artifact name to download (default: coverage)"
+        required: false
+        default: coverage
+        type: string
+
+jobs:
+  publish:
+    if: >-
+      (github.event_name == 'workflow_dispatch') ||
+      (
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'pull_request' &&
+        github.repository == 'gluesql/gluesql'
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Configure git user
+        run: |
+          git config --global user.email "ci@example.com"
+          git config --global user.name "CI"
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.COVERAGE_APP_ID }}
+          installation-id: ${{ secrets.COVERAGE_APP_INSTALLATION_ID }}
+          private-key: ${{ secrets.COVERAGE_APP_PRIVATE_KEY }}
+          owner: gluesql
+          repositories: gluesql, gluesql.github.io
+      - name: Set variables for workflow_dispatch
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "RUN_ID=${{ inputs.run_id }}" >> $GITHUB_ENV
+          echo "COMMIT_SHA=${{ inputs.commit_sha }}" >> $GITHUB_ENV
+          echo "PR_NUMBER=${{ inputs.pr_number }}" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=${{ inputs.artifact_name }}" >> $GITHUB_ENV
+      - name: Set variables for workflow_run
+        if: github.event_name == 'workflow_run'
+        run: |
+          echo "RUN_ID=${{ github.event.workflow_run.id }}" >> $GITHUB_ENV
+          echo "COMMIT_SHA=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=coverage" >> $GITHUB_ENV
+      - name: Download coverage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          run-id: ${{ env.RUN_ID }}
+          path: coverage
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Load PR number from artifact
+        if: github.event_name == 'workflow_run'
+        run: |
+          pr_file="coverage/pr-number"
+          if [ ! -f "${pr_file}" ]; then
+            echo "PR number file not found in artifact: ${pr_file}" >&2
+            exit 1
+          fi
+          pr_number=$(cat "${pr_file}" | tr -d '\n\r ')
+          if [ -z "${pr_number}" ]; then
+            echo "PR number file is empty: ${pr_file}" >&2
+            exit 1
+          fi
+          echo "PR_NUMBER=${pr_number}" >> $GITHUB_ENV
+      # No normalization needed: file will be at ./coverage/lcov.info.xz
+      - name: Set timestamp
+        run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H%M%SZ')" >> $GITHUB_ENV
+      - name: Publish coverage to gluesql.github.io
+        run: |
+          git clone https://github.com/gluesql/gluesql.github.io.git
+          cd gluesql.github.io
+          git checkout gh-pages
+          git pull --rebase origin gh-pages
+          mkdir -p coverage/pr/${PR_NUMBER}
+          cp ../coverage/lcov.info.xz coverage/pr/${PR_NUMBER}/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
+          git add coverage/pr/${PR_NUMBER}/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
+          git commit -m "Coverage: PR#${PR_NUMBER}@${COMMIT_SHA}"
+          git push https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/gluesql/gluesql.github.io.git
+      - name: Comment coverage link on PR
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const prNumber = process.env.PR_NUMBER;
+            const url = `https://gluesql.org/coverage/?path=pr/${prNumber}/${process.env.TIMESTAMP}.${process.env.COMMIT_SHA}.lcov.info.xz`;
+            const body = [
+              '### GlueSQL Coverage Report',
+              '',
+              `- **Commit:** \`${process.env.COMMIT_SHA}\``,
+              `- **Timestamp:** \`${process.env.TIMESTAMP}\``,
+              `- **Report:** [View report](${url})`
+            ].join('\n');
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              {
+                issue_number: prNumber,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 100,
+              },
+            );
+            const comment = comments.find(c => c.body.startsWith('### GlueSQL Coverage Report'));
+            if (comment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: comment.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: prNumber,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body
+              });
+            }

@@ -30,3 +30,4 @@
 **/*.rs.bk
 
 __pycache__
+AGENTS.local.md

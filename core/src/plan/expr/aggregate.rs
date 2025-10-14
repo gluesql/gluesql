@@ -1,17 +1,17 @@
-use crate::ast::{Aggregate, CountArgExpr, Expr};
+use crate::ast::{Aggregate, AggregateFunction, CountArgExpr, Expr};
 
 impl Aggregate {
     pub fn as_expr(&self) -> Option<&Expr> {
-        match self {
-            Aggregate::Count(CountArgExpr::Wildcard) => None,
-            Aggregate::Count(CountArgExpr::Expr(expr))
-            | Aggregate::Sum(expr)
-            | Aggregate::Total(expr)
-            | Aggregate::Max(expr)
-            | Aggregate::Min(expr)
-            | Aggregate::Avg(expr)
-            | Aggregate::Variance(expr)
-            | Aggregate::Stdev(expr) => Some(expr),
+        match &self.func {
+            AggregateFunction::Count(CountArgExpr::Wildcard) => None,
+            AggregateFunction::Count(CountArgExpr::Expr(expr))
+            | AggregateFunction::Sum(expr)
+            | AggregateFunction::Total(expr)
+            | AggregateFunction::Max(expr)
+            | AggregateFunction::Min(expr)
+            | AggregateFunction::Avg(expr)
+            | AggregateFunction::Variance(expr)
+            | AggregateFunction::Stdev(expr) => Some(expr),
         }
     }
 }

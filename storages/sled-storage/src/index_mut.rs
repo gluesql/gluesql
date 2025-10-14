@@ -26,7 +26,7 @@ fn fetch_schema(
     tree: &TransactionalTree,
     table_name: &str,
 ) -> ConflictableTransactionResult<(String, Option<Snapshot<Schema>>), Error> {
-    let key = format!("schema/{}", table_name);
+    let key = format!("schema/{table_name}");
     let value = tree.get(key.as_bytes())?;
     let schema_snapshot = value
         .map(|v| bincode::deserialize(&v))
@@ -37,7 +37,7 @@ fn fetch_schema(
     Ok((key, schema_snapshot))
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl IndexMut for SledStorage {
     async fn create_index(
         &mut self,

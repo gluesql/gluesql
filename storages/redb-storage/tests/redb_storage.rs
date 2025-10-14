@@ -14,7 +14,7 @@ struct RedbTester {
 impl Tester<RedbStorage> for RedbTester {
     async fn new(namespace: &str) -> Self {
         let _ = create_dir("tmp");
-        let path = format!("tmp/{}", namespace);
+        let path = format!("tmp/{namespace}");
         let _ = remove_file(&path);
 
         let storage = RedbStorage::new(path).expect("[RedbTester] failed to create storage");

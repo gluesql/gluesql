@@ -11,9 +11,10 @@ use {
     },
     sqlparser::ast::{
         CastFormat as SqlCastFormat, CastKind as SqlCastKind, DataType as SqlDataType,
-        DateTimeField as SqlDateTimeField, Expr as SqlExpr, Function as SqlFunction,
-        FunctionArg as SqlFunctionArg, FunctionArgExpr as SqlFunctionArgExpr,
-        FunctionArguments as SqlFunctionArguments, TrimWhereField as SqlTrimWhereField,
+        DateTimeField as SqlDateTimeField, DuplicateTreatment as SqlDuplicateTreatment,
+        Expr as SqlExpr, Function as SqlFunction, FunctionArg as SqlFunctionArg,
+        FunctionArgExpr as SqlFunctionArgExpr, FunctionArguments as SqlFunctionArguments,
+        TrimWhereField as SqlTrimWhereField,
     },
 };
 
@@ -146,15 +147,16 @@ fn translate_function_one_arg<T: FnOnce(Expr) -> Function>(
         .map(Expr::Function)
 }
 
-fn translate_aggregate_one_arg<T: FnOnce(Expr) -> Aggregate>(
+fn translate_aggregate_one_arg<T: FnOnce(Expr, bool) -> Aggregate>(
     func: T,
     args: Vec<&SqlExpr>,
     name: String,
+    distinct: bool,
 ) -> Result<Expr> {
     check_len(name, args.len(), 1)?;
 
     translate_expr(args[0])
-        .map(func)
+        .map(|expr| func(expr, distinct))
         .map(Box::new)
         .map(Expr::Aggregate)
 }
@@ -195,12 +197,17 @@ pub fn translate_function_arg_exprs(
 pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
     let SqlFunction { name, args, .. } = sql_function;
     let name = translate_object_name(name)?.to_uppercase();
-    let args = match args {
-        SqlFunctionArguments::None => Vec::new(),
+    let (args, distinct) = match args {
+        SqlFunctionArguments::None => (Vec::new(), false),
         SqlFunctionArguments::Subquery(_) => {
             return Err(TranslateError::UnreachableSubqueryFunctionArgNotSupported.into());
         }
-        SqlFunctionArguments::List(list) => list.args.iter().collect(),
+        SqlFunctionArguments::List(list) => {
+            let distinct = list
+                .duplicate_treatment
+                .is_some_and(|dt| matches!(dt, SqlDuplicateTreatment::Distinct));
+            (list.args.iter().collect(), distinct)
+        }
     };
 
     let function_arg_exprs = args
@@ -220,26 +227,28 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             SqlFunctionArgExpr::Expr(expr) => CountArgExpr::Expr(translate_expr(expr)?),
             SqlFunctionArgExpr::QualifiedWildcard(idents) => {
                 let table_name = translate_object_name(idents)?;
-                let idents = format!("{}.*", table_name);
+                let idents = format!("{table_name}.*");
 
                 return Err(TranslateError::QualifiedWildcardInCountNotSupported(idents).into());
             }
             SqlFunctionArgExpr::Wildcard => CountArgExpr::Wildcard,
         };
 
-        return Ok(Expr::Aggregate(Box::new(Aggregate::Count(count_arg))));
+        return Ok(Expr::Aggregate(Box::new(Aggregate::count(
+            count_arg, distinct,
+        ))));
     }
 
     let args = translate_function_arg_exprs(function_arg_exprs)?;
 
     match name.as_str() {
-        "SUM" => translate_aggregate_one_arg(Aggregate::Sum, args, name),
-        "TOTAL" => translate_aggregate_one_arg(Aggregate::Total, args, name),
-        "MIN" => translate_aggregate_one_arg(Aggregate::Min, args, name),
-        "MAX" => translate_aggregate_one_arg(Aggregate::Max, args, name),
-        "AVG" => translate_aggregate_one_arg(Aggregate::Avg, args, name),
-        "VARIANCE" => translate_aggregate_one_arg(Aggregate::Variance, args, name),
-        "STDEV" => translate_aggregate_one_arg(Aggregate::Stdev, args, name),
+        "SUM" => translate_aggregate_one_arg(Aggregate::sum, args, name, distinct),
+        "TOTAL" => translate_aggregate_one_arg(Aggregate::total, args, name),
+        "MIN" => translate_aggregate_one_arg(Aggregate::min, args, name, distinct),
+        "MAX" => translate_aggregate_one_arg(Aggregate::max, args, name, distinct),
+        "AVG" => translate_aggregate_one_arg(Aggregate::avg, args, name, distinct),
+        "VARIANCE" => translate_aggregate_one_arg(Aggregate::variance, args, name, distinct),
+        "STDEV" => translate_aggregate_one_arg(Aggregate::stdev, args, name, distinct),
         "COALESCE" => {
             let exprs = args
                 .into_iter()
@@ -373,6 +382,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             Ok(Expr::Function(Box::new(Function::Rand(v))))
         }
         "ROUND" => translate_function_one_arg(Function::Round, args, name),
+        "TRUNC" => translate_function_one_arg(Function::Trunc, args, name),
         "EXP" => translate_function_one_arg(Function::Exp, args, name),
         "LN" => translate_function_one_arg(Function::Ln, args, name),
         "LOG" => {

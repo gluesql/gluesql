@@ -11,9 +11,8 @@ use {
     },
     futures::stream::{self, StreamExt, TryStreamExt},
     serde::Serialize,
-    std::{borrow::Cow, fmt::Debug, rc::Rc},
+    std::{borrow::Cow, fmt::Debug, sync::Arc},
     thiserror::Error,
-    utils::HashMapExt,
 };
 
 #[derive(Error, Serialize, Debug, PartialEq, Eq)]
@@ -75,7 +74,7 @@ impl<'a, T: GStore> Update<'a, T> {
 
     pub async fn apply(&self, row: Row, foreign_keys: &[ForeignKey]) -> Result<Row> {
         let context = RowContext::new(self.table_name, Cow::Borrowed(&row), None);
-        let context = Some(Rc::new(context));
+        let context = Some(Arc::new(context));
 
         let assignments = stream::iter(self.fields.iter())
             .then(|assignment| {
@@ -83,7 +82,7 @@ impl<'a, T: GStore> Update<'a, T> {
                     id,
                     value: value_expr,
                 } = assignment;
-                let context = context.as_ref().map(Rc::clone);
+                let context = context.as_ref().map(Arc::clone);
 
                 async move {
                     let evaluated = evaluate(self.storage, context, None, value_expr).await?;
@@ -177,7 +176,9 @@ impl<'a, T: GStore> Update<'a, T> {
                     .into_iter()
                     .map(|(id, value)| (id.to_owned(), value));
 
-                Row::Map(values.concat(assignments))
+                let mut new_values = values;
+                new_values.extend(assignments);
+                Row::Map(new_values)
             }
         })
     }

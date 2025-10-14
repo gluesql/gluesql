@@ -114,6 +114,7 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
 
     if index.is_some() {
         let Select {
+            distinct,
             projection,
             from,
             selection,
@@ -137,6 +138,7 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
         };
 
         let select = Select {
+            distinct,
             projection,
             from,
             selection,
@@ -170,6 +172,7 @@ fn plan_select(
     select: Select,
 ) -> Result<Select> {
     let Select {
+        distinct,
         projection,
         from,
         selection,
@@ -181,6 +184,7 @@ fn plan_select(
         Some(expr) => expr,
         None => {
             return Ok(Select {
+                distinct,
                 projection,
                 from,
                 selection,
@@ -192,6 +196,7 @@ fn plan_select(
 
     match plan_index(schema_map, indexes, selection)? {
         Planned::Expr(selection) => Ok(Select {
+            distinct,
             projection,
             from,
             selection: Some(selection),
@@ -225,6 +230,7 @@ fn plan_select(
             };
 
             Ok(Select {
+                distinct,
                 projection,
                 from,
                 selection,

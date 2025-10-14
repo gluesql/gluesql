@@ -23,10 +23,13 @@ use {
         options::{FindOptions, ListIndexesOptions},
     },
     serde_json::from_str,
-    std::{collections::HashMap, future},
+    std::{
+        collections::{BTreeMap, HashMap},
+        future,
+    },
 };
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Store for MongoStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         self.fetch_schemas_iter(Some(table_name))
@@ -138,7 +141,7 @@ impl Store for MongoStorage {
                         .map(|(key, bson)| {
                             Ok((key, bson.into_value_schemaless().map_storage_err()?))
                         })
-                        .collect::<Result<HashMap<String, Value>>>()?;
+                        .collect::<Result<BTreeMap<String, Value>>>()?;
 
                     Ok((key, DataRow::Map(row)))
                 }

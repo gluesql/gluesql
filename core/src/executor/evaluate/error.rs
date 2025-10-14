@@ -81,13 +81,16 @@ pub enum EvaluateError {
     TextLiteralRequired(String),
 
     #[error("unsupported stateless expression: {}", .0.to_sql())]
-    UnsupportedStatelessExpr(Expr),
+    UnsupportedStatelessExpr(Box<Expr>),
 
     #[error("context is required for identifier evaluation: {}", .0.to_sql())]
-    ContextRequiredForIdentEvaluation(Expr),
+    ContextRequiredForIdentEvaluation(Box<Expr>),
 
     #[error("unreachable empty aggregate value: {0:?}")]
-    UnreachableEmptyAggregateValue(Aggregate),
+    UnreachableEmptyAggregateValue(Box<Aggregate>),
+
+    #[error("filter context is required for aggregate function: {0:?}")]
+    FilterContextRequiredForAggregate(Box<Aggregate>),
 
     #[error("incompatible bit operation between {0} and {1}")]
     IncompatibleBitOperation(String, String),
@@ -187,6 +190,6 @@ fn error_serialize<S>(error: &chrono::format::ParseError, serializer: S) -> Resu
 where
     S: Serializer,
 {
-    let display = format!("{}", error);
+    let display = format!("{error}");
     serializer.serialize_str(&display)
 }

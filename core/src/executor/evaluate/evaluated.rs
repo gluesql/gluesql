@@ -2,10 +2,11 @@ use {
     super::error::EvaluateError,
     crate::{
         ast::{BinaryOperator, DataType, TrimWhereField},
-        data::{Key, Literal, Value, value::HashMapJsonExt},
+        data::{Key, Literal, Value, value::BTreeMapJsonExt},
         result::{Error, Result},
     },
-    std::{borrow::Cow, cmp::Ordering, collections::HashMap, ops::Range},
+    std::{borrow::Cow, cmp::Ordering, collections::BTreeMap, ops::Range},
+    utils::Tribool,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -60,32 +61,30 @@ impl TryFrom<Evaluated<'_>> for bool {
         match e {
             Evaluated::Literal(Literal::Boolean(v)) => Ok(v),
             Evaluated::Literal(v) => {
-                Err(EvaluateError::BooleanTypeRequired(format!("{:?}", v)).into())
+                Err(EvaluateError::BooleanTypeRequired(format!("{v:?}")).into())
             }
             Evaluated::StrSlice { source, range } => {
                 Err(EvaluateError::BooleanTypeRequired(source[range].to_owned()).into())
             }
             Evaluated::Value(Value::Bool(v)) => Ok(v),
-            Evaluated::Value(v) => {
-                Err(EvaluateError::BooleanTypeRequired(format!("{:?}", v)).into())
-            }
+            Evaluated::Value(v) => Err(EvaluateError::BooleanTypeRequired(format!("{v:?}")).into()),
         }
     }
 }
 
-impl TryFrom<Evaluated<'_>> for HashMap<String, Value> {
+impl TryFrom<Evaluated<'_>> for BTreeMap<String, Value> {
     type Error = Error;
 
-    fn try_from(evaluated: Evaluated<'_>) -> Result<HashMap<String, Value>> {
+    fn try_from(evaluated: Evaluated<'_>) -> Result<BTreeMap<String, Value>> {
         match evaluated {
-            Evaluated::Literal(Literal::Text(v)) => HashMap::parse_json_object(v.as_ref()),
+            Evaluated::Literal(Literal::Text(v)) => BTreeMap::parse_json_object(v.as_ref()),
             Evaluated::Literal(v) => {
                 Err(EvaluateError::TextLiteralRequired(format!("{v:?}")).into())
             }
-            Evaluated::Value(Value::Str(v)) => HashMap::parse_json_object(v.as_str()),
+            Evaluated::Value(Value::Str(v)) => BTreeMap::parse_json_object(v.as_str()),
             Evaluated::Value(Value::Map(v)) => Ok(v),
             Evaluated::Value(v) => Err(EvaluateError::MapOrStringValueRequired(v.into()).into()),
-            Evaluated::StrSlice { source, range } => HashMap::parse_json_object(&source[range]),
+            Evaluated::StrSlice { source, range } => BTreeMap::parse_json_object(&source[range]),
         }
     }
 }
@@ -111,9 +110,9 @@ where
         }
         (Evaluated::Value(l), Evaluated::Value(r)) => value_op(l, r).map(Evaluated::Value),
         (l, r) => Err(EvaluateError::UnsupportedBinaryOperation {
-            left: format!("{:?}", l),
+            left: format!("{l:?}"),
             op,
-            right: format!("{:?}", r),
+            right: format!("{r:?}"),
         }
         .into()),
     }
@@ -126,8 +125,14 @@ pub fn exceptional_int_val_to_eval<'a>(name: String, v: Value) -> Result<Evaluat
     }
 }
 
+impl From<Tribool> for Evaluated<'_> {
+    fn from(x: Tribool) -> Self {
+        Evaluated::Value(Value::from(x))
+    }
+}
+
 impl<'a> Evaluated<'a> {
-    pub fn evaluate_eq(&self, other: &Evaluated<'a>) -> bool {
+    pub fn evaluate_eq(&self, other: &Evaluated<'a>) -> Tribool {
         match (self, other) {
             (Evaluated::Literal(a), Evaluated::Literal(b)) => a.evaluate_eq(b),
             (Evaluated::Literal(b), Evaluated::Value(a))
@@ -136,13 +141,11 @@ impl<'a> Evaluated<'a> {
             (Evaluated::Literal(a), Evaluated::StrSlice { source, range })
             | (Evaluated::StrSlice { source, range }, Evaluated::Literal(a)) => {
                 let b = &source[range.clone()];
-
                 a.evaluate_eq(&Literal::Text(Cow::Borrowed(b)))
             }
             (Evaluated::Value(a), Evaluated::StrSlice { source, range })
             | (Evaluated::StrSlice { source, range }, Evaluated::Value(a)) => {
                 let b = &source[range.clone()];
-
                 a.evaluate_eq_with_literal(&Literal::Text(Cow::Borrowed(b)))
             }
             (
@@ -151,7 +154,7 @@ impl<'a> Evaluated<'a> {
                     source: source2,
                     range: range2,
                 },
-            ) => source[range.clone()] == source2[range2.clone()],
+            ) => Tribool::from(source[range.clone()] == source2[range2.clone()]),
         }
     }
 
@@ -293,6 +296,15 @@ impl<'a> Evaluated<'a> {
             Evaluated::StrSlice { source, range } => {
                 Err(EvaluateError::UnsupportedUnaryMinus(source[range.clone()].to_owned()).into())
             }
+        }
+    }
+
+    pub fn unary_not(self) -> Result<Evaluated<'a>> {
+        if self.is_null() {
+            Ok(self)
+        } else {
+            self.try_into()
+                .map(|v: bool| Evaluated::Value(Value::Bool(!v)))
         }
     }
 

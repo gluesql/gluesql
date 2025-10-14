@@ -19,16 +19,16 @@ use {
         future::{ready, try_join_all},
         stream::{self, StreamExt, TryStreamExt},
     },
-    im_rc::HashMap,
-    std::{borrow::Cow, ops::ControlFlow, rc::Rc},
+    im::HashMap,
+    std::{borrow::Cow, ops::ControlFlow, sync::Arc},
 };
 
 pub use {error::EvaluateError, evaluated::Evaluated};
 
 pub async fn evaluate<'a, 'b, 'c, T>(
     storage: &'a T,
-    context: Option<Rc<RowContext<'b>>>,
-    aggregated: Option<Rc<HashMap<&'c Aggregate, Value>>>,
+    context: Option<Arc<RowContext<'b>>>,
+    aggregated: Option<Arc<HashMap<&'c Aggregate, Value>>>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>>
 where
@@ -43,17 +43,17 @@ pub async fn evaluate_stateless<'a, 'b: 'a>(
     context: Option<RowContext<'b>>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>> {
-    let context = context.map(Rc::new);
+    let context = context.map(Arc::new);
     let storage: Option<&MockStorage> = None;
 
     evaluate_inner(storage, context, None, expr).await
 }
 
-#[async_recursion(?Send)]
+#[async_recursion]
 async fn evaluate_inner<'a, 'b, 'c, T>(
     storage: Option<&'a T>,
-    context: Option<Rc<RowContext<'b>>>,
-    aggregated: Option<Rc<HashMap<&'c Aggregate, Value>>>,
+    context: Option<Arc<RowContext<'b>>>,
+    aggregated: Option<Arc<HashMap<&'c Aggregate, Value>>>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>>
 where
@@ -62,8 +62,8 @@ where
     T: GStore,
 {
     let eval = |expr| {
-        let context = context.as_ref().map(Rc::clone);
-        let aggregated = aggregated.as_ref().map(Rc::clone);
+        let context = context.as_ref().map(Arc::clone);
+        let aggregated = aggregated.as_ref().map(Arc::clone);
 
         evaluate_inner(storage, context, aggregated, expr)
     };
@@ -74,8 +74,9 @@ where
             expr::typed_string(data_type, Cow::Borrowed(value))
         }
         Expr::Identifier(ident) => {
-            let context = context
-                .ok_or_else(|| EvaluateError::ContextRequiredForIdentEvaluation(expr.clone()))?;
+            let context = context.ok_or_else(|| {
+                EvaluateError::ContextRequiredForIdentEvaluation(Box::new(expr.clone()))
+            })?;
 
             match context.get_value(ident) {
                 Some(value) => Ok(value.clone()),
@@ -85,8 +86,9 @@ where
         }
         Expr::Nested(expr) => eval(expr).await,
         Expr::CompoundIdentifier { alias, ident } => {
-            let context = context
-                .ok_or_else(|| EvaluateError::ContextRequiredForIdentEvaluation(expr.clone()))?;
+            let context = context.ok_or_else(|| {
+                EvaluateError::ContextRequiredForIdentEvaluation(Box::new(expr.clone()))
+            })?;
 
             match context.get_alias_value(alias, ident) {
                 Some(value) => Ok(value.clone()),
@@ -99,10 +101,10 @@ where
             .map(Evaluated::Value)
         }
         Expr::Subquery(query) => {
-            let storage =
-                storage.ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(expr.clone()))?;
+            let storage = storage
+                .ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(Box::new(expr.clone())))?;
 
-            let evaluations = select(storage, query, context.as_ref().map(Rc::clone))
+            let evaluations = select(storage, query, context.as_ref().map(Arc::clone))
                 .await?
                 .map(|row| {
                     let value = match row? {
@@ -153,11 +155,11 @@ where
             .and_then(|aggregated| aggregated.get(aggr.as_ref()))
         {
             Some(value) => Ok(Evaluated::Value(value.clone())),
-            None => Err(EvaluateError::UnreachableEmptyAggregateValue(*aggr.clone()).into()),
+            None => Err(EvaluateError::UnreachableEmptyAggregateValue(aggr.clone()).into()),
         },
         Expr::Function(func) => {
-            let context = context.as_ref().map(Rc::clone);
-            let aggregated = aggregated.as_ref().map(Rc::clone);
+            let context = context.as_ref().map(Arc::clone);
+            let aggregated = aggregated.as_ref().map(Arc::clone);
 
             evaluate_function(storage, context, aggregated, func).await
         }
@@ -169,22 +171,24 @@ where
             let negated = *negated;
             let target = eval(expr).await?;
 
-            stream::iter(list)
-                .then(eval)
-                .try_filter(|evaluated| ready(evaluated.evaluate_eq(&target)))
-                .try_next()
-                .await
-                .map(|v| v.is_some() ^ negated)
-                .map(Value::Bool)
-                .map(Evaluated::Value)
+            if target.is_null() {
+                return Ok(target);
+            }
+
+            let matched = try_join_all(list.iter().map(eval))
+                .await?
+                .into_iter()
+                .any(|v| v.evaluate_eq(&target).is_true());
+
+            Ok(Evaluated::Value(Value::Bool(matched ^ negated)))
         }
         Expr::InSubquery {
             expr: target_expr,
             subquery,
             negated,
         } => {
-            let storage =
-                storage.ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(expr.clone()))?;
+            let storage = storage
+                .ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(Box::new(expr.clone())))?;
             let target = eval(target_expr).await?;
 
             select(storage, subquery, context)
@@ -202,7 +206,7 @@ where
 
                     Ok(Evaluated::Value(value))
                 })
-                .try_filter(|evaluated| ready(evaluated.evaluate_eq(&target)))
+                .try_filter(|evaluated| ready(evaluated.evaluate_eq(&target).is_true()))
                 .try_next()
                 .await
                 .map(|v| v.is_some() ^ negated)
@@ -231,9 +235,10 @@ where
             let evaluated = target.like(pattern, true)?;
 
             Ok(match negated {
-                true => Evaluated::Value(Value::Bool(
-                    evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false))),
-                )),
+                true => {
+                    let t = evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false)));
+                    Evaluated::Value(Value::from(t))
+                }
                 false => evaluated,
             })
         }
@@ -247,15 +252,16 @@ where
             let evaluated = target.like(pattern, false)?;
 
             Ok(match negated {
-                true => Evaluated::Value(Value::Bool(
-                    evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false))),
-                )),
+                true => {
+                    let t = evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false)));
+                    Evaluated::Value(Value::from(t))
+                }
                 false => evaluated,
             })
         }
         Expr::Exists { subquery, negated } => {
-            let storage =
-                storage.ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(expr.clone()))?;
+            let storage = storage
+                .ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(Box::new(expr.clone())))?;
 
             select(storage, subquery, context)
                 .await?
@@ -288,7 +294,7 @@ where
             for (when, then) in when_then.iter() {
                 let when = eval(when).await?;
 
-                if when.evaluate_eq(&operand) {
+                if when.evaluate_eq(&operand).is_true() {
                     return eval(then).await;
                 }
             }
@@ -329,15 +335,15 @@ where
 
 async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
     storage: Option<&'a T>,
-    context: Option<Rc<RowContext<'b>>>,
-    aggregated: Option<Rc<HashMap<&'c Aggregate, Value>>>,
+    context: Option<Arc<RowContext<'b>>>,
+    aggregated: Option<Arc<HashMap<&'c Aggregate, Value>>>,
     func: &'b Function,
 ) -> Result<Evaluated<'a>> {
     use function as f;
 
     let eval = |expr| {
-        let context = context.as_ref().map(Rc::clone);
-        let aggregated = aggregated.as_ref().map(Rc::clone);
+        let context = context.as_ref().map(Arc::clone);
+        let aggregated = aggregated.as_ref().map(Arc::clone);
 
         evaluate_inner(storage, context, aggregated, expr)
     };
@@ -392,7 +398,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 .map(|values| {
                     let row = Cow::Owned(Row::Map(values));
                     let context = RowContext::new(name, row, None);
-                    Some(Rc::new(context))
+                    Some(Arc::new(context))
                 })?;
 
             return evaluate_inner(storage, context, None, body).await;
@@ -511,6 +517,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             f::rand(name, expr)
         }
         Function::Round(expr) => f::round(name, eval(expr).await?),
+        Function::Trunc(expr) => f::trunc(name, eval(expr).await?),
         Function::Floor(expr) => f::floor(name, eval(expr).await?),
         Function::Radians(expr) => f::radians(name, eval(expr).await?),
         Function::Degrees(expr) => f::degrees(name, eval(expr).await?),

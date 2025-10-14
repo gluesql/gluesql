@@ -39,6 +39,10 @@ pub fn binary_op<'a>(
         }};
     }
 
+    if l.is_null() || r.is_null() {
+        return Ok(Evaluated::Value(Value::Null));
+    }
+
     match op {
         BinaryOperator::Plus => l.add(&r),
         BinaryOperator::Minus => l.subtract(&r),
@@ -46,8 +50,8 @@ pub fn binary_op<'a>(
         BinaryOperator::Divide => l.divide(&r),
         BinaryOperator::Modulo => l.modulo(&r),
         BinaryOperator::StringConcat => l.concat(r),
-        BinaryOperator::Eq => cmp!(l.evaluate_eq(&r)),
-        BinaryOperator::NotEq => cmp!(!l.evaluate_eq(&r)),
+        BinaryOperator::Eq => Ok(Evaluated::from(l.evaluate_eq(&r))),
+        BinaryOperator::NotEq => Ok(Evaluated::from(!l.evaluate_eq(&r))),
         BinaryOperator::Lt => cmp!(l.evaluate_cmp(&r) == Some(Ordering::Less)),
         BinaryOperator::LtEq => cmp!(matches!(
             l.evaluate_cmp(&r),
@@ -71,9 +75,7 @@ pub fn unary_op<'a>(op: &UnaryOperator, v: Evaluated<'a>) -> Result<Evaluated<'a
     match op {
         UnaryOperator::Plus => v.unary_plus(),
         UnaryOperator::Minus => v.unary_minus(),
-        UnaryOperator::Not => v
-            .try_into()
-            .map(|v: bool| Evaluated::Value(Value::Bool(!v))),
+        UnaryOperator::Not => v.unary_not(),
         UnaryOperator::Factorial => v.unary_factorial(),
         UnaryOperator::BitwiseNot => v.unary_bitwise_not(),
     }
@@ -85,6 +87,10 @@ pub fn between<'a>(
     low: Evaluated<'a>,
     high: Evaluated<'a>,
 ) -> Result<Evaluated<'a>> {
+    if target.is_null() || low.is_null() || high.is_null() {
+        return Ok(Evaluated::Value(Value::Null));
+    }
+
     let v = low.evaluate_cmp(&target) != Some(Ordering::Greater)
         && target.evaluate_cmp(&high) != Some(Ordering::Greater);
     let v = negated ^ v;

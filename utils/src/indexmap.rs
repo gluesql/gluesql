@@ -23,7 +23,7 @@ impl<K: Hash + Eq, V> IndexMap<K, V> {
         self.0.get(key)
     }
 
-    pub fn keys(&self) -> Keys<K, V> {
+    pub fn keys(&self) -> Keys<'_, K, V> {
         self.0.keys()
     }
 
@@ -48,5 +48,51 @@ impl<K: Hash + Eq, V> IntoIterator for IndexMap<K, V> {
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::IndexMap;
+
+    #[test]
+    fn new_and_default_are_empty() {
+        let map = IndexMap::<&str, i32>::new();
+        assert!(map.is_empty());
+        assert_eq!(map.len(), 0);
+
+        let default_map = IndexMap::<&str, i32>::default();
+        assert!(default_map.is_empty());
+        assert_eq!(default_map.len(), 0);
+    }
+
+    #[test]
+    fn insert_get_and_order() {
+        let (map, previous) = IndexMap::new().insert("a", 1);
+        assert!(previous.is_none());
+
+        let (map, previous) = map.insert("b", 2);
+        assert!(previous.is_none());
+
+        let (map, previous) = map.insert("a", 3);
+        assert_eq!(previous, Some(1));
+
+        assert_eq!(map.len(), 2);
+        assert!(!map.is_empty());
+        assert_eq!(map.get(&"a"), Some(&3));
+        assert_eq!(map.get(&"b"), Some(&2));
+
+        let keys: Vec<_> = map.keys().copied().collect();
+        assert_eq!(keys, vec!["a", "b"]);
+    }
+
+    #[test]
+    fn into_iter_preserves_insertion_order() {
+        let (map, _) = IndexMap::new().insert(1, "one");
+        let (map, _) = map.insert(2, "two");
+        let (map, _) = map.insert(1, "uno");
+
+        let collected: Vec<_> = map.into_iter().collect();
+        assert_eq!(collected, vec![(1, "uno"), (2, "two")]);
     }
 }

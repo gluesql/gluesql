@@ -9,6 +9,7 @@ use {
     serde::Serialize,
     std::{borrow::Cow, cmp::Ordering, convert::TryFrom, fmt::Debug},
     thiserror::Error,
+    utils::Tribool,
 };
 
 #[derive(Error, Serialize, Debug, PartialEq, Eq)]
@@ -84,17 +85,17 @@ impl<'a> TryFrom<&'a AstLiteral> for Literal<'a> {
 
 fn unsupported_binary_op(left: &Literal, op: BinaryOperator, right: &Literal) -> LiteralError {
     LiteralError::UnsupportedBinaryOperation {
-        left: format!("{:?}", left),
+        left: format!("{left:?}"),
         op,
-        right: format!("{:?}", right),
+        right: format!("{right:?}"),
     }
 }
 
 impl<'a> Literal<'a> {
-    pub fn evaluate_eq(&self, other: &Literal<'_>) -> bool {
+    pub fn evaluate_eq(&self, other: &Literal<'_>) -> Tribool {
         match (self, other) {
-            (Null, Null) => false,
-            _ => self == other,
+            (Null, _) | (_, Null) => Tribool::Null,
+            _ => Tribool::from(self == other),
         }
     }
 
@@ -185,9 +186,9 @@ impl<'a> Literal<'a> {
             (Number(l), Number(r)) => match (l.to_i64(), r.to_i64()) {
                 (Some(l), Some(r)) => Ok(Number(Cow::Owned(BigDecimal::from(l & r)))),
                 _ => Err(LiteralError::UnsupportedBinaryOperation {
-                    left: format!("{:?}", self),
+                    left: format!("{self:?}"),
                     op: BinaryOperator::BitwiseAnd,
-                    right: format!("{:?}", other),
+                    right: format!("{other:?}"),
                 }
                 .into()),
             },
@@ -260,8 +261,8 @@ impl<'a> Literal<'a> {
         match (self, other) {
             (Text(l), Text(r)) => l.like(r, case_sensitive).map(Boolean),
             _ => Err(LiteralError::LikeOnNonString {
-                base: format!("{:?}", self),
-                pattern: format!("{:?}", other),
+                base: format!("{self:?}"),
+                pattern: format!("{other:?}"),
                 case_sensitive,
             }
             .into()),
@@ -271,6 +272,7 @@ impl<'a> Literal<'a> {
 
 #[cfg(test)]
 mod tests {
+    use utils::Tribool;
     use {
         super::Literal::*,
         crate::ast::BinaryOperator,
@@ -505,7 +507,7 @@ mod tests {
             Err(LiteralError::UnsupportedBinaryOperation {
                 left: format!("{:?}", num!("12")),
                 op: BinaryOperator::Modulo,
-                right: format!("{:?}", text)
+                right: format!("{text:?}")
             }
             .into())
         )
@@ -529,27 +531,29 @@ mod tests {
             };
         }
 
-        //Boolean
-        assert!(Boolean(true).evaluate_eq(&Boolean(true)));
-        assert!(!Boolean(true).evaluate_eq(&Boolean(false)));
+        assert_eq!(Tribool::True, Boolean(true).evaluate_eq(&Boolean(true)));
+        assert_eq!(Tribool::False, Boolean(true).evaluate_eq(&Boolean(false)));
         //Number
-        assert!(num!("123").evaluate_eq(&num!("123")));
-        assert!(num!("12.0").evaluate_eq(&num!("12.0")));
-        assert!(num!("12.0").evaluate_eq(&num!("12")));
-        assert!(!num!("12.0").evaluate_eq(&num!("12.123")));
-        assert!(!num!("123").evaluate_eq(&num!("12.3")));
-        assert!(!num!("123").evaluate_eq(&text!("Foo")));
-        assert!(!num!("123").evaluate_eq(&Null));
+        assert_eq!(Tribool::True, num!("123").evaluate_eq(&num!("123")));
+        assert_eq!(Tribool::True, num!("12.0").evaluate_eq(&num!("12.0")));
+        assert_eq!(Tribool::True, num!("12.0").evaluate_eq(&num!("12")));
+        assert_eq!(Tribool::False, num!("12.0").evaluate_eq(&num!("12.123")));
+        assert_eq!(Tribool::False, num!("123").evaluate_eq(&num!("12.3")));
+        assert_eq!(Tribool::False, num!("123").evaluate_eq(&text!("Foo")));
+        assert_eq!(Tribool::Null, num!("123").evaluate_eq(&Null));
         //Text
-        assert!(text!("Foo").evaluate_eq(&text!("Foo")));
-        assert!(!text!("Foo").evaluate_eq(&text!("Bar")));
-        assert!(!text!("Foo").evaluate_eq(&Null));
+        assert_eq!(Tribool::True, text!("Foo").evaluate_eq(&text!("Foo")));
+        assert_eq!(Tribool::False, text!("Foo").evaluate_eq(&text!("Bar")));
+        assert_eq!(Tribool::Null, text!("Foo").evaluate_eq(&Null));
         //Bytea
-        assert!(bytea!("12A456").evaluate_eq(&bytea!("12A456")));
-        assert!(!bytea!("1230").evaluate_eq(&num!("1230")));
-        assert!(!bytea!("12").evaluate_eq(&Null));
+        assert_eq!(
+            Tribool::True,
+            bytea!("12A456").evaluate_eq(&bytea!("12A456"))
+        );
+        assert_eq!(Tribool::False, bytea!("1230").evaluate_eq(&num!("1230")));
+        assert_eq!(Tribool::Null, bytea!("12").evaluate_eq(&Null));
         // Null
-        assert!(!Null.evaluate_eq(&Null));
+        assert_eq!(Tribool::Null, Null.evaluate_eq(&Null));
     }
 
     #[test]
@@ -667,6 +671,9 @@ mod tests {
         }
 
         ok!(num(11), num(12), num(8));
+        ok!(Null, num(12), Null);
+        ok!(num(11), Null, Null);
+        ok!(Null, Null, Null);
         err!(text("11"), num(12));
         err!(num(11), text("12"));
         err!(text("11"), text("12"));

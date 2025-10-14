@@ -10,7 +10,7 @@ use {
     },
     futures::stream::{StreamExt, TryStreamExt},
     serde::Serialize,
-    std::rc::Rc,
+    std::sync::Arc,
     thiserror::Error as ThisError,
 };
 
@@ -28,7 +28,7 @@ pub async fn delete<T: GStore + GStoreMut>(
     table_name: &str,
     selection: &Option<Expr>,
 ) -> Result<Payload> {
-    let columns = fetch_columns(storage, table_name).await?.map(Rc::from);
+    let columns = fetch_columns(storage, table_name).await?.map(Arc::from);
     let referencings = storage.fetch_referencings(table_name).await?;
     let keys = fetch(storage, table_name, columns, selection.as_ref())
         .await?
@@ -58,7 +58,7 @@ pub async fn delete<T: GStore + GStoreMut>(
                     right: Box::new(Expr::try_from(value)?),
                 };
 
-                let columns = Some(Rc::from(Vec::new()));
+                let columns = Some(Arc::from(Vec::new()));
                 let referencing_rows =
                     fetch(storage, referencing_table_name, columns, Some(expr)).await?;
 

@@ -17,11 +17,20 @@ use {
 #[derive(Clone, Debug)]
 pub struct SelectNode<'a> {
     table_node: TableFactorNode<'a>,
+    distinct: bool,
 }
 
 impl<'a> SelectNode<'a> {
     pub fn new(table_node: TableFactorNode<'a>) -> Self {
-        Self { table_node }
+        Self {
+            table_node,
+            distinct: false,
+        }
+    }
+
+    pub fn distinct(mut self) -> Self {
+        self.distinct = true;
+        self
     }
 
     pub fn filter<T: Into<ExprNode<'a>>>(self, expr: T) -> FilterNode<'a> {
@@ -120,6 +129,7 @@ impl<'a> Prebuild<Select> for SelectNode<'a> {
         };
 
         Ok(Select {
+            distinct: self.distinct,
             projection: vec![SelectItem::Wildcard],
             from,
             selection: None,
@@ -131,6 +141,7 @@ impl<'a> Prebuild<Select> for SelectNode<'a> {
 
 pub fn select<'a>() -> SelectNode<'a> {
     SelectNode {
+        distinct: false,
         table_node: TableFactorNode {
             table_name: "Series".to_owned(),
             table_type: TableType::Series(Expr::Literal(AstLiteral::Number(1.into())).into()),
@@ -163,6 +174,16 @@ mod tests {
         // select without table
         let actual = select().project("1 + 1").build();
         let expected = "SELECT 1 + 1";
+        test(actual, expected);
+
+        // select distinct
+        let actual = table("User").select().distinct().build();
+        let expected = "SELECT DISTINCT * FROM User";
+        test(actual, expected);
+
+        // select distinct with project
+        let actual = table("Item").select().distinct().project("name").build();
+        let expected = "SELECT DISTINCT name FROM Item";
         test(actual, expected);
     }
 }

@@ -145,7 +145,7 @@ fn eval_to_point(name: &str, evaluated: Evaluated<'_>) -> ControlFlow<Point> {
 }
 
 // --- text ---
-pub fn concat(exprs: Vec<Evaluated<'_>>) -> ControlFlow<Evaluated> {
+pub fn concat(exprs: Vec<Evaluated<'_>>) -> ControlFlow<Evaluated<'_>> {
     let value = exprs
         .into_iter()
         .try_fold(None, |left: Option<Evaluated>, right| match left {
@@ -339,7 +339,7 @@ pub fn md5<'a>(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> 
     let mut hasher = Md5::new();
     hasher.update(string.as_bytes());
     let result = hasher.finalize();
-    let result = format!("{:x}", result);
+    let result = format!("{result:x}");
 
     Continue(Evaluated::Value(Value::Str(result)))
 }
@@ -440,6 +440,10 @@ pub fn rand<'a>(name: String, seed: Option<Evaluated<'_>>) -> ControlFlow<Evalua
 
 pub fn round<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.round())))
+}
+
+pub fn trunc<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.trunc())))
 }
 
 pub fn floor<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
@@ -797,7 +801,7 @@ pub fn last_day<'a>(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<
     };
 
     Continue(Evaluated::Value(Value::Date(
-        date + Months::new(1) - Duration::days(date.day() as i64),
+        date + Months::new(1) - Duration::days(i64::from(date.day())),
     )))
 }
 

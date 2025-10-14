@@ -1,0 +1,185 @@
+use {
+    gluesql_core::{
+        data::{Interval, Point, Value},
+        executor::Payload,
+        row_conversion::{RowConversionError, SelectExt},
+    },
+    gluesql_macros::FromGlueRow,
+};
+
+#[allow(dead_code)]
+#[derive(Debug, FromGlueRow)]
+struct BoolField {
+    v: bool,
+}
+
+#[test]
+fn got_i64_expected_bool() {
+    let payload = Payload::Select {
+        labels: vec!["v".into()],
+        rows: vec![vec![Value::I64(0)]],
+    };
+    let err = payload.rows_as::<BoolField>().unwrap_err();
+    assert!(matches!(err, RowConversionError::TypeMismatch { .. }));
+}
+
+#[allow(dead_code)]
+#[derive(Debug, FromGlueRow)]
+struct StringField {
+    v: String,
+}
+
+#[test]
+fn got_i64_expected_string() {
+    let payload = Payload::Select {
+        labels: vec!["v".into()],
+        rows: vec![vec![Value::I64(1)]],
+    };
+    let err = payload.rows_as::<StringField>().unwrap_err();
+    assert!(matches!(err, RowConversionError::TypeMismatch { .. }));
+}
+
+#[allow(dead_code)]
+#[derive(Debug, FromGlueRow)]
+struct F64Field {
+    v: f64,
+}
+
+#[test]
+fn got_str_expected_f64() {
+    let payload = Payload::Select {
+        labels: vec!["v".into()],
+        rows: vec![vec![Value::Str("x".into())]],
+    };
+    let err = payload.rows_as::<F64Field>().unwrap_err();
+    assert!(matches!(err, RowConversionError::TypeMismatch { .. }));
+}
+
+#[allow(dead_code)]
+#[derive(Debug, FromGlueRow)]
+struct DecimalField {
+    v: rust_decimal::Decimal,
+}
+
+#[test]
+fn got_str_expected_decimal() {
+    let payload = Payload::Select {
+        labels: vec!["v".into()],
+        rows: vec![vec![Value::Str("x".into())]],
+    };
+    let err = payload.rows_as::<DecimalField>().unwrap_err();
+    assert!(matches!(err, RowConversionError::TypeMismatch { .. }));
+}
+
+#[allow(dead_code)]
+#[derive(Debug, FromGlueRow)]
+struct IpField {
+    v: std::net::IpAddr,
+}
+
+#[test]
+fn got_bool_expected_ip() {
+    let payload = Payload::Select {
+        labels: vec!["v".into()],
+        rows: vec![vec![Value::Bool(true)]],
+    };
+    let err = payload.rows_as::<IpField>().unwrap_err();
+    assert!(matches!(err, RowConversionError::TypeMismatch { .. }));
+}
+
+#[allow(dead_code)]
+#[derive(Debug, FromGlueRow)]
+struct DateField {
+    v: chrono::NaiveDate,
+}
+
+#[test]
+fn got_time_expected_date() {
+    let payload = Payload::Select {
+        labels: vec!["v".into()],
+        rows: vec![vec![Value::Time(
+            chrono::NaiveTime::from_hms_opt(0, 0, 0).unwrap(),
+        )]],
+    };
+    let err = payload.rows_as::<DateField>().unwrap_err();
+    assert!(matches!(err, RowConversionError::TypeMismatch { .. }));
+}
+
+#[allow(dead_code)]
+#[derive(Debug, FromGlueRow)]
+struct TimeField {
+    v: chrono::NaiveTime,
+}
+
+#[test]
+fn got_list_expected_time() {
+    let payload = Payload::Select {
+        labels: vec!["v".into()],
+        rows: vec![vec![Value::List(vec![])]],
+    };
+    let err = payload.rows_as::<TimeField>().unwrap_err();
+    assert!(matches!(err, RowConversionError::TypeMismatch { .. }));
+}
+
+#[allow(dead_code)]
+#[derive(Debug, FromGlueRow)]
+struct IntervalField {
+    v: Interval,
+}
+
+#[test]
+fn got_u64_expected_interval() {
+    let payload = Payload::Select {
+        labels: vec!["v".into()],
+        rows: vec![vec![Value::U64(1)]],
+    };
+    let err = payload.rows_as::<IntervalField>().unwrap_err();
+    assert!(matches!(err, RowConversionError::TypeMismatch { .. }));
+}
+
+#[allow(dead_code)]
+#[derive(Debug, FromGlueRow)]
+struct MapField {
+    v: std::collections::BTreeMap<String, Value>,
+}
+
+#[test]
+fn got_bool_expected_map() {
+    let payload = Payload::Select {
+        labels: vec!["v".into()],
+        rows: vec![vec![Value::Bool(true)]],
+    };
+    let err = payload.rows_as::<MapField>().unwrap_err();
+    assert!(matches!(err, RowConversionError::TypeMismatch { .. }));
+}
+
+#[allow(dead_code)]
+#[derive(Debug, FromGlueRow)]
+struct ListField {
+    v: Vec<Value>,
+}
+
+#[test]
+fn got_bool_expected_list() {
+    let payload = Payload::Select {
+        labels: vec!["v".into()],
+        rows: vec![vec![Value::Bool(false)]],
+    };
+    let err = payload.rows_as::<ListField>().unwrap_err();
+    assert!(matches!(err, RowConversionError::TypeMismatch { .. }));
+}
+
+#[derive(Debug, FromGlueRow)]
+struct PointOptField {
+    v: Option<Point>,
+}
+
+#[test]
+fn got_null_expected_point_maps_to_none() {
+    let payload = Payload::Select {
+        labels: vec!["v".into()],
+        rows: vec![vec![Value::Null]],
+    };
+    let rows: Vec<PointOptField> = payload.rows_as::<PointOptField>().unwrap();
+    assert_eq!(rows[0].v, None);
+}

@@ -10,7 +10,15 @@ use {
     core::ops::Sub,
     rust_decimal::Decimal,
     serde::{Deserialize, Serialize},
-    std::{cmp::Ordering, collections::HashMap, fmt::Debug, net::IpAddr},
+    std::{
+        cmp::Ordering,
+        collections::BTreeMap,
+        fmt::Debug,
+        hash::{Hash, Hasher},
+        mem::discriminant,
+        net::IpAddr,
+    },
+    utils::Tribool,
 };
 
 mod binary_op;
@@ -26,10 +34,10 @@ mod uuid;
 pub use {
     convert::ConvertError,
     error::{NumericBinaryOperator, ValueError},
-    json::HashMapJsonExt,
+    json::BTreeMapJsonExt,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Value {
     Bool(bool),
     I8(i8),
@@ -53,37 +61,50 @@ pub enum Value {
     Time(NaiveTime),
     Interval(Interval),
     Uuid(u128),
-    Map(HashMap<String, Value>),
+    Map(BTreeMap<String, Value>),
     List(Vec<Value>),
     Point(Point),
     Null,
 }
 
+impl From<Tribool> for Value {
+    fn from(t: Tribool) -> Self {
+        match t {
+            Tribool::True => Value::Bool(true),
+            Tribool::False => Value::Bool(false),
+            Tribool::Null => Value::Null,
+        }
+    }
+}
+
 impl Value {
-    pub fn evaluate_eq(&self, other: &Value) -> bool {
+    pub fn evaluate_eq(&self, other: &Value) -> Tribool {
+        use Value::*;
         match (self, other) {
-            (Value::I8(l), _) => l == other,
-            (Value::I16(l), _) => l == other,
-            (Value::I32(l), _) => l == other,
-            (Value::I64(l), _) => l == other,
-            (Value::I128(l), _) => l == other,
-            (Value::U8(l), _) => l == other,
-            (Value::U16(l), _) => l == other,
-            (Value::U32(l), _) => l == other,
-            (Value::U64(l), _) => l == other,
-            (Value::U128(l), _) => l == other,
-            (Value::F32(l), _) => l == other,
-            (Value::F64(l), _) => l == other,
-            (Value::Date(l), Value::Timestamp(r)) => l
-                .and_hms_opt(0, 0, 0)
-                .map(|date_time| &date_time == r)
-                .unwrap_or(false),
-            (Value::Timestamp(l), Value::Date(r)) => r
-                .and_hms_opt(0, 0, 0)
-                .map(|date_time| l == &date_time)
-                .unwrap_or(false),
-            (Value::Null, Value::Null) => false,
-            _ => self == other,
+            (Null, _) | (_, Null) => Tribool::Null,
+            (I8(l), _) => Tribool::from(l == other),
+            (I16(l), _) => Tribool::from(l == other),
+            (I32(l), _) => Tribool::from(l == other),
+            (I64(l), _) => Tribool::from(l == other),
+            (I128(l), _) => Tribool::from(l == other),
+            (U8(l), _) => Tribool::from(l == other),
+            (U16(l), _) => Tribool::from(l == other),
+            (U32(l), _) => Tribool::from(l == other),
+            (U64(l), _) => Tribool::from(l == other),
+            (U128(l), _) => Tribool::from(l == other),
+            (F32(l), _) => Tribool::from(l == other),
+            (F64(l), _) => Tribool::from(l == other),
+            (Date(l), Timestamp(r)) => Tribool::from(
+                l.and_hms_opt(0, 0, 0)
+                    .map(|date_time| &date_time == r)
+                    .unwrap_or(false),
+            ),
+            (Timestamp(l), Date(r)) => Tribool::from(
+                r.and_hms_opt(0, 0, 0)
+                    .map(|date_time| l == &date_time)
+                    .unwrap_or(false),
+            ),
+            _ => Tribool::from(self == other),
         }
     }
 
@@ -347,14 +368,14 @@ impl Value {
                 .sub(*b)
                 .num_microseconds()
                 .ok_or_else(|| {
-                    ValueError::UnreachableIntegerOverflow(format!("{:?} - {:?}", a, b)).into()
+                    ValueError::UnreachableIntegerOverflow(format!("{a:?} - {b:?}")).into()
                 })
                 .map(|v| Interval(I::microseconds(v))),
             (Time(a), Time(b)) => a
                 .sub(*b)
                 .num_microseconds()
                 .ok_or_else(|| {
-                    ValueError::UnreachableIntegerOverflow(format!("{:?} - {:?}", a, b)).into()
+                    ValueError::UnreachableIntegerOverflow(format!("{a:?} - {b:?}")).into()
                 })
                 .map(|v| Interval(I::microseconds(v))),
             (Time(a), Interval(b)) => b.subtract_from_time(a).map(Time),
@@ -707,15 +728,15 @@ impl Value {
         }
 
         match self {
-            I8(a) => factorial_function(*a as i128).map(I128),
-            I16(a) => factorial_function(*a as i128).map(I128),
-            I32(a) => factorial_function(*a as i128).map(I128),
-            I64(a) => factorial_function(*a as i128).map(I128),
+            I8(a) => factorial_function(i128::from(*a)).map(I128),
+            I16(a) => factorial_function(i128::from(*a)).map(I128),
+            I32(a) => factorial_function(i128::from(*a)).map(I128),
+            I64(a) => factorial_function(i128::from(*a)).map(I128),
             I128(a) => factorial_function(*a).map(I128),
-            U8(a) => factorial_function(*a as i128).map(I128),
-            U16(a) => factorial_function(*a as i128).map(I128),
-            U32(a) => factorial_function(*a as i128).map(I128),
-            U64(a) => factorial_function(*a as i128).map(I128),
+            U8(a) => factorial_function(i128::from(*a)).map(I128),
+            U16(a) => factorial_function(i128::from(*a)).map(I128),
+            U32(a) => factorial_function(i128::from(*a)).map(I128),
+            U64(a) => factorial_function(i128::from(*a)).map(I128),
             U128(a) => factorial_function(*a as i128).map(I128),
             F32(_) => Err(ValueError::FactorialOnNonInteger.into()),
             F64(_) => Err(ValueError::FactorialOnNonInteger.into()),
@@ -860,6 +881,103 @@ impl Value {
     }
 }
 
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Value::Bool(a), Value::Bool(b)) => a == b,
+            (Value::I8(a), Value::I8(b)) => a == b,
+            (Value::I16(a), Value::I16(b)) => a == b,
+            (Value::I32(a), Value::I32(b)) => a == b,
+            (Value::I64(a), Value::I64(b)) => a == b,
+            (Value::I128(a), Value::I128(b)) => a == b,
+            (Value::U8(a), Value::U8(b)) => a == b,
+            (Value::U16(a), Value::U16(b)) => a == b,
+            (Value::U32(a), Value::U32(b)) => a == b,
+            (Value::U64(a), Value::U64(b)) => a == b,
+            (Value::U128(a), Value::U128(b)) => a == b,
+            (Value::F32(a), Value::F32(b)) => (a.is_nan() && b.is_nan()) || a == b,
+            (Value::F64(a), Value::F64(b)) => (a.is_nan() && b.is_nan()) || a == b,
+            (Value::Decimal(a), Value::Decimal(b)) => a == b,
+            (Value::Str(a), Value::Str(b)) => a == b,
+            (Value::Bytea(a), Value::Bytea(b)) => a == b,
+            (Value::Inet(a), Value::Inet(b)) => a == b,
+            (Value::Date(a), Value::Date(b)) => a == b,
+            (Value::Timestamp(a), Value::Timestamp(b)) => a == b,
+            (Value::Time(a), Value::Time(b)) => a == b,
+            (Value::Interval(a), Value::Interval(b)) => a == b,
+            (Value::Uuid(a), Value::Uuid(b)) => a == b,
+            (Value::Map(a), Value::Map(b)) => a == b,
+            (Value::List(a), Value::List(b)) => a == b,
+            (Value::Point(a), Value::Point(b)) => a == b,
+            (Value::Null, Value::Null) => true,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Value {}
+
+impl Hash for Value {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        const CANONICAL_F32_NAN_BITS: u32 = 0x7fc00000;
+        const CANONICAL_F64_NAN_BITS: u64 = 0x7ff8000000000000;
+        const CANONICAL_F32_ZERO_BITS: u32 = 0;
+        const CANONICAL_F64_ZERO_BITS: u64 = 0;
+
+        discriminant(self).hash(state);
+
+        match self {
+            Value::Bool(v) => v.hash(state),
+            Value::I8(v) => v.hash(state),
+            Value::I16(v) => v.hash(state),
+            Value::I32(v) => v.hash(state),
+            Value::I64(v) => v.hash(state),
+            Value::I128(v) => v.hash(state),
+            Value::U8(v) => v.hash(state),
+            Value::U16(v) => v.hash(state),
+            Value::U32(v) => v.hash(state),
+            Value::U64(v) => v.hash(state),
+            Value::U128(v) => v.hash(state),
+            Value::F32(v) => {
+                if v.is_nan() {
+                    CANONICAL_F32_NAN_BITS.hash(state);
+                } else if *v == 0.0f32 {
+                    CANONICAL_F32_ZERO_BITS.hash(state);
+                } else {
+                    v.to_bits().hash(state);
+                }
+            }
+            Value::F64(v) => {
+                if v.is_nan() {
+                    CANONICAL_F64_NAN_BITS.hash(state);
+                } else if *v == 0.0f64 {
+                    CANONICAL_F64_ZERO_BITS.hash(state);
+                } else {
+                    v.to_bits().hash(state);
+                }
+            }
+            Value::Decimal(v) => v.hash(state),
+            Value::Str(v) => v.hash(state),
+            Value::Bytea(v) => v.hash(state),
+            Value::Inet(v) => v.hash(state),
+            Value::Date(v) => v.hash(state),
+            Value::Timestamp(v) => v.hash(state),
+            Value::Time(v) => v.hash(state),
+            Value::Interval(v) => v.hash(state),
+            Value::Uuid(v) => v.hash(state),
+            Value::Map(map) => {
+                map.hash(state);
+            }
+            Value::List(list) => list.hash(state),
+            Value::Point(p) => p.hash(state),
+            Value::Null => {
+                // Null gets its own unique hash based on discriminant only
+                // No additional data needed since discriminant already makes it unique
+            }
+        }
+    }
+}
+
 fn str_position(from_str: &str, sub_str: &str) -> usize {
     if from_str.is_empty() || sub_str.is_empty() {
         return 0;
@@ -877,7 +995,7 @@ mod tests {
         crate::data::{NumericBinaryOperator, ValueError, point::Point, value::uuid::parse_uuid},
         chrono::{NaiveDate, NaiveTime},
         rust_decimal::Decimal,
-        std::{net::IpAddr, str::FromStr},
+        std::{collections::HashMap, net::IpAddr, str::FromStr},
     };
 
     fn time(hour: u32, min: u32, sec: u32) -> NaiveTime {
@@ -891,6 +1009,7 @@ mod tests {
     #[allow(clippy::eq_op)]
     #[test]
     fn evaluate_eq() {
+        use utils::Tribool;
         use {
             super::Interval,
             chrono::{NaiveDateTime, NaiveTime},
@@ -899,53 +1018,66 @@ mod tests {
         let bytea = |v: &str| Bytea(hex::decode(v).unwrap());
         let inet = |v: &str| Inet(IpAddr::from_str(v).unwrap());
 
-        assert_eq!(Null, Null);
-        assert!(!Null.evaluate_eq(&Null));
-        assert!(Bool(true).evaluate_eq(&Bool(true)));
-        assert!(I8(1).evaluate_eq(&I8(1)));
-        assert!(I16(1).evaluate_eq(&I16(1)));
-        assert!(I32(1).evaluate_eq(&I32(1)));
-        assert!(I64(1).evaluate_eq(&I64(1)));
-        assert!(I128(1).evaluate_eq(&I128(1)));
-        assert!(U8(1).evaluate_eq(&U8(1)));
-        assert!(U16(1).evaluate_eq(&U16(1)));
-        assert!(U32(1).evaluate_eq(&U32(1)));
-        assert!(U64(1).evaluate_eq(&U64(1)));
-        assert!(U128(1).evaluate_eq(&U128(1)));
-        assert!(I64(1).evaluate_eq(&F64(1.0)));
-        assert!(F32(1.0_f32).evaluate_eq(&I64(1)));
-        assert!(F32(6.11_f32).evaluate_eq(&F64(6.11)));
-        assert!(F64(1.0).evaluate_eq(&I64(1)));
-        assert!(F64(6.11).evaluate_eq(&F64(6.11)));
-        assert!(Str("Glue".to_owned()).evaluate_eq(&Str("Glue".to_owned())));
-        assert!(bytea("1004").evaluate_eq(&bytea("1004")));
-        assert!(inet("::1").evaluate_eq(&inet("::1")));
-        assert!(Interval(Interval::Month(1)).evaluate_eq(&Interval(Interval::Month(1))));
-        assert!(
+        assert_eq!(Tribool::Null, Tribool::Null); // structural equality
+        assert_eq!(Tribool::Null, Null.evaluate_eq(&Null));
+        assert_eq!(Tribool::True, Bool(true).evaluate_eq(&Bool(true)));
+        assert_eq!(Tribool::True, I8(1).evaluate_eq(&I8(1)));
+        assert_eq!(Tribool::True, I16(1).evaluate_eq(&I16(1)));
+        assert_eq!(Tribool::True, I32(1).evaluate_eq(&I32(1)));
+        assert_eq!(Tribool::True, I64(1).evaluate_eq(&I64(1)));
+        assert_eq!(Tribool::True, I128(1).evaluate_eq(&I128(1)));
+        assert_eq!(Tribool::True, U8(1).evaluate_eq(&U8(1)));
+        assert_eq!(Tribool::True, U16(1).evaluate_eq(&U16(1)));
+        assert_eq!(Tribool::True, U32(1).evaluate_eq(&U32(1)));
+        assert_eq!(Tribool::True, U64(1).evaluate_eq(&U64(1)));
+        assert_eq!(Tribool::True, U128(1).evaluate_eq(&U128(1)));
+        assert_eq!(Tribool::True, I64(1).evaluate_eq(&F64(1.0)));
+        assert_eq!(Tribool::True, F32(1.0_f32).evaluate_eq(&I64(1)));
+        assert_eq!(Tribool::True, F32(6.11_f32).evaluate_eq(&F64(6.11)));
+        assert_eq!(Tribool::True, F64(1.0).evaluate_eq(&I64(1)));
+        assert_eq!(Tribool::True, F64(6.11).evaluate_eq(&F64(6.11)));
+        assert_eq!(
+            Tribool::True,
+            Str("Glue".to_owned()).evaluate_eq(&Str("Glue".to_owned()))
+        );
+        assert_eq!(Tribool::True, bytea("1004").evaluate_eq(&bytea("1004")));
+        assert_eq!(Tribool::True, inet("::1").evaluate_eq(&inet("::1")));
+        assert_eq!(
+            Tribool::True,
+            Interval(Interval::Month(1)).evaluate_eq(&Interval(Interval::Month(1)))
+        );
+        assert_eq!(
+            Tribool::True,
             Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap())
                 .evaluate_eq(&Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap()))
         );
-        assert!(decimal(1).evaluate_eq(&decimal(1)));
-        assert!(
+        assert_eq!(Tribool::True, decimal(1).evaluate_eq(&decimal(1)));
+        assert_eq!(
+            Tribool::True,
             Date("2020-05-01".parse().unwrap()).evaluate_eq(&Date("2020-05-01".parse().unwrap()))
         );
-        assert!(
+        assert_eq!(
+            Tribool::True,
             Timestamp("2020-05-01T00:00:00".parse::<NaiveDateTime>().unwrap()).evaluate_eq(
                 &Timestamp("2020-05-01T00:00:00".parse::<NaiveDateTime>().unwrap())
             )
         );
-        assert!(
+        assert_eq!(
+            Tribool::True,
             Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()).evaluate_eq(&Uuid(
                 parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()
             ))
         );
-        assert!(Point(Point::new(1.0, 2.0)).evaluate_eq(&Point(Point::new(1.0, 2.0))));
+        assert_eq!(
+            Tribool::True,
+            Point(Point::new(1.0, 2.0)).evaluate_eq(&Point(Point::new(1.0, 2.0)))
+        );
 
         let date = Date("2020-05-01".parse().unwrap());
         let timestamp = Timestamp("2020-05-01T00:00:00".parse::<NaiveDateTime>().unwrap());
 
-        assert!(date.evaluate_eq(&timestamp));
-        assert!(timestamp.evaluate_eq(&date));
+        assert_eq!(Tribool::True, date.evaluate_eq(&timestamp));
+        assert_eq!(Tribool::True, timestamp.evaluate_eq(&date));
     }
 
     #[test]
@@ -1111,9 +1243,10 @@ mod tests {
     fn arithmetic() {
         use chrono::{NaiveDate, NaiveTime};
 
+        use utils::Tribool::True;
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
-                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c));
+                assert_eq!(True, $a.$op(&$b).unwrap().evaluate_eq(&$c));
             };
         }
 
@@ -1895,9 +2028,10 @@ mod tests {
     fn bitwise_shift_left() {
         use {super::convert::ConvertError, crate::ast::DataType};
 
+        use utils::Tribool::True;
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
-                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c));
+                assert_eq!(True, $a.$op(&$b).unwrap().evaluate_eq(&$c));
             };
         }
 
@@ -2057,9 +2191,10 @@ mod tests {
     fn bitwise_shift_right() {
         use {super::convert::ConvertError, crate::ast::DataType};
 
+        use utils::Tribool::True;
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
-                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c));
+                assert_eq!(True, $a.$op(&$b).unwrap().evaluate_eq(&$c));
             };
         }
 
@@ -2679,9 +2814,10 @@ mod tests {
 
     #[test]
     fn bitwise_and() {
+        use utils::Tribool::True;
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
-                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c));
+                assert_eq!(True, $a.$op(&$b).unwrap().evaluate_eq(&$c));
             };
         }
 
@@ -2818,5 +2954,293 @@ mod tests {
         assert_eq!(map.get_type(), Some(D::Map));
         assert_eq!(list.get_type(), Some(D::List));
         assert_eq!(Null.get_type(), None);
+    }
+
+    #[test]
+    fn hash() {
+        use {
+            super::Interval,
+            crate::data::point::Point,
+            chrono::{NaiveDate, NaiveTime},
+            rust_decimal::Decimal,
+            std::{
+                collections::BTreeMap,
+                collections::hash_map::DefaultHasher,
+                f32::consts::PI as PI_F32,
+                f64::consts::PI as PI_F64,
+                hash::{Hash, Hasher},
+                net::IpAddr,
+                str::FromStr,
+            },
+        };
+
+        fn hash_value<T: Hash>(t: &T) -> u64 {
+            let mut hasher = DefaultHasher::new();
+            t.hash(&mut hasher);
+            hasher.finish()
+        }
+
+        // Float zero normalization: 0.0 and -0.0 should hash the same
+        let zero_pos_f32 = F32(0.0);
+        let zero_neg_f32 = F32(-0.0);
+        assert_eq!(hash_value(&zero_pos_f32), hash_value(&zero_neg_f32),);
+
+        let zero_pos_f64 = F64(0.0);
+        let zero_neg_f64 = F64(-0.0);
+        assert_eq!(hash_value(&zero_pos_f64), hash_value(&zero_neg_f64),);
+
+        // Non-zero floats should hash differently
+        let one_f32 = F32(1.0);
+        let neg_one_f32 = F32(-1.0);
+        assert_ne!(hash_value(&one_f32), hash_value(&neg_one_f32),);
+
+        let one_f64 = F64(1.0);
+        let neg_one_f64 = F64(-1.0);
+        assert_ne!(hash_value(&one_f64), hash_value(&neg_one_f64),);
+
+        let values_equal = [
+            (I8(42), I8(42)),
+            (I16(42), I16(42)),
+            (I32(42), I32(42)),
+            (I64(42), I64(42)),
+            (I128(42), I128(42)),
+            (U8(42), U8(42)),
+            (U16(42), U16(42)),
+            (U32(42), U32(42)),
+            (U64(42), U64(42)),
+            (U128(42), U128(42)),
+            (F32(PI_F32), F32(PI_F32)),
+            (F64(PI_F64), F64(PI_F64)),
+            (Decimal(Decimal::new(314, 2)), Decimal(Decimal::new(314, 2))),
+            (Bool(true), Bool(true)),
+            (Bool(false), Bool(false)),
+            (Str("test".to_owned()), Str("test".to_owned())),
+            (Bytea(vec![1, 2, 3]), Bytea(vec![1, 2, 3])),
+            (
+                Inet(IpAddr::from_str("127.0.0.1").unwrap()),
+                Inet(IpAddr::from_str("127.0.0.1").unwrap()),
+            ),
+            (
+                Inet(IpAddr::from_str("::1").unwrap()),
+                Inet(IpAddr::from_str("::1").unwrap()),
+            ),
+            (
+                Date(NaiveDate::from_ymd_opt(2025, 8, 6).unwrap()),
+                Date(NaiveDate::from_ymd_opt(2025, 8, 6).unwrap()),
+            ),
+            (
+                Timestamp(
+                    NaiveDate::from_ymd_opt(2025, 8, 6)
+                        .unwrap()
+                        .and_hms_opt(10, 30, 0)
+                        .unwrap(),
+                ),
+                Timestamp(
+                    NaiveDate::from_ymd_opt(2025, 8, 6)
+                        .unwrap()
+                        .and_hms_opt(10, 30, 0)
+                        .unwrap(),
+                ),
+            ),
+            (
+                Time(NaiveTime::from_hms_opt(10, 30, 0).unwrap()),
+                Time(NaiveTime::from_hms_opt(10, 30, 0).unwrap()),
+            ),
+            (Interval(Interval::hours(5)), Interval(Interval::hours(5))),
+            (Uuid(123456789), Uuid(123456789)),
+            (List(vec![I64(1), I64(2)]), List(vec![I64(1), I64(2)])),
+            (Null, Null),
+        ];
+
+        for (a, b) in values_equal {
+            assert_eq!(a, b);
+            assert_eq!(hash_value(&a), hash_value(&b), "{a:?} vs {b:?}");
+        }
+
+        let map_test_cases = [{
+            let mut map1 = BTreeMap::new();
+            map1.insert("b".to_owned(), I64(2));
+            map1.insert("a".to_owned(), I64(1));
+
+            let mut map2 = BTreeMap::new();
+            map2.insert("a".to_owned(), I64(1));
+            map2.insert("b".to_owned(), I64(2));
+
+            (super::Value::Map(map1), super::Value::Map(map2))
+        }];
+
+        for (value_map1, value_map2) in map_test_cases {
+            assert_eq!(value_map1, value_map2);
+            assert_eq!(hash_value(&value_map1), hash_value(&value_map2));
+        }
+
+        const CANONICAL_F64_NAN_BITS: u64 = 0x7ff8000000000000;
+        const CANONICAL_F32_NAN_BITS: u32 = 0x7fc00000;
+        const CANONICAL_F32_ZERO_BITS: u32 = 0;
+        const CANONICAL_F64_ZERO_BITS: u64 = 0;
+        let point_test_cases = [
+            (Point(Point::new(1.0, 2.0)), Point(Point::new(1.0, 2.0))),
+            (Point(Point::new(0.0, 1.0)), Point(Point::new(-0.0, 1.0))),
+            (Point(Point::new(1.0, 0.0)), Point(Point::new(1.0, -0.0))),
+            (
+                Point(Point::new(1.0, f64::NAN)),
+                Point(Point::new(1.0, f64::from_bits(CANONICAL_F64_NAN_BITS))),
+            ),
+            (
+                Point(Point::new(f64::NAN, 1.0)),
+                Point(Point::new(f64::from_bits(CANONICAL_F64_NAN_BITS), 1.0)),
+            ),
+            (
+                Point(Point::new(f64::NAN, f64::NAN)),
+                Point(Point::new(
+                    f64::from_bits(CANONICAL_F64_NAN_BITS),
+                    f64::from_bits(CANONICAL_F64_NAN_BITS),
+                )),
+            ),
+            (
+                Point(Point::new(1.0, 0.0_f64)),
+                Point(Point::new(1.0, f64::from_bits(CANONICAL_F64_ZERO_BITS))),
+            ),
+            (
+                Point(Point::new(1.0, -0.0_f64)),
+                Point(Point::new(1.0, f64::from_bits(CANONICAL_F64_ZERO_BITS))),
+            ),
+        ];
+
+        for (point1, point2) in point_test_cases {
+            assert_eq!(hash_value(&point1), hash_value(&point2));
+        }
+
+        assert_eq!(hash_value(&F32(0.0)), hash_value(&F32(-0.0)));
+        assert_eq!(hash_value(&F64(0.0)), hash_value(&F64(-0.0)));
+        assert_eq!(
+            hash_value(&F32(f32::NAN)),
+            hash_value(&F32(f32::from_bits(CANONICAL_F32_NAN_BITS)))
+        );
+        assert_eq!(
+            hash_value(&F64(f64::NAN)),
+            hash_value(&F64(f64::from_bits(CANONICAL_F64_NAN_BITS)))
+        );
+        assert_eq!(
+            hash_value(&F32(f32::from_bits(CANONICAL_F32_ZERO_BITS))),
+            hash_value(&F32(0.0))
+        );
+        assert_eq!(
+            hash_value(&F64(f64::from_bits(CANONICAL_F64_ZERO_BITS))),
+            hash_value(&F64(0.0))
+        );
+
+        // NaN as HashMap key
+        let mut map = HashMap::new();
+        map.insert(F32(f32::NAN), "test");
+        assert_eq!(
+            map.get(&F32(f32::from_bits(CANONICAL_F32_NAN_BITS))),
+            Some(&"test")
+        );
+    }
+
+    #[test]
+    fn eq() {
+        use {
+            super::Interval,
+            crate::data::point::Point,
+            chrono::{NaiveDate, NaiveTime},
+            rust_decimal::Decimal,
+            std::{collections::BTreeMap, net::IpAddr, str::FromStr},
+        };
+
+        let test_cases = [
+            (Bool(true), Bool(true), true),
+            (Bool(true), Bool(false), false),
+            (I8(42), I8(42), true),
+            (I16(42), I16(42), true),
+            (I32(42), I32(42), true),
+            (I64(42), I64(42), true),
+            (I128(42), I128(42), true),
+            (U8(42), U8(42), true),
+            (U16(42), U16(42), true),
+            (U32(42), U32(42), true),
+            (U64(42), U64(42), true),
+            (U128(42), U128(42), true),
+            (F32(1.5), F32(1.5), true),
+            (F64(1.5), F64(1.5), true),
+            (
+                Decimal(Decimal::new(314, 2)),
+                Decimal(Decimal::new(314, 2)),
+                true,
+            ),
+            (Str("test".to_owned()), Str("test".to_owned()), true),
+            (Bytea(vec![1, 2, 3]), Bytea(vec![1, 2, 3]), true),
+            (
+                Inet(IpAddr::from_str("127.0.0.1").unwrap()),
+                Inet(IpAddr::from_str("127.0.0.1").unwrap()),
+                true,
+            ),
+            (
+                Date(NaiveDate::from_ymd_opt(2025, 1, 1).unwrap()),
+                Date(NaiveDate::from_ymd_opt(2025, 1, 1).unwrap()),
+                true,
+            ),
+            (
+                Time(NaiveTime::from_hms_opt(10, 30, 0).unwrap()),
+                Time(NaiveTime::from_hms_opt(10, 30, 0).unwrap()),
+                true,
+            ),
+            (
+                Interval(Interval::hours(5)),
+                Interval(Interval::hours(5)),
+                true,
+            ),
+            (Uuid(123456789), Uuid(123456789), true),
+            (List(vec![I64(1), I64(2)]), List(vec![I64(1), I64(2)]), true),
+            (
+                Point(Point::new(1.0, 2.0)),
+                Point(Point::new(1.0, 2.0)),
+                true,
+            ),
+            (Null, Null, true),
+        ];
+
+        for (a, b, expected) in test_cases {
+            assert_eq!(a == b, expected);
+        }
+
+        // Different types are not equal
+        assert_ne!(Bool(true), I32(1));
+        assert_ne!(F32(1.0), F64(1.0));
+        assert_ne!(Null, Bool(false));
+
+        // Float special cases: NaN == NaN, +0.0 == -0.0
+        assert_eq!(F32(f32::NAN), F32(f32::NAN));
+        assert_eq!(F64(f64::NAN), F64(f64::NAN));
+        assert_eq!(F32(0.0), F32(-0.0));
+        assert_eq!(F64(0.0), F64(-0.0));
+        assert_eq!(F32(f32::from_bits(0x7fc00001)), F32(f32::NAN));
+
+        assert_eq!(
+            Point(Point::new(f64::NAN, 1.0)),
+            Point(Point::new(f64::NAN, 1.0))
+        );
+        assert_eq!(
+            Point(Point::new(1.0, f64::NAN)),
+            Point(Point::new(1.0, f64::NAN))
+        );
+        assert_eq!(Point(Point::new(0.0, 1.0)), Point(Point::new(-0.0, 1.0)));
+        assert_eq!(Point(Point::new(1.0, 0.0)), Point(Point::new(1.0, -0.0)));
+
+        let mut map1 = BTreeMap::new();
+        map1.insert("a".to_owned(), I64(1));
+        let mut map2 = BTreeMap::new();
+        map2.insert("a".to_owned(), I64(1));
+        assert_eq!(Map(map1), Map(map2));
+    }
+
+    #[test]
+    fn test_conversion_from_tribool() {
+        use {super::Value, utils::Tribool};
+
+        assert_eq!(Value::from(Tribool::True), Value::Bool(true));
+        assert_eq!(Value::from(Tribool::False), Value::Bool(false));
+        assert_eq!(Value::from(Tribool::Null), Value::Null);
     }
 }

@@ -2,22 +2,18 @@
 
 pub mod aggregate;
 pub mod alter;
-pub mod arithmetic;
 pub mod array;
 pub mod ast_builder;
 pub mod basic;
-pub mod bitwise_and;
-pub mod bitwise_shift_left;
-pub mod bitwise_shift_right;
-pub mod case;
 pub mod column_alias;
-pub mod concat;
 pub mod custom_function;
 pub mod data_type;
 pub mod default;
 pub mod delete;
 pub mod dictionary;
 pub mod dictionary_index;
+pub mod distinct;
+pub mod expr;
 pub mod filter;
 pub mod foreign_key;
 pub mod function;
@@ -42,7 +38,6 @@ pub mod store;
 pub mod synthesize;
 pub mod transaction;
 pub mod type_match;
-pub mod unary_operator;
 pub mod update;
 pub mod validate;
 pub mod values;
@@ -77,7 +72,6 @@ macro_rules! generate_store_tests {
         glue!(delete, delete::delete);
         glue!(basic, basic::basic);
         glue!(array, array::array);
-        glue!(bitwise_and, bitwise_and::bitwise_and);
         glue!(aggregate_avg, aggregate::avg::avg);
         glue!(aggregate_count, aggregate::count::count);
         glue!(aggregate_group_by, aggregate::group_by::group_by);
@@ -88,16 +82,28 @@ macro_rules! generate_store_tests {
         glue!(aggregate_total, aggregate::total::total);
         glue!(aggregate_variance, aggregate::variance::variance);
         glue!(aggregate_error, aggregate::error::error);
-        glue!(arithmetic_error, arithmetic::error::error);
-        glue!(arithmetic_project, arithmetic::project::project);
-        glue!(arithmetic_on_where, arithmetic::on_where::on_where);
-        glue!(concat, concat::concat);
+        glue!(aggregate_expr, aggregate::expr::expr);
         glue!(project, project::project);
-        glue!(bitwise_shift_left, bitwise_shift_left::bitwise_shift_left);
+
+        // expression tests
+        glue!(arithmetic_error, expr::arithmetic::error::error);
+        glue!(arithmetic_project, expr::arithmetic::project::project);
+        glue!(arithmetic_on_where, expr::arithmetic::on_where::on_where);
+        glue!(bitwise_and, expr::bitwise_and::bitwise_and);
+        glue!(
+            bitwise_shift_left,
+            expr::bitwise_shift_left::bitwise_shift_left
+        );
         glue!(
             bitwise_shift_right,
-            bitwise_shift_right::bitwise_shift_right
+            expr::bitwise_shift_right::bitwise_shift_right
         );
+        glue!(case, expr::case::case);
+        glue!(concat, expr::concat::concat);
+        glue!(expr_between, expr::between::between);
+        glue!(expr_in_list, expr::in_list::in_list);
+        glue!(unary_operator, expr::unary_operator::unary_operator);
+
         glue!(create_table, alter::create_table);
         glue!(drop_table, alter::drop_table);
         glue!(default, default::default);
@@ -106,7 +112,6 @@ macro_rules! generate_store_tests {
         glue!(filter, filter::filter);
         glue!(inline_view, inline_view::inline_view);
         glue!(values, values::values);
-        glue!(unary_operator, unary_operator::unary_operator);
         glue!(function_upper_lower, function::upper_lower::upper_lower);
         glue!(function_initcap, function::initcap::initcap);
         glue!(function_gcd_lcm, function::gcd_lcm::gcd_lcm);
@@ -133,6 +138,7 @@ macro_rules! generate_store_tests {
         glue!(function_abs, function::abs::abs);
         glue!(function_ceil, function::ceil::ceil);
         glue!(function_round, function::round::round);
+        glue!(function_trunc, function::trunc::trunc);
         glue!(function_rand, function::rand::rand);
         glue!(function_floor, function::floor::floor);
         glue!(function_format, function::format::format);
@@ -186,6 +192,7 @@ macro_rules! generate_store_tests {
         glue!(order_by, order_by::order_by);
         glue!(sql_types, data_type::sql_types::sql_types);
         glue!(show_columns, show_columns::show_columns);
+        glue!(distinct, distinct::distinct);
         glue!(int8, data_type::int8::int8);
         glue!(int16, data_type::int16::int16);
         glue!(int32, data_type::int32::int32);
@@ -206,6 +213,7 @@ macro_rules! generate_store_tests {
         glue!(bytea, data_type::bytea::bytea);
         glue!(inet, data_type::inet::inet);
         glue!(point, data_type::point::point);
+        glue!(null, data_type::null::null);
         glue!(synthesize, synthesize::synthesize);
         glue!(validate_unique, validate::unique::unique);
         glue!(validate_types, validate::types::types);
@@ -215,7 +223,6 @@ macro_rules! generate_store_tests {
         glue!(function_pi, function::pi::pi);
         glue!(function_reverse, function::reverse::reverse);
         glue!(function_repeat, function::repeat::repeat);
-        glue!(case, case::case);
         glue!(function_substr, function::substr::substr);
         glue!(uuid, data_type::uuid::uuid);
         glue!(decimal, data_type::decimal::decimal);
@@ -271,12 +278,12 @@ macro_rules! generate_store_tests {
             ast_builder::function::text::padding
         );
         glue!(
-            ast_builder_function_other_coalesce,
-            ast_builder::function::other::coalesce::coalesce
+            ast_builder_function_reference_coalesce,
+            ast_builder::function::reference::coalesce
         );
         glue!(
-            ast_builder_function_other_ifnull,
-            ast_builder::function::other::ifnull::ifnull
+            ast_builder_function_reference_ifnull,
+            ast_builder::function::reference::ifnull
         );
         glue!(
             ast_builder_function_datetime_conversion,
@@ -301,6 +308,22 @@ macro_rules! generate_store_tests {
         glue!(
             ast_builder_function_datetime_current_date_and_time,
             ast_builder::function::datetime::current_date_and_time
+        );
+        glue!(
+            ast_builder_function_reference_current_date,
+            ast_builder::function::reference::current_date
+        );
+        glue!(
+            ast_builder_function_reference_current_time,
+            ast_builder::function::reference::current_time
+        );
+        glue!(
+            ast_builder_function_reference_current_timestamp,
+            ast_builder::function::reference::current_timestamp
+        );
+        glue!(
+            ast_builder_function_reference_generate_uuid,
+            ast_builder::function::reference::generate_uuid
         );
         glue!(
             ast_builder_function_text_position_and_indexing,

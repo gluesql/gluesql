@@ -47,30 +47,6 @@ pub struct OperateFunctionArg {
     pub default: Option<Expr>,
 }
 
-impl ToSql for AlterTableOperation {
-    fn to_sql(&self) -> String {
-        match self {
-            AlterTableOperation::AddColumn { column_def } => {
-                format!("ADD COLUMN {}", column_def.to_sql())
-            }
-            AlterTableOperation::DropColumn {
-                column_name,
-                if_exists,
-            } => match if_exists {
-                true => format!(r#"DROP COLUMN IF EXISTS "{column_name}""#),
-                false => format!(r#"DROP COLUMN "{column_name}""#),
-            },
-            AlterTableOperation::RenameColumn {
-                old_column_name,
-                new_column_name,
-            } => format!(r#"RENAME COLUMN "{old_column_name}" TO "{new_column_name}""#),
-            AlterTableOperation::RenameTable { table_name } => {
-                format!(r#"RENAME TO "{table_name}""#)
-            }
-        }
-    }
-}
-
 impl ToSql for ColumnDef {
     fn to_sql(&self) -> String {
         let ColumnDef {
@@ -93,7 +69,7 @@ impl ToSql for ColumnDef {
             let unique = unique.as_ref().map(ToSql::to_sql);
             let comment = comment
                 .as_ref()
-                .map(|comment| format!("COMMENT '{}'", comment));
+                .map(|comment| format!("COMMENT '{comment}'"));
 
             [Some(column_def), default, unique, comment]
                 .into_iter()
@@ -115,26 +91,9 @@ impl ToSql for ColumnUniqueOption {
     }
 }
 
-impl ToSql for OperateFunctionArg {
-    fn to_sql(&self) -> String {
-        let OperateFunctionArg {
-            name,
-            data_type,
-            default,
-        } = self;
-        let default = default
-            .as_ref()
-            .map(|expr| format!(" DEFAULT {}", expr.to_sql()))
-            .unwrap_or_else(|| "".to_owned());
-        format!(r#""{name}" {data_type}{default}"#)
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::ast::{
-        AstLiteral, ColumnDef, ColumnUniqueOption, DataType, Expr, OperateFunctionArg, ToSql,
-    };
+    use crate::ast::{AstLiteral, ColumnDef, ColumnUniqueOption, DataType, Expr, ToSql};
 
     #[test]
     fn to_sql_column_def() {
@@ -212,29 +171,6 @@ mod tests {
                 default: None,
                 unique: None,
                 comment: Some("this is comment".to_owned()),
-            }
-            .to_sql()
-        );
-    }
-
-    #[test]
-    fn to_sql_operate_function_arg() {
-        assert_eq!(
-            r#""name" TEXT"#,
-            OperateFunctionArg {
-                name: "name".to_owned(),
-                data_type: DataType::Text,
-                default: None,
-            }
-            .to_sql()
-        );
-
-        assert_eq!(
-            r#""accepted" BOOLEAN DEFAULT FALSE"#,
-            OperateFunctionArg {
-                name: "accepted".to_owned(),
-                data_type: DataType::Boolean,
-                default: Some(Expr::Literal(AstLiteral::Boolean(false))),
             }
             .to_sql()
         );

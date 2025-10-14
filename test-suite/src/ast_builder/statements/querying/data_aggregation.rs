@@ -60,4 +60,88 @@ test_case!(data_aggregation, {
         50    2
     ));
     assert_eq!(actual, expected, "having");
+
+    let actual = table("User")
+        .select()
+        .project(col("age").count_distinct().alias_as("unique_ages"))
+        .execute(glue)
+        .await;
+    let expected = Ok(select!(
+        unique_ages
+        I64;
+        3
+    ));
+    assert_eq!(actual, expected, "AST Builder COUNT DISTINCT example");
+
+    let actual = table("User")
+        .select()
+        .project(col("age").sum_distinct().alias_as("sum_distinct"))
+        .execute(glue)
+        .await;
+    let expected = Ok(select!(
+        sum_distinct
+        I64;
+        100
+    ));
+    assert_eq!(actual, expected, "AST Builder SUM DISTINCT example");
+
+    let actual = table("User")
+        .select()
+        .project(col("age").avg_distinct().alias_as("avg_distinct"))
+        .execute(glue)
+        .await;
+    let expected = Ok(select!(
+        avg_distinct
+        F64;
+        33.333333333333336
+    ));
+    assert_eq!(actual, expected, "AST Builder AVG DISTINCT example");
+
+    let actual = table("User")
+        .select()
+        .project(col("age").min_distinct().alias_as("min_distinct"))
+        .execute(glue)
+        .await;
+    let expected = Ok(select!(
+        min_distinct
+        I64;
+        20
+    ));
+    assert_eq!(actual, expected, "AST Builder MIN DISTINCT example");
+
+    let actual = table("User")
+        .select()
+        .project(col("age").max_distinct().alias_as("max_distinct"))
+        .execute(glue)
+        .await;
+    let expected = Ok(select!(
+        max_distinct
+        I64;
+        50
+    ));
+    assert_eq!(actual, expected, "AST Builder MAX DISTINCT example");
+
+    let actual = table("User")
+        .select()
+        .project(col("age").variance_distinct().alias_as("variance_distinct"))
+        .execute(glue)
+        .await;
+    let expected = Ok(select!(
+        variance_distinct
+        F64;
+        155.55555555555554
+    ));
+    assert_eq!(actual, expected, "AST Builder VARIANCE DISTINCT example");
+
+    let actual = table("User")
+        .select()
+        .project(col("age").stdev_distinct().alias_as("stdev_distinct"))
+        .execute(glue)
+        .await;
+    let expected = Ok(select!(
+        stdev_distinct
+        F64;
+        12.47219128924647
+    ));
+    assert_eq!(actual, expected, "AST Builder STDEV DISTINCT example");
 });

@@ -94,6 +94,7 @@ async fn scan_query<T: Store>(storage: &T, query: &Query) -> Result<HashMap<Stri
 
 async fn scan_select<T: Store>(storage: &T, select: &Select) -> Result<HashMap<String, Schema>> {
     let Select {
+        distinct: _,
         projection,
         from,
         selection,
@@ -167,7 +168,7 @@ async fn scan_join<T: Store>(storage: &T, join: &Join) -> Result<HashMap<String,
     Ok(schema_list)
 }
 
-#[async_recursion(?Send)]
+#[async_recursion]
 async fn scan_table_factor<T>(
     storage: &T,
     table_factor: &TableFactor,
@@ -189,7 +190,7 @@ where
     }
 }
 
-#[async_recursion(?Send)]
+#[async_recursion]
 async fn scan_expr<T>(storage: &T, expr: &Expr) -> Result<HashMap<String, Schema>>
 where
     T: Store,

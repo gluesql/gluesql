@@ -1,5 +1,5 @@
 use {
-    super::RedisStorage,
+    super::{RedisStorage, mutex::MutexExt},
     async_trait::async_trait,
     gluesql_core::{
         ast::ColumnDef,
@@ -10,7 +10,7 @@ use {
     redis::Commands,
 };
 
-#[async_trait(?Send)]
+#[async_trait]
 impl AlterTable for RedisStorage {
     async fn rename_schema(&mut self, table_name: &str, new_table_name: &str) -> Result<()> {
         if let Some(mut schema) = self.fetch_schema(table_name).await? {
@@ -116,33 +116,33 @@ impl AlterTable for RedisStorage {
             // it needs to use the mutable reference of self.
             // Otherwise, it will cause a mutable reference conflict.
             let scan_key = Self::redis_generate_scankey(&self.namespace, table_name);
-            let key_iter: Vec<String> = self
-                .conn
-                .borrow_mut()
-                .scan_match(&scan_key)
-                .map(|iter| iter.collect::<Vec<String>>())
-                .map_err(|_| {
-                    Error::StorageMsg(format!(
-                        "[RedisStorage] failed to execute SCAN: key={}",
-                        scan_key
-                    ))
-                })?;
-
-            for key in key_iter {
-                let value = redis::cmd("GET")
-                    .arg(&key)
-                    .query::<String>(&mut self.conn.borrow_mut())
+            let key_iter: Vec<String> = {
+                let mut conn = self.conn.lock_err()?;
+                conn.scan_match(&scan_key)
+                    .map(|iter| iter.collect::<Vec<String>>())
                     .map_err(|_| {
                         Error::StorageMsg(format!(
-                            "[RedisStorage] failed to execute GET: key={}",
-                            key
+                            "[RedisStorage] failed to execute SCAN: key={scan_key}"
                         ))
-                    })?;
+                    })?
+            };
+
+            for key in key_iter {
+                let value = {
+                    let mut conn = self.conn.lock_err()?;
+                    redis::cmd("GET")
+                        .arg(&key)
+                        .query::<String>(&mut *conn)
+                        .map_err(|_| {
+                            Error::StorageMsg(format!(
+                                "[RedisStorage] failed to execute GET: key={key}"
+                            ))
+                        })?
+                };
 
                 let mut row: DataRow = serde_json::from_str(&value).map_err(|e| {
                     Error::StorageMsg(format!(
-                        "[RedisStorage] failed to deserialize value={} error={}",
-                        value, e
+                        "[RedisStorage] failed to deserialize value={value} error={e}"
                     ))
                 })?;
                 match &mut row {
@@ -159,20 +159,21 @@ impl AlterTable for RedisStorage {
 
                 let new_value = serde_json::to_string(&row).map_err(|_e| {
                     Error::StorageMsg(format!(
-                        "[RedisStorage] failed to serialize row={:?} error={}",
-                        row, _e
+                        "[RedisStorage] failed to serialize row={row:?} error={_e}"
                     ))
                 })?;
-                let _: () = redis::cmd("SET")
-                    .arg(&key)
-                    .arg(new_value)
-                    .query(&mut self.conn.borrow_mut())
-                    .map_err(|_| {
-                        Error::StorageMsg(format!(
-                            "[RedisStorage] add_column: failed to execute SET for row={:?}",
-                            row
-                        ))
-                    })?;
+                let _: () = {
+                    let mut conn = self.conn.lock_err()?;
+                    redis::cmd("SET")
+                        .arg(&key)
+                        .arg(new_value)
+                        .query(&mut *conn)
+                        .map_err(|_| {
+                            Error::StorageMsg(format!(
+                                "[RedisStorage] add_column: failed to execute SET for row={row:?}"
+                            ))
+                        })?
+                };
             }
 
             column_defs.push(column_def.clone());
@@ -210,8 +211,7 @@ impl AlterTable for RedisStorage {
                         if let Some(value) = self.redis_execute_get(&key)? {
                             let mut row: DataRow = serde_json::from_str(&value).map_err(|e| {
                                 Error::StorageMsg(format!(
-                                    "[RedisStorage] failed to deserialize value={} error={}",
-                                    value, e
+                                    "[RedisStorage] failed to deserialize value={value} error={e}"
                                 ))
                             })?;
                             match &mut row {
@@ -220,15 +220,14 @@ impl AlterTable for RedisStorage {
                                 }
                                 DataRow::Map(_) => {
                                     return Err(Error::StorageMsg(
-                                    "[RedisStorage] conflict - add_column failed: schemaless row found".to_owned(),
+                                    "[RedisStorage] conflict - drop_column failed: schemaless row found".to_owned(),
                                 ));
                                 }
                             }
 
                             let new_value = serde_json::to_string(&row).map_err(|e| {
                                 Error::StorageMsg(format!(
-                                    "[RedisStorage] failed to serialize row={:?} error={}",
-                                    row, e
+                                    "[RedisStorage] failed to serialize row={row:?} error={e}"
                                 ))
                             })?;
                             self.redis_execute_set(&key, &new_value)?;

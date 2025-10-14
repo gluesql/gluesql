@@ -14,7 +14,7 @@ impl SledStorage {
     const SCHEMA_PREFIX: &'static str = "schema/";
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Store for SledStorage {
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         let (txid, created_at) = match self.state {
@@ -48,7 +48,7 @@ impl Store for SledStorage {
         };
         let lock_txid = lock::fetch(&self.tree, txid, created_at, self.tx_timeout)?;
 
-        let key = format!("schema/{}", table_name);
+        let key = format!("schema/{table_name}");
         let schema = self
             .tree
             .get(key.as_bytes())

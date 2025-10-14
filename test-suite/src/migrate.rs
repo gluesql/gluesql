@@ -37,10 +37,17 @@ test_case!(migrate, {
         ),
         (
             "INSERT INTO Test (id, num, name) VALUES (1, 1, a.b);",
-            EvaluateError::ContextRequiredForIdentEvaluation(Expr::CompoundIdentifier {
+            EvaluateError::ContextRequiredForIdentEvaluation(Box::new(Expr::CompoundIdentifier {
                 alias: "a".to_owned(),
                 ident: "b".to_owned(),
-            })
+            }))
+            .into(),
+        ),
+        (
+            "INSERT INTO Test (id, num, name) VALUES (1, 1, name);",
+            EvaluateError::ContextRequiredForIdentEvaluation(Box::new(Expr::Identifier(
+                "name".to_owned(),
+            )))
             .into(),
         ),
         (
@@ -73,6 +80,10 @@ test_case!(migrate, {
         (
             "TRUNCATE TABLE ProjectUser;",
             TranslateError::UnsupportedStatement("TRUNCATE TABLE ProjectUser".to_owned()).into(),
+        ),
+        (
+            "SELECT DISTINCT ON (id) id, num, name FROM Test;",
+            TranslateError::SelectDistinctOnNotSupported.into(),
         ),
     ];
 

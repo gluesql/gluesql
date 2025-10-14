@@ -21,7 +21,14 @@ impl Interval {
                 let literal = match expr.as_ref() {
                     Expr::Literal(literal) => literal.to_sql(),
                     _ => {
-                        return Err(IntervalError::ParseSupportedOnlyLiteral { expr: *expr }.into());
+                        return Err(IntervalError::ParseSupportedOnlyLiteral {
+                            expr: Box::new(Expr::Interval {
+                                expr,
+                                leading_field,
+                                last_field,
+                            }),
+                        }
+                        .into());
                     }
                 };
 
@@ -41,9 +48,9 @@ impl Interval {
                 let month = v % 12;
 
                 match (year, month) {
-                    (_, 0) if year != 0 => format!("'{}{}' YEAR", sign, year),
-                    (0, _) => format!("'{}{}' MONTH", sign, month),
-                    _ => format!("'{}{}-{}' YEAR TO MONTH", sign, year, month),
+                    (_, 0) if year != 0 => format!("'{sign}{year}' YEAR"),
+                    (0, _) => format!("'{sign}{month}' MONTH"),
+                    _ => format!("'{sign}{year}-{month}' YEAR TO MONTH"),
                 }
             }
             Interval::Microsecond(v) => {
@@ -146,7 +153,10 @@ impl Interval {
 
 #[cfg(test)]
 mod tests {
-    use super::Interval;
+    use {
+        super::{Interval, IntervalError},
+        crate::{parse_sql::parse_interval, translate::translate_expr},
+    };
 
     #[test]
     fn parse() {
@@ -264,6 +274,22 @@ mod tests {
         test!(
             30 days, 30 hours, 100 seconds, 3 microseconds =>
             "31 06:01:40.000003" DAY TO SECOND
+        );
+    }
+
+    #[test]
+    fn parse_rejects_non_literal_expr() {
+        let error = Interval::parse("INTERVAL value DAY").unwrap_err();
+
+        let parsed = parse_interval("INTERVAL value DAY").unwrap();
+        let expected_expr = translate_expr(&parsed).unwrap();
+
+        assert_eq!(
+            error,
+            IntervalError::ParseSupportedOnlyLiteral {
+                expr: Box::new(expected_expr),
+            }
+            .into(),
         );
     }
 }
