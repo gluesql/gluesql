@@ -30,7 +30,7 @@ enum GlueStorage {
     SharedMemoryStorage(RustGlue<SharedMemoryStorage>),
 }
 
-#[derive(uniffi::Enum, Clone, Copy)]
+#[derive(uniffi::Enum, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum GlueStorageKind {
     MemoryStorage,
     SharedMemoryStorage,
@@ -450,77 +450,852 @@ impl Glue {
         });
         recv.await.unwrap().unwrap()
     }
-    async fn add_dummy_data(&self) -> Vec<Payload> {
-        let sqls = vec![
-            "DROP TABLE IF EXISTS OrderDetails;
-DROP TABLE IF EXISTS Orders;
-DROP TABLE IF EXISTS Products;
-DROP TABLE IF EXISTS Customers;".into(),
-            "CREATE TABLE Customers (
-    CustomerID INT PRIMARY KEY,
-    FirstName TEXT,
-    LastName TEXT,
-    Email TEXT UNIQUE,
-    RegistrationDate DATE
-);".into(),
-            "CREATE TABLE Products (
-    ProductID INT PRIMARY KEY,
-    ProductName TEXT,
-    Category TEXT,
-    Price DECIMAL
-);".into(),
-            "CREATE TABLE Orders (
-    OrderID INT PRIMARY KEY,
-    CustomerID INT,
-    OrderDate DATE,
-    TotalAmount DECIMAL,
-    FOREIGN KEY (CustomerID) REFERENCES Customers(CustomerID)
-);".into(),
-            "CREATE TABLE OrderDetails (
-    OrderDetailID INT PRIMARY KEY,
-    OrderID INT,
-    ProductID INT,
-    Quantity INT,
-    PricePerUnit DECIMAL,
-    FOREIGN KEY (OrderID) REFERENCES Orders(OrderID),
-    FOREIGN KEY (ProductID) REFERENCES Products(ProductID)
-);".into(),
-            "INSERT INTO Customers (CustomerID, FirstName, LastName, Email, RegistrationDate) VALUES
-(1, 'John', 'Smith', 'john.smith@email.com', '2022-01-15'),
-(2, 'Jane', 'Doe', 'jane.doe@email.com', '2022-02-20'),
-(3, 'Peter', 'Jones', 'peter.jones@email.com', '2022-03-10'),
-(4, 'Maria', 'Garcia', 'maria.garcia@email.com', '2023-05-01');
-".into(),
-            "INSERT INTO Products (ProductID, ProductName, Category, Price) VALUES
-(101, 'Laptop', 'Electronics', 1200.00),
-(102, 'Smartphone', 'Electronics', 800.00),
-(103, 'Coffee Maker', 'Home Goods', 75.50),
-(104, 'Desk Chair', 'Furniture', 250.00),
-(105, 'SQL for Beginners', 'Books', 45.99);".into(),
-            "INSERT INTO Orders (OrderID, CustomerID, OrderDate, TotalAmount) VALUES
-(1001, 1, '2023-04-10', 1245.99),
-(1002, 2, '2023-04-12', 800.00),
-(1003, 1, '2023-05-21', 75.50),
-(1004, 3, '2023-06-01', 295.99);".into(),
-            "INSERT INTO OrderDetails (OrderDetailID, OrderID, ProductID, Quantity, PricePerUnit) VALUES
-(1, 1001, 101, 1, 1200.00),
-(2, 1001, 105, 1, 45.99),
-(3, 1002, 102, 1, 800.00),
-(4, 1003, 103, 1, 75.50),
-(5, 1004, 104, 1, 250.00),
-(6, 1004, 105, 1, 45.99);
+}
 
-".into(),
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gluesql_core::prelude::Value as RustValue;
+    use std::net::{Ipv4Addr as RustIpv4Addr, Ipv6Addr as RustIpv6Addr};
+    use std::sync::Arc;
+
+    // MARK: - Type Conversion Tests
+
+    #[test]
+    fn test_value_bool_conversion() {
+        let rust_value = RustValue::Bool(true);
+        let value: Value = rust_value.into();
+
+        match value {
+            Value::Bool(b) => assert!(b),
+            _ => panic!("Expected Bool variant"),
+        }
+    }
+
+    #[test]
+    fn test_value_integer_conversions() {
+        // Test I8
+        let value: Value = RustValue::I8(127).into();
+        assert!(matches!(value, Value::I8(127)));
+
+        // Test I16
+        let value: Value = RustValue::I16(32767).into();
+        assert!(matches!(value, Value::I16(32767)));
+
+        // Test I32
+        let value: Value = RustValue::I32(2147483647).into();
+        assert!(matches!(value, Value::I32(2147483647)));
+
+        // Test I64
+        let value: Value = RustValue::I64(9223372036854775807).into();
+        assert!(matches!(value, Value::I64(9223372036854775807)));
+    }
+
+    #[test]
+    fn test_value_i128_conversion() {
+        let rust_value = RustValue::I128(123456789i128);
+        let value: Value = rust_value.into();
+
+        if let Value::I128(i128_val) = value {
+            // Convert back to verify
+            let mut bytes = [0u8; 16];
+            bytes[0..8].copy_from_slice(&i128_val.high.to_le_bytes());
+            bytes[8..16].copy_from_slice(&i128_val.low.to_le_bytes());
+            let reconstructed = i128::from_le_bytes(bytes);
+            assert_eq!(reconstructed, 123456789i128);
+        } else {
+            panic!("Expected I128 variant");
+        }
+    }
+
+    #[test]
+    fn test_value_u128_conversion() {
+        let rust_value = RustValue::U128(123456789u128);
+        let value: Value = rust_value.into();
+
+        if let Value::U128(u128_val) = value {
+            let mut bytes = [0u8; 16];
+            bytes[0..8].copy_from_slice(&u128_val.high.to_le_bytes());
+            bytes[8..16].copy_from_slice(&u128_val.low.to_le_bytes());
+            let reconstructed = u128::from_le_bytes(bytes);
+            assert_eq!(reconstructed, 123456789u128);
+        } else {
+            panic!("Expected U128 variant");
+        }
+    }
+
+    #[test]
+    fn test_value_float_conversions() {
+        let value: Value = RustValue::F32(3.11f32).into();
+        if let Value::F32(f) = value {
+            assert!((f - 3.11f32).abs() < 0.001);
+        } else {
+            panic!("Expected F32 variant");
+        }
+
+        let value: Value = RustValue::F64(3.11111111111f64).into();
+        if let Value::F64(f) = value {
+            assert!((f - 3.11111111111f64).abs() < 0.0000001);
+        } else {
+            panic!("Expected F64 variant");
+        }
+    }
+
+    #[test]
+    fn test_value_string_conversion() {
+        let rust_value = RustValue::Str("Hello, World!".to_string());
+        let value: Value = rust_value.into();
+
+        match value {
+            Value::Str(s) => assert_eq!(s, "Hello, World!"),
+            _ => panic!("Expected Str variant"),
+        }
+    }
+
+    #[test]
+    fn test_value_bytea_conversion() {
+        let bytes = vec![0u8, 1, 2, 3, 4, 5];
+        let rust_value = RustValue::Bytea(bytes.clone());
+        let value: Value = rust_value.into();
+
+        match value {
+            Value::Bytea(b) => assert_eq!(b, bytes),
+            _ => panic!("Expected Bytea variant"),
+        }
+    }
+
+    #[test]
+    fn test_value_null_conversion() {
+        let rust_value = RustValue::Null;
+        let value: Value = rust_value.into();
+
+        assert!(matches!(value, Value::Null));
+    }
+
+    #[test]
+    fn test_value_list_conversion() {
+        let rust_list = vec![RustValue::I64(1), RustValue::I64(2), RustValue::I64(3)];
+        let rust_value = RustValue::List(rust_list);
+        let value: Value = rust_value.into();
+
+        if let Value::List(list) = value {
+            assert_eq!(list.len(), 3);
+            assert!(matches!(list[0], Value::I64(1)));
+            assert!(matches!(list[1], Value::I64(2)));
+            assert!(matches!(list[2], Value::I64(3)));
+        } else {
+            panic!("Expected List variant");
+        }
+    }
+
+    #[test]
+    fn test_value_map_conversion() {
+        let mut rust_map = std::collections::HashMap::new();
+        rust_map.insert("key1".to_string(), RustValue::Str("value1".to_string()));
+        rust_map.insert("key2".to_string(), RustValue::I64(42));
+
+        let rust_value = RustValue::Map(rust_map);
+        let value: Value = rust_value.into();
+
+        if let Value::Map(map) = value {
+            assert_eq!(map.len(), 2);
+            assert!(matches!(map.get("key1"), Some(Value::Str(_))));
+            assert!(matches!(map.get("key2"), Some(Value::I64(42))));
+        } else {
+            panic!("Expected Map variant");
+        }
+    }
+
+    #[test]
+    fn test_point_conversion() {
+        let rust_point = RustPoint { x: 10.5, y: 20.3 };
+        let rust_value = RustValue::Point(rust_point);
+        let value: Value = rust_value.into();
+
+        if let Value::Point(point) = value {
+            assert!((point.x - 10.5).abs() < 0.0001);
+            assert!((point.y - 20.3).abs() < 0.0001);
+        } else {
+            panic!("Expected Point variant");
+        }
+    }
+
+    #[test]
+    fn test_interval_conversion() {
+        // Test Month variant
+        let rust_interval = RustInterval::Month(12);
+        let interval: Interval = rust_interval.into();
+        assert!(matches!(interval, Interval::Month(12)));
+
+        // Test Microsecond variant
+        let rust_interval = RustInterval::Microsecond(1000000);
+        let interval: Interval = rust_interval.into();
+        assert!(matches!(interval, Interval::Microsecond(1000000)));
+    }
+
+    #[test]
+    fn test_ipv4_conversion() {
+        let rust_ipv4 = RustIpv4Addr::new(127, 0, 0, 1);
+        let ipv4: Ipv4Addr = rust_ipv4.into();
+
+        assert_eq!(ipv4.octets.len(), 4);
+        assert_eq!(ipv4.octets, vec![127, 0, 0, 1]);
+    }
+
+    #[test]
+    fn test_ipv6_conversion() {
+        let rust_ipv6 = RustIpv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1);
+        let ipv6: Ipv6Addr = rust_ipv6.into();
+
+        assert_eq!(ipv6.octets.len(), 16);
+    }
+
+    #[test]
+    fn test_ipaddr_conversion() {
+        // Test V4
+        let rust_ip = std::net::IpAddr::V4(RustIpv4Addr::new(192, 168, 1, 1));
+        let ip: IpAddr = rust_ip.into();
+        assert!(matches!(ip, IpAddr::V4(_)));
+
+        // Test V6
+        let rust_ip = std::net::IpAddr::V6(RustIpv6Addr::LOCALHOST);
+        let ip: IpAddr = rust_ip.into();
+        assert!(matches!(ip, IpAddr::V6(_)));
+    }
+
+    #[test]
+    fn test_datatype_conversions() {
+        assert!(matches!(
+            DataType::from(RustDataType::Boolean),
+            DataType::Boolean
+        ));
+        assert!(matches!(DataType::from(RustDataType::Int), DataType::Int));
+        assert!(matches!(DataType::from(RustDataType::Int8), DataType::Int8));
+        assert!(matches!(DataType::from(RustDataType::Text), DataType::Text));
+        assert!(matches!(
+            DataType::from(RustDataType::Float),
+            DataType::Float
+        ));
+        assert!(matches!(DataType::from(RustDataType::Date), DataType::Date));
+        assert!(matches!(DataType::from(RustDataType::Uuid), DataType::Uuid));
+        assert!(matches!(
+            DataType::from(RustDataType::Point),
+            DataType::Point
+        ));
+    }
+
+    // MARK: - Payload Conversion Tests
+
+    #[test]
+    fn test_payload_create_conversion() {
+        let rust_payload = RustPayload::Create;
+        let payload: Payload = rust_payload.into();
+        assert!(matches!(payload, Payload::Create));
+    }
+
+    #[test]
+    fn test_payload_insert_conversion() {
+        let rust_payload = RustPayload::Insert(5);
+        let payload: Payload = rust_payload.into();
+
+        if let Payload::Insert(count) = payload {
+            assert_eq!(count, 5);
+        } else {
+            panic!("Expected Insert payload");
+        }
+    }
+
+    #[test]
+    fn test_payload_select_conversion() {
+        let labels = vec!["id".to_string(), "name".to_string()];
+        let rows = vec![
+            vec![RustValue::I64(1), RustValue::Str("Alice".to_string())],
+            vec![RustValue::I64(2), RustValue::Str("Bob".to_string())],
         ];
-        let (send, recv) = tokio::sync::oneshot::channel();
-        let _ = QUEUE.lock().unwrap().sender.try_send(Dto {
-            glue_id: self.glue_id,
-            msg: CmdKind::Query(Task {
-                // glue_id: src.glue_id,
-                sql: sqls,
-            }),
-            notifier: send,
-        });
-        recv.await.unwrap().unwrap()
+
+        let rust_payload = RustPayload::Select {
+            labels: labels.clone(),
+            rows,
+        };
+        let payload: Payload = rust_payload.into();
+
+        if let Payload::Select { labels: l, rows: r } = payload {
+            assert_eq!(l, labels);
+            assert_eq!(r.len(), 2);
+        } else {
+            panic!("Expected Select payload");
+        }
+    }
+
+    #[test]
+    fn test_payload_delete_conversion() {
+        let rust_payload = RustPayload::Delete(3);
+        let payload: Payload = rust_payload.into();
+
+        if let Payload::Delete(count) = payload {
+            assert_eq!(count, 3);
+        } else {
+            panic!("Expected Delete payload");
+        }
+    }
+
+    #[test]
+    fn test_payload_update_conversion() {
+        let rust_payload = RustPayload::Update(2);
+        let payload: Payload = rust_payload.into();
+
+        if let Payload::Update(count) = payload {
+            assert_eq!(count, 2);
+        } else {
+            panic!("Expected Update payload");
+        }
+    }
+
+    #[test]
+    fn test_payload_transaction_conversions() {
+        assert!(matches!(
+            Payload::from(RustPayload::StartTransaction),
+            Payload::StartTransaction
+        ));
+        assert!(matches!(
+            Payload::from(RustPayload::Commit),
+            Payload::Commit
+        ));
+        assert!(matches!(
+            Payload::from(RustPayload::Rollback),
+            Payload::Rollback
+        ));
+    }
+
+    #[test]
+    fn test_payload_show_columns_conversion() {
+        let columns = vec![
+            ("id".to_string(), RustDataType::Int),
+            ("name".to_string(), RustDataType::Text),
+        ];
+
+        let rust_payload = RustPayload::ShowColumns(columns);
+        let payload: Payload = rust_payload.into();
+
+        if let Payload::ShowColumns(cols) = payload {
+            assert_eq!(cols.len(), 2);
+            assert_eq!(cols[0].field, "id");
+            assert!(matches!(cols[0].data_type, DataType::Int));
+            assert_eq!(cols[1].field, "name");
+            assert!(matches!(cols[1].data_type, DataType::Text));
+        } else {
+            panic!("Expected ShowColumns payload");
+        }
+    }
+
+    // MARK: - Async Integration Tests
+
+    #[tokio::test]
+    async fn test_glue_memory_storage_creation() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+        assert_eq!(glue.kind, GlueStorageKind::MemoryStorage);
+        assert!(!glue.get_id().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_glue_shared_memory_storage_creation() {
+        let glue = Glue::new(GlueStorageKind::SharedMemoryStorage).await;
+        assert_eq!(glue.kind, GlueStorageKind::SharedMemoryStorage);
+        assert!(!glue.get_id().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_unique_glue_ids() {
+        let glue1 = Glue::new(GlueStorageKind::MemoryStorage).await;
+        let glue2 = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        assert_ne!(glue1.glue_id, glue2.glue_id);
+    }
+
+    #[tokio::test]
+    async fn test_basic_create_table() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let sql = vec!["CREATE TABLE Users (id INT, name TEXT);".to_string()];
+        let result = glue.query(sql).await;
+
+        assert_eq!(result.len(), 1);
+        assert!(matches!(result[0], Payload::Create));
+    }
+
+    #[tokio::test]
+    async fn test_insert_operation() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let sqls = vec![
+            "CREATE TABLE Users (id INT, name TEXT);".to_string(),
+            "INSERT INTO Users VALUES (1, 'Alice');".to_string(),
+        ];
+        let result = glue.query(sqls).await;
+
+        assert_eq!(result.len(), 2);
+        assert!(matches!(result[0], Payload::Create));
+        if let Payload::Insert(count) = result[1] {
+            assert_eq!(count, 1);
+        } else {
+            panic!("Expected Insert payload");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_select_operation() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let sqls = vec![
+            "CREATE TABLE Users (id INT, name TEXT);".to_string(),
+            "INSERT INTO Users VALUES (1, 'Alice');".to_string(),
+            "INSERT INTO Users VALUES (2, 'Bob');".to_string(),
+            "SELECT * FROM Users;".to_string(),
+        ];
+        let result = glue.query(sqls).await;
+
+        assert_eq!(result.len(), 4);
+        if let Payload::Select { labels, rows } = &result[3] {
+            assert_eq!(labels.len(), 2);
+            assert!(labels.contains(&"id".to_string()));
+            assert!(labels.contains(&"name".to_string()));
+            assert_eq!(rows.len(), 2);
+        } else {
+            panic!("Expected Select payload");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_update_operation() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let sqls = vec![
+            "CREATE TABLE Users (id INT, name TEXT);".to_string(),
+            "INSERT INTO Users VALUES (1, 'Alice');".to_string(),
+            "UPDATE Users SET name = 'Alicia' WHERE id = 1;".to_string(),
+        ];
+        let result = glue.query(sqls).await;
+
+        if let Payload::Update(count) = result[2] {
+            assert_eq!(count, 1);
+        } else {
+            panic!("Expected Update payload");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_delete_operation() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let sqls = vec![
+            "CREATE TABLE Users (id INT, name TEXT);".to_string(),
+            "INSERT INTO Users VALUES (1, 'Alice');".to_string(),
+            "INSERT INTO Users VALUES (2, 'Bob');".to_string(),
+            "DELETE FROM Users WHERE id = 1;".to_string(),
+        ];
+        let result = glue.query(sqls).await;
+
+        if let Payload::Delete(count) = result[3] {
+            assert_eq!(count, 1);
+        } else {
+            panic!("Expected Delete payload");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_drop_table() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let sqls = vec![
+            "CREATE TABLE Users (id INT);".to_string(),
+            "DROP TABLE Users;".to_string(),
+        ];
+        let result = glue.query(sqls).await;
+
+        assert!(matches!(result[1], Payload::DropTable(_)));
+    }
+
+    #[tokio::test]
+    async fn test_transaction_operations() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let sqls = vec![
+            "CREATE TABLE Account (id INT, balance INT);".to_string(),
+            "INSERT INTO Account VALUES (1, 100);".to_string(),
+            "START TRANSACTION;".to_string(),
+            "UPDATE Account SET balance = 150 WHERE id = 1;".to_string(),
+            "COMMIT;".to_string(),
+        ];
+        let result = glue.query(sqls).await;
+
+        let mut found_transaction = false;
+        let mut found_commit = false;
+
+        for payload in result {
+            if matches!(payload, Payload::StartTransaction) {
+                found_transaction = true;
+            }
+            if matches!(payload, Payload::Commit) {
+                found_commit = true;
+            }
+        }
+
+        assert!(found_transaction);
+        assert!(found_commit);
+    }
+
+    #[tokio::test]
+    async fn test_rollback_operation() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let sqls = vec![
+            "CREATE TABLE Account (id INT, balance INT);".to_string(),
+            "START TRANSACTION;".to_string(),
+            "ROLLBACK;".to_string(),
+        ];
+        let result = glue.query(sqls).await;
+
+        let found_rollback = result.iter().any(|p| matches!(p, Payload::Rollback));
+        assert!(found_rollback);
+    }
+
+    #[tokio::test]
+    async fn test_where_clause() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let sqls = vec![
+            "CREATE TABLE Products (id INT, category TEXT, name TEXT);".to_string(),
+            "INSERT INTO Products VALUES (1, 'Electronics', 'Laptop');".to_string(),
+            "INSERT INTO Products VALUES (2, 'Electronics', 'Phone');".to_string(),
+            "INSERT INTO Products VALUES (3, 'Books', 'Novel');".to_string(),
+            "SELECT * FROM Products WHERE category = 'Electronics';".to_string(),
+        ];
+        let result = glue.query(sqls).await;
+
+        if let Payload::Select { rows, .. } = &result[4] {
+            assert_eq!(rows.len(), 2);
+        } else {
+            panic!("Expected Select payload");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_order_by() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let sqls = vec![
+            "CREATE TABLE Products (id INT, price INT);".to_string(),
+            "INSERT INTO Products VALUES (1, 100);".to_string(),
+            "INSERT INTO Products VALUES (2, 50);".to_string(),
+            "INSERT INTO Products VALUES (3, 200);".to_string(),
+            "SELECT * FROM Products ORDER BY price DESC;".to_string(),
+        ];
+        let result = glue.query(sqls).await;
+
+        if let Payload::Select { rows, .. } = &result[4] {
+            assert_eq!(rows.len(), 3);
+            // First row should be highest price (200)
+            if let Value::I64(price) = rows[0][1] {
+                assert_eq!(price, 200);
+            }
+        } else {
+            panic!("Expected Select payload");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_aggregate_count() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let sqls = vec![
+            "CREATE TABLE Items (id INT);".to_string(),
+            "INSERT INTO Items VALUES (1);".to_string(),
+            "INSERT INTO Items VALUES (2);".to_string(),
+            "INSERT INTO Items VALUES (3);".to_string(),
+            "SELECT COUNT(*) as count FROM Items;".to_string(),
+        ];
+        let result = glue.query(sqls).await;
+
+        if let Payload::Select { rows, .. } = &result[4] {
+            assert_eq!(rows.len(), 1);
+            if let Value::I64(count) = rows[0][0] {
+                assert_eq!(count, 3);
+            }
+        } else {
+            panic!("Expected Select payload");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_join_operation() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let sqls = vec![
+            "CREATE TABLE Users (id INT, name TEXT);".to_string(),
+            "CREATE TABLE Orders (id INT, user_id INT, amount INT);".to_string(),
+            "INSERT INTO Users VALUES (1, 'Alice');".to_string(),
+            "INSERT INTO Users VALUES (2, 'Bob');".to_string(),
+            "INSERT INTO Orders VALUES (1, 1, 100);".to_string(),
+            "INSERT INTO Orders VALUES (2, 1, 200);".to_string(),
+            "SELECT u.name, o.amount FROM Users u JOIN Orders o ON u.id = o.user_id;".to_string(),
+        ];
+        let result = glue.query(sqls).await;
+
+        if let Payload::Select { labels, rows } = &result[6] {
+            assert_eq!(labels.len(), 2);
+            assert_eq!(rows.len(), 2);
+        } else {
+            panic!("Expected Select payload");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_multiple_queries_single_call() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let queries = vec![
+            "CREATE TABLE Test (id INT);".to_string(),
+            "INSERT INTO Test VALUES (1);".to_string(),
+            "INSERT INTO Test VALUES (2);".to_string(),
+            "SELECT * FROM Test;".to_string(),
+        ];
+        let result = glue.query(queries).await;
+
+        assert_eq!(result.len(), 4);
+        assert!(matches!(result[0], Payload::Create));
+        assert!(matches!(result[1], Payload::Insert(1)));
+        assert!(matches!(result[2], Payload::Insert(1)));
+        if let Payload::Select { rows, .. } = &result[3] {
+            assert_eq!(rows.len(), 2);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_storage_isolation() {
+        let glue1 = Glue::new(GlueStorageKind::MemoryStorage).await;
+        let glue2 = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        // Create table in first instance
+        glue1
+            .query(vec!["CREATE TABLE Test (id INT);".to_string()])
+            .await;
+        glue1
+            .query(vec!["INSERT INTO Test VALUES (1);".to_string()])
+            .await;
+
+        // Different instance should have isolated storage
+        assert_ne!(glue1.glue_id, glue2.glue_id);
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_queries() {
+        let glue = Arc::new(Glue::new(GlueStorageKind::MemoryStorage).await);
+
+        glue.query(vec!["CREATE TABLE Concurrent (id INT);".to_string()])
+            .await;
+
+        // Spawn multiple concurrent queries
+        let handles: Vec<_> = (0..5)
+            .map(|i| {
+                let glue_clone = Arc::clone(&glue);
+                tokio::spawn(async move {
+                    glue_clone
+                        .query(vec![format!("INSERT INTO Concurrent VALUES ({});", i)])
+                        .await
+                })
+            })
+            .collect();
+
+        for handle in handles {
+            handle.await.unwrap();
+        }
+
+        let result = glue
+            .query(vec!["SELECT COUNT(*) FROM Concurrent;".to_string()])
+            .await;
+        if let Payload::Select { rows, .. } = &result[0] {
+            if let Value::I64(count) = rows[0][0] {
+                assert_eq!(count, 5);
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_show_columns() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let sqls = vec![
+            "CREATE TABLE ShowTest (id INT, name TEXT, price FLOAT);".to_string(),
+            "SHOW COLUMNS FROM ShowTest;".to_string(),
+        ];
+        let result = glue.query(sqls).await;
+
+        if let Payload::ShowColumns(columns) = &result[1] {
+            assert_eq!(columns.len(), 3);
+            assert_eq!(columns[0].field, "id");
+            assert!(matches!(columns[0].data_type, DataType::Int));
+        } else {
+            panic!("Expected ShowColumns payload");
+        }
+    }
+
+    // MARK: - Data Type Tests
+
+    #[tokio::test]
+    async fn test_data_types() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let sqls = vec![
+            "CREATE TABLE TypeTest (bool_col BOOLEAN, int_col INT, float_col FLOAT, text_col TEXT);".to_string(),
+            "INSERT INTO TypeTest VALUES (TRUE, 42, 3.14, 'hello');".to_string(),
+            "SELECT * FROM TypeTest;".to_string(),
+        ];
+        let result = glue.query(sqls).await;
+
+        if let Payload::Select { rows, .. } = &result[2] {
+            assert_eq!(rows.len(), 1);
+            let row = &rows[0];
+
+            assert!(matches!(row[0], Value::Bool(true)));
+            assert!(matches!(row[1], Value::I64(42)));
+            assert!(matches!(row[3], Value::Str(_)));
+        } else {
+            panic!("Expected Select payload");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_null_handling() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let sqls = vec![
+            "CREATE TABLE NullTest (id INT, value TEXT NULL);".to_string(),
+            "INSERT INTO NullTest VALUES (1, NULL);".to_string(),
+            "SELECT * FROM NullTest;".to_string(),
+        ];
+        let result = glue.query(sqls).await;
+
+        if let Payload::Select { rows, .. } = &result[2] {
+            assert!(matches!(rows[0][1], Value::Null));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_list_type() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let sqls = vec![
+            "CREATE TABLE ListTest (id INT, tags LIST);".to_string(),
+            "INSERT INTO ListTest VALUES (1, ['tag1', 'tag2', 'tag3']);".to_string(),
+            "SELECT * FROM ListTest;".to_string(),
+        ];
+        let result = glue.query(sqls).await;
+
+        if let Payload::Select { rows, .. } = &result[2] {
+            if let Value::List(list) = &rows[0][1] {
+                assert_eq!(list.len(), 3);
+            } else {
+                panic!("Expected list value");
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_map_type() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let sqls = vec![
+            "CREATE TABLE MapTest (id INT, data MAP);".to_string(),
+            "INSERT INTO MapTest VALUES (1, {'key': 'value'});".to_string(),
+            "SELECT * FROM MapTest;".to_string(),
+        ];
+        let result = glue.query(sqls).await;
+
+        if let Payload::Select { rows, .. } = &result[2] {
+            if let Value::Map(map) = &rows[0][1] {
+                assert_eq!(map.len(), 1);
+            } else {
+                panic!("Expected map value");
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_point_type() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+
+        let sqls = vec![
+            "CREATE TABLE PointTest (id INT, location POINT);".to_string(),
+            "INSERT INTO PointTest VALUES (1, POINT(10.5, 20.3));".to_string(),
+            "SELECT * FROM PointTest;".to_string(),
+        ];
+        let result = glue.query(sqls).await;
+
+        if let Payload::Select { rows, .. } = &result[2] {
+            if let Value::Point(point) = &rows[0][1] {
+                assert!((point.x - 10.5).abs() < 0.01);
+                assert!((point.y - 20.3).abs() < 0.01);
+            } else {
+                panic!("Expected point value");
+            }
+        }
+    }
+
+    // MARK: - Edge Cases
+
+    #[tokio::test]
+    async fn test_empty_query_vector() {
+        let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
+        let result = glue.query(vec![]).await;
+        assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn test_glue_storage_kind_copy() {
+        let kind1 = GlueStorageKind::MemoryStorage;
+        let kind2 = kind1;
+
+        // Should compile due to Copy trait
+        assert_eq!(kind1, kind2);
+    }
+
+    #[test]
+    fn test_i128_record_equality() {
+        let i128_1 = I128 {
+            high: 100,
+            low: 200,
+        };
+        let i128_2 = I128 {
+            high: 100,
+            low: 200,
+        };
+        let i128_3 = I128 {
+            high: 100,
+            low: 201,
+        };
+
+        assert_eq!(i128_1, i128_2);
+        assert_ne!(i128_1, i128_3);
+    }
+
+    #[test]
+    fn test_u128_record_equality() {
+        let u128_1 = U128 {
+            high: 100,
+            low: 200,
+        };
+        let u128_2 = U128 {
+            high: 100,
+            low: 200,
+        };
+
+        assert_eq!(u128_1, u128_2);
+    }
+
+    #[test]
+    fn test_point_record() {
+        let point = Point { x: 10.5, y: 20.3 };
+        assert_eq!(point.x, 10.5);
+        assert_eq!(point.y, 20.3);
     }
 }
