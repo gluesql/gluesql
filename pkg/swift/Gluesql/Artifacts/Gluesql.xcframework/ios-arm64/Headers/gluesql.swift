@@ -666,7 +666,7 @@ public protocol GlueProtocol: AnyObject, Sendable {
     
     func getKind() async  -> GlueStorageKind
     
-    func query(query: [String]) async  -> [Payload]
+    func query(query: [String]) async throws  -> [Payload]
     
 }
 open class Glue: GlueProtocol, @unchecked Sendable {
@@ -752,9 +752,9 @@ open func getKind()async  -> GlueStorageKind  {
         )
 }
     
-open func query(query: [String])async  -> [Payload]  {
+open func query(query: [String])async throws  -> [Payload]  {
     return
-        try!  await uniffiRustCallAsync(
+        try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_gluesql_fn_method_glue_query(
                     self.uniffiCloneHandle(),
@@ -765,8 +765,7 @@ open func query(query: [String])async  -> [Payload]  {
             completeFunc: ffi_gluesql_rust_future_complete_rust_buffer,
             freeFunc: ffi_gluesql_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceTypePayload.lift,
-            errorHandler: nil
-            
+            errorHandler: FfiConverterTypeGlueSwiftError_lift
         )
 }
     
@@ -1411,6 +1410,78 @@ public func FfiConverterTypeGlueStorageKind_lower(_ value: GlueStorageKind) -> R
     return FfiConverterTypeGlueStorageKind.lower(value)
 }
 
+
+
+public enum GlueSwiftError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+
+    
+    
+    case Execute(message: String
+    )
+
+    
+
+    
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+    
+}
+
+#if compiler(>=6)
+extension GlueSwiftError: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeGlueSwiftError: FfiConverterRustBuffer {
+    typealias SwiftType = GlueSwiftError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> GlueSwiftError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        
+
+        
+        case 1: return .Execute(
+            message: try FfiConverterString.read(from: &buf)
+            )
+
+         default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: GlueSwiftError, into buf: inout [UInt8]) {
+        switch value {
+
+        
+
+        
+        
+        case let .Execute(message):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(message, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeGlueSwiftError_lift(_ buf: RustBuffer) throws -> GlueSwiftError {
+    return try FfiConverterTypeGlueSwiftError.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeGlueSwiftError_lower(_ value: GlueSwiftError) -> RustBuffer {
+    return FfiConverterTypeGlueSwiftError.lower(value)
+}
 
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
@@ -2373,7 +2444,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_gluesql_checksum_method_glue_get_kind() != 20428) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_gluesql_checksum_method_glue_query() != 31736) {
+    if (uniffi_gluesql_checksum_method_glue_query() != 797) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_gluesql_checksum_constructor_glue_new() != 47655) {
