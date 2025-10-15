@@ -19,6 +19,7 @@ default-members = [
   "pkg/rust",
   "pkg/javascript",
   "pkg/python",
+  "pkg/swift",
   "storages/*",
   "test-suite",
   "utils",
