@@ -95,7 +95,7 @@ test_case!(rounding, {
         id  | "ROUND(\"number\", 2)" | "ROUND(\"number\", 2)"
         I64 | F64                    | F64;
         1     0.3                      0.3;
-        2     f64::from(-0.8)          f64::from(-0.8);
+        2     (-0.8)                   (-0.8);
         3     10.0                     10.0;
         4     6.87                     6.87
     ));

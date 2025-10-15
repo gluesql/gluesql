@@ -452,7 +452,7 @@ pub fn round<'a>(
     let rounded = match precision {
         Some(precision) if precision != 0 => {
             let abs_precision = precision.abs();
-            if abs_precision > i32::MAX as i64 {
+            if abs_precision > i64::from(i32::MAX) {
                 value
             } else {
                 let factor = 10f64.powi(abs_precision as i32);
