@@ -11,6 +11,7 @@ use std::{
     sync::{Arc, LazyLock},
     thread,
 };
+use thiserror::Error;
 use tokio::sync::{Mutex, mpsc};
 use uuid::Uuid;
 
@@ -333,6 +334,11 @@ impl From<RustPayload> for Payload {
         }
     }
 }
+#[derive(Debug, Error, uniffi::Error)]
+pub enum GlueSwiftError {
+    #[error("GlueSQL execution failed: {message}")]
+    Execute { message: String },
+}
 
 #[derive(uniffi::Object)]
 pub struct Glue(Mutex<GlueStorage>);
@@ -356,24 +362,27 @@ impl Glue {
             GlueStorage::SharedMemoryStorage(_) => GlueStorageKind::SharedMemoryStorage,
         }
     }
-    async fn query(&self, query: Vec<String>) -> Vec<Payload> {
+    async fn query(&self, query: Vec<String>) -> Result<Vec<Payload>, GlueSwiftError> {
         let mut res_vec = vec![];
         let mut storage_guard = self.0.lock().await;
         let storage: &mut GlueStorage = &mut storage_guard;
         for query in query {
-            match storage {
-                GlueStorage::MemoryStorage(s) => {
-                    let res = s.execute(query).await.unwrap();
-                    let res = res.into_iter().map(|r| r.into()).collect::<Vec<Payload>>();
-                    res_vec.extend(res);
-                }
-                GlueStorage::SharedMemoryStorage(s) => {
-                    let res = s.execute(query).await.unwrap();
-                    res_vec.extend(res.into_iter().map(|r| r.into()).collect::<Vec<Payload>>());
-                }
+            let payloads = match storage {
+                GlueStorage::MemoryStorage(s) => s.execute(query).await,
+                GlueStorage::SharedMemoryStorage(s) => s.execute(query).await,
             }
+            .map_err(|err| GlueSwiftError::Execute {
+                message: err.to_string(),
+            })?;
+
+            res_vec.extend(
+                payloads
+                    .into_iter()
+                    .map(|r| r.into())
+                    .collect::<Vec<Payload>>(),
+            );
         }
-        res_vec
+        Ok(res_vec)
     }
 }
 
@@ -399,7 +408,7 @@ mod tests {
     async fn test_create_table() {
         let glue = Glue::new(GlueStorageKind::MemoryStorage).await;
         let queries = vec!["CREATE TABLE users (id INTEGER, name TEXT)".to_string()];
-        let results = glue.query(queries).await;
+        let results = glue.query(queries).await.expect("query should succeed");
 
         assert_eq!(results.len(), 1);
         assert!(matches!(results[0], Payload::Create));
@@ -416,7 +425,7 @@ mod tests {
             "SELECT * FROM users".to_string(),
         ];
 
-        let results = glue.query(queries).await;
+        let results = glue.query(queries).await.expect("query should succeed");
 
         assert_eq!(results.len(), 4);
         assert!(matches!(results[0], Payload::Create));
@@ -443,7 +452,7 @@ mod tests {
             "SELECT * FROM users".to_string(),
         ];
 
-        let results = glue.query(queries).await;
+        let results = glue.query(queries).await.expect("query should succeed");
 
         assert!(matches!(results[2], Payload::Update(1)));
 
@@ -467,7 +476,7 @@ mod tests {
             "SELECT * FROM users".to_string(),
         ];
 
-        let results = glue.query(queries).await;
+        let results = glue.query(queries).await.expect("query should succeed");
 
         assert!(matches!(results[3], Payload::Delete(1)));
 
@@ -485,7 +494,7 @@ mod tests {
             "DROP TABLE temp_table".to_string(),
         ];
 
-        let results = glue.query(queries).await;
+        let results = glue.query(queries).await.expect("query should succeed");
         assert!(matches!(results[1], Payload::DropTable(_)));
     }
 
@@ -505,7 +514,7 @@ mod tests {
             "SELECT * FROM data_types".to_string(),
         ];
 
-        let results = glue.query(queries).await;
+        let results = glue.query(queries).await.expect("query should succeed");
 
         if let Payload::Select { rows, .. } = &results[2] {
             assert!(matches!(rows[0][0], Value::Bool(true)));
@@ -524,7 +533,7 @@ mod tests {
             "SHOW COLUMNS FROM users".to_string(),
         ];
 
-        let results = glue.query(queries).await;
+        let results = glue.query(queries).await.expect("query should succeed");
 
         if let Payload::ShowColumns(columns) = &results[1] {
             assert_eq!(columns.len(), 3);
@@ -543,7 +552,7 @@ mod tests {
             "SELECT * FROM nullable".to_string(),
         ];
 
-        let results = glue.query(queries).await;
+        let results = glue.query(queries).await.expect("query should succeed");
 
         if let Payload::Select { rows, .. } = &results[2] {
             assert!(matches!(rows[0][1], Value::Null));
@@ -560,7 +569,7 @@ mod tests {
             "CREATE TABLE test3 (id INTEGER)".to_string(),
         ];
 
-        let results = glue.query(queries).await;
+        let results = glue.query(queries).await.expect("query should succeed");
         assert_eq!(results.len(), 3);
         assert!(results.iter().all(|r| matches!(r, Payload::Create)));
     }
@@ -575,7 +584,7 @@ mod tests {
             "SELECT id, name, price FROM products".to_string(),
         ];
 
-        let results = glue.query(queries).await;
+        let results = glue.query(queries).await.expect("query should succeed");
 
         if let Payload::Select { labels, rows } = &results[2] {
             assert!(labels.contains(&"id".to_string()));
