@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        error::EvaluateError,
+        error::{EvaluateError, TranslateError},
         prelude::Value::*,
     },
 };
@@ -58,6 +58,92 @@ test_case!(round, {
         (
             "SELECT ROUND(1.23, 1.5) AS round",
             Err(EvaluateError::FunctionRequiresIntegerValue(String::from("ROUND")).into()),
+        ),
+        // More positive precision tests
+        (
+            "SELECT ROUND(3.14159, 3) AS round",
+            Ok(select!(round F64; 3.142)),
+        ),
+        (
+            "SELECT ROUND(123.456789, 4) AS round",
+            Ok(select!(round F64; 123.4568)),
+        ),
+        (
+            "SELECT ROUND(1.5, 0) AS round",
+            Ok(select!(round F64; 2.0)),
+        ),
+        (
+            "SELECT ROUND(2.5, 0) AS round",
+            Ok(select!(round F64; 3.0)),
+        ),
+        (
+            "SELECT ROUND(9.999, 2) AS round",
+            Ok(select!(round F64; 10.0)),
+        ),
+        // More negative precision tests
+        (
+            "SELECT ROUND(1234.56, -1) AS round",
+            Ok(select!(round F64; 1230.0)),
+        ),
+        (
+            "SELECT ROUND(5678.9, -3) AS round",
+            Ok(select!(round F64; 6000.0)),
+        ),
+        (
+            "SELECT ROUND(15, -1) AS round",
+            Ok(select!(round F64; 20.0)),
+        ),
+        (
+            "SELECT ROUND(12345, -4) AS round",
+            Ok(select!(round F64; 10000.0)),
+        ),
+        // Negative numbers with precision
+        (
+            "SELECT ROUND(-3.14159, 2) AS round",
+            Ok(select!(round F64; -3.14)),
+        ),
+        (
+            "SELECT ROUND(-123.456, 1) AS round",
+            Ok(select!(round F64; -123.5)),
+        ),
+        (
+            "SELECT ROUND(-1234, -2) AS round",
+            Ok(select!(round F64; -1200.0)),
+        ),
+        (
+            "SELECT ROUND(-5.555, 2) AS round",
+            Ok(select!(round F64; -5.56)),
+        ),
+        // Edge cases with precision
+        (
+            "SELECT ROUND(0.0, 5) AS round",
+            Ok(select!(round F64; 0.0)),
+        ),
+        (
+            "SELECT ROUND(999.999, 2) AS round",
+            Ok(select!(round F64; 1000.0)),
+        ),
+        (
+            "SELECT ROUND(0.0001, 3) AS round",
+            Ok(select!(round F64; 0.0)),
+        ),
+        // NULL precision
+        (
+            "SELECT ROUND(1.23, NULL) AS round",
+            Ok(select_with_null!(round; Null)),
+        ),
+        // More error cases
+        (
+            "SELECT ROUND(1.23, TRUE) AS round",
+            Err(EvaluateError::FunctionRequiresIntegerValue(String::from("ROUND")).into()),
+        ),
+        (
+            "SELECT ROUND('string', 2) AS round",
+            Err(EvaluateError::FunctionRequiresFloatValue(String::from("ROUND")).into()),
+        ),
+        (
+            "SELECT ROUND(TRUE, 2) AS round",
+            Err(EvaluateError::FunctionRequiresFloatValue(String::from("ROUND")).into()),
         ),
     ];
 
