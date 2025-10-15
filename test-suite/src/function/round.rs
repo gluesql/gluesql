@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        error::{EvaluateError, TranslateError},
+        error::EvaluateError,
         prelude::Value::*,
     },
 };
@@ -41,12 +41,23 @@ test_case!(round, {
         ),
         (
             "SELECT ROUND('string', 'string2') AS round",
-            Err(TranslateError::FunctionArgsLengthNotMatching {
-                name: "ROUND".to_owned(),
-                expected: 1,
-                found: 2,
-            }
-            .into()),
+            Err(EvaluateError::FunctionRequiresFloatValue(String::from("ROUND")).into()),
+        ),
+        (
+            "SELECT ROUND(6.87421, 2) AS round",
+            Ok(select!(round F64; 6.87)),
+        ),
+        (
+            "SELECT ROUND(4321, -2) AS round",
+            Ok(select!(round F64; 4300.0)),
+        ),
+        (
+            "SELECT ROUND(1.23, 'precision') AS round",
+            Err(EvaluateError::FunctionRequiresIntegerValue(String::from("ROUND")).into()),
+        ),
+        (
+            "SELECT ROUND(1.23, 1.5) AS round",
+            Err(EvaluateError::FunctionRequiresIntegerValue(String::from("ROUND")).into()),
         ),
     ];
 

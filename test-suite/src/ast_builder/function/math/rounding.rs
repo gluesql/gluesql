@@ -69,7 +69,7 @@ test_case!(rounding, {
     let actual = table("Number")
         .select()
         .project("id")
-        .project(f::round("number"))
+        .project(f::round("number", None))
         .project(col("number").round())
         .execute(glue)
         .await;
@@ -82,6 +82,24 @@ test_case!(rounding, {
         4     7.0                   7.0
     ));
     assert_eq!(actual, expected, "round");
+
+    // round with precision
+    let actual = table("Number")
+        .select()
+        .project("id")
+        .project(f::round("number", Some(num(2))))
+        .project(col("number").round_with_precision(num(2)))
+        .execute(glue)
+        .await;
+    let expected = Ok(select!(
+        id  | "ROUND(\"number\", 2)" | "ROUND(\"number\", 2)"
+        I64 | F64                    | F64;
+        1     0.3                      0.3;
+        2     f64::from(-0.8)          f64::from(-0.8);
+        3     10.0                     10.0;
+        4     6.87                     6.87
+    ));
+    assert_eq!(actual, expected, "round with precision");
 
     //trunc
     let actual = table("Number")

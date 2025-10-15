@@ -438,8 +438,35 @@ pub fn rand<'a>(name: String, seed: Option<Evaluated<'_>>) -> ControlFlow<Evalua
     Continue(Evaluated::Value(Value::F64(seed)))
 }
 
-pub fn round<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.round())))
+pub fn round<'a>(
+    name: String,
+    value: Evaluated<'_>,
+    precision: Option<Evaluated<'_>>,
+) -> ControlFlow<Evaluated<'a>> {
+    let value = eval_to_float(&name, value)?;
+    let precision = match precision {
+        Some(precision) => Some(eval_to_int(&name, precision)?),
+        None => None,
+    };
+
+    let rounded = match precision {
+        Some(precision) if precision != 0 => {
+            let abs_precision = precision.abs();
+            if abs_precision > i32::MAX as i64 {
+                value
+            } else {
+                let factor = 10f64.powi(abs_precision as i32);
+                if precision.is_positive() {
+                    (value * factor).round() / factor
+                } else {
+                    (value / factor).round() * factor
+                }
+            }
+        }
+        _ => value.round(),
+    };
+
+    Continue(Evaluated::Value(Value::F64(rounded)))
 }
 
 pub fn trunc<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {

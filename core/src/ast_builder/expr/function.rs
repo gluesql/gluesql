@@ -18,7 +18,10 @@ pub enum FunctionNode<'a> {
     },
     Ceil(ExprNode<'a>),
     Rand(Option<ExprNode<'a>>),
-    Round(ExprNode<'a>),
+    Round {
+        expr: ExprNode<'a>,
+        precision: Option<ExprNode<'a>>,
+    },
     Trunc(ExprNode<'a>),
     Floor(ExprNode<'a>),
     Asin(ExprNode<'a>),
@@ -201,7 +204,11 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
             FunctionNode::Rand(expr_node) => Ok(Function::Rand(
                 expr_node.map(TryInto::try_into).transpose()?,
             )),
-            FunctionNode::Round(expr_node) => expr_node.try_into().map(Function::Round),
+            FunctionNode::Round { expr, precision } => {
+                let expr = expr.try_into()?;
+                let precision = precision.map(TryInto::try_into).transpose()?;
+                Ok(Function::Round { expr, precision })
+            }
             FunctionNode::Trunc(expr_node) => expr_node.try_into().map(Function::Trunc),
             FunctionNode::Floor(expr_node) => expr_node.try_into().map(Function::Floor),
             FunctionNode::Asin(expr_node) => expr_node.try_into().map(Function::Asin),
@@ -434,7 +441,10 @@ impl<'a> ExprNode<'a> {
         rand(Some(self))
     }
     pub fn round(self) -> ExprNode<'a> {
-        round(self)
+        round(self, None)
+    }
+    pub fn round_with_precision<T: Into<ExprNode<'a>>>(self, precision: T) -> ExprNode<'a> {
+        round(self, Some(precision.into()))
     }
     pub fn trunc(self) -> ExprNode<'a> {
         trunc(self)
@@ -623,8 +633,11 @@ pub fn ceil<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
 pub fn rand(expr: Option<ExprNode>) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Rand(expr)))
 }
-pub fn round<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
-    ExprNode::Function(Box::new(FunctionNode::Round(expr.into())))
+pub fn round<'a, T: Into<ExprNode<'a>>>(expr: T, precision: Option<ExprNode<'a>>) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Round {
+        expr: expr.into(),
+        precision,
+    }))
 }
 pub fn trunc<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Trunc(expr.into())))
@@ -1088,7 +1101,7 @@ mod tests {
 
     #[test]
     fn function_round() {
-        let actual = f::round(col("num"));
+        let actual = f::round(col("num"), None);
         let expected = "ROUND(num)";
         test_expr(actual, expected);
 
