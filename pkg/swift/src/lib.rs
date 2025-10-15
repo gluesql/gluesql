@@ -8,11 +8,10 @@ use gluesql_shared_memory_storage::SharedMemoryStorage;
 use std::{
     collections::HashMap,
     net::{IpAddr as RustIpAddr, Ipv4Addr as RustIpv4Addr, Ipv6Addr as RustIpv6Addr},
-    sync::{Arc, LazyLock},
-    thread,
+    sync::Arc,
 };
 use thiserror::Error;
-use tokio::sync::{Mutex, mpsc};
+use tokio::sync::Mutex;
 use uuid::Uuid;
 
 uniffi::setup_scaffolding!("gluesql");
