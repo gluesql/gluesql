@@ -61,7 +61,6 @@ utils = { package = "gluesql-utils", path = "./utils", version = "0.18.0" }
 pedantic = { level = "deny", priority = -1 }
 too_many_lines = "allow"  # It's a clippy::pedantic rule, but it should still be allowed for cohesion.
 assigning_clones = "allow"
-bool_to_int_with_if = "allow"
 cast_possible_truncation = "allow"
 cast_possible_wrap = "allow"
 cast_precision_loss = "allow"
