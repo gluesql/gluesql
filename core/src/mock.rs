@@ -237,4 +237,42 @@ mod tests {
         assert_eq!(index.expr, expected_expr);
         assert_eq!(index.order, SchemaIndexOrd::Asc);
     }
+
+    #[test]
+    fn create_index_checks_duplicates_and_orders() {
+        let mut storage = MockStorage::default();
+
+        let schema = Schema {
+            table_name: "Test".to_owned(),
+            column_defs: None,
+            indexes: Vec::new(),
+            engine: None,
+            foreign_keys: Vec::new(),
+            comment: None,
+        };
+        block_on(storage.insert_schema(&schema)).unwrap();
+
+        let desc_order = OrderByExpr {
+            expr: Expr::Identifier("value".to_owned()),
+            asc: Some(false),
+        };
+
+        block_on(storage.create_index("Test", "idx_desc", &desc_order)).unwrap();
+
+        let schema = block_on(storage.fetch_schema("Test"))
+            .unwrap()
+            .expect("schema should exist");
+        assert_eq!(schema.indexes.len(), 1);
+        let index = &schema.indexes[0];
+        assert_eq!(index.name, "idx_desc");
+        assert_eq!(index.order, SchemaIndexOrd::Desc);
+
+        let duplicate_err = block_on(storage.create_index("Test", "idx_desc", &desc_order))
+            .expect_err("duplicate index creation should fail");
+        let msg = format!("{duplicate_err}");
+        assert!(
+            msg.contains("index already exists: idx_desc"),
+            "unexpected error message: {msg}"
+        );
+    }
 }
