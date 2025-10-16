@@ -66,7 +66,10 @@ pub enum Function {
         expr2: Expr,
     },
     Rand(Option<Expr>),
-    Round(Expr),
+    Round {
+        expr: Expr,
+        precision: Option<Expr>,
+    },
     Trunc(Expr),
     Floor(Expr),
     Trim {
@@ -302,7 +305,10 @@ impl ToSql for Function {
                 Some(v) => format!("RAND({})", v.to_sql()),
                 None => "RAND()".to_owned(),
             },
-            Function::Round(e) => format!("ROUND({})", e.to_sql()),
+            Function::Round { expr, precision } => match precision {
+                Some(p) => format!("ROUND({}, {})", expr.to_sql(), p.to_sql()),
+                None => format!("ROUND({})", expr.to_sql()),
+            },
             Function::Trunc(e) => format!("TRUNC({})", e.to_sql()),
             Function::Floor(e) => format!("FLOOR({})", e.to_sql()),
             Function::Trim {
@@ -847,9 +853,21 @@ mod tests {
 
         assert_eq!(
             r#"ROUND("num")"#,
-            &Expr::Function(Box::new(Function::Round(Expr::Identifier(
-                "num".to_owned()
-            ))))
+            &Expr::Function(Box::new(Function::Round {
+                expr: Expr::Identifier("num".to_owned()),
+                precision: None,
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"ROUND("num", 2)"#,
+            &Expr::Function(Box::new(Function::Round {
+                expr: Expr::Identifier("num".to_owned()),
+                precision: Some(Expr::Literal(AstLiteral::Number(
+                    BigDecimal::from_str("2").unwrap()
+                ))),
+            }))
             .to_sql()
         );
 

@@ -38,7 +38,7 @@ impl Function {
             | Self::Degrees(expr)
             | Self::Ceil(expr)
             | Self::Rand(Some(expr))
-            | Self::Round(expr)
+            | Self::Round { expr, precision: None }
             | Self::Trunc(expr)
             | Self::Floor(expr)
             | Self::Exp(expr)
@@ -166,6 +166,10 @@ impl Function {
             | Self::CalcDistance {
                 geometry1: expr,
                 geometry2: expr2,
+            }
+            | Self::Round {
+                expr,
+                precision: Some(expr2),
             }
             | Self::AddMonth { expr, size: expr2 } => Exprs::Double([expr, expr2].into_iter()),
 
@@ -324,6 +328,7 @@ mod tests {
         test("GCD(6, 2)", &["6", "2"]);
         test("LCM(6, 2)", &["6", "2"]);
         test("POWER(base, 10)", &["base", "10"]);
+        test("ROUND(1.234 , 2)", &["1.234", "2"]);
         test(r#"LTRIM(name, "xyz")"#, &["name", r#""xyz""#]);
         test(r#"RTRIM(name, "xyz")"#, &["name", r#""xyz""#]);
         test("REPEAT(col || col2, 3)", &["col || col2", "3"]);
