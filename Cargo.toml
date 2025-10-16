@@ -7,6 +7,7 @@ members = [
   "pkg/rust",
   "pkg/javascript",
   "pkg/python",
+  "pkg/swift",
   "storages/*",
   "test-suite",
   "utils",
@@ -18,6 +19,7 @@ default-members = [
   "pkg/rust",
   "pkg/javascript",
   "pkg/python",
+  "pkg/swift",
   "storages/*",
   "test-suite",
   "utils",
@@ -59,7 +61,7 @@ utils = { package = "gluesql-utils", path = "./utils", version = "0.18.0" }
 
 [workspace.lints.clippy]
 pedantic = { level = "deny", priority = -1 }
-too_many_lines = "allow"  # It's a clippy::pedantic rule, but it should still be allowed for cohesion.
+too_many_lines = "allow"                            # It's a clippy::pedantic rule, but it should still be allowed for cohesion.
 assigning_clones = "allow"
 cast_possible_truncation = "allow"
 cast_possible_wrap = "allow"
