@@ -80,6 +80,7 @@ mod tests {
             "Foo.id",
             "CASE 1 WHEN 1 THEN id ELSE 0 END",
             "1 IN (SELECT 1)",
+            "id IN (1, 2, 3)",
             "ARRAY[1, id]",
             "POSITION('a' IN id)",
         ];
@@ -98,6 +99,8 @@ mod tests {
             "NOT TRUE",
             "1 BETWEEN 0 AND 2",
             "'A' LIKE 'A%'",
+            "'A' ILIKE 'A%'",
+            "1 IN (1, 2, 3)",
             "('A' IS NULL)",
             "CAST(1 AS INT)",
             "CASE 1 WHEN 1 THEN 2 ELSE 3 END",
@@ -106,5 +109,11 @@ mod tests {
         for sql in cases {
             assert_nullability(sql, false);
         }
+    }
+
+    #[test]
+    #[should_panic(expected = "INVALID SQL")]
+    fn invalid_expression_panics() {
+        assert_nullability("INVALID SQL", false);
     }
 }
