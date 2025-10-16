@@ -81,7 +81,7 @@ where
                 } else if s1_low > 0 {
                     (s1_low, s1_high)
                 } else {
-                    let low = if s2_low > 0 { 1 } else { 0 };
+                    let low = usize::from(s2_low > 0);
                     let high = match (s1_high, s2_high) {
                         (Some(h1), Some(h2)) => Some(max(h1, h2)),
                         _ => None,
