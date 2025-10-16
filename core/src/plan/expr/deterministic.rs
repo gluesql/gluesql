@@ -88,7 +88,9 @@ mod tests {
             expr("(1 BETWEEN 0 AND 2)"),
             expr("1 + (2 * 3)"),
             expr("('A' LIKE 'A%')"),
+            expr("('A' ILIKE 'A%')"),
             expr("ARRAY[1, 2, 3]"),
+            expr("ARRAY['A', 'B'][1]"),
             expr("CASE 1 WHEN 1 THEN 2 ELSE 3 END"),
             expr("('A' IN ('A', 'B'))"),
         ];
@@ -114,5 +116,11 @@ mod tests {
         for sql in non_deterministic {
             assert_deterministic(sql, false);
         }
+    }
+
+    #[test]
+    #[should_panic]
+    fn invalid_expression_panics() {
+        assert_deterministic("(+", false);
     }
 }
