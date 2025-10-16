@@ -62,14 +62,10 @@ mod tests {
     };
 
     fn assert_nullability(sql: &str, expected: bool) {
-        let parsed = parse_expr(sql).expect(sql);
-        let expr = translate_expr(&parsed).expect(sql);
+        let expr = parse_expr(sql).and_then(|parsed| translate_expr(&parsed));
+        let actual = expr.map(|expr| may_return_null(&expr));
 
-        assert_eq!(
-            may_return_null(&expr),
-            expected,
-            "{sql} nullability mismatch"
-        );
+        assert_eq!(actual, Ok(expected), "{sql} nullability mismatch");
     }
 
     #[test]
@@ -112,7 +108,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "INVALID SQL")]
+    #[should_panic(expected = "nullability mismatch")]
     fn invalid_expression_panics() {
         assert_nullability("INVALID SQL", false);
     }

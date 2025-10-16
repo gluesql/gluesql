@@ -67,14 +67,10 @@ mod tests {
     }
 
     fn assert_deterministic(sql: &str, expected: bool) {
-        let parsed = parse_expr(sql).expect(sql);
-        let expr = translate_expr(&parsed).expect(sql);
+        let expr = parse_expr(sql).and_then(|parsed| translate_expr(&parsed));
+        let actual = expr.map(|expr| is_deterministic(&expr));
 
-        assert_eq!(
-            is_deterministic(&expr),
-            expected,
-            "{sql} deterministic mismatch"
-        );
+        assert_eq!(actual, Ok(expected), "{sql} deterministic mismatch");
     }
 
     #[test]
@@ -119,7 +115,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "deterministic mismatch")]
     fn invalid_expression_panics() {
         assert_deterministic("(+", false);
     }
