@@ -417,21 +417,26 @@ mod tests {
         super::plan,
         crate::{
             ast::Statement,
-            ast_builder::{Build, nested, non_clustered, null, num, table, text},
+            ast_builder::{Build, col, exists, nested, non_clustered, null, num, table, text},
             mock::{MockStorage, run},
             parse_sql::parse,
             plan::fetch_schema_map,
+            result::{Error, Result},
             translate::translate,
         },
         futures::executor::block_on,
     };
 
-    fn plan_index(storage: &MockStorage, sql: &str) -> Statement {
-        let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
-        let statement = translate(&parsed).unwrap();
-        let schema_map = block_on(fetch_schema_map(storage, &statement)).unwrap();
+    fn plan_index(storage: &MockStorage, sql: &str) -> Result<Statement> {
+        let parsed = parse(sql)?;
+        let parsed = parsed
+            .into_iter()
+            .next()
+            .ok_or_else(|| Error::StorageMsg(format!("no statement parsed from: {sql}")))?;
+        let statement = translate(&parsed)?;
+        let schema_map = block_on(fetch_schema_map(storage, &statement))?;
 
-        plan(&schema_map, statement)
+        Ok(plan(&schema_map, statement))
     }
 
     fn storage_with_indexes() -> MockStorage {
@@ -456,13 +461,12 @@ CREATE INDEX idx_name ON Test (name);
         let expected = table("Test")
             .index_by(non_clustered("idx_id".to_owned()).eq(num(1)))
             .select()
-            .build()
-            .unwrap();
+            .build();
         assert_eq!(actual, expected, "uses index for eq constant:\n{sql}");
 
         let sql = "SELECT * FROM Test WHERE id = NULL";
         let actual = plan_index(&storage, sql);
-        let expected = table("Test").select().filter("id = NULL").build().unwrap();
+        let expected = table("Test").select().filter("id = NULL").build();
         assert_eq!(actual, expected, "skips index for nullable value:\n{sql}");
 
         let sql = "SELECT * FROM Test WHERE flag = ('ABC' IS NULL)";
@@ -470,8 +474,7 @@ CREATE INDEX idx_name ON Test (name);
         let expected = table("Test")
             .index_by(non_clustered("idx_flag".to_owned()).eq(nested(text("ABC").is_null())))
             .select()
-            .build()
-            .unwrap();
+            .build();
         assert_eq!(
             actual, expected,
             "uses index for deterministic expression:\n{sql}"
@@ -482,8 +485,7 @@ CREATE INDEX idx_name ON Test (name);
         let expected = table("Test")
             .index_by(non_clustered("idx_name".to_owned()))
             .select()
-            .build()
-            .unwrap();
+            .build();
         assert_eq!(actual, expected, "applies order by index:\n{sql}");
 
         let sql = "SELECT * FROM Test WHERE flag IS NULL";
@@ -491,8 +493,7 @@ CREATE INDEX idx_name ON Test (name);
         let expected = table("Test")
             .index_by(non_clustered("idx_flag".to_owned()).eq(null()))
             .select()
-            .build()
-            .unwrap();
+            .build();
         assert_eq!(actual, expected, "uses index for is null filter:\n{sql}");
 
         let sql = "SELECT * FROM Test WHERE flag IS NOT NULL";
@@ -500,8 +501,7 @@ CREATE INDEX idx_name ON Test (name);
         let expected = table("Test")
             .index_by(non_clustered("idx_flag".to_owned()).lt(null()))
             .select()
-            .build()
-            .unwrap();
+            .build();
         assert_eq!(
             actual, expected,
             "uses index for is not null filter:\n{sql}"
@@ -509,10 +509,84 @@ CREATE INDEX idx_name ON Test (name);
 
         let sql = "SELECT * FROM Test WHERE id = flag";
         let actual = plan_index(&storage, sql);
-        let expected = table("Test").select().filter("id = flag").build().unwrap();
+        let expected = table("Test").select().filter("id = flag").build();
         assert_eq!(
             actual, expected,
             "skips index for non constant expression:\n{sql}"
+        );
+    }
+
+    #[test]
+    fn index_planning_nested_queries() {
+        let storage = storage_with_indexes();
+
+        let sql = "
+SELECT *
+FROM Test
+WHERE EXISTS (
+    SELECT *
+    FROM Test
+    WHERE id = 1
+);
+";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .select()
+            .filter(exists(
+                table("Test")
+                    .index_by(non_clustered("idx_id".to_owned()).eq(num(1)))
+                    .select(),
+            ))
+            .build();
+        assert_eq!(
+            actual, expected,
+            "uses index inside EXISTS subquery:\n{sql}"
+        );
+
+        let sql = "
+SELECT *
+FROM Test
+WHERE id IN (
+    SELECT id
+    FROM Test
+    WHERE flag = TRUE
+);
+";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .select()
+            .filter(
+                col("id").in_list(
+                    table("Test")
+                        .index_by(non_clustered("idx_flag".to_owned()).eq(true))
+                        .select()
+                        .project("id"),
+                ),
+            )
+            .build();
+        assert_eq!(actual, expected, "uses index inside IN subquery:\n{sql}");
+
+        let sql = "
+SELECT *
+FROM Test
+WHERE EXISTS (
+    SELECT *
+    FROM Test
+    WHERE flag IS NULL
+);
+";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .select()
+            .filter(exists(
+                table("Test")
+                    .index_by(non_clustered("idx_flag".to_owned()).eq(null()))
+                    .select(),
+            ))
+            .build();
+        assert_eq!(
+            actual, expected,
+            "uses index for NULL check inside subquery:\n{sql}"
         );
     }
 }
