@@ -14,7 +14,7 @@ impl Tester<CsvStorage> for CsvTester {
 
         if let Err(e) = remove_dir_all(&path) {
             println!("fs::remove_file {e:?}");
-        };
+        }
 
         let storage = CsvStorage::new(&path).expect("CsvStorage::new");
         let glue = Glue::new(storage);

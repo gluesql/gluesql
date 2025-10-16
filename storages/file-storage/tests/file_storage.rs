@@ -17,7 +17,7 @@ impl Tester<FileStorage> for FileStorageTester {
 
         if let Err(e) = remove_dir_all(&path) {
             println!("fs::remove_file {e:?}");
-        };
+        }
 
         let storage = FileStorage::new(&path).expect("FileStorage::new");
         let glue = Glue::new(storage);

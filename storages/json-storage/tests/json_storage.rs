@@ -14,7 +14,7 @@ impl Tester<JsonStorage> for JsonTester {
 
         if let Err(e) = remove_dir_all(&path) {
             println!("fs::remove_file {e:?}");
-        };
+        }
 
         let storage = JsonStorage::new(&path).expect("JsonStorage::new");
         let glue = Glue::new(storage);

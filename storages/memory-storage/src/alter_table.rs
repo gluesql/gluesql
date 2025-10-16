@@ -161,7 +161,7 @@ impl AlterTable for MemoryStorage {
             None => {
                 return Err(AlterTableError::DroppingColumnNotFound(column_name.to_owned()).into());
             }
-        };
+        }
 
         Ok(())
     }
