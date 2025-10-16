@@ -1,27 +1,379 @@
 use {
-    super::PlanError,
+    super::{context::Context, planner::Planner},
     crate::{
         ast::{
-            AstLiteral, BinaryOperator, Expr, Function, IndexItem, IndexOperator, OrderByExpr,
-            Query, Select, SetExpr, Statement, TableAlias, TableFactor, TableWithJoins,
+            AstLiteral, BinaryOperator, Expr, IndexItem, IndexOperator, OrderByExpr, Query, Select,
+            SetExpr, Statement, TableFactor,
         },
         data::{Schema, SchemaIndex, SchemaIndexOrd},
-        result::Result,
+        plan::expr::{deterministic::is_deterministic, nullability::may_return_null},
     },
-    std::collections::HashMap,
-    utils::Vector,
+    std::{collections::HashMap, sync::Arc},
 };
 
-pub fn plan(schema_map: &HashMap<String, Schema>, statement: Statement) -> Result<Statement> {
+pub fn plan(schema_map: &HashMap<String, Schema>, statement: Statement) -> Statement {
+    let planner = IndexPlanner { schema_map };
+
     match statement {
-        Statement::Query(query) => plan_query(schema_map, query).map(Statement::Query),
-        _ => Ok(statement),
+        Statement::Query(query) => {
+            let query = planner.query(None, query);
+
+            Statement::Query(query)
+        }
+        _ => statement,
     }
 }
 
-struct Indexes(Vec<SchemaIndex>);
+struct IndexPlanner<'a> {
+    schema_map: &'a HashMap<String, Schema>,
+}
 
-impl Indexes {
+impl<'a> Planner<'a> for IndexPlanner<'a> {
+    fn query(&self, outer_context: Option<Arc<Context<'a>>>, query: Query) -> Query {
+        let Query {
+            body,
+            order_by,
+            limit,
+            offset,
+        } = query;
+
+        let (body, order_by) = match body {
+            SetExpr::Select(select) => {
+                let (select, order_by) = self.select(outer_context, *select, order_by);
+
+                (SetExpr::Select(Box::new(select)), order_by)
+            }
+            SetExpr::Values(values) => (SetExpr::Values(values), order_by),
+        };
+
+        Query {
+            body,
+            order_by,
+            limit,
+            offset,
+        }
+    }
+
+    fn get_schema(&self, name: &str) -> Option<&'a Schema> {
+        self.schema_map.get(name)
+    }
+}
+
+impl<'a> IndexPlanner<'a> {
+    fn select(
+        &self,
+        outer_context: Option<Arc<Context<'a>>>,
+        select: Select,
+        mut order_by: Vec<OrderByExpr>,
+    ) -> (Select, Vec<OrderByExpr>) {
+        let Select {
+            distinct,
+            projection,
+            mut from,
+            selection,
+            group_by,
+            having,
+        } = select;
+
+        let indexes = self.indexes(&from.relation);
+
+        if let (Some(indexes), Some(order_expr)) = (indexes.as_ref(), order_by.last())
+            && let TableFactor::Table { index, .. } = &mut from.relation
+            && index.is_none()
+            && let Some(index_name) = indexes.find_ordered(order_expr)
+        {
+            *index = Some(IndexItem::NonClustered {
+                name: index_name,
+                asc: order_expr.asc,
+                cmp_expr: None,
+            });
+            order_by.pop();
+
+            let select = Select {
+                distinct,
+                projection,
+                from,
+                selection,
+                group_by,
+                having,
+            };
+
+            return (select, order_by);
+        }
+
+        let selection = selection.and_then(|expr| {
+            if let (Some(indexes), TableFactor::Table { .. }) = (indexes.as_ref(), &from.relation) {
+                match self.plan_index_expr(outer_context.as_ref().map(Arc::clone), indexes, expr) {
+                    Planned::IndexedExpr {
+                        index_name,
+                        index_op,
+                        index_value_expr,
+                        selection,
+                    } => {
+                        if let TableFactor::Table { index, .. } = &mut from.relation {
+                            *index = Some(IndexItem::NonClustered {
+                                name: index_name,
+                                asc: None,
+                                cmp_expr: Some((index_op, index_value_expr)),
+                            });
+                        }
+
+                        selection
+                    }
+                    Planned::Expr(expr) => Some(expr),
+                }
+            } else {
+                Some(self.subquery_expr(outer_context.as_ref().map(Arc::clone), expr))
+            }
+        });
+
+        let select = Select {
+            distinct,
+            projection,
+            from,
+            selection,
+            group_by,
+            having,
+        };
+
+        (select, order_by)
+    }
+
+    fn plan_index_expr(
+        &self,
+        outer_context: Option<Arc<Context<'a>>>,
+        indexes: &Indexes<'a>,
+        selection: Expr,
+    ) -> Planned {
+        match selection {
+            Expr::Nested(expr) => self.plan_index_expr(outer_context, indexes, *expr),
+            Expr::IsNull(expr) => self.search_is_null(outer_context, indexes, true, *expr),
+            Expr::IsNotNull(expr) => self.search_is_null(outer_context, indexes, false, *expr),
+            Expr::Subquery(query) => {
+                let query = self.query(outer_context, *query);
+
+                Planned::Expr(Expr::Subquery(Box::new(query)))
+            }
+            Expr::Exists { subquery, negated } => {
+                let subquery = self.query(outer_context.as_ref().map(Arc::clone), *subquery);
+
+                Planned::Expr(Expr::Exists {
+                    subquery: Box::new(subquery),
+                    negated,
+                })
+            }
+            Expr::InSubquery {
+                expr,
+                subquery,
+                negated,
+            } => {
+                let expr = self.subquery_expr(outer_context.as_ref().map(Arc::clone), *expr);
+                let subquery = self.query(outer_context, *subquery);
+
+                Planned::Expr(Expr::InSubquery {
+                    expr: Box::new(expr),
+                    subquery: Box::new(subquery),
+                    negated,
+                })
+            }
+            Expr::BinaryOp {
+                left,
+                op: BinaryOperator::And,
+                right,
+            } => {
+                let left = match self.plan_index_expr(
+                    outer_context.as_ref().map(Arc::clone),
+                    indexes,
+                    *left,
+                ) {
+                    Planned::Expr(expr) => expr,
+                    Planned::IndexedExpr {
+                        index_name,
+                        index_op,
+                        index_value_expr,
+                        selection,
+                    } => {
+                        let selection = match selection {
+                            Some(expr) => Expr::BinaryOp {
+                                left: Box::new(expr),
+                                op: BinaryOperator::And,
+                                right,
+                            },
+                            None => *right,
+                        };
+
+                        return Planned::IndexedExpr {
+                            index_name,
+                            index_op,
+                            index_value_expr,
+                            selection: Some(selection),
+                        };
+                    }
+                };
+
+                match self.plan_index_expr(outer_context, indexes, *right) {
+                    Planned::Expr(expr) => Planned::Expr(Expr::BinaryOp {
+                        left: Box::new(left),
+                        op: BinaryOperator::And,
+                        right: Box::new(expr),
+                    }),
+                    Planned::IndexedExpr {
+                        index_name,
+                        index_op,
+                        index_value_expr,
+                        selection,
+                    } => {
+                        let selection = match selection {
+                            Some(expr) => Expr::BinaryOp {
+                                left: Box::new(left),
+                                op: BinaryOperator::And,
+                                right: Box::new(expr),
+                            },
+                            None => left,
+                        };
+
+                        Planned::IndexedExpr {
+                            index_name,
+                            index_op,
+                            index_value_expr,
+                            selection: Some(selection),
+                        }
+                    }
+                }
+            }
+            Expr::BinaryOp {
+                left,
+                op: BinaryOperator::Gt,
+                right,
+            } => self.search_index_op(outer_context, indexes, IndexOperator::Gt, *left, *right),
+            Expr::BinaryOp {
+                left,
+                op: BinaryOperator::Lt,
+                right,
+            } => self.search_index_op(outer_context, indexes, IndexOperator::Lt, *left, *right),
+            Expr::BinaryOp {
+                left,
+                op: BinaryOperator::GtEq,
+                right,
+            } => self.search_index_op(outer_context, indexes, IndexOperator::GtEq, *left, *right),
+            Expr::BinaryOp {
+                left,
+                op: BinaryOperator::LtEq,
+                right,
+            } => self.search_index_op(outer_context, indexes, IndexOperator::LtEq, *left, *right),
+            Expr::BinaryOp {
+                left,
+                op: BinaryOperator::Eq,
+                right,
+            } => self.search_index_op(outer_context, indexes, IndexOperator::Eq, *left, *right),
+            expr => {
+                let expr = self.subquery_expr(outer_context, expr);
+
+                Planned::Expr(expr)
+            }
+        }
+    }
+
+    fn indexes(&self, relation: &TableFactor) -> Option<Indexes<'_>> {
+        match relation {
+            TableFactor::Table { name, .. } => self
+                .schema_map
+                .get(name)
+                .map(|schema| Indexes(&schema.indexes)),
+            _ => None,
+        }
+    }
+
+    fn search_is_null(
+        &self,
+        outer_context: Option<Arc<Context<'a>>>,
+        indexes: &Indexes<'a>,
+        null: bool,
+        expr: Expr,
+    ) -> Planned {
+        if let Some(index_name) = indexes.find(&expr) {
+            let index_op = if null {
+                IndexOperator::Eq
+            } else {
+                IndexOperator::Lt
+            };
+
+            return Planned::IndexedExpr {
+                index_name,
+                index_op,
+                index_value_expr: Expr::Literal(AstLiteral::Null),
+                selection: None,
+            };
+        }
+
+        let expr = self.subquery_expr(outer_context, expr);
+        let expr = if null {
+            Expr::IsNull(Box::new(expr))
+        } else {
+            Expr::IsNotNull(Box::new(expr))
+        };
+
+        Planned::Expr(expr)
+    }
+
+    fn search_index_op(
+        &self,
+        outer_context: Option<Arc<Context<'a>>>,
+        indexes: &Indexes<'a>,
+        index_op: IndexOperator,
+        left: Expr,
+        right: Expr,
+    ) -> Planned {
+        if let Some(index_name) = indexes
+            .find(&left)
+            .filter(|_| is_deterministic(&right) && !may_return_null(&right))
+        {
+            let value_expr = self.subquery_expr(outer_context.clone(), right);
+
+            return Planned::IndexedExpr {
+                index_name,
+                index_op,
+                index_value_expr: value_expr,
+                selection: None,
+            };
+        }
+
+        if let Some(index_name) = indexes
+            .find(&right)
+            .filter(|_| is_deterministic(&left) && !may_return_null(&left))
+        {
+            let value_expr = self.subquery_expr(outer_context.clone(), left);
+
+            return Planned::IndexedExpr {
+                index_name,
+                index_op: index_op.reverse(),
+                index_value_expr: value_expr,
+                selection: None,
+            };
+        }
+
+        if let Expr::Nested(left) = left {
+            return self.search_index_op(outer_context, indexes, index_op, *left, right);
+        }
+
+        if let Expr::Nested(right) = right {
+            return self.search_index_op(outer_context, indexes, index_op, left, *right);
+        }
+
+        let left = self.subquery_expr(outer_context.clone(), left);
+        let right = self.subquery_expr(outer_context, right);
+
+        Planned::Expr(Expr::BinaryOp {
+            left: Box::new(left),
+            op: index_op.into(),
+            right: Box::new(right),
+        })
+    }
+}
+
+struct Indexes<'a>(&'a [SchemaIndex]);
+
+impl<'a> Indexes<'a> {
     fn find(&self, target: &Expr) -> Option<String> {
         self.0
             .iter()
@@ -49,198 +401,6 @@ impl Indexes {
     }
 }
 
-fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Query> {
-    let Query {
-        body,
-        order_by,
-        limit,
-        offset,
-    } = query;
-
-    let select = match body {
-        SetExpr::Select(select) => select,
-        SetExpr::Values(_) => {
-            return Ok(Query {
-                body,
-                order_by,
-                limit,
-                offset,
-            });
-        }
-    };
-
-    let TableWithJoins { relation, .. } = &select.from;
-    let table_name = match relation {
-        TableFactor::Table { name, .. } => name,
-        TableFactor::Derived { .. } => {
-            return Ok(Query {
-                body: SetExpr::Select(select),
-                order_by,
-                limit,
-                offset,
-            });
-        }
-        TableFactor::Series {
-            alias: TableAlias { name, .. },
-            ..
-        } => name,
-        TableFactor::Dictionary {
-            alias: TableAlias { name, .. },
-            ..
-        } => name,
-    };
-
-    let indexes = match schema_map.get(table_name) {
-        Some(Schema { indexes, .. }) => Indexes(indexes.clone()),
-        None => {
-            return Ok(Query {
-                body: SetExpr::Select(select),
-                order_by,
-                limit,
-                offset,
-            });
-        }
-    };
-
-    let index = order_by.last().and_then(|value_expr| {
-        indexes
-            .find_ordered(value_expr)
-            .map(|name| IndexItem::NonClustered {
-                name,
-                asc: value_expr.asc,
-                cmp_expr: None,
-            })
-    });
-
-    if index.is_some() {
-        let Select {
-            distinct,
-            projection,
-            from,
-            selection,
-            group_by,
-            having,
-        } = *select;
-
-        let TableWithJoins { relation, joins } = from;
-        let (name, alias) = match relation {
-            TableFactor::Table { name, alias, .. } => (name, alias),
-            TableFactor::Derived { .. }
-            | TableFactor::Series { .. }
-            | TableFactor::Dictionary { .. } => {
-                return Err(PlanError::Unreachable.into());
-            }
-        };
-
-        let from = TableWithJoins {
-            relation: TableFactor::Table { name, alias, index },
-            joins,
-        };
-
-        let select = Select {
-            distinct,
-            projection,
-            from,
-            selection,
-            group_by,
-            having,
-        };
-
-        Ok(Query {
-            body: SetExpr::Select(Box::new(select)),
-            order_by: Vector::from(order_by).pop().0.into(),
-            limit,
-            offset,
-        })
-    } else {
-        let select = plan_select(schema_map, &indexes, *select)?;
-        let body = SetExpr::Select(Box::new(select));
-        let query = Query {
-            body,
-            order_by,
-            limit,
-            offset,
-        };
-
-        Ok(query)
-    }
-}
-
-fn plan_select(
-    schema_map: &HashMap<String, Schema>,
-    indexes: &Indexes,
-    select: Select,
-) -> Result<Select> {
-    let Select {
-        distinct,
-        projection,
-        from,
-        selection,
-        group_by,
-        having,
-    } = select;
-
-    let selection = match selection {
-        Some(expr) => expr,
-        None => {
-            return Ok(Select {
-                distinct,
-                projection,
-                from,
-                selection,
-                group_by,
-                having,
-            });
-        }
-    };
-
-    match plan_index(schema_map, indexes, selection)? {
-        Planned::Expr(selection) => Ok(Select {
-            distinct,
-            projection,
-            from,
-            selection: Some(selection),
-            group_by,
-            having,
-        }),
-        Planned::IndexedExpr {
-            index_name,
-            index_op,
-            index_value_expr,
-            selection,
-        } => {
-            let TableWithJoins { relation, joins } = from;
-            let (name, alias) = match relation {
-                TableFactor::Table { name, alias, .. } => (name, alias),
-                TableFactor::Derived { .. }
-                | TableFactor::Series { .. }
-                | TableFactor::Dictionary { .. } => {
-                    return Err(PlanError::Unreachable.into());
-                }
-            };
-
-            let index = Some(IndexItem::NonClustered {
-                name: index_name,
-                asc: None,
-                cmp_expr: Some((index_op, index_value_expr)),
-            });
-            let from = TableWithJoins {
-                relation: TableFactor::Table { name, alias, index },
-                joins,
-            };
-
-            Ok(Select {
-                distinct,
-                projection,
-                from,
-                selection,
-                group_by,
-                having,
-            })
-        }
-    }
-}
-
 enum Planned {
     IndexedExpr {
         index_name: String,
@@ -251,208 +411,108 @@ enum Planned {
     Expr(Expr),
 }
 
-fn plan_index(
-    schema_map: &HashMap<String, Schema>,
-    indexes: &Indexes,
-    selection: Expr,
-) -> Result<Planned> {
-    match selection {
-        Expr::Nested(expr) => plan_index(schema_map, indexes, *expr),
-        Expr::IsNull(expr) => Ok(search_is_null(indexes, true, expr)),
-        Expr::IsNotNull(expr) => Ok(search_is_null(indexes, false, expr)),
-        Expr::Subquery(query) => plan_query(schema_map, *query)
-            .map(Box::new)
-            .map(Expr::Subquery)
-            .map(Planned::Expr),
-        Expr::Exists { subquery, negated } => plan_query(schema_map, *subquery)
-            .map(Box::new)
-            .map(|subquery| Expr::Exists { subquery, negated })
-            .map(Planned::Expr),
-        Expr::InSubquery {
-            expr,
-            subquery,
-            negated,
-        } => plan_query(schema_map, *subquery)
-            .map(Box::new)
-            .map(|subquery| Expr::InSubquery {
-                expr,
-                subquery,
-                negated,
-            })
-            .map(Planned::Expr),
-        Expr::BinaryOp {
-            left,
-            op: BinaryOperator::And,
-            right,
-        } => {
-            let left = match plan_index(schema_map, indexes, *left)? {
-                Planned::Expr(selection) => selection,
-                Planned::IndexedExpr {
-                    index_name,
-                    index_value_expr,
-                    index_op,
-                    selection,
-                } => {
-                    let selection = match selection {
-                        Some(expr) => Expr::BinaryOp {
-                            left: Box::new(expr),
-                            op: BinaryOperator::And,
-                            right,
-                        },
-                        None => *right,
-                    };
-
-                    return Ok(Planned::IndexedExpr {
-                        index_name,
-                        index_op,
-                        index_value_expr,
-                        selection: Some(selection),
-                    });
-                }
-            };
-
-            match plan_index(schema_map, indexes, *right)? {
-                Planned::Expr(expr) => Ok(Planned::Expr(Expr::BinaryOp {
-                    left: Box::new(left),
-                    op: BinaryOperator::And,
-                    right: Box::new(expr),
-                })),
-                Planned::IndexedExpr {
-                    index_name,
-                    index_op,
-                    index_value_expr,
-                    selection,
-                } => {
-                    let selection = match selection {
-                        Some(expr) => Expr::BinaryOp {
-                            left: Box::new(left),
-                            op: BinaryOperator::And,
-                            right: Box::new(expr),
-                        },
-                        None => left,
-                    };
-
-                    Ok(Planned::IndexedExpr {
-                        index_name,
-                        index_value_expr,
-                        index_op,
-                        selection: Some(selection),
-                    })
-                }
-            }
-        }
-        Expr::BinaryOp {
-            left,
-            op: BinaryOperator::Gt,
-            right,
-        } => Ok(search_index_op(indexes, IndexOperator::Gt, left, right)),
-        Expr::BinaryOp {
-            left,
-            op: BinaryOperator::Lt,
-            right,
-        } => Ok(search_index_op(indexes, IndexOperator::Lt, left, right)),
-        Expr::BinaryOp {
-            left,
-            op: BinaryOperator::GtEq,
-            right,
-        } => Ok(search_index_op(indexes, IndexOperator::GtEq, left, right)),
-        Expr::BinaryOp {
-            left,
-            op: BinaryOperator::LtEq,
-            right,
-        } => Ok(search_index_op(indexes, IndexOperator::LtEq, left, right)),
-        Expr::BinaryOp {
-            left,
-            op: BinaryOperator::Eq,
-            right,
-        } => Ok(search_index_op(indexes, IndexOperator::Eq, left, right)),
-        _ => Ok(Planned::Expr(selection)),
-    }
-}
-
-fn search_is_null(indexes: &Indexes, null: bool, expr: Box<Expr>) -> Planned {
-    match indexes.find(expr.as_ref()) {
-        Some(index_name) => {
-            let index_op = if null {
-                IndexOperator::Eq
-            } else {
-                IndexOperator::Lt
-            };
-
-            Planned::IndexedExpr {
-                index_name,
-                index_op,
-                index_value_expr: Expr::Literal(AstLiteral::Null),
-                selection: None,
-            }
-        }
-        None => {
-            let expr = if null {
-                Expr::IsNull(expr)
-            } else {
-                Expr::IsNotNull(expr)
-            };
-
-            Planned::Expr(expr)
-        }
-    }
-}
-
-fn search_index_op(
-    indexes: &Indexes,
-    index_op: IndexOperator,
-    left: Box<Expr>,
-    right: Box<Expr>,
-) -> Planned {
-    if let Some(index_name) = indexes
-        .find(left.as_ref())
-        .and_then(|index_name| is_stateless(right.as_ref()).then_some(index_name))
-    {
-        Planned::IndexedExpr {
-            index_name,
-            index_op,
-            index_value_expr: *right,
-            selection: None,
-        }
-    } else if let Some(index_name) = indexes
-        .find(right.as_ref())
-        .and_then(|index_name| is_stateless(left.as_ref()).then_some(index_name))
-    {
-        Planned::IndexedExpr {
-            index_name,
-            index_op: index_op.reverse(),
-            index_value_expr: *left,
-            selection: None,
-        }
-    } else if let Expr::Nested(left) = *left {
-        search_index_op(indexes, index_op, left, right)
-    } else if let Expr::Nested(right) = *right {
-        search_index_op(indexes, index_op, left, right)
-    } else {
-        Planned::Expr(Expr::BinaryOp {
-            left,
-            op: index_op.into(),
-            right,
-        })
-    }
-}
-
-fn is_stateless(expr: &Expr) -> bool {
-    match expr {
-        Expr::Literal(AstLiteral::Null) => false,
-        Expr::Literal(_) => true,
-        Expr::TypedString { .. } => true,
-        Expr::IsNull(expr)
-        | Expr::IsNotNull(expr)
-        | Expr::UnaryOp { expr, .. }
-        | Expr::Nested(expr) => is_stateless(expr.as_ref()),
-        Expr::Function(func) => match func.as_ref() {
-            Function::Cast { expr, .. } => is_stateless(expr),
-            _ => false,
+#[cfg(test)]
+mod tests {
+    use {
+        super::plan,
+        crate::{
+            ast::Statement,
+            ast_builder::{Build, nested, non_clustered, null, num, table, text},
+            mock::{MockStorage, run},
+            parse_sql::parse,
+            plan::fetch_schema_map,
+            translate::translate,
         },
-        Expr::BinaryOp { left, right, .. } => {
-            is_stateless(left.as_ref()) && is_stateless(right.as_ref())
-        }
-        _ => false,
+        futures::executor::block_on,
+    };
+
+    fn plan_index(storage: &MockStorage, sql: &str) -> Statement {
+        let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
+        let statement = translate(&parsed).unwrap();
+        let schema_map = block_on(fetch_schema_map(storage, &statement)).unwrap();
+
+        plan(&schema_map, statement)
+    }
+
+    fn storage_with_indexes() -> MockStorage {
+        run("
+CREATE TABLE Test (
+    id INTEGER,
+    flag BOOLEAN,
+    name TEXT
+);
+CREATE INDEX idx_id ON Test (id);
+CREATE INDEX idx_flag ON Test (flag);
+CREATE INDEX idx_name ON Test (name);
+")
+    }
+
+    #[test]
+    fn index_planning_scenarios() {
+        let storage = storage_with_indexes();
+
+        let sql = "SELECT * FROM Test WHERE id = 1";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_id".to_owned()).eq(num(1)))
+            .select()
+            .build()
+            .unwrap();
+        assert_eq!(actual, expected, "uses index for eq constant:\n{sql}");
+
+        let sql = "SELECT * FROM Test WHERE id = NULL";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test").select().filter("id = NULL").build().unwrap();
+        assert_eq!(actual, expected, "skips index for nullable value:\n{sql}");
+
+        let sql = "SELECT * FROM Test WHERE flag = ('ABC' IS NULL)";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_flag".to_owned()).eq(nested(text("ABC").is_null())))
+            .select()
+            .build()
+            .unwrap();
+        assert_eq!(
+            actual, expected,
+            "uses index for deterministic expression:\n{sql}"
+        );
+
+        let sql = "SELECT * FROM Test ORDER BY name";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_name".to_owned()))
+            .select()
+            .build()
+            .unwrap();
+        assert_eq!(actual, expected, "applies order by index:\n{sql}");
+
+        let sql = "SELECT * FROM Test WHERE flag IS NULL";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_flag".to_owned()).eq(null()))
+            .select()
+            .build()
+            .unwrap();
+        assert_eq!(actual, expected, "uses index for is null filter:\n{sql}");
+
+        let sql = "SELECT * FROM Test WHERE flag IS NOT NULL";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_flag".to_owned()).lt(null()))
+            .select()
+            .build()
+            .unwrap();
+        assert_eq!(
+            actual, expected,
+            "uses index for is not null filter:\n{sql}"
+        );
+
+        let sql = "SELECT * FROM Test WHERE id = flag";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test").select().filter("id = flag").build().unwrap();
+        assert_eq!(
+            actual, expected,
+            "skips index for non constant expression:\n{sql}"
+        );
     }
 }

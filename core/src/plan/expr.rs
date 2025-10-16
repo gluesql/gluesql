@@ -1,5 +1,8 @@
 mod aggregate;
+pub mod deterministic;
+pub mod evaluable;
 mod function;
+pub mod nullability;
 
 use {
     crate::ast::{Expr, Query},

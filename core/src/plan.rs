@@ -1,6 +1,5 @@
 mod context;
 mod error;
-mod evaluable;
 mod expr;
 mod index;
 mod join;
@@ -20,7 +19,7 @@ pub async fn plan<T: Store>(storage: &T, statement: Statement) -> Result<Stateme
     let schema_map = fetch_schema_map(storage, &statement).await?;
     validate(&schema_map, &statement)?;
     let statement = plan_primary_key(&schema_map, statement);
-    let statement = plan_index(&schema_map, statement)?;
+    let statement = plan_index(&schema_map, statement);
     let statement = plan_join(&schema_map, statement);
 
     Ok(statement)
