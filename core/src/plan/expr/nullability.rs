@@ -52,13 +52,7 @@ fn function_may_return_null(function: &Function) -> bool {
 
     match function {
         Cast { expr, .. } => may_return_null(expr),
-        Coalesce(exprs) => {
-            if exprs.is_empty() {
-                true
-            } else {
-                exprs.iter().all(may_return_null)
-            }
-        }
+        Coalesce(exprs) => exprs.iter().all(may_return_null),
         IfNull { expr, then } => may_return_null(expr) && may_return_null(then),
         NullIf { .. } => true,
         Now() | CurrentDate() | CurrentTime() | CurrentTimestamp() | Pi() | GenerateUuid()
@@ -201,11 +195,7 @@ fn function_may_return_null(function: &Function) -> bool {
 mod tests {
     use {
         super::may_return_null,
-        crate::{
-            ast::{Expr, Function},
-            parse_sql::parse_expr,
-            translate::translate_expr,
-        },
+        crate::{parse_sql::parse_expr, translate::translate_expr},
     };
 
     fn test(sql: &str, expected: bool) {
@@ -334,6 +324,7 @@ mod tests {
         test("NULLIF(1, 1)", true);
         test("RAND(1)", false);
         test("COALESCE(NULL, NULL)", true);
+        test("COALESCE()", true);
         test("SPLICE('[1,2,3]', 1, 2, '[9]')", false);
         test("DEDUP('[1,1,2]')", false);
     }
@@ -342,11 +333,5 @@ mod tests {
     #[should_panic(expected = "nullability mismatch")]
     fn invalid_expression_panics() {
         test("INVALID SQL", false);
-    }
-
-    #[test]
-    fn coalesce_empty_is_nullable() {
-        let expr = Expr::Function(Box::new(Function::Coalesce(Vec::new())));
-        assert!(may_return_null(&expr), "empty COALESCE should be nullable");
     }
 }
