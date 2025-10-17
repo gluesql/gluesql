@@ -201,7 +201,11 @@ fn function_may_return_null(function: &Function) -> bool {
 mod tests {
     use {
         super::may_return_null,
-        crate::{parse_sql::parse_expr, translate::translate_expr},
+        crate::{
+            ast::{Expr, Function},
+            parse_sql::parse_expr,
+            translate::translate_expr,
+        },
     };
 
     fn test(sql: &str, expected: bool) {
@@ -311,6 +315,7 @@ mod tests {
         test("HEX('abc')", false);
         test("APPEND('[1,2]', '3')", false);
         test("SORT('[1,2]')", false);
+        test("SORT('[1,2]', 'ASC')", false);
         test("SLICE('[1,2,3]', 1, 1)", false);
         test("PREPEND('[2,3]', '1')", false);
         test("SKIP('[1,2,3]', 1)", false);
@@ -337,5 +342,11 @@ mod tests {
     #[should_panic(expected = "nullability mismatch")]
     fn invalid_expression_panics() {
         test("INVALID SQL", false);
+    }
+
+    #[test]
+    fn coalesce_empty_is_nullable() {
+        let expr = Expr::Function(Box::new(Function::Coalesce(Vec::new())));
+        assert!(may_return_null(&expr), "empty COALESCE should be nullable");
     }
 }
