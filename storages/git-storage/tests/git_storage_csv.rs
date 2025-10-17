@@ -17,7 +17,7 @@ impl Tester<GitStorage> for GitStorageTester {
 
         if let Err(e) = remove_dir_all(&path) {
             println!("fs::remove_file {e:?}");
-        };
+        }
 
         let storage = GitStorage::init(&path, StorageType::Csv).expect("GitStorage::init - CSV");
         let glue = Glue::new(storage);

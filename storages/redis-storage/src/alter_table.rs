@@ -240,7 +240,7 @@ impl AlterTable for RedisStorage {
                         AlterTableError::DroppingColumnNotFound(column_name.to_owned()).into(),
                     );
                 }
-            };
+            }
 
             self.redis_delete_schema(table_name)?; // No problem yet, finally it's ok to delete the old schema
             self.redis_store_schema(&schema)?;
