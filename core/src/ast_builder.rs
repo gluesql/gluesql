@@ -36,7 +36,7 @@ pub use expr::{
 pub use expr::{
     aggregate::{
         AggregateNode, avg, avg_distinct, count, count_distinct, max, max_distinct, min,
-        min_distinct, stdev, stdev_distinct, sum, sum_distinct, variance, variance_distinct,
+        min_distinct, stdev, stdev_distinct, sum, sum_distinct, total, variance, variance_distinct,
     },
     function,
 };

@@ -6,6 +6,7 @@ impl Aggregate {
             AggregateFunction::Count(CountArgExpr::Wildcard) => None,
             AggregateFunction::Count(CountArgExpr::Expr(expr))
             | AggregateFunction::Sum(expr)
+            | AggregateFunction::Total(expr)
             | AggregateFunction::Max(expr)
             | AggregateFunction::Min(expr)
             | AggregateFunction::Avg(expr)
@@ -42,6 +43,10 @@ mod tests {
         assert_eq!(actual.as_expr(), Some(&expected));
 
         let actual = parse("SUM(id)");
+        let expected = Expr::Identifier("id".to_owned());
+        assert_eq!(actual.as_expr(), Some(&expected));
+
+        let actual = parse("TOTAL(id)");
         let expected = Expr::Identifier("id".to_owned());
         assert_eq!(actual.as_expr(), Some(&expected));
 

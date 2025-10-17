@@ -79,6 +79,7 @@ macro_rules! generate_store_tests {
         glue!(aggregate_min, aggregate::min::min);
         glue!(aggregate_stdev, aggregate::stdev::stdev);
         glue!(aggregate_sum, aggregate::sum::sum);
+        glue!(aggregate_total, aggregate::total::total);
         glue!(aggregate_variance, aggregate::variance::variance);
         glue!(aggregate_error, aggregate::error::error);
         glue!(aggregate_expr, aggregate::expr::expr);
