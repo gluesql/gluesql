@@ -4,7 +4,7 @@ use {
         result::{Error, Result},
         store::{
             AlterTable, CustomFunction, CustomFunctionMut, DataRow, Index, IndexMut, Metadata,
-            RowIter, Store, StoreMut, Transaction,
+            Planner, RowIter, Store, StoreMut, Transaction,
         },
     },
     async_trait::async_trait,
@@ -91,6 +91,7 @@ impl Index for MockStorage {}
 impl IndexMut for MockStorage {}
 impl Transaction for MockStorage {}
 impl Metadata for MockStorage {}
+impl Planner for MockStorage {}
 
 #[cfg(test)]
 mod tests {
