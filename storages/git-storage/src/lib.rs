@@ -9,8 +9,8 @@ use {
     gluesql_core::{
         error::{Error, Result},
         store::{
-            AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Store,
-            StoreMut, Transaction,
+            AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Planner,
+            Store, StoreMut, Transaction,
         },
     },
     gluesql_csv_storage::CsvStorage,
@@ -162,3 +162,4 @@ impl Transaction for GitStorage {}
 impl Metadata for GitStorage {}
 impl CustomFunction for GitStorage {}
 impl CustomFunctionMut for GitStorage {}
+impl Planner for GitStorage {}

@@ -4,7 +4,8 @@ use {
     error::GlueSQLError,
     gluesql_core::{
         ast::Statement,
-        prelude::{Payload, execute, parse, plan},
+        prelude::{Payload, execute, parse},
+        store::Planner,
         translate::translate,
     },
     payload::{PyPayload, convert},
@@ -26,7 +27,9 @@ pub struct PyGlue {
 
 macro_rules! plan {
     ($storage:expr, $statement:expr) => {{
-        plan(&$storage.0, $statement)
+        $storage
+            .0
+            .plan($statement)
             .await
             .map_err(|e| GlueSQLError::new_err(e.to_string()))
     }};

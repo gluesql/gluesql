@@ -14,7 +14,7 @@ use {
         chrono::Utc,
         data::{CustomFunction as StructCustomFunction, Key, Schema, Value},
         error::{Error, Result},
-        store::{CustomFunction, CustomFunctionMut, DataRow, RowIter, Store, StoreMut},
+        store::{CustomFunction, CustomFunctionMut, DataRow, Planner, RowIter, Store, StoreMut},
     },
     redis::{Commands, Connection},
     std::{collections::BTreeMap, sync::Mutex},
@@ -194,6 +194,8 @@ impl RedisStorage {
         Ok(())
     }
 }
+
+impl Planner for RedisStorage {}
 
 #[async_trait]
 impl CustomFunction for RedisStorage {

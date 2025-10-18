@@ -9,7 +9,7 @@ use {
         error::{Error, Result},
         store::{
             AlterTable, CustomFunction, CustomFunctionMut, DataRow, Index, IndexMut, Metadata,
-            Transaction,
+            Planner, Transaction,
         },
     },
     hex::ToHex,
@@ -80,3 +80,4 @@ impl Transaction for FileStorage {}
 impl Metadata for FileStorage {}
 impl CustomFunction for FileStorage {}
 impl CustomFunctionMut for FileStorage {}
+impl Planner for FileStorage {}
