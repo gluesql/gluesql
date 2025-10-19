@@ -122,8 +122,8 @@ async fn primary_keys_cover_key_to_sql_variants() -> Result<()> {
         PrimaryKeyCase {
             table: "pk_f32",
             data_type: DataType::Float32,
-            value: Value::F32(3.14159_f32),
-            key: Key::F32(3.14159_f32.into()),
+            value: Value::F32(std::f32::consts::PI),
+            key: Key::F32(std::f32::consts::PI.into()),
         },
         PrimaryKeyCase {
             table: "pk_text",
