@@ -68,6 +68,7 @@ jobs:
           cd csv-storage && cargo test --verbose && cd ..
           cd parquet-storage && cargo test --verbose && cd ..
           cd file-storage && cargo test --verbose && cd ..
+          cd sqlite-storage && cargo test --verbose && cd ..
           cd redb-storage && cargo test --verbose && cd ..
           cd sled-storage
           cargo test --verbose -- --skip sled_transaction_timeout
