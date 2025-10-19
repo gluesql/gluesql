@@ -13,7 +13,7 @@ use {
     gluesql_core::{
         data::{Key, Schema, Value},
         error::{Error, Result},
-        store::{DataRow, Metadata, RowIter, Store, StoreMut},
+        store::{DataRow, Metadata, Planner, RowIter, Store, StoreMut},
     },
     idb::{
         CursorDirection, Database, DatabaseEvent, Factory, ObjectStoreParams, Query,
@@ -609,6 +609,7 @@ impl gluesql_core::store::Transaction for IdbStorage {}
 impl Metadata for IdbStorage {}
 impl gluesql_core::store::CustomFunction for IdbStorage {}
 impl gluesql_core::store::CustomFunctionMut for IdbStorage {}
+impl Planner for IdbStorage {}
 
 /// `IdbStorage` holds `web_sys` types that are not `Send` by default, but it
 /// is used only on `wasm32` targets where execution happens on a single

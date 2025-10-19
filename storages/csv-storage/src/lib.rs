@@ -11,7 +11,7 @@ use {
         parse_sql::parse_data_type,
         store::{
             AlterTable, CustomFunction, CustomFunctionMut, DataRow, Index, IndexMut, Metadata,
-            Transaction,
+            Planner, Transaction,
         },
         translate::translate_data_type,
     },
@@ -258,3 +258,4 @@ impl Index for CsvStorage {}
 impl IndexMut for CsvStorage {}
 impl Transaction for CsvStorage {}
 impl Metadata for CsvStorage {}
+impl Planner for CsvStorage {}

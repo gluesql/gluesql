@@ -11,7 +11,7 @@ use {
         error::{Error, Result},
         store::{
             AlterTable, CustomFunction, CustomFunctionMut, DataRow, Index, IndexMut, Metadata,
-            RowIter, Store, StoreMut, Transaction,
+            Planner, RowIter, Store, StoreMut, Transaction,
         },
     },
     serde::{Deserialize, Serialize},
@@ -211,5 +211,6 @@ impl Index for WebStorage {}
 impl IndexMut for WebStorage {}
 impl Transaction for WebStorage {}
 impl Metadata for WebStorage {}
+impl Planner for WebStorage {}
 impl CustomFunction for WebStorage {}
 impl CustomFunctionMut for WebStorage {}

@@ -11,7 +11,7 @@ use {
         error::Result,
         store::{
             AlterTable, CustomFunction, CustomFunctionMut, DataRow, Index, IndexMut, Metadata,
-            RowIter, Store, StoreMut, Transaction,
+            Planner, RowIter, Store, StoreMut, Transaction,
         },
     },
     redb::Database,
@@ -93,3 +93,4 @@ impl IndexMut for RedbStorage {}
 impl Metadata for RedbStorage {}
 impl CustomFunction for RedbStorage {}
 impl CustomFunctionMut for RedbStorage {}
+impl Planner for RedbStorage {}

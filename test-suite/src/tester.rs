@@ -3,8 +3,8 @@ use {
     gluesql_core::{
         ast::*,
         parse_sql::parse_expr,
-        prelude::*,
-        store::{GStore, GStoreMut},
+        prelude::{Error, Glue, Payload, Result, parse, translate},
+        store::{GStore, GStoreMut, Planner},
         translate::translate_expr,
     },
     pretty_assertions::assert_eq,
@@ -123,7 +123,7 @@ pub fn type_match(expected: &[DataType], found: Result<Payload>) {
 /// Actual test cases are in [test-suite/src/](https://github.com/gluesql/gluesql/blob/main/test-suite/src/),
 /// not in `/tests/`.
 #[async_trait(?Send)]
-pub trait Tester<T: GStore + GStoreMut> {
+pub trait Tester<T: GStore + GStoreMut + Planner> {
     async fn new(namespace: &str) -> Self;
 
     fn get_glue(&mut self) -> &mut Glue<T>;
@@ -134,7 +134,7 @@ pub trait Tester<T: GStore + GStoreMut> {
         println!("[RUN] {}", sql);
         let parsed = parse(sql)?;
         let statement = translate(&parsed[0])?;
-        let statement = plan(&glue.storage, statement).await?;
+        let statement = glue.storage.plan(statement).await?;
 
         glue.execute_stmt(&statement).await
     }
@@ -180,7 +180,7 @@ pub trait Tester<T: GStore + GStoreMut> {
 
         let parsed = parse(sql).unwrap();
         let statement = translate(&parsed[0]).unwrap();
-        let statement = plan(&glue.storage, statement).await.unwrap();
+        let statement = glue.storage.plan(statement).await.unwrap();
 
         test_indexes(&statement, Some(indexes));
 
@@ -195,7 +195,9 @@ macro_rules! test_case {
     ($name: ident, $content: expr) => {
         pub async fn $name<T>(mut tester: impl $crate::Tester<T>)
         where
-            T: gluesql_core::store::GStore + gluesql_core::store::GStoreMut,
+            T: gluesql_core::store::GStore
+                + gluesql_core::store::GStoreMut
+                + gluesql_core::store::Planner,
         {
             #[allow(unused_variables)]
             let glue = tester.get_glue();

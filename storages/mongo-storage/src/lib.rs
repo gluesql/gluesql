@@ -10,7 +10,8 @@ use {
     gluesql_core::{
         error::Result,
         store::{
-            AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Transaction,
+            AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Planner,
+            Transaction,
         },
     },
     mongodb::{Client, Database, options::ClientOptions},
@@ -41,3 +42,4 @@ impl CustomFunctionMut for MongoStorage {}
 impl Index for MongoStorage {}
 impl IndexMut for MongoStorage {}
 impl Transaction for MongoStorage {}
+impl Planner for MongoStorage {}

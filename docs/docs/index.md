@@ -82,6 +82,9 @@ Sled Storage is a persistent data storage option for GlueSQL that is built on th
 ### Redb Storage
 Redb Storage leverages the [redb](https://docs.rs/redb) embedded database for persistent storage with transactional support. It keeps all tables in a single database file, offering another simple way to keep your data on disk while enjoying GlueSQL's query capabilities.
 
+### SQLite Storage
+SQLite Storage lets GlueSQL sit on top of an existing SQLite database file. You can reuse data that was created outside GlueSQL while joining it with other GlueSQL storages, tapping into schemaless support, and building queries through the AST Builder. It serves as a handy bridge when you want to extend or migrate an SQLite-based application step by step without giving up the data you already have, even enabling pipelines that move data from SQLite into other GlueSQL-backed stores such as MongoDB.
+
 ### JSON Storage
 With GlueSQL, you can use JSONL or JSON files as a database that supports SQL and AST Builder, making it a powerful option for developers who need to work with JSON data. JSON Storage is a storage system that uses two types of files: a schema file (optional) and a data file. The schema file is written in Standard SQL and stores the structure of the table, while the data file contains the actual data and supports two file formats: `*.json` and `*.jsonl`. JSON Storage supports all DML features, but is particularly specialized for SELECT and INSERT.
 

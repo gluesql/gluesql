@@ -16,7 +16,7 @@ use {
     gluesql_core::{
         ast::{Expr, ToSql},
         data::Value,
-        store::{DataRow, GStore, GStoreMut, Store, Transaction},
+        store::{DataRow, GStore, GStoreMut, Planner, Store, Transaction},
     },
     gluesql_csv_storage::CsvStorage,
     gluesql_file_storage::FileStorage,
@@ -135,7 +135,7 @@ pub fn run() -> Result<()> {
         }
     }
 
-    fn run<T: GStore + GStoreMut>(storage: T, input: Option<PathBuf>) {
+    fn run<T: GStore + GStoreMut + Planner>(storage: T, input: Option<PathBuf>) {
         let output = std::io::stdout();
         let mut cli = Cli::new(storage, output);
 
