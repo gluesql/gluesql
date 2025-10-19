@@ -1,5 +1,5 @@
 use {
-    chrono::NaiveDate,
+    chrono::{NaiveDate, NaiveTime},
     gluesql_core::{
         ast::{ColumnDef, ColumnUniqueOption, DataType},
         data::{Interval, Key, Schema, Value},
@@ -157,6 +157,12 @@ async fn primary_keys_cover_key_to_sql_variants() -> Result<()> {
             data_type: DataType::Interval,
             value: Value::Interval(Interval::days(1)),
             key: Key::Interval(Interval::days(1)),
+        },
+        PrimaryKeyCase {
+            table: "pk_time",
+            data_type: DataType::Time,
+            value: Value::Time(NaiveTime::from_hms_opt(9, 45, 30).unwrap()),
+            key: Key::Time(NaiveTime::from_hms_opt(9, 45, 30).unwrap()),
         },
         PrimaryKeyCase {
             table: "pk_uuid",

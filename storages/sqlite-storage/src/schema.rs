@@ -246,9 +246,9 @@ fn sql_column_definition(column: &ColumnDef) -> String {
 fn data_type_to_sqlite(data_type: &DataType) -> String {
     match data_type {
         DataType::Boolean => "INTEGER".to_owned(),
-        DataType::Int8 | DataType::Int16 | DataType::Int32 | DataType::Int | DataType::Time => {
-            "INTEGER".to_owned()
-        }
+        DataType::Int8 | DataType::Int16 | DataType::Int32 | DataType::Int => "INTEGER".to_owned(),
+        DataType::Float32 | DataType::Float => "REAL".to_owned(),
+        DataType::Bytea => "BLOB".to_owned(),
         DataType::Int128
         | DataType::Uint8
         | DataType::Uint16
@@ -256,13 +256,16 @@ fn data_type_to_sqlite(data_type: &DataType) -> String {
         | DataType::Uint64
         | DataType::Uint128
         | DataType::Uuid
-        | DataType::Inet => "TEXT".to_owned(),
-        DataType::Float32 | DataType::Float => "REAL".to_owned(),
-        DataType::Text => "TEXT".to_owned(),
-        DataType::Bytea => "BLOB".to_owned(),
-        DataType::Date | DataType::Timestamp | DataType::Interval => "TEXT".to_owned(),
-        DataType::Map | DataType::List | DataType::Point => "TEXT".to_owned(),
-        DataType::Decimal => "TEXT".to_owned(),
+        | DataType::Inet
+        | DataType::Map
+        | DataType::List
+        | DataType::Point
+        | DataType::Date
+        | DataType::Timestamp
+        | DataType::Interval
+        | DataType::Decimal
+        | DataType::Text
+        | DataType::Time => "TEXT".to_owned(),
     }
 }
 
