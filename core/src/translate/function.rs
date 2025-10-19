@@ -380,7 +380,19 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             };
             Ok(Expr::Function(Box::new(Function::Rand(v))))
         }
-        "ROUND" => translate_function_one_arg(Function::Round, args, name),
+        "ROUND" => {
+            check_len_range(name.clone(), args.len(), 1, 2)?;
+            let expr = translate_expr(args[0])?;
+            let precision = if args.len() == 2 {
+                Some(translate_expr(args[1])?)
+            } else {
+                None
+            };
+            Ok(Expr::Function(Box::new(Function::Round {
+                expr,
+                precision,
+            })))
+        }
         "TRUNC" => translate_function_one_arg(Function::Trunc, args, name),
         "EXP" => translate_function_one_arg(Function::Exp, args, name),
         "LN" => translate_function_one_arg(Function::Ln, args, name),
