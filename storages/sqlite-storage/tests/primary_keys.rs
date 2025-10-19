@@ -4,6 +4,7 @@ use {
         ast::{ColumnDef, ColumnUniqueOption, DataType},
         data::{Interval, Key, Schema, Value},
         error::Result,
+        prelude::Glue,
         store::{DataRow, Store, StoreMut},
     },
     gluesql_sqlite_storage::SqliteStorage,
@@ -119,6 +120,12 @@ async fn primary_keys_cover_key_to_sql_variants() -> Result<()> {
             key: Key::Decimal("1234567890.1234567890".parse::<Decimal>().unwrap()),
         },
         PrimaryKeyCase {
+            table: "pk_f32",
+            data_type: DataType::Float32,
+            value: Value::F32(3.14159_f32),
+            key: Key::F32(3.14159_f32.into()),
+        },
+        PrimaryKeyCase {
             table: "pk_text",
             data_type: DataType::Text,
             value: Value::Str("primary-key".to_owned()),
@@ -201,4 +208,20 @@ async fn primary_keys_cover_key_to_sql_variants() -> Result<()> {
     }
 
     Ok(())
+}
+
+#[tokio::test]
+async fn float_primary_key_not_supported() {
+    let storage = SqliteStorage::memory().await.expect("memory storage");
+    let mut glue = Glue::new(storage);
+
+    let err = glue
+        .execute("CREATE TABLE pk_float (id FLOAT PRIMARY KEY)")
+        .await
+        .unwrap_err();
+    let message = err.to_string();
+    assert!(
+        message.contains("unsupported") && message.contains("unique"),
+        "expected unsupported float primary key error, got: {message}"
+    );
 }
