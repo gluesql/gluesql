@@ -197,3 +197,99 @@ pub(crate) async fn update_schemaless_row(
         })
         .await
 }
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        gluesql_core::{
+            ast::{ColumnDef, ColumnUniqueOption, DataType},
+            data::Schema,
+            error::Error as GlueError,
+            store::{DataRow, Store, StoreMut},
+        },
+    };
+
+    fn structured_schema(table_name: &str, with_primary: bool) -> Schema {
+        Schema {
+            table_name: table_name.to_owned(),
+            column_defs: Some(vec![
+                ColumnDef {
+                    name: "id".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: false,
+                    default: None,
+                    unique: with_primary.then_some(ColumnUniqueOption { is_primary: true }),
+                    comment: None,
+                },
+                ColumnDef {
+                    name: "value".to_owned(),
+                    data_type: DataType::Text,
+                    nullable: true,
+                    default: None,
+                    unique: None,
+                    comment: None,
+                },
+            ]),
+            indexes: vec![],
+            engine: None,
+            foreign_keys: vec![],
+            comment: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn structured_insert_column_count_mismatch() {
+        let mut storage = SqliteStorage::memory().await.expect("memory storage");
+        let schema = structured_schema("mismatch_case", true);
+        storage
+            .insert_schema(&schema)
+            .await
+            .expect("insert schema for mismatch");
+
+        let err = insert_structured(
+            &storage,
+            "mismatch_case",
+            &schema,
+            vec![Value::I64(1)], // missing second column
+        )
+        .await
+        .expect_err("column count mismatch should error");
+
+        assert!(matches!(
+            err,
+            GlueError::StorageMsg(msg) if msg == "column count does not match values"
+        ));
+    }
+
+    #[tokio::test]
+    async fn insert_structured_with_key_without_primary_branch() {
+        let mut storage = SqliteStorage::memory().await.expect("memory storage");
+        let schema = structured_schema("rowid_table", false);
+        storage
+            .insert_schema(&schema)
+            .await
+            .expect("insert schema without primary");
+
+        insert_structured_with_key(
+            &storage,
+            "rowid_table",
+            &schema,
+            Key::I64(999),
+            vec![Value::I64(10), Value::Str("hello".to_owned())],
+        )
+        .await
+        .expect("rowid insert succeeds without primary key");
+
+        let fetched = storage
+            .fetch_data("rowid_table", &Key::I64(1))
+            .await
+            .expect("fetch row")
+            .expect("row present");
+
+        assert_eq!(
+            fetched,
+            DataRow::Vec(vec![Value::I64(10), Value::Str("hello".to_owned())])
+        );
+    }
+}
