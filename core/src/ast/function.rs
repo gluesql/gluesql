@@ -517,6 +517,7 @@ impl ToSql for Function {
 pub enum AggregateFunction {
     Count(CountArgExpr),
     Sum(Expr),
+    Total(Expr),
     Max(Expr),
     Min(Expr),
     Avg(Expr),
@@ -541,6 +542,10 @@ impl Aggregate {
 
     pub fn sum(expr: Expr, distinct: bool) -> Self {
         Self::new(AggregateFunction::Sum(expr), distinct)
+    }
+
+    pub fn total(expr: Expr, distinct: bool) -> Self {
+        Self::new(AggregateFunction::Total(expr), distinct)
     }
 
     pub fn max(expr: Expr, distinct: bool) -> Self {
@@ -569,6 +574,7 @@ impl AggregateFunction {
         let (name, arg) = match self {
             AggregateFunction::Count(expr) => ("COUNT", expr.to_sql()),
             AggregateFunction::Sum(expr) => ("SUM", expr.to_sql()),
+            AggregateFunction::Total(expr) => ("TOTAL", expr.to_sql()),
             AggregateFunction::Max(expr) => ("MAX", expr.to_sql()),
             AggregateFunction::Min(expr) => ("MIN", expr.to_sql()),
             AggregateFunction::Avg(expr) => ("AVG", expr.to_sql()),
@@ -1552,6 +1558,15 @@ mod tests {
             Expr::Aggregate(Box::new(Aggregate::sum(
                 Expr::Identifier("price".to_owned()),
                 true
+            )))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"TOTAL("price")"#,
+            &Expr::Aggregate(Box::new(Aggregate::total(
+                Expr::Identifier("price".to_owned()),
+                false
             )))
             .to_sql()
         );
