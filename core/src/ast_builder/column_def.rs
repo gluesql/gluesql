@@ -2,7 +2,7 @@ use crate::{
     ast::ColumnDef,
     parse_sql::parse_column_def,
     result::{Error, Result},
-    translate::translate_column_def,
+    translate::{NO_PARAMS, translate_column_def},
 };
 
 #[derive(Clone, Debug)]
@@ -22,7 +22,7 @@ impl TryFrom<ColumnDefNode> for ColumnDef {
     fn try_from(column_def_node: ColumnDefNode) -> Result<ColumnDef> {
         match column_def_node {
             ColumnDefNode::Text(column_def) => parse_column_def(column_def)
-                .and_then(|column_def| translate_column_def(&column_def)),
+                .and_then(|column_def| translate_column_def(&column_def, NO_PARAMS)),
         }
     }
 }

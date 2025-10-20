@@ -145,13 +145,16 @@ fn check_table_factor(context: Option<Arc<Context<'_>>>, table_factor: &TableFac
 mod tests {
     use {
         super::{Context, check_expr},
-        crate::{parse_sql::parse_expr, translate::translate_expr},
+        crate::{
+            parse_sql::parse_expr,
+            translate::{NO_PARAMS, translate_expr},
+        },
         std::sync::Arc,
     };
 
     fn test(context: Option<Arc<Context<'_>>>, sql: &str, expected: bool) {
         let parsed = parse_expr(sql).unwrap();
-        let expr = translate_expr(&parsed);
+        let expr = translate_expr(&parsed, NO_PARAMS);
         let actual = match expr {
             Ok(expr) => check_expr(context, &expr),
             Err(_) => false,

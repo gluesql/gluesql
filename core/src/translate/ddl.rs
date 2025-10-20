@@ -1,7 +1,7 @@
 use {
     super::{
-        NO_PARAMS, ParamLiteral, TranslateError, data_type::translate_data_type,
-        expr::translate_expr_with_params, translate_object_name,
+        ParamLiteral, TranslateError, data_type::translate_data_type, expr::translate_expr,
+        translate_object_name,
     },
     crate::{
         ast::{AlterTableOperation, ColumnDef, ColumnUniqueOption, OperateFunctionArg},
@@ -14,14 +14,14 @@ use {
     },
 };
 
-pub(crate) fn translate_alter_table_operation_with_params(
+pub(crate) fn translate_alter_table_operation(
     sql_alter_table_operation: &SqlAlterTableOperation,
     params: &[ParamLiteral],
 ) -> Result<AlterTableOperation> {
     match sql_alter_table_operation {
         SqlAlterTableOperation::AddColumn { column_def, .. } => {
             Ok(AlterTableOperation::AddColumn {
-                column_def: translate_column_def_with_params(column_def, params)?,
+                column_def: translate_column_def(column_def, params)?,
             })
         }
         SqlAlterTableOperation::DropColumn {
@@ -51,7 +51,14 @@ pub(crate) fn translate_alter_table_operation_with_params(
     }
 }
 
-pub(crate) fn translate_column_def_with_params(
+/// Translates a [`SqlColumnDef`] into GlueSQL's [`ColumnDef`] using the supplied parameters.
+///
+/// # Errors
+///
+/// Returns an error when the column definition uses data types, default expressions,
+/// or column options (for example `COLLATE`, unsupported constraints) that GlueSQL does not
+/// support.
+pub fn translate_column_def(
     sql_column_def: &SqlColumnDef,
     params: &[ParamLiteral],
 ) -> Result<ColumnDef> {
@@ -69,7 +76,7 @@ pub(crate) fn translate_column_def_with_params(
                 SqlColumnOption::Null => Ok((nullable, default, unique, comment)),
                 SqlColumnOption::NotNull => Ok((false, default, unique, comment)),
                 SqlColumnOption::Default(default) => {
-                    let default = translate_expr_with_params(default, params).map(Some)?;
+                    let default = translate_expr(default, params).map(Some)?;
 
                     Ok((nullable, default, unique, comment))
                 }
@@ -99,27 +106,13 @@ pub(crate) fn translate_column_def_with_params(
     })
 }
 
-/// Translates a [`SqlColumnDef`] into GlueSQL's [`ColumnDef`] without parameters.
-///
-/// This is a convenience wrapper around [`translate_column_def_with_params`] that
-/// delegates to the parameter-aware implementation with an empty parameter list.
-///
-/// # Errors
-///
-/// Returns an error when the column definition uses data types, default expressions,
-/// or column options (for example `COLLATE`, unsupported constraints) that GlueSQL
-/// does not support.
-pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> {
-    translate_column_def_with_params(sql_column_def, NO_PARAMS)
-}
-
 /// Translates a [`SqlOperateFunctionArg`] into GlueSQL's [`OperateFunctionArg`] using the supplied parameters.
 ///
 /// # Errors
 ///
 /// Returns an error when converting the argument's data type fails or when its default
 /// expression uses syntax GlueSQL does not support.
-pub(crate) fn translate_operate_function_arg_with_params(
+pub(crate) fn translate_operate_function_arg(
     arg: &SqlOperateFunctionArg,
     params: &[ParamLiteral],
 ) -> Result<OperateFunctionArg> {
@@ -132,7 +125,7 @@ pub(crate) fn translate_operate_function_arg_with_params(
     let default = arg
         .default_expr
         .as_ref()
-        .map(|expr| translate_expr_with_params(expr, params))
+        .map(|expr| translate_expr(expr, params))
         .transpose()?;
     Ok(OperateFunctionArg {
         name,

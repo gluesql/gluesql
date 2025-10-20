@@ -1,8 +1,7 @@
 use {
     super::{
-        NO_PARAMS, ParamLiteral, TranslateError, function::translate_function_arg_exprs,
-        translate_expr_with_params, translate_idents, translate_object_name,
-        translate_order_by_expr_with_params,
+        ParamLiteral, TranslateError, function::translate_function_arg_exprs, translate_expr,
+        translate_idents, translate_object_name, translate_order_by_expr,
     },
     crate::{
         ast::{
@@ -21,10 +20,13 @@ use {
     },
 };
 
-pub(crate) fn translate_query_with_params(
-    sql_query: &SqlQuery,
-    params: &[ParamLiteral],
-) -> Result<Query> {
+/// Translates a [`SqlQuery`] into GlueSQL's [`Query`] using the supplied parameters.
+///
+/// # Errors
+///
+/// Returns an error when the SQL query uses clauses GlueSQL does not support or when translating
+/// any expression within the query fails.
+pub fn translate_query(sql_query: &SqlQuery, params: &[ParamLiteral]) -> Result<Query> {
     let SqlQuery {
         with,
         body,
@@ -50,20 +52,20 @@ pub(crate) fn translate_query_with_params(
         return Err(TranslateError::UnsupportedQueryOption(reason).into());
     }
 
-    let body = translate_set_expr_with_params(body, params)?;
+    let body = translate_set_expr(body, params)?;
     let mut order_by_exprs = Vec::new();
     if let Some(order_by) = order_by {
         for expr in &order_by.exprs {
-            order_by_exprs.push(translate_order_by_expr_with_params(expr, params)?);
+            order_by_exprs.push(translate_order_by_expr(expr, params)?);
         }
     }
     let limit = limit
         .as_ref()
-        .map(|limit| translate_expr_with_params(limit, params))
+        .map(|limit| translate_expr(limit, params))
         .transpose()?;
     let offset = offset
         .as_ref()
-        .map(|offset| translate_expr_with_params(&offset.value, params))
+        .map(|offset| translate_expr(&offset.value, params))
         .transpose()?;
 
     Ok(Query {
@@ -74,22 +76,9 @@ pub(crate) fn translate_query_with_params(
     })
 }
 
-/// Translates a [`SqlQuery`] into GlueSQL's [`Query`] without external parameters.
-///
-/// # Errors
-///
-/// Returns an error when the SQL query uses clauses GlueSQL does not support or when
-/// translating any expression within the query fails.
-pub fn translate_query(sql_query: &SqlQuery) -> Result<Query> {
-    translate_query_with_params(sql_query, NO_PARAMS)
-}
-
-fn translate_set_expr_with_params(
-    sql_set_expr: &SqlSetExpr,
-    params: &[ParamLiteral],
-) -> Result<SetExpr> {
+fn translate_set_expr(sql_set_expr: &SqlSetExpr, params: &[ParamLiteral]) -> Result<SetExpr> {
     match sql_set_expr {
-        SqlSetExpr::Select(select) => translate_select_with_params(select, params)
+        SqlSetExpr::Select(select) => translate_select(select, params)
             .map(Box::new)
             .map(SetExpr::Select),
         SqlSetExpr::Values(sqlparser::ast::Values { rows, .. }) => rows
@@ -97,7 +86,7 @@ fn translate_set_expr_with_params(
             .map(|items| {
                 items
                     .iter()
-                    .map(|expr| translate_expr_with_params(expr, params))
+                    .map(|expr| translate_expr(expr, params))
                     .collect::<Result<_>>()
             })
             .collect::<Result<_>>()
@@ -107,7 +96,7 @@ fn translate_set_expr_with_params(
     }
 }
 
-fn translate_select_with_params(sql_select: &SqlSelect, params: &[ParamLiteral]) -> Result<Select> {
+fn translate_select(sql_select: &SqlSelect, params: &[ParamLiteral]) -> Result<Select> {
     let SqlSelect {
         projection,
         from,
@@ -163,25 +152,25 @@ fn translate_select_with_params(sql_select: &SqlSelect, params: &[ParamLiteral])
         distinct,
         projection: projection
             .iter()
-            .map(|item| translate_select_item_with_params(item, params))
+            .map(|item| translate_select_item(item, params))
             .collect::<Result<_>>()?,
         from,
         selection: selection
             .as_ref()
-            .map(|expr| translate_expr_with_params(expr, params))
+            .map(|expr| translate_expr(expr, params))
             .transpose()?,
         group_by: group_by
             .iter()
-            .map(|expr| translate_expr_with_params(expr, params))
+            .map(|expr| translate_expr(expr, params))
             .collect::<Result<_>>()?,
         having: having
             .as_ref()
-            .map(|expr| translate_expr_with_params(expr, params))
+            .map(|expr| translate_expr(expr, params))
             .transpose()?,
     })
 }
 
-pub(crate) fn translate_select_item_with_params(
+pub fn translate_select_item(
     sql_select_item: &SqlSelectItem,
     params: &[ParamLiteral],
 ) -> Result<SelectItem> {
@@ -196,30 +185,21 @@ pub(crate) fn translate_select_item_with_params(
             };
 
             Ok(SelectItem::Expr {
-                expr: translate_expr_with_params(expr, params)?,
+                expr: translate_expr(expr, params)?,
                 label,
             })
         }
-        SqlSelectItem::ExprWithAlias { expr, alias } => translate_expr_with_params(expr, params)
-            .map(|expr| SelectItem::Expr {
+        SqlSelectItem::ExprWithAlias { expr, alias } => {
+            translate_expr(expr, params).map(|expr| SelectItem::Expr {
                 expr,
                 label: alias.value.to_owned(),
-            }),
+            })
+        }
         SqlSelectItem::QualifiedWildcard(object_name, _) => Ok(SelectItem::QualifiedWildcard(
             translate_object_name(object_name)?,
         )),
         SqlSelectItem::Wildcard(_) => Ok(SelectItem::Wildcard),
     }
-}
-
-/// Translates a [`SqlSelectItem`] into GlueSQL's [`SelectItem`] without parameters.
-///
-/// # Errors
-///
-/// Returns an error when translating the contained expression fails or when the item
-/// uses syntax that GlueSQL does not yet support.
-pub fn translate_select_item(sql_select_item: &SqlSelectItem) -> Result<SelectItem> {
-    translate_select_item_with_params(sql_select_item, NO_PARAMS)
 }
 
 fn translate_table_with_joins(
@@ -262,7 +242,7 @@ fn translate_table_factor(
             .collect::<Result<Vec<_>>>()?;
 
         match translate_function_arg_exprs(function_arg_exprs)?.first() {
-            Some(expr) => Ok(translate_expr_with_params(expr, params)?),
+            Some(expr) => Ok(translate_expr(expr, params)?),
             None => Err(TranslateError::LackOfArgs.into()),
         }
     };
@@ -309,7 +289,7 @@ fn translate_table_factor(
         } => {
             if let Some(alias) = alias {
                 Ok(TableFactor::Derived {
-                    subquery: translate_query_with_params(subquery, params)?,
+                    subquery: translate_query(subquery, params)?,
                     alias: TableAlias {
                         name: alias.name.value.to_owned(),
                         columns: translate_idents(&alias.columns),
@@ -338,9 +318,7 @@ fn translate_join(params: &[ParamLiteral], sql_join: &SqlJoin) -> Result<Join> {
     } = sql_join;
 
     let translate_constraint = |sql_join_constraint: &SqlJoinConstraint| match sql_join_constraint {
-        SqlJoinConstraint::On(expr) => {
-            translate_expr_with_params(expr, params).map(JoinConstraint::On)
-        }
+        SqlJoinConstraint::On(expr) => translate_expr(expr, params).map(JoinConstraint::On),
         SqlJoinConstraint::None => Ok(JoinConstraint::None),
         SqlJoinConstraint::Using(_) => {
             Err(TranslateError::UnsupportedJoinConstraint("USING".to_owned()).into())
@@ -377,7 +355,7 @@ mod tests {
             },
             parse_sql::{parse, parse_query},
             result::Error,
-            translate::IntoParamLiteral,
+            translate::{IntoParamLiteral, NO_PARAMS},
         },
         sqlparser::ast::Statement as SqlStatement,
     };
@@ -390,7 +368,7 @@ mod tests {
             _ => panic!("expected query statement: {sql}"),
         };
 
-        let actual = translate_query(&query);
+        let actual = translate_query(&query, NO_PARAMS);
         let expected = Err::<Query, Error>(Error::Translate(expected));
         assert_eq!(actual, expected, "translate_query mismatch for `{sql}`");
     }
@@ -439,7 +417,7 @@ mod tests {
             1_i64.into_param_literal().unwrap(),
             "GlueSQL".into_param_literal().unwrap(),
         ];
-        let translated = translate_query_with_params(query.as_ref(), &params).expect("translate");
+        let translated = translate_query(query.as_ref(), &params).expect("translate");
 
         let expected = Query {
             body: SetExpr::Select(Box::new(Select {

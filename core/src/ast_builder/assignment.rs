@@ -4,7 +4,7 @@ use {
         ast::{Assignment, Expr},
         parse_sql::parse_assignment,
         result::{Error, Result},
-        translate::translate_assignment,
+        translate::{NO_PARAMS, translate_assignment},
     },
 };
 
@@ -27,7 +27,7 @@ impl<'a> TryFrom<AssignmentNode<'a>> for Assignment {
         match node {
             AssignmentNode::Text(expr) => {
                 let expr = parse_assignment(expr)
-                    .and_then(|assignment| translate_assignment(&assignment))?;
+                    .and_then(|assignment| translate_assignment(&assignment, NO_PARAMS))?;
                 Ok(expr)
             }
             AssignmentNode::Expr(col, expr_node) => {
@@ -43,15 +43,16 @@ impl<'a> TryFrom<AssignmentNode<'a>> for Assignment {
 mod tests {
     use {
         crate::{
-            ast_builder::AssignmentNode, parse_sql::parse_assignment,
-            translate::translate_assignment,
+            ast_builder::AssignmentNode,
+            parse_sql::parse_assignment,
+            translate::{NO_PARAMS, translate_assignment},
         },
         pretty_assertions::assert_eq,
     };
 
     fn test(actual: AssignmentNode, expected: &str) {
         let parsed = &parse_assignment(expected).expect(expected);
-        let expected = translate_assignment(parsed);
+        let expected = translate_assignment(parsed, NO_PARAMS);
         assert_eq!(actual.try_into(), expected);
     }
 

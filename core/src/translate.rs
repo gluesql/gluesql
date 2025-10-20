@@ -18,18 +18,11 @@ pub use self::{
 };
 
 use {
-    self::{
-        expr::{translate_expr_with_params, translate_order_by_expr_with_params},
-        query::translate_query_with_params,
-    },
     crate::{
         ast::{Assignment, Expr, ForeignKey, ReferentialAction, Statement, Variable},
         result::Result,
     },
-    ddl::{
-        translate_alter_table_operation_with_params, translate_column_def_with_params,
-        translate_operate_function_arg_with_params,
-    },
+    ddl::{translate_alter_table_operation, translate_operate_function_arg},
     sqlparser::ast::{
         Assignment as SqlAssignment, AssignmentTarget as SqlAssignmentTarget,
         CommentDef as SqlCommentDef, CreateFunctionBody as SqlCreateFunctionBody,
@@ -67,9 +60,7 @@ pub fn translate_with_params(
     params: &[ParamLiteral],
 ) -> Result<Statement> {
     match sql_statement {
-        SqlStatement::Query(query) => {
-            translate_query_with_params(query, params).map(Statement::Query)
-        }
+        SqlStatement::Query(query) => translate_query(query, params).map(Statement::Query),
         SqlStatement::Insert(SqlInsert {
             table_name,
             columns,
@@ -105,7 +96,7 @@ pub fn translate_with_params(
             let table_name = translate_object_name(table_name)?;
             let columns = translate_idents(columns);
             let source = match source.as_deref() {
-                Some(query) => translate_query_with_params(query, params)?,
+                Some(query) => translate_query(query, params)?,
                 None => {
                     return Err(TranslateError::DefaultValuesOnInsertNotSupported(
                         table_name.clone(),
@@ -144,11 +135,11 @@ pub fn translate_with_params(
                 table_name: translate_table_with_join(table)?,
                 assignments: assignments
                     .iter()
-                    .map(|assignment| translate_assignment_with_params(assignment, params))
+                    .map(|assignment| translate_assignment(assignment, params))
                     .collect::<Result<_>>()?,
                 selection: selection
                     .as_ref()
-                    .map(|expr| translate_expr_with_params(expr, params))
+                    .map(|expr| translate_expr(expr, params))
                     .transpose()?,
             })
         }
@@ -193,7 +184,7 @@ pub fn translate_with_params(
                 table_name,
                 selection: selection
                     .as_ref()
-                    .map(|expr| translate_expr_with_params(expr, params))
+                    .map(|expr| translate_expr(expr, params))
                     .transpose()?,
             })
         }
@@ -209,7 +200,7 @@ pub fn translate_with_params(
         }) => {
             let columns = columns
                 .iter()
-                .map(|column_def| translate_column_def_with_params(column_def, params))
+                .map(|column_def| translate_column_def(column_def, params))
                 .collect::<Result<Vec<_>>>()?;
 
             let columns = (!columns.is_empty()).then_some(columns);
@@ -226,7 +217,7 @@ pub fn translate_with_params(
                 name,
                 columns,
                 source: match query {
-                    Some(v) => Some(translate_query_with_params(v, params).map(Box::new)?),
+                    Some(v) => Some(translate_query(v, params).map(Box::new)?),
                     None => None,
                 },
                 engine: engine
@@ -254,7 +245,7 @@ pub fn translate_with_params(
 
             Ok(Statement::AlterTable {
                 name: translate_object_name(name)?,
-                operation: translate_alter_table_operation_with_params(operation, params)?,
+                operation: translate_alter_table_operation(operation, params)?,
             })
         }
         SqlStatement::Drop {
@@ -305,7 +296,7 @@ pub fn translate_with_params(
             Ok(Statement::CreateIndex {
                 name,
                 table_name: translate_object_name(table_name)?,
-                column: translate_order_by_expr_with_params(&columns[0], params)?,
+                column: translate_order_by_expr(&columns[0], params)?,
             })
         }
         SqlStatement::Drop {
@@ -378,7 +369,7 @@ pub fn translate_with_params(
                 .as_ref()
                 .map(|args| {
                     args.iter()
-                        .map(|arg| translate_operate_function_arg_with_params(arg, params))
+                        .map(|arg| translate_operate_function_arg(arg, params))
                         .collect::<Result<Vec<_>>>()
                 })
                 .transpose()?;
@@ -386,7 +377,7 @@ pub fn translate_with_params(
                 or_replace: *or_replace,
                 name: translate_object_name(name)?,
                 args: args.unwrap_or_default(),
-                return_: translate_expr_with_params(return_, params)?,
+                return_: translate_expr(return_, params)?,
             })
         }
         SqlStatement::CreateFunction { .. } => {
@@ -419,7 +410,7 @@ pub(crate) fn bind_placeholder(params: &[ParamLiteral], placeholder: &str) -> Re
     Ok(literal.into_expr())
 }
 
-fn translate_assignment_with_params(
+pub fn translate_assignment(
     sql_assignment: &SqlAssignment,
     params: &[ParamLiteral],
 ) -> Result<Assignment> {
@@ -447,12 +438,8 @@ fn translate_assignment_with_params(
             .ok_or(TranslateError::UnreachableEmptyIdent)?
             .value
             .to_owned(),
-        value: translate_expr_with_params(value, params)?,
+        value: translate_expr(value, params)?,
     })
-}
-
-pub fn translate_assignment(sql_assignment: &SqlAssignment) -> Result<Assignment> {
-    translate_assignment_with_params(sql_assignment, NO_PARAMS)
 }
 
 fn translate_table_with_join(table: &TableWithJoins) -> Result<String> {
