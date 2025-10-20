@@ -1,11 +1,11 @@
 use {
-    super::error::EvaluateError,
+    super::{error::EvaluateError, function},
     crate::{
         ast::{BinaryOperator, DataType, TrimWhereField},
         data::{Key, Literal, Value, value::BTreeMapJsonExt},
         result::{Error, Result},
     },
-    std::{borrow::Cow, cmp::Ordering, collections::BTreeMap, ops::Range},
+    std::{borrow::Cow, cmp::Ordering, collections::BTreeMap, convert::TryFrom, ops::Range},
     utils::Tribool,
 };
 
@@ -277,6 +277,23 @@ impl<'a> Evaluated<'a> {
             |l, r| l.bitwise_shift_right(r),
             |l, r| l.bitwise_shift_right(r),
         )
+    }
+
+    pub fn arrow<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
+        let selector = Value::try_from(other.clone())?;
+
+        if selector.is_null() {
+            return Ok(Evaluated::Value(Value::Null));
+        }
+
+        let value_result = if let Evaluated::Value(base) = self {
+            function::select_arrow_value(base, &selector)
+        } else {
+            let base = Value::try_from(self.clone())?;
+            function::select_arrow_value(&base, &selector)
+        };
+
+        value_result.map(Evaluated::Value)
     }
 
     pub fn unary_plus(&self) -> Result<Evaluated<'a>> {

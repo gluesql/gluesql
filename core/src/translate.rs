@@ -308,7 +308,7 @@ fn translate_internal(sql_statement: &SqlStatement, params: &[ParamLiteral]) -> 
 
             if name.to_uppercase() == "PRIMARY" {
                 return Err(TranslateError::ReservedIndexName(name).into());
-            };
+            }
 
             Ok(Statement::CreateIndex {
                 name,
@@ -335,7 +335,7 @@ fn translate_internal(sql_statement: &SqlStatement, params: &[ParamLiteral]) -> 
 
             if name.to_uppercase() == "PRIMARY" {
                 return Err(TranslateError::CannotDropPrimary.into());
-            };
+            }
 
             Ok(Statement::DropIndex { name, table_name })
         }

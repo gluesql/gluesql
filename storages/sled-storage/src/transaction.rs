@@ -161,7 +161,7 @@ impl SledStorage {
                     None => {
                         tree.remove(value_key)?;
                     }
-                };
+                }
             }
 
             Ok(())
