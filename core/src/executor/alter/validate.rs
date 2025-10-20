@@ -17,8 +17,10 @@ pub async fn validate(column_def: &ColumnDef) -> Result<()> {
     } = column_def;
 
     // unique + data type
-    if matches!(data_type, DataType::Float | DataType::Map)
-        && matches!(unique, Some(ColumnUniqueOption { .. }))
+    if matches!(
+        data_type,
+        DataType::Float | DataType::Float32 | DataType::Map
+    ) && matches!(unique, Some(ColumnUniqueOption { .. }))
     {
         return Err(AlterError::UnsupportedDataTypeForUniqueColumn(
             name.to_owned(),
