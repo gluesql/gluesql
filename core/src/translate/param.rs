@@ -307,6 +307,19 @@ mod tests {
     }
 
     #[test]
+    fn accepts_param_literal() {
+        let literal = ParamLiteral::null();
+        let converted = literal.clone().into_param_literal().unwrap();
+        assert!(matches!(
+            (literal, converted),
+            (
+                ParamLiteral::Literal(AstLiteral::Null),
+                ParamLiteral::Literal(AstLiteral::Null)
+            )
+        ));
+    }
+
+    #[test]
     fn converts_basic_literals() {
         let literal = true.into_param_literal().unwrap().into_expr();
         assert_eq!(literal, Expr::Literal(AstLiteral::Boolean(true)));
