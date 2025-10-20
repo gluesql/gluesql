@@ -42,6 +42,8 @@ use {
     std::num::NonZeroUsize,
 };
 
+pub(crate) const NO_PARAMS: &[ParamLiteral] = &[];
+
 /// Translates a [`SqlStatement`] into GlueSQL's [`Statement`] without parameters.
 ///
 /// This is a convenience wrapper around [`translate_with_params`] that invokes the
@@ -51,7 +53,7 @@ use {
 ///
 /// Returns an error when the SQL statement includes syntax or features GlueSQL does not support.
 pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
-    translate_with_params(sql_statement, std::iter::empty::<ParamLiteral>())
+    translate_with_params(sql_statement, NO_PARAMS)
 }
 
 /// Translates a [`SqlStatement`] into GlueSQL's [`Statement`] using the supplied parameters.
@@ -60,20 +62,10 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
 ///
 /// Returns an error when converting the provided parameters fails or when the SQL statement
 /// uses syntax GlueSQL does not support.
-pub fn translate_with_params<I, P>(sql_statement: &SqlStatement, params: I) -> Result<Statement>
-where
-    I: IntoIterator<Item = P>,
-    P: IntoParamLiteral,
-{
-    let params: Vec<ParamLiteral> = params
-        .into_iter()
-        .map(IntoParamLiteral::into_param_literal)
-        .collect::<Result<_, TranslateError>>()?;
-
-    translate_internal(sql_statement, &params)
-}
-
-fn translate_internal(sql_statement: &SqlStatement, params: &[ParamLiteral]) -> Result<Statement> {
+pub fn translate_with_params(
+    sql_statement: &SqlStatement,
+    params: &[ParamLiteral],
+) -> Result<Statement> {
     match sql_statement {
         SqlStatement::Query(query) => {
             translate_query_with_params(query, params).map(Statement::Query)
@@ -460,8 +452,7 @@ fn translate_assignment_with_params(
 }
 
 pub fn translate_assignment(sql_assignment: &SqlAssignment) -> Result<Assignment> {
-    const NO_PARAMS: [ParamLiteral; 0] = [];
-    translate_assignment_with_params(sql_assignment, &NO_PARAMS)
+    translate_assignment_with_params(sql_assignment, NO_PARAMS)
 }
 
 fn translate_table_with_join(table: &TableWithJoins) -> Result<String> {

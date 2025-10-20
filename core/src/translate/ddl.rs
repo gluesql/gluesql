@@ -1,6 +1,6 @@
 use {
     super::{
-        ParamLiteral, TranslateError, data_type::translate_data_type,
+        NO_PARAMS, ParamLiteral, TranslateError, data_type::translate_data_type,
         expr::translate_expr_with_params, translate_object_name,
     },
     crate::{
@@ -110,8 +110,7 @@ pub(crate) fn translate_column_def_with_params(
 /// or column options (for example `COLLATE`, unsupported constraints) that GlueSQL
 /// does not support.
 pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> {
-    const NO_PARAMS: [ParamLiteral; 0] = [];
-    translate_column_def_with_params(sql_column_def, &NO_PARAMS)
+    translate_column_def_with_params(sql_column_def, NO_PARAMS)
 }
 
 /// Translates a [`SqlOperateFunctionArg`] into GlueSQL's [`OperateFunctionArg`] using the supplied parameters.

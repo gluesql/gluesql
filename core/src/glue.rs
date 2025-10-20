@@ -47,7 +47,7 @@ impl<T: GStore + GStoreMut> Glue<T> {
             .collect::<Result<_, TranslateError>>()?;
         let storage = &self.storage;
         stream::iter(parsed)
-            .map(|p| translate_with_params(&p, params.clone()))
+            .map(|p| translate_with_params(&p, &params))
             .then(|statement| async move { plan(storage, statement?).await })
             .try_collect()
             .await

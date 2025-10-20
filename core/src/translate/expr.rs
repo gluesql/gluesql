@@ -1,6 +1,6 @@
 use {
     super::{
-        ParamLiteral, TranslateError,
+        NO_PARAMS, ParamLiteral, TranslateError,
         ast_literal::{translate_ast_literal, translate_datetime_field},
         bind_placeholder,
         data_type::translate_data_type,
@@ -241,8 +241,7 @@ pub(crate) fn translate_expr_with_params(
 /// Returns an error when the SQL expression cannot be represented in GlueSQL,
 /// such as when it contains unsupported syntax or literals.
 pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
-    const NO_PARAMS: [ParamLiteral; 0] = [];
-    translate_expr_with_params(sql_expr, &NO_PARAMS)
+    translate_expr_with_params(sql_expr, NO_PARAMS)
 }
 
 /// Translates a [`SqlOrderByExpr`] into GlueSQL's [`OrderByExpr`] using the supplied parameters.
@@ -279,6 +278,5 @@ pub(crate) fn translate_order_by_expr_with_params(
 /// Returns an error when the order-by expression uses unsupported syntax (such as
 /// `NULLS FIRST`/`NULLS LAST`) or when translating inner expressions fails.
 pub fn translate_order_by_expr(sql_order_by_expr: &SqlOrderByExpr) -> Result<OrderByExpr> {
-    const NO_PARAMS: [ParamLiteral; 0] = [];
-    translate_order_by_expr_with_params(sql_order_by_expr, &NO_PARAMS)
+    translate_order_by_expr_with_params(sql_order_by_expr, NO_PARAMS)
 }

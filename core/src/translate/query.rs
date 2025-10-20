@@ -1,6 +1,6 @@
 use {
     super::{
-        ParamLiteral, TranslateError, function::translate_function_arg_exprs,
+        NO_PARAMS, ParamLiteral, TranslateError, function::translate_function_arg_exprs,
         translate_expr_with_params, translate_idents, translate_object_name,
         translate_order_by_expr_with_params,
     },
@@ -81,8 +81,7 @@ pub(crate) fn translate_query_with_params(
 /// Returns an error when the SQL query uses clauses GlueSQL does not support or when
 /// translating any expression within the query fails.
 pub fn translate_query(sql_query: &SqlQuery) -> Result<Query> {
-    const NO_PARAMS: [ParamLiteral; 0] = [];
-    translate_query_with_params(sql_query, &NO_PARAMS)
+    translate_query_with_params(sql_query, NO_PARAMS)
 }
 
 fn translate_set_expr_with_params(
@@ -220,8 +219,7 @@ pub(crate) fn translate_select_item_with_params(
 /// Returns an error when translating the contained expression fails or when the item
 /// uses syntax that GlueSQL does not yet support.
 pub fn translate_select_item(sql_select_item: &SqlSelectItem) -> Result<SelectItem> {
-    const NO_PARAMS: [ParamLiteral; 0] = [];
-    translate_select_item_with_params(sql_select_item, &NO_PARAMS)
+    translate_select_item_with_params(sql_select_item, NO_PARAMS)
 }
 
 fn translate_table_with_joins(
