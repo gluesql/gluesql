@@ -21,14 +21,13 @@ use {
 pub(crate) fn translate_trim_with_params(
     params: &[ParamLiteral],
     expr: &SqlExpr,
-    trim_where: &Option<SqlTrimWhereField>,
-    trim_what: &Option<Box<SqlExpr>>,
+    trim_where: Option<&SqlTrimWhereField>,
+    trim_what: Option<&SqlExpr>,
 ) -> Result<Expr> {
     let expr = translate_expr_with_params(expr, params)?;
-    let trim_where_field = trim_where.as_ref().map(translate_trim_where_field);
+    let trim_where_field = trim_where.map(translate_trim_where_field);
     let filter_chars = trim_what
-        .as_ref()
-        .map(|expr| translate_expr_with_params(expr.as_ref(), params))
+        .map(|expr| translate_expr_with_params(expr, params))
         .transpose()?;
 
     Ok(Expr::Function(Box::new(Function::Trim {

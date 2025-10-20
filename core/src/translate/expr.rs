@@ -137,7 +137,7 @@ pub(crate) fn translate_expr_with_params(
                 return Err(TranslateError::UnsupportedTrimChars.into());
             }
 
-            translate_trim_with_params(params, expr, trim_where, trim_what)
+            translate_trim_with_params(params, expr, trim_where.as_ref(), trim_what.as_deref())
         }
         SqlExpr::Floor { expr, field } => {
             if !matches!(
