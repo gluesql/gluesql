@@ -52,8 +52,8 @@ pub(crate) fn translate_query_with_params(
 
     let body = translate_set_expr_with_params(body, params)?;
     let mut order_by_exprs = Vec::new();
-    for clause in order_by.iter() {
-        for expr in clause.exprs.iter() {
+    if let Some(order_by) = order_by {
+        for expr in &order_by.exprs {
             order_by_exprs.push(translate_order_by_expr_with_params(expr, params)?);
         }
     }
