@@ -43,7 +43,7 @@ impl<T: GStore + GStoreMut> Glue<T> {
         let parsed = parse(sql)?;
         let params: Vec<ParamLiteral> = params
             .into_iter()
-            .map(|value| value.into_param_literal())
+            .map(IntoParamLiteral::into_param_literal)
             .collect::<Result<_, TranslateError>>()?;
         let storage = &self.storage;
         stream::iter(parsed)
