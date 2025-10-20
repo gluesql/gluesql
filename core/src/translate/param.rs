@@ -26,10 +26,12 @@ pub enum ParamLiteral {
 }
 
 impl ParamLiteral {
+    #[must_use]
     pub const fn null() -> Self {
         Self::Literal(AstLiteral::Null)
     }
 
+    #[must_use]
     pub fn into_expr(self) -> Expr {
         match self {
             ParamLiteral::Literal(literal) => Expr::Literal(literal),
