@@ -51,7 +51,10 @@ impl ParamLiteral {
     }
 }
 
-fn into_number_literal(value: impl ToString) -> Result<AstLiteral, TranslateError> {
+fn into_number_literal<T>(value: &T) -> Result<AstLiteral, TranslateError>
+where
+    T: ToString + ?Sized,
+{
     let value_str = value.to_string();
     match value_str.parse::<BigDecimal>() {
         Ok(number) => Ok(AstLiteral::Number(number)),
@@ -87,7 +90,7 @@ macro_rules! impl_into_param_literal_for_integer {
         $(
             impl IntoParamLiteral for $ty {
                 fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-                    into_number_literal(self).map(ParamLiteral::Literal)
+                    into_number_literal(&self).map(ParamLiteral::Literal)
                 }
             }
         )+
@@ -106,7 +109,7 @@ impl IntoParamLiteral for f32 {
             });
         }
 
-        into_number_literal(self).map(ParamLiteral::Literal)
+        into_number_literal(&self).map(ParamLiteral::Literal)
     }
 }
 
@@ -118,13 +121,13 @@ impl IntoParamLiteral for f64 {
             });
         }
 
-        into_number_literal(self).map(ParamLiteral::Literal)
+        into_number_literal(&self).map(ParamLiteral::Literal)
     }
 }
 
 impl IntoParamLiteral for Decimal {
     fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-        into_number_literal(self).map(ParamLiteral::Literal)
+        into_number_literal(&self).map(ParamLiteral::Literal)
     }
 }
 
@@ -217,12 +220,12 @@ impl IntoParamLiteral for Interval {
     fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
         match self {
             Interval::Month(months) => Ok(ParamLiteral::Interval {
-                expr: Box::new(ParamLiteral::Literal(into_number_literal(months)?)),
+                expr: Box::new(ParamLiteral::Literal(into_number_literal(&months)?)),
                 leading_field: Some(DateTimeField::Month),
                 last_field: None,
             }),
             Interval::Microsecond(micros) => Ok(ParamLiteral::Interval {
-                expr: Box::new(ParamLiteral::Literal(into_number_literal(Decimal::new(
+                expr: Box::new(ParamLiteral::Literal(into_number_literal(&Decimal::new(
                     micros, 6,
                 ))?)),
                 leading_field: Some(DateTimeField::Second),
@@ -299,7 +302,7 @@ mod tests {
 
     impl IntoParamLiteral for BadNumber {
         fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-            into_number_literal(self).map(ParamLiteral::Literal)
+            into_number_literal(&self).map(ParamLiteral::Literal)
         }
     }
 
