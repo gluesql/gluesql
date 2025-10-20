@@ -42,10 +42,24 @@ use {
     std::num::NonZeroUsize,
 };
 
+/// Translates a [`SqlStatement`] into GlueSQL's [`Statement`] without parameters.
+///
+/// This is a convenience wrapper around [`translate_with_params`] that invokes the
+/// parameter-aware variant with an empty parameter list.
+///
+/// # Errors
+///
+/// Returns an error when the SQL statement includes syntax or features GlueSQL does not support.
 pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
     translate_with_params(sql_statement, std::iter::empty::<ParamLiteral>())
 }
 
+/// Translates a [`SqlStatement`] into GlueSQL's [`Statement`] using the supplied parameters.
+///
+/// # Errors
+///
+/// Returns an error when converting the provided parameters fails or when the SQL statement
+/// uses syntax GlueSQL does not support.
 pub fn translate_with_params<I, P>(sql_statement: &SqlStatement, params: I) -> Result<Statement>
 where
     I: IntoIterator<Item = P>,

@@ -234,11 +234,23 @@ pub(crate) fn translate_expr_with_params(
     }
 }
 
+/// Translates a [`SqlExpr`] into GlueSQL's [`Expr`] without external parameters.
+///
+/// # Errors
+///
+/// Returns an error when the SQL expression cannot be represented in GlueSQL,
+/// such as when it contains unsupported syntax or literals.
 pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
     const NO_PARAMS: [ParamLiteral; 0] = [];
     translate_expr_with_params(sql_expr, &NO_PARAMS)
 }
 
+/// Translates a [`SqlOrderByExpr`] into GlueSQL's [`OrderByExpr`] using the supplied parameters.
+///
+/// # Errors
+///
+/// Returns an error when the order-by expression uses syntax GlueSQL does not support
+/// (for example `NULLS FIRST`/`NULLS LAST`) or when translating its sub-expressions fails.
 pub(crate) fn translate_order_by_expr_with_params(
     sql_order_by_expr: &SqlOrderByExpr,
     params: &[ParamLiteral],
@@ -260,6 +272,12 @@ pub(crate) fn translate_order_by_expr_with_params(
     })
 }
 
+/// Translates a [`SqlOrderByExpr`] into GlueSQL's [`OrderByExpr`] without parameters.
+///
+/// # Errors
+///
+/// Returns an error when the order-by expression uses unsupported syntax (such as
+/// `NULLS FIRST`/`NULLS LAST`) or when translating inner expressions fails.
 pub fn translate_order_by_expr(sql_order_by_expr: &SqlOrderByExpr) -> Result<OrderByExpr> {
     const NO_PARAMS: [ParamLiteral; 0] = [];
     translate_order_by_expr_with_params(sql_order_by_expr, &NO_PARAMS)

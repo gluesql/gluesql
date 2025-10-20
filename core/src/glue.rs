@@ -24,6 +24,12 @@ impl<T: GStore + GStoreMut> Glue<T> {
         Self { storage }
     }
 
+    /// Plans all statements in the SQL string using the supplied parameters.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when parsing the SQL text fails, when the supplied parameters
+    /// cannot be converted, or when building an execution plan for a statement fails.
     pub async fn plan_with_params<Sql, I, P>(
         &mut self,
         sql: Sql,
@@ -47,6 +53,12 @@ impl<T: GStore + GStoreMut> Glue<T> {
             .await
     }
 
+    /// Plans all statements in the SQL string without parameters.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when parsing the SQL text fails or when planning one of the
+    /// statements fails.
     pub async fn plan<Sql: AsRef<str>>(&mut self, sql: Sql) -> Result<Vec<Statement>> {
         self.plan_with_params(sql, std::iter::empty::<ParamLiteral>())
             .await
@@ -56,6 +68,12 @@ impl<T: GStore + GStoreMut> Glue<T> {
         execute(&mut self.storage, statement).await
     }
 
+    /// Executes all statements in the SQL string using the supplied parameters.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when parsing fails, parameter conversion fails, planning fails,
+    /// or when executing a statement against the storage fails.
     pub async fn execute_with_params<Sql, I, P>(
         &mut self,
         sql: Sql,
@@ -76,6 +94,11 @@ impl<T: GStore + GStoreMut> Glue<T> {
         Ok(payloads)
     }
 
+    /// Executes all statements in the SQL string without parameters.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when parsing fails, planning fails, or executing a statement fails.
     pub async fn execute<Sql: AsRef<str>>(&mut self, sql: Sql) -> Result<Vec<Payload>> {
         self.execute_with_params(sql, std::iter::empty::<ParamLiteral>())
             .await

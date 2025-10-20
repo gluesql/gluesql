@@ -99,11 +99,27 @@ pub(crate) fn translate_column_def_with_params(
     })
 }
 
+/// Translates a [`SqlColumnDef`] into GlueSQL's [`ColumnDef`] without parameters.
+///
+/// This is a convenience wrapper around [`translate_column_def_with_params`] that
+/// delegates to the parameter-aware implementation with an empty parameter list.
+///
+/// # Errors
+///
+/// Returns an error when the column definition uses data types, default expressions,
+/// or column options (for example `COLLATE`, unsupported constraints) that GlueSQL
+/// does not support.
 pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> {
     const NO_PARAMS: [ParamLiteral; 0] = [];
     translate_column_def_with_params(sql_column_def, &NO_PARAMS)
 }
 
+/// Translates a [`SqlOperateFunctionArg`] into GlueSQL's [`OperateFunctionArg`] using the supplied parameters.
+///
+/// # Errors
+///
+/// Returns an error when converting the argument's data type fails or when its default
+/// expression uses syntax GlueSQL does not support.
 pub(crate) fn translate_operate_function_arg_with_params(
     arg: &SqlOperateFunctionArg,
     params: &[ParamLiteral],

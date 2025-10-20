@@ -58,6 +58,13 @@ fn into_number_literal(value: impl ToString) -> Result<AstLiteral, TranslateErro
 }
 
 pub trait IntoParamLiteral {
+    /// Converts the value into a [`ParamLiteral`] so it can be bound as a query parameter.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the value cannot be represented as a [`ParamLiteral`], such as
+    /// non-finite floats (`TranslateError::NonFiniteFloatParameter`) or invalid numeric literals
+    /// (`TranslateError::InvalidParamLiteral`).
     fn into_param_literal(self) -> Result<ParamLiteral, TranslateError>;
 }
 
