@@ -170,6 +170,12 @@ fn translate_select(sql_select: &SqlSelect, params: &[ParamLiteral]) -> Result<S
     })
 }
 
+/// Translates a [`SqlSelectItem`] into GlueSQL's [`SelectItem`].
+///
+/// # Errors
+///
+/// Returns an error when converting the underlying expression fails or when a
+/// qualified wildcard references an unsupported object name.
 pub fn translate_select_item(
     sql_select_item: &SqlSelectItem,
     params: &[ParamLiteral],
