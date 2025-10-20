@@ -410,6 +410,13 @@ pub(crate) fn bind_placeholder(params: &[ParamLiteral], placeholder: &str) -> Re
     Ok(literal.into_expr())
 }
 
+/// Translates a [`SqlAssignment`] into GlueSQL's [`Assignment`].
+///
+/// # Errors
+///
+/// Returns an error when tuple or compound identifiers appear in the assignment
+/// target, when the identifier list is empty, or when translating the RHS
+/// expression fails.
 pub fn translate_assignment(
     sql_assignment: &SqlAssignment,
     params: &[ParamLiteral],
