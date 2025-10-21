@@ -43,7 +43,7 @@ impl RedisStorage {
     /// Make a key to insert/delete a value with the namespace, table-name.
     ///
     /// Redis documentation recommends to use ':' as a separator for namespace and table-name.
-    /// But it is not a good idea when using serde_json to serialize/deserialize a key.
+    /// But it is not a good idea when using `serde_json` to serialize/deserialize a key.
     /// JSON uses ':' as a separator for key and value. So it conflicts with the JSON format.
     /// Therefore I use '#' as a separator: "namespace"#"table-name"#"key"#"value".
     ///

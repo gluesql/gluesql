@@ -37,24 +37,24 @@ use {
 
 pub(crate) const NO_PARAMS: &[ParamLiteral] = &[];
 
-/// Translates a [`SqlStatement`] into GlueSQL's [`Statement`] without parameters.
+/// Translates a [`SqlStatement`] into `GlueSQL`'s [`Statement`] without parameters.
 ///
 /// This is a convenience wrapper around [`translate_with_params`] that invokes the
 /// parameter-aware variant with an empty parameter list.
 ///
 /// # Errors
 ///
-/// Returns an error when the SQL statement includes syntax or features GlueSQL does not support.
+/// Returns an error when the SQL statement includes syntax or features `GlueSQL` does not support.
 pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
     translate_with_params(sql_statement, NO_PARAMS)
 }
 
-/// Translates a [`SqlStatement`] into GlueSQL's [`Statement`] using the supplied parameters.
+/// Translates a [`SqlStatement`] into `GlueSQL`'s [`Statement`] using the supplied parameters.
 ///
 /// # Errors
 ///
 /// Returns an error when converting the provided parameters fails or when the SQL statement
-/// uses syntax GlueSQL does not support.
+/// uses syntax `GlueSQL` does not support.
 pub fn translate_with_params(
     sql_statement: &SqlStatement,
     params: &[ParamLiteral],
@@ -410,7 +410,7 @@ pub(crate) fn bind_placeholder(params: &[ParamLiteral], placeholder: &str) -> Re
     Ok(literal.into_expr())
 }
 
-/// Translates a [`SqlAssignment`] into GlueSQL's [`Assignment`].
+/// Translates a [`SqlAssignment`] into `GlueSQL`'s [`Assignment`].
 ///
 /// # Errors
 ///

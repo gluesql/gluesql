@@ -58,8 +58,8 @@ enum AggrValue {
 }
 
 impl AggrValue {
-    /// Helper function to check DISTINCT values and update set
-    /// Returns (should_process, updated_distinct_values)
+    /// Helper function to check DISTINCT values and update set.
+    /// Returns (`should_process`, `updated_distinct_values`).
     fn check_distinct(
         distinct_values: Option<HashSet<Value>>,
         new_value: &Value,

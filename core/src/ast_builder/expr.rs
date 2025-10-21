@@ -368,7 +368,7 @@ pub fn uuid<'a, T: Into<Cow<'a, str>>>(uuid: T) -> ExprNode<'a> {
     }
 }
 
-/// Returns an AST ExprNode containing the provided Bytea.
+/// Returns an AST `ExprNode` containing the provided `Bytea`.
 ///
 /// # Arguments
 /// * `bytea` - A byte array to be converted to a Bytea AST node.
