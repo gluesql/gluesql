@@ -15,7 +15,7 @@ pub mod macros;
 pub fn expr(sql: &str) -> Expr {
     let parsed = parse_expr(sql).unwrap();
 
-    translate_expr(&parsed).unwrap()
+    translate_expr(&parsed, &[]).unwrap()
 }
 
 pub fn test_indexes(statement: &Statement, indexes: Option<Vec<IndexItem>>) {

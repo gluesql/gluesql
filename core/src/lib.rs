@@ -27,7 +27,7 @@ pub mod prelude {
         plan::plan,
         result::{Error, Result},
         row_conversion::{SelectExt, SelectResultExt},
-        translate::translate,
+        translate::{ParamLiteral, translate, translate_with_params},
     };
 }
 

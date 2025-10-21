@@ -96,7 +96,7 @@ impl<'a> TryFrom<ParquetSchemaType<'a>> for ColumnDef {
                     k if k == format!("default_{name}") => {
                         if let Some(value) = &kv.value {
                             let parsed = parse_expr(value.clone())?;
-                            let tran = translate_expr(&parsed)?;
+                            let tran = translate_expr(&parsed, &[])?;
 
                             default = Some(tran);
                         }

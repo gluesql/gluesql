@@ -377,7 +377,7 @@ mod tests {
             executor::evaluate_stateless,
             parse_sql::parse_expr,
             result::Result,
-            translate::translate_expr,
+            translate::{NO_PARAMS, translate_expr},
         },
         chrono::{DateTime, NaiveDate, NaiveTime},
         futures::executor::block_on,
@@ -387,7 +387,7 @@ mod tests {
 
     fn convert(sql: &str) -> Result<Key> {
         let parsed = parse_expr(sql).expect(sql);
-        let expr = translate_expr(&parsed).expect(sql);
+        let expr = translate_expr(&parsed, NO_PARAMS).expect(sql);
 
         block_on(evaluate_stateless(None, &expr))
             .expect(sql)

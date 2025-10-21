@@ -4,7 +4,7 @@ use {
         ast::{Aggregate, CountArgExpr},
         parse_sql::parse_expr,
         result::{Error, Result},
-        translate::translate_expr,
+        translate::{NO_PARAMS, translate_expr},
     },
 };
 
@@ -44,7 +44,7 @@ impl<'a> TryFrom<CountArgExprNode<'a>> for CountArgExpr {
         match count_expr_node {
             CountArgExprNode::Text(s) if &s == "*" => Ok(CountArgExpr::Wildcard),
             CountArgExprNode::Text(s) => {
-                let expr = parse_expr(s).and_then(|expr| translate_expr(&expr))?;
+                let expr = parse_expr(s).and_then(|expr| translate_expr(&expr, NO_PARAMS))?;
 
                 Ok(CountArgExpr::Expr(expr))
             }
