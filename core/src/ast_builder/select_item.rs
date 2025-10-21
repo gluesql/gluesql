@@ -5,7 +5,7 @@ use {
         ast_builder::ExprWithAliasNode,
         parse_sql::parse_select_item,
         result::{Error, Result},
-        translate::translate_select_item,
+        translate::{NO_PARAMS, translate_select_item},
     },
 };
 
@@ -47,9 +47,8 @@ impl<'a> TryFrom<SelectItemNode<'a>> for SelectItem {
     fn try_from(select_item_node: SelectItemNode<'a>) -> Result<Self> {
         match select_item_node {
             SelectItemNode::SelectItem(select_item) => Ok(select_item),
-            SelectItemNode::Text(select_item) => {
-                parse_select_item(select_item).and_then(|item| translate_select_item(&item))
-            }
+            SelectItemNode::Text(select_item) => parse_select_item(select_item)
+                .and_then(|item| translate_select_item(&item, NO_PARAMS)),
             SelectItemNode::Expr(expr_node) => {
                 let expr = Expr::try_from(expr_node)?;
                 let label = expr.to_sql_unquoted();
@@ -72,14 +71,14 @@ mod tests {
             ast::SelectItem,
             ast_builder::{SelectItemNode, col},
             parse_sql::parse_select_item,
-            translate::translate_select_item,
+            translate::{NO_PARAMS, translate_select_item},
         },
         pretty_assertions::assert_eq,
     };
 
     fn test(actual: SelectItemNode, expected: &str) {
         let parsed = &parse_select_item(expected).expect(expected);
-        let expected = translate_select_item(parsed);
+        let expected = translate_select_item(parsed, NO_PARAMS);
         assert_eq!(actual.try_into(), expected);
     }
 

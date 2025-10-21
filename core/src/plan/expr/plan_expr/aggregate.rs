@@ -20,12 +20,12 @@ mod tests {
     use crate::{
         ast::{Aggregate, Expr},
         parse_sql::parse_expr,
-        translate::translate_expr,
+        translate::{NO_PARAMS, translate_expr},
     };
 
     fn parse(sql: &str) -> Aggregate {
         let parsed = parse_expr(sql).unwrap();
-        let expr = translate_expr(&parsed).unwrap();
+        let expr = translate_expr(&parsed, NO_PARAMS).unwrap();
 
         match expr {
             Expr::Aggregate(aggregate) => *aggregate,

@@ -4,7 +4,7 @@ use {
         ast::{Expr, ToSql},
         parse_sql::parse_interval,
         result::Result,
-        translate::translate_expr,
+        translate::{NO_PARAMS, translate_expr},
     },
 };
 
@@ -12,7 +12,7 @@ impl Interval {
     pub fn parse(s: &str) -> Result<Self> {
         let parsed = parse_interval(s)?;
 
-        match translate_expr(&parsed)? {
+        match translate_expr(&parsed, NO_PARAMS)? {
             Expr::Interval {
                 expr,
                 leading_field,
@@ -155,7 +155,10 @@ impl Interval {
 mod tests {
     use {
         super::{Interval, IntervalError},
-        crate::{parse_sql::parse_interval, translate::translate_expr},
+        crate::{
+            parse_sql::parse_interval,
+            translate::{NO_PARAMS, translate_expr},
+        },
     };
 
     #[test]
@@ -282,7 +285,7 @@ mod tests {
         let error = Interval::parse("INTERVAL value DAY").unwrap_err();
 
         let parsed = parse_interval("INTERVAL value DAY").unwrap();
-        let expected_expr = translate_expr(&parsed).unwrap();
+        let expected_expr = translate_expr(&parsed, NO_PARAMS).unwrap();
 
         assert_eq!(
             error,

@@ -86,16 +86,16 @@ mod tests {
         crate::{
             ast::{Expr, Query},
             parse_sql::{parse_expr, parse_query},
-            translate::{translate_expr, translate_query},
+            translate::{NO_PARAMS, translate_expr, translate_query},
         },
     };
     fn expr(sql: &str) -> Expr {
         let parsed = parse_expr(sql).expect(sql);
-        translate_expr(&parsed).expect(sql)
+        translate_expr(&parsed, NO_PARAMS).expect(sql)
     }
     fn query(sql: &str) -> Query {
         let parsed = parse_query(sql).expect(sql);
-        translate_query(&parsed).expect(sql)
+        translate_query(&parsed, NO_PARAMS).expect(sql)
     }
     #[test]
     fn expr_to_plan_expr() {

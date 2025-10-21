@@ -197,4 +197,19 @@ pub enum TranslateError {
 
     #[error("unsupported constraint: {0}")]
     UnsupportedConstraint(String),
+
+    #[error("parameter index {index} is out of range (total parameters: {len})")]
+    ParameterIndexOutOfRange { index: usize, len: usize },
+
+    #[error("invalid parameter placeholder: {placeholder}")]
+    InvalidPlaceholder { placeholder: String },
+
+    #[error("failed to convert parameter {index} into expression: {reason}")]
+    ParameterTypeConversionFailed { index: usize, reason: String },
+
+    #[error("failed to convert parameter literal from value `{value}`")]
+    InvalidParamLiteral { value: String },
+
+    #[error("non-finite float parameter literal: {value}")]
+    NonFiniteFloatParameter { value: String },
 }

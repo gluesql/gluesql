@@ -227,7 +227,7 @@ mod tests {
             mock::{MockStorage, run},
             parse_sql::{parse, parse_expr},
             plan::fetch_schema_map,
-            translate::{translate, translate_expr},
+            translate::{NO_PARAMS, translate, translate_expr},
         },
         futures::executor::block_on,
     };
@@ -252,7 +252,7 @@ mod tests {
     fn expr(sql: &str) -> Expr {
         let parsed = parse_expr(sql).expect(sql);
 
-        translate_expr(&parsed).expect(sql)
+        translate_expr(&parsed, NO_PARAMS).expect(sql)
     }
 
     #[test]

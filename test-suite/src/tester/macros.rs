@@ -18,6 +18,7 @@ macro_rules! idx {
                 $op,
                 gluesql_core::translate::translate_expr(
                     &gluesql_core::parse_sql::parse_expr($sql_expr).unwrap(),
+                    &[],
                 )
                 .unwrap(),
             )),

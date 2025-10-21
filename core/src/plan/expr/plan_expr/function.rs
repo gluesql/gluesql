@@ -224,12 +224,16 @@ impl Function {
 
 #[cfg(test)]
 mod tests {
-    use crate::{ast::Expr, parse_sql::parse_expr, translate::translate_expr};
+    use crate::{
+        ast::Expr,
+        parse_sql::parse_expr,
+        translate::{NO_PARAMS, translate_expr},
+    };
 
     fn expr(sql: &str) -> Expr {
         let parsed = parse_expr(sql).expect(sql);
 
-        translate_expr(&parsed).expect(sql)
+        translate_expr(&parsed, NO_PARAMS).expect(sql)
     }
 
     fn test(sql: &str, expected: &[&str]) {

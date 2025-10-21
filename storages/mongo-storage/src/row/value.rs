@@ -62,7 +62,7 @@ impl IntoValue for Bson {
             (Bson::String(string), DataType::Interval) => {
                 let interval =
                     parse_interval(string).map_err(|_| MongoStorageError::UnsupportedBsonType)?;
-                let interval = translate_expr(&interval)
+                let interval = translate_expr(&interval, &[])
                     .map_err(|_| MongoStorageError::UnsupportedBsonType)?;
                 match interval {
                     Expr::Interval {
