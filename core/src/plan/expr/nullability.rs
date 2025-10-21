@@ -195,11 +195,14 @@ fn function_may_return_null(function: &Function) -> bool {
 mod tests {
     use {
         super::may_return_null,
-        crate::{parse_sql::parse_expr, translate::translate_expr},
+        crate::{
+            parse_sql::parse_expr,
+            translate::{NO_PARAMS, translate_expr},
+        },
     };
 
     fn test(sql: &str, expected: bool) {
-        let expr = parse_expr(sql).and_then(|parsed| translate_expr(&parsed));
+        let expr = parse_expr(sql).and_then(|parsed| translate_expr(&parsed, NO_PARAMS));
         let actual = expr.map(|expr| may_return_null(&expr));
 
         assert_eq!(actual, Ok(expected), "{sql} nullability mismatch");

@@ -200,11 +200,14 @@ fn is_function_deterministic(function: &Function) -> bool {
 mod tests {
     use {
         super::is_deterministic,
-        crate::{parse_sql::parse_expr, translate::translate_expr},
+        crate::{
+            parse_sql::parse_expr,
+            translate::{NO_PARAMS, translate_expr},
+        },
     };
 
     fn test(sql: &str, expected: bool) {
-        let expr = parse_expr(sql).and_then(|parsed| translate_expr(&parsed));
+        let expr = parse_expr(sql).and_then(|parsed| translate_expr(&parsed, NO_PARAMS));
         let actual = expr.map(|expr| is_deterministic(&expr));
 
         assert_eq!(actual, Ok(expected), "{sql} deterministic mismatch");
