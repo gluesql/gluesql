@@ -3,7 +3,7 @@ use {
     std::{cmp::Eq, hash::Hash},
 };
 
-/// HashMap which provides
+/// `HashMap` which provides
 /// 1. Immutable APIs
 /// 2. Preserving insertion order
 pub struct IndexMap<K, V>(indexmap::IndexMap<K, V>);

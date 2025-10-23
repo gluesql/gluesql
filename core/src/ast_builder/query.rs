@@ -10,7 +10,7 @@ use {
         ast::{Expr, Query, SetExpr, Values},
         parse_sql::parse_query,
         result::{Error, Result},
-        translate::translate_query,
+        translate::{NO_PARAMS, translate_query},
     },
 };
 
@@ -87,7 +87,7 @@ impl<'a> TryFrom<QueryNode<'a>> for Query {
     fn try_from(query_node: QueryNode<'a>) -> Result<Self> {
         match query_node {
             QueryNode::Text(query_node) => {
-                parse_query(query_node).and_then(|item| translate_query(&item))
+                parse_query(query_node).and_then(|item| translate_query(&item, NO_PARAMS))
             }
             QueryNode::Values(values) => {
                 let values: Vec<Vec<Expr>> = values

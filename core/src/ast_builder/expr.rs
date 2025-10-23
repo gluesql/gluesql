@@ -20,7 +20,7 @@ use {
         parse_sql::{parse_comma_separated_exprs, parse_expr, parse_query},
         prelude::DataType,
         result::{Error, Result},
-        translate::{translate_expr, translate_query},
+        translate::{NO_PARAMS, translate_expr, translate_query},
     },
     aggregate::AggregateNode,
     bigdecimal::BigDecimal,
@@ -103,7 +103,7 @@ impl<'a> TryFrom<ExprNode<'a>> for Expr {
             ExprNode::SqlExpr(expr) => {
                 let expr = parse_expr(expr)?;
 
-                translate_expr(&expr)
+                translate_expr(&expr, NO_PARAMS)
             }
             ExprNode::Identifier(value) => {
                 let idents = value.as_ref().split('.').collect::<Vec<_>>();
@@ -212,7 +212,7 @@ impl<'a> TryFrom<ExprNode<'a>> for Expr {
                     }
                     InListNode::Text(value) => {
                         let subquery = parse_query(value.clone())
-                            .and_then(|item| translate_query(&item))
+                            .and_then(|item| translate_query(&item, NO_PARAMS))
                             .map(Box::new);
 
                         if let Ok(subquery) = subquery {
@@ -225,7 +225,7 @@ impl<'a> TryFrom<ExprNode<'a>> for Expr {
 
                         parse_comma_separated_exprs(&*value)?
                             .iter()
-                            .map(translate_expr)
+                            .map(|expr| translate_expr(expr, NO_PARAMS))
                             .collect::<Result<Vec<_>>>()
                             .map(|list| Expr::InList {
                                 expr,
@@ -368,7 +368,7 @@ pub fn uuid<'a, T: Into<Cow<'a, str>>>(uuid: T) -> ExprNode<'a> {
     }
 }
 
-/// Returns an AST ExprNode containing the provided Bytea.
+/// Returns an AST `ExprNode` containing the provided `Bytea`.
 ///
 /// # Arguments
 /// * `bytea` - A byte array to be converted to a Bytea AST node.
