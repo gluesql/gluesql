@@ -20,11 +20,11 @@ use {
     },
 };
 
-/// Translates a [`SqlQuery`] into GlueSQL's [`Query`] using the supplied parameters.
+/// Translates a [`SqlQuery`] into `GlueSQL`'s [`Query`] using the supplied parameters.
 ///
 /// # Errors
 ///
-/// Returns an error when the SQL query uses clauses GlueSQL does not support or when translating
+/// Returns an error when the SQL query uses clauses `GlueSQL` does not support or when translating
 /// any expression within the query fails.
 pub fn translate_query(sql_query: &SqlQuery, params: &[ParamLiteral]) -> Result<Query> {
     let SqlQuery {
@@ -170,7 +170,7 @@ fn translate_select(sql_select: &SqlSelect, params: &[ParamLiteral]) -> Result<S
     })
 }
 
-/// Translates a [`SqlSelectItem`] into GlueSQL's [`SelectItem`].
+/// Translates a [`SqlSelectItem`] into `GlueSQL`'s [`SelectItem`].
 ///
 /// # Errors
 ///
