@@ -51,12 +51,12 @@ pub(crate) fn translate_alter_table_operation(
     }
 }
 
-/// Translates a [`SqlColumnDef`] into GlueSQL's [`ColumnDef`] using the supplied parameters.
+/// Translates a [`SqlColumnDef`] into `GlueSQL`'s [`ColumnDef`] using the supplied parameters.
 ///
 /// # Errors
 ///
 /// Returns an error when the column definition uses data types, default expressions,
-/// or column options (for example `COLLATE`, unsupported constraints) that GlueSQL does not
+/// or column options (for example `COLLATE`, unsupported constraints) that `GlueSQL` does not
 /// support.
 pub fn translate_column_def(
     sql_column_def: &SqlColumnDef,
@@ -106,12 +106,12 @@ pub fn translate_column_def(
     })
 }
 
-/// Translates a [`SqlOperateFunctionArg`] into GlueSQL's [`OperateFunctionArg`] using the supplied parameters.
+/// Translates a [`SqlOperateFunctionArg`] into `GlueSQL`'s [`OperateFunctionArg`] using the supplied parameters.
 ///
 /// # Errors
 ///
 /// Returns an error when converting the argument's data type fails or when its default
-/// expression uses syntax GlueSQL does not support.
+/// expression uses syntax `GlueSQL` does not support.
 pub(crate) fn translate_operate_function_arg(
     arg: &SqlOperateFunctionArg,
     params: &[ParamLiteral],

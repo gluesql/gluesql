@@ -22,15 +22,15 @@ use {
     },
 };
 
-/// Translates a [`SqlExpr`] into GlueSQL's [`Expr`] using the supplied parameters.
+/// Translates a [`SqlExpr`] into `GlueSQL`'s [`Expr`] using the supplied parameters.
 ///
 /// Among them, there are functions that are translated to a lower level of [`Expr`] rather than
 /// [`Expr::Function`] (for example `CAST`, `EXTRACT`). This mirrors the parse tree of
-/// `sqlparser-rs`, so the resulting shape aligns with GlueSQL's execution types.
+/// `sqlparser-rs`, so the resulting shape aligns with `GlueSQL`'s execution types.
 ///
 /// # Errors
 ///
-/// Returns an error when the SQL expression cannot be represented in GlueSQL, such as when it
+/// Returns an error when the SQL expression cannot be represented in `GlueSQL`, such as when it
 /// contains unsupported syntax or literals.
 pub fn translate_expr(sql_expr: &SqlExpr, params: &[ParamLiteral]) -> Result<Expr> {
     match sql_expr {
@@ -228,11 +228,11 @@ pub fn translate_expr(sql_expr: &SqlExpr, params: &[ParamLiteral]) -> Result<Exp
     }
 }
 
-/// Translates a [`SqlOrderByExpr`] into GlueSQL's [`OrderByExpr`] using the supplied parameters.
+/// Translates a [`SqlOrderByExpr`] into `GlueSQL`'s [`OrderByExpr`] using the supplied parameters.
 ///
 /// # Errors
 ///
-/// Returns an error when the order-by expression uses syntax GlueSQL does not support
+/// Returns an error when the order-by expression uses syntax `GlueSQL` does not support
 /// (for example `NULLS FIRST`/`NULLS LAST`) or when translating its sub-expressions fails.
 pub fn translate_order_by_expr(
     sql_order_by_expr: &SqlOrderByExpr,
