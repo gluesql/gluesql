@@ -1,8 +1,10 @@
 use {
-    super::{context::Context, expr::PlanExpr},
-    crate::ast::{
-        Expr, Join, JoinConstraint, JoinOperator, Query, Select, SelectItem, SetExpr, TableAlias,
-        TableFactor, TableWithJoins, Values,
+    crate::{
+        ast::{
+            Expr, Join, JoinConstraint, JoinOperator, Query, Select, SelectItem, SetExpr,
+            TableAlias, TableFactor, TableWithJoins, Values,
+        },
+        plan::{context::Context, expr::PlanExpr},
     },
     std::sync::Arc,
 };
@@ -144,9 +146,10 @@ fn check_table_factor(context: Option<Arc<Context<'_>>>, table_factor: &TableFac
 #[cfg(test)]
 mod tests {
     use {
-        super::{Context, check_expr},
+        super::check_expr,
         crate::{
             parse_sql::parse_expr,
+            plan::context::Context,
             translate::{NO_PARAMS, translate_expr},
         },
         std::sync::Arc,

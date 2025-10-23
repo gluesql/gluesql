@@ -1,11 +1,12 @@
 use {
-    super::{context::Context, evaluable::check_expr as check_evaluable, planner::Planner},
+    super::{context::Context, planner::Planner},
     crate::{
         ast::{
             BinaryOperator, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select,
             SetExpr, Statement, TableWithJoins,
         },
         data::Schema,
+        plan::expr::evaluable::check_expr as check_evaluable,
     },
     std::{collections::HashMap, sync::Arc},
     utils::Vector,
