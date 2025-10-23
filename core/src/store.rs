@@ -3,6 +3,7 @@ mod data_row;
 mod function;
 mod index;
 mod metadata;
+mod planner;
 mod transaction;
 
 pub trait GStore: Store + Index + Metadata + CustomFunction {}
@@ -23,6 +24,7 @@ pub use {
     function::{CustomFunction, CustomFunctionMut},
     index::{Index, IndexError, IndexMut},
     metadata::{MetaIter, Metadata},
+    planner::Planner,
     transaction::Transaction,
 };
 

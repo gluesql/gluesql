@@ -3,9 +3,8 @@ use {
         ast::Statement,
         executor::{Payload, execute},
         parse_sql::parse,
-        plan::plan,
         result::Result,
-        store::{GStore, GStoreMut},
+        store::{GStore, GStoreMut, Planner},
         translate::{IntoParamLiteral, ParamLiteral, TranslateError, translate_with_params},
     },
     futures::{
@@ -15,11 +14,11 @@ use {
 };
 
 #[derive(Debug)]
-pub struct Glue<T: GStore + GStoreMut> {
+pub struct Glue<T: GStore + GStoreMut + Planner> {
     pub storage: T,
 }
 
-impl<T: GStore + GStoreMut> Glue<T> {
+impl<T: GStore + GStoreMut + Planner> Glue<T> {
     pub fn new(storage: T) -> Self {
         Self { storage }
     }
@@ -44,11 +43,11 @@ impl<T: GStore + GStoreMut> Glue<T> {
         let params: Vec<ParamLiteral> = params
             .into_iter()
             .map(IntoParamLiteral::into_param_literal)
-            .collect::<Result<_, TranslateError>>()?;
+            .collect::<std::result::Result<_, TranslateError>>()?;
         let storage = &self.storage;
         stream::iter(parsed)
             .map(|p| translate_with_params(&p, &params))
-            .then(|statement| async move { plan(storage, statement?).await })
+            .then(|statement| async move { storage.plan(statement?).await })
             .try_collect()
             .await
     }

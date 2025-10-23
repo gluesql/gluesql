@@ -10,7 +10,7 @@ use {
     gluesql_core::{
         data::{Key, Schema},
         error::Result,
-        store::{DataRow, Metadata, RowIter, Store, StoreMut},
+        store::{DataRow, Metadata, Planner, RowIter, Store, StoreMut},
     },
     gluesql_memory_storage::MemoryStorage,
     std::sync::Arc,
@@ -118,5 +118,6 @@ impl StoreMut for SharedMemoryStorage {
 }
 
 impl Metadata for SharedMemoryStorage {}
+impl Planner for SharedMemoryStorage {}
 impl gluesql_core::store::CustomFunction for SharedMemoryStorage {}
 impl gluesql_core::store::CustomFunctionMut for SharedMemoryStorage {}

@@ -8,7 +8,7 @@ use {
     futures::executor::block_on,
     gluesql_core::{
         prelude::Glue,
-        store::{GStore, GStoreMut},
+        store::{GStore, GStoreMut, Planner},
     },
     rustyline::{Editor, error::ReadlineError},
     std::{
@@ -21,7 +21,7 @@ use {
 
 pub struct Cli<T, W>
 where
-    T: GStore + GStoreMut,
+    T: GStore + GStoreMut + Planner,
     W: Write,
 {
     glue: Glue<T>,
@@ -30,7 +30,7 @@ where
 
 impl<T, W> Cli<T, W>
 where
-    T: GStore + GStoreMut,
+    T: GStore + GStoreMut + Planner,
     W: Write,
 {
     pub fn new(storage: T, output: W) -> Self {

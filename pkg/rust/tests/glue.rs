@@ -3,12 +3,12 @@ use {
     futures::executor::block_on,
     gluesql::{
         FromGlueRow,
-        core::store::{GStore, GStoreMut},
+        core::store::{GStore, GStoreMut, Planner},
         prelude::*,
     },
 };
 
-async fn basic<T: GStore + GStoreMut>(mut glue: Glue<T>) {
+async fn basic<T: GStore + GStoreMut + Planner>(mut glue: Glue<T>) {
     assert_eq!(
         glue.execute("DROP TABLE IF EXISTS api_test").await,
         Ok(vec![Payload::DropTable(0)])
