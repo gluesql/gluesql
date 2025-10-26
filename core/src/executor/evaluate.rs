@@ -596,6 +596,10 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let exprs = stream::iter(exprs).then(eval).try_collect().await?;
             return f::greatest(name, exprs);
         }
+        Function::Least(exprs) => {
+            let exprs = stream::iter(exprs).then(eval).try_collect().await?;
+            return f::least(name, exprs);
+        }
         Function::Now() | Function::CurrentTimestamp() => {
             return Ok(Evaluated::Value(Value::Timestamp(Utc::now().naive_utc())));
         }

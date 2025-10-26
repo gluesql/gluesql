@@ -143,6 +143,7 @@ pub enum Function {
     },
     GenerateUuid(),
     Greatest(Vec<Expr>),
+    Least(Vec<Expr>),
     Format {
         expr: Expr,
         format: Expr,
@@ -395,6 +396,14 @@ impl ToSql for Function {
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("GREATEST({items})")
+            }
+            Function::Least(items) => {
+                let items = items
+                    .iter()
+                    .map(ToSql::to_sql)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("LEAST({})", items)
             }
             Function::Format { expr, format } => {
                 format!("FORMAT({}, {})", expr.to_sql(), format.to_sql())
@@ -1174,6 +1183,16 @@ mod tests {
         assert_eq!(
             "GREATEST(16, 9, 7)",
             &Expr::Function(Box::new(Function::Greatest(vec![
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("16").unwrap())),
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("9").unwrap())),
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("7").unwrap()))
+            ])))
+            .to_sql()
+        );
+
+        assert_eq!(
+            "LEAST(16, 9, 7)",
+            &Expr::Function(Box::new(Function::Least(vec![
                 Expr::Literal(AstLiteral::Number(BigDecimal::from_str("16").unwrap())),
                 Expr::Literal(AstLiteral::Number(BigDecimal::from_str("9").unwrap())),
                 Expr::Literal(AstLiteral::Number(BigDecimal::from_str("7").unwrap()))
