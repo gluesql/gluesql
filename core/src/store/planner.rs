@@ -9,7 +9,7 @@ use {
 };
 
 #[async_trait]
-pub trait Planner: Store + Sized {
+pub trait Planner: Store {
     async fn plan(&self, statement: Statement) -> Result<Statement> {
         let schema_map = fetch_schema_map(self, &statement).await?;
         validate(&schema_map, &statement)?;
