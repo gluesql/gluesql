@@ -1,7 +1,7 @@
-//! # SledStorage transaction tests
+//! # `SledStorage` transaction tests
 //!
-//! REPEATABLE READ or SNAPSHOT ISOLATION is a transaction level which SledStorage provides.
-//! Therefore, SledStorage is safe from READ UNCOMMITTED or READ COMMITTED concurrency conflict
+//! REPEATABLE READ or SNAPSHOT ISOLATION is a transaction level which `SledStorage` provides.
+//! Therefore, `SledStorage` is safe from READ UNCOMMITTED or READ COMMITTED concurrency conflict
 //! scenarios, but not PHANTOM READ safe.
 
 use {

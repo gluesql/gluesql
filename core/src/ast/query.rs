@@ -601,7 +601,7 @@ mod tests {
                 TableFactor, TableWithJoins, ToSql, ToSqlUnquoted, Values,
             },
             parse_sql::parse_expr,
-            translate::translate_expr,
+            translate::{NO_PARAMS, translate_expr},
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,
@@ -610,7 +610,7 @@ mod tests {
     fn expr(sql: &str) -> Expr {
         let parsed = parse_expr(sql).expect(sql);
 
-        translate_expr(&parsed).expect(sql)
+        translate_expr(&parsed, NO_PARAMS).expect(sql)
     }
 
     #[test]
