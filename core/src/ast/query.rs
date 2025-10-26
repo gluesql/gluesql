@@ -146,9 +146,12 @@ impl ToSqlUnquoted for Query {
 
 impl Query {
     fn to_sql_with(&self, quoted: bool) -> String {
-        let to_sql = |expr: &Expr| match quoted {
-            true => expr.to_sql(),
-            false => expr.to_sql_unquoted(),
+        let to_sql = |expr: &Expr| {
+            if quoted {
+                expr.to_sql()
+            } else {
+                expr.to_sql_unquoted()
+            }
         };
 
         let Query {
@@ -230,9 +233,12 @@ impl ToSqlUnquoted for Select {
 
 impl Select {
     fn to_sql_with(&self, quoted: bool) -> String {
-        let to_sql = |expr: &Expr| match quoted {
-            true => expr.to_sql(),
-            false => expr.to_sql_unquoted(),
+        let to_sql = |expr: &Expr| {
+            if quoted {
+                expr.to_sql()
+            } else {
+                expr.to_sql_unquoted()
+            }
         };
 
         let Select {
@@ -301,9 +307,12 @@ impl ToSqlUnquoted for SelectItem {
 
 impl SelectItem {
     fn to_sql_with(&self, quoted: bool) -> String {
-        let to_sql = |expr: &Expr| match quoted {
-            true => expr.to_sql(),
-            false => expr.to_sql_unquoted(),
+        let to_sql = |expr: &Expr| {
+            if quoted {
+                expr.to_sql()
+            } else {
+                expr.to_sql_unquoted()
+            }
         };
 
         match self {
@@ -315,10 +324,13 @@ impl SelectItem {
                     (false, false) => format!("{expr} AS {label}"),
                 }
             }
-            SelectItem::QualifiedWildcard(obj) => match quoted {
-                true => format!(r#""{obj}".*"#),
-                false => format!("{obj}.*"),
-            },
+            SelectItem::QualifiedWildcard(obj) => {
+                if quoted {
+                    format!(r#""{obj}".*"#)
+                } else {
+                    format!("{obj}.*")
+                }
+            }
             SelectItem::Wildcard => "*".to_owned(),
         }
     }
@@ -366,9 +378,12 @@ impl ToSqlUnquoted for TableFactor {
 
 impl TableFactor {
     fn to_sql_with(&self, quoted: bool) -> String {
-        let to_sql = |expr: &Expr| match quoted {
-            true => expr.to_sql(),
-            false => expr.to_sql_unquoted(),
+        let to_sql = |expr: &Expr| {
+            if quoted {
+                expr.to_sql()
+            } else {
+                expr.to_sql_unquoted()
+            }
         };
 
         match (self, quoted) {
@@ -416,9 +431,10 @@ impl TableAlias {
     fn to_sql_with(&self, quoted: bool) -> String {
         let TableAlias { name, .. } = self;
 
-        match quoted {
-            true => format!(r#"AS "{name}""#),
-            false => format!("AS {name}"),
+        if quoted {
+            format!(r#"AS "{name}""#)
+        } else {
+            format!("AS {name}")
         }
     }
 }
@@ -448,12 +464,13 @@ impl Join {
             JoinOperator::LeftOuter(join_constraint) => ("LEFT OUTER JOIN", join_constraint),
         };
 
-        let (join_constraint, join_executor) = match quoted {
-            true => (join_constraint.to_sql(), join_executor.to_sql()),
-            false => (
+        let (join_constraint, join_executor) = if quoted {
+            (join_constraint.to_sql(), join_executor.to_sql())
+        } else {
+            (
                 join_constraint.to_sql_unquoted(),
                 join_executor.to_sql_unquoted(),
-            ),
+            )
         };
 
         let join_constraints = [join_constraint, join_executor]
@@ -486,9 +503,12 @@ impl ToSqlUnquoted for JoinExecutor {
 
 impl JoinExecutor {
     fn to_sql_with(&self, quoted: bool) -> String {
-        let to_sql = |expr: &Expr| match quoted {
-            true => expr.to_sql(),
-            false => expr.to_sql_unquoted(),
+        let to_sql = |expr: &Expr| {
+            if quoted {
+                expr.to_sql()
+            } else {
+                expr.to_sql_unquoted()
+            }
         };
 
         match self {
@@ -545,9 +565,10 @@ impl ToSqlUnquoted for OrderByExpr {
 impl OrderByExpr {
     fn to_sql_with(&self, quoted: bool) -> String {
         let OrderByExpr { expr, asc } = self;
-        let expr = match quoted {
-            true => expr.to_sql(),
-            false => expr.to_sql_unquoted(),
+        let expr = if quoted {
+            expr.to_sql()
+        } else {
+            expr.to_sql_unquoted()
         };
 
         match asc {
@@ -580,9 +601,10 @@ impl Values {
                     "({})",
                     value
                         .iter()
-                        .map(|expr| match quoted {
-                            true => expr.to_sql(),
-                            false => expr.to_sql_unquoted(),
+                        .map(|expr| if quoted {
+                            expr.to_sql()
+                        } else {
+                            expr.to_sql_unquoted()
                         })
                         .join(", ")
                 )

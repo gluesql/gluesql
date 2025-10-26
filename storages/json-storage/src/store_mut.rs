@@ -156,13 +156,12 @@ where
 impl JsonStorage {
     fn rewrite(&mut self, schema: Schema, rows: Vec<DataRow>) -> Result<()> {
         let json_path = self.json_path(&schema.table_name);
-        let (path, is_json) = match json_path.exists() {
-            true => (json_path, true),
-            false => {
-                let jsonl_path = self.jsonl_path(&schema.table_name);
+        let (path, is_json) = if json_path.exists() {
+            (json_path, true)
+        } else {
+            let jsonl_path = self.jsonl_path(&schema.table_name);
 
-                (jsonl_path, false)
-            }
+            (jsonl_path, false)
         };
         let file = File::create(path).map_storage_err()?;
 

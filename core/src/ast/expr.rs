@@ -97,10 +97,13 @@ impl ToSqlUnquoted for Expr {
 impl Expr {
     fn to_sql_with(&self, quoted: bool) -> String {
         match self {
-            Expr::Identifier(s) => match quoted {
-                true => format! {r#""{s}""#},
-                false => s.to_owned(),
-            },
+            Expr::Identifier(s) => {
+                if quoted {
+                    format! {r#""{s}""#}
+                } else {
+                    s.to_owned()
+                }
+            }
             Expr::BinaryOp { left, op, right } => {
                 format!(
                     "{} {} {}",
@@ -109,10 +112,13 @@ impl Expr {
                     right.to_sql_with(quoted),
                 )
             }
-            Expr::CompoundIdentifier { alias, ident } => match quoted {
-                true => format!(r#""{alias}"."{ident}""#),
-                false => format!("{alias}.{ident}"),
-            },
+            Expr::CompoundIdentifier { alias, ident } => {
+                if quoted {
+                    format!(r#""{alias}"."{ident}""#)
+                } else {
+                    format!("{alias}.{ident}")
+                }
+            }
             Expr::IsNull(s) => format!("{} IS NULL", s.to_sql_with(quoted)),
             Expr::IsNotNull(s) => format!("{} IS NOT NULL", s.to_sql_with(quoted)),
             Expr::InList {

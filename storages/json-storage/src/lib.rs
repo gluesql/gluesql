@@ -54,22 +54,21 @@ impl JsonStorage {
         }
 
         let schema_path = self.schema_path(table_name);
-        let (column_defs, foreign_keys, comment) = match schema_path.exists() {
-            true => {
-                let mut file = File::open(&schema_path).map_storage_err()?;
-                let mut ddl = String::new();
-                file.read_to_string(&mut ddl).map_storage_err()?;
+        let (column_defs, foreign_keys, comment) = if schema_path.exists() {
+            let mut file = File::open(&schema_path).map_storage_err()?;
+            let mut ddl = String::new();
+            file.read_to_string(&mut ddl).map_storage_err()?;
 
-                let schema = Schema::from_ddl(&ddl)?;
-                if schema.table_name != table_name {
-                    return Err(Error::StorageMsg(
-                        JsonStorageError::TableNameDoesNotMatchWithFile.to_string(),
-                    ));
-                }
-
-                (schema.column_defs, schema.foreign_keys, schema.comment)
+            let schema = Schema::from_ddl(&ddl)?;
+            if schema.table_name != table_name {
+                return Err(Error::StorageMsg(
+                    JsonStorageError::TableNameDoesNotMatchWithFile.to_string(),
+                ));
             }
-            false => (None, Vec::new(), None),
+
+            (schema.column_defs, schema.foreign_keys, schema.comment)
+        } else {
+            (None, Vec::new(), None)
         };
 
         Ok(Some(Schema {
