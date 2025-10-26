@@ -106,8 +106,8 @@ pub fn type_match(expected: &[DataType], found: Result<Payload>) {
             .zip(expected.iter())
             .for_each(|(value, data_type)| match value.validate_type(data_type) {
                 Ok(_) => {}
-                Err(_) => {
-                    panic!("[err: type match failed]\n found {value:?}\n expected {data_type:?}\n")
+                Err(e) => {
+                    panic!("[err: type match failed]\n found {value:?}\n expected {data_type:?}\n error: {e:?}\n")
                 }
             })
     }
