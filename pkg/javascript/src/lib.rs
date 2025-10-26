@@ -4,7 +4,10 @@ mod payload;
 mod utils;
 
 use {
-    gluesql_core::prelude::{execute, parse, plan, translate},
+    gluesql_core::{
+        prelude::{execute, parse, translate},
+        store::Planner,
+    },
     gluesql_memory_storage::MemoryStorage,
     js_sys::Promise,
     payload::convert,
@@ -150,7 +153,7 @@ impl Glue {
                         return Err(JsValue::from_str(&format!("{error}")));
                     }
                 };
-                let statement = plan(&storage, statement).await;
+                let statement = storage.plan(statement).await;
                 let statement = match statement {
                     Ok(statement) => statement,
                     Err(error) => {
