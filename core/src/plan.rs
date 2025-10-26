@@ -1,6 +1,5 @@
 mod context;
 mod error;
-mod evaluable;
 mod expr;
 mod index;
 mod join;

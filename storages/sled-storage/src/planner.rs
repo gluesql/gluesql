@@ -16,7 +16,7 @@ impl Planner for SledStorage {
         validate(&schema_map, &statement)?;
 
         let statement = plan_primary_key(&schema_map, statement);
-        let statement = plan_index(&schema_map, statement)?;
+        let statement = plan_index(&schema_map, statement);
         let statement = plan_join(&schema_map, statement);
 
         Ok(statement)
