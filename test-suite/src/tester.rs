@@ -55,7 +55,7 @@ fn find_indexes(statement: &Statement) -> Vec<&IndexItem> {
     fn find_query_indexes(query: &Query) -> Vec<&IndexItem> {
         let select = match &query.body {
             SetExpr::Select(select) => select,
-            _ => {
+            SetExpr::Values(_) => {
                 return vec![];
             }
         };
