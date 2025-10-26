@@ -50,8 +50,7 @@ impl Index for SledStorage {
                             .rev()
                             .fold((false, Vector::new()), |(added, upper), v| {
                                 match (added, v) {
-                                    (true, _) => (added, upper.push(v)),
-                                    (false, u8::MAX) => (added, upper.push(v)),
+                                    (true, _) | (false, u8::MAX) => (added, upper.push(v)),
                                     (false, _) => (true, upper.push(v + 1)),
                                 }
                             })

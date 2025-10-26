@@ -59,14 +59,13 @@ impl TryFrom<Evaluated<'_>> for bool {
 
     fn try_from(e: Evaluated<'_>) -> Result<bool> {
         match e {
-            Evaluated::Literal(Literal::Boolean(v)) => Ok(v),
+            Evaluated::Literal(Literal::Boolean(v)) | Evaluated::Value(Value::Bool(v)) => Ok(v),
             Evaluated::Literal(v) => {
                 Err(EvaluateError::BooleanTypeRequired(format!("{v:?}")).into())
             }
             Evaluated::StrSlice { source, range } => {
                 Err(EvaluateError::BooleanTypeRequired(source[range].to_owned()).into())
             }
-            Evaluated::Value(Value::Bool(v)) => Ok(v),
             Evaluated::Value(v) => Err(EvaluateError::BooleanTypeRequired(format!("{v:?}")).into()),
         }
     }

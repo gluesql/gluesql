@@ -205,13 +205,13 @@ impl Function {
                 end_index: expr3,
                 values: None,
             } => Exprs::Triple([expr, expr2, expr3].into_iter()),
-            Self::Custom { name: _, exprs } => Exprs::VariableArgs(exprs.iter()),
-            Self::Coalesce(exprs) => Exprs::VariableArgs(exprs.iter()),
-            Self::Concat(exprs) => Exprs::VariableArgs(exprs.iter()),
+            Self::Custom { name: _, exprs }
+            | Self::Coalesce(exprs)
+            | Self::Concat(exprs)
+            | Self::Greatest(exprs) => Exprs::VariableArgs(exprs.iter()),
             Self::ConcatWs { separator, exprs } => {
                 Exprs::VariableArgsWithSingle(once(separator).chain(exprs.iter()))
             }
-            Self::Greatest(exprs) => Exprs::VariableArgs(exprs.iter()),
             Self::Splice {
                 list_data: expr,
                 begin_index: expr2,
