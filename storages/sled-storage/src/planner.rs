@@ -1,13 +1,13 @@
-use async_trait::async_trait;
-
-use gluesql_core::{
-    ast::Statement,
-    error::Result,
-    plan::{fetch_schema_map, plan_index, plan_join, plan_primary_key, validate},
-    store::Planner,
+use {
+    crate::SledStorage,
+    async_trait::async_trait,
+    gluesql_core::{
+        ast::Statement,
+        error::Result,
+        plan::{fetch_schema_map, plan_index, plan_join, plan_primary_key, validate},
+        store::Planner,
+    },
 };
-
-use crate::SledStorage;
 
 #[async_trait]
 impl Planner for SledStorage {
