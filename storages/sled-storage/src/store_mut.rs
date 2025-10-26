@@ -235,29 +235,26 @@ impl StoreMut for SledStorage {
                         .map_err(ConflictableTransactionError::Abort)
                         .map(|key| key::data(table_name, key))?;
 
-                    let snapshot = match tree.get(&key)? {
-                        Some(snapshot) => {
-                            let snapshot: Snapshot<DataRow> = bincode::deserialize(&snapshot)
-                                .map_err(err_into)
-                                .map_err(ConflictableTransactionError::Abort)?;
+                    let snapshot = if let Some(snapshot) = tree.get(&key)? {
+                        let snapshot: Snapshot<DataRow> = bincode::deserialize(&snapshot)
+                            .map_err(err_into)
+                            .map_err(ConflictableTransactionError::Abort)?;
 
-                            let (snapshot, old_row) = snapshot.update(txid, new_row.clone());
-                            let old_row = match old_row {
-                                Some(row) => row,
-                                None => {
-                                    continue;
-                                }
-                            };
+                        let (snapshot, old_row) = snapshot.update(txid, new_row.clone());
+                        let old_row = match old_row {
+                            Some(row) => row,
+                            None => {
+                                continue;
+                            }
+                        };
 
-                            index_sync.update(&key, &old_row, new_row).await?;
+                        index_sync.update(&key, &old_row, new_row).await?;
 
-                            snapshot
-                        }
-                        None => {
-                            index_sync.insert(&key, new_row).await?;
+                        snapshot
+                    } else {
+                        index_sync.insert(&key, new_row).await?;
 
-                            Snapshot::new(txid, new_row.clone())
-                        }
+                        Snapshot::new(txid, new_row.clone())
                     };
 
                     let snapshot = bincode::serialize(&snapshot)

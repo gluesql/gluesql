@@ -53,18 +53,17 @@ where
         let this = self.project();
 
         match this.state {
-            Initial => match ready!(this.stream1.poll_next(cx)) {
-                item @ Some(_) => {
+            Initial => {
+                if let item @ Some(_) = ready!(this.stream1.poll_next(cx)) {
                     *this.state = St1;
 
                     Poll::Ready(item)
-                }
-                None => {
+                } else {
                     *this.state = St2;
 
                     this.stream2.poll_next(cx)
                 }
-            },
+            }
             St1 => this.stream1.poll_next(cx),
             St2 => this.stream2.poll_next(cx),
         }
