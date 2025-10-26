@@ -5,13 +5,13 @@ use {
         executor::Payload,
         prelude::Glue,
         result::Result,
-        store::{GStore, GStoreMut},
+        store::{GStore, GStoreMut, Planner},
     },
     async_trait::async_trait,
 };
 
 #[async_trait]
-pub trait Execute<T: GStore + GStoreMut>
+pub trait Execute<T: GStore + GStoreMut + Planner>
 where
     Self: Sized + Build,
 {
@@ -22,7 +22,7 @@ where
     }
 }
 
-impl<T: GStore + GStoreMut, B: Build> Execute<T> for B {}
+impl<T: GStore + GStoreMut + Planner, B: Build> Execute<T> for B {}
 #[async_trait]
 
 impl Build for Statement {
