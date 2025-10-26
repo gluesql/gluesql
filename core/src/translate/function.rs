@@ -426,6 +426,17 @@ pub(crate) fn translate_function(
         "CURRENT_TIMESTAMP" => {
             translate_function_zero_arg(Function::CurrentTimestamp(), args, name)
         }
+        "INSTR" => {
+            check_len(name, args.len(), 2)?;
+
+            let string = translate_expr(args[0])?;
+            let substring = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Instr {
+                string,
+                substring,
+            })))
+        }
         "GCD" => {
             check_len(name, args.len(), 2)?;
 

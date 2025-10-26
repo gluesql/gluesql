@@ -147,6 +147,10 @@ pub enum FunctionNode<'a> {
         sub_expr: ExprNode<'a>,
         start: Option<ExprNode<'a>>,
     },
+    Instr {
+        string: ExprNode<'a>,
+        substring: ExprNode<'a>,
+    },
     Cast {
         expr: ExprNode<'a>,
         data_type: DataTypeNode,
@@ -365,6 +369,11 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
                     sub_expr,
                     start,
                 })
+            }
+            FunctionNode::Instr { string, substring } => {
+                let string = string.try_into()?;
+                let substring = substring.try_into()?;
+                Ok(Function::Instr { string, substring })
             }
             FunctionNode::Cast { expr, data_type } => {
                 let expr = expr.try_into()?;
@@ -684,6 +693,14 @@ pub fn current_time<'a>() -> ExprNode<'a> {
 }
 pub fn current_timestamp<'a>() -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::CurrentTimestamp))
+}
+pub fn instr<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
+    string: T,
+    substring: U,
+) -> ExprNode<'a> {
+    let string = string.into();
+    let substring = substring.into();
+    ExprNode::Function(Box::new(FunctionNode::Instr { string, substring }))
 }
 pub fn left<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(expr: T, size: U) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Left {
