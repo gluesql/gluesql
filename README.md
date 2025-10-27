@@ -106,7 +106,7 @@ Shared Memory Storage is a storage option designed to provide more comfortable u
 
 ### Sled Storage
 
-Sled Storage is a persistent data storage option for GlueSQL that is built on the Sled key-value embedded database in Rust. It is the only storage option currently supported by GlueSQL that implements all Store traits, from non-clustered indexes to transactions. Sled Storage is an excellent choice for handling and storing data in a Rust environment. To use Sled Storage, you can create a SledStorage instance using a path.
+Sled Storage is a persistent data storage option for GlueSQL that is built on the Sled key-value embedded database in Rust. Along with Redb Storage, it implements the full set of GlueSQL Store traits, from non-clustered indexes to transactions. Sled Storage is an excellent choice for handling and storing data in a Rust environment. To use Sled Storage, you can create a SledStorage instance using a path.
 
 ### Redb Storage
 
