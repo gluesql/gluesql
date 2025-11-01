@@ -566,7 +566,7 @@ mod tests {
 
             for (l, r) in ls.iter().zip(rs.iter()) {
                 match l.cmp(r) {
-                    Ordering::Equal => continue,
+                    Ordering::Equal => {}
                     ordering => return ordering,
                 }
             }
