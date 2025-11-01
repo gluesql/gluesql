@@ -128,7 +128,7 @@ impl Command {
                 ".execute" if params.len() == 2 => Ok(Self::ExecuteFromFile(params[1].to_owned())),
                 ".spool" => match params.get(1) {
                     Some(&"off") => Ok(Self::SpoolOff),
-                    Some(path) => Ok(Self::SpoolOn(path.to_string())),
+                    Some(path) => Ok(Self::SpoolOn((*path).to_owned())),
                     None => Err(CommandError::LackOfFile),
                 },
                 ".set" => match (params.get(1), params.get(2)) {
