@@ -67,14 +67,13 @@ async fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> Result<(Vec<Row>, Vec<Str
         for (i, expr) in exprs.iter().enumerate() {
             let evaluated = evaluate_stateless(None, expr).await?;
 
-            let value = match column_types[i] {
-                Some(ref data_type) => evaluated.try_into_value(data_type, true)?,
-                None => {
-                    let value: Value = evaluated.try_into()?;
-                    column_types[i] = value.get_type();
+            let value = if let Some(ref data_type) = column_types[i] {
+                evaluated.try_into_value(data_type, true)?
+            } else {
+                let value: Value = evaluated.try_into()?;
+                column_types[i] = value.get_type();
 
-                    value
-                }
+                value
             };
 
             values.push(value);

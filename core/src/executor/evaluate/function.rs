@@ -388,16 +388,14 @@ pub fn abs<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
 }
 
 pub fn ifnull<'a>(expr: Evaluated<'a>, then: Evaluated<'a>) -> ControlFlow<Evaluated<'a>> {
-    Continue(match expr.is_null() {
-        true => then,
-        false => expr,
-    })
+    Continue(if expr.is_null() { then } else { expr })
 }
 
 pub fn nullif<'a>(expr1: Evaluated<'a>, expr2: Evaluated<'a>) -> ControlFlow<Evaluated<'a>> {
-    Continue(match expr1 == expr2 {
-        true => Evaluated::Value(Value::Null),
-        false => expr1,
+    Continue(if expr1 == expr2 {
+        Evaluated::Value(Value::Null)
+    } else {
+        expr1
     })
 }
 

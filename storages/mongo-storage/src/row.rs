@@ -26,13 +26,13 @@ impl IntoRow for Document {
         data_types: impl Iterator<Item = &'a DataType>,
         has_primary: bool,
     ) -> Result<(Key, DataRow)> {
-        let key = match has_primary {
-            true => self.get_binary_generic("_id").map_storage_err()?.to_owned(),
-            false => self
-                .get_object_id("_id")
+        let key = if has_primary {
+            self.get_binary_generic("_id").map_storage_err()?.to_owned()
+        } else {
+            self.get_object_id("_id")
                 .map_storage_err()?
                 .bytes()
-                .to_vec(),
+                .to_vec()
         };
         let key = Key::Bytea(key);
 

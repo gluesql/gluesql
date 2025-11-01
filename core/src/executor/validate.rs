@@ -70,14 +70,14 @@ impl UniqueConstraint {
     fn check(&self, value: &Value) -> Result<Key> {
         let key = Key::try_from(value)?;
 
-        if !self.keys.contains(&key) {
-            Ok(key)
-        } else {
+        if self.keys.contains(&key) {
             Err(ValidateError::DuplicateEntryOnUniqueField(
                 value.clone(),
                 self.column_name.to_owned(),
             )
             .into())
+        } else {
+            Ok(key)
         }
     }
 }

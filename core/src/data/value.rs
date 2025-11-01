@@ -738,8 +738,7 @@ impl Value {
             U32(a) => factorial_function(i128::from(*a)).map(I128),
             U64(a) => factorial_function(i128::from(*a)).map(I128),
             U128(a) => factorial_function(*a as i128).map(I128),
-            F32(_) => Err(ValueError::FactorialOnNonInteger.into()),
-            F64(_) => Err(ValueError::FactorialOnNonInteger.into()),
+            F32(_) | F64(_) => Err(ValueError::FactorialOnNonInteger.into()),
             Null => Ok(Null),
             _ => Err(ValueError::FactorialOnNonNumeric.into()),
         }
@@ -759,8 +758,7 @@ impl Value {
             U32(v) => Ok(Value::U32(!v)),
             U64(v) => Ok(Value::U64(!v)),
             U128(v) => Ok(Value::U128(!v)),
-            F32(_) => Err(ValueError::UnaryBitwiseNotOnNonInteger.into()),
-            F64(_) => Err(ValueError::UnaryBitwiseNotOnNonInteger.into()),
+            F32(_) | F64(_) => Err(ValueError::UnaryBitwiseNotOnNonInteger.into()),
             Null => Ok(Null),
             _ => Err(ValueError::UnaryBitwiseNotOnNonNumeric.into()),
         }
@@ -894,7 +892,7 @@ impl PartialEq for Value {
             (Value::U16(a), Value::U16(b)) => a == b,
             (Value::U32(a), Value::U32(b)) => a == b,
             (Value::U64(a), Value::U64(b)) => a == b,
-            (Value::U128(a), Value::U128(b)) => a == b,
+            (Value::U128(a), Value::U128(b)) | (Value::Uuid(a), Value::Uuid(b)) => a == b,
             (Value::F32(a), Value::F32(b)) => (a.is_nan() && b.is_nan()) || a == b,
             (Value::F64(a), Value::F64(b)) => (a.is_nan() && b.is_nan()) || a == b,
             (Value::Decimal(a), Value::Decimal(b)) => a == b,
@@ -905,7 +903,6 @@ impl PartialEq for Value {
             (Value::Timestamp(a), Value::Timestamp(b)) => a == b,
             (Value::Time(a), Value::Time(b)) => a == b,
             (Value::Interval(a), Value::Interval(b)) => a == b,
-            (Value::Uuid(a), Value::Uuid(b)) => a == b,
             (Value::Map(a), Value::Map(b)) => a == b,
             (Value::List(a), Value::List(b)) => a == b,
             (Value::Point(a), Value::Point(b)) => a == b,
@@ -937,7 +934,7 @@ impl Hash for Value {
             Value::U16(v) => v.hash(state),
             Value::U32(v) => v.hash(state),
             Value::U64(v) => v.hash(state),
-            Value::U128(v) => v.hash(state),
+            Value::U128(v) | Value::Uuid(v) => v.hash(state),
             Value::F32(v) => {
                 if v.is_nan() {
                     CANONICAL_F32_NAN_BITS.hash(state);
@@ -964,7 +961,6 @@ impl Hash for Value {
             Value::Timestamp(v) => v.hash(state),
             Value::Time(v) => v.hash(state),
             Value::Interval(v) => v.hash(state),
-            Value::Uuid(v) => v.hash(state),
             Value::Map(map) => {
                 map.hash(state);
             }

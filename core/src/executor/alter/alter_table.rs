@@ -97,9 +97,8 @@ fn find_column(expr: &Expr, column_name: &str) -> bool {
 
     match expr {
         Expr::Identifier(ident) => ident == column_name,
-        Expr::Nested(expr) => find(expr),
+        Expr::Nested(expr) | Expr::UnaryOp { expr, .. } => find(expr),
         Expr::BinaryOp { left, right, .. } => find(left) || find(right),
-        Expr::UnaryOp { expr, .. } => find(expr),
         Expr::Function(func) => match func.as_ref() {
             Function::Cast { expr, .. } => find(expr),
             _ => false,

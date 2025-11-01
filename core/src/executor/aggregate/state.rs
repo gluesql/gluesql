@@ -222,10 +222,10 @@ impl AggrValue {
             } => {
                 let wildcard = *wildcard;
 
-                let (should_process, distinct_values) = if !new_value.is_null() {
-                    Self::check_distinct(distinct_values.clone(), new_value)
-                } else {
+                let (should_process, distinct_values) = if new_value.is_null() {
                     (true, distinct_values.clone())
+                } else {
+                    Self::check_distinct(distinct_values.clone(), new_value)
                 };
 
                 if !should_process {

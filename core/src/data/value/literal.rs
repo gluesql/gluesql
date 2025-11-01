@@ -705,17 +705,17 @@ mod tests {
             Some(Ordering::Equal),
         );
         test(
-            Value::Inet(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
+            Value::Inet(IpAddr::V4(Ipv4Addr::LOCALHOST)),
             text("215.87.1.1"),
             Some(Ordering::Less),
         );
         test(
-            Value::Inet(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
+            Value::Inet(IpAddr::V4(Ipv4Addr::LOCALHOST)),
             text("215.87.1.1"),
             Some(Ordering::Less),
         );
         test(
-            Value::Inet(IpAddr::V4(Ipv4Addr::new(255, 255, 255, 255))),
+            Value::Inet(IpAddr::V4(Ipv4Addr::BROADCAST)),
             Literal::Number(Cow::Owned(BigDecimal::new(4294967295u32.into(), 0))),
             Some(Ordering::Equal),
         );

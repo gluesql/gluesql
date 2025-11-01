@@ -71,7 +71,6 @@ impl<'a> RowContext<'a> {
                         .and_then(|context| context.get_alias_value(target_table_alias, target))
                 }
             }
-            Self::Data { next: None, .. } => None,
             Self::Data {
                 next: Some(next), ..
             } => next.get_alias_value(target_table_alias, target),
@@ -87,7 +86,6 @@ impl<'a> RowContext<'a> {
             Self::Data {
                 table_alias, row, ..
             } if *table_alias == alias => Some(row.iter().map(|(k, v)| (k, v.clone())).collect()),
-            Self::Data { next: None, .. } => None,
             Self::Data {
                 next: Some(next), ..
             } => next.get_alias_entries(alias),

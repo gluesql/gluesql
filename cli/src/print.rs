@@ -27,14 +27,13 @@ pub struct PrintOption {
 
 impl PrintOption {
     pub fn tabular(&mut self, tabular: bool) {
-        match tabular {
-            true => {
-                self.tabular = tabular;
-                self.colsep("|".into());
-                self.colwrap("".into());
-                self.heading(true);
-            }
-            false => self.tabular = tabular,
+        if tabular {
+            self.tabular = tabular;
+            self.colsep("|".into());
+            self.colwrap("".into());
+            self.heading(true);
+        } else {
+            self.tabular = tabular
         }
     }
 

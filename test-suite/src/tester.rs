@@ -55,7 +55,7 @@ fn find_indexes(statement: &Statement) -> Vec<&IndexItem> {
     fn find_query_indexes(query: &Query) -> Vec<&IndexItem> {
         let select = match &query.body {
             SetExpr::Select(select) => select,
-            _ => {
+            SetExpr::Values(_) => {
                 return vec![];
             }
         };
@@ -106,8 +106,8 @@ pub fn type_match(expected: &[DataType], found: Result<Payload>) {
             .zip(expected.iter())
             .for_each(|(value, data_type)| match value.validate_type(data_type) {
                 Ok(_) => {}
-                Err(_) => {
-                    panic!("[err: type match failed]\n found {value:?}\n expected {data_type:?}\n")
+                Err(e) => {
+                    panic!("[err: type match failed]\n found {value:?}\n expected {data_type:?}\n error: {e:?}\n")
                 }
             })
     }
