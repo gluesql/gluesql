@@ -71,11 +71,10 @@ impl UniqueConstraint {
         let key = Key::try_from(value)?;
 
         if self.keys.contains(&key) {
-            Err(ValidateError::DuplicateEntryOnUniqueField(
-                value.clone(),
-                self.column_name.to_owned(),
+            Err(
+                ValidateError::DuplicateEntryOnUniqueField(value.clone(), self.column_name.clone())
+                    .into(),
             )
-            .into())
         } else {
             Ok(key)
         }
@@ -197,7 +196,7 @@ fn fetch_all_unique_columns(column_defs: &[ColumnDef]) -> Vec<(usize, String)> {
     column_defs
         .iter()
         .enumerate()
-        .filter_map(|(i, table_col)| table_col.unique.map(|_| (i, table_col.name.to_owned())))
+        .filter_map(|(i, table_col)| table_col.unique.map(|_| (i, table_col.name.clone())))
         .collect()
 }
 
@@ -211,7 +210,7 @@ fn fetch_specified_unique_columns(
         .filter_map(|(i, table_col)| {
             (table_col.unique.is_some()
                 && specified_columns.iter().any(|col| col == &table_col.name))
-            .then_some((i, table_col.name.to_owned()))
+            .then_some((i, table_col.name.clone()))
         })
         .collect()
 }

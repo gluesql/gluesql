@@ -222,7 +222,7 @@ pub fn translate_with_params(
                 },
                 engine: engine
                     .as_ref()
-                    .map(|table_engine| table_engine.name.to_owned()),
+                    .map(|table_engine| table_engine.name.clone()),
                 foreign_keys,
                 comment: comment.as_ref().map(|comment| match comment {
                     SqlCommentDef::WithEq(comment)
@@ -313,8 +313,8 @@ pub fn translate_with_params(
                 return Err(TranslateError::InvalidParamsInDropIndex.into());
             }
 
-            let table_name = object_name[0].value.to_owned();
-            let name = object_name[1].value.to_owned();
+            let table_name = object_name[0].value.clone();
+            let name = object_name[1].value.clone();
 
             if name.to_uppercase() == "PRIMARY" {
                 return Err(TranslateError::CannotDropPrimary.into());
@@ -340,7 +340,7 @@ pub fn translate_with_params(
             },
             (3, Some(keyword)) => match keyword.value.to_uppercase().as_str() {
                 "INDEXES" => match variable.get(2) {
-                    Some(tablename) => Ok(Statement::ShowIndexes(tablename.value.to_owned())),
+                    Some(tablename) => Ok(Statement::ShowIndexes(tablename.value.clone())),
                     _ => Err(TranslateError::UnsupportedShowVariableStatement(
                         sql_statement.to_string(),
                     )
@@ -444,7 +444,7 @@ pub fn translate_assignment(
             .first()
             .ok_or(TranslateError::UnreachableEmptyIdent)?
             .value
-            .to_owned(),
+            .clone(),
         value: translate_expr(value, params)?,
     })
 }
@@ -468,12 +468,12 @@ fn translate_object_name(sql_object_name: &SqlObjectName) -> Result<String> {
 
     sql_object_name
         .first()
-        .map(|v| v.value.to_owned())
+        .map(|v| v.value.clone())
         .ok_or_else(|| TranslateError::UnreachableEmptyObject.into())
 }
 
 pub fn translate_idents(idents: &[SqlIdent]) -> Vec<String> {
-    idents.iter().map(|v| v.value.to_owned()).collect()
+    idents.iter().map(|v| v.value.clone()).collect()
 }
 
 pub fn translate_referential_action(

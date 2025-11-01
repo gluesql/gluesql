@@ -283,7 +283,7 @@ impl Key {
                 .chain(v.as_bytes().iter())
                 .copied()
                 .collect::<Vec<_>>(),
-            Key::Bytea(v) => v.to_vec(),
+            Key::Bytea(v) => v.clone(),
             Key::Inet(v) => match v {
                 IpAddr::V4(v) => v.octets().to_vec(),
                 IpAddr::V6(v) => v.octets().to_vec(),

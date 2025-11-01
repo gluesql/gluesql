@@ -103,7 +103,7 @@ impl Store for MongoStorage {
 
         let options = FindOptions::builder();
         let options = match primary_key {
-            Some(primary_key) => options.sort(doc! { primary_key.name.to_owned(): 1}).build(),
+            Some(primary_key) => options.sort(doc! { primary_key.name.clone(): 1}).build(),
             None => options.build(),
         };
 

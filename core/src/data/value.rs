@@ -2547,7 +2547,7 @@ mod tests {
                 .unwrap(),
         );
 
-        cast!(Str("2021-05-01".to_owned()) => Date, date.to_owned());
+        cast!(Str("2021-05-01".to_owned()) => Date, date.clone());
         cast!(timestamp                    => Date, date);
         cast!(Null                         => Date, Null);
 

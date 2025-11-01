@@ -31,7 +31,7 @@ impl TryFrom<&Literal<'_>> for Value {
                 .ok_or_else(|| ValueError::FailedToParseNumber.into()),
             Literal::Boolean(v) => Ok(Value::Bool(*v)),
             Literal::Text(v) => Ok(Value::Str(v.as_ref().to_owned())),
-            Literal::Bytea(v) => Ok(Value::Bytea(v.to_vec())),
+            Literal::Bytea(v) => Ok(Value::Bytea(v.clone())),
             Literal::Null => Ok(Value::Null),
         }
     }
@@ -211,7 +211,7 @@ impl Value {
                 .map(Value::F64)
                 .ok_or_else(|| ValueError::UnreachableNumberParsing.into()),
             (DataType::Text, Literal::Text(v)) => Ok(Value::Str(v.to_string())),
-            (DataType::Bytea, Literal::Bytea(v)) => Ok(Value::Bytea(v.to_vec())),
+            (DataType::Bytea, Literal::Bytea(v)) => Ok(Value::Bytea(v.clone())),
             (DataType::Bytea, Literal::Text(v)) => hex::decode(v.as_ref())
                 .map(Value::Bytea)
                 .map_err(|_| ValueError::FailedToParseHexString(v.to_string()).into()),

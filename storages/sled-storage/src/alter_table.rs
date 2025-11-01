@@ -273,14 +273,14 @@ impl AlterTable for SledStorage {
                 .map_err(ConflictableTransactionError::Abort)?;
 
             let column_defs = column_defs
-                .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.to_owned()).into())
+                .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.clone()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
 
             if column_defs
                 .iter()
                 .any(|ColumnDef { name, .. }| name == &column_def.name)
             {
-                let adding_column = column_def.name.to_owned();
+                let adding_column = column_def.name.clone();
 
                 return Err(ConflictableTransactionError::Abort(
                     AlterTableError::AlreadyExistingColumn(adding_column).into(),
@@ -426,7 +426,7 @@ impl AlterTable for SledStorage {
                 .map_err(ConflictableTransactionError::Abort)?;
 
             let column_defs = column_defs
-                .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.to_owned()).into())
+                .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.clone()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
 
             let column_index = column_defs

@@ -118,7 +118,7 @@ async fn fetch_vec_rows<T: GStore>(
     let labels = Arc::from(
         column_defs
             .iter()
-            .map(|column_def| column_def.name.to_owned())
+            .map(|column_def| column_def.name.clone())
             .collect::<Vec<_>>(),
     );
     let column_defs = Arc::from(column_defs);

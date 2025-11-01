@@ -185,7 +185,7 @@ pub fn translate_select_item(
             let label = match expr {
                 SqlExpr::CompoundIdentifier(idents) => idents
                     .last()
-                    .map(|ident| ident.value.to_owned())
+                    .map(|ident| ident.value.clone())
                     .unwrap_or_else(|| expr.to_string()),
                 _ => expr.to_string(),
             };
@@ -198,7 +198,7 @@ pub fn translate_select_item(
         SqlSelectItem::ExprWithAlias { expr, alias } => {
             translate_expr(expr, params).map(|expr| SelectItem::Expr {
                 expr,
-                label: alias.value.to_owned(),
+                label: alias.value.clone(),
             })
         }
         SqlSelectItem::QualifiedWildcard(object_name, _) => Ok(SelectItem::QualifiedWildcard(
@@ -227,7 +227,7 @@ fn translate_table_alias(alias: &Option<SqlTableAlias>) -> Option<TableAlias> {
     alias
         .as_ref()
         .map(|SqlTableAlias { name, columns }| TableAlias {
-            name: name.value.to_owned(),
+            name: name.value.clone(),
             columns: translate_idents(columns),
         })
 }
@@ -297,7 +297,7 @@ fn translate_table_factor(
                 Ok(TableFactor::Derived {
                     subquery: translate_query(subquery, params)?,
                     alias: TableAlias {
-                        name: alias.name.value.to_owned(),
+                        name: alias.name.value.clone(),
                         columns: translate_idents(&alias.columns),
                     },
                 })
