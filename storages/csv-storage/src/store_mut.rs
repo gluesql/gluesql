@@ -174,7 +174,7 @@ impl CsvStorage {
 
                                 (String::from(value), data_type)
                             })
-                            .unwrap_or(("NULL".to_owned(), "".to_owned()))
+                            .unwrap_or(("NULL".to_owned(), String::new()))
                     })
                     .unzip();
 

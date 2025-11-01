@@ -266,7 +266,7 @@ impl Expr {
                 let leading_field = leading_field
                     .as_ref()
                     .map(|field| field.to_string())
-                    .unwrap_or_else(|| "".to_owned());
+                    .unwrap_or_else(String::new);
 
                 match last_field {
                     Some(last_field) => format!("INTERVAL {expr} {leading_field} TO {last_field}"),

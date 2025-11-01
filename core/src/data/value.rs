@@ -2881,7 +2881,7 @@ mod tests {
     fn position() {
         let str1 = Str("ramen".to_owned());
         let str2 = Str("men".to_owned());
-        let empty_str = Str("".to_owned());
+        let empty_str = Str(String::new());
 
         assert_eq!(str1.position(&str2), Ok(I64(3)));
         assert_eq!(str2.position(&str1), Ok(I64(0)));

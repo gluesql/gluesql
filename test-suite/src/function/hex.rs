@@ -34,7 +34,7 @@ test_case!(hex, {
         Ok(select!(
             column1
             Str;
-            "".to_owned()
+            String::new()
         )),
     )
     .await;

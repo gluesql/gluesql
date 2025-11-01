@@ -143,7 +143,7 @@ test_case!(substr, {
                 "test"
                 Str;
                 "lop mc blee".to_owned();
-                "".to_owned();
+                String::new();
                 "teven the &long named$ folken!".to_owned()
             )),
         ),
@@ -152,9 +152,9 @@ test_case!(substr, {
             Ok(select!(
                 "test"
                 Str;
-                "".to_owned();
-                "".to_owned();
-                "".to_owned()
+                String::new();
+                String::new();
+                String::new()
             )),
         ),
         (
@@ -162,7 +162,7 @@ test_case!(substr, {
             Ok(select!(
                 "test"
                 Str;
-                "".to_owned()
+                String::new()
             )),
         ),
         (

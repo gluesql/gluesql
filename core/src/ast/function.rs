@@ -311,7 +311,7 @@ impl ToSql for Function {
                 trim_where_field,
             } => {
                 let trim_where_field = match trim_where_field {
-                    None => "".to_owned(),
+                    None => String::new(),
                     Some(t) => format!("{t} "),
                 };
 
