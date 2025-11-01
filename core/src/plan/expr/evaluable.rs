@@ -12,14 +12,12 @@ use {
 pub fn check_expr(context: Option<Arc<Context<'_>>>, expr: &Expr) -> bool {
     match expr.into() {
         PlanExpr::None => true,
-        PlanExpr::Identifier(ident) => context.map(|c| c.contains_column(ident)).unwrap_or(false),
+        PlanExpr::Identifier(ident) => context.is_some_and(|c| c.contains_column(ident)),
         PlanExpr::CompoundIdentifier { alias, ident } => {
             let table_alias = &alias;
             let column = &ident;
 
-            context
-                .map(|c| c.contains_aliased_column(table_alias, column))
-                .unwrap_or(false)
+            context.is_some_and(|c| c.contains_aliased_column(table_alias, column))
         }
         PlanExpr::Expr(expr) => check_expr(context, expr),
         PlanExpr::TwoExprs(expr, expr2) => {
@@ -131,16 +129,13 @@ fn check_table_factor(context: Option<Arc<Context<'_>>>, table_factor: &TableFac
     let alias = match table_factor {
         TableFactor::Table { name, alias, .. } => alias
             .as_ref()
-            .map(|TableAlias { name, .. }| name)
-            .unwrap_or_else(|| name),
+            .map_or_else(|| name, |TableAlias { name, .. }| name),
         TableFactor::Derived { alias, .. }
         | TableFactor::Series { alias, .. }
         | TableFactor::Dictionary { alias, .. } => &alias.name,
     };
 
-    context
-        .map(|context| context.contains_alias(alias))
-        .unwrap_or(false)
+    context.is_some_and(|context| context.contains_alias(alias))
 }
 
 #[cfg(test)]

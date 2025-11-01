@@ -823,8 +823,7 @@ impl<'a> Evaluated<'a> {
                     .skip(range.start)
                     .enumerate()
                     .find(|(_, c)| !c.is_whitespace())
-                    .map(|(idx, _)| idx + range.start)
-                    .unwrap_or(0);
+                    .map_or(0, |(idx, _)| idx + range.start);
 
                 let end = source.len()
                     - source
@@ -833,8 +832,7 @@ impl<'a> Evaluated<'a> {
                         .skip(source.len() - range.end)
                         .enumerate()
                         .find(|(_, c)| !c.is_whitespace())
-                        .map(|(idx, _)| source.len() - (range.end - idx))
-                        .unwrap_or(0);
+                        .map_or(0, |(idx, _)| source.len() - (range.end - idx));
 
                 Ok(Evaluated::StrSlice {
                     source,

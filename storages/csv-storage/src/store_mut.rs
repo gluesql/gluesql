@@ -166,15 +166,13 @@ impl CsvStorage {
                     .iter()
                     .map(|key| {
                         row.get(key.as_str())
-                            .map(|value| {
+                            .map_or(("NULL".to_owned(), String::new()), |value| {
                                 let data_type = value
                                     .get_type()
-                                    .map(|t| t.to_string())
-                                    .unwrap_or("NULL".to_owned());
+                                    .map_or("NULL".to_owned(), |t| t.to_string());
 
                                 (String::from(value), data_type)
                             })
-                            .unwrap_or(("NULL".to_owned(), String::new()))
                     })
                     .unzip();
 

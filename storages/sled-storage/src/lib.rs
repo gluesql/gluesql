@@ -122,13 +122,12 @@ impl TryFrom<Config> for SledStorage {
 fn get_id_offset(tree: &Db) -> Result<u64> {
     tree.get("id_offset")
         .map_err(err_into)?
-        .map(|id| {
+        .map_or(Ok(0), |id| {
             id.as_ref()
                 .try_into()
                 .map_err(err_into)
                 .map(u64::from_be_bytes)
         })
-        .unwrap_or(Ok(0))
 }
 
 fn fetch_schema(

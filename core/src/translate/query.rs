@@ -185,8 +185,7 @@ pub fn translate_select_item(
             let label = match expr {
                 SqlExpr::CompoundIdentifier(idents) => idents
                     .last()
-                    .map(|ident| ident.value.clone())
-                    .unwrap_or_else(|| expr.to_string()),
+                    .map_or_else(|| expr.to_string(), |ident| ident.value.clone()),
                 _ => expr.to_string(),
             };
 

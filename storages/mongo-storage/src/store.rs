@@ -219,8 +219,7 @@ impl MongoStorage {
                         .map_storage_err()?
                         .get(1)
                         .and_then(|x| x.as_str())
-                        .map(|x| x == "null")
-                        .unwrap_or(false);
+                        .is_some_and(|x| x == "null");
 
                     let data_type = doc
                         .get_str("title")

@@ -37,11 +37,11 @@ pub fn is_deterministic(expr: &Expr) -> bool {
             when_then,
             else_result,
         } => {
-            operand.as_deref().map(is_deterministic).unwrap_or(true)
+            operand.as_deref().is_none_or(is_deterministic)
                 && when_then
                     .iter()
                     .all(|(when, then)| is_deterministic(when) && is_deterministic(then))
-                && else_result.as_deref().map(is_deterministic).unwrap_or(true)
+                && else_result.as_deref().is_none_or(is_deterministic)
         }
         Expr::Array { elem } => elem.iter().all(is_deterministic),
         Expr::ArrayIndex { obj, indexes } => {

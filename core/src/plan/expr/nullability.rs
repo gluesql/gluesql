@@ -37,11 +37,11 @@ pub fn may_return_null(expr: &Expr) -> bool {
             when_then,
             else_result,
         } => {
-            operand.as_deref().map(may_return_null).unwrap_or(false)
+            operand.as_deref().is_some_and(may_return_null)
                 || when_then
                     .iter()
                     .any(|(when, then)| may_return_null(when) || may_return_null(then))
-                || else_result.as_deref().map(may_return_null).unwrap_or(true)
+                || else_result.as_deref().is_none_or(may_return_null)
         }
         Expr::Array { elem } => elem.iter().any(may_return_null),
     }
