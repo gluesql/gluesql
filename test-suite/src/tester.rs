@@ -83,12 +83,12 @@ fn find_indexes(statement: &Statement) -> Vec<&IndexItem> {
 }
 
 pub fn type_match(expected: &[DataType], found: Result<Payload>) {
-    let rows = match found {
-        Ok(Payload::Select {
-            labels: _expected_labels,
-            rows,
-        }) => rows,
-        _ => panic!("type match is only for Select"),
+    let Ok(Payload::Select {
+        labels: _expected_labels,
+        rows,
+    }) = found
+    else {
+        panic!("type match is only for Select")
     };
 
     for (i, items) in rows.iter().enumerate() {

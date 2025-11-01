@@ -676,9 +676,8 @@ macro_rules! impl_partial_cmp_ord_method {
                 }
 
                 let lhs = *self;
-                let rhs = match $primitive::try_from(other) {
-                    Ok(rhs) => rhs,
-                    Err(_) => return false,
+                let Ok(rhs) = $primitive::try_from(other) else {
+                    return false;
                 };
 
                 lhs == rhs
@@ -692,9 +691,8 @@ macro_rules! impl_partial_cmp_ord_method {
                 }
 
                 let lhs = self;
-                let rhs = match $primitive::try_from(other) {
-                    Ok(rhs) => rhs,
-                    Err(_) => return None,
+                let Ok(rhs) = $primitive::try_from(other) else {
+                    return None;
                 };
 
                 lhs.partial_cmp(&rhs)

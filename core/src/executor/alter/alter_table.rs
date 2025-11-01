@@ -69,11 +69,8 @@ pub async fn alter_table<T: GStore + GStoreMut>(
             column_name,
             if_exists,
         } => {
-            let indexes = match storage.fetch_schema(table_name).await? {
-                Some(Schema { indexes, .. }) => indexes,
-                None => {
-                    return Err(AlterError::TableNotFound(table_name.to_owned()).into());
-                }
+            let Some(Schema { indexes, .. }) = storage.fetch_schema(table_name).await? else {
+                return Err(AlterError::TableNotFound(table_name.to_owned()).into());
             };
 
             let indexes = indexes

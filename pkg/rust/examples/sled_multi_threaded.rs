@@ -52,9 +52,8 @@ mod sled_multi_threaded {
         let payloads = glue.execute(query).await.unwrap();
         assert_eq!(payloads.len(), 1);
 
-        let rows = match &payloads[0] {
-            Payload::Select { rows, .. } => rows,
-            _ => panic!("Unexpected result: {payloads:?}"),
+        let Payload::Select { rows, .. } = &payloads[0] else {
+            panic!("Unexpected result: {payloads:?}")
         };
 
         let first_row = &rows[0];

@@ -369,9 +369,8 @@ mod tests {
     fn assert_query_error(sql: &str, expected: TranslateError) {
         let mut parsed = parse(sql).expect("parse");
         let statement = parsed.remove(0);
-        let query = match statement {
-            SqlStatement::Query(query) => query,
-            _ => panic!("expected query statement: {sql}"),
+        let SqlStatement::Query(query) = statement else {
+            panic!("expected query statement: {sql}");
         };
 
         let actual = translate_query(&query, NO_PARAMS);

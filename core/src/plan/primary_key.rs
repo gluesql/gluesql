@@ -106,9 +106,8 @@ impl<'a> PrimaryKeyPlanner<'a> {
         expr: Expr,
     ) -> PrimaryKey {
         let check_primary_key = |key: &Expr| {
-            let key = match key {
-                Expr::Identifier(ident) | Expr::CompoundIdentifier { ident, .. } => ident,
-                _ => return false,
+            let (Expr::Identifier(key) | Expr::CompoundIdentifier { ident: key, .. }) = key else {
+                return false;
             };
 
             current_context

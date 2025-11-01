@@ -62,11 +62,8 @@ pub async fn fetch<'a, T: GStore>(
             };
 
             async move {
-                let expr = match where_clause {
-                    None => {
-                        return Ok(Some((key, row)));
-                    }
-                    Some(expr) => expr,
+                let Some(expr) = where_clause else {
+                    return Ok(Some((key, row)));
                 };
 
                 let context = RowContext::new(table_name, Cow::Borrowed(&row), None);

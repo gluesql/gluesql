@@ -48,11 +48,8 @@ impl SledStorage {
             .map(|tx_data| tx_data.map(|TxData { txid, .. }| txid))
             .collect::<Result<Vec<u64>>>()?;
 
-        let max_txid = match txids.iter().last() {
-            Some(txid) => txid,
-            None => {
-                return Ok(());
-            }
+        let Some(max_txid) = txids.iter().last() else {
+            return Ok(());
         };
 
         lock.gc_txid = Some(*max_txid);
@@ -117,11 +114,8 @@ impl SledStorage {
                     .transpose()
                     .map_err(err_into)?;
 
-                let snapshots = match snapshots {
-                    Some(snapshots) => snapshots,
-                    None => {
-                        continue;
-                    }
+                let Some(snapshots) = snapshots else {
+                    continue;
                 };
 
                 let snapshots = snapshots

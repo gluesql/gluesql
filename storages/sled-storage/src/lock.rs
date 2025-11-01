@@ -222,11 +222,8 @@ pub fn release(tree: &TransactionalTree, txid: u64) -> ConflictableTransactionRe
         .map_err(err_into)
         .map_err(ConflictableTransactionError::Abort)?;
 
-    let mut tx_data = match tx_data {
-        Some(tx_data) => tx_data,
-        None => {
-            return Ok(());
-        }
+    let Some(mut tx_data) = tx_data else {
+        return Ok(());
     };
 
     tx_data.alive = false;

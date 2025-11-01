@@ -365,9 +365,8 @@ impl Store for RedisStorage {
                     .arg(&redis_key)
                     .query::<String>(&mut *conn)
             };
-            let value = match value {
-                Ok(v) => v,
-                Err(_) => continue,
+            let Ok(value) = value else {
+                continue;
             };
 
             let key = Self::redis_parse_key(&redis_key).map_err(|e| {

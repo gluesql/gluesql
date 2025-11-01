@@ -97,11 +97,9 @@ impl StoreMut for SledStorage {
                 .map_err(err_into)
                 .map_err(ConflictableTransactionError::Abort)?;
 
-            let (snapshot, schema) = match snapshot.map(|snapshot| snapshot.delete(txid)) {
-                Some((snapshot, Some(schema))) => (snapshot, schema),
-                Some((_, None)) | None => {
-                    return Ok(TxPayload::Success);
-                }
+            let Some((snapshot, Some(schema))) = snapshot.map(|snapshot| snapshot.delete(txid))
+            else {
+                return Ok(TxPayload::Success);
             };
             let snapshot = bincode::serialize(&snapshot)
                 .map_err(err_into)
@@ -120,11 +118,8 @@ impl StoreMut for SledStorage {
                         .map_err(ConflictableTransactionError::Abort)?;
 
                     let (row_snapshot, deleted_row) = row_snapshot.delete(txid);
-                    let deleted_row = match deleted_row {
-                        Some(row) => row,
-                        None => {
-                            continue;
-                        }
+                    let Some(deleted_row) = deleted_row else {
+                        continue;
                     };
 
                     let row_snapshot = bincode::serialize(&row_snapshot)
@@ -241,11 +236,8 @@ impl StoreMut for SledStorage {
                             .map_err(ConflictableTransactionError::Abort)?;
 
                         let (snapshot, old_row) = snapshot.update(txid, new_row.clone());
-                        let old_row = match old_row {
-                            Some(row) => row,
-                            None => {
-                                continue;
-                            }
+                        let Some(old_row) = old_row else {
+                            continue;
                         };
 
                         index_sync.update(&key, &old_row, new_row).await?;
@@ -318,11 +310,8 @@ impl StoreMut for SledStorage {
                         .map_err(ConflictableTransactionError::Abort)?;
 
                     let (snapshot, row) = snapshot.delete(txid);
-                    let row = match row {
-                        Some(row) => row,
-                        None => {
-                            continue;
-                        }
+                    let Some(row) = row else {
+                        continue;
                     };
 
                     bincode::serialize(&snapshot)

@@ -201,14 +201,12 @@ pub trait Planner<'a> {
             | TableFactor::Dictionary { .. } => return next,
         };
 
-        let column_defs = match self.get_schema(name) {
-            Some(Schema { column_defs, .. }) => column_defs,
-            None => return next,
+        let Some(Schema { column_defs, .. }) = self.get_schema(name) else {
+            return next;
         };
 
-        let column_defs = match column_defs {
-            Some(column_defs) => column_defs,
-            None => return next,
+        let Some(column_defs) = column_defs else {
+            return next;
         };
 
         let columns = column_defs
