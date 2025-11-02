@@ -55,12 +55,12 @@ pub fn binary_op<'a>(
         BinaryOperator::Lt => cmp!(l.evaluate_cmp(&r) == Some(Ordering::Less)),
         BinaryOperator::LtEq => cmp!(matches!(
             l.evaluate_cmp(&r),
-            Some(Ordering::Less) | Some(Ordering::Equal)
+            Some(Ordering::Less | Ordering::Equal)
         )),
         BinaryOperator::Gt => cmp!(l.evaluate_cmp(&r) == Some(Ordering::Greater)),
         BinaryOperator::GtEq => cmp!(matches!(
             l.evaluate_cmp(&r),
-            Some(Ordering::Greater) | Some(Ordering::Equal)
+            Some(Ordering::Greater | Ordering::Equal)
         )),
         BinaryOperator::And => cond!(l && r),
         BinaryOperator::Or => cond!(l || r),

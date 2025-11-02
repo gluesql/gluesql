@@ -69,7 +69,7 @@ pub fn run() -> Result<()> {
     let path = args.path.as_deref().and_then(Path::to_str);
 
     match (path, args.storage, args.dump) {
-        (None, None, _) | (None, Some(Storage::Memory), _) => {
+        (None, None | Some(Storage::Memory), _) => {
             println!("[memory-storage] initialized");
 
             run(MemoryStorage::default(), args.execute);

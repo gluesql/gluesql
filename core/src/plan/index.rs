@@ -392,8 +392,7 @@ impl<'a> Indexes<'a> {
                 matches!(
                     (target.asc, order),
                     (_, SchemaIndexOrd::Both)
-                        | (Some(true), SchemaIndexOrd::Asc)
-                        | (None, SchemaIndexOrd::Asc)
+                        | (Some(true) | None, SchemaIndexOrd::Asc)
                         | (Some(false), SchemaIndexOrd::Desc)
                 )
             })

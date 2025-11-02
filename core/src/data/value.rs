@@ -312,27 +312,13 @@ impl Value {
             (Timestamp(a), Interval(b)) => b.add_timestamp(a).map(Timestamp),
             (Time(a), Interval(b)) => b.add_time(a).map(Time),
             (Interval(a), Interval(b)) => a.add(b).map(Interval),
-            (Null, I8(_))
-            | (Null, I16(_))
-            | (Null, I32(_))
-            | (Null, I64(_))
-            | (Null, I128(_))
-            | (Null, U8(_))
-            | (Null, U16(_))
-            | (Null, U32(_))
-            | (Null, U64(_))
-            | (Null, U128(_))
-            | (Null, F32(_))
-            | (Null, F64(_))
-            | (Null, Decimal(_))
-            | (Null, Date(_))
-            | (Null, Timestamp(_))
-            | (Null, Interval(_))
-            | (Date(_), Null)
-            | (Timestamp(_), Null)
-            | (Time(_), Null)
-            | (Interval(_), Null)
-            | (Null, Null) => Ok(Null),
+            (
+                Null,
+                I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | U8(_) | U16(_) | U32(_) | U64(_)
+                | U128(_) | F32(_) | F64(_) | Decimal(_) | Date(_) | Timestamp(_) | Interval(_)
+                | Null,
+            )
+            | (Date(_) | Timestamp(_) | Time(_) | Interval(_), Null) => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: self.clone(),
                 operator: NumericBinaryOperator::Add,
@@ -378,28 +364,13 @@ impl Value {
                 .map(|v| Interval(I::microseconds(v))),
             (Time(a), Interval(b)) => b.subtract_from_time(a).map(Time),
             (Interval(a), Interval(b)) => a.subtract(b).map(Interval),
-            (Null, I8(_))
-            | (Null, I16(_))
-            | (Null, I32(_))
-            | (Null, I64(_))
-            | (Null, I128(_))
-            | (Null, U8(_))
-            | (Null, U16(_))
-            | (Null, U32(_))
-            | (Null, U64(_))
-            | (Null, U128(_))
-            | (Null, F32(_))
-            | (Null, F64(_))
-            | (Null, Decimal(_))
-            | (Null, Date(_))
-            | (Null, Timestamp(_))
-            | (Null, Time(_))
-            | (Null, Interval(_))
-            | (Date(_), Null)
-            | (Timestamp(_), Null)
-            | (Time(_), Null)
-            | (Interval(_), Null)
-            | (Null, Null) => Ok(Null),
+            (
+                Null,
+                I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | U8(_) | U16(_) | U32(_) | U64(_)
+                | U128(_) | F32(_) | F64(_) | Decimal(_) | Date(_) | Timestamp(_) | Time(_)
+                | Interval(_) | Null,
+            )
+            | (Date(_) | Timestamp(_) | Time(_) | Interval(_), Null) => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: self.clone(),
                 operator: NumericBinaryOperator::Subtract,
@@ -433,22 +404,12 @@ impl Value {
             (Interval(a), I128(b)) => Ok(Interval(*a * *b)),
             (Interval(a), F32(b)) => Ok(Interval(*a * *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a * *b)),
-            (Null, I8(_))
-            | (Null, I16(_))
-            | (Null, I32(_))
-            | (Null, I64(_))
-            | (Null, I128(_))
-            | (Null, U8(_))
-            | (Null, U16(_))
-            | (Null, U32(_))
-            | (Null, U64(_))
-            | (Null, U128(_))
-            | (Null, F32(_))
-            | (Null, F64(_))
-            | (Null, Decimal(_))
-            | (Null, Interval(_))
-            | (Interval(_), Null)
-            | (Null, Null) => Ok(Null),
+            (
+                Null,
+                I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | U8(_) | U16(_) | U32(_) | U64(_)
+                | U128(_) | F32(_) | F64(_) | Decimal(_) | Interval(_) | Null,
+            )
+            | (Interval(_), Null) => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: self.clone(),
                 operator: NumericBinaryOperator::Multiply,
@@ -491,21 +452,12 @@ impl Value {
             (Interval(a), U128(b)) => Ok(Interval(*a / *b)),
             (Interval(a), F32(b)) => Ok(Interval(*a / *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a / *b)),
-            (Null, I8(_))
-            | (Null, I16(_))
-            | (Null, I32(_))
-            | (Null, I64(_))
-            | (Null, I128(_))
-            | (Null, U8(_))
-            | (Null, U16(_))
-            | (Null, U32(_))
-            | (Null, U64(_))
-            | (Null, U128(_))
-            | (Null, F32(_))
-            | (Null, F64(_))
-            | (Null, Decimal(_))
-            | (Interval(_), Null)
-            | (Null, Null) => Ok(Null),
+            (
+                Null,
+                I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | U8(_) | U16(_) | U32(_) | U64(_)
+                | U128(_) | F32(_) | F64(_) | Decimal(_) | Null,
+            )
+            | (Interval(_), Null) => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: self.clone(),
                 operator: NumericBinaryOperator::Divide,
@@ -529,27 +481,16 @@ impl Value {
             (U32(a), U32(b)) => Ok(U32(a & b)),
             (U64(a), U64(b)) => Ok(U64(a & b)),
             (U128(a), U128(b)) => Ok(U128(a & b)),
-            (Null, I8(_))
-            | (Null, I16(_))
-            | (Null, I32(_))
-            | (Null, I64(_))
-            | (Null, I128(_))
-            | (Null, U8(_))
-            | (Null, U16(_))
-            | (Null, U32(_))
-            | (Null, U64(_))
-            | (Null, U128(_))
-            | (Null, Null)
-            | (I8(_), Null)
-            | (I16(_), Null)
-            | (I32(_), Null)
-            | (I64(_), Null)
-            | (I128(_), Null)
-            | (U8(_), Null)
-            | (U16(_), Null)
-            | (U32(_), Null)
-            | (U64(_), Null)
-            | (U128(_), Null) => Ok(Null),
+            (
+                Null,
+                I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | U8(_) | U16(_) | U32(_) | U64(_)
+                | U128(_) | Null,
+            )
+            | (
+                I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | U8(_) | U16(_) | U32(_) | U64(_)
+                | U128(_),
+                Null,
+            ) => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: self.clone(),
                 rhs: other.clone(),
@@ -580,20 +521,11 @@ impl Value {
             (F32(a), _) => a.try_modulo(other),
             (F64(a), _) => a.try_modulo(other),
             (Decimal(a), _) => a.try_modulo(other),
-            (Null, I8(_))
-            | (Null, I16(_))
-            | (Null, I32(_))
-            | (Null, I64(_))
-            | (Null, I128(_))
-            | (Null, U8(_))
-            | (Null, U16(_))
-            | (Null, U32(_))
-            | (Null, U64(_))
-            | (Null, U128(_))
-            | (Null, F32(_))
-            | (Null, F64(_))
-            | (Null, Decimal(_))
-            | (Null, Null) => Ok(Null),
+            (
+                Null,
+                I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | U8(_) | U16(_) | U32(_) | U64(_)
+                | U128(_) | F32(_) | F64(_) | Decimal(_) | Null,
+            ) => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: self.clone(),
                 operator: NumericBinaryOperator::Modulo,
