@@ -50,7 +50,8 @@ tasks.test {
     useJUnitPlatform()
     dependsOn("buildRustLib")
     // For testing, load from debug build directory
-    systemProperty("jna.library.path", file("../../target/debug").absolutePath)
+    val workspaceRoot = projectDir.parentFile.parentFile
+    systemProperty("jna.library.path", workspaceRoot.resolve("target/debug").absolutePath)
 }
 
 tasks.clean {

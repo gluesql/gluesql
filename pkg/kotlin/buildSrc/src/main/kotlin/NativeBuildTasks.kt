@@ -1,6 +1,5 @@
 import org.gradle.api.GradleException
 import org.gradle.api.Project
-import org.gradle.api.file.FileTree
 import org.gradle.internal.os.OperatingSystem
 import org.gradle.kotlin.dsl.register
 import java.io.File
@@ -47,73 +46,113 @@ fun Project.registerNativeBuildTasks() {
     val workspaceRoot = projectDir.parentFile.parentFile
 
     // Build Rust library for local platform (for development and testing)
-    val buildRustLib =
-        tasks.register("buildRustLib") {
-            group = "build"
-            description = "Build the Rust library for local platform (debug mode)"
+    tasks.register("buildRustLib") {
+        group = "build"
+        description = "Build the Rust library for local platform (debug mode)"
 
-            val debugLibPath = workspaceRoot.resolve("target/debug/${currentPlatformLibName()}.${currentPlatformLibExtension()}")
-            outputs.file(debugLibPath)
+        val debugLibPath = workspaceRoot.resolve("target/debug/${currentPlatformLibName()}.${currentPlatformLibExtension()}")
+        outputs.file(debugLibPath)
 
-            // Only rebuild if source files changed
-            inputs.files(fileTree(projectDir.resolve("src")).include("**/*.rs"))
-            inputs.file(projectDir.resolve("Cargo.toml"))
+        // Only rebuild if source files changed
+        inputs.files(fileTree(projectDir.resolve("src")).include("**/*.rs"))
+        inputs.file(projectDir.resolve("Cargo.toml"))
 
-            doLast {
-                exec {
-                    workingDir = projectDir
-                    commandLine("cargo", "build")
-                }
+        doLast {
+            logger.lifecycle("Building Rust library for ${currentPlatformLibName()}.${currentPlatformLibExtension()}...")
+
+            @Suppress("DEPRECATION")
+            val result = project.exec {
+                workingDir = projectDir
+                commandLine("cargo", "build")
+                isIgnoreExitValue = true
             }
+
+            if (result.exitValue != 0) {
+                throw GradleException(
+                    "Rust build failed with exit code ${result.exitValue}. " +
+                    "Check the output above for details."
+                )
+            }
+
+            if (!debugLibPath.exists()) {
+                throw GradleException(
+                    "Rust library not found at: ${debugLibPath.absolutePath}\n" +
+                    "Expected library name: ${currentPlatformLibName()}.${currentPlatformLibExtension()}\n" +
+                    "Make sure Cargo.toml has the correct library name configuration."
+                )
+            }
+
+            logger.lifecycle("✓ Built Rust library: ${debugLibPath.name}")
         }
+    }
 
     // Generate UniFFI bindings from Rust library
-    val generateBindings =
-        tasks.register("generateBindings") {
-            group = "build"
-            description = "Generate UniFFI Kotlin bindings from Rust library"
-            dependsOn(buildRustLib)
+    tasks.register("generateBindings") {
+        group = "build"
+        description = "Generate UniFFI Kotlin bindings from Rust library"
+        dependsOn("buildRustLib")
 
-            val generatedDir = layout.buildDirectory.dir("generated/source/uniffi/kotlin").get().asFile
-            val debugLibPath = workspaceRoot.resolve("target/debug/${currentPlatformLibName()}.${currentPlatformLibExtension()}")
+        val generatedDir = layout.buildDirectory.dir("generated/source/uniffi/kotlin").get().asFile
+        val debugLibPath = workspaceRoot.resolve("target/debug/${currentPlatformLibName()}.${currentPlatformLibExtension()}")
 
-            inputs.file(debugLibPath)
-            inputs.files(fileTree(projectDir.resolve("src")).include("**/*.rs", "**/*.udl"))
-            outputs.dir(generatedDir)
+        inputs.file(debugLibPath)
+        inputs.files(fileTree(projectDir.resolve("src")).include("**/*.rs", "**/*.udl"))
+        outputs.dir(generatedDir)
 
-            doLast {
-                generatedDir.mkdirs()
+        doLast {
+            generatedDir.mkdirs()
 
-                exec {
-                    workingDir = projectDir
-                    commandLine(
-                        "cargo",
-                        "run",
-                        "--bin",
-                        "uniffi-bindgen",
-                        "generate",
-                        "--language",
-                        "kotlin",
-                        "--out-dir",
-                        generatedDir.absolutePath,
-                        "--library",
-                        debugLibPath.absolutePath,
-                        "--no-format",
-                    )
-                }
+            if (!debugLibPath.exists()) {
+                throw GradleException(
+                    "Rust library not found at: ${debugLibPath.absolutePath}\n" +
+                    "Run './gradlew buildRustLib' first to build the library."
+                )
             }
+
+            logger.lifecycle("Generating UniFFI Kotlin bindings...")
+
+            @Suppress("DEPRECATION")
+            val result = project.exec {
+                workingDir = projectDir
+                commandLine(
+                    "cargo",
+                    "run",
+                    "--bin",
+                    "uniffi-bindgen",
+                    "generate",
+                    "--language",
+                    "kotlin",
+                    "--out-dir",
+                    generatedDir.absolutePath,
+                    "--library",
+                    debugLibPath.absolutePath,
+                    "--no-format",
+                )
+                isIgnoreExitValue = true
+            }
+
+            if (result.exitValue != 0) {
+                throw GradleException(
+                    "UniFFI binding generation failed with exit code ${result.exitValue}. " +
+                    "Check the output above for details."
+                )
+            }
+
+            val generatedFiles = generatedDir.listFiles()?.size ?: 0
+            logger.lifecycle("✓ Generated $generatedFiles Kotlin binding file(s) in ${generatedDir.name}")
         }
+    }
 
     // Copy native libraries from CI artifacts or local builds to resources
     tasks.register("copyNativeLibs") {
         group = "build"
         description = "Copy pre-built native libraries to resources (for distribution)"
 
-        val resourcesDir = file("src/main/resources/natives")
+        val resourcesDir = projectDir.resolve("src/main/resources/natives")
 
         doLast {
             // Clean and recreate natives directory
-            delete(resourcesDir)
+            project.delete(resourcesDir)
             resourcesDir.mkdirs()
 
             var copiedCount = 0
@@ -150,7 +189,7 @@ fun Project.registerNativeBuildTasks() {
         description = "Remove native libraries from resources"
 
         doLast {
-            delete("src/main/resources/natives")
+            project.delete(projectDir.resolve("src/main/resources/natives"))
             logger.lifecycle("✓ Cleaned native libraries from resources")
         }
     }

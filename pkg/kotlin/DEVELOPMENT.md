@@ -94,7 +94,7 @@ cargo run --bin uniffi-bindgen generate \
 
 ## Code Style & Formatting
 
-We use **Spotless** for automatic code formatting:
+We use **ktlint** for automatic code formatting:
 
 - **Kotlin**: ktlint conventions
 
@@ -102,25 +102,10 @@ We use **Spotless** for automatic code formatting:
 
 ```bash
 # Check formatting (runs in CI)
-./gradlew spotlessCheck
+./gradlew ktlintCheck
 
 # Auto-format all code
-./gradlew spotlessApply
-```
-
-### Pre-commit Checklist
-
-Before committing:
-
-```bash
-# 1. Format code
-./gradlew spotlessApply
-
-# 2. Run tests
-./gradlew test
-
-# 3. Or combine both
-./gradlew spotlessApply test
+./gradlew ktlintFormat
 ```
 
 ## Build Tasks Reference
@@ -134,8 +119,8 @@ Before committing:
 | `./gradlew generateBindings` | Generate UniFFI Kotlin bindings |
 | `./gradlew copyNativeLibs` | Copy release libraries to resources (for distribution) |
 | `./gradlew cleanNativeLibs` | Remove native libraries from resources |
-| `./gradlew spotlessCheck` | Check code formatting |
-| `./gradlew spotlessApply` | Auto-format code |
+| `./gradlew ktlintCheck` | Check code formatting |
+| `./gradlew ktlintFormat` | Auto-format code |
 
 ## Distribution Builds
 
@@ -358,7 +343,7 @@ See `.github/workflows/publish-java.yml` for automated release process:
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Run `./gradlew spotlessApply test`
+4. Run `./gradlew ktlintFormat test`
 5. Commit and push
 6. Create a Pull Request
 
