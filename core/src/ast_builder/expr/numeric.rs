@@ -44,7 +44,7 @@ impl_from!(u64, U64);
 impl_from!(f32, F32);
 impl_from!(f64, F64);
 
-impl<'a> From<String> for NumericNode<'a> {
+impl From<String> for NumericNode<'_> {
     fn from(v: String) -> Self {
         Self::Str(Cow::Owned(v))
     }

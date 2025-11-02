@@ -121,13 +121,6 @@ impl Transaction for SledStorage {
 
 impl SledStorage {
     pub fn rollback_txid(&self, txid: u64) -> Result<()> {
-        let fetch_items = |prefix| {
-            self.tree
-                .scan_prefix(prefix)
-                .map(|item| item.map_err(err_into))
-                .collect::<Result<Vec<_>>>()
-        };
-
         fn rollback_items<T: Clone + Serialize + DeserializeOwned>(
             tree: &TransactionalTree,
             txid: u64,
@@ -166,6 +159,13 @@ impl SledStorage {
 
             Ok(())
         }
+
+        let fetch_items = |prefix| {
+            self.tree
+                .scan_prefix(prefix)
+                .map(|item| item.map_err(err_into))
+                .collect::<Result<Vec<_>>>()
+        };
 
         let data_items = fetch_items(key::temp_data_prefix(txid))?;
         let schema_items = fetch_items(key::temp_schema_prefix(txid))?;

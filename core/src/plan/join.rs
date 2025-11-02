@@ -113,6 +113,11 @@ impl<'a> JoinPlanner<'a> {
         inner_context: Option<Arc<Context<'a>>>,
         join: Join,
     ) -> (Option<Arc<Context<'a>>>, Join) {
+        enum JoinOp {
+            Inner,
+            LeftOuter,
+        }
+
         let Join {
             relation,
             join_operator,
@@ -128,11 +133,6 @@ impl<'a> JoinPlanner<'a> {
             };
 
             return (context, join);
-        }
-
-        enum JoinOp {
-            Inner,
-            LeftOuter,
         }
 
         let (join_op, expr) = match join_operator {
@@ -320,9 +320,8 @@ impl<'a> JoinPlanner<'a> {
                         where_clause,
                     } => {
                         let context = Context::concat(current_context, outer_context);
-                        let (evaluable_expr, expr) = expr
-                            .map(|expr| find_evaluable(context, expr))
-                            .unwrap_or((None, None));
+                        let (evaluable_expr, expr) =
+                            expr.map_or((None, None), |expr| find_evaluable(context, expr));
 
                         let where_clause = match (where_clause, evaluable_expr) {
                             (Some(expr), Some(expr2)) => Some(Expr::BinaryOp {

@@ -24,7 +24,7 @@ pub enum PrevNode<'a> {
     ProjectNode(Box<ProjectNode<'a>>),
 }
 
-impl<'a> Prebuild<Query> for PrevNode<'a> {
+impl Prebuild<Query> for PrevNode<'_> {
     fn prebuild(self) -> Result<Query> {
         match self {
             Self::Select(node) => node.prebuild(),
@@ -120,7 +120,7 @@ impl<'a> LimitNode<'a> {
     }
 }
 
-impl<'a> Prebuild<Query> for LimitNode<'a> {
+impl Prebuild<Query> for LimitNode<'_> {
     fn prebuild(self) -> Result<Query> {
         let mut node_data = self.prev_node.prebuild()?;
         node_data.limit = Some(self.expr.try_into()?);

@@ -24,7 +24,7 @@ pub enum PrevNode<'a> {
     Values(ValuesNode<'a>),
 }
 
-impl<'a> Prebuild<Query> for PrevNode<'a> {
+impl Prebuild<Query> for PrevNode<'_> {
     fn prebuild(self) -> Result<Query> {
         match self {
             Self::Select(node) => node.prebuild(),
@@ -124,7 +124,7 @@ impl<'a> OrderByNode<'a> {
     }
 }
 
-impl<'a> Prebuild<Query> for OrderByNode<'a> {
+impl Prebuild<Query> for OrderByNode<'_> {
     fn prebuild(self) -> Result<Query> {
         let mut node_data = self.prev_node.prebuild()?;
         node_data.order_by = self.expr_list.try_into()?;

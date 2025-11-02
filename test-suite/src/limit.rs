@@ -33,9 +33,9 @@ test_case!(limit, {
                 rows: vec![],
             },
         ),
-        (r#"SELECT * FROM Test LIMIT 3;"#, select!(id; I64; 1; 2; 3)),
+        (r"SELECT * FROM Test LIMIT 3;", select!(id; I64; 1; 2; 3)),
         (
-            r#"SELECT * FROM Test LIMIT 4 OFFSET 3;"#,
+            r"SELECT * FROM Test LIMIT 4 OFFSET 3;",
             select!(id; I64; 4; 5; 6; 7),
         ),
         (

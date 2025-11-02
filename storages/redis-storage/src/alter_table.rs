@@ -86,7 +86,7 @@ impl AlterTable for RedisStorage {
                 .iter()
                 .any(|ColumnDef { name, .. }| name == &column_def.name)
             {
-                let adding_column = column_def.name.to_owned();
+                let adding_column = column_def.name.clone();
 
                 return Err(AlterTableError::AlreadyExistingColumn(adding_column).into());
             }
@@ -167,12 +167,12 @@ impl AlterTable for RedisStorage {
                     redis::cmd("SET")
                         .arg(&key)
                         .arg(new_value)
-                        .query(&mut *conn)
+                        .query::<()>(&mut *conn)
                         .map_err(|_| {
                             Error::StorageMsg(format!(
                                 "[RedisStorage] add_column: failed to execute SET for row={row:?}"
                             ))
-                        })?
+                        })?;
                 };
             }
 

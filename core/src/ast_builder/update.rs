@@ -79,7 +79,7 @@ impl<'a> UpdateSetNode<'a> {
     }
 }
 
-impl<'a> Build for UpdateSetNode<'a> {
+impl Build for UpdateSetNode<'_> {
     fn build(self) -> Result<Statement> {
         let table_name = self.table_name;
         let selection = self.selection.map(Expr::try_from).transpose()?;

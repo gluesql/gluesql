@@ -65,7 +65,7 @@ impl Ord for Key {
             (Key::U16(l), Key::U16(r)) => l.cmp(r),
             (Key::U32(l), Key::U32(r)) => l.cmp(r),
             (Key::U64(l), Key::U64(r)) => l.cmp(r),
-            (Key::U128(l), Key::U128(r)) => l.cmp(r),
+            (Key::U128(l), Key::U128(r)) | (Key::Uuid(l), Key::Uuid(r)) => l.cmp(r),
             (Key::F32(l), Key::F32(r)) => l.total_cmp(&r.0),
             (Key::F64(l), Key::F64(r)) => l.total_cmp(&r.0),
             (Key::Decimal(l), Key::Decimal(r)) => l.cmp(r),
@@ -79,7 +79,6 @@ impl Ord for Key {
                 (Interval::Month(_), Interval::Microsecond(_)) => Ordering::Greater,
                 _ => Ordering::Less,
             }),
-            (Key::Uuid(l), Key::Uuid(r)) => l.cmp(r),
             (Key::Inet(l), Key::Inet(r)) => l.cmp(r),
             (Key::None, Key::None) => Ordering::Equal,
             (Key::None, _) => Ordering::Greater,
@@ -284,7 +283,7 @@ impl Key {
                 .chain(v.as_bytes().iter())
                 .copied()
                 .collect::<Vec<_>>(),
-            Key::Bytea(v) => v.to_vec(),
+            Key::Bytea(v) => v.clone(),
             Key::Inet(v) => match v {
                 IpAddr::V4(v) => v.octets().to_vec(),
                 IpAddr::V6(v) => v.octets().to_vec(),
@@ -567,7 +566,7 @@ mod tests {
 
             for (l, r) in ls.iter().zip(rs.iter()) {
                 match l.cmp(r) {
-                    Ordering::Equal => continue,
+                    Ordering::Equal => {}
                     ordering => return ordering,
                 }
             }

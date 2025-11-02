@@ -59,14 +59,13 @@ impl TryFrom<Evaluated<'_>> for bool {
 
     fn try_from(e: Evaluated<'_>) -> Result<bool> {
         match e {
-            Evaluated::Literal(Literal::Boolean(v)) => Ok(v),
+            Evaluated::Literal(Literal::Boolean(v)) | Evaluated::Value(Value::Bool(v)) => Ok(v),
             Evaluated::Literal(v) => {
                 Err(EvaluateError::BooleanTypeRequired(format!("{v:?}")).into())
             }
             Evaluated::StrSlice { source, range } => {
                 Err(EvaluateError::BooleanTypeRequired(source[range].to_owned()).into())
             }
-            Evaluated::Value(Value::Bool(v)) => Ok(v),
             Evaluated::Value(v) => Err(EvaluateError::BooleanTypeRequired(format!("{v:?}")).into()),
         }
     }
@@ -824,8 +823,7 @@ impl<'a> Evaluated<'a> {
                     .skip(range.start)
                     .enumerate()
                     .find(|(_, c)| !c.is_whitespace())
-                    .map(|(idx, _)| idx + range.start)
-                    .unwrap_or(0);
+                    .map_or(0, |(idx, _)| idx + range.start);
 
                 let end = source.len()
                     - source
@@ -834,8 +832,7 @@ impl<'a> Evaluated<'a> {
                         .skip(source.len() - range.end)
                         .enumerate()
                         .find(|(_, c)| !c.is_whitespace())
-                        .map(|(idx, _)| source.len() - (range.end - idx))
-                        .unwrap_or(0);
+                        .map_or(0, |(idx, _)| source.len() - (range.end - idx));
 
                 Ok(Evaluated::StrSlice {
                     source,

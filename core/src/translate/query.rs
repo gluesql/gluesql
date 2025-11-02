@@ -185,8 +185,7 @@ pub fn translate_select_item(
             let label = match expr {
                 SqlExpr::CompoundIdentifier(idents) => idents
                     .last()
-                    .map(|ident| ident.value.to_owned())
-                    .unwrap_or_else(|| expr.to_string()),
+                    .map_or_else(|| expr.to_string(), |ident| ident.value.clone()),
                 _ => expr.to_string(),
             };
 
@@ -198,7 +197,7 @@ pub fn translate_select_item(
         SqlSelectItem::ExprWithAlias { expr, alias } => {
             translate_expr(expr, params).map(|expr| SelectItem::Expr {
                 expr,
-                label: alias.value.to_owned(),
+                label: alias.value.clone(),
             })
         }
         SqlSelectItem::QualifiedWildcard(object_name, _) => Ok(SelectItem::QualifiedWildcard(
@@ -227,7 +226,7 @@ fn translate_table_alias(alias: &Option<SqlTableAlias>) -> Option<TableAlias> {
     alias
         .as_ref()
         .map(|SqlTableAlias { name, columns }| TableAlias {
-            name: name.value.to_owned(),
+            name: name.value.clone(),
             columns: translate_idents(columns),
         })
 }
@@ -297,7 +296,7 @@ fn translate_table_factor(
                 Ok(TableFactor::Derived {
                     subquery: translate_query(subquery, params)?,
                     alias: TableAlias {
-                        name: alias.name.value.to_owned(),
+                        name: alias.name.value.clone(),
                         columns: translate_idents(&alias.columns),
                     },
                 })
@@ -369,9 +368,8 @@ mod tests {
     fn assert_query_error(sql: &str, expected: TranslateError) {
         let mut parsed = parse(sql).expect("parse");
         let statement = parsed.remove(0);
-        let query = match statement {
-            SqlStatement::Query(query) => query,
-            _ => panic!("expected query statement: {sql}"),
+        let SqlStatement::Query(query) = statement else {
+            panic!("expected query statement: {sql}");
         };
 
         let actual = translate_query(&query, NO_PARAMS);

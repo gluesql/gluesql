@@ -56,7 +56,7 @@ test_case!(inet, {
         ),
         ("INSERT INTO computer VALUES (0)", Ok(Payload::Insert(1))),
         (
-            r#"INSERT INTO computer VALUES ('127.0.0.0.1')"#,
+            r"INSERT INTO computer VALUES ('127.0.0.0.1')",
             Err(ValueError::FailedToParseInetString("127.0.0.0.1".to_owned()).into()),
         ),
     ];

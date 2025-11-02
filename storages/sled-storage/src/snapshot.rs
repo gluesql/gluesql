@@ -43,14 +43,14 @@ impl<T: Clone> Snapshot<T> {
     }
 
     pub fn delete(mut self, txid: u64) -> (Self, Option<T>) {
-        if !self.0.is_empty() {
+        if self.0.is_empty() {
+            (self, None)
+        } else {
             self.0[0].deleted_by = Some(txid);
 
             let data = self.0[0].data.clone();
 
             (self, Some(data))
-        } else {
-            (self, None)
         }
     }
 

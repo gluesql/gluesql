@@ -17,7 +17,7 @@ pub enum SelectItemNode<'a> {
     ExprWithAliasNode(ExprWithAliasNode<'a>),
 }
 
-impl<'a> From<SelectItem> for SelectItemNode<'a> {
+impl From<SelectItem> for SelectItemNode<'_> {
     fn from(select_item: SelectItem) -> Self {
         Self::SelectItem(select_item)
     }
@@ -29,7 +29,7 @@ impl<'a> From<ExprNode<'a>> for SelectItemNode<'a> {
     }
 }
 
-impl<'a> From<&str> for SelectItemNode<'a> {
+impl From<&str> for SelectItemNode<'_> {
     fn from(select_item: &str) -> Self {
         Self::Text(select_item.to_owned())
     }

@@ -12,14 +12,13 @@ pub trait StringExt {
 
 impl StringExt for str {
     fn like(&self, pattern: &str, case_sensitive: bool) -> Result<bool> {
-        let (match_string, match_pattern) = match case_sensitive {
-            true => (self.to_owned(), pattern.to_owned()),
-            false => {
-                let lowercase_string = self.to_lowercase();
-                let lowercase_pattern = pattern.to_lowercase();
+        let (match_string, match_pattern) = if case_sensitive {
+            (self.to_owned(), pattern.to_owned())
+        } else {
+            let lowercase_string = self.to_lowercase();
+            let lowercase_pattern = pattern.to_lowercase();
 
-                (lowercase_string, lowercase_pattern)
-            }
+            (lowercase_string, lowercase_pattern)
         };
 
         Ok(Regex::new(&format!(

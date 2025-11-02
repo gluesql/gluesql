@@ -108,7 +108,6 @@ where
             match command {
                 Command::Help => {
                     self.print.help()?;
-                    continue;
                 }
                 Command::Quit => {
                     println!("bye\n");
@@ -128,19 +127,18 @@ where
                 }
                 Command::Set(option) => self.print.set_option(option),
                 Command::Show(option) => self.print.show_option(option)?,
-                Command::Edit(file_name) => match file_name {
-                    Some(file_name) => {
+                Command::Edit(file_name) => {
+                    if let Some(file_name) = file_name {
                         let file = Path::new(&file_name);
                         edit_file(file)?;
-                    }
-                    None => {
+                    } else {
                         let mut builder = Builder::new();
                         builder.prefix("Glue_").suffix(".sql");
                         let last = rl.history().last().map_or_else(|| "", String::as_str);
                         let edited = edit_with_builder(last, &builder)?;
                         rl.add_history_entry(edited);
                     }
-                },
+                }
                 Command::Run => {
                     let sql = rl.history().last().ok_or(CommandError::LackOfSQLHistory);
 

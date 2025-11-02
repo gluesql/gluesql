@@ -116,9 +116,9 @@ async fn schemaless_without_types() {
     assert_eq!(actual, expected);
 
     glue.execute(
-        r#"
+        r"
         UPDATE Book SET Year = '1925' WHERE Title = 'New Book Temporary'
-        "#,
+        ",
     )
     .await
     .unwrap();

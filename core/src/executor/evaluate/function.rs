@@ -354,11 +354,12 @@ pub fn hex<'a>(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> 
             Continue(Evaluated::Value(Value::Str(result)))
         }
         Value::Str(string) => {
-            let result = string
-                .as_bytes()
-                .iter()
-                .map(|b| format!("{b:02X}"))
-                .collect::<String>();
+            use std::fmt::Write;
+
+            let result = string.as_bytes().iter().fold(String::new(), |mut acc, b| {
+                let _ = write!(acc, "{b:02X}");
+                acc
+            });
 
             Continue(Evaluated::Value(Value::Str(result)))
         }
@@ -388,16 +389,14 @@ pub fn abs<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
 }
 
 pub fn ifnull<'a>(expr: Evaluated<'a>, then: Evaluated<'a>) -> ControlFlow<Evaluated<'a>> {
-    Continue(match expr.is_null() {
-        true => then,
-        false => expr,
-    })
+    Continue(if expr.is_null() { then } else { expr })
 }
 
 pub fn nullif<'a>(expr1: Evaluated<'a>, expr2: Evaluated<'a>) -> ControlFlow<Evaluated<'a>> {
-    Continue(match expr1 == expr2 {
-        true => Evaluated::Value(Value::Null),
-        false => expr1,
+    Continue(if expr1 == expr2 {
+        Evaluated::Value(Value::Null)
+    } else {
+        expr1
     })
 }
 
@@ -547,9 +546,6 @@ pub fn lcm<'a>(
     left: Evaluated<'_>,
     right: Evaluated<'_>,
 ) -> ControlFlow<Evaluated<'a>> {
-    let left = eval_to_int(&name, left)?;
-    let right = eval_to_int(&name, right)?;
-
     fn lcm(a: i64, b: i64) -> ControlFlow<i64> {
         let gcd_val: i128 = gcd_i64(a, b)?.into();
 
@@ -564,6 +560,9 @@ pub fn lcm<'a>(
             .map_err(|_| EvaluateError::LcmResultOutOfRange.into())
             .into_control_flow()
     }
+
+    let left = eval_to_int(&name, left)?;
+    let right = eval_to_int(&name, right)?;
 
     lcm(left, right).map(|lcm| Evaluated::Value(Value::I64(lcm)))
 }
@@ -760,18 +759,17 @@ pub fn greatest(name: String, exprs: Vec<Evaluated<'_>>) -> Result<Evaluated<'_>
     exprs
         .into_iter()
         .try_fold(None, |greatest, expr| -> Result<_> {
-            let greatest = match greatest {
-                Some(greatest) => greatest,
-                None => return Ok(Some(expr)),
+            let Some(greatest) = greatest else {
+                return Ok(Some(expr));
             };
 
             match greatest.evaluate_cmp(&expr) {
                 Some(std::cmp::Ordering::Less) => Ok(Some(expr)),
                 Some(_) => Ok(Some(greatest)),
-                None => Err(EvaluateError::NonComparableArgumentError(name.to_owned()).into()),
+                None => Err(EvaluateError::NonComparableArgumentError(name.clone()).into()),
             }
         })?
-        .ok_or(EvaluateError::FunctionRequiresAtLeastOneArgument(name.to_owned()).into())
+        .ok_or(EvaluateError::FunctionRequiresAtLeastOneArgument(name.clone()).into())
 }
 
 pub fn format<'a>(
@@ -1054,11 +1052,8 @@ pub fn splice<'a>(
     end_index: Evaluated<'_>,
     values: Option<Evaluated<'_>>,
 ) -> ControlFlow<Evaluated<'a>> {
-    let list_data = match list_data.try_into().break_if_null()? {
-        Value::List(list) => list,
-        _ => {
-            return Err(EvaluateError::ListTypeRequired.into()).into_control_flow();
-        }
+    let Value::List(list_data) = list_data.try_into().break_if_null()? else {
+        return Err(EvaluateError::ListTypeRequired.into()).into_control_flow();
     };
 
     let begin_index = eval_to_int(&name, begin_index)?.max(0);

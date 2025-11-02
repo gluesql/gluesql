@@ -20,14 +20,14 @@ test_case!(append, {
     )
     .await;
     g.run(
-        r#"
+        r"
             INSERT INTO Append VALUES
             (1, '[1, 2, 3]', 4, 'Foo');
-        "#,
+        ",
     )
     .await;
     g.test(
-        r#"select append(items, element) as myappend from Append;"#,
+        r"select append(items, element) as myappend from Append;",
         Ok(select!(
            myappend
            List;
@@ -36,7 +36,7 @@ test_case!(append, {
     )
     .await;
     g.test(
-        r#"select append(items, element2) as myappend from Append;"#,
+        r"select append(items, element2) as myappend from Append;",
         Ok(select!(
            myappend
            List;
@@ -46,27 +46,27 @@ test_case!(append, {
     .await;
 
     g.test(
-        r#"select append(element, element2) as myappend from Append"#,
+        r"select append(element, element2) as myappend from Append",
         Err(EvaluateError::ListTypeRequired.into()),
     )
     .await;
 
     g.test(
-        r#"CREATE TABLE Foo (
+        r"CREATE TABLE Foo (
                 elements LIST
-            );"#,
+            );",
         Ok(Payload::Create),
     )
     .await;
 
     g.run(
-        r#"
+        r"
             INSERT INTO Foo VALUES (APPEND(CAST('[1, 2, 3]' AS LIST), 4));
-        "#,
+        ",
     )
     .await;
     g.test(
-        r#"select elements as myappend from Foo;"#,
+        r"select elements as myappend from Foo;",
         Ok(select!(
            myappend
            List;

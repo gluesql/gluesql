@@ -88,7 +88,7 @@ impl<'a> SelectNode<'a> {
     }
 }
 
-impl<'a> Prebuild<Select> for SelectNode<'a> {
+impl Prebuild<Select> for SelectNode<'_> {
     fn prebuild(self) -> Result<Select> {
         let alias = self.table_node.table_alias.map(|name| TableAlias {
             name,

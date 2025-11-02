@@ -15,11 +15,11 @@ test_case!(calc_distance, {
             Ok(Payload::Create),
         ),
         (
-            r#"INSERT INTO Foo VALUES (POINT(0.3134, 3.156), POINT(1.415, 3.231), 3)"#,
+            r"INSERT INTO Foo VALUES (POINT(0.3134, 3.156), POINT(1.415, 3.231), 3)",
             Ok(Payload::Insert(1)),
         ),
         (
-            r#"SELECT CALC_DISTANCE(geo1, geo2) AS georesult FROM Foo"#,
+            r"SELECT CALC_DISTANCE(geo1, geo2) AS georesult FROM Foo",
             Ok(select!(
                 georesult
                 F64;
@@ -28,7 +28,7 @@ test_case!(calc_distance, {
             )),
         ),
         (
-            r#"SELECT CALC_DISTANCE(geo1) AS georesult FROM Foo"#,
+            r"SELECT CALC_DISTANCE(geo1) AS georesult FROM Foo",
             Err(TranslateError::FunctionArgsLengthNotMatching {
                 name: "CALC_DISTANCE".to_owned(),
                 expected: 2,
@@ -37,11 +37,11 @@ test_case!(calc_distance, {
             .into()),
         ),
         (
-            r#"SELECT CALC_DISTANCE(geo1, bar) AS georesult FROM Foo"#,
+            r"SELECT CALC_DISTANCE(geo1, bar) AS georesult FROM Foo",
             Err(EvaluateError::FunctionRequiresPointValue("CALC_DISTANCE".to_owned()).into()),
         ),
         (
-            r#"SELECT CALC_DISTANCE(geo1, NULL) AS georesult FROM Foo"#,
+            r"SELECT CALC_DISTANCE(geo1, NULL) AS georesult FROM Foo",
             Ok(select_with_null!(georesult; Null)),
         ),
     ];

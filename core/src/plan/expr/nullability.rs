@@ -2,10 +2,15 @@ use crate::ast::{AstLiteral, Expr, Function};
 
 pub fn may_return_null(expr: &Expr) -> bool {
     match expr {
-        Expr::Literal(AstLiteral::Null) => true,
-        Expr::Literal(_) | Expr::TypedString { .. } => false,
-        Expr::Identifier(_) | Expr::CompoundIdentifier { .. } => true,
-        Expr::IsNull(_) | Expr::IsNotNull(_) => false,
+        Expr::Literal(AstLiteral::Null)
+        | Expr::Identifier(_)
+        | Expr::CompoundIdentifier { .. }
+        | Expr::ArrayIndex { .. }
+        | Expr::Subquery(_)
+        | Expr::Exists { .. }
+        | Expr::InSubquery { .. }
+        | Expr::Aggregate(_) => true,
+        Expr::Literal(_) | Expr::TypedString { .. } | Expr::IsNull(_) | Expr::IsNotNull(_) => false,
         Expr::UnaryOp { expr: inner, .. }
         | Expr::Nested(inner)
         | Expr::Interval { expr: inner, .. } => may_return_null(inner),
@@ -32,18 +37,13 @@ pub fn may_return_null(expr: &Expr) -> bool {
             when_then,
             else_result,
         } => {
-            operand.as_deref().map(may_return_null).unwrap_or(false)
+            operand.as_deref().is_some_and(may_return_null)
                 || when_then
                     .iter()
                     .any(|(when, then)| may_return_null(when) || may_return_null(then))
-                || else_result.as_deref().map(may_return_null).unwrap_or(true)
+                || else_result.as_deref().is_none_or(may_return_null)
         }
         Expr::Array { elem } => elem.iter().any(may_return_null),
-        Expr::ArrayIndex { .. }
-        | Expr::Subquery(_)
-        | Expr::Exists { .. }
-        | Expr::InSubquery { .. }
-        | Expr::Aggregate(_) => true,
     }
 }
 
@@ -51,13 +51,13 @@ fn function_may_return_null(function: &Function) -> bool {
     use Function::*;
 
     match function {
-        Cast { expr, .. } => may_return_null(expr),
         Coalesce(exprs) => exprs.iter().all(may_return_null),
         IfNull { expr, then } => may_return_null(expr) && may_return_null(then),
-        NullIf { .. } => true,
+        NullIf { .. } | Custom { .. } => true,
         Now() | CurrentDate() | CurrentTime() | CurrentTimestamp() | Pi() | GenerateUuid()
         | Rand(_) => false,
-        Abs(expr)
+        Cast { expr, .. }
+        | Abs(expr)
         | Initcap(expr)
         | Lower(expr)
         | Upper(expr)
@@ -187,7 +187,6 @@ fn function_may_return_null(function: &Function) -> bool {
                 || may_return_null(end_index)
                 || values.as_ref().is_some_and(may_return_null)
         }
-        Custom { .. } => true,
     }
 }
 

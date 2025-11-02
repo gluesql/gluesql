@@ -1,6 +1,6 @@
 use super::ExprNode;
 
-impl<'a> ExprNode<'a> {
+impl ExprNode<'_> {
     pub fn is_null(self) -> Self {
         Self::IsNull(Box::new(self))
     }

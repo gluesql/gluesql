@@ -51,28 +51,26 @@ impl StoreMut for MongoStorage {
                         let maximum = column_def.data_type.get_max();
                         let minimum = column_def.data_type.get_min();
 
-                        let mut bson_type = match column_def.nullable {
-                            true => vec![data_type, "null"],
-                            false => vec![data_type],
+                        let mut bson_type = if column_def.nullable {
+                            vec![data_type, "null"]
+                        } else {
+                            vec![data_type]
                         };
 
                         if let Some(ColumnUniqueOption { is_primary }) = &column_def.unique {
-                            match *is_primary {
-                                true => {
-                                    indexes.push(IndexInfo {
-                                        name: format!("{column_name}_PK"),
-                                        key: column_name.clone(),
-                                        index_type: IndexType::Primary,
-                                    });
-                                }
-                                false => {
-                                    bson_type = vec![data_type, "null"];
-                                    indexes.push(IndexInfo {
-                                        name: format!("{column_name}_UNIQUE"),
-                                        key: column_name.clone(),
-                                        index_type: IndexType::Unique,
-                                    });
-                                }
+                            if *is_primary {
+                                indexes.push(IndexInfo {
+                                    name: format!("{column_name}_PK"),
+                                    key: column_name.clone(),
+                                    index_type: IndexType::Primary,
+                                });
+                            } else {
+                                bson_type = vec![data_type, "null"];
+                                indexes.push(IndexInfo {
+                                    name: format!("{column_name}_UNIQUE"),
+                                    key: column_name.clone(),
+                                    index_type: IndexType::Unique,
+                                });
                             }
                         }
 

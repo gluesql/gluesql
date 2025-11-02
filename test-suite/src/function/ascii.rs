@@ -34,7 +34,7 @@ test_case!(ascii, {
     .await;
     g.run("INSERT INTO Ascii VALUES (1, 'F');").await;
     g.test(
-        r#"select ascii(text) as ascii from Ascii;"#,
+        r"select ascii(text) as ascii from Ascii;",
         Ok(select!(
             ascii
             U8;
@@ -88,7 +88,7 @@ test_case!(ascii, {
     .await;
 
     g.test(
-        r#"select ascii(NULL) as ascii from Ascii;"#,
+        r"select ascii(NULL) as ascii from Ascii;",
         Ok(select_with_null!(ascii; Null)),
     )
     .await;
@@ -100,7 +100,7 @@ test_case!(ascii, {
     .await;
 
     g.test(
-        r#"select ascii() as ascii from Ascii;"#,
+        r"select ascii() as ascii from Ascii;",
         Err(TranslateError::FunctionArgsLengthNotMatching {
             name: "ASCII".to_owned(),
             expected: 1,
@@ -113,7 +113,7 @@ test_case!(ascii, {
     g.run("INSERT INTO Ascii VALUES (1, 'Foo');").await;
 
     g.test(
-        r#"select ascii(text) as ascii from Ascii;"#,
+        r"select ascii(text) as ascii from Ascii;",
         Err(EvaluateError::AsciiFunctionRequiresSingleCharacterValue.into()),
     )
     .await;

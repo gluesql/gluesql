@@ -52,6 +52,8 @@ impl StorageBackend for FailingBackend {
 
 #[tokio::test]
 async fn begin_write_after_io_error() {
+    const TABLE: TableDefinition<u64, u64> = TableDefinition::new("x");
+
     let _ = create_dir("tmp");
     let path = "tmp/redb_prev_io";
     let _ = remove_file(path);
@@ -68,8 +70,6 @@ async fn begin_write_after_io_error() {
     let db = Database::builder()
         .create_with_backend(backend)
         .expect("create database");
-
-    const TABLE: TableDefinition<u64, u64> = TableDefinition::new("x");
 
     fail_flag.store(true, Ordering::SeqCst);
     let tx = db.begin_write().expect("begin write");

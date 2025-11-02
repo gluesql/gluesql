@@ -55,12 +55,12 @@ pub fn binary_op<'a>(
         BinaryOperator::Lt => cmp!(l.evaluate_cmp(&r) == Some(Ordering::Less)),
         BinaryOperator::LtEq => cmp!(matches!(
             l.evaluate_cmp(&r),
-            Some(Ordering::Less) | Some(Ordering::Equal)
+            Some(Ordering::Less | Ordering::Equal)
         )),
         BinaryOperator::Gt => cmp!(l.evaluate_cmp(&r) == Some(Ordering::Greater)),
         BinaryOperator::GtEq => cmp!(matches!(
             l.evaluate_cmp(&r),
-            Some(Ordering::Greater) | Some(Ordering::Equal)
+            Some(Ordering::Greater | Ordering::Equal)
         )),
         BinaryOperator::And => cond!(l && r),
         BinaryOperator::Or => cond!(l || r),
@@ -87,22 +87,21 @@ pub fn between<'a>(
     negated: bool,
     low: Evaluated<'a>,
     high: Evaluated<'a>,
-) -> Result<Evaluated<'a>> {
+) -> Evaluated<'a> {
     if target.is_null() || low.is_null() || high.is_null() {
-        return Ok(Evaluated::Value(Value::Null));
+        return Evaluated::Value(Value::Null);
     }
 
     let v = low.evaluate_cmp(&target) != Some(Ordering::Greater)
         && target.evaluate_cmp(&high) != Some(Ordering::Greater);
     let v = negated ^ v;
 
-    Ok(Evaluated::Value(Value::Bool(v)))
+    Evaluated::Value(Value::Bool(v))
 }
 
 pub fn array_index<'a>(obj: Evaluated<'a>, indexes: Vec<Evaluated<'a>>) -> Result<Evaluated<'a>> {
-    let value = match obj {
-        Evaluated::Value(value) => value,
-        _ => return Err(EvaluateError::MapOrListTypeRequired.into()),
+    let Evaluated::Value(value) = obj else {
+        return Err(EvaluateError::MapOrListTypeRequired.into());
     };
     let indexes = indexes
         .into_iter()

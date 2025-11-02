@@ -223,7 +223,7 @@ where
             let low = eval(low).await?;
             let high = eval(high).await?;
 
-            expr::between(target, *negated, low, high)
+            Ok(expr::between(target, *negated, low, high))
         }
         Expr::Like {
             expr,
@@ -391,7 +391,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                     eval(expr)
                         .await?
                         .try_into_value(&arg.data_type, true)
-                        .map(|value| (arg.name.to_owned(), value))
+                        .map(|value| (arg.name.clone(), value))
                 })
                 .try_collect()
                 .await
