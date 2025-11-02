@@ -8,8 +8,6 @@ use {
 };
 
 test_case!(to_date, {
-    let g = get_tester!();
-
     fn assert_chrono_error_kind_eq(error: Error, kind: ParseErrorKind) {
         match error {
             Error::Evaluate(EvaluateError::FormatParseError(err)) => {
@@ -18,6 +16,8 @@ test_case!(to_date, {
             _ => panic!("invalid error: {error}"),
         }
     }
+
+    let g = get_tester!();
 
     let test_cases = vec![
         (

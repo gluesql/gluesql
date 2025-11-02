@@ -119,6 +119,13 @@ async fn join<'a, T: GStore>(
         let join_executor = Arc::clone(&join_executor);
 
         async move {
+            #[derive(futures_enum::Stream)]
+            enum Rows<I1, I2, I3> {
+                NestedLoop(I1),
+                Hash(I2),
+                Empty(I3),
+            }
+
             let filter_context = match filter_context {
                 Some(filter_context) => Arc::new(RowContext::concat(
                     Arc::clone(&project_context),
@@ -127,13 +134,6 @@ async fn join<'a, T: GStore>(
                 None => Arc::clone(&project_context),
             };
             let filter_context = Some(filter_context);
-
-            #[derive(futures_enum::Stream)]
-            enum Rows<I1, I2, I3> {
-                NestedLoop(I1),
-                Hash(I2),
-                Empty(I3),
-            }
             let rows = match join_executor.as_ref() {
                 JoinExecutor::NestedLoop => {
                     let rows = fetch_relation_rows(storage, relation, &filter_context)

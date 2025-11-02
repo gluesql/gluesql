@@ -2903,6 +2903,11 @@ mod tests {
             hasher.finish()
         }
 
+        const CANONICAL_F64_NAN_BITS: u64 = 0x7ff8000000000000;
+        const CANONICAL_F32_NAN_BITS: u32 = 0x7fc00000;
+        const CANONICAL_F32_ZERO_BITS: u32 = 0;
+        const CANONICAL_F64_ZERO_BITS: u64 = 0;
+
         // Float zero normalization: 0.0 and -0.0 should hash the same
         let zero_pos_f32 = F32(0.0);
         let zero_neg_f32 = F32(-0.0);
@@ -2997,10 +3002,6 @@ mod tests {
             assert_eq!(hash_value(&value_map1), hash_value(&value_map2));
         }
 
-        const CANONICAL_F64_NAN_BITS: u64 = 0x7ff8000000000000;
-        const CANONICAL_F32_NAN_BITS: u32 = 0x7fc00000;
-        const CANONICAL_F32_ZERO_BITS: u32 = 0;
-        const CANONICAL_F64_ZERO_BITS: u64 = 0;
         let point_test_cases = [
             (Point(Point::new(1.0, 2.0)), Point(Point::new(1.0, 2.0))),
             (Point(Point::new(0.0, 1.0)), Point(Point::new(-0.0, 1.0))),

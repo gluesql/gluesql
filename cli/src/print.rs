@@ -103,12 +103,12 @@ impl<'a, W: Write> Print<W> {
             Table,
             Row,
         }
+        use Target::*;
+
         let mut affected = |n: usize, target: Target, msg: &str| -> IOResult<()> {
             let payload = format!("{n} {target}{} {msg}", if n > 1 { "s" } else { "" });
             self.writeln(payload)
         };
-
-        use Target::*;
         match payload {
             Payload::Create => self.writeln("Table created")?,
             Payload::DropTable(n) => affected(*n, Table, "dropped")?,

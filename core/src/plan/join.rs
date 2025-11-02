@@ -113,6 +113,11 @@ impl<'a> JoinPlanner<'a> {
         inner_context: Option<Arc<Context<'a>>>,
         join: Join,
     ) -> (Option<Arc<Context<'a>>>, Join) {
+        enum JoinOp {
+            Inner,
+            LeftOuter,
+        }
+
         let Join {
             relation,
             join_operator,
@@ -128,11 +133,6 @@ impl<'a> JoinPlanner<'a> {
             };
 
             return (context, join);
-        }
-
-        enum JoinOp {
-            Inner,
-            LeftOuter,
         }
 
         let (join_op, expr) = match join_operator {

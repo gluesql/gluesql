@@ -545,9 +545,6 @@ pub fn lcm<'a>(
     left: Evaluated<'_>,
     right: Evaluated<'_>,
 ) -> ControlFlow<Evaluated<'a>> {
-    let left = eval_to_int(&name, left)?;
-    let right = eval_to_int(&name, right)?;
-
     fn lcm(a: i64, b: i64) -> ControlFlow<i64> {
         let gcd_val: i128 = gcd_i64(a, b)?.into();
 
@@ -562,6 +559,9 @@ pub fn lcm<'a>(
             .map_err(|_| EvaluateError::LcmResultOutOfRange.into())
             .into_control_flow()
     }
+
+    let left = eval_to_int(&name, left)?;
+    let right = eval_to_int(&name, right)?;
 
     lcm(left, right).map(|lcm| Evaluated::Value(Value::I64(lcm)))
 }
