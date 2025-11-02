@@ -166,7 +166,7 @@ impl TryBinaryOperator for f64 {
             F64(rhs) => Ok(F64(lhs / rhs)),
             Decimal(rhs) => Decimal::from_f64_retain(lhs).map_or_else(
                 || Err(ValueError::FloatToDecimalConversionFailure(lhs).into()),
-                |x| Ok(Decimal(x * rhs)),
+                |x| Ok(Decimal(x / rhs)),
             ),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
@@ -433,6 +433,11 @@ mod tests {
         );
         assert!(
             matches!(base.try_divide(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ONE)
+        );
+        // Test with Decimal::TWO to ensure division (not multiplication) is performed
+        let base_two = 2.0_f64;
+        assert!(
+            matches!(base_two.try_divide(&Decimal(Decimal::TWO)), Ok(Decimal(x)) if x == Decimal::ONE)
         );
 
         assert_eq!(
