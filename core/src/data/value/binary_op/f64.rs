@@ -432,12 +432,7 @@ mod tests {
             matches!(base.try_divide(&F64(1.0)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON )
         );
         assert!(
-            matches!(base.try_divide(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ONE)
-        );
-        // Test with Decimal::TWO to ensure division (not multiplication) is performed
-        let base_two = 2.0_f64;
-        assert!(
-            matches!(base_two.try_divide(&Decimal(Decimal::TWO)), Ok(Decimal(x)) if x == Decimal::ONE)
+            matches!(2.0_f64.try_divide(&Decimal(Decimal::TWO)), Ok(Decimal(x)) if x == Decimal::ONE)
         );
 
         assert_eq!(

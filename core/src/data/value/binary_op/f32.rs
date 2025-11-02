@@ -444,12 +444,7 @@ mod tests {
             matches!(base.try_divide(&F32(1.0_f32)), Ok(F32(x)) if (x - 1.0).abs() < f32::EPSILON )
         );
         assert!(
-            matches!(base.try_divide(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ONE)
-        );
-        // Test with Decimal::TWO to ensure division (not multiplication) is performed
-        let base_two = 2.0_f32;
-        assert!(
-            matches!(base_two.try_divide(&Decimal(Decimal::TWO)), Ok(Decimal(x)) if x == Decimal::ONE)
+            matches!(2.0_f32.try_divide(&Decimal(Decimal::TWO)), Ok(Decimal(x)) if x == Decimal::ONE)
         );
         assert_eq!(
             f32::MIN.try_divide(&Decimal(Decimal::TWO)),
