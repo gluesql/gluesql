@@ -44,29 +44,30 @@ pub(crate) fn build_delete_sql(
     schema: &Schema,
     key: &Key,
 ) -> Result<(String, Vec<SqlValue>)> {
-    match primary_column(schema) {
-        Some(column) => Ok((
+    if let Some(column) = primary_column(schema) {
+        return Ok((
             format!(
                 r#"DELETE FROM "{}" WHERE "{}" = ?"#,
                 SqliteStorage::escape_identifier(table_name),
                 SqliteStorage::escape_identifier(column)
             ),
             build_key_params(key, schema)?,
-        )),
-        None => {
-            let rowid = match key {
-                Key::I64(id) => *id,
-                _ => return Err(GlueError::StorageMsg("rowid must be an i64 key".to_owned())),
-            };
-            Ok((
-                format!(
-                    r#"DELETE FROM "{}" WHERE rowid = ?"#,
-                    SqliteStorage::escape_identifier(table_name)
-                ),
-                vec![SqlValue::Integer(rowid)],
-            ))
-        }
+        ));
     }
+
+    let Key::I64(rowid) = key else {
+        return Err(GlueError::StorageMsg("rowid must be an i64 key".to_owned()));
+    };
+
+    let rowid = *rowid;
+
+    Ok((
+        format!(
+            r#"DELETE FROM "{}" WHERE rowid = ?"#,
+            SqliteStorage::escape_identifier(table_name)
+        ),
+        vec![SqlValue::Integer(rowid)],
+    ))
 }
 
 fn select_projection(schema: &Schema) -> String {

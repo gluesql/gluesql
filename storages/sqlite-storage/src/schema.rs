@@ -245,8 +245,9 @@ fn sql_column_definition(column: &ColumnDef) -> String {
 
 fn data_type_to_sqlite(data_type: &DataType) -> String {
     match data_type {
-        DataType::Boolean => "INTEGER".to_owned(),
-        DataType::Int8 | DataType::Int16 | DataType::Int32 | DataType::Int => "INTEGER".to_owned(),
+        DataType::Boolean | DataType::Int8 | DataType::Int16 | DataType::Int32 | DataType::Int => {
+            "INTEGER".to_owned()
+        }
         DataType::Float32 | DataType::Float => "REAL".to_owned(),
         DataType::Bytea => "BLOB".to_owned(),
         DataType::Int128

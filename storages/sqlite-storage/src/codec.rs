@@ -13,29 +13,23 @@ use {
 };
 
 pub(crate) fn decode_row_with_key(schema: &Schema, row: &Row<'_>) -> Result<(Key, DataRow)> {
-    match schema.column_defs.as_ref() {
-        Some(columns) => {
-            let (values, key) = match primary_column(schema) {
-                Some(name) => {
-                    let values = decode_structured_values(row, columns)?;
-                    let index = columns.iter().position(|col| col.name == name).unwrap_or(0);
-                    let key = Key::try_from(values[index].clone())?;
-                    (values, key)
-                }
-                None => {
-                    let rowid: i64 = row.get(0).map_err(map_sql_err)?;
-                    let values = decode_structured_values_with_offset(row, columns, 1)?;
-                    (values, Key::I64(rowid))
-                }
-            };
-            Ok((key, DataRow::Vec(values)))
-        }
-        None => {
+    if let Some(columns) = schema.column_defs.as_ref() {
+        let (values, key) = if let Some(name) = primary_column(schema) {
+            let values = decode_structured_values(row, columns)?;
+            let index = columns.iter().position(|col| col.name == name).unwrap_or(0);
+            let key = Key::try_from(values[index].clone())?;
+            (values, key)
+        } else {
             let rowid: i64 = row.get(0).map_err(map_sql_err)?;
-            let payload: String = row.get(1).map_err(map_sql_err)?;
-            let map = BTreeMap::parse_json_object(&payload)?;
-            Ok((Key::I64(rowid), DataRow::Map(map)))
-        }
+            let values = decode_structured_values_with_offset(row, columns, 1)?;
+            (values, Key::I64(rowid))
+        };
+        Ok((key, DataRow::Vec(values)))
+    } else {
+        let rowid: i64 = row.get(0).map_err(map_sql_err)?;
+        let payload: String = row.get(1).map_err(map_sql_err)?;
+        let map = BTreeMap::parse_json_object(&payload)?;
+        Ok((Key::I64(rowid), DataRow::Map(map)))
     }
 }
 
@@ -115,15 +109,22 @@ fn decode_sql_value(value: SqlValue, data_type: &DataType) -> Result<Value> {
                 chrono::NaiveTime::from_num_seconds_from_midnight_opt(v as u32, 0)
                     .unwrap_or_default(),
             )),
-            DataType::Uint8 | DataType::Uint16 | DataType::Uint32 | DataType::Uint64 => {
-                Value::I64(v).cast(data_type)
-            }
-            _ => Ok(Value::I64(v)),
+            DataType::Uint8
+            | DataType::Uint16
+            | DataType::Uint32
+            | DataType::Uint64
+            | DataType::Uint128
+            | DataType::Int128 => Value::I64(v).cast(data_type),
+            other => Err(GlueError::StorageMsg(format!(
+                "cannot decode INTEGER value for {other:?}"
+            ))),
         },
         SqlValue::Real(v) => match data_type {
             DataType::Float32 => Ok(Value::F32(v as f32)),
             DataType::Float => Ok(Value::F64(v)),
-            _ => Ok(Value::F64(v)),
+            other => Err(GlueError::StorageMsg(format!(
+                "cannot decode REAL value for {other:?}"
+            ))),
         },
         SqlValue::Text(text) => match data_type {
             DataType::Int128
@@ -146,7 +147,9 @@ fn decode_sql_value(value: SqlValue, data_type: &DataType) -> Result<Value> {
         },
         SqlValue::Blob(blob) => match data_type {
             DataType::Bytea => Ok(Value::Bytea(blob)),
-            _ => Ok(Value::Bytea(blob)),
+            other => Err(GlueError::StorageMsg(format!(
+                "cannot decode BLOB value for {other:?}"
+            ))),
         },
     }
 }

@@ -55,9 +55,8 @@ impl Store for SqliteStorage {
     }
 
     async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
-        let schema = match self.ensure_schema(table_name).await? {
-            Some(schema) => schema,
-            None => return Ok(None),
+        let Some(schema) = self.ensure_schema(table_name).await? else {
+            return Ok(None);
         };
 
         let query = build_select_one_sql(table_name, &schema);
@@ -80,9 +79,8 @@ impl Store for SqliteStorage {
     }
 
     async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
-        let schema = match self.ensure_schema(table_name).await? {
-            Some(schema) => schema,
-            None => return Ok(Box::pin(stream::empty())),
+        let Some(schema) = self.ensure_schema(table_name).await? else {
+            return Ok(Box::pin(stream::empty()));
         };
 
         let query = build_select_all_sql(table_name, &schema);

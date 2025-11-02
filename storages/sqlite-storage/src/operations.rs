@@ -114,13 +114,10 @@ pub(crate) async fn update_structured_row(
     key: Key,
     values: Vec<Value>,
 ) -> Result<()> {
-    let rowid = match key {
-        Key::I64(v) => v,
-        _ => {
-            return Err(GlueError::StorageMsg(
-                "rowid key must be an i64 value".to_owned(),
-            ));
-        }
+    let Key::I64(rowid) = key else {
+        return Err(GlueError::StorageMsg(
+            "rowid key must be an i64 value".to_owned(),
+        ));
     };
 
     let columns = schema.column_defs.as_ref().ok_or_else(|| {
@@ -170,13 +167,10 @@ pub(crate) async fn update_schemaless_row(
     key: Key,
     map: BTreeMap<String, Value>,
 ) -> Result<()> {
-    let rowid = match key {
-        Key::I64(v) => v,
-        _ => {
-            return Err(GlueError::StorageMsg(
-                "rowid key must be an i64 value".to_owned(),
-            ));
-        }
+    let Key::I64(rowid) = key else {
+        return Err(GlueError::StorageMsg(
+            "rowid key must be an i64 value".to_owned(),
+        ));
     };
 
     let json: JsonValue = Value::Map(map).try_into()?;
