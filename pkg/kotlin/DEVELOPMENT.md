@@ -53,7 +53,7 @@ When you modify Rust code:
 ```
 
 **How it works:**
-1. `buildRustLib` task compiles Rust → `../../target/debug/libgluesql_java.*`
+1. `buildRustLib` task compiles Rust → `../../target/debug/libgluesql_kotlin.*`
 2. `generateBindings` task runs UniFFI → generates Kotlin bindings
 3. Kotlin code is compiled with generated bindings
 
@@ -76,7 +76,7 @@ This runs:
 ```bash
 cargo run --bin uniffi-bindgen generate \
     --language kotlin \
-    --library ../../target/debug/libgluesql_java.dylib
+    --library ../../target/debug/libgluesql_kotlin.dylib
 ```
 
 ### 4. Running Tests
@@ -145,7 +145,7 @@ Development builds use **debug mode** Rust libraries:
 
 ```bash
 ./gradlew test
-# Uses: ../../target/debug/libgluesql_java.*
+# Uses: ../../target/debug/libgluesql_kotlin.*
 ```
 
 ### Production JAR
@@ -180,7 +180,7 @@ jar tf build/libs/gluesql-0.1.0.jar | grep natives
 
 ## Common Issues & Solutions
 
-### Issue: `UnsatisfiedLinkError: Unable to load library 'gluesql_java'`
+### Issue: `UnsatisfiedLinkError: Unable to load library 'gluesql_kotlin'`
 
 **Cause:** Rust library not built or not in expected location
 
@@ -190,7 +190,7 @@ jar tf build/libs/gluesql-0.1.0.jar | grep natives
 cargo build
 
 # Verify it exists
-ls -la ../../target/debug/libgluesql_java.*
+ls -la ../../target/debug/libgluesql_kotlin.*
 
 # Clean and rebuild
 ./gradlew clean build
@@ -213,7 +213,7 @@ ls -la ../../target/debug/libgluesql_java.*
 ```bash
 # Clean everything
 ./gradlew clean
-rm -rf ../../target/debug/libgluesql_java.*
+rm -rf ../../target/debug/libgluesql_kotlin.*
 
 # Rebuild from scratch
 ./gradlew build
@@ -330,7 +330,7 @@ System.setProperty("jna.debug_load.jna", "true")
 
 ```bash
 # View generated Kotlin code
-cat build/generated/source/uniffi/kotlin/org/gluesql/uniffi/gluesql_java.kt
+cat build/generated/source/uniffi/kotlin/org/gluesql/uniffi/gluesql_kotlin.kt
 ```
 
 ### Verify JAR Contents

@@ -44,18 +44,20 @@ fun currentPlatformLibExtension(): String =
     }
 
 fun Project.registerNativeBuildTasks() {
+    val workspaceRoot = projectDir.parentFile.parentFile
+
     // Build Rust library for local platform (for development and testing)
     val buildRustLib =
         tasks.register("buildRustLib") {
             group = "build"
             description = "Build the Rust library for local platform (debug mode)"
 
-            val debugLibPath = file("../../target/debug/${currentPlatformLibName()}.${currentPlatformLibExtension()}")
+            val debugLibPath = workspaceRoot.resolve("target/debug/${currentPlatformLibName()}.${currentPlatformLibExtension()}")
             outputs.file(debugLibPath)
 
             // Only rebuild if source files changed
-            inputs.files(fileTree("src").include("**/*.rs"))
-            inputs.file("Cargo.toml")
+            inputs.files(fileTree(projectDir.resolve("src")).include("**/*.rs"))
+            inputs.file(projectDir.resolve("Cargo.toml"))
 
             doLast {
                 exec {
@@ -73,10 +75,10 @@ fun Project.registerNativeBuildTasks() {
             dependsOn(buildRustLib)
 
             val generatedDir = layout.buildDirectory.dir("generated/source/uniffi/kotlin").get().asFile
-            val debugLibPath = "../../target/debug/libgluesql_kotlin.${currentPlatformLibExtension()}"
+            val debugLibPath = workspaceRoot.resolve("target/debug/${currentPlatformLibName()}.${currentPlatformLibExtension()}")
 
             inputs.file(debugLibPath)
-            inputs.files(fileTree("src").include("**/*.rs", "**/*.udl"))
+            inputs.files(fileTree(projectDir.resolve("src")).include("**/*.rs", "**/*.udl"))
             outputs.dir(generatedDir)
 
             doLast {
@@ -95,7 +97,7 @@ fun Project.registerNativeBuildTasks() {
                         "--out-dir",
                         generatedDir.absolutePath,
                         "--library",
-                        debugLibPath,
+                        debugLibPath.absolutePath,
                         "--no-format",
                     )
                 }
@@ -116,7 +118,7 @@ fun Project.registerNativeBuildTasks() {
 
             var copiedCount = 0
             platforms.forEach { platform ->
-                val sourceFile = file("../../target/${platform.rustTarget}/release/${platform.libFileName}")
+                val sourceFile = workspaceRoot.resolve("target/${platform.rustTarget}/release/${platform.libFileName}")
                 val destDir = resourcesDir.resolve(platform.jnaPrefix)
 
                 if (sourceFile.exists()) {

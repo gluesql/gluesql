@@ -9,7 +9,7 @@ repository.workspace = true
 documentation.workspace = true
 
 [lib]
-name = "gluesql_java"
+name = "gluesql_kotlin"
 crate-type = ["cdylib", "rlib"]
 
 [features]
