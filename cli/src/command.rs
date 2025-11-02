@@ -83,7 +83,7 @@ impl SetOption {
     }
 }
 
-#[derive(Eq, Debug, PartialEq)]
+#[derive(Eq, Debug, PartialEq, Copy, Clone)]
 pub enum ShowOption {
     Tabular,
     Colsep,

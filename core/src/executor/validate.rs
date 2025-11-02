@@ -135,7 +135,7 @@ pub async fn validate_unique<T: Store>(
             Ok(())
         }
         Columns::All(columns) => {
-            let unique_constraints: Vec<_> = create_unique_constraints(columns, row_iter)?.into();
+            let unique_constraints: Vec<_> = create_unique_constraints(columns, &row_iter)?.into();
             if unique_constraints.is_empty() {
                 return Ok(());
             }
@@ -172,7 +172,7 @@ pub async fn validate_unique<T: Store>(
 
 fn create_unique_constraints<'a>(
     unique_columns: Vec<(usize, String)>,
-    row_iter: impl Iterator<Item = &'a [Value]> + Clone,
+    row_iter: &(impl Iterator<Item = &'a [Value]> + Clone),
 ) -> Result<Vector<UniqueConstraint>> {
     unique_columns
         .into_iter()

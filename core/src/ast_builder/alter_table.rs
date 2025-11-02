@@ -143,31 +143,31 @@ mod tests {
             .add_column("opt BOOLEAN NULL")
             .build();
         let expected = "ALTER TABLE Foo ADD COLUMN opt BOOLEAN NULL";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = table("Foo").alter_table().drop_column("col_name").build();
         let expected = "ALTER TABLE Foo DROP COLUMN col_name";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = table("Foo")
             .alter_table()
             .drop_column_if_exists("col_name")
             .build();
         let expected = "ALTER TABLE Foo DROP COLUMN IF EXISTS col_name";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = table("Foo")
             .alter_table()
             .rename_column("old", "new")
             .build();
         let expected = "ALTER TABLE Foo RENAME COLUMN old TO new";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = table("Foo")
             .alter_table()
             .rename_table("new_table_name")
             .build();
         let expected = "ALTER TABLE Foo RENAME TO new_table_name";
-        test(actual, expected);
+        test(&actual, expected);
     }
 }

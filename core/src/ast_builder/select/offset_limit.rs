@@ -75,7 +75,7 @@ mod tests {
             OFFSET 1
             LIMIT 3;
         ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // project node -> offset node -> limit node
         let actual = table("Bar")
@@ -93,7 +93,7 @@ mod tests {
             OFFSET 1
             LIMIT 3;
         ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // select -> offset -> limit -> derived subquery
         let actual = table("Bar")
@@ -114,6 +114,6 @@ mod tests {
                 LIMIT 3
             ) Sub
         ";
-        test(actual, expected);
+        test(&actual, expected);
     }
 }

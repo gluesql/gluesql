@@ -154,7 +154,7 @@ mod tests {
             SELECT * FROM Foo
             ORDER BY name DESC
         ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // select node -> order by node(exprs string) -> build
         let actual = table("Bar")
@@ -167,7 +167,7 @@ mod tests {
                 ORDER BY name asc, id desc, country
                 OFFSET 10
             ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // group by node -> order by node -> build
         let actual = table("Bar")
@@ -180,7 +180,7 @@ mod tests {
                 GROUP BY name
                 ORDER BY id desc
             ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // having node -> order by node -> build
         let actual = table("Foo")
@@ -199,7 +199,7 @@ mod tests {
             OFFSET 2
             LIMIT 3
         ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // filter node -> order by node -> build
         let actual = table("Foo")
@@ -212,7 +212,7 @@ mod tests {
             SELECT * FROM Foo
             WHERE id > 10 AND id < 20
             ORDER BY id ASC";
-        test(actual, expected);
+        test(&actual, expected);
 
         // project node -> order by node -> build
         let actual = table("Foo")
@@ -221,7 +221,7 @@ mod tests {
             .order_by("id asc")
             .build();
         let expected = "SELECT id FROM Foo ORDER BY id asc";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join node -> order by node -> build
         let actual = table("Foo")
@@ -234,7 +234,7 @@ mod tests {
             JOIN Bar
             ORDER BY Foo.id desc
         ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join constraint node -> order by node -> build
         let actual = table("Foo")
@@ -248,7 +248,7 @@ mod tests {
             JOIN Bar ON Foo.id = Bar.id
             ORDER BY Foo.id desc
         ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // hash join node -> order by node -> build
         let actual = table("Player")
@@ -311,6 +311,6 @@ mod tests {
                 ORDER BY name DESC
             ) Sub
         ";
-        test(actual, expected);
+        test(&actual, expected);
     }
 }

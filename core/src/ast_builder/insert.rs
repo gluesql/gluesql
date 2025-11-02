@@ -68,7 +68,7 @@ mod tests {
     fn insert() {
         let actual = table("Foo").insert().values(vec!["1, 5", "2, 3"]).build();
         let expected = r"INSERT INTO Foo VALUES (1, 5), (2, 3)";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = table("Foo")
             .insert()
@@ -76,7 +76,7 @@ mod tests {
             .values(vec![vec![num(1), num(5)], vec![num(2), num(3)]])
             .build();
         let expected = r"INSERT INTO Foo (id, name) VALUES (1, 5), (2, 3)";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = table("Foo")
             .insert()
@@ -84,13 +84,13 @@ mod tests {
             .values(vec![vec![num(7)]])
             .build();
         let expected = r"INSERT INTO Foo (hi) VALUES (7)";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = table("Foo")
             .insert()
             .as_select(table("Bar").select().project("id, name").limit(10))
             .build();
         let expected = r"INSERT INTO Foo SELECT id, name FROM Bar LIMIT 10";
-        test(actual, expected);
+        test(&actual, expected);
     }
 }

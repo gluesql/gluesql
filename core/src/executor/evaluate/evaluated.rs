@@ -117,7 +117,7 @@ where
     }
 }
 
-pub fn exceptional_int_val_to_eval<'a>(name: String, v: Value) -> Result<Evaluated<'a>> {
+pub fn exceptional_int_val_to_eval<'a>(name: String, v: &Value) -> Result<Evaluated<'a>> {
     match v {
         Value::Null => Ok(Evaluated::Value(Value::Null)),
         _ => Err(EvaluateError::FunctionRequiresIntegerValue(name).into()),
@@ -621,7 +621,7 @@ impl<'a> Evaluated<'a> {
             let value = start.try_into()?;
             match value {
                 Value::I64(num) => num,
-                _ => return exceptional_int_val_to_eval(name, value),
+                _ => return exceptional_int_val_to_eval(name, &value),
             }
         } - 1;
 
@@ -630,7 +630,7 @@ impl<'a> Evaluated<'a> {
                 let value = eval.try_into()?;
                 match value {
                     Value::I64(num) => num,
-                    _ => return exceptional_int_val_to_eval(name, value),
+                    _ => return exceptional_int_val_to_eval(name, &value),
                 }
             }
             None => source.len() as i64,

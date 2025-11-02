@@ -160,30 +160,30 @@ mod tests {
         // select node -> build
         let actual = table("App").select().build();
         let expected = "SELECT * FROM App";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = table("Item").alias_as("i").select().build();
         let expected = "SELECT * FROM Item i";
-        test(actual, expected);
+        test(&actual, expected);
 
         // select -> derived subquery
         let actual = table("App").select().alias_as("Sub").select().build();
         let expected = "SELECT * FROM (SELECT * FROM App) Sub";
-        test(actual, expected);
+        test(&actual, expected);
 
         // select without table
         let actual = select().project("1 + 1").build();
         let expected = "SELECT 1 + 1";
-        test(actual, expected);
+        test(&actual, expected);
 
         // select distinct
         let actual = table("User").select().distinct().build();
         let expected = "SELECT DISTINCT * FROM User";
-        test(actual, expected);
+        test(&actual, expected);
 
         // select distinct with project
         let actual = table("Item").select().distinct().project("name").build();
         let expected = "SELECT DISTINCT name FROM Item";
-        test(actual, expected);
+        test(&actual, expected);
     }
 }

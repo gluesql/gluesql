@@ -155,7 +155,7 @@ mod tests {
             .on("Foo.id = Bar.id")
             .build();
         let expected = "SELECT * FROM Foo INNER JOIN Bar ON Foo.id = Bar.id";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join node ->  join constraint node -> build
         let actual = table("Foo")
@@ -164,7 +164,7 @@ mod tests {
             .on("Foo.id = B.id")
             .build();
         let expected = "SELECT * FROM Foo INNER JOIN Bar B ON Foo.id = B.id";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join node -> join constraint node -> build
         let actual = table("Foo")
@@ -173,7 +173,7 @@ mod tests {
             .on("Foo.id = Bar.id")
             .build();
         let expected = "SELECT * FROM Foo LEFT OUTER JOIN Bar ON Foo.id = Bar.id";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join node -> join constraint node -> build
         let actual = table("Foo")
@@ -182,7 +182,7 @@ mod tests {
             .on("Foo.id = b.id")
             .build();
         let expected = "SELECT * FROM Foo LEFT OUTER JOIN Bar b ON Foo.id = b.id";
-        test(actual, expected);
+        test(&actual, expected);
 
         // hash join node -> join constraint node -> build
         let actual = table("Player")
@@ -246,6 +246,6 @@ mod tests {
                 INNER JOIN Bar ON Foo.id = Bar.id
             ) Sub
             ";
-        test(actual, expected);
+        test(&actual, expected);
     }
 }

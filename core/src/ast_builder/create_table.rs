@@ -71,7 +71,7 @@ mod tests {
             .add_column("name TEXT")
             .build();
         let expected = "CREATE TABLE Foo (id INTEGER NULL, num INTEGER, name TEXT)";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = table("Foo")
             .create_table_if_not_exists()
@@ -79,13 +79,13 @@ mod tests {
             .add_column("name TEXT")
             .build();
         let expected = "CREATE TABLE IF NOT EXISTS Foo (id UUID UNIQUE, name TEXT)";
-        test(actual, expected);
+        test(&actual, expected);
     }
 
     #[test]
     fn create_table_without_column() {
         let actual = table("Foo").create_table().build();
         let expected = "CREATE TABLE Foo";
-        test(actual, expected);
+        test(&actual, expected);
     }
 }
