@@ -7,6 +7,7 @@ use {
         store::DataRow,
     },
     rusqlite::{Row, types::Value as SqlValue},
+    rust_decimal::{Decimal, prelude::FromPrimitive},
     serde_json::Value as JsonValue,
     std::{collections::BTreeMap, convert::TryFrom, convert::TryInto},
     uuid::Uuid,
@@ -105,6 +106,10 @@ fn decode_sql_value(value: SqlValue, data_type: &DataType) -> Result<Value> {
             DataType::Int16 => Ok(Value::I16(v as i16)),
             DataType::Int32 => Ok(Value::I32(v as i32)),
             DataType::Int => Ok(Value::I64(v)),
+            DataType::Decimal => Ok(Value::Decimal(Decimal::from_i128_with_scale(
+                i128::from(v),
+                0,
+            ))),
             DataType::Time => Ok(Value::Time(
                 chrono::NaiveTime::from_num_seconds_from_midnight_opt(v as u32, 0)
                     .unwrap_or_default(),
@@ -113,8 +118,8 @@ fn decode_sql_value(value: SqlValue, data_type: &DataType) -> Result<Value> {
             | DataType::Uint16
             | DataType::Uint32
             | DataType::Uint64
-            | DataType::Uint128
-            | DataType::Int128 => Value::I64(v).cast(data_type),
+            | DataType::Int128
+            | DataType::Uint128 => Value::I64(v).cast(data_type),
             other => Err(GlueError::StorageMsg(format!(
                 "cannot decode INTEGER value for {other:?}"
             ))),
@@ -122,6 +127,9 @@ fn decode_sql_value(value: SqlValue, data_type: &DataType) -> Result<Value> {
         SqlValue::Real(v) => match data_type {
             DataType::Float32 => Ok(Value::F32(v as f32)),
             DataType::Float => Ok(Value::F64(v)),
+            DataType::Decimal => Decimal::from_f64(v).map(Value::Decimal).ok_or_else(|| {
+                GlueError::StorageMsg(format!("cannot convert REAL {v} to Decimal"))
+            }),
             other => Err(GlueError::StorageMsg(format!(
                 "cannot decode REAL value for {other:?}"
             ))),
