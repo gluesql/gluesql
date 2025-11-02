@@ -209,15 +209,12 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 .await?
                 .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
 
-            let all_columns = column_defs.as_deref().map(|columns| {
-                columns
-                    .iter()
-                    .map(|col_def| col_def.name.to_owned())
-                    .collect()
-            });
+            let all_columns = column_defs
+                .as_deref()
+                .map(|columns| columns.iter().map(|col_def| col_def.name.clone()).collect());
             let columns_to_update: Vec<String> = assignments
                 .iter()
-                .map(|assignment| assignment.id.to_owned())
+                .map(|assignment| assignment.id.clone())
                 .collect();
 
             let update = Update::new(storage, table_name, assignments, column_defs.as_deref())?;

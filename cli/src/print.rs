@@ -30,7 +30,7 @@ impl PrintOption {
         if tabular {
             self.tabular = tabular;
             self.colsep("|".into());
-            self.colwrap("".into());
+            self.colwrap(String::new());
             self.heading(true);
         } else {
             self.tabular = tabular
@@ -77,7 +77,7 @@ impl Default for PrintOption {
         Self {
             tabular: true,
             colsep: "|".into(),
-            colwrap: "".into(),
+            colwrap: String::new(),
             heading: true,
         }
     }

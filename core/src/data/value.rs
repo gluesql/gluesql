@@ -96,13 +96,11 @@ impl Value {
             (F64(l), _) => Tribool::from(l == other),
             (Date(l), Timestamp(r)) => Tribool::from(
                 l.and_hms_opt(0, 0, 0)
-                    .map(|date_time| &date_time == r)
-                    .unwrap_or(false),
+                    .is_some_and(|date_time| &date_time == r),
             ),
             (Timestamp(l), Date(r)) => Tribool::from(
                 r.and_hms_opt(0, 0, 0)
-                    .map(|date_time| l == &date_time)
-                    .unwrap_or(false),
+                    .is_some_and(|date_time| l == &date_time),
             ),
             _ => Tribool::from(self == other),
         }
@@ -978,10 +976,7 @@ fn str_position(from_str: &str, sub_str: &str) -> usize {
     if from_str.is_empty() || sub_str.is_empty() {
         return 0;
     }
-    from_str
-        .find(sub_str)
-        .map(|position| position + 1)
-        .unwrap_or(0)
+    from_str.find(sub_str).map_or(0, |position| position + 1)
 }
 
 #[cfg(test)]
@@ -2547,7 +2542,7 @@ mod tests {
                 .unwrap(),
         );
 
-        cast!(Str("2021-05-01".to_owned()) => Date, date.to_owned());
+        cast!(Str("2021-05-01".to_owned()) => Date, date.clone());
         cast!(timestamp                    => Date, date);
         cast!(Null                         => Date, Null);
 
@@ -2881,7 +2876,7 @@ mod tests {
     fn position() {
         let str1 = Str("ramen".to_owned());
         let str2 = Str("men".to_owned());
-        let empty_str = Str("".to_owned());
+        let empty_str = Str(String::new());
 
         assert_eq!(str1.position(&str2), Ok(I64(3)));
         assert_eq!(str2.position(&str1), Ok(I64(0)));

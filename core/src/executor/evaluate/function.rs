@@ -758,18 +758,17 @@ pub fn greatest(name: String, exprs: Vec<Evaluated<'_>>) -> Result<Evaluated<'_>
     exprs
         .into_iter()
         .try_fold(None, |greatest, expr| -> Result<_> {
-            let greatest = match greatest {
-                Some(greatest) => greatest,
-                None => return Ok(Some(expr)),
+            let Some(greatest) = greatest else {
+                return Ok(Some(expr));
             };
 
             match greatest.evaluate_cmp(&expr) {
                 Some(std::cmp::Ordering::Less) => Ok(Some(expr)),
                 Some(_) => Ok(Some(greatest)),
-                None => Err(EvaluateError::NonComparableArgumentError(name.to_owned()).into()),
+                None => Err(EvaluateError::NonComparableArgumentError(name.clone()).into()),
             }
         })?
-        .ok_or(EvaluateError::FunctionRequiresAtLeastOneArgument(name.to_owned()).into())
+        .ok_or(EvaluateError::FunctionRequiresAtLeastOneArgument(name.clone()).into())
 }
 
 pub fn format<'a>(
@@ -1052,11 +1051,8 @@ pub fn splice<'a>(
     end_index: Evaluated<'_>,
     values: Option<Evaluated<'_>>,
 ) -> ControlFlow<Evaluated<'a>> {
-    let list_data = match list_data.try_into().break_if_null()? {
-        Value::List(list) => list,
-        _ => {
-            return Err(EvaluateError::ListTypeRequired.into()).into_control_flow();
-        }
+    let Value::List(list_data) = list_data.try_into().break_if_null()? else {
+        return Err(EvaluateError::ListTypeRequired.into()).into_control_flow();
     };
 
     let begin_index = eval_to_int(&name, begin_index)?.max(0);

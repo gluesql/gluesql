@@ -100,9 +100,8 @@ pub fn between<'a>(
 }
 
 pub fn array_index<'a>(obj: Evaluated<'a>, indexes: Vec<Evaluated<'a>>) -> Result<Evaluated<'a>> {
-    let value = match obj {
-        Evaluated::Value(value) => value,
-        _ => return Err(EvaluateError::MapOrListTypeRequired.into()),
+    let Evaluated::Value(value) = obj else {
+        return Err(EvaluateError::MapOrListTypeRequired.into());
     };
     let indexes = indexes
         .into_iter()

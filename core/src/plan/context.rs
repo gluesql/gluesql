@@ -44,8 +44,7 @@ impl<'a> Context<'a> {
             Self::Data { alias, .. } if alias == target => true,
             Self::Data { next, .. } => next
                 .as_ref()
-                .map(|next| next.contains_alias(target))
-                .unwrap_or(false),
+                .is_some_and(|next| next.contains_alias(target)),
             Self::Bridge { left, right } => {
                 left.contains_alias(target) || right.contains_alias(target)
             }
@@ -57,8 +56,7 @@ impl<'a> Context<'a> {
             Self::Data { columns, .. } if columns.iter().any(|column| column == &target) => true,
             Self::Data { next, .. } => next
                 .as_ref()
-                .map(|next| next.contains_column(target))
-                .unwrap_or(false),
+                .is_some_and(|next| next.contains_column(target)),
             Self::Bridge { left, right } => {
                 left.contains_column(target) || right.contains_column(target)
             }
@@ -72,8 +70,7 @@ impl<'a> Context<'a> {
             }
             Self::Data { next, .. } => next
                 .as_ref()
-                .map(|next| next.contains_aliased_column(target_alias, target_column))
-                .unwrap_or(false),
+                .is_some_and(|next| next.contains_aliased_column(target_alias, target_column)),
             Self::Bridge { left, right } => {
                 left.contains_aliased_column(target_alias, target_column)
                     || right.contains_aliased_column(target_alias, target_column)
@@ -89,8 +86,7 @@ impl<'a> Context<'a> {
             } if primary_key == &target_column => true,
             Self::Data { next, .. } => next
                 .as_ref()
-                .map(|next| next.contains_primary_key(target_column))
-                .unwrap_or(false),
+                .is_some_and(|next| next.contains_primary_key(target_column)),
             Self::Bridge { left, right } => {
                 left.contains_primary_key(target_column)
                     || right.contains_primary_key(target_column)

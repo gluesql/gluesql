@@ -110,8 +110,8 @@ impl<'a> TryFrom<ExprNode<'a>> for Expr {
 
                 Ok(match idents.as_slice() {
                     [alias, ident] => Expr::CompoundIdentifier {
-                        alias: alias.to_string(),
-                        ident: ident.to_string(),
+                        alias: (*alias).to_owned(),
+                        ident: (*ident).to_owned(),
                     },
                     _ => Expr::Identifier(value.into_owned()),
                 })

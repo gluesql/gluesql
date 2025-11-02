@@ -180,13 +180,10 @@ impl IndexMut for SledStorage {
                 .into_iter()
                 .partition(|index| index.name == index_name);
 
-            let index = match index.into_iter().next() {
-                Some(index) => index,
-                None => {
-                    return Err(ConflictableTransactionError::Abort(
-                        IndexError::IndexNameDoesNotExist(index_name.to_owned()).into(),
-                    ));
-                }
+            let Some(index) = index.into_iter().next() else {
+                return Err(ConflictableTransactionError::Abort(
+                    IndexError::IndexNameDoesNotExist(index_name.to_owned()).into(),
+                ));
             };
 
             let schema = Schema {

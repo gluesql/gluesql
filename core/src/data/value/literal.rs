@@ -31,7 +31,7 @@ impl TryFrom<&Literal<'_>> for Value {
                 .ok_or_else(|| ValueError::FailedToParseNumber.into()),
             Literal::Boolean(v) => Ok(Value::Bool(*v)),
             Literal::Text(v) => Ok(Value::Str(v.as_ref().to_owned())),
-            Literal::Bytea(v) => Ok(Value::Bytea(v.to_vec())),
+            Literal::Bytea(v) => Ok(Value::Bytea(v.clone())),
             Literal::Null => Ok(Value::Null),
         }
     }
@@ -52,41 +52,37 @@ impl Value {
     pub fn evaluate_eq_with_literal(&self, other: &Literal<'_>) -> Tribool {
         match (self, other) {
             (Value::Bool(l), Literal::Boolean(r)) => Tribool::from(l == r),
-            (Value::I8(l), Literal::Number(r)) => {
-                Tribool::from(r.to_i8().map(|r| *l == r).unwrap_or(false))
-            }
+            (Value::I8(l), Literal::Number(r)) => Tribool::from(r.to_i8().is_some_and(|r| *l == r)),
             (Value::I16(l), Literal::Number(r)) => {
-                Tribool::from(r.to_i16().map(|r| *l == r).unwrap_or(false))
+                Tribool::from(r.to_i16().is_some_and(|r| *l == r))
             }
             (Value::I32(l), Literal::Number(r)) => {
-                Tribool::from(r.to_i32().map(|r| *l == r).unwrap_or(false))
+                Tribool::from(r.to_i32().is_some_and(|r| *l == r))
             }
             (Value::I64(l), Literal::Number(r)) => {
-                Tribool::from(r.to_i64().map(|r| *l == r).unwrap_or(false))
+                Tribool::from(r.to_i64().is_some_and(|r| *l == r))
             }
             (Value::I128(l), Literal::Number(r)) => {
-                Tribool::from(r.to_i128().map(|r| *l == r).unwrap_or(false))
+                Tribool::from(r.to_i128().is_some_and(|r| *l == r))
             }
-            (Value::U8(l), Literal::Number(r)) => {
-                Tribool::from(r.to_u8().map(|r| *l == r).unwrap_or(false))
-            }
+            (Value::U8(l), Literal::Number(r)) => Tribool::from(r.to_u8().is_some_and(|r| *l == r)),
             (Value::U16(l), Literal::Number(r)) => {
-                Tribool::from(r.to_u16().map(|r| *l == r).unwrap_or(false))
+                Tribool::from(r.to_u16().is_some_and(|r| *l == r))
             }
             (Value::U32(l), Literal::Number(r)) => {
-                Tribool::from(r.to_u32().map(|r| *l == r).unwrap_or(false))
+                Tribool::from(r.to_u32().is_some_and(|r| *l == r))
             }
             (Value::U64(l), Literal::Number(r)) => {
-                Tribool::from(r.to_u64().map(|r| *l == r).unwrap_or(false))
+                Tribool::from(r.to_u64().is_some_and(|r| *l == r))
             }
             (Value::U128(l), Literal::Number(r)) => {
-                Tribool::from(r.to_u128().map(|r| *l == r).unwrap_or(false))
+                Tribool::from(r.to_u128().is_some_and(|r| *l == r))
             }
             (Value::F32(l), Literal::Number(r)) => {
-                Tribool::from(r.to_f32().map(|r| *l == r).unwrap_or(false))
+                Tribool::from(r.to_f32().is_some_and(|r| *l == r))
             }
             (Value::F64(l), Literal::Number(r)) => {
-                Tribool::from(r.to_f64().map(|r| *l == r).unwrap_or(false))
+                Tribool::from(r.to_f64().is_some_and(|r| *l == r))
             }
             (Value::Str(l), Literal::Text(r)) => Tribool::from(l == r.as_ref()),
             (Value::Bytea(l), Literal::Bytea(r)) => Tribool::from(l == r),
@@ -211,7 +207,7 @@ impl Value {
                 .map(Value::F64)
                 .ok_or_else(|| ValueError::UnreachableNumberParsing.into()),
             (DataType::Text, Literal::Text(v)) => Ok(Value::Str(v.to_string())),
-            (DataType::Bytea, Literal::Bytea(v)) => Ok(Value::Bytea(v.to_vec())),
+            (DataType::Bytea, Literal::Bytea(v)) => Ok(Value::Bytea(v.clone())),
             (DataType::Bytea, Literal::Text(v)) => hex::decode(v.as_ref())
                 .map(Value::Bytea)
                 .map_err(|_| ValueError::FailedToParseHexString(v.to_string()).into()),

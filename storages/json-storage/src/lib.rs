@@ -149,9 +149,7 @@ impl JsonStorage {
             let json = json?;
             let get_index_key = || index.try_into().map(Key::I64).map_storage_err();
 
-            let column_defs = if let Some(column_defs) = &schema2.column_defs {
-                column_defs
-            } else {
+            let Some(column_defs) = &schema2.column_defs else {
                 let key = get_index_key()?;
                 let row = DataRow::Map(json);
 

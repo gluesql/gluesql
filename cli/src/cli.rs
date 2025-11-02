@@ -108,7 +108,6 @@ where
             match command {
                 Command::Help => {
                     self.print.help()?;
-                    continue;
                 }
                 Command::Quit => {
                     println!("bye\n");

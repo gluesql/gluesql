@@ -215,14 +215,11 @@ fn check(expr: &Expr) -> bool {
             when_then,
             else_result,
         } => {
-            operand.as_ref().map(|expr| check(expr)).unwrap_or(false)
+            operand.as_ref().is_some_and(|expr| check(expr))
                 || when_then
                     .iter()
                     .any(|(when, then)| check(when) || check(then))
-                || else_result
-                    .as_ref()
-                    .map(|expr| check(expr))
-                    .unwrap_or(false)
+                || else_result.as_ref().is_some_and(|expr| check(expr))
         }
         Expr::Aggregate(_) => true,
         _ => false,

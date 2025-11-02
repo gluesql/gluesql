@@ -26,8 +26,8 @@ test_case!(ltrim_rtrim, {
             Ok(select!(
                 "test"
                 Str;
-                "".to_owned();
-                "".to_owned()
+                String::new();
+                String::new()
             )),
         ),
         (
@@ -89,8 +89,8 @@ test_case!(ltrim_rtrim, {
             Ok(select!(
                 "test"
                 Str;
-                "".to_owned();
-                "".to_owned()
+                String::new();
+                String::new()
             )),
         ),
         (

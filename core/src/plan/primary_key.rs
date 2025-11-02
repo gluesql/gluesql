@@ -69,11 +69,10 @@ impl<'a> PrimaryKeyPlanner<'a> {
         let (index, selection) = select
             .selection
             .map(|expr| self.expr(outer_context, current_context, expr))
-            .map(|primary_key| match primary_key {
+            .map_or((None, None), |primary_key| match primary_key {
                 PrimaryKey::Found { index_item, expr } => (Some(index_item), expr),
                 PrimaryKey::NotFound(expr) => (None, Some(expr)),
-            })
-            .unwrap_or((None, None));
+            });
 
         if let TableFactor::Table {
             name,
@@ -106,15 +105,13 @@ impl<'a> PrimaryKeyPlanner<'a> {
         expr: Expr,
     ) -> PrimaryKey {
         let check_primary_key = |key: &Expr| {
-            let key = match key {
-                Expr::Identifier(ident) | Expr::CompoundIdentifier { ident, .. } => ident,
-                _ => return false,
+            let (Expr::Identifier(key) | Expr::CompoundIdentifier { ident: key, .. }) = key else {
+                return false;
             };
 
             current_context
                 .as_ref()
-                .map(|context| context.contains_primary_key(key))
-                .unwrap_or(false)
+                .is_some_and(|context| context.contains_primary_key(key))
         };
 
         match expr {

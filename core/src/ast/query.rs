@@ -162,7 +162,7 @@ impl Query {
         } = self;
 
         let order_by = if order_by.is_empty() {
-            "".to_owned()
+            String::new()
         } else {
             format!(
                 "ORDER BY {}",
@@ -175,12 +175,12 @@ impl Query {
 
         let limit = match limit {
             Some(expr) => format!("LIMIT {}", to_sql(expr)),
-            _ => "".to_owned(),
+            _ => String::new(),
         };
 
         let offset = match offset {
             Some(expr) => format!("OFFSET {}", to_sql(expr)),
-            _ => "".to_owned(),
+            _ => String::new(),
         };
 
         let string = [order_by, limit, offset]
@@ -256,18 +256,18 @@ impl Select {
 
         let selection = match selection {
             Some(expr) => format!("WHERE {}", to_sql(expr)),
-            None => "".to_owned(),
+            None => String::new(),
         };
 
         let group_by = if group_by.is_empty() {
-            "".to_owned()
+            String::new()
         } else {
             format!("GROUP BY {}", group_by.iter().map(to_sql).join(", "))
         };
 
         let having = match having {
             Some(having) => format!("HAVING {}", to_sql(having)),
-            None => "".to_owned(),
+            None => String::new(),
         };
 
         let condition = [selection, group_by, having]
@@ -512,7 +512,7 @@ impl JoinExecutor {
         };
 
         match self {
-            JoinExecutor::NestedLoop => "".to_owned(),
+            JoinExecutor::NestedLoop => String::new(),
             JoinExecutor::Hash {
                 key_expr,
                 value_expr,
@@ -545,7 +545,7 @@ impl JoinConstraint {
         match (self, quoted) {
             (JoinConstraint::On(expr), true) => expr.to_sql(),
             (JoinConstraint::On(expr), false) => expr.to_sql_unquoted(),
-            (JoinConstraint::None, _) => "".to_owned(),
+            (JoinConstraint::None, _) => String::new(),
         }
     }
 }

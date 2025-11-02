@@ -122,11 +122,8 @@ impl Index for SledStorage {
             let rows = keys
                 .into_iter()
                 .map(move |key_snapshot| -> Result<_> {
-                    let key = match key_snapshot.extract(txid, lock_txid) {
-                        Some(key) => key,
-                        None => {
-                            return Ok(None);
-                        }
+                    let Some(key) = key_snapshot.extract(txid, lock_txid) else {
+                        return Ok(None);
                     };
 
                     let value = tree2

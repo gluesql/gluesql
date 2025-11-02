@@ -38,7 +38,7 @@ impl<'a> IndexSync<'a> {
         let columns = column_defs.as_ref().map(|column_defs| {
             column_defs
                 .iter()
-                .map(|column_def| column_def.name.to_owned())
+                .map(|column_def| column_def.name.clone())
                 .collect::<Vec<_>>()
         });
 

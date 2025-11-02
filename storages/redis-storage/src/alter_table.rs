@@ -86,7 +86,7 @@ impl AlterTable for RedisStorage {
                 .iter()
                 .any(|ColumnDef { name, .. }| name == &column_def.name)
             {
-                let adding_column = column_def.name.to_owned();
+                let adding_column = column_def.name.clone();
 
                 return Err(AlterTableError::AlreadyExistingColumn(adding_column).into());
             }

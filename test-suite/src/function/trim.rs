@@ -144,7 +144,7 @@ test_case!(trim, {
             Ok(select!(
                 Case1               | Case2         | Case3
                 Value::Str          | Value::Str    | Value::Str;
-                "potato".to_owned()   "".to_owned()   "".to_owned()
+                "potato".to_owned()   String::new()   String::new()
             )),
         ),
         (
