@@ -354,11 +354,12 @@ pub fn hex<'a>(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> 
             Continue(Evaluated::Value(Value::Str(result)))
         }
         Value::Str(string) => {
-            let result = string
-                .as_bytes()
-                .iter()
-                .map(|b| format!("{b:02X}"))
-                .collect::<String>();
+            use std::fmt::Write;
+
+            let result = string.as_bytes().iter().fold(String::new(), |mut acc, b| {
+                let _ = write!(acc, "{b:02X}");
+                acc
+            });
 
             Continue(Evaluated::Value(Value::Str(result)))
         }
