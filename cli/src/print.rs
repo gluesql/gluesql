@@ -124,39 +124,39 @@ impl<'a, W: Write> Print<W> {
             Payload::Update(n) => affected(*n, Row, "updated")?,
             Payload::ShowVariable(PayloadVariable::Version(v)) => self.writeln(format!("v{v}"))?,
             Payload::ShowVariable(PayloadVariable::Tables(names)) => {
-                let mut table = self.get_table(["tables"]);
+                let mut table = Self::get_table(["tables"]);
                 for name in names {
                     table.add_record([name]);
                 }
-                let table = self.build_table(table);
+                let table = Self::build_table(table);
                 self.writeln(table)?;
             }
             Payload::ShowVariable(PayloadVariable::Functions(names)) => {
-                let mut table = self.get_table(["functions"]);
+                let mut table = Self::get_table(["functions"]);
                 for name in names {
                     table.add_record([name]);
                 }
-                let table = self.build_table(table);
+                let table = Self::build_table(table);
                 self.writeln(table)?;
             }
             Payload::ShowColumns(columns) => {
-                let mut table = self.get_table(vec!["Field", "Type"]);
+                let mut table = Self::get_table(vec!["Field", "Type"]);
                 for (field, field_type) in columns {
                     table.add_record([field, &field_type.to_string()]);
                 }
-                let table = self.build_table(table);
+                let table = Self::build_table(table);
                 self.writeln(table)?;
             }
             Payload::Select { labels, rows } => match &self.option.tabular {
                 true => {
                     let labels = labels.iter().map(AsRef::as_ref);
-                    let mut table = self.get_table(labels);
+                    let mut table = Self::get_table(labels);
                     for row in rows {
                         let row: Vec<String> = row.iter().map(Into::into).collect();
 
                         table.add_record(row);
                     }
-                    let table = self.build_table(table);
+                    let table = Self::build_table(table);
                     self.writeln(table)?;
                 }
                 false => {
@@ -177,7 +177,7 @@ impl<'a, W: Write> Print<W> {
 
                 match &self.option.tabular {
                     true => {
-                        let mut table = self.get_table(labels.clone());
+                        let mut table = Self::get_table(labels.clone());
                         for row in rows {
                             let row = labels
                                 .iter()
@@ -186,7 +186,7 @@ impl<'a, W: Write> Print<W> {
 
                             table.add_record(row);
                         }
-                        let table = self.build_table(table);
+                        let table = Self::build_table(table);
                         self.writeln(table)?;
                     }
                     false => {
@@ -275,11 +275,11 @@ impl<'a, W: Write> Print<W> {
             [".run ", "execute last command"],
         ];
 
-        let mut table = self.get_table(HEADER);
+        let mut table = Self::get_table(HEADER);
         for row in CONTENT {
             table.add_record(row);
         }
-        let table = self.build_table(table);
+        let table = Self::build_table(table);
 
         writeln!(self.output, "{table}\n")
     }
@@ -295,14 +295,14 @@ impl<'a, W: Write> Print<W> {
         self.spool_file = None;
     }
 
-    fn get_table<T: IntoIterator<Item = &'a str>>(&self, headers: T) -> Builder {
+    fn get_table<T: IntoIterator<Item = &'a str>>(headers: T) -> Builder {
         let mut table = Builder::default();
         table.set_columns(headers);
 
         table
     }
 
-    fn build_table(&self, builder: Builder) -> Table {
+    fn build_table(builder: Builder) -> Table {
         builder.build().with(Style::markdown())
     }
 
