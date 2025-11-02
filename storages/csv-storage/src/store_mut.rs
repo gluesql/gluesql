@@ -180,7 +180,7 @@ impl CsvStorage {
                 types_wtr.write_record(&data_types).map_storage_err()?;
             }
 
-            rename(tmp_types_path, self.types_path(table_name)).map_storage_err()?
+            rename(tmp_types_path, self.types_path(table_name)).map_storage_err()?;
         }
 
         rename(tmp_data_path, self.data_path(table_name)).map_storage_err()

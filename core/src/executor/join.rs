@@ -119,6 +119,13 @@ async fn join<'a, T: GStore>(
         let join_executor = Arc::clone(&join_executor);
 
         async move {
+            #[derive(futures_enum::Stream)]
+            enum Rows<I1, I2, I3> {
+                NestedLoop(I1),
+                Hash(I2),
+                Empty(I3),
+            }
+
             let filter_context = match filter_context {
                 Some(filter_context) => Arc::new(RowContext::concat(
                     Arc::clone(&project_context),
@@ -127,13 +134,6 @@ async fn join<'a, T: GStore>(
                 None => Arc::clone(&project_context),
             };
             let filter_context = Some(filter_context);
-
-            #[derive(futures_enum::Stream)]
-            enum Rows<I1, I2, I3> {
-                NestedLoop(I1),
-                Hash(I2),
-                Empty(I3),
-            }
             let rows = match join_executor.as_ref() {
                 JoinExecutor::NestedLoop => {
                     let rows = fetch_relation_rows(storage, relation, &filter_context)
@@ -281,13 +281,13 @@ impl<'a> JoinExecutor<'a> {
     }
 }
 
-async fn check_where_clause<'a, 'b, T: GStore>(
+async fn check_where_clause<'a, T: GStore>(
     storage: &'a T,
     table_alias: &'a str,
     filter_context: Option<Arc<RowContext<'a>>>,
     project_context: Option<Arc<RowContext<'a>>>,
     where_clause: Option<&'a Expr>,
-    row: Cow<'b, Row>,
+    row: Cow<'_, Row>,
 ) -> Result<Option<Arc<RowContext<'a>>>> {
     let filter_context = RowContext::new(table_alias, Cow::Borrowed(&row), filter_context);
     let filter_context = Some(Arc::new(filter_context));

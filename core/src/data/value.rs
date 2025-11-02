@@ -312,27 +312,13 @@ impl Value {
             (Timestamp(a), Interval(b)) => b.add_timestamp(a).map(Timestamp),
             (Time(a), Interval(b)) => b.add_time(a).map(Time),
             (Interval(a), Interval(b)) => a.add(b).map(Interval),
-            (Null, I8(_))
-            | (Null, I16(_))
-            | (Null, I32(_))
-            | (Null, I64(_))
-            | (Null, I128(_))
-            | (Null, U8(_))
-            | (Null, U16(_))
-            | (Null, U32(_))
-            | (Null, U64(_))
-            | (Null, U128(_))
-            | (Null, F32(_))
-            | (Null, F64(_))
-            | (Null, Decimal(_))
-            | (Null, Date(_))
-            | (Null, Timestamp(_))
-            | (Null, Interval(_))
-            | (Date(_), Null)
-            | (Timestamp(_), Null)
-            | (Time(_), Null)
-            | (Interval(_), Null)
-            | (Null, Null) => Ok(Null),
+            (
+                Null,
+                I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | U8(_) | U16(_) | U32(_) | U64(_)
+                | U128(_) | F32(_) | F64(_) | Decimal(_) | Date(_) | Timestamp(_) | Interval(_)
+                | Null,
+            )
+            | (Date(_) | Timestamp(_) | Time(_) | Interval(_), Null) => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: self.clone(),
                 operator: NumericBinaryOperator::Add,
@@ -378,28 +364,13 @@ impl Value {
                 .map(|v| Interval(I::microseconds(v))),
             (Time(a), Interval(b)) => b.subtract_from_time(a).map(Time),
             (Interval(a), Interval(b)) => a.subtract(b).map(Interval),
-            (Null, I8(_))
-            | (Null, I16(_))
-            | (Null, I32(_))
-            | (Null, I64(_))
-            | (Null, I128(_))
-            | (Null, U8(_))
-            | (Null, U16(_))
-            | (Null, U32(_))
-            | (Null, U64(_))
-            | (Null, U128(_))
-            | (Null, F32(_))
-            | (Null, F64(_))
-            | (Null, Decimal(_))
-            | (Null, Date(_))
-            | (Null, Timestamp(_))
-            | (Null, Time(_))
-            | (Null, Interval(_))
-            | (Date(_), Null)
-            | (Timestamp(_), Null)
-            | (Time(_), Null)
-            | (Interval(_), Null)
-            | (Null, Null) => Ok(Null),
+            (
+                Null,
+                I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | U8(_) | U16(_) | U32(_) | U64(_)
+                | U128(_) | F32(_) | F64(_) | Decimal(_) | Date(_) | Timestamp(_) | Time(_)
+                | Interval(_) | Null,
+            )
+            | (Date(_) | Timestamp(_) | Time(_) | Interval(_), Null) => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: self.clone(),
                 operator: NumericBinaryOperator::Subtract,
@@ -433,22 +404,12 @@ impl Value {
             (Interval(a), I128(b)) => Ok(Interval(*a * *b)),
             (Interval(a), F32(b)) => Ok(Interval(*a * *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a * *b)),
-            (Null, I8(_))
-            | (Null, I16(_))
-            | (Null, I32(_))
-            | (Null, I64(_))
-            | (Null, I128(_))
-            | (Null, U8(_))
-            | (Null, U16(_))
-            | (Null, U32(_))
-            | (Null, U64(_))
-            | (Null, U128(_))
-            | (Null, F32(_))
-            | (Null, F64(_))
-            | (Null, Decimal(_))
-            | (Null, Interval(_))
-            | (Interval(_), Null)
-            | (Null, Null) => Ok(Null),
+            (
+                Null,
+                I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | U8(_) | U16(_) | U32(_) | U64(_)
+                | U128(_) | F32(_) | F64(_) | Decimal(_) | Interval(_) | Null,
+            )
+            | (Interval(_), Null) => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: self.clone(),
                 operator: NumericBinaryOperator::Multiply,
@@ -491,21 +452,12 @@ impl Value {
             (Interval(a), U128(b)) => Ok(Interval(*a / *b)),
             (Interval(a), F32(b)) => Ok(Interval(*a / *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a / *b)),
-            (Null, I8(_))
-            | (Null, I16(_))
-            | (Null, I32(_))
-            | (Null, I64(_))
-            | (Null, I128(_))
-            | (Null, U8(_))
-            | (Null, U16(_))
-            | (Null, U32(_))
-            | (Null, U64(_))
-            | (Null, U128(_))
-            | (Null, F32(_))
-            | (Null, F64(_))
-            | (Null, Decimal(_))
-            | (Interval(_), Null)
-            | (Null, Null) => Ok(Null),
+            (
+                Null,
+                I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | U8(_) | U16(_) | U32(_) | U64(_)
+                | U128(_) | F32(_) | F64(_) | Decimal(_) | Null,
+            )
+            | (Interval(_), Null) => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: self.clone(),
                 operator: NumericBinaryOperator::Divide,
@@ -529,27 +481,16 @@ impl Value {
             (U32(a), U32(b)) => Ok(U32(a & b)),
             (U64(a), U64(b)) => Ok(U64(a & b)),
             (U128(a), U128(b)) => Ok(U128(a & b)),
-            (Null, I8(_))
-            | (Null, I16(_))
-            | (Null, I32(_))
-            | (Null, I64(_))
-            | (Null, I128(_))
-            | (Null, U8(_))
-            | (Null, U16(_))
-            | (Null, U32(_))
-            | (Null, U64(_))
-            | (Null, U128(_))
-            | (Null, Null)
-            | (I8(_), Null)
-            | (I16(_), Null)
-            | (I32(_), Null)
-            | (I64(_), Null)
-            | (I128(_), Null)
-            | (U8(_), Null)
-            | (U16(_), Null)
-            | (U32(_), Null)
-            | (U64(_), Null)
-            | (U128(_), Null) => Ok(Null),
+            (
+                Null,
+                I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | U8(_) | U16(_) | U32(_) | U64(_)
+                | U128(_) | Null,
+            )
+            | (
+                I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | U8(_) | U16(_) | U32(_) | U64(_)
+                | U128(_),
+                Null,
+            ) => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: self.clone(),
                 rhs: other.clone(),
@@ -580,20 +521,11 @@ impl Value {
             (F32(a), _) => a.try_modulo(other),
             (F64(a), _) => a.try_modulo(other),
             (Decimal(a), _) => a.try_modulo(other),
-            (Null, I8(_))
-            | (Null, I16(_))
-            | (Null, I32(_))
-            | (Null, I64(_))
-            | (Null, I128(_))
-            | (Null, U8(_))
-            | (Null, U16(_))
-            | (Null, U32(_))
-            | (Null, U64(_))
-            | (Null, U128(_))
-            | (Null, F32(_))
-            | (Null, F64(_))
-            | (Null, Decimal(_))
-            | (Null, Null) => Ok(Null),
+            (
+                Null,
+                I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | U8(_) | U16(_) | U32(_) | U64(_)
+                | U128(_) | F32(_) | F64(_) | Decimal(_) | Null,
+            ) => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: self.clone(),
                 operator: NumericBinaryOperator::Modulo,
@@ -720,7 +652,7 @@ impl Value {
                 return Err(ValueError::FactorialOnNegativeNumeric.into());
             }
 
-            (1_i128..(a + 1_i128))
+            (1_i128..=a)
                 .try_fold(1_i128, |mul, x| mul.checked_mul(x))
                 .ok_or_else(|| ValueError::FactorialOverflow.into())
         }
@@ -2579,8 +2511,8 @@ mod tests {
 
         // List
         cast!(
-            Str(r#"[1, 2, 3]"#.to_owned()) => List,
-            Value::parse_json_list(r#"[1, 2, 3]"#).unwrap()
+            Str(r"[1, 2, 3]".to_owned()) => List,
+            Value::parse_json_list(r"[1, 2, 3]").unwrap()
         );
 
         // Casting error
@@ -2647,7 +2579,7 @@ mod tests {
         let uuid = Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap());
         let point = Point(Point::new(1.0, 2.0));
         let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();
-        let list = Value::parse_json_list(r#"[ true ]"#).unwrap();
+        let list = Value::parse_json_list(r"[ true ]").unwrap();
         let bytea = Bytea(hex::decode("9001").unwrap());
         let inet = Inet(IpAddr::from_str("::1").unwrap());
 
@@ -2869,7 +2801,7 @@ mod tests {
                 operator: NumericBinaryOperator::BitwiseAnd
             }
             .into())
-        )
+        );
     }
 
     #[test]
@@ -2915,7 +2847,7 @@ mod tests {
         let uuid = Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap());
         let point = Point(Point::new(1.0, 2.0));
         let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();
-        let list = Value::parse_json_list(r#"[ true ]"#).unwrap();
+        let list = Value::parse_json_list(r"[ true ]").unwrap();
         let bytea = Bytea(hex::decode("9001").unwrap());
         let inet = Inet(IpAddr::from_str("::1").unwrap());
 
@@ -2970,6 +2902,11 @@ mod tests {
             t.hash(&mut hasher);
             hasher.finish()
         }
+
+        const CANONICAL_F64_NAN_BITS: u64 = 0x7ff8000000000000;
+        const CANONICAL_F32_NAN_BITS: u32 = 0x7fc00000;
+        const CANONICAL_F32_ZERO_BITS: u32 = 0;
+        const CANONICAL_F64_ZERO_BITS: u64 = 0;
 
         // Float zero normalization: 0.0 and -0.0 should hash the same
         let zero_pos_f32 = F32(0.0);
@@ -3065,10 +3002,6 @@ mod tests {
             assert_eq!(hash_value(&value_map1), hash_value(&value_map2));
         }
 
-        const CANONICAL_F64_NAN_BITS: u64 = 0x7ff8000000000000;
-        const CANONICAL_F32_NAN_BITS: u32 = 0x7fc00000;
-        const CANONICAL_F32_ZERO_BITS: u32 = 0;
-        const CANONICAL_F64_ZERO_BITS: u64 = 0;
         let point_test_cases = [
             (Point(Point::new(1.0, 2.0)), Point(Point::new(1.0, 2.0))),
             (Point(Point::new(0.0, 1.0)), Point(Point::new(-0.0, 1.0))),

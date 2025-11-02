@@ -10,20 +10,20 @@ test_case!(basic, {
     let g = get_tester!();
 
     let queries = [
-        r#"
+        r"
         CREATE TABLE Test (
             id INTEGER,
             num INTEGER,
             name TEXT
         )
-        "#,
-        r#"
+        ",
+        r"
         CREATE TABLE TestA (
             id INTEGER,
             num INTEGER,
             name TEXT
         )
-        "#,
+        ",
         "CREATE TABLE EmptyTest",
         "INSERT INTO Test (id, num, name) VALUES (1, 2, 'Hello')",
         "INSERT INTO Test (id, num, name) VALUES (1, 9, 'World')",

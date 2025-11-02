@@ -20,7 +20,7 @@ impl<'a> CreateIndexNode<'a> {
     }
 }
 
-impl<'a> Build for CreateIndexNode<'a> {
+impl Build for CreateIndexNode<'_> {
     fn build(self) -> Result<Statement> {
         let table_name = self.table_name;
         let name = self.name;

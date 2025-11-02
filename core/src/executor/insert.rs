@@ -115,6 +115,12 @@ async fn fetch_vec_rows<T: GStore>(
     source: &Query,
     foreign_keys: Vec<ForeignKey>,
 ) -> Result<RowsData> {
+    #[derive(futures_enum::Stream)]
+    enum Rows<I1, I2> {
+        Values(I1),
+        Select(I2),
+    }
+
     let labels = Arc::from(
         column_defs
             .iter()
@@ -123,12 +129,6 @@ async fn fetch_vec_rows<T: GStore>(
     );
     let column_defs = Arc::from(column_defs);
     let column_validation = ColumnValidation::All(&column_defs);
-
-    #[derive(futures_enum::Stream)]
-    enum Rows<I1, I2> {
-        Values(I1),
-        Select(I2),
-    }
 
     let rows = match &source.body {
         SetExpr::Values(Values(values_list)) => {
@@ -311,6 +311,12 @@ async fn fill_values(
     columns: &[String],
     values: &[Expr],
 ) -> Result<Vec<Value>> {
+    #[derive(iter_enum::Iterator)]
+    enum Columns<I1, I2> {
+        All(I1),
+        Specified(I2),
+    }
+
     if !columns.is_empty() && values.len() != columns.len() {
         return Err(InsertError::ColumnAndValuesNotMatched.into());
     } else if values.len() > column_defs.len() {
@@ -323,12 +329,6 @@ async fn fill_values(
             .any(|column_def| &&column_def.name == column_name)
     }) {
         return Err(InsertError::WrongColumnName(wrong_column_name.to_owned()).into());
-    }
-
-    #[derive(iter_enum::Iterator)]
-    enum Columns<I1, I2> {
-        All(I1),
-        Specified(I2),
     }
 
     let columns = if columns.is_empty() {

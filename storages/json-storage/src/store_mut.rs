@@ -64,7 +64,7 @@ impl StoreMut for JsonStorage {
 
             let file = File::create(&json_path).map_storage_err()?;
 
-            self.write(schema, rows, file, true)
+            Self::write(schema, rows, file, true)
         } else {
             let schema = self
                 .fetch_schema(table_name)?
@@ -75,7 +75,7 @@ impl StoreMut for JsonStorage {
                 .open(self.jsonl_path(&schema.table_name))
                 .map_storage_err()?;
 
-            self.write(schema, rows, file, false)
+            Self::write(schema, rows, file, false)
         }
     }
 
@@ -165,16 +165,10 @@ impl JsonStorage {
         };
         let file = File::create(path).map_storage_err()?;
 
-        self.write(schema, rows, file, is_json)
+        Self::write(schema, rows, file, is_json)
     }
 
-    fn write(
-        &mut self,
-        schema: Schema,
-        rows: Vec<DataRow>,
-        mut file: File,
-        is_json: bool,
-    ) -> Result<()> {
+    fn write(schema: Schema, rows: Vec<DataRow>, mut file: File, is_json: bool) -> Result<()> {
         let column_defs = schema.column_defs.unwrap_or_default();
         let labels = column_defs
             .iter()

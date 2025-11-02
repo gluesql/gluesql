@@ -7,24 +7,24 @@ test_case!(unique, {
     let g = get_tester!();
 
     let queries = [
-        r#"
+        r"
         CREATE TABLE TestA (
             id INTEGER UNIQUE,
             num INT
         )
-        "#,
-        r#"
+        ",
+        r"
         CREATE TABLE TestB (
             id INTEGER UNIQUE,
             num INT UNIQUE
         )
-        "#,
-        r#"
+        ",
+        r"
         CREATE TABLE TestC (
             id INTEGER NULL UNIQUE,
             num INT
         )
-        "#,
+        ",
         "INSERT INTO TestA VALUES (1, 1)",
         "INSERT INTO TestA VALUES (2, 1), (3, 1)",
         "INSERT INTO TestB VALUES (1, 1)",

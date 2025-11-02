@@ -102,15 +102,15 @@ impl JsonStorage {
     }
 
     fn scan_data(&self, table_name: &str) -> Result<(RowIter, Schema)> {
-        let schema = self
-            .fetch_schema(table_name)?
-            .map_storage_err(JsonStorageError::TableDoesNotExist)?;
-
         #[derive(Iterator)]
         enum Extension<I1, I2> {
             Json(I1),
             Jsonl(I2),
         }
+
+        let schema = self
+            .fetch_schema(table_name)?
+            .map_storage_err(JsonStorageError::TableDoesNotExist)?;
         let json_path = self.json_path(table_name);
         let jsons = if let Ok(json_file_str) = fs::read_to_string(json_path) {
             let value = serde_json::from_str(&json_file_str).map_err(|_| {

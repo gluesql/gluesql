@@ -44,7 +44,7 @@ test_case!(bytea, {
             .into()),
         ),
         (
-            r#"INSERT INTO Bytea VALUES (X'123')"#,
+            r"INSERT INTO Bytea VALUES (X'123')",
             Err(LiteralError::FailedToDecodeHexString("123".to_owned()).into()),
         ),
     ];

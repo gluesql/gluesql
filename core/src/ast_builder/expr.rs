@@ -286,13 +286,13 @@ impl<'a> From<&'a str> for ExprNode<'a> {
     }
 }
 
-impl<'a> From<String> for ExprNode<'a> {
+impl From<String> for ExprNode<'_> {
     fn from(expr: String) -> Self {
         ExprNode::SqlExpr(Cow::Owned(expr))
     }
 }
 
-impl<'a> From<i64> for ExprNode<'a> {
+impl From<i64> for ExprNode<'_> {
     fn from(n: i64) -> Self {
         ExprNode::Expr(Cow::Owned(Expr::Literal(AstLiteral::Number(
             BigDecimal::from(n),
@@ -300,7 +300,7 @@ impl<'a> From<i64> for ExprNode<'a> {
     }
 }
 
-impl<'a> From<bool> for ExprNode<'a> {
+impl From<bool> for ExprNode<'_> {
     fn from(b: bool) -> Self {
         ExprNode::Expr(Cow::Owned(Expr::Literal(AstLiteral::Boolean(b))))
     }
@@ -312,7 +312,7 @@ impl<'a> From<QueryNode<'a>> for ExprNode<'a> {
     }
 }
 
-impl<'a> From<Expr> for ExprNode<'a> {
+impl From<Expr> for ExprNode<'_> {
     fn from(expr: Expr) -> Self {
         ExprNode::Expr(Cow::Owned(expr))
     }

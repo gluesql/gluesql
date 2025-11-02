@@ -30,7 +30,7 @@ impl<'a> ValuesNode<'a> {
     }
 }
 
-impl<'a> Prebuild<Query> for ValuesNode<'a> {
+impl Prebuild<Query> for ValuesNode<'_> {
     fn prebuild(self) -> Result<Query> {
         let values = self
             .values

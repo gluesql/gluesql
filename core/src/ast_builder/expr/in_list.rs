@@ -19,7 +19,7 @@ impl<'a> From<Vec<ExprNode<'a>>> for InListNode<'a> {
     }
 }
 
-impl<'a> From<&str> for InListNode<'a> {
+impl From<&str> for InListNode<'_> {
     fn from(query: &str) -> Self {
         InListNode::Text(query.to_owned())
     }

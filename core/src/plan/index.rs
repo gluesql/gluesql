@@ -373,7 +373,7 @@ impl<'a> IndexPlanner<'a> {
 
 struct Indexes<'a>(&'a [SchemaIndex]);
 
-impl<'a> Indexes<'a> {
+impl Indexes<'_> {
     fn find(&self, target: &Expr) -> Option<String> {
         self.0
             .iter()
@@ -392,8 +392,7 @@ impl<'a> Indexes<'a> {
                 matches!(
                     (target.asc, order),
                     (_, SchemaIndexOrd::Both)
-                        | (Some(true), SchemaIndexOrd::Asc)
-                        | (None, SchemaIndexOrd::Asc)
+                        | (Some(true) | None, SchemaIndexOrd::Asc)
                         | (Some(false), SchemaIndexOrd::Desc)
                 )
             })

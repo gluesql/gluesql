@@ -15,13 +15,13 @@ pub enum SelectItemList<'a> {
     SelectItems(Vec<SelectItemNode<'a>>),
 }
 
-impl<'a> From<&str> for SelectItemList<'a> {
+impl From<&str> for SelectItemList<'_> {
     fn from(exprs: &str) -> Self {
         SelectItemList::Text(exprs.to_owned())
     }
 }
 
-impl<'a> From<Vec<&str>> for SelectItemList<'a> {
+impl From<Vec<&str>> for SelectItemList<'_> {
     fn from(select_items: Vec<&str>) -> Self {
         SelectItemList::SelectItems(select_items.into_iter().map(Into::into).collect())
     }

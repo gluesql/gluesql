@@ -458,21 +458,24 @@ impl Value {
                 Interval::parse(v.as_ref()).map(Value::Interval)
             }
             (DataType::Uuid, Literal::Text(v)) => parse_uuid(v).map(Value::Uuid),
-            (DataType::Boolean, Literal::Null)
-            | (DataType::Int8, Literal::Null)
-            | (DataType::Int16, Literal::Null)
-            | (DataType::Int32, Literal::Null)
-            | (DataType::Int, Literal::Null)
-            | (DataType::Int128, Literal::Null)
-            | (DataType::Uint8, Literal::Null)
-            | (DataType::Uint16, Literal::Null)
-            | (DataType::Uint32, Literal::Null)
-            | (DataType::Uint64, Literal::Null)
-            | (DataType::Uint128, Literal::Null)
-            | (DataType::Float32, Literal::Null)
-            | (DataType::Float, Literal::Null)
-            | (DataType::Decimal, Literal::Null)
-            | (DataType::Text, Literal::Null) => Ok(Value::Null),
+            (
+                DataType::Boolean
+                | DataType::Int8
+                | DataType::Int16
+                | DataType::Int32
+                | DataType::Int
+                | DataType::Int128
+                | DataType::Uint8
+                | DataType::Uint16
+                | DataType::Uint32
+                | DataType::Uint64
+                | DataType::Uint128
+                | DataType::Float32
+                | DataType::Float
+                | DataType::Decimal
+                | DataType::Text,
+                Literal::Null,
+            ) => Ok(Value::Null),
             (DataType::Date, Literal::Text(v)) => parse_date(v)
                 .map(Value::Date)
                 .ok_or_else(|| ValueError::LiteralCastToDateFailed(v.to_string()).into()),
@@ -959,7 +962,7 @@ mod tests {
         test!(num!("1.0"), Value::F32(1.0_f32));
         test!(num!("1.0"), Value::F64(1.0));
         test!(&Literal::Boolean(false), Value::Bool(false));
-        assert!(matches!(Value::try_from(&Literal::Null), Ok(Value::Null)))
+        assert!(matches!(Value::try_from(&Literal::Null), Ok(Value::Null)));
     }
 
     #[test]
@@ -1164,8 +1167,8 @@ mod tests {
         );
         test!(
             DataType::List,
-            text!(r#"[ 1, 2, 3 ]"#),
-            Value::parse_json_list(r#"[ 1, 2, 3 ]"#).unwrap()
+            text!(r"[ 1, 2, 3 ]"),
+            Value::parse_json_list(r"[ 1, 2, 3 ]").unwrap()
         );
     }
 }

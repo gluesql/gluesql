@@ -85,11 +85,11 @@ test_case!(hex, {
     )
     .await;
 
-    g.test(r#"VALUES(HEX(NULL))"#, Ok(select_with_null!(column1; Null)))
+    g.test(r"VALUES(HEX(NULL))", Ok(select_with_null!(column1; Null)))
         .await;
 
     g.test(
-        r#"VALUES(HEX())"#,
+        r"VALUES(HEX())",
         Err(TranslateError::FunctionArgsLengthNotMatching {
             name: "HEX".to_owned(),
             expected: 1,
@@ -100,7 +100,7 @@ test_case!(hex, {
     .await;
 
     g.test(
-        r#"VALUES(HEX('test', 'extra'))"#,
+        r"VALUES(HEX('test', 'extra'))",
         Err(TranslateError::FunctionArgsLengthNotMatching {
             name: "HEX".to_owned(),
             expected: 1,

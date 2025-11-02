@@ -16,7 +16,7 @@ test_case!(length, {
 
     g.named_test(
         "test length with list",
-        r#"SELECT LENGTH(CAST('[1, 2, 3]' AS LIST))"#,
+        r"SELECT LENGTH(CAST('[1, 2, 3]' AS LIST))",
         Ok(select!(
             "LENGTH(CAST('[1, 2, 3]' AS LIST))"
             U64;

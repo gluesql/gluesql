@@ -285,39 +285,39 @@ mod tests {
         test("LOG2(16)", &["16"]);
         test("LOG10(150 - 50)", &["150 - 50"]);
         test("SQRT(144)", &["144"]);
-        test("LASTDAY(DATE '2020-01-01')", &[r#"DATE '2020-01-01'"#]);
+        test("LASTDAY(DATE '2020-01-01')", &[r"DATE '2020-01-01'"]);
         test(r#"LTRIM("  hello")"#, &[r#""  hello""#]);
         test(r#"RTRIM("world  ")"#, &[r#""world  ""#]);
         test(r#"TRIM("  rust  ")"#, &[r#""  rust  ""#]);
         test(r#"REVERSE("abcde")"#, &[r#""abcde""#]);
-        test(r#"CAST(1 AS BOOLEAN)"#, &["1"]);
-        test(r#"IS_EMPTY(col)"#, &["col"]);
-        test(r#"VALUES(col)"#, &["col"]);
-        test(r#"HEX(10)"#, &["10"]);
+        test(r"CAST(1 AS BOOLEAN)", &["1"]);
+        test(r"IS_EMPTY(col)", &["col"]);
+        test(r"VALUES(col)", &["col"]);
+        test(r"HEX(10)", &["10"]);
 
-        test(r#"ABS(1)"#, &["1"]);
-        test(r#"ABS(-1)"#, &["-1"]);
-        test(r#"ABS(2)"#, &["2"]);
-        test(r#"ABS(-2)"#, &["-2"]);
-        test(r#"ABS(3.0)"#, &["3.0"]);
-        test(r#"ABS(-3.0)"#, &["-3.0"]);
+        test(r"ABS(1)", &["1"]);
+        test(r"ABS(-1)", &["-1"]);
+        test(r"ABS(2)", &["2"]);
+        test(r"ABS(-2)", &["-2"]);
+        test(r"ABS(3.0)", &["3.0"]);
+        test(r"ABS(-3.0)", &["-3.0"]);
 
-        test(r#"SIGN(1)"#, &["1"]);
-        test(r#"SIGN(-1)"#, &["-1"]);
-        test(r#"SIGN(2)"#, &["2"]);
-        test(r#"SIGN(-2)"#, &["-2"]);
-        test(r#"SIGN(3.0)"#, &["3.0"]);
-        test(r#"SIGN(-3.0)"#, &["-3.0"]);
+        test(r"SIGN(1)", &["1"]);
+        test(r"SIGN(-1)", &["-1"]);
+        test(r"SIGN(2)", &["2"]);
+        test(r"SIGN(-2)", &["-2"]);
+        test(r"SIGN(3.0)", &["3.0"]);
+        test(r"SIGN(-3.0)", &["-3.0"]);
 
-        test(r#"DEDUP(list)"#, &["list"]);
+        test(r"DEDUP(list)", &["list"]);
 
         // Double
         test(r#"LEFT("hello", 2)"#, &[r#""hello""#, "2"]);
         test(r#"RIGHT("hello", 2)"#, &[r#""hello""#, "2"]);
-        test(r#"FIND_IDX("Calzone", "zone")"#, &[r#"Calzone"#, r#"zone"#]);
-        test(r#"TAKE(list, 3)"#, &[r#"list"#, r#"3"#]);
-        test(r#"LPAD(value, 5)"#, &["value", "5"]);
-        test(r#"RPAD(value, 5)"#, &["value", "5"]);
+        test(r#"FIND_IDX("Calzone", "zone")"#, &[r"Calzone", r"zone"]);
+        test(r"TAKE(list, 3)", &[r"list", r"3"]);
+        test(r"LPAD(value, 5)", &["value", "5"]);
+        test(r"RPAD(value, 5)", &["value", "5"]);
         test(
             r#"TRIM(LEADING "_" FROM "__hello")"#,
             &[r#""__hello""#, r#""_""#],
@@ -333,7 +333,7 @@ mod tests {
         test("REPEAT(col || col2, 3)", &["col || col2", "3"]);
         test("REPEAT(column, 2)", &["column", "2"]);
         test(r#"UNWRAP(field, "foo.1")"#, &["field", r#""foo.1""#]);
-        test(r#"SKIP(list, 2)"#, &[r#""list""#, r#"2"#]);
+        test(r"SKIP(list, 2)", &[r#""list""#, r"2"]);
 
         // Triple
         test(
@@ -348,13 +348,10 @@ mod tests {
             r#"SUBSTR('   >++++("<   ', 3, 11)"#,
             &[r#"'   >++++("<   '"#, "3", "11"],
         );
-        test(r#"SPLICE(list, 2, 4)"#, &["list", "2", "4"]);
+        test(r"SPLICE(list, 2, 4)", &["list", "2", "4"]);
 
         // Quadruple
-        test(
-            r#"SPLICE(list, 3, 5, values)"#,
-            &["list", "3", "5", "values"],
-        );
+        test(r"SPLICE(list, 3, 5, values)", &["list", "3", "5", "values"]);
 
         //VariableArgs
         test(r#"COALESCE("test")"#, &[r#""test""#]);

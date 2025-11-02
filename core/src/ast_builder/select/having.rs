@@ -15,7 +15,7 @@ pub enum PrevNode<'a> {
     GroupBy(GroupByNode<'a>),
 }
 
-impl<'a> Prebuild<Select> for PrevNode<'a> {
+impl Prebuild<Select> for PrevNode<'_> {
     fn prebuild(self) -> Result<Select> {
         match self {
             Self::GroupBy(node) => node.prebuild(),
@@ -64,7 +64,7 @@ impl<'a> HavingNode<'a> {
     }
 }
 
-impl<'a> Prebuild<Select> for HavingNode<'a> {
+impl Prebuild<Select> for HavingNode<'_> {
     fn prebuild(self) -> Result<Select> {
         let mut select: Select = self.prev_node.prebuild()?;
         select.having = Some(self.expr.try_into()?);

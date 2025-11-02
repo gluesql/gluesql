@@ -21,14 +21,14 @@ test_case!(prepend, {
     )
     .await;
     g.run(
-        r#"
+        r"
             INSERT INTO Prepend VALUES
             (1, '[1, 2, 3]',0, 'Foo');
-        "#,
+        ",
     )
     .await;
     g.test(
-        r#"select prepend(items, element) as myprepend from Prepend;"#,
+        r"select prepend(items, element) as myprepend from Prepend;",
         Ok(select!(
            myprepend
            List;
@@ -37,7 +37,7 @@ test_case!(prepend, {
     )
     .await;
     g.test(
-        r#"select prepend(items, element2) as myprepend from Prepend;"#,
+        r"select prepend(items, element2) as myprepend from Prepend;",
         Ok(select!(
            myprepend
            List;
@@ -47,27 +47,27 @@ test_case!(prepend, {
     .await;
 
     g.test(
-        r#"select prepend(element, element2) as myprepend from Prepend"#,
+        r"select prepend(element, element2) as myprepend from Prepend",
         Err(EvaluateError::ListTypeRequired.into()),
     )
     .await;
 
     g.test(
-        r#"CREATE TABLE Foo (
+        r"CREATE TABLE Foo (
                 elements LIST
-            );"#,
+            );",
         Ok(Payload::Create),
     )
     .await;
 
     g.run(
-        r#"
+        r"
             INSERT INTO Foo VALUES (PREPEND(CAST('[1, 2, 3]' AS LIST), 0));
-        "#,
+        ",
     )
     .await;
     g.test(
-        r#"select elements as myprepend from Foo;"#,
+        r"select elements as myprepend from Foo;",
         Ok(select!(
            myprepend
            List;

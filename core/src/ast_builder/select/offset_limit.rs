@@ -12,7 +12,7 @@ pub enum PrevNode<'a> {
     Offset(OffsetNode<'a>),
 }
 
-impl<'a> Prebuild<Query> for PrevNode<'a> {
+impl Prebuild<Query> for PrevNode<'_> {
     fn prebuild(self) -> Result<Query> {
         match self {
             Self::Offset(node) => node.prebuild(),
@@ -45,7 +45,7 @@ impl<'a> OffsetLimitNode<'a> {
     }
 }
 
-impl<'a> Prebuild<Query> for OffsetLimitNode<'a> {
+impl Prebuild<Query> for OffsetLimitNode<'_> {
     fn prebuild(self) -> Result<Query> {
         let mut node_data = self.prev_node.prebuild()?;
         node_data.limit = Some(self.expr.try_into()?);

@@ -223,7 +223,7 @@ where
             let low = eval(low).await?;
             let high = eval(high).await?;
 
-            expr::between(target, *negated, low, high)
+            Ok(expr::between(target, *negated, low, high))
         }
         Expr::Like {
             expr,

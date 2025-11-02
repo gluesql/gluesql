@@ -108,14 +108,14 @@ mod tests {
                     .or_else("Country"),
             )
             .or_else("City");
-        let expected = r#"
+        let expected = r"
             CASE
               WHEN City IS NULL THEN CASE WHEN Country IS NULL THEN 'weird'
                                           ELSE Country
                                           END
               ELSE City
             END
-            "#;
+            ";
         test_expr(actual, expected);
     }
 }

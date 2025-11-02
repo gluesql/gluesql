@@ -27,7 +27,7 @@ impl<'a> DeleteNode<'a> {
     }
 }
 
-impl<'a> Build for DeleteNode<'a> {
+impl Build for DeleteNode<'_> {
     fn build(self) -> Result<Statement> {
         let table_name = self.table_name;
         let selection = self.filter_expr.map(Expr::try_from).transpose()?;
