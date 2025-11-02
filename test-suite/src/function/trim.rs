@@ -49,7 +49,7 @@ test_case!(trim, {
             Ok(select_with_null!(test; Value::Null)),
         ),
         (
-            r#"SELECT TRIM(BOTH NULL FROM name) FROM NullName;"#,
+            r"SELECT TRIM(BOTH NULL FROM name) FROM NullName;",
             Ok(select_with_null!(
                 "TRIM(BOTH NULL FROM name)";
                 Value::Null
@@ -111,7 +111,7 @@ test_case!(trim, {
             )),
         ),
         (
-            r#"SELECT TRIM(TRAILING 'xyz' FROM name) FROM Test;"#,
+            r"SELECT TRIM(TRAILING 'xyz' FROM name) FROM Test;",
             Ok(select!(
                 "TRIM(TRAILING 'xyz' FROM name)"
                 Value::Str;

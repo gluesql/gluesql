@@ -270,10 +270,7 @@ test_case!(atan, {
             "CREATE TABLE SingleItem (id INTEGER DEFAULT ATAN(3.14))",
             Ok(Payload::Create),
         ),
-        (
-            r#"INSERT INTO SingleItem VALUES (0)"#,
-            Ok(Payload::Insert(1)),
-        ),
+        (r"INSERT INTO SingleItem VALUES (0)", Ok(Payload::Insert(1))),
         (
             "SELECT ATAN(0.5) AS atan1, ATAN(1) AS atan2",
             Ok(select!(

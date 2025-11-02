@@ -1167,8 +1167,8 @@ mod tests {
         );
         test!(
             DataType::List,
-            text!(r#"[ 1, 2, 3 ]"#),
-            Value::parse_json_list(r#"[ 1, 2, 3 ]"#).unwrap()
+            text!(r"[ 1, 2, 3 ]"),
+            Value::parse_json_list(r"[ 1, 2, 3 ]").unwrap()
         );
     }
 }

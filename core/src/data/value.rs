@@ -2511,8 +2511,8 @@ mod tests {
 
         // List
         cast!(
-            Str(r#"[1, 2, 3]"#.to_owned()) => List,
-            Value::parse_json_list(r#"[1, 2, 3]"#).unwrap()
+            Str(r"[1, 2, 3]".to_owned()) => List,
+            Value::parse_json_list(r"[1, 2, 3]").unwrap()
         );
 
         // Casting error
@@ -2579,7 +2579,7 @@ mod tests {
         let uuid = Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap());
         let point = Point(Point::new(1.0, 2.0));
         let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();
-        let list = Value::parse_json_list(r#"[ true ]"#).unwrap();
+        let list = Value::parse_json_list(r"[ true ]").unwrap();
         let bytea = Bytea(hex::decode("9001").unwrap());
         let inet = Inet(IpAddr::from_str("::1").unwrap());
 
@@ -2847,7 +2847,7 @@ mod tests {
         let uuid = Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap());
         let point = Point(Point::new(1.0, 2.0));
         let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();
-        let list = Value::parse_json_list(r#"[ true ]"#).unwrap();
+        let list = Value::parse_json_list(r"[ true ]").unwrap();
         let bytea = Bytea(hex::decode("9001").unwrap());
         let inet = Inet(IpAddr::from_str("::1").unwrap());
 

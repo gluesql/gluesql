@@ -66,8 +66,8 @@ mod tests {
         let expected = r#"foo = "choco""#;
         test(actual, expected);
 
-        let actual = r#"Bar = mild"#.into();
-        let expected = r#"Bar = mild"#;
+        let actual = r"Bar = mild".into();
+        let expected = r"Bar = mild";
         test(actual, expected);
 
         let actual = AssignmentNode::Expr("foo".into(), "1".into());

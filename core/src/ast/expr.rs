@@ -681,7 +681,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"['GlueSQL', 'Rust']"#,
+            r"['GlueSQL', 'Rust']",
             Expr::Array {
                 elem: vec![
                     Expr::Literal(AstLiteral::QuotedString("GlueSQL".to_owned())),

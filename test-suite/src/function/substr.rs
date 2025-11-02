@@ -29,7 +29,7 @@ test_case!(substr, {
             Ok(Payload::Create),
         ),
         (
-            r#"INSERT INTO NullName VALUES (NULL)"#,
+            r"INSERT INTO NullName VALUES (NULL)",
             Ok(Payload::Insert(1)),
         ),
         (
@@ -37,11 +37,11 @@ test_case!(substr, {
             Ok(Payload::Create),
         ),
         (
-            r#"INSERT INTO NullNumber VALUES (NULL)"#,
+            r"INSERT INTO NullNumber VALUES (NULL)",
             Ok(Payload::Insert(1)),
         ),
         (
-            r#"SELECT SUBSTR(SUBSTR(name, 1), 1) AS test FROM Item"#,
+            r"SELECT SUBSTR(SUBSTR(name, 1), 1) AS test FROM Item",
             Ok(select!(
                 "test"
                 Str;
@@ -138,7 +138,7 @@ test_case!(substr, {
             )),
         ),
         (
-            r#"SELECT SUBSTR(name, 2) AS test FROM Item"#,
+            r"SELECT SUBSTR(name, 2) AS test FROM Item",
             Ok(select!(
                 "test"
                 Str;
@@ -148,7 +148,7 @@ test_case!(substr, {
             )),
         ),
         (
-            r#"SELECT SUBSTR(name, 999) AS test FROM Item"#,
+            r"SELECT SUBSTR(name, 999) AS test FROM Item",
             Ok(select!(
                 "test"
                 Str;
@@ -158,7 +158,7 @@ test_case!(substr, {
             )),
         ),
         (
-            r#"SELECT SUBSTR('ABC', -3, 0) AS test FROM SingleItem"#,
+            r"SELECT SUBSTR('ABC', -3, 0) AS test FROM SingleItem",
             Ok(select!(
                 "test"
                 Str;
@@ -226,11 +226,11 @@ test_case!(substr, {
             Ok(select_with_null!(test; Null)),
         ),
         (
-            r#"SELECT SUBSTR(name, 3) AS test FROM NullName"#,
+            r"SELECT SUBSTR(name, 3) AS test FROM NullName",
             Ok(select_with_null!(test; Null)),
         ),
         (
-            r#"SELECT SUBSTR('Words', number) AS test FROM NullNumber"#,
+            r"SELECT SUBSTR('Words', number) AS test FROM NullNumber",
             Ok(select_with_null!(test; Null)),
         ),
         (
@@ -238,19 +238,19 @@ test_case!(substr, {
             Err(EvaluateError::BooleanTypeRequired("ine".to_owned()).into()),
         ),
         (
-            r#"SELECT SUBSTR(1, 1) AS test FROM SingleItem"#,
+            r"SELECT SUBSTR(1, 1) AS test FROM SingleItem",
             Err(EvaluateError::FunctionRequiresStringValue("SUBSTR".to_owned()).into()),
         ),
         (
-            r#"SELECT SUBSTR('Words', 1.1) AS test FROM SingleItem"#,
+            r"SELECT SUBSTR('Words', 1.1) AS test FROM SingleItem",
             Err(EvaluateError::FunctionRequiresIntegerValue("SUBSTR".to_owned()).into()),
         ),
         (
-            r#"SELECT SUBSTR('Words', 1, -4) AS test FROM SingleItem"#,
+            r"SELECT SUBSTR('Words', 1, -4) AS test FROM SingleItem",
             Err(EvaluateError::NegativeSubstrLenNotAllowed.into()),
         ),
         (
-            r#"SELECT SUBSTR('123', 2, 3) - '3' AS test FROM SingleItem"#,
+            r"SELECT SUBSTR('123', 2, 3) - '3' AS test FROM SingleItem",
             Err(EvaluateError::UnsupportedBinaryOperation {
                 left: "StrSlice { source: \"123\", range: 1..3 }".to_owned(),
                 op: BinaryOperator::Minus,
@@ -259,19 +259,19 @@ test_case!(substr, {
             .into()),
         ),
         (
-            r#"SELECT +SUBSTR('123', 2, 3) AS test FROM SingleItem"#,
+            r"SELECT +SUBSTR('123', 2, 3) AS test FROM SingleItem",
             Err(EvaluateError::UnsupportedUnaryPlus("23".to_owned()).into()),
         ),
         (
-            r#"SELECT -SUBSTR('123', 2, 3) AS test FROM SingleItem"#,
+            r"SELECT -SUBSTR('123', 2, 3) AS test FROM SingleItem",
             Err(EvaluateError::UnsupportedUnaryMinus("23".to_owned()).into()),
         ),
         (
-            r#"SELECT SUBSTR('123', 2, 3)! AS test FROM SingleItem"#,
+            r"SELECT SUBSTR('123', 2, 3)! AS test FROM SingleItem",
             Err(EvaluateError::UnsupportedUnaryFactorial("23".to_owned()).into()),
         ),
         (
-            r#"SELECT ~SUBSTR('123', 2, 3) AS test FROM SingleItem"#,
+            r"SELECT ~SUBSTR('123', 2, 3) AS test FROM SingleItem",
             Err(EvaluateError::IncompatibleUnaryBitwiseNotOperation("23".to_owned()).into()),
         ),
     ];

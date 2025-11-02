@@ -11,13 +11,13 @@ test_case!(floor, {
 
     let test_cases = [
         (
-            r#"
+            r"
             SELECT 
                 FLOOR(0.3) as floor1, 
                 FLOOR(-0.8) as floor2, 
                 FLOOR(10) as floor3, 
                 FLOOR(6.87421) as floor4 
-            ;"#,
+            ;",
             Ok(select!(
                 floor1 | floor2              | floor3 | floor4
                 F64    | F64                 | F64    | F64;

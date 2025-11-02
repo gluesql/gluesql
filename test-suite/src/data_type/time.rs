@@ -11,12 +11,12 @@ test_case!(time, {
     let g = get_tester!();
 
     g.run(
-        r#"
+        r"
 CREATE TABLE TimeLog (
     id INTEGER,
     time1 TIME,
     time2 TIME
-)"#,
+)",
     )
     .await;
 

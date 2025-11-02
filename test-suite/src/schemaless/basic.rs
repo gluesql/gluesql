@@ -101,7 +101,7 @@ test_case!(basic, {
     // add new field to existing row
     g.run("UPDATE Item SET new_field = 'Hello'").await;
     g.test(
-        r#"SELECT new_field, obj['cost'] AS cost FROM Item"#,
+        r"SELECT new_field, obj['cost'] AS cost FROM Item",
         Ok(select!(
             new_field          | cost
             Str                | I64;

@@ -15,7 +15,7 @@ test_case!(rand, {
             Ok(Payload::Create),
         ),
         (
-            r#"INSERT INTO SingleItem VALUES (ROUND(RAND(1)*100))"#,
+            r"INSERT INTO SingleItem VALUES (ROUND(RAND(1)*100))",
             Ok(Payload::Insert(1)),
         ),
         (

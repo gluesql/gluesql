@@ -234,7 +234,7 @@ mod test {
         test_query(actual, expected);
 
         let actual = table("FOO").select().project("id, name").limit(10).into();
-        let expected = r#"SELECT id, name FROM FOO LIMIT 10"#;
+        let expected = r"SELECT id, name FROM FOO LIMIT 10";
         test_query(actual, expected);
 
         let actual = table("Foo").select().order_by("score DESC").into();
