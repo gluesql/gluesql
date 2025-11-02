@@ -166,7 +166,7 @@ impl TryBinaryOperator for f32 {
             F32(rhs) => Ok(F32(lhs / rhs)),
             Decimal(rhs) => Decimal::from_f32_retain(lhs).map_or_else(
                 || Err(ValueError::FloatToDecimalConversionFailure(lhs.into()).into()),
-                |x| Ok(Decimal(x * rhs)),
+                |x| Ok(Decimal(x / rhs)),
             ),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
@@ -444,7 +444,7 @@ mod tests {
             matches!(base.try_divide(&F32(1.0_f32)), Ok(F32(x)) if (x - 1.0).abs() < f32::EPSILON )
         );
         assert!(
-            matches!(base.try_divide(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ONE)
+            matches!(2.0_f32.try_divide(&Decimal(Decimal::TWO)), Ok(Decimal(x)) if x == Decimal::ONE)
         );
         assert_eq!(
             f32::MIN.try_divide(&Decimal(Decimal::TWO)),
