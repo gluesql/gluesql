@@ -110,10 +110,6 @@ fn decode_sql_value(value: SqlValue, data_type: &DataType) -> Result<Value> {
                 i128::from(v),
                 0,
             ))),
-            DataType::Time => Ok(Value::Time(
-                chrono::NaiveTime::from_num_seconds_from_midnight_opt(v as u32, 0)
-                    .unwrap_or_default(),
-            )),
             DataType::Uint8
             | DataType::Uint16
             | DataType::Uint32
