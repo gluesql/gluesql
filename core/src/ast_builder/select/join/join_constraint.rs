@@ -17,7 +17,7 @@ pub enum PrevNode<'a> {
     HashJoin(Box<HashJoinNode<'a>>),
 }
 
-impl<'a> PrevNode<'a> {
+impl PrevNode<'_> {
     fn prebuild_for_constraint(self) -> Result<JoinConstraintData> {
         match self {
             PrevNode::Join(node) => node.prebuild_for_constraint(),
@@ -107,7 +107,7 @@ impl<'a> JoinConstraintNode<'a> {
     }
 }
 
-impl<'a> Prebuild<Select> for JoinConstraintNode<'a> {
+impl Prebuild<Select> for JoinConstraintNode<'_> {
     fn prebuild(self) -> Result<Select> {
         let JoinConstraintData {
             mut select,

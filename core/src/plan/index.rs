@@ -373,7 +373,7 @@ impl<'a> IndexPlanner<'a> {
 
 struct Indexes<'a>(&'a [SchemaIndex]);
 
-impl<'a> Indexes<'a> {
+impl Indexes<'_> {
     fn find(&self, target: &Expr) -> Option<String> {
         self.0
             .iter()

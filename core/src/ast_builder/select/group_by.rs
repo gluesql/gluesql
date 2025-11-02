@@ -20,7 +20,7 @@ pub enum PrevNode<'a> {
     Filter(FilterNode<'a>),
 }
 
-impl<'a> Prebuild<Select> for PrevNode<'a> {
+impl Prebuild<Select> for PrevNode<'_> {
     fn prebuild(self) -> Result<Select> {
         match self {
             Self::Select(node) => node.prebuild(),
@@ -101,7 +101,7 @@ impl<'a> GroupByNode<'a> {
     }
 }
 
-impl<'a> Prebuild<Select> for GroupByNode<'a> {
+impl Prebuild<Select> for GroupByNode<'_> {
     fn prebuild(self) -> Result<Select> {
         let mut select: Select = self.prev_node.prebuild()?;
         select.group_by = self.expr_list.try_into()?;

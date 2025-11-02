@@ -45,7 +45,7 @@ pub struct InsertSourceNode<'a> {
     source: QueryNode<'a>,
 }
 
-impl<'a> Build for InsertSourceNode<'a> {
+impl Build for InsertSourceNode<'_> {
     fn build(self) -> Result<Statement> {
         let table_name = self.insert_node.table_name;
         let columns = self.insert_node.columns;

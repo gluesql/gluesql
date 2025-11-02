@@ -14,13 +14,13 @@ pub enum OrderByExprList<'a> {
     OrderByExprs(Vec<OrderByExprNode<'a>>),
 }
 
-impl<'a> From<&str> for OrderByExprList<'a> {
+impl From<&str> for OrderByExprList<'_> {
     fn from(exprs: &str) -> Self {
         OrderByExprList::Text(exprs.to_owned())
     }
 }
 
-impl<'a> From<Vec<&str>> for OrderByExprList<'a> {
+impl From<Vec<&str>> for OrderByExprList<'_> {
     fn from(exprs: Vec<&str>) -> Self {
         OrderByExprList::OrderByExprs(exprs.into_iter().map(Into::into).collect())
     }

@@ -14,7 +14,7 @@ pub enum AssignmentNode<'a> {
     Text(String),
 }
 
-impl<'a> From<&str> for AssignmentNode<'a> {
+impl From<&str> for AssignmentNode<'_> {
     fn from(expr: &str) -> Self {
         Self::Text(expr.to_owned())
     }

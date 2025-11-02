@@ -19,7 +19,7 @@ pub enum PrevNode<'a> {
     HashJoin(Box<HashJoinNode<'a>>),
 }
 
-impl<'a> Prebuild<Select> for PrevNode<'a> {
+impl Prebuild<Select> for PrevNode<'_> {
     fn prebuild(self) -> Result<Select> {
         match self {
             Self::Select(node) => node.prebuild(),
@@ -172,7 +172,7 @@ impl<'a> JoinNode<'a> {
     }
 }
 
-impl<'a> Prebuild<Select> for JoinNode<'a> {
+impl Prebuild<Select> for JoinNode<'_> {
     fn prebuild(self) -> Result<Select> {
         let mut select: Select = self.prev_node.prebuild()?;
 

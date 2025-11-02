@@ -47,7 +47,7 @@ impl<'a> QueryNode<'a> {
     }
 }
 
-impl<'a> From<&str> for QueryNode<'a> {
+impl From<&str> for QueryNode<'_> {
     fn from(query: &str) -> Self {
         Self::Text(query.to_owned())
     }

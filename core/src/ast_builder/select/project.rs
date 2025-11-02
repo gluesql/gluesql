@@ -22,7 +22,7 @@ pub enum PrevNode<'a> {
     Filter(FilterNode<'a>),
 }
 
-impl<'a> Prebuild<Select> for PrevNode<'a> {
+impl Prebuild<Select> for PrevNode<'_> {
     fn prebuild(self) -> Result<Select> {
         match self {
             Self::Select(node) => node.prebuild(),
@@ -118,7 +118,7 @@ impl<'a> ProjectNode<'a> {
     }
 }
 
-impl<'a> Prebuild<Select> for ProjectNode<'a> {
+impl Prebuild<Select> for ProjectNode<'_> {
     fn prebuild(self) -> Result<Select> {
         let mut query: Select = self.prev_node.prebuild()?;
         query.projection = self

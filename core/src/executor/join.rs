@@ -281,13 +281,13 @@ impl<'a> JoinExecutor<'a> {
     }
 }
 
-async fn check_where_clause<'a, 'b, T: GStore>(
+async fn check_where_clause<'a, T: GStore>(
     storage: &'a T,
     table_alias: &'a str,
     filter_context: Option<Arc<RowContext<'a>>>,
     project_context: Option<Arc<RowContext<'a>>>,
     where_clause: Option<&'a Expr>,
-    row: Cow<'b, Row>,
+    row: Cow<'_, Row>,
 ) -> Result<Option<Arc<RowContext<'a>>>> {
     let filter_context = RowContext::new(table_alias, Cow::Borrowed(&row), filter_context);
     let filter_context = Some(Arc::new(filter_context));
