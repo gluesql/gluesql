@@ -962,7 +962,7 @@ mod tests {
         test!(num!("1.0"), Value::F32(1.0_f32));
         test!(num!("1.0"), Value::F64(1.0));
         test!(&Literal::Boolean(false), Value::Bool(false));
-        assert!(matches!(Value::try_from(&Literal::Null), Ok(Value::Null)))
+        assert!(matches!(Value::try_from(&Literal::Null), Ok(Value::Null)));
     }
 
     #[test]

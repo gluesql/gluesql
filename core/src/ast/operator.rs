@@ -326,6 +326,6 @@ mod tests {
                 expr: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(1)))),
             }
             .to_sql(),
-        )
+        );
     }
 }

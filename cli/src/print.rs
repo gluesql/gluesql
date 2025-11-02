@@ -33,7 +33,7 @@ impl PrintOption {
             self.colwrap(String::new());
             self.heading(true);
         } else {
-            self.tabular = tabular
+            self.tabular = tabular;
         }
     }
 

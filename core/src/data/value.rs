@@ -2801,7 +2801,7 @@ mod tests {
                 operator: NumericBinaryOperator::BitwiseAnd
             }
             .into())
-        )
+        );
     }
 
     #[test]

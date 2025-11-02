@@ -167,12 +167,12 @@ impl AlterTable for RedisStorage {
                     redis::cmd("SET")
                         .arg(&key)
                         .arg(new_value)
-                        .query(&mut *conn)
+                        .query::<()>(&mut *conn)
                         .map_err(|_| {
                             Error::StorageMsg(format!(
                                 "[RedisStorage] add_column: failed to execute SET for row={row:?}"
                             ))
-                        })?
+                        })?;
                 };
             }
 

@@ -1478,7 +1478,7 @@ mod tests {
                 "list".to_owned()
             ))))
             .to_sql(),
-        )
+        );
     }
 
     #[test]

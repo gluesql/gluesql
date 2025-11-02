@@ -109,7 +109,7 @@ pub fn type_match(expected: &[DataType], found: Result<Payload>) {
                 Err(e) => {
                     panic!("[err: type match failed]\n found {value:?}\n expected {data_type:?}\n error: {e:?}\n")
                 }
-            })
+            });
     }
 }
 

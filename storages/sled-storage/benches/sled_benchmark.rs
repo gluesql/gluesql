@@ -47,7 +47,7 @@ pub fn bench_insert(c: &mut Criterion) {
             id += 1;
 
             block_on(glue.execute(&query_str)).unwrap();
-        })
+        });
     });
 }
 
@@ -100,7 +100,7 @@ pub fn bench_select(c: &mut Criterion) {
             }
 
             block_on(glue.execute(&query_str)).unwrap();
-        })
+        });
     });
 
     c.bench_function("select_many", |b| {
@@ -117,7 +117,7 @@ pub fn bench_select(c: &mut Criterion) {
             }
 
             block_on(glue.execute(&query_str)).unwrap();
-        })
+        });
     });
 }
 
@@ -179,7 +179,7 @@ pub fn bench_select_tainted(c: &mut Criterion) {
             }
 
             block_on(glue.execute(&query_str)).unwrap();
-        })
+        });
     });
     c.bench_function("select_many_tainted", |b| {
         b.iter(|| {
@@ -195,7 +195,7 @@ pub fn bench_select_tainted(c: &mut Criterion) {
             }
 
             block_on(glue.execute(&query_str)).unwrap();
-        })
+        });
     });
 }
 

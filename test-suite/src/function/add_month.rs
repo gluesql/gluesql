@@ -16,7 +16,7 @@ test_case!(add_month, {
     fn assert_chrono_error_kind_eq(error: Error, kind: ParseErrorKind) {
         match error {
             Error::Evaluate(EvaluateError::FormatParseError(err)) => {
-                assert_eq!(err.kind(), kind)
+                assert_eq!(err.kind(), kind);
             }
             _ => panic!("invalid error: {error}"),
         }

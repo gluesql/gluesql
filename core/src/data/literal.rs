@@ -510,7 +510,7 @@ mod tests {
                 right: format!("{text:?}")
             }
             .into())
-        )
+        );
     }
 
     #[test]

@@ -182,7 +182,7 @@ mod tests {
             let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
             let actual = validate(&schema_map, &statement).is_ok();
 
-            assert_eq!(actual, expected)
+            assert_eq!(actual, expected);
         }
     }
 }
