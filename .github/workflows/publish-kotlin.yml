@@ -1,4 +1,4 @@
-name: Publish Java
+name: Publish Kotlin
 
 on:
   workflow_dispatch:
@@ -68,7 +68,7 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build native library
-        working-directory: pkg/java
+        working-directory: pkg/kotlin
         run: cargo build --release --target ${{ matrix.target }}
 
       - name: Prepare artifact (Unix)
@@ -128,25 +128,25 @@ jobs:
 
       - name: Organize native libraries
         run: |
-          mkdir -p pkg/java/src/main/resources/natives
+          mkdir -p pkg/kotlin/src/main/resources/natives
           # Move each platform's artifact to correct location
           for artifact_dir in downloaded-artifacts/native-*; do
             platform=$(basename "$artifact_dir" | sed 's/^native-//')
             echo "Processing platform: $platform"
-            mkdir -p "pkg/java/src/main/resources/natives/$platform"
-            cp -v "$artifact_dir"/* "pkg/java/src/main/resources/natives/$platform/"
+            mkdir -p "pkg/kotlin/src/main/resources/natives/$platform"
+            cp -v "$artifact_dir"/* "pkg/kotlin/src/main/resources/natives/$platform/"
           done
 
       - name: List downloaded artifacts
         run: |
           echo "Native libraries:"
-          ls -R pkg/java/src/main/resources/natives/
+          ls -R pkg/kotlin/src/main/resources/natives/
 
       - name: Make gradlew executable
-        run: chmod +x pkg/java/gradlew
+        run: chmod +x pkg/kotlin/gradlew
 
       - name: Generate UniFFI bindings
-        working-directory: pkg/java
+        working-directory: pkg/kotlin
         run: |
           # Use already-built Linux library instead of building debug version
           mkdir -p ../../target/release
@@ -160,11 +160,11 @@ jobs:
             --no-format
 
       - name: Build JAR
-        working-directory: pkg/java
+        working-directory: pkg/kotlin
         run: ./gradlew build -x test
 
       - name: List JAR contents
-        working-directory: pkg/java/build/libs
+        working-directory: pkg/kotlin/build/libs
         run: |
           echo "JAR contents:"
           jar tf gluesql-*.jar | grep natives || echo "No natives found in JAR"
@@ -173,7 +173,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: gluesql-jar
-          path: pkg/java/build/libs/*.jar
+          path: pkg/kotlin/build/libs/*.jar
 
   publish-to-maven:
     name: Publish to Maven Central
@@ -181,8 +181,8 @@ jobs:
     if: inputs.dry_run == false
     runs-on: ubuntu-latest
     environment:
-      name: release-java
-      url: https://central.sonatype.com/artifact/org.gluesql/gluesql
+      name: release-kotlin
+      url: https://central.sonatype.com/artifact/org.gluesql/gluesql-core
 
     steps:
       - uses: actions/checkout@v4
@@ -199,13 +199,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: gluesql-jar
-          path: pkg/java/build/libs
+          path: pkg/kotlin/build/libs
 
       - name: Make gradlew executable
-        run: chmod +x pkg/java/gradlew
+        run: chmod +x pkg/kotlin/gradlew
 
       - name: Publish to Maven Central
-        working-directory: pkg/java
+        working-directory: pkg/kotlin
         env:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}

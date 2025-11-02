@@ -1,4 +1,4 @@
-name: Java
+name: Kotlin
 
 on:
   push:
@@ -13,7 +13,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  java_build:
+  kotlin_build:
     name: Build and Test
     runs-on: ubuntu-latest
     steps:
@@ -41,10 +41,10 @@ jobs:
             ~/.gradle/wrapper
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
       - name: Make gradlew executable
-        run: chmod +x pkg/java/gradlew
+        run: chmod +x pkg/kotlin/gradlew
       - name: Run lint checks
-        working-directory: pkg/java
-        run: ./gradlew spotlessCheck
+        working-directory: pkg/kotlin
+        run: ./gradlew ktlintCheck
       - name: Build and test
-        working-directory: pkg/java
+        working-directory: pkg/kotlin
         run: ./gradlew test
