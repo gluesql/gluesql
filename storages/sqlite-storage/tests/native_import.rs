@@ -9,6 +9,7 @@ use {
     },
     gluesql_sqlite_storage::SqliteStorage,
     rusqlite::{Connection, params, types::Null},
+    rust_decimal::Decimal,
     std::{fs, path::PathBuf},
     uuid::Uuid,
 };
@@ -85,7 +86,7 @@ async fn read_native_sqlite_schema() -> Result<()> {
                 Value::F64(1.5),
                 Value::Str("hello".to_owned()),
                 Value::Bytea(vec![0, 1, 2, 255]),
-                Value::F64(42.5),
+                Value::Decimal(Decimal::new(425, 1)),
             ],
             vec![
                 Value::I64(2),
@@ -93,7 +94,7 @@ async fn read_native_sqlite_schema() -> Result<()> {
                 Value::Null,
                 Value::Str("world".to_owned()),
                 Value::Null,
-                Value::I64(7),
+                Value::Decimal(Decimal::new(7, 0)),
             ],
         ]
     );
