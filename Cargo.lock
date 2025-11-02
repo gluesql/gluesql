@@ -1546,21 +1546,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gluesql-java"
-version = "0.18.0"
-dependencies = [
- "gluesql-core",
- "gluesql-json-storage",
- "gluesql-shared-memory-storage",
- "gluesql_memory_storage",
- "gluesql_sled_storage",
- "thiserror 2.0.17",
- "tokio",
- "uniffi",
- "uuid",
-]
-
-[[package]]
 name = "gluesql-js"
 version = "0.18.0"
 dependencies = [
@@ -1596,6 +1581,21 @@ dependencies = [
  "serde_json",
  "thiserror 1.0.63",
  "tokio",
+ "uuid",
+]
+
+[[package]]
+name = "gluesql-kotlin"
+version = "0.18.0"
+dependencies = [
+ "gluesql-core",
+ "gluesql-json-storage",
+ "gluesql-shared-memory-storage",
+ "gluesql_memory_storage",
+ "gluesql_sled_storage",
+ "thiserror 2.0.17",
+ "tokio",
+ "uniffi",
  "uuid",
 ]
 

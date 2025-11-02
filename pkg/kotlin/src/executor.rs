@@ -1,5 +1,6 @@
 use gluesql_core::ast::Statement;
-use gluesql_core::prelude::{execute, parse, plan, translate};
+use gluesql_core::prelude::{execute, parse, translate};
+use gluesql_core::store::Planner;
 
 use crate::error::GlueSQLError;
 use crate::storage::StorageBackend;
@@ -35,7 +36,7 @@ impl QueryExecutor {
         match storage {
             StorageBackend::Memory(storage) => {
                 let mut storage_guard = storage.lock().await;
-                let planned_statement = plan(&*storage_guard, statement)
+                let planned_statement = storage_guard.plan(statement)
                     .await
                     .map_err(|e| GlueSQLError::PlanError(e.to_string()))?;
                 execute(&mut *storage_guard, &planned_statement)
@@ -44,7 +45,7 @@ impl QueryExecutor {
             }
             StorageBackend::Json(storage) => {
                 let mut storage_guard = storage.lock().await;
-                let planned_statement = plan(&*storage_guard, statement)
+                let planned_statement = storage_guard.plan(statement)
                     .await
                     .map_err(|e| GlueSQLError::PlanError(e.to_string()))?;
                 execute(&mut *storage_guard, &planned_statement)
@@ -53,7 +54,7 @@ impl QueryExecutor {
             }
             StorageBackend::SharedMemory(storage) => {
                 let mut storage_guard = storage.lock().await;
-                let planned_statement = plan(&*storage_guard, statement)
+                let planned_statement = storage_guard.plan(statement)
                     .await
                     .map_err(|e| GlueSQLError::PlanError(e.to_string()))?;
                 execute(&mut *storage_guard, &planned_statement)
@@ -62,7 +63,7 @@ impl QueryExecutor {
             }
             StorageBackend::Sled(storage) => {
                 let mut storage_guard = storage.lock().await;
-                let planned_statement = plan(&*storage_guard, statement)
+                let planned_statement = storage_guard.plan(statement)
                     .await
                     .map_err(|e| GlueSQLError::PlanError(e.to_string()))?;
                 execute(&mut *storage_guard, &planned_statement)
