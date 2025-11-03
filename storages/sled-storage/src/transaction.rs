@@ -67,7 +67,7 @@ impl Transaction for SledStorage {
                 .unwrap_or_default();
 
             if Some(txid) == lock_txid {
-                self.rollback_txid(txid).map(|_| lock_txid)
+                self.rollback_txid(txid).map(|()| lock_txid)
             } else {
                 Ok(None)
             }

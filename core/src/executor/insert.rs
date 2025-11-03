@@ -94,7 +94,7 @@ pub async fn insert<T: GStore + GStoreMut>(
             storage
                 .append_data(table_name, rows)
                 .await
-                .map(|_| num_rows)
+                .map(|()| num_rows)
         }
         RowsData::Insert(rows) => {
             let num_rows = rows.len();
@@ -102,7 +102,7 @@ pub async fn insert<T: GStore + GStoreMut>(
             storage
                 .insert_data(table_name, rows)
                 .await
-                .map(|_| num_rows)
+                .map(|()| num_rows)
         }
     }
 }
