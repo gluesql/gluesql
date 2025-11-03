@@ -326,14 +326,14 @@ impl<'a, W: Write> Print<W> {
 #[cfg(test)]
 mod tests {
     use {
-        super::Print,
+        super::{Print, PrintOption},
         crate::command::{SetOption, ShowOption},
         std::path::PathBuf,
     };
 
     #[test]
     fn print_help() {
-        let mut print = Print::new(Vec::new(), None, Default::default());
+        let mut print = Print::new(Vec::new(), None, PrintOption::default());
 
         let actual = {
             print.help().unwrap();
@@ -369,7 +369,7 @@ mod tests {
             prelude::{Payload, PayloadVariable, Value},
         };
 
-        let mut print = Print::new(Vec::new(), None, Default::default());
+        let mut print = Print::new(Vec::new(), None, PrintOption::default());
 
         macro_rules! test {
             ($payload: expr, $expected: literal ) => {
@@ -773,7 +773,7 @@ heading ON"
     fn print_spool() {
         use std::fs;
 
-        let mut print = Print::new(Vec::new(), None, Default::default());
+        let mut print = Print::new(Vec::new(), None, PrintOption::default());
 
         // Spooling on file
         fs::create_dir_all("tmp").unwrap();
