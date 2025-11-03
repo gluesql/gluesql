@@ -126,38 +126,22 @@ jobs:
           path: downloaded-artifacts
           pattern: native-*
 
-      - name: Organize native libraries
-        run: |
-          mkdir -p pkg/kotlin/src/main/resources/natives
-          # Move each platform's artifact to correct location
-          for artifact_dir in downloaded-artifacts/native-*; do
-            platform=$(basename "$artifact_dir" | sed 's/^native-//')
-            echo "Processing platform: $platform"
-            mkdir -p "pkg/kotlin/src/main/resources/natives/$platform"
-            cp -v "$artifact_dir"/* "pkg/kotlin/src/main/resources/natives/$platform/"
-          done
-
-      - name: List downloaded artifacts
-        run: |
-          echo "Native libraries:"
-          ls -R pkg/kotlin/src/main/resources/natives/
-
       - name: Make gradlew executable
         run: chmod +x pkg/kotlin/gradlew
+
+      - name: Organize native libraries
+        working-directory: pkg/kotlin
+        run: ./gradlew organizeNativeLibs
 
       - name: Generate UniFFI bindings
         working-directory: pkg/kotlin
         run: |
-          # Use already-built Linux library instead of building debug version
+          # Copy Linux library to target/release for uniffi-bindgen
           mkdir -p ../../target/release
           cp src/main/resources/natives/linux-x86-64/libgluesql_kotlin.so ../../target/release/
 
-          # Generate Kotlin bindings from the release library
-          cargo run --bin uniffi-bindgen generate \
-            --language kotlin \
-            --out-dir build/generated/source/uniffi/kotlin \
-            --library ../../target/release/libgluesql_kotlin.so \
-            --no-format
+          # Generate bindings using Gradle task with custom library path
+          ./gradlew generateBindings -PlibPath=../../target/release/libgluesql_kotlin.so
 
       - name: Build JAR
         working-directory: pkg/kotlin

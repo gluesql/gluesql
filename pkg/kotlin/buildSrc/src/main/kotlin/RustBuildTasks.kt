@@ -66,33 +66,50 @@ private fun Project.registerBuildRustLibTask(workspaceRoot: File) {
 /**
  * Registers the `generateBindings` task that runs UniFFI to generate Kotlin bindings
  * from the Rust library.
+ *
+ * Supports custom library path via project property:
+ * - Default: Uses debug build (target/debug/)
+ * - With `-PlibPath=path`: Uses specified library path (for CI)
  */
 private fun Project.registerGenerateBindingsTask(workspaceRoot: File) {
     tasks.register("generateBindings") {
         group = "build"
         description = "Generate UniFFI Kotlin bindings from Rust library"
-        dependsOn("buildRustLib")
 
         val generatedDir = layout.buildDirectory.dir("generated/source/uniffi/kotlin").get().asFile
-        val debugLibPath = workspaceRoot.resolve(
-            "target/debug/${currentPlatformLibName()}.${currentPlatformLibExtension()}"
-        )
 
-        inputs.file(debugLibPath)
+        // Allow custom library path via -PlibPath=... (for CI)
+        val customLibPath = project.findProperty("libPath") as String?
+        val libPath = if (customLibPath != null) {
+            File(customLibPath).also {
+                logger.lifecycle("Using custom library path: ${it.absolutePath}")
+            }
+        } else {
+            // Default: debug build for local development
+            dependsOn("buildRustLib")
+            workspaceRoot.resolve(
+                "target/debug/${currentPlatformLibName()}.${currentPlatformLibExtension()}"
+            )
+        }
+
         inputs.files(fileTree(projectDir.resolve("src")).include("**/*.rs", "**/*.udl"))
         outputs.dir(generatedDir)
 
         doLast {
             generatedDir.mkdirs()
 
-            if (!debugLibPath.exists()) {
+            if (!libPath.exists()) {
                 throw GradleException(
-                    "Rust library not found at: ${debugLibPath.absolutePath}\n" +
-                    "Run './gradlew buildRustLib' first to build the library."
+                    "Rust library not found at: ${libPath.absolutePath}\n" +
+                    if (customLibPath != null) {
+                        "Ensure the library is built and the path is correct."
+                    } else {
+                        "Run './gradlew buildRustLib' first to build the library."
+                    }
                 )
             }
 
-            logger.lifecycle("Generating UniFFI Kotlin bindings...")
+            logger.lifecycle("Generating UniFFI Kotlin bindings from ${libPath.name}...")
 
             @Suppress("DEPRECATION")
             val result = project.exec {
@@ -108,7 +125,7 @@ private fun Project.registerGenerateBindingsTask(workspaceRoot: File) {
                     "--out-dir",
                     generatedDir.absolutePath,
                     "--library",
-                    debugLibPath.absolutePath,
+                    libPath.absolutePath,
                     "--no-format",
                 )
                 isIgnoreExitValue = true
