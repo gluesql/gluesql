@@ -182,7 +182,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: release-kotlin
-      url: https://central.sonatype.com/artifact/org.gluesql/gluesql-core
+      url: https://central.sonatype.com/artifact/org.gluesql/gluesql-kotlin
 
     steps:
       - uses: actions/checkout@v4

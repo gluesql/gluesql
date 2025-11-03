@@ -16,7 +16,7 @@ Learn more at **<https://gluesql.org/docs>**.
 ### Gradle
 ```kotlin
 dependencies {
-    implementation("org.gluesql:gluesql-core:0.1.0")
+    implementation("org.gluesql:gluesql-kotlin:0.1.0")
 }
 ```
 
@@ -24,7 +24,7 @@ dependencies {
 ```xml
 <dependency>
     <groupId>org.gluesql</groupId>
-    <artifactId>gluesql-core</artifactId>
+    <artifactId>gluesql-kotlin</artifactId>
     <version>0.1.0</version>
 </dependency>
 ```

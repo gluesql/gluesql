@@ -8,7 +8,7 @@ group = "org.gluesql"
 version = "0.1.0"
 
 base {
-    archivesName.set("gluesql-core")
+    archivesName.set("gluesql-kotlin")
 }
 
 repositories {
@@ -69,7 +69,7 @@ ktlint {
 mavenPublishing {
     publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL)
 
-    coordinates(group.toString(), "gluesql-core", version.toString())
+    coordinates(group.toString(), "gluesql-kotlin", version.toString())
 
     pom {
         name.set("GlueSQL Kotlin")
