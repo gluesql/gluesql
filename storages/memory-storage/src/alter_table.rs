@@ -97,7 +97,7 @@ impl AlterTable for MemoryStorage {
             }
         };
 
-        for (_, row) in item.rows.iter_mut() {
+        for row in item.rows.values_mut() {
             match row {
                 DataRow::Vec(values) => {
                     values.push(value.clone());
@@ -140,7 +140,7 @@ impl AlterTable for MemoryStorage {
             Some(column_index) => {
                 column_defs.remove(column_index);
 
-                for (_, row) in item.rows.iter_mut() {
+                for row in item.rows.values_mut() {
                     if row.len() <= column_index {
                         continue;
                     }

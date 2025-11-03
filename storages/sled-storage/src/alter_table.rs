@@ -81,7 +81,7 @@ impl AlterTable for SledStorage {
             tree.insert(new_schema_key.as_bytes(), value)?;
 
             // replace data
-            for (old_key, value) in items.iter() {
+            for (old_key, value) in &items {
                 let new_key = str::from_utf8(old_key.as_ref())
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
@@ -312,7 +312,7 @@ impl AlterTable for SledStorage {
             };
 
             // migrate data
-            for (key, snapshot) in items.iter() {
+            for (key, snapshot) in &items {
                 let snapshot: Snapshot<DataRow> = bincode::deserialize(snapshot)
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
@@ -445,7 +445,7 @@ impl AlterTable for SledStorage {
             };
 
             // migrate data
-            for (key, snapshot) in items.iter() {
+            for (key, snapshot) in &items {
                 let snapshot: Snapshot<DataRow> = bincode::deserialize(snapshot)
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;

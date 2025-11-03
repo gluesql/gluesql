@@ -51,7 +51,7 @@ impl<'a, T: GStore> Update<'a, T> {
         column_defs: Option<&'a [ColumnDef]>,
     ) -> Result<Self> {
         if let Some(column_defs) = column_defs {
-            for assignment in fields.iter() {
+            for assignment in fields {
                 let Assignment { id, .. } = assignment;
 
                 if column_defs.iter().all(|col_def| &col_def.name != id) {

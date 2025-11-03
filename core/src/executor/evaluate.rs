@@ -291,7 +291,7 @@ where
                 None => Evaluated::Value(Value::Bool(true)),
             };
 
-            for (when, then) in when_then.iter() {
+            for (when, then) in when_then {
                 let when = eval(when).await?;
 
                 if when.evaluate_eq(&operand).is_true() {

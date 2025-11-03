@@ -227,7 +227,7 @@ async fn validate_foreign_key<T: GStore>(
                 InsertError::ConflictReferencingColumnName(referencing_column_name.to_owned())
             })?;
 
-        for row in rows.iter() {
+        for row in rows {
             let value =
                 row.get(target_index.0)
                     .ok_or(InsertError::ConflictReferencingColumnName(
