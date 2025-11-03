@@ -63,17 +63,17 @@ mod tests {
     fn create_index() {
         let actual = table("Foo").create_index("nameIndex", "name asc").build();
         let expected = "CREATE INDEX nameIndex ON Foo (name Asc)";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = table("Foo").create_index("nameIndex", "name desc").build();
         let expected = "CREATE INDEX nameIndex ON Foo (name Desc)";
-        test(actual, expected);
+        test(&actual, expected);
     }
 
     #[test]
     fn drop_index() {
         let actual = table("Foo").drop_index("nameIndex").build();
         let expected = "DROP INDEX Foo.nameIndex";
-        test(actual, expected);
+        test(&actual, expected);
     }
 }

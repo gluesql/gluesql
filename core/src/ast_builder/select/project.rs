@@ -152,12 +152,12 @@ mod tests {
         // select node -> project node -> build
         let actual = table("Good").select().project("id").build();
         let expected = "SELECT id FROM Good";
-        test(actual, expected);
+        test(&actual, expected);
 
         // select node -> project node -> build
         let actual = table("Group").select().project("*, Group.*, name").build();
         let expected = "SELECT *, Group.*, name FROM Group";
-        test(actual, expected);
+        test(&actual, expected);
 
         // project node -> project node -> build
         let actual = table("Foo")
@@ -176,7 +176,7 @@ mod tests {
             FROM
                 Foo
         ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // select node -> project node -> build
         let actual = table("Aliased")
@@ -184,7 +184,7 @@ mod tests {
             .project("1 + 1 as col1, col2")
             .build();
         let expected = "SELECT 1 + 1 as col1, col2 FROM Aliased";
-        test(actual, expected);
+        test(&actual, expected);
     }
 
     #[test]
@@ -192,7 +192,7 @@ mod tests {
         // select node -> project node -> build
         let actual = table("Foo").select().project("*").build();
         let expected = "SELECT * FROM Foo";
-        test(actual, expected);
+        test(&actual, expected);
 
         // group by node -> project node -> build
         let actual = table("Bar")
@@ -206,7 +206,7 @@ mod tests {
             FROM Bar
             GROUP BY city
         ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // having node -> project node -> build
         let actual = table("Cat")
@@ -224,7 +224,7 @@ mod tests {
             GROUP BY age
             HAVING SUM(length) < 1000;
         "#;
-        test(actual, expected);
+        test(&actual, expected);
 
         // hash join node -> project node -> build
         let actual = table("Player")
@@ -282,6 +282,6 @@ mod tests {
             .select()
             .build();
         let expected = "SELECT * FROM (SELECT id FROM Foo) Sub";
-        test(actual, expected);
+        test(&actual, expected);
     }
 }

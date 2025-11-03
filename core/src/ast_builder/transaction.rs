@@ -18,14 +18,14 @@ mod tests {
     fn transaction() {
         let actual = begin();
         let expected = "START TRANSACTION";
-        test(Ok(actual), expected);
+        test(&Ok(actual), expected);
 
         let actual = commit();
         let expected = "COMMIT";
-        test(Ok(actual), expected);
+        test(&Ok(actual), expected);
 
         let actual = rollback();
         let expected = "ROLLBACK";
-        test(Ok(actual), expected);
+        test(&Ok(actual), expected);
     }
 }

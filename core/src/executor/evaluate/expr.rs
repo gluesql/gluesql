@@ -83,17 +83,17 @@ pub fn unary_op<'a>(op: &UnaryOperator, v: Evaluated<'a>) -> Result<Evaluated<'a
 }
 
 pub fn between<'a>(
-    target: Evaluated<'a>,
+    target: &Evaluated<'a>,
     negated: bool,
-    low: Evaluated<'a>,
-    high: Evaluated<'a>,
+    low: &Evaluated<'a>,
+    high: &Evaluated<'a>,
 ) -> Evaluated<'a> {
     if target.is_null() || low.is_null() || high.is_null() {
         return Evaluated::Value(Value::Null);
     }
 
-    let v = low.evaluate_cmp(&target) != Some(Ordering::Greater)
-        && target.evaluate_cmp(&high) != Some(Ordering::Greater);
+    let v = low.evaluate_cmp(target) != Some(Ordering::Greater)
+        && target.evaluate_cmp(high) != Some(Ordering::Greater);
     let v = negated ^ v;
 
     Evaluated::Value(Value::Bool(v))

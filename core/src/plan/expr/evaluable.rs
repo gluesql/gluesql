@@ -31,14 +31,14 @@ pub fn check_expr(context: Option<Arc<Context<'_>>>, expr: &Expr) -> bool {
         PlanExpr::MultiExprs(exprs) => exprs
             .iter()
             .all(|expr| check_expr(context.as_ref().map(Arc::clone), expr)),
-        PlanExpr::Query(query) => check_query(context, query),
+        PlanExpr::Query(query) => check_query(context.as_ref(), query),
         PlanExpr::QueryAndExpr { query, expr } => {
-            check_query(context.as_ref().map(Arc::clone), query) && check_expr(context, expr)
+            check_query(context.as_ref(), query) && check_expr(context, expr)
         }
     }
 }
 
-fn check_query(context: Option<Arc<Context<'_>>>, query: &Query) -> bool {
+fn check_query(context: Option<&Arc<Context<'_>>>, query: &Query) -> bool {
     let Query {
         body,
         order_by,
@@ -47,11 +47,11 @@ fn check_query(context: Option<Arc<Context<'_>>>, query: &Query) -> bool {
     } = query;
 
     let body = match body {
-        SetExpr::Select(select) => check_select(context.as_ref().map(Arc::clone), select),
+        SetExpr::Select(select) => check_select(context, select),
         SetExpr::Values(Values(rows)) => rows
             .iter()
             .flatten()
-            .all(|expr| check_expr(context.as_ref().map(Arc::clone), expr)),
+            .all(|expr| check_expr(context.map(Arc::clone), expr)),
     };
 
     if !body {
@@ -61,7 +61,7 @@ fn check_query(context: Option<Arc<Context<'_>>>, query: &Query) -> bool {
     let order_by = order_by
         .iter()
         .map(|order_by| &order_by.expr)
-        .all(|expr| check_expr(context.as_ref().map(Arc::clone), expr));
+        .all(|expr| check_expr(context.map(Arc::clone), expr));
     if !order_by {
         return false;
     }
@@ -69,10 +69,10 @@ fn check_query(context: Option<Arc<Context<'_>>>, query: &Query) -> bool {
     limit
         .iter()
         .chain(offset.iter())
-        .all(|expr| check_expr(context.as_ref().map(Arc::clone), expr))
+        .all(|expr| check_expr(context.map(Arc::clone), expr))
 }
 
-fn check_select(context: Option<Arc<Context<'_>>>, select: &Select) -> bool {
+fn check_select(context: Option<&Arc<Context<'_>>>, select: &Select) -> bool {
     let Select {
         distinct: _,
         projection,
@@ -83,7 +83,7 @@ fn check_select(context: Option<Arc<Context<'_>>>, select: &Select) -> bool {
     } = select;
 
     if !projection.iter().all(|select_item| match select_item {
-        SelectItem::Expr { expr, .. } => check_expr(context.as_ref().map(Arc::clone), expr),
+        SelectItem::Expr { expr, .. } => check_expr(context.map(Arc::clone), expr),
         SelectItem::QualifiedWildcard(_) | SelectItem::Wildcard => true,
     }) {
         return false;
@@ -91,7 +91,7 @@ fn check_select(context: Option<Arc<Context<'_>>>, select: &Select) -> bool {
 
     let TableWithJoins { relation, joins } = from;
 
-    if !check_table_factor(context.as_ref().map(Arc::clone), relation) {
+    if !check_table_factor(context.map(Arc::clone), relation) {
         return false;
     }
 
@@ -102,14 +102,14 @@ fn check_select(context: Option<Arc<Context<'_>>>, select: &Select) -> bool {
             ..
         } = join;
 
-        if !check_table_factor(context.as_ref().map(Arc::clone), relation) {
+        if !check_table_factor(context.map(Arc::clone), relation) {
             return false;
         }
 
         match join_operator {
             JoinOperator::Inner(JoinConstraint::On(expr))
             | JoinOperator::LeftOuter(JoinConstraint::On(expr)) => {
-                check_expr(context.as_ref().map(Arc::clone), expr)
+                check_expr(context.map(Arc::clone), expr)
             }
             JoinOperator::Inner(JoinConstraint::None)
             | JoinOperator::LeftOuter(JoinConstraint::None) => true,
@@ -122,7 +122,7 @@ fn check_select(context: Option<Arc<Context<'_>>>, select: &Select) -> bool {
         .iter()
         .chain(group_by.iter())
         .chain(having.iter())
-        .all(|expr| check_expr(context.as_ref().map(Arc::clone), expr))
+        .all(|expr| check_expr(context.map(Arc::clone), expr))
 }
 
 fn check_table_factor(context: Option<Arc<Context<'_>>>, table_factor: &TableFactor) -> bool {
