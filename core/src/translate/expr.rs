@@ -107,7 +107,7 @@ pub fn translate_expr(sql_expr: &SqlExpr, params: &[ParamLiteral]) -> Result<Exp
             right: translate_expr(right, params).map(Box::new)?,
         }),
         SqlExpr::UnaryOp { op, expr } => Ok(Expr::UnaryOp {
-            op: translate_unary_operator(op)?,
+            op: translate_unary_operator(*op)?,
             expr: translate_expr(expr, params).map(Box::new)?,
         }),
         SqlExpr::Extract { field, expr, .. } => translate_extract(params, field, expr),

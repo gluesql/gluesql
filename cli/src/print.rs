@@ -50,17 +50,14 @@ impl PrintOption {
     }
 
     fn format(&self, option: ShowOption) -> String {
-        fn string_from(value: &bool) -> String {
-            match value {
-                true => "ON".into(),
-                false => "OFF".into(),
-            }
+        fn string_from(value: bool) -> String {
+            if value { "ON".into() } else { "OFF".into() }
         }
         match option {
-            ShowOption::Tabular => format!("tabular {}", string_from(&self.tabular)),
+            ShowOption::Tabular => format!("tabular {}", string_from(self.tabular)),
             ShowOption::Colsep => format!("colsep \"{}\"", self.colsep),
             ShowOption::Colwrap => format!("colwrap \"{}\"", self.colwrap),
-            ShowOption::Heading => format!("heading {}", string_from(&self.heading)),
+            ShowOption::Heading => format!("heading {}", string_from(self.heading)),
             ShowOption::All => format!(
                 "{}\n{}\n{}\n{}",
                 self.format(ShowOption::Tabular),

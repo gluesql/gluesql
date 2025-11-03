@@ -192,6 +192,7 @@ pub enum EvaluateError {
     I64ToU32ConversionFailure(String),
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 fn error_serialize<S>(error: &chrono::format::ParseError, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,

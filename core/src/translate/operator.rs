@@ -7,7 +7,7 @@ use {
     sqlparser::ast::{BinaryOperator as SqlBinaryOperator, UnaryOperator as SqlUnaryOperator},
 };
 
-pub fn translate_unary_operator(sql_unary_operator: &SqlUnaryOperator) -> Result<UnaryOperator> {
+pub fn translate_unary_operator(sql_unary_operator: SqlUnaryOperator) -> Result<UnaryOperator> {
     match sql_unary_operator {
         SqlUnaryOperator::Plus => Ok(UnaryOperator::Plus),
         SqlUnaryOperator::Minus => Ok(UnaryOperator::Minus),

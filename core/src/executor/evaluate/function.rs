@@ -939,9 +939,9 @@ pub fn find_idx<'a>(
     .into_control_flow()
 }
 
-pub fn extract<'a>(field: &DateTimeField, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+pub fn extract<'a>(field: DateTimeField, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     Value::try_from(expr)
-        .and_then(|v| v.extract(field))
+        .and_then(|v| v.extract(&field))
         .map(Evaluated::Value)
         .into_control_flow()
 }

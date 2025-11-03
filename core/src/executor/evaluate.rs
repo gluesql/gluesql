@@ -648,7 +648,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         Function::Cast { expr, data_type } => return eval(expr).await?.cast(data_type),
         Function::Extract { field, expr } => {
             let expr = eval(expr).await?;
-            f::extract(field, expr)
+            f::extract(*field, expr)
         }
         Function::Coalesce(exprs) => {
             let exprs = stream::iter(exprs).then(eval).try_collect().await?;

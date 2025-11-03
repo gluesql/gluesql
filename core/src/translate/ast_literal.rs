@@ -38,7 +38,7 @@ pub fn translate_datetime_field(sql_datetime_field: &SqlDateTimeField) -> Result
     })
 }
 
-pub fn translate_trim_where_field(sql_trim_where_field: &SqlTrimWhereField) -> TrimWhereField {
+pub fn translate_trim_where_field(sql_trim_where_field: SqlTrimWhereField) -> TrimWhereField {
     use TrimWhereField::*;
     match sql_trim_where_field {
         SqlTrimWhereField::Both => Both,
