@@ -94,7 +94,7 @@ mod tests {
             HAVING COUNT(id) > 10
             OFFSET 10
         ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // group by node -> having node -> limit node
         let actual = table("Bar")
@@ -111,7 +111,7 @@ mod tests {
             HAVING COUNT(id) > 10
             LIMIT 10
             ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // group by node -> having node -> project node
         let actual = table("Bar")
@@ -128,7 +128,7 @@ mod tests {
             GROUP BY id, (a + name)
             HAVING COUNT(id) > 10
         ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // group by node -> having node -> build
         let actual = table("Bar")
@@ -143,7 +143,7 @@ mod tests {
                 GROUP BY id, (a + name)
                 HAVING COUNT(id) > 10
             ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // select -> group by -> having -> derived subquery
         let actual = table("Foo")
@@ -154,6 +154,6 @@ mod tests {
             .select()
             .build();
         let expected = "SELECT * FROM (SELECT * FROM Foo GROUP BY a HAVING a > 1) Sub";
-        test(actual, expected);
+        test(&actual, expected);
     }
 }

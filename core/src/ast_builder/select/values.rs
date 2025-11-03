@@ -65,35 +65,35 @@ mod tests {
 
         let actual = values(vec![vec![num(7)]]).build();
         let expected = "VALUES(7)";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = values(vec!["1, 'a'", "2, 'b'"]).build();
         let expected = "VALUES(1, 'a'), (2, 'b')";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = values(vec!["1, 'a'", "2, 'b'"])
             .order_by(vec!["column1 desc"])
             .build();
         let expected = "VALUES(1, 'a'), (2, 'b') ORDER BY column1 desc";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = values(vec!["1, 'a'", "2, 'b'"]).offset(1).build();
         let expected = "VALUES(1, 'a'), (2, 'b') offset 1";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = values(vec!["1, 'a'", "2, 'b'"]).limit(1).build();
         let expected = "VALUES(1, 'a'), (2, 'b') limit 1";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = values(vec!["1, 'a'", "2, 'b'"]).offset(1).limit(1).build();
         let expected = "VALUES(1, 'a'), (2, 'b') offset 1 limit 1";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = values(vec!["1, 'a'", "2, 'b'"])
             .alias_as("Sub")
             .select()
             .build();
         let expected = "SELECT * FROM (VALUES(1, 'a'), (2, 'b')) AS Sub";
-        test(actual, expected);
+        test(&actual, expected);
     }
 }

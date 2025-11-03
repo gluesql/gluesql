@@ -125,7 +125,7 @@ mod tests {
         // select node -> filter node -> build
         let actual = table("Bar").select().filter("id IS NULL").build();
         let expected = "SELECT * FROM Bar WHERE id IS NULL";
-        test(actual, expected);
+        test(&actual, expected);
 
         // select node -> filter node -> build
         let actual = table("Foo")
@@ -137,7 +137,7 @@ mod tests {
             })
             .build();
         let expected = "SELECT * FROM Foo WHERE col1 > col2";
-        test(actual, expected);
+        test(&actual, expected);
 
         // filter node -> filter node -> build
         let actual = table("Bar")
@@ -147,7 +147,7 @@ mod tests {
             .filter("id < 20")
             .build();
         let expected = "SELECT * FROM Bar WHERE id IS NULL AND id > 10 AND id < 20";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join node -> filter node -> build
         let actual = table("Foo")
@@ -156,7 +156,7 @@ mod tests {
             .filter("id IS NULL")
             .build();
         let expected = "SELECT * FROM Foo JOIN Bar WHERE id IS NULL";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join node -> filter node -> build
         let actual = table("Foo")
@@ -165,7 +165,7 @@ mod tests {
             .filter("id IS NULL")
             .build();
         let expected = "SELECT * FROM Foo JOIN Bar AS b WHERE id IS NULL";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join node -> filter node -> build
         let actual = table("Foo")
@@ -174,7 +174,7 @@ mod tests {
             .filter("id IS NULL")
             .build();
         let expected = "SELECT * FROM Foo LEFT JOIN Bar WHERE id IS NULL";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join node -> filter node -> build
         let actual = table("Foo")
@@ -183,7 +183,7 @@ mod tests {
             .filter("id IS NULL")
             .build();
         let expected = "SELECT * FROM Foo LEFT JOIN Bar AS b WHERE id IS NULL";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join constraint node -> filter node -> build
         let actual = table("Foo")
@@ -193,7 +193,7 @@ mod tests {
             .filter("id IS NULL")
             .build();
         let expected = "SELECT * FROM Foo JOIN Bar ON Foo.id = Bar.id WHERE id IS NULL";
-        test(actual, expected);
+        test(&actual, expected);
 
         // hash join node -> filter node -> build
         let actual = table("Player")
@@ -249,6 +249,6 @@ mod tests {
             .select()
             .build();
         let expected = "SELECT * FROM (SELECT * FROM Bar WHERE id IS NULL) Sub";
-        test(actual, expected);
+        test(&actual, expected);
     }
 }

@@ -287,26 +287,26 @@ mod tests {
             crate::{ast::AstLiteral, result::Result},
         };
 
-        fn test(ast_literal: AstLiteral, literal: Result<Literal>) {
-            assert_eq!((&ast_literal).try_into(), literal);
+        fn test(ast_literal: &AstLiteral, literal: &Result<Literal>) {
+            assert_eq!(ast_literal.try_into(), *literal);
         }
 
-        test(AstLiteral::Boolean(true), Ok(Boolean(true)));
+        test(&AstLiteral::Boolean(true), &Ok(Boolean(true)));
         test(
-            AstLiteral::Number(BigDecimal::from(123)),
-            Ok(Number(Cow::Borrowed(&BigDecimal::from(123)))),
+            &AstLiteral::Number(BigDecimal::from(123)),
+            &Ok(Number(Cow::Borrowed(&BigDecimal::from(123)))),
         );
         test(
-            AstLiteral::QuotedString("abc".to_owned()),
-            Ok(Text(Cow::Borrowed("abc"))),
+            &AstLiteral::QuotedString("abc".to_owned()),
+            &Ok(Text(Cow::Borrowed("abc"))),
         );
         test(
-            AstLiteral::HexString("1A2B".to_owned()),
-            Ok(Bytea(hex::decode("1A2B").unwrap())),
+            &AstLiteral::HexString("1A2B".to_owned()),
+            &Ok(Bytea(hex::decode("1A2B").unwrap())),
         );
         test(
-            AstLiteral::HexString("!*@Q".to_owned()),
-            Err(LiteralError::FailedToDecodeHexString("!*@Q".to_owned()).into()),
+            &AstLiteral::HexString("!*@Q".to_owned()),
+            &Err(LiteralError::FailedToDecodeHexString("!*@Q".to_owned()).into()),
         );
         assert_eq!(Literal::try_from(&AstLiteral::Null).unwrap(), Null);
     }
