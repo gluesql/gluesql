@@ -112,7 +112,7 @@ impl StoreMut for SledStorage {
 
             // delete data
             block_on(async {
-                for (row_key, row_snapshot) in items.iter() {
+                for (row_key, row_snapshot) in &items {
                     let row_snapshot: Snapshot<DataRow> = bincode::deserialize(row_snapshot)
                         .map_err(err_into)
                         .map_err(ConflictableTransactionError::Abort)?;
@@ -169,7 +169,7 @@ impl StoreMut for SledStorage {
             let index_sync = IndexSync::new(tree, txid, table_name)?;
 
             block_on(async {
-                for row in tx_rows.iter() {
+                for row in tx_rows {
                     let id = id_offset + tree.generate_id()?;
                     let id = id.to_be_bytes();
                     let key = key::data(table_name, id.to_vec());
@@ -224,7 +224,7 @@ impl StoreMut for SledStorage {
             let index_sync = IndexSync::new(tree, txid, table_name)?;
 
             block_on(async {
-                for (key, new_row) in tx_rows.iter() {
+                for (key, new_row) in tx_rows {
                     let key = key
                         .to_cmp_be_bytes()
                         .map_err(ConflictableTransactionError::Abort)
@@ -295,7 +295,7 @@ impl StoreMut for SledStorage {
             let index_sync = IndexSync::new(tree, txid, table_name)?;
 
             block_on(async {
-                for key in tx_keys.iter() {
+                for key in tx_keys {
                     let key = key
                         .to_cmp_be_bytes()
                         .map_err(ConflictableTransactionError::Abort)

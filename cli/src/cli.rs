@@ -2,7 +2,7 @@ use {
     crate::{
         command::{Command, CommandError},
         helper::CliHelper,
-        print::Print,
+        print::{Print, PrintOption},
     },
     edit::{Builder, edit_file, edit_with_builder},
     futures::executor::block_on,
@@ -35,7 +35,7 @@ where
 {
     pub fn new(storage: T, output: W) -> Self {
         let glue = Glue::new(storage);
-        let print = Print::new(output, None, Default::default());
+        let print = Print::new(output, None, PrintOption::default());
 
         Self { glue, print }
     }

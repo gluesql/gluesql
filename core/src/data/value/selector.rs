@@ -40,7 +40,7 @@ impl Value {
             Continue(Selectable::Map(map)) => Value::Map(map.clone()),
             Continue(Selectable::List(list)) => Value::List(list.clone()),
             Continue(Selectable::Other(value)) => value.clone(),
-            Break(_) => Value::Null,
+            Break(()) => Value::Null,
         };
 
         Ok(value)

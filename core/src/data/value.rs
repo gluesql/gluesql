@@ -653,7 +653,7 @@ impl Value {
             }
 
             (1_i128..=a)
-                .try_fold(1_i128, |mul, x| mul.checked_mul(x))
+                .try_fold(1_i128, i128::checked_mul)
                 .ok_or_else(|| ValueError::FactorialOverflow.into())
         }
 

@@ -18,7 +18,7 @@ impl Metadata for RedisStorage {
         let redis_keys: Vec<String> = {
             let mut conn = self.conn.lock_err()?;
             conn.scan_match(&metadata_scan_key)
-                .map(|iter| iter.collect::<Vec<String>>())
+                .map(Iterator::collect::<Vec<String>>)
                 .map_err(|_| {
                     Error::StorageMsg(format!(
                         "[RedisStorage] failed to scan metadata: namespace={}",

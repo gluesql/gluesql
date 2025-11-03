@@ -94,7 +94,7 @@ pub async fn insert<T: GStore + GStoreMut>(
             storage
                 .append_data(table_name, rows)
                 .await
-                .map(|_| num_rows)
+                .map(|()| num_rows)
         }
         RowsData::Insert(rows) => {
             let num_rows = rows.len();
@@ -102,7 +102,7 @@ pub async fn insert<T: GStore + GStoreMut>(
             storage
                 .insert_data(table_name, rows)
                 .await
-                .map(|_| num_rows)
+                .map(|()| num_rows)
         }
     }
 }
@@ -180,7 +180,7 @@ async fn fetch_vec_rows<T: GStore>(
         storage,
         table_name,
         column_validation,
-        rows.iter().map(|values| values.as_slice()),
+        rows.iter().map(std::vec::Vec::as_slice),
     )
     .await?;
 
@@ -227,7 +227,7 @@ async fn validate_foreign_key<T: GStore>(
                 InsertError::ConflictReferencingColumnName(referencing_column_name.to_owned())
             })?;
 
-        for row in rows.iter() {
+        for row in rows {
             let value =
                 row.get(target_index.0)
                     .ok_or(InsertError::ConflictReferencingColumnName(

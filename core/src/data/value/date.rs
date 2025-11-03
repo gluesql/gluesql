@@ -9,7 +9,7 @@ pub fn parse_date(v: &str) -> Option<NaiveDate> {
 
     let v = v.to_uppercase();
 
-    for form in forms.iter() {
+    for form in &forms {
         if let Ok(v) = NaiveDate::parse_from_str(&v, form) {
             return Some(v);
         }
@@ -40,7 +40,7 @@ pub fn parse_time(v: &str) -> Option<NaiveTime> {
 
     let v = v.to_uppercase();
 
-    for form in forms.iter() {
+    for form in &forms {
         if let Ok(v) = NaiveTime::parse_from_str(&v, form) {
             return Some(v);
         }
@@ -60,7 +60,7 @@ pub fn parse_timestamp(v: &str) -> Option<NaiveDateTime> {
 
     let forms = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S%.f"];
 
-    for form in forms.iter() {
+    for form in &forms {
         if let Ok(v) = NaiveDateTime::parse_from_str(v, form) {
             return Some(v);
         }

@@ -138,7 +138,7 @@ impl Index for SledStorage {
 
                     Ok(item)
                 })
-                .filter_map(|item| item.transpose());
+                .filter_map(Result::transpose);
 
             Rows::Ok(rows)
         };

@@ -107,9 +107,9 @@ impl TryFrom<Value> for Expr {
             Value::List(v) => {
                 let json: JsonValue = v
                     .into_iter()
-                    .map(|value| value.try_into())
+                    .map(TryInto::try_into)
                     .collect::<Result<Vec<JsonValue>>>()
-                    .map(|v| v.into())
+                    .map(Into::into)
                     .map_err(|_| ValueToExprConversionFailure)?;
 
                 Expr::Literal(AstLiteral::QuotedString(json.to_string()))

@@ -202,10 +202,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
                 .try_collect()
                 .await?;
 
-            storage
-                .append_data(target_table_name, rows)
-                .await
-                .map(|_| ())
+            storage.append_data(target_table_name, rows).await
         }
         None => Ok(()),
     }

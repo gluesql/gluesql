@@ -115,7 +115,7 @@ impl IndexMut for SledStorage {
                 .map_err(ConflictableTransactionError::Abort)?;
 
             block_on(async {
-                for (data_key, row) in rows.iter() {
+                for (data_key, row) in &rows {
                     let data_key = data_key
                         .to_cmp_be_bytes()
                         .map_err(ConflictableTransactionError::Abort)
@@ -203,7 +203,7 @@ impl IndexMut for SledStorage {
                 .map_err(ConflictableTransactionError::Abort)?;
 
             block_on(async {
-                for (data_key, row) in rows.iter() {
+                for (data_key, row) in &rows {
                     let data_key = data_key
                         .to_cmp_be_bytes()
                         .map_err(ConflictableTransactionError::Abort)

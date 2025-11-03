@@ -67,7 +67,7 @@ impl Transaction for SledStorage {
                 .unwrap_or_default();
 
             if Some(txid) == lock_txid {
-                self.rollback_txid(txid).map(|_| lock_txid)
+                self.rollback_txid(txid).map(|()| lock_txid)
             } else {
                 Ok(None)
             }
@@ -126,7 +126,7 @@ impl SledStorage {
             txid: u64,
             items: &[(IVec, IVec)],
         ) -> ConflictableTransactionResult<(), Error> {
-            for (temp_key, value_key) in items.iter() {
+            for (temp_key, value_key) in items {
                 tree.remove(temp_key)?;
 
                 let snapshot = tree
@@ -176,7 +176,7 @@ impl SledStorage {
                 rollback_items::<DataRow>(tree, txid, &data_items)?;
                 rollback_items::<Schema>(tree, txid, &schema_items)?;
 
-                for (temp_key, value_key) in index_items.iter() {
+                for (temp_key, value_key) in &index_items {
                     tree.remove(temp_key)?;
 
                     let snapshots = tree

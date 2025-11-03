@@ -221,7 +221,7 @@ pub fn left_or_right<'a>(
         .into_control_flow()?;
 
     let converted = if name == "LEFT" {
-        string.get(..size).map(|v| v.to_owned()).unwrap_or(string)
+        string.get(..size).map(ToOwned::to_owned).unwrap_or(string)
     } else {
         let start_pos = if size > string.len() {
             0
@@ -231,7 +231,7 @@ pub fn left_or_right<'a>(
 
         string
             .get(start_pos..)
-            .map(|value| value.to_owned())
+            .map(ToOwned::to_owned)
             .unwrap_or(string)
     };
 
@@ -939,9 +939,9 @@ pub fn find_idx<'a>(
     .into_control_flow()
 }
 
-pub fn extract<'a>(field: &DateTimeField, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+pub fn extract<'a>(field: DateTimeField, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     Value::try_from(expr)
-        .and_then(|v| v.extract(field))
+        .and_then(|v| v.extract(&field))
         .map(Evaluated::Value)
         .into_control_flow()
 }
@@ -1000,13 +1000,15 @@ pub fn coalesce<'a>(exprs: Vec<Evaluated<'_>>) -> Result<Evaluated<'a>> {
         .into());
     }
 
-    let control_flow = exprs.into_iter().map(|expr| expr.try_into()).try_for_each(
-        |item: Result<Value>| match item {
-            Ok(value) if value.is_null() => StdControlFlow::Continue(()),
-            Ok(value) => StdControlFlow::Break(Ok(value)),
-            Err(err) => StdControlFlow::Break(Err(err)),
-        },
-    );
+    let control_flow =
+        exprs
+            .into_iter()
+            .map(TryInto::try_into)
+            .try_for_each(|item: Result<Value>| match item {
+                Ok(value) if value.is_null() => StdControlFlow::Continue(()),
+                Ok(value) => StdControlFlow::Break(Ok(value)),
+                Err(err) => StdControlFlow::Break(Err(err)),
+            });
 
     match control_flow {
         StdControlFlow::Break(Ok(value)) => Ok(Evaluated::Value(value)),
