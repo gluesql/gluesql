@@ -161,7 +161,7 @@ jobs:
 
       - name: Build JAR
         working-directory: pkg/kotlin
-        run: ./gradlew build -x test
+        run: ./gradlew build -x test -x buildRustLib -x generateBindings
 
       - name: List JAR contents
         working-directory: pkg/kotlin/build/libs
