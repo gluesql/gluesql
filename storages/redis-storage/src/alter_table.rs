@@ -119,7 +119,7 @@ impl AlterTable for RedisStorage {
             let key_iter: Vec<String> = {
                 let mut conn = self.conn.lock_err()?;
                 conn.scan_match(&scan_key)
-                    .map(|iter| iter.collect::<Vec<String>>())
+                    .map(Iterator::collect::<Vec<String>>)
                     .map_err(|_| {
                         Error::StorageMsg(format!(
                             "[RedisStorage] failed to execute SCAN: key={scan_key}"

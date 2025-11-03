@@ -265,7 +265,7 @@ impl Expr {
                 let expr = expr.to_sql_with(quoted);
                 let leading_field = leading_field
                     .as_ref()
-                    .map_or_else(String::new, |field| field.to_string());
+                    .map_or_else(String::new, ToString::to_string);
 
                 match last_field {
                     Some(last_field) => format!("INTERVAL {expr} {leading_field} TO {last_field}"),

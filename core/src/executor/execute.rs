@@ -372,7 +372,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
                     .try_collect::<Vec<Vec<Value>>>()
                     .await?
                     .iter()
-                    .flat_map(|values| values.iter().map(|value| value.into()))
+                    .flat_map(|values| values.iter().map(Into::into))
                     .collect::<Vec<_>>();
 
                 Ok(Payload::ShowVariable(PayloadVariable::Tables(table_names)))

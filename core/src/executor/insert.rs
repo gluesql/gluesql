@@ -180,7 +180,7 @@ async fn fetch_vec_rows<T: GStore>(
         storage,
         table_name,
         column_validation,
-        rows.iter().map(|values| values.as_slice()),
+        rows.iter().map(std::vec::Vec::as_slice),
     )
     .await?;
 

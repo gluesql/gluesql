@@ -160,7 +160,7 @@ impl<'a, W: Write> Print<W> {
                     self.writeln(table)?;
                 }
                 false => {
-                    self.write_header(labels.iter().map(|s| s.as_str()))?;
+                    self.write_header(labels.iter().map(String::as_str))?;
                     let rows = rows.iter().map(|row| row.iter().map(String::from));
                     self.write_rows(rows)?;
                 }

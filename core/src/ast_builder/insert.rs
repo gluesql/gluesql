@@ -49,7 +49,7 @@ impl Build for InsertSourceNode<'_> {
     fn build(self) -> Result<Statement> {
         let table_name = self.insert_node.table_name;
         let columns = self.insert_node.columns;
-        let columns = columns.map_or_else(|| Ok(vec![]), |v| v.try_into())?;
+        let columns = columns.map_or_else(|| Ok(vec![]), TryInto::try_into)?;
         let source = self.source.try_into()?;
 
         Ok(Statement::Insert {

@@ -88,16 +88,16 @@ impl TryFrom<Evaluated<'_>> for BTreeMap<String, Value> {
     }
 }
 
-fn binary_op<'a, 'b, T, U>(
+fn binary_op<'a, 'b, 'c, T, U>(
     l: &Evaluated<'a>,
     r: &Evaluated<'b>,
     op: BinaryOperator,
     value_op: T,
     literal_op: U,
-) -> Result<Evaluated<'b>>
+) -> Result<Evaluated<'c>>
 where
     T: FnOnce(&Value, &Value) -> Result<Value>,
-    U: FnOnce(&Literal<'a>, &Literal<'b>) -> Result<Literal<'b>>,
+    U: FnOnce(&Literal<'a>, &Literal<'b>) -> Result<Literal<'c>>,
 {
     match (l, r) {
         (Evaluated::Literal(l), Evaluated::Literal(r)) => literal_op(l, r).map(Evaluated::Literal),
@@ -161,7 +161,7 @@ impl<'a> Evaluated<'a> {
         match (self, other) {
             (Evaluated::Literal(l), Evaluated::Literal(r)) => l.evaluate_cmp(r),
             (Evaluated::Literal(l), Evaluated::Value(r)) => {
-                r.evaluate_cmp_with_literal(l).map(|o| o.reverse())
+                r.evaluate_cmp_with_literal(l).map(Ordering::reverse)
             }
             (Evaluated::Value(l), Evaluated::Literal(r)) => l.evaluate_cmp_with_literal(r),
             (Evaluated::Value(l), Evaluated::Value(r)) => l.evaluate_cmp(r),
@@ -178,12 +178,12 @@ impl<'a> Evaluated<'a> {
             (Evaluated::StrSlice { source, range }, Evaluated::Literal(l)) => {
                 let r = Literal::Text(Cow::Borrowed(&source[range.clone()]));
 
-                l.evaluate_cmp(&r).map(|o| o.reverse())
+                l.evaluate_cmp(&r).map(Ordering::reverse)
             }
             (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => {
                 let l = Literal::Text(Cow::Borrowed(&source[range.clone()]));
 
-                r.evaluate_cmp_with_literal(&l).map(|o| o.reverse())
+                r.evaluate_cmp_with_literal(&l).map(Ordering::reverse)
             }
             (
                 Evaluated::StrSlice {
@@ -198,14 +198,8 @@ impl<'a> Evaluated<'a> {
         }
     }
 
-    pub fn add<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
-        binary_op(
-            self,
-            other,
-            BinaryOperator::Plus,
-            |l, r| l.add(r),
-            |l, r| l.add(r),
-        )
+    pub fn add<'b, 'c>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'c>> {
+        binary_op(self, other, BinaryOperator::Plus, Value::add, Literal::add)
     }
 
     pub fn subtract<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
@@ -213,8 +207,8 @@ impl<'a> Evaluated<'a> {
             self,
             other,
             BinaryOperator::Minus,
-            |l, r| l.subtract(r),
-            |l, r| l.subtract(r),
+            Value::subtract,
+            Literal::subtract,
         )
     }
 
@@ -223,8 +217,8 @@ impl<'a> Evaluated<'a> {
             self,
             other,
             BinaryOperator::Multiply,
-            |l, r| l.multiply(r),
-            |l, r| l.multiply(r),
+            Value::multiply,
+            Literal::multiply,
         )
     }
 
@@ -233,8 +227,8 @@ impl<'a> Evaluated<'a> {
             self,
             other,
             BinaryOperator::Divide,
-            |l, r| l.divide(r),
-            |l, r| l.divide(r),
+            Value::divide,
+            Literal::divide,
         )
     }
 
@@ -243,8 +237,8 @@ impl<'a> Evaluated<'a> {
             self,
             other,
             BinaryOperator::BitwiseAnd,
-            |l, r| l.bitwise_and(r),
-            |l, r| l.bitwise_and(r),
+            Value::bitwise_and,
+            Literal::bitwise_and,
         )
     }
 
@@ -253,8 +247,8 @@ impl<'a> Evaluated<'a> {
             self,
             other,
             BinaryOperator::Modulo,
-            |l, r| l.modulo(r),
-            |l, r| l.modulo(r),
+            Value::modulo,
+            Literal::modulo,
         )
     }
 
@@ -263,8 +257,8 @@ impl<'a> Evaluated<'a> {
             self,
             other,
             BinaryOperator::BitwiseShiftLeft,
-            |l, r| l.bitwise_shift_left(r),
-            |l, r| l.bitwise_shift_left(r),
+            Value::bitwise_shift_left,
+            Literal::bitwise_shift_left,
         )
     }
 
@@ -273,8 +267,8 @@ impl<'a> Evaluated<'a> {
             self,
             other,
             BinaryOperator::BitwiseShiftRight,
-            |l, r| l.bitwise_shift_right(r),
-            |l, r| l.bitwise_shift_right(r),
+            Value::bitwise_shift_right,
+            Literal::bitwise_shift_right,
         )
     }
 
