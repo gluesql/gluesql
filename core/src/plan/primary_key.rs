@@ -86,8 +86,8 @@ impl<'a> PrimaryKeyPlanner<'a> {
             };
 
             Select {
-                selection,
                 from,
+                selection,
                 ..select
             }
         } else {

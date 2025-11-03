@@ -52,7 +52,7 @@ async fn error() {
     );
 
     assert_eq!(
-        glue.storage.delete_schema("WrongEngine").await.map(|()| ()),
+        glue.storage.delete_schema("WrongEngine").await,
         Err(Error::StorageMsg(
             "[fetch_storage_mut] storage not found for table: WrongEngine".to_owned()
         ))

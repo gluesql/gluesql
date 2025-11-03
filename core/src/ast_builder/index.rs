@@ -13,8 +13,8 @@ pub struct CreateIndexNode<'a> {
 impl<'a> CreateIndexNode<'a> {
     pub fn new(table_name: String, name: String, column: OrderByExprNode<'a>) -> Self {
         Self {
-            table_name,
             name,
+            table_name,
             column,
         }
     }
@@ -42,7 +42,7 @@ pub struct DropIndexNode {
 
 impl DropIndexNode {
     pub fn new(table_name: String, name: String) -> Self {
-        Self { table_name, name }
+        Self { name, table_name }
     }
 }
 
