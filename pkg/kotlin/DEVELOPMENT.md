@@ -140,7 +140,7 @@ For distribution, we build a **Fat JAR** with native libraries for all platforms
 **This requires building on multiple platforms** (handled by CI):
 
 ```yaml
-# .github/workflows/publish-java.yml
+# .github/workflows/publish-kotlin.yml
 1. Build native libraries on each platform (Linux, macOS, Windows)
 2. Collect all binaries as artifacts
 3. Copy to src/main/resources/natives/{platform}/
@@ -160,7 +160,7 @@ cargo build --release --target aarch64-apple-darwin
 ./gradlew build
 
 # Check JAR contents
-jar tf build/libs/gluesql-0.1.0.jar | grep natives
+jar tf build/libs/gluesql-kotlin-0.1.0.jar | grep natives
 ```
 
 ## Common Issues & Solutions
@@ -322,15 +322,15 @@ cat build/generated/source/uniffi/kotlin/org/gluesql/uniffi/gluesql_kotlin.kt
 
 ```bash
 # List all files in JAR
-jar tf build/libs/gluesql-0.1.0.jar
+jar tf build/libs/gluesql-kotlin-0.1.0.jar
 
 # Check for native libraries
-jar tf build/libs/gluesql-0.1.0.jar | grep natives
+jar tf build/libs/gluesql-kotlin-0.1.0.jar | grep natives
 ```
 
 ## Release Process
 
-See `.github/workflows/publish-java.yml` for automated release process:
+See `.github/workflows/publish-kotlin.yml` for automated release process:
 
 1. Push tag or trigger workflow manually
 2. CI builds native libraries on all platforms (parallel)
