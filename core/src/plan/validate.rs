@@ -72,13 +72,11 @@ impl<'a> Context<'a> {
                 Context::Data { labels, next, .. } => {
                     let current = labels
                         .as_ref()
-                        .map(|labels| labels.contains(&column_name))
-                        .unwrap_or(false);
+                        .is_some_and(|labels| labels.contains(&column_name));
 
                     let next = next
                         .as_ref()
-                        .map(|next| validate(next, column_name))
-                        .unwrap_or(Ok(false))?;
+                        .map_or(Ok(false), |next| validate(next, column_name))?;
 
                     (current, next)
                 }
@@ -184,7 +182,7 @@ mod tests {
             let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
             let actual = validate(&schema_map, &statement).is_ok();
 
-            assert_eq!(actual, expected)
+            assert_eq!(actual, expected);
         }
     }
 }

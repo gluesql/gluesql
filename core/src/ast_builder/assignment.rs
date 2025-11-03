@@ -14,7 +14,7 @@ pub enum AssignmentNode<'a> {
     Text(String),
 }
 
-impl<'a> From<&str> for AssignmentNode<'a> {
+impl From<&str> for AssignmentNode<'_> {
     fn from(expr: &str) -> Self {
         Self::Text(expr.to_owned())
     }
@@ -66,8 +66,8 @@ mod tests {
         let expected = r#"foo = "choco""#;
         test(actual, expected);
 
-        let actual = r#"Bar = mild"#.into();
-        let expected = r#"Bar = mild"#;
+        let actual = r"Bar = mild".into();
+        let expected = r"Bar = mild";
         test(actual, expected);
 
         let actual = AssignmentNode::Expr("foo".into(), "1".into());

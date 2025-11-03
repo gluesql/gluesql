@@ -38,7 +38,7 @@ test_case!(data_aggregation, {
         .execute(glue)
         .await;
     let expected = Ok(select!(
-        age | r#"count(*)"#;
+        age | r"count(*)";
         I64 | I64;
         20    1;
         30    2;
@@ -54,7 +54,7 @@ test_case!(data_aggregation, {
         .execute(glue)
         .await;
     let expected = Ok(select!(
-        age | r#"count(*)"#;
+        age | r"count(*)";
         I64 | I64;
         30    2;
         50    2

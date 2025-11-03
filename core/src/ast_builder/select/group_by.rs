@@ -20,7 +20,7 @@ pub enum PrevNode<'a> {
     Filter(FilterNode<'a>),
 }
 
-impl<'a> Prebuild<Select> for PrevNode<'a> {
+impl Prebuild<Select> for PrevNode<'_> {
     fn prebuild(self) -> Result<Select> {
         match self {
             Self::Select(node) => node.prebuild(),
@@ -101,7 +101,7 @@ impl<'a> GroupByNode<'a> {
     }
 }
 
-impl<'a> Prebuild<Select> for GroupByNode<'a> {
+impl Prebuild<Select> for GroupByNode<'_> {
     fn prebuild(self) -> Result<Select> {
         let mut select: Select = self.prev_node.prebuild()?;
         select.group_by = self.expr_list.try_into()?;
@@ -128,12 +128,12 @@ mod tests {
         // select node -> group by node -> build
         let actual = table("Foo").select().group_by("a").build();
         let expected = "SELECT * FROM Foo GROUP BY a";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join node -> group by node -> build
         let actual = table("Foo").select().join("Bar").group_by("b").build();
         let expected = "SELECT * FROM Foo JOIN Bar GROUP BY b";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join node -> group by node -> build
         let actual = table("Foo")
@@ -142,12 +142,12 @@ mod tests {
             .group_by("b")
             .build();
         let expected = "SELECT * FROM Foo JOIN Bar AS B GROUP BY b";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join node -> group by node -> build
         let actual = table("Foo").select().left_join("Bar").group_by("b").build();
         let expected = "SELECT * FROM Foo LEFT JOIN Bar GROUP BY b";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join node -> group by node -> build
         let actual = table("Foo")
@@ -156,7 +156,7 @@ mod tests {
             .group_by("b")
             .build();
         let expected = "SELECT * FROM Foo LEFT JOIN Bar AS B GROUP BY b";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join constraint node -> group by node -> build
         let actual = table("Foo")
@@ -166,7 +166,7 @@ mod tests {
             .group_by("b")
             .build();
         let expected = "SELECT * FROM Foo JOIN Bar ON Foo.id = Bar.id GROUP BY b";
-        test(actual, expected);
+        test(&actual, expected);
 
         // filter node -> group by node -> build
         let actual = table("Bar")
@@ -179,7 +179,7 @@ mod tests {
                 WHERE id IS NULL
                 GROUP BY id, (a + name)
             ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // hash join node -> group by node -> build
         let actual = table("Player")
@@ -235,6 +235,6 @@ mod tests {
             .select()
             .build();
         let expected = "SELECT * FROM (SELECT * FROM Foo GROUP BY a) Sub";
-        test(actual, expected);
+        test(&actual, expected);
     }
 }

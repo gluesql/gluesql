@@ -7,29 +7,29 @@ test_case!(bitwise_shift_left, {
     let g = get_tester!();
 
     g.run(
-        r#"
+        r"
 CREATE TABLE Test (
     id INTEGER,
     num INTEGER
-)"#,
+)",
     )
     .await;
 
     g.run(
-        r#"
+        r"
 CREATE TABLE OverflowTest (
     id INTEGER,
     num INTEGER
-)"#,
+)",
     )
     .await;
 
     g.run(
-        r#"
+        r"
 CREATE TABLE NullTest (
     id INTEGER,
     num INTEGER
-)"#,
+)",
     )
     .await;
 

@@ -59,14 +59,13 @@ impl TryFrom<Evaluated<'_>> for bool {
 
     fn try_from(e: Evaluated<'_>) -> Result<bool> {
         match e {
-            Evaluated::Literal(Literal::Boolean(v)) => Ok(v),
+            Evaluated::Literal(Literal::Boolean(v)) | Evaluated::Value(Value::Bool(v)) => Ok(v),
             Evaluated::Literal(v) => {
                 Err(EvaluateError::BooleanTypeRequired(format!("{v:?}")).into())
             }
             Evaluated::StrSlice { source, range } => {
                 Err(EvaluateError::BooleanTypeRequired(source[range].to_owned()).into())
             }
-            Evaluated::Value(Value::Bool(v)) => Ok(v),
             Evaluated::Value(v) => Err(EvaluateError::BooleanTypeRequired(format!("{v:?}")).into()),
         }
     }
@@ -118,7 +117,7 @@ where
     }
 }
 
-pub fn exceptional_int_val_to_eval<'a>(name: String, v: Value) -> Result<Evaluated<'a>> {
+pub fn exceptional_int_val_to_eval<'a>(name: String, v: &Value) -> Result<Evaluated<'a>> {
     match v {
         Value::Null => Ok(Evaluated::Value(Value::Null)),
         _ => Err(EvaluateError::FunctionRequiresIntegerValue(name).into()),
@@ -622,7 +621,7 @@ impl<'a> Evaluated<'a> {
             let value = start.try_into()?;
             match value {
                 Value::I64(num) => num,
-                _ => return exceptional_int_val_to_eval(name, value),
+                _ => return exceptional_int_val_to_eval(name, &value),
             }
         } - 1;
 
@@ -631,7 +630,7 @@ impl<'a> Evaluated<'a> {
                 let value = eval.try_into()?;
                 match value {
                     Value::I64(num) => num,
-                    _ => return exceptional_int_val_to_eval(name, value),
+                    _ => return exceptional_int_val_to_eval(name, &value),
                 }
             }
             None => source.len() as i64,
@@ -824,8 +823,7 @@ impl<'a> Evaluated<'a> {
                     .skip(range.start)
                     .enumerate()
                     .find(|(_, c)| !c.is_whitespace())
-                    .map(|(idx, _)| idx + range.start)
-                    .unwrap_or(0);
+                    .map_or(0, |(idx, _)| idx + range.start);
 
                 let end = source.len()
                     - source
@@ -834,8 +832,7 @@ impl<'a> Evaluated<'a> {
                         .skip(source.len() - range.end)
                         .enumerate()
                         .find(|(_, c)| !c.is_whitespace())
-                        .map(|(idx, _)| source.len() - (range.end - idx))
-                        .unwrap_or(0);
+                        .map_or(0, |(idx, _)| source.len() - (range.end - idx));
 
                 Ok(Evaluated::StrSlice {
                     source,

@@ -61,10 +61,7 @@ impl From<&Value> for String {
             Value::Time(value) => value.to_string(),
             Value::Interval(value) => value.to_sql_str(),
             Value::Uuid(value) => Uuid::from_u128(*value).to_string(),
-            Value::Map(_) => TryInto::<serde_json::Value>::try_into(v.clone())
-                .unwrap_or_default()
-                .to_string(),
-            Value::List(_) => TryInto::<serde_json::Value>::try_into(v.clone())
+            Value::Map(_) | Value::List(_) => TryInto::<serde_json::Value>::try_into(v.clone())
                 .unwrap_or_default()
                 .to_string(),
             Value::Decimal(value) => value.to_string(),
@@ -688,7 +685,7 @@ impl TryFrom<&Value> for u128 {
             Value::U16(value) => u128::from(*value),
             Value::U32(value) => u128::from(*value),
             Value::U64(value) => u128::from(*value),
-            Value::U128(value) => *value,
+            Value::U128(value) | Value::Uuid(value) => *value,
             Value::F32(value) => num_to_u128!(value),
             Value::F64(value) => num_to_u128!(value),
             Value::Str(value) => value.parse::<u128>().map_err(|_| ConvertError {
@@ -697,7 +694,6 @@ impl TryFrom<&Value> for u128 {
             })?,
             Value::Decimal(value) => num_to_u128!(value),
             Value::Inet(IpAddr::V6(v)) => u128::from(*v),
-            Value::Uuid(value) => *value,
             Value::Date(_)
             | Value::Timestamp(_)
             | Value::Time(_)

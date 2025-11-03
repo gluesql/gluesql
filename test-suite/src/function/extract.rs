@@ -13,35 +13,35 @@ test_case!(extract, {
 
     let test_cases = [
         (
-            r#"SELECT EXTRACT(HOUR FROM TIMESTAMP '2016-12-31 13:30:15') as extract"#,
+            r"SELECT EXTRACT(HOUR FROM TIMESTAMP '2016-12-31 13:30:15') as extract",
             Ok(select!("extract" I64; 13)),
         ),
         (
-            r#"SELECT EXTRACT(YEAR FROM TIMESTAMP '2016-12-31 13:30:15') as extract"#,
+            r"SELECT EXTRACT(YEAR FROM TIMESTAMP '2016-12-31 13:30:15') as extract",
             Ok(select!("extract" I64; 2016)),
         ),
         (
-            r#"SELECT EXTRACT(MONTH FROM TIMESTAMP '2016-12-31 13:30:15') as extract"#,
+            r"SELECT EXTRACT(MONTH FROM TIMESTAMP '2016-12-31 13:30:15') as extract",
             Ok(select!("extract" I64; 12)),
         ),
         (
-            r#"SELECT EXTRACT(DAY FROM TIMESTAMP '2016-12-31 13:30:15') as extract"#,
+            r"SELECT EXTRACT(DAY FROM TIMESTAMP '2016-12-31 13:30:15') as extract",
             Ok(select!("extract" I64; 31)),
         ),
         (
-            r#"SELECT EXTRACT(MINUTE FROM TIMESTAMP '2016-12-31 13:30:15') as extract"#,
+            r"SELECT EXTRACT(MINUTE FROM TIMESTAMP '2016-12-31 13:30:15') as extract",
             Ok(select!("extract" I64; 30)),
         ),
         (
-            r#"SELECT EXTRACT(SECOND FROM TIMESTAMP '2016-12-31 13:30:15') as extract"#,
+            r"SELECT EXTRACT(SECOND FROM TIMESTAMP '2016-12-31 13:30:15') as extract",
             Ok(select!("extract" I64; 15)),
         ),
         (
-            r#"SELECT EXTRACT(SECOND FROM TIME '17:12:28') as extract"#,
+            r"SELECT EXTRACT(SECOND FROM TIME '17:12:28') as extract",
             Ok(select!("extract" I64; 28)),
         ),
         (
-            r#"SELECT EXTRACT(DAY FROM DATE '2021-10-06') as extract"#,
+            r"SELECT EXTRACT(DAY FROM DATE '2021-10-06') as extract",
             Ok(select!("extract" I64; 6)),
         ),
         (
@@ -71,7 +71,7 @@ test_case!(extract, {
         ("CREATE TABLE Item (number TEXT)", Ok(Payload::Create)),
         ("INSERT INTO Item VALUES ('1')", Ok(Payload::Insert(1))),
         (
-            r#"SELECT EXTRACT(HOUR FROM number) as extract FROM Item"#,
+            r"SELECT EXTRACT(HOUR FROM number) as extract FROM Item",
             Err(ValueError::ExtractFormatNotMatched {
                 value: Value::Str("1".to_owned()),
                 field: DateTimeField::Hour,
@@ -83,7 +83,7 @@ test_case!(extract, {
             Err(IntervalError::FailedToExtract.into()),
         ),
         (
-            r#"SELECT EXTRACT(HOUR FROM 100)"#,
+            r"SELECT EXTRACT(HOUR FROM 100)",
             Err(ValueError::ExtractFormatNotMatched {
                 value: Value::I64(100),
                 field: DateTimeField::Hour,

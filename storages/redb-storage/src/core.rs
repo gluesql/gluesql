@@ -47,10 +47,7 @@ impl StorageCore {
         }
     }
 
-    fn data_table_def<'a>(
-        &self,
-        table_name: &'a str,
-    ) -> Result<TableDefinition<'a, &'static [u8], Vec<u8>>> {
+    fn data_table_def(table_name: &str) -> Result<TableDefinition<'_, &'static [u8], Vec<u8>>> {
         if table_name == SCHEMA_TABLE_NAME {
             return Err(StorageError::ReservedTableName(table_name.to_owned()));
         }
@@ -116,7 +113,7 @@ impl StorageCore {
 
     pub fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
         let txn = self.txn()?;
-        let table_def = self.data_table_def(table_name)?;
+        let table_def = Self::data_table_def(table_name)?;
         let table = txn.open_table(table_def)?;
 
         let key = key.to_cmp_be_bytes()?;
@@ -134,7 +131,7 @@ impl StorageCore {
         if let TransactionState::Active { autocommit, txn } = &self.state
             && !autocommit
         {
-            let table_def = self.data_table_def(table_name)?;
+            let table_def = Self::data_table_def(table_name)?;
             let table = txn.open_table(table_def)?;
 
             let rows: Vec<_> = table
@@ -151,7 +148,7 @@ impl StorageCore {
         }
 
         let read_txn = self.db.begin_read()?;
-        let table_def = self.data_table_def(table_name)?;
+        let table_def = Self::data_table_def(table_name)?;
         let table = read_txn.open_table(table_def)?;
 
         let rows = try_stream! {
@@ -170,7 +167,7 @@ impl StorageCore {
 // StoreMut
 impl StorageCore {
     pub fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
-        let data_def = self.data_table_def(&schema.table_name)?;
+        let data_def = Self::data_table_def(&schema.table_name)?;
         let txn = self.txn_mut()?;
         let mut table = txn.open_table(SCHEMA_TABLE)?;
         let value = serialize(&schema)?;
@@ -181,7 +178,7 @@ impl StorageCore {
     }
 
     pub fn delete_schema(&mut self, table_name: &str) -> Result<()> {
-        let table_def = self.data_table_def(table_name)?;
+        let table_def = Self::data_table_def(table_name)?;
         let txn = self.txn_mut()?;
         let mut table = txn.open_table(SCHEMA_TABLE)?;
         table.remove(table_name)?;
@@ -191,7 +188,7 @@ impl StorageCore {
     }
 
     pub fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
-        let table_def = self.data_table_def(table_name)?;
+        let table_def = Self::data_table_def(table_name)?;
         let txn = self.txn_mut()?;
         let mut table = txn.open_table(table_def)?;
 
@@ -207,7 +204,7 @@ impl StorageCore {
     }
 
     pub fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
-        let table_def = self.data_table_def(table_name)?;
+        let table_def = Self::data_table_def(table_name)?;
         let txn = self.txn_mut()?;
         let mut table = txn.open_table(table_def)?;
 
@@ -222,7 +219,7 @@ impl StorageCore {
     }
 
     pub fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
-        let table_def = self.data_table_def(table_name)?;
+        let table_def = Self::data_table_def(table_name)?;
         let txn = self.txn_mut()?;
         let mut table = txn.open_table(table_def)?;
 

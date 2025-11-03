@@ -57,9 +57,8 @@ mod hello_ast_builder {
         /*
             Query results are wrapped into a payload enum, on the basis of the query type
         */
-        let rows = match result {
-            Payload::Select { labels: _, rows } => rows,
-            _ => panic!("Unexpected result: {result:?}"),
+        let Payload::Select { labels: _, rows } = result else {
+            panic!("Unexpected result: {result:?}")
         };
 
         let first_row = &rows[0];

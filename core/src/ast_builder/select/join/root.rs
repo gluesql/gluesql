@@ -19,7 +19,7 @@ pub enum PrevNode<'a> {
     HashJoin(Box<HashJoinNode<'a>>),
 }
 
-impl<'a> Prebuild<Select> for PrevNode<'a> {
+impl Prebuild<Select> for PrevNode<'_> {
     fn prebuild(self) -> Result<Select> {
         match self {
             Self::Select(node) => node.prebuild(),
@@ -172,7 +172,7 @@ impl<'a> JoinNode<'a> {
     }
 }
 
-impl<'a> Prebuild<Select> for JoinNode<'a> {
+impl Prebuild<Select> for JoinNode<'_> {
     fn prebuild(self) -> Result<Select> {
         let mut select: Select = self.prev_node.prebuild()?;
 
@@ -205,7 +205,7 @@ mod tests {
         let expected = "
         SELECT * FROM Item INNER JOIN Player AS p ON p.id = Item.player_id WHERE p.id = 1;
         ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // select node -> join node ->  join constraint node
         let actual = table("Item")
@@ -218,14 +218,14 @@ mod tests {
         let expected = "
         SELECT p.id, p.name, Item.id FROM Item INNER JOIN Player AS p ON p.id = Item.player_id WHERE p.id = 1;
         ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // select node -> join node ->  build
         let actual = table("Item").select().join_as("Player", "p").build();
         let expected = "
         SELECT * FROM Item INNER JOIN Player AS p;
         ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join node -> join constraint node -> join node -> join constraint node
         let actual = table("students")
@@ -249,7 +249,7 @@ mod tests {
             INNER JOIN attendance on marks.id=attendance.id
             WHERE attendance.attendance >= 75;
         ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // select node -> join node -> project node
         let actual = table("Orders")
@@ -265,7 +265,7 @@ mod tests {
             SELECT Orders.OrderID, Customers.CustomerName, Orders.OrderDate
             FROM Orders INNER JOIN Customers
         ";
-        test(actual, expected);
+        test(&actual, expected);
     }
 
     #[test]
@@ -283,7 +283,7 @@ mod tests {
             LEFT JOIN item
             ON player.id = item.id
         ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // select node -> left join node -> join constraint node -> left join node
         let actual = table("Item")
@@ -324,7 +324,7 @@ mod tests {
             LEFT JOIN Player p9 ON p9.id = Item.player_id
             WHERE Player.id = 1;
         ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // select node -> left join node -> join constraint node -> left join node
         let actual = table("Item")
@@ -338,7 +338,7 @@ mod tests {
             SELECT * FROM Item
             LEFT JOIN Player ON Player.id = Item.player_id
             LEFT JOIN Player ON p1.id = Item.player_id";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = table("Item")
             .select()
@@ -363,7 +363,7 @@ mod tests {
             INNER JOIN Player p4 ON p4.id = Item.player_id AND Item.id > 101
             WHERE Player.id = 1;
         ";
-        test(actual, expected);
+        test(&actual, expected);
     }
 
     #[test]
@@ -375,7 +375,7 @@ mod tests {
             INNER JOIN Bar
             INNER JOIN Baz
             ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join - join as
         let actual = table("Foo")
@@ -388,7 +388,7 @@ mod tests {
             INNER JOIN Bar
             INNER JOIN Baz B
             ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join - left join
         let actual = table("Foo").select().join("Bar").left_join("Baz").build();
@@ -397,7 +397,7 @@ mod tests {
             INNER JOIN Bar
             LEFT JOIN Baz
             ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join - left join as
         let actual = table("Foo")
@@ -410,7 +410,7 @@ mod tests {
             INNER JOIN Bar
             LEFT JOIN Baz B
             ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join as - join
         let actual = table("Foo")
@@ -423,7 +423,7 @@ mod tests {
             INNER JOIN Bar B
             INNER JOIN Baz
             ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join as - join as
         let actual = table("Foo")
@@ -436,7 +436,7 @@ mod tests {
             INNER JOIN Bar B
             INNER JOIN Baz C
             ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join as - left join
         let actual = table("Foo")
@@ -449,7 +449,7 @@ mod tests {
             INNER JOIN Bar B
             LEFT JOIN Baz
             ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join as - left join as
         let actual = table("Foo")
@@ -462,7 +462,7 @@ mod tests {
             INNER JOIN Bar B
             LEFT JOIN Baz C
             ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // left join - join
         let actual = table("Foo").select().left_join("Bar").join("Baz").build();
@@ -471,7 +471,7 @@ mod tests {
             LEFT JOIN Bar
             INNER JOIN Baz
             ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // left join - join as
         let actual = table("Foo")
@@ -484,7 +484,7 @@ mod tests {
             LEFT JOIN Bar
             INNER JOIN Baz B
             ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // left join - left join
         let actual = table("Foo")
@@ -497,7 +497,7 @@ mod tests {
             LEFT JOIN Bar
             LEFT JOIN Baz
             ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // left join - left join as
         let actual = table("Foo")
@@ -510,7 +510,7 @@ mod tests {
             LEFT JOIN Bar
             LEFT JOIN Baz B
             ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // left join as - join
         let actual = table("Foo")
@@ -523,7 +523,7 @@ mod tests {
             LEFT JOIN Bar B
             INNER JOIN Baz
             ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // left join as - join as
         let actual = table("Foo")
@@ -536,7 +536,7 @@ mod tests {
             LEFT JOIN Bar B
             INNER JOIN Baz C
             ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // left join as - left join
         let actual = table("Foo")
@@ -549,7 +549,7 @@ mod tests {
             LEFT JOIN Bar B
             LEFT JOIN Baz
             ";
-        test(actual, expected);
+        test(&actual, expected);
 
         // left join as - left join as
         let actual = table("Foo")
@@ -562,7 +562,7 @@ mod tests {
             LEFT JOIN Bar B
             LEFT JOIN Baz C
             ";
-        test(actual, expected);
+        test(&actual, expected);
     }
 
     #[test]
@@ -705,7 +705,7 @@ mod tests {
 
         let actual = table("App").select().alias_as("Sub").select().build();
         let expected = "SELECT * FROM (SELECT * FROM App) Sub";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join -> derived subquery
         let actual = table("Foo")
@@ -720,6 +720,6 @@ mod tests {
                 INNER JOIN Bar
             ) Sub
             ";
-        test(actual, expected);
+        test(&actual, expected);
     }
 }

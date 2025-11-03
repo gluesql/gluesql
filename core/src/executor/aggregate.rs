@@ -171,8 +171,9 @@ where
                 let state = aggregate(state, filter_context.clone(), left).await?;
                 aggregate(state, filter_context, right).await
             }
-            Expr::UnaryOp { expr, .. } => aggregate(state, filter_context, expr).await,
-            Expr::Nested(expr) => aggregate(state, filter_context, expr).await,
+            Expr::UnaryOp { expr, .. } | Expr::Nested(expr) => {
+                aggregate(state, filter_context, expr).await
+            }
             Expr::Case {
                 operand,
                 when_then,
@@ -208,21 +209,17 @@ fn check(expr: &Expr) -> bool {
             expr, low, high, ..
         } => check(expr) || check(low) || check(high),
         Expr::BinaryOp { left, right, .. } => check(left) || check(right),
-        Expr::UnaryOp { expr, .. } => check(expr),
-        Expr::Nested(expr) => check(expr),
+        Expr::UnaryOp { expr, .. } | Expr::Nested(expr) => check(expr),
         Expr::Case {
             operand,
             when_then,
             else_result,
         } => {
-            operand.as_ref().map(|expr| check(expr)).unwrap_or(false)
+            operand.as_ref().is_some_and(|expr| check(expr))
                 || when_then
                     .iter()
                     .any(|(when, then)| check(when) || check(then))
-                || else_result
-                    .as_ref()
-                    .map(|expr| check(expr))
-                    .unwrap_or(false)
+                || else_result.as_ref().is_some_and(|expr| check(expr))
         }
         Expr::Aggregate(_) => true,
         _ => false,

@@ -79,7 +79,7 @@ impl<'a> UpdateSetNode<'a> {
     }
 }
 
-impl<'a> Build for UpdateSetNode<'a> {
+impl Build for UpdateSetNode<'_> {
     fn build(self) -> Result<Statement> {
         let table_name = self.table_name;
         let selection = self.selection.map(Expr::try_from).transpose()?;
@@ -104,7 +104,7 @@ mod tests {
     fn update() {
         let actual = table("Foo").update().set("id", "2").build();
         let expected = "UPDATE Foo SET id = 2";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = table("Foo")
             .update()
@@ -112,7 +112,7 @@ mod tests {
             .set("name", "Bar")
             .build();
         let expected = "UPDATE Foo SET id = 2, name=Bar";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = table("Foo")
             .update()
@@ -121,7 +121,7 @@ mod tests {
             .set("name", "americano")
             .build();
         let expected = "UPDATE Foo SET id = 2, name = americano WHERE Bar = 1";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = table("Foo")
             .update()
@@ -133,7 +133,7 @@ mod tests {
             UPDATE Foo
             SET name = 'espresso'
             WHERE id > 1 AND name = 'americano'";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = table("Foo")
             .update()
@@ -145,6 +145,6 @@ mod tests {
             )
             .build();
         let expected = "UPDATE Foo SET id = 2, head_item = (SELECT id FROM head_item WHERE level = 3 LIMIT 1) WHERE body_item = 1";
-        test(actual, expected);
+        test(&actual, expected);
     }
 }

@@ -50,8 +50,7 @@ impl Index for SledStorage {
                             .rev()
                             .fold((false, Vector::new()), |(added, upper), v| {
                                 match (added, v) {
-                                    (true, _) => (added, upper.push(v)),
-                                    (false, u8::MAX) => (added, upper.push(v)),
+                                    (true, _) | (false, u8::MAX) => (added, upper.push(v)),
                                     (false, _) => (true, upper.push(v + 1)),
                                 }
                             })
@@ -61,7 +60,7 @@ impl Index for SledStorage {
                     };
                     let lower = || build_index_key_prefix(table_name, index_name);
                     let upper = || incr(build_index_key_prefix(table_name, index_name));
-                    let key = build_index_key(table_name, index_name, value)?;
+                    let key = build_index_key(table_name, index_name, &value)?;
 
                     match op {
                         IndexOperator::Eq => match self.tree.get(&key).transpose() {
@@ -123,11 +122,8 @@ impl Index for SledStorage {
             let rows = keys
                 .into_iter()
                 .map(move |key_snapshot| -> Result<_> {
-                    let key = match key_snapshot.extract(txid, lock_txid) {
-                        Some(key) => key,
-                        None => {
-                            return Ok(None);
-                        }
+                    let Some(key) = key_snapshot.extract(txid, lock_txid) else {
+                        return Ok(None);
                     };
 
                     let value = tree2

@@ -103,7 +103,7 @@ impl Store for MongoStorage {
 
         let options = FindOptions::builder();
         let options = match primary_key {
-            Some(primary_key) => options.sort(doc! { primary_key.name.to_owned(): 1}).build(),
+            Some(primary_key) => options.sort(doc! { primary_key.name.clone(): 1}).build(),
             None => options.build(),
         };
 
@@ -124,27 +124,24 @@ impl Store for MongoStorage {
         let row_iter = cursor.map(move |doc| {
             let doc = doc.map_storage_err()?;
 
-            match &column_types {
-                Some(column_types) => doc.into_row(column_types.iter(), has_primary),
-                None => {
-                    let mut iter = doc.into_iter();
-                    let (_, first_value) = iter
-                        .next()
-                        .map_storage_err(MongoStorageError::InvalidDocument)?;
-                    let key_bytes = first_value
-                        .as_object_id()
-                        .map_storage_err(MongoStorageError::InvalidDocument)?
-                        .bytes()
-                        .to_vec();
-                    let key = Key::Bytea(key_bytes);
-                    let row = iter
-                        .map(|(key, bson)| {
-                            Ok((key, bson.into_value_schemaless().map_storage_err()?))
-                        })
-                        .collect::<Result<BTreeMap<String, Value>>>()?;
+            if let Some(column_types) = &column_types {
+                doc.into_row(column_types.iter(), has_primary)
+            } else {
+                let mut iter = doc.into_iter();
+                let (_, first_value) = iter
+                    .next()
+                    .map_storage_err(MongoStorageError::InvalidDocument)?;
+                let key_bytes = first_value
+                    .as_object_id()
+                    .map_storage_err(MongoStorageError::InvalidDocument)?
+                    .bytes()
+                    .to_vec();
+                let key = Key::Bytea(key_bytes);
+                let row = iter
+                    .map(|(key, bson)| Ok((key, bson.into_value_schemaless().map_storage_err()?)))
+                    .collect::<Result<BTreeMap<String, Value>>>()?;
 
-                    Ok((key, DataRow::Map(row)))
-                }
+                Ok((key, DataRow::Map(row)))
             }
         });
 
@@ -157,9 +154,10 @@ impl MongoStorage {
         &'a self,
         table_name: Option<&'a str>,
     ) -> Result<impl Stream<Item = Result<Schema>> + 'a> {
-        let command = match table_name {
-            Some(table_name) => doc! { "listCollections": 1, "filter": { "name": table_name } },
-            None => doc! { "listCollections": 1 },
+        let command = if let Some(table_name) = table_name {
+            doc! { "listCollections": 1, "filter": { "name": table_name } }
+        } else {
+            doc! { "listCollections": 1 }
         };
 
         let validators_list = self
@@ -221,8 +219,7 @@ impl MongoStorage {
                         .map_storage_err()?
                         .get(1)
                         .and_then(|x| x.as_str())
-                        .map(|x| x == "null")
-                        .unwrap_or(false);
+                        .is_some_and(|x| x == "null");
 
                     let data_type = doc
                         .get_str("title")

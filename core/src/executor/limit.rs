@@ -16,9 +16,8 @@ pub struct Limit {
 impl Limit {
     pub async fn new(limit: Option<&Expr>, offset: Option<&Expr>) -> Result<Self> {
         let eval = |expr| async move {
-            let expr = match expr {
-                Some(expr) => expr,
-                None => return Ok(None),
+            let Some(expr) = expr else {
+                return Ok(None);
             };
 
             let evaluated = evaluate_stateless(None, expr).await?;

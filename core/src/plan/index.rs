@@ -39,7 +39,7 @@ impl<'a> Planner<'a> for IndexPlanner<'a> {
 
         let (body, order_by) = match body {
             SetExpr::Select(select) => {
-                let (select, order_by) = self.select(outer_context, *select, order_by);
+                let (select, order_by) = self.select(outer_context.as_ref(), *select, order_by);
 
                 (SetExpr::Select(Box::new(select)), order_by)
             }
@@ -62,7 +62,7 @@ impl<'a> Planner<'a> for IndexPlanner<'a> {
 impl<'a> IndexPlanner<'a> {
     fn select(
         &self,
-        outer_context: Option<Arc<Context<'a>>>,
+        outer_context: Option<&Arc<Context<'a>>>,
         select: Select,
         mut order_by: Vec<OrderByExpr>,
     ) -> (Select, Vec<OrderByExpr>) {
@@ -103,7 +103,7 @@ impl<'a> IndexPlanner<'a> {
 
         let selection = selection.and_then(|expr| {
             if let (Some(indexes), TableFactor::Table { .. }) = (indexes.as_ref(), &from.relation) {
-                match self.plan_index_expr(outer_context.as_ref().map(Arc::clone), indexes, expr) {
+                match self.plan_index_expr(outer_context.map(Arc::clone), indexes, expr) {
                     Planned::IndexedExpr {
                         index_name,
                         index_op,
@@ -123,7 +123,7 @@ impl<'a> IndexPlanner<'a> {
                     Planned::Expr(expr) => Some(expr),
                 }
             } else {
-                Some(self.subquery_expr(outer_context.as_ref().map(Arc::clone), expr))
+                Some(self.subquery_expr(outer_context.map(Arc::clone), expr))
             }
         });
 
@@ -373,7 +373,7 @@ impl<'a> IndexPlanner<'a> {
 
 struct Indexes<'a>(&'a [SchemaIndex]);
 
-impl<'a> Indexes<'a> {
+impl Indexes<'_> {
     fn find(&self, target: &Expr) -> Option<String> {
         self.0
             .iter()
@@ -392,8 +392,7 @@ impl<'a> Indexes<'a> {
                 matches!(
                     (target.asc, order),
                     (_, SchemaIndexOrd::Both)
-                        | (Some(true), SchemaIndexOrd::Asc)
-                        | (None, SchemaIndexOrd::Asc)
+                        | (Some(true) | None, SchemaIndexOrd::Asc)
                         | (Some(false), SchemaIndexOrd::Desc)
                 )
             })

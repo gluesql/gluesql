@@ -38,7 +38,7 @@ impl<'a> IndexSync<'a> {
         let columns = column_defs.as_ref().map(|column_defs| {
             column_defs
                 .iter()
-                .map(|column_def| column_def.name.to_owned())
+                .map(|column_def| column_def.name.clone())
                 .collect::<Vec<_>>()
         });
 
@@ -282,14 +282,14 @@ async fn evaluate_index_key(
         .try_into()
         .map_err(ConflictableTransactionError::Abort)?;
 
-    build_index_key(table_name, index_name, value).map_err(ConflictableTransactionError::Abort)
+    build_index_key(table_name, index_name, &value).map_err(ConflictableTransactionError::Abort)
 }
 
 pub fn build_index_key_prefix(table_name: &str, index_name: &str) -> Vec<u8> {
     format!("index/{table_name}/{index_name}/").into_bytes()
 }
 
-pub fn build_index_key(table_name: &str, index_name: &str, value: Value) -> Result<Vec<u8>> {
+pub fn build_index_key(table_name: &str, index_name: &str, value: &Value) -> Result<Vec<u8>> {
     Ok(build_index_key_prefix(table_name, index_name)
         .into_iter()
         .chain(value.to_cmp_be_bytes()?)

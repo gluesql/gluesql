@@ -3,7 +3,12 @@ use crate::ast::{Expr, Function};
 pub fn is_deterministic(expr: &Expr) -> bool {
     match expr {
         Expr::Literal(_) | Expr::TypedString { .. } => true,
-        Expr::Identifier(_) | Expr::CompoundIdentifier { .. } => false,
+        Expr::Identifier(_)
+        | Expr::CompoundIdentifier { .. }
+        | Expr::Subquery(_)
+        | Expr::Exists { .. }
+        | Expr::InSubquery { .. }
+        | Expr::Aggregate(_) => false,
         Expr::IsNull(inner)
         | Expr::IsNotNull(inner)
         | Expr::UnaryOp { expr: inner, .. }
@@ -32,18 +37,15 @@ pub fn is_deterministic(expr: &Expr) -> bool {
             when_then,
             else_result,
         } => {
-            operand.as_deref().map(is_deterministic).unwrap_or(true)
+            operand.as_deref().is_none_or(is_deterministic)
                 && when_then
                     .iter()
                     .all(|(when, then)| is_deterministic(when) && is_deterministic(then))
-                && else_result.as_deref().map(is_deterministic).unwrap_or(true)
+                && else_result.as_deref().is_none_or(is_deterministic)
         }
         Expr::Array { elem } => elem.iter().all(is_deterministic),
         Expr::ArrayIndex { obj, indexes } => {
             is_deterministic(obj) && indexes.iter().all(is_deterministic)
-        }
-        Expr::Subquery(_) | Expr::Exists { .. } | Expr::InSubquery { .. } | Expr::Aggregate(_) => {
-            false
         }
     }
 }
@@ -52,10 +54,13 @@ fn is_function_deterministic(function: &Function) -> bool {
     use Function::*;
 
     match function {
-        Now() | CurrentDate() | CurrentTime() | CurrentTimestamp() | GenerateUuid() | Rand(_) => {
-            false
-        }
-        Custom { .. } => false,
+        Now()
+        | CurrentDate()
+        | CurrentTime()
+        | CurrentTimestamp()
+        | GenerateUuid()
+        | Rand(_)
+        | Custom { .. } => false,
         Cast { expr, .. }
         | Abs(expr)
         | Initcap(expr)
