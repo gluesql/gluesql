@@ -173,7 +173,7 @@ impl<'a, W: Write> Print<W> {
                     .collect::<HashSet<&str>>()
                     .into_iter()
                     .collect::<Vec<_>>();
-                labels.sort();
+                labels.sort_unstable();
 
                 match &self.option.tabular {
                     true => {
