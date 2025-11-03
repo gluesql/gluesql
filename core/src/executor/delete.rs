@@ -26,11 +26,11 @@ pub enum DeleteError {
 pub async fn delete<T: GStore + GStoreMut>(
     storage: &mut T,
     table_name: &str,
-    selection: &Option<Expr>,
+    selection: Option<&Expr>,
 ) -> Result<Payload> {
     let columns = fetch_columns(storage, table_name).await?.map(Arc::from);
     let referencings = storage.fetch_referencings(table_name).await?;
-    let keys = fetch(storage, table_name, columns, selection.as_ref())
+    let keys = fetch(storage, table_name, columns, selection)
         .await?
         .into_stream()
         .then(|item| async {
