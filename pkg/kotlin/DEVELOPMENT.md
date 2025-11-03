@@ -110,15 +110,24 @@ We use **ktlint** for automatic code formatting:
 
 ## Build Tasks Reference
 
+### Local Development Tasks
+
 | Task | Description |
 |------|-------------|
 | `./gradlew build` | Full build (Rust + Kotlin + tests) |
 | `./gradlew test` | Run all tests |
 | `./gradlew clean` | Clean build artifacts |
 | `./gradlew buildRustLib` | Build Rust library (debug mode for local testing) |
-| `./gradlew generateBindings` | Generate UniFFI Kotlin bindings |
+| `./gradlew generateBindings` | Generate UniFFI Kotlin bindings from debug library |
 | `./gradlew ktlintCheck` | Check code formatting |
 | `./gradlew ktlintFormat` | Auto-format code |
+
+### CI-Specific Tasks
+
+| Task | Description |
+|------|-------------|
+| `./gradlew organizeNativeLibs` | Organize downloaded artifacts into resources directory |
+| `./gradlew generateBindings -PlibPath=<path>` | Generate bindings from custom library path |
 
 ## Distribution Builds
 
@@ -139,18 +148,28 @@ For distribution, GitHub Actions builds a **Fat JAR** with native libraries for 
 # .github/workflows/publish-kotlin.yml
 1. Build native libraries on each platform in parallel (Linux, macOS, Windows)
    - Each runner executes: cargo build --release --target <platform-target>
-2. Download and organize all platform artifacts
-   - Copies to: pkg/kotlin/src/main/resources/natives/{platform}/
-3. Generate UniFFI bindings using Linux library
-4. Build final JAR with all libraries included
-   - ./gradlew build -x test
+   - Upload artifacts: native-{platform}/ with library binaries
+
+2. Organize native libraries using Gradle
+   - Download artifacts to: downloaded-artifacts/native-*/
+   - Run: ./gradlew organizeNativeLibs
+   - Result: pkg/kotlin/src/main/resources/natives/{platform}/
+
+3. Generate UniFFI bindings using Gradle
+   - Copy Linux library to target/release/
+   - Run: ./gradlew generateBindings -PlibPath=../../target/release/libgluesql_kotlin.so
+   - Result: build/generated/source/uniffi/kotlin/
+
+4. Build final JAR with all libraries
+   - Run: ./gradlew build -x test -x buildRustLib -x generateBindings
+   - Native libraries automatically packaged from resources/
 ```
 
 **Why separate CI from local builds?**
-- Local: Uses debug builds for faster iteration
-- CI: Builds release binaries on native platforms (no cross-compilation needed)
-- Gradle tasks focus on development workflow
-- GitHub Actions handles production multi-platform builds
+- Local: Uses debug builds for faster iteration (`./gradlew test`)
+- CI: Uses release builds with Gradle tasks (`./gradlew organizeNativeLibs`, etc.)
+- Build logic centralized in buildSrc for consistency
+- CI workflows simplified by delegating to Gradle
 
 ## Common Issues & Solutions
 
