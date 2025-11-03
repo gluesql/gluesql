@@ -115,18 +115,16 @@ We use **ktlint** for automatic code formatting:
 | `./gradlew build` | Full build (Rust + Kotlin + tests) |
 | `./gradlew test` | Run all tests |
 | `./gradlew clean` | Clean build artifacts |
-| `./gradlew buildRustLib` | Build Rust library (debug mode) |
+| `./gradlew buildRustLib` | Build Rust library (debug mode for local testing) |
 | `./gradlew generateBindings` | Generate UniFFI Kotlin bindings |
-| `./gradlew copyNativeLibs` | Copy release libraries to resources (for distribution) |
-| `./gradlew cleanNativeLibs` | Remove native libraries from resources |
 | `./gradlew ktlintCheck` | Check code formatting |
 | `./gradlew ktlintFormat` | Auto-format code |
 
 ## Distribution Builds
 
-### Local Testing
+### Local Development
 
-Development builds use **debug mode** Rust libraries:
+Development builds use **debug mode** Rust libraries loaded directly from the Cargo target directory:
 
 ```bash
 ./gradlew test
@@ -135,33 +133,24 @@ Development builds use **debug mode** Rust libraries:
 
 ### Production JAR
 
-For distribution, we build a **Fat JAR** with native libraries for all platforms.
-
-**This requires building on multiple platforms** (handled by CI):
+For distribution, GitHub Actions builds a **Fat JAR** with native libraries for all platforms:
 
 ```yaml
 # .github/workflows/publish-kotlin.yml
-1. Build native libraries on each platform (Linux, macOS, Windows)
-2. Collect all binaries as artifacts
-3. Copy to src/main/resources/natives/{platform}/
+1. Build native libraries on each platform in parallel (Linux, macOS, Windows)
+   - Each runner executes: cargo build --release --target <platform-target>
+2. Download and organize all platform artifacts
+   - Copies to: pkg/kotlin/src/main/resources/natives/{platform}/
+3. Generate UniFFI bindings using Linux library
 4. Build final JAR with all libraries included
+   - ./gradlew build -x test
 ```
 
-**To test locally** (if you have cross-compilation set up):
-
-```bash
-# Build for current platform only
-cargo build --release --target aarch64-apple-darwin
-
-# Copy to resources
-./gradlew copyNativeLibs
-
-# Build JAR
-./gradlew build
-
-# Check JAR contents
-jar tf build/libs/gluesql-kotlin-0.1.0.jar | grep natives
-```
+**Why separate CI from local builds?**
+- Local: Uses debug builds for faster iteration
+- CI: Builds release binaries on native platforms (no cross-compilation needed)
+- Gradle tasks focus on development workflow
+- GitHub Actions handles production multi-platform builds
 
 ## Common Issues & Solutions
 

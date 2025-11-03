@@ -54,10 +54,6 @@ tasks.test {
     systemProperty("jna.library.path", workspaceRoot.resolve("target/debug").absolutePath)
 }
 
-tasks.clean {
-    dependsOn("cleanNativeLibs")
-}
-
 ktlint {
     version.set("1.0.1")
     filter {
