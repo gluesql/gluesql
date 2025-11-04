@@ -38,7 +38,7 @@ test_case!(variance, {
             select!(
                 "VARIANCE(id)" | "VARIANCE(quantity)"
                 F64            | F64;
-                4.0              82.77551020408163
+                4.0              82.775_510_204_081_63
             ),
         ),
         (
@@ -52,9 +52,9 @@ test_case!(variance, {
         (
             "SELECT VARIANCE(quantity), VARIANCE(DISTINCT quantity) FROM Item",
             select!(
-                "VARIANCE(quantity)" | "VARIANCE(DISTINCT quantity)";
-                F64                  | F64;
-                82.77551020408163      74.64
+                "VARIANCE(quantity)"  | "VARIANCE(DISTINCT quantity)";
+                F64                   | F64;
+                82.775_510_204_081_63   74.64
             ),
         ),
     ];

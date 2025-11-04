@@ -33,6 +33,7 @@ impl<'a> HashJoinNode<'a> {
         }
     }
 
+    #[must_use]
     pub fn hash_filter<T: Into<ExprNode<'a>>>(mut self, expr: T) -> Self {
         let expr = expr.into();
         let filter_expr = match self.filter_expr {

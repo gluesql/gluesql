@@ -67,6 +67,7 @@ impl<'a> FilterNode<'a> {
         }
     }
 
+    #[must_use]
     pub fn filter<T: Into<ExprNode<'a>>>(mut self, expr: T) -> Self {
         let exprs = self.filter_expr;
         self.filter_expr = exprs.and(expr);

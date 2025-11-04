@@ -60,7 +60,7 @@ fn timestamp_to_string() {
 
 #[test]
 fn uuid_to_string() {
-    let uuid_u128 = 0x936DA01F9ABD4D9D80C702AF85C822A8u128;
+    let uuid_u128 = 0x936D_A01F_9ABD_4D9D_80C7_02AF_85C8_22A8_u128;
     let payload = Payload::Select {
         labels: vec!["v".into()],
         rows: vec![vec![Value::Uuid(uuid_u128)]],
@@ -72,7 +72,7 @@ fn uuid_to_string() {
 
 #[test]
 fn uuid_to_option_string() {
-    let uuid_u128 = 0x550E8400E29B41D4A716446655440000u128;
+    let uuid_u128 = 0x550E_8400_E29B_41D4_A716_4466_5544_0000_u128;
     let payload = Payload::Select {
         labels: vec!["v".into()],
         rows: vec![vec![Value::Uuid(uuid_u128)], vec![Value::Null]],

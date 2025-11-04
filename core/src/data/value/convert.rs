@@ -1097,15 +1097,15 @@ mod tests {
         test!(Value::I8(122), "122");
         test!(Value::I16(122), "122");
         test!(Value::I32(122), "122");
-        test!(Value::I64(1234567890), "1234567890");
-        test!(Value::I128(1234567890), "1234567890");
+        test!(Value::I64(1_234_567_890), "1234567890");
+        test!(Value::I128(1_234_567_890), "1234567890");
         test!(Value::U8(122), "122");
         test!(Value::U16(122), "122");
         test!(Value::U32(122), "122");
         test!(Value::U64(122), "122");
         test!(Value::U128(122), "122");
-        test!(Value::F32(123456.1_f32), "123456.1");
-        test!(Value::F64(1234567890.0987), "1234567890.0987");
+        test!(Value::F32(123_456.1_f32), "123456.1");
+        test!(Value::F64(1_234_567_890.098_7), "1234567890.0987");
         test!(Value::Date(date(2021, 11, 20)), "2021-11-20");
         test!(
             Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)),
@@ -1114,7 +1114,7 @@ mod tests {
         test!(Value::Time(time(10, 0, 0, 0)), "10:00:00");
         test!(Value::Interval(I::Month(1)), I::Month(1).to_sql_str());
         test!(
-            Value::Uuid(195965723427462096757863453463987888808),
+            Value::Uuid(195_965_723_427_462_096_757_863_453_463_987_888_808),
             "936da01f-9abd-4d9d-80c7-02af85c822a8"
         );
         test!(Value::Map(BTreeMap::new()), "{}");
@@ -1205,7 +1205,9 @@ mod tests {
         err!(Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)));
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
-        err!(Value::Uuid(195965723427462096757863453463987888808));
+        err!(Value::Uuid(
+            195_965_723_427_462_096_757_863_453_463_987_888_808
+        ));
         err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Point(point::Point::new(1.0313, 2.0314)));
@@ -1269,7 +1271,9 @@ mod tests {
         err!(Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)));
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
-        err!(Value::Uuid(195965723427462096757863453463987888808));
+        err!(Value::Uuid(
+            195_965_723_427_462_096_757_863_453_463_987_888_808
+        ));
         err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Point(point::Point::new(1.0313, 2.0314)));
@@ -1335,7 +1339,9 @@ mod tests {
         err!(Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)));
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
-        err!(Value::Uuid(195965723427462096757863453463987888808));
+        err!(Value::Uuid(
+            195_965_723_427_462_096_757_863_453_463_987_888_808
+        ));
         err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Point(point::Point::new(1.0313, 2.0314)));
@@ -1375,13 +1381,22 @@ mod tests {
         test!(Value::U32(122), Ok(122));
         test!(Value::U64(122), Ok(122));
         test!(Value::U128(122), Ok(122));
-        test!(Value::I64(1234567890), Ok(1234567890));
-        test!(Value::F32(1234567890.0_f32), Ok(1234567890.0_f32 as i32));
-        test!(Value::F32(1234567890.1_f32), Ok(1234567890.1_f32 as i32));
-        test!(Value::F64(1234567890.0), Ok(1234567890));
-        test!(Value::F64(1234567890.1), Ok(1234567890));
-        test!(Value::Str("1234567890".to_owned()), Ok(1234567890));
-        test!(Value::Decimal(Decimal::new(1234567890, 0)), Ok(1234567890));
+        test!(Value::I64(1_234_567_890), Ok(1_234_567_890));
+        test!(
+            Value::F32(1_234_567_890.0_f32),
+            Ok(1_234_567_890.0_f32 as i32)
+        );
+        test!(
+            Value::F32(1_234_567_890.1_f32),
+            Ok(1_234_567_890.1_f32 as i32)
+        );
+        test!(Value::F64(1_234_567_890.0), Ok(1_234_567_890));
+        test!(Value::F64(1_234_567_890.1), Ok(1_234_567_890));
+        test!(Value::Str("1234567890".to_owned()), Ok(1_234_567_890));
+        test!(
+            Value::Decimal(Decimal::new(1_234_567_890, 0)),
+            Ok(1_234_567_890)
+        );
 
         err!(Value::I64(i64::MAX));
         err!(Value::I128(i128::MAX));
@@ -1401,7 +1416,9 @@ mod tests {
         err!(Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)));
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
-        err!(Value::Uuid(195965723427462096757863453463987888808));
+        err!(Value::Uuid(
+            195_965_723_427_462_096_757_863_453_463_987_888_808
+        ));
         err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Point(point::Point::new(1.0313, 2.0314)));
@@ -1441,13 +1458,22 @@ mod tests {
         test!(Value::U32(122), Ok(122));
         test!(Value::U64(122), Ok(122));
         test!(Value::U128(122), Ok(122));
-        test!(Value::I64(1234567890), Ok(1234567890));
-        test!(Value::F32(1234567890.0_f32), Ok(1234567890.0_f32 as i64));
-        test!(Value::F32(1234567890.1_f32), Ok(1234567890.1_f32 as i64));
-        test!(Value::F64(1234567890.0), Ok(1234567890));
-        test!(Value::F64(1234567890.1), Ok(1234567890));
-        test!(Value::Str("1234567890".to_owned()), Ok(1234567890));
-        test!(Value::Decimal(Decimal::new(1234567890, 0)), Ok(1234567890));
+        test!(Value::I64(1_234_567_890), Ok(1_234_567_890));
+        test!(
+            Value::F32(1_234_567_890.0_f32),
+            Ok(1_234_567_890.0_f32 as i64)
+        );
+        test!(
+            Value::F32(1_234_567_890.1_f32),
+            Ok(1_234_567_890.1_f32 as i64)
+        );
+        test!(Value::F64(1_234_567_890.0), Ok(1_234_567_890));
+        test!(Value::F64(1_234_567_890.1), Ok(1_234_567_890));
+        test!(Value::Str("1234567890".to_owned()), Ok(1_234_567_890));
+        test!(
+            Value::Decimal(Decimal::new(1_234_567_890, 0)),
+            Ok(1_234_567_890)
+        );
 
         err!(Value::I128(i128::MAX));
 
@@ -1464,7 +1490,9 @@ mod tests {
         err!(Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)));
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
-        err!(Value::Uuid(195965723427462096757863453463987888808));
+        err!(Value::Uuid(
+            195_965_723_427_462_096_757_863_453_463_987_888_808
+        ));
         err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Point(point::Point::new(1.0313, 2.0314)));
@@ -1504,13 +1532,22 @@ mod tests {
         test!(Value::U32(122), Ok(122));
         test!(Value::U64(122), Ok(122));
         test!(Value::U128(122), Ok(122));
-        test!(Value::I64(1234567890), Ok(1234567890));
-        test!(Value::F32(1234567890.0_f32), Ok(1234567890.0_f32 as i128));
-        test!(Value::F32(1234567890.9_f32), Ok(1234567890.9_f32 as i128));
-        test!(Value::F64(1234567890.0), Ok(1234567890));
-        test!(Value::F64(1234567890.9), Ok(1234567890));
-        test!(Value::Str("1234567890".to_owned()), Ok(1234567890));
-        test!(Value::Decimal(Decimal::new(1234567890, 0)), Ok(1234567890));
+        test!(Value::I64(1_234_567_890), Ok(1_234_567_890));
+        test!(
+            Value::F32(1_234_567_890.0_f32),
+            Ok(1_234_567_890.0_f32 as i128)
+        );
+        test!(
+            Value::F32(1_234_567_890.9_f32),
+            Ok(1_234_567_890.9_f32 as i128)
+        );
+        test!(Value::F64(1_234_567_890.0), Ok(1_234_567_890));
+        test!(Value::F64(1_234_567_890.9), Ok(1_234_567_890));
+        test!(Value::Str("1234567890".to_owned()), Ok(1_234_567_890));
+        test!(
+            Value::Decimal(Decimal::new(1_234_567_890, 0)),
+            Ok(1_234_567_890)
+        );
 
         err!(Value::U128(u128::MAX));
 
@@ -1524,7 +1561,9 @@ mod tests {
         err!(Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)));
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
-        err!(Value::Uuid(195965723427462096757863453463987888808));
+        err!(Value::Uuid(
+            195_965_723_427_462_096_757_863_453_463_987_888_808
+        ));
         err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Point(point::Point::new(1.0313, 2.0314)));
@@ -1594,7 +1633,9 @@ mod tests {
         err!(Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)));
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
-        err!(Value::Uuid(195965723427462096757863453463987888808));
+        err!(Value::Uuid(
+            195_965_723_427_462_096_757_863_453_463_987_888_808
+        ));
         err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Point(point::Point::new(1.0313, 2.0314)));
@@ -1660,7 +1701,9 @@ mod tests {
         err!(Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)));
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
-        err!(Value::Uuid(195965723427462096757863453463987888808));
+        err!(Value::Uuid(
+            195_965_723_427_462_096_757_863_453_463_987_888_808
+        ));
         err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Null);
@@ -1723,7 +1766,9 @@ mod tests {
         err!(Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)));
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
-        err!(Value::Uuid(195965723427462096757863453463987888808));
+        err!(Value::Uuid(
+            195_965_723_427_462_096_757_863_453_463_987_888_808
+        ));
         err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Null);
@@ -1789,7 +1834,9 @@ mod tests {
         err!(Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)));
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
-        err!(Value::Uuid(195965723427462096757863453463987888808));
+        err!(Value::Uuid(
+            195_965_723_427_462_096_757_863_453_463_987_888_808
+        ));
         err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Point(point::Point::new(1.0313, 2.0314)));
@@ -1851,11 +1898,11 @@ mod tests {
         err!(Value::List(Vec::new()));
         err!(Value::Null);
 
-        let uuid = 195965723427462096757863453463987888808;
+        let uuid = 195_965_723_427_462_096_757_863_453_463_987_888_808;
         assert_eq!((&Value::Uuid(uuid)).try_into() as Result<u128>, Ok(uuid));
         assert_eq!(u128::try_from(&Value::Uuid(uuid)), Ok(uuid));
 
-        let ip = Ipv6Addr::from(9876543210);
+        let ip = Ipv6Addr::from(9_876_543_210);
         assert_eq!(
             u128::try_from(&Value::Inet(IpAddr::V6(ip))),
             Ok(u128::from(ip))
@@ -1895,13 +1942,16 @@ mod tests {
         test!(Value::U32(122), Ok(122.0_f32));
         test!(Value::U64(122), Ok(122.0_f32));
         test!(Value::U128(122), Ok(122.0_f32));
-        test!(Value::I64(1234567890), Ok(1234567890.0_f32));
-        test!(Value::F64(1234567890.1), Ok(1234567890.1_f32));
-        test!(Value::F32(1234567890.1_f32), Ok(1234567890.1_f32));
-        test!(Value::Str("1234567890.1".to_owned()), Ok(1234567890.1_f32));
+        test!(Value::I64(1_234_567_890), Ok(1_234_567_890.0_f32));
+        test!(Value::F64(1_234_567_890.1), Ok(1_234_567_890.1_f32));
+        test!(Value::F32(1_234_567_890.1_f32), Ok(1_234_567_890.1_f32));
         test!(
-            Value::Decimal(Decimal::new(12345678901, 1)),
-            Ok(1234567890.1_f32)
+            Value::Str("1234567890.1".to_owned()),
+            Ok(1_234_567_890.1_f32)
+        );
+        test!(
+            Value::Decimal(Decimal::new(12_345_678_901, 1)),
+            Ok(1_234_567_890.1_f32)
         );
 
         err!(Value::Str("text".to_owned()));
@@ -1911,7 +1961,9 @@ mod tests {
         err!(Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)));
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
-        err!(Value::Uuid(195965723427462096757863453463987888808));
+        err!(Value::Uuid(
+            195_965_723_427_462_096_757_863_453_463_987_888_808
+        ));
         err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Null);
@@ -1950,16 +2002,16 @@ mod tests {
         test!(Value::U32(122), Ok(122.0));
         test!(Value::U64(122), Ok(122.0));
         test!(Value::U128(122), Ok(122.0));
-        test!(Value::I64(1234567890), Ok(1234567890.0));
+        test!(Value::I64(1_234_567_890), Ok(1_234_567_890.0));
         test!(
-            Value::F32(1234567890.1_f32),
-            Ok(f64::from(1234567890.1_f32))
+            Value::F32(1_234_567_890.1_f32),
+            Ok(f64::from(1_234_567_890.1_f32))
         );
-        test!(Value::F64(1234567890.1), Ok(1234567890.1));
-        test!(Value::Str("1234567890.1".to_owned()), Ok(1234567890.1));
+        test!(Value::F64(1_234_567_890.1), Ok(1_234_567_890.1));
+        test!(Value::Str("1234567890.1".to_owned()), Ok(1_234_567_890.1));
         test!(
-            Value::Decimal(Decimal::new(12345678901, 1)),
-            Ok(1234567890.1)
+            Value::Decimal(Decimal::new(12_345_678_901, 1)),
+            Ok(1_234_567_890.1)
         );
 
         err!(Value::Str("text".to_owned()));
@@ -1969,7 +2021,9 @@ mod tests {
         err!(Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)));
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
-        err!(Value::Uuid(195965723427462096757863453463987888808));
+        err!(Value::Uuid(
+            195_965_723_427_462_096_757_863_453_463_987_888_808
+        ));
         err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Point(point::Point::new(1.0313, 2.0314)));
@@ -2010,13 +2064,22 @@ mod tests {
         test!(Value::U32(122), Ok(122));
         test!(Value::U64(122), Ok(122));
         test!(Value::U128(122), Ok(122));
-        test!(Value::I64(1234567890), Ok(1234567890));
-        test!(Value::F32(1234567890.0_f32), Ok(1234567890.0_f32 as usize));
-        test!(Value::F32(1234567890.1_f32), Ok(1234567890.1_f32 as usize));
-        test!(Value::F64(1234567890.0), Ok(1234567890));
-        test!(Value::F64(1234567890.1), Ok(1234567890));
-        test!(Value::Str("1234567890".to_owned()), Ok(1234567890));
-        test!(Value::Decimal(Decimal::new(1234567890, 0)), Ok(1234567890));
+        test!(Value::I64(1_234_567_890), Ok(1_234_567_890));
+        test!(
+            Value::F32(1_234_567_890.0_f32),
+            Ok(1_234_567_890.0_f32 as usize)
+        );
+        test!(
+            Value::F32(1_234_567_890.1_f32),
+            Ok(1_234_567_890.1_f32 as usize)
+        );
+        test!(Value::F64(1_234_567_890.0), Ok(1_234_567_890));
+        test!(Value::F64(1_234_567_890.1), Ok(1_234_567_890));
+        test!(Value::Str("1234567890".to_owned()), Ok(1_234_567_890));
+        test!(
+            Value::Decimal(Decimal::new(1_234_567_890, 0)),
+            Ok(1_234_567_890)
+        );
 
         err!(Value::I128(i128::MIN));
 
@@ -2033,7 +2096,9 @@ mod tests {
         err!(Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)));
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
-        err!(Value::Uuid(195965723427462096757863453463987888808));
+        err!(Value::Uuid(
+            195_965_723_427_462_096_757_863_453_463_987_888_808
+        ));
         err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Point(point::Point::new(1.0313, 2.0314)));
@@ -2090,7 +2155,9 @@ mod tests {
         err!(Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)));
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
-        err!(Value::Uuid(195965723427462096757863453463987888808));
+        err!(Value::Uuid(
+            195_965_723_427_462_096_757_863_453_463_987_888_808
+        ));
         err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Null);

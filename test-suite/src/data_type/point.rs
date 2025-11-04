@@ -68,7 +68,7 @@ test_case!(point, {
             Ok(select!(
                 pt
                 Point;
-                gluesql_core::data::Point::new(-71.064544, 42.28787)
+                gluesql_core::data::Point::new(-71.064_544, 42.28787)
 
             )),
         ),

@@ -1,10 +1,12 @@
 use super::ExprNode;
 
 impl ExprNode<'_> {
+    #[must_use]
     pub fn is_null(self) -> Self {
         Self::IsNull(Box::new(self))
     }
 
+    #[must_use]
     pub fn is_not_null(self) -> Self {
         Self::IsNotNull(Box::new(self))
     }

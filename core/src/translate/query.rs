@@ -222,13 +222,11 @@ fn translate_table_with_joins(
     })
 }
 
-fn translate_table_alias(alias: &Option<SqlTableAlias>) -> Option<TableAlias> {
-    alias
-        .as_ref()
-        .map(|SqlTableAlias { name, columns }| TableAlias {
-            name: name.value.clone(),
-            columns: translate_idents(columns),
-        })
+fn translate_table_alias(alias: Option<&SqlTableAlias>) -> Option<TableAlias> {
+    alias.map(|SqlTableAlias { name, columns }| TableAlias {
+        name: name.value.clone(),
+        columns: translate_idents(columns),
+    })
 }
 
 fn translate_table_factor(
@@ -257,7 +255,7 @@ fn translate_table_factor(
             name, alias, args, ..
         } => {
             let object_name = translate_object_name(name)?.to_uppercase();
-            let alias = translate_table_alias(alias);
+            let alias = translate_table_alias(alias.as_ref());
 
             match (object_name.as_str(), args) {
                 ("SERIES", Some(SqlTableFunctionArgs { args, .. })) => Ok(TableFactor::Series {

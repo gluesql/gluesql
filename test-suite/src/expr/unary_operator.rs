@@ -62,7 +62,7 @@ test_case!(unary_operator, {
             Ok(select!(
                 v1
                 I128;
-                3628800
+                3_628_800
             )),
         ),
         (
@@ -145,7 +145,7 @@ test_case!(unary_operator, {
         Ok(select!(
             v1
             U32;
-            4294967294
+            4_294_967_294
         )),
     )
     .await;
@@ -155,7 +155,7 @@ test_case!(unary_operator, {
         Ok(select!(
             v1
             U64;
-            18446744073709551614
+            18_446_744_073_709_551_614
         )),
     )
     .await;
@@ -165,7 +165,7 @@ test_case!(unary_operator, {
         Ok(select!(
             v1
             U128;
-            340282366920938463463374607431768211454
+            340_282_366_920_938_463_463_374_607_431_768_211_454
         )),
     )
     .await;

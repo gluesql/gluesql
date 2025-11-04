@@ -409,104 +409,136 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
 }
 
 impl<'a> ExprNode<'a> {
+    #[must_use]
     pub fn abs(self) -> ExprNode<'a> {
         abs(self)
     }
+    #[must_use]
     pub fn upper(self) -> ExprNode<'a> {
         upper(self)
     }
+    #[must_use]
     pub fn lower(self) -> ExprNode<'a> {
         lower(self)
     }
+    #[must_use]
     pub fn initcap(self) -> ExprNode<'a> {
         initcap(self)
     }
+    #[must_use]
     pub fn ifnull<T: Into<ExprNode<'a>>>(self, another: T) -> ExprNode<'a> {
         ifnull(self, another)
     }
+    #[must_use]
     pub fn nullif<T: Into<ExprNode<'a>>>(self, another: T) -> ExprNode<'a> {
         nullif(self, another)
     }
+    #[must_use]
     pub fn ceil(self) -> ExprNode<'a> {
         ceil(self)
     }
+    #[must_use]
     pub fn rand(self) -> ExprNode<'a> {
         rand(Some(self))
     }
+    #[must_use]
     pub fn round(self) -> ExprNode<'a> {
         round(self)
     }
+    #[must_use]
     pub fn trunc(self) -> ExprNode<'a> {
         trunc(self)
     }
+    #[must_use]
     pub fn floor(self) -> ExprNode<'a> {
         floor(self)
     }
+    #[must_use]
     pub fn asin(self) -> ExprNode<'a> {
         asin(self)
     }
+    #[must_use]
     pub fn acos(self) -> ExprNode<'a> {
         acos(self)
     }
+    #[must_use]
     pub fn atan(self) -> ExprNode<'a> {
         atan(self)
     }
+    #[must_use]
     pub fn sin(self) -> ExprNode<'a> {
         sin(self)
     }
+    #[must_use]
     pub fn cos(self) -> ExprNode<'a> {
         cos(self)
     }
+    #[must_use]
     pub fn tan(self) -> ExprNode<'a> {
         tan(self)
     }
+    #[must_use]
     pub fn left<T: Into<ExprNode<'a>>>(self, size: T) -> Self {
         left(self, size)
     }
+    #[must_use]
     pub fn log<T: Into<ExprNode<'a>>>(self, base: T) -> ExprNode<'a> {
         log(self, base)
     }
+    #[must_use]
     pub fn log2(self) -> ExprNode<'a> {
         log2(self)
     }
+    #[must_use]
     pub fn log10(self) -> ExprNode<'a> {
         log10(self)
     }
+    #[must_use]
     pub fn ln(self) -> ExprNode<'a> {
         ln(self)
     }
+    #[must_use]
     pub fn right<T: Into<ExprNode<'a>>>(self, size: T) -> Self {
         right(self, size)
     }
 
+    #[must_use]
     pub fn reverse(self) -> ExprNode<'a> {
         reverse(self)
     }
 
+    #[must_use]
     pub fn sign(self) -> ExprNode<'a> {
         sign(self)
     }
 
+    #[must_use]
     pub fn skip<T: Into<ExprNode<'a>>>(self, size: T) -> ExprNode<'a> {
         skip(self, size)
     }
 
+    #[must_use]
     pub fn power<T: Into<ExprNode<'a>>>(self, pwr: T) -> ExprNode<'a> {
         power(self, pwr)
     }
 
+    #[must_use]
     pub fn sqrt(self) -> ExprNode<'a> {
         sqrt(self)
     }
+    #[must_use]
     pub fn gcd<T: Into<ExprNode<'a>>>(self, right: T) -> ExprNode<'a> {
         gcd(self, right)
     }
+    #[must_use]
     pub fn lcm<T: Into<ExprNode<'a>>>(self, right: T) -> ExprNode<'a> {
         lcm(self, right)
     }
+    #[must_use]
     pub fn repeat<T: Into<ExprNode<'a>>>(self, num: T) -> ExprNode<'a> {
         repeat(self, num)
     }
+    #[must_use]
     pub fn replace<T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
         self,
         old: T,
@@ -514,24 +546,31 @@ impl<'a> ExprNode<'a> {
     ) -> ExprNode<'a> {
         replace(self, old, new)
     }
+    #[must_use]
     pub fn degrees(self) -> ExprNode<'a> {
         degrees(self)
     }
+    #[must_use]
     pub fn radians(self) -> ExprNode<'a> {
         radians(self)
     }
+    #[must_use]
     pub fn lpad<T: Into<ExprNode<'a>>>(self, size: T, fill: Option<ExprNode<'a>>) -> ExprNode<'a> {
         lpad(self, size, fill)
     }
+    #[must_use]
     pub fn rpad<T: Into<ExprNode<'a>>>(self, size: T, fill: Option<ExprNode<'a>>) -> ExprNode<'a> {
         rpad(self, size, fill)
     }
+    #[must_use]
     pub fn take<T: Into<ExprNode<'a>>>(self, size: T) -> ExprNode<'a> {
         take(self, size)
     }
+    #[must_use]
     pub fn exp(self) -> ExprNode<'a> {
         exp(self)
     }
+    #[must_use]
     pub fn substr<T: Into<ExprNode<'a>>>(
         self,
         start: T,
@@ -539,27 +578,35 @@ impl<'a> ExprNode<'a> {
     ) -> ExprNode<'a> {
         substr(self, start, count)
     }
+    #[must_use]
     pub fn rtrim(self, chars: Option<ExprNode<'a>>) -> ExprNode<'a> {
         rtrim(self, chars)
     }
+    #[must_use]
     pub fn ltrim(self, chars: Option<ExprNode<'a>>) -> ExprNode<'a> {
         ltrim(self, chars)
     }
+    #[must_use]
     pub fn format<T: Into<ExprNode<'a>>>(self, fmt: T) -> ExprNode<'a> {
         format(self, fmt)
     }
+    #[must_use]
     pub fn to_date<T: Into<ExprNode<'a>>>(self, format: T) -> ExprNode<'a> {
         to_date(self, format)
     }
+    #[must_use]
     pub fn to_timestamp<T: Into<ExprNode<'a>>>(self, format: T) -> ExprNode<'a> {
         to_timestamp(self, format)
     }
+    #[must_use]
     pub fn to_time<T: Into<ExprNode<'a>>>(self, format: T) -> ExprNode<'a> {
         to_time(self, format)
     }
+    #[must_use]
     pub fn position<T: Into<ExprNode<'a>>>(self, format: T) -> ExprNode<'a> {
         position(self, format)
     }
+    #[must_use]
     pub fn find_idx<T: Into<ExprNode<'a>>>(
         self,
         sub: T,
@@ -567,24 +614,31 @@ impl<'a> ExprNode<'a> {
     ) -> ExprNode<'a> {
         find_idx(self, sub, start)
     }
+    #[must_use]
     pub fn cast<T: Into<DataTypeNode>>(self, data_type: T) -> ExprNode<'a> {
         cast(self, data_type)
     }
+    #[must_use]
     pub fn extract(self, field: DateTimeField) -> ExprNode<'a> {
         extract(field, self)
     }
+    #[must_use]
     pub fn is_empty(self) -> ExprNode<'a> {
         is_empty(self)
     }
+    #[must_use]
     pub fn last_day(self) -> ExprNode<'a> {
         last_day(self)
     }
+    #[must_use]
     pub fn entries(self) -> ExprNode<'a> {
         entries(self)
     }
+    #[must_use]
     pub fn keys(self) -> ExprNode<'a> {
         keys(self)
     }
+    #[must_use]
     pub fn values(self) -> ExprNode<'a> {
         values(self)
     }

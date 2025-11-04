@@ -282,6 +282,7 @@ impl Value {
         }
     }
 
+    #[must_use]
     pub fn concat(self, other: Value) -> Value {
         match (self, other) {
             (Value::Null, _) | (_, Value::Null) => Value::Null,
@@ -846,8 +847,8 @@ impl Eq for Value {}
 
 impl Hash for Value {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        const CANONICAL_F32_NAN_BITS: u32 = 0x7fc00000;
-        const CANONICAL_F64_NAN_BITS: u64 = 0x7ff8000000000000;
+        const CANONICAL_F32_NAN_BITS: u32 = 0x7fc0_0000;
+        const CANONICAL_F64_NAN_BITS: u64 = 0x7ff8_0000_0000_0000;
         const CANONICAL_F32_ZERO_BITS: u32 = 0;
         const CANONICAL_F64_ZERO_BITS: u64 = 0;
 
@@ -2903,8 +2904,8 @@ mod tests {
             hasher.finish()
         }
 
-        const CANONICAL_F64_NAN_BITS: u64 = 0x7ff8000000000000;
-        const CANONICAL_F32_NAN_BITS: u32 = 0x7fc00000;
+        const CANONICAL_F64_NAN_BITS: u64 = 0x7ff8_0000_0000_0000;
+        const CANONICAL_F32_NAN_BITS: u32 = 0x7fc0_0000;
         const CANONICAL_F32_ZERO_BITS: u32 = 0;
         const CANONICAL_F64_ZERO_BITS: u64 = 0;
 
@@ -2975,7 +2976,7 @@ mod tests {
                 Time(NaiveTime::from_hms_opt(10, 30, 0).unwrap()),
             ),
             (Interval(Interval::hours(5)), Interval(Interval::hours(5))),
-            (Uuid(123456789), Uuid(123456789)),
+            (Uuid(123_456_789), Uuid(123_456_789)),
             (List(vec![I64(1), I64(2)]), List(vec![I64(1), I64(2)])),
             (Null, Null),
         ];
@@ -3115,7 +3116,7 @@ mod tests {
                 Interval(Interval::hours(5)),
                 true,
             ),
-            (Uuid(123456789), Uuid(123456789), true),
+            (Uuid(123_456_789), Uuid(123_456_789), true),
             (List(vec![I64(1), I64(2)]), List(vec![I64(1), I64(2)]), true),
             (
                 Point(Point::new(1.0, 2.0)),
@@ -3139,7 +3140,7 @@ mod tests {
         assert_eq!(F64(f64::NAN), F64(f64::NAN));
         assert_eq!(F32(0.0), F32(-0.0));
         assert_eq!(F64(0.0), F64(-0.0));
-        assert_eq!(F32(f32::from_bits(0x7fc00001)), F32(f32::NAN));
+        assert_eq!(F32(f32::from_bits(0x7fc0_0001)), F32(f32::NAN));
 
         assert_eq!(
             Point(Point::new(f64::NAN, 1.0)),

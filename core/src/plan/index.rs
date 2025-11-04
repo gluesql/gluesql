@@ -8,10 +8,13 @@ use {
         data::{Schema, SchemaIndex, SchemaIndexOrd},
         plan::expr::{deterministic::is_deterministic, nullability::may_return_null},
     },
-    std::{collections::HashMap, sync::Arc},
+    std::{collections::HashMap, hash::BuildHasher, sync::Arc},
 };
 
-pub fn plan(schema_map: &HashMap<String, Schema>, statement: Statement) -> Statement {
+pub fn plan<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    statement: Statement,
+) -> Statement {
     let planner = IndexPlanner { schema_map };
 
     match statement {
@@ -24,11 +27,11 @@ pub fn plan(schema_map: &HashMap<String, Schema>, statement: Statement) -> State
     }
 }
 
-struct IndexPlanner<'a> {
-    schema_map: &'a HashMap<String, Schema>,
+struct IndexPlanner<'a, S> {
+    schema_map: &'a HashMap<String, Schema, S>,
 }
 
-impl<'a> Planner<'a> for IndexPlanner<'a> {
+impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
     fn query(&self, outer_context: Option<Arc<Context<'a>>>, query: Query) -> Query {
         let Query {
             body,
@@ -59,7 +62,7 @@ impl<'a> Planner<'a> for IndexPlanner<'a> {
     }
 }
 
-impl<'a> IndexPlanner<'a> {
+impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
     fn select(
         &self,
         outer_context: Option<&Arc<Context<'a>>>,

@@ -8,10 +8,13 @@ use {
         data::Schema,
         plan::expr::evaluable::check_expr as check_evaluable,
     },
-    std::{collections::HashMap, sync::Arc},
+    std::{collections::HashMap, hash::BuildHasher, sync::Arc},
 };
 
-pub fn plan(schema_map: &HashMap<String, Schema>, statement: Statement) -> Statement {
+pub fn plan<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    statement: Statement,
+) -> Statement {
     let planner = PrimaryKeyPlanner { schema_map };
 
     match statement {
@@ -24,11 +27,11 @@ pub fn plan(schema_map: &HashMap<String, Schema>, statement: Statement) -> State
     }
 }
 
-struct PrimaryKeyPlanner<'a> {
-    schema_map: &'a HashMap<String, Schema>,
+struct PrimaryKeyPlanner<'a, S> {
+    schema_map: &'a HashMap<String, Schema, S>,
 }
 
-impl<'a> Planner<'a> for PrimaryKeyPlanner<'a> {
+impl<'a, S: BuildHasher> Planner<'a> for PrimaryKeyPlanner<'a, S> {
     fn query(&self, outer_context: Option<Arc<Context<'a>>>, query: Query) -> Query {
         let body = match query.body {
             SetExpr::Select(select) => {
@@ -55,7 +58,7 @@ enum PrimaryKey {
     NotFound(Expr),
 }
 
-impl<'a> PrimaryKeyPlanner<'a> {
+impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
     fn select(&self, outer_context: Option<Arc<Context<'a>>>, select: Select) -> Select {
         let current_context = self.update_context(None, &select.from.relation);
         let current_context = select

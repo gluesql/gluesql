@@ -157,7 +157,7 @@ where
     };
 
     let TableWithJoins { relation, joins } = &table_with_joins;
-    let rows = fetch_relation_rows(storage, relation, &None)
+    let rows = fetch_relation_rows(storage, relation, None)
         .await?
         .map(move |row| {
             let row = row?;

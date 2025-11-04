@@ -95,6 +95,7 @@ impl<'a> ProjectNode<'a> {
         }
     }
 
+    #[must_use]
     pub fn project<T: Into<SelectItemList<'a>>>(mut self, select_items: T) -> Self {
         self.select_items_list.push(select_items.into());
 
