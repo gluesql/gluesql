@@ -6,7 +6,7 @@ use {
         data::Schema,
         error::{Error, Result},
         prelude::{DataType, Key, Value},
-        store::{DataRow, Metadata},
+        store::{DataRow, Metadata, Planner},
     },
     parquet::{
         file::{reader::FileReader, serialized_reader::SerializedFileReader},
@@ -203,3 +203,4 @@ impl ParquetStorage {
 }
 
 impl Metadata for ParquetStorage {}
+impl Planner for ParquetStorage {}

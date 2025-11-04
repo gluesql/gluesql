@@ -53,7 +53,7 @@ test_case!(concat, {
     .await;
     // test with zero arguments
     g.test(
-        r#"select concat() as myconcat;"#,
+        r"select concat() as myconcat;",
         Err(EvaluateError::EmptyArgNotAllowedInConcat.into()),
     )
     .await;

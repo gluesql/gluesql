@@ -4,7 +4,7 @@ use {
         ast::{Expr, OrderByExpr},
         parse_sql::parse_order_by_expr,
         result::{Error, Result},
-        translate::translate_order_by_expr,
+        translate::{NO_PARAMS, translate_order_by_expr},
     },
 };
 
@@ -14,7 +14,7 @@ pub enum OrderByExprNode<'a> {
     Expr(ExprNode<'a>),
 }
 
-impl<'a> From<&str> for OrderByExprNode<'a> {
+impl From<&str> for OrderByExprNode<'_> {
     fn from(expr: &str) -> Self {
         Self::Text(expr.to_owned())
     }
@@ -32,7 +32,8 @@ impl<'a> TryFrom<OrderByExprNode<'a>> for OrderByExpr {
     fn try_from(node: OrderByExprNode<'a>) -> Result<Self> {
         match node {
             OrderByExprNode::Text(expr) => {
-                let expr = parse_order_by_expr(expr).and_then(|op| translate_order_by_expr(&op))?;
+                let expr = parse_order_by_expr(expr)
+                    .and_then(|op| translate_order_by_expr(&op, NO_PARAMS))?;
                 Ok(expr)
             }
             OrderByExprNode::Expr(expr_node) => {
@@ -48,15 +49,16 @@ impl<'a> TryFrom<OrderByExprNode<'a>> for OrderByExpr {
 mod tests {
     use {
         crate::{
-            ast_builder::OrderByExprNode, parse_sql::parse_order_by_expr,
-            translate::translate_order_by_expr,
+            ast_builder::OrderByExprNode,
+            parse_sql::parse_order_by_expr,
+            translate::{NO_PARAMS, translate_order_by_expr},
         },
         pretty_assertions::assert_eq,
     };
 
     fn test(actual: OrderByExprNode, expected: &str) {
         let parsed = &parse_order_by_expr(expected).expect(expected);
-        let expected = translate_order_by_expr(parsed);
+        let expected = translate_order_by_expr(parsed, NO_PARAMS);
         assert_eq!(actual.try_into(), expected);
     }
 

@@ -39,7 +39,7 @@ pub trait AlterTable: Store + StoreMut {
             .fetch_schema(table_name)
             .await?
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
-        schema.table_name = new_table_name.to_owned();
+        new_table_name.clone_into(&mut schema.table_name);
         self.insert_schema(&schema).await?;
 
         let rows = self
@@ -75,11 +75,13 @@ pub trait AlterTable: Store + StoreMut {
             return Err(AlterTableError::AlreadyExistingColumn(new_column_name.to_owned()).into());
         }
 
-        column_defs
-            .iter_mut()
-            .find(|column_def| column_def.name == old_column_name)
-            .ok_or(AlterTableError::RenamingColumnNotFound)?
-            .name = new_column_name.to_owned();
+        new_column_name.clone_into(
+            &mut column_defs
+                .iter_mut()
+                .find(|column_def| column_def.name == old_column_name)
+                .ok_or(AlterTableError::RenamingColumnNotFound)?
+                .name,
+        );
 
         let rows = self
             .scan_data(table_name)

@@ -12,7 +12,7 @@ use {
         chrono::Utc,
         data::{CustomFunction as StructCustomFunction, Key, Schema, Value},
         error::Result,
-        store::{CustomFunction, CustomFunctionMut, DataRow, RowIter, Store, StoreMut},
+        store::{CustomFunction, CustomFunctionMut, DataRow, Planner, RowIter, Store, StoreMut},
     },
     serde::{Deserialize, Serialize},
     std::collections::{BTreeMap, HashMap},
@@ -163,3 +163,5 @@ impl StoreMut for MemoryStorage {
         Ok(())
     }
 }
+
+impl Planner for MemoryStorage {}

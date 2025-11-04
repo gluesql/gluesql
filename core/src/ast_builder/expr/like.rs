@@ -1,6 +1,6 @@
 use super::ExprNode;
 
-impl<'a> ExprNode<'a> {
+impl ExprNode<'_> {
     pub fn like<T: Into<Self>>(self, pattern: T) -> Self {
         Self::Like {
             expr: Box::new(self),

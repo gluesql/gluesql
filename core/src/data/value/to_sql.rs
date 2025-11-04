@@ -60,9 +60,7 @@ fn format_float(from_big_decimal: Option<BigDecimal>, fallback: f64) -> String {
 }
 
 fn json_from_value(value: Value, default: &str) -> String {
-    JsonValue::try_from(value)
-        .map(|json| json.to_string())
-        .unwrap_or_else(|_| default.to_owned())
+    JsonValue::try_from(value).map_or_else(|_| default.to_owned(), |json| json.to_string())
 }
 
 #[cfg(test)]

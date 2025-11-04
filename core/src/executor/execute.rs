@@ -119,7 +119,7 @@ pub async fn execute<T: GStore + GStoreMut>(
     }
 
     match result {
-        Ok(payload) => storage.commit().await.map(|_| payload),
+        Ok(payload) => storage.commit().await.map(|()| payload),
         Err(error) => {
             storage.rollback().await?;
 
@@ -156,7 +156,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
 
             create_table(storage, options)
                 .await
-                .map(|_| Payload::Create)
+                .map(|()| Payload::Create)
         }
         Statement::DropTable {
             names,
@@ -168,25 +168,25 @@ async fn execute_inner<T: GStore + GStoreMut>(
             .map(Payload::DropTable),
         Statement::AlterTable { name, operation } => alter_table(storage, name, operation)
             .await
-            .map(|_| Payload::AlterTable),
+            .map(|()| Payload::AlterTable),
         Statement::CreateIndex {
             name,
             table_name,
             column,
         } => create_index(storage, table_name, name, column)
             .await
-            .map(|_| Payload::CreateIndex),
+            .map(|()| Payload::CreateIndex),
         Statement::DropIndex { name, table_name } => storage
             .drop_index(table_name, name)
             .await
-            .map(|_| Payload::DropIndex),
+            .map(|()| Payload::DropIndex),
         //- Transaction
         Statement::StartTransaction => storage
             .begin(false)
             .await
             .map(|_| Payload::StartTransaction),
-        Statement::Commit => storage.commit().await.map(|_| Payload::Commit),
-        Statement::Rollback => storage.rollback().await.map(|_| Payload::Rollback),
+        Statement::Commit => storage.commit().await.map(|()| Payload::Commit),
+        Statement::Rollback => storage.rollback().await.map(|()| Payload::Rollback),
         //-- Rows
         Statement::Insert {
             table_name,
@@ -209,15 +209,12 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 .await?
                 .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
 
-            let all_columns = column_defs.as_deref().map(|columns| {
-                columns
-                    .iter()
-                    .map(|col_def| col_def.name.to_owned())
-                    .collect()
-            });
+            let all_columns = column_defs
+                .as_deref()
+                .map(|columns| columns.iter().map(|col_def| col_def.name.clone()).collect());
             let columns_to_update: Vec<String> = assignments
                 .iter()
-                .map(|assignment| assignment.id.to_owned())
+                .map(|assignment| assignment.id.clone())
                 .collect();
 
             let update = Update::new(storage, table_name, assignments, column_defs.as_deref())?;
@@ -260,7 +257,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
             storage
                 .insert_data(table_name, rows)
                 .await
-                .map(|_| Payload::Update(num_rows))
+                .map(|()| Payload::Update(num_rows))
         }
         Statement::Delete {
             table_name,
@@ -375,7 +372,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
                     .try_collect::<Vec<Vec<Value>>>()
                     .await?
                     .iter()
-                    .flat_map(|values| values.iter().map(|value| value.into()))
+                    .flat_map(|values| values.iter().map(Into::into))
                     .collect::<Vec<_>>();
 
                 Ok(Payload::ShowVariable(PayloadVariable::Tables(table_names)))
@@ -407,9 +404,9 @@ async fn execute_inner<T: GStore + GStoreMut>(
             return_,
         } => insert_function(storage, name, args, *or_replace, return_)
             .await
-            .map(|_| Payload::Create),
+            .map(|()| Payload::Create),
         Statement::DropFunction { if_exists, names } => delete_function(storage, names, *if_exists)
             .await
-            .map(|_| Payload::DropFunction),
+            .map(|()| Payload::DropFunction),
     }
 }

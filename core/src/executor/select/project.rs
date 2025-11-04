@@ -60,7 +60,7 @@ impl<'a, T: GStore> Project<'a, T> {
                         SelectItem::Expr { expr, label } => {
                             evaluate(self.storage, filter_context, aggregated, expr)
                                 .await
-                                .map(|evaluated| evaluated.try_into())?
+                                .map(TryInto::try_into)?
                                 .map(|v| vec![(label, v)])
                         }
                     }

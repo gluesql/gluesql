@@ -112,7 +112,7 @@ impl<'a> HashJoinNode<'a> {
     }
 }
 
-impl<'a> Prebuild<Select> for HashJoinNode<'a> {
+impl Prebuild<Select> for HashJoinNode<'_> {
     fn prebuild(self) -> Result<Select> {
         let (mut select, relation, join_operator) = self.join_node.prebuild_for_hash_join()?;
         let join_executor = build_join_executor(self.key_expr, self.value_expr, self.filter_expr)?;

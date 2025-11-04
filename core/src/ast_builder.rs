@@ -81,28 +81,34 @@ pub use {
 };
 
 #[cfg(test)]
-fn test(actual: crate::result::Result<crate::ast::Statement>, expected: &str) {
+fn test(actual: &crate::result::Result<crate::ast::Statement>, expected: &str) {
     use crate::{parse_sql::parse, translate::translate};
 
     let parsed = &parse(expected).expect(expected)[0];
     let expected = translate(parsed);
-    pretty_assertions::assert_eq!(actual, expected);
+    pretty_assertions::assert_eq!(*actual, expected);
 }
 
 #[cfg(test)]
 fn test_expr(actual: crate::ast_builder::ExprNode, expected: &str) {
-    use crate::{parse_sql::parse_expr, translate::translate_expr};
+    use crate::{
+        parse_sql::parse_expr,
+        translate::{NO_PARAMS, translate_expr},
+    };
 
     let parsed = &parse_expr(expected).expect(expected);
-    let expected = translate_expr(parsed);
+    let expected = translate_expr(parsed, NO_PARAMS);
     pretty_assertions::assert_eq!(actual.try_into(), expected);
 }
 
 #[cfg(test)]
 fn test_query(actual: crate::ast_builder::QueryNode, expected: &str) {
-    use crate::{parse_sql::parse_query, translate::translate_query};
+    use crate::{
+        parse_sql::parse_query,
+        translate::{NO_PARAMS, translate_query},
+    };
 
     let parsed = &parse_query(expected).expect(expected);
-    let expected = translate_query(parsed);
+    let expected = translate_query(parsed, NO_PARAMS);
     pretty_assertions::assert_eq!(actual.try_into(), expected);
 }

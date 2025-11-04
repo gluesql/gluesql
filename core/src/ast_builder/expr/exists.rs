@@ -31,7 +31,7 @@ mod test {
             .build();
         let expected =
             "SELECT * FROM FOO WHERE EXISTS (SELECT * FROM BAR WHERE id IS NOT NULL GROUP BY name)";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = table("FOO")
             .select()
@@ -39,7 +39,7 @@ mod test {
             .build();
         let expected =
             "SELECT * FROM FOO WHERE NOT EXISTS (SELECT * FROM BAR WHERE id IS NOT NULL)";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = exists(table("FOO").select().filter(col("id").gt(2)));
         let expected = "EXISTS (SELECT * FROM FOO WHERE id > 2)";

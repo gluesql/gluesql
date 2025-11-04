@@ -14,11 +14,6 @@ pub trait Planner<'a> {
 
     fn subquery_expr(&self, outer_context: Option<Arc<Context<'a>>>, expr: Expr) -> Expr {
         match expr {
-            Expr::Identifier(_)
-            | Expr::CompoundIdentifier { .. }
-            | Expr::Literal(_)
-            | Expr::TypedString { .. }
-            | Expr::Value(_) => expr,
             Expr::IsNull(expr) => Expr::IsNull(Box::new(self.subquery_expr(outer_context, *expr))),
             Expr::IsNotNull(expr) => {
                 Expr::IsNotNull(Box::new(self.subquery_expr(outer_context, *expr)))
@@ -182,7 +177,12 @@ pub trait Planner<'a> {
                 })),
                 _ => Expr::Function(func),
             },
-            Expr::Aggregate(_) => expr,
+            Expr::Identifier(_)
+            | Expr::CompoundIdentifier { .. }
+            | Expr::Literal(_)
+            | Expr::TypedString { .. }
+            | Expr::Value(_)
+            | Expr::Aggregate(_) => expr,
         }
     }
 
@@ -202,14 +202,12 @@ pub trait Planner<'a> {
             | TableFactor::Dictionary { .. } => return next,
         };
 
-        let column_defs = match self.get_schema(name) {
-            Some(Schema { column_defs, .. }) => column_defs,
-            None => return next,
+        let Some(Schema { column_defs, .. }) = self.get_schema(name) else {
+            return next;
         };
 
-        let column_defs = match column_defs {
-            Some(column_defs) => column_defs,
-            None => return next,
+        let Some(column_defs) = column_defs else {
+            return next;
         };
 
         let columns = column_defs

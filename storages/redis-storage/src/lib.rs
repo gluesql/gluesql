@@ -14,7 +14,7 @@ use {
         chrono::Utc,
         data::{CustomFunction as StructCustomFunction, Key, Schema, Value},
         error::{Error, Result},
-        store::{CustomFunction, CustomFunctionMut, DataRow, RowIter, Store, StoreMut},
+        store::{CustomFunction, CustomFunctionMut, DataRow, Planner, RowIter, Store, StoreMut},
     },
     redis::{Commands, Connection},
     std::{collections::BTreeMap, sync::Mutex},
@@ -43,7 +43,7 @@ impl RedisStorage {
     /// Make a key to insert/delete a value with the namespace, table-name.
     ///
     /// Redis documentation recommends to use ':' as a separator for namespace and table-name.
-    /// But it is not a good idea when using serde_json to serialize/deserialize a key.
+    /// But it is not a good idea when using `serde_json` to serialize/deserialize a key.
     /// JSON uses ':' as a separator for key and value. So it conflicts with the JSON format.
     /// Therefore I use '#' as a separator: "namespace"#"table-name"#"key"#"value".
     ///
@@ -154,7 +154,7 @@ impl RedisStorage {
         let redis_keys: Vec<String> = {
             let mut conn = self.conn.lock_err()?;
             conn.scan_match(&key)
-                .map(|iter| iter.collect::<Vec<String>>())
+                .map(Iterator::collect::<Vec<String>>)
                 .map_err(|e| {
                     Error::StorageMsg(format!(
                         "[RedisStorage] failed to scan data: key={key} error={e}"
@@ -194,6 +194,8 @@ impl RedisStorage {
         Ok(())
     }
 }
+
+impl Planner for RedisStorage {}
 
 #[async_trait]
 impl CustomFunction for RedisStorage {
@@ -236,7 +238,7 @@ impl Store for RedisStorage {
         let redis_keys: Vec<String> = {
             let mut conn = self.conn.lock_err()?;
             conn.scan_match(&scan_schema_key)
-                .map(|iter| iter.collect::<Vec<String>>())
+                .map(Iterator::collect::<Vec<String>>)
                 .map_err(|e| {
                     Error::StorageMsg(format!(
                         "[RedisStorage] failed to scan schemas: namespace={} error={}",
@@ -278,7 +280,7 @@ impl Store for RedisStorage {
         let redis_keys: Vec<String> = {
             let mut conn = self.conn.lock_err()?;
             conn.scan_match(&scan_schema_key)
-                .map(|iter| iter.collect::<Vec<String>>())
+                .map(Iterator::collect::<Vec<String>>)
                 .map_err(|e| {
                     Error::StorageMsg(format!(
                         "[RedisStorage] failed to scan schemas: namespace={} error={}",
@@ -344,7 +346,7 @@ impl Store for RedisStorage {
         let redis_keys: Vec<String> = {
             let mut conn = self.conn.lock_err()?;
             conn.scan_match(Self::redis_generate_scankey(&self.namespace, table_name))
-                .map(|iter| iter.collect::<Vec<String>>())
+                .map(Iterator::collect::<Vec<String>>)
                 .map_err(|e| {
                     Error::StorageMsg(format!(
                         "[RedisStorage] failed to scan data: namespace={} table_name={} error={}",
@@ -363,9 +365,8 @@ impl Store for RedisStorage {
                     .arg(&redis_key)
                     .query::<String>(&mut *conn)
             };
-            let value = match value {
-                Ok(v) => v,
-                Err(_) => continue,
+            let Ok(value) = value else {
+                continue;
             };
 
             let key = Self::redis_parse_key(&redis_key).map_err(|e| {
@@ -427,7 +428,7 @@ impl StoreMut for RedisStorage {
         let metadata_redis_keys: Vec<String> = {
             let mut conn = self.conn.lock_err()?;
             conn.scan_match(&metadata_scan_key)
-                .map(|iter| iter.collect::<Vec<String>>())
+                .map(Iterator::collect::<Vec<String>>)
                 .map_err(|e| {
                     Error::StorageMsg(format!(
                         "[RedisStorage] failed to scan metadata: namespace={} table_name={} error={}",

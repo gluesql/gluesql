@@ -1,6 +1,6 @@
 use {super::ExprNode, crate::ast::UnaryOperator};
 
-impl<'a> ExprNode<'a> {
+impl ExprNode<'_> {
     pub fn plus(self) -> Self {
         plus(self)
     }

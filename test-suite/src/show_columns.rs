@@ -28,7 +28,7 @@ test_case!(show_columns, {
     .await;
 
     g.test(
-        r#"Show columns from mytable"#,
+        r"Show columns from mytable",
         Ok(Payload::ShowColumns(vec![
             ("id8".to_owned(), DataType::Int8),
             ("id".to_owned(), DataType::Int),
@@ -48,7 +48,7 @@ test_case!(show_columns, {
     .await;
 
     g.test(
-        r#"Show columns from mytable1"#,
+        r"Show columns from mytable1",
         Err(ExecuteError::TableNotFound("mytable1".to_owned()).into()),
     )
     .await;

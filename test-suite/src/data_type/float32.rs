@@ -12,11 +12,11 @@ test_case!(float32, {
             Ok(Payload::Create),
         ),
         (
-            r#"INSERT INTO line VALUES (0.3134, 0.156)"#,
+            r"INSERT INTO line VALUES (0.3134, 0.156)",
             Ok(Payload::Insert(1)),
         ),
         (
-            r#"SELECT x, y FROM line;"#,
+            r"SELECT x, y FROM line;",
             Ok(select!(
                 x          |  y
                 F32        |  F32;
@@ -24,11 +24,11 @@ test_case!(float32, {
             )),
         ),
         (
-            r#"UPDATE line SET x=2.0, y=1.0 WHERE x=0.3134 AND y=0.156"#,
+            r"UPDATE line SET x=2.0, y=1.0 WHERE x=0.3134 AND y=0.156",
             Ok(Payload::Update(1)),
         ),
         (
-            r#"SELECT x, y FROM line"#,
+            r"SELECT x, y FROM line",
             Ok(select!(
                 x       |   y
                 F32     |   F32;
@@ -36,11 +36,11 @@ test_case!(float32, {
             )),
         ),
         (
-            r#"DELETE FROM line WHERE x=2.0 AND y=1.0"#,
+            r"DELETE FROM line WHERE x=2.0 AND y=1.0",
             Ok(Payload::Delete(1)),
         ),
         (
-            r#"SELECT CAST('-71.064544' AS FLOAT32) AS float32"#,
+            r"SELECT CAST('-71.064544' AS FLOAT32) AS float32",
             Ok(select!(
                 float32
                 F32;

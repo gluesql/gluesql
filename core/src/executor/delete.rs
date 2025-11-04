@@ -80,5 +80,5 @@ pub async fn delete<T: GStore + GStoreMut>(
     storage
         .delete_data(table_name, keys)
         .await
-        .map(|_| Payload::Delete(num_keys))
+        .map(|()| Payload::Delete(num_keys))
 }

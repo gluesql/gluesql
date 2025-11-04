@@ -24,7 +24,7 @@ impl Store for FileStorage {
                     return Ok(None);
                 }
 
-                self.fetch_schema(path).map(Some)
+                Self::fetch_schema(path).map(Some)
             })
             .filter_map(Result::transpose)
             .collect::<Result<Vec<Schema>>>()?;
@@ -40,7 +40,7 @@ impl Store for FileStorage {
             return Ok(None);
         }
 
-        self.fetch_schema(path).map(Some)
+        Self::fetch_schema(path).map(Some)
     }
 
     async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {

@@ -34,7 +34,7 @@ impl Store for SledStorage {
 
                 Ok(schema)
             })
-            .filter_map(|result| result.transpose())
+            .filter_map(Result::transpose)
             .collect::<Result<Vec<_>>>()
     }
 
@@ -120,7 +120,7 @@ impl Store for SledStorage {
 
                 Ok(item)
             })
-            .filter_map(|item| item.transpose());
+            .filter_map(Result::transpose);
 
         Ok(Box::pin(iter(result_set)))
     }

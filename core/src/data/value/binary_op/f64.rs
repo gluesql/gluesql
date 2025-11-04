@@ -27,9 +27,7 @@ impl PartialEq<Value> for f64 {
             U128(rhs) => (lhs - (rhs as f64)).abs() < f64::EPSILON,
             F32(rhs) => (lhs - f64::from(rhs)).abs() < f64::EPSILON,
             F64(rhs) => (lhs - rhs).abs() < f64::EPSILON,
-            Decimal(rhs) => Decimal::from_f64_retain(lhs)
-                .map(|x| rhs == x)
-                .unwrap_or(false),
+            Decimal(rhs) => Decimal::from_f64_retain(lhs).is_some_and(|x| rhs == x),
             _ => false,
         }
     }
@@ -50,9 +48,7 @@ impl PartialOrd<Value> for f64 {
             U128(rhs) => self.partial_cmp(&(rhs as f64)),
             F32(rhs) => self.partial_cmp(&f64::from(rhs)),
             F64(rhs) => self.partial_cmp(&rhs),
-            Decimal(rhs) => Decimal::from_f64_retain(*self)
-                .map(|x| x.partial_cmp(&rhs))
-                .unwrap_or(None),
+            Decimal(rhs) => Decimal::from_f64_retain(*self).and_then(|x| x.partial_cmp(&rhs)),
             _ => None,
         }
     }
@@ -77,9 +73,10 @@ impl TryBinaryOperator for f64 {
             U128(rhs) => Ok(F64(lhs + rhs as f64)),
             F32(rhs) => Ok(F64(lhs + f64::from(rhs))),
             F64(rhs) => Ok(F64(lhs + rhs)),
-            Decimal(rhs) => Decimal::from_f64_retain(lhs)
-                .map(|x| Ok(Decimal(x + rhs)))
-                .unwrap_or_else(|| Err(ValueError::FloatToDecimalConversionFailure(lhs).into())),
+            Decimal(rhs) => Decimal::from_f64_retain(lhs).map_or_else(
+                || Err(ValueError::FloatToDecimalConversionFailure(lhs).into()),
+                |x| Ok(Decimal(x + rhs)),
+            ),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: F64(lhs),
@@ -106,9 +103,10 @@ impl TryBinaryOperator for f64 {
             U128(rhs) => Ok(F64(lhs - rhs as f64)),
             F32(rhs) => Ok(F64(lhs - f64::from(rhs))),
             F64(rhs) => Ok(F64(lhs - rhs)),
-            Decimal(rhs) => Decimal::from_f64_retain(lhs)
-                .map(|x| Ok(Decimal(x - rhs)))
-                .unwrap_or_else(|| Err(ValueError::FloatToDecimalConversionFailure(lhs).into())),
+            Decimal(rhs) => Decimal::from_f64_retain(lhs).map_or_else(
+                || Err(ValueError::FloatToDecimalConversionFailure(lhs).into()),
+                |x| Ok(Decimal(x - rhs)),
+            ),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: F64(lhs),
@@ -136,9 +134,10 @@ impl TryBinaryOperator for f64 {
             F32(rhs) => Ok(F64(lhs * f64::from(rhs))),
             F64(rhs) => Ok(F64(lhs * rhs)),
             Interval(rhs) => Ok(Interval(lhs * rhs)),
-            Decimal(rhs) => Decimal::from_f64_retain(lhs)
-                .map(|x| Ok(Decimal(x * rhs)))
-                .unwrap_or_else(|| Err(ValueError::FloatToDecimalConversionFailure(lhs).into())),
+            Decimal(rhs) => Decimal::from_f64_retain(lhs).map_or_else(
+                || Err(ValueError::FloatToDecimalConversionFailure(lhs).into()),
+                |x| Ok(Decimal(x * rhs)),
+            ),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: F64(lhs),
@@ -165,9 +164,10 @@ impl TryBinaryOperator for f64 {
             U128(rhs) => Ok(F64(lhs / rhs as f64)),
             F32(rhs) => Ok(F64(lhs / f64::from(rhs))),
             F64(rhs) => Ok(F64(lhs / rhs)),
-            Decimal(rhs) => Decimal::from_f64_retain(lhs)
-                .map(|x| Ok(Decimal(x * rhs)))
-                .unwrap_or_else(|| Err(ValueError::FloatToDecimalConversionFailure(lhs).into())),
+            Decimal(rhs) => Decimal::from_f64_retain(lhs).map_or_else(
+                || Err(ValueError::FloatToDecimalConversionFailure(lhs).into()),
+                |x| Ok(Decimal(x / rhs)),
+            ),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: F64(lhs),
@@ -195,17 +195,17 @@ impl TryBinaryOperator for f64 {
             F32(rhs) => Ok(F64(lhs % f64::from(rhs))),
             F64(rhs) => Ok(F64(lhs % rhs)),
             Decimal(rhs) => match Decimal::from_f64_retain(lhs) {
-                Some(x) => x
-                    .checked_rem(rhs)
-                    .map(|y| Ok(Decimal(y)))
-                    .unwrap_or_else(|| {
+                Some(x) => x.checked_rem(rhs).map_or_else(
+                    || {
                         Err(ValueError::BinaryOperationOverflow {
                             lhs: F64(lhs),
                             operator: NumericBinaryOperator::Modulo,
                             rhs: Decimal(rhs),
                         }
                         .into())
-                    }),
+                    },
+                    |y| Ok(Decimal(y)),
+                ),
                 _ => Err(ValueError::FloatToDecimalConversionFailure(lhs).into()),
             },
             Null => Ok(Null),
@@ -432,7 +432,7 @@ mod tests {
             matches!(base.try_divide(&F64(1.0)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON )
         );
         assert!(
-            matches!(base.try_divide(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ONE)
+            matches!(2.0_f64.try_divide(&Decimal(Decimal::TWO)), Ok(Decimal(x)) if x == Decimal::ONE)
         );
 
         assert_eq!(

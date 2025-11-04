@@ -53,18 +53,17 @@ where
         let this = self.project();
 
         match this.state {
-            Initial => match ready!(this.stream1.poll_next(cx)) {
-                item @ Some(_) => {
+            Initial => {
+                if let item @ Some(_) = ready!(this.stream1.poll_next(cx)) {
                     *this.state = St1;
 
                     Poll::Ready(item)
-                }
-                None => {
+                } else {
                     *this.state = St2;
 
                     this.stream2.poll_next(cx)
                 }
-            },
+            }
             St1 => this.stream1.poll_next(cx),
             St2 => this.stream2.poll_next(cx),
         }
@@ -81,7 +80,7 @@ where
                 } else if s1_low > 0 {
                     (s1_low, s1_high)
                 } else {
-                    let low = if s2_low > 0 { 1 } else { 0 };
+                    let low = usize::from(s2_low > 0);
                     let high = match (s1_high, s2_high) {
                         (Some(h1), Some(h2)) => Some(max(h1, h2)),
                         _ => None,

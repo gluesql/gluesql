@@ -26,33 +26,33 @@ test_case!(is_empty, {
 
     g.named_test(
         "is_empty for list, return true",
-        r#"SELECT id FROM IsEmpty WHERE IS_EMPTY(list_items);"#,
+        r"SELECT id FROM IsEmpty WHERE IS_EMPTY(list_items);",
         Ok(select!(id; I64; 1; 3)),
     )
     .await;
     g.named_test(
         "is_empty for list, return false",
-        r#"SELECT IS_EMPTY(list_items) as result FROM IsEmpty WHERE id=2;"#,
+        r"SELECT IS_EMPTY(list_items) as result FROM IsEmpty WHERE id=2;",
         Ok(select!(result; Bool; false)),
     )
     .await;
 
     g.named_test(
         "is_empty for map, return true",
-        r#"SELECT id FROM IsEmpty WHERE IS_EMPTY(map_items);"#,
+        r"SELECT id FROM IsEmpty WHERE IS_EMPTY(map_items);",
         Ok(select!(id; I64; 3; 4)),
     )
     .await;
     g.named_test(
         "is_empty for map, return false",
-        r#"SELECT IS_EMPTY(map_items) as result FROM IsEmpty WHERE id=1;"#,
+        r"SELECT IS_EMPTY(map_items) as result FROM IsEmpty WHERE id=1;",
         Ok(select!(result; Bool; false)),
     )
     .await;
 
     g.named_test(
         "other argument types, return error",
-        r#"SELECT id FROM IsEmpty WHERE IS_EMPTY(id);"#,
+        r"SELECT id FROM IsEmpty WHERE IS_EMPTY(id);",
         Err(EvaluateError::MapOrListTypeRequired.into()),
     )
     .await;

@@ -4,7 +4,7 @@ use {
         ast::Expr,
         parse_sql::parse_comma_separated_exprs,
         result::{Error, Result},
-        translate::translate_expr,
+        translate::{NO_PARAMS, translate_expr},
     },
     std::borrow::Cow,
 };
@@ -21,7 +21,7 @@ impl<'a> From<&'a str> for ExprList<'a> {
     }
 }
 
-impl<'a> From<String> for ExprList<'a> {
+impl From<String> for ExprList<'_> {
     fn from(exprs: String) -> Self {
         ExprList::Text(Cow::from(exprs))
     }
@@ -58,7 +58,7 @@ impl<'a> TryFrom<ExprList<'a>> for Vec<Expr> {
         match expr_list {
             ExprList::Text(exprs) => parse_comma_separated_exprs(exprs)?
                 .iter()
-                .map(translate_expr)
+                .map(|expr| translate_expr(expr, NO_PARAMS))
                 .collect::<Result<Vec<_>>>(),
             ExprList::Exprs(exprs) => {
                 let exprs = exprs.into_owned();
@@ -77,8 +77,11 @@ mod tests {
     use {
         super::ExprList,
         crate::{
-            ast::Expr, ast_builder::col, parse_sql::parse_comma_separated_exprs, result::Result,
-            translate::translate_expr,
+            ast::Expr,
+            ast_builder::col,
+            parse_sql::parse_comma_separated_exprs,
+            result::Result,
+            translate::{NO_PARAMS, translate_expr},
         },
         pretty_assertions::assert_eq,
     };
@@ -87,7 +90,7 @@ mod tests {
         let parsed = parse_comma_separated_exprs(expected).expect(expected);
         let expected = parsed
             .iter()
-            .map(translate_expr)
+            .map(|expr| translate_expr(expr, NO_PARAMS))
             .collect::<Result<Vec<Expr>>>();
 
         assert_eq!(actual.try_into(), expected);

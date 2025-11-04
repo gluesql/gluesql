@@ -224,7 +224,7 @@ where
             let low = eval(low).await?;
             let high = eval(high).await?;
 
-            expr::between(target, *negated, low, high)
+            Ok(expr::between(&target, *negated, &low, &high))
         }
         Expr::Like {
             expr,
@@ -292,7 +292,7 @@ where
                 None => Evaluated::Value(Value::Bool(true)),
             };
 
-            for (when, then) in when_then.iter() {
+            for (when, then) in when_then {
                 let when = eval(when).await?;
 
                 if when.evaluate_eq(&operand).is_true() {
@@ -392,7 +392,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                     eval(expr)
                         .await?
                         .try_into_value(&arg.data_type, true)
-                        .map(|value| (arg.name.to_owned(), value))
+                        .map(|value| (arg.name.clone(), value))
                 })
                 .try_collect()
                 .await
@@ -407,25 +407,25 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         Function::ConcatWs { separator, exprs } => {
             let separator = eval(separator).await?;
             let exprs = stream::iter(exprs).then(eval).try_collect().await?;
-            f::concat_ws(name, separator, exprs)
+            f::concat_ws(&name, separator, exprs)
         }
         Function::IfNull { expr, then } => f::ifnull(eval(expr).await?, eval(then).await?),
-        Function::NullIf { expr1, expr2 } => f::nullif(eval(expr1).await?, eval(expr2).await?),
-        Function::Lower(expr) => f::lower(name, eval(expr).await?),
-        Function::Initcap(expr) => f::initcap(name, eval(expr).await?),
-        Function::Upper(expr) => f::upper(name, eval(expr).await?),
+        Function::NullIf { expr1, expr2 } => f::nullif(eval(expr1).await?, &eval(expr2).await?),
+        Function::Lower(expr) => f::lower(&name, eval(expr).await?),
+        Function::Initcap(expr) => f::initcap(&name, eval(expr).await?),
+        Function::Upper(expr) => f::upper(&name, eval(expr).await?),
         Function::Left { expr, size } | Function::Right { expr, size } => {
             let expr = eval(expr).await?;
             let size = eval(size).await?;
 
-            f::left_or_right(name, expr, size)
+            f::left_or_right(&name, expr, size)
         }
         Function::Replace { expr, old, new } => {
             let expr = eval(expr).await?;
             let old = eval(old).await?;
             let new = eval(new).await?;
 
-            f::replace(name, expr, old, new)
+            f::replace(&name, expr, old, new)
         }
         Function::Lpad { expr, size, fill } | Function::Rpad { expr, size, fill } => {
             let expr = eval(expr).await?;
@@ -435,11 +435,11 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 None => None,
             };
 
-            f::lpad_or_rpad(name, expr, size, fill)
+            f::lpad_or_rpad(&name, expr, size, fill)
         }
         Function::LastDay(expr) => {
             let expr = eval(expr).await?;
-            f::last_day(name, expr)
+            f::last_day(&name, expr)
         }
         Function::Trim {
             expr,
@@ -475,13 +475,13 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         Function::Reverse(expr) => {
             let expr = eval(expr).await?;
 
-            f::reverse(name, expr)
+            f::reverse(&name, expr)
         }
         Function::Repeat { expr, num } => {
             let expr = eval(expr).await?;
             let num = eval(num).await?;
 
-            f::repeat(name, expr, num)
+            f::repeat(&name, expr, num)
         }
         Function::Substr { expr, start, count } => {
             let expr = eval(expr).await?;
@@ -493,59 +493,59 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
             return expr.substr(name, start, count);
         }
-        Function::Ascii(expr) => f::ascii(name, eval(expr).await?),
-        Function::Chr(expr) => f::chr(name, eval(expr).await?),
-        Function::Md5(expr) => f::md5(name, eval(expr).await?),
-        Function::Hex(expr) => f::hex(name, eval(expr).await?),
+        Function::Ascii(expr) => f::ascii(&name, eval(expr).await?),
+        Function::Chr(expr) => f::chr(&name, eval(expr).await?),
+        Function::Md5(expr) => f::md5(&name, eval(expr).await?),
+        Function::Hex(expr) => f::hex(&name, eval(expr).await?),
 
         // --- float ---
-        Function::Abs(expr) => f::abs(name, eval(expr).await?),
-        Function::Sign(expr) => f::sign(name, eval(expr).await?),
+        Function::Abs(expr) => f::abs(&name, eval(expr).await?),
+        Function::Sign(expr) => f::sign(&name, eval(expr).await?),
         Function::Sqrt(expr) => f::sqrt(eval(expr).await?),
         Function::Power { expr, power } => {
             let expr = eval(expr).await?;
             let power = eval(power).await?;
 
-            f::power(name, expr, power)
+            f::power(&name, expr, power)
         }
-        Function::Ceil(expr) => f::ceil(name, eval(expr).await?),
+        Function::Ceil(expr) => f::ceil(&name, eval(expr).await?),
         Function::Rand(expr) => {
             let expr = match expr {
                 Some(v) => Some(eval(v).await?),
                 None => None,
             };
 
-            f::rand(name, expr)
+            f::rand(&name, expr)
         }
-        Function::Round(expr) => f::round(name, eval(expr).await?),
-        Function::Trunc(expr) => f::trunc(name, eval(expr).await?),
-        Function::Floor(expr) => f::floor(name, eval(expr).await?),
-        Function::Radians(expr) => f::radians(name, eval(expr).await?),
-        Function::Degrees(expr) => f::degrees(name, eval(expr).await?),
+        Function::Round(expr) => f::round(&name, eval(expr).await?),
+        Function::Trunc(expr) => f::trunc(&name, eval(expr).await?),
+        Function::Floor(expr) => f::floor(&name, eval(expr).await?),
+        Function::Radians(expr) => f::radians(&name, eval(expr).await?),
+        Function::Degrees(expr) => f::degrees(&name, eval(expr).await?),
         Function::Pi() => return Ok(Evaluated::Value(Value::F64(std::f64::consts::PI))),
-        Function::Exp(expr) => f::exp(name, eval(expr).await?),
+        Function::Exp(expr) => f::exp(&name, eval(expr).await?),
         Function::Log { antilog, base } => {
             let antilog = eval(antilog).await?;
             let base = eval(base).await?;
 
-            f::log(name, antilog, base)
+            f::log(&name, antilog, base)
         }
-        Function::Ln(expr) => f::ln(name, eval(expr).await?),
-        Function::Log2(expr) => f::log2(name, eval(expr).await?),
-        Function::Log10(expr) => f::log10(name, eval(expr).await?),
-        Function::Sin(expr) => f::sin(name, eval(expr).await?),
-        Function::Cos(expr) => f::cos(name, eval(expr).await?),
-        Function::Tan(expr) => f::tan(name, eval(expr).await?),
-        Function::Asin(expr) => f::asin(name, eval(expr).await?),
-        Function::Acos(expr) => f::acos(name, eval(expr).await?),
-        Function::Atan(expr) => f::atan(name, eval(expr).await?),
+        Function::Ln(expr) => f::ln(&name, eval(expr).await?),
+        Function::Log2(expr) => f::log2(&name, eval(expr).await?),
+        Function::Log10(expr) => f::log10(&name, eval(expr).await?),
+        Function::Sin(expr) => f::sin(&name, eval(expr).await?),
+        Function::Cos(expr) => f::cos(&name, eval(expr).await?),
+        Function::Tan(expr) => f::tan(&name, eval(expr).await?),
+        Function::Asin(expr) => f::asin(&name, eval(expr).await?),
+        Function::Acos(expr) => f::acos(&name, eval(expr).await?),
+        Function::Atan(expr) => f::atan(&name, eval(expr).await?),
 
         // --- integer ---
         Function::Div { dividend, divisor } => {
             let dividend = eval(dividend).await?;
             let divisor = eval(divisor).await?;
 
-            f::div(name, dividend, divisor)
+            f::div(&name, dividend, divisor)
         }
         Function::Mod { dividend, divisor } => {
             let dividend = eval(dividend).await?;
@@ -557,13 +557,13 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let left = eval(left).await?;
             let right = eval(right).await?;
 
-            f::gcd(name, left, right)
+            f::gcd(&name, left, right)
         }
         Function::Lcm { left, right } => {
             let left = eval(left).await?;
             let right = eval(right).await?;
 
-            f::lcm(name, left, right)
+            f::lcm(&name, left, right)
         }
 
         // --- spatial ---
@@ -571,10 +571,10 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let x = eval(x).await?;
             let y = eval(y).await?;
 
-            f::point(name, x, y)
+            f::point(&name, x, y)
         }
-        Function::GetX(expr) => f::get_x(name, eval(expr).await?),
-        Function::GetY(expr) => f::get_y(name, eval(expr).await?),
+        Function::GetX(expr) => f::get_x(&name, eval(expr).await?),
+        Function::GetY(expr) => f::get_y(&name, eval(expr).await?),
         Function::CalcDistance {
             geometry1,
             geometry2,
@@ -582,7 +582,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let geometry1 = eval(geometry1).await?;
             let geometry2 = eval(geometry2).await?;
 
-            f::calc_distance(name, geometry1, geometry2)
+            f::calc_distance(&name, geometry1, geometry2)
         }
 
         // --- etc ---
@@ -590,12 +590,12 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let expr = eval(expr).await?;
             let selector = eval(selector).await?;
 
-            f::unwrap(name, expr, selector)
+            f::unwrap(&name, expr, selector)
         }
         Function::GenerateUuid() => return Ok(f::generate_uuid()),
         Function::Greatest(exprs) => {
             let exprs = stream::iter(exprs).then(eval).try_collect().await?;
-            return f::greatest(name, exprs);
+            return f::greatest(&name, exprs);
         }
         Function::Now() | Function::CurrentTimestamp() => {
             return Ok(Evaluated::Value(Value::Timestamp(Utc::now().naive_utc())));
@@ -608,22 +608,22 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let expr = eval(expr).await?;
             let format = eval(format).await?;
 
-            f::format(name, expr, format)
+            f::format(&name, expr, format)
         }
         Function::ToDate { expr, format } => {
             let expr = eval(expr).await?;
             let format = eval(format).await?;
-            f::to_date(name, expr, format)
+            f::to_date(&name, expr, format)
         }
         Function::ToTimestamp { expr, format } => {
             let expr = eval(expr).await?;
             let format = eval(format).await?;
-            f::to_timestamp(name, expr, format)
+            f::to_timestamp(&name, expr, format)
         }
         Function::ToTime { expr, format } => {
             let expr = eval(expr).await?;
             let format = eval(format).await?;
-            f::to_time(name, expr, format)
+            f::to_time(&name, expr, format)
         }
         Function::Position {
             from_expr,
@@ -644,12 +644,12 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 Some(idx) => Some(eval(idx).await?),
                 None => None,
             };
-            f::find_idx(name, from_expr, sub_expr, start)
+            f::find_idx(&name, from_expr, sub_expr, start)
         }
         Function::Cast { expr, data_type } => return eval(expr).await?.cast(data_type),
         Function::Extract { field, expr } => {
             let expr = eval(expr).await?;
-            f::extract(field, expr)
+            f::extract(*field, expr)
         }
         Function::Coalesce(exprs) => {
             let exprs = stream::iter(exprs).then(eval).try_collect().await?;
@@ -670,7 +670,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         Function::Skip { expr, size } => {
             let expr = eval(expr).await?;
             let size = eval(size).await?;
-            f::skip(name, expr, size)
+            f::skip(&name, expr, size)
         }
         Function::Sort { expr, order } => {
             let expr = eval(expr).await?;
@@ -683,7 +683,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         Function::Take { expr, size } => {
             let expr = eval(expr).await?;
             let size = eval(size).await?;
-            f::take(name, expr, size)
+            f::take(&name, expr, size)
         }
         Function::Slice {
             expr,
@@ -693,7 +693,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let expr = eval(expr).await?;
             let start = eval(start).await?;
             let length = eval(length).await?;
-            f::slice(name, expr, start, length)
+            f::slice(&name, expr, start, length)
         }
         Function::IsEmpty(expr) => {
             let expr = eval(expr).await?;
@@ -702,10 +702,10 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         Function::AddMonth { expr, size } => {
             let expr = eval(expr).await?;
             let size = eval(size).await?;
-            f::add_month(name, expr, size)
+            f::add_month(&name, expr, size)
         }
-        Function::Length(expr) => f::length(name, eval(expr).await?),
-        Function::Entries(expr) => f::entries(name, eval(expr).await?),
+        Function::Length(expr) => f::length(&name, eval(expr).await?),
+        Function::Entries(expr) => f::entries(&name, eval(expr).await?),
         Function::Keys(expr) => f::keys(eval(expr).await?),
         Function::Values(expr) => {
             let expr = eval(expr).await?;
@@ -724,7 +724,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 Some(v) => Some(eval(v).await?),
                 None => None,
             };
-            f::splice(name, list_data, begin_index, end_index, values)
+            f::splice(&name, list_data, begin_index, end_index, values)
         }
         Function::Dedup(list) => f::dedup(eval(list).await?),
     };

@@ -143,32 +143,29 @@ pub fn acquire(
         )));
     }
 
-    let txid = match lock_txid {
-        Some(lock_txid) => {
-            if tx_timeout.map(|tx_timeout| now >= tx_timeout + lock_created_at) == Some(true) {
-                return Ok(LockAcquired::RollbackAndRetry { lock_txid });
-            } else if txid != lock_txid {
-                return Err(ConflictableTransactionError::Abort(Error::StorageMsg(
-                    "database is locked".to_owned(),
-                )));
-            }
-
-            txid
+    let txid = if let Some(lock_txid) = lock_txid {
+        if tx_timeout.map(|tx_timeout| now >= tx_timeout + lock_created_at) == Some(true) {
+            return Ok(LockAcquired::RollbackAndRetry { lock_txid });
+        } else if txid != lock_txid {
+            return Err(ConflictableTransactionError::Abort(Error::StorageMsg(
+                "database is locked".to_owned(),
+            )));
         }
-        None => {
-            let lock = Lock {
-                lock_txid: Some(txid),
-                lock_created_at: created_at,
-                gc_txid,
-            };
 
-            bincode::serialize(&lock)
-                .map_err(err_into)
-                .map_err(ConflictableTransactionError::Abort)
-                .map(|lock| tree.insert("lock/", lock))??;
+        txid
+    } else {
+        let lock = Lock {
+            lock_txid: Some(txid),
+            lock_created_at: created_at,
+            gc_txid,
+        };
 
-            txid
-        }
+        bincode::serialize(&lock)
+            .map_err(err_into)
+            .map_err(ConflictableTransactionError::Abort)
+            .map(|lock| tree.insert("lock/", lock))??;
+
+        txid
     };
 
     Ok(LockAcquired::Success { txid, autocommit })
@@ -225,11 +222,8 @@ pub fn release(tree: &TransactionalTree, txid: u64) -> ConflictableTransactionRe
         .map_err(err_into)
         .map_err(ConflictableTransactionError::Abort)?;
 
-    let mut tx_data = match tx_data {
-        Some(tx_data) => tx_data,
-        None => {
-            return Ok(());
-        }
+    let Some(mut tx_data) = tx_data else {
+        return Ok(());
     };
 
     tx_data.alive = false;

@@ -20,6 +20,12 @@ pub enum EvaluateError {
     #[error("function requires integer or string value: {0}")]
     FunctionRequiresIntegerOrStringValue(String),
 
+    #[error("arrow base requires MAP or LIST types")]
+    ArrowBaseRequiresMapOrList,
+
+    #[error("arrow selector requires integer or string value: {0}")]
+    ArrowSelectorRequiresIntegerOrString(String),
+
     #[error("function requires integer value: {0}")]
     FunctionRequiresIntegerValue(String),
 
@@ -186,6 +192,7 @@ pub enum EvaluateError {
     I64ToU32ConversionFailure(String),
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 fn error_serialize<S>(error: &chrono::format::ParseError, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,

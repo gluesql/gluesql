@@ -73,7 +73,7 @@ impl AlterTable for MemoryStorage {
             .iter()
             .any(|ColumnDef { name, .. }| name == &column_def.name)
         {
-            let adding_column = column_def.name.to_owned();
+            let adding_column = column_def.name.clone();
 
             return Err(AlterTableError::AlreadyExistingColumn(adding_column).into());
         }
@@ -97,7 +97,7 @@ impl AlterTable for MemoryStorage {
             }
         };
 
-        for (_, row) in item.rows.iter_mut() {
+        for row in item.rows.values_mut() {
             match row {
                 DataRow::Vec(values) => {
                     values.push(value.clone());
@@ -140,7 +140,7 @@ impl AlterTable for MemoryStorage {
             Some(column_index) => {
                 column_defs.remove(column_index);
 
-                for (_, row) in item.rows.iter_mut() {
+                for row in item.rows.values_mut() {
                     if row.len() <= column_index {
                         continue;
                     }
@@ -161,7 +161,7 @@ impl AlterTable for MemoryStorage {
             None => {
                 return Err(AlterTableError::DroppingColumnNotFound(column_name.to_owned()).into());
             }
-        };
+        }
 
         Ok(())
     }

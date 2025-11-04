@@ -19,26 +19,26 @@ test_case!(keys, {
 
     g.named_test(
          "return all keys from map by ascending order",
-        r#"SELECT SORT(KEYS(data), 'ASC') as result FROM USER WHERE id=1"#,
+        r"SELECT SORT(KEYS(data), 'ASC') as result FROM USER WHERE id=1",
         {
             Ok(select!(result; Value::List; vec![Value::Str("id".to_owned()), Value::Str("is_male".to_owned()), Value::Str("name".to_owned())]))
         }
     ).await;
     g.named_test(
         "return one key from map",
-        r#"SELECT KEYS(data) as result FROM USER WHERE id=2"#,
+        r"SELECT KEYS(data) as result FROM USER WHERE id=2",
         Ok(select!(result; Value::List; vec![Value::Str("name".to_owned())])),
     )
     .await;
     g.named_test(
         "return null from empty map",
-        r#"SELECT KEYS(data) as result FROM USER WHERE id=3"#,
+        r"SELECT KEYS(data) as result FROM USER WHERE id=3",
         Ok(select!(result; Value::List; vec![])),
     )
     .await;
     g.named_test(
         "return argument type error",
-        r#"SELECT KEYS(id) FROM USER WHERE id=1"#,
+        r"SELECT KEYS(id) FROM USER WHERE id=1",
         Err(EvaluateError::MapTypeRequired.into()),
     )
     .await;

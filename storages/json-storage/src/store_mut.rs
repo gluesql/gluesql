@@ -64,7 +64,7 @@ impl StoreMut for JsonStorage {
 
             let file = File::create(&json_path).map_storage_err()?;
 
-            self.write(schema, rows, file, true)
+            Self::write(schema, rows, file, true)
         } else {
             let schema = self
                 .fetch_schema(table_name)?
@@ -75,7 +75,7 @@ impl StoreMut for JsonStorage {
                 .open(self.jsonl_path(&schema.table_name))
                 .map_storage_err()?;
 
-            self.write(schema, rows, file, false)
+            Self::write(schema, rows, file, false)
         }
     }
 
@@ -156,26 +156,19 @@ where
 impl JsonStorage {
     fn rewrite(&mut self, schema: Schema, rows: Vec<DataRow>) -> Result<()> {
         let json_path = self.json_path(&schema.table_name);
-        let (path, is_json) = match json_path.exists() {
-            true => (json_path, true),
-            false => {
-                let jsonl_path = self.jsonl_path(&schema.table_name);
+        let (path, is_json) = if json_path.exists() {
+            (json_path, true)
+        } else {
+            let jsonl_path = self.jsonl_path(&schema.table_name);
 
-                (jsonl_path, false)
-            }
+            (jsonl_path, false)
         };
         let file = File::create(path).map_storage_err()?;
 
-        self.write(schema, rows, file, is_json)
+        Self::write(schema, rows, file, is_json)
     }
 
-    fn write(
-        &mut self,
-        schema: Schema,
-        rows: Vec<DataRow>,
-        mut file: File,
-        is_json: bool,
-    ) -> Result<()> {
+    fn write(schema: Schema, rows: Vec<DataRow>, mut file: File, is_json: bool) -> Result<()> {
         let column_defs = schema.column_defs.unwrap_or_default();
         let labels = column_defs
             .iter()
@@ -187,7 +180,7 @@ impl JsonStorage {
                 DataRow::Vec(values) => labels
                     .iter()
                     .zip(values)
-                    .map(|(key, value)| Ok((key.to_string(), value.try_into()?)))
+                    .map(|(key, value)| Ok(((*key).to_string(), value.try_into()?)))
                     .collect::<Result<Map<String, JsonValue>>>(),
                 DataRow::Map(hash_map) => hash_map
                     .into_iter()

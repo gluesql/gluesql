@@ -2,13 +2,13 @@ use {
     crate::{
         command::{Command, CommandError},
         helper::CliHelper,
-        print::Print,
+        print::{Print, PrintOption},
     },
     edit::{Builder, edit_file, edit_with_builder},
     futures::executor::block_on,
     gluesql_core::{
         prelude::Glue,
-        store::{GStore, GStoreMut},
+        store::{GStore, GStoreMut, Planner},
     },
     rustyline::{Editor, error::ReadlineError},
     std::{
@@ -21,7 +21,7 @@ use {
 
 pub struct Cli<T, W>
 where
-    T: GStore + GStoreMut,
+    T: GStore + GStoreMut + Planner,
     W: Write,
 {
     glue: Glue<T>,
@@ -30,12 +30,12 @@ where
 
 impl<T, W> Cli<T, W>
 where
-    T: GStore + GStoreMut,
+    T: GStore + GStoreMut + Planner,
     W: Write,
 {
     pub fn new(storage: T, output: W) -> Self {
         let glue = Glue::new(storage);
-        let print = Print::new(output, None, Default::default());
+        let print = Print::new(output, None, PrintOption::default());
 
         Self { glue, print }
     }
@@ -108,7 +108,6 @@ where
             match command {
                 Command::Help => {
                     self.print.help()?;
-                    continue;
                 }
                 Command::Quit => {
                     println!("bye\n");
@@ -129,19 +128,16 @@ where
                 Command::Set(option) => self.print.set_option(option),
                 Command::Show(option) => self.print.show_option(option)?,
                 Command::Edit(file_name) => {
-                    match file_name {
-                        Some(file_name) => {
-                            let file = Path::new(&file_name);
-                            edit_file(file)?;
-                        }
-                        None => {
-                            let mut builder = Builder::new();
-                            builder.prefix("Glue_").suffix(".sql");
-                            let last = rl.history().last().map_or_else(|| "", String::as_str);
-                            let edited = edit_with_builder(last, &builder)?;
-                            rl.add_history_entry(edited);
-                        }
-                    };
+                    if let Some(file_name) = file_name {
+                        let file = Path::new(&file_name);
+                        edit_file(file)?;
+                    } else {
+                        let mut builder = Builder::new();
+                        builder.prefix("Glue_").suffix(".sql");
+                        let last = rl.history().last().map_or_else(|| "", String::as_str);
+                        let edited = edit_with_builder(last, &builder)?;
+                        rl.add_history_entry(edited);
+                    }
                 }
                 Command::Run => {
                     let sql = rl.history().last().ok_or(CommandError::LackOfSQLHistory);
@@ -153,7 +149,7 @@ where
                         Err(e) => {
                             println!("[error] {}\n", e);
                         }
-                    };
+                    }
                 }
             }
         }
@@ -167,7 +163,7 @@ where
             Err(e) => {
                 println!("[error] {e}\n");
             }
-        };
+        }
 
         Ok(())
     }

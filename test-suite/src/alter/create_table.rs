@@ -78,6 +78,18 @@ test_case!(create_table, {
             .into()),
         ),
         (
+            "
+        CREATE TABLE CreateTableFloat32 (
+            id INTEGER,
+            ratio FLOAT32 PRIMARY KEY
+        )",
+            Err(AlterError::UnsupportedDataTypeForUniqueColumn(
+                "ratio".to_owned(),
+                gluesql_core::ast::DataType::Float32,
+            )
+            .into()),
+        ),
+        (
             "CREATE TABLE Gluery (id INTEGER DEFAULT (SELECT id FROM Wow))",
             Err(
                 EvaluateError::UnsupportedStatelessExpr(Box::new(expr("(SELECT id FROM Wow)")))

@@ -1,4 +1,5 @@
 pub mod arithmetic;
+pub mod arrow;
 pub mod between;
 pub mod bitwise_and;
 pub mod bitwise_shift_left;

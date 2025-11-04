@@ -86,7 +86,7 @@ impl AlterTable for RedisStorage {
                 .iter()
                 .any(|ColumnDef { name, .. }| name == &column_def.name)
             {
-                let adding_column = column_def.name.to_owned();
+                let adding_column = column_def.name.clone();
 
                 return Err(AlterTableError::AlreadyExistingColumn(adding_column).into());
             }
@@ -119,7 +119,7 @@ impl AlterTable for RedisStorage {
             let key_iter: Vec<String> = {
                 let mut conn = self.conn.lock_err()?;
                 conn.scan_match(&scan_key)
-                    .map(|iter| iter.collect::<Vec<String>>())
+                    .map(Iterator::collect::<Vec<String>>)
                     .map_err(|_| {
                         Error::StorageMsg(format!(
                             "[RedisStorage] failed to execute SCAN: key={scan_key}"
@@ -167,12 +167,12 @@ impl AlterTable for RedisStorage {
                     redis::cmd("SET")
                         .arg(&key)
                         .arg(new_value)
-                        .query(&mut *conn)
+                        .query::<()>(&mut *conn)
                         .map_err(|_| {
                             Error::StorageMsg(format!(
                                 "[RedisStorage] add_column: failed to execute SET for row={row:?}"
                             ))
-                        })?
+                        })?;
                 };
             }
 
@@ -240,7 +240,7 @@ impl AlterTable for RedisStorage {
                         AlterTableError::DroppingColumnNotFound(column_name.to_owned()).into(),
                     );
                 }
-            };
+            }
 
             self.redis_delete_schema(table_name)?; // No problem yet, finally it's ok to delete the old schema
             self.redis_store_schema(&schema)?;

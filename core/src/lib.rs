@@ -24,10 +24,9 @@ pub mod prelude {
         executor::{Payload, PayloadVariable, execute},
         glue::Glue,
         parse_sql::parse,
-        plan::plan,
         result::{Error, Result},
         row_conversion::{SelectExt, SelectResultExt},
-        translate::translate,
+        translate::{ParamLiteral, translate, translate_with_params},
     };
 }
 

@@ -42,18 +42,18 @@ mod tests {
     fn drop_table() {
         let actual = table("Foo").drop_table().build();
         let expected = "DROP TABLE Foo";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = table("Foo").drop_table_if_exists().build();
         let expected = "DROP TABLE IF EXISTS Foo";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = table("Foo").drop_table_cascade().build();
         let expected = "DROP TABLE Foo CASCADE";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = table("Foo").drop_table_if_exists_cascade().build();
         let expected = "DROP TABLE IF EXISTS Foo CASCADE";
-        test(actual, expected);
+        test(&actual, expected);
     }
 }

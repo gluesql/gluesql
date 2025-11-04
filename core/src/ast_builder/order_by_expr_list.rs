@@ -4,7 +4,7 @@ use {
         ast::OrderByExpr,
         parse_sql::parse_order_by_exprs,
         result::{Error, Result},
-        translate::translate_order_by_expr,
+        translate::{NO_PARAMS, translate_order_by_expr},
     },
 };
 
@@ -14,13 +14,13 @@ pub enum OrderByExprList<'a> {
     OrderByExprs(Vec<OrderByExprNode<'a>>),
 }
 
-impl<'a> From<&str> for OrderByExprList<'a> {
+impl From<&str> for OrderByExprList<'_> {
     fn from(exprs: &str) -> Self {
         OrderByExprList::Text(exprs.to_owned())
     }
 }
 
-impl<'a> From<Vec<&str>> for OrderByExprList<'a> {
+impl From<Vec<&str>> for OrderByExprList<'_> {
     fn from(exprs: Vec<&str>) -> Self {
         OrderByExprList::OrderByExprs(exprs.into_iter().map(Into::into).collect())
     }
@@ -39,7 +39,7 @@ impl<'a> TryFrom<OrderByExprList<'a>> for Vec<OrderByExpr> {
         match order_by_exprs {
             OrderByExprList::Text(exprs) => parse_order_by_exprs(exprs)?
                 .iter()
-                .map(translate_order_by_expr)
+                .map(|expr| translate_order_by_expr(expr, NO_PARAMS))
                 .collect::<Result<Vec<_>>>(),
             OrderByExprList::OrderByExprs(exprs) => exprs
                 .into_iter()

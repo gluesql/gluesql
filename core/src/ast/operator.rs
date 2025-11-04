@@ -44,17 +44,17 @@ pub enum BinaryOperator {
     BitwiseAnd,
     BitwiseShiftLeft,
     BitwiseShiftRight,
+    Arrow,
 }
 
 impl ToSql for BinaryOperator {
     fn to_sql(&self) -> String {
         match self {
-            BinaryOperator::Plus => "+".to_owned(),
             BinaryOperator::Minus => "-".to_owned(),
             BinaryOperator::Multiply => "*".to_owned(),
             BinaryOperator::Divide => "/".to_owned(),
             BinaryOperator::Modulo => "%".to_owned(),
-            BinaryOperator::StringConcat => "+".to_owned(),
+            BinaryOperator::Plus | BinaryOperator::StringConcat => "+".to_owned(),
             BinaryOperator::Gt => ">".to_owned(),
             BinaryOperator::Lt => "<".to_owned(),
             BinaryOperator::GtEq => ">=".to_owned(),
@@ -67,6 +67,7 @@ impl ToSql for BinaryOperator {
             BinaryOperator::BitwiseAnd => "&".to_owned(),
             BinaryOperator::BitwiseShiftLeft => "<<".to_owned(),
             BinaryOperator::BitwiseShiftRight => ">>".to_owned(),
+            BinaryOperator::Arrow => "->".to_owned(),
         }
     }
 }
@@ -325,6 +326,6 @@ mod tests {
                 expr: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(1)))),
             }
             .to_sql(),
-        )
+        );
     }
 }

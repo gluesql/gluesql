@@ -20,7 +20,7 @@ use {
         parse_sql::{parse_comma_separated_exprs, parse_expr, parse_query},
         prelude::DataType,
         result::{Error, Result},
-        translate::{translate_expr, translate_query},
+        translate::{NO_PARAMS, translate_expr, translate_query},
     },
     aggregate::AggregateNode,
     bigdecimal::BigDecimal,
@@ -103,15 +103,15 @@ impl<'a> TryFrom<ExprNode<'a>> for Expr {
             ExprNode::SqlExpr(expr) => {
                 let expr = parse_expr(expr)?;
 
-                translate_expr(&expr)
+                translate_expr(&expr, NO_PARAMS)
             }
             ExprNode::Identifier(value) => {
                 let idents = value.as_ref().split('.').collect::<Vec<_>>();
 
                 Ok(match idents.as_slice() {
                     [alias, ident] => Expr::CompoundIdentifier {
-                        alias: alias.to_string(),
-                        ident: ident.to_string(),
+                        alias: (*alias).to_owned(),
+                        ident: (*ident).to_owned(),
                     },
                     _ => Expr::Identifier(value.into_owned()),
                 })
@@ -212,7 +212,7 @@ impl<'a> TryFrom<ExprNode<'a>> for Expr {
                     }
                     InListNode::Text(value) => {
                         let subquery = parse_query(value.clone())
-                            .and_then(|item| translate_query(&item))
+                            .and_then(|item| translate_query(&item, NO_PARAMS))
                             .map(Box::new);
 
                         if let Ok(subquery) = subquery {
@@ -225,7 +225,7 @@ impl<'a> TryFrom<ExprNode<'a>> for Expr {
 
                         parse_comma_separated_exprs(&*value)?
                             .iter()
-                            .map(translate_expr)
+                            .map(|expr| translate_expr(expr, NO_PARAMS))
                             .collect::<Result<Vec<_>>>()
                             .map(|list| Expr::InList {
                                 expr,
@@ -286,13 +286,13 @@ impl<'a> From<&'a str> for ExprNode<'a> {
     }
 }
 
-impl<'a> From<String> for ExprNode<'a> {
+impl From<String> for ExprNode<'_> {
     fn from(expr: String) -> Self {
         ExprNode::SqlExpr(Cow::Owned(expr))
     }
 }
 
-impl<'a> From<i64> for ExprNode<'a> {
+impl From<i64> for ExprNode<'_> {
     fn from(n: i64) -> Self {
         ExprNode::Expr(Cow::Owned(Expr::Literal(AstLiteral::Number(
             BigDecimal::from(n),
@@ -300,7 +300,7 @@ impl<'a> From<i64> for ExprNode<'a> {
     }
 }
 
-impl<'a> From<bool> for ExprNode<'a> {
+impl From<bool> for ExprNode<'_> {
     fn from(b: bool) -> Self {
         ExprNode::Expr(Cow::Owned(Expr::Literal(AstLiteral::Boolean(b))))
     }
@@ -312,7 +312,7 @@ impl<'a> From<QueryNode<'a>> for ExprNode<'a> {
     }
 }
 
-impl<'a> From<Expr> for ExprNode<'a> {
+impl From<Expr> for ExprNode<'_> {
     fn from(expr: Expr) -> Self {
         ExprNode::Expr(Cow::Owned(expr))
     }
@@ -368,7 +368,7 @@ pub fn uuid<'a, T: Into<Cow<'a, str>>>(uuid: T) -> ExprNode<'a> {
     }
 }
 
-/// Returns an AST ExprNode containing the provided Bytea.
+/// Returns an AST `ExprNode` containing the provided `Bytea`.
 ///
 /// # Arguments
 /// * `bytea` - A byte array to be converted to a Bytea AST node.

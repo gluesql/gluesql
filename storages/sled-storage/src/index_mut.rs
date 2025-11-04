@@ -115,7 +115,7 @@ impl IndexMut for SledStorage {
                 .map_err(ConflictableTransactionError::Abort)?;
 
             block_on(async {
-                for (data_key, row) in rows.iter() {
+                for (data_key, row) in &rows {
                     let data_key = data_key
                         .to_cmp_be_bytes()
                         .map_err(ConflictableTransactionError::Abort)
@@ -180,13 +180,10 @@ impl IndexMut for SledStorage {
                 .into_iter()
                 .partition(|index| index.name == index_name);
 
-            let index = match index.into_iter().next() {
-                Some(index) => index,
-                None => {
-                    return Err(ConflictableTransactionError::Abort(
-                        IndexError::IndexNameDoesNotExist(index_name.to_owned()).into(),
-                    ));
-                }
+            let Some(index) = index.into_iter().next() else {
+                return Err(ConflictableTransactionError::Abort(
+                    IndexError::IndexNameDoesNotExist(index_name.to_owned()).into(),
+                ));
             };
 
             let schema = Schema {
@@ -206,7 +203,7 @@ impl IndexMut for SledStorage {
                 .map_err(ConflictableTransactionError::Abort)?;
 
             block_on(async {
-                for (data_key, row) in rows.iter() {
+                for (data_key, row) in &rows {
                     let data_key = data_key
                         .to_cmp_be_bytes()
                         .map_err(ConflictableTransactionError::Abort)

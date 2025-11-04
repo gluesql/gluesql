@@ -5,7 +5,7 @@ use {
         ast_builder::ExprWithAliasNode,
         parse_sql::parse_select_items,
         result::{Error, Result},
-        translate::translate_select_item,
+        translate::{NO_PARAMS, translate_select_item},
     },
 };
 
@@ -15,13 +15,13 @@ pub enum SelectItemList<'a> {
     SelectItems(Vec<SelectItemNode<'a>>),
 }
 
-impl<'a> From<&str> for SelectItemList<'a> {
+impl From<&str> for SelectItemList<'_> {
     fn from(exprs: &str) -> Self {
         SelectItemList::Text(exprs.to_owned())
     }
 }
 
-impl<'a> From<Vec<&str>> for SelectItemList<'a> {
+impl From<Vec<&str>> for SelectItemList<'_> {
     fn from(select_items: Vec<&str>) -> Self {
         SelectItemList::SelectItems(select_items.into_iter().map(Into::into).collect())
     }
@@ -58,7 +58,7 @@ impl<'a> TryFrom<SelectItemList<'a>> for Vec<SelectItem> {
         match select_items {
             SelectItemList::Text(items) => parse_select_items(items)?
                 .iter()
-                .map(translate_select_item)
+                .map(|item| translate_select_item(item, NO_PARAMS))
                 .collect::<Result<Vec<_>>>(),
             SelectItemList::SelectItems(items) => items
                 .into_iter()
@@ -76,7 +76,7 @@ mod tests {
             ast_builder::{SelectItemList, col, expr},
             parse_sql::parse_select_items,
             result::Result,
-            translate::translate_select_item,
+            translate::{NO_PARAMS, translate_select_item},
         },
         pretty_assertions::assert_eq,
     };
@@ -85,7 +85,7 @@ mod tests {
         let parsed = parse_select_items(expected).expect(expected);
         let expected = parsed
             .iter()
-            .map(translate_select_item)
+            .map(|item| translate_select_item(item, NO_PARAMS))
             .collect::<Result<Vec<SelectItem>>>();
 
         assert_eq!(actual.try_into(), expected);

@@ -22,12 +22,8 @@ impl PartialEq<Value> for Decimal {
             U32(other) => *self == Decimal::from(*other),
             U64(other) => *self == Decimal::from(*other),
             U128(other) => *self == Decimal::from(*other),
-            F32(other) => Decimal::from_f32_retain(*other)
-                .map(|x| *self == x)
-                .unwrap_or(false),
-            F64(other) => Decimal::from_f64_retain(*other)
-                .map(|x| *self == x)
-                .unwrap_or(false),
+            F32(other) => Decimal::from_f32_retain(*other).is_some_and(|x| *self == x),
+            F64(other) => Decimal::from_f64_retain(*other).is_some_and(|x| *self == x),
             Decimal(other) => *self == *other,
             _ => false,
         }
@@ -46,12 +42,8 @@ impl PartialOrd<Value> for Decimal {
             U32(rhs) => self.partial_cmp(&(Decimal::from(rhs))),
             U64(rhs) => self.partial_cmp(&(Decimal::from(rhs))),
             U128(rhs) => self.partial_cmp(&(Decimal::from(rhs))),
-            F32(rhs) => Decimal::from_f32_retain(rhs)
-                .map(|x| self.partial_cmp(&x))
-                .unwrap_or(None),
-            F64(rhs) => Decimal::from_f64_retain(rhs)
-                .map(|x| self.partial_cmp(&x))
-                .unwrap_or(None),
+            F32(rhs) => Decimal::from_f32_retain(rhs).and_then(|x| self.partial_cmp(&x)),
+            F64(rhs) => Decimal::from_f64_retain(rhs).and_then(|x| self.partial_cmp(&x)),
             Decimal(rhs) => self.partial_cmp(&rhs),
             _ => None,
         }
@@ -165,8 +157,9 @@ impl TryBinaryOperator for Decimal {
                 })
                 .map(Decimal),
 
-            F32(rhs) => Decimal::from_f32_retain(rhs)
-                .map(|x| {
+            F32(rhs) => Decimal::from_f32_retain(rhs).map_or_else(
+                || Err(ValueError::FloatToDecimalConversionFailure(rhs.into()).into()),
+                |x| {
                     lhs.checked_add(x)
                         .ok_or_else(|| {
                             ValueError::BinaryOperationOverflow {
@@ -177,12 +170,11 @@ impl TryBinaryOperator for Decimal {
                             .into()
                         })
                         .map(Decimal)
-                })
-                .unwrap_or_else(|| {
-                    Err(ValueError::FloatToDecimalConversionFailure(rhs.into()).into())
-                }),
-            F64(rhs) => Decimal::from_f64_retain(rhs)
-                .map(|x| {
+                },
+            ),
+            F64(rhs) => Decimal::from_f64_retain(rhs).map_or_else(
+                || Err(ValueError::FloatToDecimalConversionFailure(rhs).into()),
+                |x| {
                     lhs.checked_add(x)
                         .ok_or_else(|| {
                             ValueError::BinaryOperationOverflow {
@@ -193,8 +185,8 @@ impl TryBinaryOperator for Decimal {
                             .into()
                         })
                         .map(Decimal)
-                })
-                .unwrap_or_else(|| Err(ValueError::FloatToDecimalConversionFailure(rhs).into())),
+                },
+            ),
             Decimal(rhs) => lhs
                 .checked_add(rhs)
                 .ok_or_else(|| {
@@ -320,8 +312,9 @@ impl TryBinaryOperator for Decimal {
                 })
                 .map(Decimal),
 
-            F32(rhs) => Decimal::from_f32_retain(rhs)
-                .map(|x| {
+            F32(rhs) => Decimal::from_f32_retain(rhs).map_or_else(
+                || Err(ValueError::FloatToDecimalConversionFailure(rhs.into()).into()),
+                |x| {
                     lhs.checked_sub(x)
                         .ok_or_else(|| {
                             ValueError::BinaryOperationOverflow {
@@ -332,12 +325,11 @@ impl TryBinaryOperator for Decimal {
                             .into()
                         })
                         .map(Decimal)
-                })
-                .unwrap_or_else(|| {
-                    Err(ValueError::FloatToDecimalConversionFailure(rhs.into()).into())
-                }),
-            F64(rhs) => Decimal::from_f64_retain(rhs)
-                .map(|x| {
+                },
+            ),
+            F64(rhs) => Decimal::from_f64_retain(rhs).map_or_else(
+                || Err(ValueError::FloatToDecimalConversionFailure(rhs).into()),
+                |x| {
                     lhs.checked_sub(x)
                         .ok_or_else(|| {
                             ValueError::BinaryOperationOverflow {
@@ -348,8 +340,8 @@ impl TryBinaryOperator for Decimal {
                             .into()
                         })
                         .map(Decimal)
-                })
-                .unwrap_or_else(|| Err(ValueError::FloatToDecimalConversionFailure(rhs).into())),
+                },
+            ),
             Decimal(rhs) => lhs
                 .checked_sub(rhs)
                 .ok_or_else(|| {
@@ -475,8 +467,9 @@ impl TryBinaryOperator for Decimal {
                 })
                 .map(Decimal),
 
-            F32(rhs) => Decimal::from_f32_retain(rhs)
-                .map(|x| {
+            F32(rhs) => Decimal::from_f32_retain(rhs).map_or_else(
+                || Err(ValueError::FloatToDecimalConversionFailure(rhs.into()).into()),
+                |x| {
                     lhs.checked_mul(x)
                         .ok_or_else(|| {
                             ValueError::BinaryOperationOverflow {
@@ -487,12 +480,11 @@ impl TryBinaryOperator for Decimal {
                             .into()
                         })
                         .map(Decimal)
-                })
-                .unwrap_or_else(|| {
-                    Err(ValueError::FloatToDecimalConversionFailure(rhs.into()).into())
-                }),
-            F64(rhs) => Decimal::from_f64_retain(rhs)
-                .map(|x| {
+                },
+            ),
+            F64(rhs) => Decimal::from_f64_retain(rhs).map_or_else(
+                || Err(ValueError::FloatToDecimalConversionFailure(rhs).into()),
+                |x| {
                     lhs.checked_mul(x)
                         .ok_or_else(|| {
                             ValueError::BinaryOperationOverflow {
@@ -503,8 +495,8 @@ impl TryBinaryOperator for Decimal {
                             .into()
                         })
                         .map(Decimal)
-                })
-                .unwrap_or_else(|| Err(ValueError::FloatToDecimalConversionFailure(rhs).into())),
+                },
+            ),
             Decimal(rhs) => lhs
                 .checked_mul(rhs)
                 .ok_or_else(|| {
@@ -630,8 +622,9 @@ impl TryBinaryOperator for Decimal {
                 })
                 .map(Decimal),
 
-            F32(rhs) => Decimal::from_f32_retain(rhs)
-                .map(|x| {
+            F32(rhs) => Decimal::from_f32_retain(rhs).map_or_else(
+                || Err(ValueError::FloatToDecimalConversionFailure(rhs.into()).into()),
+                |x| {
                     lhs.checked_div(x)
                         .ok_or_else(|| {
                             ValueError::BinaryOperationOverflow {
@@ -642,12 +635,11 @@ impl TryBinaryOperator for Decimal {
                             .into()
                         })
                         .map(Decimal)
-                })
-                .unwrap_or_else(|| {
-                    Err(ValueError::FloatToDecimalConversionFailure(rhs.into()).into())
-                }),
-            F64(rhs) => Decimal::from_f64_retain(rhs)
-                .map(|x| {
+                },
+            ),
+            F64(rhs) => Decimal::from_f64_retain(rhs).map_or_else(
+                || Err(ValueError::FloatToDecimalConversionFailure(rhs).into()),
+                |x| {
                     lhs.checked_div(x)
                         .ok_or_else(|| {
                             ValueError::BinaryOperationOverflow {
@@ -658,8 +650,8 @@ impl TryBinaryOperator for Decimal {
                             .into()
                         })
                         .map(Decimal)
-                })
-                .unwrap_or_else(|| Err(ValueError::FloatToDecimalConversionFailure(rhs).into())),
+                },
+            ),
             Decimal(rhs) => lhs
                 .checked_div(rhs)
                 .ok_or_else(|| {
@@ -685,50 +677,50 @@ impl TryBinaryOperator for Decimal {
         let lhs = *self;
 
         match *rhs {
-            I8(rhs) => lhs
-                .checked_rem(Decimal::from(rhs))
-                .map(|x| Ok(Decimal(x)))
-                .unwrap_or_else(|| {
+            I8(rhs) => lhs.checked_rem(Decimal::from(rhs)).map_or_else(
+                || {
                     Err(ValueError::BinaryOperationOverflow {
                         lhs: Decimal(lhs),
                         operator: NumericBinaryOperator::Modulo,
                         rhs: I8(rhs),
                     }
                     .into())
-                }),
-            I32(rhs) => lhs
-                .checked_rem(Decimal::from(rhs))
-                .map(|x| Ok(Decimal(x)))
-                .unwrap_or_else(|| {
+                },
+                |x| Ok(Decimal(x)),
+            ),
+            I32(rhs) => lhs.checked_rem(Decimal::from(rhs)).map_or_else(
+                || {
                     Err(ValueError::BinaryOperationOverflow {
                         lhs: Decimal(lhs),
                         operator: NumericBinaryOperator::Modulo,
                         rhs: I32(rhs),
                     }
                     .into())
-                }),
-            I64(rhs) => lhs
-                .checked_rem(Decimal::from(rhs))
-                .map(|x| Ok(Decimal(x)))
-                .unwrap_or_else(|| {
+                },
+                |x| Ok(Decimal(x)),
+            ),
+            I64(rhs) => lhs.checked_rem(Decimal::from(rhs)).map_or_else(
+                || {
                     Err(ValueError::BinaryOperationOverflow {
                         lhs: Decimal(lhs),
                         operator: NumericBinaryOperator::Modulo,
                         rhs: I64(rhs),
                     }
                     .into())
-                }),
-            I128(rhs) => lhs
-                .checked_rem(Decimal::from(rhs))
-                .map(|x| Ok(Decimal(x)))
-                .unwrap_or_else(|| {
+                },
+                |x| Ok(Decimal(x)),
+            ),
+            I128(rhs) => lhs.checked_rem(Decimal::from(rhs)).map_or_else(
+                || {
                     Err(ValueError::BinaryOperationOverflow {
                         lhs: Decimal(lhs),
                         operator: NumericBinaryOperator::Modulo,
                         rhs: I128(rhs),
                     }
                     .into())
-                }),
+                },
+                |x| Ok(Decimal(x)),
+            ),
             U8(rhs) => lhs
                 .checked_rem(Decimal::from(rhs))
                 .ok_or_else(|| {
@@ -786,31 +778,31 @@ impl TryBinaryOperator for Decimal {
                 .map(Decimal),
 
             F32(rhs) => match Decimal::from_f32_retain(rhs) {
-                Some(x) => lhs
-                    .checked_rem(x)
-                    .map(|y| Ok(Decimal(y)))
-                    .unwrap_or_else(|| {
+                Some(x) => lhs.checked_rem(x).map_or_else(
+                    || {
                         Err(ValueError::BinaryOperationOverflow {
                             lhs: Decimal(lhs),
                             operator: NumericBinaryOperator::Modulo,
                             rhs: F32(rhs),
                         }
                         .into())
-                    }),
+                    },
+                    |y| Ok(Decimal(y)),
+                ),
                 _ => Err(ValueError::FloatToDecimalConversionFailure(rhs.into()).into()),
             },
             F64(rhs) => match Decimal::from_f64_retain(rhs) {
-                Some(x) => lhs
-                    .checked_rem(x)
-                    .map(|y| Ok(Decimal(y)))
-                    .unwrap_or_else(|| {
+                Some(x) => lhs.checked_rem(x).map_or_else(
+                    || {
                         Err(ValueError::BinaryOperationOverflow {
                             lhs: Decimal(lhs),
                             operator: NumericBinaryOperator::Modulo,
                             rhs: F64(rhs),
                         }
                         .into())
-                    }),
+                    },
+                    |y| Ok(Decimal(y)),
+                ),
                 _ => Err(ValueError::FloatToDecimalConversionFailure(rhs).into()),
             },
             Decimal(rhs) => lhs

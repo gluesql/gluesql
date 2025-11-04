@@ -15,14 +15,14 @@ test_case!(take, {
     )
     .await;
     g.run(
-        r#"
+        r"
             INSERT INTO Take VALUES
             (TAKE(CAST('[1, 2, 3, 4, 5]' AS LIST), 5));
-        "#,
+        ",
     )
     .await;
     g.test(
-        r#"select take(items, 0) as mygoodtake from Take;"#,
+        r"select take(items, 0) as mygoodtake from Take;",
         Ok(select!(
             mygoodtake
             List;
@@ -31,7 +31,7 @@ test_case!(take, {
     )
     .await;
     g.test(
-        r#"select take(items, 3) as mygoodtake from Take;"#,
+        r"select take(items, 3) as mygoodtake from Take;",
         Ok(select!(
             mygoodtake
             List;
@@ -40,7 +40,7 @@ test_case!(take, {
     )
     .await;
     g.test(
-        r#"select take(items, 5) as mygoodtake from Take;"#,
+        r"select take(items, 5) as mygoodtake from Take;",
         Ok(select!(
             mygoodtake
             List;
@@ -49,7 +49,7 @@ test_case!(take, {
     )
     .await;
     g.test(
-        r#"select take(items, 10) as mygoodtake from Take;"#,
+        r"select take(items, 10) as mygoodtake from Take;",
         Ok(select!(
             mygoodtake
             List;
@@ -58,28 +58,28 @@ test_case!(take, {
     )
     .await;
     g.test(
-        r#"select take(NULL, 3) as mynulltake from Take;"#,
+        r"select take(NULL, 3) as mynulltake from Take;",
         Ok(select_with_null!(mynulltake; Null)),
     )
     .await;
     g.test(
-        r#"select take(items, NULL) as mynulltake from Take;"#,
+        r"select take(items, NULL) as mynulltake from Take;",
         Ok(select_with_null!(mynulltake; Null)),
     )
     .await;
 
     g.test(
-        r#"select take(items, -5) as mymistake from Take;"#,
+        r"select take(items, -5) as mymistake from Take;",
         Err(EvaluateError::FunctionRequiresUSizeValue("TAKE".to_owned()).into()),
     )
     .await;
     g.test(
-        r#"select take(items, 'TEST') as mymistake from Take;"#,
+        r"select take(items, 'TEST') as mymistake from Take;",
         Err(EvaluateError::FunctionRequiresIntegerValue("TAKE".to_owned()).into()),
     )
     .await;
     g.test(
-        r#"select take(0, 3) as mymistake from Take;"#,
+        r"select take(0, 3) as mymistake from Take;",
         Err(EvaluateError::ListTypeRequired.into()),
     )
     .await;

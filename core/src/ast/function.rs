@@ -311,7 +311,7 @@ impl ToSql for Function {
                 trim_where_field,
             } => {
                 let trim_where_field = match trim_where_field {
-                    None => "".to_owned(),
+                    None => String::new(),
                     Some(t) => format!("{t} "),
                 };
 
@@ -1269,7 +1269,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"CHR(72)"#,
+            r"CHR(72)",
             &Expr::Function(Box::new(Function::Chr(Expr::Literal(AstLiteral::Number(
                 BigDecimal::from_str("72").unwrap()
             )))))
@@ -1301,7 +1301,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"EXTRACT(MINUTE FROM '2022-05-05 01:02:03')"#,
+            r"EXTRACT(MINUTE FROM '2022-05-05 01:02:03')",
             &Expr::Function(Box::new(Function::Extract {
                 field: DateTimeField::Minute,
                 expr: Expr::Literal(AstLiteral::QuotedString("2022-05-05 01:02:03".to_owned()))
@@ -1478,7 +1478,7 @@ mod tests {
                 "list".to_owned()
             ))))
             .to_sql(),
-        )
+        );
     }
 
     #[test]

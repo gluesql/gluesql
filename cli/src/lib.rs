@@ -16,7 +16,7 @@ use {
     gluesql_core::{
         ast::ToSql,
         data::Value,
-        store::{DataRow, GStore, GStoreMut, Store, Transaction},
+        store::{DataRow, GStore, GStoreMut, Planner, Store, Transaction},
     },
     gluesql_csv_storage::CsvStorage,
     gluesql_file_storage::FileStorage,
@@ -65,11 +65,26 @@ enum Storage {
 }
 
 pub fn run() -> Result<()> {
+    fn run<T: GStore + GStoreMut + Planner>(storage: T, input: Option<PathBuf>) {
+        let output = std::io::stdout();
+        let mut cli = Cli::new(storage, output);
+
+        if let Some(path) = input
+            && let Err(e) = cli.load(path.as_path())
+        {
+            println!("[error] {e}\n");
+        }
+
+        if let Err(e) = cli.run() {
+            eprintln!("{e}");
+        }
+    }
+
     let args = Args::parse();
     let path = args.path.as_deref().and_then(Path::to_str);
 
     match (path, args.storage, args.dump) {
-        (None, None, _) | (None, Some(Storage::Memory), _) => {
+        (None, None | Some(Storage::Memory), _) => {
             println!("[memory-storage] initialized");
 
             run(MemoryStorage::default(), args.execute);
@@ -132,21 +147,6 @@ pub fn run() -> Result<()> {
         }
         (None, Some(_), _) | (Some(_), None, None) => {
             panic!("both path and storage should be specified");
-        }
-    }
-
-    fn run<T: GStore + GStoreMut>(storage: T, input: Option<PathBuf>) {
-        let output = std::io::stdout();
-        let mut cli = Cli::new(storage, output);
-
-        if let Some(path) = input
-            && let Err(e) = cli.load(path.as_path())
-        {
-            println!("[error] {e}\n");
-        };
-
-        if let Err(e) = cli.run() {
-            eprintln!("{e}");
         }
     }
 

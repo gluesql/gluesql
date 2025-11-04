@@ -24,7 +24,7 @@ pub enum PrevNode<'a> {
     ProjectNode(Box<ProjectNode<'a>>),
 }
 
-impl<'a> Prebuild<Query> for PrevNode<'a> {
+impl Prebuild<Query> for PrevNode<'_> {
     fn prebuild(self) -> Result<Query> {
         match self {
             Self::Select(node) => node.prebuild(),
@@ -120,7 +120,7 @@ impl<'a> LimitNode<'a> {
     }
 }
 
-impl<'a> Prebuild<Query> for LimitNode<'a> {
+impl Prebuild<Query> for LimitNode<'_> {
     fn prebuild(self) -> Result<Query> {
         let mut node_data = self.prev_node.prebuild()?;
         node_data.limit = Some(self.expr.try_into()?);
@@ -147,12 +147,12 @@ mod tests {
         // select node -> limit node -> build
         let actual = table("Foo").select().limit(10).build();
         let expected = "SELECT * FROM Foo LIMIT 10";
-        test(actual, expected);
+        test(&actual, expected);
 
         // group by node -> limit node -> build
         let actual = table("Foo").select().group_by("bar").limit(10).build();
         let expected = "SELECT * FROM Foo GROUP BY bar LIMIT 10";
-        test(actual, expected);
+        test(&actual, expected);
 
         // having node -> limit node -> build
         let actual = table("Foo")
@@ -162,22 +162,22 @@ mod tests {
             .limit(10)
             .build();
         let expected = "SELECT * FROM Foo GROUP BY bar HAVING bar = 10 LIMIT 10";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join node -> limit node -> build
         let actual = table("Foo").select().join("Bar").limit(10).build();
         let expected = "SELECT * FROM Foo JOIN Bar LIMIT 10";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join node -> limit node -> build
         let actual = table("Foo").select().join_as("Bar", "B").limit(10).build();
         let expected = "SELECT * FROM Foo JOIN Bar AS B LIMIT 10";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join node -> limit node -> build
         let actual = table("Foo").select().left_join("Bar").limit(10).build();
         let expected = "SELECT * FROM Foo LEFT JOIN Bar LIMIT 10";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join node -> limit node -> build
         let actual = table("Foo")
@@ -186,12 +186,12 @@ mod tests {
             .limit(10)
             .build();
         let expected = "SELECT * FROM Foo LEFT JOIN Bar AS B LIMIT 10";
-        test(actual, expected);
+        test(&actual, expected);
 
         // group by node -> limit node -> build
         let actual = table("Foo").select().group_by("id").limit(10).build();
         let expected = "SELECT * FROM Foo GROUP BY id LIMIT 10";
-        test(actual, expected);
+        test(&actual, expected);
 
         // having node -> limit node -> build
         let actual = table("Foo")
@@ -201,7 +201,7 @@ mod tests {
             .limit(10)
             .build();
         let expected = "SELECT * FROM Foo GROUP BY id HAVING id > 10 LIMIT 10";
-        test(actual, expected);
+        test(&actual, expected);
 
         // join constraint node -> limit node -> build
         let actual = table("Foo")
@@ -211,7 +211,7 @@ mod tests {
             .limit(10)
             .build();
         let expected = "SELECT * FROM Foo JOIN Bar ON Foo.id = Bar.id LIMIT 10";
-        test(actual, expected);
+        test(&actual, expected);
 
         // filter node -> limit node -> build
         let actual = table("World")
@@ -220,17 +220,17 @@ mod tests {
             .limit(100)
             .build();
         let expected = "SELECT * FROM World WHERE id > 2 LIMIT 100";
-        test(actual, expected);
+        test(&actual, expected);
 
         // order by node -> limit node -> build
         let actual = table("Hello").select().order_by("score").limit(3).build();
         let expected = "SELECT * FROM Hello ORDER BY score LIMIT 3";
-        test(actual, expected);
+        test(&actual, expected);
 
         // project node -> limit node -> build
         let actual = table("Item").select().project("*").limit(10).build();
         let expected = "SELECT * FROM Item LIMIT 10";
-        test(actual, expected);
+        test(&actual, expected);
 
         // hash join node -> limit node -> build
         let actual = table("Player")
@@ -286,6 +286,6 @@ mod tests {
             .select()
             .build();
         let expected = "SELECT * FROM (SELECT * FROM Foo LIMIT 10) Sub";
-        test(actual, expected);
+        test(&actual, expected);
     }
 }

@@ -9,7 +9,7 @@ use {
         error::{Error, Result},
         store::{
             AlterTable, CustomFunction, CustomFunctionMut, DataRow, Index, IndexMut, Metadata,
-            Transaction,
+            Planner, Transaction,
         },
     },
     hex::ToHex,
@@ -56,7 +56,7 @@ impl FileStorage {
         Ok(path)
     }
 
-    fn fetch_schema(&self, path: PathBuf) -> Result<Schema> {
+    fn fetch_schema(path: PathBuf) -> Result<Schema> {
         fs::read_to_string(path)
             .map_storage_err()
             .and_then(|data| Schema::from_ddl(&data))
@@ -80,3 +80,4 @@ impl Transaction for FileStorage {}
 impl Metadata for FileStorage {}
 impl CustomFunction for FileStorage {}
 impl CustomFunctionMut for FileStorage {}
+impl Planner for FileStorage {}

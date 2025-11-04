@@ -13,7 +13,7 @@ test_case!(uint32, {
         );",
     )
     .await;
-    g.run(r#"INSERT INTO Item VALUES (1, 1), (2, 2), (3, 3), (4, 4);"#)
+    g.run(r"INSERT INTO Item VALUES (1, 1), (2, 2), (3, 3), (4, 4);")
         .await;
 
     g.test(

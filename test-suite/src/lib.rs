@@ -101,6 +101,7 @@ macro_rules! generate_store_tests {
         glue!(concat, expr::concat::concat);
         glue!(expr_between, expr::between::between);
         glue!(expr_in_list, expr::in_list::in_list);
+        glue!(expr_arrow, expr::arrow::arrow);
         glue!(unary_operator, expr::unary_operator::unary_operator);
 
         glue!(create_table, alter::create_table);

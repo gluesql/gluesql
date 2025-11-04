@@ -12,7 +12,7 @@ use {
         ast::ColumnUniqueOption,
         data::{Key, Schema, value::BTreeMapJsonExt},
         error::{Error, Result},
-        store::{DataRow, Metadata},
+        store::{DataRow, Metadata, Planner},
     },
     iter_enum::Iterator,
     serde_json::Value as JsonValue,
@@ -54,22 +54,21 @@ impl JsonStorage {
         }
 
         let schema_path = self.schema_path(table_name);
-        let (column_defs, foreign_keys, comment) = match schema_path.exists() {
-            true => {
-                let mut file = File::open(&schema_path).map_storage_err()?;
-                let mut ddl = String::new();
-                file.read_to_string(&mut ddl).map_storage_err()?;
+        let (column_defs, foreign_keys, comment) = if schema_path.exists() {
+            let mut file = File::open(&schema_path).map_storage_err()?;
+            let mut ddl = String::new();
+            file.read_to_string(&mut ddl).map_storage_err()?;
 
-                let schema = Schema::from_ddl(&ddl)?;
-                if schema.table_name != table_name {
-                    return Err(Error::StorageMsg(
-                        JsonStorageError::TableNameDoesNotMatchWithFile.to_string(),
-                    ));
-                }
-
-                (schema.column_defs, schema.foreign_keys, schema.comment)
+            let schema = Schema::from_ddl(&ddl)?;
+            if schema.table_name != table_name {
+                return Err(Error::StorageMsg(
+                    JsonStorageError::TableNameDoesNotMatchWithFile.to_string(),
+                ));
             }
-            false => (None, Vec::new(), None),
+
+            (schema.column_defs, schema.foreign_keys, schema.comment)
+        } else {
+            (None, Vec::new(), None)
         };
 
         Ok(Some(Schema {
@@ -103,50 +102,46 @@ impl JsonStorage {
     }
 
     fn scan_data(&self, table_name: &str) -> Result<(RowIter, Schema)> {
-        let schema = self
-            .fetch_schema(table_name)?
-            .map_storage_err(JsonStorageError::TableDoesNotExist)?;
-
         #[derive(Iterator)]
         enum Extension<I1, I2> {
             Json(I1),
             Jsonl(I2),
         }
+
+        let schema = self
+            .fetch_schema(table_name)?
+            .map_storage_err(JsonStorageError::TableDoesNotExist)?;
         let json_path = self.json_path(table_name);
-        let jsons = match fs::read_to_string(json_path) {
-            Ok(json_file_str) => {
-                let value = serde_json::from_str(&json_file_str).map_err(|_| {
-                    Error::StorageMsg(
-                        JsonStorageError::InvalidJsonContent(format!("{table_name}.json"))
-                            .to_string(),
-                    )
-                })?;
+        let jsons = if let Ok(json_file_str) = fs::read_to_string(json_path) {
+            let value = serde_json::from_str(&json_file_str).map_err(|_| {
+                Error::StorageMsg(
+                    JsonStorageError::InvalidJsonContent(format!("{table_name}.json")).to_string(),
+                )
+            })?;
 
-                let jsons = match value {
-                    JsonValue::Array(values) => values
-                        .into_iter()
-                        .map(|value| match value {
-                            JsonValue::Object(json_map) => BTreeMap::try_from_json_map(json_map),
-                            _ => Err(Error::StorageMsg(
-                                JsonStorageError::JsonObjectTypeRequired.to_string(),
-                            )),
-                        })
-                        .collect::<Result<Vec<_>>>(),
-                    JsonValue::Object(json_map) => Ok(vec![BTreeMap::try_from_json_map(json_map)?]),
-                    _ => Err(Error::StorageMsg(
-                        JsonStorageError::JsonArrayTypeRequired.to_string(),
-                    )),
-                }?;
+            let jsons = match value {
+                JsonValue::Array(values) => values
+                    .into_iter()
+                    .map(|value| match value {
+                        JsonValue::Object(json_map) => BTreeMap::try_from_json_map(json_map),
+                        _ => Err(Error::StorageMsg(
+                            JsonStorageError::JsonObjectTypeRequired.to_string(),
+                        )),
+                    })
+                    .collect::<Result<Vec<_>>>(),
+                JsonValue::Object(json_map) => Ok(vec![BTreeMap::try_from_json_map(json_map)?]),
+                _ => Err(Error::StorageMsg(
+                    JsonStorageError::JsonArrayTypeRequired.to_string(),
+                )),
+            }?;
 
-                Extension::Json(jsons.into_iter().map(Ok))
-            }
-            Err(_) => {
-                let jsonl_path = self.jsonl_path(table_name);
-                let lines = read_lines(jsonl_path).map_storage_err()?;
-                let jsons = lines.map(|line| BTreeMap::parse_json_object(&line.map_storage_err()?));
+            Extension::Json(jsons.into_iter().map(Ok))
+        } else {
+            let jsonl_path = self.jsonl_path(table_name);
+            let lines = read_lines(jsonl_path).map_storage_err()?;
+            let jsons = lines.map(|line| BTreeMap::parse_json_object(&line.map_storage_err()?));
 
-                Extension::Jsonl(jsons)
-            }
+            Extension::Jsonl(jsons)
         };
 
         let schema2 = schema.clone();
@@ -154,14 +149,11 @@ impl JsonStorage {
             let json = json?;
             let get_index_key = || index.try_into().map(Key::I64).map_storage_err();
 
-            let column_defs = match &schema2.column_defs {
-                Some(column_defs) => column_defs,
-                None => {
-                    let key = get_index_key()?;
-                    let row = DataRow::Map(json);
+            let Some(column_defs) = &schema2.column_defs else {
+                let key = get_index_key()?;
+                let row = DataRow::Map(json);
 
-                    return Ok((key, row));
-                }
+                return Ok((key, row));
             };
 
             let mut key: Option<Key> = None;
@@ -208,3 +200,4 @@ where
 }
 
 impl Metadata for JsonStorage {}
+impl Planner for JsonStorage {}

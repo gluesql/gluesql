@@ -90,9 +90,9 @@ impl TryFrom<Value> for JsonValue {
                 .map(|v| JsonMap::from_iter(v).into()),
             Value::List(v) => v
                 .into_iter()
-                .map(|value| value.try_into())
+                .map(TryInto::try_into)
                 .collect::<Result<Vec<JsonValue>>>()
-                .map(|v| v.into()),
+                .map(Into::into),
             Value::Point(v) => Ok(v.to_string().into()),
             Value::Null => Ok(JsonValue::Null),
         }
@@ -273,8 +273,9 @@ mod tests {
 
     #[test]
     fn json_to_value() {
-        assert!(Value::try_from(JsonValue::Null).unwrap().is_null());
         use utils::Tribool::True;
+
+        assert!(Value::try_from(JsonValue::Null).unwrap().is_null());
         assert_eq!(
             True,
             Value::try_from(JsonValue::Bool(false))
