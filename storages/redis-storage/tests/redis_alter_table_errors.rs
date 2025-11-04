@@ -110,7 +110,7 @@ async fn add_column_deserialize_error() {
         Err(Error::StorageMsg(msg)) => {
             assert!(msg.starts_with("[RedisStorage] failed to deserialize value="));
         }
-        _ => panic!("unexpected result: {:?}", result),
+        _ => panic!("unexpected result: {result:?}"),
     }
 }
 
@@ -185,6 +185,6 @@ async fn drop_column_deserialize_error() {
         Err(Error::StorageMsg(msg)) => {
             assert!(msg.starts_with("[RedisStorage] failed to deserialize value="));
         }
-        _ => panic!("unexpected result: {:?}", result),
+        _ => panic!("unexpected result: {result:?}"),
     }
 }

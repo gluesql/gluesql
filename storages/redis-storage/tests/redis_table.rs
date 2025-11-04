@@ -32,12 +32,12 @@ async fn redis_storage_tables() {
     exec!(glue "DROP TABLE IF EXISTS Marvels;");
 
     exec!(glue "CREATE TABLE DC (id INTEGER, name TEXT, birth DATE);");
-    exec!(glue r#"INSERT INTO DC (id, name, birth) values (1, 'Superman', '2023-12-31');"#);
-    exec!(glue r#"INSERT INTO DC (id, name, birth) values (2, 'Flash', '2011-12-31');"#);
+    exec!(glue r"INSERT INTO DC (id, name, birth) values (1, 'Superman', '2023-12-31');");
+    exec!(glue r"INSERT INTO DC (id, name, birth) values (2, 'Flash', '2011-12-31');");
 
     exec!(glue "CREATE TABLE Marvels (id INTEGER, name TEXT);");
-    exec!(glue r#"INSERT INTO Marvels (id, name) values (1, 'Ironman');"#);
-    exec!(glue r#"INSERT INTO Marvels (id, name) values (2, 'Wanda');"#);
+    exec!(glue r"INSERT INTO Marvels (id, name) values (1, 'Ironman');");
+    exec!(glue r"INSERT INTO Marvels (id, name) values (2, 'Wanda');");
 
     let ret: Vec<Payload> = glue
         .execute("SELECT id, name FROM Marvels WHERE name = 'Wanda';")
@@ -151,8 +151,8 @@ async fn redis_storage_drop_column() {
     let mut glue = Glue::new(storage);
 
     exec!(glue "CREATE TABLE dummy (id INTEGER PRIMARY KEY, name TEXT);");
-    exec!(glue r#"INSERT INTO dummy (id, name) values (1, 'Superman');"#);
-    exec!(glue r#"INSERT INTO dummy (id, name) values (11, 'Batman');"#);
+    exec!(glue r"INSERT INTO dummy (id, name) values (1, 'Superman');");
+    exec!(glue r"INSERT INTO dummy (id, name) values (11, 'Batman');");
     exec!(glue "ALTER TABLE dummy DROP COLUMN name");
 
     let ret: Vec<Payload> = glue.execute("SELECT * FROM dummy;").await.unwrap();
@@ -176,8 +176,8 @@ async fn redis_storage_drop_column() {
 
     // Second test without PRIMARY KEY
     exec!(glue "CREATE TABLE dummy (id INTEGER, name TEXT);");
-    exec!(glue r#"INSERT INTO dummy (id, name) values (1, 'Superman');"#);
-    exec!(glue r#"INSERT INTO dummy (id, name) values (11, 'Batman');"#);
+    exec!(glue r"INSERT INTO dummy (id, name) values (1, 'Superman');");
+    exec!(glue r"INSERT INTO dummy (id, name) values (11, 'Batman');");
     exec!(glue "ALTER TABLE dummy DROP COLUMN name");
 
     let ret: Vec<Payload> = glue.execute("SELECT * FROM dummy;").await.unwrap();

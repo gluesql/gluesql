@@ -23,11 +23,11 @@ pub struct PyMemoryStorage(pub MemoryStorage);
 impl PyMemoryStorage {
     #[new]
     pub fn new() -> Self {
-        Default::default()
+        PyMemoryStorage::default()
     }
 
-    pub fn __repr__(&self) -> PyResult<String> {
-        Ok(format!("{:?}", self.0))
+    pub fn __repr__(&self) -> String {
+        format!("{:?}", self.0)
     }
 }
 
@@ -44,8 +44,8 @@ impl PyJsonStorage {
         PyJsonStorage(JsonStorage { path })
     }
 
-    pub fn __repr__(&self) -> PyResult<String> {
-        Ok(format!("{:?}", self.0))
+    pub fn __repr__(&self) -> String {
+        format!("{:?}", self.0)
     }
 }
 
@@ -57,11 +57,11 @@ pub struct PySharedMemoryStorage(pub SharedMemoryStorage);
 impl PySharedMemoryStorage {
     #[new]
     pub fn new() -> Self {
-        Default::default()
+        PySharedMemoryStorage::default()
     }
 
-    pub fn __repr__(&self) -> PyResult<String> {
-        Ok(format!("{:?}", self.0))
+    pub fn __repr__(&self) -> String {
+        format!("{:?}", self.0)
     }
 }
 
@@ -71,10 +71,10 @@ pub struct PySledStorageModeConfig(pub sled::Mode);
 
 #[pymethods]
 impl PySledStorageModeConfig {
-    pub fn __repr__(&self) -> PyResult<String> {
+    pub fn __repr__(&self) -> String {
         match self.0 {
-            sled::Mode::LowSpace => Ok("LowSpace".to_owned()),
-            sled::Mode::HighThroughput => Ok("HighThroughput".to_owned()),
+            sled::Mode::LowSpace => "LowSpace".to_owned(),
+            sled::Mode::HighThroughput => "HighThroughput".to_owned(),
         }
     }
 }
@@ -87,6 +87,7 @@ impl Default for PySledStorageModeConfig {
 
 #[pyclass(name = "SledStorageConfig")]
 #[derive(Clone, Default, Debug)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct PySledStorageConfig {
     #[pyo3(get, set)]
     pub cache_capacity: u64,
@@ -120,8 +121,8 @@ impl PySledStorageConfig {
         PySledStorageConfig::default()
     }
 
-    pub fn __repr__(&self) -> PyResult<String> {
-        Ok(format!("{:?}", self))
+    pub fn __repr__(&self) -> String {
+        format!("{self:?}")
     }
 }
 
@@ -139,7 +140,7 @@ impl PySledStorage {
     }
 
     #[staticmethod]
-    pub fn try_from(cfg: &PySledStorageConfig) -> PyResult<Self> {
+    pub fn try_from(cfg: &PySledStorageConfig) -> Self {
         let sled_cfg = sled::Config::default()
             .cache_capacity(cfg.cache_capacity)
             .compression_factor(cfg.compression_factor)
@@ -151,10 +152,10 @@ impl PySledStorage {
             .use_compression(cfg.use_compression);
 
         let storage = SledStorage::try_from(sled_cfg).unwrap();
-        Ok(PySledStorage(storage))
+        PySledStorage(storage)
     }
 
-    pub fn __repr__(&self) -> PyResult<String> {
-        Ok(format!("{:?}", self.0))
+    pub fn __repr__(&self) -> String {
+        format!("{:?}", self.0)
     }
 }

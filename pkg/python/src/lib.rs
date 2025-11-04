@@ -57,14 +57,14 @@ impl PyGlue {
     }
 
     #[tokio::main]
-    pub async fn execute(&mut self, statement: Statement) -> PyResult<Payload> {
+    pub async fn execute(&mut self, statement: &Statement) -> PyResult<Payload> {
         let storage = &mut self.storage;
 
         match storage {
-            PyStorageEngine::Memory(storage) => execute!(storage, &statement),
-            PyStorageEngine::Json(storage) => execute!(storage, &statement),
-            PyStorageEngine::SharedMemory(storage) => execute!(storage, &statement),
-            PyStorageEngine::Sled(storage) => execute!(storage, &statement),
+            PyStorageEngine::Memory(storage) => execute!(storage, statement),
+            PyStorageEngine::Json(storage) => execute!(storage, statement),
+            PyStorageEngine::SharedMemory(storage) => execute!(storage, statement),
+            PyStorageEngine::Sled(storage) => execute!(storage, statement),
         }
     }
 }
@@ -81,11 +81,11 @@ impl PyGlue {
         let queries = parse(sql).map_err(|e| GlueSQLError::new_err(e.to_string()))?;
 
         let mut payloads: Vec<PyPayload> = vec![];
-        for query in queries.iter() {
+        for query in &queries {
             let statement = translate(query).map_err(|e| GlueSQLError::new_err(e.to_string()))?;
             let statement = self.plan(statement)?;
 
-            let payload = self.execute(statement)?;
+            let payload = self.execute(&statement)?;
 
             payloads.push(PyPayload { payload });
         }
