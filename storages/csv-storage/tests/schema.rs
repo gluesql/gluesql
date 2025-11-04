@@ -23,11 +23,11 @@ async fn schema() {
     let expected = select! {
         Country                    | City                       | Population
         Str                        | Str                        | I64;
-        "South Korea".to_owned()     "Seoul".to_owned()           9736962;
-        "Japan".to_owned()           "Tokyo".to_owned()           13515271;
-        "China".to_owned()           "Shanghai".to_owned()        24281000;
-        "United States".to_owned()   "New York City".to_owned()   8336817;
-        "Italy".to_owned()           "Milan".to_owned()           2837332
+        "South Korea".to_owned()     "Seoul".to_owned()           9_736_962;
+        "Japan".to_owned()           "Tokyo".to_owned()           13_515_271;
+        "China".to_owned()           "Shanghai".to_owned()        24_281_000;
+        "United States".to_owned()   "New York City".to_owned()   8_336_817;
+        "Italy".to_owned()           "Milan".to_owned()           2_837_332
     };
     assert_eq!(actual, expected);
 
@@ -41,9 +41,9 @@ async fn schema() {
     let expected = select! {
         Country                    | City                       | Population
         Str                        | Str                        | I64;
-        "South Korea".to_owned()     "Seoul".to_owned()           9736962;
-        "United States".to_owned()   "New York City".to_owned()   8336817;
-        "Italy".to_owned()           "Milan".to_owned()           2837332
+        "South Korea".to_owned()     "Seoul".to_owned()           9_736_962;
+        "United States".to_owned()   "New York City".to_owned()   8_336_817;
+        "Italy".to_owned()           "Milan".to_owned()           2_837_332
     };
     assert_eq!(actual, expected);
 }

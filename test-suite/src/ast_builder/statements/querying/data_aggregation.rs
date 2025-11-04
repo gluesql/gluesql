@@ -93,7 +93,7 @@ test_case!(data_aggregation, {
     let expected = Ok(select!(
         avg_distinct
         F64;
-        33.333333333333336
+        33.333_333_333_333_336
     ));
     assert_eq!(actual, expected, "AST Builder AVG DISTINCT example");
 
@@ -129,7 +129,7 @@ test_case!(data_aggregation, {
     let expected = Ok(select!(
         variance_distinct
         F64;
-        155.55555555555554
+        155.555_555_555_555_54
     ));
     assert_eq!(actual, expected, "AST Builder VARIANCE DISTINCT example");
 
@@ -141,7 +141,7 @@ test_case!(data_aggregation, {
     let expected = Ok(select!(
         stdev_distinct
         F64;
-        12.47219128924647
+        12.472_191_289_246_47
     ));
     assert_eq!(actual, expected, "AST Builder STDEV DISTINCT example");
 });
