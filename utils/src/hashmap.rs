@@ -4,7 +4,7 @@ pub trait HashMapExt<K, V, I> {
     fn concat(self, entries: I) -> Self;
 }
 
-impl<K, V, I> HashMapExt<K, V, I> for HashMap<K, V>
+impl<K, V, I, S: std::hash::BuildHasher> HashMapExt<K, V, I> for HashMap<K, V, S>
 where
     K: Hash + Eq,
     I: Iterator<Item = (K, V)>,

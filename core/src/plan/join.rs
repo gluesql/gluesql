@@ -12,7 +12,10 @@ use {
     utils::Vector,
 };
 
-pub fn plan(schema_map: &HashMap<String, Schema>, statement: Statement) -> Statement {
+pub fn plan<S: std::hash::BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    statement: Statement,
+) -> Statement {
     let planner = JoinPlanner { schema_map };
 
     match statement {
@@ -25,11 +28,11 @@ pub fn plan(schema_map: &HashMap<String, Schema>, statement: Statement) -> State
     }
 }
 
-struct JoinPlanner<'a> {
-    schema_map: &'a HashMap<String, Schema>,
+struct JoinPlanner<'a, S> {
+    schema_map: &'a HashMap<String, Schema, S>,
 }
 
-impl<'a> Planner<'a> for JoinPlanner<'a> {
+impl<'a, S: std::hash::BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
     fn query(&self, outer_context: Option<Arc<Context<'a>>>, query: Query) -> Query {
         let Query {
             body,
@@ -60,7 +63,7 @@ impl<'a> Planner<'a> for JoinPlanner<'a> {
     }
 }
 
-impl<'a> JoinPlanner<'a> {
+impl<'a, S: std::hash::BuildHasher> JoinPlanner<'a, S> {
     fn select(&self, outer_context: Option<Arc<Context<'a>>>, select: Select) -> Select {
         let Select {
             distinct,
