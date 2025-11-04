@@ -8,9 +8,8 @@ use {
     },
     bigdecimal::ToPrimitive,
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
-    im::HashMap,
     serde::Serialize,
-    std::{borrow::Cow, cmp::Ordering, fmt::Debug, sync::Arc},
+    std::{borrow::Cow, cmp::Ordering, collections::HashMap, fmt::Debug, sync::Arc},
     thiserror::Error as ThisError,
     utils::Vector,
 };

@@ -269,6 +269,88 @@ impl Expr {
             }
         }
     }
+
+    pub fn collect_aggregates<'a>(&'a self, out: &mut Vec<&'a Aggregate>) {
+        self.visit_aggregates(&mut |aggregate| out.push(aggregate));
+    }
+
+    pub fn contains_aggregate(&self) -> bool {
+        let mut found = false;
+        self.visit_aggregates(&mut |_| found = true);
+        found
+    }
+
+    pub(crate) fn visit_aggregates<'a, F>(&'a self, f: &mut F)
+    where
+        F: FnMut(&'a Aggregate),
+    {
+        match self {
+            Expr::Between {
+                expr, low, high, ..
+            } => {
+                expr.visit_aggregates(f);
+                low.visit_aggregates(f);
+                high.visit_aggregates(f);
+            }
+            Expr::BinaryOp { left, right, .. } => {
+                left.visit_aggregates(f);
+                right.visit_aggregates(f);
+            }
+            Expr::UnaryOp { expr, .. } | Expr::Nested(expr) => expr.visit_aggregates(f),
+            Expr::Case {
+                operand,
+                when_then,
+                else_result,
+            } => {
+                if let Some(operand) = operand.as_deref() {
+                    operand.visit_aggregates(f);
+                }
+
+                for (when, then) in when_then {
+                    when.visit_aggregates(f);
+                    then.visit_aggregates(f);
+                }
+
+                if let Some(else_result) = else_result.as_deref() {
+                    else_result.visit_aggregates(f);
+                }
+            }
+            Expr::InList { expr, list, .. } => {
+                expr.visit_aggregates(f);
+                for item in list {
+                    item.visit_aggregates(f);
+                }
+            }
+            Expr::Like { expr, pattern, .. } | Expr::ILike { expr, pattern, .. } => {
+                expr.visit_aggregates(f);
+                pattern.visit_aggregates(f);
+            }
+            Expr::IsNull(expr) | Expr::IsNotNull(expr) => expr.visit_aggregates(f),
+            Expr::Aggregate(aggregate) => f(aggregate),
+            Expr::Function(function) => {
+                function.visit_exprs(|expr| expr.visit_aggregates(f));
+            }
+            Expr::Array { elem } => {
+                for expr in elem {
+                    expr.visit_aggregates(f);
+                }
+            }
+            Expr::ArrayIndex { obj, indexes } => {
+                obj.visit_aggregates(f);
+                for index in indexes {
+                    index.visit_aggregates(f);
+                }
+            }
+            Expr::Interval { expr, .. } => expr.visit_aggregates(f),
+            Expr::Identifier(_)
+            | Expr::CompoundIdentifier { .. }
+            | Expr::Literal(_)
+            | Expr::TypedString { .. }
+            | Expr::Exists { .. }
+            | Expr::Subquery(_)
+            | Expr::InSubquery { .. } => {}
+        }
+    }
 }
 
 #[cfg(test)]

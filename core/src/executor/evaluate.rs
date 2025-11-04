@@ -19,8 +19,7 @@ use {
         future::{ready, try_join_all},
         stream::{self, StreamExt, TryStreamExt},
     },
-    im::HashMap,
-    std::{borrow::Cow, ops::ControlFlow, sync::Arc},
+    std::{borrow::Cow, collections::HashMap, ops::ControlFlow, sync::Arc},
 };
 
 pub use {error::EvaluateError, evaluated::Evaluated};

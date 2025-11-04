@@ -513,6 +513,209 @@ impl ToSql for Function {
     }
 }
 
+impl Function {
+    pub fn visit_exprs<'a, F>(&'a self, mut f: F)
+    where
+        F: FnMut(&'a Expr),
+    {
+        match self {
+            Function::Abs(expr)
+            | Function::Lower(expr)
+            | Function::Initcap(expr)
+            | Function::Upper(expr)
+            | Function::Asin(expr)
+            | Function::Acos(expr)
+            | Function::Atan(expr)
+            | Function::Ceil(expr)
+            | Function::Round(expr)
+            | Function::Trunc(expr)
+            | Function::Floor(expr)
+            | Function::Exp(expr)
+            | Function::Ln(expr)
+            | Function::Log2(expr)
+            | Function::Log10(expr)
+            | Function::Sin(expr)
+            | Function::Cos(expr)
+            | Function::Tan(expr)
+            | Function::Sqrt(expr)
+            | Function::Radians(expr)
+            | Function::Degrees(expr)
+            | Function::LastDay(expr)
+            | Function::Reverse(expr)
+            | Function::Sign(expr)
+            | Function::Ascii(expr)
+            | Function::Chr(expr)
+            | Function::Md5(expr)
+            | Function::Hex(expr)
+            | Function::GetX(expr)
+            | Function::GetY(expr)
+            | Function::IsEmpty(expr)
+            | Function::Length(expr)
+            | Function::Entries(expr)
+            | Function::Keys(expr)
+            | Function::Values(expr)
+            | Function::Dedup(expr) => f(expr),
+            Function::AddMonth { expr, size }
+            | Function::Left { expr, size }
+            | Function::Right { expr, size }
+            | Function::Power { expr, power: size }
+            | Function::Repeat { expr, num: size }
+            | Function::Skip { expr, size }
+            | Function::Take { expr, size }
+            | Function::Point { x: expr, y: size }
+            | Function::CalcDistance {
+                geometry1: expr,
+                geometry2: size,
+            }
+            | Function::Position {
+                from_expr: expr,
+                sub_expr: size,
+            }
+            | Function::Div {
+                dividend: expr,
+                divisor: size,
+            }
+            | Function::Mod {
+                dividend: expr,
+                divisor: size,
+            }
+            | Function::Gcd {
+                left: expr,
+                right: size,
+            }
+            | Function::Lcm {
+                left: expr,
+                right: size,
+            }
+            | Function::Format { expr, format: size }
+            | Function::ToDate { expr, format: size }
+            | Function::ToTimestamp { expr, format: size }
+            | Function::ToTime { expr, format: size }
+            | Function::Log {
+                antilog: expr,
+                base: size,
+            } => {
+                f(expr);
+                f(size);
+            }
+            Function::Append { expr, value } | Function::Prepend { expr, value } => {
+                f(expr);
+                f(value);
+            }
+            Function::Lpad { expr, size, fill } | Function::Rpad { expr, size, fill } => {
+                f(expr);
+                f(size);
+                if let Some(fill) = fill {
+                    f(fill);
+                }
+            }
+            Function::Replace { expr, old, new } => {
+                f(expr);
+                f(old);
+                f(new);
+            }
+            Function::Cast { expr, .. } => f(expr),
+            Function::Coalesce(items) | Function::Concat(items) | Function::Greatest(items) => {
+                for item in items {
+                    f(item);
+                }
+            }
+            Function::Custom { exprs, .. } => {
+                for expr in exprs {
+                    f(expr);
+                }
+            }
+            Function::ConcatWs { separator, exprs } => {
+                f(separator);
+                for expr in exprs {
+                    f(expr);
+                }
+            }
+            Function::IfNull { expr, then } => {
+                f(expr);
+                f(then);
+            }
+            Function::NullIf { expr1, expr2 } => {
+                f(expr1);
+                f(expr2);
+            }
+            Function::Rand(Some(expr)) => f(expr),
+            Function::Rand(None) => {}
+            Function::Trim {
+                expr, filter_chars, ..
+            } => {
+                f(expr);
+                if let Some(filter_chars) = filter_chars {
+                    f(filter_chars);
+                }
+            }
+            Function::Extract { expr, .. } => f(expr),
+            Function::Slice {
+                expr,
+                start,
+                length,
+            } => {
+                f(expr);
+                f(start);
+                f(length);
+            }
+            Function::Substr { expr, start, count } => {
+                f(expr);
+                f(start);
+                if let Some(count) = count {
+                    f(count);
+                }
+            }
+            Function::Unwrap { expr, selector } => {
+                f(expr);
+                f(selector);
+            }
+            Function::FindIdx {
+                from_expr,
+                sub_expr,
+                start,
+            } => {
+                f(from_expr);
+                f(sub_expr);
+                if let Some(start) = start {
+                    f(start);
+                }
+            }
+            Function::Ltrim { expr, chars } | Function::Rtrim { expr, chars } => {
+                f(expr);
+                if let Some(chars) = chars {
+                    f(chars);
+                }
+            }
+            Function::Sort { expr, order } => {
+                f(expr);
+                if let Some(order) = order {
+                    f(order);
+                }
+            }
+            Function::Splice {
+                list_data,
+                begin_index,
+                end_index,
+                values,
+            } => {
+                f(list_data);
+                f(begin_index);
+                f(end_index);
+                if let Some(values) = values {
+                    f(values);
+                }
+            }
+            Function::Now()
+            | Function::CurrentDate()
+            | Function::CurrentTime()
+            | Function::CurrentTimestamp()
+            | Function::Pi()
+            | Function::GenerateUuid() => {}
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AggregateFunction {
     Count(CountArgExpr),
