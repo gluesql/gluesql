@@ -652,6 +652,7 @@ mod tests {
         );
     }
 
+    #[allow(clippy::similar_names)]
     #[test]
     fn evaluate_cmp_with_literal() {
         let num = |n| Literal::Number(Cow::Owned(BigDecimal::from(n)));
