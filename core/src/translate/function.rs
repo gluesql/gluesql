@@ -25,7 +25,7 @@ pub(crate) fn translate_trim(
     trim_what: Option<&SqlExpr>,
 ) -> Result<Expr> {
     let expr = translate_expr(expr, params)?;
-    let trim_where_field = trim_where.map(translate_trim_where_field);
+    let trim_where_field = trim_where.copied().map(translate_trim_where_field);
     let filter_chars = trim_what
         .map(|expr| translate_expr(expr, params))
         .transpose()?;
@@ -137,7 +137,7 @@ fn check_len_min(name: String, found: usize, expected_minimum: usize) -> Result<
     }
 }
 
-fn translate_function_zero_arg(func: Function, args: Vec<&SqlExpr>, name: String) -> Result<Expr> {
+fn translate_function_zero_arg(func: Function, args: &[&SqlExpr], name: String) -> Result<Expr> {
     check_len(name, args.len(), 0)?;
 
     Ok(Expr::Function(Box::new(func)))
@@ -146,7 +146,7 @@ fn translate_function_zero_arg(func: Function, args: Vec<&SqlExpr>, name: String
 fn translate_function_one_arg<T: FnOnce(Expr) -> Function>(
     params: &[ParamLiteral],
     func: T,
-    args: Vec<&SqlExpr>,
+    args: &[&SqlExpr],
     name: String,
 ) -> Result<Expr> {
     check_len(name, args.len(), 1)?;
@@ -160,7 +160,7 @@ fn translate_function_one_arg<T: FnOnce(Expr) -> Function>(
 fn translate_aggregate_one_arg<T: FnOnce(Expr, bool) -> Aggregate>(
     params: &[ParamLiteral],
     func: T,
-    args: Vec<&SqlExpr>,
+    args: &[&SqlExpr],
     name: String,
     distinct: bool,
 ) -> Result<Expr> {
@@ -175,7 +175,7 @@ fn translate_aggregate_one_arg<T: FnOnce(Expr, bool) -> Aggregate>(
 fn translate_function_trim<T: FnOnce(Expr, Option<Expr>) -> Function>(
     params: &[ParamLiteral],
     func: T,
-    args: Vec<&SqlExpr>,
+    args: &[&SqlExpr],
     name: String,
 ) -> Result<Expr> {
     check_len_range(name, args.len(), 1, 2)?;
@@ -257,14 +257,14 @@ pub(crate) fn translate_function(
     let args = translate_function_arg_exprs(function_arg_exprs)?;
 
     match name.as_str() {
-        "SUM" => translate_aggregate_one_arg(params, Aggregate::sum, args, name, distinct),
-        "MIN" => translate_aggregate_one_arg(params, Aggregate::min, args, name, distinct),
-        "MAX" => translate_aggregate_one_arg(params, Aggregate::max, args, name, distinct),
-        "AVG" => translate_aggregate_one_arg(params, Aggregate::avg, args, name, distinct),
+        "SUM" => translate_aggregate_one_arg(params, Aggregate::sum, &args, name, distinct),
+        "MIN" => translate_aggregate_one_arg(params, Aggregate::min, &args, name, distinct),
+        "MAX" => translate_aggregate_one_arg(params, Aggregate::max, &args, name, distinct),
+        "AVG" => translate_aggregate_one_arg(params, Aggregate::avg, &args, name, distinct),
         "VARIANCE" => {
-            translate_aggregate_one_arg(params, Aggregate::variance, args, name, distinct)
+            translate_aggregate_one_arg(params, Aggregate::variance, &args, name, distinct)
         }
-        "STDEV" => translate_aggregate_one_arg(params, Aggregate::stdev, args, name, distinct),
+        "STDEV" => translate_aggregate_one_arg(params, Aggregate::stdev, &args, name, distinct),
         "COALESCE" => {
             let exprs = args
                 .into_iter()
@@ -307,9 +307,9 @@ pub(crate) fn translate_function(
                 start,
             })))
         }
-        "LOWER" => translate_function_one_arg(params, Function::Lower, args, name),
-        "INITCAP" => translate_function_one_arg(params, Function::Initcap, args, name),
-        "UPPER" => translate_function_one_arg(params, Function::Upper, args, name),
+        "LOWER" => translate_function_one_arg(params, Function::Lower, &args, name),
+        "INITCAP" => translate_function_one_arg(params, Function::Initcap, &args, name),
+        "UPPER" => translate_function_one_arg(params, Function::Upper, &args, name),
         "LEFT" => {
             check_len(name, args.len(), 2)?;
 
@@ -397,10 +397,10 @@ pub(crate) fn translate_function(
             };
             Ok(Expr::Function(Box::new(Function::Rand(v))))
         }
-        "ROUND" => translate_function_one_arg(params, Function::Round, args, name),
-        "TRUNC" => translate_function_one_arg(params, Function::Trunc, args, name),
-        "EXP" => translate_function_one_arg(params, Function::Exp, args, name),
-        "LN" => translate_function_one_arg(params, Function::Ln, args, name),
+        "ROUND" => translate_function_one_arg(params, Function::Round, &args, name),
+        "TRUNC" => translate_function_one_arg(params, Function::Trunc, &args, name),
+        "EXP" => translate_function_one_arg(params, Function::Exp, &args, name),
+        "LN" => translate_function_one_arg(params, Function::Ln, &args, name),
         "LOG" => {
             check_len(name, args.len(), 2)?;
 
@@ -409,22 +409,22 @@ pub(crate) fn translate_function(
 
             Ok(Expr::Function(Box::new(Function::Log { antilog, base })))
         }
-        "LOG2" => translate_function_one_arg(params, Function::Log2, args, name),
-        "LOG10" => translate_function_one_arg(params, Function::Log10, args, name),
-        "SIN" => translate_function_one_arg(params, Function::Sin, args, name),
-        "COS" => translate_function_one_arg(params, Function::Cos, args, name),
-        "TAN" => translate_function_one_arg(params, Function::Tan, args, name),
-        "ASIN" => translate_function_one_arg(params, Function::Asin, args, name),
-        "ACOS" => translate_function_one_arg(params, Function::Acos, args, name),
-        "ATAN" => translate_function_one_arg(params, Function::Atan, args, name),
-        "RADIANS" => translate_function_one_arg(params, Function::Radians, args, name),
-        "DEGREES" => translate_function_one_arg(params, Function::Degrees, args, name),
-        "PI" => translate_function_zero_arg(Function::Pi(), args, name),
-        "NOW" => translate_function_zero_arg(Function::Now(), args, name),
-        "CURRENT_DATE" => translate_function_zero_arg(Function::CurrentDate(), args, name),
-        "CURRENT_TIME" => translate_function_zero_arg(Function::CurrentTime(), args, name),
+        "LOG2" => translate_function_one_arg(params, Function::Log2, &args, name),
+        "LOG10" => translate_function_one_arg(params, Function::Log10, &args, name),
+        "SIN" => translate_function_one_arg(params, Function::Sin, &args, name),
+        "COS" => translate_function_one_arg(params, Function::Cos, &args, name),
+        "TAN" => translate_function_one_arg(params, Function::Tan, &args, name),
+        "ASIN" => translate_function_one_arg(params, Function::Asin, &args, name),
+        "ACOS" => translate_function_one_arg(params, Function::Acos, &args, name),
+        "ATAN" => translate_function_one_arg(params, Function::Atan, &args, name),
+        "RADIANS" => translate_function_one_arg(params, Function::Radians, &args, name),
+        "DEGREES" => translate_function_one_arg(params, Function::Degrees, &args, name),
+        "PI" => translate_function_zero_arg(Function::Pi(), &args, name),
+        "NOW" => translate_function_zero_arg(Function::Now(), &args, name),
+        "CURRENT_DATE" => translate_function_zero_arg(Function::CurrentDate(), &args, name),
+        "CURRENT_TIME" => translate_function_zero_arg(Function::CurrentTime(), &args, name),
         "CURRENT_TIMESTAMP" => {
-            translate_function_zero_arg(Function::CurrentTimestamp(), args, name)
+            translate_function_zero_arg(Function::CurrentTimestamp(), &args, name)
         }
         "GCD" => {
             check_len(name, args.len(), 2)?;
@@ -452,13 +452,13 @@ pub(crate) fn translate_function(
         "LTRIM" => translate_function_trim(
             params,
             |expr, chars| Function::Ltrim { expr, chars },
-            args,
+            &args,
             name,
         ),
         "RTRIM" => translate_function_trim(
             params,
             |expr, chars| Function::Rtrim { expr, chars },
-            args,
+            &args,
             name,
         ),
         "DIV" => {
@@ -483,7 +483,7 @@ pub(crate) fn translate_function(
                 divisor,
             })))
         }
-        "REVERSE" => translate_function_one_arg(params, Function::Reverse, args, name),
+        "REVERSE" => translate_function_one_arg(params, Function::Reverse, &args, name),
         "REPLACE" => {
             check_len(name, args.len(), 3)?;
             let expr = translate_expr(args[0], params)?;
@@ -530,9 +530,9 @@ pub(crate) fn translate_function(
                 selector,
             })))
         }
-        "ABS" => translate_function_one_arg(params, Function::Abs, args, name),
-        "SIGN" => translate_function_one_arg(params, Function::Sign, args, name),
-        "GENERATE_UUID" => translate_function_zero_arg(Function::GenerateUuid(), args, name),
+        "ABS" => translate_function_one_arg(params, Function::Abs, &args, name),
+        "SIGN" => translate_function_one_arg(params, Function::Sign, &args, name),
+        "GENERATE_UUID" => translate_function_zero_arg(Function::GenerateUuid(), &args, name),
         "FORMAT" => {
             check_len(name, args.len(), 2)?;
 

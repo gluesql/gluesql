@@ -70,14 +70,13 @@ impl UniqueConstraint {
     fn check(&self, value: &Value) -> Result<Key> {
         let key = Key::try_from(value)?;
 
-        if !self.keys.contains(&key) {
-            Ok(key)
-        } else {
-            Err(ValidateError::DuplicateEntryOnUniqueField(
-                value.clone(),
-                self.column_name.to_owned(),
+        if self.keys.contains(&key) {
+            Err(
+                ValidateError::DuplicateEntryOnUniqueField(value.clone(), self.column_name.clone())
+                    .into(),
             )
-            .into())
+        } else {
+            Ok(key)
         }
     }
 }
@@ -136,7 +135,7 @@ pub async fn validate_unique<T: Store>(
             Ok(())
         }
         Columns::All(columns) => {
-            let unique_constraints: Vec<_> = create_unique_constraints(columns, row_iter)?.into();
+            let unique_constraints: Vec<_> = create_unique_constraints(columns, &row_iter)?.into();
             if unique_constraints.is_empty() {
                 return Ok(());
             }
@@ -173,7 +172,7 @@ pub async fn validate_unique<T: Store>(
 
 fn create_unique_constraints<'a>(
     unique_columns: Vec<(usize, String)>,
-    row_iter: impl Iterator<Item = &'a [Value]> + Clone,
+    row_iter: &(impl Iterator<Item = &'a [Value]> + Clone),
 ) -> Result<Vector<UniqueConstraint>> {
     unique_columns
         .into_iter()
@@ -197,7 +196,7 @@ fn fetch_all_unique_columns(column_defs: &[ColumnDef]) -> Vec<(usize, String)> {
     column_defs
         .iter()
         .enumerate()
-        .filter_map(|(i, table_col)| table_col.unique.map(|_| (i, table_col.name.to_owned())))
+        .filter_map(|(i, table_col)| table_col.unique.map(|_| (i, table_col.name.clone())))
         .collect()
 }
 
@@ -211,7 +210,7 @@ fn fetch_specified_unique_columns(
         .filter_map(|(i, table_col)| {
             (table_col.unique.is_some()
                 && specified_columns.iter().any(|col| col == &table_col.name))
-            .then_some((i, table_col.name.to_owned()))
+            .then_some((i, table_col.name.clone()))
         })
         .collect()
 }

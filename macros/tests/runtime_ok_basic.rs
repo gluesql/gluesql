@@ -160,7 +160,7 @@ fn all_types_ok() {
             Value::Bool(true),
             Value::Str("hello".into()),
             Value::Bytea(vec![1, 2, 3]),
-            Value::Inet(Ipv4Addr::new(127, 0, 0, 1).into()),
+            Value::Inet(Ipv4Addr::LOCALHOST.into()),
             Value::Date(date),
             Value::Timestamp(ts),
             Value::Time(time),
@@ -190,7 +190,7 @@ fn all_types_ok() {
     assert!(row.b_);
     assert_eq!(row.s_, "hello".to_string());
     assert_eq!(row.bytes_, vec![1, 2, 3]);
-    assert_eq!(row.ip_, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)));
+    assert_eq!(row.ip_, IpAddr::V4(Ipv4Addr::LOCALHOST));
     assert_eq!(row.date_, date);
     assert_eq!(row.ts_, ts);
     assert_eq!(row.time_, time);

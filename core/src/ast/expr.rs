@@ -97,10 +97,13 @@ impl ToSqlUnquoted for Expr {
 impl Expr {
     fn to_sql_with(&self, quoted: bool) -> String {
         match self {
-            Expr::Identifier(s) => match quoted {
-                true => format! {r#""{s}""#},
-                false => s.to_owned(),
-            },
+            Expr::Identifier(s) => {
+                if quoted {
+                    format! {r#""{s}""#}
+                } else {
+                    s.to_owned()
+                }
+            }
             Expr::BinaryOp { left, op, right } => {
                 format!(
                     "{} {} {}",
@@ -109,10 +112,13 @@ impl Expr {
                     right.to_sql_with(quoted),
                 )
             }
-            Expr::CompoundIdentifier { alias, ident } => match quoted {
-                true => format!(r#""{alias}"."{ident}""#),
-                false => format!("{alias}.{ident}"),
-            },
+            Expr::CompoundIdentifier { alias, ident } => {
+                if quoted {
+                    format!(r#""{alias}"."{ident}""#)
+                } else {
+                    format!("{alias}.{ident}")
+                }
+            }
             Expr::IsNull(s) => format!("{} IS NULL", s.to_sql_with(quoted)),
             Expr::IsNotNull(s) => format!("{} IS NOT NULL", s.to_sql_with(quoted)),
             Expr::InList {
@@ -259,8 +265,7 @@ impl Expr {
                 let expr = expr.to_sql_with(quoted);
                 let leading_field = leading_field
                     .as_ref()
-                    .map(|field| field.to_string())
-                    .unwrap_or_else(|| "".to_owned());
+                    .map_or_else(String::new, ToString::to_string);
 
                 match last_field {
                     Some(last_field) => format!("INTERVAL {expr} {leading_field} TO {last_field}"),
@@ -296,7 +301,11 @@ impl Expr {
                 left.visit_aggregates(f);
                 right.visit_aggregates(f);
             }
-            Expr::UnaryOp { expr, .. } | Expr::Nested(expr) => expr.visit_aggregates(f),
+            Expr::UnaryOp { expr, .. }
+            | Expr::Nested(expr)
+            | Expr::IsNull(expr)
+            | Expr::IsNotNull(expr)
+            | Expr::Interval { expr, .. } => expr.visit_aggregates(f),
             Expr::Case {
                 operand,
                 when_then,
@@ -325,7 +334,6 @@ impl Expr {
                 expr.visit_aggregates(f);
                 pattern.visit_aggregates(f);
             }
-            Expr::IsNull(expr) | Expr::IsNotNull(expr) => expr.visit_aggregates(f),
             Expr::Aggregate(aggregate) => f(aggregate),
             Expr::Function(function) => {
                 function.visit_exprs(|expr| expr.visit_aggregates(f));
@@ -341,7 +349,6 @@ impl Expr {
                     index.visit_aggregates(f);
                 }
             }
-            Expr::Interval { expr, .. } => expr.visit_aggregates(f),
             Expr::Identifier(_)
             | Expr::CompoundIdentifier { .. }
             | Expr::Literal(_)
@@ -758,7 +765,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"['GlueSQL', 'Rust']"#,
+            r"['GlueSQL', 'Rust']",
             Expr::Array {
                 elem: vec![
                     Expr::Literal(AstLiteral::QuotedString("GlueSQL".to_owned())),

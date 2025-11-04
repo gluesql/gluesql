@@ -27,7 +27,7 @@ impl<'a> DeleteNode<'a> {
     }
 }
 
-impl<'a> Build for DeleteNode<'a> {
+impl Build for DeleteNode<'_> {
     fn build(self) -> Result<Statement> {
         let table_name = self.table_name;
         let selection = self.filter_expr.map(Expr::try_from).transpose()?;
@@ -50,24 +50,24 @@ mod tests {
     fn delete() {
         let actual = table("Foo").delete().build();
         let expected = "DELETE FROM Foo";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = table("Bar").delete().filter("id < (1 + 3 + rate)").build();
         let expected = "DELETE FROM Bar WHERE id < (1 + 3 + rate)";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = table("Person")
             .delete()
             .filter(Expr::IsNull(Box::new(Expr::Identifier("name".to_owned()))))
             .build();
         let expected = "DELETE FROM Person WHERE name IS NULL";
-        test(actual, expected);
+        test(&actual, expected);
 
         let actual = table("Person")
             .delete()
             .filter(col("name").is_null())
             .build();
         let expected = "DELETE FROM Person WHERE name IS NULL";
-        test(actual, expected);
+        test(&actual, expected);
     }
 }

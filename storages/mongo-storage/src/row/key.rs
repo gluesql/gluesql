@@ -12,14 +12,15 @@ pub trait KeyIntoBson {
 
 impl KeyIntoBson for Key {
     fn into_bson(self, has_primary: bool) -> Result<Bson> {
-        match has_primary {
-            true => Ok(Bson::Binary(Binary {
+        if has_primary {
+            Ok(Bson::Binary(Binary {
                 subtype: bson::spec::BinarySubtype::Generic,
                 bytes: self
                     .to_cmp_be_bytes()
                     .map_err(|_| MongoStorageError::UnsupportedBsonType)?,
-            })),
-            false => into_object_id(self),
+            }))
+        } else {
+            into_object_id(self)
         }
     }
 }

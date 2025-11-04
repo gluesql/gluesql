@@ -85,7 +85,7 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
     {
         let statements = self.plan_with_params(sql, params).await?;
         let mut payloads = Vec::<Payload>::new();
-        for statement in statements.iter() {
+        for statement in &statements {
             let payload = self.execute_stmt(statement).await?;
             payloads.push(payload);
         }

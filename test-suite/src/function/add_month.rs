@@ -13,10 +13,10 @@ test_case!(add_month, {
             $date.parse().unwrap()
         };
     }
-    fn assert_chrono_error_kind_eq(error: Error, kind: ParseErrorKind) {
+    fn assert_chrono_error_kind_eq(error: &Error, kind: ParseErrorKind) {
         match error {
             Error::Evaluate(EvaluateError::FormatParseError(err)) => {
-                assert_eq!(err.kind(), kind)
+                assert_eq!(err.kind(), kind);
             }
             _ => panic!("invalid error: {error}"),
         }
@@ -108,6 +108,6 @@ test_case!(add_month, {
     ];
 
     for (error, kind) in error_cases {
-        assert_chrono_error_kind_eq(error, kind);
+        assert_chrono_error_kind_eq(&error, kind);
     }
 });

@@ -147,7 +147,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
                     .find(|column_def| column_def.name == *referenced_column_name)
             })
             .ok_or_else(|| AlterError::ReferencedColumnNotFound(referenced_column_name.to_owned()))?
-            .to_owned();
+            .clone();
 
         let referencing_column_def = target_columns_defs
             .as_deref()
@@ -163,9 +163,9 @@ pub async fn create_table<T: GStore + GStoreMut>(
         if referencing_column_def.data_type != referenced_column_def.data_type {
             return Err(AlterError::ForeignKeyDataTypeMismatch {
                 referencing_column: referencing_column_name.to_owned(),
-                referencing_column_type: referencing_column_def.data_type.to_owned(),
+                referencing_column_type: referencing_column_def.data_type.clone(),
                 referenced_column: referenced_column_name.to_owned(),
-                referenced_column_type: referenced_column_def.data_type.to_owned(),
+                referenced_column_type: referenced_column_def.data_type.clone(),
             }
             .into());
         }
@@ -202,10 +202,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
                 .try_collect()
                 .await?;
 
-            storage
-                .append_data(target_table_name, rows)
-                .await
-                .map(|_| ())
+            storage.append_data(target_table_name, rows).await
         }
         None => Ok(()),
     }
@@ -250,7 +247,7 @@ pub async fn drop_table<T: GStore + GStoreMut>(
             let mut schema = storage
                 .fetch_schema(&table_name)
                 .await?
-                .ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
+                .ok_or_else(|| AlterError::TableNotFound(table_name.clone()))?;
             schema
                 .foreign_keys
                 .retain(|foreign_key| foreign_key.name != name);

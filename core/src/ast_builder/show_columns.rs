@@ -29,6 +29,6 @@ mod tests {
     fn show_columns() {
         let actual = table("Foo").show_columns().build();
         let expected = "SHOW COLUMNS FROM Foo";
-        test(actual, expected);
+        test(&actual, expected);
     }
 }

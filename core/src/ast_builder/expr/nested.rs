@@ -1,6 +1,6 @@
 use super::ExprNode;
 
-impl<'a> ExprNode<'a> {
+impl ExprNode<'_> {
     pub fn nested(self) -> Self {
         nested(self)
     }

@@ -94,7 +94,7 @@ pub async fn insert<T: GStore + GStoreMut>(
             storage
                 .append_data(table_name, rows)
                 .await
-                .map(|_| num_rows)
+                .map(|()| num_rows)
         }
         RowsData::Insert(rows) => {
             let num_rows = rows.len();
@@ -102,7 +102,7 @@ pub async fn insert<T: GStore + GStoreMut>(
             storage
                 .insert_data(table_name, rows)
                 .await
-                .map(|_| num_rows)
+                .map(|()| num_rows)
         }
     }
 }
@@ -115,20 +115,20 @@ async fn fetch_vec_rows<T: GStore>(
     source: &Query,
     foreign_keys: Vec<ForeignKey>,
 ) -> Result<RowsData> {
-    let labels = Arc::from(
-        column_defs
-            .iter()
-            .map(|column_def| column_def.name.to_owned())
-            .collect::<Vec<_>>(),
-    );
-    let column_defs = Arc::from(column_defs);
-    let column_validation = ColumnValidation::All(&column_defs);
-
     #[derive(futures_enum::Stream)]
     enum Rows<I1, I2> {
         Values(I1),
         Select(I2),
     }
+
+    let labels = Arc::from(
+        column_defs
+            .iter()
+            .map(|column_def| column_def.name.clone())
+            .collect::<Vec<_>>(),
+    );
+    let column_defs = Arc::from(column_defs);
+    let column_validation = ColumnValidation::All(&column_defs);
 
     let rows = match &source.body {
         SetExpr::Values(Values(values_list)) => {
@@ -180,7 +180,7 @@ async fn fetch_vec_rows<T: GStore>(
         storage,
         table_name,
         column_validation,
-        rows.iter().map(|values| values.as_slice()),
+        rows.iter().map(std::vec::Vec::as_slice),
     )
     .await?;
 
@@ -227,7 +227,7 @@ async fn validate_foreign_key<T: GStore>(
                 InsertError::ConflictReferencingColumnName(referencing_column_name.to_owned())
             })?;
 
-        for row in rows.iter() {
+        for row in rows {
             let value =
                 row.get(target_index.0)
                     .ok_or(InsertError::ConflictReferencingColumnName(
@@ -311,6 +311,12 @@ async fn fill_values(
     columns: &[String],
     values: &[Expr],
 ) -> Result<Vec<Value>> {
+    #[derive(iter_enum::Iterator)]
+    enum Columns<I1, I2> {
+        All(I1),
+        Specified(I2),
+    }
+
     if !columns.is_empty() && values.len() != columns.len() {
         return Err(InsertError::ColumnAndValuesNotMatched.into());
     } else if values.len() > column_defs.len() {
@@ -323,12 +329,6 @@ async fn fill_values(
             .any(|column_def| &&column_def.name == column_name)
     }) {
         return Err(InsertError::WrongColumnName(wrong_column_name.to_owned()).into());
-    }
-
-    #[derive(iter_enum::Iterator)]
-    enum Columns<I1, I2> {
-        All(I1),
-        Specified(I2),
     }
 
     let columns = if columns.is_empty() {

@@ -53,7 +53,7 @@ INSERT INTO ListType VALUES
         Ok(select_with_null!(
             id     | foo        | bar      | a             | b;
             I64(1)   I64(2)       Null       Null            Null;
-            I64(2)   s("world")   Null       l(r#"[9,8]"#)   Null;
+            I64(2)   s("world")   Null       l(r"[9,8]")   Null;
             I64(3)   I64(10)      I64(200)   Null            F64(30.5)
         )),
     )
@@ -119,7 +119,7 @@ INSERT INTO ListType2 VALUES
 
     g.named_test(
         "cast literal to LIST",
-        r#"SELECT CAST('[1, 2, 3]' AS LIST) AS list"#,
+        r"SELECT CAST('[1, 2, 3]' AS LIST) AS list",
         Ok(select_with_null!(
             list;
             l("[1,2,3]")
@@ -128,13 +128,13 @@ INSERT INTO ListType2 VALUES
     .await;
 
     g.test(
-        r#"SELECT id, items['not']['list'] AS foo FROM ListType2"#,
+        r"SELECT id, items['not']['list'] AS foo FROM ListType2",
         Err(ValueError::SelectorRequiresMapOrListTypes.into()),
     )
     .await;
 
     g.test(
-        r#"SELECT id FROM ListType GROUP BY items"#,
+        r"SELECT id FROM ListType GROUP BY items",
         Ok(select!(id; I64; 1; 2; 3)),
     )
     .await;

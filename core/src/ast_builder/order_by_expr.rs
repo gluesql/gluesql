@@ -14,7 +14,7 @@ pub enum OrderByExprNode<'a> {
     Expr(ExprNode<'a>),
 }
 
-impl<'a> From<&str> for OrderByExprNode<'a> {
+impl From<&str> for OrderByExprNode<'_> {
     fn from(expr: &str) -> Self {
         Self::Text(expr.to_owned())
     }

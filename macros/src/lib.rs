@@ -56,14 +56,11 @@ fn expand_from_glue_row(input: DeriveInput) -> Result<proc_macro2::TokenStream, 
     let gluesql_crate = quote! { #gluesql_crate_path };
 
     let ident = input.ident.clone();
-    let data = match input.data {
-        Data::Struct(s) => s,
-        _ => {
-            return Err(syn::Error::new(
-                input_span,
-                "FromGlueRow can only be derived for structs",
-            ));
-        }
+    let Data::Struct(data) = input.data else {
+        return Err(syn::Error::new(
+            input_span,
+            "FromGlueRow can only be derived for structs",
+        ));
     };
 
     let fields = match data.fields {
@@ -81,7 +78,7 @@ fn expand_from_glue_row(input: DeriveInput) -> Result<proc_macro2::TokenStream, 
     let mut field_idents = Vec::new();
     let mut fields_meta_pairs = Vec::new();
 
-    for field in fields.iter() {
+    for field in &fields {
         let field_ident = field.ident.clone().expect("named field");
         field_idents.push(field_ident.clone());
         let field_name_literal = field_ident.to_string();

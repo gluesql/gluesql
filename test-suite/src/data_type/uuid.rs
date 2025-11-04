@@ -44,7 +44,7 @@ test_case!(uuid, {
     let test_cases = [
         ("CREATE TABLE UUID (uuid_field UUID)", Ok(Payload::Create)),
         (
-            r#"INSERT INTO UUID VALUES (0)"#,
+            r"INSERT INTO UUID VALUES (0)",
             Err(ValueError::IncompatibleLiteralForDataType {
                 data_type: DataType::Uuid,
                 literal: format!("{:?}", Literal::Number(Cow::Owned(BigDecimal::from(0)))),
@@ -52,22 +52,22 @@ test_case!(uuid, {
             .into()),
         ),
         (
-            r#"INSERT INTO UUID VALUES (X'1234')"#,
+            r"INSERT INTO UUID VALUES (X'1234')",
             Err(ValueError::FailedToParseUUID("1234".to_owned()).into()),
         ),
         (
-            r#"INSERT INTO UUID VALUES ('NOT_UUID')"#,
+            r"INSERT INTO UUID VALUES ('NOT_UUID')",
             Err(ValueError::FailedToParseUUID("NOT_UUID".to_owned()).into()),
         ),
         (
-            r#"INSERT INTO UUID VALUES
+            r"INSERT INTO UUID VALUES
             (X'936DA01F9ABD4d9d80C702AF85C822A8'),
             ('550e8400-e29b-41d4-a716-446655440000'),
-            ('urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4')"#,
+            ('urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4')",
             Ok(Payload::Insert(3)),
         ),
         (
-            r#"SELECT uuid_field AS uuid_field FROM UUID;"#,
+            r"SELECT uuid_field AS uuid_field FROM UUID;",
             Ok(select!(
                 uuid_field
                 Uuid;
@@ -77,11 +77,11 @@ test_case!(uuid, {
             )),
         ),
         (
-            r#"UPDATE UUID SET uuid_field = 'urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4' WHERE uuid_field='550e8400-e29b-41d4-a716-446655440000'"#,
+            r"UPDATE UUID SET uuid_field = 'urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4' WHERE uuid_field='550e8400-e29b-41d4-a716-446655440000'",
             Ok(Payload::Update(1)),
         ),
         (
-            r#"SELECT uuid_field AS uuid_field, COUNT(*) FROM UUID GROUP BY uuid_field"#,
+            r"SELECT uuid_field AS uuid_field, COUNT(*) FROM UUID GROUP BY uuid_field",
             Ok(select!(
                 uuid_field | "COUNT(*)"
                 Uuid | I64;
@@ -90,11 +90,11 @@ test_case!(uuid, {
             )),
         ),
         (
-            r#"DELETE FROM UUID WHERE uuid_field='550e8400-e29b-41d4-a716-446655440000'"#,
+            r"DELETE FROM UUID WHERE uuid_field='550e8400-e29b-41d4-a716-446655440000'",
             Ok(Payload::Delete(0)),
         ),
         (
-            r#"DELETE FROM UUID WHERE uuid_field='urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4'"#,
+            r"DELETE FROM UUID WHERE uuid_field='urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4'",
             Ok(Payload::Delete(2)),
         ),
     ];

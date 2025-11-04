@@ -22,18 +22,18 @@ pub fn test_indexes(statement: &Statement, indexes: Option<Vec<IndexItem>>) {
     if let Some(expected) = indexes {
         let found = find_indexes(statement);
 
-        if expected.len() != found.len() {
-            panic!(
-                "num of indexes does not match: found({}) != expected({})",
-                found.len(),
-                expected.len(),
-            );
-        }
+        assert!(
+            expected.len() == found.len(),
+            "num of indexes does not match: found({}) != expected({})",
+            found.len(),
+            expected.len(),
+        );
 
         for expected_index in expected {
-            if !found.contains(&(&expected_index)) {
-                panic!("index does not exist: {expected_index:#?}")
-            }
+            assert!(
+                found.contains(&(&expected_index)),
+                "index does not exist: {expected_index:#?}"
+            );
         }
     }
 }
@@ -55,7 +55,7 @@ fn find_indexes(statement: &Statement) -> Vec<&IndexItem> {
     fn find_query_indexes(query: &Query) -> Vec<&IndexItem> {
         let select = match &query.body {
             SetExpr::Select(select) => select,
-            _ => {
+            SetExpr::Values(_) => {
                 return vec![];
             }
         };
@@ -83,12 +83,12 @@ fn find_indexes(statement: &Statement) -> Vec<&IndexItem> {
 }
 
 pub fn type_match(expected: &[DataType], found: Result<Payload>) {
-    let rows = match found {
-        Ok(Payload::Select {
-            labels: _expected_labels,
-            rows,
-        }) => rows,
-        _ => panic!("type match is only for Select"),
+    let Ok(Payload::Select {
+        labels: _expected_labels,
+        rows,
+    }) = found
+    else {
+        panic!("type match is only for Select")
     };
 
     for (i, items) in rows.iter().enumerate() {
@@ -105,11 +105,11 @@ pub fn type_match(expected: &[DataType], found: Result<Payload>) {
             .iter()
             .zip(expected.iter())
             .for_each(|(value, data_type)| match value.validate_type(data_type) {
-                Ok(_) => {}
-                Err(_) => {
-                    panic!("[err: type match failed]\n found {value:?}\n expected {data_type:?}\n")
+                Ok(()) => {}
+                Err(e) => {
+                    panic!("[err: type match failed]\n found {value:?}\n expected {data_type:?}\n error: {e:?}\n")
                 }
-            })
+            });
     }
 }
 

@@ -21,7 +21,7 @@ impl<'a> From<&'a str> for ExprList<'a> {
     }
 }
 
-impl<'a> From<String> for ExprList<'a> {
+impl From<String> for ExprList<'_> {
     fn from(exprs: String) -> Self {
         ExprList::Text(Cow::from(exprs))
     }

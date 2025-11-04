@@ -67,7 +67,7 @@ impl Transaction for SledStorage {
                 .unwrap_or_default();
 
             if Some(txid) == lock_txid {
-                self.rollback_txid(txid).map(|_| lock_txid)
+                self.rollback_txid(txid).map(|()| lock_txid)
             } else {
                 Ok(None)
             }
@@ -121,19 +121,12 @@ impl Transaction for SledStorage {
 
 impl SledStorage {
     pub fn rollback_txid(&self, txid: u64) -> Result<()> {
-        let fetch_items = |prefix| {
-            self.tree
-                .scan_prefix(prefix)
-                .map(|item| item.map_err(err_into))
-                .collect::<Result<Vec<_>>>()
-        };
-
         fn rollback_items<T: Clone + Serialize + DeserializeOwned>(
             tree: &TransactionalTree,
             txid: u64,
             items: &[(IVec, IVec)],
         ) -> ConflictableTransactionResult<(), Error> {
-            for (temp_key, value_key) in items.iter() {
+            for (temp_key, value_key) in items {
                 tree.remove(temp_key)?;
 
                 let snapshot = tree
@@ -167,6 +160,13 @@ impl SledStorage {
             Ok(())
         }
 
+        let fetch_items = |prefix| {
+            self.tree
+                .scan_prefix(prefix)
+                .map(|item| item.map_err(err_into))
+                .collect::<Result<Vec<_>>>()
+        };
+
         let data_items = fetch_items(key::temp_data_prefix(txid))?;
         let schema_items = fetch_items(key::temp_schema_prefix(txid))?;
         let index_items = fetch_items(key::temp_index_prefix(txid))?;
@@ -176,7 +176,7 @@ impl SledStorage {
                 rollback_items::<DataRow>(tree, txid, &data_items)?;
                 rollback_items::<Schema>(tree, txid, &schema_items)?;
 
-                for (temp_key, value_key) in index_items.iter() {
+                for (temp_key, value_key) in &index_items {
                     tree.remove(temp_key)?;
 
                     let snapshots = tree

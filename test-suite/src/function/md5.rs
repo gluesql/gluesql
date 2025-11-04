@@ -26,11 +26,11 @@ test_case!(md5, {
     )
     .await;
 
-    g.test(r#"VALUES(MD5(NULL))"#, Ok(select_with_null!(column1; Null)))
+    g.test(r"VALUES(MD5(NULL))", Ok(select_with_null!(column1; Null)))
         .await;
 
     g.test(
-        r#"VALUES(MD5())"#,
+        r"VALUES(MD5())",
         Err(TranslateError::FunctionArgsLengthNotMatching {
             name: "MD5".to_owned(),
             expected: 1,

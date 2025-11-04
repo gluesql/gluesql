@@ -154,7 +154,7 @@ impl RedisStorage {
         let redis_keys: Vec<String> = {
             let mut conn = self.conn.lock_err()?;
             conn.scan_match(&key)
-                .map(|iter| iter.collect::<Vec<String>>())
+                .map(Iterator::collect::<Vec<String>>)
                 .map_err(|e| {
                     Error::StorageMsg(format!(
                         "[RedisStorage] failed to scan data: key={key} error={e}"
@@ -238,7 +238,7 @@ impl Store for RedisStorage {
         let redis_keys: Vec<String> = {
             let mut conn = self.conn.lock_err()?;
             conn.scan_match(&scan_schema_key)
-                .map(|iter| iter.collect::<Vec<String>>())
+                .map(Iterator::collect::<Vec<String>>)
                 .map_err(|e| {
                     Error::StorageMsg(format!(
                         "[RedisStorage] failed to scan schemas: namespace={} error={}",
@@ -280,7 +280,7 @@ impl Store for RedisStorage {
         let redis_keys: Vec<String> = {
             let mut conn = self.conn.lock_err()?;
             conn.scan_match(&scan_schema_key)
-                .map(|iter| iter.collect::<Vec<String>>())
+                .map(Iterator::collect::<Vec<String>>)
                 .map_err(|e| {
                     Error::StorageMsg(format!(
                         "[RedisStorage] failed to scan schemas: namespace={} error={}",
@@ -346,7 +346,7 @@ impl Store for RedisStorage {
         let redis_keys: Vec<String> = {
             let mut conn = self.conn.lock_err()?;
             conn.scan_match(Self::redis_generate_scankey(&self.namespace, table_name))
-                .map(|iter| iter.collect::<Vec<String>>())
+                .map(Iterator::collect::<Vec<String>>)
                 .map_err(|e| {
                     Error::StorageMsg(format!(
                         "[RedisStorage] failed to scan data: namespace={} table_name={} error={}",
@@ -365,9 +365,8 @@ impl Store for RedisStorage {
                     .arg(&redis_key)
                     .query::<String>(&mut *conn)
             };
-            let value = match value {
-                Ok(v) => v,
-                Err(_) => continue,
+            let Ok(value) = value else {
+                continue;
             };
 
             let key = Self::redis_parse_key(&redis_key).map_err(|e| {
@@ -429,7 +428,7 @@ impl StoreMut for RedisStorage {
         let metadata_redis_keys: Vec<String> = {
             let mut conn = self.conn.lock_err()?;
             conn.scan_match(&metadata_scan_key)
-                .map(|iter| iter.collect::<Vec<String>>())
+                .map(Iterator::collect::<Vec<String>>)
                 .map_err(|e| {
                     Error::StorageMsg(format!(
                         "[RedisStorage] failed to scan metadata: namespace={} table_name={} error={}",

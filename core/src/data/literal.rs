@@ -146,7 +146,7 @@ impl<'a> Literal<'a> {
     pub fn add(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
         match (self, other) {
             (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() + r.as_ref()))),
-            (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
+            (Null, Number(_) | Null) | (Number(_), Null) => Ok(Literal::Null),
             _ => Err(unsupported_binary_op(self, BinaryOperator::Plus, other).into()),
         }
     }
@@ -154,7 +154,7 @@ impl<'a> Literal<'a> {
     pub fn subtract(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
         match (self, other) {
             (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() - r.as_ref()))),
-            (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
+            (Null, Number(_) | Null) | (Number(_), Null) => Ok(Literal::Null),
             _ => Err(unsupported_binary_op(self, BinaryOperator::Minus, other).into()),
         }
     }
@@ -162,7 +162,7 @@ impl<'a> Literal<'a> {
     pub fn multiply(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
         match (self, other) {
             (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() * r.as_ref()))),
-            (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
+            (Null, Number(_) | Null) | (Number(_), Null) => Ok(Literal::Null),
             _ => Err(unsupported_binary_op(self, BinaryOperator::Multiply, other).into()),
         }
     }
@@ -176,7 +176,7 @@ impl<'a> Literal<'a> {
                     Ok(Number(Cow::Owned(l.as_ref() / r.as_ref())))
                 }
             }
-            (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
+            (Null, Number(_) | Null) | (Number(_), Null) => Ok(Literal::Null),
             _ => Err(unsupported_binary_op(self, BinaryOperator::Divide, other).into()),
         }
     }
@@ -192,7 +192,7 @@ impl<'a> Literal<'a> {
                 }
                 .into()),
             },
-            (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
+            (Null, Number(_) | Null) | (Number(_), Null) => Ok(Literal::Null),
             _ => Err(unsupported_binary_op(self, BinaryOperator::BitwiseAnd, other).into()),
         }
     }
@@ -206,7 +206,7 @@ impl<'a> Literal<'a> {
                     Ok(Number(Cow::Owned(l.as_ref() % r.as_ref())))
                 }
             }
-            (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
+            (Null, Number(_) | Null) | (Number(_), Null) => Ok(Literal::Null),
             _ => Err(unsupported_binary_op(self, BinaryOperator::Modulo, other).into()),
         }
     }
@@ -229,7 +229,7 @@ impl<'a> Literal<'a> {
                     .ok_or(LiteralError::BitwiseOperationOverflow)?;
                 Ok(Number(Cow::Owned(BigDecimal::from(res))))
             }
-            (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
+            (Null, Number(_) | Null) | (Number(_), Null) => Ok(Literal::Null),
             _ => Err(LiteralError::BitwiseNonNumberLiteral.into()),
         }
     }
@@ -252,7 +252,7 @@ impl<'a> Literal<'a> {
                     .ok_or(LiteralError::BitwiseOperationOverflow)?;
                 Ok(Number(Cow::Owned(BigDecimal::from(res))))
             }
-            (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
+            (Null, Number(_) | Null) | (Number(_), Null) => Ok(Literal::Null),
             _ => Err(LiteralError::BitwiseNonNumberLiteral.into()),
         }
     }
@@ -287,26 +287,26 @@ mod tests {
             crate::{ast::AstLiteral, result::Result},
         };
 
-        fn test(ast_literal: AstLiteral, literal: Result<Literal>) {
-            assert_eq!((&ast_literal).try_into(), literal);
+        fn test(ast_literal: &AstLiteral, literal: &Result<Literal>) {
+            assert_eq!(ast_literal.try_into(), *literal);
         }
 
-        test(AstLiteral::Boolean(true), Ok(Boolean(true)));
+        test(&AstLiteral::Boolean(true), &Ok(Boolean(true)));
         test(
-            AstLiteral::Number(BigDecimal::from(123)),
-            Ok(Number(Cow::Borrowed(&BigDecimal::from(123)))),
+            &AstLiteral::Number(BigDecimal::from(123)),
+            &Ok(Number(Cow::Borrowed(&BigDecimal::from(123)))),
         );
         test(
-            AstLiteral::QuotedString("abc".to_owned()),
-            Ok(Text(Cow::Borrowed("abc"))),
+            &AstLiteral::QuotedString("abc".to_owned()),
+            &Ok(Text(Cow::Borrowed("abc"))),
         );
         test(
-            AstLiteral::HexString("1A2B".to_owned()),
-            Ok(Bytea(hex::decode("1A2B").unwrap())),
+            &AstLiteral::HexString("1A2B".to_owned()),
+            &Ok(Bytea(hex::decode("1A2B").unwrap())),
         );
         test(
-            AstLiteral::HexString("!*@Q".to_owned()),
-            Err(LiteralError::FailedToDecodeHexString("!*@Q".to_owned()).into()),
+            &AstLiteral::HexString("!*@Q".to_owned()),
+            &Err(LiteralError::FailedToDecodeHexString("!*@Q".to_owned()).into()),
         );
         assert_eq!(Literal::try_from(&AstLiteral::Null).unwrap(), Null);
     }
@@ -510,7 +510,7 @@ mod tests {
                 right: format!("{text:?}")
             }
             .into())
-        )
+        );
     }
 
     #[test]

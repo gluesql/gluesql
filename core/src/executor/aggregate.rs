@@ -65,7 +65,7 @@ where
                 });
 
                 let mut group_key = Vec::with_capacity(group_by_ref.len());
-                for expr in group_by_ref.iter() {
+                for expr in group_by_ref {
                     let context = row_filter_context.as_ref().map(Arc::clone);
                     let value = evaluate(storage, context, None, expr).await?.try_into()?;
                     group_key.push(value);
@@ -80,7 +80,7 @@ where
                 };
 
                 if !aggregates_ref.is_empty() {
-                    for &aggregate in aggregates_ref.iter() {
+                    for &aggregate in aggregates_ref {
                         let context = row_filter_context.as_ref().map(Arc::clone);
                         let value = evaluate_aggregate_value(storage, context, aggregate).await?;
                         group_state.update(aggregate, &value)?;
@@ -147,7 +147,7 @@ struct GroupAccumulator<'a> {
     groups: HashMap<Vec<Value>, GroupState<'a>>,
 }
 
-impl<'a> GroupAccumulator<'a> {
+impl GroupAccumulator<'_> {
     fn new() -> Self {
         Self {
             order: Vec::new(),
@@ -170,13 +170,12 @@ impl<'a> GroupState<'a> {
     }
 
     fn update(&mut self, aggregate: &'a Aggregate, value: &Value) -> Result<()> {
-        match self.aggregates.get_mut(aggregate) {
-            Some(existing) => existing.accumulate(value),
-            None => {
-                let aggr_value = AggrValue::new(aggregate, value)?;
-                self.aggregates.insert(aggregate, aggr_value);
-                Ok(())
-            }
+        if let Some(existing) = self.aggregates.get_mut(aggregate) {
+            existing.accumulate(value)
+        } else {
+            let aggr_value = AggrValue::new(aggregate, value)?;
+            self.aggregates.insert(aggregate, aggr_value);
+            Ok(())
         }
     }
 }
@@ -452,10 +451,10 @@ impl AggrValue {
                 count,
                 distinct_values,
             } => {
-                let should_process = if !new_value.is_null() {
-                    check_distinct(distinct_values, new_value)
-                } else {
+                let should_process = if new_value.is_null() {
                     true
+                } else {
+                    check_distinct(distinct_values, new_value)
                 };
 
                 if should_process && (*wildcard || !new_value.is_null()) {

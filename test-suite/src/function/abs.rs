@@ -45,7 +45,7 @@ test_case!(abs, {
             Ok(Payload::Create),
         ),
         (
-            r#"INSERT INTO SingleItem VALUES (0, -1, -2)"#,
+            r"INSERT INTO SingleItem VALUES (0, -1, -2)",
             Ok(Payload::Insert(1)),
         ),
         (

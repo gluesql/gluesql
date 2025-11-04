@@ -96,13 +96,11 @@ impl Value {
             (F64(l), _) => Tribool::from(l == other),
             (Date(l), Timestamp(r)) => Tribool::from(
                 l.and_hms_opt(0, 0, 0)
-                    .map(|date_time| &date_time == r)
-                    .unwrap_or(false),
+                    .is_some_and(|date_time| &date_time == r),
             ),
             (Timestamp(l), Date(r)) => Tribool::from(
                 r.and_hms_opt(0, 0, 0)
-                    .map(|date_time| l == &date_time)
-                    .unwrap_or(false),
+                    .is_some_and(|date_time| l == &date_time),
             ),
             _ => Tribool::from(self == other),
         }
@@ -314,27 +312,13 @@ impl Value {
             (Timestamp(a), Interval(b)) => b.add_timestamp(a).map(Timestamp),
             (Time(a), Interval(b)) => b.add_time(a).map(Time),
             (Interval(a), Interval(b)) => a.add(b).map(Interval),
-            (Null, I8(_))
-            | (Null, I16(_))
-            | (Null, I32(_))
-            | (Null, I64(_))
-            | (Null, I128(_))
-            | (Null, U8(_))
-            | (Null, U16(_))
-            | (Null, U32(_))
-            | (Null, U64(_))
-            | (Null, U128(_))
-            | (Null, F32(_))
-            | (Null, F64(_))
-            | (Null, Decimal(_))
-            | (Null, Date(_))
-            | (Null, Timestamp(_))
-            | (Null, Interval(_))
-            | (Date(_), Null)
-            | (Timestamp(_), Null)
-            | (Time(_), Null)
-            | (Interval(_), Null)
-            | (Null, Null) => Ok(Null),
+            (
+                Null,
+                I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | U8(_) | U16(_) | U32(_) | U64(_)
+                | U128(_) | F32(_) | F64(_) | Decimal(_) | Date(_) | Timestamp(_) | Interval(_)
+                | Null,
+            )
+            | (Date(_) | Timestamp(_) | Time(_) | Interval(_), Null) => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: self.clone(),
                 operator: NumericBinaryOperator::Add,
@@ -380,28 +364,13 @@ impl Value {
                 .map(|v| Interval(I::microseconds(v))),
             (Time(a), Interval(b)) => b.subtract_from_time(a).map(Time),
             (Interval(a), Interval(b)) => a.subtract(b).map(Interval),
-            (Null, I8(_))
-            | (Null, I16(_))
-            | (Null, I32(_))
-            | (Null, I64(_))
-            | (Null, I128(_))
-            | (Null, U8(_))
-            | (Null, U16(_))
-            | (Null, U32(_))
-            | (Null, U64(_))
-            | (Null, U128(_))
-            | (Null, F32(_))
-            | (Null, F64(_))
-            | (Null, Decimal(_))
-            | (Null, Date(_))
-            | (Null, Timestamp(_))
-            | (Null, Time(_))
-            | (Null, Interval(_))
-            | (Date(_), Null)
-            | (Timestamp(_), Null)
-            | (Time(_), Null)
-            | (Interval(_), Null)
-            | (Null, Null) => Ok(Null),
+            (
+                Null,
+                I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | U8(_) | U16(_) | U32(_) | U64(_)
+                | U128(_) | F32(_) | F64(_) | Decimal(_) | Date(_) | Timestamp(_) | Time(_)
+                | Interval(_) | Null,
+            )
+            | (Date(_) | Timestamp(_) | Time(_) | Interval(_), Null) => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: self.clone(),
                 operator: NumericBinaryOperator::Subtract,
@@ -435,22 +404,12 @@ impl Value {
             (Interval(a), I128(b)) => Ok(Interval(*a * *b)),
             (Interval(a), F32(b)) => Ok(Interval(*a * *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a * *b)),
-            (Null, I8(_))
-            | (Null, I16(_))
-            | (Null, I32(_))
-            | (Null, I64(_))
-            | (Null, I128(_))
-            | (Null, U8(_))
-            | (Null, U16(_))
-            | (Null, U32(_))
-            | (Null, U64(_))
-            | (Null, U128(_))
-            | (Null, F32(_))
-            | (Null, F64(_))
-            | (Null, Decimal(_))
-            | (Null, Interval(_))
-            | (Interval(_), Null)
-            | (Null, Null) => Ok(Null),
+            (
+                Null,
+                I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | U8(_) | U16(_) | U32(_) | U64(_)
+                | U128(_) | F32(_) | F64(_) | Decimal(_) | Interval(_) | Null,
+            )
+            | (Interval(_), Null) => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: self.clone(),
                 operator: NumericBinaryOperator::Multiply,
@@ -493,21 +452,12 @@ impl Value {
             (Interval(a), U128(b)) => Ok(Interval(*a / *b)),
             (Interval(a), F32(b)) => Ok(Interval(*a / *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a / *b)),
-            (Null, I8(_))
-            | (Null, I16(_))
-            | (Null, I32(_))
-            | (Null, I64(_))
-            | (Null, I128(_))
-            | (Null, U8(_))
-            | (Null, U16(_))
-            | (Null, U32(_))
-            | (Null, U64(_))
-            | (Null, U128(_))
-            | (Null, F32(_))
-            | (Null, F64(_))
-            | (Null, Decimal(_))
-            | (Interval(_), Null)
-            | (Null, Null) => Ok(Null),
+            (
+                Null,
+                I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | U8(_) | U16(_) | U32(_) | U64(_)
+                | U128(_) | F32(_) | F64(_) | Decimal(_) | Null,
+            )
+            | (Interval(_), Null) => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: self.clone(),
                 operator: NumericBinaryOperator::Divide,
@@ -531,27 +481,16 @@ impl Value {
             (U32(a), U32(b)) => Ok(U32(a & b)),
             (U64(a), U64(b)) => Ok(U64(a & b)),
             (U128(a), U128(b)) => Ok(U128(a & b)),
-            (Null, I8(_))
-            | (Null, I16(_))
-            | (Null, I32(_))
-            | (Null, I64(_))
-            | (Null, I128(_))
-            | (Null, U8(_))
-            | (Null, U16(_))
-            | (Null, U32(_))
-            | (Null, U64(_))
-            | (Null, U128(_))
-            | (Null, Null)
-            | (I8(_), Null)
-            | (I16(_), Null)
-            | (I32(_), Null)
-            | (I64(_), Null)
-            | (I128(_), Null)
-            | (U8(_), Null)
-            | (U16(_), Null)
-            | (U32(_), Null)
-            | (U64(_), Null)
-            | (U128(_), Null) => Ok(Null),
+            (
+                Null,
+                I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | U8(_) | U16(_) | U32(_) | U64(_)
+                | U128(_) | Null,
+            )
+            | (
+                I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | U8(_) | U16(_) | U32(_) | U64(_)
+                | U128(_),
+                Null,
+            ) => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: self.clone(),
                 rhs: other.clone(),
@@ -582,20 +521,11 @@ impl Value {
             (F32(a), _) => a.try_modulo(other),
             (F64(a), _) => a.try_modulo(other),
             (Decimal(a), _) => a.try_modulo(other),
-            (Null, I8(_))
-            | (Null, I16(_))
-            | (Null, I32(_))
-            | (Null, I64(_))
-            | (Null, I128(_))
-            | (Null, U8(_))
-            | (Null, U16(_))
-            | (Null, U32(_))
-            | (Null, U64(_))
-            | (Null, U128(_))
-            | (Null, F32(_))
-            | (Null, F64(_))
-            | (Null, Decimal(_))
-            | (Null, Null) => Ok(Null),
+            (
+                Null,
+                I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | U8(_) | U16(_) | U32(_) | U64(_)
+                | U128(_) | F32(_) | F64(_) | Decimal(_) | Null,
+            ) => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: self.clone(),
                 operator: NumericBinaryOperator::Modulo,
@@ -722,8 +652,8 @@ impl Value {
                 return Err(ValueError::FactorialOnNegativeNumeric.into());
             }
 
-            (1_i128..(a + 1_i128))
-                .try_fold(1_i128, |mul, x| mul.checked_mul(x))
+            (1_i128..=a)
+                .try_fold(1_i128, i128::checked_mul)
                 .ok_or_else(|| ValueError::FactorialOverflow.into())
         }
 
@@ -738,8 +668,7 @@ impl Value {
             U32(a) => factorial_function(i128::from(*a)).map(I128),
             U64(a) => factorial_function(i128::from(*a)).map(I128),
             U128(a) => factorial_function(*a as i128).map(I128),
-            F32(_) => Err(ValueError::FactorialOnNonInteger.into()),
-            F64(_) => Err(ValueError::FactorialOnNonInteger.into()),
+            F32(_) | F64(_) => Err(ValueError::FactorialOnNonInteger.into()),
             Null => Ok(Null),
             _ => Err(ValueError::FactorialOnNonNumeric.into()),
         }
@@ -759,8 +688,7 @@ impl Value {
             U32(v) => Ok(Value::U32(!v)),
             U64(v) => Ok(Value::U64(!v)),
             U128(v) => Ok(Value::U128(!v)),
-            F32(_) => Err(ValueError::UnaryBitwiseNotOnNonInteger.into()),
-            F64(_) => Err(ValueError::UnaryBitwiseNotOnNonInteger.into()),
+            F32(_) | F64(_) => Err(ValueError::UnaryBitwiseNotOnNonInteger.into()),
             Null => Ok(Null),
             _ => Err(ValueError::UnaryBitwiseNotOnNonNumeric.into()),
         }
@@ -894,7 +822,7 @@ impl PartialEq for Value {
             (Value::U16(a), Value::U16(b)) => a == b,
             (Value::U32(a), Value::U32(b)) => a == b,
             (Value::U64(a), Value::U64(b)) => a == b,
-            (Value::U128(a), Value::U128(b)) => a == b,
+            (Value::U128(a), Value::U128(b)) | (Value::Uuid(a), Value::Uuid(b)) => a == b,
             (Value::F32(a), Value::F32(b)) => (a.is_nan() && b.is_nan()) || a == b,
             (Value::F64(a), Value::F64(b)) => (a.is_nan() && b.is_nan()) || a == b,
             (Value::Decimal(a), Value::Decimal(b)) => a == b,
@@ -905,7 +833,6 @@ impl PartialEq for Value {
             (Value::Timestamp(a), Value::Timestamp(b)) => a == b,
             (Value::Time(a), Value::Time(b)) => a == b,
             (Value::Interval(a), Value::Interval(b)) => a == b,
-            (Value::Uuid(a), Value::Uuid(b)) => a == b,
             (Value::Map(a), Value::Map(b)) => a == b,
             (Value::List(a), Value::List(b)) => a == b,
             (Value::Point(a), Value::Point(b)) => a == b,
@@ -937,7 +864,7 @@ impl Hash for Value {
             Value::U16(v) => v.hash(state),
             Value::U32(v) => v.hash(state),
             Value::U64(v) => v.hash(state),
-            Value::U128(v) => v.hash(state),
+            Value::U128(v) | Value::Uuid(v) => v.hash(state),
             Value::F32(v) => {
                 if v.is_nan() {
                     CANONICAL_F32_NAN_BITS.hash(state);
@@ -964,7 +891,6 @@ impl Hash for Value {
             Value::Timestamp(v) => v.hash(state),
             Value::Time(v) => v.hash(state),
             Value::Interval(v) => v.hash(state),
-            Value::Uuid(v) => v.hash(state),
             Value::Map(map) => {
                 map.hash(state);
             }
@@ -982,10 +908,7 @@ fn str_position(from_str: &str, sub_str: &str) -> usize {
     if from_str.is_empty() || sub_str.is_empty() {
         return 0;
     }
-    from_str
-        .find(sub_str)
-        .map(|position| position + 1)
-        .unwrap_or(0)
+    from_str.find(sub_str).map_or(0, |position| position + 1)
 }
 
 #[cfg(test)]
@@ -2551,7 +2474,7 @@ mod tests {
                 .unwrap(),
         );
 
-        cast!(Str("2021-05-01".to_owned()) => Date, date.to_owned());
+        cast!(Str("2021-05-01".to_owned()) => Date, date.clone());
         cast!(timestamp                    => Date, date);
         cast!(Null                         => Date, Null);
 
@@ -2588,8 +2511,8 @@ mod tests {
 
         // List
         cast!(
-            Str(r#"[1, 2, 3]"#.to_owned()) => List,
-            Value::parse_json_list(r#"[1, 2, 3]"#).unwrap()
+            Str(r"[1, 2, 3]".to_owned()) => List,
+            Value::parse_json_list(r"[1, 2, 3]").unwrap()
         );
 
         // Casting error
@@ -2656,7 +2579,7 @@ mod tests {
         let uuid = Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap());
         let point = Point(Point::new(1.0, 2.0));
         let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();
-        let list = Value::parse_json_list(r#"[ true ]"#).unwrap();
+        let list = Value::parse_json_list(r"[ true ]").unwrap();
         let bytea = Bytea(hex::decode("9001").unwrap());
         let inet = Inet(IpAddr::from_str("::1").unwrap());
 
@@ -2878,14 +2801,14 @@ mod tests {
                 operator: NumericBinaryOperator::BitwiseAnd
             }
             .into())
-        )
+        );
     }
 
     #[test]
     fn position() {
         let str1 = Str("ramen".to_owned());
         let str2 = Str("men".to_owned());
-        let empty_str = Str("".to_owned());
+        let empty_str = Str(String::new());
 
         assert_eq!(str1.position(&str2), Ok(I64(3)));
         assert_eq!(str2.position(&str1), Ok(I64(0)));
@@ -2924,7 +2847,7 @@ mod tests {
         let uuid = Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap());
         let point = Point(Point::new(1.0, 2.0));
         let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();
-        let list = Value::parse_json_list(r#"[ true ]"#).unwrap();
+        let list = Value::parse_json_list(r"[ true ]").unwrap();
         let bytea = Bytea(hex::decode("9001").unwrap());
         let inet = Inet(IpAddr::from_str("::1").unwrap());
 
@@ -2979,6 +2902,11 @@ mod tests {
             t.hash(&mut hasher);
             hasher.finish()
         }
+
+        const CANONICAL_F64_NAN_BITS: u64 = 0x7ff8000000000000;
+        const CANONICAL_F32_NAN_BITS: u32 = 0x7fc00000;
+        const CANONICAL_F32_ZERO_BITS: u32 = 0;
+        const CANONICAL_F64_ZERO_BITS: u64 = 0;
 
         // Float zero normalization: 0.0 and -0.0 should hash the same
         let zero_pos_f32 = F32(0.0);
@@ -3074,10 +3002,6 @@ mod tests {
             assert_eq!(hash_value(&value_map1), hash_value(&value_map2));
         }
 
-        const CANONICAL_F64_NAN_BITS: u64 = 0x7ff8000000000000;
-        const CANONICAL_F32_NAN_BITS: u32 = 0x7fc00000;
-        const CANONICAL_F32_ZERO_BITS: u32 = 0;
-        const CANONICAL_F64_ZERO_BITS: u64 = 0;
         let point_test_cases = [
             (Point(Point::new(1.0, 2.0)), Point(Point::new(1.0, 2.0))),
             (Point(Point::new(0.0, 1.0)), Point(Point::new(-0.0, 1.0))),

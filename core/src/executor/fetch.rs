@@ -62,11 +62,8 @@ pub async fn fetch<'a, T: GStore>(
             };
 
             async move {
-                let expr = match where_clause {
-                    None => {
-                        return Ok(Some((key, row)));
-                    }
-                    Some(expr) => expr,
+                let Some(expr) = where_clause else {
+                    return Ok(Some((key, row)));
                 };
 
                 let context = RowContext::new(table_name, Cow::Borrowed(&row), None);
@@ -286,7 +283,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                 columns: Arc::clone(&columns),
                                 values: vec![
                                     Value::Str(schema.table_name),
-                                    schema.comment.map(Value::Str).unwrap_or(Value::Null),
+                                    schema.comment.map_or(Value::Null, Value::Str),
                                 ],
                             })
                         });
@@ -310,15 +307,13 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                         Value::Str(column_def.name),
                                         Value::I64(index as i64 + 1),
                                         Value::Bool(column_def.nullable),
-                                        column_def
-                                            .unique
-                                            .map(|unique| Value::Str(unique.to_sql()))
-                                            .unwrap_or(Value::Null),
+                                        column_def.unique.map_or(Value::Null, |unique| {
+                                            Value::Str(unique.to_sql())
+                                        }),
                                         column_def
                                             .default
-                                            .map(|expr| Value::Str(expr.to_sql()))
-                                            .unwrap_or(Value::Null),
-                                        column_def.comment.map(Value::Str).unwrap_or(Value::Null),
+                                            .map_or(Value::Null, |expr| Value::Str(expr.to_sql())),
+                                        column_def.comment.map_or(Value::Null, Value::Str),
                                     ];
 
                                     Ok(Row::Vec {

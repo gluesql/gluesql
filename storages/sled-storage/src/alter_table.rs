@@ -81,7 +81,7 @@ impl AlterTable for SledStorage {
             tree.insert(new_schema_key.as_bytes(), value)?;
 
             // replace data
-            for (old_key, value) in items.iter() {
+            for (old_key, value) in &items {
                 let new_key = str::from_utf8(old_key.as_ref())
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
@@ -92,11 +92,8 @@ impl AlterTable for SledStorage {
                     .map_err(ConflictableTransactionError::Abort)?;
 
                 let (old_row_snapshot, row) = old_row_snapshot.delete(txid);
-                let row = match row {
-                    Some(row) => row,
-                    None => {
-                        continue;
-                    }
+                let Some(row) = row else {
+                    continue;
                 };
 
                 let old_row_snapshot = bincode::serialize(&old_row_snapshot)
@@ -276,14 +273,14 @@ impl AlterTable for SledStorage {
                 .map_err(ConflictableTransactionError::Abort)?;
 
             let column_defs = column_defs
-                .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.to_owned()).into())
+                .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.clone()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
 
             if column_defs
                 .iter()
                 .any(|ColumnDef { name, .. }| name == &column_def.name)
             {
-                let adding_column = column_def.name.to_owned();
+                let adding_column = column_def.name.clone();
 
                 return Err(ConflictableTransactionError::Abort(
                     AlterTableError::AlreadyExistingColumn(adding_column).into(),
@@ -315,15 +312,12 @@ impl AlterTable for SledStorage {
             };
 
             // migrate data
-            for (key, snapshot) in items.iter() {
+            for (key, snapshot) in &items {
                 let snapshot: Snapshot<DataRow> = bincode::deserialize(snapshot)
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
-                let row = match snapshot.clone().extract(txid, None) {
-                    Some(row) => row,
-                    None => {
-                        continue;
-                    }
+                let Some(row) = snapshot.clone().extract(txid, None) else {
+                    continue;
                 };
 
                 let values = match row {
@@ -432,7 +426,7 @@ impl AlterTable for SledStorage {
                 .map_err(ConflictableTransactionError::Abort)?;
 
             let column_defs = column_defs
-                .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.to_owned()).into())
+                .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.clone()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
 
             let column_index = column_defs
@@ -451,15 +445,12 @@ impl AlterTable for SledStorage {
             };
 
             // migrate data
-            for (key, snapshot) in items.iter() {
+            for (key, snapshot) in &items {
                 let snapshot: Snapshot<DataRow> = bincode::deserialize(snapshot)
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
-                let row = match snapshot.clone().extract(txid, None) {
-                    Some(row) => row,
-                    None => {
-                        continue;
-                    }
+                let Some(row) = snapshot.clone().extract(txid, None) else {
+                    continue;
                 };
 
                 let values = match row {

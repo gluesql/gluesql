@@ -130,7 +130,7 @@ impl CsvStorage {
                 .headers()
                 .map_storage_err()?
                 .into_iter()
-                .map(|header| header.to_string())
+                .map(ToString::to_string)
                 .collect::<Vec<_>>())
         };
 
@@ -141,7 +141,7 @@ impl CsvStorage {
         {
             let columns = column_defs
                 .iter()
-                .map(|column_def| column_def.name.to_owned())
+                .map(|column_def| column_def.name.clone())
                 .collect::<Vec<_>>();
 
             let rows = data_rdr

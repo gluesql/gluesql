@@ -33,7 +33,7 @@ impl<'a> From<CmpExprNode<'a>> for IndexItemNode<'a> {
     }
 }
 
-impl<'a> From<NonClusteredNode> for IndexItemNode<'a> {
+impl From<NonClusteredNode> for IndexItemNode<'_> {
     fn from(non_clustered: NonClusteredNode) -> Self {
         IndexItemNode::NonClustered {
             name: non_clustered.index_name,
@@ -43,7 +43,7 @@ impl<'a> From<NonClusteredNode> for IndexItemNode<'a> {
     }
 }
 
-impl<'a> Prebuild<IndexItem> for IndexItemNode<'a> {
+impl Prebuild<IndexItem> for IndexItemNode<'_> {
     fn prebuild(self) -> Result<IndexItem> {
         match self {
             IndexItemNode::NonClustered {

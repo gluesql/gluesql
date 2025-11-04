@@ -29,15 +29,15 @@ pub(crate) fn translate_alter_table_operation(
             if_exists,
             ..
         } => Ok(AlterTableOperation::DropColumn {
-            column_name: column_name.value.to_owned(),
+            column_name: column_name.value.clone(),
             if_exists: *if_exists,
         }),
         SqlAlterTableOperation::RenameColumn {
             old_column_name,
             new_column_name,
         } => Ok(AlterTableOperation::RenameColumn {
-            old_column_name: old_column_name.value.to_owned(),
-            new_column_name: new_column_name.value.to_owned(),
+            old_column_name: old_column_name.value.clone(),
+            new_column_name: new_column_name.value.clone(),
         }),
         SqlAlterTableOperation::RenameTable { table_name } => {
             Ok(AlterTableOperation::RenameTable {
@@ -97,7 +97,7 @@ pub fn translate_column_def(
     )?;
 
     Ok(ColumnDef {
-        name: name.value.to_owned(),
+        name: name.value.clone(),
         data_type: translate_data_type(data_type)?,
         nullable,
         default,
@@ -119,7 +119,7 @@ pub(crate) fn translate_operate_function_arg(
     let name = arg
         .name
         .as_ref()
-        .map(|v| v.value.to_owned())
+        .map(|v| v.value.clone())
         .ok_or(TranslateError::UnNamedFunctionArgNotSupported)?;
     let data_type = translate_data_type(&arg.data_type)?;
     let default = arg

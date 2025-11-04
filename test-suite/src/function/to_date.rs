@@ -8,16 +8,16 @@ use {
 };
 
 test_case!(to_date, {
-    let g = get_tester!();
-
-    fn assert_chrono_error_kind_eq(error: Error, kind: ParseErrorKind) {
+    fn assert_chrono_error_kind_eq(error: &Error, kind: ParseErrorKind) {
         match error {
             Error::Evaluate(EvaluateError::FormatParseError(err)) => {
-                assert_eq!(err.kind(), kind)
+                assert_eq!(err.kind(), kind);
             }
             _ => panic!("invalid error: {error}"),
         }
     }
+
+    let g = get_tester!();
 
     let test_cases = vec![
         (
@@ -148,6 +148,6 @@ test_case!(to_date, {
     ];
 
     for (error, kind) in error_cases {
-        assert_chrono_error_kind_eq(error, kind);
+        assert_chrono_error_kind_eq(&error, kind);
     }
 });
