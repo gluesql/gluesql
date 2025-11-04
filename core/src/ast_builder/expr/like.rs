@@ -1,6 +1,7 @@
 use super::ExprNode;
 
 impl ExprNode<'_> {
+    #[must_use]
     pub fn like<T: Into<Self>>(self, pattern: T) -> Self {
         Self::Like {
             expr: Box::new(self),
@@ -9,6 +10,7 @@ impl ExprNode<'_> {
         }
     }
 
+    #[must_use]
     pub fn ilike<T: Into<Self>>(self, pattern: T) -> Self {
         Self::ILike {
             expr: Box::new(self),
@@ -17,6 +19,7 @@ impl ExprNode<'_> {
         }
     }
 
+    #[must_use]
     pub fn not_like<T: Into<Self>>(self, pattern: T) -> Self {
         Self::Like {
             expr: Box::new(self),
@@ -25,6 +28,7 @@ impl ExprNode<'_> {
         }
     }
 
+    #[must_use]
     pub fn not_ilike<T: Into<Self>>(self, pattern: T) -> Self {
         Self::ILike {
             expr: Box::new(self),

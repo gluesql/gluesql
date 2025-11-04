@@ -1,6 +1,7 @@
 use std::{collections::HashMap, hash::Hash};
 
 pub trait HashMapExt<K, V, I> {
+    #[must_use]
     fn concat(self, entries: I) -> Self;
 }
 

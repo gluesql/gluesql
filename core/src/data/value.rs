@@ -282,6 +282,7 @@ impl Value {
         }
     }
 
+    #[must_use]
     pub fn concat(self, other: Value) -> Value {
         match (self, other) {
             (Value::Null, _) | (_, Value::Null) => Value::Null,

@@ -20,6 +20,7 @@ impl<'a> DeleteNode<'a> {
         }
     }
 
+    #[must_use]
     pub fn filter<T: Into<ExprNode<'a>>>(mut self, expr: T) -> Self {
         self.filter_expr = Some(expr.into());
 

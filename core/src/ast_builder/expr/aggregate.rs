@@ -84,58 +84,72 @@ impl<'a> TryFrom<AggregateNode<'a>> for Aggregate {
 }
 
 impl<'a> ExprNode<'a> {
+    #[must_use]
     pub fn count(self) -> ExprNode<'a> {
         ExprNode::Aggregate(Box::new(AggregateNode::Count(self.into(), false)))
     }
 
+    #[must_use]
     pub fn count_distinct(self) -> ExprNode<'a> {
         ExprNode::Aggregate(Box::new(AggregateNode::Count(self.into(), true)))
     }
 
+    #[must_use]
     pub fn sum(self) -> ExprNode<'a> {
         ExprNode::Aggregate(Box::new(AggregateNode::Sum(self, false)))
     }
 
+    #[must_use]
     pub fn sum_distinct(self) -> ExprNode<'a> {
         ExprNode::Aggregate(Box::new(AggregateNode::Sum(self, true)))
     }
 
+    #[must_use]
     pub fn min(self) -> ExprNode<'a> {
         ExprNode::Aggregate(Box::new(AggregateNode::Min(self, false)))
     }
 
+    #[must_use]
     pub fn min_distinct(self) -> ExprNode<'a> {
         ExprNode::Aggregate(Box::new(AggregateNode::Min(self, true)))
     }
 
+    #[must_use]
     pub fn max(self) -> ExprNode<'a> {
         ExprNode::Aggregate(Box::new(AggregateNode::Max(self, false)))
     }
 
+    #[must_use]
     pub fn max_distinct(self) -> ExprNode<'a> {
         ExprNode::Aggregate(Box::new(AggregateNode::Max(self, true)))
     }
 
+    #[must_use]
     pub fn avg(self) -> ExprNode<'a> {
         ExprNode::Aggregate(Box::new(AggregateNode::Avg(self, false)))
     }
 
+    #[must_use]
     pub fn avg_distinct(self) -> ExprNode<'a> {
         ExprNode::Aggregate(Box::new(AggregateNode::Avg(self, true)))
     }
 
+    #[must_use]
     pub fn variance(self) -> ExprNode<'a> {
         ExprNode::Aggregate(Box::new(AggregateNode::Variance(self, false)))
     }
 
+    #[must_use]
     pub fn variance_distinct(self) -> ExprNode<'a> {
         ExprNode::Aggregate(Box::new(AggregateNode::Variance(self, true)))
     }
 
+    #[must_use]
     pub fn stdev(self) -> ExprNode<'a> {
         ExprNode::Aggregate(Box::new(AggregateNode::Stdev(self, false)))
     }
 
+    #[must_use]
     pub fn stdev_distinct(self) -> ExprNode<'a> {
         ExprNode::Aggregate(Box::new(AggregateNode::Stdev(self, true)))
     }

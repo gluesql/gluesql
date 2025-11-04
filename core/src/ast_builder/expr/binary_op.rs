@@ -10,73 +10,90 @@ impl ExprNode<'_> {
     }
 
     #[allow(clippy::should_implement_trait)]
+    #[must_use]
     pub fn add<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::Plus, other)
     }
 
     #[allow(clippy::should_implement_trait)]
+    #[must_use]
     pub fn sub<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::Minus, other)
     }
 
     #[allow(clippy::should_implement_trait)]
+    #[must_use]
     pub fn mul<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::Multiply, other)
     }
 
     #[allow(clippy::should_implement_trait)]
+    #[must_use]
     pub fn div<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::Divide, other)
     }
 
+    #[must_use]
     pub fn modulo<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::Modulo, other)
     }
 
+    #[must_use]
     pub fn concat<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::StringConcat, other)
     }
 
+    #[must_use]
     pub fn gt<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::Gt, other)
     }
 
+    #[must_use]
     pub fn lt<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::Lt, other)
     }
 
+    #[must_use]
     pub fn gte<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::GtEq, other)
     }
 
+    #[must_use]
     pub fn lte<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::LtEq, other)
     }
 
+    #[must_use]
     pub fn eq<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::Eq, other)
     }
 
+    #[must_use]
     pub fn neq<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::NotEq, other)
     }
 
+    #[must_use]
     pub fn and<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::And, other)
     }
 
+    #[must_use]
     pub fn or<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::Or, other)
     }
 
+    #[must_use]
     pub fn bitwise_and<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::BitwiseAnd, other)
     }
 
+    #[must_use]
     pub fn bitwise_shift_left<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::BitwiseShiftLeft, other)
     }
 
+    #[must_use]
     pub fn bitwise_shift_right<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::BitwiseShiftRight, other)
     }

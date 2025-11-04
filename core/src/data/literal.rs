@@ -125,6 +125,7 @@ impl<'a> Literal<'a> {
         }
     }
 
+    #[must_use]
     pub fn concat(self, other: Literal<'_>) -> Self {
         let convert = |literal| match literal {
             Boolean(v) => Some(if v {

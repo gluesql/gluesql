@@ -17,6 +17,7 @@ impl InsertNode {
         }
     }
 
+    #[must_use]
     pub fn columns<T: Into<ColumnList>>(mut self, columns: T) -> Self {
         self.columns = Some(columns.into());
         self

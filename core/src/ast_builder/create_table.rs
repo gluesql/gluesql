@@ -19,6 +19,7 @@ impl CreateTableNode {
         }
     }
 
+    #[must_use]
     pub fn add_column<T: Into<ColumnDefNode>>(mut self, column: T) -> Self {
         match self.columns {
             Some(ref mut columns) => {

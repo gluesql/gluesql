@@ -47,6 +47,7 @@ const HOUR: i64 = 3600 * SECOND;
 const DAY: i64 = 24 * HOUR;
 
 impl Interval {
+    #[must_use]
     pub fn unary_minus(&self) -> Self {
         match self {
             Interval::Month(v) => Interval::Month(-v),

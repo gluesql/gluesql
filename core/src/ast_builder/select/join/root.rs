@@ -93,10 +93,12 @@ impl<'a> JoinNode<'a> {
         JoinConstraintNode::new(self, expr)
     }
 
+    #[must_use]
     pub fn join(self, table_name: &str) -> JoinNode<'a> {
         JoinNode::new(self, table_name.to_owned(), None, JoinOperatorType::Inner)
     }
 
+    #[must_use]
     pub fn join_as(self, table_name: &str, alias: &str) -> JoinNode<'a> {
         JoinNode::new(
             self,
@@ -106,10 +108,12 @@ impl<'a> JoinNode<'a> {
         )
     }
 
+    #[must_use]
     pub fn left_join(self, table_name: &str) -> JoinNode<'a> {
         JoinNode::new(self, table_name.to_owned(), None, JoinOperatorType::Left)
     }
 
+    #[must_use]
     pub fn left_join_as(self, table_name: &str, alias: &str) -> JoinNode<'a> {
         JoinNode::new(
             self,
