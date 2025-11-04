@@ -1,11 +1,14 @@
-use std::{collections::HashMap, hash::Hash};
+use std::{
+    collections::HashMap,
+    hash::{BuildHasher, Hash},
+};
 
 pub trait HashMapExt<K, V, I> {
     #[must_use]
     fn concat(self, entries: I) -> Self;
 }
 
-impl<K, V, I, S: std::hash::BuildHasher> HashMapExt<K, V, I> for HashMap<K, V, S>
+impl<K, V, I, S: BuildHasher> HashMapExt<K, V, I> for HashMap<K, V, S>
 where
     K: Hash + Eq,
     I: Iterator<Item = (K, V)>,

@@ -10,6 +10,7 @@ use {
     rand::{Rng, SeedableRng, rngs::StdRng},
     std::{
         borrow::Cow,
+        fmt::Write,
         ops::ControlFlow::{self as StdControlFlow, Break, Continue},
     },
     uuid::Uuid,
@@ -354,8 +355,6 @@ pub fn hex<'a>(name: &str, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
             Continue(Evaluated::Value(Value::Str(result)))
         }
         Value::Str(string) => {
-            use std::fmt::Write;
-
             let result = string.as_bytes().iter().fold(String::new(), |mut acc, b| {
                 let _ = write!(acc, "{b:02X}");
                 acc

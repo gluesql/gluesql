@@ -8,11 +8,11 @@ use {
         data::Schema,
         plan::expr::evaluable::check_expr as check_evaluable,
     },
-    std::{collections::HashMap, sync::Arc},
+    std::{collections::HashMap, hash::BuildHasher, sync::Arc},
     utils::Vector,
 };
 
-pub fn plan<S: std::hash::BuildHasher>(
+pub fn plan<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
     statement: Statement,
 ) -> Statement {
@@ -32,7 +32,7 @@ struct JoinPlanner<'a, S> {
     schema_map: &'a HashMap<String, Schema, S>,
 }
 
-impl<'a, S: std::hash::BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
+impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
     fn query(&self, outer_context: Option<Arc<Context<'a>>>, query: Query) -> Query {
         let Query {
             body,
@@ -63,7 +63,7 @@ impl<'a, S: std::hash::BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
     }
 }
 
-impl<'a, S: std::hash::BuildHasher> JoinPlanner<'a, S> {
+impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
     fn select(&self, outer_context: Option<Arc<Context<'a>>>, select: Select) -> Select {
         let Select {
             distinct,

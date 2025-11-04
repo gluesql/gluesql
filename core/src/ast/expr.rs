@@ -4,6 +4,7 @@ use {
         ToSqlUnquoted, UnaryOperator,
     },
     serde::{Deserialize, Serialize},
+    std::fmt::Write,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -240,8 +241,6 @@ impl Expr {
                 false => format!("EXISTS({})", subquery.to_sql()),
             },
             Expr::ArrayIndex { obj, indexes } => {
-                use std::fmt::Write;
-
                 let obj = obj.to_sql_with(quoted);
                 let indexes = indexes.iter().fold(String::new(), |mut acc, index| {
                     let _ = write!(acc, "[{}]", index.to_sql_with(quoted));
