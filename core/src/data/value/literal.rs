@@ -1,6 +1,6 @@
 use {
     super::{
-        Tribool, Value,
+        Value,
         date::{parse_date, parse_time, parse_timestamp},
         error::ValueError,
     },
@@ -46,74 +46,6 @@ impl TryFrom<Literal<'_>> for Value {
 }
 
 impl Value {
-    pub fn evaluate_eq_with_literal(&self, other: &Literal<'_>) -> Tribool {
-        match (self, other) {
-            (Value::I8(l), Literal::Number(r)) => Tribool::from(r.to_i8().is_some_and(|r| *l == r)),
-            (Value::I16(l), Literal::Number(r)) => {
-                Tribool::from(r.to_i16().is_some_and(|r| *l == r))
-            }
-            (Value::I32(l), Literal::Number(r)) => {
-                Tribool::from(r.to_i32().is_some_and(|r| *l == r))
-            }
-            (Value::I64(l), Literal::Number(r)) => {
-                Tribool::from(r.to_i64().is_some_and(|r| *l == r))
-            }
-            (Value::I128(l), Literal::Number(r)) => {
-                Tribool::from(r.to_i128().is_some_and(|r| *l == r))
-            }
-            (Value::U8(l), Literal::Number(r)) => Tribool::from(r.to_u8().is_some_and(|r| *l == r)),
-            (Value::U16(l), Literal::Number(r)) => {
-                Tribool::from(r.to_u16().is_some_and(|r| *l == r))
-            }
-            (Value::U32(l), Literal::Number(r)) => {
-                Tribool::from(r.to_u32().is_some_and(|r| *l == r))
-            }
-            (Value::U64(l), Literal::Number(r)) => {
-                Tribool::from(r.to_u64().is_some_and(|r| *l == r))
-            }
-            (Value::U128(l), Literal::Number(r)) => {
-                Tribool::from(r.to_u128().is_some_and(|r| *l == r))
-            }
-            (Value::F32(l), Literal::Number(r)) => {
-                Tribool::from(r.to_f32().is_some_and(|r| *l == r))
-            }
-            (Value::F64(l), Literal::Number(r)) => {
-                Tribool::from(r.to_f64().is_some_and(|r| *l == r))
-            }
-            (Value::Str(l), Literal::Text(r)) => Tribool::from(l == r.as_ref()),
-            (Value::Date(l), Literal::Text(r)) => match r.parse::<NaiveDate>() {
-                Ok(r) => Tribool::from(l == &r),
-                Err(_) => Tribool::from(false),
-            },
-            (Value::Timestamp(l), Literal::Text(r)) => match parse_timestamp(r) {
-                Some(r) => Tribool::from(l == &r),
-                None => Tribool::from(false),
-            },
-            (Value::Time(l), Literal::Text(r)) => match parse_time(r) {
-                Some(r) => Tribool::from(l == &r),
-                None => Tribool::from(false),
-            },
-            (Value::Uuid(l), Literal::Text(r)) => {
-                Tribool::from(parse_uuid(r).map(|r| l == &r).unwrap_or(false))
-            }
-            (Value::Inet(l), Literal::Text(r)) => match IpAddr::from_str(r) {
-                Ok(x) => Tribool::from(l == &x),
-                Err(_) => Tribool::from(false),
-            },
-            (Value::Inet(l), Literal::Number(r)) => {
-                if let Some(x) = r.to_u32() {
-                    Tribool::from(l == &Ipv4Addr::from(x))
-                } else if let Some(x) = r.to_u128() {
-                    Tribool::from(l == &Ipv6Addr::from(x))
-                } else {
-                    Tribool::from(false)
-                }
-            }
-            (Value::Null, _) => Tribool::Null,
-            _ => Tribool::from(false),
-        }
-    }
-
     pub fn evaluate_cmp_with_literal(&self, other: &Literal<'_>) -> Option<Ordering> {
         match (self, other) {
             (Value::I8(l), Literal::Number(r)) => l.partial_cmp(&r.to_i8()?),
@@ -448,98 +380,6 @@ mod tests {
 
     fn time(hour: u32, min: u32, sec: u32, milli: u32) -> NaiveTime {
         chrono::NaiveTime::from_hms_milli_opt(hour, min, sec, milli).unwrap()
-    }
-
-    #[test]
-    fn evaluate_eq_with_literal() {
-        use utils::Tribool::*;
-
-        macro_rules! num {
-            ($num: expr) => {
-                &Literal::Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
-            };
-        }
-
-        macro_rules! text {
-            ($text: expr) => {
-                &Literal::Text(Cow::Owned($text.to_owned()))
-            };
-        }
-
-        let uuid_text = "936DA01F9ABD4d9d80C702AF85C822A8";
-        let uuid = parse_uuid(uuid_text).unwrap();
-
-        let inet = |v: &str| Value::Inet(IpAddr::from_str(v).unwrap());
-
-        assert_eq!(True, Value::I8(8).evaluate_eq_with_literal(num!("8")));
-        assert_eq!(True, Value::I32(32).evaluate_eq_with_literal(num!("32")));
-        assert_eq!(True, Value::I16(16).evaluate_eq_with_literal(num!("16")));
-        assert_eq!(True, Value::I32(32).evaluate_eq_with_literal(num!("32")));
-        assert_eq!(True, Value::I64(64).evaluate_eq_with_literal(num!("64")));
-        assert_eq!(True, Value::I128(128).evaluate_eq_with_literal(num!("128")));
-        assert_eq!(True, Value::U8(7).evaluate_eq_with_literal(num!("7")));
-        assert_eq!(True, Value::U16(64).evaluate_eq_with_literal(num!("64")));
-        assert_eq!(True, Value::U32(64).evaluate_eq_with_literal(num!("64")));
-        assert_eq!(True, Value::U64(64).evaluate_eq_with_literal(num!("64")));
-        assert_eq!(True, Value::U128(64).evaluate_eq_with_literal(num!("64")));
-        assert_eq!(
-            True,
-            Value::F32(7.123).evaluate_eq_with_literal(num!("7.123"))
-        );
-        assert_eq!(
-            True,
-            Value::F64(7.123).evaluate_eq_with_literal(num!("7.123"))
-        );
-        assert_eq!(
-            True,
-            Value::Str("Hello".to_owned()).evaluate_eq_with_literal(text!("Hello"))
-        );
-        assert_eq!(
-            True,
-            inet("127.0.0.1").evaluate_eq_with_literal(text!("127.0.0.1"))
-        );
-        assert_eq!(True, inet("::1").evaluate_eq_with_literal(text!("::1")));
-        assert_eq!(True, inet("0.0.0.0").evaluate_eq_with_literal(num!("0")));
-        assert_eq!(False, inet("::1").evaluate_eq_with_literal(num!("0")));
-        assert_eq!(
-            True,
-            inet("::2:4cb0:16ea").evaluate_eq_with_literal(num!("9876543210"))
-        );
-        assert_eq!(False, inet("::1").evaluate_eq_with_literal(text!("-1")));
-        assert_eq!(False, inet("::1").evaluate_eq_with_literal(num!("-1")));
-        assert_eq!(
-            True,
-            Value::Date(date(2021, 11, 20)).evaluate_eq_with_literal(text!("2021-11-20"))
-        );
-        assert_eq!(
-            False,
-            Value::Date(date(2021, 11, 20)).evaluate_eq_with_literal(text!("202=abcdef"))
-        );
-        assert_eq!(
-            True,
-            Value::Timestamp(date_time(2021, 11, 20, 10, 0, 0, 0))
-                .evaluate_eq_with_literal(text!("2021-11-20T10:00:00Z"))
-        );
-        assert_eq!(
-            False,
-            Value::Timestamp(date_time(2021, 11, 20, 10, 0, 0, 0))
-                .evaluate_eq_with_literal(text!("2021-11-Hello"))
-        );
-        assert_eq!(
-            True,
-            Value::Time(time(10, 0, 0, 0)).evaluate_eq_with_literal(text!("10:00:00"))
-        );
-        assert_eq!(
-            False,
-            Value::Time(time(10, 0, 0, 0)).evaluate_eq_with_literal(text!("FALSE"))
-        );
-        assert_eq!(
-            True,
-            Value::Uuid(uuid).evaluate_eq_with_literal(text!(uuid_text))
-        );
-        // NULL-handling
-        assert_eq!(Null, Value::Null.evaluate_eq_with_literal(text!("STRING")));
-        assert_eq!(Null, Value::Null.evaluate_eq_with_literal(num!("123.456")));
     }
 
     #[allow(clippy::similar_names)]
