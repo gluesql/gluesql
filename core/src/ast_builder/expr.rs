@@ -43,6 +43,7 @@ pub enum ExprNode<'a> {
     Identifier(Cow<'a, str>),
     Numeric(NumericNode<'a>),
     QuotedString(Cow<'a, str>),
+    Bytea(Cow<'a, [u8]>),
     TypedString {
         data_type: DataType,
         value: Cow<'a, str>,
@@ -122,6 +123,10 @@ impl<'a> TryFrom<ExprNode<'a>> for Expr {
 
                 Ok(Expr::Literal(AstLiteral::QuotedString(value)))
             }
+            ExprNode::Bytea(bytes) => Ok(Expr::TypedString {
+                data_type: DataType::Bytea,
+                value: hex::encode(bytes.as_ref()),
+            }),
             ExprNode::TypedString { data_type, value } => Ok(Expr::TypedString {
                 data_type,
                 value: value.into_owned(),
@@ -374,10 +379,7 @@ pub fn uuid<'a, T: Into<Cow<'a, str>>>(uuid: T) -> ExprNode<'a> {
 /// * `bytea` - A byte array to be converted to a Bytea AST node.
 ///
 pub fn bytea<'a, T: AsRef<[u8]>>(bytea: T) -> ExprNode<'a> {
-    ExprNode::TypedString {
-        data_type: DataType::Bytea,
-        value: hex::encode(bytea).into(),
-    }
+    ExprNode::Bytea(Cow::Owned(bytea.as_ref().to_vec()))
 }
 
 pub fn subquery<'a, T: Into<QueryNode<'a>>>(query_node: T) -> ExprNode<'a> {
@@ -489,5 +491,45 @@ mod tests {
         let actual = null();
         let expected = "NULL";
         test_expr(actual, expected);
+    }
+
+    #[test]
+    fn bytea_accepts_raw_bytes() {
+        use crate::ast::{DataType, Expr};
+
+        // Test that bytea() accepts raw bytes without requiring hex encoding
+        let raw_bytes = b"test data";
+        let expr_node = bytea(raw_bytes);
+
+        // Verify it stores raw bytes in ExprNode
+        match &expr_node {
+            ExprNode::Bytea(bytes) => {
+                assert_eq!(bytes.as_ref(), raw_bytes);
+            }
+            _ => panic!("Expected ExprNode::Bytea, got: {:?}", expr_node),
+        }
+
+        // Verify conversion to Expr produces TypedString with hex encoding
+        let expr: Expr = expr_node.try_into().unwrap();
+        match expr {
+            Expr::TypedString { data_type, value } => {
+                assert_eq!(data_type, DataType::Bytea);
+                assert_eq!(value, hex::encode(raw_bytes));
+            }
+            _ => panic!("Expected Expr::TypedString, got: {:?}", expr),
+        }
+
+        // Test with various byte values including non-ASCII
+        let binary_data = &[0x00, 0xFF, 0x42, 0x7F];
+        let expr_node = bytea(binary_data);
+        let expr: Expr = expr_node.try_into().unwrap();
+
+        match expr {
+            Expr::TypedString { data_type, value } => {
+                assert_eq!(data_type, DataType::Bytea);
+                assert_eq!(value, "00ff427f");
+            }
+            _ => panic!("Expected Expr::TypedString, got: {:?}", expr),
+        }
     }
 }
