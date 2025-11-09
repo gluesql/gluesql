@@ -21,7 +21,7 @@ pub fn literal(ast_literal: &AstLiteral) -> Result<Evaluated<'_>> {
 
             Ok(Evaluated::Value(Value::Bytea(bytes)))
         }
-        AstLiteral::Null => Ok(Evaluated::Literal(Literal::Null)),
+        AstLiteral::Null => Ok(Evaluated::Value(Value::Null)),
     }
 }
 

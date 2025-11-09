@@ -30,7 +30,6 @@ impl TryFrom<&Literal<'_>> for Value {
                 .or_else(|| v.to_f64().map(Value::F64))
                 .ok_or_else(|| ValueError::FailedToParseNumber.into()),
             Literal::Text(v) => Ok(Value::Str(v.as_ref().to_owned())),
-            Literal::Null => Ok(Value::Null),
         }
     }
 }
@@ -41,7 +40,7 @@ impl TryFrom<Literal<'_>> for Value {
     fn try_from(literal: Literal<'_>) -> Result<Self> {
         match literal {
             Literal::Text(v) => Ok(Value::Str(v.into_owned())),
-            _ => Value::try_from(&literal),
+            number @ Literal::Number(_) => Value::try_from(&number),
         }
     }
 }
@@ -110,7 +109,7 @@ impl Value {
                     Tribool::from(false)
                 }
             }
-            (Value::Null, _) | (_, Literal::Null) => Tribool::Null,
+            (Value::Null, _) => Tribool::Null,
             _ => Tribool::from(false),
         }
     }
@@ -235,7 +234,6 @@ impl Value {
                 .parse::<Decimal>()
                 .map(Value::Decimal)
                 .map_err(|_| ValueError::FailedToParseDecimal(v.to_string()).into()),
-            (_, Literal::Null) => Ok(Value::Null),
             _ => Err(ValueError::IncompatibleLiteralForDataType {
                 data_type: data_type.clone(),
                 literal: format!("{literal:?}"),
@@ -380,24 +378,6 @@ impl Value {
                 Interval::parse(v.as_ref()).map(Value::Interval)
             }
             (DataType::Uuid, Literal::Text(v)) => parse_uuid(v).map(Value::Uuid),
-            (
-                DataType::Boolean
-                | DataType::Int8
-                | DataType::Int16
-                | DataType::Int32
-                | DataType::Int
-                | DataType::Int128
-                | DataType::Uint8
-                | DataType::Uint16
-                | DataType::Uint32
-                | DataType::Uint64
-                | DataType::Uint128
-                | DataType::Float32
-                | DataType::Float
-                | DataType::Decimal
-                | DataType::Text,
-                Literal::Null,
-            ) => Ok(Value::Null),
             (DataType::Date, Literal::Text(v)) => parse_date(v)
                 .map(Value::Date)
                 .ok_or_else(|| ValueError::LiteralCastToDateFailed(v.to_string()).into()),
@@ -552,17 +532,8 @@ mod tests {
             Value::Uuid(uuid).evaluate_eq_with_literal(text!(uuid_text))
         );
         // NULL-handling
-        assert_eq!(Null, Value::Null.evaluate_eq_with_literal(&Literal::Null));
         assert_eq!(Null, Value::Null.evaluate_eq_with_literal(text!("STRING")));
         assert_eq!(Null, Value::Null.evaluate_eq_with_literal(num!("123.456")));
-        assert_eq!(
-            Null,
-            Value::I128(1024).evaluate_eq_with_literal(&Literal::Null)
-        );
-        assert_eq!(
-            Null,
-            Value::Str("STRING".into()).evaluate_eq_with_literal(&Literal::Null)
-        );
     }
 
     #[allow(clippy::similar_names)]
@@ -864,7 +835,6 @@ mod tests {
         test!(num!("1234567890"), Value::I64(1_234_567_890));
         test!(num!("1.0"), Value::F32(1.0_f32));
         test!(num!("1.0"), Value::F64(1.0));
-        assert!(matches!(Value::try_from(&Literal::Null), Ok(Value::Null)));
     }
 
     #[test]
@@ -892,15 +862,6 @@ mod tests {
                 let actual = Value::try_cast_from_literal(&$to, &$from);
 
                 assert_eq!(actual, Ok($expected))
-            };
-        }
-
-        macro_rules! test_null {
-            ($to: expr, $from: expr) => {
-                assert!(matches!(
-                    Value::try_cast_from_literal(&$to, &$from),
-                    Ok(Value::Null)
-                ))
             };
         }
 
@@ -978,17 +939,6 @@ mod tests {
             text!("936DA01F9ABD4d9d80C702AF85C822A8"),
             Value::Uuid(195_965_723_427_462_096_757_863_453_463_987_888_808)
         );
-        test_null!(DataType::Boolean, Literal::Null);
-        test_null!(DataType::Int, Literal::Null);
-        test_null!(DataType::Int8, Literal::Null);
-        test_null!(DataType::Uint8, Literal::Null);
-        test_null!(DataType::Uint16, Literal::Null);
-        test_null!(DataType::Uint32, Literal::Null);
-        test_null!(DataType::Uint64, Literal::Null);
-        test_null!(DataType::Uint128, Literal::Null);
-        test_null!(DataType::Float32, Literal::Null);
-        test_null!(DataType::Float, Literal::Null);
-        test_null!(DataType::Text, Literal::Null);
         test!(
             DataType::Date,
             text!("2015-09-05"),

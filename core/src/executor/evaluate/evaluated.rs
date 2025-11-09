@@ -446,7 +446,7 @@ impl<'a> Evaluated<'a> {
                 let end = l.len();
                 (l, 0..end)
             }
-            Evaluated::Literal(Literal::Null) | Evaluated::Value(Value::Null) => {
+            Evaluated::Value(Value::Null) => {
                 return Ok(Evaluated::Value(Value::Null));
             }
             Evaluated::StrSlice { source, range } => (source, range),
@@ -511,11 +511,7 @@ impl<'a> Evaluated<'a> {
     }
 
     pub fn is_null(&self) -> bool {
-        match self {
-            Evaluated::Value(v) => v.is_null(),
-            Evaluated::StrSlice { .. } => false,
-            Evaluated::Literal(v) => matches!(v, &Literal::Null),
-        }
+        matches!(self, Evaluated::Value(v) if v.is_null())
     }
 
     pub fn rtrim(self, name: String, chars: Option<Evaluated<'_>>) -> Result<Evaluated<'a>> {
@@ -524,7 +520,7 @@ impl<'a> Evaluated<'a> {
                 let end = l.len();
                 (l, 0..end)
             }
-            Evaluated::Literal(Literal::Null) | Evaluated::Value(Value::Null) => {
+            Evaluated::Value(Value::Null) => {
                 return Ok(Evaluated::Value(Value::Null));
             }
             Evaluated::StrSlice { source, range } => (source, range),
@@ -601,7 +597,7 @@ impl<'a> Evaluated<'a> {
                 let end = l.len();
                 (l, 0..end)
             }
-            Evaluated::Literal(Literal::Null) | Evaluated::Value(Value::Null) => {
+            Evaluated::Value(Value::Null) => {
                 return Ok(Evaluated::Value(Value::Null));
             }
             Evaluated::StrSlice { source, range } => (source, range),
@@ -656,7 +652,7 @@ impl<'a> Evaluated<'a> {
                 let end = l.len();
                 (l, 0..end)
             }
-            Evaluated::Literal(Literal::Null) | Evaluated::Value(Value::Null) => {
+            Evaluated::Value(Value::Null) => {
                 return Ok(Evaluated::Value(Value::Null));
             }
             Evaluated::StrSlice { source, range } => (source, range),

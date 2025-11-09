@@ -245,12 +245,8 @@ test_case!(cast_literal, {
             Ok(select_with_null!(cast; Null)),
         ),
         (
-            "SELECT CAST(NULL AS INTERVAL) FROM Item",
-            Err(ValueError::UnimplementedLiteralCast {
-                data_type: gluesql_core::ast::DataType::Interval,
-                literal: format!("{:?}", gluesql_core::data::Literal::Null),
-            }
-            .into()),
+            "SELECT CAST(NULL AS INTERVAL) AS cast FROM Item",
+            Ok(select_with_null!(cast; Null)),
         ),
         (
             "SELECT

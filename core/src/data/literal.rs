@@ -60,7 +60,6 @@ pub enum LiteralError {
 pub enum Literal<'a> {
     Number(Cow<'a, BigDecimal>),
     Text(Cow<'a, str>),
-    Null,
 }
 
 fn unsupported_binary_op(left: &Literal, op: BinaryOperator, right: &Literal) -> LiteralError {
@@ -73,10 +72,7 @@ fn unsupported_binary_op(left: &Literal, op: BinaryOperator, right: &Literal) ->
 
 impl<'a> Literal<'a> {
     pub fn evaluate_eq(&self, other: &Literal<'_>) -> Tribool {
-        match (self, other) {
-            (Null, _) | (_, Null) => Tribool::Null,
-            _ => Tribool::from(self == other),
-        }
+        Tribool::from(self == other)
     }
 
     pub fn evaluate_cmp(&self, other: &Literal<'a>) -> Option<Ordering> {
@@ -90,7 +86,6 @@ impl<'a> Literal<'a> {
     pub fn unary_plus(&self) -> Result<Self> {
         match self {
             Number(v) => Ok(Number(v.clone())),
-            Null => Ok(Null),
             Text(_) => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
         }
     }
@@ -98,7 +93,6 @@ impl<'a> Literal<'a> {
     pub fn unary_minus(&self) -> Result<Self> {
         match self {
             Number(v) => Ok(Number(Cow::Owned(-v.as_ref()))),
-            Null => Ok(Null),
             Text(_) => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
         }
     }
@@ -106,21 +100,16 @@ impl<'a> Literal<'a> {
     #[must_use]
     pub fn concat(self, other: Literal<'_>) -> Self {
         let convert = |literal| match literal {
-            Number(v) => Some(v.to_string()),
-            Text(v) => Some(v.into_owned()),
-            Null => None,
+            Number(v) => v.to_string(),
+            Text(v) => v.into_owned(),
         };
 
-        match (convert(self), convert(other)) {
-            (Some(l), Some(r)) => Literal::Text(Cow::Owned(l + &r)),
-            _ => Literal::Null,
-        }
+        Literal::Text(Cow::Owned(convert(self) + &convert(other)))
     }
 
     pub fn add(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
         match (self, other) {
             (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() + r.as_ref()))),
-            (Null, Number(_) | Null) | (Number(_), Null) => Ok(Literal::Null),
             _ => Err(unsupported_binary_op(self, BinaryOperator::Plus, other).into()),
         }
     }
@@ -128,7 +117,6 @@ impl<'a> Literal<'a> {
     pub fn subtract(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
         match (self, other) {
             (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() - r.as_ref()))),
-            (Null, Number(_) | Null) | (Number(_), Null) => Ok(Literal::Null),
             _ => Err(unsupported_binary_op(self, BinaryOperator::Minus, other).into()),
         }
     }
@@ -136,7 +124,6 @@ impl<'a> Literal<'a> {
     pub fn multiply(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
         match (self, other) {
             (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() * r.as_ref()))),
-            (Null, Number(_) | Null) | (Number(_), Null) => Ok(Literal::Null),
             _ => Err(unsupported_binary_op(self, BinaryOperator::Multiply, other).into()),
         }
     }
@@ -150,7 +137,6 @@ impl<'a> Literal<'a> {
                     Ok(Number(Cow::Owned(l.as_ref() / r.as_ref())))
                 }
             }
-            (Null, Number(_) | Null) | (Number(_), Null) => Ok(Literal::Null),
             _ => Err(unsupported_binary_op(self, BinaryOperator::Divide, other).into()),
         }
     }
@@ -166,7 +152,6 @@ impl<'a> Literal<'a> {
                 }
                 .into()),
             },
-            (Null, Number(_) | Null) | (Number(_), Null) => Ok(Literal::Null),
             _ => Err(unsupported_binary_op(self, BinaryOperator::BitwiseAnd, other).into()),
         }
     }
@@ -180,7 +165,6 @@ impl<'a> Literal<'a> {
                     Ok(Number(Cow::Owned(l.as_ref() % r.as_ref())))
                 }
             }
-            (Null, Number(_) | Null) | (Number(_), Null) => Ok(Literal::Null),
             _ => Err(unsupported_binary_op(self, BinaryOperator::Modulo, other).into()),
         }
     }
@@ -203,7 +187,6 @@ impl<'a> Literal<'a> {
                     .ok_or(LiteralError::BitwiseOperationOverflow)?;
                 Ok(Number(Cow::Owned(BigDecimal::from(res))))
             }
-            (Null, Number(_) | Null) | (Number(_), Null) => Ok(Literal::Null),
             _ => Err(LiteralError::BitwiseNonNumberLiteral.into()),
         }
     }
@@ -226,7 +209,6 @@ impl<'a> Literal<'a> {
                     .ok_or(LiteralError::BitwiseOperationOverflow)?;
                 Ok(Number(Cow::Owned(BigDecimal::from(res))))
             }
-            (Null, Number(_) | Null) | (Number(_), Null) => Ok(Literal::Null),
             _ => Err(LiteralError::BitwiseNonNumberLiteral.into()),
         }
     }
@@ -264,10 +246,7 @@ mod tests {
     }
 
     #[test]
-    fn arithmetic_and_bitwise_with_nulls() {
-        assert_eq!(Null.add(&num(1)), Ok(Null));
-        assert_eq!(num(1).subtract(&Null), Ok(Null));
-        assert_eq!(num(2).multiply(&Null), Ok(Null));
+    fn arithmetic_and_bitwise() {
         assert_eq!(
             num(4).divide(&num(2)),
             Ok(Number(Cow::Owned(BigDecimal::from(2))))
@@ -291,7 +270,6 @@ mod tests {
         }
 
         assert_eq!(text("Foo").concat(text("Bar")), text("FooBar"));
-        assert_eq!(text("Foo").concat(Null), Null);
         assert_eq!(num_literal!("1").concat(num_literal!("2")), text("12"));
 
         assert_eq!(
@@ -299,7 +277,6 @@ mod tests {
             num_literal!("1").evaluate_eq(&num_literal!("1"))
         );
         assert_eq!(Tribool::False, num_literal!("1").evaluate_eq(&text("foo")));
-        assert_eq!(Tribool::Null, num_literal!("1").evaluate_eq(&Null));
     }
 
     #[test]
@@ -316,7 +293,6 @@ mod tests {
             Some(Ordering::Less)
         );
         assert_eq!(text("a").evaluate_cmp(&text("b")), Some(Ordering::Less));
-        assert_eq!(text("a").evaluate_cmp(&Null), None);
     }
 
     #[test]
