@@ -231,7 +231,12 @@ impl<'a> Evaluated<'a> {
 
     pub fn unary_plus(&self) -> Result<Evaluated<'a>> {
         match self {
-            Evaluated::Literal(v) => v.unary_plus().map(Evaluated::Literal),
+            Evaluated::Literal(literal @ Literal::Number(_)) => {
+                Ok(Evaluated::Literal(literal.clone()))
+            }
+            Evaluated::Literal(literal) => {
+                Err(EvaluateError::UnsupportedUnaryPlus(literal.to_string()).into())
+            }
             Evaluated::Value(v) => v.unary_plus().map(Evaluated::Value),
             Evaluated::StrSlice { source, range } => {
                 Err(EvaluateError::UnsupportedUnaryPlus(source[range.clone()].to_owned()).into())
@@ -241,7 +246,12 @@ impl<'a> Evaluated<'a> {
 
     pub fn unary_minus(&self) -> Result<Evaluated<'a>> {
         match self {
-            Evaluated::Literal(v) => v.unary_minus().map(Evaluated::Literal),
+            Evaluated::Literal(Literal::Number(value)) => Ok(Evaluated::Literal(Literal::Number(
+                Cow::Owned(-value.as_ref()),
+            ))),
+            Evaluated::Literal(literal) => {
+                Err(EvaluateError::UnsupportedUnaryMinus(literal.to_string()).into())
+            }
             Evaluated::Value(v) => v.unary_minus().map(Evaluated::Value),
             Evaluated::StrSlice { source, range } => {
                 Err(EvaluateError::UnsupportedUnaryMinus(source[range.clone()].to_owned()).into())

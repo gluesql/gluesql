@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        error::{LiteralError, ValueError},
+        error::{EvaluateError, ValueError},
         prelude::{Payload, Value::*},
     },
 };
@@ -39,7 +39,7 @@ test_case!(unary_operator, {
         ),
         (
             "SELECT -'errrr' as v1 FROM Test",
-            Err(LiteralError::UnaryOperationOnNonNumeric.into()),
+            Err(EvaluateError::UnsupportedUnaryMinus("errrr".to_owned()).into()),
         ),
         (
             "SELECT +10 as v1, +(+10) as v2 FROM Test",
@@ -55,7 +55,7 @@ test_case!(unary_operator, {
         ),
         (
             "SELECT +'errrr' as v1 FROM Test",
-            Err(LiteralError::UnaryOperationOnNonNumeric.into()),
+            Err(EvaluateError::UnsupportedUnaryPlus("errrr".to_owned()).into()),
         ),
         (
             "SELECT v1! as v1 FROM Test",

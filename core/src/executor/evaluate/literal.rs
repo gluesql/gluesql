@@ -38,9 +38,6 @@ pub enum LiteralError {
     #[error("the divisor should not be zero")]
     DivisorShouldNotBeZero,
 
-    #[error("literal unary operation on non-numeric")]
-    UnaryOperationOnNonNumeric,
-
     #[error("unreachable literal binary arithmetic")]
     UnreachableBinaryArithmetic,
 
@@ -85,20 +82,6 @@ fn unsupported_binary_op(left: &Literal, op: BinaryOperator, right: &Literal) ->
 }
 
 impl<'a> Literal<'a> {
-    pub fn unary_plus(&self) -> Result<Self> {
-        match self {
-            Number(v) => Ok(Number(v.clone())),
-            Text(_) => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
-        }
-    }
-
-    pub fn unary_minus(&self) -> Result<Self> {
-        match self {
-            Number(v) => Ok(Number(Cow::Owned(-v.as_ref()))),
-            Text(_) => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
-        }
-    }
-
     #[must_use]
     pub fn concat(self, other: Literal<'_>) -> Self {
         let convert = |literal| match literal {

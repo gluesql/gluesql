@@ -1,6 +1,6 @@
 use {
     crate::*,
-    gluesql_core::{data::*, error::LiteralError},
+    gluesql_core::error::{EvaluateError, ValueError},
 };
 
 test_case!(filter, {
@@ -101,11 +101,11 @@ test_case!(filter, {
     let error_sqls = [
         (
             "SELECT id FROM Hunter WHERE +'abcd' > 1.0",
-            LiteralError::UnaryOperationOnNonNumeric.into(),
+            EvaluateError::UnsupportedUnaryPlus("abcd".to_owned()).into(),
         ),
         (
             "SELECT id FROM Hunter WHERE -'abcd' < 1.0",
-            LiteralError::UnaryOperationOnNonNumeric.into(),
+            EvaluateError::UnsupportedUnaryMinus("abcd".to_owned()).into(),
         ),
         (
             "SELECT id FROM Hunter WHERE +name > 1.0",
