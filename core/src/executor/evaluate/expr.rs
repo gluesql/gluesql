@@ -10,7 +10,7 @@ use {
 
 pub fn literal(ast_literal: &AstLiteral) -> Result<Evaluated<'_>> {
     match ast_literal {
-        AstLiteral::Boolean(value) => Ok(Evaluated::Literal(Literal::Boolean(*value))),
+        AstLiteral::Boolean(value) => Ok(Evaluated::Value(Value::Bool(*value))),
         AstLiteral::Number(value) => Ok(Evaluated::Literal(Literal::Number(Cow::Borrowed(value)))),
         AstLiteral::QuotedString(value) => {
             Ok(Evaluated::Literal(Literal::Text(Cow::Borrowed(value))))

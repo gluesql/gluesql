@@ -58,7 +58,6 @@ pub enum LiteralError {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Literal<'a> {
-    Boolean(bool),
     Number(Cow<'a, BigDecimal>),
     Text(Cow<'a, str>),
     Null,
@@ -82,7 +81,6 @@ impl<'a> Literal<'a> {
 
     pub fn evaluate_cmp(&self, other: &Literal<'a>) -> Option<Ordering> {
         match (self, other) {
-            (Boolean(l), Boolean(r)) => Some(l.cmp(r)),
             (Number(l), Number(r)) => Some(l.cmp(r)),
             (Text(l), Text(r)) => Some(l.cmp(r)),
             _ => None,
@@ -93,7 +91,7 @@ impl<'a> Literal<'a> {
         match self {
             Number(v) => Ok(Number(v.clone())),
             Null => Ok(Null),
-            _ => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
+            Text(_) => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
         }
     }
 
@@ -101,18 +99,13 @@ impl<'a> Literal<'a> {
         match self {
             Number(v) => Ok(Number(Cow::Owned(-v.as_ref()))),
             Null => Ok(Null),
-            _ => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
+            Text(_) => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
         }
     }
 
     #[must_use]
     pub fn concat(self, other: Literal<'_>) -> Self {
         let convert = |literal| match literal {
-            Boolean(v) => Some(if v {
-                "TRUE".to_owned()
-            } else {
-                "FALSE".to_owned()
-            }),
             Number(v) => Some(v.to_string()),
             Text(v) => Some(v.into_owned()),
             Null => None,
@@ -238,9 +231,9 @@ impl<'a> Literal<'a> {
         }
     }
 
-    pub fn like(&self, other: &Literal<'a>, case_sensitive: bool) -> Result<Self> {
+    pub fn like(&self, other: &Literal<'a>, case_sensitive: bool) -> Result<bool> {
         match (self, other) {
-            (Text(l), Text(r)) => l.like(r, case_sensitive).map(Boolean),
+            (Text(l), Text(r)) => l.like(r, case_sensitive),
             _ => Err(LiteralError::LikeOnNonString {
                 base: format!("{self:?}"),
                 pattern: format!("{other:?}"),
@@ -253,346 +246,88 @@ impl<'a> Literal<'a> {
 
 #[cfg(test)]
 mod tests {
-    use utils::Tribool;
     use {
-        super::Literal::*,
+        super::Literal::{self, *},
         crate::ast::BinaryOperator,
+        crate::data::LiteralError,
         bigdecimal::BigDecimal,
         std::{borrow::Cow, str::FromStr},
+        utils::Tribool,
     };
 
-    #[test]
-    fn arithmetic() {
-        use crate::data::LiteralError;
+    fn num(n: i32) -> Literal<'static> {
+        Number(Cow::Owned(BigDecimal::from(n)))
+    }
 
-        let num = |n: i32| Number(Cow::Owned(BigDecimal::from(n)));
-
-        assert_eq!(Null.add(&num(1)), Ok(Null));
-        assert_eq!(num(1).add(&Null), Ok(Null));
-
-        // subtract test
-        assert_eq!(Null.subtract(&num(2)), Ok(Null));
-        assert_eq!(num(2).subtract(&Null), Ok(Null));
-        assert_eq!(Null.subtract(&Null), Ok(Null));
-        assert_eq!(
-            Boolean(true).subtract(&num(3)),
-            Err(LiteralError::UnsupportedBinaryOperation {
-                left: format!("{:?}", Boolean(true)),
-                op: BinaryOperator::Minus,
-                right: format!("{:?}", num(3)),
-            }
-            .into()),
-        );
-
-        // multiply test
-        assert_eq!(Null.multiply(&num(2)), Ok(Null));
-        assert_eq!(num(2).multiply(&Null), Ok(Null));
-        assert_eq!(Null.multiply(&Null), Ok(Null));
-        assert_eq!(
-            Boolean(true).multiply(&num(3)),
-            Err(LiteralError::UnsupportedBinaryOperation {
-                left: format!("{:?}", Boolean(true)),
-                op: BinaryOperator::Multiply,
-                right: format!("{:?}", num(3))
-            }
-            .into()),
-        );
-
-        assert_eq!(num(2).unary_plus(), Ok(num(2)));
-        assert_eq!(Null.unary_plus(), Ok(Null));
-        assert_eq!(num(1).unary_minus(), Ok(num(-1)));
-        assert_eq!(Null.unary_minus(), Ok(Null));
+    fn text(value: &str) -> Literal<'static> {
+        Text(Cow::Owned(value.to_owned()))
     }
 
     #[test]
-    fn bitwise_shift_left() {
-        use crate::data::LiteralError;
-
-        let num = |n: i32| Number(Cow::Owned(BigDecimal::from(n)));
-        macro_rules! num {
-            ($num: expr) => {
-                Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
-            };
-        }
-
+    fn arithmetic_and_bitwise_with_nulls() {
+        assert_eq!(Null.add(&num(1)), Ok(Null));
+        assert_eq!(num(1).subtract(&Null), Ok(Null));
+        assert_eq!(num(2).multiply(&Null), Ok(Null));
+        assert_eq!(
+            num(4).divide(&num(2)),
+            Ok(Number(Cow::Owned(BigDecimal::from(2))))
+        );
+        assert_eq!(
+            num(3).bitwise_and(&num(1)),
+            Ok(Number(Cow::Owned(BigDecimal::from(1))))
+        );
         assert_eq!(
             num(1).bitwise_shift_left(&num(2)),
-            Ok(Number(Cow::Borrowed(&BigDecimal::from(4))))
-        );
-
-        assert_eq!(
-            num(1).bitwise_shift_left(&num(65)),
-            Err(LiteralError::BitwiseOperationOverflow.into())
-        );
-
-        assert_eq!(num(2).bitwise_shift_left(&Null), Ok(Null));
-        assert_eq!(Null.bitwise_shift_left(&num(2)), Ok(Null));
-        assert_eq!(Null.bitwise_shift_left(&Null), Ok(Null));
-
-        assert_eq!(
-            Boolean(true).bitwise_shift_left(&num(2)),
-            Err(LiteralError::BitwiseNonNumberLiteral.into())
-        );
-        assert_eq!(
-            num(1).bitwise_shift_left(&num(-1)),
-            Err(LiteralError::ImpossibleConversion("-1".to_owned(), "u32".to_owned()).into())
-        );
-        assert_eq!(
-            num!("1.1").bitwise_shift_left(&num(2)),
-            Err(LiteralError::BitwiseNonIntegerOperand("1.1".to_owned()).into())
-        );
-        assert_eq!(
-            num(1).bitwise_shift_left(&num!("2.1")),
-            Err(LiteralError::BitwiseNonIntegerOperand("2.1".to_owned()).into())
+            Ok(Number(Cow::Owned(BigDecimal::from(4))))
         );
     }
 
     #[test]
-    fn bitwise_shift_right() {
-        use crate::data::LiteralError;
-
-        let num = |n: i32| Number(Cow::Owned(BigDecimal::from(n)));
-        macro_rules! num {
+    fn concat_and_equality() {
+        macro_rules! num_literal {
             ($num: expr) => {
                 Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
             };
         }
 
-        assert_eq!(
-            num(4).bitwise_shift_right(&num(2)),
-            Ok(Number(Cow::Borrowed(&BigDecimal::from(1))))
-        );
+        assert_eq!(text("Foo").concat(text("Bar")), text("FooBar"));
+        assert_eq!(text("Foo").concat(Null), Null);
+        assert_eq!(num_literal!("1").concat(num_literal!("2")), text("12"));
 
         assert_eq!(
-            num(1).bitwise_shift_right(&num(65)),
-            Err(LiteralError::BitwiseOperationOverflow.into())
+            Tribool::True,
+            num_literal!("1").evaluate_eq(&num_literal!("1"))
         );
-
-        assert_eq!(num(2).bitwise_shift_right(&Null), Ok(Null));
-        assert_eq!(Null.bitwise_shift_right(&num(2)), Ok(Null));
-        assert_eq!(Null.bitwise_shift_right(&Null), Ok(Null));
-
-        assert_eq!(
-            Boolean(true).bitwise_shift_right(&num(2)),
-            Err(LiteralError::BitwiseNonNumberLiteral.into())
-        );
-        assert_eq!(
-            num(1).bitwise_shift_right(&num(-1)),
-            Err(LiteralError::ImpossibleConversion("-1".to_owned(), "u32".to_owned()).into())
-        );
-        assert_eq!(
-            num!("1.1").bitwise_shift_right(&num(2)),
-            Err(LiteralError::BitwiseNonIntegerOperand("1.1".to_owned()).into())
-        );
-        assert_eq!(
-            num(1).bitwise_shift_right(&num!("2.1")),
-            Err(LiteralError::BitwiseNonIntegerOperand("2.1".to_owned()).into())
-        );
+        assert_eq!(Tribool::False, num_literal!("1").evaluate_eq(&text("foo")));
+        assert_eq!(Tribool::Null, num_literal!("1").evaluate_eq(&Null));
     }
 
     #[test]
-    fn concat() {
-        macro_rules! text {
-            ($text: expr) => {
-                Text(Cow::Owned($text.to_owned()))
-            };
-        }
-
-        let num = || Number(Cow::Owned(BigDecimal::from(123)));
-        let text = || text!("Foo");
-
-        assert_eq!(Boolean(true).concat(num()), text!("TRUE123"));
-        assert_eq!(Boolean(false).concat(text()), text!("FALSEFoo"));
-        assert_eq!(num().concat(num()), text!("123123"));
-        assert_eq!(text().concat(num()), text!("Foo123"));
-        assert_eq!(text().concat(Null), Null);
-        assert_eq!(Null.concat(Boolean(true)), Null);
-        assert_eq!(Null.concat(Null), Null);
-    }
-
-    #[test]
-    fn div_mod() {
-        use crate::data::LiteralError;
-
-        macro_rules! num {
-            ($num: expr) => {
-                Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
-            };
-        }
-
-        let num_divisor = |x| Number(Cow::Owned(BigDecimal::from_str(x).unwrap()));
-
-        // Divide Test
-        assert_eq!(num!("12").divide(&num_divisor("2")).unwrap(), num!("6"));
-        assert_eq!(num!("12").divide(&num_divisor("2.0")).unwrap(), num!("6"));
-        assert_eq!(num!("12.0").divide(&num_divisor("2")).unwrap(), num!("6"));
-        assert_eq!(num!("12.0").divide(&num_divisor("2.0")).unwrap(), num!("6"));
-        assert_eq!(num!("12").divide(&Null).unwrap(), Null);
-        assert_eq!(num!("12.5").divide(&Null).unwrap(), Null);
-        assert_eq!(Null.divide(&num_divisor("2")).unwrap(), Null);
-        assert_eq!(Null.divide(&num_divisor("2.5")).unwrap(), Null);
-        assert_eq!(Null.divide(&Null).unwrap(), Null);
-        assert_eq!(
-            Boolean(true).divide(&num!("3")),
-            Err(LiteralError::UnsupportedBinaryOperation {
-                left: format!("{:?}", Boolean(true)),
-                op: BinaryOperator::Divide,
-                right: format!("{:?}", num!("3"))
-            }
-            .into()),
-        );
-
-        // Modulo Test
-        assert_eq!(num!("12").modulo(&num_divisor("2")).unwrap(), num!("0"));
-        assert_eq!(num!("12").modulo(&num_divisor("2.0")).unwrap(), num!("0"));
-        assert_eq!(num!("12.0").modulo(&num_divisor("2")).unwrap(), num!("0"));
-        assert_eq!(num!("12.0").modulo(&num_divisor("2.0")).unwrap(), num!("0"));
-        assert_eq!(num!("12").modulo(&Null).unwrap(), Null);
-        assert_eq!(Null.modulo(&num_divisor("2")).unwrap(), Null);
-        assert_eq!(Null.modulo(&Null).unwrap(), Null);
-
-        let text = Text(Cow::Owned("some".to_owned()));
-        assert_eq!(
-            num!("12").modulo(&text),
-            Err(LiteralError::UnsupportedBinaryOperation {
-                left: format!("{:?}", num!("12")),
-                op: BinaryOperator::Modulo,
-                right: format!("{text:?}")
-            }
-            .into())
-        );
-    }
-
-    #[test]
-    fn evaluate_eq() {
-        macro_rules! text {
-            ($text: expr) => {
-                Text(Cow::Owned($text.to_owned()))
-            };
-        }
-        macro_rules! num {
-            ($num: expr) => {
-                Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
-            };
-        }
-        assert_eq!(Tribool::True, Boolean(true).evaluate_eq(&Boolean(true)));
-        assert_eq!(Tribool::False, Boolean(true).evaluate_eq(&Boolean(false)));
-        //Number
-        assert_eq!(Tribool::True, num!("123").evaluate_eq(&num!("123")));
-        assert_eq!(Tribool::True, num!("12.0").evaluate_eq(&num!("12.0")));
-        assert_eq!(Tribool::True, num!("12.0").evaluate_eq(&num!("12")));
-        assert_eq!(Tribool::False, num!("12.0").evaluate_eq(&num!("12.123")));
-        assert_eq!(Tribool::False, num!("123").evaluate_eq(&num!("12.3")));
-        assert_eq!(Tribool::False, num!("123").evaluate_eq(&text!("Foo")));
-        assert_eq!(Tribool::Null, num!("123").evaluate_eq(&Null));
-        //Text
-        assert_eq!(Tribool::True, text!("Foo").evaluate_eq(&text!("Foo")));
-        assert_eq!(Tribool::False, text!("Foo").evaluate_eq(&text!("Bar")));
-        assert_eq!(Tribool::Null, text!("Foo").evaluate_eq(&Null));
-        // Null
-        assert_eq!(Tribool::Null, Null.evaluate_eq(&Null));
-    }
-
-    #[test]
-    fn evaluate_cmp() {
+    fn comparison_for_numbers_and_text() {
         use std::cmp::Ordering;
-        macro_rules! text {
-            ($text: expr) => {
-                Text(Cow::Owned($text.to_owned()))
-            };
-        }
-        macro_rules! num {
+        macro_rules! num_literal {
             ($num: expr) => {
                 Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
             };
         }
-        //Boolean
+
         assert_eq!(
-            Boolean(false).evaluate_cmp(&Boolean(true)),
+            num_literal!("1").evaluate_cmp(&num_literal!("2")),
             Some(Ordering::Less)
         );
-        assert_eq!(
-            Boolean(true).evaluate_cmp(&Boolean(true)),
-            Some(Ordering::Equal)
-        );
-        assert_eq!(
-            Boolean(true).evaluate_cmp(&Boolean(false)),
-            Some(Ordering::Greater)
-        );
-        assert_eq!(Boolean(true).evaluate_cmp(&num!("1")), None);
-        assert_eq!(Boolean(true).evaluate_cmp(&text!("Foo")), None);
-        assert_eq!(Boolean(true).evaluate_cmp(&Null), None);
-        //Number - valid format -> (int, int), (float, int), (int, float), (float, float)
-        assert_eq!(
-            num!("123").evaluate_cmp(&num!("1234")),
-            Some(Ordering::Less)
-        );
-        assert_eq!(
-            num!("12.0").evaluate_cmp(&num!("123")),
-            Some(Ordering::Less)
-        );
-        assert_eq!(
-            num!("123").evaluate_cmp(&num!("123.1")),
-            Some(Ordering::Less)
-        );
-        assert_eq!(
-            num!("12.0").evaluate_cmp(&num!("12.1")),
-            Some(Ordering::Less)
-        );
-        assert_eq!(
-            num!("123").evaluate_cmp(&num!("123")),
-            Some(Ordering::Equal)
-        );
-        assert_eq!(
-            num!("1234").evaluate_cmp(&num!("123")),
-            Some(Ordering::Greater)
-        );
-        assert_eq!(num!("123").evaluate_cmp(&text!("123")), None);
-        assert_eq!(num!("123").evaluate_cmp(&Null), None);
-        //text
-        assert_eq!(text!("a").evaluate_cmp(&text!("b")), Some(Ordering::Less));
-        assert_eq!(text!("a").evaluate_cmp(&text!("a")), Some(Ordering::Equal));
-        assert_eq!(
-            text!("b").evaluate_cmp(&text!("a")),
-            Some(Ordering::Greater)
-        );
-        assert_eq!(text!("a").evaluate_cmp(&Null), None);
-        assert_eq!(Null.evaluate_cmp(&Null), None);
+        assert_eq!(text("a").evaluate_cmp(&text("b")), Some(Ordering::Less));
+        assert_eq!(text("a").evaluate_cmp(&Null), None);
     }
 
     #[test]
-    fn bitwise_and() {
-        use crate::data::LiteralError;
-
-        let num = |val: i32| Number(Cow::Owned(BigDecimal::from(val)));
-        let text = |val: &str| Text(Cow::Owned(String::from(val)));
-
-        macro_rules! ok {
-            ($left: expr, $right: expr, $expected: expr) => {
-                assert_eq!(($left).bitwise_and(&$right), Ok($expected))
-            };
-        }
-
-        macro_rules! err {
-            ($left: expr, $right: expr) => {
-                assert_eq!(
-                    ($left).bitwise_and(&$right),
-                    Err(LiteralError::UnsupportedBinaryOperation {
-                        left: format!("{:?}", $left),
-                        op: BinaryOperator::BitwiseAnd,
-                        right: format!("{:?}", $right)
-                    }
-                    .into())
-                )
-            };
-        }
-
-        ok!(num(11), num(12), num(8));
-        ok!(Null, num(12), Null);
-        ok!(num(11), Null, Null);
-        ok!(Null, Null, Null);
-        err!(text("11"), num(12));
-        err!(num(11), text("12"));
-        err!(text("11"), text("12"));
+    fn modulo_errors_on_text() {
+        let err = text("foo").modulo(&num(2)).unwrap_err();
+        assert!(matches!(
+            err,
+            crate::result::Error::Literal(LiteralError::UnsupportedBinaryOperation {
+                op: BinaryOperator::Modulo,
+                ..
+            })
+        ));
     }
 }

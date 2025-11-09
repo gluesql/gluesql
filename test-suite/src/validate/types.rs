@@ -40,9 +40,9 @@ test_case!(types, {
         ),
         (
             "UPDATE TableC SET uid = TRUE;",
-            Err(ValueError::IncompatibleLiteralForDataType {
+            Err(ValueError::IncompatibleDataType {
                 data_type: DataType::Int,
-                literal: format!("{:?}", Literal::Boolean(true)),
+                value: Value::Bool(true),
             }
             .into()),
         ),

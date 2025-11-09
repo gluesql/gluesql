@@ -60,7 +60,7 @@ impl TryFrom<Evaluated<'_>> for bool {
 
     fn try_from(e: Evaluated<'_>) -> Result<bool> {
         match e {
-            Evaluated::Literal(Literal::Boolean(v)) | Evaluated::Value(Value::Bool(v)) => Ok(v),
+            Evaluated::Value(Value::Bool(v)) => Ok(v),
             Evaluated::Literal(v) => {
                 Err(EvaluateError::BooleanTypeRequired(format!("{v:?}")).into())
             }
@@ -398,7 +398,7 @@ impl<'a> Evaluated<'a> {
     pub fn like(&self, other: Evaluated<'a>, case_sensitive: bool) -> Result<Evaluated<'a>> {
         let evaluated = match (self, other) {
             (Evaluated::Literal(l), Evaluated::Literal(r)) => {
-                Evaluated::Literal(l.like(&r, case_sensitive)?)
+                Evaluated::Value(Value::Bool(l.like(&r, case_sensitive)?))
             }
             (Evaluated::Literal(l), Evaluated::Value(r)) => {
                 Evaluated::Value((Value::try_from(l)?).like(&r, case_sensitive)?)

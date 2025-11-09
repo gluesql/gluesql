@@ -1,8 +1,6 @@
 use {
     crate::*,
-    bigdecimal::BigDecimal,
     gluesql_core::{
-        ast::BinaryOperator,
         data::{Literal, NumericBinaryOperator},
         error::{EvaluateError, LiteralError, UpdateError, ValueError},
         prelude::Value,
@@ -87,10 +85,10 @@ test_case!(error, {
         ),
         (
             "SELECT * FROM Arith WHERE TRUE + 1 = 1",
-            LiteralError::UnsupportedBinaryOperation {
-                left: format!("{:?}", Literal::Boolean(true)),
-                op: BinaryOperator::Plus,
-                right: format!("{:?}", Literal::Number(Cow::Owned(BigDecimal::from(1)))),
+            ValueError::NonNumericMathOperation {
+                lhs: Value::Bool(true),
+                operator: NumericBinaryOperator::Add,
+                rhs: Value::I64(1),
             }
             .into(),
         ),

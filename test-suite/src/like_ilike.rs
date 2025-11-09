@@ -99,9 +99,9 @@ test_case!(like_ilike, {
         ),
         (
             "SELECT name FROM Item WHERE True ILIKE '_B_'",
-            LiteralError::LikeOnNonString {
-                base: format!("{:?}", Literal::Boolean(true)),
-                pattern: format!("{:?}", Literal::Text(Cow::Owned("_B_".to_owned()))),
+            ValueError::LikeOnNonString {
+                base: Value::Bool(true),
+                pattern: Value::Str("_B_".to_owned()),
                 case_sensitive: false,
             }
             .into(),
