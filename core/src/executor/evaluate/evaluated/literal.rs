@@ -7,6 +7,7 @@ use {
         },
         result::{Error, Result},
     },
+    bigdecimal::BigDecimal,
     rust_decimal::Decimal,
     std::{
         net::{IpAddr, Ipv4Addr, Ipv6Addr},
@@ -41,94 +42,144 @@ impl TryFrom<Literal<'_>> for Value {
 }
 
 pub(crate) fn literal_to_value(data_type: &DataType, literal: &Literal<'_>) -> Result<Value> {
-    match (data_type, literal) {
-        (DataType::Int8, Literal::Number(v)) => v
-            .to_i8()
-            .map(Value::I8)
-            .ok_or_else(|| ValueError::FailedToParseNumber.into()),
-        (DataType::Int16, Literal::Number(v)) => v
-            .to_i16()
-            .map(Value::I16)
-            .ok_or_else(|| ValueError::FailedToParseNumber.into()),
-        (DataType::Int32, Literal::Number(v)) => v
-            .to_i32()
-            .map(Value::I32)
-            .ok_or_else(|| ValueError::FailedToParseNumber.into()),
-        (DataType::Int, Literal::Number(v)) => v
-            .to_i64()
-            .map(Value::I64)
-            .ok_or_else(|| ValueError::FailedToParseNumber.into()),
-        (DataType::Int128, Literal::Number(v)) => v
-            .to_i128()
-            .map(Value::I128)
-            .ok_or_else(|| ValueError::FailedToParseNumber.into()),
-        (DataType::Uint8, Literal::Number(v)) => v
-            .to_u8()
-            .map(Value::U8)
-            .ok_or_else(|| ValueError::FailedToParseNumber.into()),
-        (DataType::Uint16, Literal::Number(v)) => v
-            .to_u16()
-            .map(Value::U16)
-            .ok_or_else(|| ValueError::FailedToParseNumber.into()),
-        (DataType::Uint32, Literal::Number(v)) => v
-            .to_u32()
-            .map(Value::U32)
-            .ok_or_else(|| ValueError::FailedToParseNumber.into()),
-        (DataType::Uint64, Literal::Number(v)) => v
-            .to_u64()
-            .map(Value::U64)
-            .ok_or_else(|| ValueError::FailedToParseNumber.into()),
-        (DataType::Uint128, Literal::Number(v)) => v
-            .to_u128()
-            .map(Value::U128)
-            .ok_or_else(|| ValueError::FailedToParseNumber.into()),
-        (DataType::Float32, Literal::Number(v)) => v
-            .to_f32()
-            .map(Value::F32)
-            .ok_or_else(|| ValueError::UnreachableNumberParsing.into()),
-        (DataType::Float, Literal::Number(v)) => v
-            .to_f64()
-            .map(Value::F64)
-            .ok_or_else(|| ValueError::UnreachableNumberParsing.into()),
-        (DataType::Text, Literal::Text(v)) => Ok(Value::Str(v.to_string())),
-        (DataType::Bytea, Literal::Text(v)) => hex::decode(v.as_ref())
-            .map(Value::Bytea)
-            .map_err(|_| ValueError::FailedToParseHexString(v.to_string()).into()),
-        (DataType::Inet, Literal::Text(v)) => IpAddr::from_str(v.as_ref())
-            .map(Value::Inet)
-            .map_err(|_| ValueError::FailedToParseInetString(v.to_string()).into()),
-        (DataType::Inet, Literal::Number(v)) => {
-            if let Some(x) = v.to_u32() {
-                Ok(Value::Inet(IpAddr::V4(Ipv4Addr::from(x))))
-            } else {
-                Ok(Value::Inet(IpAddr::V6(Ipv6Addr::from(
-                    v.to_u128().unwrap(),
-                ))))
-            }
-        }
-        (DataType::Date, Literal::Text(v)) => v
-            .parse::<chrono::NaiveDate>()
-            .map(Value::Date)
-            .map_err(|_| ValueError::FailedToParseDate(v.to_string()).into()),
-        (DataType::Timestamp, Literal::Text(v)) => parse_timestamp(v)
-            .map(Value::Timestamp)
-            .ok_or_else(|| ValueError::FailedToParseTimestamp(v.to_string()).into()),
-        (DataType::Time, Literal::Text(v)) => parse_time(v)
-            .map(Value::Time)
-            .ok_or_else(|| ValueError::FailedToParseTime(v.to_string()).into()),
-        (DataType::Uuid, Literal::Text(v)) => parse_uuid(v).map(Value::Uuid),
-        (DataType::Map, Literal::Text(v)) => Value::parse_json_map(v),
-        (DataType::List, Literal::Text(v)) => Value::parse_json_list(v),
-        (DataType::Decimal, Literal::Number(v)) => v
-            .to_string()
-            .parse::<Decimal>()
-            .map(Value::Decimal)
-            .map_err(|_| ValueError::FailedToParseDecimal(v.to_string()).into()),
-        _ => Err(ValueError::IncompatibleLiteralForDataType {
+    let result = match literal {
+        Literal::Number(value) => literal_number_to_value(data_type, value.as_ref()),
+        Literal::Text(value) => literal_text_to_value(data_type, value.as_ref()),
+    };
+
+    match result {
+        Some(output) => output,
+        None => Err(ValueError::IncompatibleLiteralForDataType {
             data_type: data_type.clone(),
             literal: format!("{literal:?}"),
         }
         .into()),
+    }
+}
+
+fn literal_number_to_value(data_type: &DataType, value: &BigDecimal) -> Option<Result<Value>> {
+    match data_type {
+        DataType::Int8 => Some(
+            value
+                .to_i8()
+                .map(Value::I8)
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+        ),
+        DataType::Int16 => Some(
+            value
+                .to_i16()
+                .map(Value::I16)
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+        ),
+        DataType::Int32 => Some(
+            value
+                .to_i32()
+                .map(Value::I32)
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+        ),
+        DataType::Int => Some(
+            value
+                .to_i64()
+                .map(Value::I64)
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+        ),
+        DataType::Int128 => Some(
+            value
+                .to_i128()
+                .map(Value::I128)
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+        ),
+        DataType::Uint8 => Some(
+            value
+                .to_u8()
+                .map(Value::U8)
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+        ),
+        DataType::Uint16 => Some(
+            value
+                .to_u16()
+                .map(Value::U16)
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+        ),
+        DataType::Uint32 => Some(
+            value
+                .to_u32()
+                .map(Value::U32)
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+        ),
+        DataType::Uint64 => Some(
+            value
+                .to_u64()
+                .map(Value::U64)
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+        ),
+        DataType::Uint128 => Some(
+            value
+                .to_u128()
+                .map(Value::U128)
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+        ),
+        DataType::Float32 => Some(
+            value
+                .to_f32()
+                .map(Value::F32)
+                .ok_or_else(|| ValueError::UnreachableNumberParsing.into()),
+        ),
+        DataType::Float => Some(
+            value
+                .to_f64()
+                .map(Value::F64)
+                .ok_or_else(|| ValueError::UnreachableNumberParsing.into()),
+        ),
+        DataType::Inet => Some(Ok(if let Some(v4) = value.to_u32() {
+            Value::Inet(IpAddr::V4(Ipv4Addr::from(v4)))
+        } else {
+            Value::Inet(IpAddr::V6(Ipv6Addr::from(value.to_u128().unwrap())))
+        })),
+        DataType::Decimal => Some(
+            value
+                .to_string()
+                .parse::<Decimal>()
+                .map(Value::Decimal)
+                .map_err(|_| ValueError::FailedToParseDecimal(value.to_string()).into()),
+        ),
+        _ => None,
+    }
+}
+
+fn literal_text_to_value(data_type: &DataType, value: &str) -> Option<Result<Value>> {
+    match data_type {
+        DataType::Text => Some(Ok(Value::Str(value.to_owned()))),
+        DataType::Bytea => Some(
+            hex::decode(value)
+                .map(Value::Bytea)
+                .map_err(|_| ValueError::FailedToParseHexString(value.to_owned()).into()),
+        ),
+        DataType::Inet => Some(
+            IpAddr::from_str(value)
+                .map(Value::Inet)
+                .map_err(|_| ValueError::FailedToParseInetString(value.to_owned()).into()),
+        ),
+        DataType::Date => Some(
+            value
+                .parse::<chrono::NaiveDate>()
+                .map(Value::Date)
+                .map_err(|_| ValueError::FailedToParseDate(value.to_owned()).into()),
+        ),
+        DataType::Timestamp => Some(
+            parse_timestamp(value)
+                .map(Value::Timestamp)
+                .ok_or_else(|| ValueError::FailedToParseTimestamp(value.to_owned()).into()),
+        ),
+        DataType::Time => Some(
+            parse_time(value)
+                .map(Value::Time)
+                .ok_or_else(|| ValueError::FailedToParseTime(value.to_owned()).into()),
+        ),
+        DataType::Uuid => Some(parse_uuid(value).map(Value::Uuid)),
+        DataType::Map => Some(Value::parse_json_map(value)),
+        DataType::List => Some(Value::parse_json_list(value)),
+        _ => None,
     }
 }
 
