@@ -38,6 +38,7 @@ jobs:
               "gluesql-redb-storage"
               "gluesql-redis-storage"
               "gluesql-mongo-storage"
+              "gluesql-sqlite-storage"
               "gluesql-web-storage"
               "gluesql-idb-storage"
               "gluesql-csv-storage"
