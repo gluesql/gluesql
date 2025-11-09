@@ -2,11 +2,12 @@ use {
     super::{error::EvaluateError, function},
     crate::{
         ast::{BinaryOperator, DataType, TrimWhereField},
-        data::{Key, Literal, Value, value::BTreeMapJsonExt},
+        data::{Key, Literal, Value, ValueError, value::BTreeMapJsonExt},
         result::{Error, Result},
     },
     std::{borrow::Cow, cmp::Ordering, collections::BTreeMap, convert::TryFrom, ops::Range},
     utils::Tribool,
+    uuid::Uuid,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -839,7 +840,12 @@ impl<'a> Evaluated<'a> {
     pub fn try_into_value(self, data_type: &DataType, nullable: bool) -> Result<Value> {
         let value = match self {
             Evaluated::Literal(v) => Value::try_from_literal(data_type, &v)?,
-            Evaluated::Value(v) => v,
+            Evaluated::Value(Value::Bytea(bytes)) if data_type == &DataType::Uuid => {
+                Uuid::from_slice(&bytes)
+                    .map_err(|_| ValueError::FailedToParseUUID(hex::encode(bytes)))
+                    .map(|uuid| Value::Uuid(uuid.as_u128()))?
+            }
+            Evaluated::Value(value) => value,
             Evaluated::StrSlice {
                 source: s,
                 range: r,

@@ -2,14 +2,27 @@ use {
     super::{EvaluateError, Evaluated},
     crate::{
         ast::{AstLiteral, BinaryOperator, DataType, UnaryOperator},
-        data::{Literal, Value},
+        data::{Literal, LiteralError, Value},
         result::Result,
     },
     std::{borrow::Cow, cmp::Ordering},
 };
 
 pub fn literal(ast_literal: &AstLiteral) -> Result<Evaluated<'_>> {
-    Literal::try_from(ast_literal).map(Evaluated::Literal)
+    match ast_literal {
+        AstLiteral::Boolean(value) => Ok(Evaluated::Literal(Literal::Boolean(*value))),
+        AstLiteral::Number(value) => Ok(Evaluated::Literal(Literal::Number(Cow::Borrowed(value)))),
+        AstLiteral::QuotedString(value) => {
+            Ok(Evaluated::Literal(Literal::Text(Cow::Borrowed(value))))
+        }
+        AstLiteral::HexString(value) => {
+            let bytes = hex::decode(value)
+                .map_err(|_| LiteralError::FailedToDecodeHexString(value.clone()))?;
+
+            Ok(Evaluated::Value(Value::Bytea(bytes)))
+        }
+        AstLiteral::Null => Ok(Evaluated::Literal(Literal::Null)),
+    }
 }
 
 pub fn typed_string<'a>(data_type: &'a DataType, value: Cow<'a, str>) -> Result<Evaluated<'a>> {
@@ -108,4 +121,32 @@ pub fn array_index<'a>(obj: Evaluated<'a>, indexes: Vec<Evaluated<'a>>) -> Resul
         .map(Value::try_from)
         .collect::<Result<Vec<_>>>()?;
     value.selector_by_index(&indexes).map(Evaluated::Value)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{ast::AstLiteral, data::LiteralError, result::Error};
+
+    #[test]
+    fn literal_converts_hex_string_to_value() {
+        let ast = AstLiteral::HexString("48656c6c6f".to_owned());
+        let evaluated = literal(&ast).unwrap();
+
+        match evaluated {
+            Evaluated::Value(Value::Bytea(bytes)) => assert_eq!(bytes, b"Hello".to_vec()),
+            other => panic!("expected bytea value, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn literal_hex_string_error_propagates() {
+        let ast = AstLiteral::HexString("XYZ".to_owned());
+        let err = literal(&ast).unwrap_err();
+
+        assert!(matches!(
+            err,
+            Error::Literal(LiteralError::FailedToDecodeHexString(v)) if v == "XYZ"
+        ));
+    }
 }

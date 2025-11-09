@@ -1,13 +1,13 @@
 use {
     super::{BigDecimalExt, StringExt},
     crate::{
-        ast::{AstLiteral, BinaryOperator, ToSql},
-        result::{Error, Result},
+        ast::{BinaryOperator, ToSql},
+        result::Result,
     },
     Literal::*,
     bigdecimal::BigDecimal,
     serde::Serialize,
-    std::{borrow::Cow, cmp::Ordering, convert::TryFrom, fmt::Debug},
+    std::{borrow::Cow, cmp::Ordering, fmt::Debug},
     thiserror::Error,
     utils::Tribool,
 };
@@ -61,26 +61,7 @@ pub enum Literal<'a> {
     Boolean(bool),
     Number(Cow<'a, BigDecimal>),
     Text(Cow<'a, str>),
-    Bytea(Vec<u8>),
     Null,
-}
-
-impl<'a> TryFrom<&'a AstLiteral> for Literal<'a> {
-    type Error = Error;
-
-    fn try_from(ast_literal: &'a AstLiteral) -> Result<Self> {
-        let literal = match ast_literal {
-            AstLiteral::Boolean(v) => Boolean(*v),
-            AstLiteral::Number(v) => Number(Cow::Borrowed(v)),
-            AstLiteral::QuotedString(v) => Text(Cow::Borrowed(v)),
-            AstLiteral::HexString(v) => {
-                Bytea(hex::decode(v).map_err(|_| LiteralError::FailedToDecodeHexString(v.clone()))?)
-            }
-            AstLiteral::Null => Null,
-        };
-
-        Ok(literal)
-    }
 }
 
 fn unsupported_binary_op(left: &Literal, op: BinaryOperator, right: &Literal) -> LiteralError {
@@ -104,7 +85,6 @@ impl<'a> Literal<'a> {
             (Boolean(l), Boolean(r)) => Some(l.cmp(r)),
             (Number(l), Number(r)) => Some(l.cmp(r)),
             (Text(l), Text(r)) => Some(l.cmp(r)),
-            (Bytea(l), Bytea(r)) => Some(l.cmp(r)),
             _ => None,
         }
     }
@@ -135,7 +115,7 @@ impl<'a> Literal<'a> {
             }),
             Number(v) => Some(v.to_string()),
             Text(v) => Some(v.into_owned()),
-            Bytea(_) | Null => None,
+            Null => None,
         };
 
         match (convert(self), convert(other)) {
@@ -280,37 +260,6 @@ mod tests {
         bigdecimal::BigDecimal,
         std::{borrow::Cow, str::FromStr},
     };
-
-    #[test]
-    fn try_from_ast_literal() {
-        use {
-            super::{Literal, LiteralError},
-            crate::{ast::AstLiteral, result::Result},
-        };
-
-        fn test(ast_literal: &AstLiteral, literal: &Result<Literal>) {
-            assert_eq!(ast_literal.try_into(), *literal);
-        }
-
-        test(&AstLiteral::Boolean(true), &Ok(Boolean(true)));
-        test(
-            &AstLiteral::Number(BigDecimal::from(123)),
-            &Ok(Number(Cow::Borrowed(&BigDecimal::from(123)))),
-        );
-        test(
-            &AstLiteral::QuotedString("abc".to_owned()),
-            &Ok(Text(Cow::Borrowed("abc"))),
-        );
-        test(
-            &AstLiteral::HexString("1A2B".to_owned()),
-            &Ok(Bytea(hex::decode("1A2B").unwrap())),
-        );
-        test(
-            &AstLiteral::HexString("!*@Q".to_owned()),
-            &Err(LiteralError::FailedToDecodeHexString("!*@Q".to_owned()).into()),
-        );
-        assert_eq!(Literal::try_from(&AstLiteral::Null).unwrap(), Null);
-    }
 
     #[test]
     fn arithmetic() {
@@ -526,12 +475,6 @@ mod tests {
                 Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
             };
         }
-        macro_rules! bytea {
-            ($val: expr) => {
-                Bytea(hex::decode($val).unwrap())
-            };
-        }
-
         assert_eq!(Tribool::True, Boolean(true).evaluate_eq(&Boolean(true)));
         assert_eq!(Tribool::False, Boolean(true).evaluate_eq(&Boolean(false)));
         //Number
@@ -546,13 +489,6 @@ mod tests {
         assert_eq!(Tribool::True, text!("Foo").evaluate_eq(&text!("Foo")));
         assert_eq!(Tribool::False, text!("Foo").evaluate_eq(&text!("Bar")));
         assert_eq!(Tribool::Null, text!("Foo").evaluate_eq(&Null));
-        //Bytea
-        assert_eq!(
-            Tribool::True,
-            bytea!("12A456").evaluate_eq(&bytea!("12A456"))
-        );
-        assert_eq!(Tribool::False, bytea!("1230").evaluate_eq(&num!("1230")));
-        assert_eq!(Tribool::Null, bytea!("12").evaluate_eq(&Null));
         // Null
         assert_eq!(Tribool::Null, Null.evaluate_eq(&Null));
     }
@@ -570,12 +506,6 @@ mod tests {
                 Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
             };
         }
-        macro_rules! bytea {
-            ($val: expr) => {
-                Bytea(hex::decode($val).unwrap())
-            };
-        }
-
         //Boolean
         assert_eq!(
             Boolean(false).evaluate_cmp(&Boolean(true)),
@@ -627,20 +557,6 @@ mod tests {
             Some(Ordering::Greater)
         );
         assert_eq!(text!("a").evaluate_cmp(&Null), None);
-        //Bytea
-        assert_eq!(
-            bytea!("12").evaluate_cmp(&bytea!("20")),
-            Some(Ordering::Less)
-        );
-        assert_eq!(
-            bytea!("31").evaluate_cmp(&bytea!("31")),
-            Some(Ordering::Equal)
-        );
-        assert_eq!(
-            bytea!("9A").evaluate_cmp(&bytea!("2A")),
-            Some(Ordering::Greater)
-        );
-        assert_eq!(bytea!("345D").evaluate_cmp(&Null), None);
         assert_eq!(Null.evaluate_cmp(&Null), None);
     }
 

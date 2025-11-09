@@ -31,7 +31,6 @@ impl TryFrom<&Literal<'_>> for Value {
                 .ok_or_else(|| ValueError::FailedToParseNumber.into()),
             Literal::Boolean(v) => Ok(Value::Bool(*v)),
             Literal::Text(v) => Ok(Value::Str(v.as_ref().to_owned())),
-            Literal::Bytea(v) => Ok(Value::Bytea(v.clone())),
             Literal::Null => Ok(Value::Null),
         }
     }
@@ -85,7 +84,6 @@ impl Value {
                 Tribool::from(r.to_f64().is_some_and(|r| *l == r))
             }
             (Value::Str(l), Literal::Text(r)) => Tribool::from(l == r.as_ref()),
-            (Value::Bytea(l), Literal::Bytea(r)) => Tribool::from(l == r),
             (Value::Date(l), Literal::Text(r)) => match r.parse::<NaiveDate>() {
                 Ok(r) => Tribool::from(l == &r),
                 Err(_) => Tribool::from(false),
@@ -207,7 +205,6 @@ impl Value {
                 .map(Value::F64)
                 .ok_or_else(|| ValueError::UnreachableNumberParsing.into()),
             (DataType::Text, Literal::Text(v)) => Ok(Value::Str(v.to_string())),
-            (DataType::Bytea, Literal::Bytea(v)) => Ok(Value::Bytea(v.clone())),
             (DataType::Bytea, Literal::Text(v)) => hex::decode(v.as_ref())
                 .map(Value::Bytea)
                 .map_err(|_| ValueError::FailedToParseHexString(v.to_string()).into()),
@@ -234,7 +231,6 @@ impl Value {
                 .map(Value::Time)
                 .ok_or_else(|| ValueError::FailedToParseTime(v.to_string()).into()),
             (DataType::Uuid, Literal::Text(v)) => parse_uuid(v).map(Value::Uuid),
-            (DataType::Uuid, Literal::Bytea(v)) => parse_uuid(&hex::encode(v)).map(Value::Uuid),
             (DataType::Map, Literal::Text(v)) => Value::parse_json_map(v),
             (DataType::List, Literal::Text(v)) => Value::parse_json_list(v),
             (DataType::Decimal, Literal::Number(v)) => v
@@ -561,7 +557,6 @@ mod tests {
         let uuid_text = "936DA01F9ABD4d9d80C702AF85C822A8";
         let uuid = parse_uuid(uuid_text).unwrap();
 
-        let bytea = || hex::decode("123456").unwrap();
         let inet = |v: &str| Value::Inet(IpAddr::from_str(v).unwrap());
 
         assert_eq!(
@@ -590,10 +585,6 @@ mod tests {
         assert_eq!(
             True,
             Value::Str("Hello".to_owned()).evaluate_eq_with_literal(text!("Hello"))
-        );
-        assert_eq!(
-            True,
-            Value::Bytea(bytea()).evaluate_eq_with_literal(&Literal::Bytea(bytea()))
         );
         assert_eq!(
             True,
@@ -835,11 +826,6 @@ mod tests {
             text!("Good!"),
             Value::Str("Good!".to_owned())
         );
-        test!(
-            DataType::Bytea,
-            Literal::Bytea(bytea("1234")),
-            Value::Bytea(bytea("1234"))
-        );
         test!(DataType::Bytea, text!("1234"), Value::Bytea(bytea("1234")));
         assert_eq!(
             Value::try_from_literal(&DataType::Bytea, &text!("123")),
@@ -883,11 +869,6 @@ mod tests {
         test!(
             DataType::Uuid,
             text!("936DA01F9ABD4d9d80C702AF85C822A8"),
-            Value::Uuid(195_965_723_427_462_096_757_863_453_463_987_888_808)
-        );
-        test!(
-            DataType::Uuid,
-            Literal::Bytea(bytea("936DA01F9ABD4d9d80C702AF85C822A8")),
             Value::Uuid(195_965_723_427_462_096_757_863_453_463_987_888_808)
         );
 
@@ -948,8 +929,6 @@ mod tests {
             };
         }
 
-        let bytea = |v| hex::decode(v).unwrap();
-
         macro_rules! test {
             ($from: expr, $expected: expr) => {
                 assert_eq!(
@@ -961,8 +940,6 @@ mod tests {
 
         test!(text!("hello"), Value::Str("hello".to_owned()));
         test!(&text!("hallo"), Value::Str("hallo".to_owned()));
-        test!(Literal::Bytea(bytea("1234")), Value::Bytea(bytea("1234")));
-        test!(&Literal::Bytea(bytea("1234")), Value::Bytea(bytea("1234")));
         test!(num!("1234567890"), Value::I64(1_234_567_890));
         test!(num!("1.0"), Value::F32(1.0_f32));
         test!(num!("1.0"), Value::F64(1.0));
