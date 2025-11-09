@@ -10,6 +10,7 @@ pub fn may_return_null(expr: &Expr) -> bool {
         | Expr::Exists { .. }
         | Expr::InSubquery { .. }
         | Expr::Aggregate(_) => true,
+        Expr::Value(value) => value.is_null(),
         Expr::Literal(_) | Expr::TypedString { .. } | Expr::IsNull(_) | Expr::IsNotNull(_) => false,
         Expr::UnaryOp { expr: inner, .. }
         | Expr::Nested(inner)
