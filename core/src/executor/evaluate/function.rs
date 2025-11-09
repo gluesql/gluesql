@@ -60,7 +60,6 @@ impl BreakIfNull<Value> for Result<Value> {
     }
 }
 
-
 trait ControlFlowMapErr<T, F> {
     fn map_err(self, f: F) -> ControlFlow<T>
     where
