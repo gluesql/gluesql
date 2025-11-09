@@ -244,171 +244,177 @@ impl Value {
 
     pub fn try_cast_from_literal(data_type: &DataType, literal: &Literal<'_>) -> Result<Value> {
         match (data_type, literal) {
-            (DataType::Boolean, Literal::Text(v)) => match v.to_uppercase().as_str() {
+            (DataType::Boolean, Literal::Text(value)) => match value.to_uppercase().as_str() {
                 "TRUE" | "1" => Ok(Value::Bool(true)),
                 "FALSE" | "0" => Ok(Value::Bool(false)),
-                _ => Err(ValueError::LiteralCastToBooleanFailed(v.to_string()).into()),
+                _ => Err(ValueError::LiteralCastToBooleanFailed(value.to_string()).into()),
             },
-            (DataType::Boolean, Literal::Number(v)) => match v.to_i64() {
+            (DataType::Boolean, Literal::Number(value)) => match value.to_i64() {
                 Some(0) => Ok(Value::Bool(false)),
                 Some(1) => Ok(Value::Bool(true)),
-                _ => Err(ValueError::LiteralCastToBooleanFailed(v.to_string()).into()),
+                _ => Err(ValueError::LiteralCastToBooleanFailed(value.to_string()).into()),
             },
-            (DataType::Int8, Literal::Text(v)) => v
-                .parse::<i8>()
-                .map(Value::I8)
-                .map_err(|_| ValueError::LiteralCastFromTextToIntegerFailed(v.to_string()).into()),
-            (DataType::Int8, Literal::Number(v)) => match v.to_i8() {
-                Some(x) => Ok(Value::I8(x)),
-                None => Err(ValueError::LiteralCastToInt8Failed(v.to_string()).into()),
-            },
-            (DataType::Int16, Literal::Text(v)) => v
-                .parse::<i16>()
-                .map(Value::I16)
-                .map_err(|_| ValueError::LiteralCastFromTextToIntegerFailed(v.to_string()).into()),
-            (DataType::Int16, Literal::Number(v)) => match v.to_i16() {
-                Some(x) => Ok(Value::I16(x)),
-                None => Err(ValueError::LiteralCastToInt8Failed(v.to_string()).into()),
-            },
-            (DataType::Int32, Literal::Text(v)) => v
-                .parse::<i32>()
-                .map(Value::I32)
-                .map_err(|_| ValueError::LiteralCastFromTextToIntegerFailed(v.to_string()).into()),
-            (DataType::Int32, Literal::Number(v)) => match v.to_i32() {
-                Some(x) => Ok(Value::I32(x)),
-                None => Err(ValueError::LiteralCastToDataTypeFailed(
-                    DataType::Int32,
-                    v.to_string(),
-                )
-                .into()),
-            },
-            (DataType::Int, Literal::Text(v)) => v
-                .parse::<i64>()
-                .map(Value::I64)
-                .map_err(|_| ValueError::LiteralCastFromTextToIntegerFailed(v.to_string()).into()),
-            (DataType::Int, Literal::Number(v)) => match v.to_i64() {
-                Some(x) => Ok(Value::I64(x)),
-                None => Err(
-                    ValueError::LiteralCastToDataTypeFailed(DataType::Int, v.to_string()).into(),
-                ),
-            },
-            (DataType::Int128, Literal::Text(v)) => v
-                .parse::<i128>()
-                .map(Value::I128)
-                .map_err(|_| ValueError::LiteralCastFromTextToIntegerFailed(v.to_string()).into()),
-            (DataType::Int128, Literal::Number(v)) => match v.to_i128() {
-                Some(x) => Ok(Value::I128(x)),
-                None => Err(ValueError::LiteralCastToDataTypeFailed(
-                    DataType::Int128,
-                    v.to_string(),
-                )
-                .into()),
-            },
-            (DataType::Uint8, Literal::Text(v)) => v.parse::<u8>().map(Value::U8).map_err(|_| {
-                ValueError::LiteralCastFromTextToUnsignedInt8Failed(v.to_string()).into()
-            }),
-            (DataType::Uint8, Literal::Number(v)) => match v.to_u8() {
-                Some(x) => Ok(Value::U8(x)),
-                None => Err(ValueError::LiteralCastToUnsignedInt8Failed(v.to_string()).into()),
-            },
-            (DataType::Uint16, Literal::Text(v)) => v
-                .parse::<u16>()
-                .map(Value::U16)
-                .map_err(|_| ValueError::LiteralCastFromTextToUint16Failed(v.to_string()).into()),
-            (DataType::Uint16, Literal::Number(v)) => match v.to_u16() {
-                Some(x) => Ok(Value::U16(x)),
-                None => Err(ValueError::LiteralCastToUint16Failed(v.to_string()).into()),
-            },
-            (DataType::Uint32, Literal::Text(v)) => v
-                .parse::<u32>()
-                .map(Value::U32)
-                .map_err(|_| ValueError::LiteralCastFromTextToUint32Failed(v.to_string()).into()),
-            (DataType::Uint32, Literal::Number(v)) => match v.to_u32() {
-                Some(x) => Ok(Value::U32(x)),
-                None => Err(ValueError::LiteralCastToUint32Failed(v.to_string()).into()),
-            },
-
-            (DataType::Uint64, Literal::Text(v)) => v
-                .parse::<u64>()
-                .map(Value::U64)
-                .map_err(|_| ValueError::LiteralCastFromTextToUint64Failed(v.to_string()).into()),
-            (DataType::Uint64, Literal::Number(v)) => match v.to_u64() {
-                Some(x) => Ok(Value::U64(x)),
-                None => Err(ValueError::LiteralCastToUint64Failed(v.to_string()).into()),
-            },
-
-            (DataType::Uint128, Literal::Text(v)) => v
-                .parse::<u128>()
-                .map(Value::U128)
-                .map_err(|_| ValueError::LiteralCastFromTextToUint128Failed(v.to_string()).into()),
-            (DataType::Uint128, Literal::Number(v)) => match v.to_u128() {
-                Some(x) => Ok(Value::U128(x)),
-                None => Err(ValueError::LiteralCastToUint128Failed(v.to_string()).into()),
-            },
-
-            (DataType::Float32, Literal::Text(v)) => v
-                .parse::<f32>()
-                .map(Value::F32)
-                .map_err(|_| ValueError::LiteralCastFromTextToFloatFailed(v.to_string()).into()),
-            (DataType::Float32, Literal::Number(v)) => {
-                v.to_f32().map(Value::F32).ok_or_else(|| {
-                    ValueError::UnreachableLiteralCastFromNumberToFloat(v.to_string()).into()
-                })
+            (DataType::Int8, Literal::Text(value)) => Self::cast_text_with::<i8, _, _>(
+                value.as_ref(),
+                Value::I8,
+                ValueError::LiteralCastFromTextToIntegerFailed,
+            ),
+            (DataType::Int16, Literal::Text(value)) => Self::cast_text_with::<i16, _, _>(
+                value.as_ref(),
+                Value::I16,
+                ValueError::LiteralCastFromTextToIntegerFailed,
+            ),
+            (DataType::Int32, Literal::Text(value)) => Self::cast_text_with::<i32, _, _>(
+                value.as_ref(),
+                Value::I32,
+                ValueError::LiteralCastFromTextToIntegerFailed,
+            ),
+            (DataType::Int, Literal::Text(value)) => Self::cast_text_with::<i64, _, _>(
+                value.as_ref(),
+                Value::I64,
+                ValueError::LiteralCastFromTextToIntegerFailed,
+            ),
+            (DataType::Int128, Literal::Text(value)) => Self::cast_text_with::<i128, _, _>(
+                value.as_ref(),
+                Value::I128,
+                ValueError::LiteralCastFromTextToIntegerFailed,
+            ),
+            (DataType::Uint8, Literal::Text(value)) => Self::cast_text_with::<u8, _, _>(
+                value.as_ref(),
+                Value::U8,
+                ValueError::LiteralCastFromTextToUnsignedInt8Failed,
+            ),
+            (DataType::Uint16, Literal::Text(value)) => Self::cast_text_with::<u16, _, _>(
+                value.as_ref(),
+                Value::U16,
+                ValueError::LiteralCastFromTextToUint16Failed,
+            ),
+            (DataType::Uint32, Literal::Text(value)) => Self::cast_text_with::<u32, _, _>(
+                value.as_ref(),
+                Value::U32,
+                ValueError::LiteralCastFromTextToUint32Failed,
+            ),
+            (DataType::Uint64, Literal::Text(value)) => Self::cast_text_with::<u64, _, _>(
+                value.as_ref(),
+                Value::U64,
+                ValueError::LiteralCastFromTextToUint64Failed,
+            ),
+            (DataType::Uint128, Literal::Text(value)) => Self::cast_text_with::<u128, _, _>(
+                value.as_ref(),
+                Value::U128,
+                ValueError::LiteralCastFromTextToUint128Failed,
+            ),
+            (DataType::Float32, Literal::Text(value)) => Self::cast_text_with::<f32, _, _>(
+                value.as_ref(),
+                Value::F32,
+                ValueError::LiteralCastFromTextToFloatFailed,
+            ),
+            (DataType::Float, Literal::Text(value)) => Self::cast_text_with::<f64, _, _>(
+                value.as_ref(),
+                Value::F64,
+                ValueError::LiteralCastFromTextToFloatFailed,
+            ),
+            (DataType::Decimal, Literal::Text(value)) => Self::cast_text_with::<Decimal, _, _>(
+                value.as_ref(),
+                Value::Decimal,
+                ValueError::LiteralCastFromTextToDecimalFailed,
+            ),
+            (DataType::Text, Literal::Number(value)) => Ok(Value::Str(value.to_string())),
+            (DataType::Interval, Literal::Text(value)) => {
+                Interval::parse(value.as_ref()).map(Value::Interval)
             }
-            (DataType::Float, Literal::Text(v)) => v
-                .parse::<f64>()
-                .map(Value::F64)
-                .map_err(|_| ValueError::LiteralCastFromTextToFloatFailed(v.to_string()).into()),
-            (DataType::Float, Literal::Number(v)) => v.to_f64().map(Value::F64).ok_or_else(|| {
-                ValueError::UnreachableLiteralCastFromNumberToFloat(v.to_string()).into()
-            }),
-            (DataType::Decimal, Literal::Text(v)) => v
-                .parse::<Decimal>()
-                .map(Value::Decimal)
-                .map_err(|_| ValueError::LiteralCastFromTextToDecimalFailed(v.to_string()).into()),
-            (DataType::Decimal, Literal::Number(v)) => v
-                .to_string()
-                .parse::<Decimal>()
-                .map(Value::Decimal)
-                .map_err(|_| ValueError::LiteralCastFromTextToDecimalFailed(v.to_string()).into()),
-
-            (DataType::Text, Literal::Number(v)) => Ok(Value::Str(v.to_string())),
-            (DataType::Text, Literal::Text(v)) => Ok(Value::Str(v.to_string())),
-            (DataType::Interval, Literal::Text(v)) => {
-                Interval::parse(v.as_ref()).map(Value::Interval)
-            }
-            (DataType::Uuid, Literal::Text(v)) => parse_uuid(v).map(Value::Uuid),
-            (DataType::Date, Literal::Text(v)) => parse_date(v)
+            (DataType::Point, Literal::Text(value)) => Point::from_wkt(value.as_ref())
+                .map(Value::Point)
+                .map_err(|_| ValueError::FailedToParsePoint(value.to_string()).into()),
+            (DataType::Date, Literal::Text(value)) => parse_date(value.as_ref())
                 .map(Value::Date)
-                .ok_or_else(|| ValueError::LiteralCastToDateFailed(v.to_string()).into()),
-            (DataType::Time, Literal::Text(v)) => parse_time(v)
-                .map(Value::Time)
-                .ok_or_else(|| ValueError::LiteralCastToTimeFailed(v.to_string()).into()),
-            (DataType::Timestamp, Literal::Text(v)) => parse_timestamp(v)
-                .map(Value::Timestamp)
-                .ok_or_else(|| ValueError::LiteralCastToTimestampFailed(v.to_string()).into()),
-            (DataType::Inet, Literal::Number(v)) => {
-                if let Some(x) = v.to_u32() {
-                    Ok(Value::Inet(IpAddr::V4(Ipv4Addr::from(x))))
-                } else if let Some(x) = v.to_u128() {
-                    Ok(Value::Inet(IpAddr::V6(Ipv6Addr::from(x))))
-                } else {
-                    Err(ValueError::FailedToParseInetString(v.to_string()).into())
+                .ok_or_else(|| ValueError::LiteralCastToDateFailed(value.to_string()).into()),
+            _ => match Self::try_from_literal(data_type, literal) {
+                Ok(value) => Ok(value),
+                Err(error) => Self::map_cast_error(data_type, literal, error),
+            },
+        }
+    }
+
+    fn cast_text_with<T, Wrap, ErrFn>(text: &str, wrap: Wrap, err: ErrFn) -> Result<Value>
+    where
+        T: FromStr,
+        Wrap: Fn(T) -> Value,
+        ErrFn: Fn(String) -> ValueError,
+    {
+        text.parse::<T>()
+            .map(wrap)
+            .map_err(|_| err(text.to_owned()).into())
+    }
+    fn map_cast_error(data_type: &DataType, literal: &Literal<'_>, error: Error) -> Result<Value> {
+        let Error::Value(value_error) = &error else {
+            return Err(error);
+        };
+
+        match literal {
+            Literal::Number(number) => {
+                let literal_string = number.to_string();
+                let mapped_error = match (data_type, &**value_error) {
+                    (DataType::Int8 | DataType::Int16, ValueError::FailedToParseNumber) => {
+                        Some(ValueError::LiteralCastToInt8Failed(literal_string))
+                    }
+                    (DataType::Int32, ValueError::FailedToParseNumber) => Some(
+                        ValueError::LiteralCastToDataTypeFailed(DataType::Int32, literal_string),
+                    ),
+                    (DataType::Int, ValueError::FailedToParseNumber) => Some(
+                        ValueError::LiteralCastToDataTypeFailed(DataType::Int, literal_string),
+                    ),
+                    (DataType::Int128, ValueError::FailedToParseNumber) => Some(
+                        ValueError::LiteralCastToDataTypeFailed(DataType::Int128, literal_string),
+                    ),
+                    (DataType::Uint8, ValueError::FailedToParseNumber) => {
+                        Some(ValueError::LiteralCastToUnsignedInt8Failed(literal_string))
+                    }
+                    (DataType::Uint16, ValueError::FailedToParseNumber) => {
+                        Some(ValueError::LiteralCastToUint16Failed(literal_string))
+                    }
+                    (DataType::Uint32, ValueError::FailedToParseNumber) => {
+                        Some(ValueError::LiteralCastToUint32Failed(literal_string))
+                    }
+                    (DataType::Uint64, ValueError::FailedToParseNumber) => {
+                        Some(ValueError::LiteralCastToUint64Failed(literal_string))
+                    }
+                    (DataType::Uint128, ValueError::FailedToParseNumber) => {
+                        Some(ValueError::LiteralCastToUint128Failed(literal_string))
+                    }
+                    (DataType::Float32 | DataType::Float, ValueError::UnreachableNumberParsing) => {
+                        Some(ValueError::UnreachableLiteralCastFromNumberToFloat(
+                            literal_string,
+                        ))
+                    }
+                    (DataType::Decimal, ValueError::FailedToParseDecimal(_)) => Some(
+                        ValueError::LiteralCastFromTextToDecimalFailed(literal_string),
+                    ),
+                    _ => None,
+                };
+
+                match mapped_error {
+                    Some(mapped) => Err(mapped.into()),
+                    None => Err(error),
                 }
             }
-            (DataType::Inet, Literal::Text(v)) => IpAddr::from_str(v)
-                .map(Value::Inet)
-                .map_err(|_| ValueError::FailedToParseInetString(v.to_string()).into()),
-            (DataType::Point, Literal::Text(v)) => Point::from_wkt(v)
-                .map(Value::Point)
-                .map_err(|_| ValueError::FailedToParsePoint(v.to_string()).into()),
-            (DataType::Map, Literal::Text(v)) => Value::parse_json_map(v),
-            (DataType::List, Literal::Text(v)) => Value::parse_json_list(v),
-            _ => Err(ValueError::UnimplementedLiteralCast {
-                data_type: data_type.clone(),
-                literal: format!("{literal:?}"),
+            Literal::Text(value) => {
+                let literal_string = value.to_string();
+                let mapped_error = match (data_type, &**value_error) {
+                    (DataType::Time, ValueError::FailedToParseTime(_)) => {
+                        Some(ValueError::LiteralCastToTimeFailed(literal_string))
+                    }
+                    (DataType::Timestamp, ValueError::FailedToParseTimestamp(_)) => {
+                        Some(ValueError::LiteralCastToTimestampFailed(literal_string))
+                    }
+                    _ => None,
+                };
+
+                match mapped_error {
+                    Some(mapped) => Err(mapped.into()),
+                    None => Err(error),
+                }
             }
-            .into()),
         }
     }
 }
