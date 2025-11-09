@@ -38,7 +38,7 @@ pub use {
 };
 
 pub(crate) use {
-    date::{parse_time, parse_timestamp},
+    date::{parse_date, parse_time, parse_timestamp},
     uuid::parse_uuid,
 };
 

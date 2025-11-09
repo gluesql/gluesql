@@ -9,11 +9,8 @@ use {
         data::{BigDecimalExt, Interval, Literal, Point, value::uuid::parse_uuid},
         result::{Error, Result},
     },
-    bigdecimal::BigDecimal,
-    chrono::NaiveDate,
     rust_decimal::Decimal,
     std::{
-        cmp::Ordering,
         net::{IpAddr, Ipv4Addr, Ipv6Addr},
         str::FromStr,
     },
@@ -46,42 +43,6 @@ impl TryFrom<Literal<'_>> for Value {
 }
 
 impl Value {
-    pub fn evaluate_cmp_with_literal(&self, other: &Literal<'_>) -> Option<Ordering> {
-        match (self, other) {
-            (Value::I8(l), Literal::Number(r)) => l.partial_cmp(&r.to_i8()?),
-            (Value::I16(l), Literal::Number(r)) => l.partial_cmp(&r.to_i16()?),
-            (Value::I32(l), Literal::Number(r)) => l.partial_cmp(&r.to_i32()?),
-            (Value::I64(l), Literal::Number(r)) => l.partial_cmp(&r.to_i64()?),
-            (Value::I128(l), Literal::Number(r)) => l.partial_cmp(&r.to_i128()?),
-            (Value::U8(l), Literal::Number(r)) => l.partial_cmp(&r.to_u8()?),
-            (Value::U16(l), Literal::Number(r)) => l.partial_cmp(&r.to_u16()?),
-            (Value::U32(l), Literal::Number(r)) => l.partial_cmp(&r.to_u32()?),
-            (Value::U64(l), Literal::Number(r)) => l.partial_cmp(&r.to_u64()?),
-            (Value::U128(l), Literal::Number(r)) => l.partial_cmp(&r.to_u128()?),
-            (Value::F32(l), Literal::Number(r)) => l.partial_cmp(&r.to_f32()?),
-            (Value::F64(l), Literal::Number(r)) => l.partial_cmp(&r.to_f64()?),
-            (Value::Decimal(l), Literal::Number(r)) => {
-                BigDecimal::new(l.mantissa().into(), i64::from(l.scale())).partial_cmp(r)
-            }
-            (Value::Str(l), Literal::Text(r)) => Some(l.as_str().cmp(r)),
-            (Value::Date(l), Literal::Text(r)) => l.partial_cmp(&r.parse::<NaiveDate>().ok()?),
-            (Value::Timestamp(l), Literal::Text(r)) => l.partial_cmp(&parse_timestamp(r)?),
-            (Value::Time(l), Literal::Text(r)) => l.partial_cmp(&parse_time(r)?),
-            (Value::Uuid(l), Literal::Text(r)) => l.partial_cmp(&parse_uuid(r).ok()?),
-            (Value::Inet(l), Literal::Text(r)) => l.partial_cmp(&IpAddr::from_str(r).ok()?),
-            (Value::Inet(l), Literal::Number(r)) => {
-                if let Some(x) = r.to_u32() {
-                    l.partial_cmp(&Ipv4Addr::from(x))
-                } else if let Some(x) = r.to_u128() {
-                    l.partial_cmp(&Ipv6Addr::from(x))
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        }
-    }
-
     pub fn try_from_literal(data_type: &DataType, literal: &Literal<'_>) -> Result<Value> {
         match (data_type, literal) {
             (DataType::Int8, Literal::Number(v)) => v
@@ -149,7 +110,7 @@ impl Value {
                 }
             }
             (DataType::Date, Literal::Text(v)) => v
-                .parse::<NaiveDate>()
+                .parse::<chrono::NaiveDate>()
                 .map(Value::Date)
                 .map_err(|_| ValueError::FailedToParseDate(v.to_string()).into()),
             (DataType::Timestamp, Literal::Text(v)) => parse_timestamp(v)
@@ -354,107 +315,26 @@ impl Value {
 #[cfg(test)]
 mod tests {
     use {
-        super::parse_uuid,
         crate::data::{Literal, Value},
         bigdecimal::BigDecimal,
         chrono::{NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,
         std::{
             borrow::Cow,
-            cmp::Ordering,
             net::{IpAddr, Ipv4Addr, Ipv6Addr},
             str::FromStr,
         },
     };
 
-    fn date(year: i32, month: u32, day: u32) -> NaiveDate {
-        chrono::NaiveDate::from_ymd_opt(year, month, day).unwrap()
-    }
-
     fn date_time(y: i32, m: u32, d: u32, hh: u32, mm: u32, ss: u32, ms: u32) -> NaiveDateTime {
-        chrono::NaiveDate::from_ymd_opt(y, m, d)
+        NaiveDate::from_ymd_opt(y, m, d)
             .unwrap()
             .and_hms_milli_opt(hh, mm, ss, ms)
             .unwrap()
     }
 
     fn time(hour: u32, min: u32, sec: u32, milli: u32) -> NaiveTime {
-        chrono::NaiveTime::from_hms_milli_opt(hour, min, sec, milli).unwrap()
-    }
-
-    #[allow(clippy::similar_names)]
-    #[test]
-    fn evaluate_cmp_with_literal() {
-        let num = |n| Literal::Number(Cow::Owned(BigDecimal::from(n)));
-        let text = |v: &str| Literal::Text(Cow::Owned(v.to_owned()));
-
-        let test = |value: Value, literal, expected| {
-            assert_eq!(value.evaluate_cmp_with_literal(&literal), expected);
-        };
-
-        test(Value::I8(1), num(1), Some(Ordering::Equal));
-        test(Value::I16(1), num(2), Some(Ordering::Less));
-        test(Value::I32(10), num(3), Some(Ordering::Greater));
-        test(Value::I64(10), num(10), Some(Ordering::Equal));
-        test(Value::I128(10), num(10), Some(Ordering::Equal));
-        test(Value::U8(1), num(1), Some(Ordering::Equal));
-        test(Value::U16(1), num(2), Some(Ordering::Less));
-        test(Value::U32(10), num(3), Some(Ordering::Greater));
-        test(Value::U64(10), num(10), Some(Ordering::Equal));
-        test(Value::U128(10), num(10), Some(Ordering::Equal));
-        test(Value::F32(10.0), num(10), Some(Ordering::Equal));
-        test(Value::F64(10.0), num(10), Some(Ordering::Equal));
-        test(
-            Value::Decimal(Decimal::new(215, 2)),
-            num(3),
-            Some(Ordering::Less),
-        );
-        test(
-            Value::Str("Hello".to_owned()),
-            text("Hello"),
-            Some(Ordering::Equal),
-        );
-        test(
-            Value::Date(date(2021, 11, 21)),
-            text("2021-11-21"),
-            Some(Ordering::Equal),
-        );
-        test(
-            Value::Timestamp(date_time(2021, 11, 21, 10, 0, 0, 0)),
-            text("2021-11-21T10:00:00Z"),
-            Some(Ordering::Equal),
-        );
-        test(
-            Value::Time(time(10, 0, 0, 0)),
-            text("10:00:00"),
-            Some(Ordering::Equal),
-        );
-        test(
-            Value::Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()),
-            text("936DA01F9ABD4d9d80C702AF85C822A8"),
-            Some(Ordering::Equal),
-        );
-        test(
-            Value::Inet(IpAddr::V4(Ipv4Addr::LOCALHOST)),
-            text("215.87.1.1"),
-            Some(Ordering::Less),
-        );
-        test(
-            Value::Inet(IpAddr::V4(Ipv4Addr::LOCALHOST)),
-            text("215.87.1.1"),
-            Some(Ordering::Less),
-        );
-        test(
-            Value::Inet(IpAddr::V4(Ipv4Addr::BROADCAST)),
-            Literal::Number(Cow::Owned(BigDecimal::new(4_294_967_295_u32.into(), 0))),
-            Some(Ordering::Equal),
-        );
-        test(
-            Value::Inet(IpAddr::from_str("::2:4cb0:16ea").unwrap()),
-            Literal::Number(Cow::Owned(BigDecimal::new(9_876_543_210_u128.into(), 0))),
-            Some(Ordering::Equal),
-        );
-        test(Value::Null, num(1), None);
+        NaiveTime::from_hms_milli_opt(hour, min, sec, milli).unwrap()
     }
 
     #[test]
@@ -510,12 +390,7 @@ mod tests {
 
     #[test]
     fn try_from_literal() {
-        use {
-            crate::{ast::DataType, data::ValueError},
-            chrono::NaiveDate,
-            rust_decimal::Decimal,
-            std::{borrow::Cow, str::FromStr},
-        };
+        use crate::{ast::DataType, data::ValueError};
 
         macro_rules! num {
             ($num: expr) => {
@@ -653,7 +528,11 @@ mod tests {
 
     #[test]
     fn try_from() {
-        use std::{borrow::Cow, str::FromStr};
+        use {
+            crate::data::{Literal, Value},
+            bigdecimal::BigDecimal,
+            std::{borrow::Cow, str::FromStr},
+        };
 
         macro_rules! text {
             ($text: expr) => {
@@ -685,11 +564,7 @@ mod tests {
 
     #[test]
     fn try_cast_from_literal() {
-        use {
-            crate::{ast::DataType, data::Interval as I},
-            chrono::NaiveDate,
-            std::{borrow::Cow, str::FromStr},
-        };
+        use crate::{ast::DataType, data::Interval as I};
 
         macro_rules! text {
             ($text: expr) => {
@@ -712,7 +587,7 @@ mod tests {
         }
 
         let timestamp = |y, m, d, hh, mm, ss, ms| {
-            chrono::NaiveDate::from_ymd_opt(y, m, d)
+            NaiveDate::from_ymd_opt(y, m, d)
                 .unwrap()
                 .and_hms_milli_opt(hh, mm, ss, ms)
                 .unwrap()
