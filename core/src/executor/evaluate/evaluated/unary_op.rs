@@ -1,10 +1,6 @@
 use {
-    super::Evaluated,
-    crate::{
-        data::Value,
-        executor::evaluate::{error::EvaluateError, literal::Literal},
-        result::Result,
-    },
+    super::{Evaluated, literal::Literal},
+    crate::{data::Value, executor::evaluate::error::EvaluateError, result::Result},
     std::borrow::Cow,
 };
 

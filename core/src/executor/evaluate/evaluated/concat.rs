@@ -1,6 +1,6 @@
 use {
-    super::Evaluated,
-    crate::{data::Value, executor::evaluate::literal::Literal, result::Result},
+    super::{Evaluated, literal::Literal},
+    crate::{data::Value, result::Result},
     std::borrow::Cow,
 };
 

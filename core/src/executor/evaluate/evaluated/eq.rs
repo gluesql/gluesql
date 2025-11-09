@@ -1,11 +1,8 @@
 use {
-    super::Evaluated,
-    crate::{
-        data::{
-            BigDecimalExt, Value,
-            value::{parse_time, parse_timestamp, parse_uuid},
-        },
-        executor::evaluate::literal::Literal,
+    super::{Evaluated, literal::Literal},
+    crate::data::{
+        BigDecimalExt, Value,
+        value::{parse_time, parse_timestamp, parse_uuid},
     },
     chrono::NaiveDate,
     std::{
@@ -95,11 +92,9 @@ fn value_eq_with_literal(value: &Value, literal: &Literal<'_>) -> Tribool {
 #[cfg(test)]
 mod tests {
     use {
+        super::super::literal::Literal,
         super::{Evaluated, value_eq_with_literal},
-        crate::{
-            data::{Value, value::parse_uuid},
-            executor::evaluate::literal::Literal,
-        },
+        crate::data::{Value, value::parse_uuid},
         bigdecimal::BigDecimal,
         chrono::{NaiveDate, NaiveDateTime, NaiveTime},
         std::{borrow::Cow, net::IpAddr, str::FromStr},

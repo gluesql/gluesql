@@ -1,11 +1,8 @@
 use {
-    super::Evaluated,
-    crate::{
-        data::{
-            BigDecimalExt, Value,
-            value::{parse_date, parse_time, parse_timestamp, parse_uuid},
-        },
-        executor::evaluate::literal::Literal,
+    super::{Evaluated, literal::Literal},
+    crate::data::{
+        BigDecimalExt, Value,
+        value::{parse_date, parse_time, parse_timestamp, parse_uuid},
     },
     bigdecimal::BigDecimal,
     std::{borrow::Cow, cmp::Ordering, net::IpAddr, str::FromStr},
@@ -101,13 +98,11 @@ fn value_cmp_with_literal(value: &Value, literal: &Literal<'_>) -> Option<Orderi
 #[cfg(test)]
 mod tests {
     use {
+        super::super::literal::Literal,
         super::{Evaluated, value_cmp_with_literal},
-        crate::{
-            data::{
-                Value,
-                value::{parse_date, parse_time, parse_timestamp, parse_uuid},
-            },
-            executor::evaluate::literal::Literal,
+        crate::data::{
+            Value,
+            value::{parse_date, parse_time, parse_timestamp, parse_uuid},
         },
         bigdecimal::BigDecimal,
         rust_decimal::Decimal,

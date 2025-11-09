@@ -1,8 +1,8 @@
 use {
-    super::Evaluated,
+    super::{Evaluated, literal::Literal},
     crate::{
         data::{StringExt, Value},
-        executor::evaluate::{error::EvaluateError, literal::Literal},
+        executor::evaluate::error::EvaluateError,
         result::Result,
     },
 };

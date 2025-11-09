@@ -1,5 +1,5 @@
 use {
-    super::{error::EvaluateError, function, literal::Literal},
+    super::{error::EvaluateError, function},
     crate::{
         ast::{DataType, TrimWhereField},
         data::{Key, Value, ValueError, value::BTreeMapJsonExt},
@@ -19,6 +19,7 @@ mod literal;
 mod unary_op;
 
 pub(crate) use literal::literal_to_value;
+pub use literal::{Literal, LiteralError};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Evaluated<'a> {

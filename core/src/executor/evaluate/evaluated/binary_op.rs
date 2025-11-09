@@ -1,9 +1,9 @@
 use {
-    super::Evaluated,
+    super::{Evaluated, literal::Literal},
     crate::{
         ast::BinaryOperator,
         data::{BigDecimalExt, Value},
-        executor::evaluate::{error::EvaluateError, literal::Literal},
+        executor::evaluate::error::EvaluateError,
         result::{Error, Result},
     },
     bigdecimal::BigDecimal,
