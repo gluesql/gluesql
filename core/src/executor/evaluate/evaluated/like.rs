@@ -1,14 +1,28 @@
 use {
     super::Evaluated,
-    crate::{data::Value, result::Result},
+    crate::{
+        data::{StringExt, Value},
+        executor::evaluate::{error::EvaluateError, literal::Literal},
+        result::Result,
+    },
 };
 
 impl<'a> Evaluated<'a> {
     pub fn like(&self, other: Evaluated<'a>, case_sensitive: bool) -> Result<Evaluated<'a>> {
         let evaluated = match (self, other) {
-            (Evaluated::Literal(l), Evaluated::Literal(r)) => {
-                Evaluated::Value(Value::Bool(l.like(&r, case_sensitive)?))
-            }
+            (Evaluated::Literal(l), Evaluated::Literal(r)) => match (l, r) {
+                (Literal::Text(lhs), Literal::Text(rhs)) => Evaluated::Value(Value::Bool(
+                    lhs.as_ref().like(rhs.as_ref(), case_sensitive)?,
+                )),
+                (lhs, rhs) => {
+                    return Err(EvaluateError::LikeOnNonStringLiteral {
+                        base: lhs.to_string(),
+                        pattern: rhs.to_string(),
+                        case_sensitive,
+                    }
+                    .into());
+                }
+            },
             (Evaluated::Literal(l), Evaluated::Value(r)) => {
                 Evaluated::Value((Value::try_from(l)?).like(&r, case_sensitive)?)
             }

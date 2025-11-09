@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        error::{LiteralError, ValueError},
+        error::{EvaluateError, ValueError},
         prelude::Value::{self, Bool},
     },
 };
@@ -84,7 +84,7 @@ test_case!(like_ilike, {
     let error_sqls = [
         (
             "SELECT name FROM Item WHERE 'ABC' LIKE 10",
-            LiteralError::LikeOnNonString {
+            EvaluateError::LikeOnNonStringLiteral {
                 base: "ABC".to_owned(),
                 pattern: "10".to_owned(),
                 case_sensitive: true,

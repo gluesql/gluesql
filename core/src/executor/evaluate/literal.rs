@@ -1,5 +1,5 @@
 use {
-    crate::{ast::DataType, data::StringExt},
+    crate::ast::DataType,
     Literal::*,
     bigdecimal::BigDecimal,
     serde::Serialize,
@@ -12,13 +12,6 @@ use {
 
 #[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum LiteralError {
-    #[error("operator doesn't exist: {base} {case} {pattern}", case = if *case_sensitive { "LIKE" } else { "ILIKE" })]
-    LikeOnNonString {
-        base: String,
-        pattern: String,
-        case_sensitive: bool,
-    },
-
     #[error("literal {literal} is incompatible with data type {data_type:?}")]
     IncompatibleLiteralForDataType {
         data_type: DataType,
@@ -41,7 +34,7 @@ impl Display for Literal<'_> {
     }
 }
 
-impl<'a> Literal<'a> {
+impl Literal<'_> {
     #[must_use]
     pub fn concat(self, other: Literal<'_>) -> Self {
         let convert = |literal| match literal {
@@ -50,18 +43,6 @@ impl<'a> Literal<'a> {
         };
 
         Literal::Text(Cow::Owned(convert(self) + &convert(other)))
-    }
-
-    pub fn like(&self, other: &Literal<'a>, case_sensitive: bool) -> crate::result::Result<bool> {
-        match (self, other) {
-            (Text(l), Text(r)) => l.like(r, case_sensitive),
-            _ => Err(LiteralError::LikeOnNonString {
-                base: self.to_string(),
-                pattern: other.to_string(),
-                case_sensitive,
-            }
-            .into()),
-        }
     }
 }
 

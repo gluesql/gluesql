@@ -153,6 +153,13 @@ pub enum EvaluateError {
     #[error("incompatible bit operation ~{0}")]
     IncompatibleUnaryBitwiseNotOperation(String),
 
+    #[error("operator doesn't exist: {base} {case} {pattern}", case = if *case_sensitive { "LIKE" } else { "ILIKE" })]
+    LikeOnNonStringLiteral {
+        base: String,
+        pattern: String,
+        case_sensitive: bool,
+    },
+
     #[error("unsupported custom function in subqueries")]
     UnsupportedCustomFunction,
 
