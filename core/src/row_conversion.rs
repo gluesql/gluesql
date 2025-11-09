@@ -157,7 +157,7 @@ mod tests {
 
     #[test]
     fn uuid_to_string_formats_hyphenated_lower() {
-        let value = 0x936DA01F9ABD4D9D80C702AF85C822A8u128;
+        let value = 0x936D_A01F_9ABD_4D9D_80C7_02AF_85C8_22A8_u128;
         assert_eq!(
             uuid_to_string(value),
             "936da01f-9abd-4d9d-80c7-02af85c822a8"

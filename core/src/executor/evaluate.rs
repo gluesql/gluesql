@@ -452,7 +452,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 None => None,
             };
 
-            return expr.trim(name, filter_chars, trim_where_field);
+            return expr.trim(name, filter_chars, trim_where_field.as_ref());
         }
         Function::Ltrim { expr, chars } => {
             let expr = eval(expr).await?;

@@ -648,7 +648,7 @@ impl<'a> Evaluated<'a> {
         self,
         name: String,
         filter_chars: Option<Evaluated<'_>>,
-        trim_where_field: &Option<TrimWhereField>,
+        trim_where_field: Option<&TrimWhereField>,
     ) -> Result<Evaluated<'a>> {
         let (source, range) = match self {
             Evaluated::Literal(Literal::Text(l)) => {

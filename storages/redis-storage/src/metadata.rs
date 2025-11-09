@@ -28,7 +28,7 @@ impl Metadata for RedisStorage {
         };
 
         // Then read all values of the table
-        for redis_key in redis_keys.into_iter() {
+        for redis_key in redis_keys {
             // Another client just has removed the value with the key.
             // It's not a problem. Just ignore it.
             let value = {

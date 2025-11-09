@@ -156,9 +156,9 @@ mod tests {
             )))
         );
         assert_eq!(
-            Value::I32(2147483647).try_into(),
+            Value::I32(2_147_483_647).try_into(),
             Ok(Expr::Literal(AstLiteral::Number(
-                BigDecimal::from_i32(2147483647).unwrap()
+                BigDecimal::from_i32(2_147_483_647).unwrap()
             )))
         );
         assert_eq!(
@@ -268,7 +268,7 @@ mod tests {
             })
         );
         assert_eq!(
-            Value::Uuid(195965723427462096757863453463987888808).try_into(),
+            Value::Uuid(195_965_723_427_462_096_757_863_453_463_987_888_808).try_into(),
             Ok(Expr::Literal(AstLiteral::QuotedString(
                 "936da01f-9abd-4d9d-80c7-02af85c822a8".to_owned()
             )))

@@ -1,6 +1,7 @@
 use super::ExprNode;
 
 impl ExprNode<'_> {
+    #[must_use]
     pub fn between<T: Into<Self>, U: Into<Self>>(self, low: T, high: U) -> Self {
         Self::Between {
             expr: Box::new(self),
@@ -10,6 +11,7 @@ impl ExprNode<'_> {
         }
     }
 
+    #[must_use]
     pub fn not_between<T: Into<Self>, U: Into<Self>>(self, low: T, high: U) -> Self {
         Self::Between {
             expr: Box::new(self),

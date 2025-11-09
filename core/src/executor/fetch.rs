@@ -88,7 +88,7 @@ pub enum Rows<I1, I2, I3, I4> {
 pub async fn fetch_relation_rows<'a, T: GStore>(
     storage: &'a T,
     table_factor: &'a TableFactor,
-    filter_context: &Option<Arc<RowContext<'a>>>,
+    filter_context: Option<&Arc<RowContext<'a>>>,
 ) -> Result<impl Stream<Item = Result<Row>> + 'a> {
     let columns = Arc::from(
         fetch_relation_columns(storage, table_factor)
@@ -98,7 +98,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
 
     match table_factor {
         TableFactor::Derived { subquery, .. } => {
-            let filter_context = filter_context.as_ref().map(Arc::clone);
+            let filter_context = filter_context.map(Arc::clone);
             let rows =
                 select(storage, subquery, filter_context)
                     .await?
@@ -156,7 +156,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                             .await?
                             .ok_or(FetchError::Unreachable)?;
 
-                        let filter_context = filter_context.as_ref().map(Arc::clone);
+                        let filter_context = filter_context.map(Arc::clone);
                         let evaluated = evaluate(storage, filter_context, None, expr).await?;
 
                         let value = match evaluated {

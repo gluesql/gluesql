@@ -82,6 +82,7 @@ pub enum IndexOperator {
 }
 
 impl IndexOperator {
+    #[must_use]
     pub fn reverse(self) -> Self {
         use IndexOperator::*;
 

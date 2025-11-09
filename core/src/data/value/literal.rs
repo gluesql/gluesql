@@ -652,6 +652,7 @@ mod tests {
         );
     }
 
+    #[allow(clippy::similar_names)]
     #[test]
     fn evaluate_cmp_with_literal() {
         let num = |n| Literal::Number(Cow::Owned(BigDecimal::from(n)));
@@ -715,12 +716,12 @@ mod tests {
         );
         test(
             Value::Inet(IpAddr::V4(Ipv4Addr::BROADCAST)),
-            Literal::Number(Cow::Owned(BigDecimal::new(4294967295u32.into(), 0))),
+            Literal::Number(Cow::Owned(BigDecimal::new(4_294_967_295_u32.into(), 0))),
             Some(Ordering::Equal),
         );
         test(
             Value::Inet(IpAddr::from_str("::2:4cb0:16ea").unwrap()),
-            Literal::Number(Cow::Owned(BigDecimal::new(9876543210u128.into(), 0))),
+            Literal::Number(Cow::Owned(BigDecimal::new(9_876_543_210_u128.into(), 0))),
             Some(Ordering::Equal),
         );
         test(Value::Null, num(1), None);
@@ -808,7 +809,7 @@ mod tests {
         let inet = |v| IpAddr::from_str(v).unwrap();
 
         test!(DataType::Boolean, Literal::Boolean(true), Value::Bool(true));
-        test!(DataType::Int, num!("123456789"), Value::I64(123456789));
+        test!(DataType::Int, num!("123456789"), Value::I64(123_456_789));
         test!(DataType::Int8, num!("64"), Value::I8(64));
         test!(DataType::Int16, num!("64"), Value::I16(64));
         test!(DataType::Int32, num!("64"), Value::I32(64));
@@ -822,9 +823,13 @@ mod tests {
         test!(
             DataType::Float32,
             num!("123456789"),
-            Value::F32(123456789.0_f32)
+            Value::F32(123_456_789.0_f32)
         );
-        test!(DataType::Float, num!("123456789"), Value::F64(123456789.0));
+        test!(
+            DataType::Float,
+            num!("123456789"),
+            Value::F64(123_456_789.0)
+        );
         test!(
             DataType::Text,
             text!("Good!"),
@@ -878,12 +883,12 @@ mod tests {
         test!(
             DataType::Uuid,
             text!("936DA01F9ABD4d9d80C702AF85C822A8"),
-            Value::Uuid(195965723427462096757863453463987888808)
+            Value::Uuid(195_965_723_427_462_096_757_863_453_463_987_888_808)
         );
         test!(
             DataType::Uuid,
             Literal::Bytea(bytea("936DA01F9ABD4d9d80C702AF85C822A8")),
-            Value::Uuid(195965723427462096757863453463987888808)
+            Value::Uuid(195_965_723_427_462_096_757_863_453_463_987_888_808)
         );
 
         assert_eq!(
@@ -958,7 +963,7 @@ mod tests {
         test!(&text!("hallo"), Value::Str("hallo".to_owned()));
         test!(Literal::Bytea(bytea("1234")), Value::Bytea(bytea("1234")));
         test!(&Literal::Bytea(bytea("1234")), Value::Bytea(bytea("1234")));
-        test!(num!("1234567890"), Value::I64(1234567890));
+        test!(num!("1234567890"), Value::I64(1_234_567_890));
         test!(num!("1.0"), Value::F32(1.0_f32));
         test!(num!("1.0"), Value::F64(1.0));
         test!(&Literal::Boolean(false), Value::Bool(false));
@@ -1034,8 +1039,12 @@ mod tests {
         test!(DataType::Int32, Literal::Boolean(true), Value::I32(1));
         test!(DataType::Int32, Literal::Boolean(false), Value::I32(0));
 
-        test!(DataType::Int, text!("1234567890"), Value::I64(1234567890));
-        test!(DataType::Int, num!("1234567890"), Value::I64(1234567890));
+        test!(
+            DataType::Int,
+            text!("1234567890"),
+            Value::I64(1_234_567_890)
+        );
+        test!(DataType::Int, num!("1234567890"), Value::I64(1_234_567_890));
         test!(DataType::Int, Literal::Boolean(true), Value::I64(1));
         test!(DataType::Int, Literal::Boolean(false), Value::I64(0));
         test!(DataType::Int128, text!("127"), Value::I128(127));
@@ -1076,7 +1085,7 @@ mod tests {
         test!(
             DataType::Float32,
             num!("123456.78"),
-            Value::F32(123456.78_f32)
+            Value::F32(123_456.78_f32)
         );
         test!(
             DataType::Float32,
@@ -1090,7 +1099,7 @@ mod tests {
         );
 
         test!(DataType::Float, text!("12345.6789"), Value::F64(12345.6789));
-        test!(DataType::Float, num!("123456.789"), Value::F64(123456.789));
+        test!(DataType::Float, num!("123456.789"), Value::F64(123_456.789));
         test!(DataType::Float, Literal::Boolean(true), Value::F64(1.0));
         test!(DataType::Float, Literal::Boolean(false), Value::F64(0.0));
         test!(
@@ -1117,7 +1126,7 @@ mod tests {
         test!(
             DataType::Uuid,
             text!("936DA01F9ABD4d9d80C702AF85C822A8"),
-            Value::Uuid(195965723427462096757863453463987888808)
+            Value::Uuid(195_965_723_427_462_096_757_863_453_463_987_888_808)
         );
         test_null!(DataType::Boolean, Literal::Null);
         test_null!(DataType::Int, Literal::Null);
@@ -1148,12 +1157,12 @@ mod tests {
         test!(
             DataType::Inet,
             num!("1234567890"),
-            Value::Inet(IpAddr::from(Ipv4Addr::from(1234567890)))
+            Value::Inet(IpAddr::from(Ipv4Addr::from(1_234_567_890)))
         );
         test!(
             DataType::Inet,
             num!("91234567890"),
-            Value::Inet(IpAddr::from(Ipv6Addr::from(91234567890)))
+            Value::Inet(IpAddr::from(Ipv6Addr::from(91_234_567_890)))
         );
         test!(
             DataType::Inet,

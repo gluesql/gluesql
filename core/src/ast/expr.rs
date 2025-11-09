@@ -5,6 +5,7 @@ use {
     },
     crate::data::Value,
     serde::{Deserialize, Serialize},
+    std::fmt::Write,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -244,11 +245,10 @@ impl Expr {
             },
             Expr::ArrayIndex { obj, indexes } => {
                 let obj = obj.to_sql_with(quoted);
-                let indexes = indexes
-                    .iter()
-                    .map(|index| format!("[{}]", index.to_sql_with(quoted)))
-                    .collect::<Vec<_>>()
-                    .join("");
+                let indexes = indexes.iter().fold(String::new(), |mut acc, index| {
+                    let _ = write!(acc, "[{}]", index.to_sql_with(quoted));
+                    acc
+                });
                 format!("{obj}{indexes}")
             }
             Expr::Array { elem } => {

@@ -55,6 +55,7 @@ impl_from_select_nodes!(ProjectNode<'a>);
 impl_from_select_nodes!(OrderByNode<'a>);
 
 impl<'a> ExprNode<'a> {
+    #[must_use]
     pub fn in_list<T: Into<InListNode<'a>>>(self, value: T) -> Self {
         Self::InList {
             expr: Box::new(self),
@@ -63,6 +64,7 @@ impl<'a> ExprNode<'a> {
         }
     }
 
+    #[must_use]
     pub fn not_in_list<T: Into<InListNode<'a>>>(self, value: T) -> Self {
         Self::InList {
             expr: Box::new(self),

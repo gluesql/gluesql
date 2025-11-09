@@ -28,6 +28,7 @@ impl<'a> SelectNode<'a> {
         }
     }
 
+    #[must_use]
     pub fn distinct(mut self) -> Self {
         self.distinct = true;
         self

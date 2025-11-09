@@ -248,7 +248,7 @@ impl Store for RedisStorage {
         };
 
         // Then read all schemas of the namespace
-        for redis_key in redis_keys.into_iter() {
+        for redis_key in redis_keys {
             // Another client just has removed the value with the key.
             // It's not a problem. Just ignore it.
             let value = {
@@ -290,7 +290,7 @@ impl Store for RedisStorage {
         };
 
         // Then read all schemas of the namespace
-        for redis_key in redis_keys.into_iter() {
+        for redis_key in redis_keys {
             // Another client just has removed the value with the key.
             // It's not a problem. Just ignore it.
             let value = {
@@ -356,7 +356,7 @@ impl Store for RedisStorage {
         };
 
         let mut rows = BTreeMap::new();
-        for redis_key in redis_keys.into_iter() {
+        for redis_key in redis_keys {
             // Another client just has removed the value with the key.
             // It's not a problem. Just ignore it.
             let value = {

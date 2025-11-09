@@ -7,30 +7,35 @@ impl<T> Vector<T> {
         Self(vec![])
     }
 
+    #[must_use]
     pub fn push(mut self, value: T) -> Self {
         self.0.push(value);
 
         self
     }
 
+    #[must_use]
     pub fn update(mut self, i: usize, value: T) -> Self {
         self.0[i] = value;
 
         self
     }
 
+    #[must_use]
     pub fn remove(mut self, i: usize) -> Self {
         self.0.remove(i);
 
         self
     }
 
+    #[must_use]
     pub fn reverse(mut self) -> Self {
         self.0.reverse();
 
         self
     }
 
+    #[must_use]
     pub fn sort(mut self) -> Self
     where
         T: std::cmp::Ord,
@@ -40,6 +45,7 @@ impl<T> Vector<T> {
         self
     }
 
+    #[must_use]
     pub fn sort_by<F>(mut self, compare: F) -> Self
     where
         F: FnMut(&T, &T) -> std::cmp::Ordering,

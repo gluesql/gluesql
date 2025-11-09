@@ -527,10 +527,12 @@ mod tests {
         assert!(Key::Bytea(vec![0]) > Key::Date(date(2023, 1, 1)));
 
         assert!(Key::Date(date(2023, 3, 1)) > Key::Date(date(1999, 6, 11)));
-        assert!(Key::Date(date(2022, 6, 1)) > Key::Timestamp(timestamp(1669000003)));
+        assert!(Key::Date(date(2022, 6, 1)) > Key::Timestamp(timestamp(1_669_000_003)));
 
-        assert!(Key::Timestamp(timestamp(1662921288)) > Key::Timestamp(timestamp(1661000000)));
-        assert!(Key::Timestamp(timestamp(1668919293)) > Key::Time(time(23, 1, 59)));
+        assert!(
+            Key::Timestamp(timestamp(1_662_921_288)) > Key::Timestamp(timestamp(1_661_000_000))
+        );
+        assert!(Key::Timestamp(timestamp(1_668_919_293)) > Key::Time(time(23, 1, 59)));
 
         assert!(Key::Time(time(20, 1, 9)) > Key::Time(time(10, 0, 3)));
         assert!(Key::Time(time(1, 2, 3)) > Key::Interval(Interval::Month(12)));
@@ -858,12 +860,12 @@ mod tests {
         );
         assert_eq!(
             Value::from(Key::Timestamp(
-                DateTime::from_timestamp_millis(1662921288)
+                DateTime::from_timestamp_millis(1_662_921_288)
                     .unwrap()
                     .naive_utc()
             )),
             Value::Timestamp(
-                DateTime::from_timestamp_millis(1662921288)
+                DateTime::from_timestamp_millis(1_662_921_288)
                     .unwrap()
                     .naive_utc()
             )

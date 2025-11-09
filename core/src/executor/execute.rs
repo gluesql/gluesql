@@ -262,7 +262,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
         Statement::Delete {
             table_name,
             selection,
-        } => delete(storage, table_name, selection).await,
+        } => delete(storage, table_name, selection.as_ref()).await,
 
         //- Selection
         Statement::Query(query) => {

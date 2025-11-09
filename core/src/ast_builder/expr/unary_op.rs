@@ -1,19 +1,24 @@
 use {super::ExprNode, crate::ast::UnaryOperator};
 
 impl ExprNode<'_> {
+    #[must_use]
     pub fn plus(self) -> Self {
         plus(self)
     }
+    #[must_use]
     pub fn minus(self) -> Self {
         minus(self)
     }
     #[allow(clippy::should_implement_trait)]
+    #[must_use]
     pub fn negate(self) -> Self {
         not(self)
     }
+    #[must_use]
     pub fn factorial(self) -> Self {
         factorial(self)
     }
+    #[must_use]
     pub fn bitwise_not(self) -> Self {
         bitwise_not(self)
     }
