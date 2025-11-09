@@ -17,35 +17,14 @@ pub enum ValueError {
     #[error("null value on not null field")]
     NullValueOnNotNullField,
 
-    #[error("failed to parse number")]
-    FailedToParseNumber,
-
     #[error("failed to convert Float to Decimal: {0}")]
     FloatToDecimalConversionFailure(f64),
-
-    #[error("failed to parse date: {0}")]
-    FailedToParseDate(String),
-
-    #[error("failed to parse timestamp: {0}")]
-    FailedToParseTimestamp(String),
-
-    #[error("failed to parse time: {0}")]
-    FailedToParseTime(String),
 
     #[error("failed to UUID: {0}")]
     FailedToParseUUID(String),
 
     #[error("failed to parse point: {0}")]
     FailedToParsePoint(String),
-
-    #[error("failed to parse Decimal: {0}")]
-    FailedToParseDecimal(String),
-
-    #[error("failed to parse hex string: {0}")]
-    FailedToParseHexString(String),
-
-    #[error("failed to parse inet string: {0}")]
-    FailedToParseInetString(String),
 
     #[error("non-numeric values {lhs:?} {operator} {rhs:?}")]
     NonNumericMathOperation {
@@ -81,84 +60,11 @@ pub enum ValueError {
     #[error("unary bit_not operation for non integer value")]
     UnaryBitwiseNotOnNonInteger,
 
-    #[error("unreachable failure on parsing number")]
-    UnreachableNumberParsing,
-
     #[error("unimplemented cast: {value:?} as {data_type}")]
     UnimplementedCast { value: Value, data_type: DataType },
 
     #[error("failed to cast from hex string to bytea: {0}")]
     CastFromHexToByteaFailed(String),
-
-    // Cast errors from literal to value
-    #[error("literal cast failed from text to integer: {0}")]
-    LiteralCastFromTextToIntegerFailed(String),
-
-    #[error("literal cast failed from text to Unsigned Int(8): {0}")]
-    LiteralCastFromTextToUnsignedInt8Failed(String),
-
-    #[error("literal cast failed from text to UINT16: {0}")]
-    LiteralCastFromTextToUint16Failed(String),
-
-    #[error("literal cast failed from text to UINT32: {0}")]
-    LiteralCastFromTextToUint32Failed(String),
-
-    #[error("literal cast failed from text to UINT64: {0}")]
-    LiteralCastFromTextToUint64Failed(String),
-
-    #[error("literal cast failed from text to UINT128: {0}")]
-    LiteralCastFromTextToUint128Failed(String),
-
-    #[error("literal cast failed from text to float: {0}")]
-    LiteralCastFromTextToFloatFailed(String),
-
-    #[error("literal cast failed from text to decimal: {0}")]
-    LiteralCastFromTextToDecimalFailed(String),
-
-    #[error("literal cast failed to boolean: {0}")]
-    LiteralCastToBooleanFailed(String),
-
-    #[error("literal cast failed to date: {0}")]
-    LiteralCastToDateFailed(String),
-
-    #[error("literal cast from {1} to {0} failed")]
-    LiteralCastToDataTypeFailed(DataType, String),
-
-    #[error("literal cast failed to Int(8): {0}")]
-    LiteralCastToInt8Failed(String),
-
-    #[error("literal cast failed to Unsigned Int(8): {0}")]
-    LiteralCastToUnsignedInt8Failed(String),
-
-    #[error("literal cast failed to UINT16: {0}")]
-    LiteralCastToUint16Failed(String),
-
-    #[error("literal cast failed to UNIT32: {0}")]
-    LiteralCastToUint32Failed(String),
-
-    #[error("literal cast failed to UNIT64: {0}")]
-    LiteralCastToUint64Failed(String),
-
-    #[error("literal cast failed to UNIT128: {0}")]
-    LiteralCastToUint128Failed(String),
-
-    #[error("literal cast failed to time: {0}")]
-    LiteralCastToTimeFailed(String),
-
-    #[error("literal cast failed to timestamp: {0}")]
-    LiteralCastToTimestampFailed(String),
-
-    #[error("unreachable literal cast from number to integer: {0}")]
-    UnreachableLiteralCastFromNumberToInteger(String),
-
-    #[error("unreachable literal cast from number to float: {0}")]
-    UnreachableLiteralCastFromNumberToFloat(String),
-
-    #[error("unimplemented literal cast: {literal} as {data_type:?}")]
-    UnimplementedLiteralCast {
-        data_type: DataType,
-        literal: String,
-    },
 
     #[error("unreachable integer overflow: {0}")]
     UnreachableIntegerOverflow(String),

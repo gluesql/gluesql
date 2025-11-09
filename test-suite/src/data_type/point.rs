@@ -2,7 +2,7 @@ use {
     crate::*,
     gluesql_core::{
         ast::DataType,
-        error::{LiteralError, TranslateError, ValueError},
+        error::{LiteralError, TranslateError},
         prelude::{Payload, Value::*},
     },
 };
@@ -71,7 +71,7 @@ test_case!(point, {
         ),
         (
             r"SELECT CAST('POINT(-71.06454t4 42.28787)' AS POINT) AS pt",
-            Err(ValueError::FailedToParsePoint(
+            Err(LiteralError::FailedToParsePoint(
                 Str("POINT(-71.06454t4 42.28787)".to_owned()).into(),
             )
             .into()),

@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        error::ValueError,
+        error::LiteralError,
         prelude::{DataType, Value::*},
     },
 };
@@ -28,20 +28,20 @@ test_case!(int128, {
 
     g.test(
         &format!("INSERT INTO Item VALUES ({invalid_large_str}, {invalid_large_str})"),
-        Err(ValueError::FailedToParseNumber.into()),
+        Err(LiteralError::FailedToParseNumber.into()),
     )
     .await;
 
     g.test(
         &format!("INSERT INTO Item VALUES ({invalid_small_str}, {invalid_small_str})"),
-        Err(ValueError::FailedToParseNumber.into()),
+        Err(LiteralError::FailedToParseNumber.into()),
     )
     .await;
 
     // cast i128::MAX+1
     g.test(
         &format!("select cast({invalid_large_str} as INT128) from Item"),
-        Err(ValueError::LiteralCastToDataTypeFailed(
+        Err(LiteralError::LiteralCastToDataTypeFailed(
             DataType::Int128,
             invalid_large_str.to_owned(),
         )
@@ -52,7 +52,7 @@ test_case!(int128, {
     // cast i128::MIN-1
     g.test(
         &format!("select cast({invalid_small_str} as INT128) from Item"),
-        Err(ValueError::LiteralCastToDataTypeFailed(
+        Err(LiteralError::LiteralCastToDataTypeFailed(
             DataType::Int128,
             invalid_small_str.to_owned(),
         )
