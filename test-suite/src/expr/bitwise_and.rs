@@ -1,7 +1,9 @@
 use {
     crate::*,
     bigdecimal::BigDecimal,
-    gluesql_core::{ast::BinaryOperator, data::Literal, error::LiteralError, prelude::Value::*},
+    gluesql_core::{
+        ast::BinaryOperator, error::LiteralError, executor::Literal, prelude::Value::*,
+    },
     std::{borrow::Cow, str::FromStr},
 };
 

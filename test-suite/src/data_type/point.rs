@@ -3,8 +3,8 @@ use {
     bigdecimal::BigDecimal,
     gluesql_core::{
         ast::DataType,
-        data::Literal,
         error::{TranslateError, ValueError},
+        executor::Literal,
         prelude::{Payload, Value::*},
     },
     std::borrow::Cow,

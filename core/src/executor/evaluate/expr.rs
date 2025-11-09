@@ -1,8 +1,8 @@
 use {
-    super::{EvaluateError, Evaluated, literal_to_value},
+    super::{EvaluateError, Evaluated, Literal, literal_to_value},
     crate::{
         ast::{AstLiteral, BinaryOperator, DataType, UnaryOperator},
-        data::{Literal, Value},
+        data::Value,
         result::Result,
     },
     std::{borrow::Cow, cmp::Ordering},

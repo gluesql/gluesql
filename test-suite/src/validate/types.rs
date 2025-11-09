@@ -1,6 +1,6 @@
 use {
     crate::*,
-    gluesql_core::{ast::DataType, data::Literal, error::ValueError, prelude::Value},
+    gluesql_core::{ast::DataType, error::ValueError, executor::Literal, prelude::Value},
     std::borrow::Cow,
 };
 

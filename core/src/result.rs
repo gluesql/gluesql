@@ -3,12 +3,12 @@ use {serde::Serialize, std::fmt::Debug, thiserror::Error as ThisError};
 pub use crate::{
     ast_builder::AstBuilderError,
     data::{
-        ConvertError, IntervalError, KeyError, LiteralError, RowError, SchemaParseError,
-        StringExtError, TableError, ValueError,
+        ConvertError, IntervalError, KeyError, RowError, SchemaParseError, StringExtError,
+        TableError, ValueError,
     },
     executor::{
-        AlterError, DeleteError, EvaluateError, ExecuteError, FetchError, InsertError, SelectError,
-        SortError, UpdateError, ValidateError,
+        AlterError, DeleteError, EvaluateError, ExecuteError, FetchError, InsertError,
+        LiteralError, SelectError, SortError, UpdateError, ValidateError,
     },
     plan::PlanError,
     row_conversion::RowConversionError,

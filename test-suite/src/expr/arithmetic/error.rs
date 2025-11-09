@@ -1,8 +1,9 @@
 use {
     crate::*,
     gluesql_core::{
-        data::{Literal, NumericBinaryOperator},
+        data::NumericBinaryOperator,
         error::{EvaluateError, LiteralError, UpdateError, ValueError},
+        executor::Literal,
         prelude::Value,
     },
     std::borrow::Cow,

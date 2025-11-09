@@ -1,8 +1,8 @@
 use {
-    super::{error::EvaluateError, function},
+    super::{error::EvaluateError, function, literal::Literal},
     crate::{
         ast::{BinaryOperator, DataType, TrimWhereField},
-        data::{Key, Literal, Value, ValueError, value::BTreeMapJsonExt},
+        data::{Key, Value, ValueError, value::BTreeMapJsonExt},
         result::{Error, Result},
     },
     std::{borrow::Cow, collections::BTreeMap, convert::TryFrom, ops::Range},

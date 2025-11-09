@@ -1,4 +1,7 @@
-use {crate::*, gluesql_core::data::*};
+use {
+    crate::*,
+    gluesql_core::{data::*, error::LiteralError},
+};
 
 test_case!(filter, {
     let g = get_tester!();

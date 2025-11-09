@@ -1,7 +1,12 @@
 use {
     super::Evaluated,
-    crate::data::value::{parse_date, parse_time, parse_timestamp, parse_uuid},
-    crate::data::{BigDecimalExt, Literal, Value},
+    crate::{
+        data::{
+            BigDecimalExt, Value,
+            value::{parse_date, parse_time, parse_timestamp, parse_uuid},
+        },
+        executor::Literal,
+    },
     bigdecimal::BigDecimal,
     std::{borrow::Cow, cmp::Ordering, net::IpAddr, str::FromStr},
 };
@@ -89,8 +94,13 @@ fn value_cmp_with_literal(value: &Value, literal: &Literal<'_>) -> Option<Orderi
 mod tests {
     use {
         super::value_cmp_with_literal,
-        crate::data::value::{parse_date, parse_time, parse_timestamp, parse_uuid},
-        crate::data::{Literal, Value},
+        crate::{
+            data::{
+                Value,
+                value::{parse_date, parse_time, parse_timestamp, parse_uuid},
+            },
+            executor::Literal,
+        },
         bigdecimal::BigDecimal,
         rust_decimal::Decimal,
         std::{borrow::Cow, cmp::Ordering, net::IpAddr, str::FromStr},

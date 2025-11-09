@@ -2,9 +2,10 @@ use {
     crate::{
         ast::DataType,
         data::{
-            BigDecimalExt, Interval, Literal, Point, Value, ValueError,
+            BigDecimalExt, Interval, Point, Value, ValueError,
             value::{parse_date, parse_time, parse_timestamp, parse_uuid},
         },
+        executor::Literal,
         result::{Error, Result},
     },
     bigdecimal::BigDecimal,
@@ -391,7 +392,7 @@ fn map_cast_error(data_type: &DataType, literal: &Literal<'_>, error: Error) -> 
 #[cfg(test)]
 mod tests {
     use {
-        crate::data::{Literal, Value},
+        crate::{data::Value, executor::Literal},
         bigdecimal::BigDecimal,
         chrono::{NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,
@@ -605,7 +606,7 @@ mod tests {
     #[test]
     fn try_from() {
         use {
-            crate::data::{Literal, Value},
+            crate::{data::Value, executor::Literal},
             bigdecimal::BigDecimal,
             std::{borrow::Cow, str::FromStr},
         };
