@@ -4,7 +4,7 @@ use {
     gluesql_core::{
         ast::DataType,
         data::Literal,
-        error::{LiteralError, ValueError},
+        error::{EvaluateError, ValueError},
         prelude::{Payload, Value::Bytea},
     },
     std::borrow::Cow,
@@ -45,7 +45,7 @@ test_case!(bytea, {
         ),
         (
             r"INSERT INTO Bytea VALUES (X'123')",
-            Err(LiteralError::FailedToDecodeHexString("123".to_owned()).into()),
+            Err(EvaluateError::FailedToDecodeHexString("123".to_owned()).into()),
         ),
     ];
 

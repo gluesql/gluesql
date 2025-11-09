@@ -45,9 +45,6 @@ pub enum LiteralError {
     #[error("unreachable literal unary operation")]
     UnreachableUnaryOperation,
 
-    #[error("failed to decode hex string: {0}")]
-    FailedToDecodeHexString(String),
-
     #[error("operator doesn't exist: {base:?} {case} {pattern:?}", case = if *case_sensitive { "LIKE" } else { "ILIKE" })]
     LikeOnNonString {
         base: String,

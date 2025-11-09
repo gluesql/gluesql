@@ -2,7 +2,7 @@ use {
     super::{EvaluateError, Evaluated, literal_to_value},
     crate::{
         ast::{AstLiteral, BinaryOperator, DataType, UnaryOperator},
-        data::{Literal, LiteralError, Value},
+        data::{Literal, Value},
         result::Result,
     },
     std::{borrow::Cow, cmp::Ordering},
@@ -17,7 +17,7 @@ pub fn literal(ast_literal: &AstLiteral) -> Result<Evaluated<'_>> {
         }
         AstLiteral::HexString(value) => {
             let bytes = hex::decode(value)
-                .map_err(|_| LiteralError::FailedToDecodeHexString(value.clone()))?;
+                .map_err(|_| EvaluateError::FailedToDecodeHexString(value.clone()))?;
 
             Ok(Evaluated::Value(Value::Bytea(bytes)))
         }
@@ -126,7 +126,7 @@ pub fn array_index<'a>(obj: Evaluated<'a>, indexes: Vec<Evaluated<'a>>) -> Resul
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ast::AstLiteral, data::LiteralError, result::Error};
+    use crate::{ast::AstLiteral, executor::evaluate::EvaluateError, result::Error};
 
     #[test]
     fn literal_converts_hex_string_to_value() {
@@ -146,7 +146,7 @@ mod tests {
 
         assert!(matches!(
             err,
-            Error::Literal(LiteralError::FailedToDecodeHexString(v)) if v == "XYZ"
+            Error::Evaluate(EvaluateError::FailedToDecodeHexString(v)) if v == "XYZ"
         ));
     }
 }
