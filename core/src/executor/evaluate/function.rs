@@ -60,23 +60,6 @@ impl BreakIfNull<Value> for Result<Value> {
     }
 }
 
-trait ControlFlowMap<T, U, F> {
-    fn map(self, f: F) -> ControlFlow<U>
-    where
-        F: FnOnce(T) -> U;
-}
-
-impl<T, U, F> ControlFlowMap<T, U, F> for ControlFlow<T> {
-    fn map(self, f: F) -> ControlFlow<U>
-    where
-        F: FnOnce(T) -> U,
-    {
-        match self {
-            Continue(v) => Continue(f(v)),
-            Break(v) => Break(v),
-        }
-    }
-}
 
 trait ControlFlowMapErr<T, F> {
     fn map_err(self, f: F) -> ControlFlow<T>
@@ -154,7 +137,7 @@ pub fn concat(exprs: Vec<Evaluated<'_>>) -> ControlFlow<Evaluated<'_>> {
         .into_iter()
         .try_fold(None, |left: Option<Evaluated>, right| match left {
             None => Continue(Some(right)),
-            Some(left) => left.concat(right).break_if_null().map(Some),
+            Some(left) => left.concat(right).break_if_null().map_continue(Some),
         })?;
 
     value.continue_or_break(EvaluateError::EmptyArgNotAllowedInConcat.into())
@@ -181,9 +164,9 @@ pub fn concat_ws<'a>(
 
 pub fn lower<'a>(name: &str, expr: Evaluated<'a>) -> ControlFlow<Evaluated<'a>> {
     eval_to_str(name, expr)
-        .map(|value| value.to_lowercase())
-        .map(Value::Str)
-        .map(Evaluated::Value)
+        .map_continue(|value| value.to_lowercase())
+        .map_continue(Value::Str)
+        .map_continue(Evaluated::Value)
 }
 
 pub fn initcap<'a>(name: &str, expr: Evaluated<'a>) -> ControlFlow<Evaluated<'a>> {
@@ -205,9 +188,9 @@ pub fn initcap<'a>(name: &str, expr: Evaluated<'a>) -> ControlFlow<Evaluated<'a>
 
 pub fn upper<'a>(name: &str, expr: Evaluated<'a>) -> ControlFlow<Evaluated<'a>> {
     eval_to_str(name, expr)
-        .map(|value| value.to_uppercase())
-        .map(Value::Str)
-        .map(Evaluated::Value)
+        .map_continue(|value| value.to_uppercase())
+        .map_continue(Value::Str)
+        .map_continue(Evaluated::Value)
 }
 
 pub fn left_or_right<'a>(
@@ -217,7 +200,7 @@ pub fn left_or_right<'a>(
 ) -> ControlFlow<Evaluated<'a>> {
     let string = eval_to_str(name, expr)?;
     let size = eval_to_int(name, size)
-        .map(usize::try_from)?
+        .map_continue(usize::try_from)?
         .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.to_owned()).into())
         .into_control_flow()?;
 
@@ -247,7 +230,7 @@ pub fn lpad_or_rpad<'a>(
 ) -> ControlFlow<Evaluated<'a>> {
     let string = eval_to_str(name, expr)?;
     let size = eval_to_int(name, size)
-        .map(usize::try_from)?
+        .map_continue(usize::try_from)?
         .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.to_owned()).into())
         .into_control_flow()?;
 
@@ -413,7 +396,7 @@ pub fn sqrt<'a>(n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     Value::try_from(n)
         .and_then(|v| v.sqrt())
         .into_control_flow()
-        .map(Evaluated::Value)
+        .map_continue(Evaluated::Value)
 }
 
 pub fn power<'a>(
@@ -428,7 +411,7 @@ pub fn power<'a>(
 }
 
 pub fn ceil<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.ceil())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Value::F64(n.ceil())))
 }
 
 pub fn rand<'a>(name: &str, seed: Option<Evaluated<'_>>) -> ControlFlow<Evaluated<'a>> {
@@ -441,27 +424,27 @@ pub fn rand<'a>(name: &str, seed: Option<Evaluated<'_>>) -> ControlFlow<Evaluate
 }
 
 pub fn round<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.round())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Value::F64(n.round())))
 }
 
 pub fn trunc<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.trunc())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Value::F64(n.trunc())))
 }
 
 pub fn floor<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.floor())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Value::F64(n.floor())))
 }
 
 pub fn radians<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.to_radians())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Value::F64(n.to_radians())))
 }
 
 pub fn degrees<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.to_degrees())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Value::F64(n.to_degrees())))
 }
 
 pub fn exp<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.exp())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Value::F64(n.exp())))
 }
 
 pub fn log<'a>(
@@ -476,39 +459,39 @@ pub fn log<'a>(
 }
 
 pub fn ln<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.ln())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Value::F64(n.ln())))
 }
 
 pub fn log2<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.log2())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Value::F64(n.log2())))
 }
 
 pub fn log10<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.log10())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Value::F64(n.log10())))
 }
 
 pub fn sin<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.sin())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Value::F64(n.sin())))
 }
 
 pub fn cos<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.cos())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Value::F64(n.cos())))
 }
 
 pub fn tan<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.tan())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Value::F64(n.tan())))
 }
 
 pub fn asin<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.asin())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Value::F64(n.asin())))
 }
 
 pub fn acos<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.acos())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Value::F64(n.acos())))
 }
 
 pub fn atan<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.atan())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Value::F64(n.atan())))
 }
 
 // --- integer ---
@@ -538,7 +521,7 @@ pub fn gcd<'a>(
     let left = eval_to_int(name, left)?;
     let right = eval_to_int(name, right)?;
 
-    gcd_i64(left, right).map(|gcd| Evaluated::Value(Value::I64(gcd)))
+    gcd_i64(left, right).map_continue(|gcd| Evaluated::Value(Value::I64(gcd)))
 }
 
 pub fn lcm<'a>(
@@ -564,7 +547,7 @@ pub fn lcm<'a>(
     let left = eval_to_int(name, left)?;
     let right = eval_to_int(name, right)?;
 
-    lcm(left, right).map(|lcm| Evaluated::Value(Value::I64(lcm)))
+    lcm(left, right).map_continue(|lcm| Evaluated::Value(Value::I64(lcm)))
 }
 
 fn gcd_i64(a: i64, b: i64) -> ControlFlow<i64> {
@@ -674,7 +657,7 @@ pub fn slice<'a>(
     let expr = expr.try_into().break_if_null()?;
     let mut start = eval_to_int(name, start)?;
     let length = eval_to_int(name, length)
-        .map(usize::try_from)?
+        .map_continue(usize::try_from)?
         .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.to_owned()).into())
         .into_control_flow()?;
 
@@ -703,7 +686,7 @@ pub fn take<'a>(
 ) -> ControlFlow<Evaluated<'a>> {
     let expr = expr.try_into().break_if_null()?;
     let size = eval_to_int(name, size)
-        .map(usize::try_from)?
+        .map_continue(usize::try_from)?
         .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.to_owned()).into())
         .into_control_flow()?;
 
@@ -749,7 +732,7 @@ pub fn unwrap<'a>(
     value
         .selector(&selector)
         .into_control_flow()
-        .map(Evaluated::Value)
+        .map_continue(Evaluated::Value)
 }
 
 pub fn generate_uuid<'a>() -> Evaluated<'a> {
@@ -780,16 +763,16 @@ pub fn format<'a>(
 ) -> ControlFlow<Evaluated<'a>> {
     match expr.try_into().break_if_null()? {
         Value::Date(expr) => eval_to_str(name, format)
-            .map(|format| chrono::NaiveDate::format(&expr, &format).to_string()),
+            .map_continue(|format| chrono::NaiveDate::format(&expr, &format).to_string()),
         Value::Timestamp(expr) => eval_to_str(name, format)
-            .map(|format| chrono::NaiveDateTime::format(&expr, &format).to_string()),
+            .map_continue(|format| chrono::NaiveDateTime::format(&expr, &format).to_string()),
         Value::Time(expr) => eval_to_str(name, format)
-            .map(|format| chrono::NaiveTime::format(&expr, &format).to_string()),
+            .map_continue(|format| chrono::NaiveTime::format(&expr, &format).to_string()),
         value => Err(EvaluateError::UnsupportedExprForFormatFunction(value.into()).into())
             .into_control_flow(),
     }
-    .map(Value::Str)
-    .map(Evaluated::Value)
+    .map_continue(Value::Str)
+    .map_continue(Evaluated::Value)
 }
 
 pub fn last_day<'a>(name: &str, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
