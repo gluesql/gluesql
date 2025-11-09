@@ -1,6 +1,6 @@
 use {
     crate::*,
-    gluesql_core::{ast::BinaryOperator, error::LiteralError, prelude::Value::*},
+    gluesql_core::{ast::BinaryOperator, error::EvaluateError, prelude::Value::*},
 };
 
 test_case!(bitwise_and, {
@@ -57,7 +57,7 @@ test_case!(bitwise_and, {
     g.named_test(
         "bitwise_and between wrong type values shoud occurs error",
         "SELECT 1.1 & 12 AS and_result FROM Test",
-        Err(LiteralError::UnsupportedBinaryOperation {
+        Err(EvaluateError::UnsupportedBinaryOperation {
             left: "1.1".to_owned(),
             op: BinaryOperator::BitwiseAnd,
             right: "12".to_owned(),
@@ -95,7 +95,7 @@ test_case!(bitwise_and, {
     g.named_test(
         "bitwise_and for unsupported value",
         "SELECT 'ss' & 'sp' AS and_result from Test",
-        Err(LiteralError::UnsupportedBinaryOperation {
+        Err(EvaluateError::UnsupportedBinaryOperation {
             left: "ss".to_owned(),
             op: BinaryOperator::BitwiseAnd,
             right: "sp".to_owned(),

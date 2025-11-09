@@ -2,7 +2,7 @@ use {
     crate::*,
     gluesql_core::{
         data::NumericBinaryOperator,
-        error::{EvaluateError, LiteralError, UpdateError, ValueError},
+        error::{EvaluateError, UpdateError, ValueError},
         prelude::Value,
     },
 };
@@ -93,11 +93,11 @@ test_case!(error, {
         ),
         (
             "SELECT * FROM Arith WHERE id = 2 / 0",
-            LiteralError::DivisorShouldNotBeZero.into(),
+            EvaluateError::DivisorShouldNotBeZero.into(),
         ),
         (
             "SELECT * FROM Arith WHERE id = 2 / 0.0",
-            LiteralError::DivisorShouldNotBeZero.into(),
+            EvaluateError::DivisorShouldNotBeZero.into(),
         ),
         (
             "SELECT * FROM Arith WHERE id = INTERVAL '2' HOUR / 0",
@@ -109,11 +109,11 @@ test_case!(error, {
         ),
         (
             "SELECT * FROM Arith WHERE id = 2 % 0",
-            LiteralError::DivisorShouldNotBeZero.into(),
+            EvaluateError::DivisorShouldNotBeZero.into(),
         ),
         (
             "SELECT * FROM Arith WHERE id = 2 % 0.0",
-            LiteralError::DivisorShouldNotBeZero.into(),
+            EvaluateError::DivisorShouldNotBeZero.into(),
         ),
         (
             "SELECT * FROM Arith WHERE TRUE AND 'hello'",
