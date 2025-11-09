@@ -19,14 +19,14 @@ use {
 impl<'a> Evaluated<'a> {
     pub fn evaluate_eq(&self, other: &Evaluated<'a>) -> Tribool {
         match (self, other) {
-            (Evaluated::Literal(a), Evaluated::Literal(b)) => a.evaluate_eq(b),
+            (Evaluated::Literal(a), Evaluated::Literal(b)) => Tribool::from(a == b),
             (Evaluated::Literal(b), Evaluated::Value(a))
             | (Evaluated::Value(a), Evaluated::Literal(b)) => value_eq_with_literal(a, b),
             (Evaluated::Value(a), Evaluated::Value(b)) => a.evaluate_eq(b),
             (Evaluated::Literal(a), Evaluated::StrSlice { source, range })
             | (Evaluated::StrSlice { source, range }, Evaluated::Literal(a)) => {
                 let b = &source[range.clone()];
-                a.evaluate_eq(&Literal::Text(Cow::Borrowed(b)))
+                Tribool::from(a == &Literal::Text(Cow::Borrowed(b)))
             }
             (Evaluated::Value(a), Evaluated::StrSlice { source, range })
             | (Evaluated::StrSlice { source, range }, Evaluated::Value(a)) => {
@@ -95,7 +95,7 @@ fn value_eq_with_literal(value: &Value, literal: &Literal<'_>) -> Tribool {
 #[cfg(test)]
 mod tests {
     use {
-        super::value_eq_with_literal,
+        super::{Evaluated, value_eq_with_literal},
         crate::{
             data::{Value, value::parse_uuid},
             executor::evaluate::literal::Literal,
@@ -119,6 +119,29 @@ mod tests {
 
     fn time(hour: u32, min: u32, sec: u32, milli: u32) -> NaiveTime {
         chrono::NaiveTime::from_hms_milli_opt(hour, min, sec, milli).unwrap()
+    }
+
+    #[test]
+    fn literal_equality_regression() {
+        macro_rules! literal {
+            (num: $value:expr) => {
+                Literal::Number(Cow::Owned(BigDecimal::from_str($value).unwrap()))
+            };
+            (text: $value:expr) => {
+                Literal::Text(Cow::Owned($value.to_owned()))
+            };
+        }
+
+        let eval = |literal| Evaluated::Literal(literal);
+
+        assert_eq!(
+            True,
+            eval(literal!(num: "1")).evaluate_eq(&eval(literal!(num: "1")))
+        );
+        assert_eq!(
+            False,
+            eval(literal!(num: "1")).evaluate_eq(&eval(literal!(text: "foo")))
+        );
     }
 
     #[test]

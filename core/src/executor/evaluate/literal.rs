@@ -9,11 +9,9 @@ use {
     serde::Serialize,
     std::{
         borrow::Cow,
-        cmp::Ordering,
         fmt::{self, Debug, Display},
     },
     thiserror::Error,
-    utils::Tribool,
 };
 
 #[derive(Error, Serialize, Debug, PartialEq, Eq)]
@@ -87,18 +85,6 @@ fn unsupported_binary_op(left: &Literal, op: BinaryOperator, right: &Literal) ->
 }
 
 impl<'a> Literal<'a> {
-    pub fn evaluate_eq(&self, other: &Literal<'_>) -> Tribool {
-        Tribool::from(self == other)
-    }
-
-    pub fn evaluate_cmp(&self, other: &Literal<'a>) -> Option<Ordering> {
-        match (self, other) {
-            (Number(l), Number(r)) => Some(l.cmp(r)),
-            (Text(l), Text(r)) => Some(l.cmp(r)),
-            _ => None,
-        }
-    }
-
     pub fn unary_plus(&self) -> Result<Self> {
         match self {
             Number(v) => Ok(Number(v.clone())),
@@ -249,7 +235,6 @@ mod tests {
         crate::{ast::BinaryOperator, executor::LiteralError},
         bigdecimal::BigDecimal,
         std::{borrow::Cow, str::FromStr},
-        utils::Tribool,
     };
 
     fn num(n: i32) -> Literal<'static> {
@@ -277,7 +262,7 @@ mod tests {
     }
 
     #[test]
-    fn concat_and_equality() {
+    fn concat_literals() {
         macro_rules! num_literal {
             ($num: expr) => {
                 Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
@@ -286,28 +271,6 @@ mod tests {
 
         assert_eq!(text("Foo").concat(text("Bar")), text("FooBar"));
         assert_eq!(num_literal!("1").concat(num_literal!("2")), text("12"));
-
-        assert_eq!(
-            Tribool::True,
-            num_literal!("1").evaluate_eq(&num_literal!("1"))
-        );
-        assert_eq!(Tribool::False, num_literal!("1").evaluate_eq(&text("foo")));
-    }
-
-    #[test]
-    fn comparison_for_numbers_and_text() {
-        use std::cmp::Ordering;
-        macro_rules! num_literal {
-            ($num: expr) => {
-                Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
-            };
-        }
-
-        assert_eq!(
-            num_literal!("1").evaluate_cmp(&num_literal!("2")),
-            Some(Ordering::Less)
-        );
-        assert_eq!(text("a").evaluate_cmp(&text("b")), Some(Ordering::Less));
     }
 
     #[test]

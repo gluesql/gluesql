@@ -14,7 +14,7 @@ use {
 impl<'a> Evaluated<'a> {
     pub fn evaluate_cmp(&self, other: &Evaluated<'a>) -> Option<Ordering> {
         match (self, other) {
-            (Evaluated::Literal(l), Evaluated::Literal(r)) => l.evaluate_cmp(r),
+            (Evaluated::Literal(l), Evaluated::Literal(r)) => literal_cmp(l, r),
             (Evaluated::Literal(l), Evaluated::Value(r)) => {
                 value_cmp_with_literal(r, l).map(Ordering::reverse)
             }
@@ -23,7 +23,7 @@ impl<'a> Evaluated<'a> {
             (Evaluated::Literal(l), Evaluated::StrSlice { source, range }) => {
                 let r = Literal::Text(Cow::Borrowed(&source[range.clone()]));
 
-                l.evaluate_cmp(&r)
+                literal_cmp(l, &r)
             }
             (Evaluated::Value(l), Evaluated::StrSlice { source, range }) => {
                 let r = Literal::Text(Cow::Borrowed(&source[range.clone()]));
@@ -33,7 +33,7 @@ impl<'a> Evaluated<'a> {
             (Evaluated::StrSlice { source, range }, Evaluated::Literal(l)) => {
                 let r = Literal::Text(Cow::Borrowed(&source[range.clone()]));
 
-                l.evaluate_cmp(&r).map(Ordering::reverse)
+                literal_cmp(&r, l)
             }
             (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => {
                 let l = Literal::Text(Cow::Borrowed(&source[range.clone()]));
@@ -51,6 +51,14 @@ impl<'a> Evaluated<'a> {
                 },
             ) => a[ar.clone()].partial_cmp(&b[br.clone()]),
         }
+    }
+}
+
+fn literal_cmp(left: &Literal<'_>, right: &Literal<'_>) -> Option<Ordering> {
+    match (left, right) {
+        (Literal::Number(l), Literal::Number(r)) => Some(l.cmp(r)),
+        (Literal::Text(l), Literal::Text(r)) => Some(l.cmp(r)),
+        _ => None,
     }
 }
 
@@ -93,7 +101,7 @@ fn value_cmp_with_literal(value: &Value, literal: &Literal<'_>) -> Option<Orderi
 #[cfg(test)]
 mod tests {
     use {
-        super::value_cmp_with_literal,
+        super::{Evaluated, value_cmp_with_literal},
         crate::{
             data::{
                 Value,
@@ -179,5 +187,28 @@ mod tests {
             Some(Ordering::Equal),
         );
         assert_cmp(Value::Null, num(1), None);
+    }
+
+    #[test]
+    fn literal_comparison_regression() {
+        macro_rules! literal {
+            (num: $value:expr) => {
+                Literal::Number(Cow::Owned(BigDecimal::from_str($value).unwrap()))
+            };
+            (text: $value:expr) => {
+                Literal::Text(Cow::Owned($value.to_owned()))
+            };
+        }
+
+        let eval = |literal| Evaluated::Literal(literal);
+
+        assert_eq!(
+            Some(Ordering::Less),
+            eval(literal!(num: "1")).evaluate_cmp(&eval(literal!(num: "2")))
+        );
+        assert_eq!(
+            Some(Ordering::Less),
+            eval(literal!(text: "a")).evaluate_cmp(&eval(literal!(text: "b")))
+        );
     }
 }
