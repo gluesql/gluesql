@@ -6,6 +6,7 @@ use {
     crate::{
         ast::{Assignment, ColumnDef, ColumnUniqueOption, ForeignKey},
         data::{Key, Row, Value},
+        executor::evaluate::literal_to_value,
         result::{Error, Result},
         store::GStore,
     },
@@ -98,7 +99,7 @@ impl<'a, T: GStore> Update<'a, T> {
                                 .ok_or(UpdateError::ConflictOnSchema)?;
 
                             let value = match evaluated {
-                                Evaluated::Literal(v) => Value::try_from_literal(data_type, &v)?,
+                                Evaluated::Literal(v) => literal_to_value(data_type, &v)?,
                                 Evaluated::Value(v) => {
                                     v.validate_type(data_type)?;
                                     v

@@ -23,6 +23,7 @@ use {
     std::{borrow::Cow, ops::ControlFlow, sync::Arc},
 };
 
+pub(crate) use evaluated::literal_to_value;
 pub use {error::EvaluateError, evaluated::Evaluated};
 
 pub async fn evaluate<'a, 'b, 'c, T>(

@@ -27,7 +27,6 @@ mod date;
 mod error;
 mod expr;
 mod json;
-mod literal;
 mod selector;
 mod uuid;
 

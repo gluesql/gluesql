@@ -12,6 +12,9 @@ use {
 
 mod cmp;
 mod eq;
+mod literal;
+
+pub(crate) use literal::literal_to_value;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Evaluated<'a> {
@@ -283,7 +286,7 @@ impl<'a> Evaluated<'a> {
 
     pub fn cast(self, data_type: &DataType) -> Result<Evaluated<'a>> {
         match self {
-            Evaluated::Literal(literal) => Value::try_cast_from_literal(data_type, &literal),
+            Evaluated::Literal(literal) => literal::try_cast_literal_to_value(data_type, &literal),
             Evaluated::Value(value) => value.cast(data_type),
             Evaluated::StrSlice { source, range } => {
                 Value::Str(source[range].to_owned()).cast(data_type)
@@ -771,7 +774,7 @@ impl<'a> Evaluated<'a> {
 
     pub fn try_into_value(self, data_type: &DataType, nullable: bool) -> Result<Value> {
         let value = match self {
-            Evaluated::Literal(v) => Value::try_from_literal(data_type, &v)?,
+            Evaluated::Literal(v) => literal_to_value(data_type, &v)?,
             Evaluated::Value(Value::Bytea(bytes)) if data_type == &DataType::Uuid => {
                 Uuid::from_slice(&bytes)
                     .map_err(|_| ValueError::FailedToParseUUID(hex::encode(bytes)))
