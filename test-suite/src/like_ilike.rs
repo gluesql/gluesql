@@ -1,12 +1,9 @@
 use {
     crate::*,
-    bigdecimal::BigDecimal,
     gluesql_core::{
         error::{LiteralError, ValueError},
-        executor::Literal,
         prelude::Value::{self, Bool},
     },
-    std::{borrow::Cow, str::FromStr},
 };
 
 test_case!(like_ilike, {
@@ -88,11 +85,8 @@ test_case!(like_ilike, {
         (
             "SELECT name FROM Item WHERE 'ABC' LIKE 10",
             LiteralError::LikeOnNonString {
-                base: format!("{:?}", Literal::Text(Cow::Owned("ABC".to_owned()))),
-                pattern: format!(
-                    "{:?}",
-                    Literal::Number(Cow::Owned(BigDecimal::from_str("10").unwrap()))
-                ),
+                base: "ABC".to_owned(),
+                pattern: "10".to_owned(),
                 case_sensitive: true,
             }
             .into(),

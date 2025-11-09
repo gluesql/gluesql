@@ -1,13 +1,10 @@
 use {
     crate::*,
-    bigdecimal::BigDecimal,
     gluesql_core::{
         ast::DataType,
-        error::{TranslateError, ValueError},
-        executor::Literal,
+        error::{LiteralError, TranslateError, ValueError},
         prelude::{Payload, Value::*},
     },
-    std::borrow::Cow,
 };
 
 test_case!(point, {
@@ -48,9 +45,9 @@ test_case!(point, {
         ),
         (
             r"INSERT INTO POINT VALUES (0)",
-            Err(ValueError::IncompatibleLiteralForDataType {
+            Err(LiteralError::IncompatibleLiteralForDataType {
                 data_type: DataType::Point,
-                literal: format!("{:?}", Literal::Number(Cow::Owned(BigDecimal::from(0)))),
+                literal: "0".to_owned(),
             }
             .into()),
         ),

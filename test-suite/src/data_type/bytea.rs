@@ -1,13 +1,10 @@
 use {
     crate::*,
-    bigdecimal::BigDecimal,
     gluesql_core::{
         ast::DataType,
-        error::{EvaluateError, ValueError},
-        executor::Literal,
+        error::{EvaluateError, LiteralError},
         prelude::{Payload, Value::Bytea},
     },
-    std::borrow::Cow,
 };
 
 test_case!(bytea, {
@@ -37,9 +34,9 @@ test_case!(bytea, {
         ),
         (
             "INSERT INTO Bytea VALUES (0)",
-            Err(ValueError::IncompatibleLiteralForDataType {
+            Err(LiteralError::IncompatibleLiteralForDataType {
                 data_type: DataType::Bytea,
-                literal: format!("{:?}", Literal::Number(Cow::Owned(BigDecimal::from(0)))),
+                literal: "0".to_owned(),
             }
             .into()),
         ),

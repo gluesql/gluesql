@@ -18,7 +18,7 @@ pub use {
     alter::{AlterError, Referencing},
     context::RowContext,
     delete::DeleteError,
-    evaluate::{EvaluateError, Literal, LiteralError, evaluate_stateless},
+    evaluate::{EvaluateError, LiteralError, evaluate_stateless},
     execute::{ExecuteError, Payload, PayloadVariable, execute},
     fetch::FetchError,
     insert::InsertError,

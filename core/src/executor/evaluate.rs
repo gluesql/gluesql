@@ -25,11 +25,7 @@ use {
 };
 
 pub(crate) use evaluated::literal_to_value;
-pub use {
-    error::EvaluateError,
-    evaluated::Evaluated,
-    literal::{Literal, LiteralError},
-};
+pub use {error::EvaluateError, evaluated::Evaluated, literal::LiteralError};
 
 pub async fn evaluate<'a, 'b, 'c, T>(
     storage: &'a T,

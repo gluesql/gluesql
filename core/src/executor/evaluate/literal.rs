@@ -1,13 +1,17 @@
 use {
-    super::{BigDecimalExt, StringExt},
     crate::{
-        ast::{BinaryOperator, ToSql},
+        ast::{BinaryOperator, DataType, ToSql},
+        data::{BigDecimalExt, StringExt},
         result::Result,
     },
     Literal::*,
     bigdecimal::BigDecimal,
     serde::Serialize,
-    std::{borrow::Cow, cmp::Ordering, fmt::Debug},
+    std::{
+        borrow::Cow,
+        cmp::Ordering,
+        fmt::{self, Debug, Display},
+    },
     thiserror::Error,
     utils::Tribool,
 };
@@ -45,11 +49,17 @@ pub enum LiteralError {
     #[error("unreachable literal unary operation")]
     UnreachableUnaryOperation,
 
-    #[error("operator doesn't exist: {base:?} {case} {pattern:?}", case = if *case_sensitive { "LIKE" } else { "ILIKE" })]
+    #[error("operator doesn't exist: {base} {case} {pattern}", case = if *case_sensitive { "LIKE" } else { "ILIKE" })]
     LikeOnNonString {
         base: String,
         pattern: String,
         case_sensitive: bool,
+    },
+
+    #[error("literal {literal} is incompatible with data type {data_type:?}")]
+    IncompatibleLiteralForDataType {
+        data_type: DataType,
+        literal: String,
     },
 }
 
@@ -59,11 +69,20 @@ pub enum Literal<'a> {
     Text(Cow<'a, str>),
 }
 
+impl Display for Literal<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Literal::Number(n) => write!(f, "{n}"),
+            Literal::Text(t) => f.write_str(t),
+        }
+    }
+}
+
 fn unsupported_binary_op(left: &Literal, op: BinaryOperator, right: &Literal) -> LiteralError {
     LiteralError::UnsupportedBinaryOperation {
-        left: format!("{left:?}"),
+        left: left.to_string(),
         op,
-        right: format!("{right:?}"),
+        right: right.to_string(),
     }
 }
 
@@ -143,9 +162,9 @@ impl<'a> Literal<'a> {
             (Number(l), Number(r)) => match (l.to_i64(), r.to_i64()) {
                 (Some(l), Some(r)) => Ok(Number(Cow::Owned(BigDecimal::from(l & r)))),
                 _ => Err(LiteralError::UnsupportedBinaryOperation {
-                    left: format!("{self:?}"),
+                    left: self.to_string(),
                     op: BinaryOperator::BitwiseAnd,
-                    right: format!("{other:?}"),
+                    right: other.to_string(),
                 }
                 .into()),
             },
@@ -214,8 +233,8 @@ impl<'a> Literal<'a> {
         match (self, other) {
             (Text(l), Text(r)) => l.like(r, case_sensitive),
             _ => Err(LiteralError::LikeOnNonString {
-                base: format!("{self:?}"),
-                pattern: format!("{other:?}"),
+                base: self.to_string(),
+                pattern: other.to_string(),
                 case_sensitive,
             }
             .into()),
@@ -227,8 +246,7 @@ impl<'a> Literal<'a> {
 mod tests {
     use {
         super::Literal::{self, *},
-        crate::ast::BinaryOperator,
-        crate::data::LiteralError,
+        crate::{ast::BinaryOperator, executor::LiteralError},
         bigdecimal::BigDecimal,
         std::{borrow::Cow, str::FromStr},
         utils::Tribool,

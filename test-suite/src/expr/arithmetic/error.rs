@@ -3,10 +3,8 @@ use {
     gluesql_core::{
         data::NumericBinaryOperator,
         error::{EvaluateError, LiteralError, UpdateError, ValueError},
-        executor::Literal,
         prelude::Value,
     },
-    std::borrow::Cow,
 };
 test_case!(error, {
     let g = get_tester!();
@@ -119,11 +117,7 @@ test_case!(error, {
         ),
         (
             "SELECT * FROM Arith WHERE TRUE AND 'hello'",
-            EvaluateError::BooleanTypeRequired(format!(
-                "{:?}",
-                Literal::Text(Cow::Owned("hello".to_owned()))
-            ))
-            .into(),
+            EvaluateError::BooleanTypeRequired("Text(\"hello\")".to_owned()).into(),
         ),
         (
             "SELECT * FROM Arith WHERE name AND id",

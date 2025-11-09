@@ -11,12 +11,6 @@ use {
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum ValueError {
-    #[error("literal: {literal} is incompatible with data type: {data_type:?}")]
-    IncompatibleLiteralForDataType {
-        data_type: DataType,
-        literal: String,
-    },
-
     #[error("incompatible data type, data type: {data_type:#?}, value: {value:#?}")]
     IncompatibleDataType { data_type: DataType, value: Value },
 

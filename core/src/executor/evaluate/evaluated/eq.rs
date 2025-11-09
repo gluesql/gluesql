@@ -5,7 +5,7 @@ use {
             BigDecimalExt, Value,
             value::{parse_time, parse_timestamp, parse_uuid},
         },
-        executor::Literal,
+        executor::evaluate::literal::Literal,
     },
     chrono::NaiveDate,
     std::{
@@ -98,7 +98,7 @@ mod tests {
         super::value_eq_with_literal,
         crate::{
             data::{Value, value::parse_uuid},
-            executor::Literal,
+            executor::evaluate::literal::Literal,
         },
         bigdecimal::BigDecimal,
         chrono::{NaiveDate, NaiveDateTime, NaiveTime},

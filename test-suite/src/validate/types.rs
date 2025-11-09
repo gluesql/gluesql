@@ -1,7 +1,10 @@
 use {
     crate::*,
-    gluesql_core::{ast::DataType, error::ValueError, executor::Literal, prelude::Value},
-    std::borrow::Cow,
+    gluesql_core::{
+        ast::DataType,
+        error::{LiteralError, ValueError},
+        prelude::Value,
+    },
 };
 
 test_case!(types, {
@@ -24,9 +27,9 @@ test_case!(types, {
         ),
         (
             "INSERT INTO TableC (uid) VALUES ('A')",
-            Err(ValueError::IncompatibleLiteralForDataType {
+            Err(LiteralError::IncompatibleLiteralForDataType {
                 data_type: DataType::Int,
-                literal: format!("{:?}", Literal::Text(Cow::Owned("A".to_owned()))),
+                literal: "A".to_owned(),
             }
             .into()),
         ),

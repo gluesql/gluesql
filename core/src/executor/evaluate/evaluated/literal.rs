@@ -5,7 +5,7 @@ use {
             BigDecimalExt, Interval, Point, Value, ValueError,
             value::{parse_date, parse_time, parse_timestamp, parse_uuid},
         },
-        executor::Literal,
+        executor::evaluate::literal::{Literal, LiteralError},
         result::{Error, Result},
     },
     bigdecimal::BigDecimal,
@@ -50,9 +50,9 @@ pub(crate) fn literal_to_value(data_type: &DataType, literal: &Literal<'_>) -> R
 
     match result {
         Some(output) => output,
-        None => Err(ValueError::IncompatibleLiteralForDataType {
+        None => Err(LiteralError::IncompatibleLiteralForDataType {
             data_type: data_type.clone(),
-            literal: format!("{literal:?}"),
+            literal: literal.to_string(),
         }
         .into()),
     }
@@ -392,7 +392,7 @@ fn map_cast_error(data_type: &DataType, literal: &Literal<'_>, error: Error) -> 
 #[cfg(test)]
 mod tests {
     use {
-        crate::{data::Value, executor::Literal},
+        crate::{data::Value, executor::evaluate::literal::Literal},
         bigdecimal::BigDecimal,
         chrono::{NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,
@@ -606,7 +606,7 @@ mod tests {
     #[test]
     fn try_from() {
         use {
-            crate::{data::Value, executor::Literal},
+            crate::{data::Value, executor::evaluate::literal::Literal},
             bigdecimal::BigDecimal,
             std::{borrow::Cow, str::FromStr},
         };

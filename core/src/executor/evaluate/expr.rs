@@ -1,5 +1,5 @@
 use {
-    super::{EvaluateError, Evaluated, Literal, literal_to_value},
+    super::{EvaluateError, Evaluated, literal::Literal, literal_to_value},
     crate::{
         ast::{AstLiteral, BinaryOperator, DataType, UnaryOperator},
         data::Value,
