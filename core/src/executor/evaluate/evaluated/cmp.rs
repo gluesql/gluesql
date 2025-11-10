@@ -164,12 +164,7 @@ mod tests {
         assert_cmp(
             Value::Inet(IpAddr::from_str("215.87.1.1").unwrap()),
             text("215.87.1.1"),
-            Some(Ordering::Less),
-        );
-        assert_cmp(
-            Value::Inet(IpAddr::from_str("215.87.1.1").unwrap()),
-            text("215.87.1.1"),
-            Some(Ordering::Less),
+            Some(Ordering::Equal),
         );
         assert_cmp(
             Value::Inet(IpAddr::from_str("255.255.255.255").unwrap()),
