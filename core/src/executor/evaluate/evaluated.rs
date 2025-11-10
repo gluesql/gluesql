@@ -5,6 +5,7 @@ use {
         data::{Key, Value, ValueError, value::BTreeMapJsonExt},
         result::{Error, Result},
     },
+    literal::Literal,
     std::{borrow::Cow, collections::BTreeMap, convert::TryFrom, ops::Range},
     utils::Tribool,
     uuid::Uuid,
@@ -15,11 +16,11 @@ mod cmp;
 mod concat;
 mod eq;
 mod like;
-mod literal;
+pub(super) mod literal;
 mod unary_op;
 
+pub use literal::LiteralError;
 pub(crate) use literal::literal_to_value;
-pub use literal::{Literal, LiteralError};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Evaluated<'a> {
