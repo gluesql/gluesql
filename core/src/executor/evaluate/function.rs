@@ -50,6 +50,16 @@ impl<'a> BreakIfNull<Evaluated<'a>> for Result<Evaluated<'a>> {
     }
 }
 
+impl<'a> BreakIfNull<Evaluated<'a>> for Evaluated<'a> {
+    fn break_if_null(self) -> ControlFlow<Evaluated<'a>> {
+        if self.is_null() {
+            Break(BreakCase::Null)
+        } else {
+            Continue(self)
+        }
+    }
+}
+
 impl BreakIfNull<Value> for Result<Value> {
     fn break_if_null(self) -> ControlFlow<Value> {
         match self {

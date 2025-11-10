@@ -60,7 +60,7 @@ pub fn binary_op<'a>(
         BinaryOperator::Multiply => l.multiply(&r),
         BinaryOperator::Divide => l.divide(&r),
         BinaryOperator::Modulo => l.modulo(&r),
-        BinaryOperator::StringConcat => l.concat(r),
+        BinaryOperator::StringConcat => Ok(l.concat(r)),
         BinaryOperator::Eq => Ok(Evaluated::from(l.evaluate_eq(&r))),
         BinaryOperator::NotEq => Ok(Evaluated::from(!l.evaluate_eq(&r))),
         BinaryOperator::Lt => cmp!(l.evaluate_cmp(&r) == Some(Ordering::Less)),
