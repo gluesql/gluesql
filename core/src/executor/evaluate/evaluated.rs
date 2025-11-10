@@ -2,10 +2,10 @@ use {
     super::{error::EvaluateError, function},
     crate::{
         ast::{DataType, TrimWhereField},
-        data::{Key, Value, ValueError, value::BTreeMapJsonExt},
+        data::{BigDecimalExt, Key, Value, ValueError, value::BTreeMapJsonExt},
         result::{Error, Result},
     },
-    literal::Literal,
+    bigdecimal::BigDecimal,
     std::{borrow::Cow, collections::BTreeMap, convert::TryFrom, ops::Range},
     utils::Tribool,
     uuid::Uuid,
@@ -24,7 +24,8 @@ pub(crate) use literal::literal_to_value;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Evaluated<'a> {
-    Literal(Literal<'a>),
+    Number(Cow<'a, BigDecimal>),
+    Text(Cow<'a, str>),
     StrSlice {
         source: Cow<'a, str>,
         range: Range<usize>,
@@ -37,7 +38,16 @@ impl TryFrom<Evaluated<'_>> for Value {
 
     fn try_from(e: Evaluated<'_>) -> Result<Value> {
         match e {
-            Evaluated::Literal(v) => Value::try_from(v),
+            Evaluated::Number(value) => {
+                let decimal = value.as_ref();
+
+                decimal
+                    .to_i64()
+                    .map(Value::I64)
+                    .or_else(|| decimal.to_f64().map(Value::F64))
+                    .ok_or_else(|| LiteralError::FailedToParseNumber.into())
+            }
+            Evaluated::Text(value) => Ok(Value::Str(value.into_owned())),
             Evaluated::StrSlice {
                 source: s,
                 range: r,
@@ -60,7 +70,9 @@ impl TryFrom<&Evaluated<'_>> for Key {
 
     fn try_from(evaluated: &Evaluated<'_>) -> Result<Self> {
         match evaluated {
-            Evaluated::Literal(l) => Value::try_from(l)?.try_into(),
+            Evaluated::Number(_) | Evaluated::Text(_) => {
+                Value::try_from(evaluated.clone())?.try_into()
+            }
             Evaluated::StrSlice { source, range } => Ok(Key::Str(source[range.clone()].to_owned())),
             Evaluated::Value(v) => v.try_into(),
         }
@@ -73,9 +85,16 @@ impl TryFrom<Evaluated<'_>> for bool {
     fn try_from(e: Evaluated<'_>) -> Result<bool> {
         match e {
             Evaluated::Value(Value::Bool(v)) => Ok(v),
-            Evaluated::Literal(v) => {
-                Err(EvaluateError::BooleanTypeRequired(format!("{v:?}")).into())
-            }
+            Evaluated::Number(value) => Err(EvaluateError::BooleanTypeRequired(format!(
+                "Number({:?})",
+                value.as_ref()
+            ))
+            .into()),
+            Evaluated::Text(value) => Err(EvaluateError::BooleanTypeRequired(format!(
+                "Text({:?})",
+                value.as_ref()
+            ))
+            .into()),
             Evaluated::StrSlice { source, range } => {
                 Err(EvaluateError::BooleanTypeRequired(source[range].to_owned()).into())
             }
@@ -89,10 +108,8 @@ impl TryFrom<Evaluated<'_>> for BTreeMap<String, Value> {
 
     fn try_from(evaluated: Evaluated<'_>) -> Result<BTreeMap<String, Value>> {
         match evaluated {
-            Evaluated::Literal(Literal::Text(v)) => BTreeMap::parse_json_object(v.as_ref()),
-            Evaluated::Literal(v) => {
-                Err(EvaluateError::TextLiteralRequired(format!("{v:?}")).into())
-            }
+            Evaluated::Text(v) => BTreeMap::parse_json_object(v.as_ref()),
+            Evaluated::Number(v) => Err(EvaluateError::TextLiteralRequired(v.to_string()).into()),
             Evaluated::Value(Value::Str(v)) => BTreeMap::parse_json_object(v.as_str()),
             Evaluated::Value(Value::Map(v)) => Ok(v),
             Evaluated::Value(v) => Err(EvaluateError::MapOrStringValueRequired(v.into()).into()),
@@ -134,7 +151,9 @@ impl<'a> Evaluated<'a> {
 
     pub fn cast(self, data_type: &DataType) -> Result<Evaluated<'a>> {
         match self {
-            Evaluated::Literal(literal) => literal::try_cast_literal_to_value(data_type, &literal),
+            eval @ (Evaluated::Number(_) | Evaluated::Text(_)) => {
+                literal::try_cast_literal_to_value(data_type, &eval)
+            }
             Evaluated::Value(value) => value.cast(data_type),
             Evaluated::StrSlice { source, range } => {
                 Value::Str(source[range].to_owned()).cast(data_type)
@@ -145,7 +164,7 @@ impl<'a> Evaluated<'a> {
 
     pub fn ltrim(self, name: String, chars: Option<Evaluated<'_>>) -> Result<Evaluated<'a>> {
         let (source, range) = match self {
-            Evaluated::Literal(Literal::Text(l)) => {
+            Evaluated::Text(l) => {
                 let end = l.len();
                 (l, 0..end)
             }
@@ -219,7 +238,7 @@ impl<'a> Evaluated<'a> {
 
     pub fn rtrim(self, name: String, chars: Option<Evaluated<'_>>) -> Result<Evaluated<'a>> {
         let (source, range) = match self {
-            Evaluated::Literal(Literal::Text(l)) => {
+            Evaluated::Text(l) => {
                 let end = l.len();
                 (l, 0..end)
             }
@@ -296,7 +315,7 @@ impl<'a> Evaluated<'a> {
         count: Option<Evaluated<'a>>,
     ) -> Result<Evaluated<'a>> {
         let (source, range) = match self {
-            Evaluated::Literal(Literal::Text(l)) => {
+            Evaluated::Text(l) => {
                 let end = l.len();
                 (l, 0..end)
             }
@@ -351,7 +370,7 @@ impl<'a> Evaluated<'a> {
         trim_where_field: Option<&TrimWhereField>,
     ) -> Result<Evaluated<'a>> {
         let (source, range) = match self {
-            Evaluated::Literal(Literal::Text(l)) => {
+            Evaluated::Text(l) => {
                 let end = l.len();
                 (l, 0..end)
             }
@@ -538,7 +557,9 @@ impl<'a> Evaluated<'a> {
 
     pub fn try_into_value(self, data_type: &DataType, nullable: bool) -> Result<Value> {
         let value = match self {
-            Evaluated::Literal(v) => literal_to_value(data_type, &v)?,
+            eval @ (Evaluated::Number(_) | Evaluated::Text(_)) => {
+                literal_to_value(data_type, &eval)?
+            }
             Evaluated::Value(Value::Bytea(bytes)) if data_type == &DataType::Uuid => {
                 Uuid::from_slice(&bytes)
                     .map_err(|_| ValueError::FailedToParseUUID(hex::encode(bytes)))

@@ -99,7 +99,9 @@ impl<'a, T: GStore> Update<'a, T> {
                                 .ok_or(UpdateError::ConflictOnSchema)?;
 
                             let value = match evaluated {
-                                Evaluated::Literal(v) => literal_to_value(data_type, &v)?,
+                                eval @ (Evaluated::Number(_) | Evaluated::Text(_)) => {
+                                    literal_to_value(data_type, &eval)?
+                                }
                                 Evaluated::Value(v) => {
                                     v.validate_type(data_type)?;
                                     v

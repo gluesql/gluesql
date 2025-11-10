@@ -1,5 +1,6 @@
 use {
-    super::{Literal, LiteralError},
+    super::super::Evaluated,
+    super::LiteralError,
     crate::{
         ast::DataType,
         data::{
@@ -16,43 +17,32 @@ use {
     },
 };
 
-impl TryFrom<&Literal<'_>> for Value {
-    type Error = Error;
-
-    fn try_from(literal: &Literal<'_>) -> Result<Self> {
-        match literal {
-            Literal::Number(v) => v
-                .to_i64()
-                .map(Value::I64)
-                .or_else(|| v.to_f64().map(Value::F64))
-                .ok_or_else(|| LiteralError::FailedToParseNumber.into()),
-            Literal::Text(v) => Ok(Value::Str(v.as_ref().to_owned())),
-        }
-    }
+#[derive(Clone, Copy)]
+enum LiteralKind {
+    Number,
+    Text,
 }
 
-impl TryFrom<Literal<'_>> for Value {
-    type Error = Error;
-
-    fn try_from(literal: Literal<'_>) -> Result<Self> {
-        match literal {
-            Literal::Text(v) => Ok(Value::Str(v.into_owned())),
-            number @ Literal::Number(_) => Value::try_from(&number),
+pub(crate) fn literal_to_value(data_type: &DataType, evaluated: &Evaluated<'_>) -> Result<Value> {
+    let (result, literal) = match evaluated {
+        Evaluated::Number(value) => (
+            literal_number_to_value(data_type, value.as_ref()),
+            value.to_string(),
+        ),
+        Evaluated::Text(value) => (
+            literal_text_to_value(data_type, value.as_ref()),
+            value.to_string(),
+        ),
+        other => {
+            return Err(LiteralError::LiteralRequired(format!("{other:?}")).into());
         }
-    }
-}
-
-pub(crate) fn literal_to_value(data_type: &DataType, literal: &Literal<'_>) -> Result<Value> {
-    let result = match literal {
-        Literal::Number(value) => literal_number_to_value(data_type, value.as_ref()),
-        Literal::Text(value) => literal_text_to_value(data_type, value.as_ref()),
     };
 
     match result {
         Some(output) => output,
         None => Err(LiteralError::IncompatibleLiteralForDataType {
             data_type: data_type.clone(),
-            literal: literal.to_string(),
+            literal,
         }
         .into()),
     }
@@ -186,18 +176,29 @@ fn literal_text_to_value(data_type: &DataType, value: &str) -> Option<Result<Val
 
 pub(crate) fn try_cast_literal_to_value(
     data_type: &DataType,
-    literal: &Literal<'_>,
+    evaluated: &Evaluated<'_>,
 ) -> Result<Value> {
-    let result = match literal {
-        Literal::Number(value) => cast_literal_number_to_value(data_type, value.as_ref()),
-        Literal::Text(value) => cast_literal_text_to_value(data_type, value.as_ref()),
+    let (result, literal_string, kind) = match evaluated {
+        Evaluated::Number(value) => (
+            cast_literal_number_to_value(data_type, value.as_ref()),
+            value.to_string(),
+            LiteralKind::Number,
+        ),
+        Evaluated::Text(value) => (
+            cast_literal_text_to_value(data_type, value.as_ref()),
+            value.to_string(),
+            LiteralKind::Text,
+        ),
+        other => {
+            return Err(LiteralError::LiteralRequired(format!("{other:?}")).into());
+        }
     };
 
     match result {
         Some(output) => output,
-        None => match literal_to_value(data_type, literal) {
+        None => match literal_to_value(data_type, evaluated) {
             Ok(value) => Ok(value),
-            Err(error) => map_cast_error(data_type, literal, error),
+            Err(error) => map_cast_error(data_type, kind, literal_string, error),
         },
     }
 }
@@ -317,14 +318,18 @@ where
         .map_err(|_| err(text.to_owned()).into())
 }
 
-fn map_cast_error(data_type: &DataType, literal: &Literal<'_>, error: Error) -> Result<Value> {
+fn map_cast_error(
+    data_type: &DataType,
+    literal_kind: LiteralKind,
+    literal_string: String,
+    error: Error,
+) -> Result<Value> {
     let Error::Literal(literal_error) = error else {
         return Err(error);
     };
 
-    match literal {
-        Literal::Number(number) => {
-            let literal_string = number.to_string();
+    match literal_kind {
+        LiteralKind::Number => {
             let mapped_error = match (data_type, &literal_error) {
                 (DataType::Int8 | DataType::Int16, LiteralError::FailedToParseNumber) => {
                     Some(LiteralError::LiteralCastToInt8Failed(literal_string))
@@ -369,8 +374,7 @@ fn map_cast_error(data_type: &DataType, literal: &Literal<'_>, error: Error) -> 
                 None => Err(literal_error.into()),
             }
         }
-        Literal::Text(value) => {
-            let literal_string = value.to_string();
+        LiteralKind::Text => {
             let mapped_error = match (data_type, &literal_error) {
                 (DataType::Time, LiteralError::FailedToParseTime(_)) => {
                     Some(LiteralError::LiteralCastToTimeFailed(literal_string))
@@ -392,8 +396,7 @@ fn map_cast_error(data_type: &DataType, literal: &Literal<'_>, error: Error) -> 
 #[cfg(test)]
 mod tests {
     use {
-        super::Literal,
-        crate::data::Value,
+        crate::{data::Value, executor::evaluate::Evaluated},
         bigdecimal::BigDecimal,
         chrono::{NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,
@@ -472,13 +475,13 @@ mod tests {
 
         macro_rules! num {
             ($num: expr) => {
-                Literal::Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
+                Evaluated::Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
             };
         }
 
         macro_rules! text {
             ($text: expr) => {
-                Literal::Text(Cow::Owned($text.to_owned()))
+                Evaluated::Text(Cow::Owned($text.to_owned()))
             };
         }
 
@@ -606,22 +609,15 @@ mod tests {
 
     #[test]
     fn try_from() {
-        use {
-            super::Literal,
-            crate::data::Value,
-            bigdecimal::BigDecimal,
-            std::{borrow::Cow, str::FromStr},
-        };
-
         macro_rules! text {
             ($text: expr) => {
-                Literal::Text(Cow::Owned($text.to_owned()))
+                Evaluated::Text(Cow::Owned($text.to_owned()))
             };
         }
 
         macro_rules! num {
             ($num: expr) => {
-                &Literal::Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
+                Evaluated::Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
             };
         }
 
@@ -635,7 +631,7 @@ mod tests {
         }
 
         test!(text!("hello"), Value::Str("hello".to_owned()));
-        test!(&text!("hallo"), Value::Str("hallo".to_owned()));
+        test!(text!("hallo"), Value::Str("hallo".to_owned()));
         test!(num!("1234567890"), Value::I64(1_234_567_890));
         test!(num!("1.0"), Value::F32(1.0_f32));
         test!(num!("1.0"), Value::F64(1.0));
@@ -647,13 +643,13 @@ mod tests {
 
         macro_rules! text {
             ($text: expr) => {
-                Literal::Text(Cow::Owned($text.to_owned()))
+                Evaluated::Text(Cow::Owned($text.to_owned()))
             };
         }
 
         macro_rules! num {
             ($num: expr) => {
-                &Literal::Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
+                Evaluated::Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
             };
         }
 

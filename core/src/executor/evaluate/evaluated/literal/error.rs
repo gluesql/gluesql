@@ -8,6 +8,9 @@ pub enum LiteralError {
         literal: String,
     },
 
+    #[error("literal is required: {0}")]
+    LiteralRequired(String),
+
     #[error("failed to parse number")]
     FailedToParseNumber,
 

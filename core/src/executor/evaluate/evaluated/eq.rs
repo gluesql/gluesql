@@ -1,5 +1,5 @@
 use {
-    super::{Evaluated, literal::Literal},
+    super::Evaluated,
     crate::data::{
         BigDecimalExt, Value,
         value::{parse_time, parse_timestamp, parse_uuid},
@@ -16,19 +16,32 @@ use {
 impl<'a> Evaluated<'a> {
     pub fn evaluate_eq(&self, other: &Evaluated<'a>) -> Tribool {
         match (self, other) {
-            (Evaluated::Literal(a), Evaluated::Literal(b)) => Tribool::from(a == b),
-            (Evaluated::Literal(b), Evaluated::Value(a))
-            | (Evaluated::Value(a), Evaluated::Literal(b)) => value_eq_with_literal(a, b),
+            (Evaluated::Number(a), Evaluated::Number(b)) => Tribool::from(a == b),
+            (Evaluated::Text(a), Evaluated::Text(b)) => Tribool::from(a == b),
+            (literal @ (Evaluated::Number(_) | Evaluated::Text(_)), Evaluated::Value(value))
+            | (Evaluated::Value(value), literal @ (Evaluated::Number(_) | Evaluated::Text(_))) => {
+                value_eq_with_literal(value, literal)
+            }
             (Evaluated::Value(a), Evaluated::Value(b)) => a.evaluate_eq(b),
-            (Evaluated::Literal(a), Evaluated::StrSlice { source, range })
-            | (Evaluated::StrSlice { source, range }, Evaluated::Literal(a)) => {
-                let b = &source[range.clone()];
-                Tribool::from(a == &Literal::Text(Cow::Borrowed(b)))
+            (Evaluated::Number(_), Evaluated::Text(_))
+            | (Evaluated::Text(_), Evaluated::Number(_)) => Tribool::from(false),
+            (
+                literal @ (Evaluated::Number(_) | Evaluated::Text(_)),
+                Evaluated::StrSlice { source, range },
+            )
+            | (
+                Evaluated::StrSlice { source, range },
+                literal @ (Evaluated::Number(_) | Evaluated::Text(_)),
+            ) => {
+                let slice = Evaluated::Text(Cow::Borrowed(&source[range.clone()]));
+
+                Tribool::from(literal == &slice)
             }
             (Evaluated::Value(a), Evaluated::StrSlice { source, range })
             | (Evaluated::StrSlice { source, range }, Evaluated::Value(a)) => {
-                let b = &source[range.clone()];
-                value_eq_with_literal(a, &Literal::Text(Cow::Borrowed(b)))
+                let slice = Evaluated::Text(Cow::Borrowed(&source[range.clone()]));
+
+                value_eq_with_literal(a, &slice)
             }
             (
                 Evaluated::StrSlice { source, range },
@@ -41,41 +54,45 @@ impl<'a> Evaluated<'a> {
     }
 }
 
-fn value_eq_with_literal(value: &Value, literal: &Literal<'_>) -> Tribool {
+fn value_eq_with_literal(value: &Value, literal: &Evaluated<'_>) -> Tribool {
     match (value, literal) {
-        (Value::I8(l), Literal::Number(r)) => Tribool::from(r.to_i8().is_some_and(|r| *l == r)),
-        (Value::I16(l), Literal::Number(r)) => Tribool::from(r.to_i16().is_some_and(|r| *l == r)),
-        (Value::I32(l), Literal::Number(r)) => Tribool::from(r.to_i32().is_some_and(|r| *l == r)),
-        (Value::I64(l), Literal::Number(r)) => Tribool::from(r.to_i64().is_some_and(|r| *l == r)),
-        (Value::I128(l), Literal::Number(r)) => Tribool::from(r.to_i128().is_some_and(|r| *l == r)),
-        (Value::U8(l), Literal::Number(r)) => Tribool::from(r.to_u8().is_some_and(|r| *l == r)),
-        (Value::U16(l), Literal::Number(r)) => Tribool::from(r.to_u16().is_some_and(|r| *l == r)),
-        (Value::U32(l), Literal::Number(r)) => Tribool::from(r.to_u32().is_some_and(|r| *l == r)),
-        (Value::U64(l), Literal::Number(r)) => Tribool::from(r.to_u64().is_some_and(|r| *l == r)),
-        (Value::U128(l), Literal::Number(r)) => Tribool::from(r.to_u128().is_some_and(|r| *l == r)),
-        (Value::F32(l), Literal::Number(r)) => Tribool::from(r.to_f32().is_some_and(|r| *l == r)),
-        (Value::F64(l), Literal::Number(r)) => Tribool::from(r.to_f64().is_some_and(|r| *l == r)),
-        (Value::Str(l), Literal::Text(r)) => Tribool::from(l == r.as_ref()),
-        (Value::Date(l), Literal::Text(r)) => match r.parse::<NaiveDate>() {
+        (Value::I8(l), Evaluated::Number(r)) => Tribool::from(r.to_i8().is_some_and(|r| *l == r)),
+        (Value::I16(l), Evaluated::Number(r)) => Tribool::from(r.to_i16().is_some_and(|r| *l == r)),
+        (Value::I32(l), Evaluated::Number(r)) => Tribool::from(r.to_i32().is_some_and(|r| *l == r)),
+        (Value::I64(l), Evaluated::Number(r)) => Tribool::from(r.to_i64().is_some_and(|r| *l == r)),
+        (Value::I128(l), Evaluated::Number(r)) => {
+            Tribool::from(r.to_i128().is_some_and(|r| *l == r))
+        }
+        (Value::U8(l), Evaluated::Number(r)) => Tribool::from(r.to_u8().is_some_and(|r| *l == r)),
+        (Value::U16(l), Evaluated::Number(r)) => Tribool::from(r.to_u16().is_some_and(|r| *l == r)),
+        (Value::U32(l), Evaluated::Number(r)) => Tribool::from(r.to_u32().is_some_and(|r| *l == r)),
+        (Value::U64(l), Evaluated::Number(r)) => Tribool::from(r.to_u64().is_some_and(|r| *l == r)),
+        (Value::U128(l), Evaluated::Number(r)) => {
+            Tribool::from(r.to_u128().is_some_and(|r| *l == r))
+        }
+        (Value::F32(l), Evaluated::Number(r)) => Tribool::from(r.to_f32().is_some_and(|r| *l == r)),
+        (Value::F64(l), Evaluated::Number(r)) => Tribool::from(r.to_f64().is_some_and(|r| *l == r)),
+        (Value::Str(l), Evaluated::Text(r)) => Tribool::from(l == r.as_ref()),
+        (Value::Date(l), Evaluated::Text(r)) => match r.parse::<NaiveDate>() {
             Ok(r) => Tribool::from(l == &r),
             Err(_) => Tribool::from(false),
         },
-        (Value::Timestamp(l), Literal::Text(r)) => match parse_timestamp(r) {
+        (Value::Timestamp(l), Evaluated::Text(r)) => match parse_timestamp(r) {
             Some(r) => Tribool::from(l == &r),
             None => Tribool::from(false),
         },
-        (Value::Time(l), Literal::Text(r)) => match parse_time(r) {
+        (Value::Time(l), Evaluated::Text(r)) => match parse_time(r) {
             Some(r) => Tribool::from(l == &r),
             None => Tribool::from(false),
         },
-        (Value::Uuid(l), Literal::Text(r)) => {
+        (Value::Uuid(l), Evaluated::Text(r)) => {
             Tribool::from(parse_uuid(r).map(|r| l == &r).unwrap_or(false))
         }
-        (Value::Inet(l), Literal::Text(r)) => match IpAddr::from_str(r) {
+        (Value::Inet(l), Evaluated::Text(r)) => match IpAddr::from_str(r) {
             Ok(x) => Tribool::from(l == &x),
             Err(_) => Tribool::from(false),
         },
-        (Value::Inet(l), Literal::Number(r)) => {
+        (Value::Inet(l), Evaluated::Number(r)) => {
             if let Some(x) = r.to_u32() {
                 Tribool::from(l == &Ipv4Addr::from(x))
             } else if let Some(x) = r.to_u128() {
@@ -92,7 +109,6 @@ fn value_eq_with_literal(value: &Value, literal: &Literal<'_>) -> Tribool {
 #[cfg(test)]
 mod tests {
     use {
-        super::super::literal::Literal,
         super::{Evaluated, value_eq_with_literal},
         crate::data::{Value, value::parse_uuid},
         bigdecimal::BigDecimal,
@@ -120,22 +136,17 @@ mod tests {
     fn literal_equality_regression() {
         macro_rules! literal {
             (num: $value:expr) => {
-                Literal::Number(Cow::Owned(BigDecimal::from_str($value).unwrap()))
+                Evaluated::Number(Cow::Owned(BigDecimal::from_str($value).unwrap()))
             };
             (text: $value:expr) => {
-                Literal::Text(Cow::Owned($value.to_owned()))
+                Evaluated::Text(Cow::Owned($value.to_owned()))
             };
         }
 
-        let eval = |literal| Evaluated::Literal(literal);
-
-        assert_eq!(
-            True,
-            eval(literal!(num: "1")).evaluate_eq(&eval(literal!(num: "1")))
-        );
+        assert_eq!(True, literal!(num: "1").evaluate_eq(&literal!(num: "1")));
         assert_eq!(
             False,
-            eval(literal!(num: "1")).evaluate_eq(&eval(literal!(text: "foo")))
+            literal!(num: "1").evaluate_eq(&literal!(text: "foo"))
         );
     }
 
@@ -143,13 +154,13 @@ mod tests {
     fn value_eq_with_literal_matches_previous_behavior() {
         macro_rules! num {
             ($num: expr) => {
-                &Literal::Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
+                Evaluated::Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
             };
         }
 
         macro_rules! text {
             ($text: expr) => {
-                &Literal::Text(Cow::Owned($text.to_owned()))
+                Evaluated::Text(Cow::Owned($text.to_owned()))
             };
         }
 
@@ -158,77 +169,77 @@ mod tests {
 
         let inet = |v: &str| Value::Inet(IpAddr::from_str(v).unwrap());
 
-        assert_eq!(True, value_eq_with_literal(&Value::I8(8), num!("8")));
-        assert_eq!(True, value_eq_with_literal(&Value::I32(32), num!("32")));
-        assert_eq!(True, value_eq_with_literal(&Value::I16(16), num!("16")));
-        assert_eq!(True, value_eq_with_literal(&Value::I32(32), num!("32")));
-        assert_eq!(True, value_eq_with_literal(&Value::I64(64), num!("64")));
-        assert_eq!(True, value_eq_with_literal(&Value::I128(128), num!("128")));
-        assert_eq!(True, value_eq_with_literal(&Value::U8(7), num!("7")));
-        assert_eq!(True, value_eq_with_literal(&Value::U16(64), num!("64")));
-        assert_eq!(True, value_eq_with_literal(&Value::U32(64), num!("64")));
-        assert_eq!(True, value_eq_with_literal(&Value::U64(64), num!("64")));
-        assert_eq!(True, value_eq_with_literal(&Value::U128(64), num!("64")));
+        assert_eq!(True, value_eq_with_literal(&Value::I8(8), &num!("8")));
+        assert_eq!(True, value_eq_with_literal(&Value::I32(32), &num!("32")));
+        assert_eq!(True, value_eq_with_literal(&Value::I16(16), &num!("16")));
+        assert_eq!(True, value_eq_with_literal(&Value::I32(32), &num!("32")));
+        assert_eq!(True, value_eq_with_literal(&Value::I64(64), &num!("64")));
+        assert_eq!(True, value_eq_with_literal(&Value::I128(128), &num!("128")));
+        assert_eq!(True, value_eq_with_literal(&Value::U8(7), &num!("7")));
+        assert_eq!(True, value_eq_with_literal(&Value::U16(64), &num!("64")));
+        assert_eq!(True, value_eq_with_literal(&Value::U32(64), &num!("64")));
+        assert_eq!(True, value_eq_with_literal(&Value::U64(64), &num!("64")));
+        assert_eq!(True, value_eq_with_literal(&Value::U128(64), &num!("64")));
         assert_eq!(
             True,
-            value_eq_with_literal(&Value::F32(7.123), num!("7.123"))
+            value_eq_with_literal(&Value::F32(7.123), &num!("7.123"))
         );
         assert_eq!(
             True,
-            value_eq_with_literal(&Value::F64(7.123), num!("7.123"))
+            value_eq_with_literal(&Value::F64(7.123), &num!("7.123"))
         );
         assert_eq!(
             True,
-            value_eq_with_literal(&Value::Str("Hello".to_owned()), text!("Hello"))
+            value_eq_with_literal(&Value::Str("Hello".to_owned()), &text!("Hello"))
         );
         assert_eq!(
             True,
-            value_eq_with_literal(&inet("127.0.0.1"), text!("127.0.0.1"))
+            value_eq_with_literal(&inet("127.0.0.1"), &text!("127.0.0.1"))
         );
-        assert_eq!(True, value_eq_with_literal(&inet("::1"), text!("::1")));
-        assert_eq!(True, value_eq_with_literal(&inet("0.0.0.0"), num!("0")));
-        assert_eq!(False, value_eq_with_literal(&inet("::1"), num!("0")));
+        assert_eq!(True, value_eq_with_literal(&inet("::1"), &text!("::1")));
+        assert_eq!(True, value_eq_with_literal(&inet("0.0.0.0"), &num!("0")));
+        assert_eq!(False, value_eq_with_literal(&inet("::1"), &num!("0")));
         assert_eq!(
             True,
-            value_eq_with_literal(&inet("::2:4cb0:16ea"), num!("9876543210"))
+            value_eq_with_literal(&inet("::2:4cb0:16ea"), &num!("9876543210"))
         );
-        assert_eq!(False, value_eq_with_literal(&inet("::1"), text!("-1")));
-        assert_eq!(False, value_eq_with_literal(&inet("::1"), num!("-1")));
+        assert_eq!(False, value_eq_with_literal(&inet("::1"), &text!("-1")));
+        assert_eq!(False, value_eq_with_literal(&inet("::1"), &num!("-1")));
         assert_eq!(
             True,
-            value_eq_with_literal(&Value::Date(date(2021, 11, 20)), text!("2021-11-20"))
+            value_eq_with_literal(&Value::Date(date(2021, 11, 20)), &text!("2021-11-20"))
         );
         assert_eq!(
             False,
-            value_eq_with_literal(&Value::Date(date(2021, 11, 20)), text!("202=abcdef"))
+            value_eq_with_literal(&Value::Date(date(2021, 11, 20)), &text!("202=abcdef"))
         );
         assert_eq!(
             True,
             value_eq_with_literal(
                 &Value::Timestamp(date_time(2021, 11, 20, 10, 0, 0, 0)),
-                text!("2021-11-20T10:00:00Z")
+                &text!("2021-11-20T10:00:00Z")
             )
         );
         assert_eq!(
             False,
             value_eq_with_literal(
                 &Value::Timestamp(date_time(2021, 11, 20, 10, 0, 0, 0)),
-                text!("2021-11-Hello")
+                &text!("2021-11-Hello")
             )
         );
         assert_eq!(
             True,
-            value_eq_with_literal(&Value::Time(time(10, 0, 0, 0)), text!("10:00:00"))
+            value_eq_with_literal(&Value::Time(time(10, 0, 0, 0)), &text!("10:00:00"))
         );
         assert_eq!(
             False,
-            value_eq_with_literal(&Value::Time(time(10, 0, 0, 0)), text!("FALSE"))
+            value_eq_with_literal(&Value::Time(time(10, 0, 0, 0)), &text!("FALSE"))
         );
         assert_eq!(
             True,
-            value_eq_with_literal(&Value::Uuid(uuid), text!(uuid_text))
+            value_eq_with_literal(&Value::Uuid(uuid), &text!(uuid_text))
         );
-        assert_eq!(Null, value_eq_with_literal(&Value::Null, text!("STRING")));
-        assert_eq!(Null, value_eq_with_literal(&Value::Null, num!("123.456")));
+        assert_eq!(Null, value_eq_with_literal(&Value::Null, &text!("STRING")));
+        assert_eq!(Null, value_eq_with_literal(&Value::Null, &num!("123.456")));
     }
 }

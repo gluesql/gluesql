@@ -1,5 +1,5 @@
 use {
-    super::{Evaluated, literal::Literal},
+    super::Evaluated,
     crate::data::{
         BigDecimalExt, Value,
         value::{parse_date, parse_time, parse_timestamp, parse_uuid},
@@ -11,31 +11,42 @@ use {
 impl<'a> Evaluated<'a> {
     pub fn evaluate_cmp(&self, other: &Evaluated<'a>) -> Option<Ordering> {
         match (self, other) {
-            (Evaluated::Literal(l), Evaluated::Literal(r)) => literal_cmp(l, r),
-            (Evaluated::Literal(l), Evaluated::Value(r)) => {
-                value_cmp_with_literal(r, l).map(Ordering::reverse)
+            (left @ Evaluated::Number(_), right @ Evaluated::Number(_))
+            | (left @ Evaluated::Text(_), right @ Evaluated::Text(_)) => literal_cmp(left, right),
+            (left @ (Evaluated::Number(_) | Evaluated::Text(_)), Evaluated::Value(right)) => {
+                value_cmp_with_literal(right, left).map(Ordering::reverse)
             }
-            (Evaluated::Value(l), Evaluated::Literal(r)) => value_cmp_with_literal(l, r),
-            (Evaluated::Value(l), Evaluated::Value(r)) => l.evaluate_cmp(r),
-            (Evaluated::Literal(l), Evaluated::StrSlice { source, range }) => {
-                let r = Literal::Text(Cow::Borrowed(&source[range.clone()]));
-
-                literal_cmp(l, &r)
+            (Evaluated::Value(left), right @ (Evaluated::Number(_) | Evaluated::Text(_))) => {
+                value_cmp_with_literal(left, right)
             }
-            (Evaluated::Value(l), Evaluated::StrSlice { source, range }) => {
-                let r = Literal::Text(Cow::Borrowed(&source[range.clone()]));
+            (Evaluated::Value(left), Evaluated::Value(right)) => left.evaluate_cmp(right),
+            (Evaluated::Number(_), Evaluated::Text(_))
+            | (Evaluated::Text(_), Evaluated::Number(_)) => None,
+            (
+                left @ (Evaluated::Number(_) | Evaluated::Text(_)),
+                Evaluated::StrSlice { source, range },
+            ) => {
+                let slice = Evaluated::Text(Cow::Borrowed(&source[range.clone()]));
 
-                value_cmp_with_literal(l, &r)
+                literal_cmp(left, &slice)
             }
-            (Evaluated::StrSlice { source, range }, Evaluated::Literal(l)) => {
-                let r = Literal::Text(Cow::Borrowed(&source[range.clone()]));
+            (
+                Evaluated::StrSlice { source, range },
+                right @ (Evaluated::Number(_) | Evaluated::Text(_)),
+            ) => {
+                let slice = Evaluated::Text(Cow::Borrowed(&source[range.clone()]));
 
-                literal_cmp(&r, l)
+                literal_cmp(&slice, right)
             }
-            (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => {
-                let l = Literal::Text(Cow::Borrowed(&source[range.clone()]));
+            (Evaluated::Value(left), Evaluated::StrSlice { source, range }) => {
+                let slice = Evaluated::Text(Cow::Borrowed(&source[range.clone()]));
 
-                value_cmp_with_literal(r, &l).map(Ordering::reverse)
+                value_cmp_with_literal(left, &slice)
+            }
+            (Evaluated::StrSlice { source, range }, Evaluated::Value(right)) => {
+                let slice = Evaluated::Text(Cow::Borrowed(&source[range.clone()]));
+
+                value_cmp_with_literal(right, &slice).map(Ordering::reverse)
             }
             (
                 Evaluated::StrSlice {
@@ -51,38 +62,38 @@ impl<'a> Evaluated<'a> {
     }
 }
 
-fn literal_cmp(left: &Literal<'_>, right: &Literal<'_>) -> Option<Ordering> {
+fn literal_cmp(left: &Evaluated<'_>, right: &Evaluated<'_>) -> Option<Ordering> {
     match (left, right) {
-        (Literal::Number(l), Literal::Number(r)) => Some(l.cmp(r)),
-        (Literal::Text(l), Literal::Text(r)) => Some(l.cmp(r)),
+        (Evaluated::Number(l), Evaluated::Number(r)) => Some(l.cmp(r)),
+        (Evaluated::Text(l), Evaluated::Text(r)) => Some(l.cmp(r)),
         _ => None,
     }
 }
 
-fn value_cmp_with_literal(value: &Value, literal: &Literal<'_>) -> Option<Ordering> {
+fn value_cmp_with_literal(value: &Value, literal: &Evaluated<'_>) -> Option<Ordering> {
     match (value, literal) {
-        (Value::I8(l), Literal::Number(r)) => l.partial_cmp(&r.to_i8()?),
-        (Value::I16(l), Literal::Number(r)) => l.partial_cmp(&r.to_i16()?),
-        (Value::I32(l), Literal::Number(r)) => l.partial_cmp(&r.to_i32()?),
-        (Value::I64(l), Literal::Number(r)) => l.partial_cmp(&r.to_i64()?),
-        (Value::I128(l), Literal::Number(r)) => l.partial_cmp(&r.to_i128()?),
-        (Value::U8(l), Literal::Number(r)) => l.partial_cmp(&r.to_u8()?),
-        (Value::U16(l), Literal::Number(r)) => l.partial_cmp(&r.to_u16()?),
-        (Value::U32(l), Literal::Number(r)) => l.partial_cmp(&r.to_u32()?),
-        (Value::U64(l), Literal::Number(r)) => l.partial_cmp(&r.to_u64()?),
-        (Value::U128(l), Literal::Number(r)) => l.partial_cmp(&r.to_u128()?),
-        (Value::F32(l), Literal::Number(r)) => l.partial_cmp(&r.to_f32()?),
-        (Value::F64(l), Literal::Number(r)) => l.partial_cmp(&r.to_f64()?),
-        (Value::Decimal(l), Literal::Number(r)) => {
+        (Value::I8(l), Evaluated::Number(r)) => l.partial_cmp(&r.to_i8()?),
+        (Value::I16(l), Evaluated::Number(r)) => l.partial_cmp(&r.to_i16()?),
+        (Value::I32(l), Evaluated::Number(r)) => l.partial_cmp(&r.to_i32()?),
+        (Value::I64(l), Evaluated::Number(r)) => l.partial_cmp(&r.to_i64()?),
+        (Value::I128(l), Evaluated::Number(r)) => l.partial_cmp(&r.to_i128()?),
+        (Value::U8(l), Evaluated::Number(r)) => l.partial_cmp(&r.to_u8()?),
+        (Value::U16(l), Evaluated::Number(r)) => l.partial_cmp(&r.to_u16()?),
+        (Value::U32(l), Evaluated::Number(r)) => l.partial_cmp(&r.to_u32()?),
+        (Value::U64(l), Evaluated::Number(r)) => l.partial_cmp(&r.to_u64()?),
+        (Value::U128(l), Evaluated::Number(r)) => l.partial_cmp(&r.to_u128()?),
+        (Value::F32(l), Evaluated::Number(r)) => l.partial_cmp(&r.to_f32()?),
+        (Value::F64(l), Evaluated::Number(r)) => l.partial_cmp(&r.to_f64()?),
+        (Value::Decimal(l), Evaluated::Number(r)) => {
             BigDecimal::new(l.mantissa().into(), i64::from(l.scale())).partial_cmp(r)
         }
-        (Value::Str(l), Literal::Text(r)) => Some(l.as_str().cmp(r)),
-        (Value::Date(l), Literal::Text(r)) => l.partial_cmp(&parse_date(r)?),
-        (Value::Timestamp(l), Literal::Text(r)) => l.partial_cmp(&parse_timestamp(r)?),
-        (Value::Time(l), Literal::Text(r)) => l.partial_cmp(&parse_time(r)?),
-        (Value::Uuid(l), Literal::Text(r)) => l.partial_cmp(&parse_uuid(r).ok()?),
-        (Value::Inet(l), Literal::Text(r)) => l.partial_cmp(&IpAddr::from_str(r).ok()?),
-        (Value::Inet(l), Literal::Number(r)) => {
+        (Value::Str(l), Evaluated::Text(r)) => Some(l.as_str().cmp(r)),
+        (Value::Date(l), Evaluated::Text(r)) => l.partial_cmp(&parse_date(r)?),
+        (Value::Timestamp(l), Evaluated::Text(r)) => l.partial_cmp(&parse_timestamp(r)?),
+        (Value::Time(l), Evaluated::Text(r)) => l.partial_cmp(&parse_time(r)?),
+        (Value::Uuid(l), Evaluated::Text(r)) => l.partial_cmp(&parse_uuid(r).ok()?),
+        (Value::Inet(l), Evaluated::Text(r)) => l.partial_cmp(&IpAddr::from_str(r).ok()?),
+        (Value::Inet(l), Evaluated::Number(r)) => {
             if let Some(x) = r.to_u32() {
                 l.partial_cmp(&IpAddr::V4(x.into()))
             } else if let Some(x) = r.to_u128() {
@@ -98,7 +109,6 @@ fn value_cmp_with_literal(value: &Value, literal: &Literal<'_>) -> Option<Orderi
 #[cfg(test)]
 mod tests {
     use {
-        super::super::literal::Literal,
         super::{Evaluated, value_cmp_with_literal},
         crate::data::{
             Value,
@@ -111,11 +121,11 @@ mod tests {
 
     #[test]
     fn value_cmp_with_literal_regression() {
-        let num = |n| Literal::Number(Cow::Owned(BigDecimal::from(n)));
-        let text = |v: &str| Literal::Text(Cow::Owned(v.to_owned()));
+        let num = |n| Evaluated::Number(Cow::Owned(BigDecimal::from(n)));
+        let text = |v: &str| Evaluated::Text(Cow::Owned(v.to_owned()));
 
         #[allow(clippy::similar_names)]
-        let assert_cmp = |value: Value, literal, expected| {
+        let assert_cmp = |value: Value, literal: Evaluated<'_>, expected| {
             assert_eq!(value_cmp_with_literal(&value, &literal), expected);
         };
 
@@ -168,12 +178,12 @@ mod tests {
         );
         assert_cmp(
             Value::Inet(IpAddr::from_str("255.255.255.255").unwrap()),
-            Literal::Number(Cow::Owned(BigDecimal::new(4_294_967_295_u32.into(), 0))),
+            Evaluated::Number(Cow::Owned(BigDecimal::new(4_294_967_295_u32.into(), 0))),
             Some(Ordering::Equal),
         );
         assert_cmp(
             Value::Inet(IpAddr::from_str("::2:4cb0:16ea").unwrap()),
-            Literal::Number(Cow::Owned(BigDecimal::new(9_876_543_210_u128.into(), 0))),
+            Evaluated::Number(Cow::Owned(BigDecimal::new(9_876_543_210_u128.into(), 0))),
             Some(Ordering::Equal),
         );
         assert_cmp(Value::Null, num(1), None);
@@ -183,22 +193,20 @@ mod tests {
     fn literal_comparison_regression() {
         macro_rules! literal {
             (num: $value:expr) => {
-                Literal::Number(Cow::Owned(BigDecimal::from_str($value).unwrap()))
+                Evaluated::Number(Cow::Owned(BigDecimal::from_str($value).unwrap()))
             };
             (text: $value:expr) => {
-                Literal::Text(Cow::Owned($value.to_owned()))
+                Evaluated::Text(Cow::Owned($value.to_owned()))
             };
         }
 
-        let eval = |literal| Evaluated::Literal(literal);
-
         assert_eq!(
             Some(Ordering::Less),
-            eval(literal!(num: "1")).evaluate_cmp(&eval(literal!(num: "2")))
+            literal!(num: "1").evaluate_cmp(&literal!(num: "2"))
         );
         assert_eq!(
             Some(Ordering::Less),
-            eval(literal!(text: "a")).evaluate_cmp(&eval(literal!(text: "b")))
+            literal!(text: "a").evaluate_cmp(&literal!(text: "b"))
         );
     }
 }

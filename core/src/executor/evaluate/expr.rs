@@ -1,5 +1,5 @@
 use {
-    super::{EvaluateError, Evaluated, evaluated::literal::Literal, literal_to_value},
+    super::{EvaluateError, Evaluated, literal_to_value},
     crate::{
         ast::{AstLiteral, BinaryOperator, DataType, UnaryOperator},
         data::Value,
@@ -11,10 +11,8 @@ use {
 pub fn literal(ast_literal: &AstLiteral) -> Result<Evaluated<'_>> {
     match ast_literal {
         AstLiteral::Boolean(value) => Ok(Evaluated::Value(Value::Bool(*value))),
-        AstLiteral::Number(value) => Ok(Evaluated::Literal(Literal::Number(Cow::Borrowed(value)))),
-        AstLiteral::QuotedString(value) => {
-            Ok(Evaluated::Literal(Literal::Text(Cow::Borrowed(value))))
-        }
+        AstLiteral::Number(value) => Ok(Evaluated::Number(Cow::Borrowed(value))),
+        AstLiteral::QuotedString(value) => Ok(Evaluated::Text(Cow::Borrowed(value))),
         AstLiteral::HexString(value) => {
             let bytes = hex::decode(value)
                 .map_err(|_| EvaluateError::FailedToDecodeHexString(value.clone()))?;
@@ -26,9 +24,9 @@ pub fn literal(ast_literal: &AstLiteral) -> Result<Evaluated<'_>> {
 }
 
 pub fn typed_string<'a>(data_type: &'a DataType, value: Cow<'a, str>) -> Result<Evaluated<'a>> {
-    let literal = Literal::Text(value);
+    let evaluated_literal = Evaluated::Text(value);
 
-    literal_to_value(data_type, &literal).map(Evaluated::Value)
+    literal_to_value(data_type, &evaluated_literal).map(Evaluated::Value)
 }
 
 pub fn binary_op<'a>(

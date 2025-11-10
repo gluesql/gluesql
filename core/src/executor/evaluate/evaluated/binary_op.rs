@@ -1,5 +1,5 @@
 use {
-    super::{Evaluated, literal::Literal},
+    super::Evaluated,
     crate::{
         ast::BinaryOperator,
         data::{BigDecimalExt, Value},
@@ -12,126 +12,99 @@ use {
 
 impl<'a> Evaluated<'a> {
     pub fn add<'b, 'c>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'c>> {
-        if let (Evaluated::Literal(Literal::Number(l)), Evaluated::Literal(Literal::Number(r))) =
-            (self, other)
-        {
-            return Ok(Evaluated::Literal(Literal::Number(Cow::Owned(
-                l.as_ref() + r.as_ref(),
-            ))));
+        if let (Evaluated::Number(l), Evaluated::Number(r)) = (self, other) {
+            return Ok(Evaluated::Number(Cow::Owned(l.as_ref() + r.as_ref())));
         }
 
         binary_op(self, other, BinaryOperator::Plus, Value::add)
     }
 
     pub fn subtract<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
-        if let (Evaluated::Literal(Literal::Number(l)), Evaluated::Literal(Literal::Number(r))) =
-            (self, other)
-        {
-            return Ok(Evaluated::Literal(Literal::Number(Cow::Owned(
-                l.as_ref() - r.as_ref(),
-            ))));
+        if let (Evaluated::Number(l), Evaluated::Number(r)) = (self, other) {
+            return Ok(Evaluated::Number(Cow::Owned(l.as_ref() - r.as_ref())));
         }
 
         binary_op(self, other, BinaryOperator::Minus, Value::subtract)
     }
 
     pub fn multiply<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
-        if let (Evaluated::Literal(Literal::Number(l)), Evaluated::Literal(Literal::Number(r))) =
-            (self, other)
-        {
-            return Ok(Evaluated::Literal(Literal::Number(Cow::Owned(
-                l.as_ref() * r.as_ref(),
-            ))));
+        if let (Evaluated::Number(l), Evaluated::Number(r)) = (self, other) {
+            return Ok(Evaluated::Number(Cow::Owned(l.as_ref() * r.as_ref())));
         }
 
         binary_op(self, other, BinaryOperator::Multiply, Value::multiply)
     }
 
     pub fn divide<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
-        if let (Evaluated::Literal(Literal::Number(l)), Evaluated::Literal(Literal::Number(r))) =
-            (self, other)
-        {
+        if let (Evaluated::Number(l), Evaluated::Number(r)) = (self, other) {
             if *r.as_ref() == BigDecimal::from(0) {
                 return Err(EvaluateError::DivisorShouldNotBeZero.into());
             }
 
-            return Ok(Evaluated::Literal(Literal::Number(Cow::Owned(
-                l.as_ref() / r.as_ref(),
-            ))));
+            return Ok(Evaluated::Number(Cow::Owned(l.as_ref() / r.as_ref())));
         }
 
         binary_op(self, other, BinaryOperator::Divide, Value::divide)
     }
 
     pub fn modulo<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
-        if let (Evaluated::Literal(Literal::Number(l)), Evaluated::Literal(Literal::Number(r))) =
-            (self, other)
-        {
+        if let (Evaluated::Number(l), Evaluated::Number(r)) = (self, other) {
             if *r.as_ref() == BigDecimal::from(0) {
                 return Err(EvaluateError::DivisorShouldNotBeZero.into());
             }
 
-            return Ok(Evaluated::Literal(Literal::Number(Cow::Owned(
-                l.as_ref() % r.as_ref(),
-            ))));
+            return Ok(Evaluated::Number(Cow::Owned(l.as_ref() % r.as_ref())));
         }
 
         binary_op(self, other, BinaryOperator::Modulo, Value::modulo)
     }
 
     pub fn bitwise_and<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
-        if let (Evaluated::Literal(left), Evaluated::Literal(right)) = (self, other) {
-            match (left, right) {
-                (Literal::Number(l), Literal::Number(r)) => {
-                    let lhs = l.to_i64().ok_or_else(|| {
-                        unsupported_literal_binary_op(left, BinaryOperator::BitwiseAnd, right)
-                    })?;
-                    let rhs = r.to_i64().ok_or_else(|| {
-                        unsupported_literal_binary_op(left, BinaryOperator::BitwiseAnd, right)
-                    })?;
+        if let (Evaluated::Number(l), Evaluated::Number(r)) = (self, other) {
+            let lhs = l.to_i64().ok_or_else(|| {
+                unsupported_literal_binary_op(self, BinaryOperator::BitwiseAnd, other)
+            })?;
+            let rhs = r.to_i64().ok_or_else(|| {
+                unsupported_literal_binary_op(self, BinaryOperator::BitwiseAnd, other)
+            })?;
 
-                    return Ok(Evaluated::Literal(Literal::Number(Cow::Owned(
-                        BigDecimal::from(lhs & rhs),
-                    ))));
-                }
-                _ => {
-                    return Err(unsupported_literal_binary_op(
-                        left,
-                        BinaryOperator::BitwiseAnd,
-                        right,
-                    ));
-                }
-            }
+            return Ok(Evaluated::Number(Cow::Owned(BigDecimal::from(lhs & rhs))));
+        } else if is_literal(self) && is_literal(other) {
+            return Err(unsupported_literal_binary_op(
+                self,
+                BinaryOperator::BitwiseAnd,
+                other,
+            ));
         }
 
         binary_op(self, other, BinaryOperator::BitwiseAnd, Value::bitwise_and)
     }
 
     pub fn bitwise_shift_left<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
-        if let (
-            Evaluated::Literal(left @ Literal::Number(l)),
-            Evaluated::Literal(right @ Literal::Number(r)),
-        ) = (self, other)
-        {
+        if let (Evaluated::Number(l), Evaluated::Number(r)) = (self, other) {
             let lhs = l
                 .to_i64()
-                .ok_or_else(|| incompatible_bit_operation(left, right))?;
+                .ok_or_else(|| incompatible_bit_operation(self, other))?;
 
             if !r.is_integer_representation() {
-                return Err(incompatible_bit_operation(left, right));
+                return Err(incompatible_bit_operation(self, other));
             }
 
             let rhs = r
                 .to_u32()
-                .ok_or_else(|| incompatible_bit_operation(left, right))?;
+                .ok_or_else(|| incompatible_bit_operation(self, other))?;
 
             let result = lhs
                 .checked_shl(rhs)
-                .ok_or_else(|| incompatible_bit_operation(left, right))?;
+                .ok_or_else(|| incompatible_bit_operation(self, other))?;
 
-            return Ok(Evaluated::Literal(Literal::Number(Cow::Owned(
-                BigDecimal::from(result),
-            ))));
+            return Ok(Evaluated::Number(Cow::Owned(BigDecimal::from(result))));
+        } else if is_literal(self) && is_literal(other) {
+            return Err(unsupported_literal_binary_op(
+                self,
+                BinaryOperator::BitwiseShiftLeft,
+                other,
+            ));
         }
 
         binary_op(
@@ -143,30 +116,30 @@ impl<'a> Evaluated<'a> {
     }
 
     pub fn bitwise_shift_right<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
-        if let (
-            Evaluated::Literal(left @ Literal::Number(l)),
-            Evaluated::Literal(right @ Literal::Number(r)),
-        ) = (self, other)
-        {
+        if let (Evaluated::Number(l), Evaluated::Number(r)) = (self, other) {
             let lhs = l
                 .to_i64()
-                .ok_or_else(|| incompatible_bit_operation(left, right))?;
+                .ok_or_else(|| incompatible_bit_operation(self, other))?;
 
             if !r.is_integer_representation() {
-                return Err(incompatible_bit_operation(left, right));
+                return Err(incompatible_bit_operation(self, other));
             }
 
             let rhs = r
                 .to_u32()
-                .ok_or_else(|| incompatible_bit_operation(left, right))?;
+                .ok_or_else(|| incompatible_bit_operation(self, other))?;
 
             let result = lhs
                 .checked_shr(rhs)
-                .ok_or_else(|| incompatible_bit_operation(left, right))?;
+                .ok_or_else(|| incompatible_bit_operation(self, other))?;
 
-            return Ok(Evaluated::Literal(Literal::Number(Cow::Owned(
-                BigDecimal::from(result),
-            ))));
+            return Ok(Evaluated::Number(Cow::Owned(BigDecimal::from(result))));
+        } else if is_literal(self) && is_literal(other) {
+            return Err(unsupported_literal_binary_op(
+                self,
+                BinaryOperator::BitwiseShiftRight,
+                other,
+            ));
         }
 
         binary_op(
@@ -188,68 +161,92 @@ where
     T: FnOnce(&Value, &Value) -> Result<Value>,
 {
     match (l, r) {
-        (Evaluated::Literal(literal), Evaluated::Value(value)) => {
-            value_op(&Value::try_from(literal)?, value).map(Evaluated::Value)
+        (left @ (Evaluated::Number(_) | Evaluated::Text(_)), Evaluated::Value(value)) => {
+            value_op(&Value::try_from(left.clone())?, value).map(Evaluated::Value)
         }
-        (Evaluated::Value(value), Evaluated::Literal(literal)) => {
-            value_op(value, &Value::try_from(literal)?).map(Evaluated::Value)
+        (Evaluated::Value(value), right @ (Evaluated::Number(_) | Evaluated::Text(_))) => {
+            value_op(value, &Value::try_from(right.clone())?).map(Evaluated::Value)
         }
         (Evaluated::Value(left), Evaluated::Value(right)) => {
             value_op(left, right).map(Evaluated::Value)
         }
         (left, right) => Err(EvaluateError::UnsupportedBinaryOperation {
-            left: format!("{left:?}"),
+            left: operand_error_string(left),
             op,
-            right: format!("{right:?}"),
+            right: operand_error_string(right),
         }
         .into()),
     }
 }
 
 fn unsupported_literal_binary_op(
-    left: &Literal<'_>,
+    left: &Evaluated<'_>,
     op: BinaryOperator,
-    right: &Literal<'_>,
+    right: &Evaluated<'_>,
 ) -> Error {
     EvaluateError::UnsupportedBinaryOperation {
-        left: left.to_string(),
+        left: literal_string(left),
         op,
-        right: right.to_string(),
+        right: literal_string(right),
     }
     .into()
 }
 
-fn incompatible_bit_operation(left: &Literal<'_>, right: &Literal<'_>) -> Error {
-    EvaluateError::IncompatibleBitOperation(left.to_string(), right.to_string()).into()
+fn incompatible_bit_operation(left: &Evaluated<'_>, right: &Evaluated<'_>) -> Error {
+    EvaluateError::IncompatibleBitOperation(literal_string(left), literal_string(right)).into()
+}
+
+fn literal_string(value: &Evaluated<'_>) -> String {
+    match value {
+        Evaluated::Number(number) => number.to_string(),
+        Evaluated::Text(text) => text.to_string(),
+        Evaluated::StrSlice { source, range } => source[range.clone()].to_owned(),
+        Evaluated::Value(value) => format!("{value:?}"),
+    }
+}
+
+fn literal_error_debug(value: &Evaluated<'_>) -> String {
+    match value {
+        Evaluated::Text(text) => format!("Literal(Text({:?}))", text.as_ref()),
+        _ => literal_string(value),
+    }
+}
+
+fn is_literal(value: &Evaluated<'_>) -> bool {
+    matches!(value, Evaluated::Number(_) | Evaluated::Text(_))
+}
+
+fn operand_error_string(value: &Evaluated<'_>) -> String {
+    if is_literal(value) {
+        literal_error_debug(value)
+    } else {
+        format!("{value:?}")
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use {super::*, std::str::FromStr};
 
-    fn num(value: &str) -> Literal<'static> {
-        Literal::Number(Cow::Owned(BigDecimal::from_str(value).unwrap()))
+    fn num(value: &str) -> Evaluated<'static> {
+        Evaluated::Number(Cow::Owned(BigDecimal::from_str(value).unwrap()))
     }
 
-    fn text(value: &str) -> Literal<'static> {
-        Literal::Text(Cow::Owned(value.to_owned()))
-    }
-
-    fn eval(literal: Literal<'static>) -> Evaluated<'static> {
-        Evaluated::Literal(literal)
+    fn text(value: &str) -> Evaluated<'static> {
+        Evaluated::Text(Cow::Owned(value.to_owned()))
     }
 
     #[test]
     fn literal_arithmetic_operations() {
-        let one = eval(num("1"));
-        let two = eval(num("2"));
-        let zero = eval(num("0"));
+        let one = num("1");
+        let two = num("2");
+        let zero = num("0");
 
-        assert_eq!(one.add(&two).unwrap(), eval(num("3")));
-        assert_eq!(two.subtract(&one).unwrap(), eval(num("1")));
-        assert_eq!(one.multiply(&two).unwrap(), eval(num("2")));
-        assert_eq!(two.divide(&one).unwrap(), eval(num("2")));
-        assert_eq!(two.modulo(&one).unwrap(), eval(num("0")));
+        assert_eq!(one.add(&two).unwrap(), num("3"));
+        assert_eq!(two.subtract(&one).unwrap(), num("1"));
+        assert_eq!(one.multiply(&two).unwrap(), num("2"));
+        assert_eq!(two.divide(&one).unwrap(), num("2"));
+        assert_eq!(two.modulo(&one).unwrap(), num("0"));
 
         assert!(matches!(
             one.divide(&zero),
@@ -267,14 +264,14 @@ mod tests {
 
     #[test]
     fn literal_bitwise_operations() {
-        let eight = eval(num("8"));
-        let two = eval(num("2"));
+        let eight = num("8");
+        let two = num("2");
 
-        assert_eq!(eight.bitwise_and(&two).unwrap(), eval(num("0")));
-        assert_eq!(eight.bitwise_shift_left(&two).unwrap(), eval(num("32")));
-        assert_eq!(eight.bitwise_shift_right(&two).unwrap(), eval(num("2")));
+        assert_eq!(eight.bitwise_and(&two).unwrap(), num("0"));
+        assert_eq!(eight.bitwise_shift_left(&two).unwrap(), num("32"));
+        assert_eq!(eight.bitwise_shift_right(&two).unwrap(), num("2"));
 
-        let invalid = eval(text("foo"));
+        let invalid = text("foo");
         assert!(matches!(
             invalid.bitwise_and(&eight),
             Err(crate::result::Error::Evaluate(
@@ -282,7 +279,7 @@ mod tests {
             ))
         ));
 
-        let fractional = eval(num("2.5"));
+        let fractional = num("2.5");
         assert!(matches!(
             eight.bitwise_shift_left(&fractional),
             Err(crate::result::Error::Evaluate(
