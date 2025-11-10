@@ -44,6 +44,9 @@ pub enum EvaluateError {
     #[error("function requires map value: {0}")]
     FunctionRequiresMapValue(String),
 
+    #[error("failed to decode hex string: {0}")]
+    FailedToDecodeHexString(String),
+
     #[error("function requires point value: {0}")]
     FunctionRequiresPointValue(String),
 
@@ -144,11 +147,18 @@ pub enum EvaluateError {
     #[error("unsupported evaluate string unary minus: {0}")]
     UnsupportedUnaryMinus(String),
 
-    #[error("unsupported evaluate string unary factorial: {0}")]
-    UnsupportedUnaryFactorial(String),
+    #[error("unary factorial requires numeric literal: {0}")]
+    UnaryFactorialRequiresNumericLiteral(String),
 
-    #[error("incompatible bit operation ~{0}")]
-    IncompatibleUnaryBitwiseNotOperation(String),
+    #[error("unary bitwise-not requires integer literal: {0}")]
+    UnaryBitwiseNotRequiresIntegerLiteral(String),
+
+    #[error("operator doesn't exist: {base} {case} {pattern}", case = if *case_sensitive { "LIKE" } else { "ILIKE" })]
+    LikeOnNonStringLiteral {
+        base: String,
+        pattern: String,
+        case_sensitive: bool,
+    },
 
     #[error("unsupported custom function in subqueries")]
     UnsupportedCustomFunction,

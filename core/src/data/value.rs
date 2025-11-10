@@ -27,7 +27,6 @@ mod date;
 mod error;
 mod expr;
 mod json;
-mod literal;
 mod selector;
 mod uuid;
 
@@ -35,6 +34,11 @@ pub use {
     convert::ConvertError,
     error::{NumericBinaryOperator, ValueError},
     json::BTreeMapJsonExt,
+};
+
+pub(crate) use {
+    date::{parse_date, parse_time, parse_timestamp},
+    uuid::parse_uuid,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

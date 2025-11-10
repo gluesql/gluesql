@@ -8,7 +8,7 @@ use {
         },
         data::{Key, Row, Value, get_alias, get_index},
         executor::{
-            evaluate::{Evaluated, evaluate},
+            evaluate::{Evaluated, evaluate, literal_to_value},
             select::select,
         },
         result::Result,
@@ -160,7 +160,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                         let evaluated = evaluate(storage, filter_context, None, expr).await?;
 
                         let value = match evaluated {
-                            Evaluated::Literal(literal) => {
+                            eval @ (Evaluated::Number(_) | Evaluated::Text(_)) => {
                                 let data_type = schema
                                     .column_defs
                                     .as_ref()
@@ -172,7 +172,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                     .map(|column_def| &column_def.data_type)
                                     .ok_or(FetchError::Unreachable)?;
 
-                                Value::try_from_literal(data_type, &literal)
+                                literal_to_value(data_type, &eval)
                             }
                             eval => eval.try_into(),
                         }?;

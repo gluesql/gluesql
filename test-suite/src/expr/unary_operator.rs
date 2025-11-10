@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        error::{LiteralError, ValueError},
+        error::{EvaluateError, LiteralError, ValueError},
         prelude::{Payload, Value::*},
     },
 };
@@ -39,7 +39,7 @@ test_case!(unary_operator, {
         ),
         (
             "SELECT -'errrr' as v1 FROM Test",
-            Err(LiteralError::UnaryOperationOnNonNumeric.into()),
+            Err(EvaluateError::UnsupportedUnaryMinus("errrr".to_owned()).into()),
         ),
         (
             "SELECT +10 as v1, +(+10) as v2 FROM Test",
@@ -55,7 +55,7 @@ test_case!(unary_operator, {
         ),
         (
             "SELECT +'errrr' as v1 FROM Test",
-            Err(LiteralError::UnaryOperationOnNonNumeric.into()),
+            Err(EvaluateError::UnsupportedUnaryPlus("errrr".to_owned()).into()),
         ),
         (
             "SELECT v1! as v1 FROM Test",
@@ -103,11 +103,11 @@ test_case!(unary_operator, {
         ),
         (
             "SELECT (5.5)! as v4 FROM Test",
-            Err(ValueError::FactorialOnNonInteger.into()),
+            Err(LiteralError::FailedToParseNumber.into()),
         ),
         (
             "SELECT 'errrr'! as v1 FROM Test",
-            Err(ValueError::FactorialOnNonNumeric.into()),
+            Err(EvaluateError::UnaryFactorialRequiresNumericLiteral("errrr".to_owned()).into()),
         ),
         (
             "SELECT 1000! as v4 FROM Test",
@@ -231,7 +231,7 @@ test_case!(unary_operator, {
     g.named_test(
         "test bitwise-not operator with FLOAT64 type",
         "SELECT ~(5.5) as v4 FROM Test",
-        Err(ValueError::UnaryBitwiseNotOnNonInteger.into()),
+        Err(LiteralError::FailedToParseNumber.into()),
     )
     .await;
     g.named_test(
@@ -243,7 +243,7 @@ test_case!(unary_operator, {
     g.named_test(
         "test bitwise-not operator with string type",
         "SELECT ~'error' as v1 FROM Test",
-        Err(ValueError::UnaryBitwiseNotOnNonNumeric.into()),
+        Err(EvaluateError::UnaryBitwiseNotRequiresIntegerLiteral("error".to_owned()).into()),
     )
     .await;
 });

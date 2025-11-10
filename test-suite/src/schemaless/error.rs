@@ -69,7 +69,7 @@ test_case!(error, {
     .await;
     g.test(
         "INSERT INTO Item VALUES (true);",
-        Err(EvaluateError::TextLiteralRequired("Boolean(true)".to_owned()).into()),
+        Err(EvaluateError::MapOrStringValueRequired("TRUE".to_owned()).into()),
     )
     .await;
     g.test(

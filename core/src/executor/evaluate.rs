@@ -8,7 +8,7 @@ use {
     super::{context::RowContext, select::select},
     crate::{
         ast::{Aggregate, Expr, Function},
-        data::{CustomFunction, Interval, Literal, Row, Value},
+        data::{CustomFunction, Interval, Row, Value},
         mock::MockStorage,
         result::{Error, Result},
         store::GStore,
@@ -23,7 +23,11 @@ use {
     std::{borrow::Cow, ops::ControlFlow, sync::Arc},
 };
 
-pub use {error::EvaluateError, evaluated::Evaluated};
+pub(crate) use evaluated::literal_to_value;
+pub use {
+    error::EvaluateError,
+    evaluated::{Evaluated, LiteralError},
+};
 
 pub async fn evaluate<'a, 'b, 'c, T>(
     storage: &'a T,
@@ -236,7 +240,7 @@ where
 
             Ok(match negated {
                 true => {
-                    let t = evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false)));
+                    let t = evaluated.evaluate_eq(&Evaluated::Value(Value::Bool(false)));
                     Evaluated::Value(Value::from(t))
                 }
                 false => evaluated,
@@ -253,7 +257,7 @@ where
 
             Ok(match negated {
                 true => {
-                    let t = evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false)));
+                    let t = evaluated.evaluate_eq(&Evaluated::Value(Value::Bool(false)));
                     Evaluated::Value(Value::from(t))
                 }
                 false => evaluated,

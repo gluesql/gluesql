@@ -1,17 +1,31 @@
 use {
     super::{error::EvaluateError, function},
     crate::{
-        ast::{BinaryOperator, DataType, TrimWhereField},
-        data::{Key, Literal, Value, value::BTreeMapJsonExt},
+        ast::{DataType, TrimWhereField},
+        data::{BigDecimalExt, Key, Value, ValueError, value::BTreeMapJsonExt},
         result::{Error, Result},
     },
-    std::{borrow::Cow, cmp::Ordering, collections::BTreeMap, convert::TryFrom, ops::Range},
+    bigdecimal::BigDecimal,
+    std::{borrow::Cow, collections::BTreeMap, convert::TryFrom, ops::Range},
     utils::Tribool,
+    uuid::Uuid,
 };
+
+mod binary_op;
+mod cmp;
+mod concat;
+mod eq;
+mod like;
+pub(super) mod literal;
+mod unary_op;
+
+pub use literal::LiteralError;
+pub(crate) use literal::literal_to_value;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Evaluated<'a> {
-    Literal(Literal<'a>),
+    Number(Cow<'a, BigDecimal>),
+    Text(Cow<'a, str>),
     StrSlice {
         source: Cow<'a, str>,
         range: Range<usize>,
@@ -24,7 +38,16 @@ impl TryFrom<Evaluated<'_>> for Value {
 
     fn try_from(e: Evaluated<'_>) -> Result<Value> {
         match e {
-            Evaluated::Literal(v) => Value::try_from(v),
+            Evaluated::Number(value) => {
+                let decimal = value.as_ref();
+
+                decimal
+                    .to_i64()
+                    .map(Value::I64)
+                    .or_else(|| decimal.to_f64().map(Value::F64))
+                    .ok_or_else(|| LiteralError::FailedToParseNumber.into())
+            }
+            Evaluated::Text(value) => Ok(Value::Str(value.into_owned())),
             Evaluated::StrSlice {
                 source: s,
                 range: r,
@@ -47,7 +70,9 @@ impl TryFrom<&Evaluated<'_>> for Key {
 
     fn try_from(evaluated: &Evaluated<'_>) -> Result<Self> {
         match evaluated {
-            Evaluated::Literal(l) => Value::try_from(l)?.try_into(),
+            Evaluated::Number(_) | Evaluated::Text(_) => {
+                Value::try_from(evaluated.clone())?.try_into()
+            }
             Evaluated::StrSlice { source, range } => Ok(Key::Str(source[range.clone()].to_owned())),
             Evaluated::Value(v) => v.try_into(),
         }
@@ -57,17 +82,16 @@ impl TryFrom<&Evaluated<'_>> for Key {
 impl TryFrom<Evaluated<'_>> for bool {
     type Error = Error;
 
-    fn try_from(e: Evaluated<'_>) -> Result<bool> {
-        match e {
-            Evaluated::Literal(Literal::Boolean(v)) | Evaluated::Value(Value::Bool(v)) => Ok(v),
-            Evaluated::Literal(v) => {
-                Err(EvaluateError::BooleanTypeRequired(format!("{v:?}")).into())
-            }
-            Evaluated::StrSlice { source, range } => {
-                Err(EvaluateError::BooleanTypeRequired(source[range].to_owned()).into())
-            }
-            Evaluated::Value(v) => Err(EvaluateError::BooleanTypeRequired(format!("{v:?}")).into()),
-        }
+    fn try_from(evaluated: Evaluated<'_>) -> Result<bool> {
+        let v = match evaluated {
+            Evaluated::Value(Value::Bool(v)) => return Ok(v),
+            Evaluated::Number(value) => value.to_string(),
+            Evaluated::Text(value) => value.to_string(),
+            Evaluated::StrSlice { source, range } => source[range].to_owned(),
+            Evaluated::Value(value) => String::from(value.clone()),
+        };
+
+        Err(EvaluateError::BooleanTypeRequired(v).into())
     }
 }
 
@@ -76,44 +100,13 @@ impl TryFrom<Evaluated<'_>> for BTreeMap<String, Value> {
 
     fn try_from(evaluated: Evaluated<'_>) -> Result<BTreeMap<String, Value>> {
         match evaluated {
-            Evaluated::Literal(Literal::Text(v)) => BTreeMap::parse_json_object(v.as_ref()),
-            Evaluated::Literal(v) => {
-                Err(EvaluateError::TextLiteralRequired(format!("{v:?}")).into())
-            }
+            Evaluated::Text(v) => BTreeMap::parse_json_object(v.as_ref()),
+            Evaluated::Number(v) => Err(EvaluateError::TextLiteralRequired(v.to_string()).into()),
             Evaluated::Value(Value::Str(v)) => BTreeMap::parse_json_object(v.as_str()),
             Evaluated::Value(Value::Map(v)) => Ok(v),
             Evaluated::Value(v) => Err(EvaluateError::MapOrStringValueRequired(v.into()).into()),
             Evaluated::StrSlice { source, range } => BTreeMap::parse_json_object(&source[range]),
         }
-    }
-}
-
-fn binary_op<'a, 'b, 'c, T, U>(
-    l: &Evaluated<'a>,
-    r: &Evaluated<'b>,
-    op: BinaryOperator,
-    value_op: T,
-    literal_op: U,
-) -> Result<Evaluated<'c>>
-where
-    T: FnOnce(&Value, &Value) -> Result<Value>,
-    U: FnOnce(&Literal<'a>, &Literal<'b>) -> Result<Literal<'c>>,
-{
-    match (l, r) {
-        (Evaluated::Literal(l), Evaluated::Literal(r)) => literal_op(l, r).map(Evaluated::Literal),
-        (Evaluated::Literal(l), Evaluated::Value(r)) => {
-            value_op(&Value::try_from(l)?, r).map(Evaluated::Value)
-        }
-        (Evaluated::Value(l), Evaluated::Literal(r)) => {
-            value_op(l, &Value::try_from(r)?).map(Evaluated::Value)
-        }
-        (Evaluated::Value(l), Evaluated::Value(r)) => value_op(l, r).map(Evaluated::Value),
-        (l, r) => Err(EvaluateError::UnsupportedBinaryOperation {
-            left: format!("{l:?}"),
-            op,
-            right: format!("{r:?}"),
-        }
-        .into()),
     }
 }
 
@@ -131,147 +124,6 @@ impl From<Tribool> for Evaluated<'_> {
 }
 
 impl<'a> Evaluated<'a> {
-    pub fn evaluate_eq(&self, other: &Evaluated<'a>) -> Tribool {
-        match (self, other) {
-            (Evaluated::Literal(a), Evaluated::Literal(b)) => a.evaluate_eq(b),
-            (Evaluated::Literal(b), Evaluated::Value(a))
-            | (Evaluated::Value(a), Evaluated::Literal(b)) => a.evaluate_eq_with_literal(b),
-            (Evaluated::Value(a), Evaluated::Value(b)) => a.evaluate_eq(b),
-            (Evaluated::Literal(a), Evaluated::StrSlice { source, range })
-            | (Evaluated::StrSlice { source, range }, Evaluated::Literal(a)) => {
-                let b = &source[range.clone()];
-                a.evaluate_eq(&Literal::Text(Cow::Borrowed(b)))
-            }
-            (Evaluated::Value(a), Evaluated::StrSlice { source, range })
-            | (Evaluated::StrSlice { source, range }, Evaluated::Value(a)) => {
-                let b = &source[range.clone()];
-                a.evaluate_eq_with_literal(&Literal::Text(Cow::Borrowed(b)))
-            }
-            (
-                Evaluated::StrSlice { source, range },
-                Evaluated::StrSlice {
-                    source: source2,
-                    range: range2,
-                },
-            ) => Tribool::from(source[range.clone()] == source2[range2.clone()]),
-        }
-    }
-
-    pub fn evaluate_cmp(&self, other: &Evaluated<'a>) -> Option<Ordering> {
-        match (self, other) {
-            (Evaluated::Literal(l), Evaluated::Literal(r)) => l.evaluate_cmp(r),
-            (Evaluated::Literal(l), Evaluated::Value(r)) => {
-                r.evaluate_cmp_with_literal(l).map(Ordering::reverse)
-            }
-            (Evaluated::Value(l), Evaluated::Literal(r)) => l.evaluate_cmp_with_literal(r),
-            (Evaluated::Value(l), Evaluated::Value(r)) => l.evaluate_cmp(r),
-            (Evaluated::Literal(l), Evaluated::StrSlice { source, range }) => {
-                let r = Literal::Text(Cow::Borrowed(&source[range.clone()]));
-
-                l.evaluate_cmp(&r)
-            }
-            (Evaluated::Value(l), Evaluated::StrSlice { source, range }) => {
-                let r = Literal::Text(Cow::Borrowed(&source[range.clone()]));
-
-                l.evaluate_cmp_with_literal(&r)
-            }
-            (Evaluated::StrSlice { source, range }, Evaluated::Literal(l)) => {
-                let r = Literal::Text(Cow::Borrowed(&source[range.clone()]));
-
-                l.evaluate_cmp(&r).map(Ordering::reverse)
-            }
-            (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => {
-                let l = Literal::Text(Cow::Borrowed(&source[range.clone()]));
-
-                r.evaluate_cmp_with_literal(&l).map(Ordering::reverse)
-            }
-            (
-                Evaluated::StrSlice {
-                    source: a,
-                    range: ar,
-                },
-                Evaluated::StrSlice {
-                    source: b,
-                    range: br,
-                },
-            ) => a[ar.clone()].partial_cmp(&b[br.clone()]),
-        }
-    }
-
-    pub fn add<'b, 'c>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'c>> {
-        binary_op(self, other, BinaryOperator::Plus, Value::add, Literal::add)
-    }
-
-    pub fn subtract<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
-        binary_op(
-            self,
-            other,
-            BinaryOperator::Minus,
-            Value::subtract,
-            Literal::subtract,
-        )
-    }
-
-    pub fn multiply<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
-        binary_op(
-            self,
-            other,
-            BinaryOperator::Multiply,
-            Value::multiply,
-            Literal::multiply,
-        )
-    }
-
-    pub fn divide<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
-        binary_op(
-            self,
-            other,
-            BinaryOperator::Divide,
-            Value::divide,
-            Literal::divide,
-        )
-    }
-
-    pub fn bitwise_and<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
-        binary_op(
-            self,
-            other,
-            BinaryOperator::BitwiseAnd,
-            Value::bitwise_and,
-            Literal::bitwise_and,
-        )
-    }
-
-    pub fn modulo<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
-        binary_op(
-            self,
-            other,
-            BinaryOperator::Modulo,
-            Value::modulo,
-            Literal::modulo,
-        )
-    }
-
-    pub fn bitwise_shift_left<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
-        binary_op(
-            self,
-            other,
-            BinaryOperator::BitwiseShiftLeft,
-            Value::bitwise_shift_left,
-            Literal::bitwise_shift_left,
-        )
-    }
-
-    pub fn bitwise_shift_right<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
-        binary_op(
-            self,
-            other,
-            BinaryOperator::BitwiseShiftRight,
-            Value::bitwise_shift_right,
-            Literal::bitwise_shift_right,
-        )
-    }
-
     pub fn arrow<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
         let selector = Value::try_from(other.clone())?;
 
@@ -289,64 +141,11 @@ impl<'a> Evaluated<'a> {
         value_result.map(Evaluated::Value)
     }
 
-    pub fn unary_plus(&self) -> Result<Evaluated<'a>> {
-        match self {
-            Evaluated::Literal(v) => v.unary_plus().map(Evaluated::Literal),
-            Evaluated::Value(v) => v.unary_plus().map(Evaluated::Value),
-            Evaluated::StrSlice { source, range } => {
-                Err(EvaluateError::UnsupportedUnaryPlus(source[range.clone()].to_owned()).into())
-            }
-        }
-    }
-
-    pub fn unary_minus(&self) -> Result<Evaluated<'a>> {
-        match self {
-            Evaluated::Literal(v) => v.unary_minus().map(Evaluated::Literal),
-            Evaluated::Value(v) => v.unary_minus().map(Evaluated::Value),
-            Evaluated::StrSlice { source, range } => {
-                Err(EvaluateError::UnsupportedUnaryMinus(source[range.clone()].to_owned()).into())
-            }
-        }
-    }
-
-    pub fn unary_not(self) -> Result<Evaluated<'a>> {
-        if self.is_null() {
-            Ok(self)
-        } else {
-            self.try_into()
-                .map(|v: bool| Evaluated::Value(Value::Bool(!v)))
-        }
-    }
-
-    pub fn unary_factorial(&self) -> Result<Evaluated<'a>> {
-        match self {
-            Evaluated::Literal(v) => Value::try_from(v).and_then(|v| v.unary_factorial()),
-            Evaluated::Value(v) => v.unary_factorial(),
-            Evaluated::StrSlice { source, range } => Err(EvaluateError::UnsupportedUnaryFactorial(
-                source[range.clone()].to_owned(),
-            )
-            .into()),
-        }
-        .map(Evaluated::Value)
-    }
-
-    pub fn unary_bitwise_not(&self) -> Result<Evaluated<'a>> {
-        match self {
-            Evaluated::Literal(v) => Value::try_from(v).and_then(|v| v.unary_bitwise_not()),
-            Evaluated::Value(v) => v.unary_bitwise_not(),
-            Evaluated::StrSlice { source, range } => {
-                Err(EvaluateError::IncompatibleUnaryBitwiseNotOperation(
-                    source[range.clone()].to_owned(),
-                )
-                .into())
-            }
-        }
-        .map(Evaluated::Value)
-    }
-
     pub fn cast(self, data_type: &DataType) -> Result<Evaluated<'a>> {
         match self {
-            Evaluated::Literal(literal) => Value::try_cast_from_literal(data_type, &literal),
+            eval @ (Evaluated::Number(_) | Evaluated::Text(_)) => {
+                literal::try_cast_literal_to_value(data_type, &eval)
+            }
             Evaluated::Value(value) => value.cast(data_type),
             Evaluated::StrSlice { source, range } => {
                 Value::Str(source[range].to_owned()).cast(data_type)
@@ -355,97 +154,13 @@ impl<'a> Evaluated<'a> {
         .map(Evaluated::Value)
     }
 
-    pub fn concat(self, other: Evaluated) -> Result<Evaluated<'a>> {
-        let evaluated = match (self, other) {
-            (Evaluated::Literal(l), Evaluated::Literal(r)) => Evaluated::Literal(l.concat(r)),
-            (Evaluated::Literal(l), Evaluated::Value(r)) => {
-                Evaluated::Value((Value::try_from(l)?).concat(r))
-            }
-            (Evaluated::Value(l), Evaluated::Literal(r)) => {
-                Evaluated::Value(l.concat(Value::try_from(r)?))
-            }
-            (Evaluated::Value(l), Evaluated::Value(r)) => Evaluated::Value(l.concat(r)),
-            (Evaluated::Literal(l), Evaluated::StrSlice { source, range }) => {
-                Evaluated::Value((Value::try_from(l)?).concat(Value::Str(source[range].to_owned())))
-            }
-            (Evaluated::Value(l), Evaluated::StrSlice { source, range }) => {
-                Evaluated::Value(l.concat(Value::Str(source[range].to_owned())))
-            }
-            (Evaluated::StrSlice { source, range }, Evaluated::Literal(r)) => {
-                Evaluated::Value(Value::Str(source[range].to_owned()).concat(Value::try_from(r)?))
-            }
-            (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => {
-                Evaluated::Value(Value::Str(source[range].to_owned()).concat(r))
-            }
-            (
-                Evaluated::StrSlice {
-                    source: a,
-                    range: ar,
-                },
-                Evaluated::StrSlice {
-                    source: b,
-                    range: br,
-                },
-            ) => {
-                Evaluated::Value(Value::Str(a[ar].to_owned()).concat(Value::Str(b[br].to_owned())))
-            }
-        };
-
-        Ok(evaluated)
-    }
-
-    pub fn like(&self, other: Evaluated<'a>, case_sensitive: bool) -> Result<Evaluated<'a>> {
-        let evaluated = match (self, other) {
-            (Evaluated::Literal(l), Evaluated::Literal(r)) => {
-                Evaluated::Literal(l.like(&r, case_sensitive)?)
-            }
-            (Evaluated::Literal(l), Evaluated::Value(r)) => {
-                Evaluated::Value((Value::try_from(l)?).like(&r, case_sensitive)?)
-            }
-            (Evaluated::Value(l), Evaluated::Literal(r)) => {
-                Evaluated::Value(l.like(&Value::try_from(r)?, case_sensitive)?)
-            }
-            (Evaluated::Value(l), Evaluated::Value(r)) => {
-                Evaluated::Value(l.like(&r, case_sensitive)?)
-            }
-            (Evaluated::Literal(l), Evaluated::StrSlice { source, range }) => Evaluated::Value(
-                Value::try_from(l)?.like(&Value::Str(source[range].to_owned()), case_sensitive)?,
-            ),
-            (Evaluated::StrSlice { source, range }, Evaluated::Literal(r)) => Evaluated::Value(
-                Value::Str(source[range.clone()].to_owned())
-                    .like(&Value::try_from(r)?, case_sensitive)?,
-            ),
-            (
-                Evaluated::StrSlice {
-                    source: a,
-                    range: ar,
-                },
-                Evaluated::StrSlice {
-                    source: b,
-                    range: br,
-                },
-            ) => Evaluated::Value(
-                Value::Str(a[ar.clone()].to_owned())
-                    .like(&Value::Str(b[br].to_owned()), case_sensitive)?,
-            ),
-            (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => Evaluated::Value(
-                Value::Str(source[range.clone()].to_owned()).like(&r, case_sensitive)?,
-            ),
-            (Evaluated::Value(l), Evaluated::StrSlice { source, range }) => {
-                Evaluated::Value(l.like(&Value::Str(source[range].to_owned()), case_sensitive)?)
-            }
-        };
-
-        Ok(evaluated)
-    }
-
     pub fn ltrim(self, name: String, chars: Option<Evaluated<'_>>) -> Result<Evaluated<'a>> {
         let (source, range) = match self {
-            Evaluated::Literal(Literal::Text(l)) => {
+            Evaluated::Text(l) => {
                 let end = l.len();
                 (l, 0..end)
             }
-            Evaluated::Literal(Literal::Null) | Evaluated::Value(Value::Null) => {
+            Evaluated::Value(Value::Null) => {
                 return Ok(Evaluated::Value(Value::Null));
             }
             Evaluated::StrSlice { source, range } => (source, range),
@@ -510,20 +225,16 @@ impl<'a> Evaluated<'a> {
     }
 
     pub fn is_null(&self) -> bool {
-        match self {
-            Evaluated::Value(v) => v.is_null(),
-            Evaluated::StrSlice { .. } => false,
-            Evaluated::Literal(v) => matches!(v, &Literal::Null),
-        }
+        matches!(self, Evaluated::Value(v) if v.is_null())
     }
 
     pub fn rtrim(self, name: String, chars: Option<Evaluated<'_>>) -> Result<Evaluated<'a>> {
         let (source, range) = match self {
-            Evaluated::Literal(Literal::Text(l)) => {
+            Evaluated::Text(l) => {
                 let end = l.len();
                 (l, 0..end)
             }
-            Evaluated::Literal(Literal::Null) | Evaluated::Value(Value::Null) => {
+            Evaluated::Value(Value::Null) => {
                 return Ok(Evaluated::Value(Value::Null));
             }
             Evaluated::StrSlice { source, range } => (source, range),
@@ -596,11 +307,11 @@ impl<'a> Evaluated<'a> {
         count: Option<Evaluated<'a>>,
     ) -> Result<Evaluated<'a>> {
         let (source, range) = match self {
-            Evaluated::Literal(Literal::Text(l)) => {
+            Evaluated::Text(l) => {
                 let end = l.len();
                 (l, 0..end)
             }
-            Evaluated::Literal(Literal::Null) | Evaluated::Value(Value::Null) => {
+            Evaluated::Value(Value::Null) => {
                 return Ok(Evaluated::Value(Value::Null));
             }
             Evaluated::StrSlice { source, range } => (source, range),
@@ -651,11 +362,11 @@ impl<'a> Evaluated<'a> {
         trim_where_field: Option<&TrimWhereField>,
     ) -> Result<Evaluated<'a>> {
         let (source, range) = match self {
-            Evaluated::Literal(Literal::Text(l)) => {
+            Evaluated::Text(l) => {
                 let end = l.len();
                 (l, 0..end)
             }
-            Evaluated::Literal(Literal::Null) | Evaluated::Value(Value::Null) => {
+            Evaluated::Value(Value::Null) => {
                 return Ok(Evaluated::Value(Value::Null));
             }
             Evaluated::StrSlice { source, range } => (source, range),
@@ -838,8 +549,15 @@ impl<'a> Evaluated<'a> {
 
     pub fn try_into_value(self, data_type: &DataType, nullable: bool) -> Result<Value> {
         let value = match self {
-            Evaluated::Literal(v) => Value::try_from_literal(data_type, &v)?,
-            Evaluated::Value(v) => v,
+            eval @ (Evaluated::Number(_) | Evaluated::Text(_)) => {
+                literal_to_value(data_type, &eval)?
+            }
+            Evaluated::Value(Value::Bytea(bytes)) if data_type == &DataType::Uuid => {
+                Uuid::from_slice(&bytes)
+                    .map_err(|_| ValueError::FailedToParseUUID(hex::encode(bytes)))
+                    .map(|uuid| Value::Uuid(uuid.as_u128()))?
+            }
+            Evaluated::Value(value) => value,
             Evaluated::StrSlice {
                 source: s,
                 range: r,
