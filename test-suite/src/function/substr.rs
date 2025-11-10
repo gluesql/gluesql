@@ -268,11 +268,11 @@ test_case!(substr, {
         ),
         (
             r"SELECT SUBSTR('123', 2, 3)! AS test FROM SingleItem",
-            Err(EvaluateError::UnsupportedUnaryFactorial("23".to_owned()).into()),
+            Err(EvaluateError::UnaryFactorialRequiresNumericLiteral("23".to_owned()).into()),
         ),
         (
             r"SELECT ~SUBSTR('123', 2, 3) AS test FROM SingleItem",
-            Err(EvaluateError::IncompatibleUnaryBitwiseNotOperation("23".to_owned()).into()),
+            Err(EvaluateError::UnaryBitwiseNotRequiresIntegerLiteral("23".to_owned()).into()),
         ),
     ];
     for (sql, expected) in test_cases {
