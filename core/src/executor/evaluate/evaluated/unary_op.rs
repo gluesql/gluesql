@@ -159,7 +159,7 @@ mod tests {
         assert_eq!(null.clone().unary_not(), Ok(null));
         assert_eq!(
             number(1).unary_not(),
-            Err(EvaluateError::BooleanTypeRequired("Number(1E+0)".to_owned()).into())
+            Err(EvaluateError::BooleanTypeRequired("1".to_owned()).into())
         );
     }
 

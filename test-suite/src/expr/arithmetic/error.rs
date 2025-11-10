@@ -117,11 +117,11 @@ test_case!(error, {
         ),
         (
             "SELECT * FROM Arith WHERE TRUE AND 'hello'",
-            EvaluateError::BooleanTypeRequired("Text(\"hello\")".to_owned()).into(),
+            EvaluateError::BooleanTypeRequired("hello".to_owned()).into(),
         ),
         (
             "SELECT * FROM Arith WHERE name AND id",
-            EvaluateError::BooleanTypeRequired(format!("{:?}", Value::Str("A".to_owned()))).into(),
+            EvaluateError::BooleanTypeRequired("A".to_owned()).into(),
         ),
     ];
 

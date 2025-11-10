@@ -82,24 +82,16 @@ impl TryFrom<&Evaluated<'_>> for Key {
 impl TryFrom<Evaluated<'_>> for bool {
     type Error = Error;
 
-    fn try_from(e: Evaluated<'_>) -> Result<bool> {
-        match e {
-            Evaluated::Value(Value::Bool(v)) => Ok(v),
-            Evaluated::Number(value) => Err(EvaluateError::BooleanTypeRequired(format!(
-                "Number({:?})",
-                value.as_ref()
-            ))
-            .into()),
-            Evaluated::Text(value) => Err(EvaluateError::BooleanTypeRequired(format!(
-                "Text({:?})",
-                value.as_ref()
-            ))
-            .into()),
-            Evaluated::StrSlice { source, range } => {
-                Err(EvaluateError::BooleanTypeRequired(source[range].to_owned()).into())
-            }
-            Evaluated::Value(v) => Err(EvaluateError::BooleanTypeRequired(format!("{v:?}")).into()),
-        }
+    fn try_from(evaluated: Evaluated<'_>) -> Result<bool> {
+        let v = match evaluated {
+            Evaluated::Value(Value::Bool(v)) => return Ok(v),
+            Evaluated::Number(value) => value.to_string(),
+            Evaluated::Text(value) => value.to_string(),
+            Evaluated::StrSlice { source, range } => source[range].to_owned(),
+            Evaluated::Value(value) => String::from(value.clone()),
+        };
+
+        Err(EvaluateError::BooleanTypeRequired(v).into())
     }
 }
 
