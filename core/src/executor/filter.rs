@@ -6,8 +6,7 @@ use {
         result::Result,
         store::GStore,
     },
-    im::HashMap,
-    std::sync::Arc,
+    std::{collections::HashMap, sync::Arc},
 };
 
 pub struct Filter<'a, T: GStore> {
