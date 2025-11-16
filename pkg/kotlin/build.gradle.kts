@@ -62,6 +62,29 @@ ktlint {
     }
 }
 
+// Also lint buildSrc
+tasks.register<Exec>("ktlintCheckBuildSrc") {
+    group = "verification"
+    description = "Run ktlint checks on buildSrc"
+    workingDir = file("buildSrc")
+    commandLine("../gradlew", "ktlintCheck")
+}
+
+tasks.register<Exec>("ktlintFormatBuildSrc") {
+    group = "formatting"
+    description = "Run ktlint formatting on buildSrc"
+    workingDir = file("buildSrc")
+    commandLine("../gradlew", "ktlintFormat")
+}
+
+tasks.named("ktlintCheck") {
+    dependsOn("ktlintCheckBuildSrc")
+}
+
+tasks.named("ktlintFormat") {
+    dependsOn("ktlintFormatBuildSrc")
+}
+
 mavenPublishing {
     publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL)
 

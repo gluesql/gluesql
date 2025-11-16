@@ -32,18 +32,22 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             platform: linux-x86-64
+            lib_prefix: lib
             extension: so
-          - os: macos-13
+          - os: macos-15-intel
             target: x86_64-apple-darwin
             platform: darwin-x86-64
+            lib_prefix: lib
             extension: dylib
           - os: macos-latest
             target: aarch64-apple-darwin
             platform: darwin-aarch64
+            lib_prefix: lib
             extension: dylib
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             platform: win32-x86-64
+            lib_prefix: ""
             extension: dll
 
     runs-on: ${{ matrix.os }}
@@ -67,24 +71,19 @@ jobs:
             target
           key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Build native library
-        working-directory: pkg/kotlin
-        run: cargo build --release --target ${{ matrix.target }}
-
-      - name: Prepare artifact (Unix)
-        if: runner.os != 'Windows'
-        working-directory: target/${{ matrix.target }}/release
+      - name: Build and prepare native library
+        shell: bash
         run: |
-          mkdir -p artifact/${{ matrix.platform }}
-          cp libgluesql_kotlin.${{ matrix.extension }} artifact/${{ matrix.platform }}/
+          cd pkg/kotlin
+          cargo build --release --target ${{ matrix.target }}
 
-      - name: Prepare artifact (Windows)
-        if: runner.os == 'Windows'
-        working-directory: target/${{ matrix.target }}/release
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path artifact/${{ matrix.platform }}
-          Copy-Item gluesql_kotlin.${{ matrix.extension }} artifact/${{ matrix.platform }}/
+          LIB_NAME="${{ matrix.lib_prefix }}gluesql_kotlin.${{ matrix.extension }}"
+          ARTIFACT_DIR="../../target/${{ matrix.target }}/release/artifact/${{ matrix.platform }}"
+
+          mkdir -p "$ARTIFACT_DIR"
+          cp "../../target/${{ matrix.target }}/release/$LIB_NAME" "$ARTIFACT_DIR/"
+
+          echo "✓ Prepared artifact: ${{ matrix.platform }}/$LIB_NAME"
 
       - name: Upload native library
         uses: actions/upload-artifact@v4
@@ -103,14 +102,53 @@ jobs:
         with:
           ref: ${{ inputs.sha }}
 
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Download all native libraries
+        uses: actions/download-artifact@v4
+        with:
+          path: downloaded-artifacts
+          pattern: native-*
+
+      - name: Generate UniFFI bindings
+        working-directory: pkg/kotlin
+        shell: bash
+        run: |
+          mkdir -p build/generated/source/uniffi/kotlin
+          cargo run --bin uniffi-bindgen generate \
+            --language kotlin \
+            --out-dir build/generated/source/uniffi/kotlin \
+            --library ../../downloaded-artifacts/native-linux-x86-64/libgluesql_kotlin.so \
+            --no-format
+          echo "✓ Generated UniFFI bindings"
+
+      - name: Organize native libraries
+        shell: bash
+        run: |
+          ARTIFACTS_DIR="downloaded-artifacts"
+          RESOURCES_DIR="pkg/kotlin/src/main/resources/natives"
+
+          rm -rf "$RESOURCES_DIR"
+          mkdir -p "$RESOURCES_DIR"
+
+          for artifact_dir in "$ARTIFACTS_DIR"/native-*; do
+            platform=$(basename "$artifact_dir" | sed 's/^native-//')
+            dest_dir="$RESOURCES_DIR/$platform"
+            mkdir -p "$dest_dir"
+            cp "$artifact_dir"/* "$dest_dir/"
+            echo "✓ Copied $(basename "$artifact_dir") → natives/$platform/"
+          done
+
+          echo ""
+          echo "Native libraries structure:"
+          ls -lR "$RESOURCES_DIR"
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           java-version: '11'
           distribution: 'temurin'
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
 
       - name: Cache Gradle dependencies
         uses: actions/cache@v4
@@ -120,32 +158,11 @@ jobs:
             ~/.gradle/wrapper
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
 
-      - name: Download all native libraries
-        uses: actions/download-artifact@v4
-        with:
-          path: downloaded-artifacts
-          pattern: native-*
-
-      - name: Make gradlew executable
-        run: chmod +x pkg/kotlin/gradlew
-
-      - name: Organize native libraries
-        working-directory: pkg/kotlin
-        run: ./gradlew organizeNativeLibs
-
-      - name: Generate UniFFI bindings
-        working-directory: pkg/kotlin
-        run: |
-          # Copy Linux library to target/release for uniffi-bindgen
-          mkdir -p ../../target/release
-          cp src/main/resources/natives/linux-x86-64/libgluesql_kotlin.so ../../target/release/
-
-          # Generate bindings using Gradle task with custom library path
-          ./gradlew generateBindings -PlibPath=../../target/release/libgluesql_kotlin.so
-
       - name: Build JAR
         working-directory: pkg/kotlin
-        run: ./gradlew build -x test -x buildRustLib -x generateBindings
+        run: |
+          chmod +x gradlew
+          ./gradlew build -x test -x buildRustLib -x generateBindings
 
       - name: List JAR contents
         working-directory: pkg/kotlin/build/libs

@@ -22,9 +22,10 @@ private fun Project.registerBuildRustLibTask(workspaceRoot: File) {
         group = "build"
         description = "Build the Rust library for local platform (debug mode)"
 
-        val debugLibPath = workspaceRoot.resolve(
-            "target/debug/${currentPlatformLibName()}.${currentPlatformLibExtension()}"
-        )
+        val debugLibPath =
+            workspaceRoot.resolve(
+                "target/debug/${currentPlatformLibName()}.${currentPlatformLibExtension()}",
+            )
         outputs.file(debugLibPath)
 
         // Only rebuild if source files changed
@@ -33,28 +34,29 @@ private fun Project.registerBuildRustLibTask(workspaceRoot: File) {
 
         doLast {
             logger.lifecycle(
-                "Building Rust library for ${currentPlatformLibName()}.${currentPlatformLibExtension()}..."
+                "Building Rust library for ${currentPlatformLibName()}.${currentPlatformLibExtension()}...",
             )
 
             @Suppress("DEPRECATION")
-            val result = project.exec {
-                workingDir = projectDir
-                commandLine("cargo", "build")
-                isIgnoreExitValue = true
-            }
+            val result =
+                project.exec {
+                    workingDir = projectDir
+                    commandLine("cargo", "build")
+                    isIgnoreExitValue = true
+                }
 
             if (result.exitValue != 0) {
                 throw GradleException(
                     "Rust build failed with exit code ${result.exitValue}. " +
-                    "Check the output above for details."
+                        "Check the output above for details.",
                 )
             }
 
             if (!debugLibPath.exists()) {
                 throw GradleException(
                     "Rust library not found at: ${debugLibPath.absolutePath}\n" +
-                    "Expected library name: ${currentPlatformLibName()}.${currentPlatformLibExtension()}\n" +
-                    "Make sure Cargo.toml has the correct library name configuration."
+                        "Expected library name: ${currentPlatformLibName()}.${currentPlatformLibExtension()}\n" +
+                        "Make sure Cargo.toml has the correct library name configuration.",
                 )
             }
 
@@ -80,17 +82,26 @@ private fun Project.registerGenerateBindingsTask(workspaceRoot: File) {
 
         // Allow custom library path via -PlibPath=... (for CI)
         val customLibPath = project.findProperty("libPath") as String?
-        val libPath = if (customLibPath != null) {
-            File(customLibPath).also {
-                logger.lifecycle("Using custom library path: ${it.absolutePath}")
+        val libPath =
+            if (customLibPath != null) {
+                val customFile = File(customLibPath)
+                // If relative path, resolve against workspace root; otherwise use as-is
+                val resolvedFile =
+                    if (customFile.isAbsolute) {
+                        customFile
+                    } else {
+                        workspaceRoot.resolve(customLibPath)
+                    }
+                resolvedFile.also {
+                    logger.lifecycle("Using custom library path: ${it.absolutePath}")
+                }
+            } else {
+                // Default: debug build for local development
+                dependsOn("buildRustLib")
+                workspaceRoot.resolve(
+                    "target/debug/${currentPlatformLibName()}.${currentPlatformLibExtension()}",
+                )
             }
-        } else {
-            // Default: debug build for local development
-            dependsOn("buildRustLib")
-            workspaceRoot.resolve(
-                "target/debug/${currentPlatformLibName()}.${currentPlatformLibExtension()}"
-            )
-        }
 
         inputs.files(fileTree(projectDir.resolve("src")).include("**/*.rs", "**/*.udl"))
         outputs.dir(generatedDir)
@@ -101,40 +112,41 @@ private fun Project.registerGenerateBindingsTask(workspaceRoot: File) {
             if (!libPath.exists()) {
                 throw GradleException(
                     "Rust library not found at: ${libPath.absolutePath}\n" +
-                    if (customLibPath != null) {
-                        "Ensure the library is built and the path is correct."
-                    } else {
-                        "Run './gradlew buildRustLib' first to build the library."
-                    }
+                        if (customLibPath != null) {
+                            "Ensure the library is built and the path is correct."
+                        } else {
+                            "Run './gradlew buildRustLib' first to build the library."
+                        },
                 )
             }
 
             logger.lifecycle("Generating UniFFI Kotlin bindings from ${libPath.name}...")
 
             @Suppress("DEPRECATION")
-            val result = project.exec {
-                workingDir = projectDir
-                commandLine(
-                    "cargo",
-                    "run",
-                    "--bin",
-                    "uniffi-bindgen",
-                    "generate",
-                    "--language",
-                    "kotlin",
-                    "--out-dir",
-                    generatedDir.absolutePath,
-                    "--library",
-                    libPath.absolutePath,
-                    "--no-format",
-                )
-                isIgnoreExitValue = true
-            }
+            val result =
+                project.exec {
+                    workingDir = projectDir
+                    commandLine(
+                        "cargo",
+                        "run",
+                        "--bin",
+                        "uniffi-bindgen",
+                        "generate",
+                        "--language",
+                        "kotlin",
+                        "--out-dir",
+                        generatedDir.absolutePath,
+                        "--library",
+                        libPath.absolutePath,
+                        "--no-format",
+                    )
+                    isIgnoreExitValue = true
+                }
 
             if (result.exitValue != 0) {
                 throw GradleException(
                     "UniFFI binding generation failed with exit code ${result.exitValue}. " +
-                    "Check the output above for details."
+                        "Check the output above for details.",
                 )
             }
 

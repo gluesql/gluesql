@@ -97,15 +97,22 @@ cargo run --bin uniffi-bindgen generate \
 We use **ktlint** for automatic code formatting:
 
 - **Kotlin**: ktlint conventions
+- Applies to both main source code and buildSrc
 
 ### Commands
 
 ```bash
-# Check formatting (runs in CI)
+# Check formatting (includes buildSrc, runs in CI)
 ./gradlew ktlintCheck
 
-# Auto-format all code
+# Auto-format all code (includes buildSrc)
 ./gradlew ktlintFormat
+
+# Check only buildSrc
+./gradlew ktlintCheckBuildSrc
+
+# Format only buildSrc
+./gradlew ktlintFormatBuildSrc
 ```
 
 ## Build Tasks Reference
@@ -119,57 +126,84 @@ We use **ktlint** for automatic code formatting:
 | `./gradlew clean` | Clean build artifacts |
 | `./gradlew buildRustLib` | Build Rust library (debug mode for local testing) |
 | `./gradlew generateBindings` | Generate UniFFI Kotlin bindings from debug library |
-| `./gradlew ktlintCheck` | Check code formatting |
-| `./gradlew ktlintFormat` | Auto-format code |
-
-### CI-Specific Tasks
-
-| Task | Description |
-|------|-------------|
-| `./gradlew organizeNativeLibs` | Organize downloaded artifacts into resources directory |
-| `./gradlew generateBindings -PlibPath=<path>` | Generate bindings from custom library path |
+| `./gradlew ktlintCheck` | Check code formatting (includes buildSrc) |
+| `./gradlew ktlintFormat` | Auto-format code (includes buildSrc) |
+| `./gradlew ktlintCheckBuildSrc` | Check code formatting for buildSrc only |
+| `./gradlew ktlintFormatBuildSrc` | Auto-format buildSrc code only |
 
 ## Distribution Builds
 
-### Local Development
+### Local Development Builds
 
-Development builds use **debug mode** Rust libraries loaded directly from the Cargo target directory:
+**Purpose:** Development and testing only (NOT for distribution)
 
 ```bash
+./gradlew build
 ./gradlew test
-# Uses: ../../target/debug/libgluesql_kotlin.*
 ```
 
-### Production JAR
+**Characteristics:**
+- ✅ Uses **debug mode** Rust libraries from `target/debug/`
+- ✅ Fast builds for quick iteration
+- ✅ Tests work correctly (loads from `jna.library.path`)
+- ❌ **JAR does NOT include native libraries**
+- ❌ **JAR cannot run on other machines**
 
-For distribution, GitHub Actions builds a **Fat JAR** with native libraries for all platforms:
+**Why?**
+- No `src/main/resources/natives/` directory locally
+- Native libraries loaded directly from Cargo target directory
+- Only suitable for local development/testing
+
+### Production JAR (CI-Built)
+
+**Purpose:** Distribution via Maven Central
+
+GitHub Actions builds a **Fat JAR** with native libraries for all platforms and architectures:
 
 ```yaml
 # .github/workflows/publish-kotlin.yml
-1. Build native libraries on each platform in parallel (Linux, macOS, Windows)
-   - Each runner executes: cargo build --release --target <platform-target>
-   - Upload artifacts: native-{platform}/ with library binaries
+1. Build native libraries on each platform in parallel (Rust only)
+   - Linux x86-64:    cargo build --release --target x86_64-unknown-linux-gnu
+   - macOS Intel:     cargo build --release --target x86_64-apple-darwin
+   - macOS ARM64:     cargo build --release --target aarch64-apple-darwin
+   - Windows x86-64:  cargo build --release --target x86_64-pc-windows-msvc
+   - Copy to artifact directory (shell script)
+   - Upload artifacts: native-{platform}/
 
-2. Organize native libraries using Gradle
+2. Generate UniFFI bindings (shell script)
    - Download artifacts to: downloaded-artifacts/native-*/
-   - Run: ./gradlew organizeNativeLibs
-   - Result: pkg/kotlin/src/main/resources/natives/{platform}/
-
-3. Generate UniFFI bindings using Gradle
-   - Copy Linux library to target/release/
-   - Run: ./gradlew generateBindings -PlibPath=../../target/release/libgluesql_kotlin.so
+   - Run: cargo run --bin uniffi-bindgen generate --language kotlin ...
    - Result: build/generated/source/uniffi/kotlin/
 
-4. Build final JAR with all libraries
+3. Organize native libraries (shell script)
+   - Copy artifacts to: src/main/resources/natives/{platform}/
+     * natives/linux-x86-64/libgluesql_kotlin.so
+     * natives/darwin-x86-64/libgluesql_kotlin.dylib    (Intel Mac)
+     * natives/darwin-aarch64/libgluesql_kotlin.dylib   (Apple Silicon)
+     * natives/win32-x86-64/gluesql_kotlin.dll
+
+4. Build final Fat JAR (Gradle)
    - Run: ./gradlew build -x test -x buildRustLib -x generateBindings
-   - Native libraries automatically packaged from resources/
+   - All native libraries automatically packaged from resources/
 ```
 
+**Characteristics:**
+- ✅ **JAR includes all platform libraries** (Linux, macOS Intel/ARM, Windows)
+- ✅ **Runs anywhere** - JNA automatically selects correct library
+- ✅ Single JAR for all platforms (no platform-specific builds needed)
+- ✅ Release-optimized binaries
+
+**How JNA Resolves Libraries:**
+- Runtime: JNA detects platform/architecture (e.g., `darwin-aarch64`)
+- Extracts correct library from JAR `natives/{platform}/`
+- Loads into memory
+- Works transparently across all supported platforms
+
 **Why separate CI from local builds?**
-- Local: Uses debug builds for faster iteration (`./gradlew test`)
-- CI: Uses release builds with Gradle tasks (`./gradlew organizeNativeLibs`, etc.)
-- Build logic centralized in buildSrc for consistency
-- CI workflows simplified by delegating to Gradle
+- **Local:** Fast debug builds using Gradle tasks, no multi-platform setup required
+- **CI:** Release builds with shell scripts, minimal Gradle usage (only for JAR build)
+- **Build logic:** Gradle tasks for local dev, shell scripts for CI simplicity
+- **Testing:** Local sufficient for development; CI validates distribution
 
 ## Common Issues & Solutions
 
