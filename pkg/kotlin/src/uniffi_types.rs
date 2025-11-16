@@ -150,36 +150,47 @@ pub struct ShowColumnsResult {
     pub columns: Vec<String>,
 }
 
+#[derive(uniffi::Record)]
+pub struct SelectMapResult {
+    pub rows: Vec<std::collections::HashMap<String, SqlValue>>,
+}
+
 #[derive(uniffi::Enum)]
 pub enum QueryResult {
+    ShowColumns { result: ShowColumnsResult },
     Create { result: CreateResult },
     Insert { result: InsertResult },
-    Update { result: UpdateResult },
-    Delete { result: DeleteResult },
     Select { result: SelectResult },
+    SelectMap { result: SelectMapResult },
+    Delete { result: DeleteResult },
+    Update { result: UpdateResult },
     DropTable { result: DropTableResult },
+    DropFunction,
     AlterTable,
+    CreateIndex,
+    DropIndex,
     StartTransaction,
     Commit,
     Rollback,
     ShowVariable { result: ShowVariableResult },
-    ShowColumns { result: ShowColumnsResult },
 }
 
 impl From<CorePayload> for QueryResult {
     fn from(payload: CorePayload) -> Self {
         match payload {
+            CorePayload::ShowColumns(columns) => {
+                let column_names: Vec<String> = columns.into_iter().map(|(name, _)| name).collect();
+                QueryResult::ShowColumns {
+                    result: ShowColumnsResult {
+                        columns: column_names,
+                    },
+                }
+            }
             CorePayload::Create => QueryResult::Create {
                 result: CreateResult { rows: 0 },
             },
             CorePayload::Insert(rows) => QueryResult::Insert {
                 result: InsertResult { rows: rows as u64 },
-            },
-            CorePayload::Update(rows) => QueryResult::Update {
-                result: UpdateResult { rows: rows as u64 },
-            },
-            CorePayload::Delete(rows) => QueryResult::Delete {
-                result: DeleteResult { rows: rows as u64 },
             },
             CorePayload::Select { labels, rows } => {
                 let converted_rows: Vec<Vec<SqlValue>> = rows
@@ -193,12 +204,37 @@ impl From<CorePayload> for QueryResult {
                     },
                 }
             }
+            CorePayload::SelectMap(rows) => {
+                let converted_rows = rows
+                    .into_iter()
+                    .map(|map| {
+                        map.into_iter()
+                            .map(|(k, v)| (k, SqlValue::from(v)))
+                            .collect()
+                    })
+                    .collect();
+
+                QueryResult::SelectMap {
+                    result: SelectMapResult {
+                        rows: converted_rows,
+                    },
+                }
+            }
+            CorePayload::Delete(rows) => QueryResult::Delete {
+                result: DeleteResult { rows: rows as u64 },
+            },
+            CorePayload::Update(rows) => QueryResult::Update {
+                result: UpdateResult { rows: rows as u64 },
+            },
             CorePayload::DropTable(count) => QueryResult::DropTable {
                 result: DropTableResult {
                     count: count as u64,
                 },
             },
+            CorePayload::DropFunction => QueryResult::DropFunction,
             CorePayload::AlterTable => QueryResult::AlterTable,
+            CorePayload::CreateIndex => QueryResult::CreateIndex,
+            CorePayload::DropIndex => QueryResult::DropIndex,
             CorePayload::StartTransaction => QueryResult::StartTransaction,
             CorePayload::Commit => QueryResult::Commit,
             CorePayload::Rollback => QueryResult::Rollback,
@@ -216,15 +252,6 @@ impl From<CorePayload> for QueryResult {
                     result: ShowVariableResult { name, value },
                 }
             }
-            CorePayload::ShowColumns(columns) => {
-                let column_names: Vec<String> = columns.into_iter().map(|(name, _)| name).collect();
-                QueryResult::ShowColumns {
-                    result: ShowColumnsResult {
-                        columns: column_names,
-                    },
-                }
-            }
-            _ => QueryResult::AlterTable, // Handle other variants
         }
     }
 }

@@ -37,9 +37,16 @@ impl StorageBackend {
                 StorageBackend::Json(Arc::new(tokio::sync::Mutex::new(json_storage)))
             }
             Storage::Sled { config } => {
+                let cache_capacity = u64::try_from(config.cache_capacity).map_err(|_| {
+                    GlueSQLError::StorageError(format!(
+                        "Invalid cache_capacity: {}, must be non-negative",
+                        config.cache_capacity
+                    ))
+                })?;
+
                 let sled_cfg = Config::default()
                     .path(&config.path)
-                    .cache_capacity(config.cache_capacity as u64)
+                    .cache_capacity(cache_capacity)
                     .create_new(config.create_new)
                     .mode(config.mode.into())
                     .temporary(config.temporary)

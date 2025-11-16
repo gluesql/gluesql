@@ -1,10 +1,10 @@
-use gluesql_core::ast::Statement;
-use gluesql_core::prelude::{execute, parse, translate};
-use gluesql_core::store::Planner;
+use gluesql_core::{
+    ast::Statement,
+    prelude::{Payload, execute, parse, translate},
+    store::Planner,
+};
 
-use crate::error::GlueSQLError;
-use crate::storage::StorageBackend;
-use crate::uniffi_types::QueryResult;
+use crate::{error::GlueSQLError, storage::StorageBackend, uniffi_types::QueryResult};
 
 pub struct QueryExecutor;
 
@@ -32,48 +32,25 @@ impl QueryExecutor {
     async fn execute_statement(
         storage: &StorageBackend,
         statement: Statement,
-    ) -> Result<gluesql_core::prelude::Payload, GlueSQLError> {
+    ) -> Result<Payload, GlueSQLError> {
+        macro_rules! execute_on_storage {
+            ($storage:expr) => {{
+                let mut storage_guard = $storage.lock().await;
+                let planned_statement = storage_guard
+                    .plan(statement)
+                    .await
+                    .map_err(|e| GlueSQLError::PlanError(e.to_string()))?;
+                execute(&mut *storage_guard, &planned_statement)
+                    .await
+                    .map_err(|e| GlueSQLError::ExecuteError(e.to_string()))
+            }};
+        }
+
         match storage {
-            StorageBackend::Memory(storage) => {
-                let mut storage_guard = storage.lock().await;
-                let planned_statement = storage_guard
-                    .plan(statement)
-                    .await
-                    .map_err(|e| GlueSQLError::PlanError(e.to_string()))?;
-                execute(&mut *storage_guard, &planned_statement)
-                    .await
-                    .map_err(|e| GlueSQLError::ExecuteError(e.to_string()))
-            }
-            StorageBackend::Json(storage) => {
-                let mut storage_guard = storage.lock().await;
-                let planned_statement = storage_guard
-                    .plan(statement)
-                    .await
-                    .map_err(|e| GlueSQLError::PlanError(e.to_string()))?;
-                execute(&mut *storage_guard, &planned_statement)
-                    .await
-                    .map_err(|e| GlueSQLError::ExecuteError(e.to_string()))
-            }
-            StorageBackend::SharedMemory(storage) => {
-                let mut storage_guard = storage.lock().await;
-                let planned_statement = storage_guard
-                    .plan(statement)
-                    .await
-                    .map_err(|e| GlueSQLError::PlanError(e.to_string()))?;
-                execute(&mut *storage_guard, &planned_statement)
-                    .await
-                    .map_err(|e| GlueSQLError::ExecuteError(e.to_string()))
-            }
-            StorageBackend::Sled(storage) => {
-                let mut storage_guard = storage.lock().await;
-                let planned_statement = storage_guard
-                    .plan(statement)
-                    .await
-                    .map_err(|e| GlueSQLError::PlanError(e.to_string()))?;
-                execute(&mut *storage_guard, &planned_statement)
-                    .await
-                    .map_err(|e| GlueSQLError::ExecuteError(e.to_string()))
-            }
+            StorageBackend::Memory(storage) => execute_on_storage!(storage),
+            StorageBackend::Json(storage) => execute_on_storage!(storage),
+            StorageBackend::SharedMemory(storage) => execute_on_storage!(storage),
+            StorageBackend::Sled(storage) => execute_on_storage!(storage),
         }
     }
 }
