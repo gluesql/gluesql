@@ -1,10 +1,10 @@
 use gluesql_core::{
     ast::Statement,
-    prelude::{Payload, execute, parse, translate},
+    prelude::{Payload as CorePayload, execute, parse, translate},
     store::Planner,
 };
 
-use crate::{error::GlueSQLError, storage::StorageBackend, uniffi_types::QueryResult};
+use crate::{error::GlueSQLError, storage::StorageBackend, uniffi_types::Payload};
 
 pub struct QueryExecutor;
 
@@ -12,7 +12,7 @@ impl QueryExecutor {
     pub async fn execute_query(
         storage: &StorageBackend,
         sql: String,
-    ) -> Result<Vec<QueryResult>, GlueSQLError> {
+    ) -> Result<Vec<Payload>, GlueSQLError> {
         let queries = parse(&sql).map_err(|e| GlueSQLError::ParseError(e.to_string()))?;
 
         let mut results = Vec::new();
@@ -22,7 +22,7 @@ impl QueryExecutor {
                 translate(&query).map_err(|e| GlueSQLError::TranslateError(e.to_string()))?;
 
             let payload = Self::execute_statement(storage, statement).await?;
-            let result = QueryResult::from(payload);
+            let result = Payload::from(payload);
             results.push(result);
         }
 
@@ -32,7 +32,7 @@ impl QueryExecutor {
     async fn execute_statement(
         storage: &StorageBackend,
         statement: Statement,
-    ) -> Result<Payload, GlueSQLError> {
+    ) -> Result<CorePayload, GlueSQLError> {
         macro_rules! execute_on_storage {
             ($storage:expr) => {{
                 let mut storage_guard = $storage.lock().await;

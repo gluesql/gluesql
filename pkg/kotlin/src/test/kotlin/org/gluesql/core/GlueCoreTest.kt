@@ -99,22 +99,22 @@ class GlueCoreTest {
                 val createResult = glue.query("CREATE TABLE users (id INTEGER, name TEXT)")
                 assertNotNull(createResult, "Create table result should not be null")
                 assertEquals(1, createResult.size, "Should return one result")
-                assertTrue(createResult[0] is QueryResult.Create, "Should be CreateTable result")
+                assertTrue(createResult[0] is Payload.Create, "Should be CreateTable result")
 
                 // Insert data
                 val insertResult = glue.query("INSERT INTO users VALUES (1, 'Alice'), (2, 'Bob')")
                 assertNotNull(insertResult, "Insert result should not be null")
                 assertEquals(1, insertResult.size, "Should return one result")
-                assertTrue(insertResult[0] is QueryResult.Insert, "Should be Insert result")
+                assertTrue(insertResult[0] is Payload.Insert, "Should be Insert result")
 
                 // Select data
                 val selectResult = glue.query("SELECT * FROM users")
                 assertNotNull(selectResult, "Select result should not be null")
                 assertEquals(1, selectResult.size, "Should return one result")
-                assertTrue(selectResult[0] is QueryResult.Select, "Should be Select result")
+                assertTrue(selectResult[0] is Payload.Select, "Should be Select result")
 
-                val select = selectResult[0] as QueryResult.Select
-                assertEquals(2, select.result.rows.size, "Should have 2 rows")
+                val select = selectResult[0] as Payload.Select
+                assertEquals(2, select.rows.size, "Should have 2 rows")
             }
         }
 
@@ -137,11 +137,11 @@ class GlueCoreTest {
                 glue.query("INSERT INTO types_test VALUES (1, 'test', TRUE, 3.14)")
 
                 val result = glue.query("SELECT * FROM types_test")
-                val select = result[0] as QueryResult.Select
+                val select = result[0] as Payload.Select
 
-                assertEquals(1, select.result.rows.size, "Should have 1 row")
+                assertEquals(1, select.rows.size, "Should have 1 row")
 
-                val row = select.result.rows[0]
+                val row = select.rows[0]
                 assertEquals(4, row.size, "Row should have 4 columns")
             }
         }
@@ -195,8 +195,8 @@ class GlueCoreTest {
                 val usersResult = glue.query("SELECT * FROM users")
                 val postsResult = glue.query("SELECT * FROM posts")
 
-                assertEquals(1, (usersResult[0] as QueryResult.Select).result.rows.size)
-                assertEquals(1, (postsResult[0] as QueryResult.Select).result.rows.size)
+                assertEquals(1, (usersResult[0] as Payload.Select).rows.size)
+                assertEquals(1, (postsResult[0] as Payload.Select).rows.size)
             }
         }
 }

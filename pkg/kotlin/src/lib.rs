@@ -5,10 +5,7 @@ mod uniffi_types;
 
 pub use error::GlueSQLError;
 pub use storage::{Mode, SledConfig, Storage, StorageBackend};
-pub use uniffi_types::{
-    CreateResult, DeleteResult, DropTableResult, InsertResult, QueryResult, SelectResult,
-    ShowColumnsResult, ShowVariableResult, SqlValue, UpdateResult,
-};
+pub use uniffi_types::{Payload, SqlValue};
 
 use executor::QueryExecutor;
 
@@ -27,7 +24,7 @@ impl Glue {
         })
     }
 
-    pub async fn query(&self, sql: String) -> Result<Vec<QueryResult>, GlueSQLError> {
+    pub async fn query(&self, sql: String) -> Result<Vec<Payload>, GlueSQLError> {
         QueryExecutor::execute_query(&self.storage, sql).await
     }
 }

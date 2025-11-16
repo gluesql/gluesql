@@ -108,63 +108,33 @@ impl From<CoreValue> for SqlValue {
     }
 }
 
-#[derive(uniffi::Record)]
-pub struct SelectResult {
-    pub rows: Vec<Vec<SqlValue>>,
-    pub labels: Vec<String>,
-}
-
-#[derive(uniffi::Record)]
-pub struct CreateResult {
-    pub rows: u64,
-}
-
-#[derive(uniffi::Record)]
-pub struct InsertResult {
-    pub rows: u64,
-}
-
-#[derive(uniffi::Record)]
-pub struct UpdateResult {
-    pub rows: u64,
-}
-
-#[derive(uniffi::Record)]
-pub struct DeleteResult {
-    pub rows: u64,
-}
-
-#[derive(uniffi::Record)]
-pub struct DropTableResult {
-    pub count: u64,
-}
-
-#[derive(uniffi::Record)]
-pub struct ShowVariableResult {
-    pub name: String,
-    pub value: String,
-}
-
-#[derive(uniffi::Record)]
-pub struct ShowColumnsResult {
-    pub columns: Vec<String>,
-}
-
-#[derive(uniffi::Record)]
-pub struct SelectMapResult {
-    pub rows: Vec<std::collections::HashMap<String, SqlValue>>,
-}
-
 #[derive(uniffi::Enum)]
-pub enum QueryResult {
-    ShowColumns { result: ShowColumnsResult },
-    Create { result: CreateResult },
-    Insert { result: InsertResult },
-    Select { result: SelectResult },
-    SelectMap { result: SelectMapResult },
-    Delete { result: DeleteResult },
-    Update { result: UpdateResult },
-    DropTable { result: DropTableResult },
+pub enum Payload {
+    ShowColumns {
+        columns: Vec<String>,
+    },
+    Create {
+        rows: u64,
+    },
+    Insert {
+        rows: u64,
+    },
+    Select {
+        labels: Vec<String>,
+        rows: Vec<Vec<SqlValue>>,
+    },
+    SelectMap {
+        rows: Vec<std::collections::HashMap<String, SqlValue>>,
+    },
+    Delete {
+        rows: u64,
+    },
+    Update {
+        rows: u64,
+    },
+    DropTable {
+        count: u64,
+    },
     DropFunction,
     AlterTable,
     CreateIndex,
@@ -172,36 +142,31 @@ pub enum QueryResult {
     StartTransaction,
     Commit,
     Rollback,
-    ShowVariable { result: ShowVariableResult },
+    ShowVariable {
+        name: String,
+        value: String,
+    },
 }
 
-impl From<CorePayload> for QueryResult {
+impl From<CorePayload> for Payload {
     fn from(payload: CorePayload) -> Self {
         match payload {
             CorePayload::ShowColumns(columns) => {
                 let column_names: Vec<String> = columns.into_iter().map(|(name, _)| name).collect();
-                QueryResult::ShowColumns {
-                    result: ShowColumnsResult {
-                        columns: column_names,
-                    },
+                Payload::ShowColumns {
+                    columns: column_names,
                 }
             }
-            CorePayload::Create => QueryResult::Create {
-                result: CreateResult { rows: 0 },
-            },
-            CorePayload::Insert(rows) => QueryResult::Insert {
-                result: InsertResult { rows: rows as u64 },
-            },
+            CorePayload::Create => Payload::Create { rows: 0 },
+            CorePayload::Insert(rows) => Payload::Insert { rows: rows as u64 },
             CorePayload::Select { labels, rows } => {
                 let converted_rows: Vec<Vec<SqlValue>> = rows
                     .into_iter()
                     .map(|row| row.into_iter().map(SqlValue::from).collect())
                     .collect();
-                QueryResult::Select {
-                    result: SelectResult {
-                        rows: converted_rows,
-                        labels,
-                    },
+                Payload::Select {
+                    labels,
+                    rows: converted_rows,
                 }
             }
             CorePayload::SelectMap(rows) => {
@@ -213,31 +178,22 @@ impl From<CorePayload> for QueryResult {
                             .collect()
                     })
                     .collect();
-
-                QueryResult::SelectMap {
-                    result: SelectMapResult {
-                        rows: converted_rows,
-                    },
+                Payload::SelectMap {
+                    rows: converted_rows,
                 }
             }
-            CorePayload::Delete(rows) => QueryResult::Delete {
-                result: DeleteResult { rows: rows as u64 },
+            CorePayload::Delete(rows) => Payload::Delete { rows: rows as u64 },
+            CorePayload::Update(rows) => Payload::Update { rows: rows as u64 },
+            CorePayload::DropTable(count) => Payload::DropTable {
+                count: count as u64,
             },
-            CorePayload::Update(rows) => QueryResult::Update {
-                result: UpdateResult { rows: rows as u64 },
-            },
-            CorePayload::DropTable(count) => QueryResult::DropTable {
-                result: DropTableResult {
-                    count: count as u64,
-                },
-            },
-            CorePayload::DropFunction => QueryResult::DropFunction,
-            CorePayload::AlterTable => QueryResult::AlterTable,
-            CorePayload::CreateIndex => QueryResult::CreateIndex,
-            CorePayload::DropIndex => QueryResult::DropIndex,
-            CorePayload::StartTransaction => QueryResult::StartTransaction,
-            CorePayload::Commit => QueryResult::Commit,
-            CorePayload::Rollback => QueryResult::Rollback,
+            CorePayload::DropFunction => Payload::DropFunction,
+            CorePayload::AlterTable => Payload::AlterTable,
+            CorePayload::CreateIndex => Payload::CreateIndex,
+            CorePayload::DropIndex => Payload::DropIndex,
+            CorePayload::StartTransaction => Payload::StartTransaction,
+            CorePayload::Commit => Payload::Commit,
+            CorePayload::Rollback => Payload::Rollback,
             CorePayload::ShowVariable(var) => {
                 let (name, value) = match var {
                     PayloadVariable::Tables(tables) => {
@@ -248,9 +204,7 @@ impl From<CorePayload> for QueryResult {
                     }
                     PayloadVariable::Version(version) => ("VERSION".to_string(), version),
                 };
-                QueryResult::ShowVariable {
-                    result: ShowVariableResult { name, value },
-                }
+                Payload::ShowVariable { name, value }
             }
         }
     }
