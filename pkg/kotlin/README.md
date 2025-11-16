@@ -32,8 +32,8 @@ dependencies {
 ## Usage
 
 ```kotlin
-import org.gluesql.uniffi.Glue
-import org.gluesql.uniffi.Storage
+import org.gluesql.core.Glue
+import org.gluesql.core.Storage
 import kotlinx.coroutines.runBlocking
 
 fun main() = runBlocking {

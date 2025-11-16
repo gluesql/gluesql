@@ -36,7 +36,8 @@ impl QueryExecutor {
         match storage {
             StorageBackend::Memory(storage) => {
                 let mut storage_guard = storage.lock().await;
-                let planned_statement = storage_guard.plan(statement)
+                let planned_statement = storage_guard
+                    .plan(statement)
                     .await
                     .map_err(|e| GlueSQLError::PlanError(e.to_string()))?;
                 execute(&mut *storage_guard, &planned_statement)
@@ -45,7 +46,8 @@ impl QueryExecutor {
             }
             StorageBackend::Json(storage) => {
                 let mut storage_guard = storage.lock().await;
-                let planned_statement = storage_guard.plan(statement)
+                let planned_statement = storage_guard
+                    .plan(statement)
                     .await
                     .map_err(|e| GlueSQLError::PlanError(e.to_string()))?;
                 execute(&mut *storage_guard, &planned_statement)
@@ -54,7 +56,8 @@ impl QueryExecutor {
             }
             StorageBackend::SharedMemory(storage) => {
                 let mut storage_guard = storage.lock().await;
-                let planned_statement = storage_guard.plan(statement)
+                let planned_statement = storage_guard
+                    .plan(statement)
                     .await
                     .map_err(|e| GlueSQLError::PlanError(e.to_string()))?;
                 execute(&mut *storage_guard, &planned_statement)
@@ -63,7 +66,8 @@ impl QueryExecutor {
             }
             StorageBackend::Sled(storage) => {
                 let mut storage_guard = storage.lock().await;
-                let planned_statement = storage_guard.plan(statement)
+                let planned_statement = storage_guard
+                    .plan(statement)
                     .await
                     .map_err(|e| GlueSQLError::PlanError(e.to_string()))?;
                 execute(&mut *storage_guard, &planned_statement)

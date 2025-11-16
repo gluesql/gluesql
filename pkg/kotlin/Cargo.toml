@@ -34,15 +34,4 @@ uniffi = { version = "0.30.0", features = ["build"] }
 name = "uniffi-bindgen"
 path = "uniffi-bindgen.rs"
 
-# Optimize release builds for size and strip debug symbols
-# Note: This is a package-level profile override.
-# Cargo will show a warning but these settings WILL be applied during release builds.
-# The warning can be safely ignored - it's informational, not an error.
-[profile.release]
-opt-level = "z"     # Optimize for size
-lto = true          # Enable Link Time Optimization
-strip = true        # Strip symbols from binary
-codegen-units = 1   # Better optimization (slower compile, smaller binary)
-panic = "abort"     # Smaller binary, no unwinding
-
 [dev-dependencies]
