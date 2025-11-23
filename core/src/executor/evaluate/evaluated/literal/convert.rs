@@ -122,11 +122,14 @@ fn literal_number_to_value(data_type: &DataType, value: &BigDecimal) -> Option<R
                 .map(Value::F64)
                 .ok_or_else(|| LiteralError::UnreachableNumberParsing.into()),
         ),
-        DataType::Inet => Some(Ok(if let Some(v4) = value.to_u32() {
-            Value::Inet(IpAddr::V4(Ipv4Addr::from(v4)))
+        DataType::Inet => Some(if let Some(v4) = value.to_u32() {
+            Ok(Value::Inet(IpAddr::V4(Ipv4Addr::from(v4))))
         } else {
-            Value::Inet(IpAddr::V6(Ipv6Addr::from(value.to_u128().unwrap())))
-        })),
+            value
+                .to_u128()
+                .map(|v6| Value::Inet(IpAddr::V6(Ipv6Addr::from(v6))))
+                .ok_or_else(|| LiteralError::FailedToParseInetString(value.to_string()).into())
+        }),
         DataType::Decimal => Some(
             value
                 .to_string()
@@ -211,11 +214,6 @@ fn cast_literal_number_to_value(data_type: &DataType, value: &BigDecimal) -> Opt
             _ => Err(LiteralError::LiteralCastToBooleanFailed(value.to_string()).into()),
         }),
         DataType::Text => Some(Ok(Value::Str(value.to_string()))),
-        DataType::Inet => Some(Ok(if let Some(v4) = value.to_u32() {
-            Value::Inet(IpAddr::V4(Ipv4Addr::from(v4)))
-        } else {
-            Value::Inet(IpAddr::V6(Ipv6Addr::from(value.to_u128().unwrap())))
-        })),
         _ => None,
     }
 }
@@ -540,6 +538,14 @@ mod tests {
             DataType::Inet,
             num!("9876543210"),
             Value::Inet(inet("::2:4cb0:16ea"))
+        );
+        assert_eq!(
+            super::literal_to_value(&DataType::Inet, &num!("1.5")),
+            Err(LiteralError::FailedToParseInetString("1.5".to_owned()).into())
+        );
+        assert_eq!(
+            super::literal_to_value(&DataType::Inet, &num!("-1")),
+            Err(LiteralError::FailedToParseInetString("-1".to_owned()).into())
         );
         assert_eq!(
             super::literal_to_value(&DataType::Inet, &text!("123")),
