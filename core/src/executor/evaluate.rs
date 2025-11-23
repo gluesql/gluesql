@@ -23,7 +23,6 @@ use {
     std::{borrow::Cow, ops::ControlFlow, sync::Arc},
 };
 
-pub(crate) use evaluated::literal::{number_literal_to_value, text_literal_to_value};
 pub use {
     error::EvaluateError,
     evaluated::{Evaluated, LiteralError},

@@ -1,8 +1,9 @@
 use {
-    super::{EvaluateError, Evaluated, text_literal_to_value},
+    super::{EvaluateError, Evaluated},
     crate::{
         ast::{AstLiteral, BinaryOperator, DataType, UnaryOperator},
         data::Value,
+        executor::evaluate::evaluated::literal::text_literal_to_value,
         result::Result,
     },
     std::{borrow::Cow, cmp::Ordering},

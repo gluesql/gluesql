@@ -1,8 +1,5 @@
 use {
-    super::{
-        context::RowContext,
-        evaluate::{Evaluated, evaluate, number_literal_to_value, text_literal_to_value},
-    },
+    super::{context::RowContext, evaluate::evaluate},
     crate::{
         ast::{Assignment, ColumnDef, ColumnUniqueOption, ForeignKey},
         data::{Key, Row, Value},
@@ -97,25 +94,7 @@ impl<'a, T: GStore> Update<'a, T> {
                                 .find(|column_def| id == &column_def.name)
                                 .ok_or(UpdateError::ConflictOnSchema)?;
 
-                            let value = match evaluated {
-                                Evaluated::Number(value) => {
-                                    number_literal_to_value(data_type, value.as_ref())?
-                                }
-                                Evaluated::Text(value) => {
-                                    text_literal_to_value(data_type, value.as_ref())?
-                                }
-                                Evaluated::Value(v) => {
-                                    v.validate_type(data_type)?;
-                                    v
-                                }
-                                Evaluated::StrSlice {
-                                    source: s,
-                                    range: r,
-                                } => Value::Str(s[r].to_owned()),
-                            };
-
-                            value.validate_null(*nullable)?;
-                            value
+                            evaluated.try_into_value(data_type, *nullable)?
                         }
                         None => evaluated.try_into()?,
                     };

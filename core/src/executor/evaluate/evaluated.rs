@@ -563,6 +563,7 @@ impl<'a> Evaluated<'a> {
             } => Value::Str(s[r].to_owned()),
         };
 
+        value.validate_type(data_type)?;
         value.validate_null(nullable)?;
 
         Ok(value)
