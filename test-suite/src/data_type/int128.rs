@@ -28,13 +28,21 @@ test_case!(int128, {
 
     g.test(
         &format!("INSERT INTO Item VALUES ({invalid_large_str}, {invalid_large_str})"),
-        Err(LiteralError::FailedToParseNumber.into()),
+        Err(LiteralError::LiteralCastToDataTypeFailed(
+            DataType::Int128,
+            invalid_large_str.to_owned(),
+        )
+        .into()),
     )
     .await;
 
     g.test(
         &format!("INSERT INTO Item VALUES ({invalid_small_str}, {invalid_small_str})"),
-        Err(LiteralError::FailedToParseNumber.into()),
+        Err(LiteralError::LiteralCastToDataTypeFailed(
+            DataType::Int128,
+            invalid_small_str.to_owned(),
+        )
+        .into()),
     )
     .await;
 

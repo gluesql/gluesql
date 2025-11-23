@@ -124,7 +124,7 @@ INSERT INTO DateLog VALUES
 
     g.test(
         "INSERT INTO DateLog VALUES (1, '12345-678', '2021-05-01')",
-        Err(LiteralError::FailedToParseDate("12345-678".to_owned()).into()),
+        Err(LiteralError::LiteralCastToDateFailed("12345-678".to_owned()).into()),
     )
     .await;
 });

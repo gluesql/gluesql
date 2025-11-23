@@ -20,12 +20,12 @@ test_case!(int8, {
 
     g.test(
         "INSERT INTO Item VALUES (128, 128);",
-        Err(LiteralError::FailedToParseNumber.into()),
+        Err(LiteralError::LiteralCastToInt8Failed("128".to_owned()).into()),
     )
     .await;
     g.test(
         "INSERT INTO Item VALUES (-129, -129);",
-        Err(LiteralError::FailedToParseNumber.into()),
+        Err(LiteralError::LiteralCastToInt8Failed("-129".to_owned()).into()),
     )
     .await;
 

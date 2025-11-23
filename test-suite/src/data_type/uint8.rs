@@ -18,13 +18,13 @@ test_case!(uint8, {
 
     g.test(
         "INSERT INTO Item VALUES (256, 256);",
-        Err(LiteralError::FailedToParseNumber.into()),
+        Err(LiteralError::LiteralCastToUnsignedInt8Failed("256".to_owned()).into()),
     )
     .await;
 
     g.test(
         "INSERT INTO Item VALUES (-129, -129);",
-        Err(LiteralError::FailedToParseNumber.into()),
+        Err(LiteralError::LiteralCastToUnsignedInt8Failed("-129".to_owned()).into()),
     )
     .await;
     g.test(

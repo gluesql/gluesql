@@ -27,7 +27,11 @@ test_case!(int32, {
             i64::from(i32::MAX) + 1_i64,
             i64 = i64::from(i32::MIN) - 1_i64
         ),
-        Err(LiteralError::FailedToParseNumber.into()),
+        Err(LiteralError::LiteralCastToDataTypeFailed(
+            DataType::Int32,
+            (i64::from(i32::MAX) + 1_i64).to_string(),
+        )
+        .into()),
     )
     .await;
 

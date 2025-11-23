@@ -97,7 +97,4 @@ pub enum LiteralError {
 
     #[error("unreachable literal cast from number to float: {0}")]
     UnreachableLiteralCastFromNumberToFloat(String),
-
-    #[error("unreachable literal cast from number to integer: {0}")]
-    UnreachableLiteralCastFromNumberToInteger(String),
 }

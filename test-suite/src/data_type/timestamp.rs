@@ -126,7 +126,7 @@ INSERT INTO TimestampLog VALUES
 
     g.test(
         "INSERT INTO TimestampLog VALUES (1, '12345-678', '2021-05-01')",
-        Err(LiteralError::FailedToParseTimestamp("12345-678".to_owned()).into()),
+        Err(LiteralError::LiteralCastToTimestampFailed("12345-678".to_owned()).into()),
     )
     .await;
 });

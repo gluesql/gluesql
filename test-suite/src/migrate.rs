@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        ast::Expr,
+        ast::{DataType, Expr},
         error::{EvaluateError, FetchError, LiteralError, TranslateError},
         prelude::Value::*,
     },
@@ -33,7 +33,7 @@ test_case!(migrate, {
     let error_cases = [
         (
             "INSERT INTO Test (id, num, name) VALUES (1.1, 1, 'good');",
-            LiteralError::FailedToParseNumber.into(),
+            LiteralError::LiteralCastToDataTypeFailed(DataType::Int, "1.1".to_owned()).into(),
         ),
         (
             "INSERT INTO Test (id, num, name) VALUES (1, 1, a.b);",

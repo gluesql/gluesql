@@ -16,8 +16,8 @@ use {
     },
     crate::{
         ast::{Expr, OrderByExpr, Query, Select, SetExpr, TableWithJoins, Values},
-        data::{Key, Row, Value, get_alias},
-        result::Result,
+        data::{Key, Row, Value, ValueError, get_alias},
+        result::{Error, Result},
         store::GStore,
     },
     async_recursion::async_recursion,
@@ -68,7 +68,21 @@ async fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> Result<(Vec<Row>, Vec<Str
             let evaluated = evaluate_stateless(None, expr).await?;
 
             let value = if let Some(ref data_type) = column_types[i] {
-                evaluated.try_into_value(data_type, true)?
+                match evaluated.clone().try_into_value(data_type, true) {
+                    Ok(value) => value,
+                    Err(err) => match err {
+                        Error::Value(error)
+                            if matches!(
+                                error.as_ref(),
+                                ValueError::IncompatibleDataType { .. }
+                            ) =>
+                        {
+                            column_types[i] = None;
+                            evaluated.try_into()?
+                        }
+                        _ => return Err(err),
+                    },
+                }
             } else {
                 let value: Value = evaluated.try_into()?;
                 column_types[i] = value.get_type();

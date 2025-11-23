@@ -18,13 +18,13 @@ test_case!(uint32, {
 
     g.test(
         "INSERT INTO Item VALUES (4294967296,4294967296);",
-        Err(LiteralError::FailedToParseNumber.into()),
+        Err(LiteralError::LiteralCastToUint32Failed("4294967296".to_owned()).into()),
     )
     .await;
 
     g.test(
         "INSERT INTO Item VALUES (-32769, -32769);",
-        Err(LiteralError::FailedToParseNumber.into()),
+        Err(LiteralError::LiteralCastToUint32Failed("-32769".to_owned()).into()),
     )
     .await;
     g.test(

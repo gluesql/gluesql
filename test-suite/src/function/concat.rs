@@ -37,7 +37,7 @@ test_case!(concat, {
 
     g.test(
         "select concat(DATE '2020-06-11', DATE '2020-16-3') as myconcat;",
-        Err(LiteralError::FailedToParseDate("2020-16-3".to_owned()).into()),
+        Err(LiteralError::LiteralCastToDateFailed("2020-16-3".to_owned()).into()),
     )
     .await;
 

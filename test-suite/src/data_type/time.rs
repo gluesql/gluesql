@@ -156,7 +156,7 @@ INSERT INTO TimeLog VALUES
 
     g.test(
         "INSERT INTO TimeLog VALUES (1, '12345-678', '20:05:01')",
-        Err(LiteralError::FailedToParseTime("12345-678".to_owned()).into()),
+        Err(LiteralError::LiteralCastToTimeFailed("12345-678".to_owned()).into()),
     )
     .await;
 });
