@@ -1,5 +1,5 @@
 use {
-    super::{EvaluateError, Evaluated, literal_to_value},
+    super::{EvaluateError, Evaluated, text_literal_to_value},
     crate::{
         ast::{AstLiteral, BinaryOperator, DataType, UnaryOperator},
         data::Value,
@@ -23,10 +23,8 @@ pub fn literal(ast_literal: &AstLiteral) -> Result<Evaluated<'_>> {
     }
 }
 
-pub fn typed_string<'a>(data_type: &'a DataType, value: Cow<'a, str>) -> Result<Evaluated<'a>> {
-    let evaluated_literal = Evaluated::Text(value);
-
-    literal_to_value(data_type, &evaluated_literal).map(Evaluated::Value)
+pub fn typed_string<'a>(data_type: &'a DataType, value: &'a str) -> Result<Evaluated<'a>> {
+    text_literal_to_value(data_type, value).map(Evaluated::Value)
 }
 
 pub fn binary_op<'a>(

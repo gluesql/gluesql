@@ -23,7 +23,7 @@ use {
     std::{borrow::Cow, ops::ControlFlow, sync::Arc},
 };
 
-pub(crate) use evaluated::literal_to_value;
+pub(crate) use evaluated::literal::{number_literal_to_value, text_literal_to_value};
 pub use {
     error::EvaluateError,
     evaluated::{Evaluated, LiteralError},
@@ -74,9 +74,7 @@ where
 
     match expr {
         Expr::Literal(ast_literal) => expr::literal(ast_literal),
-        Expr::TypedString { data_type, value } => {
-            expr::typed_string(data_type, Cow::Borrowed(value))
-        }
+        Expr::TypedString { data_type, value } => expr::typed_string(data_type, value),
         Expr::Identifier(ident) => {
             let context = context.ok_or_else(|| {
                 EvaluateError::ContextRequiredForIdentEvaluation(Box::new(expr.clone()))

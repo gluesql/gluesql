@@ -1,4 +1,5 @@
 use {
+    self::literal::{number_literal_to_value, text_literal_to_value},
     super::{error::EvaluateError, function},
     crate::{
         ast::{DataType, TrimWhereField},
@@ -20,7 +21,6 @@ pub(super) mod literal;
 mod unary_op;
 
 pub use literal::LiteralError;
-pub(crate) use literal::literal_to_value;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Evaluated<'a> {
@@ -549,9 +549,8 @@ impl<'a> Evaluated<'a> {
 
     pub fn try_into_value(self, data_type: &DataType, nullable: bool) -> Result<Value> {
         let value = match self {
-            eval @ (Evaluated::Number(_) | Evaluated::Text(_)) => {
-                literal_to_value(data_type, &eval)?
-            }
+            Evaluated::Number(value) => number_literal_to_value(data_type, value.as_ref())?,
+            Evaluated::Text(value) => text_literal_to_value(data_type, value.as_ref())?,
             Evaluated::Value(Value::Bytea(bytes)) if data_type == &DataType::Uuid => {
                 Uuid::from_slice(&bytes)
                     .map_err(|_| ValueError::FailedToParseUUID(hex::encode(bytes)))

@@ -17,32 +17,23 @@ use {
     },
 };
 
-#[derive(Clone, Copy)]
-enum LiteralKind {
-    Number,
-    Text,
-}
-
-pub(crate) fn literal_to_value(data_type: &DataType, evaluated: &Evaluated<'_>) -> Result<Value> {
-    let (result, literal) = match evaluated {
-        Evaluated::Number(value) => (
-            literal_number_to_value(data_type, value.as_ref()),
-            value.to_string(),
-        ),
-        Evaluated::Text(value) => (
-            literal_text_to_value(data_type, value.as_ref()),
-            value.to_string(),
-        ),
-        other => {
-            return Err(LiteralError::LiteralRequired(format!("{other:?}")).into());
-        }
-    };
-
-    match result {
+pub(crate) fn number_literal_to_value(data_type: &DataType, value: &BigDecimal) -> Result<Value> {
+    match literal_number_to_value(data_type, value) {
         Some(output) => output,
         None => Err(LiteralError::IncompatibleLiteralForDataType {
             data_type: data_type.clone(),
-            literal,
+            literal: value.to_string(),
+        }
+        .into()),
+    }
+}
+
+pub(crate) fn text_literal_to_value(data_type: &DataType, value: &str) -> Result<Value> {
+    match literal_text_to_value(data_type, value) {
+        Some(output) => output,
+        None => Err(LiteralError::IncompatibleLiteralForDataType {
+            data_type: data_type.clone(),
+            literal: value.to_owned(),
         }
         .into()),
     }
@@ -181,28 +172,22 @@ pub(crate) fn try_cast_literal_to_value(
     data_type: &DataType,
     evaluated: &Evaluated<'_>,
 ) -> Result<Value> {
-    let (result, literal_string, kind) = match evaluated {
-        Evaluated::Number(value) => (
-            cast_literal_number_to_value(data_type, value.as_ref()),
-            value.to_string(),
-            LiteralKind::Number,
-        ),
-        Evaluated::Text(value) => (
-            cast_literal_text_to_value(data_type, value.as_ref()),
-            value.to_string(),
-            LiteralKind::Text,
-        ),
-        other => {
-            return Err(LiteralError::LiteralRequired(format!("{other:?}")).into());
-        }
-    };
+    match evaluated {
+        Evaluated::Number(value) => {
+            let literal_string = value.to_string();
+            let result = cast_literal_number_to_value(data_type, value.as_ref())
+                .unwrap_or_else(|| number_literal_to_value(data_type, value.as_ref()));
 
-    match result {
-        Some(output) => output,
-        None => match literal_to_value(data_type, evaluated) {
-            Ok(value) => Ok(value),
-            Err(error) => map_cast_error(data_type, kind, literal_string, error),
-        },
+            result.or_else(|error| map_cast_error(data_type, literal_string, error))
+        }
+        Evaluated::Text(value) => {
+            let literal_string = value.to_string();
+            let result = cast_literal_text_to_value(data_type, value.as_ref())
+                .unwrap_or_else(|| text_literal_to_value(data_type, value.as_ref()));
+
+            result.or_else(|error| map_cast_error(data_type, literal_string, error))
+        }
+        other => Err(LiteralError::LiteralRequired(format!("{other:?}")).into()),
     }
 }
 
@@ -214,7 +199,7 @@ fn cast_literal_number_to_value(data_type: &DataType, value: &BigDecimal) -> Opt
             _ => Err(LiteralError::LiteralCastToBooleanFailed(value.to_string()).into()),
         }),
         DataType::Text => Some(Ok(Value::Str(value.to_string()))),
-        _ => None,
+        _ => literal_number_to_value(data_type, value),
     }
 }
 
@@ -301,7 +286,7 @@ fn cast_literal_text_to_value(data_type: &DataType, value: &str) -> Option<Resul
                 .map(Value::Date)
                 .ok_or_else(|| LiteralError::LiteralCastToDateFailed(value.to_owned()).into()),
         ),
-        _ => None,
+        _ => literal_text_to_value(data_type, value),
     }
 }
 
@@ -316,78 +301,57 @@ where
         .map_err(|_| err(text.to_owned()).into())
 }
 
-fn map_cast_error(
-    data_type: &DataType,
-    literal_kind: LiteralKind,
-    literal_string: String,
-    error: Error,
-) -> Result<Value> {
+fn map_cast_error(data_type: &DataType, literal_string: String, error: Error) -> Result<Value> {
     let Error::Literal(literal_error) = error else {
         return Err(error);
     };
 
-    match literal_kind {
-        LiteralKind::Number => {
-            let mapped_error = match (data_type, &literal_error) {
-                (DataType::Int8 | DataType::Int16, LiteralError::FailedToParseNumber) => {
-                    Some(LiteralError::LiteralCastToInt8Failed(literal_string))
-                }
-                (DataType::Int32, LiteralError::FailedToParseNumber) => Some(
-                    LiteralError::LiteralCastToDataTypeFailed(DataType::Int32, literal_string),
-                ),
-                (DataType::Int, LiteralError::FailedToParseNumber) => Some(
-                    LiteralError::LiteralCastToDataTypeFailed(DataType::Int, literal_string),
-                ),
-                (DataType::Int128, LiteralError::FailedToParseNumber) => Some(
-                    LiteralError::LiteralCastToDataTypeFailed(DataType::Int128, literal_string),
-                ),
-                (DataType::Uint8, LiteralError::FailedToParseNumber) => Some(
-                    LiteralError::LiteralCastToUnsignedInt8Failed(literal_string),
-                ),
-                (DataType::Uint16, LiteralError::FailedToParseNumber) => {
-                    Some(LiteralError::LiteralCastToUint16Failed(literal_string))
-                }
-                (DataType::Uint32, LiteralError::FailedToParseNumber) => {
-                    Some(LiteralError::LiteralCastToUint32Failed(literal_string))
-                }
-                (DataType::Uint64, LiteralError::FailedToParseNumber) => {
-                    Some(LiteralError::LiteralCastToUint64Failed(literal_string))
-                }
-                (DataType::Uint128, LiteralError::FailedToParseNumber) => {
-                    Some(LiteralError::LiteralCastToUint128Failed(literal_string))
-                }
-                (DataType::Float32 | DataType::Float, LiteralError::UnreachableNumberParsing) => {
-                    Some(LiteralError::UnreachableLiteralCastFromNumberToFloat(
-                        literal_string,
-                    ))
-                }
-                (DataType::Decimal, LiteralError::FailedToParseDecimal(_)) => Some(
-                    LiteralError::LiteralCastFromTextToDecimalFailed(literal_string),
-                ),
-                _ => None,
-            };
-
-            match mapped_error {
-                Some(mapped) => Err(mapped.into()),
-                None => Err(literal_error.into()),
-            }
+    let mapped_error = match (data_type, &literal_error) {
+        (DataType::Int8 | DataType::Int16, LiteralError::FailedToParseNumber) => {
+            Some(LiteralError::LiteralCastToInt8Failed(literal_string))
         }
-        LiteralKind::Text => {
-            let mapped_error = match (data_type, &literal_error) {
-                (DataType::Time, LiteralError::FailedToParseTime(_)) => {
-                    Some(LiteralError::LiteralCastToTimeFailed(literal_string))
-                }
-                (DataType::Timestamp, LiteralError::FailedToParseTimestamp(_)) => {
-                    Some(LiteralError::LiteralCastToTimestampFailed(literal_string))
-                }
-                _ => None,
-            };
-
-            match mapped_error {
-                Some(mapped) => Err(mapped.into()),
-                None => Err(literal_error.into()),
-            }
+        (DataType::Int32, LiteralError::FailedToParseNumber) => Some(
+            LiteralError::LiteralCastToDataTypeFailed(DataType::Int32, literal_string),
+        ),
+        (DataType::Int, LiteralError::FailedToParseNumber) => Some(
+            LiteralError::LiteralCastToDataTypeFailed(DataType::Int, literal_string),
+        ),
+        (DataType::Int128, LiteralError::FailedToParseNumber) => Some(
+            LiteralError::LiteralCastToDataTypeFailed(DataType::Int128, literal_string),
+        ),
+        (DataType::Uint8, LiteralError::FailedToParseNumber) => Some(
+            LiteralError::LiteralCastToUnsignedInt8Failed(literal_string),
+        ),
+        (DataType::Uint16, LiteralError::FailedToParseNumber) => {
+            Some(LiteralError::LiteralCastToUint16Failed(literal_string))
         }
+        (DataType::Uint32, LiteralError::FailedToParseNumber) => {
+            Some(LiteralError::LiteralCastToUint32Failed(literal_string))
+        }
+        (DataType::Uint64, LiteralError::FailedToParseNumber) => {
+            Some(LiteralError::LiteralCastToUint64Failed(literal_string))
+        }
+        (DataType::Uint128, LiteralError::FailedToParseNumber) => {
+            Some(LiteralError::LiteralCastToUint128Failed(literal_string))
+        }
+        (DataType::Float32 | DataType::Float, LiteralError::UnreachableNumberParsing) => Some(
+            LiteralError::UnreachableLiteralCastFromNumberToFloat(literal_string),
+        ),
+        (DataType::Decimal, LiteralError::FailedToParseDecimal(_)) => Some(
+            LiteralError::LiteralCastFromTextToDecimalFailed(literal_string),
+        ),
+        (DataType::Time, LiteralError::FailedToParseTime(_)) => {
+            Some(LiteralError::LiteralCastToTimeFailed(literal_string))
+        }
+        (DataType::Timestamp, LiteralError::FailedToParseTimestamp(_)) => {
+            Some(LiteralError::LiteralCastToTimestampFailed(literal_string))
+        }
+        _ => None,
+    };
+
+    match mapped_error {
+        Some(mapped) => Err(mapped.into()),
+        None => Err(literal_error.into()),
     }
 }
 
@@ -469,7 +433,17 @@ mod tests {
 
     #[test]
     fn literal_to_value() {
-        use crate::{ast::DataType, error::LiteralError};
+        use crate::{ast::DataType, error::LiteralError, result::Result};
+
+        fn literal_to_value(data_type: &DataType, evaluated: &Evaluated<'_>) -> Result<Value> {
+            match evaluated {
+                Evaluated::Number(value) => {
+                    super::number_literal_to_value(data_type, value.as_ref())
+                }
+                Evaluated::Text(value) => super::text_literal_to_value(data_type, value.as_ref()),
+                _ => unreachable!(),
+            }
+        }
 
         macro_rules! num {
             ($num: expr) => {
@@ -485,7 +459,7 @@ mod tests {
 
         macro_rules! test {
             ($to: expr, $from: expr, $expected: expr) => {
-                assert_eq!(super::literal_to_value(&$to, &$from), Ok($expected));
+                assert_eq!(literal_to_value(&$to, &$from), Ok($expected));
             };
         }
 
@@ -520,7 +494,7 @@ mod tests {
         );
         test!(DataType::Bytea, text!("1234"), Value::Bytea(bytea("1234")));
         assert_eq!(
-            super::literal_to_value(&DataType::Bytea, &text!("123")),
+            literal_to_value(&DataType::Bytea, &text!("123")),
             Err(LiteralError::FailedToParseHexString("123".to_owned()).into())
         );
         test!(DataType::Inet, text!("::1"), Value::Inet(inet("::1")));
@@ -540,15 +514,15 @@ mod tests {
             Value::Inet(inet("::2:4cb0:16ea"))
         );
         assert_eq!(
-            super::literal_to_value(&DataType::Inet, &num!("1.5")),
+            literal_to_value(&DataType::Inet, &num!("1.5")),
             Err(LiteralError::FailedToParseInetString("1.5".to_owned()).into())
         );
         assert_eq!(
-            super::literal_to_value(&DataType::Inet, &num!("-1")),
+            literal_to_value(&DataType::Inet, &num!("-1")),
             Err(LiteralError::FailedToParseInetString("-1".to_owned()).into())
         );
         assert_eq!(
-            super::literal_to_value(&DataType::Inet, &text!("123")),
+            literal_to_value(&DataType::Inet, &text!("123")),
             Err(LiteralError::FailedToParseInetString("123".to_owned()).into())
         );
         test!(
@@ -573,7 +547,7 @@ mod tests {
         );
 
         assert_eq!(
-            super::literal_to_value(
+            literal_to_value(
                 &DataType::Map,
                 &text!(
                     r#"{
@@ -590,7 +564,7 @@ mod tests {
             )
         );
         assert_eq!(
-            super::literal_to_value(
+            literal_to_value(
                 &DataType::List,
                 &text!(
                     r#"[

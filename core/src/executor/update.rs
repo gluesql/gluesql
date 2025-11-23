@@ -1,12 +1,11 @@
 use {
     super::{
         context::RowContext,
-        evaluate::{Evaluated, evaluate},
+        evaluate::{Evaluated, evaluate, number_literal_to_value, text_literal_to_value},
     },
     crate::{
         ast::{Assignment, ColumnDef, ColumnUniqueOption, ForeignKey},
         data::{Key, Row, Value},
-        executor::evaluate::literal_to_value,
         result::{Error, Result},
         store::GStore,
     },
@@ -99,8 +98,11 @@ impl<'a, T: GStore> Update<'a, T> {
                                 .ok_or(UpdateError::ConflictOnSchema)?;
 
                             let value = match evaluated {
-                                eval @ (Evaluated::Number(_) | Evaluated::Text(_)) => {
-                                    literal_to_value(data_type, &eval)?
+                                Evaluated::Number(value) => {
+                                    number_literal_to_value(data_type, value.as_ref())?
+                                }
+                                Evaluated::Text(value) => {
+                                    text_literal_to_value(data_type, value.as_ref())?
                                 }
                                 Evaluated::Value(v) => {
                                     v.validate_type(data_type)?;
