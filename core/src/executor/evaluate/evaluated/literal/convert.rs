@@ -1,5 +1,4 @@
 use {
-    super::super::Evaluated,
     super::LiteralError,
     crate::{
         ast::DataType,
@@ -18,9 +17,67 @@ use {
 };
 
 pub(crate) fn number_literal_to_value(data_type: &DataType, value: &BigDecimal) -> Result<Value> {
-    match literal_number_to_value(data_type, value) {
-        Some(output) => output,
-        None => Err(LiteralError::IncompatibleLiteralForDataType {
+    match data_type {
+        DataType::Int8 => value
+            .to_i8()
+            .map(Value::I8)
+            .ok_or_else(|| LiteralError::LiteralCastToInt8Failed(value.to_string()).into()),
+        DataType::Int16 => value.to_i16().map(Value::I16).ok_or_else(|| {
+            LiteralError::LiteralCastToDataTypeFailed(DataType::Int16, value.to_string()).into()
+        }),
+        DataType::Int32 => value.to_i32().map(Value::I32).ok_or_else(|| {
+            LiteralError::LiteralCastToDataTypeFailed(DataType::Int32, value.to_string()).into()
+        }),
+        DataType::Int => value.to_i64().map(Value::I64).ok_or_else(|| {
+            LiteralError::LiteralCastToDataTypeFailed(DataType::Int, value.to_string()).into()
+        }),
+        DataType::Int128 => value.to_i128().map(Value::I128).ok_or_else(|| {
+            LiteralError::LiteralCastToDataTypeFailed(DataType::Int128, value.to_string()).into()
+        }),
+        DataType::Uint8 => value
+            .to_u8()
+            .map(Value::U8)
+            .ok_or_else(|| LiteralError::LiteralCastToUnsignedInt8Failed(value.to_string()).into()),
+        DataType::Uint16 => value
+            .to_u16()
+            .map(Value::U16)
+            .ok_or_else(|| LiteralError::LiteralCastToUint16Failed(value.to_string()).into()),
+        DataType::Uint32 => value
+            .to_u32()
+            .map(Value::U32)
+            .ok_or_else(|| LiteralError::LiteralCastToUint32Failed(value.to_string()).into()),
+        DataType::Uint64 => value
+            .to_u64()
+            .map(Value::U64)
+            .ok_or_else(|| LiteralError::LiteralCastToUint64Failed(value.to_string()).into()),
+        DataType::Uint128 => value
+            .to_u128()
+            .map(Value::U128)
+            .ok_or_else(|| LiteralError::LiteralCastToUint128Failed(value.to_string()).into()),
+        DataType::Float32 => value.to_f32().map(Value::F32).ok_or_else(|| {
+            LiteralError::UnreachableLiteralCastFromNumberToFloat(value.to_string()).into()
+        }),
+        DataType::Float => value.to_f64().map(Value::F64).ok_or_else(|| {
+            LiteralError::UnreachableLiteralCastFromNumberToFloat(value.to_string()).into()
+        }),
+        DataType::Inet => {
+            if let Some(v4) = value.to_u32() {
+                Ok(Value::Inet(IpAddr::V4(Ipv4Addr::from(v4))))
+            } else {
+                value
+                    .to_u128()
+                    .map(|v6| Value::Inet(IpAddr::V6(Ipv6Addr::from(v6))))
+                    .ok_or_else(|| LiteralError::FailedToParseInetString(value.to_string()).into())
+            }
+        }
+        DataType::Decimal => value
+            .to_string()
+            .parse::<Decimal>()
+            .map(Value::Decimal)
+            .map_err(|_| {
+                LiteralError::LiteralCastFromTextToDecimalFailed(value.to_string()).into()
+            }),
+        _ => Err(LiteralError::IncompatibleLiteralForDataType {
             data_type: data_type.clone(),
             literal: value.to_string(),
         }
@@ -28,100 +85,51 @@ pub(crate) fn number_literal_to_value(data_type: &DataType, value: &BigDecimal) 
     }
 }
 
-fn literal_number_to_value(data_type: &DataType, value: &BigDecimal) -> Option<Result<Value>> {
-    match data_type {
-        DataType::Int8 => Some(
-            value
-                .to_i8()
-                .map(Value::I8)
-                .ok_or_else(|| LiteralError::LiteralCastToInt8Failed(value.to_string()).into()),
-        ),
-        DataType::Int16 => Some(value.to_i16().map(Value::I16).ok_or_else(|| {
-            LiteralError::LiteralCastToDataTypeFailed(DataType::Int16, value.to_string()).into()
-        })),
-        DataType::Int32 => Some(value.to_i32().map(Value::I32).ok_or_else(|| {
-            LiteralError::LiteralCastToDataTypeFailed(DataType::Int32, value.to_string()).into()
-        })),
-        DataType::Int => Some(value.to_i64().map(Value::I64).ok_or_else(|| {
-            LiteralError::LiteralCastToDataTypeFailed(DataType::Int, value.to_string()).into()
-        })),
-        DataType::Int128 => Some(value.to_i128().map(Value::I128).ok_or_else(|| {
-            LiteralError::LiteralCastToDataTypeFailed(DataType::Int128, value.to_string()).into()
-        })),
-        DataType::Uint8 => Some(value.to_u8().map(Value::U8).ok_or_else(|| {
-            LiteralError::LiteralCastToUnsignedInt8Failed(value.to_string()).into()
-        })),
-        DataType::Uint16 => Some(
-            value
-                .to_u16()
-                .map(Value::U16)
-                .ok_or_else(|| LiteralError::LiteralCastToUint16Failed(value.to_string()).into()),
-        ),
-        DataType::Uint32 => Some(
-            value
-                .to_u32()
-                .map(Value::U32)
-                .ok_or_else(|| LiteralError::LiteralCastToUint32Failed(value.to_string()).into()),
-        ),
-        DataType::Uint64 => Some(
-            value
-                .to_u64()
-                .map(Value::U64)
-                .ok_or_else(|| LiteralError::LiteralCastToUint64Failed(value.to_string()).into()),
-        ),
-        DataType::Uint128 => Some(
-            value
-                .to_u128()
-                .map(Value::U128)
-                .ok_or_else(|| LiteralError::LiteralCastToUint128Failed(value.to_string()).into()),
-        ),
-        DataType::Float32 => Some(value.to_f32().map(Value::F32).ok_or_else(|| {
-            LiteralError::UnreachableLiteralCastFromNumberToFloat(value.to_string()).into()
-        })),
-        DataType::Float => Some(value.to_f64().map(Value::F64).ok_or_else(|| {
-            LiteralError::UnreachableLiteralCastFromNumberToFloat(value.to_string()).into()
-        })),
-        DataType::Inet => Some(if let Some(v4) = value.to_u32() {
-            Ok(Value::Inet(IpAddr::V4(Ipv4Addr::from(v4))))
-        } else {
-            value
-                .to_u128()
-                .map(|v6| Value::Inet(IpAddr::V6(Ipv6Addr::from(v6))))
-                .ok_or_else(|| LiteralError::FailedToParseInetString(value.to_string()).into())
-        }),
-        DataType::Decimal => Some(
-            value
-                .to_string()
-                .parse::<Decimal>()
-                .map(Value::Decimal)
-                .map_err(|_| {
-                    LiteralError::LiteralCastFromTextToDecimalFailed(value.to_string()).into()
-                }),
-        ),
-        _ => None,
-    }
-}
-
-fn cast_literal_number_to_value(data_type: &DataType, value: &BigDecimal) -> Option<Result<Value>> {
+pub(crate) fn cast_literal_number_to_value(
+    data_type: &DataType,
+    value: &BigDecimal,
+) -> Result<Value> {
     match data_type {
         DataType::Boolean => {
             let literal = value.to_string();
 
-            Some(match value.to_i64() {
+            match value.to_i64() {
                 Some(0) => Ok(Value::Bool(false)),
                 Some(1) => Ok(Value::Bool(true)),
                 _ => Err(LiteralError::LiteralCastToBooleanFailed(literal).into()),
-            })
+            }
         }
-        DataType::Text => Some(Ok(Value::Str(value.to_string()))),
-        _ => literal_number_to_value(data_type, value),
+        DataType::Text => Ok(Value::Str(value.to_string())),
+        _ => number_literal_to_value(data_type, value),
     }
 }
 
 pub(crate) fn text_literal_to_value(data_type: &DataType, value: &str) -> Result<Value> {
-    match literal_text_to_value(data_type, value) {
-        Some(output) => output,
-        None => Err(LiteralError::IncompatibleLiteralForDataType {
+    match data_type {
+        DataType::Text => Ok(Value::Str(value.to_owned())),
+        DataType::Bytea => hex::decode(value)
+            .map(Value::Bytea)
+            .map_err(|_| LiteralError::FailedToParseHexString(value.to_owned()).into()),
+        DataType::Inet => IpAddr::from_str(value)
+            .map(Value::Inet)
+            .map_err(|_| LiteralError::FailedToParseInetString(value.to_owned()).into()),
+        DataType::Interval => Interval::parse(value).map(Value::Interval),
+        DataType::Point => Point::from_wkt(value)
+            .map(Value::Point)
+            .map_err(|_| LiteralError::FailedToParsePoint(value.to_owned()).into()),
+        DataType::Date => parse_date(value)
+            .map(Value::Date)
+            .ok_or_else(|| LiteralError::LiteralCastToDateFailed(value.to_owned()).into()),
+        DataType::Timestamp => parse_timestamp(value)
+            .map(Value::Timestamp)
+            .ok_or_else(|| LiteralError::LiteralCastToTimestampFailed(value.to_owned()).into()),
+        DataType::Time => parse_time(value)
+            .map(Value::Time)
+            .ok_or_else(|| LiteralError::LiteralCastToTimeFailed(value.to_owned()).into()),
+        DataType::Uuid => parse_uuid(value).map(Value::Uuid),
+        DataType::Map => Value::parse_json_map(value),
+        DataType::List => Value::parse_json_list(value),
+        _ => Err(LiteralError::IncompatibleLiteralForDataType {
             data_type: data_type.clone(),
             literal: value.to_owned(),
         }
@@ -129,117 +137,65 @@ pub(crate) fn text_literal_to_value(data_type: &DataType, value: &str) -> Result
     }
 }
 
-fn literal_text_to_value(data_type: &DataType, value: &str) -> Option<Result<Value>> {
+pub(crate) fn cast_literal_text_to_value(data_type: &DataType, value: &str) -> Result<Value> {
     match data_type {
-        DataType::Text => Some(Ok(Value::Str(value.to_owned()))),
-        DataType::Bytea => Some(
-            hex::decode(value)
-                .map(Value::Bytea)
-                .map_err(|_| LiteralError::FailedToParseHexString(value.to_owned()).into()),
-        ),
-        DataType::Inet => Some(
-            IpAddr::from_str(value)
-                .map(Value::Inet)
-                .map_err(|_| LiteralError::FailedToParseInetString(value.to_owned()).into()),
-        ),
-        DataType::Interval => Some(Interval::parse(value).map(Value::Interval)),
-        DataType::Point => Some(
-            Point::from_wkt(value)
-                .map(Value::Point)
-                .map_err(|_| LiteralError::FailedToParsePoint(value.to_owned()).into()),
-        ),
-        DataType::Date => Some(
-            parse_date(value)
-                .map(Value::Date)
-                .ok_or_else(|| LiteralError::LiteralCastToDateFailed(value.to_owned()).into()),
-        ),
-        DataType::Timestamp => Some(
-            parse_timestamp(value)
-                .map(Value::Timestamp)
-                .ok_or_else(|| LiteralError::LiteralCastToTimestampFailed(value.to_owned()).into()),
-        ),
-        DataType::Time => Some(
-            parse_time(value)
-                .map(Value::Time)
-                .ok_or_else(|| LiteralError::LiteralCastToTimeFailed(value.to_owned()).into()),
-        ),
-        DataType::Uuid => Some(parse_uuid(value).map(Value::Uuid)),
-        DataType::Map => Some(Value::parse_json_map(value)),
-        DataType::List => Some(Value::parse_json_list(value)),
-        _ => None,
-    }
-}
-
-fn cast_literal_text_to_value(data_type: &DataType, value: &str) -> Option<Result<Value>> {
-    match data_type {
-        DataType::Boolean => Some(match value.to_uppercase().as_str() {
+        DataType::Boolean => match value.to_uppercase().as_str() {
             "TRUE" | "1" => Ok(Value::Bool(true)),
             "FALSE" | "0" => Ok(Value::Bool(false)),
             _ => Err(LiteralError::LiteralCastToBooleanFailed(value.to_owned()).into()),
-        }),
-        DataType::Int8 => Some(value.parse::<i8>().map(Value::I8).map_err(|_| {
-            LiteralError::LiteralCastFromTextToIntegerFailed(value.to_owned()).into()
-        })),
-        DataType::Int16 => Some(value.parse::<i16>().map(Value::I16).map_err(|_| {
-            LiteralError::LiteralCastFromTextToIntegerFailed(value.to_owned()).into()
-        })),
-        DataType::Int32 => Some(value.parse::<i32>().map(Value::I32).map_err(|_| {
-            LiteralError::LiteralCastFromTextToIntegerFailed(value.to_owned()).into()
-        })),
-        DataType::Int => Some(value.parse::<i64>().map(Value::I64).map_err(|_| {
-            LiteralError::LiteralCastFromTextToIntegerFailed(value.to_owned()).into()
-        })),
-        DataType::Int128 => Some(value.parse::<i128>().map(Value::I128).map_err(|_| {
-            LiteralError::LiteralCastFromTextToIntegerFailed(value.to_owned()).into()
-        })),
-        DataType::Uint8 => Some(value.parse::<u8>().map(Value::U8).map_err(|_| {
+        },
+        DataType::Int8 => value
+            .parse::<i8>()
+            .map(Value::I8)
+            .map_err(|_| LiteralError::LiteralCastFromTextToIntegerFailed(value.to_owned()).into()),
+        DataType::Int16 => value
+            .parse::<i16>()
+            .map(Value::I16)
+            .map_err(|_| LiteralError::LiteralCastFromTextToIntegerFailed(value.to_owned()).into()),
+        DataType::Int32 => value
+            .parse::<i32>()
+            .map(Value::I32)
+            .map_err(|_| LiteralError::LiteralCastFromTextToIntegerFailed(value.to_owned()).into()),
+        DataType::Int => value
+            .parse::<i64>()
+            .map(Value::I64)
+            .map_err(|_| LiteralError::LiteralCastFromTextToIntegerFailed(value.to_owned()).into()),
+        DataType::Int128 => value
+            .parse::<i128>()
+            .map(Value::I128)
+            .map_err(|_| LiteralError::LiteralCastFromTextToIntegerFailed(value.to_owned()).into()),
+        DataType::Uint8 => value.parse::<u8>().map(Value::U8).map_err(|_| {
             LiteralError::LiteralCastFromTextToUnsignedInt8Failed(value.to_owned()).into()
-        })),
-        DataType::Uint16 => {
-            Some(value.parse::<u16>().map(Value::U16).map_err(|_| {
-                LiteralError::LiteralCastFromTextToUint16Failed(value.to_owned()).into()
-            }))
-        }
-        DataType::Uint32 => {
-            Some(value.parse::<u32>().map(Value::U32).map_err(|_| {
-                LiteralError::LiteralCastFromTextToUint32Failed(value.to_owned()).into()
-            }))
-        }
-        DataType::Uint64 => {
-            Some(value.parse::<u64>().map(Value::U64).map_err(|_| {
-                LiteralError::LiteralCastFromTextToUint64Failed(value.to_owned()).into()
-            }))
-        }
-        DataType::Uint128 => Some(value.parse::<u128>().map(Value::U128).map_err(|_| {
-            LiteralError::LiteralCastFromTextToUint128Failed(value.to_owned()).into()
-        })),
-        DataType::Float32 => {
-            Some(value.parse::<f32>().map(Value::F32).map_err(|_| {
-                LiteralError::LiteralCastFromTextToFloatFailed(value.to_owned()).into()
-            }))
-        }
-        DataType::Float => {
-            Some(value.parse::<f64>().map(Value::F64).map_err(|_| {
-                LiteralError::LiteralCastFromTextToFloatFailed(value.to_owned()).into()
-            }))
-        }
-        DataType::Decimal => Some(value.parse::<Decimal>().map(Value::Decimal).map_err(|_| {
-            LiteralError::LiteralCastFromTextToDecimalFailed(value.to_owned()).into()
-        })),
-        _ => literal_text_to_value(data_type, value),
-    }
-}
-
-pub(crate) fn try_cast_literal_to_value(
-    data_type: &DataType,
-    evaluated: &Evaluated<'_>,
-) -> Result<Value> {
-    match evaluated {
-        Evaluated::Number(value) => cast_literal_number_to_value(data_type, value.as_ref())
-            .unwrap_or_else(|| number_literal_to_value(data_type, value.as_ref())),
-        Evaluated::Text(value) => cast_literal_text_to_value(data_type, value.as_ref())
-            .unwrap_or_else(|| text_literal_to_value(data_type, value.as_ref())),
-        other => Err(LiteralError::LiteralRequired(format!("{other:?}")).into()),
+        }),
+        DataType::Uint16 => value
+            .parse::<u16>()
+            .map(Value::U16)
+            .map_err(|_| LiteralError::LiteralCastFromTextToUint16Failed(value.to_owned()).into()),
+        DataType::Uint32 => value
+            .parse::<u32>()
+            .map(Value::U32)
+            .map_err(|_| LiteralError::LiteralCastFromTextToUint32Failed(value.to_owned()).into()),
+        DataType::Uint64 => value
+            .parse::<u64>()
+            .map(Value::U64)
+            .map_err(|_| LiteralError::LiteralCastFromTextToUint64Failed(value.to_owned()).into()),
+        DataType::Uint128 => value
+            .parse::<u128>()
+            .map(Value::U128)
+            .map_err(|_| LiteralError::LiteralCastFromTextToUint128Failed(value.to_owned()).into()),
+        DataType::Float32 => value
+            .parse::<f32>()
+            .map(Value::F32)
+            .map_err(|_| LiteralError::LiteralCastFromTextToFloatFailed(value.to_owned()).into()),
+        DataType::Float => value
+            .parse::<f64>()
+            .map(Value::F64)
+            .map_err(|_| LiteralError::LiteralCastFromTextToFloatFailed(value.to_owned()).into()),
+        DataType::Decimal => value
+            .parse::<Decimal>()
+            .map(Value::Decimal)
+            .map_err(|_| LiteralError::LiteralCastFromTextToDecimalFailed(value.to_owned()).into()),
+        _ => text_literal_to_value(data_type, value),
     }
 }
 
@@ -250,11 +206,7 @@ mod tests {
         bigdecimal::BigDecimal,
         chrono::{NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,
-        std::{
-            borrow::Cow,
-            net::{IpAddr, Ipv4Addr, Ipv6Addr},
-            str::FromStr,
-        },
+        std::{borrow::Cow, net::IpAddr, str::FromStr},
     };
 
     fn date_time(y: i32, m: u32, d: u32, hh: u32, mm: u32, ss: u32, ms: u32) -> NaiveDateTime {
@@ -503,145 +455,5 @@ mod tests {
         test!(num!("1234567890"), Value::I64(1_234_567_890));
         test!(num!("1.0"), Value::F32(1.0_f32));
         test!(num!("1.0"), Value::F64(1.0));
-    }
-
-    #[test]
-    fn try_cast_literal_to_value() {
-        use crate::{ast::DataType, data::Interval as I};
-
-        macro_rules! text {
-            ($text: expr) => {
-                Evaluated::Text(Cow::Owned($text.to_owned()))
-            };
-        }
-
-        macro_rules! num {
-            ($num: expr) => {
-                Evaluated::Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
-            };
-        }
-
-        macro_rules! test {
-            ($to: expr, $from: expr, $expected: expr) => {
-                let actual = super::try_cast_literal_to_value(&$to, &$from);
-
-                assert_eq!(actual, Ok($expected))
-            };
-        }
-
-        let timestamp = |y, m, d, hh, mm, ss, ms| {
-            NaiveDate::from_ymd_opt(y, m, d)
-                .unwrap()
-                .and_hms_milli_opt(hh, mm, ss, ms)
-                .unwrap()
-        };
-
-        test!(DataType::Boolean, text!("false"), Value::Bool(false));
-        test!(DataType::Boolean, text!("true"), Value::Bool(true));
-        test!(DataType::Boolean, num!("0"), Value::Bool(false));
-        test!(DataType::Boolean, num!("1"), Value::Bool(true));
-
-        test!(DataType::Int8, text!("127"), Value::I8(127));
-        test!(DataType::Int8, num!("125"), Value::I8(125));
-
-        test!(DataType::Int16, text!("127"), Value::I16(127));
-        test!(DataType::Int16, num!("125"), Value::I16(125));
-
-        test!(DataType::Int32, text!("127"), Value::I32(127));
-        test!(DataType::Int32, num!("125"), Value::I32(125));
-
-        test!(
-            DataType::Int,
-            text!("1234567890"),
-            Value::I64(1_234_567_890)
-        );
-        test!(DataType::Int, num!("1234567890"), Value::I64(1_234_567_890));
-        test!(DataType::Int128, text!("127"), Value::I128(127));
-        test!(DataType::Int128, num!("125"), Value::I128(125));
-
-        test!(DataType::Uint8, text!("127"), Value::U8(127));
-        test!(DataType::Uint8, num!("125"), Value::U8(125));
-
-        test!(DataType::Uint16, text!("127"), Value::U16(127));
-        test!(DataType::Uint16, num!("125"), Value::U16(125));
-
-        test!(DataType::Uint32, text!("127"), Value::U32(127));
-        test!(DataType::Uint32, num!("125"), Value::U32(125));
-
-        test!(DataType::Uint64, text!("127"), Value::U64(127));
-        test!(DataType::Uint64, num!("125"), Value::U64(125));
-
-        test!(DataType::Uint128, text!("127"), Value::U128(127));
-        test!(DataType::Uint128, num!("125"), Value::U128(125));
-
-        test!(
-            DataType::Float32,
-            text!("12345.67"),
-            Value::F32(12345.67_f32)
-        );
-        test!(
-            DataType::Float32,
-            num!("123456.78"),
-            Value::F32(123_456.78_f32)
-        );
-
-        test!(DataType::Float, text!("12345.6789"), Value::F64(12345.6789));
-        test!(DataType::Float, num!("123456.789"), Value::F64(123_456.789));
-        test!(
-            DataType::Text,
-            num!("1234567890"),
-            Value::Str("1234567890".to_owned())
-        );
-        test!(DataType::Text, text!("Cow"), Value::Str("Cow".to_owned()));
-        test!(
-            DataType::Interval,
-            text!("'+22-10' YEAR TO MONTH"),
-            Value::Interval(I::Month(274))
-        );
-        test!(
-            DataType::Uuid,
-            text!("936DA01F9ABD4d9d80C702AF85C822A8"),
-            Value::Uuid(195_965_723_427_462_096_757_863_453_463_987_888_808)
-        );
-        test!(
-            DataType::Date,
-            text!("2015-09-05"),
-            Value::Date(NaiveDate::from_ymd_opt(2015, 9, 5).unwrap())
-        );
-        test!(
-            DataType::Time,
-            text!("12:00:35"),
-            Value::Time(chrono::NaiveTime::from_hms_milli_opt(12, 0, 35, 0).unwrap())
-        );
-        test!(
-            DataType::Timestamp,
-            text!("2022-12-20 10:00:00.987"),
-            Value::Timestamp(timestamp(2022, 12, 20, 10, 0, 0, 987))
-        );
-        test!(
-            DataType::Inet,
-            num!("1234567890"),
-            Value::Inet(IpAddr::from(Ipv4Addr::from(1_234_567_890)))
-        );
-        test!(
-            DataType::Inet,
-            num!("91234567890"),
-            Value::Inet(IpAddr::from(Ipv6Addr::from(91_234_567_890)))
-        );
-        test!(
-            DataType::Inet,
-            text!("::1"),
-            Value::Inet(IpAddr::from_str("::1").unwrap())
-        );
-        test!(
-            DataType::Map,
-            text!(r#"{ "a": 1 }"#),
-            Value::parse_json_map(r#"{ "a": 1 }"#).unwrap()
-        );
-        test!(
-            DataType::List,
-            text!(r"[ 1, 2, 3 ]"),
-            Value::parse_json_list(r"[ 1, 2, 3 ]").unwrap()
-        );
     }
 }

@@ -1,5 +1,8 @@
 use {
-    self::literal::{number_literal_to_value, text_literal_to_value},
+    self::literal::{
+        cast_literal_number_to_value, cast_literal_text_to_value, number_literal_to_value,
+        text_literal_to_value,
+    },
     super::{error::EvaluateError, function},
     crate::{
         ast::{DataType, TrimWhereField},
@@ -143,9 +146,8 @@ impl<'a> Evaluated<'a> {
 
     pub fn cast(self, data_type: &DataType) -> Result<Evaluated<'a>> {
         match self {
-            eval @ (Evaluated::Number(_) | Evaluated::Text(_)) => {
-                literal::try_cast_literal_to_value(data_type, &eval)
-            }
+            Evaluated::Number(value) => cast_literal_number_to_value(data_type, value.as_ref()),
+            Evaluated::Text(value) => cast_literal_text_to_value(data_type, value.as_ref()),
             Evaluated::Value(value) => value.cast(data_type),
             Evaluated::StrSlice { source, range } => {
                 Value::Str(source[range].to_owned()).cast(data_type)
