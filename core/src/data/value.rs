@@ -31,7 +31,6 @@ mod selector;
 mod uuid;
 
 pub use {
-    convert::ConvertError,
     error::{NumericBinaryOperator, ValueError},
     json::BTreeMapJsonExt,
 };
@@ -1954,7 +1953,7 @@ mod tests {
 
     #[test]
     fn bitwise_shift_left() {
-        use {super::convert::ConvertError, crate::ast::DataType};
+        use {super::error::ValueError, crate::ast::DataType};
 
         use utils::Tribool::True;
         macro_rules! test {
@@ -2086,7 +2085,7 @@ mod tests {
         // cast error test
         assert_eq!(
             I64(1).bitwise_shift_left(&I64(-2)),
-            Err(ConvertError {
+            Err(ValueError::ConvertFailed {
                 value: I64(-2),
                 data_type: DataType::Uint32,
             }
@@ -2117,7 +2116,7 @@ mod tests {
 
     #[test]
     fn bitwise_shift_right() {
-        use {super::convert::ConvertError, crate::ast::DataType};
+        use {super::error::ValueError, crate::ast::DataType};
 
         use utils::Tribool::True;
         macro_rules! test {
@@ -2249,7 +2248,7 @@ mod tests {
         // cast error test
         assert_eq!(
             I64(1).bitwise_shift_right(&I64(-2)),
-            Err(ConvertError {
+            Err(ValueError::ConvertFailed {
                 value: I64(-2),
                 data_type: DataType::Uint32,
             }

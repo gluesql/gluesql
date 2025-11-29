@@ -3,8 +3,7 @@ use {serde::Serialize, std::fmt::Debug, thiserror::Error as ThisError};
 pub use crate::{
     ast_builder::AstBuilderError,
     data::{
-        ConvertError, IntervalError, KeyError, RowError, SchemaParseError, StringExtError,
-        TableError, ValueError,
+        IntervalError, KeyError, RowError, SchemaParseError, StringExtError, TableError, ValueError,
     },
     executor::{
         AlterError, DeleteError, EvaluateError, ExecuteError, FetchError, InsertError,
@@ -62,8 +61,6 @@ pub enum Error {
     Key(#[from] KeyError),
     #[error("value: {0}")]
     Value(Box<ValueError>),
-    #[error("convert: {0}")]
-    Convert(#[from] ConvertError),
     #[error("literal: {0}")]
     Literal(#[from] LiteralError),
     #[error("interval: {0}")]

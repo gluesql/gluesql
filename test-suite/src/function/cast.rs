@@ -2,7 +2,7 @@ use {
     crate::*,
     chrono::{NaiveDate, NaiveTime},
     gluesql_core::{
-        data::{Interval as I, value::ConvertError},
+        data::{Interval as I, ValueError},
         error::LiteralError,
         prelude::{
             DataType, Payload,
@@ -186,7 +186,7 @@ test_case!(cast_literal, {
         ),
         (
             "SELECT CAST(mytext AS Decimal) AS cast FROM test",
-            Err(ConvertError {
+            Err(ValueError::ConvertFailed {
                 value: Str("foobar".to_owned()),
                 data_type: DataType::Decimal,
             }
@@ -222,7 +222,7 @@ test_case!(cast_literal, {
         ),
         (
             "SELECT CAST(mydate AS Decimal) AS cast FROM test",
-            Err(ConvertError {
+            Err(ValueError::ConvertFailed {
                 value: Value::Date(NaiveDate::from_ymd_opt(2001, 9, 11).unwrap()),
                 data_type: DataType::Decimal,
             }
@@ -387,7 +387,7 @@ test_case!(cast_value, {
         ),
         (
             "SELECT CAST(number AS BOOLEAN) FROM Item",
-            Err(ConvertError {
+            Err(ValueError::ConvertFailed {
                 value: Str("1".to_owned()),
                 data_type: DataType::Boolean,
             }

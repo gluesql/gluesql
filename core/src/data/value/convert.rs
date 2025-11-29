@@ -1,30 +1,19 @@
 use {
-    super::{
-        Value,
-        date::{parse_date, parse_time, parse_timestamp},
-    },
+    super::{Value, date::{parse_date, parse_time, parse_timestamp}, error::ValueError},
     crate::{ast::DataType, data::Point},
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     rust_decimal::prelude::{Decimal, FromPrimitive, FromStr, ToPrimitive},
-    serde::Serialize,
     std::net::IpAddr,
     uuid::Uuid,
 };
 
-type Result<T> = std::result::Result<T, ConvertError>;
-
-#[derive(Debug, Serialize, thiserror::Error, PartialEq)]
-#[error("failed to convert value({value:?}) to data type({data_type})")]
-pub struct ConvertError {
-    pub value: Value,
-    pub data_type: DataType,
-}
+type Result<T> = std::result::Result<T, ValueError>;
 
 // implies `TryFrom<Value> for T` from `TryFrom<&Value> for T`
 macro_rules! try_from_owned_value {
     ($($target:ty), *) => {$(
         impl TryFrom<Value> for $target {
-            type Error = ConvertError;
+            type Error = ValueError;
 
             fn try_from(v: Value) -> Result<Self> {
                 Self::try_from(&v)
@@ -81,7 +70,7 @@ impl From<Value> for String {
 }
 
 impl TryFrom<&Value> for bool {
-    type Error = ConvertError;
+    type Error = ValueError;
 
     fn try_from(v: &Value) -> Result<Self> {
         macro_rules! int_to_bool {
@@ -90,7 +79,7 @@ impl TryFrom<&Value> for bool {
                     1 => true,
                     0 => false,
                     _ => {
-                        return Err(ConvertError {
+                        return Err(ValueError::ConvertFailed {
                             value: v.clone(),
                             data_type: DataType::Boolean,
                         })
@@ -117,7 +106,7 @@ impl TryFrom<&Value> for bool {
                 } else if value.eq(&0.0_f32) {
                     false
                 } else {
-                    return Err(ConvertError {
+                    return Err(ValueError::ConvertFailed {
                         value: v.clone(),
                         data_type: DataType::Boolean,
                     });
@@ -129,7 +118,7 @@ impl TryFrom<&Value> for bool {
                 } else if value.eq(&0.0) {
                     false
                 } else {
-                    return Err(ConvertError {
+                    return Err(ValueError::ConvertFailed {
                         value: v.clone(),
                         data_type: DataType::Boolean,
                     });
@@ -139,7 +128,7 @@ impl TryFrom<&Value> for bool {
                 "TRUE" => true,
                 "FALSE" => false,
                 _ => {
-                    return Err(ConvertError {
+                    return Err(ValueError::ConvertFailed {
                         value: v.clone(),
                         data_type: DataType::Boolean,
                     });
@@ -151,7 +140,7 @@ impl TryFrom<&Value> for bool {
                 } else if value == &rust_decimal::Decimal::ZERO {
                     false
                 } else {
-                    return Err(ConvertError {
+                    return Err(ValueError::ConvertFailed {
                         value: v.clone(),
                         data_type: DataType::Boolean,
                     });
@@ -169,7 +158,7 @@ impl TryFrom<&Value> for bool {
             | Value::Point(_)
             | Value::Inet(_)
             | Value::Null => {
-                return Err(ConvertError {
+                return Err(ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Boolean,
                 });
@@ -179,12 +168,12 @@ impl TryFrom<&Value> for bool {
 }
 
 impl TryFrom<&Value> for i8 {
-    type Error = ConvertError;
+    type Error = ValueError;
 
     fn try_from(v: &Value) -> Result<i8> {
         macro_rules! num_to_i8 {
             ($num: ident) => {
-                $num.to_i8().ok_or_else(|| ConvertError {
+                $num.to_i8().ok_or_else(|| ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Int8,
                 })?
@@ -205,11 +194,11 @@ impl TryFrom<&Value> for i8 {
             Value::U128(value) => num_to_i8!(value),
             Value::F32(value) => num_to_i8!(value),
             Value::F64(value) => num_to_i8!(value),
-            Value::Str(value) => value.parse::<i8>().map_err(|_| ConvertError {
+            Value::Str(value) => value.parse::<i8>().map_err(|_| ValueError::ConvertFailed {
                 value: v.clone(),
                 data_type: DataType::Int8,
             })?,
-            Value::Decimal(value) => value.to_i8().ok_or_else(|| ConvertError {
+            Value::Decimal(value) => value.to_i8().ok_or_else(|| ValueError::ConvertFailed {
                 value: v.clone(),
                 data_type: DataType::Int8,
             })?,
@@ -225,7 +214,7 @@ impl TryFrom<&Value> for i8 {
             | Value::Point(_)
             | Value::Inet(_)
             | Value::Null => {
-                return Err(ConvertError {
+                return Err(ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Int8,
                 });
@@ -235,12 +224,12 @@ impl TryFrom<&Value> for i8 {
 }
 
 impl TryFrom<&Value> for i16 {
-    type Error = ConvertError;
+    type Error = ValueError;
 
     fn try_from(v: &Value) -> Result<i16> {
         macro_rules! num_to_i16 {
             ($num: ident) => {
-                $num.to_i16().ok_or_else(|| ConvertError {
+                $num.to_i16().ok_or_else(|| ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Int16,
                 })?
@@ -261,11 +250,11 @@ impl TryFrom<&Value> for i16 {
             Value::U128(value) => num_to_i16!(value),
             Value::F32(value) => num_to_i16!(value),
             Value::F64(value) => num_to_i16!(value),
-            Value::Str(value) => value.parse::<i16>().map_err(|_| ConvertError {
+            Value::Str(value) => value.parse::<i16>().map_err(|_| ValueError::ConvertFailed {
                 value: v.clone(),
                 data_type: DataType::Int16,
             })?,
-            Value::Decimal(value) => value.to_i16().ok_or_else(|| ConvertError {
+            Value::Decimal(value) => value.to_i16().ok_or_else(|| ValueError::ConvertFailed {
                 value: v.clone(),
                 data_type: DataType::Int16,
             })?,
@@ -281,7 +270,7 @@ impl TryFrom<&Value> for i16 {
             | Value::Point(_)
             | Value::Inet(_)
             | Value::Null => {
-                return Err(ConvertError {
+                return Err(ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Int16,
                 });
@@ -291,12 +280,12 @@ impl TryFrom<&Value> for i16 {
 }
 
 impl TryFrom<&Value> for i32 {
-    type Error = ConvertError;
+    type Error = ValueError;
 
     fn try_from(v: &Value) -> Result<i32> {
         macro_rules! num_to_i32 {
             ($num: ident) => {
-                $num.to_i32().ok_or_else(|| ConvertError {
+                $num.to_i32().ok_or_else(|| ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Int32,
                 })?
@@ -317,7 +306,7 @@ impl TryFrom<&Value> for i32 {
             Value::U128(value) => num_to_i32!(value),
             Value::F32(value) => num_to_i32!(value),
             Value::F64(value) => num_to_i32!(value),
-            Value::Str(value) => value.parse::<i32>().map_err(|_| ConvertError {
+            Value::Str(value) => value.parse::<i32>().map_err(|_| ValueError::ConvertFailed {
                 value: v.clone(),
                 data_type: DataType::Int32,
             })?,
@@ -334,7 +323,7 @@ impl TryFrom<&Value> for i32 {
             | Value::Point(_)
             | Value::Inet(_)
             | Value::Null => {
-                return Err(ConvertError {
+                return Err(ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Int32,
                 });
@@ -344,12 +333,12 @@ impl TryFrom<&Value> for i32 {
 }
 
 impl TryFrom<&Value> for i64 {
-    type Error = ConvertError;
+    type Error = ValueError;
 
     fn try_from(v: &Value) -> Result<i64> {
         macro_rules! num_to_i64 {
             ($num: ident) => {
-                $num.to_i64().ok_or_else(|| ConvertError {
+                $num.to_i64().ok_or_else(|| ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Int,
                 })?
@@ -370,7 +359,7 @@ impl TryFrom<&Value> for i64 {
             Value::U128(value) => num_to_i64!(value),
             Value::F32(value) => num_to_i64!(value),
             Value::F64(value) => num_to_i64!(value),
-            Value::Str(value) => value.parse::<i64>().map_err(|_| ConvertError {
+            Value::Str(value) => value.parse::<i64>().map_err(|_| ValueError::ConvertFailed {
                 value: v.clone(),
                 data_type: DataType::Int,
             })?,
@@ -387,7 +376,7 @@ impl TryFrom<&Value> for i64 {
             | Value::Point(_)
             | Value::Inet(_)
             | Value::Null => {
-                return Err(ConvertError {
+                return Err(ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Int,
                 });
@@ -397,12 +386,12 @@ impl TryFrom<&Value> for i64 {
 }
 
 impl TryFrom<&Value> for i128 {
-    type Error = ConvertError;
+    type Error = ValueError;
 
     fn try_from(v: &Value) -> Result<i128> {
         macro_rules! num_to_i128 {
             ($num: ident) => {
-                $num.to_i128().ok_or_else(|| ConvertError {
+                $num.to_i128().ok_or_else(|| ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Int128,
                 })?
@@ -423,7 +412,7 @@ impl TryFrom<&Value> for i128 {
             Value::U128(value) => num_to_i128!(value),
             Value::F32(value) => num_to_i128!(value),
             Value::F64(value) => num_to_i128!(value),
-            Value::Str(value) => value.parse::<i128>().map_err(|_| ConvertError {
+            Value::Str(value) => value.parse::<i128>().map_err(|_| ValueError::ConvertFailed {
                 value: v.clone(),
                 data_type: DataType::Int128,
             })?,
@@ -440,7 +429,7 @@ impl TryFrom<&Value> for i128 {
             | Value::Point(_)
             | Value::Inet(_)
             | Value::Null => {
-                return Err(ConvertError {
+                return Err(ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Int128,
                 });
@@ -450,12 +439,12 @@ impl TryFrom<&Value> for i128 {
 }
 
 impl TryFrom<&Value> for u8 {
-    type Error = ConvertError;
+    type Error = ValueError;
 
     fn try_from(v: &Value) -> Result<u8> {
         macro_rules! num_to_u8 {
             ($num: ident) => {
-                $num.to_u8().ok_or_else(|| ConvertError {
+                $num.to_u8().ok_or_else(|| ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Uint8,
                 })?
@@ -476,7 +465,7 @@ impl TryFrom<&Value> for u8 {
             Value::U128(value) => num_to_u8!(value),
             Value::F32(value) => num_to_u8!(value),
             Value::F64(value) => num_to_u8!(value),
-            Value::Str(value) => value.parse::<u8>().map_err(|_| ConvertError {
+            Value::Str(value) => value.parse::<u8>().map_err(|_| ValueError::ConvertFailed {
                 value: v.clone(),
                 data_type: DataType::Uint8,
             })?,
@@ -493,7 +482,7 @@ impl TryFrom<&Value> for u8 {
             | Value::Point(_)
             | Value::Inet(_)
             | Value::Null => {
-                return Err(ConvertError {
+                return Err(ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Uint8,
                 });
@@ -502,12 +491,12 @@ impl TryFrom<&Value> for u8 {
     }
 }
 impl TryFrom<&Value> for u16 {
-    type Error = ConvertError;
+    type Error = ValueError;
 
     fn try_from(v: &Value) -> Result<u16> {
         macro_rules! num_to_u16 {
             ($num: ident) => {
-                $num.to_u16().ok_or_else(|| ConvertError {
+                $num.to_u16().ok_or_else(|| ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Uint16,
                 })?
@@ -528,7 +517,7 @@ impl TryFrom<&Value> for u16 {
             Value::U128(value) => num_to_u16!(value),
             Value::F32(value) => num_to_u16!(value),
             Value::F64(value) => num_to_u16!(value),
-            Value::Str(value) => value.parse::<u16>().map_err(|_| ConvertError {
+            Value::Str(value) => value.parse::<u16>().map_err(|_| ValueError::ConvertFailed {
                 value: v.clone(),
                 data_type: DataType::Uint16,
             })?,
@@ -545,7 +534,7 @@ impl TryFrom<&Value> for u16 {
             | Value::Point(_)
             | Value::Inet(_)
             | Value::Null => {
-                return Err(ConvertError {
+                return Err(ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Uint16,
                 });
@@ -555,12 +544,12 @@ impl TryFrom<&Value> for u16 {
 }
 
 impl TryFrom<&Value> for u32 {
-    type Error = ConvertError;
+    type Error = ValueError;
 
     fn try_from(v: &Value) -> Result<u32> {
         macro_rules! num_to_u32 {
             ($num: ident) => {
-                $num.to_u32().ok_or_else(|| ConvertError {
+                $num.to_u32().ok_or_else(|| ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Uint32,
                 })?
@@ -581,7 +570,7 @@ impl TryFrom<&Value> for u32 {
             Value::U128(value) => num_to_u32!(value),
             Value::F32(value) => num_to_u32!(value),
             Value::F64(value) => num_to_u32!(value),
-            Value::Str(value) => value.parse::<u32>().map_err(|_| ConvertError {
+            Value::Str(value) => value.parse::<u32>().map_err(|_| ValueError::ConvertFailed {
                 value: v.clone(),
                 data_type: DataType::Uint32,
             })?,
@@ -599,7 +588,7 @@ impl TryFrom<&Value> for u32 {
             | Value::Bytea(_)
             | Value::Point(_)
             | Value::Null => {
-                return Err(ConvertError {
+                return Err(ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Uint32,
                 });
@@ -609,12 +598,12 @@ impl TryFrom<&Value> for u32 {
 }
 
 impl TryFrom<&Value> for u64 {
-    type Error = ConvertError;
+    type Error = ValueError;
 
     fn try_from(v: &Value) -> Result<u64> {
         macro_rules! num_to_u64 {
             ($num: ident) => {
-                $num.to_u64().ok_or_else(|| ConvertError {
+                $num.to_u64().ok_or_else(|| ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Uint64,
                 })?
@@ -635,7 +624,7 @@ impl TryFrom<&Value> for u64 {
             Value::U128(value) => num_to_u64!(value),
             Value::F32(value) => num_to_u64!(value),
             Value::F64(value) => num_to_u64!(value),
-            Value::Str(value) => value.parse::<u64>().map_err(|_| ConvertError {
+            Value::Str(value) => value.parse::<u64>().map_err(|_| ValueError::ConvertFailed {
                 value: v.clone(),
                 data_type: DataType::Uint64,
             })?,
@@ -652,7 +641,7 @@ impl TryFrom<&Value> for u64 {
             | Value::Bytea(_)
             | Value::Point(_)
             | Value::Null => {
-                return Err(ConvertError {
+                return Err(ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Uint64,
                 });
@@ -662,12 +651,12 @@ impl TryFrom<&Value> for u64 {
 }
 
 impl TryFrom<&Value> for u128 {
-    type Error = ConvertError;
+    type Error = ValueError;
 
     fn try_from(v: &Value) -> Result<u128> {
         macro_rules! num_to_u128 {
             ($num: ident) => {
-                $num.to_u128().ok_or_else(|| ConvertError {
+                $num.to_u128().ok_or_else(|| ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Uint128,
                 })?
@@ -688,7 +677,7 @@ impl TryFrom<&Value> for u128 {
             Value::U128(value) | Value::Uuid(value) => *value,
             Value::F32(value) => num_to_u128!(value),
             Value::F64(value) => num_to_u128!(value),
-            Value::Str(value) => value.parse::<u128>().map_err(|_| ConvertError {
+            Value::Str(value) => value.parse::<u128>().map_err(|_| ValueError::ConvertFailed {
                 value: v.clone(),
                 data_type: DataType::Uint128,
             })?,
@@ -704,7 +693,7 @@ impl TryFrom<&Value> for u128 {
             | Value::Bytea(_)
             | Value::Point(_)
             | Value::Null => {
-                return Err(ConvertError {
+                return Err(ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Uint128,
                 });
@@ -714,12 +703,12 @@ impl TryFrom<&Value> for u128 {
 }
 
 impl TryFrom<&Value> for f32 {
-    type Error = ConvertError;
+    type Error = ValueError;
 
     fn try_from(v: &Value) -> Result<f32> {
         macro_rules! num_to_f32 {
             ($num: ident) => {
-                $num.to_f32().ok_or_else(|| ConvertError {
+                $num.to_f32().ok_or_else(|| ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Float32,
                 })?
@@ -746,7 +735,7 @@ impl TryFrom<&Value> for f32 {
             Value::U128(value) => num_to_f32!(value),
             Value::F32(value) => *value,
             Value::F64(value) => num_to_f32!(value),
-            Value::Str(value) => value.parse::<f32>().map_err(|_| ConvertError {
+            Value::Str(value) => value.parse::<f32>().map_err(|_| ValueError::ConvertFailed {
                 value: v.clone(),
                 data_type: DataType::Float32,
             })?,
@@ -763,7 +752,7 @@ impl TryFrom<&Value> for f32 {
             | Value::Point(_)
             | Value::Inet(_)
             | Value::Null => {
-                return Err(ConvertError {
+                return Err(ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Float32,
                 });
@@ -773,12 +762,12 @@ impl TryFrom<&Value> for f32 {
 }
 
 impl TryFrom<&Value> for f64 {
-    type Error = ConvertError;
+    type Error = ValueError;
 
     fn try_from(v: &Value) -> Result<f64> {
         macro_rules! num_to_f64 {
             ($num: ident) => {
-                $num.to_f64().ok_or_else(|| ConvertError {
+                $num.to_f64().ok_or_else(|| ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Float,
                 })?
@@ -805,7 +794,7 @@ impl TryFrom<&Value> for f64 {
             Value::U128(value) => num_to_f64!(value),
             Value::F32(value) => num_to_f64!(value),
             Value::F64(value) => *value,
-            Value::Str(value) => value.parse::<f64>().map_err(|_| ConvertError {
+            Value::Str(value) => value.parse::<f64>().map_err(|_| ValueError::ConvertFailed {
                 value: v.clone(),
                 data_type: DataType::Float,
             })?,
@@ -822,7 +811,7 @@ impl TryFrom<&Value> for f64 {
             | Value::Point(_)
             | Value::Inet(_)
             | Value::Null => {
-                return Err(ConvertError {
+                return Err(ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Float,
                 });
@@ -832,10 +821,10 @@ impl TryFrom<&Value> for f64 {
 }
 
 impl TryFrom<&Value> for usize {
-    type Error = ConvertError;
+    type Error = ValueError;
 
     fn try_from(v: &Value) -> Result<usize> {
-        let err = || ConvertError {
+        let err = || ValueError::ConvertFailed {
             value: v.clone(),
             #[cfg(target_pointer_width = "64")]
             data_type: DataType::Uint64,
@@ -882,12 +871,12 @@ impl TryFrom<&Value> for usize {
 }
 
 impl TryFrom<&Value> for Decimal {
-    type Error = ConvertError;
+    type Error = ValueError;
 
     fn try_from(v: &Value) -> Result<Decimal> {
         macro_rules! num_to_decimal {
             ($num: expr, $method: ident) => {
-                Decimal::$method($num).ok_or_else(|| ConvertError {
+                Decimal::$method($num).ok_or_else(|| ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Decimal,
                 })?
@@ -914,7 +903,7 @@ impl TryFrom<&Value> for Decimal {
             Value::U128(value) => num_to_decimal!(*value, from_u128),
             Value::F32(value) => num_to_decimal!(*value, from_f32),
             Value::F64(value) => num_to_decimal!(*value, from_f64),
-            Value::Str(value) => Decimal::from_str(value).map_err(|_| ConvertError {
+            Value::Str(value) => Decimal::from_str(value).map_err(|_| ValueError::ConvertFailed {
                 value: v.clone(),
                 data_type: DataType::Decimal,
             })?,
@@ -931,7 +920,7 @@ impl TryFrom<&Value> for Decimal {
             | Value::Point(_)
             | Value::Inet(_)
             | Value::Null => {
-                return Err(ConvertError {
+                return Err(ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Decimal,
                 });
@@ -941,19 +930,19 @@ impl TryFrom<&Value> for Decimal {
 }
 
 impl TryFrom<&Value> for NaiveDate {
-    type Error = ConvertError;
+    type Error = ValueError;
 
     fn try_from(v: &Value) -> Result<NaiveDate> {
         Ok(match v {
             Value::Date(value) => *value,
             Value::Timestamp(value) => value.date(),
-            Value::Str(value) => parse_date(value).ok_or_else(|| ConvertError {
+            Value::Str(value) => parse_date(value).ok_or_else(|| ValueError::ConvertFailed {
                 value: v.clone(),
                 data_type: DataType::Date,
             })?,
 
             _ => {
-                return Err(ConvertError {
+                return Err(ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Date,
                 });
@@ -963,18 +952,18 @@ impl TryFrom<&Value> for NaiveDate {
 }
 
 impl TryFrom<&Value> for NaiveTime {
-    type Error = ConvertError;
+    type Error = ValueError;
 
     fn try_from(v: &Value) -> Result<NaiveTime> {
         Ok(match v {
             Value::Time(value) => *value,
-            Value::Str(value) => parse_time(value).ok_or_else(|| ConvertError {
+            Value::Str(value) => parse_time(value).ok_or_else(|| ValueError::ConvertFailed {
                 value: v.clone(),
                 data_type: DataType::Time,
             })?,
 
             _ => {
-                return Err(ConvertError {
+                return Err(ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Time,
                 });
@@ -984,22 +973,22 @@ impl TryFrom<&Value> for NaiveTime {
 }
 
 impl TryFrom<&Value> for NaiveDateTime {
-    type Error = ConvertError;
+    type Error = ValueError;
 
     fn try_from(v: &Value) -> Result<NaiveDateTime> {
         Ok(match v {
-            Value::Date(value) => value.and_hms_opt(0, 0, 0).ok_or_else(|| ConvertError {
+            Value::Date(value) => value.and_hms_opt(0, 0, 0).ok_or_else(|| ValueError::ConvertFailed {
                 value: v.clone(),
                 data_type: DataType::Timestamp,
             })?,
-            Value::Str(value) => parse_timestamp(value).ok_or_else(|| ConvertError {
+            Value::Str(value) => parse_timestamp(value).ok_or_else(|| ValueError::ConvertFailed {
                 value: v.clone(),
                 data_type: DataType::Timestamp,
             })?,
             Value::Timestamp(value) => *value,
 
             _ => {
-                return Err(ConvertError {
+                return Err(ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Timestamp,
                 });
@@ -1009,18 +998,18 @@ impl TryFrom<&Value> for NaiveDateTime {
 }
 
 impl TryFrom<&Value> for IpAddr {
-    type Error = ConvertError;
+    type Error = ValueError;
 
     fn try_from(v: &Value) -> Result<IpAddr> {
         Ok(match v {
             Value::Inet(value) => *value,
-            Value::Str(value) => IpAddr::from_str(value).map_err(|_| ConvertError {
+            Value::Str(value) => IpAddr::from_str(value).map_err(|_| ValueError::ConvertFailed {
                 value: v.clone(),
                 data_type: DataType::Inet,
             })?,
 
             _ => {
-                return Err(ConvertError {
+                return Err(ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Inet,
                 });
@@ -1030,18 +1019,18 @@ impl TryFrom<&Value> for IpAddr {
 }
 
 impl TryFrom<&Value> for Point {
-    type Error = ConvertError;
+    type Error = ValueError;
 
     fn try_from(v: &Value) -> Result<Point> {
         Ok(match v {
             Value::Point(value) => *value,
-            Value::Str(value) => Point::from_wkt(value).map_err(|_| ConvertError {
+            Value::Str(value) => Point::from_wkt(value).map_err(|_| ValueError::ConvertFailed {
                 value: v.clone(),
                 data_type: DataType::Point,
             })?,
 
             _ => {
-                return Err(ConvertError {
+                return Err(ValueError::ConvertFailed {
                     value: v.clone(),
                     data_type: DataType::Point,
                 });
@@ -1053,10 +1042,10 @@ impl TryFrom<&Value> for Point {
 #[cfg(test)]
 mod tests {
     use {
-        super::{ConvertError, Result, Value},
+        super::{Result, Value},
         crate::{
             ast::DataType,
-            data::{Interval as I, Point, point},
+            data::{Interval as I, Point, ValueError, point},
         },
         chrono::{self, NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,
@@ -1145,7 +1134,7 @@ mod tests {
             ($from: expr) => {
                 test!(
                     $from,
-                    Err(ConvertError {
+                    Err(ValueError::ConvertFailed {
                         value: $from.clone(),
                         data_type: DataType::Boolean,
                     })
@@ -1227,7 +1216,7 @@ mod tests {
             ($from: expr) => {
                 test!(
                     $from,
-                    Err(ConvertError {
+                    Err(ValueError::ConvertFailed {
                         value: $from.clone(),
                         data_type: DataType::Int8,
                     })
@@ -1293,7 +1282,7 @@ mod tests {
             ($from: expr) => {
                 test!(
                     $from,
-                    Err(ConvertError {
+                    Err(ValueError::ConvertFailed {
                         value: $from.clone(),
                         data_type: DataType::Int16,
                     })
@@ -1361,7 +1350,7 @@ mod tests {
             ($from: expr) => {
                 test!(
                     $from,
-                    Err(ConvertError {
+                    Err(ValueError::ConvertFailed {
                         value: $from.clone(),
                         data_type: DataType::Int32,
                     })
@@ -1438,7 +1427,7 @@ mod tests {
             ($from: expr) => {
                 test!(
                     $from,
-                    Err(ConvertError {
+                    Err(ValueError::ConvertFailed {
                         value: $from.clone(),
                         data_type: DataType::Int,
                     })
@@ -1512,7 +1501,7 @@ mod tests {
             ($from: expr) => {
                 test!(
                     $from,
-                    Err(ConvertError {
+                    Err(ValueError::ConvertFailed {
                         value: $from.clone(),
                         data_type: DataType::Int128,
                     })
@@ -1583,7 +1572,7 @@ mod tests {
             ($from: expr) => {
                 test!(
                     $from,
-                    Err(ConvertError {
+                    Err(ValueError::ConvertFailed {
                         value: $from.clone(),
                         data_type: DataType::Uint8,
                     })
@@ -1655,7 +1644,7 @@ mod tests {
             ($from: expr) => {
                 test!(
                     $from,
-                    Err(ConvertError {
+                    Err(ValueError::ConvertFailed {
                         value: $from.clone(),
                         data_type: DataType::Uint16,
                     })
@@ -1722,7 +1711,7 @@ mod tests {
             ($from: expr) => {
                 test!(
                     $from,
-                    Err(ConvertError {
+                    Err(ValueError::ConvertFailed {
                         value: $from.clone(),
                         data_type: DataType::Uint32,
                     })
@@ -1792,7 +1781,7 @@ mod tests {
             ($from: expr) => {
                 test!(
                     $from,
-                    Err(ConvertError {
+                    Err(ValueError::ConvertFailed {
                         value: $from.clone(),
                         data_type: DataType::Uint64,
                     })
@@ -1856,7 +1845,7 @@ mod tests {
             ($from: expr) => {
                 test!(
                     $from,
-                    Err(ConvertError {
+                    Err(ValueError::ConvertFailed {
                         value: $from.clone(),
                         data_type: DataType::Uint128,
                     })
@@ -1922,7 +1911,7 @@ mod tests {
             ($from: expr) => {
                 test!(
                     $from,
-                    Err(ConvertError {
+                    Err(ValueError::ConvertFailed {
                         value: $from.clone(),
                         data_type: DataType::Float32,
                     })
@@ -1982,7 +1971,7 @@ mod tests {
             ($from: expr) => {
                 test!(
                     $from,
-                    Err(ConvertError {
+                    Err(ValueError::ConvertFailed {
                         value: $from.clone(),
                         data_type: DataType::Float,
                     })
@@ -2039,7 +2028,7 @@ mod tests {
             };
         }
 
-        let err = |value: Value| ConvertError {
+        let err = |value: Value| ValueError::ConvertFailed {
             value,
             #[cfg(target_pointer_width = "64")]
             data_type: DataType::Uint64,
@@ -2118,7 +2107,7 @@ mod tests {
             ($from: expr) => {
                 test!(
                     $from,
-                    Err(ConvertError {
+                    Err(ValueError::ConvertFailed {
                         value: $from.clone(),
                         data_type: DataType::Decimal,
                     })
@@ -2176,7 +2165,7 @@ mod tests {
             ($from: expr) => {
                 test!(
                     $from,
-                    Err(ConvertError {
+                    Err(ValueError::ConvertFailed {
                         value: $from.clone(),
                         data_type: DataType::Date,
                     })
@@ -2208,7 +2197,7 @@ mod tests {
             ($from: expr) => {
                 test!(
                     $from,
-                    Err(ConvertError {
+                    Err(ValueError::ConvertFailed {
                         value: $from.clone(),
                         data_type: DataType::Time,
                     })
@@ -2236,7 +2225,7 @@ mod tests {
             ($from: expr) => {
                 test!(
                     $from,
-                    Err(ConvertError {
+                    Err(ValueError::ConvertFailed {
                         value: $from.clone(),
                         data_type: DataType::Timestamp,
                     })
@@ -2278,7 +2267,7 @@ mod tests {
             ($from: expr) => {
                 test!(
                     $from,
-                    Err(ConvertError {
+                    Err(ValueError::ConvertFailed {
                         value: $from.clone(),
                         data_type: DataType::Inet,
                     })
@@ -2301,7 +2290,7 @@ mod tests {
             ($from: expr) => {
                 assert_eq!(
                     Point::try_from($from),
-                    Err(ConvertError {
+                    Err(ValueError::ConvertFailed {
                         value: $from.clone(),
                         data_type: DataType::Point,
                     })

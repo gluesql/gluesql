@@ -11,6 +11,9 @@ use {
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum ValueError {
+    #[error("failed to convert value({value:?}) to data type({data_type})")]
+    ConvertFailed { value: Value, data_type: DataType },
+
     #[error("incompatible data type, data type: {data_type:#?}, value: {value:#?}")]
     IncompatibleDataType { data_type: DataType, value: Value },
 
