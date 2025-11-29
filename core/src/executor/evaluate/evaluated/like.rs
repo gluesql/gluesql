@@ -18,8 +18,8 @@ impl<'a> Evaluated<'a> {
                 right @ (Evaluated::Number(_) | Evaluated::Text(_)),
             ) => {
                 return Err(EvaluateError::LikeOnNonStringLiteral {
-                    base: literal_string(left),
-                    pattern: literal_string(&right),
+                    base: left.to_string(),
+                    pattern: right.to_string(),
                     case_sensitive,
                 }
                 .into());
@@ -69,14 +69,6 @@ impl<'a> Evaluated<'a> {
         };
 
         Ok(evaluated)
-    }
-}
-
-fn literal_string(evaluated: &Evaluated<'_>) -> String {
-    match evaluated {
-        Evaluated::Number(value) => value.to_string(),
-        Evaluated::Text(value) => value.to_string(),
-        _ => format!("{evaluated:?}"),
     }
 }
 

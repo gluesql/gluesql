@@ -7,7 +7,13 @@ use {
         result::{Error, Result},
     },
     bigdecimal::BigDecimal,
-    std::{borrow::Cow, collections::BTreeMap, convert::TryFrom, ops::Range},
+    std::{
+        borrow::Cow,
+        collections::BTreeMap,
+        convert::TryFrom,
+        fmt::{Display, Formatter},
+        ops::Range,
+    },
     utils::Tribool,
     uuid::Uuid,
 };
@@ -29,6 +35,19 @@ pub enum Evaluated<'a> {
         range: Range<usize>,
     },
     Value(Value),
+}
+
+/// Formats the evaluated value as a string.
+/// This is primarily intended for error message generation, not for general-purpose display.
+impl Display for Evaluated<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Evaluated::Number(v) => write!(f, "{v}"),
+            Evaluated::Text(v) => write!(f, "{v}"),
+            Evaluated::StrSlice { source, range } => write!(f, "{}", &source[range.clone()]),
+            Evaluated::Value(v) => write!(f, "{}", String::from(v)),
+        }
+    }
 }
 
 impl TryFrom<Evaluated<'_>> for Value {
@@ -609,6 +628,25 @@ mod tests {
             Ok(Value::Str("hello".to_owned())),
         );
         test(Evaluated::Value(Value::Bool(true)), Ok(Value::Bool(true)));
+    }
+
+    #[test]
+    fn display() {
+        let num = |s: &str| Evaluated::Number(Cow::Owned(BigDecimal::from_str(s).unwrap()));
+        let text = |s: &str| Evaluated::Text(Cow::Owned(s.to_owned()));
+        let slice = |s: &'static str| Evaluated::StrSlice {
+            source: Cow::Borrowed(s),
+            range: 0..s.len(),
+        };
+        let val = |v| Evaluated::Value(v);
+
+        assert_eq!(num("42").to_string(), "42");
+        assert_eq!(num("3.14").to_string(), "3.14");
+        assert_eq!(text("hello").to_string(), "hello");
+        assert_eq!(slice("world").to_string(), "world");
+        assert_eq!(val(Value::Bool(true)).to_string(), "TRUE");
+        assert_eq!(val(Value::Null).to_string(), "NULL");
+        assert_eq!(val(Value::Str("foo".to_owned())).to_string(), "foo");
     }
 
     #[test]

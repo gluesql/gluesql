@@ -185,30 +185,21 @@ fn unsupported_literal_binary_op(
     right: &Evaluated<'_>,
 ) -> Error {
     EvaluateError::UnsupportedBinaryOperation {
-        left: literal_string(left),
+        left: left.to_string(),
         op,
-        right: literal_string(right),
+        right: right.to_string(),
     }
     .into()
 }
 
 fn incompatible_bit_operation(left: &Evaluated<'_>, right: &Evaluated<'_>) -> Error {
-    EvaluateError::IncompatibleBitOperation(literal_string(left), literal_string(right)).into()
-}
-
-fn literal_string(value: &Evaluated<'_>) -> String {
-    match value {
-        Evaluated::Number(number) => number.to_string(),
-        Evaluated::Text(text) => text.to_string(),
-        Evaluated::StrSlice { source, range } => source[range.clone()].to_owned(),
-        Evaluated::Value(value) => format!("{value:?}"),
-    }
+    EvaluateError::IncompatibleBitOperation(left.to_string(), right.to_string()).into()
 }
 
 fn literal_error_debug(value: &Evaluated<'_>) -> String {
     match value {
         Evaluated::Text(text) => format!("Literal(Text({:?}))", text.as_ref()),
-        _ => literal_string(value),
+        _ => value.to_string(),
     }
 }
 
