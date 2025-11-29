@@ -186,6 +186,11 @@ mod tests {
             Evaluated::Number(Cow::Owned(BigDecimal::new(9_876_543_210_u128.into(), 0))),
             Some(Ordering::Equal),
         );
+        assert_cmp(
+            Value::Inet(IpAddr::from_str("127.0.0.1").unwrap()),
+            num(-1),
+            None,
+        );
         assert_cmp(Value::Null, num(1), None);
     }
 
@@ -208,5 +213,11 @@ mod tests {
             Some(Ordering::Less),
             literal!(text: "a").evaluate_cmp(&literal!(text: "b"))
         );
+
+        let slice = Evaluated::StrSlice {
+            source: Cow::Owned("hello".to_owned()),
+            range: 0..5,
+        };
+        assert_eq!(None, literal!(num: "42").evaluate_cmp(&slice));
     }
 }

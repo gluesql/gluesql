@@ -145,6 +145,10 @@ mod tests {
 
         assert_eq!(True, literal!(num: "1").evaluate_eq(&literal!(num: "1")));
         assert_eq!(
+            True,
+            literal!(text: "foo").evaluate_eq(&literal!(text: "foo"))
+        );
+        assert_eq!(
             False,
             literal!(num: "1").evaluate_eq(&literal!(text: "foo"))
         );

@@ -572,3 +572,76 @@ impl<'a> Evaluated<'a> {
         Ok(value)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::Evaluated,
+        crate::{ast::DataType, data::Value, executor::EvaluateError},
+        bigdecimal::BigDecimal,
+        std::{borrow::Cow, collections::BTreeMap, str::FromStr},
+    };
+
+    #[test]
+    fn try_from_evaluated_to_value() {
+        let num = |s: &str| Evaluated::Number(Cow::Owned(BigDecimal::from_str(s).unwrap()));
+        let test = |e, result| assert_eq!(Value::try_from(e), result);
+
+        test(num("42"), Ok(Value::I64(42)));
+        test(num("3.14"), Ok(Value::F64(3.14)));
+        test(
+            num("1e400"),
+            Err(EvaluateError::NumberParseFailed {
+                literal: "1e+400".to_owned(),
+                data_type: DataType::Float,
+            }
+            .into()),
+        );
+        test(
+            Evaluated::Text(Cow::Owned("hello".to_owned())),
+            Ok(Value::Str("hello".to_owned())),
+        );
+        test(
+            Evaluated::StrSlice {
+                source: Cow::Owned("hello world".to_owned()),
+                range: 0..5,
+            },
+            Ok(Value::Str("hello".to_owned())),
+        );
+        test(Evaluated::Value(Value::Bool(true)), Ok(Value::Bool(true)));
+    }
+
+    #[test]
+    fn try_from_evaluated_to_btreemap() {
+        let expected = || Ok([("a".to_owned(), Value::I64(1))].into_iter().collect());
+        let test = |e, result| assert_eq!(BTreeMap::try_from(e), result);
+
+        test(
+            Evaluated::Text(Cow::Owned(r#"{"a": 1}"#.to_owned())),
+            expected(),
+        );
+        test(
+            Evaluated::Number(Cow::Owned(BigDecimal::from_str("42").unwrap())),
+            Err(EvaluateError::TextLiteralRequired("42".to_owned()).into()),
+        );
+        test(
+            Evaluated::Value(Value::Str(r#"{"a": 1}"#.to_owned())),
+            expected(),
+        );
+        test(
+            Evaluated::Value(Value::Map(expected().unwrap())),
+            expected(),
+        );
+        test(
+            Evaluated::Value(Value::Bool(true)),
+            Err(EvaluateError::MapOrStringValueRequired("TRUE".to_owned()).into()),
+        );
+        test(
+            Evaluated::StrSlice {
+                source: Cow::Owned(r#"{"a": 1}"#.to_owned()),
+                range: 0..8,
+            },
+            expected(),
+        );
+    }
+}

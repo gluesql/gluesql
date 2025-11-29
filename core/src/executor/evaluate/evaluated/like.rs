@@ -79,3 +79,68 @@ fn literal_string(evaluated: &Evaluated<'_>) -> String {
         _ => format!("{evaluated:?}"),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::Evaluated,
+        crate::{data::Value, executor::EvaluateError},
+        bigdecimal::BigDecimal,
+        std::{borrow::Cow, str::FromStr},
+    };
+
+    #[test]
+    fn like() {
+        let text = |s: &str| Evaluated::Text(Cow::Owned(s.to_owned()));
+        let num = |s: &str| Evaluated::Number(Cow::Owned(BigDecimal::from_str(s).unwrap()));
+        let val_str = |s: &str| Evaluated::Value(Value::Str(s.to_owned()));
+        let slice = |s: &'static str| Evaluated::StrSlice {
+            source: Cow::Owned(s.to_owned()),
+            range: 0..s.len(),
+        };
+        let test = |left: Evaluated, right: Evaluated| {
+            assert_eq!(
+                left.like(right, true),
+                Ok(Evaluated::Value(Value::Bool(true)))
+            )
+        };
+
+        test(text("hello"), text("h%"));
+        test(text("hello"), val_str("%llo"));
+        test(val_str("hello"), text("h%"));
+        test(val_str("hello"), val_str("h%"));
+        test(text("hello"), slice("h%"));
+        test(slice("hello"), text("h%"));
+        test(slice("hello"), slice("h%"));
+        test(slice("hello"), val_str("h%"));
+        test(val_str("hello"), slice("h%"));
+
+        assert_eq!(
+            num("42").like(num("42"), true),
+            Err(EvaluateError::LikeOnNonStringLiteral {
+                base: "42".to_owned(),
+                pattern: "42".to_owned(),
+                case_sensitive: true,
+            }
+            .into())
+        );
+        assert_eq!(
+            num("42").like(text("%"), true),
+            Err(EvaluateError::LikeOnNonStringLiteral {
+                base: "42".to_owned(),
+                pattern: "%".to_owned(),
+                case_sensitive: true,
+            }
+            .into())
+        );
+        assert_eq!(
+            text("hello").like(num("42"), true),
+            Err(EvaluateError::LikeOnNonStringLiteral {
+                base: "hello".to_owned(),
+                pattern: "42".to_owned(),
+                case_sensitive: true,
+            }
+            .into())
+        );
+    }
+}
