@@ -27,9 +27,9 @@ test_case!(types, {
         ),
         (
             "INSERT INTO TableC (uid) VALUES ('A')",
-            Err(LiteralError::IncompatibleLiteralForDataType {
-                data_type: DataType::Int,
+            Err(LiteralError::TextParseFailed {
                 literal: "A".to_owned(),
+                data_type: DataType::Int,
             }
             .into()),
         ),

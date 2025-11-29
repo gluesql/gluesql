@@ -46,11 +46,19 @@ test_case!(cast_literal, {
         ),
         (
             "SELECT CAST('asdf' AS BOOLEAN) AS cast FROM Item",
-            Err(LiteralError::LiteralCastToBooleanFailed("asdf".to_owned()).into()),
+            Err(LiteralError::TextCastFailed {
+                literal: "asdf".to_owned(),
+                data_type: DataType::Boolean,
+            }
+            .into()),
         ),
         (
             "SELECT CAST(3 AS BOOLEAN) AS cast FROM Item",
-            Err(LiteralError::LiteralCastToBooleanFailed("3".to_owned()).into()),
+            Err(LiteralError::NumberCastFailed {
+                literal: "3".to_owned(),
+                data_type: DataType::Boolean,
+            }
+            .into()),
         ),
         (
             "SELECT CAST(NULL AS BOOLEAN) AS cast FROM Item",
@@ -66,11 +74,19 @@ test_case!(cast_literal, {
         ),
         (
             "SELECT CAST('foo' AS INTEGER) AS cast FROM Item",
-            Err(LiteralError::LiteralCastFromTextToIntegerFailed("foo".to_owned()).into()),
+            Err(LiteralError::TextCastFailed {
+                literal: "foo".to_owned(),
+                data_type: DataType::Int,
+            }
+            .into()),
         ),
         (
             "SELECT CAST(1.1 AS INTEGER) AS cast FROM Item",
-            Err(LiteralError::LiteralCastToDataTypeFailed(DataType::Int, "1.1".to_owned()).into()),
+            Err(LiteralError::NumberParseFailed {
+                literal: "1.1".to_owned(),
+                data_type: DataType::Int,
+            }
+            .into()),
         ),
         (
             "SELECT CAST(TRUE AS INTEGER) AS cast FROM Item",
@@ -82,23 +98,43 @@ test_case!(cast_literal, {
         ),
         (
             "SELECT CAST(255 AS INT8) AS cast FROM Item",
-            Err(LiteralError::LiteralCastToInt8Failed("255".to_owned()).into()),
+            Err(LiteralError::NumberParseFailed {
+                literal: "255".to_owned(),
+                data_type: DataType::Int8,
+            }
+            .into()),
         ),
         (
             "SELECT CAST('foo' AS UINT8) AS cast FROM Item",
-            Err(LiteralError::LiteralCastFromTextToUnsignedInt8Failed("foo".to_owned()).into()),
+            Err(LiteralError::TextCastFailed {
+                literal: "foo".to_owned(),
+                data_type: DataType::Uint8,
+            }
+            .into()),
         ),
         (
             "SELECT CAST(-1 AS UINT8) AS cast FROM Item",
-            Err(LiteralError::LiteralCastToUnsignedInt8Failed("-1".to_owned()).into()),
+            Err(LiteralError::NumberParseFailed {
+                literal: "-1".to_owned(),
+                data_type: DataType::Uint8,
+            }
+            .into()),
         ),
         (
             "SELECT CAST('foo' AS UINT16) AS cast FROM Item",
-            Err(LiteralError::LiteralCastFromTextToUint16Failed("foo".to_owned()).into()),
+            Err(LiteralError::TextCastFailed {
+                literal: "foo".to_owned(),
+                data_type: DataType::Uint16,
+            }
+            .into()),
         ),
         (
             "SELECT CAST(-1 AS UINT16) AS cast FROM Item",
-            Err(LiteralError::LiteralCastToUint16Failed("-1".to_owned()).into()),
+            Err(LiteralError::NumberParseFailed {
+                literal: "-1".to_owned(),
+                data_type: DataType::Uint16,
+            }
+            .into()),
         ),
         (
             "SELECT CAST('1.1' AS FLOAT) AS cast FROM Item",
@@ -110,7 +146,11 @@ test_case!(cast_literal, {
         ),
         (
             "SELECT CAST('foo' AS FLOAT) AS cast FROM Item",
-            Err(LiteralError::LiteralCastFromTextToFloatFailed("foo".to_owned()).into()),
+            Err(LiteralError::TextCastFailed {
+                literal: "foo".to_owned(),
+                data_type: DataType::Float,
+            }
+            .into()),
         ),
         (
             "SELECT CAST(TRUE AS FLOAT) AS cast FROM Item",
@@ -146,7 +186,11 @@ test_case!(cast_literal, {
         ),
         (
             "SELECT CAST('foo' AS Decimal) AS cast FROM Item",
-            Err(LiteralError::LiteralCastFromTextToDecimalFailed("foo".to_owned()).into()),
+            Err(LiteralError::TextCastFailed {
+                literal: "foo".to_owned(),
+                data_type: DataType::Decimal,
+            }
+            .into()),
         ),
         (
             "SELECT CAST(NULL AS Decimal) AS cast FROM Item",
@@ -178,7 +222,11 @@ test_case!(cast_literal, {
         ),
         (
             "SELECT CAST('foo' AS Decimal) AS cast FROM Item",
-            Err(LiteralError::LiteralCastFromTextToDecimalFailed("foo".to_owned()).into()),
+            Err(LiteralError::TextCastFailed {
+                literal: "foo".to_owned(),
+                data_type: DataType::Decimal,
+            }
+            .into()),
         ),
         (
             "SELECT CAST(NULL AS Decimal) AS cast FROM Item",
@@ -294,7 +342,11 @@ test_case!(cast_literal, {
         ),
         (
             "SELECT CAST('2021-08-025' AS DATE) FROM Item",
-            Err(LiteralError::LiteralCastToDateFailed("2021-08-025".to_owned()).into()),
+            Err(LiteralError::TextParseFailed {
+                literal: "2021-08-025".to_owned(),
+                data_type: DataType::Date,
+            }
+            .into()),
         ),
         (
             "SELECT CAST('AM 8:05' AS TIME) AS cast FROM Item",
@@ -322,7 +374,11 @@ test_case!(cast_literal, {
         ),
         (
             "SELECT CAST('25:08:05' AS TIME) AS cast FROM Item",
-            Err(LiteralError::LiteralCastToTimeFailed("25:08:05".to_owned()).into()),
+            Err(LiteralError::TextParseFailed {
+                literal: "25:08:05".to_owned(),
+                data_type: DataType::Time,
+            }
+            .into()),
         ),
         (
             "SELECT CAST('2021-08-25 08:05:30' AS TIMESTAMP) AS cast FROM Item",
@@ -338,9 +394,11 @@ test_case!(cast_literal, {
         ),
         (
             "SELECT CAST('2021-13-25 08:05:30' AS TIMESTAMP) AS cast FROM Item",
-            Err(
-                LiteralError::LiteralCastToTimestampFailed("2021-13-25 08:05:30".to_owned()).into(),
-            ),
+            Err(LiteralError::TextParseFailed {
+                literal: "2021-13-25 08:05:30".to_owned(),
+                data_type: DataType::Timestamp,
+            }
+            .into()),
         ),
     ];
 

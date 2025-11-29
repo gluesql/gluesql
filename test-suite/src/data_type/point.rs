@@ -45,9 +45,9 @@ test_case!(point, {
         ),
         (
             r"INSERT INTO POINT VALUES (0)",
-            Err(LiteralError::IncompatibleLiteralForDataType {
-                data_type: DataType::Point,
+            Err(LiteralError::NumberParseFailed {
                 literal: "0".to_owned(),
+                data_type: DataType::Point,
             }
             .into()),
         ),
@@ -71,9 +71,10 @@ test_case!(point, {
         ),
         (
             r"SELECT CAST('POINT(-71.06454t4 42.28787)' AS POINT) AS pt",
-            Err(LiteralError::FailedToParsePoint(
-                Str("POINT(-71.06454t4 42.28787)".to_owned()).into(),
-            )
+            Err(LiteralError::TextParseFailed {
+                literal: "POINT(-71.06454t4 42.28787)".to_owned(),
+                data_type: DataType::Point,
+            }
             .into()),
         ),
     ];

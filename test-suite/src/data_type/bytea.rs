@@ -34,9 +34,9 @@ test_case!(bytea, {
         ),
         (
             "INSERT INTO Bytea VALUES (0)",
-            Err(LiteralError::IncompatibleLiteralForDataType {
-                data_type: DataType::Bytea,
+            Err(LiteralError::NumberParseFailed {
                 literal: "0".to_owned(),
+                data_type: DataType::Bytea,
             }
             .into()),
         ),

@@ -1,6 +1,7 @@
 use {
     super::{Evaluated, convert::LiteralError},
     crate::{
+        ast::DataType,
         data::{BigDecimalExt, Value},
         executor::evaluate::error::EvaluateError,
         result::Result,
@@ -49,7 +50,13 @@ impl<'a> Evaluated<'a> {
             Evaluated::Number(decimal) => decimal
                 .to_i64()
                 .map(Value::I64)
-                .ok_or(LiteralError::FailedToParseNumber.into())
+                .ok_or(
+                    LiteralError::NumberParseFailed {
+                        literal: decimal.to_string(),
+                        data_type: DataType::Int,
+                    }
+                    .into(),
+                )
                 .and_then(|v| v.unary_factorial()),
             Evaluated::Text(text) => {
                 Err(EvaluateError::UnaryFactorialRequiresNumericLiteral(text.to_string()).into())
@@ -70,7 +77,13 @@ impl<'a> Evaluated<'a> {
             Evaluated::Number(decimal) => decimal
                 .to_i64()
                 .map(Value::I64)
-                .ok_or(LiteralError::FailedToParseNumber.into())
+                .ok_or(
+                    LiteralError::NumberParseFailed {
+                        literal: decimal.to_string(),
+                        data_type: DataType::Int,
+                    }
+                    .into(),
+                )
                 .and_then(|v| v.unary_bitwise_not()),
             Evaluated::Text(text) => {
                 Err(EvaluateError::UnaryBitwiseNotRequiresIntegerLiteral(text.to_string()).into())
@@ -92,6 +105,7 @@ mod tests {
     use {
         super::*,
         crate::{
+            ast::DataType,
             data::{Value, ValueError},
             executor::evaluate::error::EvaluateError,
             executor::evaluate::evaluated::convert::LiteralError,
@@ -175,7 +189,11 @@ mod tests {
         );
         assert_eq!(
             Evaluated::Number(Cow::Owned(BigDecimal::from_str("5.5").unwrap())).unary_factorial(),
-            Err(LiteralError::FailedToParseNumber.into())
+            Err(LiteralError::NumberParseFailed {
+                literal: "5.5".to_owned(),
+                data_type: DataType::Int
+            }
+            .into())
         );
         assert_eq!(
             text("abc").unary_factorial(),
@@ -199,7 +217,11 @@ mod tests {
         );
         assert_eq!(
             Evaluated::Number(Cow::Owned(BigDecimal::from_str("5.5").unwrap())).unary_bitwise_not(),
-            Err(LiteralError::FailedToParseNumber.into())
+            Err(LiteralError::NumberParseFailed {
+                literal: "5.5".to_owned(),
+                data_type: DataType::Int
+            }
+            .into())
         );
         assert_eq!(
             text("abc").unary_bitwise_not(),

@@ -23,12 +23,20 @@ test_case!(int16, {
 
     g.test(
         "INSERT INTO Item VALUES (32768, 32768);",
-        Err(LiteralError::LiteralCastToDataTypeFailed(DataType::Int16, "32768".to_owned()).into()),
+        Err(LiteralError::NumberParseFailed {
+            literal: "32768".to_owned(),
+            data_type: DataType::Int16,
+        }
+        .into()),
     )
     .await;
     g.test(
         "INSERT INTO Item VALUES (-32769, -32769);",
-        Err(LiteralError::LiteralCastToDataTypeFailed(DataType::Int16, "-32769".to_owned()).into()),
+        Err(LiteralError::NumberParseFailed {
+            literal: "-32769".to_owned(),
+            data_type: DataType::Int16,
+        }
+        .into()),
     )
     .await;
 

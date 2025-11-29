@@ -33,7 +33,11 @@ test_case!(migrate, {
     let error_cases = [
         (
             "INSERT INTO Test (id, num, name) VALUES (1.1, 1, 'good');",
-            LiteralError::LiteralCastToDataTypeFailed(DataType::Int, "1.1".to_owned()).into(),
+            LiteralError::NumberParseFailed {
+                literal: "1.1".to_owned(),
+                data_type: DataType::Int,
+            }
+            .into(),
         ),
         (
             "INSERT INTO Test (id, num, name) VALUES (1, 1, a.b);",

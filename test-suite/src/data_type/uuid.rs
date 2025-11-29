@@ -42,9 +42,9 @@ test_case!(uuid, {
         ("CREATE TABLE UUID (uuid_field UUID)", Ok(Payload::Create)),
         (
             r"INSERT INTO UUID VALUES (0)",
-            Err(LiteralError::IncompatibleLiteralForDataType {
-                data_type: DataType::Uuid,
+            Err(LiteralError::NumberParseFailed {
                 literal: "0".to_owned(),
+                data_type: DataType::Uuid,
             }
             .into()),
         ),

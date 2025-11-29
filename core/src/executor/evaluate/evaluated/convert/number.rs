@@ -10,50 +10,70 @@ use {
     std::net::{IpAddr, Ipv4Addr, Ipv6Addr},
 };
 
+fn parse_failed(literal: &BigDecimal, data_type: &DataType) -> LiteralError {
+    LiteralError::NumberParseFailed {
+        literal: literal.to_string(),
+        data_type: data_type.clone(),
+    }
+}
+
+fn cast_failed(literal: &BigDecimal, data_type: &DataType) -> LiteralError {
+    LiteralError::NumberCastFailed {
+        literal: literal.to_string(),
+        data_type: data_type.clone(),
+    }
+}
+
 pub(crate) fn number_to_value(data_type: &DataType, value: &BigDecimal) -> Result<Value> {
     match data_type {
         DataType::Int8 => value
             .to_i8()
             .map(Value::I8)
-            .ok_or_else(|| LiteralError::LiteralCastToInt8Failed(value.to_string()).into()),
-        DataType::Int16 => value.to_i16().map(Value::I16).ok_or_else(|| {
-            LiteralError::LiteralCastToDataTypeFailed(DataType::Int16, value.to_string()).into()
-        }),
-        DataType::Int32 => value.to_i32().map(Value::I32).ok_or_else(|| {
-            LiteralError::LiteralCastToDataTypeFailed(DataType::Int32, value.to_string()).into()
-        }),
-        DataType::Int => value.to_i64().map(Value::I64).ok_or_else(|| {
-            LiteralError::LiteralCastToDataTypeFailed(DataType::Int, value.to_string()).into()
-        }),
-        DataType::Int128 => value.to_i128().map(Value::I128).ok_or_else(|| {
-            LiteralError::LiteralCastToDataTypeFailed(DataType::Int128, value.to_string()).into()
-        }),
+            .ok_or_else(|| parse_failed(value, data_type).into()),
+        DataType::Int16 => value
+            .to_i16()
+            .map(Value::I16)
+            .ok_or_else(|| parse_failed(value, data_type).into()),
+        DataType::Int32 => value
+            .to_i32()
+            .map(Value::I32)
+            .ok_or_else(|| parse_failed(value, data_type).into()),
+        DataType::Int => value
+            .to_i64()
+            .map(Value::I64)
+            .ok_or_else(|| parse_failed(value, data_type).into()),
+        DataType::Int128 => value
+            .to_i128()
+            .map(Value::I128)
+            .ok_or_else(|| parse_failed(value, data_type).into()),
         DataType::Uint8 => value
             .to_u8()
             .map(Value::U8)
-            .ok_or_else(|| LiteralError::LiteralCastToUnsignedInt8Failed(value.to_string()).into()),
+            .ok_or_else(|| parse_failed(value, data_type).into()),
         DataType::Uint16 => value
             .to_u16()
             .map(Value::U16)
-            .ok_or_else(|| LiteralError::LiteralCastToUint16Failed(value.to_string()).into()),
+            .ok_or_else(|| parse_failed(value, data_type).into()),
         DataType::Uint32 => value
             .to_u32()
             .map(Value::U32)
-            .ok_or_else(|| LiteralError::LiteralCastToUint32Failed(value.to_string()).into()),
+            .ok_or_else(|| parse_failed(value, data_type).into()),
         DataType::Uint64 => value
             .to_u64()
             .map(Value::U64)
-            .ok_or_else(|| LiteralError::LiteralCastToUint64Failed(value.to_string()).into()),
+            .ok_or_else(|| parse_failed(value, data_type).into()),
         DataType::Uint128 => value
             .to_u128()
             .map(Value::U128)
-            .ok_or_else(|| LiteralError::LiteralCastToUint128Failed(value.to_string()).into()),
-        DataType::Float32 => value.to_f32().map(Value::F32).ok_or_else(|| {
-            LiteralError::UnreachableLiteralCastFromNumberToFloat(value.to_string()).into()
-        }),
-        DataType::Float => value.to_f64().map(Value::F64).ok_or_else(|| {
-            LiteralError::UnreachableLiteralCastFromNumberToFloat(value.to_string()).into()
-        }),
+            .ok_or_else(|| parse_failed(value, data_type).into()),
+        DataType::Float32 => value
+            .to_f32()
+            .map(Value::F32)
+            .ok_or_else(|| parse_failed(value, data_type).into()),
+        DataType::Float => value
+            .to_f64()
+            .map(Value::F64)
+            .ok_or_else(|| parse_failed(value, data_type).into()),
         DataType::Inet => {
             if let Some(v4) = value.to_u32() {
                 Ok(Value::Inet(IpAddr::V4(Ipv4Addr::from(v4))))
@@ -61,35 +81,25 @@ pub(crate) fn number_to_value(data_type: &DataType, value: &BigDecimal) -> Resul
                 value
                     .to_u128()
                     .map(|v6| Value::Inet(IpAddr::V6(Ipv6Addr::from(v6))))
-                    .ok_or_else(|| LiteralError::FailedToParseInetString(value.to_string()).into())
+                    .ok_or_else(|| parse_failed(value, data_type).into())
             }
         }
         DataType::Decimal => value
             .to_string()
             .parse::<Decimal>()
             .map(Value::Decimal)
-            .map_err(|_| {
-                LiteralError::LiteralCastFromTextToDecimalFailed(value.to_string()).into()
-            }),
-        _ => Err(LiteralError::IncompatibleLiteralForDataType {
-            data_type: data_type.clone(),
-            literal: value.to_string(),
-        }
-        .into()),
+            .map_err(|_| parse_failed(value, data_type).into()),
+        _ => Err(parse_failed(value, data_type).into()),
     }
 }
 
 pub(crate) fn cast_number_to_value(data_type: &DataType, value: &BigDecimal) -> Result<Value> {
     match data_type {
-        DataType::Boolean => {
-            let literal = value.to_string();
-
-            match value.to_i64() {
-                Some(0) => Ok(Value::Bool(false)),
-                Some(1) => Ok(Value::Bool(true)),
-                _ => Err(LiteralError::LiteralCastToBooleanFailed(literal).into()),
-            }
-        }
+        DataType::Boolean => match value.to_i64() {
+            Some(0) => Ok(Value::Bool(false)),
+            Some(1) => Ok(Value::Bool(true)),
+            _ => Err(cast_failed(value, data_type).into()),
+        },
         DataType::Text => Ok(Value::Str(value.to_string())),
         _ => number_to_value(data_type, value),
     }
@@ -122,7 +132,11 @@ mod tests {
         );
         assert_eq!(
             number_to_value(&DataType::Int, &dec("1.5")),
-            Err(LiteralError::LiteralCastToDataTypeFailed(DataType::Int, "1.5".to_owned()).into())
+            Err(LiteralError::NumberParseFailed {
+                literal: "1.5".to_owned(),
+                data_type: DataType::Int
+            }
+            .into())
         );
         assert_eq!(
             number_to_value(&DataType::Float32, &dec("1.5")),
@@ -138,7 +152,11 @@ mod tests {
         );
         assert_eq!(
             number_to_value(&DataType::Inet, &dec("-1")),
-            Err(LiteralError::FailedToParseInetString("-1".to_owned()).into())
+            Err(LiteralError::NumberParseFailed {
+                literal: "-1".to_owned(),
+                data_type: DataType::Inet
+            }
+            .into())
         );
     }
 
@@ -154,7 +172,11 @@ mod tests {
         );
         assert_eq!(
             cast_number_to_value(&DataType::Boolean, &dec("2")),
-            Err(LiteralError::LiteralCastToBooleanFailed("2".to_owned()).into())
+            Err(LiteralError::NumberCastFailed {
+                literal: "2".to_owned(),
+                data_type: DataType::Boolean
+            }
+            .into())
         );
         assert_eq!(
             cast_number_to_value(&DataType::Text, &dec("42")),

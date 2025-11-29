@@ -75,25 +75,25 @@ test_case!(values, {
         ),
         (
             "VALUES (1, 'a'), (2, 3)",
-            Err(LiteralError::IncompatibleLiteralForDataType {
-                data_type: DataType::Text,
+            Err(LiteralError::NumberParseFailed {
                 literal: "3".to_owned(),
+                data_type: DataType::Text,
             }
             .into()),
         ),
         (
             "VALUES (1, 'a'), ('b', 'c')",
-            Err(LiteralError::IncompatibleLiteralForDataType {
-                data_type: DataType::Int,
+            Err(LiteralError::TextParseFailed {
                 literal: "b".to_owned(),
+                data_type: DataType::Int,
             }
             .into()),
         ),
         (
             "VALUES (1, NULL), (2, 'a'), (3, 4)",
-            Err(LiteralError::IncompatibleLiteralForDataType {
-                data_type: DataType::Text,
+            Err(LiteralError::NumberParseFailed {
                 literal: "4".to_owned(),
+                data_type: DataType::Text,
             }
             .into()),
         ),

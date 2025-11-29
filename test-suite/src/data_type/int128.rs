@@ -28,20 +28,20 @@ test_case!(int128, {
 
     g.test(
         &format!("INSERT INTO Item VALUES ({invalid_large_str}, {invalid_large_str})"),
-        Err(LiteralError::LiteralCastToDataTypeFailed(
-            DataType::Int128,
-            invalid_large_str.to_owned(),
-        )
+        Err(LiteralError::NumberParseFailed {
+            literal: invalid_large_str.to_owned(),
+            data_type: DataType::Int128,
+        }
         .into()),
     )
     .await;
 
     g.test(
         &format!("INSERT INTO Item VALUES ({invalid_small_str}, {invalid_small_str})"),
-        Err(LiteralError::LiteralCastToDataTypeFailed(
-            DataType::Int128,
-            invalid_small_str.to_owned(),
-        )
+        Err(LiteralError::NumberParseFailed {
+            literal: invalid_small_str.to_owned(),
+            data_type: DataType::Int128,
+        }
         .into()),
     )
     .await;
@@ -49,10 +49,10 @@ test_case!(int128, {
     // cast i128::MAX+1
     g.test(
         &format!("select cast({invalid_large_str} as INT128) from Item"),
-        Err(LiteralError::LiteralCastToDataTypeFailed(
-            DataType::Int128,
-            invalid_large_str.to_owned(),
-        )
+        Err(LiteralError::NumberParseFailed {
+            literal: invalid_large_str.to_owned(),
+            data_type: DataType::Int128,
+        }
         .into()),
     )
     .await;
@@ -60,10 +60,10 @@ test_case!(int128, {
     // cast i128::MIN-1
     g.test(
         &format!("select cast({invalid_small_str} as INT128) from Item"),
-        Err(LiteralError::LiteralCastToDataTypeFailed(
-            DataType::Int128,
-            invalid_small_str.to_owned(),
-        )
+        Err(LiteralError::NumberParseFailed {
+            literal: invalid_small_str.to_owned(),
+            data_type: DataType::Int128,
+        }
         .into()),
     )
     .await;

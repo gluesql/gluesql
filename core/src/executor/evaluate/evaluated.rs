@@ -45,7 +45,13 @@ impl TryFrom<Evaluated<'_>> for Value {
                     .to_i64()
                     .map(Value::I64)
                     .or_else(|| decimal.to_f64().map(Value::F64))
-                    .ok_or_else(|| LiteralError::FailedToParseNumber.into())
+                    .ok_or_else(|| {
+                        LiteralError::NumberParseFailed {
+                            literal: decimal.to_string(),
+                            data_type: DataType::Float,
+                        }
+                        .into()
+                    })
             }
             Evaluated::Text(value) => Ok(Value::Str(value.into_owned())),
             Evaluated::StrSlice {

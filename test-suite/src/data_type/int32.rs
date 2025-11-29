@@ -27,10 +27,10 @@ test_case!(int32, {
             i64::from(i32::MAX) + 1_i64,
             i64 = i64::from(i32::MIN) - 1_i64
         ),
-        Err(LiteralError::LiteralCastToDataTypeFailed(
-            DataType::Int32,
-            (i64::from(i32::MAX) + 1_i64).to_string(),
-        )
+        Err(LiteralError::NumberParseFailed {
+            literal: (i64::from(i32::MAX) + 1_i64).to_string(),
+            data_type: DataType::Int32,
+        }
         .into()),
     )
     .await;
@@ -40,10 +40,10 @@ test_case!(int32, {
             "select cast({} as INT32) from Item",
             i64::from(i32::MAX) + 1_i64
         ),
-        Err(LiteralError::LiteralCastToDataTypeFailed(
-            DataType::Int32,
-            (i64::from(i32::MAX) + 1_i64).to_string(),
-        )
+        Err(LiteralError::NumberParseFailed {
+            literal: (i64::from(i32::MAX) + 1_i64).to_string(),
+            data_type: DataType::Int32,
+        }
         .into()),
     )
     .await;
@@ -53,10 +53,10 @@ test_case!(int32, {
             "select cast({} as INT32) from Item",
             i64::from(i32::MIN) - 1_i64
         ),
-        Err(LiteralError::LiteralCastToDataTypeFailed(
-            DataType::Int32,
-            (i64::from(i32::MIN) - 1_i64).to_string(),
-        )
+        Err(LiteralError::NumberParseFailed {
+            literal: (i64::from(i32::MIN) - 1_i64).to_string(),
+            data_type: DataType::Int32,
+        }
         .into()),
     )
     .await;

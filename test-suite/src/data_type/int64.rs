@@ -30,10 +30,10 @@ test_case!(int64, {
             i128::from(i64::MAX) + 1,
             i128::from(i64::MIN) - 1
         ),
-        Err(LiteralError::LiteralCastToDataTypeFailed(
-            DataType::Int,
-            (i128::from(i64::MAX) + 1).to_string(),
-        )
+        Err(LiteralError::NumberParseFailed {
+            literal: (i128::from(i64::MAX) + 1).to_string(),
+            data_type: DataType::Int,
+        }
         .into()),
     )
     .await;
@@ -41,10 +41,10 @@ test_case!(int64, {
     // cast i64::MAX+1
     g.test(
         &format!("select cast({} as INT) from Item", i128::from(i64::MAX) + 1),
-        Err(LiteralError::LiteralCastToDataTypeFailed(
-            DataType::Int,
-            (i128::from(i64::MAX) + 1).to_string(),
-        )
+        Err(LiteralError::NumberParseFailed {
+            literal: (i128::from(i64::MAX) + 1).to_string(),
+            data_type: DataType::Int,
+        }
         .into()),
     )
     .await;
@@ -52,10 +52,10 @@ test_case!(int64, {
     // cast i64::MIN-1
     g.test(
         &format!("select cast({} as INT) from Item", i128::from(i64::MIN) - 1),
-        Err(LiteralError::LiteralCastToDataTypeFailed(
-            DataType::Int,
-            (i128::from(i64::MIN) - 1).to_string(),
-        )
+        Err(LiteralError::NumberParseFailed {
+            literal: (i128::from(i64::MIN) - 1).to_string(),
+            data_type: DataType::Int,
+        }
         .into()),
     )
     .await;

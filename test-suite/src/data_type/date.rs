@@ -1,6 +1,9 @@
 use {
     crate::*,
-    gluesql_core::{error::LiteralError, prelude::Value::*},
+    gluesql_core::{
+        error::LiteralError,
+        prelude::{DataType, Value::*},
+    },
 };
 
 test_case!(date, {
@@ -124,7 +127,11 @@ INSERT INTO DateLog VALUES
 
     g.test(
         "INSERT INTO DateLog VALUES (1, '12345-678', '2021-05-01')",
-        Err(LiteralError::LiteralCastToDateFailed("12345-678".to_owned()).into()),
+        Err(LiteralError::TextParseFailed {
+            literal: "12345-678".to_owned(),
+            data_type: DataType::Date,
+        }
+        .into()),
     )
     .await;
 });

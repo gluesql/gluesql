@@ -12,36 +12,46 @@ use {
     std::{net::IpAddr, str::FromStr},
 };
 
+fn parse_failed(literal: &str, data_type: &DataType) -> LiteralError {
+    LiteralError::TextParseFailed {
+        literal: literal.to_owned(),
+        data_type: data_type.clone(),
+    }
+}
+
+fn cast_failed(literal: &str, data_type: &DataType) -> LiteralError {
+    LiteralError::TextCastFailed {
+        literal: literal.to_owned(),
+        data_type: data_type.clone(),
+    }
+}
+
 pub(crate) fn text_to_value(data_type: &DataType, value: &str) -> Result<Value> {
     match data_type {
         DataType::Text => Ok(Value::Str(value.to_owned())),
         DataType::Bytea => hex::decode(value)
             .map(Value::Bytea)
-            .map_err(|_| LiteralError::FailedToParseHexString(value.to_owned()).into()),
+            .map_err(|_| parse_failed(value, data_type).into()),
         DataType::Inet => IpAddr::from_str(value)
             .map(Value::Inet)
-            .map_err(|_| LiteralError::FailedToParseInetString(value.to_owned()).into()),
+            .map_err(|_| parse_failed(value, data_type).into()),
         DataType::Interval => Interval::parse(value).map(Value::Interval),
         DataType::Point => Point::from_wkt(value)
             .map(Value::Point)
-            .map_err(|_| LiteralError::FailedToParsePoint(value.to_owned()).into()),
+            .map_err(|_| parse_failed(value, data_type).into()),
         DataType::Date => parse_date(value)
             .map(Value::Date)
-            .ok_or_else(|| LiteralError::LiteralCastToDateFailed(value.to_owned()).into()),
+            .ok_or_else(|| parse_failed(value, data_type).into()),
         DataType::Timestamp => parse_timestamp(value)
             .map(Value::Timestamp)
-            .ok_or_else(|| LiteralError::LiteralCastToTimestampFailed(value.to_owned()).into()),
+            .ok_or_else(|| parse_failed(value, data_type).into()),
         DataType::Time => parse_time(value)
             .map(Value::Time)
-            .ok_or_else(|| LiteralError::LiteralCastToTimeFailed(value.to_owned()).into()),
+            .ok_or_else(|| parse_failed(value, data_type).into()),
         DataType::Uuid => parse_uuid(value).map(Value::Uuid),
         DataType::Map => Value::parse_json_map(value),
         DataType::List => Value::parse_json_list(value),
-        _ => Err(LiteralError::IncompatibleLiteralForDataType {
-            data_type: data_type.clone(),
-            literal: value.to_owned(),
-        }
-        .into()),
+        _ => Err(parse_failed(value, data_type).into()),
     }
 }
 
@@ -50,59 +60,60 @@ pub(crate) fn cast_text_to_value(data_type: &DataType, value: &str) -> Result<Va
         DataType::Boolean => match value.to_uppercase().as_str() {
             "TRUE" | "1" => Ok(Value::Bool(true)),
             "FALSE" | "0" => Ok(Value::Bool(false)),
-            _ => Err(LiteralError::LiteralCastToBooleanFailed(value.to_owned()).into()),
+            _ => Err(cast_failed(value, data_type).into()),
         },
         DataType::Int8 => value
             .parse::<i8>()
             .map(Value::I8)
-            .map_err(|_| LiteralError::LiteralCastFromTextToIntegerFailed(value.to_owned()).into()),
+            .map_err(|_| cast_failed(value, data_type).into()),
         DataType::Int16 => value
             .parse::<i16>()
             .map(Value::I16)
-            .map_err(|_| LiteralError::LiteralCastFromTextToIntegerFailed(value.to_owned()).into()),
+            .map_err(|_| cast_failed(value, data_type).into()),
         DataType::Int32 => value
             .parse::<i32>()
             .map(Value::I32)
-            .map_err(|_| LiteralError::LiteralCastFromTextToIntegerFailed(value.to_owned()).into()),
+            .map_err(|_| cast_failed(value, data_type).into()),
         DataType::Int => value
             .parse::<i64>()
             .map(Value::I64)
-            .map_err(|_| LiteralError::LiteralCastFromTextToIntegerFailed(value.to_owned()).into()),
+            .map_err(|_| cast_failed(value, data_type).into()),
         DataType::Int128 => value
             .parse::<i128>()
             .map(Value::I128)
-            .map_err(|_| LiteralError::LiteralCastFromTextToIntegerFailed(value.to_owned()).into()),
-        DataType::Uint8 => value.parse::<u8>().map(Value::U8).map_err(|_| {
-            LiteralError::LiteralCastFromTextToUnsignedInt8Failed(value.to_owned()).into()
-        }),
+            .map_err(|_| cast_failed(value, data_type).into()),
+        DataType::Uint8 => value
+            .parse::<u8>()
+            .map(Value::U8)
+            .map_err(|_| cast_failed(value, data_type).into()),
         DataType::Uint16 => value
             .parse::<u16>()
             .map(Value::U16)
-            .map_err(|_| LiteralError::LiteralCastFromTextToUint16Failed(value.to_owned()).into()),
+            .map_err(|_| cast_failed(value, data_type).into()),
         DataType::Uint32 => value
             .parse::<u32>()
             .map(Value::U32)
-            .map_err(|_| LiteralError::LiteralCastFromTextToUint32Failed(value.to_owned()).into()),
+            .map_err(|_| cast_failed(value, data_type).into()),
         DataType::Uint64 => value
             .parse::<u64>()
             .map(Value::U64)
-            .map_err(|_| LiteralError::LiteralCastFromTextToUint64Failed(value.to_owned()).into()),
+            .map_err(|_| cast_failed(value, data_type).into()),
         DataType::Uint128 => value
             .parse::<u128>()
             .map(Value::U128)
-            .map_err(|_| LiteralError::LiteralCastFromTextToUint128Failed(value.to_owned()).into()),
+            .map_err(|_| cast_failed(value, data_type).into()),
         DataType::Float32 => value
             .parse::<f32>()
             .map(Value::F32)
-            .map_err(|_| LiteralError::LiteralCastFromTextToFloatFailed(value.to_owned()).into()),
+            .map_err(|_| cast_failed(value, data_type).into()),
         DataType::Float => value
             .parse::<f64>()
             .map(Value::F64)
-            .map_err(|_| LiteralError::LiteralCastFromTextToFloatFailed(value.to_owned()).into()),
+            .map_err(|_| cast_failed(value, data_type).into()),
         DataType::Decimal => value
             .parse::<Decimal>()
             .map(Value::Decimal)
-            .map_err(|_| LiteralError::LiteralCastFromTextToDecimalFailed(value.to_owned()).into()),
+            .map_err(|_| cast_failed(value, data_type).into()),
         _ => text_to_value(data_type, value),
     }
 }
@@ -191,7 +202,11 @@ mod tests {
         );
         assert_eq!(
             text_to_value(&DataType::Bytea, "123"),
-            Err(LiteralError::FailedToParseHexString("123".to_owned()).into())
+            Err(LiteralError::TextParseFailed {
+                literal: "123".to_owned(),
+                data_type: DataType::Bytea
+            }
+            .into())
         );
         assert_eq!(
             text_to_value(&DataType::Inet, "127.0.0.1"),
@@ -199,7 +214,11 @@ mod tests {
         );
         assert_eq!(
             text_to_value(&DataType::Inet, "not-an-ip"),
-            Err(LiteralError::FailedToParseInetString("not-an-ip".to_owned()).into())
+            Err(LiteralError::TextParseFailed {
+                literal: "not-an-ip".to_owned(),
+                data_type: DataType::Inet
+            }
+            .into())
         );
         assert_eq!(
             text_to_value(&DataType::Date, "2015-09-05"),
@@ -231,9 +250,9 @@ mod tests {
         );
         assert_eq!(
             text_to_value(&DataType::Int, "123"),
-            Err(LiteralError::IncompatibleLiteralForDataType {
-                data_type: DataType::Int,
-                literal: "123".to_owned()
+            Err(LiteralError::TextParseFailed {
+                literal: "123".to_owned(),
+                data_type: DataType::Int
             }
             .into())
         );
@@ -251,7 +270,11 @@ mod tests {
         );
         assert_eq!(
             cast_text_to_value(&DataType::Boolean, "maybe"),
-            Err(LiteralError::LiteralCastToBooleanFailed("maybe".to_owned()).into())
+            Err(LiteralError::TextCastFailed {
+                literal: "maybe".to_owned(),
+                data_type: DataType::Boolean
+            }
+            .into())
         );
         assert_eq!(
             cast_text_to_value(&DataType::Int16, "127"),
@@ -259,7 +282,11 @@ mod tests {
         );
         assert_eq!(
             cast_text_to_value(&DataType::Int16, "abc"),
-            Err(LiteralError::LiteralCastFromTextToIntegerFailed("abc".to_owned()).into())
+            Err(LiteralError::TextCastFailed {
+                literal: "abc".to_owned(),
+                data_type: DataType::Int16
+            }
+            .into())
         );
         assert_eq!(
             cast_text_to_value(&DataType::Uint8, "255"),
@@ -267,7 +294,11 @@ mod tests {
         );
         assert_eq!(
             cast_text_to_value(&DataType::Uint8, "-1"),
-            Err(LiteralError::LiteralCastFromTextToUnsignedInt8Failed("-1".to_owned()).into())
+            Err(LiteralError::TextCastFailed {
+                literal: "-1".to_owned(),
+                data_type: DataType::Uint8
+            }
+            .into())
         );
         assert_eq!(
             cast_text_to_value(&DataType::Float32, "1.5"),
@@ -283,7 +314,11 @@ mod tests {
         );
         assert_eq!(
             cast_text_to_value(&DataType::Decimal, "oops"),
-            Err(LiteralError::LiteralCastFromTextToDecimalFailed("oops".to_owned()).into())
+            Err(LiteralError::TextCastFailed {
+                literal: "oops".to_owned(),
+                data_type: DataType::Decimal
+            }
+            .into())
         );
         assert_eq!(
             cast_text_to_value(&DataType::Text, "hello"),

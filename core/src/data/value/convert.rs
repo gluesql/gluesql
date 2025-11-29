@@ -1,5 +1,9 @@
 use {
-    super::{Value, date::{parse_date, parse_time, parse_timestamp}, error::ValueError},
+    super::{
+        Value,
+        date::{parse_date, parse_time, parse_timestamp},
+        error::ValueError,
+    },
     crate::{ast::DataType, data::Point},
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     rust_decimal::prelude::{Decimal, FromPrimitive, FromStr, ToPrimitive},
@@ -250,10 +254,12 @@ impl TryFrom<&Value> for i16 {
             Value::U128(value) => num_to_i16!(value),
             Value::F32(value) => num_to_i16!(value),
             Value::F64(value) => num_to_i16!(value),
-            Value::Str(value) => value.parse::<i16>().map_err(|_| ValueError::ConvertFailed {
-                value: v.clone(),
-                data_type: DataType::Int16,
-            })?,
+            Value::Str(value) => value
+                .parse::<i16>()
+                .map_err(|_| ValueError::ConvertFailed {
+                    value: v.clone(),
+                    data_type: DataType::Int16,
+                })?,
             Value::Decimal(value) => value.to_i16().ok_or_else(|| ValueError::ConvertFailed {
                 value: v.clone(),
                 data_type: DataType::Int16,
@@ -306,10 +312,12 @@ impl TryFrom<&Value> for i32 {
             Value::U128(value) => num_to_i32!(value),
             Value::F32(value) => num_to_i32!(value),
             Value::F64(value) => num_to_i32!(value),
-            Value::Str(value) => value.parse::<i32>().map_err(|_| ValueError::ConvertFailed {
-                value: v.clone(),
-                data_type: DataType::Int32,
-            })?,
+            Value::Str(value) => value
+                .parse::<i32>()
+                .map_err(|_| ValueError::ConvertFailed {
+                    value: v.clone(),
+                    data_type: DataType::Int32,
+                })?,
             Value::Decimal(value) => num_to_i32!(value),
 
             Value::Date(_)
@@ -359,10 +367,12 @@ impl TryFrom<&Value> for i64 {
             Value::U128(value) => num_to_i64!(value),
             Value::F32(value) => num_to_i64!(value),
             Value::F64(value) => num_to_i64!(value),
-            Value::Str(value) => value.parse::<i64>().map_err(|_| ValueError::ConvertFailed {
-                value: v.clone(),
-                data_type: DataType::Int,
-            })?,
+            Value::Str(value) => value
+                .parse::<i64>()
+                .map_err(|_| ValueError::ConvertFailed {
+                    value: v.clone(),
+                    data_type: DataType::Int,
+                })?,
             Value::Decimal(value) => num_to_i64!(value),
 
             Value::Date(_)
@@ -412,10 +422,12 @@ impl TryFrom<&Value> for i128 {
             Value::U128(value) => num_to_i128!(value),
             Value::F32(value) => num_to_i128!(value),
             Value::F64(value) => num_to_i128!(value),
-            Value::Str(value) => value.parse::<i128>().map_err(|_| ValueError::ConvertFailed {
-                value: v.clone(),
-                data_type: DataType::Int128,
-            })?,
+            Value::Str(value) => value
+                .parse::<i128>()
+                .map_err(|_| ValueError::ConvertFailed {
+                    value: v.clone(),
+                    data_type: DataType::Int128,
+                })?,
             Value::Decimal(value) => num_to_i128!(value),
 
             Value::Date(_)
@@ -517,10 +529,12 @@ impl TryFrom<&Value> for u16 {
             Value::U128(value) => num_to_u16!(value),
             Value::F32(value) => num_to_u16!(value),
             Value::F64(value) => num_to_u16!(value),
-            Value::Str(value) => value.parse::<u16>().map_err(|_| ValueError::ConvertFailed {
-                value: v.clone(),
-                data_type: DataType::Uint16,
-            })?,
+            Value::Str(value) => value
+                .parse::<u16>()
+                .map_err(|_| ValueError::ConvertFailed {
+                    value: v.clone(),
+                    data_type: DataType::Uint16,
+                })?,
             Value::Decimal(value) => num_to_u16!(value),
 
             Value::Date(_)
@@ -570,10 +584,12 @@ impl TryFrom<&Value> for u32 {
             Value::U128(value) => num_to_u32!(value),
             Value::F32(value) => num_to_u32!(value),
             Value::F64(value) => num_to_u32!(value),
-            Value::Str(value) => value.parse::<u32>().map_err(|_| ValueError::ConvertFailed {
-                value: v.clone(),
-                data_type: DataType::Uint32,
-            })?,
+            Value::Str(value) => value
+                .parse::<u32>()
+                .map_err(|_| ValueError::ConvertFailed {
+                    value: v.clone(),
+                    data_type: DataType::Uint32,
+                })?,
             Value::Decimal(value) => num_to_u32!(value),
             Value::Inet(IpAddr::V4(value)) => u32::from(*value),
 
@@ -624,10 +640,12 @@ impl TryFrom<&Value> for u64 {
             Value::U128(value) => num_to_u64!(value),
             Value::F32(value) => num_to_u64!(value),
             Value::F64(value) => num_to_u64!(value),
-            Value::Str(value) => value.parse::<u64>().map_err(|_| ValueError::ConvertFailed {
-                value: v.clone(),
-                data_type: DataType::Uint64,
-            })?,
+            Value::Str(value) => value
+                .parse::<u64>()
+                .map_err(|_| ValueError::ConvertFailed {
+                    value: v.clone(),
+                    data_type: DataType::Uint64,
+                })?,
             Value::Decimal(value) => num_to_u64!(value),
 
             Value::Date(_)
@@ -677,10 +695,12 @@ impl TryFrom<&Value> for u128 {
             Value::U128(value) | Value::Uuid(value) => *value,
             Value::F32(value) => num_to_u128!(value),
             Value::F64(value) => num_to_u128!(value),
-            Value::Str(value) => value.parse::<u128>().map_err(|_| ValueError::ConvertFailed {
-                value: v.clone(),
-                data_type: DataType::Uint128,
-            })?,
+            Value::Str(value) => value
+                .parse::<u128>()
+                .map_err(|_| ValueError::ConvertFailed {
+                    value: v.clone(),
+                    data_type: DataType::Uint128,
+                })?,
             Value::Decimal(value) => num_to_u128!(value),
             Value::Inet(IpAddr::V6(v)) => u128::from(*v),
             Value::Date(_)
@@ -735,10 +755,12 @@ impl TryFrom<&Value> for f32 {
             Value::U128(value) => num_to_f32!(value),
             Value::F32(value) => *value,
             Value::F64(value) => num_to_f32!(value),
-            Value::Str(value) => value.parse::<f32>().map_err(|_| ValueError::ConvertFailed {
-                value: v.clone(),
-                data_type: DataType::Float32,
-            })?,
+            Value::Str(value) => value
+                .parse::<f32>()
+                .map_err(|_| ValueError::ConvertFailed {
+                    value: v.clone(),
+                    data_type: DataType::Float32,
+                })?,
             Value::Decimal(value) => num_to_f32!(value),
 
             Value::Date(_)
@@ -794,10 +816,12 @@ impl TryFrom<&Value> for f64 {
             Value::U128(value) => num_to_f64!(value),
             Value::F32(value) => num_to_f64!(value),
             Value::F64(value) => *value,
-            Value::Str(value) => value.parse::<f64>().map_err(|_| ValueError::ConvertFailed {
-                value: v.clone(),
-                data_type: DataType::Float,
-            })?,
+            Value::Str(value) => value
+                .parse::<f64>()
+                .map_err(|_| ValueError::ConvertFailed {
+                    value: v.clone(),
+                    data_type: DataType::Float,
+                })?,
             Value::Decimal(value) => num_to_f64!(value),
 
             Value::Date(_)
@@ -903,10 +927,12 @@ impl TryFrom<&Value> for Decimal {
             Value::U128(value) => num_to_decimal!(*value, from_u128),
             Value::F32(value) => num_to_decimal!(*value, from_f32),
             Value::F64(value) => num_to_decimal!(*value, from_f64),
-            Value::Str(value) => Decimal::from_str(value).map_err(|_| ValueError::ConvertFailed {
-                value: v.clone(),
-                data_type: DataType::Decimal,
-            })?,
+            Value::Str(value) => {
+                Decimal::from_str(value).map_err(|_| ValueError::ConvertFailed {
+                    value: v.clone(),
+                    data_type: DataType::Decimal,
+                })?
+            }
             Value::Decimal(value) => *value,
 
             Value::Date(_)
@@ -977,14 +1003,20 @@ impl TryFrom<&Value> for NaiveDateTime {
 
     fn try_from(v: &Value) -> Result<NaiveDateTime> {
         Ok(match v {
-            Value::Date(value) => value.and_hms_opt(0, 0, 0).ok_or_else(|| ValueError::ConvertFailed {
-                value: v.clone(),
-                data_type: DataType::Timestamp,
-            })?,
-            Value::Str(value) => parse_timestamp(value).ok_or_else(|| ValueError::ConvertFailed {
-                value: v.clone(),
-                data_type: DataType::Timestamp,
-            })?,
+            Value::Date(value) => {
+                value
+                    .and_hms_opt(0, 0, 0)
+                    .ok_or_else(|| ValueError::ConvertFailed {
+                        value: v.clone(),
+                        data_type: DataType::Timestamp,
+                    })?
+            }
+            Value::Str(value) => {
+                parse_timestamp(value).ok_or_else(|| ValueError::ConvertFailed {
+                    value: v.clone(),
+                    data_type: DataType::Timestamp,
+                })?
+            }
             Value::Timestamp(value) => *value,
 
             _ => {
@@ -1003,10 +1035,12 @@ impl TryFrom<&Value> for IpAddr {
     fn try_from(v: &Value) -> Result<IpAddr> {
         Ok(match v {
             Value::Inet(value) => *value,
-            Value::Str(value) => IpAddr::from_str(value).map_err(|_| ValueError::ConvertFailed {
-                value: v.clone(),
-                data_type: DataType::Inet,
-            })?,
+            Value::Str(value) => {
+                IpAddr::from_str(value).map_err(|_| ValueError::ConvertFailed {
+                    value: v.clone(),
+                    data_type: DataType::Inet,
+                })?
+            }
 
             _ => {
                 return Err(ValueError::ConvertFailed {

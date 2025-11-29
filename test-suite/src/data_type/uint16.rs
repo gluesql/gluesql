@@ -1,6 +1,9 @@
 use {
     crate::*,
-    gluesql_core::{error::LiteralError, prelude::Value::*},
+    gluesql_core::{
+        error::LiteralError,
+        prelude::{DataType, Value::*},
+    },
 };
 
 test_case!(uint16, {
@@ -18,13 +21,21 @@ test_case!(uint16, {
 
     g.test(
         "INSERT INTO Item VALUES (327689,327689);",
-        Err(LiteralError::LiteralCastToUint16Failed("327689".to_owned()).into()),
+        Err(LiteralError::NumberParseFailed {
+            literal: "327689".to_owned(),
+            data_type: DataType::Uint16,
+        }
+        .into()),
     )
     .await;
 
     g.test(
         "INSERT INTO Item VALUES (-32769, -32769);",
-        Err(LiteralError::LiteralCastToUint16Failed("-32769".to_owned()).into()),
+        Err(LiteralError::NumberParseFailed {
+            literal: "-32769".to_owned(),
+            data_type: DataType::Uint16,
+        }
+        .into()),
     )
     .await;
     g.test(
