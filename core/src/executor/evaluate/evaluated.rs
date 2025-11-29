@@ -42,7 +42,7 @@ impl TryFrom<Evaluated<'_>> for Value {
                 decimal
                     .to_i64()
                     .map(Value::I64)
-                    .or_else(|| decimal.to_f64().map(Value::F64))
+                    .or_else(|| decimal.to_f64().filter(|f| f.is_finite()).map(Value::F64))
                     .ok_or_else(|| {
                         EvaluateError::NumberParseFailed {
                             literal: decimal.to_string(),
