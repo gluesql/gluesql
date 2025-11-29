@@ -1,5 +1,5 @@
 use {
-    super::{Evaluated, literal::LiteralError},
+    super::{Evaluated, convert::LiteralError},
     crate::{
         data::{BigDecimalExt, Value},
         executor::evaluate::error::EvaluateError,
@@ -94,7 +94,7 @@ mod tests {
         crate::{
             data::{Value, ValueError},
             executor::evaluate::error::EvaluateError,
-            executor::evaluate::evaluated::literal::LiteralError,
+            executor::evaluate::evaluated::convert::LiteralError,
         },
         bigdecimal::BigDecimal,
         std::{borrow::Cow, str::FromStr},

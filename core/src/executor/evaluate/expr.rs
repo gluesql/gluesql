@@ -3,7 +3,7 @@ use {
     crate::{
         ast::{AstLiteral, BinaryOperator, DataType, UnaryOperator},
         data::Value,
-        executor::evaluate::evaluated::literal::text_literal_to_value,
+        executor::evaluate::evaluated::convert::text_to_value,
         result::Result,
     },
     std::{borrow::Cow, cmp::Ordering},
@@ -25,7 +25,7 @@ pub fn literal(ast_literal: &AstLiteral) -> Result<Evaluated<'_>> {
 }
 
 pub fn typed_string<'a>(data_type: &'a DataType, value: &'a str) -> Result<Evaluated<'a>> {
-    text_literal_to_value(data_type, value).map(Evaluated::Value)
+    text_to_value(data_type, value).map(Evaluated::Value)
 }
 
 pub fn binary_op<'a>(

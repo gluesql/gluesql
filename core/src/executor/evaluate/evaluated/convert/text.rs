@@ -12,7 +12,7 @@ use {
     std::{net::IpAddr, str::FromStr},
 };
 
-pub(crate) fn text_literal_to_value(data_type: &DataType, value: &str) -> Result<Value> {
+pub(crate) fn text_to_value(data_type: &DataType, value: &str) -> Result<Value> {
     match data_type {
         DataType::Text => Ok(Value::Str(value.to_owned())),
         DataType::Bytea => hex::decode(value)
@@ -45,7 +45,7 @@ pub(crate) fn text_literal_to_value(data_type: &DataType, value: &str) -> Result
     }
 }
 
-pub(crate) fn cast_literal_text_to_value(data_type: &DataType, value: &str) -> Result<Value> {
+pub(crate) fn cast_text_to_value(data_type: &DataType, value: &str) -> Result<Value> {
     match data_type {
         DataType::Boolean => match value.to_uppercase().as_str() {
             "TRUE" | "1" => Ok(Value::Bool(true)),
@@ -103,14 +103,14 @@ pub(crate) fn cast_literal_text_to_value(data_type: &DataType, value: &str) -> R
             .parse::<Decimal>()
             .map(Value::Decimal)
             .map_err(|_| LiteralError::LiteralCastFromTextToDecimalFailed(value.to_owned()).into()),
-        _ => text_literal_to_value(data_type, value),
+        _ => text_to_value(data_type, value),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use {
-        super::{cast_literal_text_to_value, parse_time, parse_timestamp, text_literal_to_value},
+        super::{cast_text_to_value, parse_time, parse_timestamp, text_to_value},
         crate::{ast::DataType, data::Value, error::LiteralError},
         chrono::{NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,
@@ -180,57 +180,57 @@ mod tests {
     }
 
     #[test]
-    fn literal_text_to_value_variants() {
+    fn test_text_to_value() {
         assert_eq!(
-            text_literal_to_value(&DataType::Text, "hello"),
+            text_to_value(&DataType::Text, "hello"),
             Ok(Value::Str("hello".to_owned()))
         );
         assert_eq!(
-            text_literal_to_value(&DataType::Bytea, "1234"),
+            text_to_value(&DataType::Bytea, "1234"),
             Ok(Value::Bytea(hex::decode("1234").unwrap()))
         );
         assert_eq!(
-            text_literal_to_value(&DataType::Bytea, "123"),
+            text_to_value(&DataType::Bytea, "123"),
             Err(LiteralError::FailedToParseHexString("123".to_owned()).into())
         );
         assert_eq!(
-            text_literal_to_value(&DataType::Inet, "127.0.0.1"),
+            text_to_value(&DataType::Inet, "127.0.0.1"),
             Ok(Value::Inet(IpAddr::from_str("127.0.0.1").unwrap()))
         );
         assert_eq!(
-            text_literal_to_value(&DataType::Inet, "not-an-ip"),
+            text_to_value(&DataType::Inet, "not-an-ip"),
             Err(LiteralError::FailedToParseInetString("not-an-ip".to_owned()).into())
         );
         assert_eq!(
-            text_literal_to_value(&DataType::Date, "2015-09-05"),
+            text_to_value(&DataType::Date, "2015-09-05"),
             Ok(Value::Date(NaiveDate::from_ymd_opt(2015, 9, 5).unwrap()))
         );
         assert_eq!(
-            text_literal_to_value(&DataType::Time, "07:12:23"),
+            text_to_value(&DataType::Time, "07:12:23"),
             Ok(Value::Time(
                 NaiveTime::from_hms_milli_opt(7, 12, 23, 0).unwrap()
             ))
         );
         assert_eq!(
-            text_literal_to_value(&DataType::Timestamp, "2022-12-20 10:00:00.987"),
+            text_to_value(&DataType::Timestamp, "2022-12-20 10:00:00.987"),
             Ok(Value::Timestamp(date_time(2022, 12, 20, 10, 0, 0, 987)))
         );
         assert_eq!(
-            text_literal_to_value(&DataType::Uuid, "936DA01F9ABD4d9d80C702AF85C822A8"),
+            text_to_value(&DataType::Uuid, "936DA01F9ABD4d9d80C702AF85C822A8"),
             Ok(Value::Uuid(
                 195_965_723_427_462_096_757_863_453_463_987_888_808
             ))
         );
         assert_eq!(
-            text_literal_to_value(&DataType::Map, r#"{ "a": 1 }"#),
+            text_to_value(&DataType::Map, r#"{ "a": 1 }"#),
             Value::parse_json_map(r#"{ "a": 1 }"#)
         );
         assert_eq!(
-            text_literal_to_value(&DataType::List, r"[ 1, 2, 3 ]"),
+            text_to_value(&DataType::List, r"[ 1, 2, 3 ]"),
             Value::parse_json_list(r"[ 1, 2, 3 ]")
         );
         assert_eq!(
-            text_literal_to_value(&DataType::Int, "123"),
+            text_to_value(&DataType::Int, "123"),
             Err(LiteralError::IncompatibleLiteralForDataType {
                 data_type: DataType::Int,
                 literal: "123".to_owned()
@@ -240,53 +240,53 @@ mod tests {
     }
 
     #[test]
-    fn cast_literal_text_to_value_variants() {
+    fn test_cast_text_to_value() {
         assert_eq!(
-            cast_literal_text_to_value(&DataType::Boolean, "true"),
+            cast_text_to_value(&DataType::Boolean, "true"),
             Ok(Value::Bool(true))
         );
         assert_eq!(
-            cast_literal_text_to_value(&DataType::Boolean, "0"),
+            cast_text_to_value(&DataType::Boolean, "0"),
             Ok(Value::Bool(false))
         );
         assert_eq!(
-            cast_literal_text_to_value(&DataType::Boolean, "maybe"),
+            cast_text_to_value(&DataType::Boolean, "maybe"),
             Err(LiteralError::LiteralCastToBooleanFailed("maybe".to_owned()).into())
         );
         assert_eq!(
-            cast_literal_text_to_value(&DataType::Int16, "127"),
+            cast_text_to_value(&DataType::Int16, "127"),
             Ok(Value::I16(127))
         );
         assert_eq!(
-            cast_literal_text_to_value(&DataType::Int16, "abc"),
+            cast_text_to_value(&DataType::Int16, "abc"),
             Err(LiteralError::LiteralCastFromTextToIntegerFailed("abc".to_owned()).into())
         );
         assert_eq!(
-            cast_literal_text_to_value(&DataType::Uint8, "255"),
+            cast_text_to_value(&DataType::Uint8, "255"),
             Ok(Value::U8(255))
         );
         assert_eq!(
-            cast_literal_text_to_value(&DataType::Uint8, "-1"),
+            cast_text_to_value(&DataType::Uint8, "-1"),
             Err(LiteralError::LiteralCastFromTextToUnsignedInt8Failed("-1".to_owned()).into())
         );
         assert_eq!(
-            cast_literal_text_to_value(&DataType::Float32, "1.5"),
+            cast_text_to_value(&DataType::Float32, "1.5"),
             Ok(Value::F32(1.5))
         );
-        match cast_literal_text_to_value(&DataType::Float32, "nan") {
+        match cast_text_to_value(&DataType::Float32, "nan") {
             Ok(Value::F32(v)) if v.is_nan() => {}
             other => panic!("expected NaN, got {other:?}"),
         }
         assert_eq!(
-            cast_literal_text_to_value(&DataType::Decimal, "200"),
+            cast_text_to_value(&DataType::Decimal, "200"),
             Ok(Value::Decimal(Decimal::new(200, 0)))
         );
         assert_eq!(
-            cast_literal_text_to_value(&DataType::Decimal, "oops"),
+            cast_text_to_value(&DataType::Decimal, "oops"),
             Err(LiteralError::LiteralCastFromTextToDecimalFailed("oops".to_owned()).into())
         );
         assert_eq!(
-            cast_literal_text_to_value(&DataType::Text, "hello"),
+            cast_text_to_value(&DataType::Text, "hello"),
             Ok(Value::Str("hello".to_owned()))
         );
     }

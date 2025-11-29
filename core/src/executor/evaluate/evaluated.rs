@@ -1,8 +1,5 @@
 use {
-    self::literal::{
-        cast_literal_number_to_value, cast_literal_text_to_value, number_literal_to_value,
-        text_literal_to_value,
-    },
+    self::convert::{cast_number_to_value, cast_text_to_value, number_to_value, text_to_value},
     super::{error::EvaluateError, function},
     crate::{
         ast::{DataType, TrimWhereField},
@@ -18,12 +15,12 @@ use {
 mod binary_op;
 mod cmp;
 mod concat;
+pub(super) mod convert;
 mod eq;
 mod like;
-pub(super) mod literal;
 mod unary_op;
 
-pub use literal::LiteralError;
+pub use convert::LiteralError;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Evaluated<'a> {
@@ -146,8 +143,8 @@ impl<'a> Evaluated<'a> {
 
     pub fn cast(self, data_type: &DataType) -> Result<Evaluated<'a>> {
         match self {
-            Evaluated::Number(value) => cast_literal_number_to_value(data_type, value.as_ref()),
-            Evaluated::Text(value) => cast_literal_text_to_value(data_type, value.as_ref()),
+            Evaluated::Number(value) => cast_number_to_value(data_type, value.as_ref()),
+            Evaluated::Text(value) => cast_text_to_value(data_type, value.as_ref()),
             Evaluated::Value(value) => value.cast(data_type),
             Evaluated::StrSlice { source, range } => {
                 Value::Str(source[range].to_owned()).cast(data_type)
@@ -551,8 +548,8 @@ impl<'a> Evaluated<'a> {
 
     pub fn try_into_value(self, data_type: &DataType, nullable: bool) -> Result<Value> {
         let value = match self {
-            Evaluated::Number(value) => number_literal_to_value(data_type, value.as_ref())?,
-            Evaluated::Text(value) => text_literal_to_value(data_type, value.as_ref())?,
+            Evaluated::Number(value) => number_to_value(data_type, value.as_ref())?,
+            Evaluated::Text(value) => text_to_value(data_type, value.as_ref())?,
             Evaluated::Value(Value::Bytea(bytes)) if data_type == &DataType::Uuid => {
                 Uuid::from_slice(&bytes)
                     .map_err(|_| ValueError::FailedToParseUUID(hex::encode(bytes)))

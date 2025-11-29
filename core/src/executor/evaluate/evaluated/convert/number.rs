@@ -10,7 +10,7 @@ use {
     std::net::{IpAddr, Ipv4Addr, Ipv6Addr},
 };
 
-pub(crate) fn number_literal_to_value(data_type: &DataType, value: &BigDecimal) -> Result<Value> {
+pub(crate) fn number_to_value(data_type: &DataType, value: &BigDecimal) -> Result<Value> {
     match data_type {
         DataType::Int8 => value
             .to_i8()
@@ -79,10 +79,7 @@ pub(crate) fn number_literal_to_value(data_type: &DataType, value: &BigDecimal) 
     }
 }
 
-pub(crate) fn cast_literal_number_to_value(
-    data_type: &DataType,
-    value: &BigDecimal,
-) -> Result<Value> {
+pub(crate) fn cast_number_to_value(data_type: &DataType, value: &BigDecimal) -> Result<Value> {
     match data_type {
         DataType::Boolean => {
             let literal = value.to_string();
@@ -94,13 +91,13 @@ pub(crate) fn cast_literal_number_to_value(
             }
         }
         DataType::Text => Ok(Value::Str(value.to_string())),
-        _ => number_literal_to_value(data_type, value),
+        _ => number_to_value(data_type, value),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{cast_literal_number_to_value, number_literal_to_value};
+    use super::{cast_number_to_value, number_to_value};
     use crate::{ast::DataType, data::Value, error::LiteralError};
     use bigdecimal::BigDecimal;
     use rust_decimal::Decimal;
@@ -114,57 +111,57 @@ mod tests {
     }
 
     #[test]
-    fn literal_number_to_value() {
+    fn test_number_to_value() {
         assert_eq!(
-            number_literal_to_value(&DataType::Int, &dec("123")),
+            number_to_value(&DataType::Int, &dec("123")),
             Ok(Value::I64(123))
         );
         assert_eq!(
-            number_literal_to_value(&DataType::Int8, &dec("64")),
+            number_to_value(&DataType::Int8, &dec("64")),
             Ok(Value::I8(64))
         );
         assert_eq!(
-            number_literal_to_value(&DataType::Int, &dec("1.5")),
+            number_to_value(&DataType::Int, &dec("1.5")),
             Err(LiteralError::LiteralCastToDataTypeFailed(DataType::Int, "1.5".to_owned()).into())
         );
         assert_eq!(
-            number_literal_to_value(&DataType::Float32, &dec("1.5")),
+            number_to_value(&DataType::Float32, &dec("1.5")),
             Ok(Value::F32(1.5))
         );
         assert_eq!(
-            number_literal_to_value(&DataType::Decimal, &dec("200")),
+            number_to_value(&DataType::Decimal, &dec("200")),
             Ok(Value::Decimal(Decimal::new(200, 0)))
         );
         assert_eq!(
-            number_literal_to_value(&DataType::Inet, &dec("4294967295")),
+            number_to_value(&DataType::Inet, &dec("4294967295")),
             Ok(Value::Inet(IpAddr::V4(Ipv4Addr::BROADCAST)))
         );
         assert_eq!(
-            number_literal_to_value(&DataType::Inet, &dec("-1")),
+            number_to_value(&DataType::Inet, &dec("-1")),
             Err(LiteralError::FailedToParseInetString("-1".to_owned()).into())
         );
     }
 
     #[test]
-    fn cast_literal_number_to_value_cases() {
+    fn test_cast_number_to_value() {
         assert_eq!(
-            cast_literal_number_to_value(&DataType::Boolean, &dec("0")),
+            cast_number_to_value(&DataType::Boolean, &dec("0")),
             Ok(Value::Bool(false))
         );
         assert_eq!(
-            cast_literal_number_to_value(&DataType::Boolean, &dec("1")),
+            cast_number_to_value(&DataType::Boolean, &dec("1")),
             Ok(Value::Bool(true))
         );
         assert_eq!(
-            cast_literal_number_to_value(&DataType::Boolean, &dec("2")),
+            cast_number_to_value(&DataType::Boolean, &dec("2")),
             Err(LiteralError::LiteralCastToBooleanFailed("2".to_owned()).into())
         );
         assert_eq!(
-            cast_literal_number_to_value(&DataType::Text, &dec("42")),
+            cast_number_to_value(&DataType::Text, &dec("42")),
             Ok(Value::Str("42".to_owned()))
         );
         assert_eq!(
-            cast_literal_number_to_value(&DataType::Int8, &dec("64")),
+            cast_number_to_value(&DataType::Int8, &dec("64")),
             Ok(Value::I8(64))
         );
     }
