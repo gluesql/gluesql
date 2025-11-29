@@ -90,22 +90,22 @@ mod tests {
             source: Cow::Owned(s.to_owned()),
             range: 0..s.len(),
         };
-        let test = |left: Evaluated, right: Evaluated| {
+        let like_ok = |left: Evaluated, right: Evaluated| {
             assert_eq!(
                 left.like(right, true),
                 Ok(Evaluated::Value(Value::Bool(true)))
-            )
+            );
         };
 
-        test(text("hello"), text("h%"));
-        test(text("hello"), val_str("%llo"));
-        test(val_str("hello"), text("h%"));
-        test(val_str("hello"), val_str("h%"));
-        test(text("hello"), slice("h%"));
-        test(slice("hello"), text("h%"));
-        test(slice("hello"), slice("h%"));
-        test(slice("hello"), val_str("h%"));
-        test(val_str("hello"), slice("h%"));
+        like_ok(text("hello"), text("h%"));
+        like_ok(text("hello"), val_str("%llo"));
+        like_ok(val_str("hello"), text("h%"));
+        like_ok(val_str("hello"), val_str("h%"));
+        like_ok(text("hello"), slice("h%"));
+        like_ok(slice("hello"), text("h%"));
+        like_ok(slice("hello"), slice("h%"));
+        like_ok(slice("hello"), val_str("h%"));
+        like_ok(val_str("hello"), slice("h%"));
 
         assert_eq!(
             num("42").like(num("42"), true),

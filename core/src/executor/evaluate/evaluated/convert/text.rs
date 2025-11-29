@@ -313,7 +313,7 @@ mod tests {
         // Int32
         assert_eq!(
             cast_text_to_value(&DataType::Int32, "2147483647"),
-            Ok(Value::I32(2147483647))
+            Ok(Value::I32(2_147_483_647))
         );
         assert_eq!(
             cast_text_to_value(&DataType::Int32, "abc"),
@@ -323,7 +323,7 @@ mod tests {
         // Int (i64)
         assert_eq!(
             cast_text_to_value(&DataType::Int, "9223372036854775807"),
-            Ok(Value::I64(9223372036854775807))
+            Ok(Value::I64(9_223_372_036_854_775_807))
         );
         assert_eq!(
             cast_text_to_value(&DataType::Int, "abc"),
@@ -333,7 +333,9 @@ mod tests {
         // Int128
         assert_eq!(
             cast_text_to_value(&DataType::Int128, "170141183460469231731687303715884105727"),
-            Ok(Value::I128(170141183460469231731687303715884105727))
+            Ok(Value::I128(
+                170_141_183_460_469_231_731_687_303_715_884_105_727
+            ))
         );
         assert_eq!(
             cast_text_to_value(&DataType::Int128, "abc"),
@@ -363,7 +365,7 @@ mod tests {
         // Uint32
         assert_eq!(
             cast_text_to_value(&DataType::Uint32, "4294967295"),
-            Ok(Value::U32(4294967295))
+            Ok(Value::U32(4_294_967_295))
         );
         assert_eq!(
             cast_text_to_value(&DataType::Uint32, "-1"),
@@ -373,7 +375,7 @@ mod tests {
         // Uint64
         assert_eq!(
             cast_text_to_value(&DataType::Uint64, "18446744073709551615"),
-            Ok(Value::U64(18446744073709551615))
+            Ok(Value::U64(18_446_744_073_709_551_615))
         );
         assert_eq!(
             cast_text_to_value(&DataType::Uint64, "-1"),
@@ -386,7 +388,9 @@ mod tests {
                 &DataType::Uint128,
                 "340282366920938463463374607431768211455"
             ),
-            Ok(Value::U128(340282366920938463463374607431768211455))
+            Ok(Value::U128(
+                340_282_366_920_938_463_463_374_607_431_768_211_455
+            ))
         );
         assert_eq!(
             cast_text_to_value(&DataType::Uint128, "-1"),
@@ -405,8 +409,8 @@ mod tests {
 
         // Float (f64)
         assert_eq!(
-            cast_text_to_value(&DataType::Float, "3.14159265358979"),
-            Ok(Value::F64(3.14159265358979))
+            cast_text_to_value(&DataType::Float, "2.5"),
+            Ok(Value::F64(2.5))
         );
         assert_eq!(
             cast_text_to_value(&DataType::Float, "abc"),

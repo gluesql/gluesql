@@ -607,7 +607,7 @@ mod tests {
         let test = |e, result| assert_eq!(Value::try_from(e), result);
 
         test(num("42"), Ok(Value::I64(42)));
-        test(num("3.14"), Ok(Value::F64(3.14)));
+        test(num("2.5"), Ok(Value::F64(2.5)));
         test(
             num("1e400"),
             Err(EvaluateError::NumberParseFailed {
