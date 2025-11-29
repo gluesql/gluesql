@@ -260,9 +260,26 @@ mod tests {
 
     #[test]
     fn test_cast_text_to_value() {
+        let cast_err = |literal: &str, data_type: DataType| {
+            Err(EvaluateError::TextCastFailed {
+                literal: literal.to_owned(),
+                data_type,
+            }
+            .into())
+        };
+
+        // Boolean
         assert_eq!(
-            cast_text_to_value(&DataType::Boolean, "true"),
+            cast_text_to_value(&DataType::Boolean, "TRUE"),
             Ok(Value::Bool(true))
+        );
+        assert_eq!(
+            cast_text_to_value(&DataType::Boolean, "1"),
+            Ok(Value::Bool(true))
+        );
+        assert_eq!(
+            cast_text_to_value(&DataType::Boolean, "FALSE"),
+            Ok(Value::Bool(false))
         );
         assert_eq!(
             cast_text_to_value(&DataType::Boolean, "0"),
@@ -270,56 +287,143 @@ mod tests {
         );
         assert_eq!(
             cast_text_to_value(&DataType::Boolean, "maybe"),
-            Err(EvaluateError::TextCastFailed {
-                literal: "maybe".to_owned(),
-                data_type: DataType::Boolean
-            }
-            .into())
+            cast_err("maybe", DataType::Boolean)
+        );
+
+        // Int8
+        assert_eq!(
+            cast_text_to_value(&DataType::Int8, "127"),
+            Ok(Value::I8(127))
         );
         assert_eq!(
-            cast_text_to_value(&DataType::Int16, "127"),
-            Ok(Value::I16(127))
+            cast_text_to_value(&DataType::Int8, "abc"),
+            cast_err("abc", DataType::Int8)
+        );
+
+        // Int16
+        assert_eq!(
+            cast_text_to_value(&DataType::Int16, "32767"),
+            Ok(Value::I16(32767))
         );
         assert_eq!(
             cast_text_to_value(&DataType::Int16, "abc"),
-            Err(EvaluateError::TextCastFailed {
-                literal: "abc".to_owned(),
-                data_type: DataType::Int16
-            }
-            .into())
+            cast_err("abc", DataType::Int16)
         );
+
+        // Int32
+        assert_eq!(
+            cast_text_to_value(&DataType::Int32, "2147483647"),
+            Ok(Value::I32(2147483647))
+        );
+        assert_eq!(
+            cast_text_to_value(&DataType::Int32, "abc"),
+            cast_err("abc", DataType::Int32)
+        );
+
+        // Int (i64)
+        assert_eq!(
+            cast_text_to_value(&DataType::Int, "9223372036854775807"),
+            Ok(Value::I64(9223372036854775807))
+        );
+        assert_eq!(
+            cast_text_to_value(&DataType::Int, "abc"),
+            cast_err("abc", DataType::Int)
+        );
+
+        // Int128
+        assert_eq!(
+            cast_text_to_value(&DataType::Int128, "170141183460469231731687303715884105727"),
+            Ok(Value::I128(170141183460469231731687303715884105727))
+        );
+        assert_eq!(
+            cast_text_to_value(&DataType::Int128, "abc"),
+            cast_err("abc", DataType::Int128)
+        );
+
+        // Uint8
         assert_eq!(
             cast_text_to_value(&DataType::Uint8, "255"),
             Ok(Value::U8(255))
         );
         assert_eq!(
             cast_text_to_value(&DataType::Uint8, "-1"),
-            Err(EvaluateError::TextCastFailed {
-                literal: "-1".to_owned(),
-                data_type: DataType::Uint8
-            }
-            .into())
+            cast_err("-1", DataType::Uint8)
         );
+
+        // Uint16
+        assert_eq!(
+            cast_text_to_value(&DataType::Uint16, "65535"),
+            Ok(Value::U16(65535))
+        );
+        assert_eq!(
+            cast_text_to_value(&DataType::Uint16, "-1"),
+            cast_err("-1", DataType::Uint16)
+        );
+
+        // Uint32
+        assert_eq!(
+            cast_text_to_value(&DataType::Uint32, "4294967295"),
+            Ok(Value::U32(4294967295))
+        );
+        assert_eq!(
+            cast_text_to_value(&DataType::Uint32, "-1"),
+            cast_err("-1", DataType::Uint32)
+        );
+
+        // Uint64
+        assert_eq!(
+            cast_text_to_value(&DataType::Uint64, "18446744073709551615"),
+            Ok(Value::U64(18446744073709551615))
+        );
+        assert_eq!(
+            cast_text_to_value(&DataType::Uint64, "-1"),
+            cast_err("-1", DataType::Uint64)
+        );
+
+        // Uint128
+        assert_eq!(
+            cast_text_to_value(
+                &DataType::Uint128,
+                "340282366920938463463374607431768211455"
+            ),
+            Ok(Value::U128(340282366920938463463374607431768211455))
+        );
+        assert_eq!(
+            cast_text_to_value(&DataType::Uint128, "-1"),
+            cast_err("-1", DataType::Uint128)
+        );
+
+        // Float32
         assert_eq!(
             cast_text_to_value(&DataType::Float32, "1.5"),
             Ok(Value::F32(1.5))
         );
-        match cast_text_to_value(&DataType::Float32, "nan") {
-            Ok(Value::F32(v)) if v.is_nan() => {}
-            other => panic!("expected NaN, got {other:?}"),
-        }
+        assert_eq!(
+            cast_text_to_value(&DataType::Float32, "abc"),
+            cast_err("abc", DataType::Float32)
+        );
+
+        // Float (f64)
+        assert_eq!(
+            cast_text_to_value(&DataType::Float, "3.14159265358979"),
+            Ok(Value::F64(3.14159265358979))
+        );
+        assert_eq!(
+            cast_text_to_value(&DataType::Float, "abc"),
+            cast_err("abc", DataType::Float)
+        );
+
+        // Decimal
         assert_eq!(
             cast_text_to_value(&DataType::Decimal, "200"),
             Ok(Value::Decimal(Decimal::new(200, 0)))
         );
         assert_eq!(
-            cast_text_to_value(&DataType::Decimal, "oops"),
-            Err(EvaluateError::TextCastFailed {
-                literal: "oops".to_owned(),
-                data_type: DataType::Decimal
-            }
-            .into())
+            cast_text_to_value(&DataType::Decimal, "abc"),
+            cast_err("abc", DataType::Decimal)
         );
+
+        // fallback to text_to_value
         assert_eq!(
             cast_text_to_value(&DataType::Text, "hello"),
             Ok(Value::Str("hello".to_owned()))
