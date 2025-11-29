@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        error::LiteralError,
+        error::EvaluateError,
         prelude::{DataType, Value::*},
     },
 };
@@ -30,7 +30,7 @@ test_case!(int64, {
             i128::from(i64::MAX) + 1,
             i128::from(i64::MIN) - 1
         ),
-        Err(LiteralError::NumberParseFailed {
+        Err(EvaluateError::NumberParseFailed {
             literal: (i128::from(i64::MAX) + 1).to_string(),
             data_type: DataType::Int,
         }
@@ -41,7 +41,7 @@ test_case!(int64, {
     // cast i64::MAX+1
     g.test(
         &format!("select cast({} as INT) from Item", i128::from(i64::MAX) + 1),
-        Err(LiteralError::NumberParseFailed {
+        Err(EvaluateError::NumberParseFailed {
             literal: (i128::from(i64::MAX) + 1).to_string(),
             data_type: DataType::Int,
         }
@@ -52,7 +52,7 @@ test_case!(int64, {
     // cast i64::MIN-1
     g.test(
         &format!("select cast({} as INT) from Item", i128::from(i64::MIN) - 1),
-        Err(LiteralError::NumberParseFailed {
+        Err(EvaluateError::NumberParseFailed {
             literal: (i128::from(i64::MIN) - 1).to_string(),
             data_type: DataType::Int,
         }

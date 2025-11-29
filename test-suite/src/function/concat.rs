@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        error::{EvaluateError, LiteralError},
+        error::EvaluateError,
         prelude::{DataType, Value::*},
     },
 };
@@ -37,7 +37,7 @@ test_case!(concat, {
 
     g.test(
         "select concat(DATE '2020-06-11', DATE '2020-16-3') as myconcat;",
-        Err(LiteralError::TextParseFailed {
+        Err(EvaluateError::TextParseFailed {
             literal: "2020-16-3".to_owned(),
             data_type: DataType::Date,
         }

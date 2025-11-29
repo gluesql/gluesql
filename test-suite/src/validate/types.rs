@@ -2,7 +2,7 @@ use {
     crate::*,
     gluesql_core::{
         ast::DataType,
-        error::{LiteralError, ValueError},
+        error::{EvaluateError, ValueError},
         prelude::Value,
     },
 };
@@ -27,7 +27,7 @@ test_case!(types, {
         ),
         (
             "INSERT INTO TableC (uid) VALUES ('A')",
-            Err(LiteralError::TextParseFailed {
+            Err(EvaluateError::TextParseFailed {
                 literal: "A".to_owned(),
                 data_type: DataType::Int,
             }

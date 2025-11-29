@@ -23,10 +23,7 @@ use {
     std::{borrow::Cow, ops::ControlFlow, sync::Arc},
 };
 
-pub use {
-    error::EvaluateError,
-    evaluated::{Evaluated, LiteralError},
-};
+pub use {error::EvaluateError, evaluated::Evaluated};
 
 pub async fn evaluate<'a, 'b, 'c, T>(
     storage: &'a T,

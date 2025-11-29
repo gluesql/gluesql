@@ -6,8 +6,8 @@ pub use crate::{
         IntervalError, KeyError, RowError, SchemaParseError, StringExtError, TableError, ValueError,
     },
     executor::{
-        AlterError, DeleteError, EvaluateError, ExecuteError, FetchError, InsertError,
-        LiteralError, SelectError, SortError, UpdateError, ValidateError,
+        AlterError, DeleteError, EvaluateError, ExecuteError, FetchError, InsertError, SelectError,
+        SortError, UpdateError, ValidateError,
     },
     plan::PlanError,
     row_conversion::RowConversionError,
@@ -61,8 +61,6 @@ pub enum Error {
     Key(#[from] KeyError),
     #[error("value: {0}")]
     Value(Box<ValueError>),
-    #[error("literal: {0}")]
-    Literal(#[from] LiteralError),
     #[error("interval: {0}")]
     Interval(#[from] IntervalError),
     #[error("string-ext: {0}")]

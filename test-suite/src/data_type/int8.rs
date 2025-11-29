@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        error::LiteralError,
+        error::EvaluateError,
         prelude::{DataType, Value::*},
     },
 };
@@ -23,7 +23,7 @@ test_case!(int8, {
 
     g.test(
         "INSERT INTO Item VALUES (128, 128);",
-        Err(LiteralError::NumberParseFailed {
+        Err(EvaluateError::NumberParseFailed {
             literal: "128".to_owned(),
             data_type: DataType::Int8,
         }
@@ -32,7 +32,7 @@ test_case!(int8, {
     .await;
     g.test(
         "INSERT INTO Item VALUES (-129, -129);",
-        Err(LiteralError::NumberParseFailed {
+        Err(EvaluateError::NumberParseFailed {
             literal: "-129".to_owned(),
             data_type: DataType::Int8,
         }

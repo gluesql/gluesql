@@ -20,8 +20,6 @@ mod eq;
 mod like;
 mod unary_op;
 
-pub use convert::LiteralError;
-
 #[derive(Clone, Debug, PartialEq)]
 pub enum Evaluated<'a> {
     Number(Cow<'a, BigDecimal>),
@@ -46,7 +44,7 @@ impl TryFrom<Evaluated<'_>> for Value {
                     .map(Value::I64)
                     .or_else(|| decimal.to_f64().map(Value::F64))
                     .ok_or_else(|| {
-                        LiteralError::NumberParseFailed {
+                        EvaluateError::NumberParseFailed {
                             literal: decimal.to_string(),
                             data_type: DataType::Float,
                         }

@@ -1,5 +1,5 @@
 use {
-    super::{Evaluated, convert::LiteralError},
+    super::Evaluated,
     crate::{
         ast::DataType,
         data::{BigDecimalExt, Value},
@@ -51,7 +51,7 @@ impl<'a> Evaluated<'a> {
                 .to_i64()
                 .map(Value::I64)
                 .ok_or(
-                    LiteralError::NumberParseFailed {
+                    EvaluateError::NumberParseFailed {
                         literal: decimal.to_string(),
                         data_type: DataType::Int,
                     }
@@ -78,7 +78,7 @@ impl<'a> Evaluated<'a> {
                 .to_i64()
                 .map(Value::I64)
                 .ok_or(
-                    LiteralError::NumberParseFailed {
+                    EvaluateError::NumberParseFailed {
                         literal: decimal.to_string(),
                         data_type: DataType::Int,
                     }
@@ -104,12 +104,7 @@ impl<'a> Evaluated<'a> {
 mod tests {
     use {
         super::*,
-        crate::{
-            ast::DataType,
-            data::{Value, ValueError},
-            executor::evaluate::error::EvaluateError,
-            executor::evaluate::evaluated::convert::LiteralError,
-        },
+        crate::data::{Value, ValueError},
         bigdecimal::BigDecimal,
         std::{borrow::Cow, str::FromStr},
     };
@@ -189,7 +184,7 @@ mod tests {
         );
         assert_eq!(
             Evaluated::Number(Cow::Owned(BigDecimal::from_str("5.5").unwrap())).unary_factorial(),
-            Err(LiteralError::NumberParseFailed {
+            Err(EvaluateError::NumberParseFailed {
                 literal: "5.5".to_owned(),
                 data_type: DataType::Int
             }
@@ -217,7 +212,7 @@ mod tests {
         );
         assert_eq!(
             Evaluated::Number(Cow::Owned(BigDecimal::from_str("5.5").unwrap())).unary_bitwise_not(),
-            Err(LiteralError::NumberParseFailed {
+            Err(EvaluateError::NumberParseFailed {
                 literal: "5.5".to_owned(),
                 data_type: DataType::Int
             }

@@ -1,26 +1,26 @@
 use {
-    super::LiteralError,
     crate::{
         ast::DataType,
         data::{
             Interval, Point, Value,
             value::{parse_date, parse_time, parse_timestamp, parse_uuid},
         },
+        executor::EvaluateError,
         result::Result,
     },
     rust_decimal::Decimal,
     std::{net::IpAddr, str::FromStr},
 };
 
-fn parse_failed(literal: &str, data_type: &DataType) -> LiteralError {
-    LiteralError::TextParseFailed {
+fn parse_failed(literal: &str, data_type: &DataType) -> EvaluateError {
+    EvaluateError::TextParseFailed {
         literal: literal.to_owned(),
         data_type: data_type.clone(),
     }
 }
 
-fn cast_failed(literal: &str, data_type: &DataType) -> LiteralError {
-    LiteralError::TextCastFailed {
+fn cast_failed(literal: &str, data_type: &DataType) -> EvaluateError {
+    EvaluateError::TextCastFailed {
         literal: literal.to_owned(),
         data_type: data_type.clone(),
     }
@@ -122,7 +122,7 @@ pub(crate) fn cast_text_to_value(data_type: &DataType, value: &str) -> Result<Va
 mod tests {
     use {
         super::{cast_text_to_value, parse_time, parse_timestamp, text_to_value},
-        crate::{ast::DataType, data::Value, error::LiteralError},
+        crate::{ast::DataType, data::Value, executor::EvaluateError},
         chrono::{NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,
         std::{net::IpAddr, str::FromStr},
@@ -202,7 +202,7 @@ mod tests {
         );
         assert_eq!(
             text_to_value(&DataType::Bytea, "123"),
-            Err(LiteralError::TextParseFailed {
+            Err(EvaluateError::TextParseFailed {
                 literal: "123".to_owned(),
                 data_type: DataType::Bytea
             }
@@ -214,7 +214,7 @@ mod tests {
         );
         assert_eq!(
             text_to_value(&DataType::Inet, "not-an-ip"),
-            Err(LiteralError::TextParseFailed {
+            Err(EvaluateError::TextParseFailed {
                 literal: "not-an-ip".to_owned(),
                 data_type: DataType::Inet
             }
@@ -250,7 +250,7 @@ mod tests {
         );
         assert_eq!(
             text_to_value(&DataType::Int, "123"),
-            Err(LiteralError::TextParseFailed {
+            Err(EvaluateError::TextParseFailed {
                 literal: "123".to_owned(),
                 data_type: DataType::Int
             }
@@ -270,7 +270,7 @@ mod tests {
         );
         assert_eq!(
             cast_text_to_value(&DataType::Boolean, "maybe"),
-            Err(LiteralError::TextCastFailed {
+            Err(EvaluateError::TextCastFailed {
                 literal: "maybe".to_owned(),
                 data_type: DataType::Boolean
             }
@@ -282,7 +282,7 @@ mod tests {
         );
         assert_eq!(
             cast_text_to_value(&DataType::Int16, "abc"),
-            Err(LiteralError::TextCastFailed {
+            Err(EvaluateError::TextCastFailed {
                 literal: "abc".to_owned(),
                 data_type: DataType::Int16
             }
@@ -294,7 +294,7 @@ mod tests {
         );
         assert_eq!(
             cast_text_to_value(&DataType::Uint8, "-1"),
-            Err(LiteralError::TextCastFailed {
+            Err(EvaluateError::TextCastFailed {
                 literal: "-1".to_owned(),
                 data_type: DataType::Uint8
             }
@@ -314,7 +314,7 @@ mod tests {
         );
         assert_eq!(
             cast_text_to_value(&DataType::Decimal, "oops"),
-            Err(LiteralError::TextCastFailed {
+            Err(EvaluateError::TextCastFailed {
                 literal: "oops".to_owned(),
                 data_type: DataType::Decimal
             }

@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        error::LiteralError,
+        error::EvaluateError,
         prelude::{DataType, Value::*},
     },
 };
@@ -127,7 +127,7 @@ INSERT INTO DateLog VALUES
 
     g.test(
         "INSERT INTO DateLog VALUES (1, '12345-678', '2021-05-01')",
-        Err(LiteralError::TextParseFailed {
+        Err(EvaluateError::TextParseFailed {
             literal: "12345-678".to_owned(),
             data_type: DataType::Date,
         }

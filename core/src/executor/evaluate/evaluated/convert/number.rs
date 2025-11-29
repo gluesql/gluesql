@@ -1,8 +1,8 @@
 use {
-    super::LiteralError,
     crate::{
         ast::DataType,
         data::{BigDecimalExt, Value},
+        executor::EvaluateError,
         result::Result,
     },
     bigdecimal::BigDecimal,
@@ -10,15 +10,15 @@ use {
     std::net::{IpAddr, Ipv4Addr, Ipv6Addr},
 };
 
-fn parse_failed(literal: &BigDecimal, data_type: &DataType) -> LiteralError {
-    LiteralError::NumberParseFailed {
+fn parse_failed(literal: &BigDecimal, data_type: &DataType) -> EvaluateError {
+    EvaluateError::NumberParseFailed {
         literal: literal.to_string(),
         data_type: data_type.clone(),
     }
 }
 
-fn cast_failed(literal: &BigDecimal, data_type: &DataType) -> LiteralError {
-    LiteralError::NumberCastFailed {
+fn cast_failed(literal: &BigDecimal, data_type: &DataType) -> EvaluateError {
+    EvaluateError::NumberCastFailed {
         literal: literal.to_string(),
         data_type: data_type.clone(),
     }
@@ -108,7 +108,7 @@ pub(crate) fn cast_number_to_value(data_type: &DataType, value: &BigDecimal) -> 
 #[cfg(test)]
 mod tests {
     use super::{cast_number_to_value, number_to_value};
-    use crate::{ast::DataType, data::Value, error::LiteralError};
+    use crate::{ast::DataType, data::Value, executor::EvaluateError};
     use bigdecimal::BigDecimal;
     use rust_decimal::Decimal;
     use std::{
@@ -132,7 +132,7 @@ mod tests {
         );
         assert_eq!(
             number_to_value(&DataType::Int, &dec("1.5")),
-            Err(LiteralError::NumberParseFailed {
+            Err(EvaluateError::NumberParseFailed {
                 literal: "1.5".to_owned(),
                 data_type: DataType::Int
             }
@@ -152,7 +152,7 @@ mod tests {
         );
         assert_eq!(
             number_to_value(&DataType::Inet, &dec("-1")),
-            Err(LiteralError::NumberParseFailed {
+            Err(EvaluateError::NumberParseFailed {
                 literal: "-1".to_owned(),
                 data_type: DataType::Inet
             }
@@ -172,7 +172,7 @@ mod tests {
         );
         assert_eq!(
             cast_number_to_value(&DataType::Boolean, &dec("2")),
-            Err(LiteralError::NumberCastFailed {
+            Err(EvaluateError::NumberCastFailed {
                 literal: "2".to_owned(),
                 data_type: DataType::Boolean
             }

@@ -2,7 +2,7 @@ use {
     crate::*,
     gluesql_core::{
         ast::DataType,
-        error::{EvaluateError, LiteralError},
+        error::EvaluateError,
         prelude::{Payload, Value::Bytea},
     },
 };
@@ -34,7 +34,7 @@ test_case!(bytea, {
         ),
         (
             "INSERT INTO Bytea VALUES (0)",
-            Err(LiteralError::NumberParseFailed {
+            Err(EvaluateError::NumberParseFailed {
                 literal: "0".to_owned(),
                 data_type: DataType::Bytea,
             }

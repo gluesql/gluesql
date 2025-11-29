@@ -1,5 +1,5 @@
 use {
-    crate::ast::{Aggregate, BinaryOperator, Expr, ToSql},
+    crate::ast::{Aggregate, BinaryOperator, DataType, Expr, ToSql},
     serde::{Serialize, Serializer},
     std::fmt::Debug,
     thiserror::Error,
@@ -200,6 +200,30 @@ pub enum EvaluateError {
 
     #[error("failed to convert Value to u32: {0}")]
     I64ToU32ConversionFailure(String),
+
+    #[error("failed to parse number {literal:?} to {data_type}")]
+    NumberParseFailed {
+        literal: String,
+        data_type: DataType,
+    },
+
+    #[error("failed to cast number {literal:?} to {data_type}")]
+    NumberCastFailed {
+        literal: String,
+        data_type: DataType,
+    },
+
+    #[error("failed to parse text {literal:?} to {data_type}")]
+    TextParseFailed {
+        literal: String,
+        data_type: DataType,
+    },
+
+    #[error("failed to cast text {literal:?} to {data_type}")]
+    TextCastFailed {
+        literal: String,
+        data_type: DataType,
+    },
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]

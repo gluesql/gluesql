@@ -2,7 +2,7 @@ use {
     crate::*,
     gluesql_core::{
         ast::DataType::{Boolean, Int, Text},
-        error::{InsertError, LiteralError, SelectError},
+        error::{EvaluateError, InsertError, SelectError},
         prelude::{DataType, Payload, Value::*},
     },
 };
@@ -75,7 +75,7 @@ test_case!(values, {
         ),
         (
             "VALUES (1, 'a'), (2, 3)",
-            Err(LiteralError::NumberParseFailed {
+            Err(EvaluateError::NumberParseFailed {
                 literal: "3".to_owned(),
                 data_type: DataType::Text,
             }
@@ -83,7 +83,7 @@ test_case!(values, {
         ),
         (
             "VALUES (1, 'a'), ('b', 'c')",
-            Err(LiteralError::TextParseFailed {
+            Err(EvaluateError::TextParseFailed {
                 literal: "b".to_owned(),
                 data_type: DataType::Int,
             }
@@ -91,7 +91,7 @@ test_case!(values, {
         ),
         (
             "VALUES (1, NULL), (2, 'a'), (3, 4)",
-            Err(LiteralError::NumberParseFailed {
+            Err(EvaluateError::NumberParseFailed {
                 literal: "4".to_owned(),
                 data_type: DataType::Text,
             }

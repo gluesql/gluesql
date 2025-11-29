@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        error::LiteralError,
+        error::EvaluateError,
         prelude::{DataType, Value::*},
     },
 };
@@ -28,7 +28,7 @@ test_case!(int128, {
 
     g.test(
         &format!("INSERT INTO Item VALUES ({invalid_large_str}, {invalid_large_str})"),
-        Err(LiteralError::NumberParseFailed {
+        Err(EvaluateError::NumberParseFailed {
             literal: invalid_large_str.to_owned(),
             data_type: DataType::Int128,
         }
@@ -38,7 +38,7 @@ test_case!(int128, {
 
     g.test(
         &format!("INSERT INTO Item VALUES ({invalid_small_str}, {invalid_small_str})"),
-        Err(LiteralError::NumberParseFailed {
+        Err(EvaluateError::NumberParseFailed {
             literal: invalid_small_str.to_owned(),
             data_type: DataType::Int128,
         }
@@ -49,7 +49,7 @@ test_case!(int128, {
     // cast i128::MAX+1
     g.test(
         &format!("select cast({invalid_large_str} as INT128) from Item"),
-        Err(LiteralError::NumberParseFailed {
+        Err(EvaluateError::NumberParseFailed {
             literal: invalid_large_str.to_owned(),
             data_type: DataType::Int128,
         }
@@ -60,7 +60,7 @@ test_case!(int128, {
     // cast i128::MIN-1
     g.test(
         &format!("select cast({invalid_small_str} as INT128) from Item"),
-        Err(LiteralError::NumberParseFailed {
+        Err(EvaluateError::NumberParseFailed {
             literal: invalid_small_str.to_owned(),
             data_type: DataType::Int128,
         }

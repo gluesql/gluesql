@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        error::{EvaluateError, LiteralError, ValueError},
+        error::{EvaluateError, ValueError},
         prelude::{DataType, Payload, Value::*},
     },
 };
@@ -103,7 +103,7 @@ test_case!(unary_operator, {
         ),
         (
             "SELECT (5.5)! as v4 FROM Test",
-            Err(LiteralError::NumberParseFailed {
+            Err(EvaluateError::NumberParseFailed {
                 literal: "5.5".to_owned(),
                 data_type: DataType::Int,
             }
@@ -235,7 +235,7 @@ test_case!(unary_operator, {
     g.named_test(
         "test bitwise-not operator with FLOAT64 type",
         "SELECT ~(5.5) as v4 FROM Test",
-        Err(LiteralError::NumberParseFailed {
+        Err(EvaluateError::NumberParseFailed {
             literal: "5.5".to_owned(),
             data_type: DataType::Int,
         }

@@ -2,7 +2,7 @@ use {
     crate::*,
     chrono::{NaiveDate, NaiveTime},
     gluesql_core::{
-        error::{IntervalError, LiteralError},
+        error::{EvaluateError, IntervalError},
         prelude::{DataType, Value::*},
     },
 };
@@ -156,7 +156,7 @@ INSERT INTO TimeLog VALUES
 
     g.test(
         "INSERT INTO TimeLog VALUES (1, '12345-678', '20:05:01')",
-        Err(LiteralError::TextParseFailed {
+        Err(EvaluateError::TextParseFailed {
             literal: "12345-678".to_owned(),
             data_type: DataType::Time,
         }

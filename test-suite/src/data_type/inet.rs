@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        error::LiteralError,
+        error::EvaluateError,
         prelude::{DataType, Payload, Value::Inet},
     },
     std::{net::IpAddr, str::FromStr},
@@ -57,7 +57,7 @@ test_case!(inet, {
         ("INSERT INTO computer VALUES (0)", Ok(Payload::Insert(1))),
         (
             r"INSERT INTO computer VALUES ('127.0.0.0.1')",
-            Err(LiteralError::TextParseFailed {
+            Err(EvaluateError::TextParseFailed {
                 literal: "127.0.0.0.1".to_owned(),
                 data_type: DataType::Inet,
             }
