@@ -167,55 +167,161 @@ mod tests {
         Evaluated::Text(Cow::Owned(value.to_owned()))
     }
 
-    #[test]
-    fn literal_arithmetic_operations() {
-        let one = num("1");
-        let two = num("2");
-        let zero = num("0");
-
-        assert_eq!(one.add(&two).unwrap(), num("3"));
-        assert_eq!(two.subtract(&one).unwrap(), num("1"));
-        assert_eq!(one.multiply(&two).unwrap(), num("2"));
-        assert_eq!(two.divide(&one).unwrap(), num("2"));
-        assert_eq!(two.modulo(&one).unwrap(), num("0"));
-
-        assert!(matches!(
-            one.divide(&zero),
-            Err(crate::result::Error::Evaluate(
-                EvaluateError::DivisorShouldNotBeZero
-            ))
-        ));
-        assert!(matches!(
-            one.modulo(&zero),
-            Err(crate::result::Error::Evaluate(
-                EvaluateError::DivisorShouldNotBeZero
-            ))
-        ));
+    fn val(v: Value) -> Evaluated<'static> {
+        Evaluated::Value(v)
     }
 
     #[test]
-    fn literal_bitwise_operations() {
-        let eight = num("8");
-        let two = num("2");
+    fn binary_op_routing() {
+        assert_eq!(num("1").add(&val(Value::I64(2))), Ok(val(Value::I64(3))));
+        assert_eq!(val(Value::I64(1)).add(&num("2")), Ok(val(Value::I64(3))));
+        assert_eq!(
+            val(Value::I64(1)).add(&val(Value::I64(2))),
+            Ok(val(Value::I64(3)))
+        );
+        assert_eq!(
+            text("a").add(&text("b")),
+            Err(EvaluateError::UnsupportedBinaryOperation {
+                left: "a".to_owned(),
+                op: BinaryOperator::Plus,
+                right: "b".to_owned(),
+            }
+            .into())
+        );
+    }
 
-        assert_eq!(eight.bitwise_and(&two).unwrap(), num("0"));
-        assert_eq!(eight.bitwise_shift_left(&two).unwrap(), num("32"));
-        assert_eq!(eight.bitwise_shift_right(&two).unwrap(), num("2"));
+    #[test]
+    fn add() {
+        // fast path: Number + Number
+        assert_eq!(num("1").add(&num("2")), Ok(num("3")));
+        // delegation
+        assert_eq!(num("1").add(&val(Value::I64(2))), Ok(val(Value::I64(3))));
+    }
 
-        let invalid = text("foo");
-        assert!(matches!(
-            invalid.bitwise_and(&eight),
-            Err(crate::result::Error::Evaluate(
-                EvaluateError::UnsupportedBinaryOperation { .. }
-            ))
-        ));
+    #[test]
+    fn subtract() {
+        // fast path: Number + Number
+        assert_eq!(num("3").subtract(&num("1")), Ok(num("2")));
+        // delegation
+        assert_eq!(
+            val(Value::I64(3)).subtract(&num("1")),
+            Ok(val(Value::I64(2)))
+        );
+    }
 
-        let fractional = num("2.5");
-        assert!(matches!(
-            eight.bitwise_shift_left(&fractional),
-            Err(crate::result::Error::Evaluate(
-                EvaluateError::IncompatibleBitOperation(_, _)
-            ))
-        ));
+    #[test]
+    fn multiply() {
+        // fast path: Number + Number
+        assert_eq!(num("2").multiply(&num("3")), Ok(num("6")));
+        // delegation
+        assert_eq!(
+            val(Value::I64(2)).multiply(&val(Value::I64(3))),
+            Ok(val(Value::I64(6)))
+        );
+    }
+
+    #[test]
+    fn divide() {
+        // fast path: Number + Number
+        assert_eq!(num("6").divide(&num("2")), Ok(num("3")));
+        // delegation
+        assert_eq!(num("6").divide(&val(Value::I64(2))), Ok(val(Value::I64(3))));
+        // zero division error
+        assert_eq!(
+            num("1").divide(&num("0")),
+            Err(EvaluateError::DivisorShouldNotBeZero.into())
+        );
+    }
+
+    #[test]
+    fn modulo() {
+        // fast path: Number + Number
+        assert_eq!(num("7").modulo(&num("3")), Ok(num("1")));
+        // delegation
+        assert_eq!(val(Value::I64(7)).modulo(&num("3")), Ok(val(Value::I64(1))));
+        // zero division error
+        assert_eq!(
+            num("1").modulo(&num("0")),
+            Err(EvaluateError::DivisorShouldNotBeZero.into())
+        );
+    }
+
+    #[test]
+    fn bitwise_and() {
+        // fast path: Number + Number
+        assert_eq!(num("29").bitwise_and(&num("15")), Ok(num("13")));
+        // delegation
+        assert_eq!(
+            num("29").bitwise_and(&val(Value::I64(15))),
+            Ok(val(Value::I64(13)))
+        );
+        // lhs fractional error
+        assert_eq!(
+            num("2.5").bitwise_and(&num("3")),
+            Err(EvaluateError::IncompatibleBitOperation("2.5".to_owned(), "3".to_owned()).into())
+        );
+        // rhs fractional error
+        assert_eq!(
+            num("3").bitwise_and(&num("2.5")),
+            Err(EvaluateError::IncompatibleBitOperation("3".to_owned(), "2.5".to_owned()).into())
+        );
+    }
+
+    #[test]
+    fn bitwise_shift_left() {
+        // fast path: Number + Number
+        assert_eq!(num("8").bitwise_shift_left(&num("2")), Ok(num("32")));
+        // delegation
+        assert_eq!(
+            num("8").bitwise_shift_left(&val(Value::I64(2))),
+            Ok(val(Value::I64(32)))
+        );
+        // lhs fractional error
+        assert_eq!(
+            num("2.5").bitwise_shift_left(&num("2")),
+            Err(EvaluateError::IncompatibleBitOperation("2.5".to_owned(), "2".to_owned()).into())
+        );
+        // rhs fractional error
+        assert_eq!(
+            num("8").bitwise_shift_left(&num("2.5")),
+            Err(EvaluateError::IncompatibleBitOperation("8".to_owned(), "2.5".to_owned()).into())
+        );
+        // overflow error
+        assert_eq!(
+            num("8").bitwise_shift_left(&num("9999999999")),
+            Err(
+                EvaluateError::IncompatibleBitOperation("8".to_owned(), "9999999999".to_owned())
+                    .into()
+            )
+        );
+    }
+
+    #[test]
+    fn bitwise_shift_right() {
+        // fast path: Number + Number
+        assert_eq!(num("32").bitwise_shift_right(&num("2")), Ok(num("8")));
+        // delegation
+        assert_eq!(
+            num("32").bitwise_shift_right(&val(Value::I64(2))),
+            Ok(val(Value::I64(8)))
+        );
+        // lhs fractional error
+        assert_eq!(
+            num("2.5").bitwise_shift_right(&num("2")),
+            Err(EvaluateError::IncompatibleBitOperation("2.5".to_owned(), "2".to_owned()).into())
+        );
+        // rhs fractional error
+        assert_eq!(
+            num("32").bitwise_shift_right(&num("2.5")),
+            Err(EvaluateError::IncompatibleBitOperation("32".to_owned(), "2.5".to_owned()).into())
+        );
+        // overflow error
+        assert_eq!(
+            num("32").bitwise_shift_right(&num("9999999999")),
+            Err(
+                EvaluateError::IncompatibleBitOperation("32".to_owned(), "9999999999".to_owned())
+                    .into()
+            )
+        );
     }
 }
