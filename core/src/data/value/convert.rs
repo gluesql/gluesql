@@ -1007,14 +1007,7 @@ impl TryFrom<&Value> for NaiveDateTime {
 
     fn try_from(v: &Value) -> Result<NaiveDateTime> {
         Ok(match v {
-            Value::Date(value) => {
-                value
-                    .and_hms_opt(0, 0, 0)
-                    .ok_or_else(|| ValueError::ConvertFailed {
-                        value: v.clone(),
-                        data_type: DataType::Timestamp,
-                    })?
-            }
+            Value::Date(value) => NaiveDateTime::new(*value, NaiveTime::MIN),
             Value::Str(value) => {
                 parse_timestamp(value).ok_or_else(|| ValueError::ConvertFailed {
                     value: v.clone(),
