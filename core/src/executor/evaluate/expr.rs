@@ -122,28 +122,38 @@ pub fn array_index<'a>(obj: Evaluated<'a>, indexes: Vec<Evaluated<'a>>) -> Resul
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{ast::AstLiteral, executor::evaluate::EvaluateError, result::Error};
+    use {
+        super::{Evaluated, literal},
+        crate::{ast::AstLiteral, data::Value, executor::evaluate::EvaluateError},
+        bigdecimal::BigDecimal,
+        std::borrow::Cow,
+    };
 
     #[test]
-    fn literal_converts_hex_string_to_value() {
-        let ast = AstLiteral::HexString("48656c6c6f".to_owned());
-        let evaluated = literal(&ast).unwrap();
-
-        match evaluated {
-            Evaluated::Value(Value::Bytea(bytes)) => assert_eq!(bytes, b"Hello".to_vec()),
-            other => panic!("expected bytea value, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn literal_hex_string_error_propagates() {
-        let ast = AstLiteral::HexString("XYZ".to_owned());
-        let err = literal(&ast).unwrap_err();
-
-        assert!(matches!(
-            err,
-            Error::Evaluate(EvaluateError::FailedToDecodeHexString(v)) if v == "XYZ"
-        ));
+    fn test_literal() {
+        assert_eq!(
+            literal(&AstLiteral::Boolean(true)),
+            Ok(Evaluated::Value(Value::Bool(true)))
+        );
+        assert_eq!(
+            literal(&AstLiteral::Number(BigDecimal::from(42))),
+            Ok(Evaluated::Number(Cow::Owned(BigDecimal::from(42))))
+        );
+        assert_eq!(
+            literal(&AstLiteral::QuotedString("hello".to_owned())),
+            Ok(Evaluated::Text(Cow::Owned("hello".to_owned())))
+        );
+        assert_eq!(
+            literal(&AstLiteral::HexString("48656c6c6f".to_owned())),
+            Ok(Evaluated::Value(Value::Bytea(b"Hello".to_vec())))
+        );
+        assert_eq!(
+            literal(&AstLiteral::HexString("XYZ".to_owned())),
+            Err(EvaluateError::FailedToDecodeHexString("XYZ".to_owned()).into())
+        );
+        assert_eq!(
+            literal(&AstLiteral::Null),
+            Ok(Evaluated::Value(Value::Null))
+        );
     }
 }
