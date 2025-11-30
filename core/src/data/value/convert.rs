@@ -728,9 +728,11 @@ impl TryFrom<&Value> for f32 {
     fn try_from(v: &Value) -> Result<f32> {
         macro_rules! num_to_f32 {
             ($num: ident) => {
-                $num.to_f32().ok_or_else(|| ValueError::ConvertFailed {
-                    value: v.clone(),
-                    data_type: DataType::Float32,
+                $num.to_f32().filter(|v| v.is_finite()).ok_or_else(|| {
+                    ValueError::ConvertFailed {
+                        value: v.clone(),
+                        data_type: DataType::Float32,
+                    }
                 })?
             };
         }
@@ -789,9 +791,11 @@ impl TryFrom<&Value> for f64 {
     fn try_from(v: &Value) -> Result<f64> {
         macro_rules! num_to_f64 {
             ($num: ident) => {
-                $num.to_f64().ok_or_else(|| ValueError::ConvertFailed {
-                    value: v.clone(),
-                    data_type: DataType::Float,
+                $num.to_f64().filter(|v| v.is_finite()).ok_or_else(|| {
+                    ValueError::ConvertFailed {
+                        value: v.clone(),
+                        data_type: DataType::Float,
+                    }
                 })?
             };
         }
@@ -1977,6 +1981,7 @@ mod tests {
             Ok(1_234_567_890.1_f32)
         );
 
+        err!(Value::F64(1e39));
         err!(Value::Str("text".to_owned()));
         err!(Value::Bytea(Vec::new()));
         err!(Value::Inet(IpAddr::from_str("::1").unwrap()));
@@ -2038,6 +2043,7 @@ mod tests {
             Ok(1_234_567_890.1)
         );
 
+        err!(Value::F32(f32::INFINITY));
         err!(Value::Str("text".to_owned()));
         err!(Value::Bytea(Vec::new()));
         err!(Value::Inet(IpAddr::from_str("::1").unwrap()));
