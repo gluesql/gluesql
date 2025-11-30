@@ -2172,6 +2172,7 @@ mod tests {
             Ok(Decimal::new(122, 0))
         );
 
+        err!(Value::F64(f64::MAX));
         err!(Value::Str("text".to_owned()));
         err!(Value::Bytea(Vec::new()));
         err!(Value::Inet(IpAddr::from_str("::1").unwrap()));
