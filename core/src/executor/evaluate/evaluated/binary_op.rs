@@ -171,9 +171,9 @@ where
             value_op(left, right).map(Evaluated::Value)
         }
         (left, right) => Err(EvaluateError::UnsupportedBinaryOperation {
-            left: operand_error_string(left),
+            left: left.to_string(),
             op,
-            right: operand_error_string(right),
+            right: right.to_string(),
         }
         .into()),
     }
@@ -196,23 +196,8 @@ fn incompatible_bit_operation(left: &Evaluated<'_>, right: &Evaluated<'_>) -> Er
     EvaluateError::IncompatibleBitOperation(left.to_string(), right.to_string()).into()
 }
 
-fn literal_error_debug(value: &Evaluated<'_>) -> String {
-    match value {
-        Evaluated::Text(text) => format!("Literal(Text({:?}))", text.as_ref()),
-        _ => value.to_string(),
-    }
-}
-
 fn is_literal(value: &Evaluated<'_>) -> bool {
     matches!(value, Evaluated::Number(_) | Evaluated::Text(_))
-}
-
-fn operand_error_string(value: &Evaluated<'_>) -> String {
-    if is_literal(value) {
-        literal_error_debug(value)
-    } else {
-        format!("{value:?}")
-    }
 }
 
 #[cfg(test)]
