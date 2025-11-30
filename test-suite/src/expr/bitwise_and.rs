@@ -57,12 +57,7 @@ test_case!(bitwise_and, {
     g.named_test(
         "bitwise_and between wrong type values shoud occurs error",
         "SELECT 1.1 & 12 AS and_result FROM Test",
-        Err(EvaluateError::UnsupportedBinaryOperation {
-            left: "1.1".to_owned(),
-            op: BinaryOperator::BitwiseAnd,
-            right: "12".to_owned(),
-        }
-        .into()),
+        Err(EvaluateError::IncompatibleBitOperation("1.1".to_owned(), "12".to_owned()).into()),
     )
     .await;
 

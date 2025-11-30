@@ -61,20 +61,14 @@ impl<'a> Evaluated<'a> {
 
     pub fn bitwise_and<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
         if let (Evaluated::Number(l), Evaluated::Number(r)) = (self, other) {
-            let lhs = l.to_i64().ok_or_else(|| {
-                unsupported_literal_binary_op(self, BinaryOperator::BitwiseAnd, other)
-            })?;
-            let rhs = r.to_i64().ok_or_else(|| {
-                unsupported_literal_binary_op(self, BinaryOperator::BitwiseAnd, other)
-            })?;
+            let lhs = l
+                .to_i64()
+                .ok_or_else(|| incompatible_bit_operation(self, other))?;
+            let rhs = r
+                .to_i64()
+                .ok_or_else(|| incompatible_bit_operation(self, other))?;
 
             return Ok(Evaluated::Number(Cow::Owned(BigDecimal::from(lhs & rhs))));
-        } else if is_literal(self) && is_literal(other) {
-            return Err(unsupported_literal_binary_op(
-                self,
-                BinaryOperator::BitwiseAnd,
-                other,
-            ));
         }
 
         binary_op(self, other, BinaryOperator::BitwiseAnd, Value::bitwise_and)
@@ -85,11 +79,6 @@ impl<'a> Evaluated<'a> {
             let lhs = l
                 .to_i64()
                 .ok_or_else(|| incompatible_bit_operation(self, other))?;
-
-            if !r.is_integer_representation() {
-                return Err(incompatible_bit_operation(self, other));
-            }
-
             let rhs = r
                 .to_u32()
                 .ok_or_else(|| incompatible_bit_operation(self, other))?;
@@ -99,12 +88,6 @@ impl<'a> Evaluated<'a> {
                 .ok_or_else(|| incompatible_bit_operation(self, other))?;
 
             return Ok(Evaluated::Number(Cow::Owned(BigDecimal::from(result))));
-        } else if is_literal(self) && is_literal(other) {
-            return Err(unsupported_literal_binary_op(
-                self,
-                BinaryOperator::BitwiseShiftLeft,
-                other,
-            ));
         }
 
         binary_op(
@@ -120,11 +103,6 @@ impl<'a> Evaluated<'a> {
             let lhs = l
                 .to_i64()
                 .ok_or_else(|| incompatible_bit_operation(self, other))?;
-
-            if !r.is_integer_representation() {
-                return Err(incompatible_bit_operation(self, other));
-            }
-
             let rhs = r
                 .to_u32()
                 .ok_or_else(|| incompatible_bit_operation(self, other))?;
@@ -134,12 +112,6 @@ impl<'a> Evaluated<'a> {
                 .ok_or_else(|| incompatible_bit_operation(self, other))?;
 
             return Ok(Evaluated::Number(Cow::Owned(BigDecimal::from(result))));
-        } else if is_literal(self) && is_literal(other) {
-            return Err(unsupported_literal_binary_op(
-                self,
-                BinaryOperator::BitwiseShiftRight,
-                other,
-            ));
         }
 
         binary_op(
@@ -179,25 +151,8 @@ where
     }
 }
 
-fn unsupported_literal_binary_op(
-    left: &Evaluated<'_>,
-    op: BinaryOperator,
-    right: &Evaluated<'_>,
-) -> Error {
-    EvaluateError::UnsupportedBinaryOperation {
-        left: left.to_string(),
-        op,
-        right: right.to_string(),
-    }
-    .into()
-}
-
 fn incompatible_bit_operation(left: &Evaluated<'_>, right: &Evaluated<'_>) -> Error {
     EvaluateError::IncompatibleBitOperation(left.to_string(), right.to_string()).into()
-}
-
-fn is_literal(value: &Evaluated<'_>) -> bool {
-    matches!(value, Evaluated::Number(_) | Evaluated::Text(_))
 }
 
 #[cfg(test)]

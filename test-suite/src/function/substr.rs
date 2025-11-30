@@ -252,9 +252,9 @@ test_case!(substr, {
         (
             r"SELECT SUBSTR('123', 2, 3) - '3' AS test FROM SingleItem",
             Err(EvaluateError::UnsupportedBinaryOperation {
-                left: "StrSlice { source: \"123\", range: 1..3 }".to_owned(),
+                left: "23".to_owned(),
                 op: BinaryOperator::Minus,
-                right: "Literal(Text(\"3\"))".to_owned(),
+                right: "3".to_owned(),
             }
             .into()),
         ),
