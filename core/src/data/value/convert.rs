@@ -1989,6 +1989,7 @@ mod tests {
         ));
         err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
+        err!(Value::Point(point::Point::new(1.0313, 2.0314)));
         err!(Value::Null);
     }
 
@@ -2183,6 +2184,7 @@ mod tests {
         ));
         err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
+        err!(Value::Point(point::Point::new(1.0313, 2.0314)));
         err!(Value::Null);
     }
 
@@ -2214,8 +2216,32 @@ mod tests {
         );
         test!(Value::Str("2021-11-20".to_owned()), Ok(date(2021, 11, 20)));
 
+        err!(Value::Bool(true));
+        err!(Value::I8(1));
+        err!(Value::I16(1));
+        err!(Value::I32(1));
+        err!(Value::I64(1));
+        err!(Value::I128(1));
+        err!(Value::U8(1));
+        err!(Value::U16(1));
+        err!(Value::U32(1));
+        err!(Value::U64(1));
+        err!(Value::U128(1));
         err!(Value::F32(1.0_f32));
         err!(Value::F64(1.0));
+        err!(Value::Decimal(Decimal::new(1, 0)));
+        err!(Value::Str("invalid".to_owned()));
+        err!(Value::Bytea(Vec::new()));
+        err!(Value::Inet(IpAddr::from_str("::1").unwrap()));
+        err!(Value::Time(time(10, 0, 0, 0)));
+        err!(Value::Interval(I::Month(1)));
+        err!(Value::Uuid(
+            195_965_723_427_462_096_757_863_453_463_987_888_808
+        ));
+        err!(Value::Map(BTreeMap::new()));
+        err!(Value::List(Vec::new()));
+        err!(Value::Point(point::Point::new(1.0313, 2.0314)));
+        err!(Value::Null);
     }
 
     #[test]
@@ -2242,8 +2268,33 @@ mod tests {
         test!(Value::Time(time(10, 0, 0, 0)), Ok(time(10, 0, 0, 0)));
         test!(Value::Str("10:00:00".to_owned()), Ok(time(10, 0, 0, 0)));
 
+        err!(Value::Bool(true));
+        err!(Value::I8(1));
+        err!(Value::I16(1));
+        err!(Value::I32(1));
+        err!(Value::I64(1));
+        err!(Value::I128(1));
+        err!(Value::U8(1));
+        err!(Value::U16(1));
+        err!(Value::U32(1));
+        err!(Value::U64(1));
+        err!(Value::U128(1));
         err!(Value::F32(1.0_f32));
         err!(Value::F64(1.0));
+        err!(Value::Decimal(Decimal::new(1, 0)));
+        err!(Value::Str("invalid".to_owned()));
+        err!(Value::Bytea(Vec::new()));
+        err!(Value::Inet(IpAddr::from_str("::1").unwrap()));
+        err!(Value::Date(date(2021, 11, 20)));
+        err!(Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)));
+        err!(Value::Interval(I::Month(1)));
+        err!(Value::Uuid(
+            195_965_723_427_462_096_757_863_453_463_987_888_808
+        ));
+        err!(Value::Map(BTreeMap::new()));
+        err!(Value::List(Vec::new()));
+        err!(Value::Point(point::Point::new(1.0313, 2.0314)));
+        err!(Value::Null);
     }
 
     #[test]
@@ -2281,8 +2332,32 @@ mod tests {
             Ok(datetime(date(2021, 11, 20), time(0, 0, 0, 0)))
         );
 
+        err!(Value::Bool(true));
+        err!(Value::I8(1));
+        err!(Value::I16(1));
+        err!(Value::I32(1));
+        err!(Value::I64(1));
+        err!(Value::I128(1));
+        err!(Value::U8(1));
+        err!(Value::U16(1));
+        err!(Value::U32(1));
+        err!(Value::U64(1));
+        err!(Value::U128(1));
         err!(Value::F32(1.0_f32));
         err!(Value::F64(1.0));
+        err!(Value::Decimal(Decimal::new(1, 0)));
+        err!(Value::Str("invalid".to_owned()));
+        err!(Value::Bytea(Vec::new()));
+        err!(Value::Inet(IpAddr::from_str("::1").unwrap()));
+        err!(Value::Time(time(10, 0, 0, 0)));
+        err!(Value::Interval(I::Month(1)));
+        err!(Value::Uuid(
+            195_965_723_427_462_096_757_863_453_463_987_888_808
+        ));
+        err!(Value::Map(BTreeMap::new()));
+        err!(Value::List(Vec::new()));
+        err!(Value::Point(point::Point::new(1.0313, 2.0314)));
+        err!(Value::Null);
     }
 
     #[test]
@@ -2315,7 +2390,33 @@ mod tests {
         test!(IpAddr::from_str("::1").unwrap(), "::1");
         test!(IpAddr::from_str("::2:4cb0:16ea").unwrap(), "::2:4cb0:16ea");
 
+        err!(&Value::Bool(true));
+        err!(&Value::I8(1));
+        err!(&Value::I16(1));
+        err!(&Value::I32(1));
+        err!(&Value::I64(1));
+        err!(&Value::I128(1));
+        err!(&Value::U8(1));
+        err!(&Value::U16(1));
+        err!(&Value::U32(1));
+        err!(&Value::U64(1));
+        err!(&Value::U128(1));
+        err!(&Value::F32(1.0_f32));
+        err!(&Value::F64(1.0));
+        err!(&Value::Decimal(Decimal::new(1, 0)));
+        err!(&Value::Str("invalid".to_owned()));
+        err!(&Value::Bytea(Vec::new()));
         err!(&Value::Date(date(2021, 11, 20)));
+        err!(&Value::Time(time(10, 0, 0, 0)));
+        err!(&Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)));
+        err!(&Value::Interval(I::Month(1)));
+        err!(&Value::Uuid(
+            195_965_723_427_462_096_757_863_453_463_987_888_808
+        ));
+        err!(&Value::Map(BTreeMap::new()));
+        err!(&Value::List(Vec::new()));
+        err!(&Value::Point(point::Point::new(1.0313, 2.0314)));
+        err!(&Value::Null);
     }
 
     #[test]
@@ -2341,6 +2442,32 @@ mod tests {
             Ok(Point::from_wkt("POINT(0.1 0.2)").unwrap())
         );
 
+        err!(&Value::Bool(true));
+        err!(&Value::I8(1));
+        err!(&Value::I16(1));
+        err!(&Value::I32(1));
+        err!(&Value::I64(1));
+        err!(&Value::I128(1));
+        err!(&Value::U8(1));
+        err!(&Value::U16(1));
+        err!(&Value::U32(1));
+        err!(&Value::U64(1));
+        err!(&Value::U128(1));
+        err!(&Value::F32(1.0_f32));
+        err!(&Value::F64(1.0));
+        err!(&Value::Decimal(Decimal::new(1, 0)));
+        err!(&Value::Str("invalid".to_owned()));
+        err!(&Value::Bytea(Vec::new()));
+        err!(&Value::Inet(IpAddr::from_str("::1").unwrap()));
         err!(&Value::Date(date(2021, 11, 20)));
+        err!(&Value::Time(time(10, 0, 0, 0)));
+        err!(&Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)));
+        err!(&Value::Interval(I::Month(1)));
+        err!(&Value::Uuid(
+            195_965_723_427_462_096_757_863_453_463_987_888_808
+        ));
+        err!(&Value::Map(BTreeMap::new()));
+        err!(&Value::List(Vec::new()));
+        err!(&Value::Null);
     }
 }
