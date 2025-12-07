@@ -69,6 +69,7 @@ pub fn binary_op<'a>(
         BinaryOperator::BitwiseShiftLeft => l.bitwise_shift_left(&r),
         BinaryOperator::BitwiseShiftRight => l.bitwise_shift_right(&r),
         BinaryOperator::Arrow => l.arrow(&r),
+        BinaryOperator::LongArrow => l.long_arrow(&r),
     }
 }
 
