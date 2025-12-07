@@ -13,12 +13,6 @@ pub fn literal(literal: &Literal) -> Result<Evaluated<'_>> {
     match literal {
         Literal::Number(value) => Ok(Evaluated::Number(Cow::Borrowed(value))),
         Literal::QuotedString(value) => Ok(Evaluated::Text(Cow::Borrowed(value))),
-        Literal::HexString(value) => {
-            let bytes = hex::decode(value)
-                .map_err(|_| EvaluateError::FailedToDecodeHexString(value.clone()))?;
-
-            Ok(Evaluated::Value(Value::Bytea(bytes)))
-        }
     }
 }
 
@@ -136,14 +130,6 @@ mod tests {
         assert_eq!(
             literal(&Literal::QuotedString("hello".to_owned())),
             Ok(Evaluated::Text(Cow::Owned("hello".to_owned())))
-        );
-        assert_eq!(
-            literal(&Literal::HexString("48656c6c6f".to_owned())),
-            Ok(Evaluated::Value(Value::Bytea(b"Hello".to_vec())))
-        );
-        assert_eq!(
-            literal(&Literal::HexString("XYZ".to_owned())),
-            Err(EvaluateError::FailedToDecodeHexString("XYZ".to_owned()).into())
         );
     }
 }

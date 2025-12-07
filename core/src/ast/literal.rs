@@ -9,7 +9,6 @@ use {
 pub enum Literal {
     Number(BigDecimal),
     QuotedString(String),
-    HexString(String),
 }
 
 impl ToSql for Literal {
@@ -20,7 +19,6 @@ impl ToSql for Literal {
                 let escaped = qs.replace('\'', "''");
                 format!("'{escaped}'")
             }
-            Literal::HexString(hs) => format!("'{hs}'"),
         }
     }
 }

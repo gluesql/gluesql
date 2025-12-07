@@ -138,6 +138,9 @@ pub enum TranslateError {
     #[error("unsupported literal: {0}")]
     UnsupportedLiteral(String),
 
+    #[error("failed to decode hex string: {0}")]
+    FailedToDecodeHexString(String),
+
     #[error("unreachable unary operator: {0}")]
     UnreachableUnaryOperator(String),
 
