@@ -325,6 +325,12 @@ impl<'a> From<&'a Expr> for ExprNode<'a> {
     }
 }
 
+impl From<Value> for ExprNode<'_> {
+    fn from(v: Value) -> Self {
+        ExprNode::Expr(Cow::Owned(Expr::Value(v)))
+    }
+}
+
 pub fn expr<'a, T: Into<Cow<'a, str>>>(value: T) -> ExprNode<'a> {
     ExprNode::SqlExpr(value.into())
 }
@@ -388,6 +394,10 @@ pub fn null() -> ExprNode<'static> {
     ExprNode::Expr(Cow::Owned(Expr::Value(Value::Null)))
 }
 
+pub fn value(v: Value) -> ExprNode<'static> {
+    ExprNode::Expr(Cow::Owned(Expr::Value(v)))
+}
+
 #[cfg(test)]
 mod tests {
     use {
@@ -396,8 +406,9 @@ mod tests {
             ast::Expr,
             ast_builder::{
                 QueryNode, bytea, col, date, expr, null, num, subquery, table, test_expr, text,
-                time, timestamp, uuid,
+                time, timestamp, uuid, value,
             },
+            data::Value,
         },
     };
 
@@ -489,5 +500,20 @@ mod tests {
         let actual = null();
         let expected = "NULL";
         test_expr(actual, expected);
+    }
+
+    #[test]
+    fn value_injection() {
+        let test = |actual: ExprNode, expected: Expr| {
+            pretty_assertions::assert_eq!(Expr::try_from(actual), Ok(expected));
+        };
+
+        test(Value::I64(42).into(), Expr::Value(Value::I64(42)));
+        test(
+            Value::Str("hello".to_owned()).into(),
+            Expr::Value(Value::Str("hello".to_owned())),
+        );
+        test(value(Value::I64(100)), Expr::Value(Value::I64(100)));
+        test(value(Value::Bool(true)), Expr::Value(Value::Bool(true)));
     }
 }
