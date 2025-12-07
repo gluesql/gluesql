@@ -17,7 +17,7 @@ jobs:
     name: Clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --all-targets -- -D warnings
 
@@ -25,7 +25,7 @@ jobs:
     name: Rustfmt
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: Swatinem/rust-cache@v2
       - run: |
           cargo fmt -- --check
@@ -34,7 +34,7 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: Swatinem/rust-cache@v2
       - run: cargo build --all-features --verbose
 
@@ -42,7 +42,7 @@ jobs:
     name: Run tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: Swatinem/rust-cache@v2
       - run: |
           cd macros && cargo test --verbose && cd ..
@@ -57,7 +57,7 @@ jobs:
     name: Run storage tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: Swatinem/rust-cache@v2
       - run: |
           cd storages
@@ -78,7 +78,7 @@ jobs:
     name: Run MongoStorage tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: Swatinem/rust-cache@v2
       - name: MongoDB in GitHub Actions
         uses: supercharge/mongodb-github-action@v1.10.0
@@ -90,7 +90,7 @@ jobs:
     name: Run RedisStorage tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: Swatinem/rust-cache@v2
       - name: Redis in GitHub Actions
         uses: supercharge/redis-github-action@1.7.0
@@ -104,7 +104,7 @@ jobs:
     name: Run GitStorage tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: Swatinem/rust-cache@v2
 
       - name: Prepare
@@ -123,7 +123,7 @@ jobs:
     name: Run examples
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: Swatinem/rust-cache@v2
       - run: |
           cargo run --package gluesql --example hello_world

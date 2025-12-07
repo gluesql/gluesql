@@ -23,37 +23,37 @@ jobs:
       SHA: ${{ github.event.inputs.sha }}
       DRY_RUN: ${{ github.event.inputs.dry_run || 'true' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ env.SHA }}
       - uses: Swatinem/rust-cache@v2
       - run: |
-            packages=(
-              "gluesql-utils"
-              "gluesql-core"
-              "gluesql-test-suite"
-              "gluesql_sled_storage"
-              "gluesql_memory_storage"
-              "gluesql-shared-memory-storage"
-              "gluesql-redb-storage"
-              "gluesql-redis-storage"
-              "gluesql-mongo-storage"
-              "gluesql-web-storage"
-              "gluesql-idb-storage"
-              "gluesql-csv-storage"
-              "gluesql-json-storage"
-              "gluesql-parquet-storage"
-              "gluesql-file-storage"
-              "gluesql-git-storage"
-              "gluesql-composite-storage"
-              "gluesql-cli"
-              "gluesql-macros"
-              "gluesql"
-            )
-            for package in "${packages[@]}"; do
-              if [ "$DRY_RUN" = "true" ]; then
-                cargo publish -p "$package" --dry-run && sleep 3
-              else
-                cargo publish -p "$package" --token ${{ secrets.CRATES }} && sleep 3
-              fi
-            done
+          packages=(
+            "gluesql-utils"
+            "gluesql-core"
+            "gluesql-test-suite"
+            "gluesql_sled_storage"
+            "gluesql_memory_storage"
+            "gluesql-shared-memory-storage"
+            "gluesql-redb-storage"
+            "gluesql-redis-storage"
+            "gluesql-mongo-storage"
+            "gluesql-web-storage"
+            "gluesql-idb-storage"
+            "gluesql-csv-storage"
+            "gluesql-json-storage"
+            "gluesql-parquet-storage"
+            "gluesql-file-storage"
+            "gluesql-git-storage"
+            "gluesql-composite-storage"
+            "gluesql-cli"
+            "gluesql-macros"
+            "gluesql"
+          )
+          for package in "${packages[@]}"; do
+            if [ "$DRY_RUN" = "true" ]; then
+              cargo publish -p "$package" --dry-run && sleep 3
+            else
+              cargo publish -p "$package" --token ${{ secrets.CRATES }} && sleep 3
+            fi
+          done
