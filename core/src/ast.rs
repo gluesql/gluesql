@@ -1,17 +1,17 @@
-mod ast_literal;
 mod data_type;
 mod ddl;
 mod expr;
 mod function;
+mod literal;
 mod operator;
 mod query;
 
 pub use {
-    ast_literal::{AstLiteral, DateTimeField, TrimWhereField},
     data_type::DataType,
     ddl::*,
     expr::Expr,
     function::{Aggregate, AggregateFunction, CountArgExpr, Function},
+    literal::{DateTimeField, Literal, TrimWhereField},
     operator::*,
     query::*,
 };

@@ -618,9 +618,9 @@ mod tests {
     use {
         crate::{
             ast::{
-                AstLiteral, BinaryOperator, Dictionary, Expr, Join, JoinConstraint, JoinExecutor,
-                JoinOperator, OrderByExpr, Query, Select, SelectItem, SetExpr, TableAlias,
-                TableFactor, TableWithJoins, ToSql, ToSqlUnquoted, Values,
+                BinaryOperator, Dictionary, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator,
+                Literal, OrderByExpr, Query, Select, SelectItem, SetExpr, TableAlias, TableFactor,
+                TableWithJoins, ToSql, ToSqlUnquoted, Values,
             },
             parse_sql::parse_expr,
             translate::{NO_PARAMS, translate_expr},
@@ -663,10 +663,10 @@ mod tests {
                 having: None,
             })),
             order_by,
-            limit: Some(Expr::Literal(AstLiteral::Number(
+            limit: Some(Expr::Literal(Literal::Number(
                 BigDecimal::from_str("10").unwrap(),
             ))),
-            offset: Some(Expr::Literal(AstLiteral::Number(
+            offset: Some(Expr::Literal(Literal::Number(
                 BigDecimal::from_str("3").unwrap(),
             ))),
         }
@@ -701,10 +701,10 @@ mod tests {
                 having: None,
             })),
             order_by,
-            limit: Some(Expr::Literal(AstLiteral::Number(
+            limit: Some(Expr::Literal(Literal::Number(
                 BigDecimal::from_str("10").unwrap(),
             ))),
-            offset: Some(Expr::Literal(AstLiteral::Number(
+            offset: Some(Expr::Literal(Literal::Number(
                 BigDecimal::from_str("3").unwrap(),
             ))),
         }
@@ -747,14 +747,14 @@ mod tests {
         let actual = "VALUES (1, 'glue', 3), (2, 'sql', 2)".to_owned();
         let expected = SetExpr::Values(Values(vec![
             vec![
-                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
-                Expr::Literal(AstLiteral::QuotedString("glue".to_owned())),
-                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("3").unwrap())),
+                Expr::Literal(Literal::Number(BigDecimal::from_str("1").unwrap())),
+                Expr::Literal(Literal::QuotedString("glue".to_owned())),
+                Expr::Literal(Literal::Number(BigDecimal::from_str("3").unwrap())),
             ],
             vec![
-                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())),
-                Expr::Literal(AstLiteral::QuotedString("sql".to_owned())),
-                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())),
+                Expr::Literal(Literal::Number(BigDecimal::from_str("2").unwrap())),
+                Expr::Literal(Literal::QuotedString("sql".to_owned())),
+                Expr::Literal(Literal::Number(BigDecimal::from_str("2").unwrap())),
             ],
         ]))
         .to_sql();
@@ -797,27 +797,27 @@ mod tests {
         let expected = SetExpr::Values(Values(vec![
             vec![
                 Expr::BinaryOp {
-                    left: Box::new(Expr::Literal(AstLiteral::Number(
+                    left: Box::new(Expr::Literal(Literal::Number(
                         BigDecimal::from_str("1").unwrap(),
                     ))),
                     op: BinaryOperator::Plus,
-                    right: Box::new(Expr::Literal(AstLiteral::Number(
+                    right: Box::new(Expr::Literal(Literal::Number(
                         BigDecimal::from_str("1").unwrap(),
                     ))),
                 },
-                Expr::Literal(AstLiteral::QuotedString("glue".to_owned())),
+                Expr::Literal(Literal::QuotedString("glue".to_owned())),
             ],
             vec![
                 Expr::BinaryOp {
-                    left: Box::new(Expr::Literal(AstLiteral::Number(
+                    left: Box::new(Expr::Literal(Literal::Number(
                         BigDecimal::from_str("3").unwrap(),
                     ))),
                     op: BinaryOperator::Minus,
-                    right: Box::new(Expr::Literal(AstLiteral::Number(
+                    right: Box::new(Expr::Literal(Literal::Number(
                         BigDecimal::from_str("2").unwrap(),
                     ))),
                 },
-                Expr::Literal(AstLiteral::QuotedString("sql".to_owned())),
+                Expr::Literal(Literal::QuotedString("sql".to_owned())),
             ],
         ]))
         .to_sql_unquoted();
@@ -847,7 +847,7 @@ mod tests {
             having: Some(Expr::BinaryOp {
                 left: Box::new(Expr::Identifier("name".to_owned())),
                 op: BinaryOperator::Eq,
-                right: Box::new(Expr::Literal(AstLiteral::QuotedString("glue".to_owned()))),
+                right: Box::new(Expr::Literal(Literal::QuotedString("glue".to_owned()))),
             }),
         }
         .to_sql();
@@ -868,7 +868,7 @@ mod tests {
             selection: Some(Expr::BinaryOp {
                 left: Box::new(Expr::Identifier("name".to_owned())),
                 op: BinaryOperator::Eq,
-                right: Box::new(Expr::Literal(AstLiteral::QuotedString("glue".to_owned()))),
+                right: Box::new(Expr::Literal(Literal::QuotedString("glue".to_owned()))),
             }),
             group_by: Vec::new(),
             having: None,
@@ -899,7 +899,7 @@ mod tests {
             having: Some(Expr::BinaryOp {
                 left: Box::new(Expr::Identifier("name".to_owned())),
                 op: BinaryOperator::Eq,
-                right: Box::new(Expr::Literal(AstLiteral::QuotedString("glue".to_owned()))),
+                right: Box::new(Expr::Literal(Literal::QuotedString("glue".to_owned()))),
             }),
         }
         .to_sql_unquoted();
@@ -920,7 +920,7 @@ mod tests {
             selection: Some(Expr::BinaryOp {
                 left: Box::new(Expr::Identifier("name".to_owned())),
                 op: BinaryOperator::Eq,
-                right: Box::new(Expr::Literal(AstLiteral::QuotedString("glue".to_owned()))),
+                right: Box::new(Expr::Literal(Literal::QuotedString("glue".to_owned()))),
             }),
             group_by: Vec::new(),
             having: None,
@@ -1049,7 +1049,7 @@ mod tests {
                 name: "S".to_owned(),
                 columns: Vec::new(),
             },
-            size: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("3").unwrap())),
+            size: Expr::Literal(Literal::Number(BigDecimal::from_str("3").unwrap())),
         }
         .to_sql();
         assert_eq!(actual, expected);
@@ -1116,7 +1116,7 @@ mod tests {
                 name: "S".to_owned(),
                 columns: Vec::new(),
             },
-            size: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("3").unwrap())),
+            size: Expr::Literal(Literal::Number(BigDecimal::from_str("3").unwrap())),
         }
         .to_sql_unquoted();
         assert_eq!(actual, expected);

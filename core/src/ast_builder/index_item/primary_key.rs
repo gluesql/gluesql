@@ -17,14 +17,14 @@ pub fn primary_key() -> PrimaryKeyNode {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ast::{AstLiteral, Expr},
+        ast::{Expr, Literal},
         ast_builder::{index_item::IndexItem, primary_key, select::Prebuild},
     };
 
     #[test]
     fn test() {
         let actual = primary_key().eq("1").prebuild().unwrap();
-        let expected = IndexItem::PrimaryKey(Expr::Literal(AstLiteral::Number(1.into())));
+        let expected = IndexItem::PrimaryKey(Expr::Literal(Literal::Number(1.into())));
         assert_eq!(actual, expected);
     }
 }

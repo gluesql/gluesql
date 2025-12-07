@@ -1,7 +1,7 @@
 use {
     super::TranslateError,
     crate::{
-        ast::{AstLiteral, DateTimeField, TrimWhereField},
+        ast::{DateTimeField, Literal, TrimWhereField},
         result::Result,
     },
     sqlparser::ast::{
@@ -9,15 +9,15 @@ use {
     },
 };
 
-pub fn translate_ast_literal(sql_value: &SqlValue) -> Result<AstLiteral> {
+pub fn translate_literal(sql_value: &SqlValue) -> Result<Literal> {
     Ok(match sql_value {
-        SqlValue::Boolean(v) => AstLiteral::Boolean(*v),
-        SqlValue::Number(v, _) => AstLiteral::Number(v.clone()),
-        SqlValue::SingleQuotedString(v) => AstLiteral::QuotedString(v.clone()),
-        SqlValue::HexStringLiteral(v) => AstLiteral::HexString(v.clone()),
-        SqlValue::Null => AstLiteral::Null,
+        SqlValue::Boolean(v) => Literal::Boolean(*v),
+        SqlValue::Number(v, _) => Literal::Number(v.clone()),
+        SqlValue::SingleQuotedString(v) => Literal::QuotedString(v.clone()),
+        SqlValue::HexStringLiteral(v) => Literal::HexString(v.clone()),
+        SqlValue::Null => Literal::Null,
         _ => {
-            return Err(TranslateError::UnsupportedAstLiteral(sql_value.to_string()).into());
+            return Err(TranslateError::UnsupportedLiteral(sql_value.to_string()).into());
         }
     })
 }

@@ -1,9 +1,7 @@
 use {
     super::{Prebuild, join::JoinOperatorType},
     crate::{
-        ast::{
-            AstLiteral, Expr, Query, Select, SelectItem, TableAlias, TableFactor, TableWithJoins,
-        },
+        ast::{Expr, Literal, Query, Select, SelectItem, TableAlias, TableFactor, TableWithJoins},
         ast_builder::{
             ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode, OffsetNode,
             OrderByExprList, OrderByNode, ProjectNode, QueryNode, SelectItemList, TableFactorNode,
@@ -145,7 +143,7 @@ pub fn select<'a>() -> SelectNode<'a> {
         distinct: false,
         table_node: TableFactorNode {
             table_name: "Series".to_owned(),
-            table_type: TableType::Series(Expr::Literal(AstLiteral::Number(1.into())).into()),
+            table_type: TableType::Series(Expr::Literal(Literal::Number(1.into())).into()),
             table_alias: None,
             index: None,
         },

@@ -5,7 +5,7 @@ use {
     },
     crate::{
         ast::{
-            AstLiteral, Dictionary, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, Query,
+            Dictionary, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, Literal, Query,
             Select, SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, Values,
         },
         result::Result,
@@ -135,7 +135,7 @@ fn translate_select(sql_select: &SqlSelect, params: &[ParamLiteral]) -> Result<S
                     name: "Series".to_owned(),
                     columns: Vec::new(),
                 },
-                size: Expr::Literal(AstLiteral::Number(1.into())),
+                size: Expr::Literal(Literal::Number(1.into())),
             },
             joins: vec![],
         },
@@ -353,9 +353,7 @@ mod tests {
     use {
         super::*,
         crate::{
-            ast::{
-                AstLiteral, Expr, Query, Select, SelectItem, SetExpr, TableFactor, TableWithJoins,
-            },
+            ast::{Expr, Literal, Query, Select, SelectItem, SetExpr, TableFactor, TableWithJoins},
             parse_sql::{parse, parse_query},
             result::Error,
             translate::{IntoParamLiteral, NO_PARAMS},
@@ -426,11 +424,11 @@ mod tests {
                 distinct: false,
                 projection: vec![
                     SelectItem::Expr {
-                        expr: Expr::Literal(AstLiteral::Number(1.into())),
+                        expr: Expr::Literal(Literal::Number(1.into())),
                         label: "$1".to_owned(),
                     },
                     SelectItem::Expr {
-                        expr: Expr::Literal(AstLiteral::QuotedString("GlueSQL".to_owned())),
+                        expr: Expr::Literal(Literal::QuotedString("GlueSQL".to_owned())),
                         label: "$2".to_owned(),
                     },
                 ],
@@ -440,7 +438,7 @@ mod tests {
                             name: "Series".to_owned(),
                             columns: Vec::new(),
                         },
-                        size: Expr::Literal(AstLiteral::Number(1.into())),
+                        size: Expr::Literal(Literal::Number(1.into())),
                     },
                     joins: Vec::new(),
                 },

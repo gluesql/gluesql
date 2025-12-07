@@ -15,7 +15,7 @@ pub mod numeric;
 
 use {
     crate::{
-        ast::{Aggregate, AstLiteral, BinaryOperator, Expr, Function, Query, UnaryOperator},
+        ast::{Aggregate, BinaryOperator, Expr, Function, Literal, Query, UnaryOperator},
         ast_builder::QueryNode,
         parse_sql::{parse_comma_separated_exprs, parse_expr, parse_query},
         prelude::DataType,
@@ -120,7 +120,7 @@ impl<'a> TryFrom<ExprNode<'a>> for Expr {
             ExprNode::QuotedString(value) => {
                 let value = value.into_owned();
 
-                Ok(Expr::Literal(AstLiteral::QuotedString(value)))
+                Ok(Expr::Literal(Literal::QuotedString(value)))
             }
             ExprNode::TypedString { data_type, value } => Ok(Expr::TypedString {
                 data_type,
@@ -294,7 +294,7 @@ impl From<String> for ExprNode<'_> {
 
 impl From<i64> for ExprNode<'_> {
     fn from(n: i64) -> Self {
-        ExprNode::Expr(Cow::Owned(Expr::Literal(AstLiteral::Number(
+        ExprNode::Expr(Cow::Owned(Expr::Literal(Literal::Number(
             BigDecimal::from(n),
         ))))
     }
@@ -302,7 +302,7 @@ impl From<i64> for ExprNode<'_> {
 
 impl From<bool> for ExprNode<'_> {
     fn from(b: bool) -> Self {
-        ExprNode::Expr(Cow::Owned(Expr::Literal(AstLiteral::Boolean(b))))
+        ExprNode::Expr(Cow::Owned(Expr::Literal(Literal::Boolean(b))))
     }
 }
 
@@ -385,7 +385,7 @@ pub fn subquery<'a, T: Into<QueryNode<'a>>>(query_node: T) -> ExprNode<'a> {
 }
 
 pub fn null() -> ExprNode<'static> {
-    ExprNode::Expr(Cow::Owned(Expr::Literal(AstLiteral::Null)))
+    ExprNode::Expr(Cow::Owned(Expr::Literal(Literal::Null)))
 }
 
 #[cfg(test)]
