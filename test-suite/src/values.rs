@@ -1,13 +1,10 @@
 use {
     crate::*,
-    bigdecimal::BigDecimal,
     gluesql_core::{
         ast::DataType::{Boolean, Int, Text},
-        data::Literal,
-        error::{InsertError, SelectError, ValueError},
+        error::{EvaluateError, InsertError, SelectError},
         prelude::{DataType, Payload, Value::*},
     },
-    std::borrow::Cow,
 };
 
 test_case!(values, {
@@ -78,25 +75,25 @@ test_case!(values, {
         ),
         (
             "VALUES (1, 'a'), (2, 3)",
-            Err(ValueError::IncompatibleLiteralForDataType {
+            Err(EvaluateError::NumberParseFailed {
+                literal: "3".to_owned(),
                 data_type: DataType::Text,
-                literal: format!("{:?}", Literal::Number(Cow::Owned(BigDecimal::from(3)))),
             }
             .into()),
         ),
         (
             "VALUES (1, 'a'), ('b', 'c')",
-            Err(ValueError::IncompatibleLiteralForDataType {
+            Err(EvaluateError::TextParseFailed {
+                literal: "b".to_owned(),
                 data_type: DataType::Int,
-                literal: format!("{:?}", Literal::Text(Cow::Owned("b".to_owned()))),
             }
             .into()),
         ),
         (
             "VALUES (1, NULL), (2, 'a'), (3, 4)",
-            Err(ValueError::IncompatibleLiteralForDataType {
+            Err(EvaluateError::NumberParseFailed {
+                literal: "4".to_owned(),
                 data_type: DataType::Text,
-                literal: format!("{:?}", Literal::Number(Cow::Owned(BigDecimal::from(4)))),
             }
             .into()),
         ),

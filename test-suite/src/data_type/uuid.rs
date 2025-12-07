@@ -1,13 +1,10 @@
 use {
     crate::*,
-    bigdecimal::BigDecimal,
     gluesql_core::{
         ast::DataType,
-        data::Literal,
-        error::ValueError,
+        error::{EvaluateError, ValueError},
         prelude::{Payload, Value::*},
     },
-    std::borrow::Cow,
     uuid::Uuid as UUID,
 };
 
@@ -45,9 +42,9 @@ test_case!(uuid, {
         ("CREATE TABLE UUID (uuid_field UUID)", Ok(Payload::Create)),
         (
             r"INSERT INTO UUID VALUES (0)",
-            Err(ValueError::IncompatibleLiteralForDataType {
+            Err(EvaluateError::NumberParseFailed {
+                literal: "0".to_owned(),
                 data_type: DataType::Uuid,
-                literal: format!("{:?}", Literal::Number(Cow::Owned(BigDecimal::from(0)))),
             }
             .into()),
         ),

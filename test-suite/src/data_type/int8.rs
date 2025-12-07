@@ -1,6 +1,9 @@
 use {
     crate::*,
-    gluesql_core::{error::ValueError, prelude::Value::*},
+    gluesql_core::{
+        error::EvaluateError,
+        prelude::{DataType, Value::*},
+    },
 };
 
 test_case!(int8, {
@@ -20,12 +23,20 @@ test_case!(int8, {
 
     g.test(
         "INSERT INTO Item VALUES (128, 128);",
-        Err(ValueError::FailedToParseNumber.into()),
+        Err(EvaluateError::NumberParseFailed {
+            literal: "128".to_owned(),
+            data_type: DataType::Int8,
+        }
+        .into()),
     )
     .await;
     g.test(
         "INSERT INTO Item VALUES (-129, -129);",
-        Err(ValueError::FailedToParseNumber.into()),
+        Err(EvaluateError::NumberParseFailed {
+            literal: "-129".to_owned(),
+            data_type: DataType::Int8,
+        }
+        .into()),
     )
     .await;
 

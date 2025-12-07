@@ -59,18 +59,16 @@ test_case!(coalesce, {
     ));
     assert_eq!(actual, expected, "coalesce with table columns");
 
-    let actual = values(vec![
-        vec![f::coalesce(vec![text("뀨")])],
-        vec![f::coalesce(vec![null(), num(1)])],
-        vec![f::coalesce(vec![null(), null(), date("2000-01-01")])],
-    ])
+    let actual = values(vec![vec![
+        f::coalesce(vec![text("뀨")]),
+        f::coalesce(vec![null(), num(1)]),
+        f::coalesce(vec![null(), null(), date("2000-01-01")]),
+    ]])
     .execute(glue)
     .await;
     let expected = Ok(select_with_null!(
-        column1;
-        Str("뀨".to_owned());
-        I64(1);
-        Date("2000-01-01".parse::<NaiveDate>().unwrap())
+        column1             | column2 | column3;
+        Str("뀨".to_owned())   I64(1)    Date("2000-01-01".parse::<NaiveDate>().unwrap())
     ));
     assert_eq!(actual, expected, "coalesce without table");
 });

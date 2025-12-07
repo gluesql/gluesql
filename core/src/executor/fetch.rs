@@ -7,10 +7,7 @@ use {
             Values,
         },
         data::{Key, Row, Value, get_alias, get_index},
-        executor::{
-            evaluate::{Evaluated, evaluate},
-            select::select,
-        },
+        executor::{evaluate::evaluate, select::select},
         result::Result,
         store::{DataRow, GStore},
     },
@@ -159,23 +156,18 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                         let filter_context = filter_context.map(Arc::clone);
                         let evaluated = evaluate(storage, filter_context, None, expr).await?;
 
-                        let value = match evaluated {
-                            Evaluated::Literal(literal) => {
-                                let data_type = schema
-                                    .column_defs
-                                    .as_ref()
-                                    .and_then(|column_defs| {
-                                        column_defs.iter().find(|column_def| {
-                                            column_def.unique.map(|u| u.is_primary) == Some(true)
-                                        })
-                                    })
-                                    .map(|column_def| &column_def.data_type)
-                                    .ok_or(FetchError::Unreachable)?;
+                        let column_def = schema
+                            .column_defs
+                            .as_ref()
+                            .and_then(|column_defs| {
+                                column_defs.iter().find(|column_def| {
+                                    column_def.unique.map(|u| u.is_primary) == Some(true)
+                                })
+                            })
+                            .ok_or(FetchError::Unreachable)?;
 
-                                Value::try_from_literal(data_type, &literal)
-                            }
-                            eval => eval.try_into(),
-                        }?;
+                        let value =
+                            evaluated.try_into_value(&column_def.data_type, column_def.nullable)?;
                         let key = Key::try_from(value)?;
 
                         match storage.fetch_data(name, &key).await? {

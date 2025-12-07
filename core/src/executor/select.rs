@@ -64,15 +64,14 @@ async fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> Result<(Vec<Row>, Vec<Str
 
         let mut values = Vec::with_capacity(exprs.len());
 
-        for (i, expr) in exprs.iter().enumerate() {
+        for (expr, column_type) in exprs.iter().zip(column_types.iter_mut()) {
             let evaluated = evaluate_stateless(None, expr).await?;
 
-            let value = if let Some(ref data_type) = column_types[i] {
+            let value = if let Some(data_type) = column_type.as_ref() {
                 evaluated.try_into_value(data_type, true)?
             } else {
                 let value: Value = evaluated.try_into()?;
-                column_types[i] = value.get_type();
-
+                *column_type = value.get_type();
                 value
             };
 

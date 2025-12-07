@@ -1,7 +1,10 @@
 use {
     crate::*,
-    gluesql_core::{ast::DataType, data::Literal, error::ValueError, prelude::Value},
-    std::borrow::Cow,
+    gluesql_core::{
+        ast::DataType,
+        error::{EvaluateError, ValueError},
+        prelude::Value,
+    },
 };
 
 test_case!(types, {
@@ -24,9 +27,9 @@ test_case!(types, {
         ),
         (
             "INSERT INTO TableC (uid) VALUES ('A')",
-            Err(ValueError::IncompatibleLiteralForDataType {
+            Err(EvaluateError::TextParseFailed {
+                literal: "A".to_owned(),
                 data_type: DataType::Int,
-                literal: format!("{:?}", Literal::Text(Cow::Owned("A".to_owned()))),
             }
             .into()),
         ),
@@ -40,9 +43,9 @@ test_case!(types, {
         ),
         (
             "UPDATE TableC SET uid = TRUE;",
-            Err(ValueError::IncompatibleLiteralForDataType {
+            Err(ValueError::IncompatibleDataType {
                 data_type: DataType::Int,
-                literal: format!("{:?}", Literal::Boolean(true)),
+                value: Value::Bool(true),
             }
             .into()),
         ),
