@@ -1,6 +1,6 @@
 use {
     crate::{
-        ast::AstLiteral,
+        ast::Literal,
         ast_builder::AstBuilderError,
         result::{Error, Result},
     },
@@ -56,28 +56,28 @@ impl<'a> From<&'a str> for NumericNode<'a> {
     }
 }
 
-impl<'a> TryFrom<NumericNode<'a>> for AstLiteral {
+impl<'a> TryFrom<NumericNode<'a>> for Literal {
     type Error = Error;
 
     fn try_from(node: NumericNode<'a>) -> Result<Self> {
         match node {
-            NumericNode::I8(v) => Ok(AstLiteral::Number(v.into())),
-            NumericNode::I16(v) => Ok(AstLiteral::Number(v.into())),
-            NumericNode::I32(v) => Ok(AstLiteral::Number(v.into())),
-            NumericNode::I64(v) => Ok(AstLiteral::Number(v.into())),
-            NumericNode::U8(v) => Ok(AstLiteral::Number(v.into())),
-            NumericNode::U16(v) => Ok(AstLiteral::Number(v.into())),
-            NumericNode::U32(v) => Ok(AstLiteral::Number(v.into())),
-            NumericNode::U64(v) => Ok(AstLiteral::Number(v.into())),
+            NumericNode::I8(v) => Ok(Literal::Number(v.into())),
+            NumericNode::I16(v) => Ok(Literal::Number(v.into())),
+            NumericNode::I32(v) => Ok(Literal::Number(v.into())),
+            NumericNode::I64(v) => Ok(Literal::Number(v.into())),
+            NumericNode::U8(v) => Ok(Literal::Number(v.into())),
+            NumericNode::U16(v) => Ok(Literal::Number(v.into())),
+            NumericNode::U32(v) => Ok(Literal::Number(v.into())),
+            NumericNode::U64(v) => Ok(Literal::Number(v.into())),
             NumericNode::F32(v) => BigDecimal::try_from(v)
                 .map_err(|_| AstBuilderError::FailedToParseNumeric(v.to_string()).into())
-                .map(AstLiteral::Number),
+                .map(Literal::Number),
             NumericNode::F64(v) => BigDecimal::try_from(v)
                 .map_err(|_| AstBuilderError::FailedToParseNumeric(v.to_string()).into())
-                .map(AstLiteral::Number),
+                .map(Literal::Number),
             NumericNode::Str(v) => BigDecimal::from_str(&v)
                 .map_err(|_| AstBuilderError::FailedToParseNumeric(v.into_owned()).into())
-                .map(AstLiteral::Number),
+                .map(Literal::Number),
         }
     }
 }
@@ -86,7 +86,7 @@ impl<'a> TryFrom<NumericNode<'a>> for AstLiteral {
 mod tests {
     use {
         crate::{
-            ast::AstLiteral,
+            ast::Literal,
             ast_builder::{AstBuilderError, NumericNode},
         },
         bigdecimal::BigDecimal,
@@ -95,7 +95,7 @@ mod tests {
 
     #[test]
     fn numeric() {
-        let num = |n| Ok(AstLiteral::Number(BigDecimal::from_str(n).unwrap()));
+        let num = |n| Ok(Literal::Number(BigDecimal::from_str(n).unwrap()));
 
         assert_eq!(NumericNode::from(1_i8).try_into(), num("1"));
         assert_eq!(NumericNode::from(1_i16).try_into(), num("1"));
@@ -111,15 +111,15 @@ mod tests {
         assert_eq!(NumericNode::from("1.6".to_owned()).try_into(), num("1.6"));
 
         assert_eq!(
-            AstLiteral::try_from(NumericNode::from(f32::NAN)),
+            Literal::try_from(NumericNode::from(f32::NAN)),
             Err(AstBuilderError::FailedToParseNumeric(f32::NAN.to_string()).into()),
         );
         assert_eq!(
-            AstLiteral::try_from(NumericNode::from(f64::NAN)),
+            Literal::try_from(NumericNode::from(f64::NAN)),
             Err(AstBuilderError::FailedToParseNumeric(f64::NAN.to_string()).into()),
         );
         assert_eq!(
-            AstLiteral::try_from(NumericNode::from("not a number")),
+            Literal::try_from(NumericNode::from("not a number")),
             Err(AstBuilderError::FailedToParseNumeric("not a number".to_owned()).into()),
         );
     }

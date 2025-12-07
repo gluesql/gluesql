@@ -1,7 +1,7 @@
 use {
     super::{context::RowContext, evaluate::evaluate},
     crate::{
-        ast::{Aggregate, AstLiteral, Expr, OrderByExpr, UnaryOperator},
+        ast::{Aggregate, Expr, Literal, OrderByExpr, UnaryOperator},
         data::{Key, Row, Value},
         result::{Error, Result},
         store::GStore,
@@ -79,12 +79,12 @@ impl<'a, T: GStore> Sort<'a, T> {
                     .iter()
                     .map(|OrderByExpr { expr, asc }| -> Result<_> {
                         let big_decimal = match expr {
-                            Expr::Literal(AstLiteral::Number(n)) => Some(n),
+                            Expr::Literal(Literal::Number(n)) => Some(n),
                             Expr::UnaryOp {
                                 op: UnaryOperator::Plus,
                                 expr,
                             } => match expr.as_ref() {
-                                Expr::Literal(AstLiteral::Number(n)) => Some(n),
+                                Expr::Literal(Literal::Number(n)) => Some(n),
                                 _ => None,
                             },
                             _ => None,

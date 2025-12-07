@@ -13,7 +13,7 @@ use {
     },
     crate::{
         ast::{
-            AstLiteral, BinaryOperator, DataType, Dictionary, Expr, Query, SelectItem, SetExpr,
+            BinaryOperator, DataType, Dictionary, Expr, Literal, Query, SelectItem, SetExpr,
             Statement, TableAlias, TableFactor, TableWithJoins, Variable,
         },
         data::{Key, Row, Schema, Value},
@@ -313,7 +313,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
                     selection: Some(Expr::BinaryOp {
                         left: Box::new(Expr::Identifier("TABLE_NAME".to_owned())),
                         op: BinaryOperator::Eq,
-                        right: Box::new(Expr::Literal(AstLiteral::QuotedString(
+                        right: Box::new(Expr::Literal(Literal::QuotedString(
                             table_name.to_owned(),
                         ))),
                     }),

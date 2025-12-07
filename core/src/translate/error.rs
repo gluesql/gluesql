@@ -136,7 +136,7 @@ pub enum TranslateError {
     UnsupportedDateTimeField(String),
 
     #[error("unsupported ast literal: {0}")]
-    UnsupportedAstLiteral(String),
+    UnsupportedLiteral(String),
 
     #[error("unreachable unary operator: {0}")]
     UnreachableUnaryOperator(String),

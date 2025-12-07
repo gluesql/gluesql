@@ -69,7 +69,7 @@ where
     };
 
     match expr {
-        Expr::Literal(ast_literal) => expr::literal(ast_literal),
+        Expr::Literal(literal) => expr::literal(literal),
         Expr::TypedString { data_type, value } => expr::typed_string(data_type, value),
         Expr::Identifier(ident) => {
             let context = context.ok_or_else(|| {

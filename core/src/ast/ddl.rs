@@ -93,7 +93,7 @@ impl ToSql for ColumnUniqueOption {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{AstLiteral, ColumnDef, ColumnUniqueOption, DataType, Expr, ToSql};
+    use crate::ast::{ColumnDef, ColumnUniqueOption, DataType, Expr, Literal, ToSql};
 
     #[test]
     fn to_sql_column_def() {
@@ -142,7 +142,7 @@ mod tests {
                 name: "accepted".to_owned(),
                 data_type: DataType::Boolean,
                 nullable: false,
-                default: Some(Expr::Literal(AstLiteral::Boolean(false))),
+                default: Some(Expr::Literal(Literal::Boolean(false))),
                 unique: None,
                 comment: None,
             }
@@ -155,7 +155,7 @@ mod tests {
                 name: "accepted".to_owned(),
                 data_type: DataType::Boolean,
                 nullable: false,
-                default: Some(Expr::Literal(AstLiteral::Boolean(false))),
+                default: Some(Expr::Literal(Literal::Boolean(false))),
                 unique: Some(ColumnUniqueOption { is_primary: false }),
                 comment: None,
             }
