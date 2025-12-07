@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        error::ValueError,
+        error::EvaluateError,
         prelude::{DataType, Payload, Value::*},
     },
 };
@@ -27,7 +27,11 @@ test_case!(int32, {
             i64::from(i32::MAX) + 1_i64,
             i64 = i64::from(i32::MIN) - 1_i64
         ),
-        Err(ValueError::FailedToParseNumber.into()),
+        Err(EvaluateError::NumberParseFailed {
+            literal: (i64::from(i32::MAX) + 1_i64).to_string(),
+            data_type: DataType::Int32,
+        }
+        .into()),
     )
     .await;
 
@@ -36,10 +40,10 @@ test_case!(int32, {
             "select cast({} as INT32) from Item",
             i64::from(i32::MAX) + 1_i64
         ),
-        Err(ValueError::LiteralCastToDataTypeFailed(
-            DataType::Int32,
-            (i64::from(i32::MAX) + 1_i64).to_string(),
-        )
+        Err(EvaluateError::NumberParseFailed {
+            literal: (i64::from(i32::MAX) + 1_i64).to_string(),
+            data_type: DataType::Int32,
+        }
         .into()),
     )
     .await;
@@ -49,10 +53,10 @@ test_case!(int32, {
             "select cast({} as INT32) from Item",
             i64::from(i32::MIN) - 1_i64
         ),
-        Err(ValueError::LiteralCastToDataTypeFailed(
-            DataType::Int32,
-            (i64::from(i32::MIN) - 1_i64).to_string(),
-        )
+        Err(EvaluateError::NumberParseFailed {
+            literal: (i64::from(i32::MIN) - 1_i64).to_string(),
+            data_type: DataType::Int32,
+        }
         .into()),
     )
     .await;

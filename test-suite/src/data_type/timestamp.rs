@@ -1,6 +1,9 @@
 use {
     crate::*,
-    gluesql_core::{error::ValueError, prelude::Value::*},
+    gluesql_core::{
+        error::EvaluateError,
+        prelude::{DataType, Value::*},
+    },
 };
 
 test_case!(timestamp, {
@@ -126,7 +129,11 @@ INSERT INTO TimestampLog VALUES
 
     g.test(
         "INSERT INTO TimestampLog VALUES (1, '12345-678', '2021-05-01')",
-        Err(ValueError::FailedToParseTimestamp("12345-678".to_owned()).into()),
+        Err(EvaluateError::TextParseFailed {
+            literal: "12345-678".to_owned(),
+            data_type: DataType::Timestamp,
+        }
+        .into()),
     )
     .await;
 });

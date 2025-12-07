@@ -1,8 +1,6 @@
 use {
     crate::*,
-    bigdecimal::BigDecimal,
-    gluesql_core::{ast::BinaryOperator, data::Literal, error::LiteralError, prelude::Value::*},
-    std::{borrow::Cow, str::FromStr},
+    gluesql_core::{ast::BinaryOperator, error::EvaluateError, prelude::Value::*},
 };
 
 test_case!(bitwise_and, {
@@ -59,15 +57,7 @@ test_case!(bitwise_and, {
     g.named_test(
         "bitwise_and between wrong type values shoud occurs error",
         "SELECT 1.1 & 12 AS and_result FROM Test",
-        Err(LiteralError::UnsupportedBinaryOperation {
-            left: format!(
-                "{:?}",
-                Literal::Number(Cow::Owned(BigDecimal::from_str("1.1").unwrap()))
-            ),
-            op: BinaryOperator::BitwiseAnd,
-            right: format!("{:?}", Literal::Number(Cow::Owned(BigDecimal::from(12)))),
-        }
-        .into()),
+        Err(EvaluateError::IncompatibleBitOperation("1.1".to_owned(), "12".to_owned()).into()),
     )
     .await;
 
@@ -100,10 +90,10 @@ test_case!(bitwise_and, {
     g.named_test(
         "bitwise_and for unsupported value",
         "SELECT 'ss' & 'sp' AS and_result from Test",
-        Err(LiteralError::UnsupportedBinaryOperation {
-            left: format!("{:?}", Literal::Text(Cow::Owned("ss".to_owned()))),
+        Err(EvaluateError::UnsupportedBinaryOperation {
+            left: "ss".to_owned(),
             op: BinaryOperator::BitwiseAnd,
-            right: format!("{:?}", Literal::Text(Cow::Owned("sp".to_owned()))),
+            right: "sp".to_owned(),
         }
         .into()),
     )

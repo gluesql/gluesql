@@ -8,7 +8,7 @@ use {
     super::{context::RowContext, select::select},
     crate::{
         ast::{Aggregate, Expr, Function},
-        data::{CustomFunction, Interval, Literal, Row, Value},
+        data::{CustomFunction, Interval, Row, Value},
         mock::MockStorage,
         result::{Error, Result},
         store::GStore,
@@ -70,9 +70,7 @@ where
 
     match expr {
         Expr::Literal(ast_literal) => expr::literal(ast_literal),
-        Expr::TypedString { data_type, value } => {
-            expr::typed_string(data_type, Cow::Borrowed(value))
-        }
+        Expr::TypedString { data_type, value } => expr::typed_string(data_type, value),
         Expr::Identifier(ident) => {
             let context = context.ok_or_else(|| {
                 EvaluateError::ContextRequiredForIdentEvaluation(Box::new(expr.clone()))
@@ -236,7 +234,7 @@ where
 
             Ok(match negated {
                 true => {
-                    let t = evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false)));
+                    let t = evaluated.evaluate_eq(&Evaluated::Value(Value::Bool(false)));
                     Evaluated::Value(Value::from(t))
                 }
                 false => evaluated,
@@ -253,7 +251,7 @@ where
 
             Ok(match negated {
                 true => {
-                    let t = evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false)));
+                    let t = evaluated.evaluate_eq(&Evaluated::Value(Value::Bool(false)));
                     Evaluated::Value(Value::from(t))
                 }
                 false => evaluated,

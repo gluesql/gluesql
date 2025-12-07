@@ -2,20 +2,30 @@ use {
     super::{EvaluateError, Evaluated},
     crate::{
         ast::{AstLiteral, BinaryOperator, DataType, UnaryOperator},
-        data::{Literal, Value},
+        data::Value,
+        executor::evaluate::evaluated::convert::text_to_value,
         result::Result,
     },
     std::{borrow::Cow, cmp::Ordering},
 };
 
 pub fn literal(ast_literal: &AstLiteral) -> Result<Evaluated<'_>> {
-    Literal::try_from(ast_literal).map(Evaluated::Literal)
+    match ast_literal {
+        AstLiteral::Boolean(value) => Ok(Evaluated::Value(Value::Bool(*value))),
+        AstLiteral::Number(value) => Ok(Evaluated::Number(Cow::Borrowed(value))),
+        AstLiteral::QuotedString(value) => Ok(Evaluated::Text(Cow::Borrowed(value))),
+        AstLiteral::HexString(value) => {
+            let bytes = hex::decode(value)
+                .map_err(|_| EvaluateError::FailedToDecodeHexString(value.clone()))?;
+
+            Ok(Evaluated::Value(Value::Bytea(bytes)))
+        }
+        AstLiteral::Null => Ok(Evaluated::Value(Value::Null)),
+    }
 }
 
-pub fn typed_string<'a>(data_type: &'a DataType, value: Cow<'a, str>) -> Result<Evaluated<'a>> {
-    let literal = Literal::Text(value);
-
-    Value::try_from_literal(data_type, &literal).map(Evaluated::Value)
+pub fn typed_string<'a>(data_type: &'a DataType, value: &'a str) -> Result<Evaluated<'a>> {
+    text_to_value(data_type, value).map(Evaluated::Value)
 }
 
 pub fn binary_op<'a>(
@@ -49,7 +59,7 @@ pub fn binary_op<'a>(
         BinaryOperator::Multiply => l.multiply(&r),
         BinaryOperator::Divide => l.divide(&r),
         BinaryOperator::Modulo => l.modulo(&r),
-        BinaryOperator::StringConcat => l.concat(r),
+        BinaryOperator::StringConcat => Ok(l.concat(r)),
         BinaryOperator::Eq => Ok(Evaluated::from(l.evaluate_eq(&r))),
         BinaryOperator::NotEq => Ok(Evaluated::from(!l.evaluate_eq(&r))),
         BinaryOperator::Lt => cmp!(l.evaluate_cmp(&r) == Some(Ordering::Less)),
@@ -108,4 +118,42 @@ pub fn array_index<'a>(obj: Evaluated<'a>, indexes: Vec<Evaluated<'a>>) -> Resul
         .map(Value::try_from)
         .collect::<Result<Vec<_>>>()?;
     value.selector_by_index(&indexes).map(Evaluated::Value)
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::{Evaluated, literal},
+        crate::{ast::AstLiteral, data::Value, executor::evaluate::EvaluateError},
+        bigdecimal::BigDecimal,
+        std::borrow::Cow,
+    };
+
+    #[test]
+    fn test_literal() {
+        assert_eq!(
+            literal(&AstLiteral::Boolean(true)),
+            Ok(Evaluated::Value(Value::Bool(true)))
+        );
+        assert_eq!(
+            literal(&AstLiteral::Number(BigDecimal::from(42))),
+            Ok(Evaluated::Number(Cow::Owned(BigDecimal::from(42))))
+        );
+        assert_eq!(
+            literal(&AstLiteral::QuotedString("hello".to_owned())),
+            Ok(Evaluated::Text(Cow::Owned("hello".to_owned())))
+        );
+        assert_eq!(
+            literal(&AstLiteral::HexString("48656c6c6f".to_owned())),
+            Ok(Evaluated::Value(Value::Bytea(b"Hello".to_vec())))
+        );
+        assert_eq!(
+            literal(&AstLiteral::HexString("XYZ".to_owned())),
+            Err(EvaluateError::FailedToDecodeHexString("XYZ".to_owned()).into())
+        );
+        assert_eq!(
+            literal(&AstLiteral::Null),
+            Ok(Evaluated::Value(Value::Null))
+        );
+    }
 }

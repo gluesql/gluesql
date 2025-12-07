@@ -1,13 +1,10 @@
 use {
     crate::*,
-    bigdecimal::BigDecimal,
     gluesql_core::{
-        ast::BinaryOperator,
-        data::{Literal, NumericBinaryOperator},
-        error::{EvaluateError, LiteralError, UpdateError, ValueError},
+        data::NumericBinaryOperator,
+        error::{EvaluateError, UpdateError, ValueError},
         prelude::Value,
     },
-    std::borrow::Cow,
 };
 test_case!(error, {
     let g = get_tester!();
@@ -87,20 +84,20 @@ test_case!(error, {
         ),
         (
             "SELECT * FROM Arith WHERE TRUE + 1 = 1",
-            LiteralError::UnsupportedBinaryOperation {
-                left: format!("{:?}", Literal::Boolean(true)),
-                op: BinaryOperator::Plus,
-                right: format!("{:?}", Literal::Number(Cow::Owned(BigDecimal::from(1)))),
+            ValueError::NonNumericMathOperation {
+                lhs: Value::Bool(true),
+                operator: NumericBinaryOperator::Add,
+                rhs: Value::I64(1),
             }
             .into(),
         ),
         (
             "SELECT * FROM Arith WHERE id = 2 / 0",
-            LiteralError::DivisorShouldNotBeZero.into(),
+            EvaluateError::DivisorShouldNotBeZero.into(),
         ),
         (
             "SELECT * FROM Arith WHERE id = 2 / 0.0",
-            LiteralError::DivisorShouldNotBeZero.into(),
+            EvaluateError::DivisorShouldNotBeZero.into(),
         ),
         (
             "SELECT * FROM Arith WHERE id = INTERVAL '2' HOUR / 0",
@@ -112,23 +109,19 @@ test_case!(error, {
         ),
         (
             "SELECT * FROM Arith WHERE id = 2 % 0",
-            LiteralError::DivisorShouldNotBeZero.into(),
+            EvaluateError::DivisorShouldNotBeZero.into(),
         ),
         (
             "SELECT * FROM Arith WHERE id = 2 % 0.0",
-            LiteralError::DivisorShouldNotBeZero.into(),
+            EvaluateError::DivisorShouldNotBeZero.into(),
         ),
         (
             "SELECT * FROM Arith WHERE TRUE AND 'hello'",
-            EvaluateError::BooleanTypeRequired(format!(
-                "{:?}",
-                Literal::Text(Cow::Owned("hello".to_owned()))
-            ))
-            .into(),
+            EvaluateError::BooleanTypeRequired("hello".to_owned()).into(),
         ),
         (
             "SELECT * FROM Arith WHERE name AND id",
-            EvaluateError::BooleanTypeRequired(format!("{:?}", Value::Str("A".to_owned()))).into(),
+            EvaluateError::BooleanTypeRequired("A".to_owned()).into(),
         ),
     ];
 

@@ -2,7 +2,6 @@ mod bigdecimal_ext;
 mod function;
 mod interval;
 mod key;
-mod literal;
 mod point;
 mod row;
 mod string_ext;
@@ -16,11 +15,10 @@ pub use {
     function::CustomFunction,
     interval::{Interval, IntervalError},
     key::{Key, KeyError},
-    literal::{Literal, LiteralError},
     point::Point,
     row::{Row, RowError},
     schema::{Schema, SchemaIndex, SchemaIndexOrd, SchemaParseError},
     string_ext::{StringExt, StringExtError},
     table::{TableError, get_alias, get_index},
-    value::{BTreeMapJsonExt, ConvertError, NumericBinaryOperator, Value, ValueError},
+    value::{BTreeMapJsonExt, NumericBinaryOperator, Value, ValueError},
 };

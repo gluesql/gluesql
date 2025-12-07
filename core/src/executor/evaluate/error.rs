@@ -1,5 +1,5 @@
 use {
-    crate::ast::{Aggregate, BinaryOperator, Expr, ToSql},
+    crate::ast::{Aggregate, BinaryOperator, DataType, Expr, ToSql},
     serde::{Serialize, Serializer},
     std::fmt::Debug,
     thiserror::Error,
@@ -43,6 +43,9 @@ pub enum EvaluateError {
 
     #[error("function requires map value: {0}")]
     FunctionRequiresMapValue(String),
+
+    #[error("failed to decode hex string: {0}")]
+    FailedToDecodeHexString(String),
 
     #[error("function requires point value: {0}")]
     FunctionRequiresPointValue(String),
@@ -144,11 +147,18 @@ pub enum EvaluateError {
     #[error("unsupported evaluate string unary minus: {0}")]
     UnsupportedUnaryMinus(String),
 
-    #[error("unsupported evaluate string unary factorial: {0}")]
-    UnsupportedUnaryFactorial(String),
+    #[error("unary factorial requires numeric literal: {0}")]
+    UnaryFactorialRequiresNumericLiteral(String),
 
-    #[error("incompatible bit operation ~{0}")]
-    IncompatibleUnaryBitwiseNotOperation(String),
+    #[error("unary bitwise-not requires integer literal: {0}")]
+    UnaryBitwiseNotRequiresIntegerLiteral(String),
+
+    #[error("operator doesn't exist: {base} {case} {pattern}", case = if *case_sensitive { "LIKE" } else { "ILIKE" })]
+    LikeOnNonStringLiteral {
+        base: String,
+        pattern: String,
+        case_sensitive: bool,
+    },
 
     #[error("unsupported custom function in subqueries")]
     UnsupportedCustomFunction,
@@ -190,6 +200,30 @@ pub enum EvaluateError {
 
     #[error("failed to convert Value to u32: {0}")]
     I64ToU32ConversionFailure(String),
+
+    #[error("failed to parse number {literal:?} to {data_type}")]
+    NumberParseFailed {
+        literal: String,
+        data_type: DataType,
+    },
+
+    #[error("failed to cast number {literal:?} to {data_type}")]
+    NumberCastFailed {
+        literal: String,
+        data_type: DataType,
+    },
+
+    #[error("failed to parse text {literal:?} to {data_type}")]
+    TextParseFailed {
+        literal: String,
+        data_type: DataType,
+    },
+
+    #[error("failed to cast text {literal:?} to {data_type}")]
+    TextCastFailed {
+        literal: String,
+        data_type: DataType,
+    },
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]

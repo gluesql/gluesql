@@ -252,9 +252,9 @@ test_case!(substr, {
         (
             r"SELECT SUBSTR('123', 2, 3) - '3' AS test FROM SingleItem",
             Err(EvaluateError::UnsupportedBinaryOperation {
-                left: "StrSlice { source: \"123\", range: 1..3 }".to_owned(),
+                left: "23".to_owned(),
                 op: BinaryOperator::Minus,
-                right: "Literal(Text(\"3\"))".to_owned(),
+                right: "3".to_owned(),
             }
             .into()),
         ),
@@ -268,11 +268,11 @@ test_case!(substr, {
         ),
         (
             r"SELECT SUBSTR('123', 2, 3)! AS test FROM SingleItem",
-            Err(EvaluateError::UnsupportedUnaryFactorial("23".to_owned()).into()),
+            Err(EvaluateError::UnaryFactorialRequiresNumericLiteral("23".to_owned()).into()),
         ),
         (
             r"SELECT ~SUBSTR('123', 2, 3) AS test FROM SingleItem",
-            Err(EvaluateError::IncompatibleUnaryBitwiseNotOperation("23".to_owned()).into()),
+            Err(EvaluateError::UnaryBitwiseNotRequiresIntegerLiteral("23".to_owned()).into()),
         ),
     ];
     for (sql, expected) in test_cases {
