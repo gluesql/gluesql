@@ -216,5 +216,4 @@ test_case!(arrow, {
         g.named_test(&test_name, sql.as_str(), Ok(select!(result F64; 4.25_f64)))
             .await;
     }
-
 });

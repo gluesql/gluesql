@@ -50,7 +50,7 @@ test_case!(long_arrow, {
 
     // LongArrow on nested map - returns JSON-like string
     g.test(
-        r#"SELECT object->>'nested' AS result FROM LongArrowSample;"#,
+        r"SELECT object->>'nested' AS result FROM LongArrowSample;",
         Ok(select!(result Str; r#"{"role":"admin"}"#.to_owned())),
     )
     .await;
@@ -235,7 +235,7 @@ test_case!(long_arrow, {
 
     // Chained arrow operators with long arrow at the end
     g.test(
-        r#"SELECT object->'nested'->>'role' AS result FROM LongArrowSample;"#,
+        r"SELECT object->'nested'->>'role' AS result FROM LongArrowSample;",
         Ok(select!(result Str; "admin".to_owned())),
     )
     .await;
