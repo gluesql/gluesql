@@ -216,4 +216,71 @@ test_case!(arrow, {
         g.named_test(&test_name, sql.as_str(), Ok(select!(result F64; 4.25_f64)))
             .await;
     }
+
+    // LongArrow (->>): Extract as text
+    g.test(
+        "SELECT object->>'b' AS result FROM ArrowSample;",
+        Ok(select!(result Str; "2".to_owned())),
+    )
+    .await;
+
+    g.test(
+        "SELECT object->>'name' AS result FROM ArrowSample;",
+        Ok(select!(result Str; "Han".to_owned())),
+    )
+    .await;
+
+    g.test(
+        "SELECT object->>'price' AS result FROM ArrowSample;",
+        Ok(select!(result Str; "4.25".to_owned())),
+    )
+    .await;
+
+    g.test(
+        "SELECT object->>'active' AS result FROM ArrowSample;",
+        Ok(select!(result Str; "TRUE".to_owned())),
+    )
+    .await;
+
+    g.test(
+        "SELECT array->>0 AS result FROM ArrowSample;",
+        Ok(select!(result Str; "1".to_owned())),
+    )
+    .await;
+
+    g.test(
+        "SELECT array->>1 AS result FROM ArrowSample;",
+        Ok(select!(result Str; "two".to_owned())),
+    )
+    .await;
+
+    g.test(
+        "SELECT array->>2 AS result FROM ArrowSample;",
+        Ok(select!(result Str; "TRUE".to_owned())),
+    )
+    .await;
+
+    g.test(
+        "SELECT array->>3 AS result FROM ArrowSample;",
+        Ok(select!(result Str; "4.25".to_owned())),
+    )
+    .await;
+
+    g.test(
+        "SELECT object->>'missing' AS result FROM ArrowSample;",
+        Ok(select_with_null!(result; Value::Null)),
+    )
+    .await;
+
+    g.test(
+        "SELECT NULL->>'key' AS result;",
+        Ok(select_with_null!(result; Value::Null)),
+    )
+    .await;
+
+    g.test(
+        "SELECT object->>NULL AS result FROM ArrowSample;",
+        Ok(select_with_null!(result; Value::Null)),
+    )
+    .await;
 });
