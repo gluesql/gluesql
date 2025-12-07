@@ -229,6 +229,12 @@ mod tests {
         let expr = f64::INFINITY.into_param_literal().into_expr();
         assert_eq!(expr, Expr::Value(Value::F64(f64::INFINITY)));
 
+        let expr = 42_isize.into_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::I64(42)));
+
+        let expr = 42_usize.into_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::U64(42)));
+
         let expr = Decimal::new(345, 2).into_param_literal().into_expr();
         assert_eq!(expr, Expr::Value(Value::Decimal(Decimal::new(345, 2))));
 
