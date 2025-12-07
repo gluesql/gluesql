@@ -5,7 +5,7 @@ use {
         parse_sql::parse,
         result::Result,
         store::{GStore, GStoreMut, Planner},
-        translate::{IntoParamLiteral, ParamLiteral, TranslateError, translate_with_params},
+        translate::{IntoParamLiteral, ParamLiteral, translate_with_params},
     },
     futures::{
         TryStreamExt,
@@ -27,8 +27,8 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
     ///
     /// # Errors
     ///
-    /// Returns an error when parsing the SQL text fails, when the supplied parameters
-    /// cannot be converted, or when building an execution plan for a statement fails.
+    /// Returns an error when parsing the SQL text fails or when building an execution plan for
+    /// a statement fails.
     pub async fn plan_with_params<Sql, I, P>(
         &mut self,
         sql: Sql,
@@ -43,7 +43,7 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
         let params: Vec<ParamLiteral> = params
             .into_iter()
             .map(IntoParamLiteral::into_param_literal)
-            .collect::<std::result::Result<_, TranslateError>>()?;
+            .collect();
         let storage = &self.storage;
         stream::iter(parsed)
             .map(|p| translate_with_params(&p, &params))
@@ -71,8 +71,8 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
     ///
     /// # Errors
     ///
-    /// Returns an error when parsing fails, parameter conversion fails, planning fails,
-    /// or when executing a statement against the storage fails.
+    /// Returns an error when parsing fails, planning fails, or executing a statement
+    /// against the storage fails.
     pub async fn execute_with_params<Sql, I, P>(
         &mut self,
         sql: Sql,

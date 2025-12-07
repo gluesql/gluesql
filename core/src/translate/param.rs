@@ -1,237 +1,105 @@
 use {
-    super::TranslateError,
     crate::{
-        ast::{DataType, DateTimeField, Expr, Literal},
+        ast::Expr,
         data::{Interval, Point, Value},
     },
-    bigdecimal::BigDecimal,
-    chrono::{NaiveDate, NaiveDateTime, NaiveTime, Timelike},
+    chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     rust_decimal::Decimal,
     std::net::IpAddr,
     uuid::Uuid,
 };
 
 #[derive(Debug, Clone)]
-pub enum ParamLiteral {
-    Literal(Literal),
-    TypedString {
-        data_type: DataType,
-        value: String,
-    },
-    Interval {
-        expr: Box<ParamLiteral>,
-        leading_field: Option<DateTimeField>,
-        last_field: Option<DateTimeField>,
-    },
-    Bool(bool),
-    Null,
-}
+pub struct ParamLiteral(Value);
 
 impl ParamLiteral {
     #[must_use]
     pub const fn null() -> Self {
-        Self::Null
+        Self(Value::Null)
     }
 
     #[must_use]
     pub fn into_expr(self) -> Expr {
-        match self {
-            ParamLiteral::Literal(literal) => Expr::Literal(literal),
-            ParamLiteral::TypedString { data_type, value } => {
-                Expr::TypedString { data_type, value }
-            }
-            ParamLiteral::Interval {
-                expr,
-                leading_field,
-                last_field,
-            } => Expr::Interval {
-                expr: Box::new(expr.into_expr()),
-                leading_field,
-                last_field,
-            },
-            ParamLiteral::Bool(v) => Expr::Value(Value::Bool(v)),
-            ParamLiteral::Null => Expr::Value(Value::Null),
-        }
-    }
-}
-
-fn into_number_literal<T>(value: &T) -> Result<Literal, TranslateError>
-where
-    T: ToString + ?Sized,
-{
-    let value_str = value.to_string();
-    match value_str.parse::<BigDecimal>() {
-        Ok(number) => Ok(Literal::Number(number)),
-        Err(_) => Err(TranslateError::InvalidParamLiteral { value: value_str }),
+        Expr::Value(self.0)
     }
 }
 
 pub trait IntoParamLiteral {
     /// Converts the value into a [`ParamLiteral`] so it can be bound as a query parameter.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error when the value cannot be represented as a [`ParamLiteral`], such as
-    /// non-finite floats (`TranslateError::NonFiniteFloatParameter`) or invalid numeric literals
-    /// (`TranslateError::InvalidParamLiteral`).
-    fn into_param_literal(self) -> Result<ParamLiteral, TranslateError>;
+    fn into_param_literal(self) -> ParamLiteral;
 }
 
 impl IntoParamLiteral for ParamLiteral {
-    fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-        Ok(self)
+    fn into_param_literal(self) -> ParamLiteral {
+        self
     }
 }
 
-impl IntoParamLiteral for bool {
-    fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-        Ok(ParamLiteral::Bool(self))
-    }
-}
-
-macro_rules! impl_into_param_literal_for_integer {
-    ($($ty:ty),+ $(,)?) => {
+macro_rules! impl_into_param_literal {
+    ($($rust_ty:ty => $value_variant:ident),+ $(,)?) => {
         $(
-            impl IntoParamLiteral for $ty {
-                fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-                    into_number_literal(&self).map(ParamLiteral::Literal)
+            impl IntoParamLiteral for $rust_ty {
+                fn into_param_literal(self) -> ParamLiteral {
+                    ParamLiteral(Value::$value_variant(self))
                 }
             }
         )+
     };
 }
 
-impl_into_param_literal_for_integer!(
-    i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize
+impl_into_param_literal!(
+    bool => Bool,
+    i8 => I8,
+    i16 => I16,
+    i32 => I32,
+    i64 => I64,
+    i128 => I128,
+    u8 => U8,
+    u16 => U16,
+    u32 => U32,
+    u64 => U64,
+    u128 => U128,
+    f32 => F32,
+    f64 => F64,
+    Decimal => Decimal,
+    String => Str,
+    Vec<u8> => Bytea,
+    IpAddr => Inet,
+    NaiveDate => Date,
+    NaiveTime => Time,
+    NaiveDateTime => Timestamp,
+    Point => Point,
+    Interval => Interval,
 );
 
-impl IntoParamLiteral for f32 {
-    fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-        if !self.is_finite() {
-            return Err(TranslateError::NonFiniteFloatParameter {
-                value: self.to_string(),
-            });
-        }
-
-        into_number_literal(&self).map(ParamLiteral::Literal)
+// Types that need conversion
+impl IntoParamLiteral for isize {
+    fn into_param_literal(self) -> ParamLiteral {
+        ParamLiteral(Value::I64(self as i64))
     }
 }
 
-impl IntoParamLiteral for f64 {
-    fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-        if !self.is_finite() {
-            return Err(TranslateError::NonFiniteFloatParameter {
-                value: self.to_string(),
-            });
-        }
-
-        into_number_literal(&self).map(ParamLiteral::Literal)
-    }
-}
-
-impl IntoParamLiteral for Decimal {
-    fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-        into_number_literal(&self).map(ParamLiteral::Literal)
-    }
-}
-
-impl IntoParamLiteral for String {
-    fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-        Ok(ParamLiteral::Literal(Literal::QuotedString(self)))
+impl IntoParamLiteral for usize {
+    fn into_param_literal(self) -> ParamLiteral {
+        ParamLiteral(Value::U64(self as u64))
     }
 }
 
 impl IntoParamLiteral for &str {
-    fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-        self.to_owned().into_param_literal()
-    }
-}
-
-impl IntoParamLiteral for Vec<u8> {
-    fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-        Ok(ParamLiteral::Literal(Literal::HexString(hex::encode(self))))
+    fn into_param_literal(self) -> ParamLiteral {
+        ParamLiteral(Value::Str(self.to_owned()))
     }
 }
 
 impl IntoParamLiteral for &[u8] {
-    fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-        Ok(ParamLiteral::Literal(Literal::HexString(hex::encode(self))))
-    }
-}
-
-impl IntoParamLiteral for IpAddr {
-    fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-        Ok(ParamLiteral::Literal(Literal::QuotedString(
-            self.to_string(),
-        )))
-    }
-}
-
-impl IntoParamLiteral for NaiveDate {
-    fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-        Ok(ParamLiteral::TypedString {
-            data_type: DataType::Date,
-            value: self.to_string(),
-        })
-    }
-}
-
-impl IntoParamLiteral for NaiveTime {
-    fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-        Ok(ParamLiteral::TypedString {
-            data_type: DataType::Time,
-            value: self.to_string(),
-        })
-    }
-}
-
-impl IntoParamLiteral for NaiveDateTime {
-    fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-        let value = if self.time().nanosecond() == 0 {
-            self.format("%Y-%m-%d %H:%M:%S").to_string()
-        } else {
-            self.format("%Y-%m-%d %H:%M:%S%.f").to_string()
-        };
-
-        Ok(ParamLiteral::TypedString {
-            data_type: DataType::Timestamp,
-            value,
-        })
+    fn into_param_literal(self) -> ParamLiteral {
+        ParamLiteral(Value::Bytea(self.to_vec()))
     }
 }
 
 impl IntoParamLiteral for Uuid {
-    fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-        Ok(ParamLiteral::Literal(Literal::QuotedString(
-            self.hyphenated().to_string(),
-        )))
-    }
-}
-
-impl IntoParamLiteral for Point {
-    fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-        Ok(ParamLiteral::Literal(Literal::QuotedString(
-            self.to_string(),
-        )))
-    }
-}
-
-impl IntoParamLiteral for Interval {
-    fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-        match self {
-            Interval::Month(months) => Ok(ParamLiteral::Interval {
-                expr: Box::new(ParamLiteral::Literal(into_number_literal(&months)?)),
-                leading_field: Some(DateTimeField::Month),
-                last_field: None,
-            }),
-            Interval::Microsecond(micros) => Ok(ParamLiteral::Interval {
-                expr: Box::new(ParamLiteral::Literal(into_number_literal(&Decimal::new(
-                    micros, 6,
-                ))?)),
-                leading_field: Some(DateTimeField::Second),
-                last_field: None,
-            }),
-        }
+    fn into_param_literal(self) -> ParamLiteral {
+        ParamLiteral(Value::Uuid(self.as_u128()))
     }
 }
 
@@ -239,10 +107,10 @@ impl<T> IntoParamLiteral for Option<T>
 where
     T: IntoParamLiteral,
 {
-    fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
+    fn into_param_literal(self) -> ParamLiteral {
         match self {
             Some(value) => value.into_param_literal(),
-            None => Ok(ParamLiteral::null()),
+            None => ParamLiteral::null(),
         }
     }
 }
@@ -253,258 +121,138 @@ macro_rules! params {
         vec![
             $(
                 $crate::translate::IntoParamLiteral::into_param_literal($expr)
-                    .expect("failed to convert parameter literal")
             ),*
         ]
     };
-}
-
-#[macro_export]
-macro_rules! try_params {
-    ($($expr:expr),* $(,)?) => {{
-        let result = vec![
-            $(
-                $crate::translate::IntoParamLiteral::into_param_literal($expr)
-            ),*
-        ]
-        .into_iter()
-        .collect::<::core::result::Result<Vec<_>, _>>();
-
-        result
-    }};
 }
 
 #[cfg(test)]
 mod tests {
     use {
         super::*,
-        crate::{
-            ast::{Expr, Literal},
-            data::Point,
-        },
-        bigdecimal::BigDecimal,
+        crate::{ast::Expr, data::Point},
         chrono::{NaiveDate, NaiveTime},
         rust_decimal::Decimal,
         std::{net::IpAddr, str::FromStr},
         uuid::Uuid,
     };
 
-    use std::fmt::{self, Display};
-
-    #[derive(Debug)]
-    struct BadNumber;
-
-    impl Display for BadNumber {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "not-a-number")
-        }
-    }
-
-    impl IntoParamLiteral for BadNumber {
-        fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-            into_number_literal(&self).map(ParamLiteral::Literal)
-        }
-    }
-
     #[test]
     fn accepts_param_literal() {
         let literal = ParamLiteral::null();
-        let converted = literal.clone().into_param_literal().unwrap();
-        assert!(matches!(
-            (literal, converted),
-            (ParamLiteral::Null, ParamLiteral::Null)
-        ));
+        let converted = literal.clone().into_param_literal();
+        assert!(matches!(literal.into_expr(), Expr::Value(Value::Null)));
+        assert!(matches!(converted.into_expr(), Expr::Value(Value::Null)));
     }
 
     #[test]
     fn converts_basic_literals() {
-        let literal = true.into_param_literal().unwrap().into_expr();
-        assert_eq!(literal, Expr::Value(Value::Bool(true)));
+        let expr = true.into_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::Bool(true)));
 
-        let literal = 42_i64.into_param_literal().unwrap().into_expr();
-        assert_eq!(literal, Expr::Literal(Literal::Number(42.into())));
+        let expr = 42_i64.into_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::I64(42)));
 
-        let literal = "glue".into_param_literal().unwrap().into_expr();
-        assert_eq!(
-            literal,
-            Expr::Literal(Literal::QuotedString("glue".to_owned()))
-        );
+        let expr = "glue".into_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::Str("glue".to_owned())));
 
-        let literal = String::from("owned").into_param_literal().unwrap();
-        assert_eq!(
-            literal.into_expr(),
-            Expr::Literal(Literal::QuotedString("owned".to_owned()))
-        );
+        let expr = String::from("owned").into_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::Str("owned".to_owned())));
 
-        let literal = 3_i16.into_param_literal().unwrap().into_expr();
-        assert_eq!(literal, Expr::Literal(Literal::Number(3.into())));
+        let expr = 3_i16.into_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::I16(3)));
 
-        let literal = 7_u32.into_param_literal().unwrap().into_expr();
-        assert_eq!(literal, Expr::Literal(Literal::Number(7.into())));
+        let expr = 7_u32.into_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::U32(7)));
     }
 
     #[test]
     fn converts_typed_literals() {
         let date = NaiveDate::from_ymd_opt(2024, 1, 15).unwrap();
-        let expr = date.into_param_literal().unwrap().into_expr();
-        assert_eq!(
-            expr,
-            Expr::TypedString {
-                data_type: DataType::Date,
-                value: "2024-01-15".to_owned(),
-            }
-        );
+        let expr = date.into_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::Date(date)));
 
         let time = NaiveTime::from_hms_opt(9, 45, 30).unwrap();
-        let expr = time.into_param_literal().unwrap().into_expr();
-        assert_eq!(
-            expr,
-            Expr::TypedString {
-                data_type: DataType::Time,
-                value: "09:45:30".to_owned(),
-            }
-        );
+        let expr = time.into_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::Time(time)));
 
         let timestamp = NaiveDate::from_ymd_opt(2024, 1, 15)
             .unwrap()
             .and_hms_opt(12, 0, 0)
             .unwrap();
-        let expr = timestamp.into_param_literal().unwrap().into_expr();
-        assert_eq!(
-            expr,
-            Expr::TypedString {
-                data_type: DataType::Timestamp,
-                value: "2024-01-15 12:00:00".to_owned(),
-            }
-        );
+        let expr = timestamp.into_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::Timestamp(timestamp)));
 
         let timestamp_with_fraction = NaiveDate::from_ymd_opt(2024, 1, 15)
             .unwrap()
             .and_hms_micro_opt(12, 0, 0, 123_456)
             .unwrap();
-        let expr = timestamp_with_fraction
-            .into_param_literal()
-            .unwrap()
-            .into_expr();
+        let expr = timestamp_with_fraction.into_param_literal().into_expr();
         assert_eq!(
             expr,
-            Expr::TypedString {
-                data_type: DataType::Timestamp,
-                value: "2024-01-15 12:00:00.123456".to_owned(),
-            }
+            Expr::Value(Value::Timestamp(timestamp_with_fraction))
         );
     }
 
     #[test]
     fn converts_interval() {
-        let expr = Interval::Month(2).into_param_literal().unwrap().into_expr();
-        assert_eq!(
-            expr,
-            Expr::Interval {
-                expr: Box::new(Expr::Literal(Literal::Number(2.into()))),
-                leading_field: Some(DateTimeField::Month),
-                last_field: None,
-            }
-        );
+        let expr = Interval::Month(2).into_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::Interval(Interval::Month(2))));
 
         let expr = Interval::Microsecond(1_500_000)
             .into_param_literal()
-            .unwrap()
             .into_expr();
         assert_eq!(
             expr,
-            Expr::Interval {
-                expr: Box::new(Expr::Literal(Literal::Number(
-                    BigDecimal::from_str("1.5").unwrap(),
-                ))),
-                leading_field: Some(DateTimeField::Second),
-                last_field: None,
-            }
+            Expr::Value(Value::Interval(Interval::Microsecond(1_500_000)))
         );
     }
 
     #[test]
     fn converts_option() {
-        let expr = Some(1_i32).into_param_literal().unwrap().into_expr();
-        assert_eq!(expr, Expr::Literal(Literal::Number(1.into())));
+        let expr = Some(1_i32).into_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::I32(1)));
 
-        let expr = (None::<i32>).into_param_literal().unwrap().into_expr();
+        let expr = (None::<i32>).into_param_literal().into_expr();
         assert_eq!(expr, Expr::Value(Value::Null));
     }
 
     #[test]
     fn converts_scalars_and_structs() {
-        let expr = 1.25_f64.into_param_literal().unwrap().into_expr();
-        assert_eq!(
-            expr,
-            Expr::Literal(Literal::Number(BigDecimal::from_str("1.25").unwrap()))
-        );
+        let expr = 1.25_f64.into_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::F64(1.25)));
 
-        let non_finite_f32 = f32::NAN.into_param_literal();
-        assert!(matches!(
-            non_finite_f32,
-            Err(TranslateError::NonFiniteFloatParameter { ref value }) if value == "NaN"
-        ));
+        let expr = 1.5_f32.into_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::F32(1.5)));
 
-        let non_finite_f64 = f64::INFINITY.into_param_literal();
-        assert!(matches!(
-            non_finite_f64,
-            Err(TranslateError::NonFiniteFloatParameter { ref value }) if value == "inf"
-        ));
+        // NaN and Infinity are supported
+        let expr = f32::NAN.into_param_literal().into_expr();
+        assert!(matches!(expr, Expr::Value(Value::F32(v)) if v.is_nan()));
 
-        let expr = 1.5_f32.into_param_literal().unwrap().into_expr();
-        assert_eq!(
-            expr,
-            Expr::Literal(Literal::Number(BigDecimal::from_str("1.5").unwrap()))
-        );
+        let expr = f64::INFINITY.into_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::F64(f64::INFINITY)));
 
-        let expr = Decimal::new(345, 2)
-            .into_param_literal()
-            .unwrap()
-            .into_expr();
-        assert_eq!(
-            expr,
-            Expr::Literal(Literal::Number(BigDecimal::from_str("3.45").unwrap()))
-        );
+        let expr = Decimal::new(345, 2).into_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::Decimal(Decimal::new(345, 2))));
 
-        let expr = vec![0x12_u8, 0xAB]
-            .into_param_literal()
-            .unwrap()
-            .into_expr();
-        assert_eq!(expr, Expr::Literal(Literal::HexString("12ab".to_owned())));
+        let expr = vec![0x12_u8, 0xAB].into_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::Bytea(vec![0x12, 0xAB])));
 
         let bytes = [0xCD_u8, 0xEF];
-        let expr = bytes.as_slice().into_param_literal().unwrap().into_expr();
-        assert_eq!(expr, Expr::Literal(Literal::HexString("cdef".to_owned())));
+        let expr = bytes.as_slice().into_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::Bytea(vec![0xCD, 0xEF])));
 
         let ip = IpAddr::from_str("127.0.0.1").unwrap();
-        let expr = ip.into_param_literal().unwrap().into_expr();
-        assert_eq!(
-            expr,
-            Expr::Literal(Literal::QuotedString("127.0.0.1".to_owned()))
-        );
+        let expr = ip.into_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::Inet(ip)));
 
         let uuid = Uuid::parse_str("123e4567-e89b-12d3-a456-426614174000").unwrap();
-        let expr = uuid.into_param_literal().unwrap().into_expr();
-        assert_eq!(
-            expr,
-            Expr::Literal(Literal::QuotedString(
-                "123e4567-e89b-12d3-a456-426614174000".to_owned()
-            ))
-        );
+        let expr = uuid.into_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::Uuid(uuid.as_u128())));
 
         let point = Point::new(1.0, 2.0);
-        let expr = point.into_param_literal().unwrap().into_expr();
-        assert_eq!(
-            expr,
-            Expr::Literal(Literal::QuotedString("POINT(1 2)".to_owned()))
-        );
-
-        let invalid = BadNumber.into_param_literal();
-        assert!(matches!(
-            invalid,
-            Err(TranslateError::InvalidParamLiteral { ref value }) if value == "not-a-number"
-        ));
+        let expr = point.into_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::Point(point)));
     }
 
     #[test]
@@ -513,30 +261,15 @@ mod tests {
 
         assert_eq!(params.len(), 4);
 
-        assert_eq!(
-            params[0].clone().into_expr(),
-            Expr::Literal(Literal::Number(1.into()))
-        );
+        assert_eq!(params[0].clone().into_expr(), Expr::Value(Value::I64(1)));
         assert_eq!(
             params[1].clone().into_expr(),
-            Expr::Literal(Literal::QuotedString("Glue".to_owned()))
+            Expr::Value(Value::Str("Glue".to_owned()))
         );
         assert_eq!(
             params[2].clone().into_expr(),
             Expr::Value(Value::Bool(false))
         );
         assert_eq!(params[3].clone().into_expr(), Expr::Value(Value::Null));
-    }
-
-    #[test]
-    fn try_params_macro_propagates_errors() {
-        let ok = crate::try_params![1_i64, "Glue"].expect("valid parameters should succeed");
-        assert_eq!(ok.len(), 2);
-
-        let err = crate::try_params![1_f64, f64::INFINITY];
-        assert!(matches!(
-            err,
-            Err(TranslateError::NonFiniteFloatParameter { ref value }) if value == "inf"
-        ));
     }
 }
