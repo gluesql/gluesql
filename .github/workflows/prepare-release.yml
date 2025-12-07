@@ -21,7 +21,7 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-release
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
       - name: Bump versions
