@@ -303,7 +303,7 @@ impl From<i64> for ExprNode<'_> {
 
 impl From<bool> for ExprNode<'_> {
     fn from(b: bool) -> Self {
-        ExprNode::Expr(Cow::Owned(Expr::Literal(Literal::Boolean(b))))
+        ExprNode::Expr(Cow::Owned(Expr::Value(Value::Bool(b))))
     }
 }
 

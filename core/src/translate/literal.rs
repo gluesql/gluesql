@@ -12,7 +12,7 @@ use {
 
 pub fn translate_literal(sql_value: &SqlValue) -> Result<Expr> {
     Ok(match sql_value {
-        SqlValue::Boolean(v) => Expr::Literal(Literal::Boolean(*v)),
+        SqlValue::Boolean(v) => Expr::Value(Value::Bool(*v)),
         SqlValue::Number(v, _) => Expr::Literal(Literal::Number(v.clone())),
         SqlValue::SingleQuotedString(v) => Expr::Literal(Literal::QuotedString(v.clone())),
         SqlValue::HexStringLiteral(v) => Expr::Literal(Literal::HexString(v.clone())),

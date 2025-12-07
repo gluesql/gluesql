@@ -11,7 +11,6 @@ use {
 
 pub fn literal(literal: &Literal) -> Result<Evaluated<'_>> {
     match literal {
-        Literal::Boolean(value) => Ok(Evaluated::Value(Value::Bool(*value))),
         Literal::Number(value) => Ok(Evaluated::Number(Cow::Borrowed(value))),
         Literal::QuotedString(value) => Ok(Evaluated::Text(Cow::Borrowed(value))),
         Literal::HexString(value) => {
@@ -130,10 +129,6 @@ mod tests {
 
     #[test]
     fn test_literal() {
-        assert_eq!(
-            literal(&Literal::Boolean(true)),
-            Ok(Evaluated::Value(Value::Bool(true)))
-        );
         assert_eq!(
             literal(&Literal::Number(BigDecimal::from(42))),
             Ok(Evaluated::Number(Cow::Owned(BigDecimal::from(42))))

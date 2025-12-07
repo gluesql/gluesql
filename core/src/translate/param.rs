@@ -23,6 +23,7 @@ pub enum ParamLiteral {
         leading_field: Option<DateTimeField>,
         last_field: Option<DateTimeField>,
     },
+    Bool(bool),
     Null,
 }
 
@@ -48,6 +49,7 @@ impl ParamLiteral {
                 leading_field,
                 last_field,
             },
+            ParamLiteral::Bool(v) => Expr::Value(Value::Bool(v)),
             ParamLiteral::Null => Expr::Value(Value::Null),
         }
     }
@@ -83,7 +85,7 @@ impl IntoParamLiteral for ParamLiteral {
 
 impl IntoParamLiteral for bool {
     fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-        Ok(ParamLiteral::Literal(Literal::Boolean(self)))
+        Ok(ParamLiteral::Bool(self))
     }
 }
 
@@ -317,7 +319,7 @@ mod tests {
     #[test]
     fn converts_basic_literals() {
         let literal = true.into_param_literal().unwrap().into_expr();
-        assert_eq!(literal, Expr::Literal(Literal::Boolean(true)));
+        assert_eq!(literal, Expr::Value(Value::Bool(true)));
 
         let literal = 42_i64.into_param_literal().unwrap().into_expr();
         assert_eq!(literal, Expr::Literal(Literal::Number(42.into())));
@@ -521,7 +523,7 @@ mod tests {
         );
         assert_eq!(
             params[2].clone().into_expr(),
-            Expr::Literal(Literal::Boolean(false))
+            Expr::Value(Value::Bool(false))
         );
         assert_eq!(params[3].clone().into_expr(), Expr::Value(Value::Null));
     }

@@ -7,7 +7,6 @@ use {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Literal {
-    Boolean(bool),
     Number(BigDecimal),
     QuotedString(String),
     HexString(String),
@@ -16,7 +15,6 @@ pub enum Literal {
 impl ToSql for Literal {
     fn to_sql(&self) -> String {
         match self {
-            Literal::Boolean(b) => b.to_string().to_uppercase(),
             Literal::Number(n) => n.to_string(),
             Literal::QuotedString(qs) => {
                 let escaped = qs.replace('\'', "''");
@@ -55,7 +53,6 @@ mod tests {
 
     #[test]
     fn to_sql() {
-        assert_eq!("TRUE", Literal::Boolean(true).to_sql());
         assert_eq!("123", Literal::Number(BigDecimal::from(123)).to_sql());
         assert_eq!(
             "'hello'",
