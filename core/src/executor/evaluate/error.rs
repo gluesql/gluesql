@@ -44,9 +44,6 @@ pub enum EvaluateError {
     #[error("function requires map value: {0}")]
     FunctionRequiresMapValue(String),
 
-    #[error("failed to decode hex string: {0}")]
-    FailedToDecodeHexString(String),
-
     #[error("function requires point value: {0}")]
     FunctionRequiresPointValue(String),
 

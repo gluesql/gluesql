@@ -354,6 +354,7 @@ mod tests {
         super::*,
         crate::{
             ast::{Expr, Literal, Query, Select, SelectItem, SetExpr, TableFactor, TableWithJoins},
+            data::Value,
             parse_sql::{parse, parse_query},
             result::Error,
             translate::{IntoParamLiteral, NO_PARAMS},
@@ -413,10 +414,7 @@ mod tests {
     #[test]
     fn translate_binds_indexed_placeholders() {
         let query = parse_query("SELECT $1, $2").expect("parse placeholder query");
-        let params = [
-            1_i64.into_param_literal().unwrap(),
-            "GlueSQL".into_param_literal().unwrap(),
-        ];
+        let params = [1_i64.into_param_literal(), "GlueSQL".into_param_literal()];
         let translated = translate_query(query.as_ref(), &params).expect("translate");
 
         let expected = Query {
@@ -424,11 +422,11 @@ mod tests {
                 distinct: false,
                 projection: vec![
                     SelectItem::Expr {
-                        expr: Expr::Literal(Literal::Number(1.into())),
+                        expr: Expr::Value(Value::I64(1)),
                         label: "$1".to_owned(),
                     },
                     SelectItem::Expr {
-                        expr: Expr::Literal(Literal::QuotedString("GlueSQL".to_owned())),
+                        expr: Expr::Value(Value::Str("GlueSQL".to_owned())),
                         label: "$2".to_owned(),
                     },
                 ],

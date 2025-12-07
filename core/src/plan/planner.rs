@@ -180,6 +180,7 @@ pub trait Planner<'a> {
             Expr::Identifier(_)
             | Expr::CompoundIdentifier { .. }
             | Expr::Literal(_)
+            | Expr::Value(_)
             | Expr::TypedString { .. }
             | Expr::Aggregate(_) => expr,
         }

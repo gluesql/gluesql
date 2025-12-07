@@ -607,9 +607,12 @@ impl ToSql for CountArgExpr {
 #[cfg(test)]
 mod tests {
     use {
-        crate::ast::{
-            Aggregate, CountArgExpr, DataType, DateTimeField, Expr, Function, Literal, ToSql,
-            TrimWhereField,
+        crate::{
+            ast::{
+                Aggregate, CountArgExpr, DataType, DateTimeField, Expr, Function, Literal, ToSql,
+                TrimWhereField,
+            },
+            data::Value,
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,
@@ -776,7 +779,7 @@ mod tests {
             r#"COALESCE("First", NULL, "Last")"#,
             &Expr::Function(Box::new(Function::Coalesce(vec![
                 Expr::Identifier("First".to_owned()),
-                Expr::Literal(Literal::Null),
+                Expr::Value(Value::Null),
                 Expr::Identifier("Last".to_owned()),
             ])))
             .to_sql()

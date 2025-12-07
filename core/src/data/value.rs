@@ -25,9 +25,9 @@ mod binary_op;
 mod convert;
 mod date;
 mod error;
-mod expr;
 mod json;
 mod selector;
+mod to_sql;
 mod uuid;
 
 pub use {

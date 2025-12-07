@@ -113,7 +113,7 @@ pub fn translate_expr(sql_expr: &SqlExpr, params: &[ParamLiteral]) -> Result<Exp
         SqlExpr::Nested(expr) => translate_expr(expr, params).map(Box::new).map(Expr::Nested),
         SqlExpr::Value(value) => match value {
             SqlValue::Placeholder(placeholder) => bind_placeholder(params, placeholder),
-            _ => translate_literal(value).map(Expr::Literal),
+            _ => translate_literal(value),
         },
         SqlExpr::TypedString { data_type, value } => Ok(Expr::TypedString {
             data_type: translate_data_type(data_type)?,

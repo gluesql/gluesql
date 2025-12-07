@@ -1,7 +1,8 @@
 use {
     super::TranslateError,
     crate::{
-        ast::{DateTimeField, Literal, TrimWhereField},
+        ast::{DateTimeField, Expr, Literal, TrimWhereField},
+        data::Value,
         result::Result,
     },
     sqlparser::ast::{
@@ -9,13 +10,17 @@ use {
     },
 };
 
-pub fn translate_literal(sql_value: &SqlValue) -> Result<Literal> {
+pub fn translate_literal(sql_value: &SqlValue) -> Result<Expr> {
     Ok(match sql_value {
-        SqlValue::Boolean(v) => Literal::Boolean(*v),
-        SqlValue::Number(v, _) => Literal::Number(v.clone()),
-        SqlValue::SingleQuotedString(v) => Literal::QuotedString(v.clone()),
-        SqlValue::HexStringLiteral(v) => Literal::HexString(v.clone()),
-        SqlValue::Null => Literal::Null,
+        SqlValue::Boolean(v) => Expr::Value(Value::Bool(*v)),
+        SqlValue::Number(v, _) => Expr::Literal(Literal::Number(v.clone())),
+        SqlValue::SingleQuotedString(v) => Expr::Literal(Literal::QuotedString(v.clone())),
+        SqlValue::HexStringLiteral(v) => {
+            let bytes =
+                hex::decode(v).map_err(|_| TranslateError::FailedToDecodeHexString(v.clone()))?;
+            Expr::Value(Value::Bytea(bytes))
+        }
+        SqlValue::Null => Expr::Value(Value::Null),
         _ => {
             return Err(TranslateError::UnsupportedLiteral(sql_value.to_string()).into());
         }

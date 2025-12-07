@@ -2,7 +2,7 @@ use {
     crate::*,
     gluesql_core::{
         ast::DataType,
-        error::EvaluateError,
+        error::{EvaluateError, TranslateError},
         prelude::{Payload, Value::Bytea},
     },
 };
@@ -42,7 +42,7 @@ test_case!(bytea, {
         ),
         (
             r"INSERT INTO Bytea VALUES (X'123')",
-            Err(EvaluateError::FailedToDecodeHexString("123".to_owned()).into()),
+            Err(TranslateError::FailedToDecodeHexString("123".to_owned()).into()),
         ),
     ];
 
