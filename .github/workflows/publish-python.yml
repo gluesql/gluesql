@@ -32,7 +32,7 @@ jobs:
         package: [gluesql]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.sha }}
 
@@ -76,7 +76,7 @@ jobs:
         architecture: [x86-64, aarch64]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.sha }}
 

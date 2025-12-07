@@ -4,10 +4,10 @@ on:
   push:
     branches: [main, release-*]
     paths-ignore:
-      - 'docs/**'
+      - "docs/**"
   pull_request:
     paths-ignore:
-      - 'docs/**'
+      - "docs/**"
 
 env:
   CARGO_TERM_COLOR: always
@@ -16,7 +16,7 @@ jobs:
   python_storage_tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
