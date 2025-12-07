@@ -1143,3 +1143,13 @@ pub fn select_arrow_value(base: &Value, selector: &Value) -> Result<Value> {
         _ => Err(EvaluateError::ArrowBaseRequiresMapOrList.into()),
     }
 }
+
+pub fn select_long_arrow_value(base: &Value, selector: &Value) -> Result<Value> {
+    let value = select_arrow_value(base, selector)?;
+
+    match value {
+        Value::Null => Ok(Value::Null),
+        Value::Str(s) => Ok(Value::Str(s)),
+        other => Ok(Value::Str(String::from(&other))),
+    }
+}

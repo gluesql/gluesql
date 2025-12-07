@@ -289,6 +289,23 @@ impl<'a> Evaluated<'a> {
         value_result.map(Evaluated::Value)
     }
 
+    pub fn long_arrow<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
+        let selector = Value::try_from(other.clone())?;
+
+        if selector.is_null() {
+            return Ok(Evaluated::Value(Value::Null));
+        }
+
+        let value_result = if let Evaluated::Value(base) = self {
+            function::select_long_arrow_value(base, &selector)
+        } else {
+            let base = Value::try_from(self.clone())?;
+            function::select_long_arrow_value(&base, &selector)
+        };
+
+        value_result.map(Evaluated::Value)
+    }
+
     pub fn unary_plus(&self) -> Result<Evaluated<'a>> {
         match self {
             Evaluated::Literal(v) => v.unary_plus().map(Evaluated::Literal),
