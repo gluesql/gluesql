@@ -163,7 +163,7 @@ impl<'a> Evaluated<'a> {
 
         value_result.map(Evaluated::Value)
     }
-    
+
     pub fn long_arrow<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
         let selector = Value::try_from(other.clone())?;
 
