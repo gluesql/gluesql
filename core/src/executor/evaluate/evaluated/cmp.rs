@@ -107,60 +107,31 @@ mod tests {
 
     #[test]
     fn test_value_cmp_with_number() {
-        let num = |n: i32| BigDecimal::from(n);
+        let cmp = |v: &Value, n: i32| value_cmp_with_number(v, &BigDecimal::from(n));
 
+        assert_eq!(cmp(&Value::I8(1), 1), Some(Ordering::Equal));
+        assert_eq!(cmp(&Value::I16(1), 2), Some(Ordering::Less));
+        assert_eq!(cmp(&Value::I32(10), 3), Some(Ordering::Greater));
+        assert_eq!(cmp(&Value::I64(10), 10), Some(Ordering::Equal));
+        assert_eq!(cmp(&Value::I128(10), 10), Some(Ordering::Equal));
+        assert_eq!(cmp(&Value::U8(1), 1), Some(Ordering::Equal));
+        assert_eq!(cmp(&Value::U16(1), 2), Some(Ordering::Less));
+        assert_eq!(cmp(&Value::U32(10), 3), Some(Ordering::Greater));
+        assert_eq!(cmp(&Value::U64(10), 10), Some(Ordering::Equal));
+        assert_eq!(cmp(&Value::U128(10), 10), Some(Ordering::Equal));
+        assert_eq!(cmp(&Value::F32(10.0), 10), Some(Ordering::Equal));
+        assert_eq!(cmp(&Value::F64(10.0), 10), Some(Ordering::Equal));
         assert_eq!(
-            value_cmp_with_number(&Value::I8(1), &num(1)),
-            Some(Ordering::Equal)
-        );
-        assert_eq!(
-            value_cmp_with_number(&Value::I16(1), &num(2)),
+            cmp(&Value::Decimal(Decimal::new(215, 2)), 3),
             Some(Ordering::Less)
         );
+        assert_eq!(cmp(&Value::Null, 1), None);
         assert_eq!(
-            value_cmp_with_number(&Value::I32(10), &num(3)),
-            Some(Ordering::Greater)
+            cmp(&Value::Inet(IpAddr::from_str("127.0.0.1").unwrap()), -1),
+            None
         );
-        assert_eq!(
-            value_cmp_with_number(&Value::I64(10), &num(10)),
-            Some(Ordering::Equal)
-        );
-        assert_eq!(
-            value_cmp_with_number(&Value::I128(10), &num(10)),
-            Some(Ordering::Equal)
-        );
-        assert_eq!(
-            value_cmp_with_number(&Value::U8(1), &num(1)),
-            Some(Ordering::Equal)
-        );
-        assert_eq!(
-            value_cmp_with_number(&Value::U16(1), &num(2)),
-            Some(Ordering::Less)
-        );
-        assert_eq!(
-            value_cmp_with_number(&Value::U32(10), &num(3)),
-            Some(Ordering::Greater)
-        );
-        assert_eq!(
-            value_cmp_with_number(&Value::U64(10), &num(10)),
-            Some(Ordering::Equal)
-        );
-        assert_eq!(
-            value_cmp_with_number(&Value::U128(10), &num(10)),
-            Some(Ordering::Equal)
-        );
-        assert_eq!(
-            value_cmp_with_number(&Value::F32(10.0), &num(10)),
-            Some(Ordering::Equal)
-        );
-        assert_eq!(
-            value_cmp_with_number(&Value::F64(10.0), &num(10)),
-            Some(Ordering::Equal)
-        );
-        assert_eq!(
-            value_cmp_with_number(&Value::Decimal(Decimal::new(215, 2)), &num(3)),
-            Some(Ordering::Less),
-        );
+
+        // Inet with large numbers
         assert_eq!(
             value_cmp_with_number(
                 &Value::Inet(IpAddr::from_str("255.255.255.255").unwrap()),
@@ -175,14 +146,6 @@ mod tests {
             ),
             Some(Ordering::Equal),
         );
-        assert_eq!(
-            value_cmp_with_number(
-                &Value::Inet(IpAddr::from_str("127.0.0.1").unwrap()),
-                &num(-1)
-            ),
-            None,
-        );
-        assert_eq!(value_cmp_with_number(&Value::Null, &num(1)), None);
     }
 
     #[test]
