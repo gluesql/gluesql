@@ -163,8 +163,7 @@ impl<'a> Evaluated<'a> {
 
         value_result.map(Evaluated::Value)
     }
-
-<<<<<<< HEAD
+    
     pub fn long_arrow<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
         let selector = Value::try_from(other.clone())?;
 
@@ -182,63 +181,6 @@ impl<'a> Evaluated<'a> {
         value_result.map(Evaluated::Value)
     }
 
-    pub fn unary_plus(&self) -> Result<Evaluated<'a>> {
-        match self {
-            Evaluated::Literal(v) => v.unary_plus().map(Evaluated::Literal),
-            Evaluated::Value(v) => v.unary_plus().map(Evaluated::Value),
-            Evaluated::StrSlice { source, range } => {
-                Err(EvaluateError::UnsupportedUnaryPlus(source[range.clone()].to_owned()).into())
-            }
-        }
-    }
-
-    pub fn unary_minus(&self) -> Result<Evaluated<'a>> {
-        match self {
-            Evaluated::Literal(v) => v.unary_minus().map(Evaluated::Literal),
-            Evaluated::Value(v) => v.unary_minus().map(Evaluated::Value),
-            Evaluated::StrSlice { source, range } => {
-                Err(EvaluateError::UnsupportedUnaryMinus(source[range.clone()].to_owned()).into())
-            }
-        }
-    }
-
-    pub fn unary_not(self) -> Result<Evaluated<'a>> {
-        if self.is_null() {
-            Ok(self)
-        } else {
-            self.try_into()
-                .map(|v: bool| Evaluated::Value(Value::Bool(!v)))
-        }
-    }
-
-    pub fn unary_factorial(&self) -> Result<Evaluated<'a>> {
-        match self {
-            Evaluated::Literal(v) => Value::try_from(v).and_then(|v| v.unary_factorial()),
-            Evaluated::Value(v) => v.unary_factorial(),
-            Evaluated::StrSlice { source, range } => Err(EvaluateError::UnsupportedUnaryFactorial(
-                source[range.clone()].to_owned(),
-            )
-            .into()),
-        }
-        .map(Evaluated::Value)
-    }
-
-    pub fn unary_bitwise_not(&self) -> Result<Evaluated<'a>> {
-        match self {
-            Evaluated::Literal(v) => Value::try_from(v).and_then(|v| v.unary_bitwise_not()),
-            Evaluated::Value(v) => v.unary_bitwise_not(),
-            Evaluated::StrSlice { source, range } => {
-                Err(EvaluateError::IncompatibleUnaryBitwiseNotOperation(
-                    source[range.clone()].to_owned(),
-                )
-                .into())
-            }
-        }
-        .map(Evaluated::Value)
-    }
-
-=======
->>>>>>> f0978381 (Eliminate Literal type by absorbing into Evaluated (#1845))
     pub fn cast(self, data_type: &DataType) -> Result<Evaluated<'a>> {
         match self {
             Evaluated::Number(value) => cast_number_to_value(data_type, value.as_ref()),
