@@ -111,7 +111,7 @@ impl TryFrom<Evaluated<'_>> for bool {
             Evaluated::Number(value) => value.to_string(),
             Evaluated::Text(value) => value.to_string(),
             Evaluated::StrSlice { source, range } => source[range].to_owned(),
-            Evaluated::Value(value) => String::from(value.clone()),
+            Evaluated::Value(value) => String::from(value),
         };
 
         Err(EvaluateError::BooleanTypeRequired(v).into())

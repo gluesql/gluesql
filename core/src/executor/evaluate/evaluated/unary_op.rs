@@ -12,7 +12,7 @@ use {
 impl<'a> Evaluated<'a> {
     pub fn unary_plus(&self) -> Result<Evaluated<'a>> {
         match self {
-            Evaluated::Number(_) => Ok(self.clone()),
+            Evaluated::Number(value) => Ok(Evaluated::Number(value.clone())),
             Evaluated::Text(text) => {
                 Err(EvaluateError::UnsupportedUnaryPlus(text.to_string()).into())
             }
