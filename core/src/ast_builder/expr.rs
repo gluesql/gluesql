@@ -17,6 +17,7 @@ use {
     crate::{
         ast::{Aggregate, BinaryOperator, Expr, Function, Literal, Query, UnaryOperator},
         ast_builder::QueryNode,
+        data::Value,
         parse_sql::{parse_comma_separated_exprs, parse_expr, parse_query},
         prelude::DataType,
         result::{Error, Result},
@@ -385,7 +386,7 @@ pub fn subquery<'a, T: Into<QueryNode<'a>>>(query_node: T) -> ExprNode<'a> {
 }
 
 pub fn null() -> ExprNode<'static> {
-    ExprNode::Expr(Cow::Owned(Expr::Literal(Literal::Null)))
+    ExprNode::Expr(Cow::Owned(Expr::Value(Value::Null)))
 }
 
 #[cfg(test)]

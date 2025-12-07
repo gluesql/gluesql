@@ -20,7 +20,6 @@ pub fn literal(literal: &Literal) -> Result<Evaluated<'_>> {
 
             Ok(Evaluated::Value(Value::Bytea(bytes)))
         }
-        Literal::Null => Ok(Evaluated::Value(Value::Null)),
     }
 }
 
@@ -151,6 +150,5 @@ mod tests {
             literal(&Literal::HexString("XYZ".to_owned())),
             Err(EvaluateError::FailedToDecodeHexString("XYZ".to_owned()).into())
         );
-        assert_eq!(literal(&Literal::Null), Ok(Evaluated::Value(Value::Null)));
     }
 }

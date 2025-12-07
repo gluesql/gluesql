@@ -2,7 +2,7 @@ use {
     super::TranslateError,
     crate::{
         ast::{DataType, DateTimeField, Expr, Literal},
-        data::{Interval, Point},
+        data::{Interval, Point, Value},
     },
     bigdecimal::BigDecimal,
     chrono::{NaiveDate, NaiveDateTime, NaiveTime, Timelike},
@@ -23,12 +23,13 @@ pub enum ParamLiteral {
         leading_field: Option<DateTimeField>,
         last_field: Option<DateTimeField>,
     },
+    Null,
 }
 
 impl ParamLiteral {
     #[must_use]
     pub const fn null() -> Self {
-        Self::Literal(Literal::Null)
+        Self::Null
     }
 
     #[must_use]
@@ -47,6 +48,7 @@ impl ParamLiteral {
                 leading_field,
                 last_field,
             },
+            ParamLiteral::Null => Expr::Value(Value::Null),
         }
     }
 }
@@ -308,10 +310,7 @@ mod tests {
         let converted = literal.clone().into_param_literal().unwrap();
         assert!(matches!(
             (literal, converted),
-            (
-                ParamLiteral::Literal(Literal::Null),
-                ParamLiteral::Literal(Literal::Null)
-            )
+            (ParamLiteral::Null, ParamLiteral::Null)
         ));
     }
 
@@ -428,7 +427,7 @@ mod tests {
         assert_eq!(expr, Expr::Literal(Literal::Number(1.into())));
 
         let expr = (None::<i32>).into_param_literal().unwrap().into_expr();
-        assert_eq!(expr, Expr::Literal(Literal::Null));
+        assert_eq!(expr, Expr::Value(Value::Null));
     }
 
     #[test]
@@ -524,7 +523,7 @@ mod tests {
             params[2].clone().into_expr(),
             Expr::Literal(Literal::Boolean(false))
         );
-        assert_eq!(params[3].clone().into_expr(), Expr::Literal(Literal::Null));
+        assert_eq!(params[3].clone().into_expr(), Expr::Value(Value::Null));
     }
 
     #[test]

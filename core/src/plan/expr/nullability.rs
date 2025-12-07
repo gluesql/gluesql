@@ -1,12 +1,11 @@
 use crate::{
-    ast::{Expr, Function, Literal},
+    ast::{Expr, Function},
     data::Value,
 };
 
 pub fn may_return_null(expr: &Expr) -> bool {
     match expr {
-        Expr::Literal(Literal::Null)
-        | Expr::Value(Value::Null)
+        Expr::Value(Value::Null)
         | Expr::Identifier(_)
         | Expr::CompoundIdentifier { .. }
         | Expr::ArrayIndex { .. }

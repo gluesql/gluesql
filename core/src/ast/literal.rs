@@ -11,7 +11,6 @@ pub enum Literal {
     Number(BigDecimal),
     QuotedString(String),
     HexString(String),
-    Null,
 }
 
 impl ToSql for Literal {
@@ -24,7 +23,6 @@ impl ToSql for Literal {
                 format!("'{escaped}'")
             }
             Literal::HexString(hs) => format!("'{hs}'"),
-            Literal::Null => "NULL".to_owned(),
         }
     }
 }
@@ -67,6 +65,5 @@ mod tests {
             "'can''t'",
             Literal::QuotedString("can't".to_owned()).to_sql()
         );
-        assert_eq!("NULL", Literal::Null.to_sql());
     }
 }
