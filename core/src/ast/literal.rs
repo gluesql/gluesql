@@ -6,7 +6,7 @@ use {
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum AstLiteral {
+pub enum Literal {
     Boolean(bool),
     Number(BigDecimal),
     QuotedString(String),
@@ -14,17 +14,17 @@ pub enum AstLiteral {
     Null,
 }
 
-impl ToSql for AstLiteral {
+impl ToSql for Literal {
     fn to_sql(&self) -> String {
         match self {
-            AstLiteral::Boolean(b) => b.to_string().to_uppercase(),
-            AstLiteral::Number(n) => n.to_string(),
-            AstLiteral::QuotedString(qs) => {
+            Literal::Boolean(b) => b.to_string().to_uppercase(),
+            Literal::Number(n) => n.to_string(),
+            Literal::QuotedString(qs) => {
                 let escaped = qs.replace('\'', "''");
                 format!("'{escaped}'")
             }
-            AstLiteral::HexString(hs) => format!("'{hs}'"),
-            AstLiteral::Null => "NULL".to_owned(),
+            Literal::HexString(hs) => format!("'{hs}'"),
+            Literal::Null => "NULL".to_owned(),
         }
     }
 }
@@ -51,22 +51,22 @@ pub enum TrimWhereField {
 #[cfg(test)]
 mod tests {
     use {
-        crate::ast::{AstLiteral, ToSql},
+        crate::ast::{Literal, ToSql},
         bigdecimal::BigDecimal,
     };
 
     #[test]
     fn to_sql() {
-        assert_eq!("TRUE", AstLiteral::Boolean(true).to_sql());
-        assert_eq!("123", AstLiteral::Number(BigDecimal::from(123)).to_sql());
+        assert_eq!("TRUE", Literal::Boolean(true).to_sql());
+        assert_eq!("123", Literal::Number(BigDecimal::from(123)).to_sql());
         assert_eq!(
             "'hello'",
-            AstLiteral::QuotedString("hello".to_owned()).to_sql()
+            Literal::QuotedString("hello".to_owned()).to_sql()
         );
         assert_eq!(
             "'can''t'",
-            AstLiteral::QuotedString("can't".to_owned()).to_sql()
+            Literal::QuotedString("can't".to_owned()).to_sql()
         );
-        assert_eq!("NULL", AstLiteral::Null.to_sql());
+        assert_eq!("NULL", Literal::Null.to_sql());
     }
 }

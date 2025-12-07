@@ -1,8 +1,8 @@
 use {
     super::{
         ParamLiteral, TranslateError,
-        ast_literal::{translate_datetime_field, translate_trim_where_field},
         expr::translate_expr,
+        literal::{translate_datetime_field, translate_trim_where_field},
         translate_data_type, translate_object_name,
     },
     crate::{

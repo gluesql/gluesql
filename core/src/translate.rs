@@ -1,9 +1,9 @@
-mod ast_literal;
 mod data_type;
 mod ddl;
 mod error;
 mod expr;
 mod function;
+mod literal;
 mod operator;
 mod param;
 mod query;

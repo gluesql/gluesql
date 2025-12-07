@@ -1,7 +1,7 @@
 use {
     super::TranslateError,
     crate::{
-        ast::{AstLiteral, DataType, DateTimeField, Expr},
+        ast::{DataType, DateTimeField, Expr, Literal},
         data::{Interval, Point},
     },
     bigdecimal::BigDecimal,
@@ -13,7 +13,7 @@ use {
 
 #[derive(Debug, Clone)]
 pub enum ParamLiteral {
-    Literal(AstLiteral),
+    Literal(Literal),
     TypedString {
         data_type: DataType,
         value: String,
@@ -28,7 +28,7 @@ pub enum ParamLiteral {
 impl ParamLiteral {
     #[must_use]
     pub const fn null() -> Self {
-        Self::Literal(AstLiteral::Null)
+        Self::Literal(Literal::Null)
     }
 
     #[must_use]
@@ -51,13 +51,13 @@ impl ParamLiteral {
     }
 }
 
-fn into_number_literal<T>(value: &T) -> Result<AstLiteral, TranslateError>
+fn into_number_literal<T>(value: &T) -> Result<Literal, TranslateError>
 where
     T: ToString + ?Sized,
 {
     let value_str = value.to_string();
     match value_str.parse::<BigDecimal>() {
-        Ok(number) => Ok(AstLiteral::Number(number)),
+        Ok(number) => Ok(Literal::Number(number)),
         Err(_) => Err(TranslateError::InvalidParamLiteral { value: value_str }),
     }
 }
@@ -81,7 +81,7 @@ impl IntoParamLiteral for ParamLiteral {
 
 impl IntoParamLiteral for bool {
     fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-        Ok(ParamLiteral::Literal(AstLiteral::Boolean(self)))
+        Ok(ParamLiteral::Literal(Literal::Boolean(self)))
     }
 }
 
@@ -133,7 +133,7 @@ impl IntoParamLiteral for Decimal {
 
 impl IntoParamLiteral for String {
     fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-        Ok(ParamLiteral::Literal(AstLiteral::QuotedString(self)))
+        Ok(ParamLiteral::Literal(Literal::QuotedString(self)))
     }
 }
 
@@ -145,23 +145,19 @@ impl IntoParamLiteral for &str {
 
 impl IntoParamLiteral for Vec<u8> {
     fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-        Ok(ParamLiteral::Literal(AstLiteral::HexString(hex::encode(
-            self,
-        ))))
+        Ok(ParamLiteral::Literal(Literal::HexString(hex::encode(self))))
     }
 }
 
 impl IntoParamLiteral for &[u8] {
     fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-        Ok(ParamLiteral::Literal(AstLiteral::HexString(hex::encode(
-            self,
-        ))))
+        Ok(ParamLiteral::Literal(Literal::HexString(hex::encode(self))))
     }
 }
 
 impl IntoParamLiteral for IpAddr {
     fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-        Ok(ParamLiteral::Literal(AstLiteral::QuotedString(
+        Ok(ParamLiteral::Literal(Literal::QuotedString(
             self.to_string(),
         )))
     }
@@ -202,7 +198,7 @@ impl IntoParamLiteral for NaiveDateTime {
 
 impl IntoParamLiteral for Uuid {
     fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-        Ok(ParamLiteral::Literal(AstLiteral::QuotedString(
+        Ok(ParamLiteral::Literal(Literal::QuotedString(
             self.hyphenated().to_string(),
         )))
     }
@@ -210,7 +206,7 @@ impl IntoParamLiteral for Uuid {
 
 impl IntoParamLiteral for Point {
     fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-        Ok(ParamLiteral::Literal(AstLiteral::QuotedString(
+        Ok(ParamLiteral::Literal(Literal::QuotedString(
             self.to_string(),
         )))
     }
@@ -279,7 +275,7 @@ mod tests {
     use {
         super::*,
         crate::{
-            ast::{AstLiteral, Expr},
+            ast::{Expr, Literal},
             data::Point,
         },
         bigdecimal::BigDecimal,
@@ -313,8 +309,8 @@ mod tests {
         assert!(matches!(
             (literal, converted),
             (
-                ParamLiteral::Literal(AstLiteral::Null),
-                ParamLiteral::Literal(AstLiteral::Null)
+                ParamLiteral::Literal(Literal::Null),
+                ParamLiteral::Literal(Literal::Null)
             )
         ));
     }
@@ -322,28 +318,28 @@ mod tests {
     #[test]
     fn converts_basic_literals() {
         let literal = true.into_param_literal().unwrap().into_expr();
-        assert_eq!(literal, Expr::Literal(AstLiteral::Boolean(true)));
+        assert_eq!(literal, Expr::Literal(Literal::Boolean(true)));
 
         let literal = 42_i64.into_param_literal().unwrap().into_expr();
-        assert_eq!(literal, Expr::Literal(AstLiteral::Number(42.into())));
+        assert_eq!(literal, Expr::Literal(Literal::Number(42.into())));
 
         let literal = "glue".into_param_literal().unwrap().into_expr();
         assert_eq!(
             literal,
-            Expr::Literal(AstLiteral::QuotedString("glue".to_owned()))
+            Expr::Literal(Literal::QuotedString("glue".to_owned()))
         );
 
         let literal = String::from("owned").into_param_literal().unwrap();
         assert_eq!(
             literal.into_expr(),
-            Expr::Literal(AstLiteral::QuotedString("owned".to_owned()))
+            Expr::Literal(Literal::QuotedString("owned".to_owned()))
         );
 
         let literal = 3_i16.into_param_literal().unwrap().into_expr();
-        assert_eq!(literal, Expr::Literal(AstLiteral::Number(3.into())));
+        assert_eq!(literal, Expr::Literal(Literal::Number(3.into())));
 
         let literal = 7_u32.into_param_literal().unwrap().into_expr();
-        assert_eq!(literal, Expr::Literal(AstLiteral::Number(7.into())));
+        assert_eq!(literal, Expr::Literal(Literal::Number(7.into())));
     }
 
     #[test]
@@ -404,7 +400,7 @@ mod tests {
         assert_eq!(
             expr,
             Expr::Interval {
-                expr: Box::new(Expr::Literal(AstLiteral::Number(2.into()))),
+                expr: Box::new(Expr::Literal(Literal::Number(2.into()))),
                 leading_field: Some(DateTimeField::Month),
                 last_field: None,
             }
@@ -417,7 +413,7 @@ mod tests {
         assert_eq!(
             expr,
             Expr::Interval {
-                expr: Box::new(Expr::Literal(AstLiteral::Number(
+                expr: Box::new(Expr::Literal(Literal::Number(
                     BigDecimal::from_str("1.5").unwrap(),
                 ))),
                 leading_field: Some(DateTimeField::Second),
@@ -429,10 +425,10 @@ mod tests {
     #[test]
     fn converts_option() {
         let expr = Some(1_i32).into_param_literal().unwrap().into_expr();
-        assert_eq!(expr, Expr::Literal(AstLiteral::Number(1.into())));
+        assert_eq!(expr, Expr::Literal(Literal::Number(1.into())));
 
         let expr = (None::<i32>).into_param_literal().unwrap().into_expr();
-        assert_eq!(expr, Expr::Literal(AstLiteral::Null));
+        assert_eq!(expr, Expr::Literal(Literal::Null));
     }
 
     #[test]
@@ -440,7 +436,7 @@ mod tests {
         let expr = 1.25_f64.into_param_literal().unwrap().into_expr();
         assert_eq!(
             expr,
-            Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1.25").unwrap()))
+            Expr::Literal(Literal::Number(BigDecimal::from_str("1.25").unwrap()))
         );
 
         let non_finite_f32 = f32::NAN.into_param_literal();
@@ -458,7 +454,7 @@ mod tests {
         let expr = 1.5_f32.into_param_literal().unwrap().into_expr();
         assert_eq!(
             expr,
-            Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1.5").unwrap()))
+            Expr::Literal(Literal::Number(BigDecimal::from_str("1.5").unwrap()))
         );
 
         let expr = Decimal::new(345, 2)
@@ -467,37 +463,31 @@ mod tests {
             .into_expr();
         assert_eq!(
             expr,
-            Expr::Literal(AstLiteral::Number(BigDecimal::from_str("3.45").unwrap()))
+            Expr::Literal(Literal::Number(BigDecimal::from_str("3.45").unwrap()))
         );
 
         let expr = vec![0x12_u8, 0xAB]
             .into_param_literal()
             .unwrap()
             .into_expr();
-        assert_eq!(
-            expr,
-            Expr::Literal(AstLiteral::HexString("12ab".to_owned()))
-        );
+        assert_eq!(expr, Expr::Literal(Literal::HexString("12ab".to_owned())));
 
         let bytes = [0xCD_u8, 0xEF];
         let expr = bytes.as_slice().into_param_literal().unwrap().into_expr();
-        assert_eq!(
-            expr,
-            Expr::Literal(AstLiteral::HexString("cdef".to_owned()))
-        );
+        assert_eq!(expr, Expr::Literal(Literal::HexString("cdef".to_owned())));
 
         let ip = IpAddr::from_str("127.0.0.1").unwrap();
         let expr = ip.into_param_literal().unwrap().into_expr();
         assert_eq!(
             expr,
-            Expr::Literal(AstLiteral::QuotedString("127.0.0.1".to_owned()))
+            Expr::Literal(Literal::QuotedString("127.0.0.1".to_owned()))
         );
 
         let uuid = Uuid::parse_str("123e4567-e89b-12d3-a456-426614174000").unwrap();
         let expr = uuid.into_param_literal().unwrap().into_expr();
         assert_eq!(
             expr,
-            Expr::Literal(AstLiteral::QuotedString(
+            Expr::Literal(Literal::QuotedString(
                 "123e4567-e89b-12d3-a456-426614174000".to_owned()
             ))
         );
@@ -506,7 +496,7 @@ mod tests {
         let expr = point.into_param_literal().unwrap().into_expr();
         assert_eq!(
             expr,
-            Expr::Literal(AstLiteral::QuotedString("POINT(1 2)".to_owned()))
+            Expr::Literal(Literal::QuotedString("POINT(1 2)".to_owned()))
         );
 
         let invalid = BadNumber.into_param_literal();
@@ -524,20 +514,17 @@ mod tests {
 
         assert_eq!(
             params[0].clone().into_expr(),
-            Expr::Literal(AstLiteral::Number(1.into()))
+            Expr::Literal(Literal::Number(1.into()))
         );
         assert_eq!(
             params[1].clone().into_expr(),
-            Expr::Literal(AstLiteral::QuotedString("Glue".to_owned()))
+            Expr::Literal(Literal::QuotedString("Glue".to_owned()))
         );
         assert_eq!(
             params[2].clone().into_expr(),
-            Expr::Literal(AstLiteral::Boolean(false))
+            Expr::Literal(Literal::Boolean(false))
         );
-        assert_eq!(
-            params[3].clone().into_expr(),
-            Expr::Literal(AstLiteral::Null)
-        );
+        assert_eq!(params[3].clone().into_expr(), Expr::Literal(Literal::Null));
     }
 
     #[test]

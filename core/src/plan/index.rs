@@ -2,7 +2,7 @@ use {
     super::{context::Context, planner::Planner},
     crate::{
         ast::{
-            AstLiteral, BinaryOperator, Expr, IndexItem, IndexOperator, OrderByExpr, Query, Select,
+            BinaryOperator, Expr, IndexItem, IndexOperator, Literal, OrderByExpr, Query, Select,
             SetExpr, Statement, TableFactor,
         },
         data::{Schema, SchemaIndex, SchemaIndexOrd},
@@ -304,7 +304,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
             return Planned::IndexedExpr {
                 index_name,
                 index_op,
-                index_value_expr: Expr::Literal(AstLiteral::Null),
+                index_value_expr: Expr::Literal(Literal::Null),
                 selection: None,
             };
         }

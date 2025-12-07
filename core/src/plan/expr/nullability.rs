@@ -1,8 +1,8 @@
-use crate::ast::{AstLiteral, Expr, Function};
+use crate::ast::{Expr, Function, Literal};
 
 pub fn may_return_null(expr: &Expr) -> bool {
     match expr {
-        Expr::Literal(AstLiteral::Null)
+        Expr::Literal(Literal::Null)
         | Expr::Identifier(_)
         | Expr::CompoundIdentifier { .. }
         | Expr::ArrayIndex { .. }

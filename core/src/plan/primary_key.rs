@@ -219,8 +219,8 @@ mod tests {
         super::plan as plan_primary_key,
         crate::{
             ast::{
-                AstLiteral, BinaryOperator, Expr, IndexItem, Join, JoinConstraint, JoinExecutor,
-                JoinOperator, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
+                BinaryOperator, Expr, IndexItem, Join, JoinConstraint, JoinExecutor, JoinOperator,
+                Literal, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
                 TableWithJoins, Values,
             },
             mock::{MockStorage, run},
@@ -616,7 +616,7 @@ mod tests {
             selection: Some(Expr::BinaryOp {
                 left: Box::new(Expr::Identifier("id".to_owned())),
                 op: BinaryOperator::Eq,
-                right: Box::new(Expr::Literal(AstLiteral::Number(1.into()))),
+                right: Box::new(Expr::Literal(Literal::Number(1.into()))),
             }),
         };
         assert_eq!(actual, expected, "delete statement:\n{sql}");
@@ -625,8 +625,8 @@ mod tests {
         let actual = plan(&storage, sql);
         let expected = Statement::Query(Query {
             body: SetExpr::Values(Values(vec![
-                vec![Expr::Literal(AstLiteral::Number(1.into()))],
-                vec![Expr::Literal(AstLiteral::Number(2.into()))],
+                vec![Expr::Literal(Literal::Number(1.into()))],
+                vec![Expr::Literal(Literal::Number(2.into()))],
             ])),
             limit: None,
             offset: None,

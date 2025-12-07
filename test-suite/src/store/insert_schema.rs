@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        ast::{AstLiteral, ColumnDef, DataType, Expr},
+        ast::{ColumnDef, DataType, Expr, Literal},
         data::Schema,
     },
 };
@@ -12,7 +12,7 @@ test_case!(insert_schema, {
         name: "id".to_owned(),
         data_type: DataType::Int,
         nullable: false,
-        default: Some(Expr::Literal(AstLiteral::Number(11.into()))),
+        default: Some(Expr::Literal(Literal::Number(11.into()))),
         unique: None,
         comment: Some("default value is lucky eleven".to_owned()),
     }]);

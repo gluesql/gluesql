@@ -1,7 +1,7 @@
 use {
     super::ValueError::ValueToExprConversionFailure,
     crate::{
-        ast::{AstLiteral, DateTimeField, Expr},
+        ast::{DateTimeField, Expr, Literal},
         chrono::{TimeZone, Utc},
         data::Interval,
         prelude::{DataType, Value},
@@ -19,50 +19,50 @@ impl TryFrom<Value> for Expr {
         const SECOND: i64 = 1_000_000;
 
         let expr = match value {
-            Value::Bool(v) => Expr::Literal(AstLiteral::Boolean(v)),
-            Value::I8(v) => Expr::Literal(AstLiteral::Number(
+            Value::Bool(v) => Expr::Literal(Literal::Boolean(v)),
+            Value::I8(v) => Expr::Literal(Literal::Number(
                 BigDecimal::from_i8(v).ok_or(ValueToExprConversionFailure)?,
             )),
-            Value::I16(v) => Expr::Literal(AstLiteral::Number(
+            Value::I16(v) => Expr::Literal(Literal::Number(
                 BigDecimal::from_i16(v).ok_or(ValueToExprConversionFailure)?,
             )),
-            Value::I32(v) => Expr::Literal(AstLiteral::Number(
+            Value::I32(v) => Expr::Literal(Literal::Number(
                 BigDecimal::from_i32(v).ok_or(ValueToExprConversionFailure)?,
             )),
-            Value::I64(v) => Expr::Literal(AstLiteral::Number(
+            Value::I64(v) => Expr::Literal(Literal::Number(
                 BigDecimal::from_i64(v).ok_or(ValueToExprConversionFailure)?,
             )),
-            Value::I128(v) => Expr::Literal(AstLiteral::Number(
+            Value::I128(v) => Expr::Literal(Literal::Number(
                 BigDecimal::from_i128(v).ok_or(ValueToExprConversionFailure)?,
             )),
-            Value::U8(v) => Expr::Literal(AstLiteral::Number(
+            Value::U8(v) => Expr::Literal(Literal::Number(
                 BigDecimal::from_u8(v).ok_or(ValueToExprConversionFailure)?,
             )),
-            Value::U16(v) => Expr::Literal(AstLiteral::Number(
+            Value::U16(v) => Expr::Literal(Literal::Number(
                 BigDecimal::from_u16(v).ok_or(ValueToExprConversionFailure)?,
             )),
-            Value::U32(v) => Expr::Literal(AstLiteral::Number(
+            Value::U32(v) => Expr::Literal(Literal::Number(
                 BigDecimal::from_u32(v).ok_or(ValueToExprConversionFailure)?,
             )),
-            Value::U64(v) => Expr::Literal(AstLiteral::Number(
+            Value::U64(v) => Expr::Literal(Literal::Number(
                 BigDecimal::from_u64(v).ok_or(ValueToExprConversionFailure)?,
             )),
-            Value::U128(v) => Expr::Literal(AstLiteral::Number(
+            Value::U128(v) => Expr::Literal(Literal::Number(
                 BigDecimal::from_u128(v).ok_or(ValueToExprConversionFailure)?,
             )),
-            Value::F32(v) => Expr::Literal(AstLiteral::Number(
+            Value::F32(v) => Expr::Literal(Literal::Number(
                 BigDecimal::from_f32(v).ok_or(ValueToExprConversionFailure)?,
             )),
-            Value::F64(v) => Expr::Literal(AstLiteral::Number(
+            Value::F64(v) => Expr::Literal(Literal::Number(
                 BigDecimal::from_f64(v).ok_or(ValueToExprConversionFailure)?,
             )),
-            Value::Decimal(v) => Expr::Literal(AstLiteral::Number(
+            Value::Decimal(v) => Expr::Literal(Literal::Number(
                 BigDecimal::from_f64(v.try_into().map_err(|_| ValueToExprConversionFailure)?)
                     .ok_or(ValueToExprConversionFailure)?,
             )),
-            Value::Str(v) => Expr::Literal(AstLiteral::QuotedString(v)),
-            Value::Bytea(v) => Expr::Literal(AstLiteral::HexString(hex::encode(v))),
-            Value::Inet(v) => Expr::Literal(AstLiteral::QuotedString(v.to_string())),
+            Value::Str(v) => Expr::Literal(Literal::QuotedString(v)),
+            Value::Bytea(v) => Expr::Literal(Literal::HexString(hex::encode(v))),
+            Value::Inet(v) => Expr::Literal(Literal::QuotedString(v.to_string())),
             Value::Date(v) => Expr::TypedString {
                 data_type: DataType::Date,
                 value: v.to_string(),
@@ -77,21 +77,21 @@ impl TryFrom<Value> for Expr {
             },
             Value::Interval(v) => match v {
                 Interval::Month(v) => Expr::Interval {
-                    expr: Box::new(Expr::Literal(AstLiteral::Number(
+                    expr: Box::new(Expr::Literal(Literal::Number(
                         BigDecimal::from_i32(v).ok_or(ValueToExprConversionFailure)?,
                     ))),
                     leading_field: Some(DateTimeField::Month),
                     last_field: None,
                 },
                 Interval::Microsecond(v) => Expr::Interval {
-                    expr: Box::new(Expr::Literal(AstLiteral::Number(
+                    expr: Box::new(Expr::Literal(Literal::Number(
                         BigDecimal::from_i64(v / SECOND).ok_or(ValueToExprConversionFailure)?,
                     ))),
                     leading_field: Some(DateTimeField::Second),
                     last_field: None,
                 },
             },
-            Value::Uuid(v) => Expr::Literal(AstLiteral::QuotedString(
+            Value::Uuid(v) => Expr::Literal(Literal::QuotedString(
                 Uuid::from_u128(v).hyphenated().to_string(),
             )),
             Value::Map(v) => {
@@ -102,7 +102,7 @@ impl TryFrom<Value> for Expr {
                     .map(|v| JsonMap::from_iter(v).into())
                     .map_err(|_| ValueToExprConversionFailure)?;
 
-                Expr::Literal(AstLiteral::QuotedString(json.to_string()))
+                Expr::Literal(Literal::QuotedString(json.to_string()))
             }
             Value::List(v) => {
                 let json: JsonValue = v
@@ -112,10 +112,10 @@ impl TryFrom<Value> for Expr {
                     .map(Into::into)
                     .map_err(|_| ValueToExprConversionFailure)?;
 
-                Expr::Literal(AstLiteral::QuotedString(json.to_string()))
+                Expr::Literal(Literal::QuotedString(json.to_string()))
             }
-            Value::Point(v) => Expr::Literal(AstLiteral::QuotedString(v.to_string())),
-            Value::Null => Expr::Literal(AstLiteral::Null),
+            Value::Point(v) => Expr::Literal(Literal::QuotedString(v.to_string())),
+            Value::Null => Expr::Literal(Literal::Null),
         };
 
         Ok(expr)
@@ -126,7 +126,7 @@ impl TryFrom<Value> for Expr {
 mod tests {
     use {
         crate::{
-            ast::{AstLiteral, DateTimeField, Expr},
+            ast::{DateTimeField, Expr, Literal},
             data::{Interval, Point},
             prelude::{DataType, Value},
         },
@@ -140,95 +140,95 @@ mod tests {
     fn value_to_expr() {
         assert_eq!(
             Value::Bool(true).try_into(),
-            Ok(Expr::Literal(AstLiteral::Boolean(true)))
+            Ok(Expr::Literal(Literal::Boolean(true)))
         );
 
         assert_eq!(
             Value::I8(127).try_into(),
-            Ok(Expr::Literal(AstLiteral::Number(
+            Ok(Expr::Literal(Literal::Number(
                 BigDecimal::from_i8(127).unwrap()
             )))
         );
         assert_eq!(
             Value::I16(32767).try_into(),
-            Ok(Expr::Literal(AstLiteral::Number(
+            Ok(Expr::Literal(Literal::Number(
                 BigDecimal::from_i16(32767).unwrap()
             )))
         );
         assert_eq!(
             Value::I32(2_147_483_647).try_into(),
-            Ok(Expr::Literal(AstLiteral::Number(
+            Ok(Expr::Literal(Literal::Number(
                 BigDecimal::from_i32(2_147_483_647).unwrap()
             )))
         );
         assert_eq!(
             Value::I64(64).try_into(),
-            Ok(Expr::Literal(AstLiteral::Number(
+            Ok(Expr::Literal(Literal::Number(
                 BigDecimal::from_i64(64).unwrap()
             )))
         );
         assert_eq!(
             Value::I128(128).try_into(),
-            Ok(Expr::Literal(AstLiteral::Number(
+            Ok(Expr::Literal(Literal::Number(
                 BigDecimal::from_i128(128).unwrap()
             )))
         );
         assert_eq!(
             Value::U8(8).try_into(),
-            Ok(Expr::Literal(AstLiteral::Number(
+            Ok(Expr::Literal(Literal::Number(
                 BigDecimal::from_u8(8).unwrap()
             )))
         );
         assert_eq!(
             Value::U16(16).try_into(),
-            Ok(Expr::Literal(AstLiteral::Number(
+            Ok(Expr::Literal(Literal::Number(
                 BigDecimal::from_u16(16).unwrap()
             )))
         );
         assert_eq!(
             Value::U32(32).try_into(),
-            Ok(Expr::Literal(AstLiteral::Number(
+            Ok(Expr::Literal(Literal::Number(
                 BigDecimal::from_u32(32).unwrap()
             )))
         );
         assert_eq!(
             Value::U64(64).try_into(),
-            Ok(Expr::Literal(AstLiteral::Number(
+            Ok(Expr::Literal(Literal::Number(
                 BigDecimal::from_u64(64).unwrap()
             )))
         );
         assert_eq!(
             Value::U128(128).try_into(),
-            Ok(Expr::Literal(AstLiteral::Number(
+            Ok(Expr::Literal(Literal::Number(
                 BigDecimal::from_u128(128).unwrap()
             )))
         );
 
         assert_eq!(
             Value::F32(64.4_f32).try_into(),
-            Ok(Expr::Literal(AstLiteral::Number(
+            Ok(Expr::Literal(Literal::Number(
                 BigDecimal::from_f32(64.4).unwrap()
             )))
         );
         assert_eq!(
             Value::F64(64.4).try_into(),
-            Ok(Expr::Literal(AstLiteral::Number(
+            Ok(Expr::Literal(Literal::Number(
                 BigDecimal::from_f64(64.4).unwrap()
             )))
         );
         assert_eq!(
             Value::Decimal(Decimal::new(315, 2)).try_into(),
-            Ok(Expr::Literal(AstLiteral::Number(
+            Ok(Expr::Literal(Literal::Number(
                 BigDecimal::from_f64(3.15).unwrap()
             )))
         );
         assert_eq!(
             Value::Str("data".to_owned()).try_into(),
-            Ok(Expr::Literal(AstLiteral::QuotedString("data".to_owned())))
+            Ok(Expr::Literal(Literal::QuotedString("data".to_owned())))
         );
         assert_eq!(
             Value::Bytea(hex::decode("1234").unwrap()).try_into(),
-            Ok(Expr::Literal(AstLiteral::HexString("1234".to_owned())))
+            Ok(Expr::Literal(Literal::HexString("1234".to_owned())))
         );
         assert_eq!(
             Value::Date(NaiveDate::from_ymd_opt(2022, 11, 3).unwrap()).try_into(),
@@ -260,7 +260,7 @@ mod tests {
         assert_eq!(
             Value::Interval(Interval::Month(1)).try_into(),
             Ok(Expr::Interval {
-                expr: Box::new(Expr::Literal(AstLiteral::Number(
+                expr: Box::new(Expr::Literal(Literal::Number(
                     BigDecimal::from_i64(1).unwrap()
                 ))),
                 leading_field: Some(DateTimeField::Month),
@@ -269,13 +269,13 @@ mod tests {
         );
         assert_eq!(
             Value::Uuid(195_965_723_427_462_096_757_863_453_463_987_888_808).try_into(),
-            Ok(Expr::Literal(AstLiteral::QuotedString(
+            Ok(Expr::Literal(Literal::QuotedString(
                 "936da01f-9abd-4d9d-80c7-02af85c822a8".to_owned()
             )))
         );
         assert_eq!(
             Value::Map(BTreeMap::from([("a".to_owned(), Value::Bool(true))])).try_into(),
-            Ok(Expr::Literal(AstLiteral::QuotedString(
+            Ok(Expr::Literal(Literal::QuotedString(
                 "{\"a\":true}".to_owned()
             )))
         );
@@ -286,14 +286,14 @@ mod tests {
                 Value::Str("a".to_owned())
             ])
             .try_into(),
-            Ok(Expr::Literal(AstLiteral::QuotedString(
+            Ok(Expr::Literal(Literal::QuotedString(
                 "[1,true,\"a\"]".to_owned()
             )))
         );
-        assert_eq!(Value::Null.try_into(), Ok(Expr::Literal(AstLiteral::Null)));
+        assert_eq!(Value::Null.try_into(), Ok(Expr::Literal(Literal::Null)));
         assert_eq!(
             Value::Point(Point::new(0.31413, 0.3415)).try_into(),
-            Ok(Expr::Literal(AstLiteral::QuotedString(
+            Ok(Expr::Literal(Literal::QuotedString(
                 "POINT(0.31413 0.3415)".to_owned()
             )))
         );

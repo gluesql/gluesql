@@ -1,13 +1,12 @@
 use {
     super::{
-        ParamLiteral, TranslateError,
-        ast_literal::{translate_ast_literal, translate_datetime_field},
-        bind_placeholder,
+        ParamLiteral, TranslateError, bind_placeholder,
         data_type::translate_data_type,
         function::{
             translate_cast, translate_ceil, translate_extract, translate_floor, translate_function,
             translate_position, translate_trim,
         },
+        literal::{translate_datetime_field, translate_literal},
         operator::{translate_binary_operator, translate_unary_operator},
         translate_idents, translate_query,
     },
@@ -114,7 +113,7 @@ pub fn translate_expr(sql_expr: &SqlExpr, params: &[ParamLiteral]) -> Result<Exp
         SqlExpr::Nested(expr) => translate_expr(expr, params).map(Box::new).map(Expr::Nested),
         SqlExpr::Value(value) => match value {
             SqlValue::Placeholder(placeholder) => bind_placeholder(params, placeholder),
-            _ => translate_ast_literal(value).map(Expr::Literal),
+            _ => translate_literal(value).map(Expr::Literal),
         },
         SqlExpr::TypedString { data_type, value } => Ok(Expr::TypedString {
             data_type: translate_data_type(data_type)?,
