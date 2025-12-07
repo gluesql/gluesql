@@ -414,10 +414,7 @@ mod tests {
     #[test]
     fn translate_binds_indexed_placeholders() {
         let query = parse_query("SELECT $1, $2").expect("parse placeholder query");
-        let params = [
-            1_i64.into_param_literal(),
-            "GlueSQL".into_param_literal(),
-        ];
+        let params = [1_i64.into_param_literal(), "GlueSQL".into_param_literal()];
         let translated = translate_query(query.as_ref(), &params).expect("translate");
 
         let expected = Query {

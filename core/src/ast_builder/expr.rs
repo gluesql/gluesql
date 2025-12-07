@@ -375,7 +375,9 @@ pub fn uuid<'a, T: Into<Cow<'a, str>>>(uuid: T) -> ExprNode<'a> {
 /// * `bytea` - A byte array to be converted to a Bytea AST node.
 ///
 pub fn bytea<'a, T: AsRef<[u8]>>(bytea: T) -> ExprNode<'a> {
-    ExprNode::Expr(Cow::Owned(Expr::Value(Value::Bytea(bytea.as_ref().to_vec()))))
+    ExprNode::Expr(Cow::Owned(Expr::Value(Value::Bytea(
+        bytea.as_ref().to_vec(),
+    ))))
 }
 
 pub fn subquery<'a, T: Into<QueryNode<'a>>>(query_node: T) -> ExprNode<'a> {

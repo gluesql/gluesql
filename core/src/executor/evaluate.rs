@@ -69,7 +69,7 @@ where
     };
 
     match expr {
-        Expr::Literal(literal) => expr::literal(literal),
+        Expr::Literal(literal) => Ok(expr::literal(literal)),
         Expr::Value(value) => Ok(Evaluated::Value(value.clone())),
         Expr::TypedString { data_type, value } => expr::typed_string(data_type, value),
         Expr::Identifier(ident) => {

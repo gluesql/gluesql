@@ -16,8 +16,8 @@ pub fn translate_literal(sql_value: &SqlValue) -> Result<Expr> {
         SqlValue::Number(v, _) => Expr::Literal(Literal::Number(v.clone())),
         SqlValue::SingleQuotedString(v) => Expr::Literal(Literal::QuotedString(v.clone())),
         SqlValue::HexStringLiteral(v) => {
-            let bytes = hex::decode(v)
-                .map_err(|_| TranslateError::FailedToDecodeHexString(v.clone()))?;
+            let bytes =
+                hex::decode(v).map_err(|_| TranslateError::FailedToDecodeHexString(v.clone()))?;
             Expr::Value(Value::Bytea(bytes))
         }
         SqlValue::Null => Expr::Value(Value::Null),

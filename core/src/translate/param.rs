@@ -188,10 +188,7 @@ mod tests {
             .and_hms_micro_opt(12, 0, 0, 123_456)
             .unwrap();
         let expr = timestamp_with_fraction.into_param_literal().into_expr();
-        assert_eq!(
-            expr,
-            Expr::Value(Value::Timestamp(timestamp_with_fraction))
-        );
+        assert_eq!(expr, Expr::Value(Value::Timestamp(timestamp_with_fraction)));
     }
 
     #[test]

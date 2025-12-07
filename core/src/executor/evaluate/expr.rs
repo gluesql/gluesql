@@ -9,10 +9,10 @@ use {
     std::{borrow::Cow, cmp::Ordering},
 };
 
-pub fn literal(literal: &Literal) -> Result<Evaluated<'_>> {
+pub fn literal(literal: &Literal) -> Evaluated<'_> {
     match literal {
-        Literal::Number(value) => Ok(Evaluated::Number(Cow::Borrowed(value))),
-        Literal::QuotedString(value) => Ok(Evaluated::Text(Cow::Borrowed(value))),
+        Literal::Number(value) => Evaluated::Number(Cow::Borrowed(value)),
+        Literal::QuotedString(value) => Evaluated::Text(Cow::Borrowed(value)),
     }
 }
 
@@ -116,7 +116,7 @@ pub fn array_index<'a>(obj: Evaluated<'a>, indexes: Vec<Evaluated<'a>>) -> Resul
 mod tests {
     use {
         super::{Evaluated, literal},
-        crate::{ast::Literal, data::Value, executor::evaluate::EvaluateError},
+        crate::ast::Literal,
         bigdecimal::BigDecimal,
         std::borrow::Cow,
     };
@@ -125,11 +125,11 @@ mod tests {
     fn test_literal() {
         assert_eq!(
             literal(&Literal::Number(BigDecimal::from(42))),
-            Ok(Evaluated::Number(Cow::Owned(BigDecimal::from(42))))
+            Evaluated::Number(Cow::Owned(BigDecimal::from(42)))
         );
         assert_eq!(
             literal(&Literal::QuotedString("hello".to_owned())),
-            Ok(Evaluated::Text(Cow::Owned("hello".to_owned())))
+            Evaluated::Text(Cow::Owned("hello".to_owned()))
         );
     }
 }
