@@ -21,7 +21,7 @@ pub enum PlanExpr<'a> {
 impl<'a> From<&'a Expr> for PlanExpr<'a> {
     fn from(expr: &'a Expr) -> Self {
         match expr {
-            Expr::Literal(_) | Expr::TypedString { .. } => PlanExpr::None,
+            Expr::Literal(_) | Expr::Value(_) | Expr::TypedString { .. } => PlanExpr::None,
             Expr::Identifier(ident) => PlanExpr::Identifier(ident),
             Expr::CompoundIdentifier { alias, ident } => {
                 PlanExpr::CompoundIdentifier { alias, ident }
