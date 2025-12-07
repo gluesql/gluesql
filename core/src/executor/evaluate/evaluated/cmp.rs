@@ -11,8 +11,8 @@ use {
 impl<'a> Evaluated<'a> {
     pub fn evaluate_cmp(&self, other: &Evaluated<'a>) -> Option<Ordering> {
         match (self, other) {
-            (left @ Evaluated::Number(_), right @ Evaluated::Number(_))
-            | (left @ Evaluated::Text(_), right @ Evaluated::Text(_)) => literal_cmp(left, right),
+            (Evaluated::Number(l), Evaluated::Number(r)) => Some(l.cmp(r)),
+            (Evaluated::Text(l), Evaluated::Text(r)) => Some(l.cmp(r)),
             (left @ (Evaluated::Number(_) | Evaluated::Text(_)), Evaluated::Value(right)) => {
                 value_cmp_with_literal(right, left).map(Ordering::reverse)
             }
@@ -20,24 +20,14 @@ impl<'a> Evaluated<'a> {
                 value_cmp_with_literal(left, right)
             }
             (Evaluated::Value(left), Evaluated::Value(right)) => left.evaluate_cmp(right),
-            (Evaluated::Number(_), Evaluated::Text(_))
-            | (Evaluated::Text(_), Evaluated::Number(_)) => None,
-            (
-                left @ (Evaluated::Number(_) | Evaluated::Text(_)),
-                Evaluated::StrSlice { source, range },
-            ) => {
-                let slice = Evaluated::Text(Cow::Borrowed(&source[range.clone()]));
-
-                literal_cmp(left, &slice)
+            (Evaluated::Text(l), Evaluated::StrSlice { source, range }) => {
+                Some(l.as_ref().cmp(&source[range.clone()]))
             }
-            (
-                Evaluated::StrSlice { source, range },
-                right @ (Evaluated::Number(_) | Evaluated::Text(_)),
-            ) => {
-                let slice = Evaluated::Text(Cow::Borrowed(&source[range.clone()]));
-
-                literal_cmp(&slice, right)
+            (Evaluated::StrSlice { source, range }, Evaluated::Text(r)) => {
+                Some(source[range.clone()].cmp(r.as_ref()))
             }
+            (Evaluated::Number(_), Evaluated::Text(_) | Evaluated::StrSlice { .. })
+            | (Evaluated::Text(_) | Evaluated::StrSlice { .. }, Evaluated::Number(_)) => None,
             (Evaluated::Value(left), Evaluated::StrSlice { source, range }) => {
                 let slice = Evaluated::Text(Cow::Borrowed(&source[range.clone()]));
 
@@ -59,14 +49,6 @@ impl<'a> Evaluated<'a> {
                 },
             ) => a[ar.clone()].partial_cmp(&b[br.clone()]),
         }
-    }
-}
-
-fn literal_cmp(left: &Evaluated<'_>, right: &Evaluated<'_>) -> Option<Ordering> {
-    match (left, right) {
-        (Evaluated::Number(l), Evaluated::Number(r)) => Some(l.cmp(r)),
-        (Evaluated::Text(l), Evaluated::Text(r)) => Some(l.cmp(r)),
-        _ => None,
     }
 }
 
