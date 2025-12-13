@@ -20,7 +20,7 @@ impl<'a> TableNameNode {
         SelectNode::new(table_factor)
     }
 
-    pub fn delete(self) -> DeleteNode<'static> {
+    pub fn delete(self) -> DeleteNode<'a> {
         DeleteNode::new(self.table_name)
     }
 
