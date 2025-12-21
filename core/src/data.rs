@@ -16,7 +16,7 @@ pub use {
     interval::{Interval, IntervalError},
     key::{Key, KeyError},
     point::Point,
-    row::{Row, RowError},
+    row::Row,
     schema::{Schema, SchemaIndex, SchemaIndexOrd, SchemaParseError},
     string_ext::{StringExt, StringExtError},
     table::{TableError, get_alias, get_index},
