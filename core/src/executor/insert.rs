@@ -5,14 +5,14 @@ use {
     },
     crate::{
         ast::{ColumnDef, ColumnUniqueOption, Expr, ForeignKey, Query, SetExpr, Values},
-        data::{Key, Row, Schema, Value},
+        data::{Key, Row, Schema, Value, value::BTreeMapJsonExt},
         executor::{evaluate::evaluate_stateless, limit::Limit},
         result::Result,
         store::{DataRow, GStore, GStoreMut},
     },
     futures::stream::{self, StreamExt, TryStreamExt},
     serde::Serialize,
-    std::{fmt::Debug, sync::Arc},
+    std::{collections::BTreeMap, fmt::Debug, sync::Arc},
     thiserror::Error as ThisError,
 };
 
@@ -84,7 +84,9 @@ pub async fn insert<T: GStore + GStoreMut>(
             )
             .await
         }
-        None => fetch_map_rows(storage, source).await.map(RowsData::Append),
+        None => fetch_schemaless_rows(storage, source)
+            .await
+            .map(RowsData::Append),
     }?;
 
     match rows {
@@ -257,25 +259,36 @@ async fn validate_foreign_key<T: GStore>(
     Ok(())
 }
 
-async fn fetch_map_rows<T: GStore>(storage: &T, source: &Query) -> Result<Vec<DataRow>> {
+async fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &Query) -> Result<Vec<DataRow>> {
     #[derive(futures_enum::Stream)]
     enum Rows<I1, I2> {
         Values(I1),
         Select(I2),
     }
 
+    let doc_column: Arc<[String]> = Arc::from(vec!["_doc".to_owned()]);
+
     let rows = match &source.body {
         SetExpr::Values(Values(values_list)) => {
             let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref()).await?;
-            let rows = stream::iter(values_list).then(|values| async move {
-                if values.len() > 1 {
-                    return Err(InsertError::OnlySingleValueAcceptedForSchemalessRow.into());
-                }
+            let rows = stream::iter(values_list).then({
+                let doc_column = Arc::clone(&doc_column);
+                move |values| {
+                    let doc_column = Arc::clone(&doc_column);
+                    async move {
+                        if values.len() > 1 {
+                            return Err(InsertError::OnlySingleValueAcceptedForSchemalessRow.into());
+                        }
 
-                evaluate_stateless(None, &values[0])
-                    .await?
-                    .try_into()
-                    .map(Row::Map)
+                        let map: BTreeMap<String, Value> =
+                            evaluate_stateless(None, &values[0]).await?.try_into()?;
+
+                        Ok(Row::Vec {
+                            columns: doc_column,
+                            values: vec![Value::Map(map)],
+                        })
+                    }
+                }
             });
             let rows = limit.apply(rows);
             let rows = rows.map_ok(Into::into);
@@ -284,17 +297,19 @@ async fn fetch_map_rows<T: GStore>(storage: &T, source: &Query) -> Result<Vec<Da
         }
         SetExpr::Select(_) => {
             let rows = select(storage, source, None).await?.map(|row| {
-                let row = row?;
+                let values = row?.try_into_vec()?;
 
-                if let Row::Vec { values, .. } = &row {
-                    if values.len() > 1 {
-                        return Err(InsertError::OnlySingleValueAcceptedForSchemalessRow.into());
-                    } else if !matches!(&values[0], Value::Map(_)) {
-                        return Err(InsertError::MapTypeValueRequired((&values[0]).into()).into());
-                    }
+                if values.len() != 1 {
+                    return Err(InsertError::OnlySingleValueAcceptedForSchemalessRow.into());
                 }
 
-                Ok(row.into())
+                let map = match values.into_iter().next().unwrap() {
+                    Value::Map(map) => map,
+                    Value::Str(s) => BTreeMap::parse_json_object(&s)?,
+                    v => return Err(InsertError::MapTypeValueRequired((&v).into()).into()),
+                };
+
+                Ok(DataRow::Vec(vec![Value::Map(map)]))
             });
 
             Rows::Select(rows)

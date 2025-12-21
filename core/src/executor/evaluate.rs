@@ -106,6 +106,12 @@ where
                 .map(|row| {
                     let value = match row? {
                         Row::Vec { columns, values } => {
+                            if columns.len() == 1
+                                && columns[0] == "_doc"
+                                && matches!(values.first(), Some(Value::Map(_)))
+                            {
+                                return Err(EvaluateError::SchemalessProjectionForSubQuery.into());
+                            }
                             if columns.len() > 1 {
                                 return Err(EvaluateError::MoreThanOneColumnReturned.into());
                             }
@@ -192,7 +198,16 @@ where
                 .await?
                 .map(|row| {
                     let value = match row? {
-                        Row::Vec { values, .. } => values,
+                        Row::Vec { columns, values } => {
+                            // Schemaless table with _doc column containing Map
+                            if columns.len() == 1
+                                && columns[0] == "_doc"
+                                && matches!(values.first(), Some(Value::Map(_)))
+                            {
+                                return Err(EvaluateError::SchemalessProjectionForInSubQuery.into());
+                            }
+                            values
+                        }
                         Row::Map(_) => {
                             return Err(EvaluateError::SchemalessProjectionForInSubQuery.into());
                         }

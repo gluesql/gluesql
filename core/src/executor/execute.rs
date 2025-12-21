@@ -35,6 +35,9 @@ use {
 pub enum ExecuteError {
     #[error("table not found: {0}")]
     TableNotFound(String),
+
+    #[error("expected Map value in _doc column")]
+    ExpectedMapValueInDocColumn,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -211,7 +214,8 @@ async fn execute_inner<T: GStore + GStoreMut>(
 
             let all_columns = column_defs
                 .as_deref()
-                .map(|columns| columns.iter().map(|col_def| col_def.name.clone()).collect());
+                .map(|columns| columns.iter().map(|col_def| col_def.name.clone()).collect())
+                .or_else(|| Some(Arc::from(vec!["_doc".to_owned()])));
             let columns_to_update: Vec<String> = assignments
                 .iter()
                 .map(|assignment| assignment.id.clone())
@@ -269,6 +273,19 @@ async fn execute_inner<T: GStore + GStoreMut>(
             let (labels, rows) = select_with_labels(storage, query, None).await?;
 
             match labels {
+                Some(labels) if labels.len() == 1 && labels[0] == "_doc" => {
+                    // Schemaless table: extract Value::Map from _doc column
+                    rows.map(|row| {
+                        let values = row?.try_into_vec()?;
+                        match values.into_iter().next() {
+                            Some(Value::Map(map)) => Ok(map),
+                            _ => Err(ExecuteError::ExpectedMapValueInDocColumn.into()),
+                        }
+                    })
+                    .try_collect::<Vec<_>>()
+                    .await
+                    .map(Payload::SelectMap)
+                }
                 Some(labels) => rows
                     .map(|row| row?.try_into_vec())
                     .try_collect::<Vec<_>>()

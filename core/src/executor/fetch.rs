@@ -391,7 +391,8 @@ pub async fn fetch_columns<T: GStore>(
                 .into_iter()
                 .map(|column_def| column_def.name)
                 .collect()
-        });
+        })
+        .or_else(|| Some(vec!["_doc".to_owned()]));
 
     Ok(columns)
 }

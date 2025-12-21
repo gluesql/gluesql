@@ -141,6 +141,16 @@ impl<'a, T: GStore> Update<'a, T> {
             .await?;
 
         Ok(match row {
+            Row::Vec { columns, values } if self.column_defs.is_none() => {
+                // Schemaless table: update fields inside the _doc Map
+                let mut values = values;
+                if let Some(Value::Map(map)) = values.first_mut() {
+                    for (id, value) in assignments {
+                        map.insert(id.to_owned(), value);
+                    }
+                }
+                Row::Vec { columns, values }
+            }
             Row::Vec { columns, values } => {
                 let values = columns
                     .iter()
