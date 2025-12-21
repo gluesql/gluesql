@@ -134,13 +134,15 @@ where
 {
     match (l, r) {
         (left @ (Evaluated::Number(_) | Evaluated::Text(_)), Evaluated::Value(value)) => {
-            value_op(&Value::try_from(left.clone())?, value).map(Evaluated::Value)
+            value_op(&Value::try_from(left.clone())?, value.as_ref())
+                .map(|v| Evaluated::Value(Cow::Owned(v)))
         }
         (Evaluated::Value(value), right @ (Evaluated::Number(_) | Evaluated::Text(_))) => {
-            value_op(value, &Value::try_from(right.clone())?).map(Evaluated::Value)
+            value_op(value.as_ref(), &Value::try_from(right.clone())?)
+                .map(|v| Evaluated::Value(Cow::Owned(v)))
         }
         (Evaluated::Value(left), Evaluated::Value(right)) => {
-            value_op(left, right).map(Evaluated::Value)
+            value_op(left.as_ref(), right.as_ref()).map(|v| Evaluated::Value(Cow::Owned(v)))
         }
         (left, right) => Err(EvaluateError::UnsupportedBinaryOperation {
             left: left.to_string(),
@@ -168,7 +170,7 @@ mod tests {
     }
 
     fn val(v: Value) -> Evaluated<'static> {
-        Evaluated::Value(v)
+        Evaluated::Value(Cow::Owned(v))
     }
 
     #[test]

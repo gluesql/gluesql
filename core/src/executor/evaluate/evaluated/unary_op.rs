@@ -16,7 +16,10 @@ impl<'a> Evaluated<'a> {
             Evaluated::Text(text) => {
                 Err(EvaluateError::UnsupportedUnaryPlus(text.to_string()).into())
             }
-            Evaluated::Value(v) => v.unary_plus().map(Evaluated::Value),
+            Evaluated::Value(v) => v
+                .as_ref()
+                .unary_plus()
+                .map(|v| Evaluated::Value(Cow::Owned(v))),
             Evaluated::StrSlice { source, range } => {
                 Err(EvaluateError::UnsupportedUnaryPlus(source[range.clone()].to_owned()).into())
             }
@@ -29,7 +32,10 @@ impl<'a> Evaluated<'a> {
             Evaluated::Text(text) => {
                 Err(EvaluateError::UnsupportedUnaryMinus(text.to_string()).into())
             }
-            Evaluated::Value(v) => v.unary_minus().map(Evaluated::Value),
+            Evaluated::Value(v) => v
+                .as_ref()
+                .unary_minus()
+                .map(|v| Evaluated::Value(Cow::Owned(v))),
             Evaluated::StrSlice { source, range } => {
                 Err(EvaluateError::UnsupportedUnaryMinus(source[range.clone()].to_owned()).into())
             }
@@ -41,7 +47,7 @@ impl<'a> Evaluated<'a> {
             Ok(self)
         } else {
             self.try_into()
-                .map(|v: bool| Evaluated::Value(Value::Bool(!v)))
+                .map(|v: bool| Evaluated::Value(Cow::Owned(Value::Bool(!v))))
         }
     }
 
@@ -61,7 +67,7 @@ impl<'a> Evaluated<'a> {
             Evaluated::Text(text) => {
                 Err(EvaluateError::UnaryFactorialRequiresNumericLiteral(text.to_string()).into())
             }
-            Evaluated::Value(v) => v.unary_factorial(),
+            Evaluated::Value(v) => v.as_ref().unary_factorial(),
             Evaluated::StrSlice { source, range } => {
                 Err(EvaluateError::UnaryFactorialRequiresNumericLiteral(
                     source[range.clone()].to_owned(),
@@ -69,7 +75,7 @@ impl<'a> Evaluated<'a> {
                 .into())
             }
         }
-        .map(Evaluated::Value)
+        .map(|v| Evaluated::Value(Cow::Owned(v)))
     }
 
     pub fn unary_bitwise_not(&self) -> Result<Evaluated<'a>> {
@@ -88,7 +94,7 @@ impl<'a> Evaluated<'a> {
             Evaluated::Text(text) => {
                 Err(EvaluateError::UnaryBitwiseNotRequiresIntegerLiteral(text.to_string()).into())
             }
-            Evaluated::Value(v) => v.unary_bitwise_not(),
+            Evaluated::Value(v) => v.as_ref().unary_bitwise_not(),
             Evaluated::StrSlice { source, range } => {
                 Err(EvaluateError::UnaryBitwiseNotRequiresIntegerLiteral(
                     source[range.clone()].to_owned(),
@@ -96,7 +102,7 @@ impl<'a> Evaluated<'a> {
                 .into())
             }
         }
-        .map(Evaluated::Value)
+        .map(|v| Evaluated::Value(Cow::Owned(v)))
     }
 }
 
@@ -128,12 +134,12 @@ mod tests {
     fn unary_plus() {
         assert_eq!(number(5).unary_plus(), Ok(number(5)));
         assert_eq!(
-            Evaluated::Value(Value::I64(3)).unary_plus(),
-            Ok(Evaluated::Value(Value::I64(3)))
+            Evaluated::Value(Cow::Owned(Value::I64(3))).unary_plus(),
+            Ok(Evaluated::Value(Cow::Owned(Value::I64(3))))
         );
         assert_eq!(
-            Evaluated::Value(Value::Null).unary_plus(),
-            Ok(Evaluated::Value(Value::Null))
+            Evaluated::Value(Cow::Owned(Value::Null)).unary_plus(),
+            Ok(Evaluated::Value(Cow::Owned(Value::Null)))
         );
         assert_eq!(
             text("abc").unary_plus(),
@@ -161,10 +167,10 @@ mod tests {
     #[test]
     fn unary_not() {
         assert_eq!(
-            Evaluated::Value(Value::Bool(true)).unary_not(),
-            Ok(Evaluated::Value(Value::Bool(false)))
+            Evaluated::Value(Cow::Owned(Value::Bool(true))).unary_not(),
+            Ok(Evaluated::Value(Cow::Owned(Value::Bool(false))))
         );
-        let null = Evaluated::Value(Value::Null);
+        let null = Evaluated::Value(Cow::Owned(Value::Null));
         assert_eq!(null.clone().unary_not(), Ok(null));
         assert_eq!(
             number(1).unary_not(),
@@ -176,10 +182,10 @@ mod tests {
     fn unary_factorial() {
         assert_eq!(
             number(5).unary_factorial(),
-            Ok(Evaluated::Value(Value::I128(120)))
+            Ok(Evaluated::Value(Cow::Owned(Value::I128(120))))
         );
         assert_eq!(
-            Evaluated::Value(Value::I64(-1)).unary_factorial(),
+            Evaluated::Value(Cow::Owned(Value::I64(-1))).unary_factorial(),
             Err(ValueError::FactorialOnNegativeNumeric.into())
         );
         assert_eq!(
@@ -204,10 +210,10 @@ mod tests {
     fn unary_bitwise_not() {
         assert_eq!(
             number(5).unary_bitwise_not(),
-            Ok(Evaluated::Value(Value::I64(!5)))
+            Ok(Evaluated::Value(Cow::Owned(Value::I64(!5))))
         );
         assert_eq!(
-            Evaluated::Value(Value::F64(1.5)).unary_bitwise_not(),
+            Evaluated::Value(Cow::Owned(Value::F64(1.5))).unary_bitwise_not(),
             Err(ValueError::UnaryBitwiseNotOnNonInteger.into())
         );
         assert_eq!(

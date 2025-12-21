@@ -31,6 +31,7 @@ mod update;
 pub use expr::{
     ExprNode, bitwise_not, bytea, case, col, date, exists, expr, factorial, minus, nested, not,
     not_exists, null, num, numeric::NumericNode, plus, subquery, text, time, timestamp, uuid,
+    value,
 };
 /// Available aggregate or normal SQL functions
 pub use expr::{

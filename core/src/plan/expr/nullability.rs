@@ -1,8 +1,11 @@
-use crate::ast::{Expr, Function, Literal};
+use crate::{
+    ast::{Expr, Function},
+    data::Value,
+};
 
 pub fn may_return_null(expr: &Expr) -> bool {
     match expr {
-        Expr::Literal(Literal::Null)
+        Expr::Value(Value::Null)
         | Expr::Identifier(_)
         | Expr::CompoundIdentifier { .. }
         | Expr::ArrayIndex { .. }
@@ -10,7 +13,11 @@ pub fn may_return_null(expr: &Expr) -> bool {
         | Expr::Exists { .. }
         | Expr::InSubquery { .. }
         | Expr::Aggregate(_) => true,
-        Expr::Literal(_) | Expr::TypedString { .. } | Expr::IsNull(_) | Expr::IsNotNull(_) => false,
+        Expr::Literal(_)
+        | Expr::Value(_)
+        | Expr::TypedString { .. }
+        | Expr::IsNull(_)
+        | Expr::IsNotNull(_) => false,
         Expr::UnaryOp { expr: inner, .. }
         | Expr::Nested(inner)
         | Expr::Interval { expr: inner, .. } => may_return_null(inner),
