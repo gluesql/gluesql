@@ -141,9 +141,7 @@ pub async fn validate_unique<T: Store>(
             storage
                 .scan_data(table_name)
                 .await?
-                .try_for_each(|(_, data_row)| async {
-                    let values = data_row.into_values();
-
+                .try_for_each(|(_, values)| async move {
                     unique_constraints.iter().try_for_each(|constraint| {
                         let col_idx = constraint.column_index;
                         let val = values

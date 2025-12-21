@@ -49,10 +49,10 @@ pub async fn fetch<'a, T: GStore>(
     let rows = storage
         .scan_data(table_name)
         .await?
-        .try_filter_map(move |(key, data_row)| {
+        .try_filter_map(move |(key, values)| {
             let row = Row {
                 columns: Arc::clone(&columns),
-                values: data_row.into_values(),
+                values,
             };
 
             async move {
@@ -130,9 +130,9 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                         let rows = storage
                             .scan_indexed_data(name, index_name, *asc, cmp_value)
                             .await?
-                            .map_ok(move |(_, data_row)| Row {
+                            .map_ok(move |(_, values)| Row {
                                 columns: Arc::clone(&columns),
-                                values: data_row.into_values(),
+                                values,
                             });
 
                         Rows::Indexed(rows)
@@ -161,10 +161,10 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                         let key = Key::try_from(value)?;
 
                         match storage.fetch_data(name, &key).await? {
-                            Some(data_row) => {
+                            Some(values) => {
                                 let row = Row {
                                     columns: Arc::clone(&columns),
-                                    values: data_row.into_values(),
+                                    values,
                                 };
 
                                 Rows::PrimaryKey(stream::once(future::ready(Ok(row))))
@@ -173,14 +173,13 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                         }
                     }
                     _ => {
-                        let rows =
-                            storage
-                                .scan_data(name)
-                                .await?
-                                .map_ok(move |(_, data_row)| Row {
-                                    columns: Arc::clone(&columns),
-                                    values: data_row.into_values(),
-                                });
+                        let rows = storage
+                            .scan_data(name)
+                            .await?
+                            .map_ok(move |(_, values)| Row {
+                                columns: Arc::clone(&columns),
+                                values,
+                            });
 
                         Rows::FullScan(rows)
                     }

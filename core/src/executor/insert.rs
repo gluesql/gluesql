@@ -8,7 +8,7 @@ use {
         data::{Key, Row, Schema, Value, value::BTreeMapJsonExt},
         executor::{evaluate::evaluate_stateless, limit::Limit},
         result::{Error, Result},
-        store::{DataRow, GStore, GStoreMut},
+        store::{GStore, GStoreMut},
     },
     futures::stream::{self, StreamExt, TryStreamExt},
     serde::Serialize,
@@ -53,8 +53,8 @@ pub enum InsertError {
 }
 
 enum RowsData {
-    Append(Vec<DataRow>),
-    Insert(Vec<(Key, DataRow)>),
+    Append(Vec<Vec<Value>>),
+    Insert(Vec<(Key, Vec<Value>)>),
 }
 
 pub async fn insert<T: GStore + GStoreMut>(
@@ -199,11 +199,11 @@ async fn fetch_vec_rows<T: GStore>(
                 values
                     .get(i)
                     .map(Key::try_from)
-                    .map(|result| result.map(|key| (key, values.into())))
+                    .map(|result| result.map(|key| (key, values)))
             })
             .collect::<Result<Vec<_>>>()
             .map(RowsData::Insert),
-        None => Ok(RowsData::Append(rows.into_iter().map(Into::into).collect())),
+        None => Ok(RowsData::Append(rows)),
     }
 }
 
@@ -259,7 +259,7 @@ async fn validate_foreign_key<T: GStore>(
     Ok(())
 }
 
-async fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &Query) -> Result<Vec<DataRow>> {
+async fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &Query) -> Result<Vec<Vec<Value>>> {
     #[derive(futures_enum::Stream)]
     enum Rows<I1, I2> {
         Values(I1),
@@ -291,7 +291,7 @@ async fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &Query) -> Result
                 }
             });
             let rows = limit.apply(rows);
-            let rows = rows.map_ok(Into::into);
+            let rows = rows.map_ok(Row::into_values);
 
             Rows::Values(rows)
         }
@@ -309,13 +309,13 @@ async fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &Query) -> Result
                     v => return Err(InsertError::MapTypeValueRequired((&v).into()).into()),
                 };
 
-                Ok(DataRow(vec![Value::Map(map)]))
+                Ok(vec![Value::Map(map)])
             });
 
             Rows::Select(rows)
         }
     }
-    .try_collect::<Vec<DataRow>>()
+    .try_collect::<Vec<Vec<Value>>>()
     .await?;
 
     Ok(rows)

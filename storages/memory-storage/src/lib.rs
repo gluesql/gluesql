@@ -12,7 +12,7 @@ use {
         chrono::Utc,
         data::{CustomFunction as StructCustomFunction, Key, Schema, Value},
         error::Result,
-        store::{CustomFunction, CustomFunctionMut, DataRow, Planner, RowIter, Store, StoreMut},
+        store::{CustomFunction, CustomFunctionMut, Planner, RowIter, Store, StoreMut},
     },
     serde::{Deserialize, Serialize},
     std::collections::{BTreeMap, HashMap},
@@ -21,7 +21,7 @@ use {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Item {
     pub schema: Schema,
-    pub rows: BTreeMap<Key, DataRow>,
+    pub rows: BTreeMap<Key, Vec<Value>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -33,7 +33,7 @@ pub struct MemoryStorage {
 }
 
 impl MemoryStorage {
-    pub fn scan_data(&self, table_name: &str) -> Vec<(Key, DataRow)> {
+    pub fn scan_data(&self, table_name: &str) -> Vec<(Key, Vec<Value>)> {
         match self.items.get(table_name) {
             Some(item) => item.rows.clone().into_iter().collect(),
             None => vec![],
@@ -86,7 +86,7 @@ impl Store for MemoryStorage {
             .transpose()
     }
 
-    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
+    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Vec<Value>>> {
         let row = self
             .items
             .get(table_name)
@@ -131,7 +131,7 @@ impl StoreMut for MemoryStorage {
         Ok(())
     }
 
-    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
+    async fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
         if let Some(item) = self.items.get_mut(table_name) {
             for row in rows {
                 self.id_counter += 1;
@@ -143,7 +143,7 @@ impl StoreMut for MemoryStorage {
         Ok(())
     }
 
-    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
+    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
         if let Some(item) = self.items.get_mut(table_name) {
             for (key, row) in rows {
                 item.rows.insert(key, row);

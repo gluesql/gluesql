@@ -4,7 +4,7 @@ use {
         ast::{
             ColumnDef, ColumnUniqueOption, ForeignKey, Query, SetExpr, TableFactor, ToSql, Values,
         },
-        data::Schema,
+        data::{Row, Schema},
         executor::{evaluate_stateless, select::select},
         prelude::{DataType, Value},
         result::Result,
@@ -198,7 +198,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
         Some(query) => {
             let rows = select(storage, query, None)
                 .await?
-                .map_ok(Into::into)
+                .map_ok(Row::into_values)
                 .try_collect()
                 .await?;
 

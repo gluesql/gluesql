@@ -255,7 +255,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
             let num_rows = rows.len();
             let rows = rows
                 .into_iter()
-                .map(|(key, row)| (key, row.into()))
+                .map(|(key, row)| (key, row.into_values()))
                 .collect();
 
             storage

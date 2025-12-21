@@ -118,12 +118,12 @@ pub trait AlterTable: Store + StoreMut {
         let rows = self
             .scan_data(table_name)
             .await?
-            .and_then(|(key, mut data_row)| {
+            .and_then(|(key, mut values)| {
                 let default_value = default_value.clone();
 
                 async move {
-                    data_row.0.push(default_value);
-                    Ok((key, data_row))
+                    values.push(default_value);
+                    Ok((key, values))
                 }
             })
             .try_collect::<Vec<_>>()
@@ -165,9 +165,9 @@ pub trait AlterTable: Store + StoreMut {
         let rows = self
             .scan_data(table_name)
             .await?
-            .and_then(|(key, mut data_row)| async move {
-                data_row.0.remove(i);
-                Ok((key, data_row))
+            .and_then(|(key, mut values)| async move {
+                values.remove(i);
+                Ok((key, values))
             })
             .try_collect::<Vec<_>>()
             .await?;

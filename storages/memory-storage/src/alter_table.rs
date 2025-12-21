@@ -98,7 +98,7 @@ impl AlterTable for MemoryStorage {
         };
 
         for row in item.rows.values_mut() {
-            row.0.push(value.clone());
+            row.push(value.clone());
         }
 
         column_defs.push(column_def.clone());
@@ -135,7 +135,7 @@ impl AlterTable for MemoryStorage {
                     if row.len() <= column_index {
                         continue;
                     }
-                    row.0.remove(column_index);
+                    row.remove(column_index);
                 }
             }
             None if if_exists => {}
