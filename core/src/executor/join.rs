@@ -15,12 +15,7 @@ use {
         stream::{self, Stream, StreamExt, TryStreamExt, empty, once},
     },
     itertools::Itertools,
-    std::{
-        borrow::Cow,
-        collections::{BTreeMap, HashMap},
-        pin::Pin,
-        sync::Arc,
-    },
+    std::{borrow::Cow, collections::HashMap, pin::Pin, sync::Arc},
     utils::OrStream,
 };
 
@@ -101,12 +96,10 @@ async fn join<'a, T: GStore>(
         .map(Arc::from);
     let rows = left_rows.and_then(move |project_context| {
         let init_context = {
-            let init_row = match columns.as_ref() {
-                Some(columns) => Row::Vec {
-                    columns: Arc::clone(columns),
-                    values: columns.iter().map(|_| Value::Null).collect(),
-                },
-                None => Row::Map(BTreeMap::new()),
+            let columns: Arc<[String]> = columns.as_ref().map_or_else(|| Arc::from([]), Arc::clone);
+            let init_row = Row {
+                values: columns.iter().map(|_| Value::Null).collect(),
+                columns,
             };
 
             Arc::new(RowContext::new(

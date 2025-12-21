@@ -140,40 +140,30 @@ impl<'a, T: GStore> Update<'a, T> {
             .try_collect::<Vec<(&str, Value)>>()
             .await?;
 
-        Ok(match row {
-            Row::Vec { columns, values } if self.column_defs.is_none() => {
-                // Schemaless table: update fields inside the _doc Map
-                let mut values = values;
-                if let Some(Value::Map(map)) = values.first_mut() {
-                    for (id, value) in assignments {
-                        map.insert(id.to_owned(), value);
-                    }
+        let Row { columns, values } = row;
+
+        let values = if self.column_defs.is_none() {
+            // Schemaless table: update fields inside the _doc Map
+            let mut values = values;
+            if let Some(Value::Map(map)) = values.first_mut() {
+                for (id, value) in assignments {
+                    map.insert(id.to_owned(), value);
                 }
-                Row::Vec { columns, values }
             }
-            Row::Vec { columns, values } => {
-                let values = columns
-                    .iter()
-                    .zip(values)
-                    .map(|(column, value)| {
-                        assignments
-                            .iter()
-                            .find_map(|(id, new_value)| (column == id).then_some(new_value.clone()))
-                            .unwrap_or(value)
-                    })
-                    .collect();
+            values
+        } else {
+            columns
+                .iter()
+                .zip(values)
+                .map(|(column, value)| {
+                    assignments
+                        .iter()
+                        .find_map(|(id, new_value)| (column == id).then_some(new_value.clone()))
+                        .unwrap_or(value)
+                })
+                .collect()
+        };
 
-                Row::Vec { columns, values }
-            }
-            Row::Map(values) => {
-                let assignments = assignments
-                    .into_iter()
-                    .map(|(id, value)| (id.to_owned(), value));
-
-                let mut new_values = values;
-                new_values.extend(assignments);
-                Row::Map(new_values)
-            }
-        })
+        Ok(Row { columns, values })
     }
 }

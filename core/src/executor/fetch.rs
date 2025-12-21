@@ -9,7 +9,7 @@ use {
         data::{Key, Row, Value, get_alias, get_index},
         executor::{evaluate::evaluate, select::select},
         result::Result,
-        store::{DataRow, GStore},
+        store::GStore,
     },
     async_recursion::async_recursion,
     futures::{
@@ -50,12 +50,9 @@ pub async fn fetch<'a, T: GStore>(
         .scan_data(table_name)
         .await?
         .try_filter_map(move |(key, data_row)| {
-            let row = match data_row {
-                DataRow::Vec(values) => Row::Vec {
-                    columns: Arc::clone(&columns),
-                    values,
-                },
-                DataRow::Map(values) => Row::Map(values),
+            let row = Row {
+                columns: Arc::clone(&columns),
+                values: data_row.into_values(),
             };
 
             async move {
@@ -96,16 +93,12 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
     match table_factor {
         TableFactor::Derived { subquery, .. } => {
             let filter_context = filter_context.map(Arc::clone);
-            let rows =
-                select(storage, subquery, filter_context)
-                    .await?
-                    .map_ok(move |row| match row {
-                        Row::Vec { values, .. } => Row::Vec {
-                            columns: Arc::clone(&columns),
-                            values,
-                        },
-                        Row::Map(values) => Row::Map(values),
-                    });
+            let rows = select(storage, subquery, filter_context)
+                .await?
+                .map_ok(move |row| Row {
+                    columns: Arc::clone(&columns),
+                    values: row.values,
+                });
 
             Ok(Rows::Derived(rows))
         }
@@ -137,12 +130,9 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                         let rows = storage
                             .scan_indexed_data(name, index_name, *asc, cmp_value)
                             .await?
-                            .map_ok(move |(_, data_row)| match data_row {
-                                DataRow::Vec(values) => Row::Vec {
-                                    columns: Arc::clone(&columns),
-                                    values,
-                                },
-                                DataRow::Map(values) => Row::Map(values),
+                            .map_ok(move |(_, data_row)| Row {
+                                columns: Arc::clone(&columns),
+                                values: data_row.into_values(),
                             });
 
                         Rows::Indexed(rows)
@@ -172,12 +162,9 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
 
                         match storage.fetch_data(name, &key).await? {
                             Some(data_row) => {
-                                let row = match data_row {
-                                    DataRow::Vec(values) => Row::Vec {
-                                        columns: Arc::clone(&columns),
-                                        values,
-                                    },
-                                    DataRow::Map(values) => Row::Map(values),
+                                let row = Row {
+                                    columns: Arc::clone(&columns),
+                                    values: data_row.into_values(),
                                 };
 
                                 Rows::PrimaryKey(stream::once(future::ready(Ok(row))))
@@ -186,15 +173,14 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                         }
                     }
                     _ => {
-                        let rows = storage.scan_data(name).await?.map_ok(move |(_, data_row)| {
-                            match data_row {
-                                DataRow::Vec(values) => Row::Vec {
+                        let rows =
+                            storage
+                                .scan_data(name)
+                                .await?
+                                .map_ok(move |(_, data_row)| Row {
                                     columns: Arc::clone(&columns),
-                                    values,
-                                },
-                                DataRow::Map(values) => Row::Map(values),
-                            }
-                        });
+                                    values: data_row.into_values(),
+                                });
 
                         Rows::FullScan(rows)
                     }
@@ -213,7 +199,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
 
             let columns = Arc::from(vec!["N".to_owned()]);
             let rows = (1..=size).map(move |v| {
-                Ok(Row::Vec {
+                Ok(Row {
                     columns: Arc::clone(&columns),
                     values: vec![Value::I64(v)],
                 })
@@ -261,9 +247,14 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                 ])
                             });
 
-                            iter::once(table_rows)
-                                .chain(index_rows)
-                                .map(|hash_map| Ok(Row::Map(hash_map)))
+                            iter::once(table_rows).chain(index_rows).map(|hash_map| {
+                                let (columns, values): (Vec<_>, Vec<_>) =
+                                    hash_map.into_iter().unzip();
+                                Ok(Row {
+                                    columns: columns.into(),
+                                    values,
+                                })
+                            })
                         });
 
                         Rows::Objects(stream::iter(rows))
@@ -271,7 +262,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                     Dictionary::GlueTables => {
                         let schemas = storage.fetch_all_schemas().await?;
                         let rows = schemas.into_iter().map(move |schema| {
-                            Ok(Row::Vec {
+                            Ok(Row {
                                 columns: Arc::clone(&columns),
                                 values: vec![
                                     Value::Str(schema.table_name),
@@ -308,7 +299,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                         column_def.comment.map_or(Value::Null, Value::Str),
                                     ];
 
-                                    Ok(Row::Vec {
+                                    Ok(Row {
                                         columns: Arc::clone(&columns),
                                         values,
                                     })
@@ -338,7 +329,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                         Value::Bool(true),
                                     ];
 
-                                    let row = Row::Vec {
+                                    let row = Row {
                                         columns: Arc::clone(&columns),
                                         values,
                                     };
@@ -358,7 +349,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                     Value::Bool(false),
                                 ];
 
-                                Ok(Row::Vec {
+                                Ok(Row {
                                     columns: Arc::clone(&columns),
                                     values,
                                 })

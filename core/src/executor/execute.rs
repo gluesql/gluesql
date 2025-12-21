@@ -17,7 +17,7 @@ use {
             Statement, TableAlias, TableFactor, TableWithJoins, Variable,
         },
         data::{Key, Row, Schema, Value},
-        result::Result,
+        result::{Error, Result},
         store::{GStore, GStoreMut},
     },
     futures::stream::{StreamExt, TryStreamExt},
@@ -38,6 +38,9 @@ pub enum ExecuteError {
 
     #[error("expected Map value in _doc column")]
     ExpectedMapValueInDocColumn,
+
+    #[error("missing labels in query result")]
+    MissingLabels,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -244,10 +247,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
             if let Some(column_defs) = column_defs {
                 let column_validation =
                     ColumnValidation::SpecifiedColumns(&column_defs, columns_to_update);
-                let rows = rows.iter().filter_map(|(_, row)| match row {
-                    Row::Vec { values, .. } => Some(values.as_slice()),
-                    Row::Map(_) => None,
-                });
+                let rows = rows.iter().map(|(_, row)| row.values.as_slice());
 
                 validate_unique(storage, table_name, column_validation, rows).await?;
             }
@@ -276,7 +276,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 Some(labels) if labels.len() == 1 && labels[0] == "_doc" => {
                     // Schemaless table: extract Value::Map from _doc column
                     rows.map(|row| {
-                        let values = row?.try_into_vec()?;
+                        let values = row?.into_values();
                         match values.into_iter().next() {
                             Some(Value::Map(map)) => Ok(map),
                             _ => Err(ExecuteError::ExpectedMapValueInDocColumn.into()),
@@ -287,15 +287,11 @@ async fn execute_inner<T: GStore + GStoreMut>(
                     .map(Payload::SelectMap)
                 }
                 Some(labels) => rows
-                    .map(|row| row?.try_into_vec())
+                    .map(|row| Ok(row?.into_values()))
                     .try_collect::<Vec<_>>()
                     .await
                     .map(|rows| Payload::Select { labels, rows }),
-                None => rows
-                    .map(|row| row?.try_into_map())
-                    .try_collect::<Vec<_>>()
-                    .await
-                    .map(Payload::SelectMap),
+                None => Err(ExecuteError::MissingLabels.into()),
             }
         }
         Statement::ShowColumns { table_name } => {
@@ -345,7 +341,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
             let (labels, rows) = select_with_labels(storage, &query, None).await?;
             let labels = labels.unwrap_or_default();
             let rows = rows
-                .map(|row| row?.try_into_vec())
+                .map(|row| Ok::<_, Error>(row?.into_values()))
                 .try_collect::<Vec<_>>()
                 .await?;
 
@@ -385,7 +381,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
 
                 let table_names = select(storage, &query, None)
                     .await?
-                    .map(|row| row?.try_into_vec())
+                    .map(|row| Ok::<_, Error>(row?.into_values()))
                     .try_collect::<Vec<Vec<Value>>>()
                     .await?
                     .iter()

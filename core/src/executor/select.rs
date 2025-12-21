@@ -22,11 +22,7 @@ use {
     },
     async_recursion::async_recursion,
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
-    std::{
-        borrow::Cow,
-        collections::{BTreeMap, HashSet},
-        sync::Arc,
-    },
+    std::{borrow::Cow, collections::HashSet, sync::Arc},
     utils::Vector,
 };
 
@@ -34,16 +30,7 @@ fn apply_distinct(rows: Vec<Row>) -> Vec<Row> {
     let mut seen = HashSet::new();
 
     rows.into_iter()
-        .filter(|row| {
-            let key = match row {
-                Row::Vec { values, .. } => values.clone(),
-                Row::Map(map) => {
-                    let sorted_map: BTreeMap<_, _> = map.iter().collect();
-                    sorted_map.into_values().cloned().collect()
-                }
-            };
-            seen.insert(key)
-        })
+        .filter(|row| seen.insert(row.values.clone()))
         .collect()
 }
 
@@ -78,7 +65,7 @@ async fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> Result<(Vec<Row>, Vec<Str
             values.push(value);
         }
 
-        rows.push(Row::Vec {
+        rows.push(Row {
             columns: Arc::clone(&columns),
             values,
         });

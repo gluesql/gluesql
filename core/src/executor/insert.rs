@@ -7,7 +7,7 @@ use {
         ast::{ColumnDef, ColumnUniqueOption, Expr, ForeignKey, Query, SetExpr, Values},
         data::{Key, Row, Schema, Value, value::BTreeMapJsonExt},
         executor::{evaluate::evaluate_stateless, limit::Limit},
-        result::Result,
+        result::{Error, Result},
         store::{DataRow, GStore, GStoreMut},
     },
     futures::stream::{self, StreamExt, TryStreamExt},
@@ -140,20 +140,20 @@ async fn fetch_vec_rows<T: GStore>(
                 let labels = Arc::clone(&labels);
 
                 async move {
-                    Ok(Row::Vec {
+                    Ok(Row {
                         columns: labels,
                         values: fill_values(&column_defs, columns, values).await?,
                     })
                 }
             });
             let rows = limit.apply(rows);
-            let rows = rows.map(|row| row?.try_into_vec());
+            let rows = rows.map(|row| Ok::<_, Error>(row?.into_values()));
 
             Rows::Values(rows)
         }
         SetExpr::Select(_) => {
             let rows = select(storage, source, None).await?.map(|row| {
-                let values = row?.try_into_vec()?;
+                let values = row?.into_values();
 
                 column_defs
                     .iter()
@@ -283,7 +283,7 @@ async fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &Query) -> Result
                         let map: BTreeMap<String, Value> =
                             evaluate_stateless(None, &values[0]).await?.try_into()?;
 
-                        Ok(Row::Vec {
+                        Ok(Row {
                             columns: doc_column,
                             values: vec![Value::Map(map)],
                         })
@@ -297,7 +297,7 @@ async fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &Query) -> Result
         }
         SetExpr::Select(_) => {
             let rows = select(storage, source, None).await?.map(|row| {
-                let values = row?.try_into_vec()?;
+                let values = row?.into_values();
 
                 if values.len() != 1 {
                     return Err(InsertError::OnlySingleValueAcceptedForSchemalessRow.into());
@@ -309,7 +309,7 @@ async fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &Query) -> Result
                     v => return Err(InsertError::MapTypeValueRequired((&v).into()).into()),
                 };
 
-                Ok(DataRow::Vec(vec![Value::Map(map)]))
+                Ok(DataRow(vec![Value::Map(map)]))
             });
 
             Rows::Select(rows)

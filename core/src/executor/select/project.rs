@@ -70,12 +70,12 @@ impl<'a, T: GStore> Project<'a, T> {
             .await?
             .concat();
 
-        Ok(match labels {
-            Some(labels) => Row::Vec {
-                columns: Arc::clone(&labels),
-                values: entries.into_iter().map(|(_, v)| v).collect(),
-            },
-            None => Row::Map(entries.into_iter().map(|(k, v)| (k.clone(), v)).collect()),
-        })
+        let (cols, values): (Vec<&String>, Vec<_>) = entries.into_iter().unzip();
+        let columns = labels.map_or_else(
+            || cols.into_iter().cloned().collect::<Vec<_>>().into(),
+            |l| Arc::clone(&l),
+        );
+
+        Ok(Row { columns, values })
     }
 }

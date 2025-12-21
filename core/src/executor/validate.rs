@@ -3,7 +3,7 @@ use {
         ast::{ColumnDef, ColumnUniqueOption},
         data::{Key, Value},
         result::Result,
-        store::{DataRow, Store},
+        store::Store,
     },
     futures::stream::TryStreamExt,
     im::HashSet,
@@ -17,9 +17,6 @@ use {
 pub enum ValidateError {
     #[error("conflict! storage row has no column on index {0}")]
     ConflictOnStorageColumnIndex(usize),
-
-    #[error("conflict! schemaless row found in schema based data")]
-    ConflictOnUnexpectedSchemalessRowFound,
 
     #[error("duplicate entry '{}' for unique column '{1}'", String::from(.0))]
     DuplicateEntryOnUniqueField(Value, String),
@@ -145,14 +142,7 @@ pub async fn validate_unique<T: Store>(
                 .scan_data(table_name)
                 .await?
                 .try_for_each(|(_, data_row)| async {
-                    let values = match data_row {
-                        DataRow::Vec(values) => values,
-                        DataRow::Map(_) => {
-                            return Err(
-                                ValidateError::ConflictOnUnexpectedSchemalessRowFound.into()
-                            );
-                        }
-                    };
+                    let values = data_row.into_values();
 
                     unique_constraints.iter().try_for_each(|constraint| {
                         let col_idx = constraint.column_index;

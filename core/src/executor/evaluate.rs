@@ -104,25 +104,17 @@ where
             let evaluations = select(storage, query, context.as_ref().map(Arc::clone))
                 .await?
                 .map(|row| {
-                    let value = match row? {
-                        Row::Vec { columns, values } => {
-                            if columns.len() == 1
-                                && columns[0] == "_doc"
-                                && matches!(values.first(), Some(Value::Map(_)))
-                            {
-                                return Err(EvaluateError::SchemalessProjectionForSubQuery.into());
-                            }
-                            if columns.len() > 1 {
-                                return Err(EvaluateError::MoreThanOneColumnReturned.into());
-                            }
-                            values
-                        }
-                        Row::Map(_) => {
-                            return Err(EvaluateError::SchemalessProjectionForSubQuery.into());
-                        }
+                    let Row { columns, values } = row?;
+                    if columns.len() == 1
+                        && columns[0] == "_doc"
+                        && matches!(values.first(), Some(Value::Map(_)))
+                    {
+                        return Err(EvaluateError::SchemalessProjectionForSubQuery.into());
                     }
-                    .into_iter()
-                    .next();
+                    if columns.len() > 1 {
+                        return Err(EvaluateError::MoreThanOneColumnReturned.into());
+                    }
+                    let value = values.into_iter().next();
 
                     Ok::<_, Error>(value)
                 })
@@ -197,24 +189,15 @@ where
             select(storage, subquery, context)
                 .await?
                 .map(|row| {
-                    let value = match row? {
-                        Row::Vec { columns, values } => {
-                            // Schemaless table with _doc column containing Map
-                            if columns.len() == 1
-                                && columns[0] == "_doc"
-                                && matches!(values.first(), Some(Value::Map(_)))
-                            {
-                                return Err(EvaluateError::SchemalessProjectionForInSubQuery.into());
-                            }
-                            values
-                        }
-                        Row::Map(_) => {
-                            return Err(EvaluateError::SchemalessProjectionForInSubQuery.into());
-                        }
+                    let Row { columns, values } = row?;
+                    // Schemaless table with _doc column containing Map
+                    if columns.len() == 1
+                        && columns[0] == "_doc"
+                        && matches!(values.first(), Some(Value::Map(_)))
+                    {
+                        return Err(EvaluateError::SchemalessProjectionForInSubQuery.into());
                     }
-                    .into_iter()
-                    .next()
-                    .unwrap_or(Value::Null);
+                    let value = values.into_iter().next().unwrap_or(Value::Null);
 
                     Ok(Evaluated::Value(Cow::Owned(value)))
                 })
@@ -407,10 +390,14 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                         .try_into_value(&arg.data_type, true)
                         .map(|value| (arg.name.clone(), value))
                 })
-                .try_collect()
+                .try_collect::<Vec<(String, Value)>>()
                 .await
-                .map(|values| {
-                    let row = Cow::Owned(Row::Map(values));
+                .map(|pairs| {
+                    let (columns, values): (Vec<_>, Vec<_>) = pairs.into_iter().unzip();
+                    let row = Cow::Owned(Row {
+                        columns: columns.into(),
+                        values,
+                    });
                     let context = RowContext::new(name, row, None);
                     Some(Arc::new(context))
                 })?;
