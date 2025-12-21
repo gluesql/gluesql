@@ -5,13 +5,14 @@ use {
         executor::evaluate::error::EvaluateError,
         result::Result,
     },
+    std::borrow::Cow,
 };
 
 impl<'a> Evaluated<'a> {
     pub fn like(&self, other: Evaluated<'a>, case_sensitive: bool) -> Result<Evaluated<'a>> {
         let evaluated = match (self, other) {
-            (Evaluated::Text(lhs), Evaluated::Text(rhs)) => Evaluated::Value(Value::Bool(
-                lhs.as_ref().like(rhs.as_ref(), case_sensitive)?,
+            (Evaluated::Text(lhs), Evaluated::Text(rhs)) => Evaluated::Value(Cow::Owned(
+                Value::Bool(lhs.as_ref().like(rhs.as_ref(), case_sensitive)?),
             )),
             (
                 left @ (Evaluated::Number(_) | Evaluated::Text(_)),
@@ -25,28 +26,33 @@ impl<'a> Evaluated<'a> {
                 .into());
             }
             (literal @ (Evaluated::Number(_) | Evaluated::Text(_)), Evaluated::Value(r)) => {
-                Evaluated::Value(Value::try_from(literal.clone())?.like(&r, case_sensitive)?)
+                Evaluated::Value(Cow::Owned(
+                    Value::try_from(literal.clone())?.like(r.as_ref(), case_sensitive)?,
+                ))
             }
             (Evaluated::Value(l), literal @ (Evaluated::Number(_) | Evaluated::Text(_))) => {
-                Evaluated::Value(l.like(&Value::try_from(literal.clone())?, case_sensitive)?)
+                Evaluated::Value(Cow::Owned(
+                    l.as_ref()
+                        .like(&Value::try_from(literal.clone())?, case_sensitive)?,
+                ))
             }
             (Evaluated::Value(l), Evaluated::Value(r)) => {
-                Evaluated::Value(l.like(&r, case_sensitive)?)
+                Evaluated::Value(Cow::Owned(l.as_ref().like(r.as_ref(), case_sensitive)?))
             }
             (
                 literal @ (Evaluated::Number(_) | Evaluated::Text(_)),
                 Evaluated::StrSlice { source, range },
-            ) => Evaluated::Value(
+            ) => Evaluated::Value(Cow::Owned(
                 Value::try_from(literal.clone())?
                     .like(&Value::Str(source[range].to_owned()), case_sensitive)?,
-            ),
+            )),
             (
                 Evaluated::StrSlice { source, range },
                 literal @ (Evaluated::Number(_) | Evaluated::Text(_)),
-            ) => Evaluated::Value(
+            ) => Evaluated::Value(Cow::Owned(
                 Value::Str(source[range.clone()].to_owned())
                     .like(&Value::try_from(literal.clone())?, case_sensitive)?,
-            ),
+            )),
             (
                 Evaluated::StrSlice {
                     source: a,
@@ -56,15 +62,21 @@ impl<'a> Evaluated<'a> {
                     source: b,
                     range: br,
                 },
-            ) => Evaluated::Value(
+            ) => Evaluated::Value(Cow::Owned(
                 Value::Str(a[ar.clone()].to_owned())
                     .like(&Value::Str(b[br].to_owned()), case_sensitive)?,
-            ),
-            (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => Evaluated::Value(
-                Value::Str(source[range.clone()].to_owned()).like(&r, case_sensitive)?,
-            ),
+            )),
+            (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => {
+                Evaluated::Value(Cow::Owned(
+                    Value::Str(source[range.clone()].to_owned())
+                        .like(r.as_ref(), case_sensitive)?,
+                ))
+            }
             (Evaluated::Value(l), Evaluated::StrSlice { source, range }) => {
-                Evaluated::Value(l.like(&Value::Str(source[range].to_owned()), case_sensitive)?)
+                Evaluated::Value(Cow::Owned(
+                    l.as_ref()
+                        .like(&Value::Str(source[range].to_owned()), case_sensitive)?,
+                ))
             }
         };
 
@@ -85,7 +97,7 @@ mod tests {
     fn like() {
         let text = |s: &str| Evaluated::Text(Cow::Owned(s.to_owned()));
         let num = |s: &str| Evaluated::Number(Cow::Owned(BigDecimal::from_str(s).unwrap()));
-        let val_str = |s: &str| Evaluated::Value(Value::Str(s.to_owned()));
+        let val_str = |s: &str| Evaluated::Value(Cow::Owned(Value::Str(s.to_owned())));
         let slice = |s: &'static str| Evaluated::StrSlice {
             source: Cow::Owned(s.to_owned()),
             range: 0..s.len(),
@@ -93,7 +105,7 @@ mod tests {
         let like_ok = |left: Evaluated, right: Evaluated| {
             assert_eq!(
                 left.like(right, true),
-                Ok(Evaluated::Value(Value::Bool(true)))
+                Ok(Evaluated::Value(Cow::Owned(Value::Bool(true))))
             );
         };
 

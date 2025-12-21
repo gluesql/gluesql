@@ -17,7 +17,7 @@ pub fn literal(literal: &Literal) -> Evaluated<'_> {
 }
 
 pub fn typed_string<'a>(data_type: &'a DataType, value: &'a str) -> Result<Evaluated<'a>> {
-    text_to_value(data_type, value).map(Evaluated::Value)
+    text_to_value(data_type, value).map(|v| Evaluated::Value(Cow::Owned(v)))
 }
 
 pub fn binary_op<'a>(
@@ -27,7 +27,7 @@ pub fn binary_op<'a>(
 ) -> Result<Evaluated<'a>> {
     macro_rules! cmp {
         ($expr: expr) => {
-            Ok(Evaluated::Value(Value::Bool($expr)))
+            Ok(Evaluated::Value(Cow::Owned(Value::Bool($expr))))
         };
     }
 
@@ -37,12 +37,12 @@ pub fn binary_op<'a>(
             let r: bool = r.try_into()?;
             let v = l $op r;
 
-            Ok(Evaluated::Value(Value::Bool(v)))
+            Ok(Evaluated::Value(Cow::Owned(Value::Bool(v))))
         }};
     }
 
     if l.is_null() || r.is_null() {
-        return Ok(Evaluated::Value(Value::Null));
+        return Ok(Evaluated::Value(Cow::Owned(Value::Null)));
     }
 
     match op {
@@ -91,14 +91,14 @@ pub fn between<'a>(
     high: &Evaluated<'a>,
 ) -> Evaluated<'a> {
     if target.is_null() || low.is_null() || high.is_null() {
-        return Evaluated::Value(Value::Null);
+        return Evaluated::Value(Cow::Owned(Value::Null));
     }
 
     let v = low.evaluate_cmp(target) != Some(Ordering::Greater)
         && target.evaluate_cmp(high) != Some(Ordering::Greater);
     let v = negated ^ v;
 
-    Evaluated::Value(Value::Bool(v))
+    Evaluated::Value(Cow::Owned(Value::Bool(v)))
 }
 
 pub fn array_index<'a>(obj: Evaluated<'a>, indexes: Vec<Evaluated<'a>>) -> Result<Evaluated<'a>> {
@@ -109,7 +109,10 @@ pub fn array_index<'a>(obj: Evaluated<'a>, indexes: Vec<Evaluated<'a>>) -> Resul
         .into_iter()
         .map(Value::try_from)
         .collect::<Result<Vec<_>>>()?;
-    value.selector_by_index(&indexes).map(Evaluated::Value)
+    value
+        .into_owned()
+        .selector_by_index(&indexes)
+        .map(|v| Evaluated::Value(Cow::Owned(v)))
 }
 
 #[cfg(test)]

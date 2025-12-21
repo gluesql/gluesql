@@ -70,7 +70,7 @@ where
 
     match expr {
         Expr::Literal(literal) => Ok(expr::literal(literal)),
-        Expr::Value(value) => Ok(Evaluated::Value(value.clone())),
+        Expr::Value(value) => Ok(Evaluated::Value(Cow::Borrowed(value))),
         Expr::TypedString { data_type, value } => expr::typed_string(data_type, value),
         Expr::Identifier(ident) => {
             let context = context.ok_or_else(|| {
@@ -78,10 +78,9 @@ where
             })?;
 
             match context.get_value(ident) {
-                Some(value) => Ok(value.clone()),
+                Some(value) => Ok(Evaluated::Value(Cow::Owned(value.clone()))),
                 None => Err(EvaluateError::IdentifierNotFound(ident.to_owned()).into()),
             }
-            .map(Evaluated::Value)
         }
         Expr::Nested(expr) => eval(expr).await,
         Expr::CompoundIdentifier { alias, ident } => {
@@ -90,14 +89,13 @@ where
             })?;
 
             match context.get_alias_value(alias, ident) {
-                Some(value) => Ok(value.clone()),
+                Some(value) => Ok(Evaluated::Value(Cow::Owned(value.clone()))),
                 None => Err(EvaluateError::CompoundIdentifierNotFound {
                     table_alias: alias.to_owned(),
                     column_name: ident.to_owned(),
                 }
                 .into()),
             }
-            .map(Evaluated::Value)
         }
         Expr::Subquery(query) => {
             let storage = storage
@@ -136,7 +134,7 @@ where
                 .flatten()
                 .unwrap_or(Value::Null);
 
-            Ok(Evaluated::Value(value))
+            Ok(Evaluated::Value(Cow::Owned(value)))
         }
         Expr::BinaryOp { op, left, right } => {
             let left = eval(left).await?;
@@ -153,7 +151,7 @@ where
             .as_ref()
             .and_then(|aggregated| aggregated.get(aggr.as_ref()))
         {
-            Some(value) => Ok(Evaluated::Value(value.clone())),
+            Some(value) => Ok(Evaluated::Value(Cow::Owned(value.clone()))),
             None => Err(EvaluateError::UnreachableEmptyAggregateValue(aggr.clone()).into()),
         },
         Expr::Function(func) => {
@@ -179,7 +177,7 @@ where
                 .into_iter()
                 .any(|v| v.evaluate_eq(&target).is_true());
 
-            Ok(Evaluated::Value(Value::Bool(matched ^ negated)))
+            Ok(Evaluated::Value(Cow::Owned(Value::Bool(matched ^ negated))))
         }
         Expr::InSubquery {
             expr: target_expr,
@@ -203,14 +201,14 @@ where
                     .next()
                     .unwrap_or(Value::Null);
 
-                    Ok(Evaluated::Value(value))
+                    Ok(Evaluated::Value(Cow::Owned(value)))
                 })
                 .try_filter(|evaluated| ready(evaluated.evaluate_eq(&target).is_true()))
                 .try_next()
                 .await
                 .map(|v| v.is_some() ^ negated)
                 .map(Value::Bool)
-                .map(Evaluated::Value)
+                .map(|v| Evaluated::Value(Cow::Owned(v)))
         }
         Expr::Between {
             expr,
@@ -235,8 +233,9 @@ where
 
             Ok(match negated {
                 true => {
-                    let t = evaluated.evaluate_eq(&Evaluated::Value(Value::Bool(false)));
-                    Evaluated::Value(Value::from(t))
+                    let t =
+                        evaluated.evaluate_eq(&Evaluated::Value(Cow::Owned(Value::Bool(false))));
+                    Evaluated::Value(Cow::Owned(Value::from(t)))
                 }
                 false => evaluated,
             })
@@ -252,8 +251,9 @@ where
 
             Ok(match negated {
                 true => {
-                    let t = evaluated.evaluate_eq(&Evaluated::Value(Value::Bool(false)));
-                    Evaluated::Value(Value::from(t))
+                    let t =
+                        evaluated.evaluate_eq(&Evaluated::Value(Cow::Owned(Value::Bool(false))));
+                    Evaluated::Value(Cow::Owned(Value::from(t)))
                 }
                 false => evaluated,
             })
@@ -268,17 +268,17 @@ where
                 .await
                 .map(|v| v.is_some() ^ negated)
                 .map(Value::Bool)
-                .map(Evaluated::Value)
+                .map(|v| Evaluated::Value(Cow::Owned(v)))
         }
         Expr::IsNull(expr) => {
             let v = eval(expr).await?.is_null();
 
-            Ok(Evaluated::Value(Value::Bool(v)))
+            Ok(Evaluated::Value(Cow::Owned(Value::Bool(v))))
         }
         Expr::IsNotNull(expr) => {
             let v = eval(expr).await?.is_null();
 
-            Ok(Evaluated::Value(Value::Bool(!v)))
+            Ok(Evaluated::Value(Cow::Owned(Value::Bool(!v))))
         }
         Expr::Case {
             operand,
@@ -287,7 +287,7 @@ where
         } => {
             let operand = match operand {
                 Some(op) => eval(op).await?,
-                None => Evaluated::Value(Value::Bool(true)),
+                None => Evaluated::Value(Cow::Owned(Value::Bool(true))),
             };
 
             for (when, then) in when_then {
@@ -300,7 +300,7 @@ where
 
             match else_result {
                 Some(er) => eval(er).await,
-                None => Ok(Evaluated::Value(Value::Null)),
+                None => Ok(Evaluated::Value(Cow::Owned(Value::Null))),
             }
         }
         Expr::ArrayIndex { obj, indexes } => {
@@ -314,7 +314,7 @@ where
             .map(Value::try_from)
             .collect::<Result<Vec<_>>>()
             .map(Value::List)
-            .map(Evaluated::Value),
+            .map(|v| Evaluated::Value(Cow::Owned(v))),
         Expr::Interval {
             expr,
             leading_field,
@@ -327,7 +327,7 @@ where
 
             Interval::try_from_str(&value, *leading_field, *last_field)
                 .map(Value::Interval)
-                .map(Evaluated::Value)
+                .map(|v| Evaluated::Value(Cow::Owned(v)))
         }
     }
 }
@@ -520,7 +520,11 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         Function::Floor(expr) => f::floor(&name, eval(expr).await?),
         Function::Radians(expr) => f::radians(&name, eval(expr).await?),
         Function::Degrees(expr) => f::degrees(&name, eval(expr).await?),
-        Function::Pi() => return Ok(Evaluated::Value(Value::F64(std::f64::consts::PI))),
+        Function::Pi() => {
+            return Ok(Evaluated::Value(Cow::Owned(Value::F64(
+                std::f64::consts::PI,
+            ))));
+        }
         Function::Exp(expr) => f::exp(&name, eval(expr).await?),
         Function::Log { antilog, base } => {
             let antilog = eval(antilog).await?;
@@ -596,12 +600,18 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             return f::greatest(&name, exprs);
         }
         Function::Now() | Function::CurrentTimestamp() => {
-            return Ok(Evaluated::Value(Value::Timestamp(Utc::now().naive_utc())));
+            return Ok(Evaluated::Value(Cow::Owned(Value::Timestamp(
+                Utc::now().naive_utc(),
+            ))));
         }
         Function::CurrentDate() => {
-            return Ok(Evaluated::Value(Value::Date(Utc::now().date_naive())));
+            return Ok(Evaluated::Value(Cow::Owned(Value::Date(
+                Utc::now().date_naive(),
+            ))));
         }
-        Function::CurrentTime() => return Ok(Evaluated::Value(Value::Time(Utc::now().time()))),
+        Function::CurrentTime() => {
+            return Ok(Evaluated::Value(Cow::Owned(Value::Time(Utc::now().time()))));
+        }
         Function::Format { expr, format } => {
             let expr = eval(expr).await?;
             let format = eval(format).await?;
@@ -674,7 +684,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let expr = eval(expr).await?;
             let order = match order {
                 Some(o) => eval(o).await?,
-                None => Evaluated::Value(Value::Str("ASC".to_owned())),
+                None => Evaluated::Value(Cow::Owned(Value::Str("ASC".to_owned()))),
             };
             f::sort(expr, order)
         }
@@ -729,7 +739,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
     match result {
         ControlFlow::Continue(v) => Ok(v),
-        ControlFlow::Break(BreakCase::Null) => Ok(Evaluated::Value(Value::Null)),
+        ControlFlow::Break(BreakCase::Null) => Ok(Evaluated::Value(Cow::Owned(Value::Null))),
         ControlFlow::Break(BreakCase::Err(err)) => Err(err),
     }
 }

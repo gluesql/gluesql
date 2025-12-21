@@ -10,10 +10,10 @@ impl<'a> Evaluated<'a> {
                 Evaluated::Text(Cow::Owned(l.to_string() + r.as_ref()))
             }
             (Evaluated::Number(l), Evaluated::Value(r)) => {
-                Evaluated::Value(Value::Str(l.to_string()).concat(r))
+                Evaluated::Value(Cow::Owned(Value::Str(l.to_string()).concat(r.into_owned())))
             }
             (Evaluated::Number(l), Evaluated::StrSlice { source, range }) => {
-                Evaluated::Value(Value::Str(l.to_string() + &source[range]))
+                Evaluated::Value(Cow::Owned(Value::Str(l.to_string() + &source[range])))
             }
             (Evaluated::Text(l), Evaluated::Number(r)) => {
                 Evaluated::Text(Cow::Owned(l.into_owned() + &r.to_string()))
@@ -21,31 +21,33 @@ impl<'a> Evaluated<'a> {
             (Evaluated::Text(l), Evaluated::Text(r)) => {
                 Evaluated::Text(Cow::Owned(l.into_owned() + &r))
             }
-            (Evaluated::Text(l), Evaluated::Value(r)) => {
-                Evaluated::Value(Value::Str(l.into_owned()).concat(r))
-            }
+            (Evaluated::Text(l), Evaluated::Value(r)) => Evaluated::Value(Cow::Owned(
+                Value::Str(l.into_owned()).concat(r.into_owned()),
+            )),
             (Evaluated::Text(l), Evaluated::StrSlice { source, range }) => {
-                Evaluated::Value(Value::Str(l.into_owned() + &source[range]))
+                Evaluated::Value(Cow::Owned(Value::Str(l.into_owned() + &source[range])))
             }
             (Evaluated::Value(l), Evaluated::Number(r)) => {
-                Evaluated::Value(l.concat(Value::Str(r.to_string())))
+                Evaluated::Value(Cow::Owned(l.into_owned().concat(Value::Str(r.to_string()))))
             }
-            (Evaluated::Value(l), Evaluated::Text(r)) => {
-                Evaluated::Value(l.concat(Value::Str(r.into_owned())))
+            (Evaluated::Value(l), Evaluated::Text(r)) => Evaluated::Value(Cow::Owned(
+                l.into_owned().concat(Value::Str(r.into_owned())),
+            )),
+            (Evaluated::Value(l), Evaluated::Value(r)) => {
+                Evaluated::Value(Cow::Owned(l.into_owned().concat(r.into_owned())))
             }
-            (Evaluated::Value(l), Evaluated::Value(r)) => Evaluated::Value(l.concat(r)),
-            (Evaluated::Value(l), Evaluated::StrSlice { source, range }) => {
-                Evaluated::Value(l.concat(Value::Str(source[range].to_owned())))
-            }
-            (Evaluated::StrSlice { source, range }, Evaluated::Number(r)) => {
-                Evaluated::Value(Value::Str(source[range].to_owned() + &r.to_string()))
-            }
-            (Evaluated::StrSlice { source, range }, Evaluated::Text(r)) => {
-                Evaluated::Value(Value::Str(source[range].to_owned() + r.as_ref()))
-            }
-            (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => {
-                Evaluated::Value(Value::Str(source[range].to_owned()).concat(r))
-            }
+            (Evaluated::Value(l), Evaluated::StrSlice { source, range }) => Evaluated::Value(
+                Cow::Owned(l.into_owned().concat(Value::Str(source[range].to_owned()))),
+            ),
+            (Evaluated::StrSlice { source, range }, Evaluated::Number(r)) => Evaluated::Value(
+                Cow::Owned(Value::Str(source[range].to_owned() + &r.to_string())),
+            ),
+            (Evaluated::StrSlice { source, range }, Evaluated::Text(r)) => Evaluated::Value(
+                Cow::Owned(Value::Str(source[range].to_owned() + r.as_ref())),
+            ),
+            (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => Evaluated::Value(
+                Cow::Owned(Value::Str(source[range].to_owned()).concat(r.into_owned())),
+            ),
             (
                 Evaluated::StrSlice {
                     source: l_source,
@@ -55,9 +57,9 @@ impl<'a> Evaluated<'a> {
                     source: r_source,
                     range: r_range,
                 },
-            ) => Evaluated::Value(Value::Str(
+            ) => Evaluated::Value(Cow::Owned(Value::Str(
                 l_source[l_range].to_owned() + &r_source[r_range],
-            )),
+            ))),
         }
     }
 }
@@ -80,7 +82,7 @@ mod tests {
     }
 
     fn value(value: &str) -> Evaluated<'static> {
-        Evaluated::Value(Value::Str(value.to_owned()))
+        Evaluated::Value(Cow::Owned(Value::Str(value.to_owned())))
     }
 
     fn slice(source: &'static str, range: Range<usize>) -> Evaluated<'static> {
@@ -98,10 +100,10 @@ mod tests {
     }
 
     fn assert_value(result: Evaluated<'_>, expected: &str) {
-        match result {
-            Evaluated::Value(Value::Str(actual)) => assert_eq!(actual, expected),
-            other => panic!("expected value str('{expected}'), got {other:?}"),
-        }
+        let Evaluated::Value(cow) = result else {
+            panic!("expected value str('{expected}'), got {result:?}");
+        };
+        assert_eq!(cow.as_ref(), &Value::Str(expected.to_owned()));
     }
 
     #[test]
