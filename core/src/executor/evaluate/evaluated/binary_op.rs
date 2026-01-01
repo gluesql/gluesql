@@ -6,7 +6,7 @@ use {
         executor::evaluate::error::EvaluateError,
         result::{Error, Result},
     },
-    bigdecimal::BigDecimal,
+    bigdecimal::{BigDecimal, Zero},
     std::borrow::Cow,
 };
 
@@ -37,7 +37,7 @@ impl<'a> Evaluated<'a> {
 
     pub fn divide<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
         if let (Evaluated::Number(l), Evaluated::Number(r)) = (self, other) {
-            if *r.as_ref() == BigDecimal::from(0) {
+            if r.as_ref().is_zero() {
                 return Err(EvaluateError::DivisorShouldNotBeZero.into());
             }
 
@@ -49,7 +49,7 @@ impl<'a> Evaluated<'a> {
 
     pub fn modulo<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
         if let (Evaluated::Number(l), Evaluated::Number(r)) = (self, other) {
-            if *r.as_ref() == BigDecimal::from(0) {
+            if r.as_ref().is_zero() {
                 return Err(EvaluateError::DivisorShouldNotBeZero.into());
             }
 
