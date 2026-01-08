@@ -7,8 +7,7 @@ use {
         store::GStore,
     },
     futures::stream::{self, StreamExt, TryStreamExt},
-    im::HashMap,
-    std::sync::Arc,
+    std::{collections::HashMap, sync::Arc},
 };
 
 pub struct Project<'a, T: GStore> {

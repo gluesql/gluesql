@@ -46,4 +46,33 @@ test_case!(expr, {
         Ok(select!("test" I64; 5)),
     )
     .await;
+
+    g.named_test(
+        "aggregate nested in scalar function",
+        "SELECT ABS(SUM(quantity) - MIN(quantity)) AS val FROM Item;",
+        Ok(select!("val" I64; 47)),
+    )
+    .await;
+
+    g.named_test(
+        "functional expression inside aggregate",
+        "SELECT SUM(ABS(quantity)) AS val FROM Item;",
+        Ok(select!("val" I64; 47)),
+    )
+    .await;
+
+    g.named_test(
+        "aggregate mixed with nested case and functions",
+        "
+            SELECT
+                ABS(SUM(quantity))
+                + CASE
+                    WHEN COUNT(*) > 3 THEN MAX(quantity)
+                    ELSE MIN(quantity)
+                END AS val
+            FROM Item;
+        ",
+        Ok(select!("val" I64; 72)),
+    )
+    .await;
 });
