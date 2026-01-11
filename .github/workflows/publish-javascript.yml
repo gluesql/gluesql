@@ -12,6 +12,9 @@ on:
         type: boolean
         default: true
 
+permissions:
+  id-token: write
+
 env:
   CARGO_TERM_COLOR: always
 
