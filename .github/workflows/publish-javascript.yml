@@ -12,6 +12,9 @@ on:
         type: boolean
         default: true
 
+permissions:
+  id-token: write
+  contents: read
 env:
   CARGO_TERM_COLOR: always
 
@@ -36,9 +39,7 @@ jobs:
           wasm-pack build --no-pack --target web --no-typescript --release --out-dir ./dist_web
           wasm-pack build --no-pack --target nodejs --no-typescript --release --out-dir ./dist_nodejs -- --no-default-features --features nodejs
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
-            npm publish --dry-run
+            npm publish --provenance --dry-run
           else
-            npm publish
+            npm publish --provenance
           fi
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM }}
