@@ -27,12 +27,12 @@ jobs:
       - name: Set up node
         uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
           registry-url: "https://registry.npmjs.org"
       - name: Set up wasm pack
         uses: jetli/wasm-pack-action@v0.4.0
         with:
-          version: "v0.13.0"
+          version: "v0.13.1"
       - run: |
           printf '\n[profile.release]\nopt-level = "s"\n' >> Cargo.toml
           cd pkg/javascript
