@@ -6,35 +6,88 @@
 Added support for indexed placeholders (`$1`, `$2`, ...) for parameter binding ([#1800](https://github.com/gluesql/gluesql/pull/1800)).
 
 ```rust
+// INSERT with multiple parameters
+glue.execute_with_params(
+    "INSERT INTO users (id, name) VALUES ($1, $2)",
+    gluesql::params![1_i64, "Alice"],
+).await?;
+
+// SELECT with parameter
 let rows = glue
     .execute_with_params(
-        "SELECT name FROM bind_example WHERE id = $1",
-        gluesql::params![2_i64],
+        "SELECT name FROM users WHERE id = $1",
+        gluesql::params![1_i64],
     )
     .await?;
 ```
 
 - New `execute_with_params` and `plan_with_params` APIs
 - New `params!` macro for building bound parameters
-- Broad literal support: numbers, strings, dates/times, UUIDs, IPs, intervals, bytes
-- Public `ParamLiteral` types exposed for callers
+- Supports various parameter types: numbers, strings, dates/times, UUIDs, IPs, intervals, bytes
 
 ### Storage-specific query planner customization
-Storages can now provide their own query planners via the new `core::store::Planner` trait ([#1825](https://github.com/gluesql/gluesql/pull/1825)).
+Storages can now provide their own query planners via the new `Planner` trait ([#1825](https://github.com/gluesql/gluesql/pull/1825)).
 
-- Default planner implementation handles schema fetch → validation → primary-key + join passes
-- Storages can override to push down additional operations (e.g., index pushdown)
-- Sled storage demonstrates extending the flow with `plan_index` on top of shared default passes
-- Custom storage authors can ship planner logic alongside `Store`/`StoreMut`
+The `Planner` trait transforms `Statement -> Statement`. Core provides these building blocks:
+- `fetch_schema_map` - fetch schema information
+- `validate` - validate the statement
+- `plan_primary_key` - primary key planning
+- `plan_index` - non-clustered index planning
+- `plan_join` - join execution strategy (nested loop join, hash join)
+
+You can combine these with your own planning logic:
+
+```rust
+// Default planner implementation
+async fn plan(&self, statement: Statement) -> Result<Statement> {
+    let schema_map = fetch_schema_map(self, &statement).await?;
+    validate(&schema_map, &statement)?;
+    let statement = plan_primary_key(&schema_map, statement);
+    let statement = plan_join(&schema_map, statement);
+    Ok(statement)
+}
+
+// Sled storage: adds index planning
+async fn plan(&self, statement: Statement) -> Result<Statement> {
+    let schema_map = fetch_schema_map(self, &statement).await?;
+    validate(&schema_map, &statement)?;
+    let statement = plan_primary_key(&schema_map, statement);
+    let statement = plan_index(&schema_map, statement)?;  // index planning added
+    let statement = plan_join(&schema_map, statement);
+    Ok(statement)
+}
+
+// Custom: mix core functions with your own logic
+async fn plan(&self, statement: Statement) -> Result<Statement> {
+    let schema_map = fetch_schema_map(self, &statement).await?;
+    validate(&schema_map, &statement)?;
+    let statement = plan_primary_key(&schema_map, statement);
+    let statement = plan_join(&schema_map, statement);
+    let statement = my_custom_optimization(statement)?;  // your own planning
+    Ok(statement)
+}
+```
+
+> Note: Planner is optional. You can bypass it entirely by building AST directly via AST Builder and executing without planning.
 
 ### Direct runtime value injection with Expr::Value
-Added `Expr::Value(Value)` variant to enable direct runtime value injection into expressions ([#1860](https://github.com/gluesql/gluesql/pull/1860)).
+Added `Expr::Value(Value)` variant for injecting runtime values directly into AST expressions ([#1860](https://github.com/gluesql/gluesql/pull/1860)).
 
-- Evaluator handles `Expr::Value(v) => Evaluated::Value(v.clone())`
-- Simplified `Literal` enum by removing redundant variants (`Null`, `Boolean`, `HexString`)
-- Refactored `ParamLiteral` from 5-variant enum to newtype struct `ParamLiteral(Value)`
-- AST Builder: new `value()` function and `From<Value>` impl for `ExprNode`
-- `bytea()` now uses `Expr::Value(Value::Bytea(...))` directly instead of hex encoding
+```rust
+use gluesql::core::ast_builder::value;
+use gluesql::core::data::Value;
+
+// Using value() function
+let expr = value(Value::I64(100));
+let expr = value(Value::Bool(true));
+
+// Using From<Value> impl
+let expr: ExprNode = Value::Str("hello".to_owned()).into();
+```
+
+- New `value()` function in AST Builder for injecting any `Value` into expressions
+- `From<Value>` impl for `ExprNode` enables direct conversion
+- `bytea()` now creates `Value::Bytea` directly (no hex encoding/decoding overhead)
 
 ### JSON arrow operator support
 Added support for the `->` operator to access MAP keys and LIST indices ([#1807](https://github.com/gluesql/gluesql/pull/1807)).
