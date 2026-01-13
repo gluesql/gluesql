@@ -1,11 +1,11 @@
 use {
     crate::{
         ast::OrderByExpr,
-        data::{Key, Schema, SchemaIndex, SchemaIndexOrd},
+        data::{Key, Schema, SchemaIndex, SchemaIndexOrd, Value},
         result::{Error, Result},
         store::{
-            AlterTable, CustomFunction, CustomFunctionMut, DataRow, Index, IndexMut, Metadata,
-            Planner, RowIter, Store, StoreMut, Transaction,
+            AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Planner,
+            RowIter, Store, StoreMut, Transaction,
         },
     },
     async_trait::async_trait,
@@ -63,7 +63,7 @@ impl Store for MockStorage {
         Err(Error::StorageMsg(msg))
     }
 
-    async fn fetch_data(&self, _table_name: &str, _key: &Key) -> Result<Option<DataRow>> {
+    async fn fetch_data(&self, _table_name: &str, _key: &Key) -> Result<Option<Vec<Value>>> {
         Err(Error::StorageMsg(
             "[MockStorage] fetch_data not supported".to_owned(),
         ))
