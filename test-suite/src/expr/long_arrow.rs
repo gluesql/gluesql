@@ -7,9 +7,9 @@ use {
     },
 };
 
-/// Extract MAP values as text via the ->> operator.
-/// Covers various value types (integer, string, float, bool, nested map),
-/// integer keys, and missing keys.
+// Extract MAP values as text via the ->> operator.
+// Covers various value types (integer, string, float, bool, nested map),
+// integer keys, and missing keys.
 test_case!(map, {
     let g = get_tester!();
 
@@ -75,9 +75,9 @@ test_case!(map, {
     .await;
 });
 
-/// Extract LIST elements as text via the ->> operator.
-/// Covers integer index, string index, NULL element, negative index,
-/// out-of-bounds index, and non-numeric string index.
+// Extract LIST elements as text via the ->> operator.
+// Covers integer index, string index, NULL element, negative index,
+// out-of-bounds index, and non-numeric string index.
 test_case!(list, {
     let g = get_tester!();
 
@@ -149,8 +149,8 @@ test_case!(list, {
     .await;
 });
 
-/// NULL handling for the ->> operator.
-/// Returns NULL when either the base or the selector is NULL.
+// NULL handling for the ->> operator.
+// Returns NULL when either the base or the selector is NULL.
 test_case!(null, {
     let g = get_tester!();
 
@@ -180,8 +180,8 @@ test_case!(null, {
     .await;
 });
 
-/// Chaining -> and ->> operators to extract nested values as text.
-/// e.g. object->'nested'->>'role'
+// Chaining -> and ->> operators to extract nested values as text.
+// e.g. object->'nested'->>'role'
 test_case!(chaining, {
     let g = get_tester!();
 
@@ -205,9 +205,9 @@ test_case!(chaining, {
     .await;
 });
 
-/// Typed integer selectors via CAST for the ->> operator.
-/// Verifies all integer types (INT8–UINT128) work as MAP keys and LIST indices,
-/// and that a negative CAST value returns NULL.
+// Typed integer selectors via CAST for the ->> operator.
+// Verifies all integer types (INT8–UINT128) work as MAP keys and LIST indices,
+// and that a negative CAST value returns NULL.
 test_case!(typed_selector, {
     let g = get_tester!();
 
@@ -281,9 +281,9 @@ test_case!(typed_selector, {
     .await;
 });
 
-/// Error cases for the ->> operator.
-/// Covers unsupported operator (->>-), non-MAP/LIST base types,
-/// and non-integer/string selector types.
+// Error cases for the ->> operator.
+// Covers unsupported operator (->>-), non-MAP/LIST base types,
+// and non-integer/string selector types.
 test_case!(error, {
     let g = get_tester!();
 
