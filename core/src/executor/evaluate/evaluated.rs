@@ -172,7 +172,7 @@ impl<'a> Evaluated<'a> {
         let selector = Value::try_from(other.clone())?;
 
         if selector.is_null() {
-            return Ok(Evaluated::Value(Value::Null));
+            return Ok(Evaluated::Value(Cow::Owned(Value::Null)));
         }
 
         let value_result = if let Evaluated::Value(base) = self {
