@@ -14,14 +14,16 @@ impl<'a> Evaluated<'a> {
             (Evaluated::Number(l), Evaluated::Number(r)) => Some(l.cmp(r)),
             (Evaluated::Text(l), Evaluated::Text(r)) => Some(l.cmp(r)),
             (Evaluated::Number(l), Evaluated::Value(r)) => {
-                value_cmp_with_number(r, l).map(Ordering::reverse)
+                value_cmp_with_number(r.as_ref(), l).map(Ordering::reverse)
             }
             (Evaluated::Text(l), Evaluated::Value(r)) => {
-                value_cmp_with_text(r, l).map(Ordering::reverse)
+                value_cmp_with_text(r.as_ref(), l).map(Ordering::reverse)
             }
-            (Evaluated::Value(l), Evaluated::Number(r)) => value_cmp_with_number(l, r),
-            (Evaluated::Value(l), Evaluated::Text(r)) => value_cmp_with_text(l, r),
-            (Evaluated::Value(left), Evaluated::Value(right)) => left.evaluate_cmp(right),
+            (Evaluated::Value(l), Evaluated::Number(r)) => value_cmp_with_number(l.as_ref(), r),
+            (Evaluated::Value(l), Evaluated::Text(r)) => value_cmp_with_text(l.as_ref(), r),
+            (Evaluated::Value(left), Evaluated::Value(right)) => {
+                left.as_ref().evaluate_cmp(right.as_ref())
+            }
             (Evaluated::Text(l), Evaluated::StrSlice { source, range }) => {
                 Some(l.as_ref().cmp(&source[range.clone()]))
             }
@@ -31,10 +33,10 @@ impl<'a> Evaluated<'a> {
             (Evaluated::Number(_), Evaluated::Text(_) | Evaluated::StrSlice { .. })
             | (Evaluated::Text(_) | Evaluated::StrSlice { .. }, Evaluated::Number(_)) => None,
             (Evaluated::Value(l), Evaluated::StrSlice { source, range }) => {
-                value_cmp_with_text(l, &source[range.clone()])
+                value_cmp_with_text(l.as_ref(), &source[range.clone()])
             }
             (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => {
-                value_cmp_with_text(r, &source[range.clone()]).map(Ordering::reverse)
+                value_cmp_with_text(r.as_ref(), &source[range.clone()]).map(Ordering::reverse)
             }
             (
                 Evaluated::StrSlice {

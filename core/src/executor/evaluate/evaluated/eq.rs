@@ -20,9 +20,9 @@ impl<'a> Evaluated<'a> {
             (Evaluated::Text(a), Evaluated::Text(b)) => Tribool::from(a == b),
             (literal @ (Evaluated::Number(_) | Evaluated::Text(_)), Evaluated::Value(value))
             | (Evaluated::Value(value), literal @ (Evaluated::Number(_) | Evaluated::Text(_))) => {
-                value_eq_with_literal(value, literal)
+                value_eq_with_literal(value.as_ref(), literal)
             }
-            (Evaluated::Value(a), Evaluated::Value(b)) => a.evaluate_eq(b),
+            (Evaluated::Value(a), Evaluated::Value(b)) => a.as_ref().evaluate_eq(b.as_ref()),
             (Evaluated::Number(_), Evaluated::Text(_))
             | (Evaluated::Text(_), Evaluated::Number(_)) => Tribool::from(false),
             (
@@ -41,7 +41,7 @@ impl<'a> Evaluated<'a> {
             | (Evaluated::StrSlice { source, range }, Evaluated::Value(a)) => {
                 let slice = Evaluated::Text(Cow::Borrowed(&source[range.clone()]));
 
-                value_eq_with_literal(a, &slice)
+                value_eq_with_literal(a.as_ref(), &slice)
             }
             (
                 Evaluated::StrSlice { source, range },

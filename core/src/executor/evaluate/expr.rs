@@ -9,23 +9,15 @@ use {
     std::{borrow::Cow, cmp::Ordering},
 };
 
-pub fn literal(literal: &Literal) -> Result<Evaluated<'_>> {
+pub fn literal(literal: &Literal) -> Evaluated<'_> {
     match literal {
-        Literal::Boolean(value) => Ok(Evaluated::Value(Value::Bool(*value))),
-        Literal::Number(value) => Ok(Evaluated::Number(Cow::Borrowed(value))),
-        Literal::QuotedString(value) => Ok(Evaluated::Text(Cow::Borrowed(value))),
-        Literal::HexString(value) => {
-            let bytes = hex::decode(value)
-                .map_err(|_| EvaluateError::FailedToDecodeHexString(value.clone()))?;
-
-            Ok(Evaluated::Value(Value::Bytea(bytes)))
-        }
-        Literal::Null => Ok(Evaluated::Value(Value::Null)),
+        Literal::Number(value) => Evaluated::Number(Cow::Borrowed(value)),
+        Literal::QuotedString(value) => Evaluated::Text(Cow::Borrowed(value)),
     }
 }
 
 pub fn typed_string<'a>(data_type: &'a DataType, value: &'a str) -> Result<Evaluated<'a>> {
-    text_to_value(data_type, value).map(Evaluated::Value)
+    text_to_value(data_type, value).map(|v| Evaluated::Value(Cow::Owned(v)))
 }
 
 pub fn binary_op<'a>(
@@ -35,7 +27,7 @@ pub fn binary_op<'a>(
 ) -> Result<Evaluated<'a>> {
     macro_rules! cmp {
         ($expr: expr) => {
-            Ok(Evaluated::Value(Value::Bool($expr)))
+            Ok(Evaluated::Value(Cow::Owned(Value::Bool($expr))))
         };
     }
 
@@ -45,12 +37,12 @@ pub fn binary_op<'a>(
             let r: bool = r.try_into()?;
             let v = l $op r;
 
-            Ok(Evaluated::Value(Value::Bool(v)))
+            Ok(Evaluated::Value(Cow::Owned(Value::Bool(v))))
         }};
     }
 
     if l.is_null() || r.is_null() {
-        return Ok(Evaluated::Value(Value::Null));
+        return Ok(Evaluated::Value(Cow::Owned(Value::Null)));
     }
 
     match op {
@@ -100,14 +92,14 @@ pub fn between<'a>(
     high: &Evaluated<'a>,
 ) -> Evaluated<'a> {
     if target.is_null() || low.is_null() || high.is_null() {
-        return Evaluated::Value(Value::Null);
+        return Evaluated::Value(Cow::Owned(Value::Null));
     }
 
     let v = low.evaluate_cmp(target) != Some(Ordering::Greater)
         && target.evaluate_cmp(high) != Some(Ordering::Greater);
     let v = negated ^ v;
 
-    Evaluated::Value(Value::Bool(v))
+    Evaluated::Value(Cow::Owned(Value::Bool(v)))
 }
 
 pub fn array_index<'a>(obj: Evaluated<'a>, indexes: Vec<Evaluated<'a>>) -> Result<Evaluated<'a>> {
@@ -118,14 +110,17 @@ pub fn array_index<'a>(obj: Evaluated<'a>, indexes: Vec<Evaluated<'a>>) -> Resul
         .into_iter()
         .map(Value::try_from)
         .collect::<Result<Vec<_>>>()?;
-    value.selector_by_index(&indexes).map(Evaluated::Value)
+    value
+        .into_owned()
+        .selector_by_index(&indexes)
+        .map(|v| Evaluated::Value(Cow::Owned(v)))
 }
 
 #[cfg(test)]
 mod tests {
     use {
         super::{Evaluated, literal},
-        crate::{ast::Literal, data::Value, executor::evaluate::EvaluateError},
+        crate::ast::Literal,
         bigdecimal::BigDecimal,
         std::borrow::Cow,
     };
@@ -133,25 +128,12 @@ mod tests {
     #[test]
     fn test_literal() {
         assert_eq!(
-            literal(&Literal::Boolean(true)),
-            Ok(Evaluated::Value(Value::Bool(true)))
-        );
-        assert_eq!(
             literal(&Literal::Number(BigDecimal::from(42))),
-            Ok(Evaluated::Number(Cow::Owned(BigDecimal::from(42))))
+            Evaluated::Number(Cow::Owned(BigDecimal::from(42)))
         );
         assert_eq!(
             literal(&Literal::QuotedString("hello".to_owned())),
-            Ok(Evaluated::Text(Cow::Owned("hello".to_owned())))
+            Evaluated::Text(Cow::Owned("hello".to_owned()))
         );
-        assert_eq!(
-            literal(&Literal::HexString("48656c6c6f".to_owned())),
-            Ok(Evaluated::Value(Value::Bytea(b"Hello".to_vec())))
-        );
-        assert_eq!(
-            literal(&Literal::HexString("XYZ".to_owned())),
-            Err(EvaluateError::FailedToDecodeHexString("XYZ".to_owned()).into())
-        );
-        assert_eq!(literal(&Literal::Null), Ok(Evaluated::Value(Value::Null)));
     }
 }

@@ -17,6 +17,7 @@ use {
     crate::{
         ast::{Aggregate, BinaryOperator, Expr, Function, Literal, Query, UnaryOperator},
         ast_builder::QueryNode,
+        data::Value,
         parse_sql::{parse_comma_separated_exprs, parse_expr, parse_query},
         prelude::DataType,
         result::{Error, Result},
@@ -302,7 +303,7 @@ impl From<i64> for ExprNode<'_> {
 
 impl From<bool> for ExprNode<'_> {
     fn from(b: bool) -> Self {
-        ExprNode::Expr(Cow::Owned(Expr::Literal(Literal::Boolean(b))))
+        ExprNode::Expr(Cow::Owned(Expr::Value(Value::Bool(b))))
     }
 }
 
@@ -321,6 +322,12 @@ impl From<Expr> for ExprNode<'_> {
 impl<'a> From<&'a Expr> for ExprNode<'a> {
     fn from(expr: &'a Expr) -> Self {
         ExprNode::Expr(Cow::Borrowed(expr))
+    }
+}
+
+impl From<Value> for ExprNode<'_> {
+    fn from(v: Value) -> Self {
+        ExprNode::Expr(Cow::Owned(Expr::Value(v)))
     }
 }
 
@@ -374,10 +381,9 @@ pub fn uuid<'a, T: Into<Cow<'a, str>>>(uuid: T) -> ExprNode<'a> {
 /// * `bytea` - A byte array to be converted to a Bytea AST node.
 ///
 pub fn bytea<'a, T: AsRef<[u8]>>(bytea: T) -> ExprNode<'a> {
-    ExprNode::TypedString {
-        data_type: DataType::Bytea,
-        value: hex::encode(bytea).into(),
-    }
+    ExprNode::Expr(Cow::Owned(Expr::Value(Value::Bytea(
+        bytea.as_ref().to_vec(),
+    ))))
 }
 
 pub fn subquery<'a, T: Into<QueryNode<'a>>>(query_node: T) -> ExprNode<'a> {
@@ -385,7 +391,11 @@ pub fn subquery<'a, T: Into<QueryNode<'a>>>(query_node: T) -> ExprNode<'a> {
 }
 
 pub fn null() -> ExprNode<'static> {
-    ExprNode::Expr(Cow::Owned(Expr::Literal(Literal::Null)))
+    ExprNode::Expr(Cow::Owned(Expr::Value(Value::Null)))
+}
+
+pub fn value(v: Value) -> ExprNode<'static> {
+    ExprNode::Expr(Cow::Owned(Expr::Value(v)))
 }
 
 #[cfg(test)]
@@ -396,8 +406,9 @@ mod tests {
             ast::Expr,
             ast_builder::{
                 QueryNode, bytea, col, date, expr, null, num, subquery, table, test_expr, text,
-                time, timestamp, uuid,
+                time, timestamp, uuid, value,
             },
+            data::Value,
         },
     };
 
@@ -479,7 +490,7 @@ mod tests {
         test_expr(actual, expected);
 
         let actual = bytea(b"hello world");
-        let expected = "BYTEA '68656c6c6f20776f726c64'";
+        let expected = "X'68656c6c6f20776f726c64'";
         test_expr(actual, expected);
 
         let actual = subquery(table("Foo").select().filter("id IS NOT NULL"));
@@ -489,5 +500,20 @@ mod tests {
         let actual = null();
         let expected = "NULL";
         test_expr(actual, expected);
+    }
+
+    #[test]
+    fn value_injection() {
+        let test = |actual: ExprNode, expected: Expr| {
+            pretty_assertions::assert_eq!(Expr::try_from(actual), Ok(expected));
+        };
+
+        test(Value::I64(42).into(), Expr::Value(Value::I64(42)));
+        test(
+            Value::Str("hello".to_owned()).into(),
+            Expr::Value(Value::Str("hello".to_owned())),
+        );
+        test(value(Value::I64(100)), Expr::Value(Value::I64(100)));
+        test(value(Value::Bool(true)), Expr::Value(Value::Bool(true)));
     }
 }

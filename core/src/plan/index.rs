@@ -2,10 +2,10 @@ use {
     super::{context::Context, planner::Planner},
     crate::{
         ast::{
-            BinaryOperator, Expr, IndexItem, IndexOperator, Literal, OrderByExpr, Query, Select,
-            SetExpr, Statement, TableFactor,
+            BinaryOperator, Expr, IndexItem, IndexOperator, OrderByExpr, Query, Select, SetExpr,
+            Statement, TableFactor,
         },
-        data::{Schema, SchemaIndex, SchemaIndexOrd},
+        data::{Schema, SchemaIndex, SchemaIndexOrd, Value},
         plan::expr::{deterministic::is_deterministic, nullability::may_return_null},
     },
     std::{collections::HashMap, hash::BuildHasher, sync::Arc},
@@ -304,7 +304,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
             return Planned::IndexedExpr {
                 index_name,
                 index_op,
-                index_value_expr: Expr::Literal(Literal::Null),
+                index_value_expr: Expr::Value(Value::Null),
                 selection: None,
             };
         }

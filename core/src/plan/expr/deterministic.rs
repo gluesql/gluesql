@@ -2,7 +2,7 @@ use crate::ast::{Expr, Function};
 
 pub fn is_deterministic(expr: &Expr) -> bool {
     match expr {
-        Expr::Literal(_) | Expr::TypedString { .. } => true,
+        Expr::Literal(_) | Expr::Value(_) | Expr::TypedString { .. } => true,
         Expr::Identifier(_)
         | Expr::CompoundIdentifier { .. }
         | Expr::Subquery(_)

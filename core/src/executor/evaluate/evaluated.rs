@@ -34,7 +34,7 @@ pub enum Evaluated<'a> {
         source: Cow<'a, str>,
         range: Range<usize>,
     },
-    Value(Value),
+    Value(Cow<'a, Value>),
 }
 
 /// Formats the evaluated value as a string.
@@ -45,7 +45,7 @@ impl Display for Evaluated<'_> {
             Evaluated::Number(v) => write!(f, "{v}"),
             Evaluated::Text(v) => write!(f, "{v}"),
             Evaluated::StrSlice { source, range } => write!(f, "{}", &source[range.clone()]),
-            Evaluated::Value(v) => write!(f, "{}", String::from(v)),
+            Evaluated::Value(v) => write!(f, "{}", String::from(v.as_ref())),
         }
     }
 }
@@ -75,7 +75,7 @@ impl TryFrom<Evaluated<'_>> for Value {
                 source: s,
                 range: r,
             } => Ok(Value::Str(s[r].to_owned())),
-            Evaluated::Value(v) => Ok(v),
+            Evaluated::Value(v) => Ok(v.into_owned()),
         }
     }
 }
@@ -97,7 +97,7 @@ impl TryFrom<&Evaluated<'_>> for Key {
                 Value::try_from(evaluated.clone())?.try_into()
             }
             Evaluated::StrSlice { source, range } => Ok(Key::Str(source[range.clone()].to_owned())),
-            Evaluated::Value(v) => v.try_into(),
+            Evaluated::Value(v) => v.as_ref().try_into(),
         }
     }
 }
@@ -107,11 +107,13 @@ impl TryFrom<Evaluated<'_>> for bool {
 
     fn try_from(evaluated: Evaluated<'_>) -> Result<bool> {
         let v = match evaluated {
-            Evaluated::Value(Value::Bool(v)) => return Ok(v),
+            Evaluated::Value(cow) => match cow.as_ref() {
+                Value::Bool(v) => return Ok(*v),
+                other => String::from(other),
+            },
             Evaluated::Number(value) => value.to_string(),
             Evaluated::Text(value) => value.to_string(),
             Evaluated::StrSlice { source, range } => source[range].to_owned(),
-            Evaluated::Value(value) => String::from(value),
         };
 
         Err(EvaluateError::BooleanTypeRequired(v).into())
@@ -125,9 +127,11 @@ impl TryFrom<Evaluated<'_>> for BTreeMap<String, Value> {
         match evaluated {
             Evaluated::Text(v) => BTreeMap::parse_json_object(v.as_ref()),
             Evaluated::Number(v) => Err(EvaluateError::TextLiteralRequired(v.to_string()).into()),
-            Evaluated::Value(Value::Str(v)) => BTreeMap::parse_json_object(v.as_str()),
-            Evaluated::Value(Value::Map(v)) => Ok(v),
-            Evaluated::Value(v) => Err(EvaluateError::MapOrStringValueRequired(v.into()).into()),
+            Evaluated::Value(cow) => match cow.into_owned() {
+                Value::Str(v) => BTreeMap::parse_json_object(v.as_str()),
+                Value::Map(v) => Ok(v),
+                v => Err(EvaluateError::MapOrStringValueRequired(v.into()).into()),
+            },
             Evaluated::StrSlice { source, range } => BTreeMap::parse_json_object(&source[range]),
         }
     }
@@ -135,14 +139,14 @@ impl TryFrom<Evaluated<'_>> for BTreeMap<String, Value> {
 
 pub fn exceptional_int_val_to_eval<'a>(name: String, v: &Value) -> Result<Evaluated<'a>> {
     match v {
-        Value::Null => Ok(Evaluated::Value(Value::Null)),
+        Value::Null => Ok(Evaluated::Value(Cow::Owned(Value::Null))),
         _ => Err(EvaluateError::FunctionRequiresIntegerValue(name).into()),
     }
 }
 
 impl From<Tribool> for Evaluated<'_> {
     fn from(x: Tribool) -> Self {
-        Evaluated::Value(Value::from(x))
+        Evaluated::Value(Cow::Owned(Value::from(x)))
     }
 }
 
@@ -151,17 +155,17 @@ impl<'a> Evaluated<'a> {
         let selector = Value::try_from(other.clone())?;
 
         if selector.is_null() {
-            return Ok(Evaluated::Value(Value::Null));
+            return Ok(Evaluated::Value(Cow::Owned(Value::Null)));
         }
 
         let value_result = if let Evaluated::Value(base) = self {
-            function::select_arrow_value(base, &selector)
+            function::select_arrow_value(base.as_ref(), &selector)
         } else {
             let base = Value::try_from(self.clone())?;
             function::select_arrow_value(&base, &selector)
         };
 
-        value_result.map(Evaluated::Value)
+        value_result.map(|v| Evaluated::Value(Cow::Owned(v)))
     }
 
     pub fn long_arrow<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
@@ -185,12 +189,12 @@ impl<'a> Evaluated<'a> {
         match self {
             Evaluated::Number(value) => cast_number_to_value(data_type, value.as_ref()),
             Evaluated::Text(value) => cast_text_to_value(data_type, value.as_ref()),
-            Evaluated::Value(value) => value.cast(data_type),
+            Evaluated::Value(value) => value.as_ref().cast(data_type),
             Evaluated::StrSlice { source, range } => {
                 Value::Str(source[range].to_owned()).cast(data_type)
             }
         }
-        .map(Evaluated::Value)
+        .map(|v| Evaluated::Value(Cow::Owned(v)))
     }
 
     pub fn ltrim(self, name: String, chars: Option<Evaluated<'_>>) -> Result<Evaluated<'a>> {
@@ -199,22 +203,27 @@ impl<'a> Evaluated<'a> {
                 let end = l.len();
                 (l, 0..end)
             }
-            Evaluated::Value(Value::Null) => {
-                return Ok(Evaluated::Value(Value::Null));
+            Evaluated::Value(ref cow) if cow.as_ref().is_null() => {
+                return Ok(Evaluated::Value(Cow::Owned(Value::Null)));
             }
             Evaluated::StrSlice { source, range } => (source, range),
-            Evaluated::Value(Value::Str(v)) => {
-                let end = v.len();
-                (Cow::Owned(v), 0..end)
+            Evaluated::Value(cow) => match cow.into_owned() {
+                Value::Str(v) => {
+                    let end = v.len();
+                    (Cow::Owned(v), 0..end)
+                }
+                _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+            },
+            Evaluated::Number(_) => {
+                return Err(EvaluateError::FunctionRequiresStringValue(name).into());
             }
-            _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
         };
 
         let filter_chars = match chars {
             Some(expr) => match expr.try_into()? {
                 Value::Str(value) => value,
                 Value::Null => {
-                    return Ok(Evaluated::Value(Value::Null));
+                    return Ok(Evaluated::Value(Cow::Owned(Value::Null)));
                 }
                 _ => {
                     return Err(EvaluateError::FunctionRequiresStringValue(name).into());
@@ -264,7 +273,7 @@ impl<'a> Evaluated<'a> {
     }
 
     pub fn is_null(&self) -> bool {
-        matches!(self, Evaluated::Value(v) if v.is_null())
+        matches!(self, Evaluated::Value(v) if v.as_ref().is_null())
     }
 
     pub fn rtrim(self, name: String, chars: Option<Evaluated<'_>>) -> Result<Evaluated<'a>> {
@@ -273,22 +282,27 @@ impl<'a> Evaluated<'a> {
                 let end = l.len();
                 (l, 0..end)
             }
-            Evaluated::Value(Value::Null) => {
-                return Ok(Evaluated::Value(Value::Null));
+            Evaluated::Value(ref cow) if cow.as_ref().is_null() => {
+                return Ok(Evaluated::Value(Cow::Owned(Value::Null)));
             }
             Evaluated::StrSlice { source, range } => (source, range),
-            Evaluated::Value(Value::Str(v)) => {
-                let end = v.len();
-                (Cow::Owned(v), 0..end)
+            Evaluated::Value(cow) => match cow.into_owned() {
+                Value::Str(v) => {
+                    let end = v.len();
+                    (Cow::Owned(v), 0..end)
+                }
+                _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+            },
+            Evaluated::Number(_) => {
+                return Err(EvaluateError::FunctionRequiresStringValue(name).into());
             }
-            _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
         };
 
         let filter_chars = match chars {
             Some(expr) => match expr.try_into()? {
                 Value::Str(value) => value,
                 Value::Null => {
-                    return Ok(Evaluated::Value(Value::Null));
+                    return Ok(Evaluated::Value(Cow::Owned(Value::Null)));
                 }
                 _ => {
                     return Err(EvaluateError::FunctionRequiresStringValue(name).into());
@@ -350,15 +364,20 @@ impl<'a> Evaluated<'a> {
                 let end = l.len();
                 (l, 0..end)
             }
-            Evaluated::Value(Value::Null) => {
-                return Ok(Evaluated::Value(Value::Null));
+            Evaluated::Value(ref cow) if cow.as_ref().is_null() => {
+                return Ok(Evaluated::Value(Cow::Owned(Value::Null)));
             }
             Evaluated::StrSlice { source, range } => (source, range),
-            Evaluated::Value(Value::Str(v)) => {
-                let end = v.len();
-                (Cow::Owned(v), 0..end)
+            Evaluated::Value(cow) => match cow.into_owned() {
+                Value::Str(v) => {
+                    let end = v.len();
+                    (Cow::Owned(v), 0..end)
+                }
+                _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+            },
+            Evaluated::Number(_) => {
+                return Err(EvaluateError::FunctionRequiresStringValue(name).into());
             }
-            _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
         };
 
         let start = {
@@ -405,22 +424,27 @@ impl<'a> Evaluated<'a> {
                 let end = l.len();
                 (l, 0..end)
             }
-            Evaluated::Value(Value::Null) => {
-                return Ok(Evaluated::Value(Value::Null));
+            Evaluated::Value(ref cow) if cow.as_ref().is_null() => {
+                return Ok(Evaluated::Value(Cow::Owned(Value::Null)));
             }
             Evaluated::StrSlice { source, range } => (source, range),
-            Evaluated::Value(Value::Str(v)) => {
-                let end = v.len();
-                (Cow::Owned(v), 0..end)
+            Evaluated::Value(cow) => match cow.into_owned() {
+                Value::Str(v) => {
+                    let end = v.len();
+                    (Cow::Owned(v), 0..end)
+                }
+                _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+            },
+            Evaluated::Number(_) => {
+                return Err(EvaluateError::FunctionRequiresStringValue(name).into());
             }
-            _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
         };
 
         let filter_chars = match filter_chars {
             Some(expr) => match expr.try_into()? {
                 Value::Str(value) => value,
                 Value::Null => {
-                    return Ok(Evaluated::Value(Value::Null));
+                    return Ok(Evaluated::Value(Cow::Owned(Value::Null)));
                 }
                 _ => {
                     return Err(EvaluateError::FunctionRequiresStringValue(name).into());
@@ -590,12 +614,12 @@ impl<'a> Evaluated<'a> {
         let value = match self {
             Evaluated::Number(value) => number_to_value(data_type, value.as_ref())?,
             Evaluated::Text(value) => text_to_value(data_type, value.as_ref())?,
-            Evaluated::Value(Value::Bytea(bytes)) if data_type == &DataType::Uuid => {
-                Uuid::from_slice(&bytes)
+            Evaluated::Value(value) => match (value.as_ref(), data_type) {
+                (Value::Bytea(bytes), DataType::Uuid) => Uuid::from_slice(bytes)
                     .map_err(|_| ValueError::FailedToParseUUID(hex::encode(bytes)))
-                    .map(|uuid| Value::Uuid(uuid.as_u128()))?
-            }
-            Evaluated::Value(value) => value,
+                    .map(|uuid| Value::Uuid(uuid.as_u128()))?,
+                _ => value.into_owned(),
+            },
             Evaluated::StrSlice {
                 source: s,
                 range: r,
@@ -644,7 +668,10 @@ mod tests {
             },
             Ok(Value::Str("hello".to_owned())),
         );
-        test(Evaluated::Value(Value::Bool(true)), Ok(Value::Bool(true)));
+        test(
+            Evaluated::Value(Cow::Owned(Value::Bool(true))),
+            Ok(Value::Bool(true)),
+        );
     }
 
     #[test]
@@ -655,7 +682,7 @@ mod tests {
             source: Cow::Borrowed(s),
             range: 0..s.len(),
         };
-        let val = |v| Evaluated::Value(v);
+        let val = |v| Evaluated::Value(Cow::Owned(v));
 
         assert_eq!(num("42").to_string(), "42");
         assert_eq!(num("3.14").to_string(), "3.14");
@@ -680,15 +707,15 @@ mod tests {
             Err(EvaluateError::TextLiteralRequired("42".to_owned()).into()),
         );
         test(
-            Evaluated::Value(Value::Str(r#"{"a": 1}"#.to_owned())),
+            Evaluated::Value(Cow::Owned(Value::Str(r#"{"a": 1}"#.to_owned()))),
             expected(),
         );
         test(
-            Evaluated::Value(Value::Map(expected().unwrap())),
+            Evaluated::Value(Cow::Owned(Value::Map(expected().unwrap()))),
             expected(),
         );
         test(
-            Evaluated::Value(Value::Bool(true)),
+            Evaluated::Value(Cow::Owned(Value::Bool(true))),
             Err(EvaluateError::MapOrStringValueRequired("TRUE".to_owned()).into()),
         );
         test(

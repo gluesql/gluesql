@@ -55,7 +55,7 @@ pub async fn delete<T: GStore + GStoreMut>(
                 let expr = &Expr::BinaryOp {
                     left: Box::new(Expr::Identifier(referencing_column_name.clone())),
                     op: BinaryOperator::Eq,
-                    right: Box::new(Expr::try_from(value)?),
+                    right: Box::new(Expr::Value(value)),
                 };
 
                 let columns = Some(Arc::from(Vec::new()));
