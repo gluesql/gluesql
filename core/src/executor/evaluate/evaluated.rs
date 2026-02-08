@@ -182,7 +182,7 @@ impl<'a> Evaluated<'a> {
             function::select_long_arrow_value(&base, &selector)
         };
 
-        value_result.map(Evaluated::Value)
+        value_result.map(|v| Evaluated::Value(Cow::Owned(v)))
     }
 
     pub fn cast(self, data_type: &DataType) -> Result<Evaluated<'a>> {
