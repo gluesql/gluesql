@@ -26,47 +26,22 @@ test_case!(map, {
     )
     .await;
 
-    g.test(
-        "SELECT object->>'id' AS result FROM LongArrowSample;",
-        Ok(select!(result Str; "1".to_owned())),
-    )
-    .await;
-
-    g.test(
-        "SELECT object->>'b' AS result FROM LongArrowSample;",
-        Ok(select!(result Str; "2".to_owned())),
-    )
-    .await;
-
-    g.test(
-        "SELECT object->>'name' AS result FROM LongArrowSample;",
-        Ok(select!(result Str; "Han".to_owned())),
-    )
-    .await;
-
-    g.test(
-        "SELECT object->>'price' AS result FROM LongArrowSample;",
-        Ok(select!(result Str; "4.25".to_owned())),
-    )
-    .await;
-
-    g.test(
-        "SELECT object->>'active' AS result FROM LongArrowSample;",
-        Ok(select!(result Str; "TRUE".to_owned())),
-    )
-    .await;
-
-    g.test(
-        r"SELECT object->>'nested' AS result FROM LongArrowSample;",
-        Ok(select!(result Str; r#"{"role":"admin"}"#.to_owned())),
-    )
-    .await;
-
-    g.test(
-        "SELECT object->>1 AS result FROM LongArrowSample;",
-        Ok(select!(result Str; "first".to_owned())),
-    )
-    .await;
+    for (selector, expected) in [
+        ("'id'", "1"),
+        ("'b'", "2"),
+        ("'name'", "Han"),
+        ("'price'", "4.25"),
+        ("'active'", "TRUE"),
+        ("'nested'", r#"{"role":"admin"}"#),
+        ("1", "first"),
+    ] {
+        g.named_test(
+            &format!("object->>{selector}"),
+            &format!("SELECT object->>{selector} AS result FROM LongArrowSample;"),
+            Ok(select!(result Str; expected.to_owned())),
+        )
+        .await;
+    }
 
     g.test(
         "SELECT object->>'missing' AS result FROM LongArrowSample;",
@@ -94,59 +69,29 @@ test_case!(list, {
     )
     .await;
 
-    g.test(
-        "SELECT array->>0 AS result FROM LongArrowSample;",
-        Ok(select!(result Str; "1".to_owned())),
-    )
-    .await;
+    for (selector, expected) in [
+        ("0", "1"),
+        ("1", "two"),
+        ("2", "TRUE"),
+        ("3", "4.25"),
+        ("'3'", "4.25"),
+    ] {
+        g.named_test(
+            &format!("array->>{selector}"),
+            &format!("SELECT array->>{selector} AS result FROM LongArrowSample;"),
+            Ok(select!(result Str; expected.to_owned())),
+        )
+        .await;
+    }
 
-    g.test(
-        "SELECT array->>1 AS result FROM LongArrowSample;",
-        Ok(select!(result Str; "two".to_owned())),
-    )
-    .await;
-
-    g.test(
-        "SELECT array->>2 AS result FROM LongArrowSample;",
-        Ok(select!(result Str; "TRUE".to_owned())),
-    )
-    .await;
-
-    g.test(
-        "SELECT array->>3 AS result FROM LongArrowSample;",
-        Ok(select!(result Str; "4.25".to_owned())),
-    )
-    .await;
-
-    g.test(
-        "SELECT array->>'3' AS result FROM LongArrowSample;",
-        Ok(select!(result Str; "4.25".to_owned())),
-    )
-    .await;
-
-    g.test(
-        "SELECT array->>4 AS result FROM LongArrowSample;",
-        Ok(select_with_null!(result; Value::Null)),
-    )
-    .await;
-
-    g.test(
-        "SELECT array->>(-1) AS result FROM LongArrowSample;",
-        Ok(select_with_null!(result; Value::Null)),
-    )
-    .await;
-
-    g.test(
-        "SELECT array->>100 AS result FROM LongArrowSample;",
-        Ok(select_with_null!(result; Value::Null)),
-    )
-    .await;
-
-    g.test(
-        "SELECT array->>'foo' AS result FROM LongArrowSample;",
-        Ok(select_with_null!(result; Value::Null)),
-    )
-    .await;
+    for selector in ["4", "(-1)", "100", "'foo'"] {
+        g.named_test(
+            &format!("array->>{selector} returns NULL"),
+            &format!("SELECT array->>{selector} AS result FROM LongArrowSample;"),
+            Ok(select_with_null!(result; Value::Null)),
+        )
+        .await;
+    }
 });
 
 // NULL handling for the ->> operator.
@@ -167,17 +112,13 @@ test_case!(null, {
     )
     .await;
 
-    g.test(
+    for sql in [
         "SELECT NULL->>'key' AS result;",
-        Ok(select_with_null!(result; Value::Null)),
-    )
-    .await;
-
-    g.test(
         "SELECT object->>NULL AS result FROM LongArrowSample;",
-        Ok(select_with_null!(result; Value::Null)),
-    )
-    .await;
+    ] {
+        g.test(sql, Ok(select_with_null!(result; Value::Null)))
+            .await;
+    }
 });
 
 // Chaining -> and ->> operators to extract nested values as text.
@@ -224,51 +165,22 @@ test_case!(typed_selector, {
     )
     .await;
 
-    let map_typed_selectors = [
-        ("INT8", "CAST(1 AS INT8)"),
-        ("INT16", "CAST(1 AS INT16)"),
-        ("INT32", "CAST(1 AS INT32)"),
-        ("INT64", "CAST(1 AS INT64)"),
-        ("INT128", "CAST(1 AS INT128)"),
-        ("UINT8", "CAST(1 AS UINT8)"),
-        ("UINT16", "CAST(1 AS UINT16)"),
-        ("UINT32", "CAST(1 AS UINT32)"),
-        ("UINT64", "CAST(1 AS UINT64)"),
-        ("UINT128", "CAST(1 AS UINT128)"),
+    let int_types = [
+        "INT8", "INT16", "INT32", "INT64", "INT128", "UINT8", "UINT16", "UINT32", "UINT64",
+        "UINT128",
     ];
 
-    for (label, selector_expr) in map_typed_selectors {
-        let sql = format!("SELECT object->>{selector_expr} AS result FROM LongArrowSample;");
-        let test_name = format!("LongArrow map selector uses {label}");
-
+    for t in int_types {
         g.named_test(
-            &test_name,
-            sql.as_str(),
+            &format!("map ->> CAST(1 AS {t})"),
+            &format!("SELECT object->>CAST(1 AS {t}) AS result FROM LongArrowSample;"),
             Ok(select!(result Str; "first".to_owned())),
         )
         .await;
-    }
-
-    let typed_selectors = [
-        ("INT8", "CAST(3 AS INT8)"),
-        ("INT16", "CAST(3 AS INT16)"),
-        ("INT32", "CAST(3 AS INT32)"),
-        ("INT64", "CAST(3 AS INT64)"),
-        ("INT128", "CAST(3 AS INT128)"),
-        ("UINT8", "CAST(3 AS UINT8)"),
-        ("UINT16", "CAST(3 AS UINT16)"),
-        ("UINT32", "CAST(3 AS UINT32)"),
-        ("UINT64", "CAST(3 AS UINT64)"),
-        ("UINT128", "CAST(3 AS UINT128)"),
-    ];
-
-    for (label, selector_expr) in typed_selectors {
-        let sql = format!("SELECT array->>{selector_expr} AS result FROM LongArrowSample;");
-        let test_name = format!("LongArrow selector uses {label}");
 
         g.named_test(
-            &test_name,
-            sql.as_str(),
+            &format!("list ->> CAST(3 AS {t})"),
+            &format!("SELECT array->>CAST(3 AS {t}) AS result FROM LongArrowSample;"),
             Ok(select!(result Str; "4.25".to_owned())),
         )
         .await;
@@ -306,23 +218,14 @@ test_case!(error, {
     )
     .await;
 
-    g.test(
+    for sql in [
         "SELECT 1 ->> 'foo' AS result;",
-        Err(EvaluateError::ArrowBaseRequiresMapOrList.into()),
-    )
-    .await;
-
-    g.test(
         "SELECT TRUE ->> 'foo' AS result;",
-        Err(EvaluateError::ArrowBaseRequiresMapOrList.into()),
-    )
-    .await;
-
-    g.test(
         r#"SELECT '{"role":"admin"}' ->> 'role' AS result;"#,
-        Err(EvaluateError::ArrowBaseRequiresMapOrList.into()),
-    )
-    .await;
+    ] {
+        g.test(sql, Err(EvaluateError::ArrowBaseRequiresMapOrList.into()))
+            .await;
+    }
 
     g.test(
         "SELECT object->>TRUE AS result FROM LongArrowSample;",
