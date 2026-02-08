@@ -330,5 +330,7 @@ mod tests {
             }
             .to_sql(),
         );
+
+        assert_eq!(BinaryOperator::LongArrow.to_sql(), "->>");
     }
 }

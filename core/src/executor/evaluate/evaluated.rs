@@ -694,6 +694,16 @@ mod tests {
     }
 
     #[test]
+    fn long_arrow_non_value_base() {
+        let base = Evaluated::Number(Cow::Owned(BigDecimal::from(1)));
+        let selector = Evaluated::Text(Cow::Owned("foo".to_owned()));
+        assert_eq!(
+            base.long_arrow(&selector),
+            Err(EvaluateError::ArrowBaseRequiresMapOrList.into()),
+        );
+    }
+
+    #[test]
     fn try_from_evaluated_to_btreemap() {
         let expected = || Ok([("a".to_owned(), Value::I64(1))].into_iter().collect());
         let test = |e, result| assert_eq!(BTreeMap::try_from(e), result);
