@@ -3,9 +3,9 @@ use {
     async_trait::async_trait,
     futures::stream::iter,
     gluesql_core::{
-        data::{Key, Schema},
+        data::{Key, Schema, Value},
         error::Result,
-        store::{DataRow, RowIter, Store},
+        store::{RowIter, Store},
     },
     std::{ffi::OsStr, fs},
 };
@@ -43,7 +43,7 @@ impl Store for FileStorage {
         Self::fetch_schema(path).map(Some)
     }
 
-    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
+    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Vec<Value>>> {
         let path = self.data_path(table_name, key)?;
         if !path.exists() {
             return Ok(None);
