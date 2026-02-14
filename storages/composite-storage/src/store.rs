@@ -3,9 +3,9 @@ use {
     async_trait::async_trait,
     futures::stream::{self, StreamExt, TryStreamExt},
     gluesql_core::{
-        data::{Key, Schema},
+        data::{Key, Schema, Value},
         error::Result,
-        store::{DataRow, RowIter, Store},
+        store::{RowIter, Store},
     },
 };
 
@@ -36,7 +36,7 @@ impl Store for CompositeStorage {
         Ok(None)
     }
 
-    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
+    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Vec<Value>>> {
         self.fetch_storage(table_name)
             .await?
             .fetch_data(table_name, key)
