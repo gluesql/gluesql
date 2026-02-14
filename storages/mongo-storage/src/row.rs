@@ -5,10 +5,7 @@ pub mod value;
 use {
     self::value::IntoValue,
     crate::error::ResultExt,
-    gluesql_core::{
-        prelude::{DataType, Key, Result},
-        store::DataRow,
-    },
+    gluesql_core::prelude::{DataType, Key, Result, Value},
     mongodb::bson::Document,
 };
 
@@ -17,7 +14,7 @@ pub trait IntoRow {
         self,
         data_types: impl Iterator<Item = &'a DataType>,
         is_primary: bool,
-    ) -> Result<(Key, DataRow)>;
+    ) -> Result<(Key, Vec<Value>)>;
 }
 
 impl IntoRow for Document {
@@ -25,7 +22,7 @@ impl IntoRow for Document {
         self,
         data_types: impl Iterator<Item = &'a DataType>,
         has_primary: bool,
-    ) -> Result<(Key, DataRow)> {
+    ) -> Result<(Key, Vec<Value>)> {
         let key = if has_primary {
             self.get_binary_generic("_id").map_storage_err()?.to_owned()
         } else {
@@ -43,6 +40,6 @@ impl IntoRow for Document {
             .map(|((_, bson), data_type)| bson.into_value(data_type).map_storage_err())
             .collect::<Result<Vec<_>>>()?;
 
-        Ok((key, DataRow::Vec(row)))
+        Ok((key, row))
     }
 }
