@@ -8,9 +8,9 @@ use {
     async_trait::async_trait,
     futures::stream,
     gluesql_core::{
-        data::{Key, Schema},
+        data::{Key, Schema, Value},
         error::Result,
-        store::{DataRow, Metadata, Planner, RowIter, Store, StoreMut},
+        store::{Metadata, Planner, RowIter, Store, StoreMut},
     },
     gluesql_memory_storage::MemoryStorage,
     std::sync::Arc,
@@ -59,7 +59,7 @@ impl Store for SharedMemoryStorage {
         database.fetch_schema(table_name).await
     }
 
-    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
+    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Vec<Value>>> {
         let database = Arc::clone(&self.database);
         let database = database.read().await;
 
@@ -95,14 +95,14 @@ impl StoreMut for SharedMemoryStorage {
         database.delete_schema(table_name).await
     }
 
-    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
+    async fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
         let database = Arc::clone(&self.database);
         let mut database = database.write().await;
 
         database.append_data(table_name, rows).await
     }
 
-    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
+    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
         let database = Arc::clone(&self.database);
         let mut database = database.write().await;
 
