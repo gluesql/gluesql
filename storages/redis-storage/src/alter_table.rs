@@ -5,7 +5,7 @@ use {
         ast::ColumnDef,
         data::Value,
         error::{AlterTableError, Error, Result},
-        store::{AlterTable, DataRow, Store},
+        store::{AlterTable, Store},
     },
     redis::Commands,
 };
@@ -140,22 +140,12 @@ impl AlterTable for RedisStorage {
                         })?
                 };
 
-                let mut row: DataRow = serde_json::from_str(&value).map_err(|e| {
+                let mut row: Vec<Value> = serde_json::from_str(&value).map_err(|e| {
                     Error::StorageMsg(format!(
                         "[RedisStorage] failed to deserialize value={value} error={e}"
                     ))
                 })?;
-                match &mut row {
-                    DataRow::Vec(values) => {
-                        values.push(new_value_of_new_column.clone());
-                    }
-                    DataRow::Map(_) => {
-                        return Err(Error::StorageMsg(
-                            "[RedisStorage] conflict - add_column failed: schemaless row found"
-                                .to_owned(),
-                        ));
-                    }
-                }
+                row.push(new_value_of_new_column.clone());
 
                 let new_value = serde_json::to_string(&row).map_err(|_e| {
                     Error::StorageMsg(format!(
@@ -209,21 +199,18 @@ impl AlterTable for RedisStorage {
                     let key_iter = self.redis_execute_scan(table_name)?;
                     for key in key_iter {
                         if let Some(value) = self.redis_execute_get(&key)? {
-                            let mut row: DataRow = serde_json::from_str(&value).map_err(|e| {
+                            let mut row: Vec<Value> = serde_json::from_str(&value).map_err(|e| {
                                 Error::StorageMsg(format!(
                                     "[RedisStorage] failed to deserialize value={value} error={e}"
                                 ))
                             })?;
-                            match &mut row {
-                                DataRow::Vec(values) => {
-                                    values.remove(column_index);
-                                }
-                                DataRow::Map(_) => {
-                                    return Err(Error::StorageMsg(
-                                    "[RedisStorage] conflict - drop_column failed: schemaless row found".to_owned(),
-                                ));
-                                }
+                            if column_index >= row.len() {
+                                return Err(Error::StorageMsg(format!(
+                                    "[RedisStorage] conflict - drop_column failed: row too short for column index row_len={} column_index={column_index}",
+                                    row.len(),
+                                )));
                             }
+                            row.remove(column_index);
 
                             let new_value = serde_json::to_string(&row).map_err(|e| {
                                 Error::StorageMsg(format!(
