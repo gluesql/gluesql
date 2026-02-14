@@ -15,8 +15,7 @@ use {
     },
     gluesql_core::{
         ast::{Expr, ToSql},
-        data::Value,
-        store::{DataRow, GStore, GStoreMut, Planner, Store, Transaction},
+        store::{GStore, GStoreMut, Planner, Store, Transaction},
     },
     gluesql_csv_storage::CsvStorage,
     gluesql_file_storage::FileStorage,
@@ -172,14 +171,7 @@ pub fn dump_database(storage: &mut SledStorage, dump_path: PathBuf) -> Result<()
                 let exprs_list = rows
                     .into_iter()
                     .map(|result| {
-                        result.map(|data_row| {
-                            let values = match data_row {
-                                DataRow::Vec(values) => values,
-                                DataRow::Map(values) => vec![Value::Map(values)],
-                            };
-
-                            values.into_iter().map(Expr::Value).collect::<Vec<_>>()
-                        })
+                        result.map(|row| row.into_iter().map(Expr::Value).collect::<Vec<_>>())
                     })
                     .collect::<std::result::Result<Vec<_>, _>>()?;
 
