@@ -96,3 +96,28 @@ fn invalid_id_offset() {
         ))
     );
 }
+
+#[tokio::test]
+async fn import_requires_empty_destination() {
+    let path1 = "tmp/import_requires_empty_destination_src";
+    let path2 = "tmp/import_requires_empty_destination_dst";
+    let config1 = Config::default().path(path1).temporary(true);
+    let config2 = Config::default().path(path2).temporary(true);
+
+    let storage1 = SledStorage::try_from(config1).unwrap();
+    let mut glue1 = Glue::new(storage1);
+    glue1
+        .execute("CREATE TABLE Foo (id INTEGER);")
+        .await
+        .unwrap();
+    let export = glue1.storage.export().unwrap();
+
+    let mut storage2 = SledStorage::try_from(config2).unwrap();
+    storage2.tree.insert("seed", "value").unwrap();
+
+    let actual = storage2.import(export);
+    let expected = Err(Error::StorageMsg(
+        "[SledStorage] import requires an empty destination storage".to_owned(),
+    ));
+    assert_eq!(actual, expected);
+}

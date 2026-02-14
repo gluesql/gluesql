@@ -3,9 +3,9 @@ use {
     async_trait::async_trait,
     futures::stream::iter,
     gluesql_core::{
-        data::{Key, Schema},
+        data::{Key, Schema, Value},
         error::{Error, Result},
-        store::{DataRow, RowIter, Store},
+        store::{RowIter, Store},
     },
     std::str,
 };
@@ -65,7 +65,7 @@ impl Store for SledStorage {
         Ok(schema)
     }
 
-    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
+    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Vec<Value>>> {
         let (txid, created_at) = match self.state {
             State::Transaction {
                 txid, created_at, ..
@@ -88,7 +88,7 @@ impl Store for SledStorage {
             .map(|v| bincode::deserialize(&v))
             .transpose()
             .map_err(err_into)?
-            .and_then(|snapshot: Snapshot<DataRow>| snapshot.extract(txid, lock_txid));
+            .and_then(|snapshot: Snapshot<Vec<Value>>| snapshot.extract(txid, lock_txid));
 
         Ok(row)
     }
@@ -114,7 +114,8 @@ impl Store for SledStorage {
             .map(move |item| {
                 let (key, value) = item.map_err(err_into)?;
                 let key = key.subslice(prefix_len, key.len() - prefix_len).to_vec();
-                let snapshot: Snapshot<DataRow> = bincode::deserialize(&value).map_err(err_into)?;
+                let snapshot: Snapshot<Vec<Value>> =
+                    bincode::deserialize(&value).map_err(err_into)?;
                 let row = snapshot.extract(txid, lock_txid);
                 let item = row.map(|row| (Key::Bytea(key), row));
 
