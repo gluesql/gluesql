@@ -275,7 +275,10 @@ impl<S: BuildHasher> SchemalessPlanner<'_, S> {
             SelectItem::QualifiedWildcard(ref alias) => {
                 if self.is_schemaless_table(alias) {
                     SelectItem::Expr {
-                        expr: Expr::Identifier(SCHEMALESS_DOC_COLUMN.to_owned()),
+                        expr: Expr::CompoundIdentifier {
+                            alias: alias.to_owned(),
+                            ident: SCHEMALESS_DOC_COLUMN.to_owned(),
+                        },
                         label: SCHEMALESS_DOC_COLUMN.to_owned(),
                     }
                 } else {
@@ -349,15 +352,17 @@ mod tests {
     fn setup_schemaless_storage() -> MockStorage {
         let mut storage = MockStorage::default();
 
-        let schema = Schema {
-            table_name: "Player".to_owned(),
-            column_defs: None,
-            indexes: Vec::new(),
-            engine: None,
-            foreign_keys: Vec::new(),
-            comment: None,
-        };
-        block_on(storage.insert_schema(&schema)).unwrap();
+        for table_name in ["Player", "Team"] {
+            let schema = Schema {
+                table_name: table_name.to_owned(),
+                column_defs: None,
+                indexes: Vec::new(),
+                engine: None,
+                foreign_keys: Vec::new(),
+                comment: None,
+            };
+            block_on(storage.insert_schema(&schema)).unwrap();
+        }
 
         storage
     }
@@ -393,8 +398,12 @@ mod tests {
         test(actual, expected, "wildcard");
 
         let actual = "SELECT Player.* FROM Player";
-        let expected = "SELECT _doc as _doc FROM Player";
+        let expected = "SELECT Player._doc as _doc FROM Player";
         test(actual, expected, "qualified wildcard");
+
+        let actual = "SELECT Player.*, Team.* FROM Player JOIN Team WHERE Player.id = Team.id";
+        let expected = "SELECT Player._doc as _doc, Team._doc as _doc FROM Player JOIN Team WHERE Player._doc['id'] = Team._doc['id']";
+        test(actual, expected, "qualified wildcard join");
 
         let actual = "SELECT Player.id FROM Player";
         let expected = "SELECT Player._doc['id'] as id FROM Player";

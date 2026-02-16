@@ -338,6 +338,7 @@ macro_rules! generate_store_tests {
         // schemaless data support
         glue!(schemaless_basic, schemaless::basic);
         glue!(schemaless_error, schemaless::error);
+        glue!(schemaless_project, schemaless::project);
 
         glue!(store_insert_schema, store::insert_schema::insert_schema);
     };
