@@ -23,6 +23,9 @@ pub enum UpdateError {
     #[error("conflict on schema, row data does not fit to schema")]
     ConflictOnSchema,
 
+    #[error("conflict on schemaless row, expected first value to be map")]
+    ConflictOnNonMapSchemalessRow,
+
     #[error(
         "cannot find referenced value on {table_name}.{column_name} with value {referenced_value:?}"
     )]
@@ -145,10 +148,12 @@ impl<'a, T: GStore> Update<'a, T> {
         let values = if self.column_defs.is_none() {
             // Schemaless table: update fields inside the _doc Map
             let mut values = values;
-            if let Some(Value::Map(map)) = values.first_mut() {
-                for (id, value) in assignments {
-                    map.insert(id.to_owned(), value);
-                }
+            let Some(Value::Map(map)) = values.first_mut() else {
+                return Err(UpdateError::ConflictOnNonMapSchemalessRow.into());
+            };
+
+            for (id, value) in assignments {
+                map.insert(id.to_owned(), value);
             }
             values
         } else {
