@@ -64,7 +64,7 @@ async fn add_column_non_vec_row_error() {
     assert_eq!(
         result,
         Err(Error::StorageMsg(
-            "[RedisStorage] failed to deserialize value={\"id\":1} error=invalid type: map, expected a sequence at line 1 column 0".to_owned(),
+            r#"[RedisStorage] failed to deserialize value={"id":{"I64":1}} error=invalid type: map, expected a sequence at line 1 column 0"#.to_owned(),
         )),
     );
 }
@@ -147,7 +147,7 @@ async fn drop_column_non_vec_row_error() {
     assert_eq!(
         result,
         Err(Error::StorageMsg(
-            "[RedisStorage] failed to deserialize value={\"foo\":10,\"id\":1} error=invalid type: map, expected a sequence at line 1 column 0".to_owned(),
+            r#"[RedisStorage] failed to deserialize value={"foo":{"I64":10},"id":{"I64":1}} error=invalid type: map, expected a sequence at line 1 column 0"#.to_owned(),
         )),
     );
 }
