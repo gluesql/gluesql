@@ -276,7 +276,7 @@ async fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &Query) -> Result
                 move |values| {
                     let doc_column = Arc::clone(&doc_column);
                     async move {
-                        if values.len() > 1 {
+                        if values.len() != 1 {
                             return Err(InsertError::OnlySingleValueAcceptedForSchemalessRow.into());
                         }
 
