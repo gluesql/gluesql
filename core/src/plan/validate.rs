@@ -1,7 +1,10 @@
 use {
     super::PlanError,
     crate::{
-        ast::{Expr, Join, Query, SelectItem, SetExpr, Statement, TableFactor, TableWithJoins},
+        ast::{
+            Expr, Join, Projection, Query, SelectItem, SetExpr, Statement, TableFactor,
+            TableWithJoins,
+        },
         data::Schema,
         result::Result,
     },
@@ -24,7 +27,11 @@ pub fn validate(schema_map: &SchemaMap, statement: &Statement) -> Result<()> {
             ..
         } = query
     {
-        for select_item in &select.projection {
+        let Projection::SelectItems(projection) = &select.projection else {
+            return Ok(());
+        };
+
+        for select_item in projection {
             if let SelectItem::Expr {
                 expr: Expr::Identifier(ident),
                 ..

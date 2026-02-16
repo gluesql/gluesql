@@ -13,8 +13,8 @@ use {
     },
     crate::{
         ast::{
-            BinaryOperator, DataType, Dictionary, Expr, Literal, Query, SelectItem, SetExpr,
-            Statement, TableAlias, TableFactor, TableWithJoins, Variable,
+            BinaryOperator, DataType, Dictionary, Expr, Literal, Projection, Query, SelectItem,
+            SetExpr, Statement, TableAlias, TableFactor, TableWithJoins, Variable,
         },
         data::{Key, Row, SCHEMALESS_DOC_COLUMN, Schema, Value},
         result::{Error, Result},
@@ -38,9 +38,6 @@ pub enum ExecuteError {
 
     #[error("expected Map value in _doc column")]
     ExpectedMapValueInDocColumn,
-
-    #[error("missing labels in query result")]
-    MissingLabels,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -215,10 +212,10 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 .await?
                 .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
 
-            let all_columns = column_defs
-                .as_deref()
-                .map(|columns| columns.iter().map(|col_def| col_def.name.clone()).collect())
-                .or_else(|| Some(Arc::from(vec![SCHEMALESS_DOC_COLUMN.to_owned()])));
+            let all_columns = column_defs.as_deref().map_or_else(
+                || Arc::from(vec![SCHEMALESS_DOC_COLUMN.to_owned()]),
+                |columns| columns.iter().map(|col_def| col_def.name.clone()).collect(),
+            );
             let columns_to_update: Vec<String> = assignments
                 .iter()
                 .map(|assignment| assignment.id.clone())
@@ -272,26 +269,27 @@ async fn execute_inner<T: GStore + GStoreMut>(
         Statement::Query(query) => {
             let (labels, rows) = select_with_labels(storage, query, None).await?;
 
-            match labels {
-                Some(labels) if labels.len() == 1 && labels[0] == SCHEMALESS_DOC_COLUMN => {
-                    // Schemaless table: extract Value::Map from _doc column
-                    rows.map(|row| {
-                        let values = row?.into_values();
-                        match values.into_iter().next() {
-                            Some(Value::Map(map)) => Ok(map),
-                            _ => Err(ExecuteError::ExpectedMapValueInDocColumn.into()),
-                        }
-                    })
+            let is_schemaless_map = matches!(
+                &query.body,
+                SetExpr::Select(select) if matches!(select.projection, Projection::SchemalessMap)
+            );
+
+            if is_schemaless_map {
+                rows.map(|row| {
+                    let mut values = row?.into_values().into_iter();
+                    match (values.next(), values.next()) {
+                        (Some(Value::Map(map)), None) => Ok(map),
+                        _ => Err(ExecuteError::ExpectedMapValueInDocColumn.into()),
+                    }
+                })
+                .try_collect::<Vec<_>>()
+                .await
+                .map(Payload::SelectMap)
+            } else {
+                rows.map(|row| Ok(row?.into_values()))
                     .try_collect::<Vec<_>>()
                     .await
-                    .map(Payload::SelectMap)
-                }
-                Some(labels) => rows
-                    .map(|row| Ok(row?.into_values()))
-                    .try_collect::<Vec<_>>()
-                    .await
-                    .map(|rows| Payload::Select { labels, rows }),
-                None => Err(ExecuteError::MissingLabels.into()),
+                    .map(|rows| Payload::Select { labels, rows })
             }
         }
         Statement::ShowColumns { table_name } => {
@@ -312,7 +310,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
             let query = Query {
                 body: SetExpr::Select(Box::new(crate::ast::Select {
                     distinct: false,
-                    projection: vec![SelectItem::Wildcard],
+                    projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
                     from: TableWithJoins {
                         relation: TableFactor::Dictionary {
                             dict: Dictionary::GlueIndexes,
@@ -339,7 +337,6 @@ async fn execute_inner<T: GStore + GStoreMut>(
             };
 
             let (labels, rows) = select_with_labels(storage, &query, None).await?;
-            let labels = labels.unwrap_or_default();
             let rows = rows
                 .map(|row| Ok::<_, Error>(row?.into_values()))
                 .try_collect::<Vec<_>>()
@@ -356,10 +353,10 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 let query = Query {
                     body: SetExpr::Select(Box::new(crate::ast::Select {
                         distinct: false,
-                        projection: vec![SelectItem::Expr {
+                        projection: Projection::SelectItems(vec![SelectItem::Expr {
                             expr: Expr::Identifier("TABLE_NAME".to_owned()),
                             label: "TABLE_NAME".to_owned(),
-                        }],
+                        }]),
                         from: TableWithJoins {
                             relation: TableFactor::Dictionary {
                                 dict: Dictionary::GlueTables,

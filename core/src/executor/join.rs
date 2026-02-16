@@ -91,12 +91,10 @@ async fn join<'a, T: GStore>(
         }
     };
 
-    let columns = fetch_relation_columns(storage, relation)
-        .await?
-        .map(Arc::from);
+    let columns: Arc<[String]> = Arc::from(fetch_relation_columns(storage, relation).await?);
     let rows = left_rows.and_then(move |project_context| {
         let init_context = {
-            let columns: Arc<[String]> = columns.as_ref().map_or_else(|| Arc::from([]), Arc::clone);
+            let columns = Arc::clone(&columns);
             let init_row = Row {
                 values: columns.iter().map(|_| Value::Null).collect(),
                 columns,

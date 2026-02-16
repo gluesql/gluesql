@@ -8,7 +8,7 @@ use {
         filter::check_expr,
     },
     crate::{
-        ast::{Expr, SelectItem},
+        ast::{Expr, Projection, SelectItem},
         data::Value,
         result::Result,
         store::GStore,
@@ -26,26 +26,29 @@ enum S<T1, T2> {
     Aggregate(T2),
 }
 
-fn check_aggregate<'a>(fields: &'a [SelectItem], group_by: &'a [Expr]) -> bool {
+fn check_aggregate(projection: &Projection, group_by: &[Expr]) -> bool {
     if !group_by.is_empty() {
         return true;
     }
 
-    fields.iter().any(|field| match field {
-        SelectItem::Expr { expr, .. } => check(expr),
-        _ => false,
-    })
+    match projection {
+        Projection::SelectItems(fields) => fields.iter().any(|field| match field {
+            SelectItem::Expr { expr, .. } => check(expr),
+            _ => false,
+        }),
+        Projection::SchemalessMap => false,
+    }
 }
 
 pub async fn apply<'a, T: GStore, U: Stream<Item = Result<Arc<RowContext<'a>>>> + 'a>(
     storage: &'a T,
-    fields: &'a [SelectItem],
+    projection: &'a Projection,
     group_by: &'a [Expr],
     having: Option<&'a Expr>,
     filter_context: Option<Arc<RowContext<'a>>>,
     rows: U,
 ) -> Result<impl Stream<Item = Result<AggregateContext<'a>>> + use<'a, T, U>> {
-    if !check_aggregate(fields, group_by) {
+    if !check_aggregate(projection, group_by) {
         let rows = rows.map_ok(|project_context| AggregateContext {
             aggregated: None,
             next: project_context,
@@ -83,21 +86,26 @@ pub async fn apply<'a, T: GStore, U: Stream<Item = Result<Arc<RowContext<'a>>>> 
                     .await?;
 
                 let state = state.apply(index, group, Arc::clone(&project_context));
-                let state = stream::iter(fields)
-                    .map(Ok)
-                    .try_fold(state, |state, field| {
-                        let filter_clone = filter_context.as_ref().map(Arc::clone);
+                let state = match projection {
+                    Projection::SelectItems(fields) => {
+                        stream::iter(fields)
+                            .map(Ok)
+                            .try_fold(state, |state, field| {
+                                let filter_clone = filter_context.as_ref().map(Arc::clone);
 
-                        async move {
-                            match field {
-                                SelectItem::Expr { expr, .. } => {
-                                    aggregate(state, filter_clone, expr).await
+                                async move {
+                                    match field {
+                                        SelectItem::Expr { expr, .. } => {
+                                            aggregate(state, filter_clone, expr).await
+                                        }
+                                        _ => Ok(state),
+                                    }
                                 }
-                                _ => Ok(state),
-                            }
-                        }
-                    })
-                    .await?;
+                            })
+                            .await?
+                    }
+                    Projection::SchemalessMap => state,
+                };
 
                 Ok(state)
             }

@@ -1,7 +1,7 @@
 use {
     super::Prebuild,
     crate::{
-        ast::Select,
+        ast::{Projection, Select},
         ast_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
             JoinNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, QueryNode,
@@ -122,14 +122,15 @@ impl<'a> ProjectNode<'a> {
 impl Prebuild<Select> for ProjectNode<'_> {
     fn prebuild(self) -> Result<Select> {
         let mut query: Select = self.prev_node.prebuild()?;
-        query.projection = self
-            .select_items_list
-            .into_iter()
-            .map(TryInto::try_into)
-            .collect::<Result<Vec<Vec<_>>>>()?
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>();
+        query.projection = Projection::SelectItems(
+            self.select_items_list
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<Result<Vec<Vec<_>>>>()?
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>(),
+        );
 
         Ok(query)
     }
@@ -140,8 +141,8 @@ mod tests {
     use {
         crate::{
             ast::{
-                Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SetExpr,
-                Statement, TableFactor, TableWithJoins,
+                Join, JoinConstraint, JoinExecutor, JoinOperator, Projection, Query, Select,
+                SetExpr, Statement, TableFactor, TableWithJoins,
             },
             ast_builder::{Build, SelectItemList, col, table, test},
         },
@@ -250,9 +251,11 @@ mod tests {
             };
             let select = Select {
                 distinct: false,
-                projection: SelectItemList::from("Player.name, PlayerItem.name")
-                    .try_into()
-                    .unwrap(),
+                projection: Projection::SelectItems(
+                    SelectItemList::from("Player.name, PlayerItem.name")
+                        .try_into()
+                        .unwrap(),
+                ),
                 from: TableWithJoins {
                     relation: TableFactor::Table {
                         name: "Player".to_owned(),

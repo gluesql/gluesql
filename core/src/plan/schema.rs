@@ -2,8 +2,8 @@ use {
     super::expr::PlanExpr,
     crate::{
         ast::{
-            Expr, Join, JoinConstraint, JoinOperator, Query, Select, SelectItem, SetExpr,
-            Statement, TableFactor, TableWithJoins,
+            Expr, Join, JoinConstraint, JoinOperator, Projection, Query, Select, SelectItem,
+            SetExpr, Statement, TableFactor, TableWithJoins,
         },
         data::Schema,
         result::Result,
@@ -141,9 +141,15 @@ async fn scan_select<T: Store + ?Sized>(
         selection,
         group_by,
         having,
+        ..
     } = select;
 
-    let projection = stream::iter(projection)
+    let projection_items = match projection {
+        Projection::SelectItems(items) => items.as_slice(),
+        Projection::SchemalessMap => &[],
+    };
+
+    let projection = stream::iter(projection_items)
         .then(|select_item| async move {
             match select_item {
                 SelectItem::Expr { expr, .. } => scan_expr(storage, expr).await,

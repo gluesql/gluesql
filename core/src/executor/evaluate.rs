@@ -7,8 +7,8 @@ use {
     self::function::BreakCase,
     super::{context::RowContext, select::select},
     crate::{
-        ast::{Aggregate, Expr, Function},
-        data::{CustomFunction, Interval, Row, SCHEMALESS_DOC_COLUMN, Value},
+        ast::{Aggregate, Expr, Function, Projection, SetExpr},
+        data::{CustomFunction, Interval, Row, Value},
         mock::MockStorage,
         result::{Error, Result},
         store::GStore,
@@ -100,18 +100,17 @@ where
         Expr::Subquery(query) => {
             let storage = storage
                 .ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(Box::new(expr.clone())))?;
+            if let SetExpr::Select(select) = &query.body
+                && matches!(select.projection, Projection::SchemalessMap)
+            {
+                return Err(EvaluateError::SchemalessProjectionForSubQuery.into());
+            }
 
             let evaluations = select(storage, query, context.as_ref().map(Arc::clone))
                 .await?
                 .map(|row| {
-                    let Row { columns, values } = row?;
-                    if columns.len() == 1
-                        && columns[0] == SCHEMALESS_DOC_COLUMN
-                        && matches!(values.first(), Some(Value::Map(_)))
-                    {
-                        return Err(EvaluateError::SchemalessProjectionForSubQuery.into());
-                    }
-                    if columns.len() > 1 {
+                    let values = row?.into_values();
+                    if values.len() > 1 {
                         return Err(EvaluateError::MoreThanOneColumnReturned.into());
                     }
                     let value = values.into_iter().next();
@@ -184,20 +183,17 @@ where
         } => {
             let storage = storage
                 .ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(Box::new(expr.clone())))?;
+            if let SetExpr::Select(select) = &subquery.body
+                && matches!(select.projection, Projection::SchemalessMap)
+            {
+                return Err(EvaluateError::SchemalessProjectionForInSubQuery.into());
+            }
             let target = eval(target_expr).await?;
 
             select(storage, subquery, context)
                 .await?
                 .map(|row| {
-                    let Row { columns, values } = row?;
-                    // Schemaless table with _doc column containing Map
-                    if columns.len() == 1
-                        && columns[0] == SCHEMALESS_DOC_COLUMN
-                        && matches!(values.first(), Some(Value::Map(_)))
-                    {
-                        return Err(EvaluateError::SchemalessProjectionForInSubQuery.into());
-                    }
-                    let value = values.into_iter().next().unwrap_or(Value::Null);
+                    let value = row?.into_values().into_iter().next().unwrap_or(Value::Null);
 
                     Ok(Evaluated::Value(Cow::Owned(value)))
                 })

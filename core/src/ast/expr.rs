@@ -284,8 +284,8 @@ mod tests {
 
     use {
         crate::ast::{
-            BinaryOperator, DataType, DateTimeField, Expr, Literal, Query, Select, SelectItem,
-            SetExpr, TableFactor, TableWithJoins, ToSql, ToSqlUnquoted, UnaryOperator,
+            BinaryOperator, DataType, DateTimeField, Expr, Literal, Projection, Query, Select,
+            SelectItem, SetExpr, TableFactor, TableWithJoins, ToSql, ToSqlUnquoted, UnaryOperator,
         },
         bigdecimal::BigDecimal,
         regex::Regex,
@@ -452,7 +452,7 @@ mod tests {
                 subquery: Box::new(Query {
                     body: SetExpr::Select(Box::new(Select {
                         distinct: false,
-                        projection: vec![SelectItem::Wildcard],
+                        projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
                         from: TableWithJoins {
                             relation: TableFactor::Table {
                                 name: "FOO".to_owned(),
@@ -481,7 +481,7 @@ mod tests {
                 subquery: Box::new(Query {
                     body: SetExpr::Select(Box::new(Select {
                         distinct: false,
-                        projection: vec![SelectItem::Wildcard],
+                        projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
                         from: TableWithJoins {
                             relation: TableFactor::Table {
                                 name: "FOO".to_owned(),
@@ -509,7 +509,7 @@ mod tests {
                 subquery: Box::new(Query {
                     body: SetExpr::Select(Box::new(Select {
                         distinct: false,
-                        projection: vec![SelectItem::Wildcard],
+                        projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
                         from: TableWithJoins {
                             relation: TableFactor::Table {
                                 name: "FOO".to_owned(),
@@ -537,7 +537,7 @@ mod tests {
                 subquery: Box::new(Query {
                     body: SetExpr::Select(Box::new(Select {
                         distinct: false,
-                        projection: vec![SelectItem::Wildcard],
+                        projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
                         from: TableWithJoins {
                             relation: TableFactor::Table {
                                 name: "FOO".to_owned(),
@@ -564,7 +564,7 @@ mod tests {
             Expr::Subquery(Box::new(Query {
                 body: SetExpr::Select(Box::new(Select {
                     distinct: false,
-                    projection: vec![SelectItem::Wildcard],
+                    projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
                     from: TableWithJoins {
                         relation: TableFactor::Table {
                             name: "FOO".to_owned(),

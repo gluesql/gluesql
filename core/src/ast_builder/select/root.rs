@@ -1,7 +1,10 @@
 use {
     super::{Prebuild, join::JoinOperatorType},
     crate::{
-        ast::{Expr, Literal, Query, Select, SelectItem, TableAlias, TableFactor, TableWithJoins},
+        ast::{
+            Expr, Literal, Projection, Query, Select, SelectItem, TableAlias, TableFactor,
+            TableWithJoins,
+        },
         ast_builder::{
             ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode, OffsetNode,
             OrderByExprList, OrderByNode, ProjectNode, QueryNode, SelectItemList, TableFactorNode,
@@ -129,7 +132,7 @@ impl Prebuild<Select> for SelectNode<'_> {
 
         Ok(Select {
             distinct: self.distinct,
-            projection: vec![SelectItem::Wildcard],
+            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
             from,
             selection: None,
             group_by: Vec::new(),

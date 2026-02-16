@@ -109,10 +109,7 @@ pub async fn select_with_labels<'a, T>(
     storage: &'a T,
     query: &'a Query,
     filter_context: Option<Arc<RowContext<'a>>>,
-) -> Result<(
-    Option<Vec<String>>,
-    impl Stream<Item = Result<Row>> + Send + 'a,
-)>
+) -> Result<(Vec<String>, impl Stream<Item = Result<Row>> + Send + 'a)>
 where
     T: GStore,
 {
@@ -129,6 +126,7 @@ where
         projection,
         group_by,
         having,
+        ..
     } = match &query.body {
         SetExpr::Select(statement) => statement.as_ref(),
         SetExpr::Values(Values(values_list)) => {
@@ -138,7 +136,7 @@ where
             let rows = stream::iter(rows.into_iter().map(Ok));
             let rows = limit.apply(rows);
 
-            return Ok((Some(labels), Row::Values(rows)));
+            return Ok((labels, Row::Values(rows)));
         }
     };
 
@@ -188,14 +186,12 @@ where
     )
     .await?;
 
-    let labels = fetch_labels(storage, relation, joins, projection)
-        .await?
-        .map(Arc::from);
-
+    let labels = fetch_labels(storage, relation, joins, projection).await?;
+    let labels = Arc::from(labels);
     let project = Arc::new(Project::new(storage, filter_context, projection));
-    let project_labels = labels.as_ref().map(Arc::clone);
+    let project_labels = Arc::clone(&labels);
     let rows = rows.and_then(move |aggregate_context| {
-        let labels = project_labels.as_ref().map(Arc::clone);
+        let labels = Arc::clone(&project_labels);
         let project = Arc::clone(&project);
         let AggregateContext { aggregated, next } = aggregate_context;
         let aggregated = aggregated.map(Arc::new);
@@ -223,7 +219,7 @@ where
     } else {
         Box::new(limit.apply(rows))
     };
-    let labels = labels.map(|labels| labels.iter().cloned().collect());
+    let labels = labels.iter().cloned().collect();
 
     Ok((labels, Row::Select(rows)))
 }

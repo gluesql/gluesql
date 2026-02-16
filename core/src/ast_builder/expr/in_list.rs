@@ -78,8 +78,8 @@ impl<'a> ExprNode<'a> {
 mod test {
     use crate::{
         ast::{
-            Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SetExpr,
-            TableFactor, TableWithJoins,
+            Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, Projection, Query, Select,
+            SetExpr, TableFactor, TableWithJoins,
         },
         ast_builder::{QueryNode, SelectItemList, col, table, test_expr, text},
     };
@@ -155,7 +155,7 @@ mod test {
             };
             let select = Select {
                 distinct: false,
-                projection: SelectItemList::from("*").try_into().unwrap(),
+                projection: Projection::SelectItems(SelectItemList::from("*").try_into().unwrap()),
                 from: TableWithJoins {
                     relation: TableFactor::Table {
                         name: "Player".to_owned(),

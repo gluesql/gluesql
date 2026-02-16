@@ -1,54 +1,53 @@
 use {
-    super::{expr::visit_mut_expr, planner::Planner},
+    self::{query::transform_query, validate::validate_statement},
     crate::{
-        ast::{
-            Assignment, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, Literal,
-            OrderByExpr, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
-            TableWithJoins,
-        },
+        ast::{Expr, Literal, Statement},
         data::{SCHEMALESS_DOC_COLUMN, Schema},
+        plan::expr::visit_mut_expr,
+        result::Result,
     },
-    std::{
-        collections::{HashMap, HashSet},
-        hash::BuildHasher,
-        sync::Arc,
-    },
+    std::{collections::HashMap, hash::BuildHasher},
 };
+
+mod query;
+mod validate;
 
 pub fn plan<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
     statement: Statement,
-) -> Statement {
-    let schemaless_tables: HashSet<&str> = schema_map
-        .iter()
-        .filter_map(|(name, schema)| schema.column_defs.is_none().then_some(name.as_str()))
-        .collect();
-
-    if schemaless_tables.is_empty() {
-        return statement;
+) -> Result<Statement> {
+    if !schema_map
+        .values()
+        .any(|schema| schema.column_defs.is_none())
+    {
+        return Ok(statement);
     }
 
-    let planner = SchemalessPlanner {
-        schema_map,
-        schemaless_tables,
-    };
+    validate_statement(schema_map, &statement)?;
+    Ok(transform_statement(schema_map, statement))
+}
 
+fn transform_statement<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    statement: Statement,
+) -> Statement {
     match statement {
-        Statement::Query(query) => {
-            let query = planner.query(None, query);
+        Statement::Query(mut query) => {
+            transform_query(schema_map, &mut query);
             Statement::Query(query)
         }
         Statement::Insert {
             table_name,
             columns,
-            source,
+            mut source,
         } => {
-            let source = planner.query(None, source);
-            let columns = if planner.is_schemaless_table(&table_name) {
+            transform_query(schema_map, &mut source);
+            let columns = if is_schemaless_table(schema_map, &table_name) {
                 vec![SCHEMALESS_DOC_COLUMN.to_owned()]
             } else {
                 columns
             };
+
             Statement::Insert {
                 table_name,
                 columns,
@@ -60,19 +59,28 @@ pub fn plan<S: BuildHasher>(
             assignments,
             selection,
         } => {
-            let table_alias = if planner.is_schemaless_table(&table_name) {
-                Some(table_name.as_str())
-            } else {
-                None
-            };
-            let assignments = assignments
-                .into_iter()
-                .map(|a| Assignment {
-                    id: a.id,
-                    value: planner.transform_expr(a.value, table_alias),
-                })
-                .collect();
-            let selection = selection.map(|expr| planner.transform_expr(expr, table_alias));
+            let table_is_schemaless = is_schemaless_table(schema_map, &table_name);
+
+            let mut assignments = assignments;
+            for assignment in &mut assignments {
+                transform_single_table_expr(
+                    schema_map,
+                    &mut assignment.value,
+                    &table_name,
+                    table_is_schemaless,
+                );
+            }
+
+            let mut selection = selection;
+            if let Some(selection) = selection.as_mut() {
+                transform_single_table_expr(
+                    schema_map,
+                    selection,
+                    &table_name,
+                    table_is_schemaless,
+                );
+            }
+
             Statement::Update {
                 table_name,
                 assignments,
@@ -83,12 +91,18 @@ pub fn plan<S: BuildHasher>(
             table_name,
             selection,
         } => {
-            let table_alias = if planner.is_schemaless_table(&table_name) {
-                Some(table_name.as_str())
-            } else {
-                None
-            };
-            let selection = selection.map(|expr| planner.transform_expr(expr, table_alias));
+            let table_is_schemaless = is_schemaless_table(schema_map, &table_name);
+
+            let mut selection = selection;
+            if let Some(selection) = selection.as_mut() {
+                transform_single_table_expr(
+                    schema_map,
+                    selection,
+                    &table_name,
+                    table_is_schemaless,
+                );
+            }
+
             Statement::Delete {
                 table_name,
                 selection,
@@ -98,240 +112,48 @@ pub fn plan<S: BuildHasher>(
     }
 }
 
-struct SchemalessPlanner<'a, S> {
-    schema_map: &'a HashMap<String, Schema, S>,
-    schemaless_tables: HashSet<&'a str>,
-}
-
-impl<'a, S: BuildHasher> Planner<'a> for SchemalessPlanner<'a, S> {
-    fn query(
-        &self,
-        _outer_context: Option<Arc<super::context::Context<'a>>>,
-        query: Query,
-    ) -> Query {
-        let Query {
-            body,
-            order_by,
-            limit,
-            offset,
-        } = query;
-
-        let (body, table_alias) = match body {
-            SetExpr::Select(select) => {
-                let table_alias = get_table_alias(&select.from.relation);
-                let select = self.select(*select, table_alias.as_deref());
-                (SetExpr::Select(Box::new(select)), table_alias)
-            }
-            SetExpr::Values(_) => (body, None),
-        };
-
-        let order_by = order_by
-            .into_iter()
-            .map(|ob| {
-                let expr = self.transform_expr(ob.expr, table_alias.as_deref());
-                OrderByExpr { expr, asc: ob.asc }
-            })
-            .collect();
-
-        let limit = limit.map(|expr| self.transform_expr(expr, table_alias.as_deref()));
-        let offset = offset.map(|expr| self.transform_expr(expr, table_alias.as_deref()));
-
-        Query {
-            body,
-            order_by,
-            limit,
-            offset,
-        }
-    }
-
-    fn get_schema(&self, name: &str) -> Option<&'a Schema> {
-        self.schema_map.get(name)
-    }
-}
-
-impl<S: BuildHasher> SchemalessPlanner<'_, S> {
-    fn select(&self, select: Select, table_alias: Option<&str>) -> Select {
-        let Select {
-            distinct,
-            projection,
-            from,
-            selection,
-            group_by,
-            having,
-        } = select;
-
-        let projection = projection
-            .into_iter()
-            .map(|item| self.transform_select_item(item, table_alias))
-            .collect();
-
-        let from = self.transform_table_with_joins(from, table_alias);
-
-        let selection = selection.map(|expr| self.transform_expr(expr, table_alias));
-
-        let group_by = group_by
-            .into_iter()
-            .map(|expr| self.transform_expr(expr, table_alias))
-            .collect();
-
-        let having = having.map(|expr| self.transform_expr(expr, table_alias));
-
-        Select {
-            distinct,
-            projection,
-            from,
-            selection,
-            group_by,
-            having,
-        }
-    }
-
-    fn transform_table_with_joins(
-        &self,
-        table_with_joins: TableWithJoins,
-        table_alias: Option<&str>,
-    ) -> TableWithJoins {
-        let TableWithJoins { relation, joins } = table_with_joins;
-
-        let relation = self.transform_table_factor(relation);
-        let joins = joins
-            .into_iter()
-            .map(|join| self.transform_join(join, table_alias))
-            .collect();
-
-        TableWithJoins { relation, joins }
-    }
-
-    fn transform_join(&self, join: Join, table_alias: Option<&str>) -> Join {
-        let Join {
-            relation,
-            join_operator,
-            join_executor,
-        } = join;
-
-        let relation = self.transform_table_factor(relation);
-
-        let join_operator = match join_operator {
-            JoinOperator::Inner(JoinConstraint::On(expr)) => {
-                JoinOperator::Inner(JoinConstraint::On(self.transform_expr(expr, table_alias)))
-            }
-            JoinOperator::LeftOuter(JoinConstraint::On(expr)) => {
-                JoinOperator::LeftOuter(JoinConstraint::On(self.transform_expr(expr, table_alias)))
-            }
-            other => other,
-        };
-
-        let join_executor = match join_executor {
-            JoinExecutor::Hash {
-                key_expr,
-                value_expr,
-                where_clause,
-            } => JoinExecutor::Hash {
-                key_expr: self.transform_expr(key_expr, table_alias),
-                value_expr: self.transform_expr(value_expr, table_alias),
-                where_clause: where_clause.map(|e| self.transform_expr(e, table_alias)),
-            },
-            JoinExecutor::NestedLoop => JoinExecutor::NestedLoop,
-        };
-
-        Join {
-            relation,
-            join_operator,
-            join_executor,
-        }
-    }
-
-    fn transform_table_factor(&self, table_factor: TableFactor) -> TableFactor {
-        match table_factor {
-            TableFactor::Derived { subquery, alias } => {
-                let subquery = self.query(None, subquery);
-                TableFactor::Derived { subquery, alias }
-            }
-            other => other,
-        }
-    }
-
-    fn is_schemaless_table(&self, table_name: &str) -> bool {
-        self.schemaless_tables.contains(table_name)
-    }
-
-    fn transform_select_item(&self, item: SelectItem, table_alias: Option<&str>) -> SelectItem {
-        match item {
-            SelectItem::Expr { expr, label } => {
-                let expr = self.transform_expr(expr, table_alias);
-                SelectItem::Expr { expr, label }
-            }
-            SelectItem::Wildcard => {
-                if let Some(alias) = table_alias
-                    && self.is_schemaless_table(alias)
-                {
-                    return SelectItem::Expr {
-                        expr: Expr::Identifier(SCHEMALESS_DOC_COLUMN.to_owned()),
-                        label: SCHEMALESS_DOC_COLUMN.to_owned(),
-                    };
-                }
-                SelectItem::Wildcard
-            }
-            SelectItem::QualifiedWildcard(ref alias) => {
-                if self.is_schemaless_table(alias) {
-                    SelectItem::Expr {
-                        expr: Expr::CompoundIdentifier {
-                            alias: alias.to_owned(),
-                            ident: SCHEMALESS_DOC_COLUMN.to_owned(),
-                        },
-                        label: SCHEMALESS_DOC_COLUMN.to_owned(),
-                    }
-                } else {
-                    item
-                }
+fn transform_single_table_expr(
+    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    expr: &mut Expr,
+    table_name: &str,
+    table_is_schemaless: bool,
+) {
+    visit_mut_expr(expr, &mut |e| match e {
+        Expr::Identifier(ident) => {
+            if table_is_schemaless {
+                *e = Expr::ArrayIndex {
+                    obj: Box::new(Expr::Identifier(SCHEMALESS_DOC_COLUMN.to_owned())),
+                    indexes: vec![Expr::Literal(Literal::QuotedString(ident.to_owned()))],
+                };
             }
         }
-    }
-
-    fn transform_expr(&self, mut expr: Expr, table_alias: Option<&str>) -> Expr {
-        visit_mut_expr(&mut expr, &mut |e| match e {
-            Expr::Identifier(ident) => {
-                if table_alias.is_some_and(|a| self.is_schemaless_table(a)) {
-                    *e = make_doc_access(ident);
-                }
+        Expr::CompoundIdentifier { alias, ident } => {
+            if table_is_schemaless && alias == table_name {
+                *e = Expr::ArrayIndex {
+                    obj: Box::new(Expr::CompoundIdentifier {
+                        alias: alias.to_owned(),
+                        ident: SCHEMALESS_DOC_COLUMN.to_owned(),
+                    }),
+                    indexes: vec![Expr::Literal(Literal::QuotedString(ident.to_owned()))],
+                };
             }
-            Expr::CompoundIdentifier { alias, ident } => {
-                if self.is_schemaless_table(alias) {
-                    *e = make_compound_doc_access(alias, ident);
-                }
-            }
-            _ => {}
-        });
-        expr
-    }
+        }
+        Expr::Subquery(subquery)
+        | Expr::Exists { subquery, .. }
+        | Expr::InSubquery { subquery, .. } => {
+            transform_query(schema_map, subquery.as_mut());
+        }
+        _ => {}
+    });
 }
 
-fn get_table_alias(table_factor: &TableFactor) -> Option<String> {
-    match table_factor {
-        TableFactor::Table { name, alias, .. } => Some(
-            alias
-                .as_ref()
-                .map_or_else(|| name.clone(), |a| a.name.clone()),
-        ),
-        _ => None,
-    }
-}
-
-fn make_doc_access(column: &str) -> Expr {
-    Expr::ArrayIndex {
-        obj: Box::new(Expr::Identifier(SCHEMALESS_DOC_COLUMN.to_owned())),
-        indexes: vec![Expr::Literal(Literal::QuotedString(column.to_owned()))],
-    }
-}
-
-fn make_compound_doc_access(alias: &str, column: &str) -> Expr {
-    Expr::ArrayIndex {
-        obj: Box::new(Expr::CompoundIdentifier {
-            alias: alias.to_owned(),
-            ident: SCHEMALESS_DOC_COLUMN.to_owned(),
-        }),
-        indexes: vec![Expr::Literal(Literal::QuotedString(column.to_owned()))],
-    }
+fn is_schemaless_table(
+    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    table_name: &str,
+) -> bool {
+    schema_map
+        .get(table_name)
+        .is_some_and(|schema| schema.column_defs.is_none())
 }
 
 #[cfg(test)]
@@ -339,32 +161,21 @@ mod tests {
     use {
         super::plan as plan_schemaless,
         crate::{
-            data::Schema,
+            ast::{Projection, SetExpr, Statement},
             mock::{MockStorage, run},
             parse_sql::parse,
             plan::fetch_schema_map,
-            store::StoreMut,
             translate::translate,
         },
         futures::executor::block_on,
     };
 
     fn setup_schemaless_storage() -> MockStorage {
-        let mut storage = MockStorage::default();
-
-        for table_name in ["Player", "Team"] {
-            let schema = Schema {
-                table_name: table_name.to_owned(),
-                column_defs: None,
-                indexes: Vec::new(),
-                engine: None,
-                foreign_keys: Vec::new(),
-                comment: None,
-            };
-            block_on(storage.insert_schema(&schema)).unwrap();
-        }
-
-        storage
+        run("
+            CREATE TABLE Player;
+            CREATE TABLE Team;
+            CREATE TABLE Item (id INTEGER);
+        ")
     }
 
     #[test]
@@ -374,10 +185,17 @@ mod tests {
             let parsed = parse(actual).expect(actual).into_iter().next().unwrap();
             let statement = translate(&parsed).unwrap();
             let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
-            let result = plan_schemaless(&schema_map, statement);
+            let result = plan_schemaless(&schema_map, statement).unwrap();
 
             let expected_parsed = parse(expected).expect(expected).into_iter().next().unwrap();
-            let expected_stmt = translate(&expected_parsed).unwrap();
+            let mut expected_stmt = translate(&expected_parsed).unwrap();
+            if let (Statement::Query(actual_query), Statement::Query(expected_query)) =
+                (&result, &mut expected_stmt)
+                && let (SetExpr::Select(actual_select), SetExpr::Select(expected_select)) =
+                    (&actual_query.body, &mut expected_query.body)
+            {
+                expected_select.projection = actual_select.projection.clone();
+            }
 
             assert_eq!(
                 result, expected_stmt,
@@ -401,9 +219,21 @@ mod tests {
         let expected = "SELECT Player._doc as _doc FROM Player";
         test(actual, expected, "qualified wildcard");
 
+        let actual = "SELECT * FROM Player AS P";
+        let expected = "SELECT _doc as _doc FROM Player AS P";
+        test(actual, expected, "wildcard with root alias");
+
+        let actual = "SELECT P.* FROM Player AS P";
+        let expected = "SELECT P._doc as _doc FROM Player AS P";
+        test(actual, expected, "qualified wildcard with root alias");
+
         let actual = "SELECT Player.*, Team.* FROM Player JOIN Team WHERE Player.id = Team.id";
         let expected = "SELECT Player._doc as _doc, Team._doc as _doc FROM Player JOIN Team WHERE Player._doc['id'] = Team._doc['id']";
         test(actual, expected, "qualified wildcard join");
+
+        let actual = "SELECT P.*, T.* FROM Player AS P JOIN Team AS T WHERE P.id = T.id";
+        let expected = "SELECT P._doc as _doc, T._doc as _doc FROM Player AS P JOIN Team AS T WHERE P._doc['id'] = T._doc['id']";
+        test(actual, expected, "qualified wildcard join with aliases");
 
         let actual = "SELECT Player.id FROM Player";
         let expected = "SELECT Player._doc['id'] as id FROM Player";
@@ -527,13 +357,49 @@ mod tests {
     }
 
     #[test]
+    fn plan_schemaless_projection_mode() {
+        let storage = setup_schemaless_storage();
+        let test = |sql: &str, expected_schemaless_map: bool| {
+            let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
+            let statement = translate(&parsed).unwrap();
+            let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+            let planned = plan_schemaless(&schema_map, statement).unwrap();
+
+            let crate::ast::Statement::Query(query) = planned else {
+                panic!("expected query statement");
+            };
+            let SetExpr::Select(select) = query.body else {
+                panic!("expected select query");
+            };
+            assert_eq!(
+                matches!(select.projection, Projection::SchemalessMap),
+                expected_schemaless_map,
+                "{sql}"
+            );
+        };
+
+        test("SELECT * FROM Player", true);
+        test("SELECT * FROM Player AS P", true);
+        test("SELECT P.* FROM Player AS P", true);
+        test("SELECT id FROM Player", false);
+        test(
+            "SELECT Player.*, Team.* FROM Player JOIN Team WHERE Player.id = Team.id",
+            false,
+        );
+        test(
+            "SELECT P.*, T.* FROM Player AS P JOIN Team AS T WHERE P.id = T.id",
+            false,
+        );
+    }
+
+    #[test]
     fn schemaful_table_unchanged() {
         let storage = run("CREATE TABLE Item (id INTEGER, name TEXT);");
         let test = |actual: &str, expected: &str, name: &str| {
             let parsed = parse(actual).expect(actual).into_iter().next().unwrap();
             let statement = translate(&parsed).unwrap();
             let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
-            let result = plan_schemaless(&schema_map, statement);
+            let result = plan_schemaless(&schema_map, statement).unwrap();
 
             let expected_parsed = parse(expected).expect(expected).into_iter().next().unwrap();
             let expected_stmt = translate(&expected_parsed).unwrap();
