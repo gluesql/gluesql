@@ -7,6 +7,8 @@ mod row;
 mod string_ext;
 mod table;
 
+pub(crate) const SCHEMALESS_DOC_COLUMN: &str = "_doc";
+
 pub mod schema;
 pub mod value;
 

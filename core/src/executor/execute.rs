@@ -16,7 +16,7 @@ use {
             BinaryOperator, DataType, Dictionary, Expr, Literal, Query, SelectItem, SetExpr,
             Statement, TableAlias, TableFactor, TableWithJoins, Variable,
         },
-        data::{Key, Row, Schema, Value},
+        data::{Key, Row, SCHEMALESS_DOC_COLUMN, Schema, Value},
         result::{Error, Result},
         store::{GStore, GStoreMut},
     },
@@ -218,7 +218,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
             let all_columns = column_defs
                 .as_deref()
                 .map(|columns| columns.iter().map(|col_def| col_def.name.clone()).collect())
-                .or_else(|| Some(Arc::from(vec!["_doc".to_owned()])));
+                .or_else(|| Some(Arc::from(vec![SCHEMALESS_DOC_COLUMN.to_owned()])));
             let columns_to_update: Vec<String> = assignments
                 .iter()
                 .map(|assignment| assignment.id.clone())
@@ -273,7 +273,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
             let (labels, rows) = select_with_labels(storage, query, None).await?;
 
             match labels {
-                Some(labels) if labels.len() == 1 && labels[0] == "_doc" => {
+                Some(labels) if labels.len() == 1 && labels[0] == SCHEMALESS_DOC_COLUMN => {
                     // Schemaless table: extract Value::Map from _doc column
                     rows.map(|row| {
                         let values = row?.into_values();

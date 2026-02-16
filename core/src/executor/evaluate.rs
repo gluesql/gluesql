@@ -8,7 +8,7 @@ use {
     super::{context::RowContext, select::select},
     crate::{
         ast::{Aggregate, Expr, Function},
-        data::{CustomFunction, Interval, Row, Value},
+        data::{CustomFunction, Interval, Row, SCHEMALESS_DOC_COLUMN, Value},
         mock::MockStorage,
         result::{Error, Result},
         store::GStore,
@@ -106,7 +106,7 @@ where
                 .map(|row| {
                     let Row { columns, values } = row?;
                     if columns.len() == 1
-                        && columns[0] == "_doc"
+                        && columns[0] == SCHEMALESS_DOC_COLUMN
                         && matches!(values.first(), Some(Value::Map(_)))
                     {
                         return Err(EvaluateError::SchemalessProjectionForSubQuery.into());
@@ -192,7 +192,7 @@ where
                     let Row { columns, values } = row?;
                     // Schemaless table with _doc column containing Map
                     if columns.len() == 1
-                        && columns[0] == "_doc"
+                        && columns[0] == SCHEMALESS_DOC_COLUMN
                         && matches!(values.first(), Some(Value::Map(_)))
                     {
                         return Err(EvaluateError::SchemalessProjectionForInSubQuery.into());

@@ -5,7 +5,7 @@ use {
     },
     crate::{
         ast::{ColumnDef, ColumnUniqueOption, Expr, ForeignKey, Query, SetExpr, Values},
-        data::{Key, Row, Schema, Value, value::BTreeMapJsonExt},
+        data::{Key, Row, SCHEMALESS_DOC_COLUMN, Schema, Value, value::BTreeMapJsonExt},
         executor::{evaluate::evaluate_stateless, limit::Limit},
         result::{Error, Result},
         store::{GStore, GStoreMut},
@@ -266,7 +266,7 @@ async fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &Query) -> Result
         Select(I2),
     }
 
-    let doc_column: Arc<[String]> = Arc::from(vec!["_doc".to_owned()]);
+    let doc_column: Arc<[String]> = Arc::from(vec![SCHEMALESS_DOC_COLUMN.to_owned()]);
 
     let rows = match &source.body {
         SetExpr::Values(Values(values_list)) => {

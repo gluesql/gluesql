@@ -6,7 +6,7 @@ use {
             OrderByExpr, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
             TableWithJoins,
         },
-        data::Schema,
+        data::{SCHEMALESS_DOC_COLUMN, Schema},
     },
     std::{
         collections::{HashMap, HashSet},
@@ -14,8 +14,6 @@ use {
         sync::Arc,
     },
 };
-
-const DOC_COLUMN: &str = "_doc";
 
 pub fn plan<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
@@ -47,7 +45,7 @@ pub fn plan<S: BuildHasher>(
         } => {
             let source = planner.query(None, source);
             let columns = if planner.is_schemaless_table(&table_name) {
-                vec![DOC_COLUMN.to_owned()]
+                vec![SCHEMALESS_DOC_COLUMN.to_owned()]
             } else {
                 columns
             };
@@ -268,8 +266,8 @@ impl<S: BuildHasher> SchemalessPlanner<'_, S> {
                     && self.is_schemaless_table(alias)
                 {
                     return SelectItem::Expr {
-                        expr: Expr::Identifier(DOC_COLUMN.to_owned()),
-                        label: DOC_COLUMN.to_owned(),
+                        expr: Expr::Identifier(SCHEMALESS_DOC_COLUMN.to_owned()),
+                        label: SCHEMALESS_DOC_COLUMN.to_owned(),
                     };
                 }
                 SelectItem::Wildcard
@@ -277,8 +275,8 @@ impl<S: BuildHasher> SchemalessPlanner<'_, S> {
             SelectItem::QualifiedWildcard(ref alias) => {
                 if self.is_schemaless_table(alias) {
                     SelectItem::Expr {
-                        expr: Expr::Identifier(DOC_COLUMN.to_owned()),
-                        label: DOC_COLUMN.to_owned(),
+                        expr: Expr::Identifier(SCHEMALESS_DOC_COLUMN.to_owned()),
+                        label: SCHEMALESS_DOC_COLUMN.to_owned(),
                     }
                 } else {
                     item
@@ -318,7 +316,7 @@ fn get_table_alias(table_factor: &TableFactor) -> Option<String> {
 
 fn make_doc_access(column: &str) -> Expr {
     Expr::ArrayIndex {
-        obj: Box::new(Expr::Identifier(DOC_COLUMN.to_owned())),
+        obj: Box::new(Expr::Identifier(SCHEMALESS_DOC_COLUMN.to_owned())),
         indexes: vec![Expr::Literal(Literal::QuotedString(column.to_owned()))],
     }
 }
@@ -327,7 +325,7 @@ fn make_compound_doc_access(alias: &str, column: &str) -> Expr {
     Expr::ArrayIndex {
         obj: Box::new(Expr::CompoundIdentifier {
             alias: alias.to_owned(),
-            ident: DOC_COLUMN.to_owned(),
+            ident: SCHEMALESS_DOC_COLUMN.to_owned(),
         }),
         indexes: vec![Expr::Literal(Literal::QuotedString(column.to_owned()))],
     }

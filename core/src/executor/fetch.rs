@@ -6,7 +6,7 @@ use {
             SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, ToSql, ToSqlUnquoted,
             Values,
         },
-        data::{Key, Row, Value, get_alias, get_index},
+        data::{Key, Row, SCHEMALESS_DOC_COLUMN, Value, get_alias, get_index},
         executor::{evaluate::evaluate, select::select},
         result::Result,
         store::GStore,
@@ -382,7 +382,7 @@ pub async fn fetch_columns<T: GStore>(
                 .map(|column_def| column_def.name)
                 .collect()
         })
-        .or_else(|| Some(vec!["_doc".to_owned()]));
+        .or_else(|| Some(vec![SCHEMALESS_DOC_COLUMN.to_owned()]));
 
     Ok(columns)
 }
