@@ -75,7 +75,27 @@ fn print_upgrade_report(
 
 #[cfg(test)]
 mod tests {
-    use {super::run_upgrade, crate::Storage, std::path::Path};
+    use {
+        super::run_upgrade,
+        crate::Storage,
+        gluesql_file_storage::FileStorage,
+        gluesql_redb_storage::RedbStorage,
+        gluesql_sled_storage::SledStorage,
+        std::{
+            fs,
+            path::{Path, PathBuf},
+            time::{SystemTime, UNIX_EPOCH},
+        },
+    };
+
+    fn test_path(name: &str) -> PathBuf {
+        let suffix = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time")
+            .as_nanos();
+
+        std::env::temp_dir().join(format!("gluesql-cli-upgrade-{name}-{suffix}"))
+    }
 
     #[test]
     fn upgrade_rejects_unsupported_storage() {
@@ -99,5 +119,49 @@ mod tests {
             actual.expect_err("execute should conflict").to_string(),
             expected
         );
+    }
+
+    #[test]
+    fn upgrade_requires_path_and_storage() {
+        let actual = run_upgrade(None, Some(Storage::Sled), false, false);
+        let expected = "both --path and --storage should be specified with --upgrade";
+
+        assert_eq!(
+            actual.expect_err("missing path should fail").to_string(),
+            expected
+        );
+    }
+
+    #[test]
+    fn upgrade_accepts_sled_storage() {
+        let path = test_path("sled");
+        SledStorage::new(&path).expect("failed to initialize sled storage for upgrade test");
+
+        let actual = run_upgrade(Some(path.as_path()), Some(Storage::Sled), false, false);
+
+        assert!(actual.is_ok(), "sled upgrade should succeed: {actual:?}");
+        let _ = fs::remove_dir_all(path);
+    }
+
+    #[test]
+    fn upgrade_accepts_redb_storage() {
+        let path = test_path("redb.db");
+        RedbStorage::new(&path).expect("failed to initialize redb storage for upgrade test");
+
+        let actual = run_upgrade(Some(path.as_path()), Some(Storage::Redb), false, false);
+
+        assert!(actual.is_ok(), "redb upgrade should succeed: {actual:?}");
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn upgrade_accepts_file_storage() {
+        let path = test_path("file");
+        FileStorage::new(&path).expect("failed to initialize file storage for upgrade test");
+
+        let actual = run_upgrade(Some(path.as_path()), Some(Storage::File), false, false);
+
+        assert!(actual.is_ok(), "file upgrade should succeed: {actual:?}");
+        let _ = fs::remove_dir_all(path);
     }
 }
