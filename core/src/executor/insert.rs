@@ -33,8 +33,8 @@ pub enum InsertError {
     #[error("literals have more values than target columns")]
     TooManyValues,
 
-    #[error("only single value accepted for schemaless row insert")]
-    OnlySingleValueAcceptedForSchemalessRow,
+    #[error("only single value accepted for schemaless row insert: got {0}")]
+    OnlySingleValueAcceptedForSchemalessRow(usize),
 
     #[error("map type required: {0}")]
     MapTypeValueRequired(String),
@@ -276,12 +276,21 @@ async fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &Query) -> Result
                 move |values| {
                     let doc_column = Arc::clone(&doc_column);
                     async move {
-                        if values.len() != 1 {
-                            return Err(InsertError::OnlySingleValueAcceptedForSchemalessRow.into());
+                        if values.len() > 1 {
+                            return Err(InsertError::OnlySingleValueAcceptedForSchemalessRow(
+                                values.len(),
+                            )
+                            .into());
                         }
 
+                        let Some(value) = values.first() else {
+                            return Err(
+                                InsertError::OnlySingleValueAcceptedForSchemalessRow(0).into()
+                            );
+                        };
+
                         let map: BTreeMap<String, Value> =
-                            evaluate_stateless(None, &values[0]).await?.try_into()?;
+                            evaluate_stateless(None, value).await?.try_into()?;
 
                         Ok(Row {
                             columns: doc_column,
@@ -299,14 +308,19 @@ async fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &Query) -> Result
             let rows = select(storage, source, None).await?.map(|row| {
                 let values = row?.into_values();
 
-                if values.len() != 1 {
-                    return Err(InsertError::OnlySingleValueAcceptedForSchemalessRow.into());
+                if values.len() > 1 {
+                    return Err(
+                        InsertError::OnlySingleValueAcceptedForSchemalessRow(values.len()).into(),
+                    );
                 }
 
-                let map = match values.into_iter().next().unwrap() {
-                    Value::Map(map) => map,
-                    Value::Str(s) => BTreeMap::parse_json_object(&s)?,
-                    v => return Err(InsertError::MapTypeValueRequired((&v).into()).into()),
+                let map = match values.into_iter().next() {
+                    None => {
+                        return Err(InsertError::OnlySingleValueAcceptedForSchemalessRow(0).into());
+                    }
+                    Some(Value::Map(map)) => map,
+                    Some(Value::Str(s)) => BTreeMap::parse_json_object(&s)?,
+                    Some(v) => return Err(InsertError::MapTypeValueRequired((&v).into()).into()),
                 };
 
                 Ok(vec![Value::Map(map)])

@@ -54,12 +54,12 @@ test_case!(error, {
                 '{ "b": true }'
             );
         "#,
-        Err(InsertError::OnlySingleValueAcceptedForSchemalessRow.into()),
+        Err(InsertError::OnlySingleValueAcceptedForSchemalessRow(2).into()),
     )
     .await;
     g.test(
         "INSERT INTO Item SELECT id, name FROM Item LIMIT 1",
-        Err(InsertError::OnlySingleValueAcceptedForSchemalessRow.into()),
+        Err(InsertError::OnlySingleValueAcceptedForSchemalessRow(2).into()),
     )
     .await;
     g.test(

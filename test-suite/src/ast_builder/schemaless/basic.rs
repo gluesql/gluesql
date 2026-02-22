@@ -44,10 +44,21 @@ test_case!(basic, {
         .values(vec![Vec::<&str>::new()])
         .execute(glue)
         .await;
-    let expected = Err(InsertError::OnlySingleValueAcceptedForSchemalessRow.into());
+    let expected = Err(InsertError::OnlySingleValueAcceptedForSchemalessRow(0).into());
     assert_eq!(
         actual, expected,
         "insert schemaless data - empty tuple should fail"
+    );
+
+    let actual = table("Logs")
+        .insert()
+        .as_select(table("Logs").select().project(Vec::<&str>::new()).limit(1))
+        .execute(glue)
+        .await;
+    let expected = Err(InsertError::OnlySingleValueAcceptedForSchemalessRow(0).into());
+    assert_eq!(
+        actual, expected,
+        "insert-select with empty projection should fail"
     );
 
     let actual = table("Logs").drop_table().execute(glue).await;
