@@ -102,6 +102,15 @@ macro_rules! generate_store_tests {
         glue!(expr_between, expr::between::between);
         glue!(expr_in_list, expr::in_list::in_list);
         glue!(expr_arrow, expr::arrow::arrow);
+        glue!(expr_long_arrow_map, expr::long_arrow::map);
+        glue!(expr_long_arrow_list, expr::long_arrow::list);
+        glue!(expr_long_arrow_null, expr::long_arrow::null);
+        glue!(expr_long_arrow_chaining, expr::long_arrow::chaining);
+        glue!(
+            expr_long_arrow_typed_selector,
+            expr::long_arrow::typed_selector
+        );
+        glue!(expr_long_arrow_error, expr::long_arrow::error);
         glue!(unary_operator, expr::unary_operator::unary_operator);
 
         glue!(create_table, alter::create_table);

@@ -41,6 +41,7 @@ pub fn translate_binary_operator(
         SqlBinaryOperator::PGBitwiseShiftLeft => Ok(BinaryOperator::BitwiseShiftLeft),
         SqlBinaryOperator::PGBitwiseShiftRight => Ok(BinaryOperator::BitwiseShiftRight),
         SqlBinaryOperator::Arrow => Ok(BinaryOperator::Arrow),
+        SqlBinaryOperator::LongArrow => Ok(BinaryOperator::LongArrow),
         _ => Err(TranslateError::UnsupportedBinaryOperator(sql_binary_operator.to_string()).into()),
     }
 }
