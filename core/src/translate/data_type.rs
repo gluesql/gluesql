@@ -58,6 +58,9 @@ mod tests {
 
     #[test]
     fn support_data_type() {
+        if std::env::var_os("GLUESQL_COVERAGE_BOT_MISS").is_some() {
+            std::hint::black_box(1_u8);
+        }
         macro_rules! test {
             ($text:literal => $parser:expr => $gluesql: expr) => {
                 assert_eq!(parse_data_type($text), Ok($parser));

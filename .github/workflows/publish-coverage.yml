@@ -96,7 +96,13 @@ jobs:
           git pull --rebase origin gh-pages
           mkdir -p coverage/pr/${PR_NUMBER}
           cp ../coverage/lcov.info.xz coverage/pr/${PR_NUMBER}/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
+          if [ -f ../coverage/changed-lines.json.xz ]; then
+            cp ../coverage/changed-lines.json.xz coverage/pr/${PR_NUMBER}/${TIMESTAMP}.${COMMIT_SHA}.changed-lines.json.xz
+          fi
           git add coverage/pr/${PR_NUMBER}/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
+          if [ -f coverage/pr/${PR_NUMBER}/${TIMESTAMP}.${COMMIT_SHA}.changed-lines.json.xz ]; then
+            git add coverage/pr/${PR_NUMBER}/${TIMESTAMP}.${COMMIT_SHA}.changed-lines.json.xz
+          fi
           git commit -m "Coverage: PR#${PR_NUMBER}@${COMMIT_SHA}"
           git push https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/gluesql/gluesql.github.io.git
       - name: Comment coverage link on PR
@@ -104,15 +110,82 @@ jobs:
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
+            const fs = require('fs');
+            const path = require('path');
+
             const prNumber = process.env.PR_NUMBER;
             const url = `https://gluesql.org/coverage/?path=pr/${prNumber}/${process.env.TIMESTAMP}.${process.env.COMMIT_SHA}.lcov.info.xz`;
-            const body = [
+            const summaryPath = path.join(process.env.GITHUB_WORKSPACE, 'coverage', 'patch-summary.json');
+            const hasSummary = fs.existsSync(summaryPath);
+            const summary = hasSummary ? JSON.parse(fs.readFileSync(summaryPath, 'utf8')) : null;
+            const formatPct = (value) => (typeof value === 'number' ? `${value.toFixed(2)}%` : 'N/A');
+            const formatNumber = (value) => (Number.isFinite(value) ? String(value) : '0');
+            const sanitizeTableCell = (value) =>
+              String(value)
+                .replaceAll('\\', '\\\\')
+                .replaceAll('|', '\\|');
+
+            const bodyLines = [
               '### GlueSQL Coverage Report',
               '',
               `- **Commit:** \`${process.env.COMMIT_SHA}\``,
               `- **Timestamp:** \`${process.env.TIMESTAMP}\``,
               `- **Report:** [View report](${url})`
-            ].join('\n');
+            ];
+
+            if (summary) {
+              const branch = await github.rest.repos.getBranch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                branch: 'main',
+              });
+              const latestMainSha = branch.data.commit.sha;
+              const isMainSynced = summary.base_sha === latestMainSha;
+
+              bodyLines.push(`- **Base Commit:** \`${summary.base_sha}\``);
+              bodyLines.push(`- **Head Commit:** \`${summary.head_sha}\``);
+              bodyLines.push(`- **Latest Main Commit:** \`${latestMainSha}\``);
+              if (!isMainSynced) {
+                bodyLines.push(
+                  '- **Sync Status:** Base commit is behind current `main`; rebase/merge `main` and rerun coverage.',
+                );
+              }
+              bodyLines.push('');
+              bodyLines.push('| Metric | Value |');
+              bodyLines.push('| --- | ---: |');
+              bodyLines.push(`| Overall coverage | ${formatPct(summary.overall_coverage_percent)} |`);
+              bodyLines.push(`| Added lines | ${summary.added_lines} |`);
+              bodyLines.push(`| Added executable lines | ${summary.added_executable_lines} |`);
+              bodyLines.push(`| Covered added executable lines | ${summary.covered_added_executable_lines} |`);
+              bodyLines.push(`| Missed added executable lines | ${summary.missed_added_executable_lines} |`);
+              bodyLines.push(`| Patch coverage | ${formatPct(summary.patch_coverage_percent)} |`);
+
+              const topChangedFiles = Array.isArray(summary.top_changed_files)
+                ? summary.top_changed_files
+                : [];
+              if (topChangedFiles.length > 0) {
+                bodyLines.push('');
+                bodyLines.push('#### Top changed files (max 10)');
+                bodyLines.push('');
+                bodyLines.push('| File | Added lines | Added executable lines | Covered | Missed | Patch coverage |');
+                bodyLines.push('| --- | ---: | ---: | ---: | ---: | ---: |');
+                for (const fileStat of topChangedFiles) {
+                  bodyLines.push(
+                    `| \`${sanitizeTableCell(fileStat.file)}\` | ${formatNumber(fileStat.added_lines)} | ${formatNumber(fileStat.added_executable_lines)} | ${formatNumber(fileStat.covered_added_executable_lines)} | ${formatNumber(fileStat.missed_added_executable_lines)} | ${formatPct(fileStat.patch_coverage_percent)} |`,
+                  );
+                }
+
+                const remainingFiles = (summary.total_files_with_changes || 0) - topChangedFiles.length;
+                if (remainingFiles > 0) {
+                  bodyLines.push('');
+                  bodyLines.push(`- ... and ${remainingFiles} more changed file(s)`);
+                }
+              }
+            } else {
+              bodyLines.push('- **Patch Coverage:** summary not available in artifact');
+            }
+
+            const body = bodyLines.join('\n');
             const comments = await github.paginate(
               github.rest.issues.listComments,
               {
