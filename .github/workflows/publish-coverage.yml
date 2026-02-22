@@ -130,8 +130,22 @@ jobs:
             ];
 
             if (summary) {
+              const branch = await github.rest.repos.getBranch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                branch: 'main',
+              });
+              const latestMainSha = branch.data.commit.sha;
+              const isMainSynced = summary.base_sha === latestMainSha;
+
               bodyLines.push(`- **Base Commit:** \`${summary.base_sha}\``);
               bodyLines.push(`- **Head Commit:** \`${summary.head_sha}\``);
+              bodyLines.push(`- **Latest Main Commit:** \`${latestMainSha}\``);
+              if (!isMainSynced) {
+                bodyLines.push(
+                  '- **Sync Status:** Base commit is behind current `main`; rebase/merge `main` and rerun coverage.',
+                );
+              }
               bodyLines.push(`- **Changed Lines Data:** [View data](${changedLinesUrl})`);
               bodyLines.push('');
               bodyLines.push('| Metric | Value |');
