@@ -12,6 +12,9 @@ pub enum PlanError {
     )]
     SchemalessMixedJoinWildcardProjection,
 
+    #[error("specifying columns is not allowed for schemaless table INSERT; omit the column list")]
+    SchemalessInsertWithExplicitColumns,
+
     #[error("unreachable")]
     Unreachable,
 }

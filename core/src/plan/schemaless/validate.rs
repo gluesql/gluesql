@@ -11,14 +11,24 @@ use {
     std::{collections::HashMap, hash::BuildHasher, iter::once},
 };
 
-/// Rejects only mixed schemaful/schemaless join wildcard projections.
+/// Rejects schemaless-specific unsupported patterns before rewrite.
 pub(super) fn validate_statement<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
     statement: &Statement,
 ) -> Result<()> {
     match statement {
         Statement::Query(query) => validate_query(schema_map, query),
-        Statement::Insert { source, .. } => validate_query(schema_map, source),
+        Statement::Insert {
+            table_name,
+            columns,
+            source,
+        } => {
+            if !columns.is_empty() && is_schemaless_table(schema_map, table_name) {
+                return Err(PlanError::SchemalessInsertWithExplicitColumns.into());
+            }
+
+            validate_query(schema_map, source)
+        }
         Statement::CreateTable { source, .. } => source
             .as_ref()
             .map_or(Ok(()), |query| validate_query(schema_map, query)),
@@ -233,16 +243,20 @@ mod tests {
     }
 
     fn assert_mixed_join_wildcard_error(storage: &MockStorage, sql: &str) {
+        assert_plan_error(
+            storage,
+            sql,
+            PlanError::SchemalessMixedJoinWildcardProjection,
+        );
+    }
+
+    fn assert_plan_error(storage: &MockStorage, sql: &str, expected: PlanError) {
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
         let statement = translate(&parsed).unwrap();
         let schema_map = block_on(fetch_schema_map(storage, &statement)).unwrap();
         let planned = plan_schemaless(&schema_map, statement);
 
-        assert_eq!(
-            planned,
-            Err(PlanError::SchemalessMixedJoinWildcardProjection.into()),
-            "{sql}"
-        );
+        assert_eq!(planned, Err(expected.into()), "{sql}");
     }
 
     fn assert_plan_ok(storage: &MockStorage, sql: &str) {
@@ -323,6 +337,28 @@ mod tests {
             &storage,
             "DELETE FROM Player WHERE EXISTS (SELECT * FROM Player JOIN Item WHERE Player.id = Item.id)",
         );
+    }
+
+    #[test]
+    fn rejects_schemaless_insert_with_explicit_columns() {
+        let storage = setup_storage();
+
+        assert_plan_error(
+            &storage,
+            "INSERT INTO Player (id, name) VALUES (1, 'Alice')",
+            PlanError::SchemalessInsertWithExplicitColumns,
+        );
+        assert_plan_error(
+            &storage,
+            "INSERT INTO Player (id) SELECT id FROM Item",
+            PlanError::SchemalessInsertWithExplicitColumns,
+        );
+    }
+
+    #[test]
+    fn allows_insert_with_explicit_columns_for_schemaful_table() {
+        let storage = setup_storage();
+        assert_plan_ok(&storage, "INSERT INTO Item (id) VALUES (1)");
     }
 
     #[test]
