@@ -1,5 +1,5 @@
 use {
-    super::super::{PlanError, expr::visit_mut_expr},
+    super::super::{PlanError, expr::try_visit_expr},
     crate::{
         ast::{
             Expr, JoinConstraint, JoinExecutor, JoinOperator, Projection, Query, Select,
@@ -151,25 +151,12 @@ fn validate_expr(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
     expr: &Expr,
 ) -> Result<()> {
-    let mut expr = expr.clone();
-    let mut validation = Ok(());
-
-    visit_mut_expr(&mut expr, &mut |expr| {
-        if validation.is_err() {
-            return;
-        }
-
-        match expr {
-            Expr::Subquery(subquery)
-            | Expr::Exists { subquery, .. }
-            | Expr::InSubquery { subquery, .. } => {
-                validation = validate_query(schema_map, subquery);
-            }
-            _ => {}
-        }
-    });
-
-    validation
+    try_visit_expr(expr, &mut |expr| match expr {
+        Expr::Subquery(subquery)
+        | Expr::Exists { subquery, .. }
+        | Expr::InSubquery { subquery, .. } => validate_query(schema_map, subquery),
+        _ => Ok(()),
+    })
 }
 
 fn validate_mixed_join_wildcard_projection(
