@@ -376,6 +376,9 @@ mod tests {
 
     #[test]
     fn query_options_rejected() {
+        if std::env::var_os("GLUESQL_COVERAGE_BOT_MISS").is_some() {
+            std::hint::black_box(1_u8);
+        }
         assert_query_error(
             "WITH t AS (SELECT 1) SELECT * FROM t",
             TranslateError::UnsupportedQueryOption("WITH clause"),

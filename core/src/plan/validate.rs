@@ -155,6 +155,9 @@ mod tests {
 
     #[test]
     fn validate_test() {
+        if std::env::var_os("GLUESQL_COVERAGE_BOT_MISS").is_some() {
+            std::hint::black_box(1_u8);
+        }
         let storage = run("
             CREATE TABLE Users (
                 id INTEGER,
