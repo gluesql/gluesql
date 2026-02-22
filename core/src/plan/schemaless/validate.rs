@@ -11,11 +11,20 @@ use {
     std::{collections::HashMap, hash::BuildHasher, iter::once},
 };
 
+type ValidateResult = std::result::Result<(), PlanError>;
+
 /// Rejects schemaless-specific unsupported patterns before rewrite.
 pub(super) fn validate_statement<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
     statement: &Statement,
 ) -> Result<()> {
+    validate_statement_inner(schema_map, statement).map_err(Into::into)
+}
+
+fn validate_statement_inner(
+    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    statement: &Statement,
+) -> ValidateResult {
     match statement {
         Statement::Query(query) => validate_query(schema_map, query),
         Statement::Insert {
@@ -24,7 +33,7 @@ pub(super) fn validate_statement<S: BuildHasher>(
             source,
         } => {
             if !columns.is_empty() && is_schemaless_table(schema_map, table_name) {
-                return Err(PlanError::SchemalessInsertWithExplicitColumns.into());
+                return Err(PlanError::SchemalessInsertWithExplicitColumns);
             }
 
             validate_query(schema_map, source)
@@ -55,7 +64,7 @@ pub(super) fn validate_statement<S: BuildHasher>(
 fn validate_query(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
     query: &Query,
-) -> Result<()> {
+) -> ValidateResult {
     match &query.body {
         SetExpr::Select(select) => validate_select(schema_map, select)?,
         SetExpr::Values(values) => {
@@ -85,7 +94,7 @@ fn validate_query(
 fn validate_select(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
     select: &Select,
-) -> Result<()> {
+) -> ValidateResult {
     validate_mixed_join_wildcard_projection(schema_map, select)?;
     validate_table_factor(schema_map, &select.from.relation)?;
 
@@ -140,7 +149,7 @@ fn validate_select(
 fn validate_table_factor(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
     table_factor: &TableFactor,
-) -> Result<()> {
+) -> ValidateResult {
     match table_factor {
         TableFactor::Derived { subquery, .. } => validate_query(schema_map, subquery),
         _ => Ok(()),
@@ -150,7 +159,7 @@ fn validate_table_factor(
 fn validate_expr(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
     expr: &Expr,
-) -> Result<()> {
+) -> ValidateResult {
     try_visit_expr(expr, &mut |expr| match expr {
         Expr::Subquery(subquery)
         | Expr::Exists { subquery, .. }
@@ -162,7 +171,7 @@ fn validate_expr(
 fn validate_mixed_join_wildcard_projection(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
     select: &Select,
-) -> Result<()> {
+) -> ValidateResult {
     if select.from.joins.is_empty()
         || !matches!(
             &select.projection,
@@ -193,7 +202,7 @@ fn validate_mixed_join_wildcard_projection(
     }
 
     if has_schemaless && has_schemaful {
-        return Err(PlanError::SchemalessMixedJoinWildcardProjection.into());
+        return Err(PlanError::SchemalessMixedJoinWildcardProjection);
     }
 
     Ok(())

@@ -1,4 +1,7 @@
-use crate::ast::{Aggregate, AggregateFunction, CountArgExpr, Expr};
+use crate::{
+    ast::{Aggregate, AggregateFunction, CountArgExpr, Expr},
+    plan::PlanError,
+};
 
 use super::{try_visit_expr, visit_mut_expr};
 
@@ -41,9 +44,9 @@ where
     visit_aggregate_children!(&mut aggr.func, visit_mut_expr, f, apply_mut);
 }
 
-pub fn try_visit_aggregate<E, F>(aggr: &Aggregate, f: &mut F) -> Result<(), E>
+pub fn try_visit_aggregate<F>(aggr: &Aggregate, f: &mut F) -> Result<(), PlanError>
 where
-    F: FnMut(&Expr) -> Result<(), E>,
+    F: FnMut(&Expr) -> Result<(), PlanError>,
 {
     visit_aggregate_children!(&aggr.func, try_visit_expr, f, apply_try);
     Ok(())

@@ -1,4 +1,7 @@
-use crate::ast::{Expr, Function};
+use crate::{
+    ast::{Expr, Function},
+    plan::PlanError,
+};
 
 use super::{try_visit_expr, visit_mut_expr};
 
@@ -230,9 +233,9 @@ where
     visit_function_children!(func, visit_mut_expr, f, apply_mut);
 }
 
-pub fn try_visit_function<E, F>(func: &Function, f: &mut F) -> Result<(), E>
+pub fn try_visit_function<F>(func: &Function, f: &mut F) -> Result<(), PlanError>
 where
-    F: FnMut(&Expr) -> Result<(), E>,
+    F: FnMut(&Expr) -> Result<(), PlanError>,
 {
     visit_function_children!(func, try_visit_expr, f, apply_try);
     Ok(())
