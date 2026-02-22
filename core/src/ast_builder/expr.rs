@@ -4,6 +4,7 @@ mod exists;
 mod is_null;
 mod like;
 mod nested;
+mod order_by;
 mod unary_op;
 
 pub mod aggregate;
