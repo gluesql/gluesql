@@ -1,4 +1,8 @@
-use {gluesql_core::prelude::*, gluesql_sled_storage::SledStorage, sled::Config};
+use {
+    gluesql_core::prelude::*,
+    gluesql_sled_storage::{SledStorage, State},
+    sled::Config,
+};
 
 #[tokio::test]
 async fn export_and_import() {
@@ -114,6 +118,61 @@ async fn import_requires_empty_destination() {
 
     let mut storage2 = SledStorage::try_from(config2).unwrap();
     storage2.tree.insert("seed", "value").unwrap();
+
+    let actual = storage2.import(export);
+    let expected = Err(Error::StorageMsg(
+        "[SledStorage] import requires an empty destination storage".to_owned(),
+    ));
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn import_allows_truly_empty_destination_tree() {
+    let src_path = "tmp/import_empty_dst_src";
+    let dst_path = "tmp/import_empty_dst_raw";
+    let src_config = Config::default().path(src_path).temporary(true);
+    let dst_tree = Config::default()
+        .path(dst_path)
+        .temporary(true)
+        .open()
+        .unwrap();
+
+    let storage1 = SledStorage::try_from(src_config).unwrap();
+    let export = storage1.export().unwrap();
+
+    let mut storage2 = SledStorage {
+        tree: dst_tree,
+        id_offset: 0,
+        state: State::Idle,
+        tx_timeout: None,
+    };
+
+    let actual = storage2.import(export);
+    assert_eq!(actual, Ok(()));
+}
+
+#[test]
+fn import_rejects_single_non_format_key_destination() {
+    let src_path = "tmp/import_single_non_format_key_src";
+    let dst_path = "tmp/import_single_non_format_key_dst";
+    let src_config = Config::default().path(src_path).temporary(true);
+    let dst_tree = Config::default()
+        .path(dst_path)
+        .temporary(true)
+        .open()
+        .unwrap();
+
+    let storage1 = SledStorage::try_from(src_config).unwrap();
+    let export = storage1.export().unwrap();
+
+    dst_tree.insert("seed", "value").unwrap();
+
+    let mut storage2 = SledStorage {
+        tree: dst_tree,
+        id_offset: 0,
+        state: State::Idle,
+        tx_timeout: None,
+    };
 
     let actual = storage2.import(export);
     let expected = Err(Error::StorageMsg(

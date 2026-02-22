@@ -542,3 +542,25 @@ fn migrate_rejects_invalid_v1_row_snapshot_payload() {
 
     remove_dir_all(path).expect("cleanup");
 }
+
+#[test]
+fn migrate_v2_storage_with_invalid_schema_snapshot_is_rejected() {
+    let path = test_path("sled-v2-invalid-schema-snapshot");
+    let _ = remove_dir_all(&path);
+    let tree = sled::open(&path).expect("open sled");
+
+    tree.insert(
+        STORAGE_FORMAT_VERSION_KEY,
+        &SLED_STORAGE_FORMAT_VERSION.to_be_bytes(),
+    )
+    .expect("insert storage format version");
+    tree.insert("schema/Broken", vec![1_u8, 2, 3, 4])
+        .expect("insert invalid schema snapshot");
+    tree.flush().expect("flush sled");
+    drop(tree);
+
+    let err = migrate_to_latest(&path).expect_err("migration should fail");
+    assert!(matches!(err, Error::StorageMsg(_)));
+
+    remove_dir_all(path).expect("cleanup");
+}

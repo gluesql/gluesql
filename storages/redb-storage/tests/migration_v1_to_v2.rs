@@ -17,6 +17,8 @@ use {
 
 const SCHEMA_TABLE: TableDefinition<&str, Vec<u8>> = TableDefinition::new("__SCHEMA__");
 const META_TABLE: TableDefinition<&str, u32> = TableDefinition::new("__GLUESQL_META__");
+const META_TABLE_WITH_BINARY_VALUE: TableDefinition<&str, Vec<u8>> =
+    TableDefinition::new("__GLUESQL_META__");
 const SCHEMA_TABLE_WITH_BINARY_KEY: TableDefinition<&[u8], Vec<u8>> =
     TableDefinition::new("__SCHEMA__");
 const STORAGE_META_VERSION_KEY: &str = "storage_format_version";
@@ -488,6 +490,75 @@ fn invalid_schema_table_type_is_rejected() {
     let expected = {
         let db = Database::open(&path).expect("open database");
         let txn = db.begin_read().expect("begin read transaction");
+        let err = txn
+            .open_table(SCHEMA_TABLE)
+            .expect_err("schema table type mismatch should fail");
+        Error::StorageMsg(err.to_string())
+    };
+
+    let err = migrate_to_latest(&path).expect_err("migration should fail");
+    assert_eq!(err, expected);
+
+    remove_path(&path);
+}
+
+#[test]
+fn invalid_metadata_table_type_is_rejected() {
+    let path = test_path("redb-invalid-metadata-table-type");
+    let _ = create_dir("tmp");
+    remove_path(&path);
+
+    let db = Database::create(&path).expect("create database");
+    let txn = db.begin_write().expect("begin write transaction");
+    let mut wrong_meta_table = txn
+        .open_table(META_TABLE_WITH_BINARY_VALUE)
+        .expect("open metadata table with unexpected value type");
+    wrong_meta_table
+        .insert(STORAGE_META_VERSION_KEY, vec![2_u8, 0, 0, 0])
+        .expect("insert row into wrong metadata table");
+    drop(wrong_meta_table);
+    txn.commit().expect("commit");
+    drop(db);
+
+    let expected = {
+        let db = Database::open(&path).expect("open database");
+        let txn = db.begin_read().expect("begin read transaction");
+        let err = txn
+            .open_table(META_TABLE)
+            .expect_err("metadata table type mismatch should fail");
+        Error::StorageMsg(err.to_string())
+    };
+
+    let err = migrate_to_latest(&path).expect_err("migration should fail");
+    assert_eq!(err, expected);
+
+    remove_path(&path);
+}
+
+#[test]
+fn invalid_v1_schema_table_type_is_rejected() {
+    let path = test_path("redb-invalid-v1-schema-table-type");
+    let _ = create_dir("tmp");
+    remove_path(&path);
+
+    let db = Database::create(&path).expect("create database");
+    let txn = db.begin_write().expect("begin write transaction");
+    let mut wrong_schema_table = txn
+        .open_table(SCHEMA_TABLE_WITH_BINARY_KEY)
+        .expect("open schema table with unexpected key type");
+    wrong_schema_table
+        .insert(
+            b"Foo".as_slice(),
+            serialize(&1_i64).expect("serialize dummy value"),
+        )
+        .expect("insert row into wrong schema table");
+    drop(wrong_schema_table);
+    txn.commit().expect("commit");
+    drop(db);
+
+    let expected = {
+        let db = Database::open(&path).expect("open database");
+        let txn = db.begin_write().expect("begin write transaction");
         let err = txn
             .open_table(SCHEMA_TABLE)
             .expect_err("schema table type mismatch should fail");
