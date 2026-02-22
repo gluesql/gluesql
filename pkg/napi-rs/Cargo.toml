@@ -1,0 +1,46 @@
+
+[package]
+authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
+edition.workspace = true
+name = "gluesql-napi"
+version.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation.workspace = true
+readme = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[features]
+default = ["console_error_panic_hook"]
+
+[dependencies]
+gluesql-core.workspace = true
+gluesql_memory_storage.workspace = true
+gluesql-web-storage.workspace = true
+gluesql-idb-storage.workspace = true
+gluesql-composite-storage.workspace = true
+
+napi = { version = "3.3.0", features = ["tokio_rt", "serde-json"] }
+napi-derive = "3.2.5"
+
+serde = "1"
+serde_json = "1"
+
+# The `console_error_panic_hook` crate provides better debugging of panics by
+# logging them with `console.error`. This is great for development, but requires
+# all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
+# code size when deploying.
+console_error_panic_hook = { version = "0.1.6", optional = true }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
+[build-dependencies]
+napi-build = "2.2.3"
+
+[profile.release]
+lto = true
+strip = "symbols"

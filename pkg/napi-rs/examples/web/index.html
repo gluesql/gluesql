@@ -1,0 +1,187 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>GlueSQL NAPI-RS Browser Example</title>
+    <style>
+      body {
+        padding: 20px;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f5f5f5;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      }
+
+      h1 {
+        color: #333;
+        border-bottom: 3px solid #007acc;
+        padding-bottom: 10px;
+      }
+
+      .status {
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 5px;
+        font-weight: bold;
+      }
+
+      .success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+
+      .error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+
+      .info {
+        background-color: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+      }
+
+      .result-box {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        padding: 15px;
+        margin: 15px 0;
+        font-family: 'Courier New', monospace;
+        white-space: pre-wrap;
+        overflow-x: auto;
+      }
+
+      .query-section {
+        margin: 20px 0;
+        padding: 15px;
+        border-left: 4px solid #007acc;
+        background-color: #f8f9fa;
+      }
+
+      .query-title {
+        font-weight: bold;
+        color: #007acc;
+        margin-bottom: 10px;
+      }
+
+      button {
+        background-color: #007acc;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        margin: 5px;
+      }
+
+      button:hover {
+        background-color: #005a9e;
+      }
+
+      button:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🚀 GlueSQL NAPI-RS Browser Example</h1>
+
+      <div class="info status">
+        <strong>Note:</strong> This example uses NAPI-RS bindings compiled to WebAssembly.
+        It provides the same API as the Node.js version but runs in the browser!
+      </div>
+
+      <div class="controls">
+        <button onclick="runBasicExample()">Run Basic Example</button>
+        <button onclick="runComplexExample()">Run Complex Example</button>
+        <button onclick="clearResults()">Clear Results</button>
+      </div>
+
+      <div id="status"></div>
+      <div id="results"></div>
+    </div>
+
+    <script type="module">
+      import { Glue } from '../../gluesql-napi.wasi-browser.js';
+
+      window.showStatus = function(message, type = 'info') {
+        const statusDiv = document.getElementById('status');
+        statusDiv.innerHTML = `<div class="${type} status">${message}</div>`;
+      };
+
+      window.addResult = function(title, content) {
+        const resultsDiv = document.getElementById('results');
+        const section = document.createElement('div');
+        section.className = 'query-section';
+        section.innerHTML = `
+          <div class="query-title">${title}</div>
+          <div class="result-box">${content}</div>
+        `;
+        resultsDiv.appendChild(section);
+      };
+
+      window.clearResults = function() {
+        document.getElementById('results').innerHTML = '';
+        document.getElementById('status').innerHTML = '';
+      };
+
+      window.runBasicExample = async function() {
+        try {
+          showStatus('🔄 Running basic example...', 'info');
+
+          const db = new Glue();
+          addResult('Step 1: Create Table', 'CREATE TABLE users (id INTEGER, name TEXT, role TEXT)');
+          let result = await db.query('CREATE TABLE users (id INTEGER, name TEXT, role TEXT)');
+          addResult('Result 1', JSON.stringify(result, null, 2));
+
+          addResult('Step 2: Insert Data', 'INSERT INTO users VALUES (1, "Alice", "Developer"), (2, "Bob", "Designer")');
+          result = await db.query('INSERT INTO users VALUES (1, "Alice", "Developer"), (2, "Bob", "Designer")');
+          addResult('Result 2', JSON.stringify(result, null, 2));
+
+          addResult('Step 3: Query Data', 'SELECT * FROM users');
+          result = await db.query('SELECT * FROM users');
+          addResult('Result 3', JSON.stringify(result, null, 2));
+
+          showStatus('✅ Basic example completed successfully!', 'success');
+        } catch (error) {
+          showStatus(`❌ Basic example failed: ${error.message}`, 'error');
+          console.error('Basic example error:', error);
+        }
+      };
+
+      window.runComplexExample = async function() {
+        try {
+          showStatus('🔄 Running complex example...', 'info');
+
+          const db = new Glue();
+          addResult('Complex Query Example',
+            'This demonstrates more advanced SQL operations that would work with the real NAPI-RS bindings.');
+
+          addResult('Show Tables', 'SHOW TABLES');
+          let result = await db.query('SHOW TABLES');
+          addResult('Tables Result', JSON.stringify(result, null, 2));
+
+          showStatus('✅ Complex example completed successfully!', 'success');
+        } catch (error) {
+          showStatus(`❌ Complex example failed: ${error.message}`, 'error');
+          console.error('Complex example error:', error);
+        }
+      };
+
+      showStatus('Ready! Click a button to run an example.', 'info');
+    </script>
+  </body>
+</html>
