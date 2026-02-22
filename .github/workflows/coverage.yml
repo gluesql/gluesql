@@ -269,6 +269,7 @@ jobs:
           }
 
           const topChangedFiles = perFileStats
+            .filter((fileStat) => fileStat.added_executable_lines > 0)
             .slice()
             .sort((left, right) => {
               if (right.added_lines !== left.added_lines) {
