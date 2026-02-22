@@ -1,0 +1,215 @@
+name: Publish Kotlin
+
+on:
+  workflow_dispatch:
+    inputs:
+      # Latest commit to include with the release. If omitted, use the latest commit on the main branch.
+      sha:
+        description: Commit SHA
+        type: string
+      dry_run:
+        description: Dry run
+        type: boolean
+        default: true
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  CARGO_TERM_COLOR: always
+  RUSTUP_MAX_RETRIES: 10
+
+jobs:
+  build-natives:
+    name: Build Native Libraries
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            platform: linux-x86-64
+            lib_prefix: lib
+            extension: so
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+            platform: darwin-x86-64
+            lib_prefix: lib
+            extension: dylib
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            platform: darwin-aarch64
+            lib_prefix: lib
+            extension: dylib
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            platform: win32-x86-64
+            lib_prefix: ""
+            extension: dll
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.sha }}
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build and prepare native library
+        shell: bash
+        run: |
+          cd pkg/kotlin
+          cargo build --release --target ${{ matrix.target }}
+
+          LIB_NAME="${{ matrix.lib_prefix }}gluesql_kotlin.${{ matrix.extension }}"
+          ARTIFACT_DIR="../../target/${{ matrix.target }}/release/artifact/${{ matrix.platform }}"
+
+          mkdir -p "$ARTIFACT_DIR"
+          cp "../../target/${{ matrix.target }}/release/$LIB_NAME" "$ARTIFACT_DIR/"
+
+          echo "✓ Prepared artifact: ${{ matrix.platform }}/$LIB_NAME"
+
+      - name: Upload native library
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.platform }}
+          path: target/${{ matrix.target }}/release/artifact/${{ matrix.platform }}/*
+          retention-days: 1
+
+  build-jar:
+    name: Build JAR
+    needs: build-natives
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.sha }}
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Download all native libraries
+        uses: actions/download-artifact@v4
+        with:
+          path: downloaded-artifacts
+          pattern: native-*
+
+      - name: Generate UniFFI bindings
+        working-directory: pkg/kotlin
+        shell: bash
+        run: |
+          mkdir -p build/generated/source/uniffi/kotlin
+          cargo run --bin uniffi-bindgen generate \
+            --language kotlin \
+            --out-dir build/generated/source/uniffi/kotlin \
+            --library ../../downloaded-artifacts/native-linux-x86-64/libgluesql_kotlin.so \
+            --no-format
+          echo "✓ Generated UniFFI bindings"
+
+      - name: Organize native libraries
+        shell: bash
+        run: |
+          ARTIFACTS_DIR="downloaded-artifacts"
+          RESOURCES_DIR="pkg/kotlin/src/main/resources/natives"
+
+          rm -rf "$RESOURCES_DIR"
+          mkdir -p "$RESOURCES_DIR"
+
+          for artifact_dir in "$ARTIFACTS_DIR"/native-*; do
+            platform=$(basename "$artifact_dir" | sed 's/^native-//')
+            dest_dir="$RESOURCES_DIR/$platform"
+            mkdir -p "$dest_dir"
+            cp "$artifact_dir"/* "$dest_dir/"
+            echo "✓ Copied $(basename "$artifact_dir") → natives/$platform/"
+          done
+
+          echo ""
+          echo "Native libraries structure:"
+          ls -lR "$RESOURCES_DIR"
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+
+      - name: Build JAR
+        working-directory: pkg/kotlin
+        run: |
+          chmod +x gradlew
+          ./gradlew build -x test -x buildRustLib -x generateBindings
+
+      - name: List JAR contents
+        working-directory: pkg/kotlin/build/libs
+        run: |
+          echo "JAR contents:"
+          jar tf gluesql-*.jar | grep natives || echo "No natives found in JAR"
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gluesql-jar
+          path: pkg/kotlin/build/libs/*.jar
+
+  publish-to-maven:
+    name: Publish to Maven Central
+    needs: build-jar
+    if: inputs.dry_run == false
+    runs-on: ubuntu-latest
+    environment:
+      name: release-kotlin
+      url: https://central.sonatype.com/artifact/org.gluesql/gluesql-kotlin
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.sha }}
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+
+      - name: Download Fat JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: gluesql-jar
+          path: pkg/kotlin/build/libs
+
+      - name: Make gradlew executable
+        run: chmod +x pkg/kotlin/gradlew
+
+      - name: Publish to Maven Central
+        working-directory: pkg/kotlin
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_SIGNING_PASSWORD }}
+        run: ./gradlew publishToMavenCentral -x jar --no-configuration-cache
