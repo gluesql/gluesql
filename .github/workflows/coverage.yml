@@ -214,15 +214,27 @@ jobs:
           let addedExecutableLines = 0;
           let coveredAddedExecutableLines = 0;
           let missedAddedExecutableLines = 0;
+          const perFileStats = [];
 
           const changedLinesJson = {};
           for (const [file, addedSet] of changedByFile.entries()) {
             const sorted = Array.from(addedSet).sort((a, b) => a - b);
             changedLinesJson[file] = sorted;
             addedLines += sorted.length;
+            let fileAddedExecutableLines = 0;
+            let fileCoveredAddedExecutableLines = 0;
+            let fileMissedAddedExecutableLines = 0;
 
             const coverageLines = coverageByFile.get(file);
             if (!coverageLines) {
+              perFileStats.push({
+                file,
+                added_lines: sorted.length,
+                added_executable_lines: fileAddedExecutableLines,
+                covered_added_executable_lines: fileCoveredAddedExecutableLines,
+                missed_added_executable_lines: fileMissedAddedExecutableLines,
+                patch_coverage_percent: null,
+              });
               continue;
             }
 
@@ -233,13 +245,43 @@ jobs:
               }
 
               addedExecutableLines += 1;
+              fileAddedExecutableLines += 1;
               if (hit > 0) {
                 coveredAddedExecutableLines += 1;
+                fileCoveredAddedExecutableLines += 1;
               } else {
                 missedAddedExecutableLines += 1;
+                fileMissedAddedExecutableLines += 1;
               }
             }
+
+            perFileStats.push({
+              file,
+              added_lines: sorted.length,
+              added_executable_lines: fileAddedExecutableLines,
+              covered_added_executable_lines: fileCoveredAddedExecutableLines,
+              missed_added_executable_lines: fileMissedAddedExecutableLines,
+              patch_coverage_percent:
+                fileAddedExecutableLines > 0
+                  ? (fileCoveredAddedExecutableLines / fileAddedExecutableLines) * 100
+                  : null,
+            });
           }
+
+          const topChangedFiles = perFileStats
+            .slice()
+            .sort((left, right) => {
+              if (right.added_lines !== left.added_lines) {
+                return right.added_lines - left.added_lines;
+              }
+
+              if (right.added_executable_lines !== left.added_executable_lines) {
+                return right.added_executable_lines - left.added_executable_lines;
+              }
+
+              return left.file.localeCompare(right.file);
+            })
+            .slice(0, 10);
 
           const summary = {
             base_sha: baseSha,
@@ -257,6 +299,7 @@ jobs:
               addedExecutableLines > 0
                 ? (coveredAddedExecutableLines / addedExecutableLines) * 100
                 : null,
+            top_changed_files: topChangedFiles,
           };
 
           fs.writeFileSync(
