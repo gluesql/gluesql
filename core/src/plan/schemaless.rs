@@ -231,18 +231,18 @@ mod tests {
         let expected = "SELECT P._doc as _doc FROM Player AS P";
         test(actual, expected, "qualified wildcard with root alias");
 
-        let actual = r#"
+        let actual = r"
             SELECT Player.*, Team.*
             FROM Player
             JOIN Team
             WHERE Player.id = Team.id
-        "#;
-        let expected = r#"
+        ";
+        let expected = r"
             SELECT Player._doc as _doc, Team._doc as _doc
             FROM Player
             JOIN Team
             WHERE Player._doc['id'] = Team._doc['id']
-        "#;
+        ";
         test(actual, expected, "qualified wildcard join");
 
         let actual = "SELECT P.*, T.* FROM Player AS P JOIN Team AS T WHERE P.id = T.id";
@@ -328,18 +328,18 @@ mod tests {
             "SELECT _doc['team'] as team, COUNT(*) as cnt FROM Player GROUP BY _doc['team']";
         test(actual, expected, "group by");
 
-        let actual = r#"
+        let actual = r"
             SELECT team, COUNT(*) as cnt
             FROM Player
             GROUP BY team
             HAVING COUNT(*) > 1
-        "#;
-        let expected = r#"
+        ";
+        let expected = r"
             SELECT _doc['team'] as team, COUNT(*) as cnt
             FROM Player
             GROUP BY _doc['team']
             HAVING COUNT(*) > 1
-        "#;
+        ";
         test(actual, expected, "having");
 
         let actual = "SELECT id, name FROM Player ORDER BY score";
@@ -379,22 +379,22 @@ mod tests {
         let expected = "SELECT * FROM (SELECT _doc['id'] as id FROM Player) AS sub";
         test(actual, expected, "derived subquery");
 
-        let actual = r#"
+        let actual = r"
             SELECT
                 (SELECT id FROM Player LIMIT 1) as first_id
             FROM Item
             WHERE
                 EXISTS (SELECT id FROM Player WHERE id = 1)
                 AND id IN (SELECT id FROM Player)
-        "#;
-        let expected = r#"
+        ";
+        let expected = r"
             SELECT
                 (SELECT _doc['id'] as id FROM Player LIMIT 1) as first_id
             FROM Item
             WHERE
                 EXISTS (SELECT _doc['id'] as id FROM Player WHERE _doc['id'] = 1)
                 AND id IN (SELECT _doc['id'] as id FROM Player)
-        "#;
+        ";
         test(actual, expected, "expr subquery recursion");
 
         let actual = "INSERT INTO Player VALUES ('{}')";
@@ -418,16 +418,16 @@ mod tests {
             "UPDATE Player SET score = Player._doc['score'] + 1 WHERE Player._doc['id'] = 1";
         test(actual, expected, "update compound identifier");
 
-        let actual = r#"
+        let actual = r"
             UPDATE Player
             SET score = (SELECT MAX(score) as max_score FROM Player)
             WHERE id = 1
-        "#;
-        let expected = r#"
+        ";
+        let expected = r"
             UPDATE Player
             SET score = (SELECT MAX(_doc['score']) as max_score FROM Player)
             WHERE _doc['id'] = 1
-        "#;
+        ";
         test(actual, expected, "update subquery recursion");
 
         let actual = "UPDATE Item SET id = id + 1 WHERE id = 1";
@@ -442,18 +442,18 @@ mod tests {
         let expected = "DELETE FROM Player WHERE Player._doc['id'] = 1";
         test(actual, expected, "delete compound identifier");
 
-        let actual = r#"
+        let actual = r"
             DELETE FROM Player
             WHERE
                 EXISTS (SELECT id FROM Player WHERE id = 1)
                 AND id IN (SELECT id FROM Player)
-        "#;
-        let expected = r#"
+        ";
+        let expected = r"
             DELETE FROM Player
             WHERE
                 EXISTS (SELECT _doc['id'] as id FROM Player WHERE _doc['id'] = 1)
                 AND _doc['id'] IN (SELECT _doc['id'] as id FROM Player)
-        "#;
+        ";
         test(actual, expected, "delete exists and in subquery recursion");
 
         let actual = "DELETE FROM Item WHERE Item.id = 1";
@@ -488,12 +488,12 @@ mod tests {
         test("SELECT P.* FROM Player AS P", true);
         test("SELECT id FROM Player", false);
         test(
-            r#"
+            r"
                 SELECT Player.*, Team.*
                 FROM Player
                 JOIN Team
                 WHERE Player.id = Team.id
-            "#,
+            ",
             false,
         );
         test(
