@@ -207,6 +207,10 @@ mod tests {
         let expected = "SELECT _doc['id'] as id FROM Player";
         test(actual, expected, "single column");
 
+        let actual = "SELECT id FROM Item";
+        let expected = "SELECT id FROM Item";
+        test(actual, expected, "schemaful root identifier");
+
         let actual = "SELECT id, name FROM Player";
         let expected = "SELECT _doc['id'] as id, _doc['name'] as name FROM Player";
         test(actual, expected, "multiple columns");
@@ -227,17 +231,35 @@ mod tests {
         let expected = "SELECT P._doc as _doc FROM Player AS P";
         test(actual, expected, "qualified wildcard with root alias");
 
-        let actual = "SELECT Player.*, Team.* FROM Player JOIN Team WHERE Player.id = Team.id";
-        let expected = "SELECT Player._doc as _doc, Team._doc as _doc FROM Player JOIN Team WHERE Player._doc['id'] = Team._doc['id']";
+        let actual = r#"
+            SELECT Player.*, Team.*
+            FROM Player
+            JOIN Team
+            WHERE Player.id = Team.id
+        "#;
+        let expected = r#"
+            SELECT Player._doc as _doc, Team._doc as _doc
+            FROM Player
+            JOIN Team
+            WHERE Player._doc['id'] = Team._doc['id']
+        "#;
         test(actual, expected, "qualified wildcard join");
 
         let actual = "SELECT P.*, T.* FROM Player AS P JOIN Team AS T WHERE P.id = T.id";
         let expected = "SELECT P._doc as _doc, T._doc as _doc FROM Player AS P JOIN Team AS T WHERE P._doc['id'] = T._doc['id']";
         test(actual, expected, "qualified wildcard join with aliases");
 
+        let actual = "SELECT Item.* FROM Player JOIN Item WHERE Player.id = Item.id";
+        let expected = "SELECT Item.* FROM Player JOIN Item WHERE Player._doc['id'] = Item.id";
+        test(actual, expected, "schemaful qualified wildcard join no-op");
+
         let actual = "SELECT Player.id FROM Player";
         let expected = "SELECT Player._doc['id'] as id FROM Player";
         test(actual, expected, "compound identifier");
+
+        let actual = "SELECT *, id FROM Player";
+        let expected = "SELECT _doc as _doc, _doc['id'] as id FROM Player";
+        test(actual, expected, "wildcard with extra projection");
 
         let actual = "SELECT * FROM Player WHERE id = 1";
         let expected = "SELECT _doc as _doc FROM Player WHERE _doc['id'] = 1";
@@ -306,8 +328,18 @@ mod tests {
             "SELECT _doc['team'] as team, COUNT(*) as cnt FROM Player GROUP BY _doc['team']";
         test(actual, expected, "group by");
 
-        let actual = "SELECT team, COUNT(*) as cnt FROM Player GROUP BY team HAVING COUNT(*) > 1";
-        let expected = "SELECT _doc['team'] as team, COUNT(*) as cnt FROM Player GROUP BY _doc['team'] HAVING COUNT(*) > 1";
+        let actual = r#"
+            SELECT team, COUNT(*) as cnt
+            FROM Player
+            GROUP BY team
+            HAVING COUNT(*) > 1
+        "#;
+        let expected = r#"
+            SELECT _doc['team'] as team, COUNT(*) as cnt
+            FROM Player
+            GROUP BY _doc['team']
+            HAVING COUNT(*) > 1
+        "#;
         test(actual, expected, "having");
 
         let actual = "SELECT id, name FROM Player ORDER BY score";
@@ -347,6 +379,24 @@ mod tests {
         let expected = "SELECT * FROM (SELECT _doc['id'] as id FROM Player) AS sub";
         test(actual, expected, "derived subquery");
 
+        let actual = r#"
+            SELECT
+                (SELECT id FROM Player LIMIT 1) as first_id
+            FROM Item
+            WHERE
+                EXISTS (SELECT id FROM Player WHERE id = 1)
+                AND id IN (SELECT id FROM Player)
+        "#;
+        let expected = r#"
+            SELECT
+                (SELECT _doc['id'] as id FROM Player LIMIT 1) as first_id
+            FROM Item
+            WHERE
+                EXISTS (SELECT _doc['id'] as id FROM Player WHERE _doc['id'] = 1)
+                AND id IN (SELECT _doc['id'] as id FROM Player)
+        "#;
+        test(actual, expected, "expr subquery recursion");
+
         let actual = "INSERT INTO Player VALUES ('{}')";
         let expected = "INSERT INTO Player (_doc) VALUES ('{}')";
         test(actual, expected, "insert schemaless");
@@ -354,6 +404,61 @@ mod tests {
         let actual = "INSERT INTO Player VALUES ('{}'), ('{}')";
         let expected = "INSERT INTO Player (_doc) VALUES ('{}'), ('{}')";
         test(actual, expected, "insert schemaless multiple");
+
+        let actual = "INSERT INTO Item (id) SELECT id FROM Player";
+        let expected = "INSERT INTO Item (id) SELECT _doc['id'] as id FROM Player";
+        test(actual, expected, "insert schemaful columns unchanged");
+
+        let actual = "UPDATE Player SET score = 100";
+        let expected = "UPDATE Player SET score = 100";
+        test(actual, expected, "update without selection");
+
+        let actual = "UPDATE Player SET score = Player.score + 1 WHERE Player.id = 1";
+        let expected =
+            "UPDATE Player SET score = Player._doc['score'] + 1 WHERE Player._doc['id'] = 1";
+        test(actual, expected, "update compound identifier");
+
+        let actual = r#"
+            UPDATE Player
+            SET score = (SELECT MAX(score) as max_score FROM Player)
+            WHERE id = 1
+        "#;
+        let expected = r#"
+            UPDATE Player
+            SET score = (SELECT MAX(_doc['score']) as max_score FROM Player)
+            WHERE _doc['id'] = 1
+        "#;
+        test(actual, expected, "update subquery recursion");
+
+        let actual = "UPDATE Item SET id = id + 1 WHERE id = 1";
+        let expected = "UPDATE Item SET id = id + 1 WHERE id = 1";
+        test(actual, expected, "update schemaful no-op");
+
+        let actual = "DELETE FROM Player";
+        let expected = "DELETE FROM Player";
+        test(actual, expected, "delete without selection");
+
+        let actual = "DELETE FROM Player WHERE Player.id = 1";
+        let expected = "DELETE FROM Player WHERE Player._doc['id'] = 1";
+        test(actual, expected, "delete compound identifier");
+
+        let actual = r#"
+            DELETE FROM Player
+            WHERE
+                EXISTS (SELECT id FROM Player WHERE id = 1)
+                AND id IN (SELECT id FROM Player)
+        "#;
+        let expected = r#"
+            DELETE FROM Player
+            WHERE
+                EXISTS (SELECT _doc['id'] as id FROM Player WHERE _doc['id'] = 1)
+                AND _doc['id'] IN (SELECT _doc['id'] as id FROM Player)
+        "#;
+        test(actual, expected, "delete exists and in subquery recursion");
+
+        let actual = "DELETE FROM Item WHERE Item.id = 1";
+        let expected = "DELETE FROM Item WHERE Item.id = 1";
+        test(actual, expected, "delete schemaful compound no-op");
     }
 
     #[test]
@@ -383,7 +488,12 @@ mod tests {
         test("SELECT P.* FROM Player AS P", true);
         test("SELECT id FROM Player", false);
         test(
-            "SELECT Player.*, Team.* FROM Player JOIN Team WHERE Player.id = Team.id",
+            r#"
+                SELECT Player.*, Team.*
+                FROM Player
+                JOIN Team
+                WHERE Player.id = Team.id
+            "#,
             false,
         );
         test(

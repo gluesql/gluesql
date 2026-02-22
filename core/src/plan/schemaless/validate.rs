@@ -214,7 +214,7 @@ fn is_schemaless_table(
 #[cfg(test)]
 mod tests {
     use {
-        super::super::plan as plan_schemaless,
+        super::{super::plan as plan_schemaless, validate_statement},
         crate::{
             ast::{Expr, JoinExecutor, SetExpr, Statement},
             mock::{MockStorage, run},
@@ -332,6 +332,28 @@ mod tests {
             &storage,
             "SELECT Item.id FROM Player JOIN Item WHERE Player.id = Item.id",
         );
+    }
+
+    #[test]
+    fn validates_query_order_by_limit_offset_paths() {
+        let storage = setup_storage();
+        let sql = "SELECT id FROM Player ORDER BY id LIMIT 1 OFFSET 0";
+        let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
+        let statement = translate(&parsed).unwrap();
+        let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+
+        assert!(validate_statement(&schema_map, &statement).is_ok(), "{sql}");
+    }
+
+    #[test]
+    fn validates_values_query_path() {
+        let storage = setup_storage();
+        let sql = "VALUES (1), (2)";
+        let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
+        let statement = translate(&parsed).unwrap();
+        let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+
+        assert!(validate_statement(&schema_map, &statement).is_ok(), "{sql}");
     }
 
     #[test]
