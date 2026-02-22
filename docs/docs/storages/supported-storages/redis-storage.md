@@ -46,3 +46,10 @@ async fn main() {
 ```
 
 Running this program prints the results of the final SELECT and leaves the data inside your Redis instance.
+
+## Data Compatibility Policy
+
+Redis storage is commonly used as a cache-like backend rather than long-term durable storage.
+For pre-1.0 releases, GlueSQL does not guarantee backward compatibility of serialized Redis row payloads across storage format changes.
+
+When upgrading across a breaking storage-format change, reset only the target namespace keys before reuse.

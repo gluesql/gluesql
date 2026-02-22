@@ -22,4 +22,15 @@ async fn reserved_table_name() {
         ))
         .map(|payload| vec![payload])
     );
+
+    let result = glue
+        .execute("CREATE TABLE __GLUESQL_META__ (id INTEGER);")
+        .await;
+    assert_eq!(
+        result,
+        Err(Error::StorageMsg(
+            "cannot create table with reserved name: __GLUESQL_META__".to_owned(),
+        ))
+        .map(|payload| vec![payload])
+    );
 }

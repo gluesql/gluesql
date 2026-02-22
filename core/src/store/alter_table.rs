@@ -1,5 +1,5 @@
 use {
-    super::{DataRow, Store, StoreMut},
+    super::{Store, StoreMut},
     crate::{ast::ColumnDef, data::Value, executor::evaluate_stateless, result::Result},
     async_trait::async_trait,
     futures::TryStreamExt,
@@ -27,9 +27,6 @@ pub enum AlterTableError {
 
     #[error("Schemaless table does not support ALTER TABLE: {0}")]
     SchemalessTableFound(String),
-
-    #[error("conflict - Vec expected but Map row found")]
-    ConflictOnUnexpectedMapRowFound,
 }
 
 #[async_trait]
@@ -121,20 +118,12 @@ pub trait AlterTable: Store + StoreMut {
         let rows = self
             .scan_data(table_name)
             .await?
-            .and_then(|(key, mut data_row)| {
+            .and_then(|(key, mut values)| {
                 let default_value = default_value.clone();
 
                 async move {
-                    match &mut data_row {
-                        DataRow::Map(_) => {
-                            Err(AlterTableError::ConflictOnUnexpectedMapRowFound.into())
-                        }
-                        DataRow::Vec(rows) => {
-                            rows.push(default_value);
-
-                            Ok((key, data_row))
-                        }
-                    }
+                    values.push(default_value);
+                    Ok((key, values))
                 }
             })
             .try_collect::<Vec<_>>()
@@ -176,15 +165,9 @@ pub trait AlterTable: Store + StoreMut {
         let rows = self
             .scan_data(table_name)
             .await?
-            .and_then(|(key, mut data_row)| async move {
-                match &mut data_row {
-                    DataRow::Map(_) => Err(AlterTableError::ConflictOnUnexpectedMapRowFound.into()),
-                    DataRow::Vec(rows) => {
-                        rows.remove(i);
-
-                        Ok((key, data_row))
-                    }
-                }
+            .and_then(|(key, mut values)| async move {
+                values.remove(i);
+                Ok((key, values))
             })
             .try_collect::<Vec<_>>()
             .await?;

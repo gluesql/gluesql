@@ -12,7 +12,7 @@ use {
 
 #[wasm_bindgen_test]
 async fn queries() {
-    let mut glue = Glue::new();
+    let mut glue = Glue::new().unwrap();
 
     let test_cases = [
         (

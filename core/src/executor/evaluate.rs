@@ -7,7 +7,7 @@ use {
     self::function::BreakCase,
     super::{context::RowContext, select::select},
     crate::{
-        ast::{Aggregate, Expr, Function},
+        ast::{Aggregate, Expr, Function, Projection, SetExpr},
         data::{CustomFunction, Interval, Row, Value},
         mock::MockStorage,
         result::{Error, Result},
@@ -100,23 +100,20 @@ where
         Expr::Subquery(query) => {
             let storage = storage
                 .ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(Box::new(expr.clone())))?;
+            if let SetExpr::Select(select) = &query.body
+                && matches!(select.projection, Projection::SchemalessMap)
+            {
+                return Err(EvaluateError::SchemalessProjectionForSubQuery.into());
+            }
 
             let evaluations = select(storage, query, context.as_ref().map(Arc::clone))
                 .await?
                 .map(|row| {
-                    let value = match row? {
-                        Row::Vec { columns, values } => {
-                            if columns.len() > 1 {
-                                return Err(EvaluateError::MoreThanOneColumnReturned.into());
-                            }
-                            values
-                        }
-                        Row::Map(_) => {
-                            return Err(EvaluateError::SchemalessProjectionForSubQuery.into());
-                        }
+                    let values = row?.into_values();
+                    if values.len() > 1 {
+                        return Err(EvaluateError::MoreThanOneColumnReturned.into());
                     }
-                    .into_iter()
-                    .next();
+                    let value = values.into_iter().next();
 
                     Ok::<_, Error>(value)
                 })
@@ -186,20 +183,17 @@ where
         } => {
             let storage = storage
                 .ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(Box::new(expr.clone())))?;
+            if let SetExpr::Select(select) = &subquery.body
+                && matches!(select.projection, Projection::SchemalessMap)
+            {
+                return Err(EvaluateError::SchemalessProjectionForInSubQuery.into());
+            }
             let target = eval(target_expr).await?;
 
             select(storage, subquery, context)
                 .await?
                 .map(|row| {
-                    let value = match row? {
-                        Row::Vec { values, .. } => values,
-                        Row::Map(_) => {
-                            return Err(EvaluateError::SchemalessProjectionForInSubQuery.into());
-                        }
-                    }
-                    .into_iter()
-                    .next()
-                    .unwrap_or(Value::Null);
+                    let value = row?.into_values().into_iter().next().unwrap_or(Value::Null);
 
                     Ok(Evaluated::Value(Cow::Owned(value)))
                 })
@@ -392,10 +386,14 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                         .try_into_value(&arg.data_type, true)
                         .map(|value| (arg.name.clone(), value))
                 })
-                .try_collect()
+                .try_collect::<Vec<(String, Value)>>()
                 .await
-                .map(|values| {
-                    let row = Cow::Owned(Row::Map(values));
+                .map(|pairs| {
+                    let (columns, values): (Vec<_>, Vec<_>) = pairs.into_iter().unzip();
+                    let row = Cow::Owned(Row {
+                        columns: columns.into(),
+                        values,
+                    });
                     let context = RowContext::new(name, row, None);
                     Some(Arc::new(context))
                 })?;

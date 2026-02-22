@@ -13,11 +13,11 @@ use {
     },
     crate::{
         ast::{
-            BinaryOperator, DataType, Dictionary, Expr, Literal, Query, SelectItem, SetExpr,
-            Statement, TableAlias, TableFactor, TableWithJoins, Variable,
+            BinaryOperator, DataType, Dictionary, Expr, Literal, Projection, Query, SelectItem,
+            SetExpr, Statement, TableAlias, TableFactor, TableWithJoins, Variable,
         },
-        data::{Key, Row, Schema, Value},
-        result::Result,
+        data::{Key, Row, SCHEMALESS_DOC_COLUMN, Schema, Value},
+        result::{Error, Result},
         store::{GStore, GStoreMut},
     },
     futures::stream::{StreamExt, TryStreamExt},
@@ -35,6 +35,9 @@ use {
 pub enum ExecuteError {
     #[error("table not found: {0}")]
     TableNotFound(String),
+
+    #[error("expected Map value in _doc column")]
+    ExpectedMapValueInDocColumn,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -209,9 +212,10 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 .await?
                 .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
 
-            let all_columns = column_defs
-                .as_deref()
-                .map(|columns| columns.iter().map(|col_def| col_def.name.clone()).collect());
+            let all_columns = column_defs.as_deref().map_or_else(
+                || Arc::from(vec![SCHEMALESS_DOC_COLUMN.to_owned()]),
+                |columns| columns.iter().map(|col_def| col_def.name.clone()).collect(),
+            );
             let columns_to_update: Vec<String> = assignments
                 .iter()
                 .map(|assignment| assignment.id.clone())
@@ -240,10 +244,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
             if let Some(column_defs) = column_defs {
                 let column_validation =
                     ColumnValidation::SpecifiedColumns(&column_defs, columns_to_update);
-                let rows = rows.iter().filter_map(|(_, row)| match row {
-                    Row::Vec { values, .. } => Some(values.as_slice()),
-                    Row::Map(_) => None,
-                });
+                let rows = rows.iter().map(|(_, row)| row.values.as_slice());
 
                 validate_unique(storage, table_name, column_validation, rows).await?;
             }
@@ -251,7 +252,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
             let num_rows = rows.len();
             let rows = rows
                 .into_iter()
-                .map(|(key, row)| (key, row.into()))
+                .map(|(key, row)| (key, row.into_values()))
                 .collect();
 
             storage
@@ -268,17 +269,27 @@ async fn execute_inner<T: GStore + GStoreMut>(
         Statement::Query(query) => {
             let (labels, rows) = select_with_labels(storage, query, None).await?;
 
-            match labels {
-                Some(labels) => rows
-                    .map(|row| row?.try_into_vec())
+            let is_schemaless_map = matches!(
+                &query.body,
+                SetExpr::Select(select) if matches!(select.projection, Projection::SchemalessMap)
+            );
+
+            if is_schemaless_map {
+                rows.map(|row| {
+                    let mut values = row?.into_values().into_iter();
+                    match (values.next(), values.next()) {
+                        (Some(Value::Map(map)), None) => Ok(map),
+                        _ => Err(ExecuteError::ExpectedMapValueInDocColumn.into()),
+                    }
+                })
+                .try_collect::<Vec<_>>()
+                .await
+                .map(Payload::SelectMap)
+            } else {
+                rows.map(|row| Ok(row?.into_values()))
                     .try_collect::<Vec<_>>()
                     .await
-                    .map(|rows| Payload::Select { labels, rows }),
-                None => rows
-                    .map(|row| row?.try_into_map())
-                    .try_collect::<Vec<_>>()
-                    .await
-                    .map(Payload::SelectMap),
+                    .map(|rows| Payload::Select { labels, rows })
             }
         }
         Statement::ShowColumns { table_name } => {
@@ -299,7 +310,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
             let query = Query {
                 body: SetExpr::Select(Box::new(crate::ast::Select {
                     distinct: false,
-                    projection: vec![SelectItem::Wildcard],
+                    projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
                     from: TableWithJoins {
                         relation: TableFactor::Dictionary {
                             dict: Dictionary::GlueIndexes,
@@ -326,9 +337,8 @@ async fn execute_inner<T: GStore + GStoreMut>(
             };
 
             let (labels, rows) = select_with_labels(storage, &query, None).await?;
-            let labels = labels.unwrap_or_default();
             let rows = rows
-                .map(|row| row?.try_into_vec())
+                .map(|row| Ok::<_, Error>(row?.into_values()))
                 .try_collect::<Vec<_>>()
                 .await?;
 
@@ -343,10 +353,10 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 let query = Query {
                     body: SetExpr::Select(Box::new(crate::ast::Select {
                         distinct: false,
-                        projection: vec![SelectItem::Expr {
+                        projection: Projection::SelectItems(vec![SelectItem::Expr {
                             expr: Expr::Identifier("TABLE_NAME".to_owned()),
                             label: "TABLE_NAME".to_owned(),
-                        }],
+                        }]),
                         from: TableWithJoins {
                             relation: TableFactor::Dictionary {
                                 dict: Dictionary::GlueTables,
@@ -368,7 +378,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
 
                 let table_names = select(storage, &query, None)
                     .await?
-                    .map(|row| row?.try_into_vec())
+                    .map(|row| Ok::<_, Error>(row?.into_values()))
                     .try_collect::<Vec<Vec<Value>>>()
                     .await?
                     .iter()

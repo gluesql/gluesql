@@ -38,9 +38,6 @@ pub enum CsvStorageError {
     #[error("table name does not match with file")]
     TableNameDoesNotMatchWithFile,
 
-    #[error("unreachable map type data row found")]
-    UnreachableMapTypeDataRowFound,
-
-    #[error("unreachable vector data row type found")]
-    UnreachableVecTypeDataRowTypeFound,
+    #[error("unexpected non-map row for schemaless table")]
+    UnexpectedNonMapRowForSchemalessTable,
 }

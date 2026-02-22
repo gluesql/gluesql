@@ -2,8 +2,8 @@ use {
     super::expr::PlanExpr,
     crate::{
         ast::{
-            Expr, Join, JoinConstraint, JoinOperator, Query, Select, SelectItem, SetExpr,
-            Statement, TableFactor, TableWithJoins,
+            Expr, Join, JoinConstraint, JoinOperator, Projection, Query, Select, SelectItem,
+            SetExpr, Statement, TableFactor, TableWithJoins,
         },
         data::Schema,
         result::Result,
@@ -61,6 +61,39 @@ pub async fn fetch_schema_map<T: Store + ?Sized>(
                 .try_collect()
                 .await
         }
+        Statement::Update {
+            table_name,
+            selection,
+            ..
+        } => {
+            let table_schema = storage
+                .fetch_schema(table_name)
+                .await?
+                .map_or_else(HashMap::new, |schema| {
+                    HashMap::from([(table_name.to_owned(), schema)])
+                });
+            let selection_schema = match selection {
+                Some(expr) => scan_expr(storage, expr).await?,
+                None => HashMap::new(),
+            };
+            Ok(table_schema.into_iter().chain(selection_schema).collect())
+        }
+        Statement::Delete {
+            table_name,
+            selection,
+        } => {
+            let table_schema = storage
+                .fetch_schema(table_name)
+                .await?
+                .map_or_else(HashMap::new, |schema| {
+                    HashMap::from([(table_name.to_owned(), schema)])
+                });
+            let selection_schema = match selection {
+                Some(expr) => scan_expr(storage, expr).await?,
+                None => HashMap::new(),
+            };
+            Ok(table_schema.into_iter().chain(selection_schema).collect())
+        }
         _ => Ok(HashMap::new()),
     }
 }
@@ -108,9 +141,15 @@ async fn scan_select<T: Store + ?Sized>(
         selection,
         group_by,
         having,
+        ..
     } = select;
 
-    let projection = stream::iter(projection)
+    let projection_items = match projection {
+        Projection::SelectItems(items) => items.as_slice(),
+        Projection::SchemalessMap => &[],
+    };
+
+    let projection = stream::iter(projection_items)
         .then(|select_item| async move {
             match select_item {
                 SelectItem::Expr { expr, .. } => scan_expr(storage, expr).await,
@@ -282,9 +321,8 @@ mod tests {
         test("SELECT * FROM Foo", &["Foo"]);
         test("INSERT INTO Foo VALUES (1), (2), (3);", &["Foo"]);
         test("DROP TABLE Foo, Bar;", &["Bar", "Foo"]);
-
-        // Unimplemented
-        test("DELETE FROM Foo;", &[]);
+        test("UPDATE Foo SET id = 1;", &["Foo"]);
+        test("DELETE FROM Foo;", &["Foo"]);
     }
 
     #[test]

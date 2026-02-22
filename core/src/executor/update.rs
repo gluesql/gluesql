@@ -23,6 +23,9 @@ pub enum UpdateError {
     #[error("conflict on schema, row data does not fit to schema")]
     ConflictOnSchema,
 
+    #[error("conflict on schemaless row, expected first value to be map")]
+    ConflictOnNonMapSchemalessRow,
+
     #[error(
         "cannot find referenced value on {table_name}.{column_name} with value {referenced_value:?}"
     )]
@@ -140,30 +143,32 @@ impl<'a, T: GStore> Update<'a, T> {
             .try_collect::<Vec<(&str, Value)>>()
             .await?;
 
-        Ok(match row {
-            Row::Vec { columns, values } => {
-                let values = columns
-                    .iter()
-                    .zip(values)
-                    .map(|(column, value)| {
-                        assignments
-                            .iter()
-                            .find_map(|(id, new_value)| (column == id).then_some(new_value.clone()))
-                            .unwrap_or(value)
-                    })
-                    .collect();
+        let Row { columns, values } = row;
 
-                Row::Vec { columns, values }
-            }
-            Row::Map(values) => {
-                let assignments = assignments
-                    .into_iter()
-                    .map(|(id, value)| (id.to_owned(), value));
+        let values = if self.column_defs.is_none() {
+            // Schemaless table: update fields inside the _doc Map
+            let mut values = values;
+            let Some(Value::Map(map)) = values.first_mut() else {
+                return Err(UpdateError::ConflictOnNonMapSchemalessRow.into());
+            };
 
-                let mut new_values = values;
-                new_values.extend(assignments);
-                Row::Map(new_values)
+            for (id, value) in assignments {
+                map.insert(id.to_owned(), value);
             }
-        })
+            values
+        } else {
+            columns
+                .iter()
+                .zip(values)
+                .map(|(column, value)| {
+                    assignments
+                        .iter()
+                        .find_map(|(id, new_value)| (column == id).then_some(new_value.clone()))
+                        .unwrap_or(value)
+                })
+                .collect()
+        };
+
+        Ok(Row { columns, values })
     }
 }

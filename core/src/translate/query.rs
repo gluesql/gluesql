@@ -5,8 +5,9 @@ use {
     },
     crate::{
         ast::{
-            Dictionary, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, Literal, Query,
-            Select, SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, Values,
+            Dictionary, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, Literal,
+            Projection, Query, Select, SelectItem, SetExpr, TableAlias, TableFactor,
+            TableWithJoins, Values,
         },
         result::Result,
     },
@@ -150,10 +151,12 @@ fn translate_select(sql_select: &SqlSelect, params: &[ParamLiteral]) -> Result<S
 
     Ok(Select {
         distinct,
-        projection: projection
-            .iter()
-            .map(|item| translate_select_item(item, params))
-            .collect::<Result<_>>()?,
+        projection: Projection::SelectItems(
+            projection
+                .iter()
+                .map(|item| translate_select_item(item, params))
+                .collect::<Result<_>>()?,
+        ),
         from,
         selection: selection
             .as_ref()
@@ -420,7 +423,7 @@ mod tests {
         let expected = Query {
             body: SetExpr::Select(Box::new(Select {
                 distinct: false,
-                projection: vec![
+                projection: Projection::SelectItems(vec![
                     SelectItem::Expr {
                         expr: Expr::Value(Value::I64(1)),
                         label: "$1".to_owned(),
@@ -429,7 +432,7 @@ mod tests {
                         expr: Expr::Value(Value::Str("GlueSQL".to_owned())),
                         label: "$2".to_owned(),
                     },
-                ],
+                ]),
                 from: TableWithJoins {
                     relation: TableFactor::Series {
                         alias: TableAlias {

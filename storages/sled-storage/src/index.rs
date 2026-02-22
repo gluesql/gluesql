@@ -10,7 +10,7 @@ use {
         ast::IndexOperator,
         data::{Key, Value},
         error::{Error, IndexError, Result},
-        store::{DataRow, Index, RowIter},
+        store::{Index, RowIter},
     },
     iter_enum::{DoubleEndedIterator, Iterator},
     sled::IVec,
@@ -130,7 +130,7 @@ impl Index for SledStorage {
                         .get(&key)
                         .map_err(err_into)?
                         .ok_or(IndexError::ConflictOnEmptyIndexValueScan)?;
-                    let snapshot: Snapshot<DataRow> =
+                    let snapshot: Snapshot<Vec<Value>> =
                         bincode::deserialize(&value).map_err(err_into)?;
                     let row = snapshot.extract(txid, lock_txid);
                     let key = key.into_iter().skip(prefix_len).collect();

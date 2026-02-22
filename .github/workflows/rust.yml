@@ -77,11 +77,19 @@ jobs:
   run_mongostorage_tests:
     name: Run MongoStorage tests
     runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:latest
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval \"db.adminCommand('ping').ok\""
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v6
       - uses: Swatinem/rust-cache@v2
-      - name: MongoDB in GitHub Actions
-        uses: supercharge/mongodb-github-action@v1.10.0
       - run: |
           cd storages/mongo-storage
           cargo test --verbose --features test-mongo
@@ -89,13 +97,19 @@ jobs:
   run_redisstorage_tests:
     name: Run RedisStorage tests
     runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:6
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v6
       - uses: Swatinem/rust-cache@v2
-      - name: Redis in GitHub Actions
-        uses: supercharge/redis-github-action@1.7.0
-        with:
-          redis-version: 6
       - run: |
           cd storages/redis-storage
           cargo test --verbose --features test-redis

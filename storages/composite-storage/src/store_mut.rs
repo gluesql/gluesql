@@ -2,9 +2,9 @@ use {
     super::CompositeStorage,
     async_trait::async_trait,
     gluesql_core::{
-        data::{Key, Schema},
+        data::{Key, Schema, Value},
         error::{Error, Result},
-        store::{DataRow, StoreMut},
+        store::StoreMut,
     },
 };
 
@@ -41,14 +41,14 @@ impl StoreMut for CompositeStorage {
             .await
     }
 
-    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
+    async fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
         self.fetch_storage_mut(table_name)
             .await?
             .append_data(table_name, rows)
             .await
     }
 
-    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
+    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
         self.fetch_storage_mut(table_name)
             .await?
             .insert_data(table_name, rows)

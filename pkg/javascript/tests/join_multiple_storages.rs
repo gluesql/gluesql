@@ -12,7 +12,7 @@ use {
 
 #[wasm_bindgen_test]
 async fn join_multiple_storages() {
-    let mut glue = Glue::new();
+    let mut glue = Glue::new().unwrap();
     let loaded = glue.load_indexeddb(None);
     JsFuture::from(loaded).await.unwrap();
 

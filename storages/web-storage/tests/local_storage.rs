@@ -2,6 +2,7 @@
 
 use {
     async_trait::async_trait,
+    gloo_storage::{LocalStorage, Storage},
     gluesql_core::prelude::Glue,
     gluesql_web_storage::{WebStorage, WebStorageType},
     test_suite::*,
@@ -17,8 +18,8 @@ struct LocalStorageTester {
 #[async_trait(?Send)]
 impl Tester<WebStorage> for LocalStorageTester {
     async fn new(_: &str) -> Self {
-        let storage = WebStorage::new(WebStorageType::Local);
-        storage.raw().clear().unwrap();
+        LocalStorage::raw().clear().unwrap();
+        let storage = WebStorage::new(WebStorageType::Local).unwrap();
 
         let glue = Glue::new(storage);
 

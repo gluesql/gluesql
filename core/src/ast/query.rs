@@ -21,9 +21,15 @@ pub enum SetExpr {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Projection {
+    SelectItems(Vec<SelectItem>),
+    SchemalessMap,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Select {
     pub distinct: bool,
-    pub projection: Vec<SelectItem>,
+    pub projection: Projection,
     pub from: TableWithJoins,
     /// WHERE
     pub selection: Option<Expr>,
@@ -249,10 +255,12 @@ impl Select {
             group_by,
             having,
         } = self;
-        let projection = projection
-            .iter()
-            .map(|item| item.to_sql_with(quoted))
-            .join(", ");
+        let projection = match projection {
+            Projection::SelectItems(items) => {
+                items.iter().map(|item| item.to_sql_with(quoted)).join(", ")
+            }
+            Projection::SchemalessMap => "*".to_owned(),
+        };
 
         let selection = match selection {
             Some(expr) => format!("WHERE {}", to_sql(expr)),
@@ -619,8 +627,8 @@ mod tests {
         crate::{
             ast::{
                 BinaryOperator, Dictionary, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator,
-                Literal, OrderByExpr, Query, Select, SelectItem, SetExpr, TableAlias, TableFactor,
-                TableWithJoins, ToSql, ToSqlUnquoted, Values,
+                Literal, OrderByExpr, Projection, Query, Select, SelectItem, SetExpr, TableAlias,
+                TableFactor, TableWithJoins, ToSql, ToSqlUnquoted, Values,
             },
             parse_sql::parse_expr,
             translate::{NO_PARAMS, translate_expr},
@@ -646,7 +654,7 @@ mod tests {
         let expected = Query {
             body: SetExpr::Select(Box::new(Select {
                 distinct: false,
-                projection: vec![SelectItem::Wildcard],
+                projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
                 from: TableWithJoins {
                     relation: TableFactor::Table {
                         name: "FOO".to_owned(),
@@ -684,7 +692,7 @@ mod tests {
         let expected = Query {
             body: SetExpr::Select(Box::new(Select {
                 distinct: false,
-                projection: vec![SelectItem::Wildcard],
+                projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
                 from: TableWithJoins {
                     relation: TableFactor::Table {
                         name: "FOO".to_owned(),
@@ -717,7 +725,7 @@ mod tests {
         let actual = r#"SELECT * FROM "FOO" AS "F" INNER JOIN "PlayerItem""#.to_owned();
         let expected = SetExpr::Select(Box::new(Select {
             distinct: false,
-            projection: vec![SelectItem::Wildcard],
+            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
             from: TableWithJoins {
                 relation: TableFactor::Table {
                     name: "FOO".to_owned(),
@@ -766,7 +774,7 @@ mod tests {
         let actual = "SELECT * FROM FOO AS F INNER JOIN PlayerItem".to_owned();
         let expected = SetExpr::Select(Box::new(Select {
             distinct: false,
-            projection: vec![SelectItem::Wildcard],
+            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
             from: TableWithJoins {
                 relation: TableFactor::Table {
                     name: "FOO".to_owned(),
@@ -830,7 +838,7 @@ mod tests {
             r#"SELECT * FROM "FOO" AS "F" GROUP BY "name" HAVING "name" = 'glue'"#.to_owned();
         let expected = Select {
             distinct: false,
-            projection: vec![SelectItem::Wildcard],
+            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
             from: TableWithJoins {
                 relation: TableFactor::Table {
                     name: "FOO".to_owned(),
@@ -856,7 +864,7 @@ mod tests {
         let actual = r#"SELECT * FROM "FOO" WHERE "name" = 'glue'"#.to_owned();
         let expected = Select {
             distinct: false,
-            projection: vec![SelectItem::Wildcard],
+            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
             from: TableWithJoins {
                 relation: TableFactor::Table {
                     name: "FOO".to_owned(),
@@ -882,7 +890,7 @@ mod tests {
         let actual = "SELECT * FROM FOO AS F GROUP BY name HAVING name = 'glue'".to_owned();
         let expected = Select {
             distinct: false,
-            projection: vec![SelectItem::Wildcard],
+            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
             from: TableWithJoins {
                 relation: TableFactor::Table {
                     name: "FOO".to_owned(),
@@ -908,7 +916,7 @@ mod tests {
         let actual = "SELECT * FROM FOO WHERE name = 'glue'".to_owned();
         let expected = Select {
             distinct: false,
-            projection: vec![SelectItem::Wildcard],
+            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
             from: TableWithJoins {
                 relation: TableFactor::Table {
                     name: "FOO".to_owned(),
@@ -1018,7 +1026,7 @@ mod tests {
             subquery: Query {
                 body: SetExpr::Select(Box::new(Select {
                     distinct: false,
-                    projection: vec![SelectItem::Wildcard],
+                    projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
                     from: TableWithJoins {
                         relation: TableFactor::Table {
                             name: "FOO".to_owned(),
@@ -1085,7 +1093,7 @@ mod tests {
             subquery: Query {
                 body: SetExpr::Select(Box::new(Select {
                     distinct: false,
-                    projection: vec![SelectItem::Wildcard],
+                    projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
                     from: TableWithJoins {
                         relation: TableFactor::Table {
                             name: "FOO".to_owned(),

@@ -1,8 +1,8 @@
 use {
     crate::{
         ast::{
-            Expr, Join, JoinConstraint, JoinOperator, Query, Select, SelectItem, SetExpr,
-            TableAlias, TableFactor, TableWithJoins, Values,
+            Expr, Join, JoinConstraint, JoinOperator, Projection, Query, Select, SelectItem,
+            SetExpr, TableAlias, TableFactor, TableWithJoins, Values,
         },
         plan::{context::Context, expr::PlanExpr},
     },
@@ -82,10 +82,15 @@ fn check_select(context: Option<&Arc<Context<'_>>>, select: &Select) -> bool {
         having,
     } = select;
 
-    if !projection.iter().all(|select_item| match select_item {
-        SelectItem::Expr { expr, .. } => check_expr(context.map(Arc::clone), expr),
-        SelectItem::QualifiedWildcard(_) | SelectItem::Wildcard => true,
-    }) {
+    let projection_ok = match projection {
+        Projection::SelectItems(items) => items.iter().all(|select_item| match select_item {
+            SelectItem::Expr { expr, .. } => check_expr(context.map(Arc::clone), expr),
+            SelectItem::QualifiedWildcard(_) | SelectItem::Wildcard => true,
+        }),
+        Projection::SchemalessMap => true,
+    };
+
+    if !projection_ok {
         return false;
     }
 

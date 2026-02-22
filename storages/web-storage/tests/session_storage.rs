@@ -2,6 +2,7 @@
 
 use {
     async_trait::async_trait,
+    gloo_storage::{SessionStorage, Storage},
     gluesql_core::prelude::Glue,
     gluesql_web_storage::{WebStorage, WebStorageType},
     test_suite::*,
@@ -17,8 +18,8 @@ struct SessionStorageTester {
 #[async_trait(?Send)]
 impl Tester<WebStorage> for SessionStorageTester {
     async fn new(_: &str) -> Self {
-        let storage = WebStorage::new(WebStorageType::Session);
-        storage.raw().clear().unwrap();
+        SessionStorage::raw().clear().unwrap();
+        let storage = WebStorage::new(WebStorageType::Session).unwrap();
 
         let glue = Glue::new(storage);
 

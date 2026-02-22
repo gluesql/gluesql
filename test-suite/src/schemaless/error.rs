@@ -54,12 +54,12 @@ test_case!(error, {
                 '{ "b": true }'
             );
         "#,
-        Err(InsertError::OnlySingleValueAcceptedForSchemalessRow.into()),
+        Err(InsertError::OnlySingleValueAcceptedForSchemalessRow(2).into()),
     )
     .await;
     g.test(
         "INSERT INTO Item SELECT id, name FROM Item LIMIT 1",
-        Err(InsertError::OnlySingleValueAcceptedForSchemalessRow.into()),
+        Err(InsertError::OnlySingleValueAcceptedForSchemalessRow(2).into()),
     )
     .await;
     g.test(
@@ -88,7 +88,17 @@ test_case!(error, {
     )
     .await;
     g.test(
+        "SELECT id FROM Item WHERE id IN (SELECT * FROM Item AS I)",
+        Err(EvaluateError::SchemalessProjectionForInSubQuery.into()),
+    )
+    .await;
+    g.test(
         "SELECT id FROM Item WHERE id = (SELECT * FROM Item LIMIT 1)",
+        Err(EvaluateError::SchemalessProjectionForSubQuery.into()),
+    )
+    .await;
+    g.test(
+        "SELECT id FROM Item WHERE id = (SELECT * FROM Item AS I LIMIT 1)",
         Err(EvaluateError::SchemalessProjectionForSubQuery.into()),
     )
     .await;

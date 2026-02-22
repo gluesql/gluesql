@@ -2,9 +2,9 @@ use {
     crate::GitStorage,
     async_trait::async_trait,
     gluesql_core::{
-        data::{Key, Schema},
+        data::{Key, Schema, Value},
         error::Result,
-        store::{DataRow, StoreMut},
+        store::StoreMut,
     },
 };
 
@@ -25,7 +25,7 @@ impl StoreMut for GitStorage {
         self.add_and_commit("[GitStorage::delete_schema] {table_name}")
     }
 
-    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
+    async fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
         let n = rows.len();
         if n == 0 {
             return Ok(());
@@ -38,7 +38,7 @@ impl StoreMut for GitStorage {
         ))
     }
 
-    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
+    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
         let n = rows.len();
         if n == 0 {
             return Ok(());

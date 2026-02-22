@@ -6,7 +6,7 @@ use {
         data::{Key, Value},
         error::Error,
         prelude::Glue,
-        store::{AlterTable, DataRow},
+        store::AlterTable,
     },
     gluesql_redis_storage::RedisStorage,
     std::{collections::BTreeMap, env, fs},
@@ -23,9 +23,9 @@ fn get_config() -> (String, u16) {
 }
 
 #[tokio::test]
-async fn add_column_schemaless_row_error() {
+async fn add_column_non_vec_row_error() {
     let (url, port) = get_config();
-    let storage = RedisStorage::new("redis_alter_table_schemaless", &url, port);
+    let storage = RedisStorage::new("redis_alter_table_non_vec", &url, port);
     let mut glue = Glue::new(storage);
 
     glue.execute("DROP TABLE IF EXISTS dummy;").await.unwrap();
@@ -38,14 +38,13 @@ async fn add_column_schemaless_row_error() {
 
     let key = format!(
         "{}#{}#{}",
-        "redis_alter_table_schemaless",
+        "redis_alter_table_non_vec",
         "dummy",
         serde_json::to_string(&Key::I64(1)).unwrap()
     );
     let mut map = BTreeMap::new();
     map.insert("id".to_owned(), Value::I64(1));
-    let row = DataRow::Map(map);
-    let value = serde_json::to_string(&row).unwrap();
+    let value = serde_json::to_string(&map).unwrap();
     redis::cmd("SET")
         .arg(&key)
         .arg(value)
@@ -65,8 +64,8 @@ async fn add_column_schemaless_row_error() {
     assert_eq!(
         result,
         Err(Error::StorageMsg(
-            "[RedisStorage] conflict - add_column failed: schemaless row found".to_owned(),
-        ))
+            r#"[RedisStorage] failed to deserialize value={"id":{"I64":1}} error=invalid type: map, expected a sequence at line 1 column 0"#.to_owned(),
+        )),
     );
 }
 
@@ -106,18 +105,18 @@ async fn add_column_deserialize_error() {
     };
 
     let result = glue.storage.add_column("dummy", &column_def).await;
-    match result {
-        Err(Error::StorageMsg(msg)) => {
-            assert!(msg.starts_with("[RedisStorage] failed to deserialize value="));
-        }
-        _ => panic!("unexpected result: {:?}", result),
-    }
+    assert_eq!(
+        result,
+        Err(Error::StorageMsg(
+            "[RedisStorage] failed to deserialize value=not-json error=expected ident at line 1 column 2".to_owned(),
+        )),
+    );
 }
 
 #[tokio::test]
-async fn drop_column_schemaless_row_error() {
+async fn drop_column_non_vec_row_error() {
     let (url, port) = get_config();
-    let storage = RedisStorage::new("redis_drop_column_schemaless", &url, port);
+    let storage = RedisStorage::new("redis_drop_column_non_vec", &url, port);
     let mut glue = Glue::new(storage);
 
     glue.execute("DROP TABLE IF EXISTS dummy;").await.unwrap();
@@ -130,15 +129,14 @@ async fn drop_column_schemaless_row_error() {
 
     let key = format!(
         "{}#{}#{}",
-        "redis_drop_column_schemaless",
+        "redis_drop_column_non_vec",
         "dummy",
         serde_json::to_string(&Key::I64(1)).unwrap()
     );
     let mut map = BTreeMap::new();
     map.insert("id".to_owned(), Value::I64(1));
     map.insert("foo".to_owned(), Value::I64(10));
-    let row = DataRow::Map(map);
-    let value = serde_json::to_string(&row).unwrap();
+    let value = serde_json::to_string(&map).unwrap();
     redis::cmd("SET")
         .arg(&key)
         .arg(value)
@@ -149,8 +147,8 @@ async fn drop_column_schemaless_row_error() {
     assert_eq!(
         result,
         Err(Error::StorageMsg(
-            "[RedisStorage] conflict - drop_column failed: schemaless row found".to_owned(),
-        ))
+            r#"[RedisStorage] failed to deserialize value={"foo":{"I64":10},"id":{"I64":1}} error=invalid type: map, expected a sequence at line 1 column 0"#.to_owned(),
+        )),
     );
 }
 
@@ -181,10 +179,47 @@ async fn drop_column_deserialize_error() {
         .unwrap();
 
     let result = glue.storage.drop_column("dummy", "foo", false).await;
-    match result {
-        Err(Error::StorageMsg(msg)) => {
-            assert!(msg.starts_with("[RedisStorage] failed to deserialize value="));
-        }
-        _ => panic!("unexpected result: {:?}", result),
-    }
+    assert_eq!(
+        result,
+        Err(Error::StorageMsg(
+            "[RedisStorage] failed to deserialize value=not-json error=expected ident at line 1 column 2".to_owned(),
+        )),
+    );
+}
+
+#[tokio::test]
+async fn drop_column_short_row_error() {
+    let (url, port) = get_config();
+    let storage = RedisStorage::new("redis_drop_column_short_row", &url, port);
+    let mut glue = Glue::new(storage);
+
+    glue.execute("DROP TABLE IF EXISTS dummy;").await.unwrap();
+    glue.execute("CREATE TABLE dummy (id INTEGER, foo INTEGER);")
+        .await
+        .unwrap();
+    glue.execute("INSERT INTO dummy (id, foo) VALUES (1, 10);")
+        .await
+        .unwrap();
+
+    let key = glue
+        .storage
+        .redis_execute_scan("dummy")
+        .unwrap()
+        .into_iter()
+        .next()
+        .expect("row key for dummy");
+    let value = serde_json::to_string(&vec![Value::I64(1)]).unwrap();
+    redis::cmd("SET")
+        .arg(&key)
+        .arg(value)
+        .query::<()>(&mut *glue.storage.conn.lock().unwrap())
+        .unwrap();
+
+    let result = glue.storage.drop_column("dummy", "foo", false).await;
+    assert_eq!(
+        result,
+        Err(Error::StorageMsg(
+            "[RedisStorage] conflict - drop_column failed: row too short for column index row_len=1 column_index=1".to_owned(),
+        )),
+    );
 }

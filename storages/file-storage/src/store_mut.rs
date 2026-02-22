@@ -2,9 +2,9 @@ use {
     crate::{FileRow, FileStorage, ResultExt},
     async_trait::async_trait,
     gluesql_core::{
-        data::{Key, Schema},
+        data::{Key, Schema, Value},
         error::Result,
-        store::{DataRow, StoreMut},
+        store::StoreMut,
     },
     ron::ser::{PrettyConfig, to_string_pretty},
     std::{
@@ -18,19 +18,13 @@ use {
 impl StoreMut for FileStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let table_name = schema.table_name.clone();
-        let schema = schema.to_ddl();
         let path = self.path(table_name);
         if !path.exists() {
             fs::create_dir(&path).map_storage_err()?;
         }
 
         let path = path.with_extension("sql");
-        if path.exists() {
-            fs::remove_file(&path).map_storage_err()?;
-        }
-
-        let mut file = File::create(path).map_storage_err()?;
-        file.write_all(schema.as_bytes()).map_storage_err()?;
+        Self::write_schema_file(&path, schema)?;
 
         Ok(())
     }
@@ -49,7 +43,7 @@ impl StoreMut for FileStorage {
         Ok(())
     }
 
-    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
+    async fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
         for row in rows {
             let key = Key::Uuid(Uuid::now_v7().as_u128());
             let path = self.data_path(table_name, &key)?;
@@ -63,7 +57,7 @@ impl StoreMut for FileStorage {
         Ok(())
     }
 
-    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
+    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
         for (key, row) in rows {
             let path = self.data_path(table_name, &key)?;
             let row = FileRow { key, row };

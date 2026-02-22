@@ -1,7 +1,6 @@
 use {
     crate::*,
-    gluesql_core::prelude::Value,
-    gluesql_core::{ast_builder::*, executor::Payload},
+    gluesql_core::{ast_builder::*, error::InsertError, executor::Payload, prelude::Value},
     serde_json::json,
 };
 
@@ -39,6 +38,28 @@ test_case!(basic, {
         json!({ "id": 2, "rate": 3.5, "list": [1, 2, 3] })
     ]);
     assert_eq!(actual, expected, "select after delete");
+
+    let actual = table("Logs")
+        .insert()
+        .values(vec![Vec::<&str>::new()])
+        .execute(glue)
+        .await;
+    let expected = Err(InsertError::OnlySingleValueAcceptedForSchemalessRow(0).into());
+    assert_eq!(
+        actual, expected,
+        "insert schemaless data - empty tuple should fail"
+    );
+
+    let actual = table("Logs")
+        .insert()
+        .as_select(table("Logs").select().project(Vec::<&str>::new()).limit(1))
+        .execute(glue)
+        .await;
+    let expected = Err(InsertError::OnlySingleValueAcceptedForSchemalessRow(0).into());
+    assert_eq!(
+        actual, expected,
+        "insert-select with empty projection should fail"
+    );
 
     let actual = table("Logs").drop_table().execute(glue).await;
     let expected = Ok(Payload::DropTable(1));

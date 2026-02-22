@@ -22,11 +22,7 @@ use {
     },
     async_recursion::async_recursion,
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
-    std::{
-        borrow::Cow,
-        collections::{BTreeMap, HashSet},
-        sync::Arc,
-    },
+    std::{borrow::Cow, collections::HashSet, sync::Arc},
     utils::Vector,
 };
 
@@ -34,16 +30,7 @@ fn apply_distinct(rows: Vec<Row>) -> Vec<Row> {
     let mut seen = HashSet::new();
 
     rows.into_iter()
-        .filter(|row| {
-            let key = match row {
-                Row::Vec { values, .. } => values.clone(),
-                Row::Map(map) => {
-                    let sorted_map: BTreeMap<_, _> = map.iter().collect();
-                    sorted_map.into_values().cloned().collect()
-                }
-            };
-            seen.insert(key)
-        })
+        .filter(|row| seen.insert(row.values.clone()))
         .collect()
 }
 
@@ -78,7 +65,7 @@ async fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> Result<(Vec<Row>, Vec<Str
             values.push(value);
         }
 
-        rows.push(Row::Vec {
+        rows.push(Row {
             columns: Arc::clone(&columns),
             values,
         });
@@ -122,10 +109,7 @@ pub async fn select_with_labels<'a, T>(
     storage: &'a T,
     query: &'a Query,
     filter_context: Option<Arc<RowContext<'a>>>,
-) -> Result<(
-    Option<Vec<String>>,
-    impl Stream<Item = Result<Row>> + Send + 'a,
-)>
+) -> Result<(Vec<String>, impl Stream<Item = Result<Row>> + Send + 'a)>
 where
     T: GStore,
 {
@@ -142,6 +126,7 @@ where
         projection,
         group_by,
         having,
+        ..
     } = match &query.body {
         SetExpr::Select(statement) => statement.as_ref(),
         SetExpr::Values(Values(values_list)) => {
@@ -151,7 +136,7 @@ where
             let rows = stream::iter(rows.into_iter().map(Ok));
             let rows = limit.apply(rows);
 
-            return Ok((Some(labels), Row::Values(rows)));
+            return Ok((labels, Row::Values(rows)));
         }
     };
 
@@ -201,14 +186,12 @@ where
     )
     .await?;
 
-    let labels = fetch_labels(storage, relation, joins, projection)
-        .await?
-        .map(Arc::from);
-
+    let labels = fetch_labels(storage, relation, joins, projection).await?;
+    let labels = Arc::from(labels);
     let project = Arc::new(Project::new(storage, filter_context, projection));
-    let project_labels = labels.as_ref().map(Arc::clone);
+    let project_labels = Arc::clone(&labels);
     let rows = rows.and_then(move |aggregate_context| {
-        let labels = project_labels.as_ref().map(Arc::clone);
+        let labels = Arc::clone(&project_labels);
         let project = Arc::clone(&project);
         let AggregateContext { aggregated, next } = aggregate_context;
         let aggregated = aggregated.map(Arc::new);
@@ -236,7 +219,7 @@ where
     } else {
         Box::new(limit.apply(rows))
     };
-    let labels = labels.map(|labels| labels.iter().cloned().collect());
+    let labels = labels.iter().cloned().collect();
 
     Ok((labels, Row::Select(rows)))
 }

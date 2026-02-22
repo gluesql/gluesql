@@ -4,6 +4,7 @@ mod cli;
 mod command;
 mod helper;
 mod print;
+mod upgrade;
 
 use {
     crate::cli::Cli,
@@ -15,8 +16,7 @@ use {
     },
     gluesql_core::{
         ast::{Expr, ToSql},
-        data::Value,
-        store::{DataRow, GStore, GStoreMut, Planner, Store, Transaction},
+        store::{GStore, GStoreMut, Planner, Store, Transaction},
     },
     gluesql_csv_storage::CsvStorage,
     gluesql_file_storage::FileStorage,
@@ -25,12 +25,7 @@ use {
     gluesql_parquet_storage::ParquetStorage,
     gluesql_redb_storage::RedbStorage,
     gluesql_sled_storage::SledStorage,
-    std::{
-        fmt::Debug,
-        fs::File,
-        io::Write,
-        path::{Path, PathBuf},
-    },
+    std::{fmt::Debug, fs::File, io::Write, path::PathBuf},
 };
 
 #[derive(Parser, Debug)]
@@ -51,9 +46,17 @@ struct Args {
     /// Storage path to load
     #[clap(short, long, value_parser)]
     path: Option<PathBuf>,
+
+    /// Upgrade storage data format to the latest version
+    #[clap(
+        long,
+        requires_all = &["storage", "path"],
+        conflicts_with_all = &["execute", "dump"]
+    )]
+    upgrade: bool,
 }
 
-#[derive(clap::ValueEnum, Debug, Clone)]
+#[derive(clap::ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
 enum Storage {
     Memory,
     Sled,
@@ -80,64 +83,75 @@ pub fn run() -> Result<()> {
         }
     }
 
-    let args = Args::parse();
-    let path = args.path.as_deref().and_then(Path::to_str);
+    let Args {
+        execute,
+        dump,
+        storage,
+        path,
+        upgrade,
+    } = Args::parse();
 
-    match (path, args.storage, args.dump) {
+    if upgrade {
+        return upgrade::run_upgrade(path.as_deref(), storage, execute.is_some(), dump.is_some());
+    }
+
+    let path = path.as_deref();
+
+    match (path, storage, dump) {
         (None, None | Some(Storage::Memory), _) => {
             println!("[memory-storage] initialized");
 
-            run(MemoryStorage::default(), args.execute);
+            run(MemoryStorage::default(), execute);
         }
         (Some(_), Some(Storage::Memory), _) => {
             panic!("failed to load memory-storage: it should be without path");
         }
         (Some(path), Some(Storage::Sled), _) => {
-            println!("[sled-storage] connected to {path}");
+            println!("[sled-storage] connected to {}", path.display());
 
             run(
                 SledStorage::new(path).expect("failed to load sled-storage"),
-                args.execute,
+                execute,
             );
         }
         (Some(path), Some(Storage::Redb), _) => {
-            println!("[redb-storage] connected to {path}");
+            println!("[redb-storage] connected to {}", path.display());
 
             run(
                 RedbStorage::new(path).expect("failed to load redb-storage"),
-                args.execute,
+                execute,
             );
         }
         (Some(path), Some(Storage::Json), _) => {
-            println!("[json-storage] connected to {path}");
+            println!("[json-storage] connected to {}", path.display());
 
             run(
                 JsonStorage::new(path).expect("failed to load json-storage"),
-                args.execute,
+                execute,
             );
         }
         (Some(path), Some(Storage::Csv), _) => {
-            println!("[csv-storage] connected to {path}");
+            println!("[csv-storage] connected to {}", path.display());
 
             run(
                 CsvStorage::new(path).expect("failed to load csv-storage"),
-                args.execute,
+                execute,
             );
         }
         (Some(path), Some(Storage::Parquet), _) => {
-            println!("[parquet-storage] connected to {path}");
+            println!("[parquet-storage] connected to {}", path.display());
 
             run(
                 ParquetStorage::new(path).expect("failed to load parquet-storage"),
-                args.execute,
+                execute,
             );
         }
         (Some(path), Some(Storage::File), _) => {
-            println!("[file-storage] connected to {path}");
+            println!("[file-storage] connected to {}", path.display());
 
             run(
                 FileStorage::new(path).expect("failed to load file-storage"),
-                args.execute,
+                execute,
             );
         }
         (Some(path), None, Some(dump_path)) => {
@@ -172,14 +186,7 @@ pub fn dump_database(storage: &mut SledStorage, dump_path: PathBuf) -> Result<()
                 let exprs_list = rows
                     .into_iter()
                     .map(|result| {
-                        result.map(|data_row| {
-                            let values = match data_row {
-                                DataRow::Vec(values) => values,
-                                DataRow::Map(values) => vec![Value::Map(values)],
-                            };
-
-                            values.into_iter().map(Expr::Value).collect::<Vec<_>>()
-                        })
+                        result.map(|row| row.into_iter().map(Expr::Value).collect::<Vec<_>>())
                     })
                     .collect::<std::result::Result<Vec<_>, _>>()?;
 
@@ -207,4 +214,45 @@ pub fn dump_database(storage: &mut SledStorage, dump_path: PathBuf) -> Result<()
 
         Ok(())
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use {super::Args, clap::Parser};
+
+    #[test]
+    fn parse_upgrade_requires_storage_and_path() {
+        let args = Args::try_parse_from(["gluesql", "--upgrade"]);
+        assert!(args.is_err());
+    }
+
+    #[test]
+    fn parse_upgrade_rejects_execute() {
+        let args = Args::try_parse_from([
+            "gluesql",
+            "--upgrade",
+            "--storage",
+            "sled",
+            "--path",
+            "./tmp",
+            "--execute",
+            "query.sql",
+        ]);
+        assert!(args.is_err());
+    }
+
+    #[test]
+    fn parse_upgrade_rejects_dump() {
+        let args = Args::try_parse_from([
+            "gluesql",
+            "--upgrade",
+            "--storage",
+            "file",
+            "--path",
+            "./tmp",
+            "--dump",
+            "dump.sql",
+        ]);
+        assert!(args.is_err());
+    }
 }
