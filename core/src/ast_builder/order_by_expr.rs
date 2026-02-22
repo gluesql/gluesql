@@ -11,7 +11,10 @@ use {
 #[derive(Clone, Debug)]
 pub enum OrderByExprNode<'a> {
     Text(String),
-    Expr(ExprNode<'a>),
+    Expr {
+        expr: ExprNode<'a>,
+        asc: Option<bool>,
+    },
 }
 
 impl From<&str> for OrderByExprNode<'_> {
@@ -22,7 +25,10 @@ impl From<&str> for OrderByExprNode<'_> {
 
 impl<'a> From<ExprNode<'a>> for OrderByExprNode<'a> {
     fn from(expr_node: ExprNode<'a>) -> Self {
-        Self::Expr(expr_node)
+        Self::Expr {
+            expr: expr_node,
+            asc: None,
+        }
     }
 }
 
@@ -36,10 +42,10 @@ impl<'a> TryFrom<OrderByExprNode<'a>> for OrderByExpr {
                     .and_then(|op| translate_order_by_expr(&op, NO_PARAMS))?;
                 Ok(expr)
             }
-            OrderByExprNode::Expr(expr_node) => {
-                let expr = Expr::try_from(expr_node)?;
+            OrderByExprNode::Expr { expr, asc } => {
+                let expr = Expr::try_from(expr)?;
 
-                Ok(OrderByExpr { expr, asc: None })
+                Ok(OrderByExpr { expr, asc })
             }
         }
     }
@@ -49,7 +55,7 @@ impl<'a> TryFrom<OrderByExprNode<'a>> for OrderByExpr {
 mod tests {
     use {
         crate::{
-            ast_builder::OrderByExprNode,
+            ast_builder::{OrderByExprNode, col},
             parse_sql::parse_order_by_expr,
             translate::{NO_PARAMS, translate_order_by_expr},
         },
@@ -73,6 +79,18 @@ mod tests {
         test(actual, expected);
 
         let actual = OrderByExprNode::Text("foo desc".into());
+        let expected = "foo DESC";
+        test(actual, expected);
+
+        let actual = OrderByExprNode::from(col("foo"));
+        let expected = "foo";
+        test(actual, expected);
+
+        let actual = col("foo").asc();
+        let expected = "foo ASC";
+        test(actual, expected);
+
+        let actual = col("foo").desc();
         let expected = "foo DESC";
         test(actual, expected);
     }
