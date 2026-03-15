@@ -91,6 +91,17 @@ let actual = table("Item")
     .await;
 ```
 
+You can also use typed expression helpers:
+
+```rust
+let actual = table("Item")
+    .select()
+    .project("name, price")
+    .order_by(col("price").desc())
+    .execute(glue)
+    .await;
+```
+
 ## Pagination (OFFSET, LIMIT)
 
 You can paginate the results of a SELECT query using the `offset()` and `limit()` methods.
