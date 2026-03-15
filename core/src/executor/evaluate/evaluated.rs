@@ -168,6 +168,23 @@ impl<'a> Evaluated<'a> {
         value_result.map(|v| Evaluated::Value(Cow::Owned(v)))
     }
 
+    pub fn long_arrow<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
+        let selector = Value::try_from(other.clone())?;
+
+        if selector.is_null() {
+            return Ok(Evaluated::Value(Cow::Owned(Value::Null)));
+        }
+
+        let value_result = if let Evaluated::Value(base) = self {
+            function::select_long_arrow_value(base, &selector)
+        } else {
+            let base = Value::try_from(self.clone())?;
+            function::select_long_arrow_value(&base, &selector)
+        };
+
+        value_result.map(|v| Evaluated::Value(Cow::Owned(v)))
+    }
+
     pub fn cast(self, data_type: &DataType) -> Result<Evaluated<'a>> {
         match self {
             Evaluated::Number(value) => cast_number_to_value(data_type, value.as_ref()),
@@ -674,6 +691,38 @@ mod tests {
         assert_eq!(val(Value::Bool(true)).to_string(), "TRUE");
         assert_eq!(val(Value::Null).to_string(), "NULL");
         assert_eq!(val(Value::Str("foo".to_owned())).to_string(), "foo");
+    }
+
+    #[test]
+    fn try_from_evaluated_value_to_bool() {
+        assert_eq!(
+            bool::try_from(Evaluated::Value(Cow::Owned(Value::Bool(true)))),
+            Ok(true),
+        );
+        assert_eq!(
+            bool::try_from(Evaluated::Value(Cow::Owned(Value::I64(42)))),
+            Err(EvaluateError::BooleanTypeRequired("42".to_owned()).into()),
+        );
+    }
+
+    #[test]
+    fn long_arrow_non_value_base() {
+        let base = Evaluated::Number(Cow::Owned(BigDecimal::from(1)));
+        let selector = Evaluated::Text(Cow::Owned("foo".to_owned()));
+        assert_eq!(
+            base.long_arrow(&selector),
+            Err(EvaluateError::ArrowBaseRequiresMapOrList.into()),
+        );
+    }
+
+    #[test]
+    fn long_arrow_null_selector() {
+        let base = Evaluated::Value(Cow::Owned(Value::Map(BTreeMap::new())));
+        let selector = Evaluated::Value(Cow::Owned(Value::Null));
+        assert_eq!(
+            base.long_arrow(&selector),
+            Ok(Evaluated::Value(Cow::Owned(Value::Null))),
+        );
     }
 
     #[test]
