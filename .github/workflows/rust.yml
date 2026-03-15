@@ -45,7 +45,6 @@ jobs:
       - uses: actions/checkout@v6
       - uses: Swatinem/rust-cache@v2
       - run: |
-          set -euxo pipefail
           cargo test -p gluesql-macros --verbose
           cargo test -p gluesql-core --verbose
           cargo test -p gluesql-utils --verbose
@@ -59,7 +58,6 @@ jobs:
       - uses: actions/checkout@v6
       - uses: Swatinem/rust-cache@v2
       - run: |
-          set -euxo pipefail
           cargo test -p gluesql_memory_storage --verbose
           cargo test -p gluesql-shared-memory-storage --verbose
           cargo test -p gluesql-composite-storage --verbose
