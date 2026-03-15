@@ -10,8 +10,8 @@ use {
         error::Result,
         parse_sql::parse_data_type,
         store::{
-            AlterTable, CustomFunction, CustomFunctionMut, DataRow, Index, IndexMut, Metadata,
-            Planner, Transaction,
+            AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Planner,
+            Transaction,
         },
         translate::translate_data_type,
     },
@@ -23,7 +23,7 @@ use {
     },
 };
 
-type RowIter = Box<dyn Iterator<Item = Result<(Key, DataRow)>> + Send>;
+type RowIter = Box<dyn Iterator<Item = Result<(Key, Vec<Value>)>> + Send>;
 
 pub struct CsvStorage {
     pub path: PathBuf,
@@ -174,7 +174,7 @@ impl CsvStorage {
                         .collect::<Result<Vec<Value>>>()?;
 
                     let key = key.unwrap_or(Key::U64(index as u64));
-                    let row = DataRow::Vec(values);
+                    let row = values;
 
                     Ok((key, row))
                 });
@@ -219,8 +219,7 @@ impl CsvStorage {
                             Some(value.map(|value| (column.clone(), value)))
                         })
                         .collect::<Result<BTreeMap<String, Value>>>()
-                        .map(DataRow::Map)
-                        .map(|row| (key, row))
+                        .map(|row| (key, vec![Value::Map(row)]))
                 },
             );
 
@@ -242,7 +241,7 @@ impl CsvStorage {
                             .map(|(value, column)| (column.clone(), Value::Str(value.to_owned())))
                             .collect::<BTreeMap<String, Value>>();
 
-                        Ok((key, DataRow::Map(row)))
+                        Ok((key, vec![Value::Map(row)]))
                     })
             };
 

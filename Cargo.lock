@@ -1414,6 +1414,7 @@ version = "0.19.0"
 dependencies = [
  "async-trait",
  "console_error_panic_hook",
+ "gloo-storage",
  "gloo-utils 0.1.7",
  "gluesql-composite-storage",
  "gluesql-core",
@@ -1604,6 +1605,7 @@ dependencies = [
  "gluesql-core",
  "gluesql-test-suite",
  "serde",
+ "serde_json",
  "uuid",
  "wasm-bindgen-test",
  "web-sys",

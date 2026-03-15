@@ -1,15 +1,18 @@
 #![deny(clippy::str_to_string)]
 
+mod migration;
 mod store;
 mod store_mut;
 
+pub use migration::{FILE_STORAGE_FORMAT_VERSION, MigrationReport, migrate_to_latest};
+
 use {
     gluesql_core::{
-        data::{Key, Schema},
+        data::{Key, Schema, Value},
         error::{Error, Result},
         store::{
-            AlterTable, CustomFunction, CustomFunctionMut, DataRow, Index, IndexMut, Metadata,
-            Planner, Transaction,
+            AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Planner,
+            Transaction,
         },
     },
     hex::ToHex,
@@ -29,13 +32,14 @@ pub struct FileStorage {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FileRow {
     pub key: Key,
-    pub row: DataRow,
+    pub row: Vec<Value>,
 }
 
 impl FileStorage {
     pub fn new<T: AsRef<Path>>(path: T) -> Result<Self> {
         let path = path.as_ref();
         fs::create_dir_all(path).map_storage_err()?;
+        Self::ensure_schema_versions_supported(path)?;
 
         Ok(Self { path: path.into() })
     }

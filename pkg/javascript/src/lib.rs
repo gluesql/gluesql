@@ -38,25 +38,31 @@ pub struct Glue {
     storage: Rc<RefCell<Option<MemoryStorage>>>,
 }
 
-impl Default for Glue {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[allow(clippy::unused_unit)]
 #[wasm_bindgen]
 impl Glue {
     #[wasm_bindgen(constructor)]
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self, JsValue> {
         utils::set_panic_hook();
 
         #[cfg(not(feature = "nodejs"))]
         let storage = {
             let mut storage = CompositeStorage::default();
             storage.push("memory", MemoryStorage::default());
-            storage.push("localStorage", WebStorage::new(WebStorageType::Local));
-            storage.push("sessionStorage", WebStorage::new(WebStorageType::Session));
+            storage.push("localStorage", {
+                WebStorage::new(WebStorageType::Local).map_err(|error| {
+                    JsValue::from_str(&format!(
+                        "[GlueSQL] failed to initialize localStorage engine: {error}"
+                    ))
+                })?
+            });
+            storage.push("sessionStorage", {
+                WebStorage::new(WebStorageType::Session).map_err(|error| {
+                    JsValue::from_str(&format!(
+                        "[GlueSQL] failed to initialize sessionStorage engine: {error}"
+                    ))
+                })?
+            });
             storage.set_default("memory");
             debug("[GlueSQL] loaded: memory, localStorage, sessionStorage");
             debug("[GlueSQL] default engine: memory");
@@ -70,7 +76,7 @@ impl Glue {
 
         debug("[GlueSQL] hello :)");
 
-        Self { storage }
+        Ok(Self { storage })
     }
 
     #[cfg(not(feature = "nodejs"))]

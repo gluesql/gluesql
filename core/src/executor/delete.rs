@@ -28,7 +28,7 @@ pub async fn delete<T: GStore + GStoreMut>(
     table_name: &str,
     selection: Option<&Expr>,
 ) -> Result<Payload> {
-    let columns = fetch_columns(storage, table_name).await?.map(Arc::from);
+    let columns = Arc::from(fetch_columns(storage, table_name).await?);
     let referencings = storage.fetch_referencings(table_name).await?;
     let keys = fetch(storage, table_name, columns, selection)
         .await?
@@ -58,7 +58,7 @@ pub async fn delete<T: GStore + GStoreMut>(
                     right: Box::new(Expr::Value(value)),
                 };
 
-                let columns = Some(Arc::from(Vec::new()));
+                let columns = Arc::from(Vec::new());
                 let referencing_rows =
                     fetch(storage, referencing_table_name, columns, Some(expr)).await?;
 

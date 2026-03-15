@@ -10,9 +10,9 @@ use {
     error::{JsonStorageError, OptionExt, ResultExt},
     gluesql_core::{
         ast::ColumnUniqueOption,
-        data::{Key, Schema, value::BTreeMapJsonExt},
+        data::{Key, Schema, Value, value::BTreeMapJsonExt},
         error::{Error, Result},
-        store::{DataRow, Metadata, Planner},
+        store::{Metadata, Planner},
     },
     iter_enum::Iterator,
     serde_json::Value as JsonValue,
@@ -24,7 +24,7 @@ use {
     },
 };
 
-type RowIter = Box<dyn Iterator<Item = Result<(Key, DataRow)>> + Send>;
+type RowIter = Box<dyn Iterator<Item = Result<(Key, Vec<Value>)>> + Send>;
 
 #[derive(Clone, Debug)]
 pub struct JsonStorage {
@@ -151,7 +151,7 @@ impl JsonStorage {
 
             let Some(column_defs) = &schema2.column_defs else {
                 let key = get_index_key()?;
-                let row = DataRow::Map(json);
+                let row = vec![Value::Map(json)];
 
                 return Ok((key, row));
             };
@@ -182,9 +182,8 @@ impl JsonStorage {
                 Some(key) => key,
                 None => get_index_key()?,
             };
-            let row = DataRow::Vec(values);
 
-            Ok((key, row))
+            Ok((key, values))
         });
 
         Ok((Box::new(rows), schema))

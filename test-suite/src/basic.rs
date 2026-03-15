@@ -65,7 +65,10 @@ test_case!(basic, {
 
     g.test(
         "SELECT * FROM (SELECT * FROM EmptyTest) AS Empty",
-        Ok(Payload::SelectMap(vec![])),
+        Ok(Payload::Select {
+            labels: vec!["_doc".to_owned()],
+            rows: vec![],
+        }),
     )
     .await;
 

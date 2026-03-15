@@ -6,14 +6,15 @@ mod error;
 
 use {
     async_trait::async_trait,
-    convert::convert,
+    convert::{js_value_to_row, row_to_json_value},
     error::{ErrInto, StoreReqIntoFuture},
     futures::stream::{empty, iter},
     gloo_utils::format::JsValueSerdeExt,
     gluesql_core::{
+        ast::ColumnDef,
         data::{Key, Schema, Value},
         error::{Error, Result},
-        store::{DataRow, Metadata, Planner, RowIter, Store, StoreMut},
+        store::{Metadata, Planner, RowIter, Store, StoreMut},
     },
     idb::{
         CursorDirection, Database, DatabaseEvent, Factory, ObjectStoreParams, Query,
@@ -205,6 +206,17 @@ impl IdbStorage {
 
         Ok(())
     }
+
+    async fn fetch_table_column_defs(&self, table_name: &str) -> Result<Option<Vec<ColumnDef>>> {
+        self.fetch_schema(table_name)
+            .await?
+            .map(|schema| schema.column_defs)
+            .ok_or_else(|| {
+                Error::StorageMsg(format!(
+                    "conflict - schema not found for table '{table_name}'"
+                ))
+            })
+    }
 }
 
 #[async_trait]
@@ -280,11 +292,8 @@ impl Store for IdbStorage {
         Ok(schema)
     }
 
-    async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<DataRow>> {
-        let column_defs = self
-            .fetch_schema(table_name)
-            .await?
-            .and_then(|schema| schema.column_defs);
+    async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<Vec<Value>>> {
+        let column_defs = self.fetch_table_column_defs(table_name).await?;
         let transaction = self
             .database
             .transaction(&[table_name], TransactionMode::ReadOnly)
@@ -306,7 +315,7 @@ impl Store for IdbStorage {
             .await
             .err_into()?;
         let row = row
-            .map(|row| convert(row, column_defs.as_deref()))
+            .map(|row| js_value_to_row(row, column_defs.as_deref()))
             .transpose()?;
 
         transaction
@@ -321,10 +330,7 @@ impl Store for IdbStorage {
     }
 
     async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
-        let column_defs = self
-            .fetch_schema(table_name)
-            .await?
-            .and_then(|schema| schema.column_defs);
+        let column_defs = self.fetch_table_column_defs(table_name).await?;
         let transaction = self
             .database
             .transaction(&[table_name], TransactionMode::ReadOnly)
@@ -368,7 +374,7 @@ impl Store for IdbStorage {
                 let key: JsonValue = key_js.into_serde().err_into()?;
                 let key: Key = Value::try_from(key)?.try_into()?;
 
-                let row = convert(row_js, column_defs.as_deref())?;
+                let row = js_value_to_row(row_js, column_defs.as_deref())?;
 
                 rows.push((key, row));
             }
@@ -402,12 +408,7 @@ impl Store for IdbStorage {
 #[async_trait]
 impl StoreMut for IdbStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
-        let schema_exists = self
-            .fetch_schema(&schema.table_name)
-            .await
-            .map_err(|e| e.to_string())
-            .map_err(Error::StorageMsg)?
-            .is_some();
+        let schema_exists = self.fetch_schema(&schema.table_name).await?.is_some();
 
         if !schema_exists {
             self.alter_object_store(schema.table_name.to_owned(), AlterType::InsertSchema)
@@ -485,7 +486,8 @@ impl StoreMut for IdbStorage {
             .map(|_| ())
     }
 
-    async fn append_data(&mut self, table_name: &str, new_rows: Vec<DataRow>) -> Result<()> {
+    async fn append_data(&mut self, table_name: &str, new_rows: Vec<Vec<Value>>) -> Result<()> {
+        let is_schemaless_table = self.fetch_table_column_defs(table_name).await?.is_none();
         let transaction = self
             .database
             .transaction(&[table_name], TransactionMode::ReadWrite)
@@ -496,13 +498,8 @@ impl StoreMut for IdbStorage {
             .err_into()?
             .send_wrapper();
 
-        for data_row in new_rows {
-            let row = match data_row {
-                DataRow::Vec(values) => Value::List(values),
-                DataRow::Map(values) => Value::Map(values),
-            };
-
-            let row = JsonValue::try_from(row)?;
+        for row_values in new_rows {
+            let row = row_to_json_value(row_values, is_schemaless_table)?;
             let row = JsValue::from_serde(&row).err_into()?;
             let row = row.send_wrapper();
 
@@ -524,7 +521,12 @@ impl StoreMut for IdbStorage {
             .map(|_| ())
     }
 
-    async fn insert_data(&mut self, table_name: &str, new_rows: Vec<(Key, DataRow)>) -> Result<()> {
+    async fn insert_data(
+        &mut self,
+        table_name: &str,
+        new_rows: Vec<(Key, Vec<Value>)>,
+    ) -> Result<()> {
+        let is_schemaless_table = self.fetch_table_column_defs(table_name).await?.is_none();
         let transaction = self
             .database
             .transaction(&[table_name], TransactionMode::ReadWrite)
@@ -535,13 +537,8 @@ impl StoreMut for IdbStorage {
             .err_into()?
             .send_wrapper();
 
-        for (key, data_row) in new_rows {
-            let row = match data_row {
-                DataRow::Vec(values) => Value::List(values),
-                DataRow::Map(values) => Value::Map(values),
-            };
-
-            let row = JsonValue::try_from(row)?;
+        for (key, row_values) in new_rows {
+            let row = row_to_json_value(row_values, is_schemaless_table)?;
             let row = JsValue::from_serde(&row).err_into()?;
             let row = row.send_wrapper();
 

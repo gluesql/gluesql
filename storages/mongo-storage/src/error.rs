@@ -35,6 +35,9 @@ pub enum MongoStorageError {
     #[error("conflict when appending data")]
     ConflictAppendData,
 
+    #[error("conflict when inserting data")]
+    ConflictInsertData,
+
     #[error("unsupported bson type")]
     UnsupportedBsonType,
 

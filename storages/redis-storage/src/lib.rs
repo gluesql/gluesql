@@ -14,7 +14,7 @@ use {
         chrono::Utc,
         data::{CustomFunction as StructCustomFunction, Key, Schema, Value},
         error::{Error, Result},
-        store::{CustomFunction, CustomFunctionMut, DataRow, Planner, RowIter, Store, StoreMut},
+        store::{CustomFunction, CustomFunctionMut, Planner, RowIter, Store, StoreMut},
     },
     redis::{Commands, Connection},
     std::{collections::BTreeMap, sync::Mutex},
@@ -322,7 +322,7 @@ impl Store for RedisStorage {
         Ok(found)
     }
 
-    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
+    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Vec<Value>>> {
         let key = Self::redis_generate_key(&self.namespace, table_name, key)?;
         // It's not a problem if the value with the key is removed by another client.
         let value = {
@@ -330,7 +330,7 @@ impl Store for RedisStorage {
             redis::cmd("GET").arg(&key).query::<String>(&mut *conn)
         };
         if let Ok(value) = value {
-            return serde_json::from_str::<DataRow>(&value)
+            return serde_json::from_str::<Vec<Value>>(&value)
                 .map_err(|e| {
                     Error::StorageMsg(format!(
                         "[RedisStorage] failed to deserialize value={value} error={e:?}"
@@ -375,7 +375,7 @@ impl Store for RedisStorage {
                 ))
             })?;
 
-            let row = serde_json::from_str::<DataRow>(&value).map_err(|e| {
+            let row = serde_json::from_str::<Vec<Value>>(&value).map_err(|e| {
                 Error::StorageMsg(format!(
                     "[RedisStorage] failed to deserialize value={value} error={e:?}"
                 ))
@@ -445,7 +445,7 @@ impl StoreMut for RedisStorage {
         Ok(())
     }
 
-    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
+    async fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
         for row in rows {
             // Even multiple clients can get an unique value with INCR command.
             // and a shared key "globalkey"
@@ -472,7 +472,7 @@ impl StoreMut for RedisStorage {
         Ok(())
     }
 
-    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
+    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
         for (key, row) in rows {
             let redis_key = Self::redis_generate_key(&self.namespace, table_name, &key)?;
             let value = serde_json::to_string(&row).map_err(|e| {

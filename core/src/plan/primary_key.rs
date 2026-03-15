@@ -220,7 +220,7 @@ mod tests {
         crate::{
             ast::{
                 BinaryOperator, Expr, IndexItem, Join, JoinConstraint, JoinExecutor, JoinOperator,
-                Literal, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
+                Literal, Projection, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
                 TableWithJoins, Values,
             },
             mock::{MockStorage, run},
@@ -267,7 +267,7 @@ mod tests {
         let actual = plan(&storage, sql);
         let expected = select(Select {
             distinct: false,
-            projection: vec![SelectItem::Wildcard],
+            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
             from: TableWithJoins {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
@@ -286,7 +286,7 @@ mod tests {
         let actual = plan(&storage, sql);
         let expected = select(Select {
             distinct: false,
-            projection: vec![SelectItem::Wildcard],
+            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
             from: TableWithJoins {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
@@ -305,7 +305,7 @@ mod tests {
         let actual = plan(&storage, sql);
         let expected = select(Select {
             distinct: false,
-            projection: vec![SelectItem::Wildcard],
+            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
             from: TableWithJoins {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
@@ -330,7 +330,7 @@ mod tests {
         let actual = plan(&storage, sql);
         let expected = select(Select {
             distinct: false,
-            projection: vec![SelectItem::Wildcard],
+            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
             from: TableWithJoins {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
@@ -364,7 +364,7 @@ mod tests {
         let actual = plan(&storage, sql);
         let expected = select(Select {
             distinct: false,
-            projection: vec![SelectItem::Wildcard],
+            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
             from: TableWithJoins {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
@@ -397,7 +397,7 @@ mod tests {
         let actual = plan(&storage, sql);
         let expected = select(Select {
             distinct: false,
-            projection: vec![SelectItem::Wildcard],
+            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
             from: TableWithJoins {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
@@ -424,7 +424,7 @@ mod tests {
         let actual = plan(&storage, sql);
         let expected = select(Select {
             distinct: false,
-            projection: vec![SelectItem::Wildcard],
+            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
             from: TableWithJoins {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
@@ -457,7 +457,7 @@ mod tests {
             let subquery = Query {
                 body: SetExpr::Select(Box::new(Select {
                     distinct: false,
-                    projection: vec![SelectItem::Wildcard],
+                    projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
                     from: TableWithJoins {
                         relation: TableFactor::Table {
                             name: "Player".to_owned(),
@@ -477,7 +477,7 @@ mod tests {
 
             select(Select {
                 distinct: false,
-                projection: vec![SelectItem::Wildcard],
+                projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
                 from: TableWithJoins {
                     relation: TableFactor::Table {
                         name: "Player".to_owned(),
@@ -513,10 +513,10 @@ mod tests {
             let subquery = Query {
                 body: SetExpr::Select(Box::new(Select {
                     distinct: false,
-                    projection: vec![SelectItem::Expr {
+                    projection: Projection::SelectItems(vec![SelectItem::Expr {
                         expr: Expr::Identifier("name".to_owned()),
                         label: "name".to_owned(),
-                    }],
+                    }]),
                     from: TableWithJoins {
                         relation: TableFactor::Table {
                             name: "Player".to_owned(),
@@ -536,7 +536,7 @@ mod tests {
 
             select(Select {
                 distinct: false,
-                projection: vec![SelectItem::Wildcard],
+                projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
                 from: TableWithJoins {
                     relation: TableFactor::Table {
                         name: "Player".to_owned(),
@@ -566,10 +566,10 @@ mod tests {
             let subquery = Query {
                 body: SetExpr::Select(Box::new(Select {
                     distinct: false,
-                    projection: vec![SelectItem::Expr {
+                    projection: Projection::SelectItems(vec![SelectItem::Expr {
                         expr: Expr::Identifier("id".to_owned()),
                         label: "id".to_owned(),
-                    }],
+                    }]),
                     from: TableWithJoins {
                         relation: TableFactor::Table {
                             name: "Player".to_owned(),
@@ -589,7 +589,7 @@ mod tests {
 
             select(Select {
                 distinct: false,
-                projection: vec![SelectItem::Wildcard],
+                projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
                 from: TableWithJoins {
                     relation: TableFactor::Table {
                         name: "Player".to_owned(),
@@ -638,7 +638,7 @@ mod tests {
         let actual = plan(&storage, sql);
         let expected = select(Select {
             distinct: false,
-            projection: vec![SelectItem::Wildcard],
+            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
             from: TableWithJoins {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),

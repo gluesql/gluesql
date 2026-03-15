@@ -1,6 +1,6 @@
 use {
     crate::data::{Row, Value},
-    std::{borrow::Cow, collections::BTreeMap, fmt::Debug, sync::Arc},
+    std::{borrow::Cow, fmt::Debug, sync::Arc},
 };
 
 #[derive(Debug)]
@@ -14,7 +14,6 @@ pub enum RowContext<'a> {
         columns: &'a [String],
         values: &'a [Value],
     },
-    RefMapData(&'a BTreeMap<String, Value>),
     Bridge {
         left: Arc<RowContext<'a>>,
         right: Arc<RowContext<'a>>,
@@ -51,7 +50,6 @@ impl<'a> RowContext<'a> {
                 .iter()
                 .position(|column| column == target)
                 .and_then(|index| values.get(index)),
-            Self::RefMapData(values) => values.get(target),
         }
     }
 

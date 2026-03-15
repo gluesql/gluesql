@@ -7,7 +7,7 @@ use {
         data::{Key, Schema},
         error::Result,
         prelude::{DataType, Error, Value},
-        store::{DataRow, StoreMut},
+        store::StoreMut,
     },
     parquet::{
         basic::{ConvertedType, Type},
@@ -25,7 +25,7 @@ use {
     },
     std::{
         cmp::Ordering,
-        collections::{BTreeMap, HashMap},
+        collections::HashMap,
         convert::TryFrom,
         fs::{File, remove_file},
         iter::Peekable,
@@ -85,7 +85,7 @@ impl StoreMut for ParquetStorage {
         Ok(())
     }
 
-    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
+    async fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
         let schema_path = self.data_path(table_name);
         let (prev_rows, schema) = self.scan_data(table_name)?;
 
@@ -98,7 +98,11 @@ impl StoreMut for ParquetStorage {
         Self::write(&schema, &rows, file)
     }
 
-    async fn insert_data(&mut self, table_name: &str, mut rows: Vec<(Key, DataRow)>) -> Result<()> {
+    async fn insert_data(
+        &mut self,
+        table_name: &str,
+        mut rows: Vec<(Key, Vec<Value>)>,
+    ) -> Result<()> {
         let (prev_rows, schema) = self.scan_data(table_name)?;
 
         rows.sort_by(|(key_a, _), (key_b, _)| key_a.cmp(key_b));
@@ -126,16 +130,16 @@ impl StoreMut for ParquetStorage {
     }
 }
 
-struct SortMerge<T: Iterator<Item = Result<(Key, DataRow)>>> {
+struct SortMerge<T: Iterator<Item = Result<(Key, Vec<Value>)>>> {
     left_rows: Peekable<T>,
-    right_rows: Peekable<IntoIter<(Key, DataRow)>>,
+    right_rows: Peekable<IntoIter<(Key, Vec<Value>)>>,
 }
 
 impl<T> SortMerge<T>
 where
-    T: Iterator<Item = Result<(Key, DataRow)>>,
+    T: Iterator<Item = Result<(Key, Vec<Value>)>>,
 {
-    fn new(left_rows: T, right_rows: IntoIter<(Key, DataRow)>) -> Self {
+    fn new(left_rows: T, right_rows: IntoIter<(Key, Vec<Value>)>) -> Self {
         let left_rows = left_rows.peekable();
         let right_rows = right_rows.peekable();
 
@@ -147,9 +151,9 @@ where
 }
 impl<T> Iterator for SortMerge<T>
 where
-    T: Iterator<Item = Result<(Key, DataRow)>>,
+    T: Iterator<Item = Result<(Key, Vec<Value>)>>,
 {
-    type Item = Result<DataRow>;
+    type Item = Result<Vec<Value>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let left = self.left_rows.peek();
@@ -173,13 +177,13 @@ where
 }
 
 impl ParquetStorage {
-    fn rewrite(&mut self, schema: &Schema, rows: &[DataRow]) -> Result<()> {
+    fn rewrite(&mut self, schema: &Schema, rows: &[Vec<Value>]) -> Result<()> {
         let parquet_path = self.data_path(&schema.table_name);
         let file = File::create(parquet_path).map_storage_err()?;
         Self::write(schema, rows, file)
     }
 
-    fn write(schema: &Schema, rows: &[DataRow], file: File) -> Result<()> {
+    fn write(schema: &Schema, rows: &[Vec<Value>], file: File) -> Result<()> {
         let schema_type = Self::convert_to_parquet_schema(schema)?;
         let props = Self::build_writer_properties(schema)?;
         let mut file_writer =
@@ -207,7 +211,7 @@ impl ParquetStorage {
 
     fn write_row_group(
         schema_type: &SchemaType,
-        rows: &[DataRow],
+        rows: &[Vec<Value>],
         row_group_writer: &mut SerializedRowGroupWriter<'_, File>,
     ) -> Result<()> {
         for (index, _) in schema_type.get_fields().iter().enumerate() {
@@ -229,43 +233,20 @@ impl ParquetStorage {
 
     fn write_column(
         column_index: usize,
-        rows: &[DataRow],
+        rows: &[Vec<Value>],
         column_writer: &mut ColumnWriter<'_>,
     ) -> Result<()> {
         for row in rows {
-            match row {
-                DataRow::Vec(values) => {
-                    let value = values.get(column_index).ok_or_else(|| {
-                        Error::StorageMsg(format!(
-                            "Row length mismatch while writing column {column_index}"
-                        ))
-                    })?;
+            let value = row.get(column_index).ok_or_else(|| {
+                Error::StorageMsg(format!(
+                    "Row length mismatch while writing column {column_index}"
+                ))
+            })?;
 
-                    Self::write_value(value, column_writer)?;
-                }
-                DataRow::Map(map) => {
-                    Self::write_map_row(map, column_writer)?;
-                }
-            }
+            Self::write_value(value, column_writer)?;
         }
 
         Ok(())
-    }
-
-    fn write_map_row(
-        map: &BTreeMap<String, Value>,
-        column_writer: &mut ColumnWriter<'_>,
-    ) -> Result<()> {
-        if let ColumnWriter::ByteArrayColumnWriter(writer) = column_writer {
-            let serialized = bincode::serialize(map).map_storage_err()?;
-            writer
-                .write_batch(&[serialized.into()], Some(&DEF_PRESENT), None)
-                .map_storage_err()?;
-
-            return Ok(());
-        }
-
-        Err(ParquetStorageError::UnreachableGlueSqlValueTypeForParquetWriter.into())
     }
 
     fn write_value(value: &Value, column_writer: &mut ColumnWriter<'_>) -> Result<()> {
@@ -736,7 +717,7 @@ mod tests {
     };
 
     use gluesql_core::chrono::NaiveTime;
-    use gluesql_core::{ast::ColumnDef, data::Schema, store::DataRow};
+    use gluesql_core::{ast::ColumnDef, data::Schema};
     use parquet::basic::Repetition;
     use uuid::Uuid;
 
@@ -791,22 +772,22 @@ mod tests {
         let other_time = NaiveTime::from_hms_opt(10, 20, 30).expect("valid time");
 
         let rows = vec![
-            DataRow::Vec(vec![
+            vec![
                 Value::Null,
                 Value::Null,
                 Value::U64(42),
                 Value::Time(time),
                 Value::Null,
                 Value::Null,
-            ]),
-            DataRow::Vec(vec![
+            ],
+            vec![
                 Value::Bool(true),
                 Value::I64(-99),
                 Value::U64(123),
                 Value::Time(other_time),
                 Value::Bytea(vec![1, 2, 3, 4]),
                 Value::Uuid(Uuid::new_v4().as_u128()),
-            ]),
+            ],
         ];
 
         let (path, file) = temp_file("write-ok");
@@ -821,7 +802,7 @@ mod tests {
             ("int_col", DataType::Int, true),
         ]);
 
-        let rows = vec![DataRow::Vec(vec![Value::Bool(true)])];
+        let rows = vec![vec![Value::Bool(true)]];
         let (path, file) = temp_file("row-len-mismatch");
         let err = ParquetStorage::write(&schema, &rows, file).expect_err("should fail");
         assert!(format!("{err}").contains("Row length mismatch"));
@@ -831,7 +812,10 @@ mod tests {
     #[test]
     fn write_fails_for_map_rows_with_non_byte_array_columns() {
         let schema = build_schema(vec![("flag", DataType::Boolean, false)]);
-        let map_row = DataRow::Map(BTreeMap::from([(String::from("key"), Value::Bool(true))]));
+        let map_row = vec![Value::Map(BTreeMap::from([(
+            String::from("key"),
+            Value::Bool(true),
+        )]))];
         let (path, file) = temp_file("map-row");
         let err = ParquetStorage::write(&schema, &[map_row], file).expect_err("should fail");
         assert!(format!("{err}").contains("Unreachable"));
@@ -841,7 +825,7 @@ mod tests {
     #[test]
     fn write_int32_column_errors_on_out_of_range_values() {
         let schema = build_schema(vec![("small", DataType::Int32, false)]);
-        let rows = vec![DataRow::Vec(vec![Value::U32(u32::MAX)])];
+        let rows = vec![vec![Value::U32(u32::MAX)]];
         let (path, file) = temp_file("int32-out-of-range");
         let err = ParquetStorage::write(&schema, &rows, file).expect_err("should fail");
         assert!(format!("{err}").contains("u32 value exceeds parquet INT32 range"));
@@ -851,7 +835,7 @@ mod tests {
     #[test]
     fn write_int32_column_errors_on_invalid_types() {
         let schema = build_schema(vec![("small", DataType::Int32, false)]);
-        let rows = vec![DataRow::Vec(vec![Value::Str("oops".into())])];
+        let rows = vec![vec![Value::Str("oops".into())]];
         let (path, file) = temp_file("int32-invalid-type");
         let err = ParquetStorage::write(&schema, &rows, file).expect_err("should fail");
         assert!(format!("{err}").contains("Unreachable"));
@@ -861,7 +845,7 @@ mod tests {
     #[test]
     fn write_int64_column_errors_on_out_of_range_values() {
         let schema = build_schema(vec![("big", DataType::Int, false)]);
-        let rows = vec![DataRow::Vec(vec![Value::U64(u64::MAX)])];
+        let rows = vec![vec![Value::U64(u64::MAX)]];
         let (path, file) = temp_file("int64-out-of-range");
         let err = ParquetStorage::write(&schema, &rows, file).expect_err("should fail");
         assert!(format!("{err}").contains("u64 value exceeds parquet INT64 range"));
@@ -871,7 +855,7 @@ mod tests {
     #[test]
     fn write_bool_column_errors_on_invalid_types() {
         let schema = build_schema(vec![("flag", DataType::Boolean, false)]);
-        let rows = vec![DataRow::Vec(vec![Value::Str("not-bool".into())])];
+        let rows = vec![vec![Value::Str("not-bool".into())]];
         let (path, file) = temp_file("bool-invalid-type");
         let err = ParquetStorage::write(&schema, &rows, file).expect_err("should fail");
         assert!(format!("{err}").contains("Unreachable"));
@@ -881,7 +865,7 @@ mod tests {
     #[test]
     fn write_byte_array_column_errors_on_invalid_types() {
         let schema = build_schema(vec![("bytes", DataType::Bytea, false)]);
-        let rows = vec![DataRow::Vec(vec![Value::Bool(true)])];
+        let rows = vec![vec![Value::Bool(true)]];
         let (path, file) = temp_file("bytearray-invalid-type");
         let err = ParquetStorage::write(&schema, &rows, file).expect_err("should fail");
         assert!(format!("{err}").contains("Unreachable"));
@@ -891,7 +875,7 @@ mod tests {
     #[test]
     fn write_fixed_len_byte_array_column_errors_on_invalid_types() {
         let schema = build_schema(vec![("id", DataType::Uuid, false)]);
-        let rows = vec![DataRow::Vec(vec![Value::Str("not-uuid".into())])];
+        let rows = vec![vec![Value::Str("not-uuid".into())]];
         let (path, file) = temp_file("fixed-len-invalid-type");
         let err = ParquetStorage::write(&schema, &rows, file).expect_err("should fail");
         assert!(format!("{err}").contains("Unreachable"));
@@ -901,7 +885,7 @@ mod tests {
     #[test]
     fn write_float_column_errors_on_invalid_types() {
         let schema = build_schema(vec![("float_col", DataType::Float32, false)]);
-        let rows = vec![DataRow::Vec(vec![Value::Bool(true)])];
+        let rows = vec![vec![Value::Bool(true)]];
         let (path, file) = temp_file("float-invalid-type");
         let err = ParquetStorage::write(&schema, &rows, file).expect_err("should fail");
         assert!(format!("{err}").contains("Unreachable"));
@@ -911,7 +895,7 @@ mod tests {
     #[test]
     fn write_double_column_errors_on_invalid_types() {
         let schema = build_schema(vec![("double_col", DataType::Float, false)]);
-        let rows = vec![DataRow::Vec(vec![Value::Bool(false)])];
+        let rows = vec![vec![Value::Bool(false)]];
         let (path, file) = temp_file("double-invalid-type");
         let err = ParquetStorage::write(&schema, &rows, file).expect_err("should fail");
         assert!(format!("{err}").contains("Unreachable"));
@@ -924,10 +908,7 @@ mod tests {
             ("col_a", DataType::Int32, false),
             ("col_b", DataType::Bytea, false),
         ]);
-        let rows = vec![DataRow::Vec(vec![
-            Value::I32(1),
-            Value::Bytea(vec![1, 2, 3]),
-        ])];
+        let rows = vec![vec![Value::I32(1), Value::Bytea(vec![1, 2, 3])]];
         let (path, file) = temp_file("row-group-multi-column");
         ParquetStorage::write(&schema, &rows, file).expect("write should succeed");
         remove_file(path).ok();
@@ -945,7 +926,7 @@ mod tests {
             .expect("build schema type")
     }
 
-    fn write_with_schema_type(schema_type: &Arc<SchemaType>, rows: &[DataRow]) -> Result<()> {
+    fn write_with_schema_type(schema_type: &Arc<SchemaType>, rows: &[Vec<Value>]) -> Result<()> {
         let (path, file) = temp_file("custom-schema");
         let props = Arc::new(WriterProperties::builder().build());
         let mut file_writer =
@@ -963,14 +944,14 @@ mod tests {
     #[test]
     fn write_int96_column_handles_nulls() {
         let schema_type = build_int96_schema_type();
-        let rows = vec![DataRow::Vec(vec![Value::Null])];
+        let rows = vec![vec![Value::Null]];
         write_with_schema_type(&schema_type, &rows).expect("int96 null write");
     }
 
     #[test]
     fn write_int96_column_rejects_non_null_values() {
         let schema_type = build_int96_schema_type();
-        let rows = vec![DataRow::Vec(vec![Value::Bool(true)])];
+        let rows = vec![vec![Value::Bool(true)]];
         let err = write_with_schema_type(&schema_type, &rows).expect_err("should fail");
         assert!(format!("{err}").contains("Unreachable"));
     }

@@ -96,3 +96,27 @@ async fn memory_storage_transaction() {
     test!(glue "COMMIT", Ok(vec![Payload::Commit]));
     test!(glue "ROLLBACK", Ok(vec![Payload::Rollback]));
 }
+
+#[tokio::test]
+async fn schemaless_update_conflict_on_non_map_row() {
+    use gluesql_core::{
+        data::Value,
+        error::UpdateError,
+        prelude::{Error, Glue},
+        store::StoreMut,
+    };
+
+    let storage = MemoryStorage::default();
+    let mut glue = Glue::new(storage);
+
+    exec!(glue "CREATE TABLE Logs;");
+    glue.storage
+        .append_data("Logs", vec![vec![Value::I64(1)]])
+        .await
+        .unwrap();
+
+    test!(
+        glue "UPDATE Logs SET id = 2;",
+        Err(Error::Update(UpdateError::ConflictOnNonMapSchemalessRow))
+    );
+}

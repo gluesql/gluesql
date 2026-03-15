@@ -1,0 +1,8 @@
+(
+    key: I64(1),
+    row: [
+        I64(1),
+        Str("Alice"),
+        Bool(true),
+    ],
+)

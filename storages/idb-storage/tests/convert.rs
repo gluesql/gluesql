@@ -5,10 +5,11 @@ use {
     gluesql_core::{
         ast::{ColumnDef, DataType},
         data::Value,
-        store::DataRow,
+        error::Error,
     },
-    gluesql_idb_storage::convert::convert,
+    gluesql_idb_storage::convert::{js_value_to_row, row_to_json_value},
     serde_json::json,
+    std::collections::BTreeMap,
     wasm_bindgen::JsValue,
     wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure},
 };
@@ -45,13 +46,13 @@ async fn convert_schema() {
             comment: None,
         },
     ];
-    let expected = DataRow::Vec(vec![
+    let expected = vec![
         Value::I8(100),
         Value::Str("hello".to_owned()),
         Value::Bool(true),
-    ]);
+    ];
     assert_eq!(
-        convert(actual_data, Some(actual_defs.as_slice())),
+        js_value_to_row(actual_data, Some(actual_defs.as_slice())),
         Ok(expected)
     );
 }
@@ -64,7 +65,7 @@ async fn convert_schemaless() {
         "flag": true
     });
     let actual = JsValue::from_serde(&actual).unwrap();
-    let expected = DataRow::Map(
+    let expected = vec![Value::Map(
         [
             ("id".to_owned(), Value::I64(100)),
             ("name".to_owned(), Value::Str("hello".to_owned())),
@@ -72,6 +73,46 @@ async fn convert_schemaless() {
         ]
         .into_iter()
         .collect(),
-    );
-    assert_eq!(convert(actual, None), Ok(expected));
+    )];
+    assert_eq!(js_value_to_row(actual, None), Ok(expected));
+}
+
+#[wasm_bindgen_test]
+async fn convert_row_to_json_value_schema() {
+    let row = vec![
+        Value::I8(100),
+        Value::Str("hello".to_owned()),
+        Value::Bool(true),
+    ];
+    let actual = row_to_json_value(row, false);
+    let expected = Ok(json!([100, "hello", true]));
+    assert_eq!(actual, expected);
+}
+
+#[wasm_bindgen_test]
+async fn convert_row_to_json_value_schemaless() {
+    let row = vec![Value::Map(BTreeMap::from([
+        ("id".to_owned(), Value::I64(100)),
+        ("name".to_owned(), Value::Str("hello".to_owned())),
+        ("flag".to_owned(), Value::Bool(true)),
+    ]))];
+
+    let actual = row_to_json_value(row, true);
+    let expected = Ok(json!({
+        "id": 100,
+        "name": "hello",
+        "flag": true
+    }));
+    assert_eq!(actual, expected);
+}
+
+#[wasm_bindgen_test]
+async fn convert_row_to_json_value_rejects_invalid_schemaless_shape() {
+    let row = vec![Value::I64(100)];
+
+    let actual = row_to_json_value(row, true);
+    let expected = Err(Error::StorageMsg(
+        "conflict - expected schemaless row as [Map]".to_owned(),
+    ));
+    assert_eq!(actual, expected);
 }

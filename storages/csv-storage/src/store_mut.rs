@@ -6,9 +6,9 @@ use {
     async_trait::async_trait,
     csv::Writer,
     gluesql_core::{
-        data::{Key, Schema},
+        data::{Key, Schema, Value},
         error::Result,
-        store::{DataRow, StoreMut},
+        store::StoreMut,
     },
     std::{
         cmp::Ordering,
@@ -64,7 +64,7 @@ impl StoreMut for CsvStorage {
         Ok(())
     }
 
-    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
+    async fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
         let (columns, prev_rows) = self.scan_data(table_name)?;
 
         if columns.is_some() {
@@ -76,7 +76,7 @@ impl StoreMut for CsvStorage {
                 .map(Writer::from_writer)?;
 
             for row in rows {
-                let row = convert(row)?;
+                let row = convert(row);
 
                 wtr.write_record(&row).map_storage_err()?;
             }
@@ -91,7 +91,11 @@ impl StoreMut for CsvStorage {
         }
     }
 
-    async fn insert_data(&mut self, table_name: &str, mut rows: Vec<(Key, DataRow)>) -> Result<()> {
+    async fn insert_data(
+        &mut self,
+        table_name: &str,
+        mut rows: Vec<(Key, Vec<Value>)>,
+    ) -> Result<()> {
         let (columns, prev_rows) = self.scan_data(table_name)?;
 
         rows.sort_by(|(key_a, _), (key_b, _)| key_a.cmp(key_b));
@@ -119,7 +123,7 @@ impl StoreMut for CsvStorage {
 }
 
 impl CsvStorage {
-    fn write<T: Iterator<Item = Result<DataRow>>>(
+    fn write<T: Iterator<Item = Result<Vec<Value>>>>(
         &self,
         table_name: &str,
         columns: Option<Vec<String>>,
@@ -134,7 +138,7 @@ impl CsvStorage {
             data_wtr.write_record(&columns).map_storage_err()?;
 
             for row in rows {
-                let row = convert(row?)?;
+                let row = convert(row?);
 
                 data_wtr.write_record(&row).map_storage_err()?;
             }
@@ -144,18 +148,20 @@ impl CsvStorage {
                 .map(Writer::from_writer)
                 .map_storage_err()?;
 
-            let mut columns = BTreeSet::new();
+            let mut columns: BTreeSet<String> = BTreeSet::new();
             let rows = rows
-                .map(|row| match row? {
-                    DataRow::Vec(_) => {
-                        Err(CsvStorageError::UnreachableVecTypeDataRowTypeFound.into())
+                .map(|row| {
+                    let mut values = row?.into_iter();
+
+                    match (values.next(), values.next()) {
+                        (Some(Value::Map(values)), None) => Ok(values),
+                        _ => Err(CsvStorageError::UnexpectedNonMapRowForSchemalessTable.into()),
                     }
-                    DataRow::Map(values) => Ok(values),
                 })
                 .collect::<Result<Vec<_>>>()?;
 
             for row in &rows {
-                columns.extend(row.keys());
+                columns.extend(row.keys().cloned());
             }
 
             data_wtr.write_record(&columns).map_storage_err()?;
@@ -187,23 +193,20 @@ impl CsvStorage {
     }
 }
 
-fn convert(data_row: DataRow) -> Result<Vec<String>> {
-    match data_row {
-        DataRow::Vec(values) => Ok(values.into_iter().map(String::from).collect()),
-        DataRow::Map(_) => Err(CsvStorageError::UnreachableMapTypeDataRowFound.into()),
-    }
+fn convert(data_row: Vec<Value>) -> Vec<String> {
+    data_row.into_iter().map(String::from).collect()
 }
 
-struct SortMerge<T: Iterator<Item = Result<(Key, DataRow)>>> {
+struct SortMerge<T: Iterator<Item = Result<(Key, Vec<Value>)>>> {
     left_rows: Peekable<T>,
-    right_rows: Peekable<IntoIter<(Key, DataRow)>>,
+    right_rows: Peekable<IntoIter<(Key, Vec<Value>)>>,
 }
 
 impl<T> SortMerge<T>
 where
-    T: Iterator<Item = Result<(Key, DataRow)>>,
+    T: Iterator<Item = Result<(Key, Vec<Value>)>>,
 {
-    fn new(left_rows: T, right_rows: IntoIter<(Key, DataRow)>) -> Self {
+    fn new(left_rows: T, right_rows: IntoIter<(Key, Vec<Value>)>) -> Self {
         let left_rows = left_rows.peekable();
         let right_rows = right_rows.peekable();
 
@@ -215,9 +218,9 @@ where
 }
 impl<T> Iterator for SortMerge<T>
 where
-    T: Iterator<Item = Result<(Key, DataRow)>>,
+    T: Iterator<Item = Result<(Key, Vec<Value>)>>,
 {
-    type Item = Result<DataRow>;
+    type Item = Result<Vec<Value>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let left = self.left_rows.peek();

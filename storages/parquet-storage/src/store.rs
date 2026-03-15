@@ -8,7 +8,8 @@ use {
     gluesql_core::{
         data::{Key, Schema},
         error::Result,
-        store::{DataRow, RowIter, Store},
+        prelude::Value,
+        store::{RowIter, Store},
     },
     std::{ffi::OsStr, fs},
 };
@@ -43,7 +44,7 @@ impl Store for ParquetStorage {
         Ok(schemas)
     }
 
-    async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<DataRow>> {
+    async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<Vec<Value>>> {
         for item in self.scan_data(table_name)?.0 {
             let (key, row) = item?;
 

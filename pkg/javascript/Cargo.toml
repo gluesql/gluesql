@@ -43,6 +43,7 @@ test-suite.workspace = true
 
 wasm-bindgen-test = "0.3.50"
 async-trait = "0.1"
+gloo-storage = "0.3.0"
 
 [lints]
 workspace = true

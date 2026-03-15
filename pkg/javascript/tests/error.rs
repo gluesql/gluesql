@@ -3,6 +3,7 @@
 wasm_bindgen_test_configure!(run_in_browser);
 
 use {
+    gloo_storage::{LocalStorage, SessionStorage, Storage},
     gloo_utils::format::JsValueSerdeExt,
     gluesql_js::Glue,
     serde_json::{Value as Json, json},
@@ -11,9 +12,16 @@ use {
     wasm_bindgen_test::*,
 };
 
+fn clear_browser_storages() {
+    LocalStorage::raw().clear().unwrap();
+    SessionStorage::raw().clear().unwrap();
+}
+
 #[wasm_bindgen_test]
 async fn error() {
-    let mut glue = Glue::new();
+    clear_browser_storages();
+
+    let mut glue = Glue::new().unwrap();
 
     assert_eq!(
         glue.set_default_engine("something-else".to_owned()),
@@ -57,4 +65,25 @@ async fn error() {
           { "type": "CREATE TABLE" }
     ]);
     assert_eq!(actual, expected);
+
+    clear_browser_storages();
+}
+
+#[wasm_bindgen_test]
+async fn constructor_rejects_invalid_local_storage_format_version() {
+    clear_browser_storages();
+    LocalStorage::set("gluesql-storage-format-version", 999_u32).unwrap();
+
+    let err = match Glue::new() {
+        Ok(_) => panic!("constructor should fail"),
+        Err(err) => err,
+    };
+    assert_eq!(
+        err,
+        JsValue::from_str(
+            "[GlueSQL] failed to initialize localStorage engine: storage: [WebStorage] unsupported newer format version v999",
+        )
+    );
+
+    clear_browser_storages();
 }

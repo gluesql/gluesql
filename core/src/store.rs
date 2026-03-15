@@ -1,5 +1,4 @@
 mod alter_table;
-mod data_row;
 mod function;
 mod index;
 mod metadata;
@@ -20,7 +19,6 @@ impl<S: StoreMut + IndexMut + AlterTable + Transaction + CustomFunction + Custom
 
 pub use {
     alter_table::{AlterTable, AlterTableError},
-    data_row::DataRow,
     function::{CustomFunction, CustomFunctionMut},
     index::{Index, IndexError, IndexMut},
     metadata::{MetaIter, Metadata},
@@ -30,7 +28,7 @@ pub use {
 
 use {
     crate::{
-        data::{Key, Schema},
+        data::{Key, Schema, Value},
         executor::Referencing,
         result::{Error, Result},
     },
@@ -39,7 +37,7 @@ use {
     std::pin::Pin,
 };
 
-pub type RowIter<'a> = Pin<Box<dyn Stream<Item = Result<(Key, DataRow)>> + Send + 'a>>;
+pub type RowIter<'a> = Pin<Box<dyn Stream<Item = Result<(Key, Vec<Value>)>> + Send + 'a>>;
 
 /// By implementing `Store` trait, you can run `SELECT` query.
 #[async_trait]
@@ -48,7 +46,7 @@ pub trait Store: Send + Sync {
 
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>>;
 
-    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>>;
+    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Vec<Value>>>;
 
     async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>>;
 
@@ -93,13 +91,17 @@ pub trait StoreMut: Send + Sync {
         Err(Error::StorageMsg(msg))
     }
 
-    async fn append_data(&mut self, _table_name: &str, _rows: Vec<DataRow>) -> Result<()> {
+    async fn append_data(&mut self, _table_name: &str, _rows: Vec<Vec<Value>>) -> Result<()> {
         let msg = "[Storage] StoreMut::append_data is not supported".to_owned();
 
         Err(Error::StorageMsg(msg))
     }
 
-    async fn insert_data(&mut self, _table_name: &str, _rows: Vec<(Key, DataRow)>) -> Result<()> {
+    async fn insert_data(
+        &mut self,
+        _table_name: &str,
+        _rows: Vec<(Key, Vec<Value>)>,
+    ) -> Result<()> {
         let msg = "[Storage] StoreMut::insert_data is not supported".to_owned();
 
         Err(Error::StorageMsg(msg))

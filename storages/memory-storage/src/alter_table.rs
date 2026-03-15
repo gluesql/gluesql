@@ -4,8 +4,8 @@ use {
     gluesql_core::{
         ast::ColumnDef,
         data::Value,
-        error::{AlterTableError, Error, Result},
-        store::{AlterTable, DataRow},
+        error::{AlterTableError, Result},
+        store::AlterTable,
     },
 };
 
@@ -98,16 +98,7 @@ impl AlterTable for MemoryStorage {
         };
 
         for row in item.rows.values_mut() {
-            match row {
-                DataRow::Vec(values) => {
-                    values.push(value.clone());
-                }
-                DataRow::Map(_) => {
-                    return Err(Error::StorageMsg(
-                        "conflict - add_column failed: schemaless row found".to_owned(),
-                    ));
-                }
-            }
+            row.push(value.clone());
         }
 
         column_defs.push(column_def.clone());
@@ -144,17 +135,7 @@ impl AlterTable for MemoryStorage {
                     if row.len() <= column_index {
                         continue;
                     }
-
-                    match row {
-                        DataRow::Vec(values) => {
-                            values.remove(column_index);
-                        }
-                        DataRow::Map(_) => {
-                            return Err(Error::StorageMsg(
-                                "conflict - drop_column failed: schemaless row found".to_owned(),
-                            ));
-                        }
-                    }
+                    row.remove(column_index);
                 }
             }
             None if if_exists => {}

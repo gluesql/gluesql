@@ -113,8 +113,8 @@ mod tests {
     use {
         crate::{
             ast::{
-                BinaryOperator, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, Query,
-                Select, SetExpr, Statement, TableFactor, TableWithJoins,
+                BinaryOperator, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, Projection,
+                Query, Select, SetExpr, Statement, TableFactor, TableWithJoins,
             },
             ast_builder::{Build, SelectItemList, col, expr, table, test},
         },
@@ -219,7 +219,7 @@ mod tests {
             };
             let select = Select {
                 distinct: false,
-                projection: SelectItemList::from("*").try_into().unwrap(),
+                projection: Projection::SelectItems(SelectItemList::from("*").try_into().unwrap()),
                 from: TableWithJoins {
                     relation: TableFactor::Table {
                         name: "Player".to_owned(),

@@ -5,15 +5,15 @@ use {
     },
     async_trait::async_trait,
     gluesql_core::{
-        data::{Key, Schema},
+        data::{Key, Schema, Value},
         error::Result,
-        store::{DataRow, StoreMut},
+        store::StoreMut,
     },
     serde_json::{Map, Value as JsonValue, to_string_pretty},
     std::{
         cmp::Ordering,
         fs::{File, OpenOptions, remove_file},
-        io::Write,
+        io::Write as IoWrite,
         iter::Peekable,
         vec::IntoIter,
     },
@@ -52,7 +52,7 @@ impl StoreMut for JsonStorage {
         Ok(())
     }
 
-    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
+    async fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
         let json_path = self.json_path(table_name);
         if json_path.exists() {
             let (prev_rows, schema) = self.scan_data(table_name)?;
@@ -64,7 +64,7 @@ impl StoreMut for JsonStorage {
 
             let file = File::create(&json_path).map_storage_err()?;
 
-            Self::write(schema, rows, file, true)
+            Self::write(&schema, rows, file, true)
         } else {
             let schema = self
                 .fetch_schema(table_name)?
@@ -75,18 +75,22 @@ impl StoreMut for JsonStorage {
                 .open(self.jsonl_path(&schema.table_name))
                 .map_storage_err()?;
 
-            Self::write(schema, rows, file, false)
+            Self::write(&schema, rows, file, false)
         }
     }
 
-    async fn insert_data(&mut self, table_name: &str, mut rows: Vec<(Key, DataRow)>) -> Result<()> {
+    async fn insert_data(
+        &mut self,
+        table_name: &str,
+        mut rows: Vec<(Key, Vec<Value>)>,
+    ) -> Result<()> {
         let (prev_rows, schema) = self.scan_data(table_name)?;
         rows.sort_by(|(key_a, _), (key_b, _)| key_a.cmp(key_b));
 
         let sort_merge = SortMerge::new(prev_rows, rows.into_iter());
         let merged = sort_merge.collect::<Result<Vec<_>>>()?;
 
-        self.rewrite(schema, merged)
+        self.rewrite(&schema, merged)
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
@@ -103,20 +107,20 @@ impl StoreMut for JsonStorage {
             })
             .collect::<Result<Vec<_>>>()?;
 
-        self.rewrite(schema, rows)
+        self.rewrite(&schema, rows)
     }
 }
 
-struct SortMerge<T: Iterator<Item = Result<(Key, DataRow)>>> {
+struct SortMerge<T: Iterator<Item = Result<(Key, Vec<Value>)>>> {
     left_rows: Peekable<T>,
-    right_rows: Peekable<IntoIter<(Key, DataRow)>>,
+    right_rows: Peekable<IntoIter<(Key, Vec<Value>)>>,
 }
 
 impl<T> SortMerge<T>
 where
-    T: Iterator<Item = Result<(Key, DataRow)>>,
+    T: Iterator<Item = Result<(Key, Vec<Value>)>>,
 {
-    fn new(left_rows: T, right_rows: IntoIter<(Key, DataRow)>) -> Self {
+    fn new(left_rows: T, right_rows: IntoIter<(Key, Vec<Value>)>) -> Self {
         let left_rows = left_rows.peekable();
         let right_rows = right_rows.peekable();
 
@@ -128,9 +132,9 @@ where
 }
 impl<T> Iterator for SortMerge<T>
 where
-    T: Iterator<Item = Result<(Key, DataRow)>>,
+    T: Iterator<Item = Result<(Key, Vec<Value>)>>,
 {
-    type Item = Result<DataRow>;
+    type Item = Result<Vec<Value>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let left = self.left_rows.peek();
@@ -154,7 +158,7 @@ where
 }
 
 impl JsonStorage {
-    fn rewrite(&mut self, schema: Schema, rows: Vec<DataRow>) -> Result<()> {
+    fn rewrite(&mut self, schema: &Schema, rows: Vec<Vec<Value>>) -> Result<()> {
         let json_path = self.json_path(&schema.table_name);
         let (path, is_json) = if json_path.exists() {
             (json_path, true)
@@ -168,39 +172,50 @@ impl JsonStorage {
         Self::write(schema, rows, file, is_json)
     }
 
-    fn write(schema: Schema, rows: Vec<DataRow>, mut file: File, is_json: bool) -> Result<()> {
-        let column_defs = schema.column_defs.unwrap_or_default();
-        let labels = column_defs
-            .iter()
-            .map(|column_def| column_def.name.as_str())
-            .collect::<Vec<_>>();
-        let rows = rows
-            .into_iter()
-            .map(|row| match row {
-                DataRow::Vec(values) => labels
-                    .iter()
-                    .zip(values)
-                    .map(|(key, value)| Ok(((*key).to_string(), value.try_into()?)))
-                    .collect::<Result<Map<String, JsonValue>>>(),
-                DataRow::Map(hash_map) => hash_map
-                    .into_iter()
-                    .map(|(key, value)| Ok((key, value.try_into()?)))
-                    .collect(),
-            })
-            .map(|result| result.map(JsonValue::Object));
+    fn write(schema: &Schema, rows: Vec<Vec<Value>>, mut file: File, is_json: bool) -> Result<()> {
+        let rows = if let Some(column_defs) = &schema.column_defs {
+            // Schema table: zip labels with values
+            let labels = column_defs
+                .iter()
+                .map(|column_def| column_def.name.as_str())
+                .collect::<Vec<_>>();
+
+            rows.into_iter()
+                .map(|values| {
+                    labels
+                        .iter()
+                        .zip(values)
+                        .map(|(key, value)| Ok(((*key).to_string(), value.try_into()?)))
+                        .collect::<Result<Map<String, JsonValue>>>()
+                        .map(JsonValue::Object)
+                })
+                .collect::<Result<Vec<_>>>()?
+        } else {
+            // Schemaless table: extract Map from values[0]
+            rows.into_iter()
+                .map(|values| {
+                    let map = values
+                        .into_iter()
+                        .next()
+                        .and_then(|v| match v {
+                            Value::Map(map) => Some(map),
+                            _ => None,
+                        })
+                        .unwrap_or_default();
+
+                    map.into_iter()
+                        .map(|(key, value)| Ok((key, value.try_into()?)))
+                        .collect::<Result<Map<String, JsonValue>>>()
+                        .map(JsonValue::Object)
+                })
+                .collect::<Result<Vec<_>>>()?
+        };
 
         if is_json {
-            let rows = rows.collect::<Result<Vec<_>>>().and_then(|rows| {
-                let rows = JsonValue::Array(rows);
-
-                to_string_pretty(&rows).map_storage_err()
-            })?;
-
-            file.write_all(rows.as_bytes()).map_storage_err()?;
+            let json_str = to_string_pretty(&JsonValue::Array(rows)).map_storage_err()?;
+            file.write_all(json_str.as_bytes()).map_storage_err()?;
         } else {
             for row in rows {
-                let row = row?;
-
                 writeln!(file, "{row}").map_storage_err()?;
             }
         }

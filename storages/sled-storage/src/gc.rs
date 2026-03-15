@@ -3,7 +3,10 @@ use {
         SledStorage, Snapshot, err_into, key,
         lock::{Lock, TxData, get_txdata_key},
     },
-    gluesql_core::{data::Schema, error::Result, store::DataRow},
+    gluesql_core::{
+        data::{Schema, Value},
+        error::Result,
+    },
     std::time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -102,7 +105,7 @@ impl SledStorage {
         }
 
         for txid in txids {
-            gc_txid!(txid, key::temp_data_prefix(txid), DataRow);
+            gc_txid!(txid, key::temp_data_prefix(txid), Vec<Value>);
             gc_txid!(txid, key::temp_schema_prefix(txid), Schema);
 
             for (temp_key, data_key) in fetch_keys(key::temp_index_prefix(txid))? {

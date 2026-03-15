@@ -10,9 +10,9 @@ use {
     async_io::block_on,
     async_trait::async_trait,
     gluesql_core::{
-        data::{Key, Schema},
+        data::{Key, Schema, Value},
         error::{Error, IndexError, Result},
-        store::{DataRow, StoreMut},
+        store::StoreMut,
     },
     sled::transaction::{ConflictableTransactionError, ConflictableTransactionResult},
 };
@@ -113,7 +113,7 @@ impl StoreMut for SledStorage {
             // delete data
             block_on(async {
                 for (row_key, row_snapshot) in &items {
-                    let row_snapshot: Snapshot<DataRow> = bincode::deserialize(row_snapshot)
+                    let row_snapshot: Snapshot<Vec<Value>> = bincode::deserialize(row_snapshot)
                         .map_err(err_into)
                         .map_err(ConflictableTransactionError::Abort)?;
 
@@ -152,7 +152,7 @@ impl StoreMut for SledStorage {
         Ok(())
     }
 
-    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
+    async fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
         let id_offset = self.id_offset;
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
@@ -208,7 +208,7 @@ impl StoreMut for SledStorage {
         Ok(())
     }
 
-    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
+    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
         let tx_rows = &rows;
@@ -231,7 +231,7 @@ impl StoreMut for SledStorage {
                         .map(|key| key::data(table_name, key))?;
 
                     let snapshot = if let Some(snapshot) = tree.get(&key)? {
-                        let snapshot: Snapshot<DataRow> = bincode::deserialize(&snapshot)
+                        let snapshot: Snapshot<Vec<Value>> = bincode::deserialize(&snapshot)
                             .map_err(err_into)
                             .map_err(ConflictableTransactionError::Abort)?;
 
@@ -305,7 +305,7 @@ impl StoreMut for SledStorage {
                         .get(&key)?
                         .ok_or_else(|| IndexError::ConflictOnEmptyIndexValueDelete.into())
                         .map_err(ConflictableTransactionError::Abort)?;
-                    let snapshot: Snapshot<DataRow> = bincode::deserialize(&snapshot)
+                    let snapshot: Snapshot<Vec<Value>> = bincode::deserialize(&snapshot)
                         .map_err(err_into)
                         .map_err(ConflictableTransactionError::Abort)?;
 

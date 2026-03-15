@@ -1,6 +1,6 @@
 use {
     async_trait::async_trait,
-    gluesql_core::{data::Value::I64, prelude::Glue},
+    gluesql_core::{data::Value::I64, prelude::Glue, store::StoreMut},
     gluesql_file_storage::FileStorage,
     std::fs::{create_dir, remove_dir_all},
     test_suite::*,
@@ -52,6 +52,20 @@ async fn scan_data_to_ignore_directory_items() {
         glue.execute("SELECT * FROM Foo").await.unwrap().remove(0),
         select!(id I64; 1; 2; 3)
     );
+
+    remove_dir_all(path).unwrap();
+}
+
+#[tokio::test]
+async fn delete_schema_for_missing_table_is_noop() {
+    let path = "./tests/delete_schema_missing_table/";
+    if let Err(err) = remove_dir_all(path) {
+        println!("remove_dir_all error: {err:?}");
+    }
+    let mut storage = FileStorage::new(path).unwrap();
+
+    // Missing table should not produce an error in file storage.
+    storage.delete_schema("MissingTable").await.unwrap();
 
     remove_dir_all(path).unwrap();
 }

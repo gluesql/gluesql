@@ -2,14 +2,14 @@ use {
     super::{context::RowContext, evaluate::evaluate_stateless, filter::check_expr},
     crate::{
         ast::{
-            ColumnDef, ColumnUniqueOption, Dictionary, Expr, IndexItem, Join, Query, Select,
-            SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, ToSql, ToSqlUnquoted,
-            Values,
+            ColumnDef, ColumnUniqueOption, Dictionary, Expr, IndexItem, Join, Projection, Query,
+            Select, SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, ToSql,
+            ToSqlUnquoted, Values,
         },
-        data::{Key, Row, Value, get_alias, get_index},
+        data::{Key, Row, SCHEMALESS_DOC_COLUMN, Value, get_alias, get_index},
         executor::{evaluate::evaluate, select::select},
         result::Result,
-        store::{DataRow, GStore},
+        store::GStore,
     },
     async_recursion::async_recursion,
     futures::{
@@ -42,20 +42,16 @@ pub enum FetchError {
 pub async fn fetch<'a, T: GStore>(
     storage: &'a T,
     table_name: &'a str,
-    columns: Option<Arc<[String]>>,
+    columns: Arc<[String]>,
     where_clause: Option<&'a Expr>,
 ) -> Result<impl Stream<Item = Result<(Key, Row)>> + 'a> {
-    let columns = columns.unwrap_or_else(|| Arc::from([]));
     let rows = storage
         .scan_data(table_name)
         .await?
-        .try_filter_map(move |(key, data_row)| {
-            let row = match data_row {
-                DataRow::Vec(values) => Row::Vec {
-                    columns: Arc::clone(&columns),
-                    values,
-                },
-                DataRow::Map(values) => Row::Map(values),
+        .try_filter_map(move |(key, values)| {
+            let row = Row {
+                columns: Arc::clone(&columns),
+                values,
             };
 
             async move {
@@ -87,25 +83,17 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
     table_factor: &'a TableFactor,
     filter_context: Option<&Arc<RowContext<'a>>>,
 ) -> Result<impl Stream<Item = Result<Row>> + 'a> {
-    let columns = Arc::from(
-        fetch_relation_columns(storage, table_factor)
-            .await?
-            .unwrap_or_default(),
-    );
+    let columns = Arc::from(fetch_relation_columns(storage, table_factor).await?);
 
     match table_factor {
         TableFactor::Derived { subquery, .. } => {
             let filter_context = filter_context.map(Arc::clone);
-            let rows =
-                select(storage, subquery, filter_context)
-                    .await?
-                    .map_ok(move |row| match row {
-                        Row::Vec { values, .. } => Row::Vec {
-                            columns: Arc::clone(&columns),
-                            values,
-                        },
-                        Row::Map(values) => Row::Map(values),
-                    });
+            let rows = select(storage, subquery, filter_context)
+                .await?
+                .map_ok(move |row| Row {
+                    columns: Arc::clone(&columns),
+                    values: row.values,
+                });
 
             Ok(Rows::Derived(rows))
         }
@@ -137,12 +125,9 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                         let rows = storage
                             .scan_indexed_data(name, index_name, *asc, cmp_value)
                             .await?
-                            .map_ok(move |(_, data_row)| match data_row {
-                                DataRow::Vec(values) => Row::Vec {
-                                    columns: Arc::clone(&columns),
-                                    values,
-                                },
-                                DataRow::Map(values) => Row::Map(values),
+                            .map_ok(move |(_, values)| Row {
+                                columns: Arc::clone(&columns),
+                                values,
                             });
 
                         Rows::Indexed(rows)
@@ -171,13 +156,10 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                         let key = Key::try_from(value)?;
 
                         match storage.fetch_data(name, &key).await? {
-                            Some(data_row) => {
-                                let row = match data_row {
-                                    DataRow::Vec(values) => Row::Vec {
-                                        columns: Arc::clone(&columns),
-                                        values,
-                                    },
-                                    DataRow::Map(values) => Row::Map(values),
+                            Some(values) => {
+                                let row = Row {
+                                    columns: Arc::clone(&columns),
+                                    values,
                                 };
 
                                 Rows::PrimaryKey(stream::once(future::ready(Ok(row))))
@@ -186,15 +168,13 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                         }
                     }
                     _ => {
-                        let rows = storage.scan_data(name).await?.map_ok(move |(_, data_row)| {
-                            match data_row {
-                                DataRow::Vec(values) => Row::Vec {
-                                    columns: Arc::clone(&columns),
-                                    values,
-                                },
-                                DataRow::Map(values) => Row::Map(values),
-                            }
-                        });
+                        let rows = storage
+                            .scan_data(name)
+                            .await?
+                            .map_ok(move |(_, values)| Row {
+                                columns: Arc::clone(&columns),
+                                values,
+                            });
 
                         Rows::FullScan(rows)
                     }
@@ -213,7 +193,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
 
             let columns = Arc::from(vec!["N".to_owned()]);
             let rows = (1..=size).map(move |v| {
-                Ok(Row::Vec {
+                Ok(Row {
                     columns: Arc::clone(&columns),
                     values: vec![Value::I64(v)],
                 })
@@ -261,9 +241,14 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                 ])
                             });
 
-                            iter::once(table_rows)
-                                .chain(index_rows)
-                                .map(|hash_map| Ok(Row::Map(hash_map)))
+                            iter::once(table_rows).chain(index_rows).map(|hash_map| {
+                                let (columns, values): (Vec<_>, Vec<_>) =
+                                    hash_map.into_iter().unzip();
+                                Ok(Row {
+                                    columns: columns.into(),
+                                    values,
+                                })
+                            })
                         });
 
                         Rows::Objects(stream::iter(rows))
@@ -271,7 +256,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                     Dictionary::GlueTables => {
                         let schemas = storage.fetch_all_schemas().await?;
                         let rows = schemas.into_iter().map(move |schema| {
-                            Ok(Row::Vec {
+                            Ok(Row {
                                 columns: Arc::clone(&columns),
                                 values: vec![
                                     Value::Str(schema.table_name),
@@ -308,7 +293,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                         column_def.comment.map_or(Value::Null, Value::Str),
                                     ];
 
-                                    Ok(Row::Vec {
+                                    Ok(Row {
                                         columns: Arc::clone(&columns),
                                         values,
                                     })
@@ -338,7 +323,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                         Value::Bool(true),
                                     ];
 
-                                    let row = Row::Vec {
+                                    let row = Row {
                                         columns: Arc::clone(&columns),
                                         values,
                                     };
@@ -358,7 +343,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                     Value::Bool(false),
                                 ];
 
-                                Ok(Row::Vec {
+                                Ok(Row {
                                     columns: Arc::clone(&columns),
                                     values,
                                 })
@@ -377,21 +362,21 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
     }
 }
 
-pub async fn fetch_columns<T: GStore>(
-    storage: &T,
-    table_name: &str,
-) -> Result<Option<Vec<String>>> {
+pub async fn fetch_columns<T: GStore>(storage: &T, table_name: &str) -> Result<Vec<String>> {
     let columns = storage
         .fetch_schema(table_name)
         .await?
         .ok_or_else(|| FetchError::TableNotFound(table_name.to_owned()))?
         .column_defs
-        .map(|column_defs| {
-            column_defs
-                .into_iter()
-                .map(|column_def| column_def.name)
-                .collect()
-        });
+        .map_or_else(
+            || vec![SCHEMALESS_DOC_COLUMN.to_owned()],
+            |column_defs| {
+                column_defs
+                    .into_iter()
+                    .map(|column_def| column_def.name)
+                    .collect()
+            },
+        );
 
     Ok(columns)
 }
@@ -400,17 +385,16 @@ pub async fn fetch_columns<T: GStore>(
 pub async fn fetch_relation_columns<T>(
     storage: &T,
     table_factor: &TableFactor,
-) -> Result<Option<Vec<String>>>
+) -> Result<Vec<String>>
 where
     T: GStore,
 {
     match table_factor {
         TableFactor::Table { name, alias, .. } => {
             let columns = fetch_columns(storage, name).await?;
-            match (columns, alias) {
-                (columns, None) => Ok(columns),
-                (None, Some(_)) => Ok(None),
-                (Some(columns), Some(alias)) if alias.columns.len() > columns.len() => {
+            match alias {
+                None => Ok(columns),
+                Some(alias) if alias.columns.len() > columns.len() => {
                     Err(FetchError::TooManyColumnAliases(
                         name.to_string(),
                         columns.len(),
@@ -418,18 +402,16 @@ where
                     )
                     .into())
                 }
-                (Some(columns), Some(alias)) => Ok(Some(
-                    alias
-                        .columns
-                        .iter()
-                        .cloned()
-                        .chain(columns[alias.columns.len()..columns.len()].to_vec())
-                        .collect(),
-                )),
+                Some(alias) => Ok(alias
+                    .columns
+                    .iter()
+                    .cloned()
+                    .chain(columns[alias.columns.len()..columns.len()].to_vec())
+                    .collect()),
             }
         }
-        TableFactor::Series { .. } => Ok(Some(vec!["N".to_owned()])),
-        TableFactor::Dictionary { dict, .. } => Ok(Some(match dict {
+        TableFactor::Series { .. } => Ok(vec!["N".to_owned()]),
+        TableFactor::Dictionary { dict, .. } => Ok(match dict {
             Dictionary::GlueObjects => vec![
                 "OBJECT_NAME".to_owned(),
                 "OBJECT_TYPE".to_owned(),
@@ -452,7 +434,7 @@ where
                 "EXPRESSION".to_owned(),
                 "UNIQUENESS".to_owned(),
             ],
-        })),
+        }),
         TableFactor::Derived {
             subquery: Query { body, .. },
             alias:
@@ -472,24 +454,21 @@ where
                 } = statement.as_ref();
 
                 let labels = fetch_labels(storage, relation, joins, projection).await?;
-                match labels {
-                    None => Ok(None),
-                    Some(labels) if alias_columns.is_empty() => Ok(Some(labels)),
-                    Some(labels) if alias_columns.len() > labels.len() => {
-                        Err(FetchError::TooManyColumnAliases(
-                            name.to_string(),
-                            labels.len(),
-                            alias_columns.len(),
-                        )
-                        .into())
-                    }
-                    Some(labels) => Ok(Some(
-                        alias_columns
-                            .iter()
-                            .cloned()
-                            .chain(labels[alias_columns.len()..labels.len()].to_vec())
-                            .collect(),
-                    )),
+                if alias_columns.is_empty() {
+                    Ok(labels)
+                } else if alias_columns.len() > labels.len() {
+                    Err(FetchError::TooManyColumnAliases(
+                        name.to_string(),
+                        labels.len(),
+                        alias_columns.len(),
+                    )
+                    .into())
+                } else {
+                    Ok(alias_columns
+                        .iter()
+                        .cloned()
+                        .chain(labels[alias_columns.len()..labels.len()].to_vec())
+                        .collect())
                 }
             }
             SetExpr::Values(Values(values_list)) => {
@@ -510,7 +489,7 @@ where
                     .chain(labels)
                     .collect::<Vec<_>>();
 
-                Ok(Some(labels))
+                Ok(labels)
             }
         },
     }
@@ -519,74 +498,59 @@ where
 async fn fetch_join_columns<'a, T: GStore>(
     storage: &T,
     joins: &'a [Join],
-) -> Result<Option<Vec<(&'a String, Vec<String>)>>> {
+) -> Result<Vec<(&'a String, Vec<String>)>> {
     let mut all_columns = Vec::with_capacity(joins.len());
     for join in joins {
-        if let Some(columns) = fetch_relation_columns(storage, &join.relation).await? {
-            let alias = get_alias(&join.relation);
-            all_columns.push((alias, columns));
-        } else {
-            return Ok(None);
-        }
+        let columns = fetch_relation_columns(storage, &join.relation).await?;
+        let alias = get_alias(&join.relation);
+        all_columns.push((alias, columns));
     }
-    Ok(Some(all_columns))
+    Ok(all_columns)
 }
 
 pub async fn fetch_labels<T: GStore>(
     storage: &T,
     relation: &TableFactor,
     joins: &[Join],
-    projection: &[SelectItem],
-) -> Result<Option<Vec<String>>> {
+    projection: &Projection,
+) -> Result<Vec<String>> {
     let table_alias = get_alias(relation);
     let columns = fetch_relation_columns(storage, relation).await?;
     let join_columns = fetch_join_columns(storage, joins).await?;
 
-    if (columns.is_none() || join_columns.is_none())
-        && projection.iter().any(|item| {
-            matches!(
-                item,
-                SelectItem::Wildcard | SelectItem::QualifiedWildcard(_)
-            )
-        })
-    {
-        return Ok(None);
-    }
+    match projection {
+        Projection::SchemalessMap => Ok(vec![SCHEMALESS_DOC_COLUMN.to_owned()]),
+        Projection::SelectItems(projection) => projection
+            .iter()
+            .flat_map(|item| match item {
+                SelectItem::Wildcard => {
+                    let columns = columns.iter().cloned();
+                    let join_columns = join_columns.iter().flat_map(|(_, columns)| columns.clone());
 
-    let columns = columns.unwrap_or_default();
-    let join_columns = join_columns.unwrap_or_default();
-
-    projection
-        .iter()
-        .flat_map(|item| match item {
-            SelectItem::Wildcard => {
-                let columns = columns.iter().cloned();
-                let join_columns = join_columns.iter().flat_map(|(_, columns)| columns.clone());
-
-                columns.chain(join_columns).map(Ok).collect()
-            }
-            SelectItem::QualifiedWildcard(target_table_alias) => {
-                if table_alias == target_table_alias {
-                    return columns.iter().cloned().map(Ok).collect();
+                    columns.chain(join_columns).map(Ok).collect()
                 }
+                SelectItem::QualifiedWildcard(target_table_alias) => {
+                    if table_alias == target_table_alias {
+                        return columns.iter().cloned().map(Ok).collect();
+                    }
 
-                let labels = join_columns
-                    .iter()
-                    .find(|(table_alias, _)| table_alias == &target_table_alias)
-                    .map(|(_, columns)| columns.clone());
+                    let labels = join_columns
+                        .iter()
+                        .find(|(table_alias, _)| table_alias == &target_table_alias)
+                        .map(|(_, columns)| columns.clone());
 
-                match labels {
-                    Some(columns) => columns.into_iter().map(Ok).collect(),
-                    None => {
-                        vec![Err(FetchError::TableAliasNotFound(
-                            target_table_alias.to_owned(),
-                        )
-                        .into())]
+                    match labels {
+                        Some(columns) => columns.into_iter().map(Ok).collect(),
+                        None => {
+                            vec![Err(FetchError::TableAliasNotFound(
+                                target_table_alias.to_owned(),
+                            )
+                            .into())]
+                        }
                     }
                 }
-            }
-            SelectItem::Expr { label, .. } => vec![Ok(label.to_owned())],
-        })
-        .collect::<Result<_>>()
-        .map(Some)
+                SelectItem::Expr { label, .. } => vec![Ok(label.to_owned())],
+            })
+            .collect::<Result<_>>(),
+    }
 }

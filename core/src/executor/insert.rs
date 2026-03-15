@@ -5,14 +5,14 @@ use {
     },
     crate::{
         ast::{ColumnDef, ColumnUniqueOption, Expr, ForeignKey, Query, SetExpr, Values},
-        data::{Key, Row, Schema, Value},
+        data::{Key, Row, SCHEMALESS_DOC_COLUMN, Schema, Value, value::BTreeMapJsonExt},
         executor::{evaluate::evaluate_stateless, limit::Limit},
-        result::Result,
-        store::{DataRow, GStore, GStoreMut},
+        result::{Error, Result},
+        store::{GStore, GStoreMut},
     },
     futures::stream::{self, StreamExt, TryStreamExt},
     serde::Serialize,
-    std::{fmt::Debug, sync::Arc},
+    std::{collections::BTreeMap, fmt::Debug, sync::Arc},
     thiserror::Error as ThisError,
 };
 
@@ -33,8 +33,8 @@ pub enum InsertError {
     #[error("literals have more values than target columns")]
     TooManyValues,
 
-    #[error("only single value accepted for schemaless row insert")]
-    OnlySingleValueAcceptedForSchemalessRow,
+    #[error("only single value accepted for schemaless row insert: got {0}")]
+    OnlySingleValueAcceptedForSchemalessRow(usize),
 
     #[error("map type required: {0}")]
     MapTypeValueRequired(String),
@@ -53,8 +53,8 @@ pub enum InsertError {
 }
 
 enum RowsData {
-    Append(Vec<DataRow>),
-    Insert(Vec<(Key, DataRow)>),
+    Append(Vec<Vec<Value>>),
+    Insert(Vec<(Key, Vec<Value>)>),
 }
 
 pub async fn insert<T: GStore + GStoreMut>(
@@ -84,7 +84,9 @@ pub async fn insert<T: GStore + GStoreMut>(
             )
             .await
         }
-        None => fetch_map_rows(storage, source).await.map(RowsData::Append),
+        None => fetch_schemaless_rows(storage, source)
+            .await
+            .map(RowsData::Append),
     }?;
 
     match rows {
@@ -138,20 +140,20 @@ async fn fetch_vec_rows<T: GStore>(
                 let labels = Arc::clone(&labels);
 
                 async move {
-                    Ok(Row::Vec {
+                    Ok(Row {
                         columns: labels,
                         values: fill_values(&column_defs, columns, values).await?,
                     })
                 }
             });
             let rows = limit.apply(rows);
-            let rows = rows.map(|row| row?.try_into_vec());
+            let rows = rows.map(|row| Ok::<_, Error>(row?.into_values()));
 
             Rows::Values(rows)
         }
         SetExpr::Select(_) => {
             let rows = select(storage, source, None).await?.map(|row| {
-                let values = row?.try_into_vec()?;
+                let values = row?.into_values();
 
                 column_defs
                     .iter()
@@ -197,11 +199,11 @@ async fn fetch_vec_rows<T: GStore>(
                 values
                     .get(i)
                     .map(Key::try_from)
-                    .map(|result| result.map(|key| (key, values.into())))
+                    .map(|result| result.map(|key| (key, values)))
             })
             .collect::<Result<Vec<_>>>()
             .map(RowsData::Insert),
-        None => Ok(RowsData::Append(rows.into_iter().map(Into::into).collect())),
+        None => Ok(RowsData::Append(rows)),
     }
 }
 
@@ -257,50 +259,77 @@ async fn validate_foreign_key<T: GStore>(
     Ok(())
 }
 
-async fn fetch_map_rows<T: GStore>(storage: &T, source: &Query) -> Result<Vec<DataRow>> {
+async fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &Query) -> Result<Vec<Vec<Value>>> {
     #[derive(futures_enum::Stream)]
     enum Rows<I1, I2> {
         Values(I1),
         Select(I2),
     }
 
+    let doc_column: Arc<[String]> = Arc::from(vec![SCHEMALESS_DOC_COLUMN.to_owned()]);
+
     let rows = match &source.body {
         SetExpr::Values(Values(values_list)) => {
             let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref()).await?;
-            let rows = stream::iter(values_list).then(|values| async move {
-                if values.len() > 1 {
-                    return Err(InsertError::OnlySingleValueAcceptedForSchemalessRow.into());
-                }
+            let rows = stream::iter(values_list).then({
+                let doc_column = Arc::clone(&doc_column);
+                move |values| {
+                    let doc_column = Arc::clone(&doc_column);
+                    async move {
+                        if values.len() > 1 {
+                            return Err(InsertError::OnlySingleValueAcceptedForSchemalessRow(
+                                values.len(),
+                            )
+                            .into());
+                        }
 
-                evaluate_stateless(None, &values[0])
-                    .await?
-                    .try_into()
-                    .map(Row::Map)
+                        let Some(value) = values.first() else {
+                            return Err(
+                                InsertError::OnlySingleValueAcceptedForSchemalessRow(0).into()
+                            );
+                        };
+
+                        let map: BTreeMap<String, Value> =
+                            evaluate_stateless(None, value).await?.try_into()?;
+
+                        Ok(Row {
+                            columns: doc_column,
+                            values: vec![Value::Map(map)],
+                        })
+                    }
+                }
             });
             let rows = limit.apply(rows);
-            let rows = rows.map_ok(Into::into);
+            let rows = rows.map_ok(Row::into_values);
 
             Rows::Values(rows)
         }
         SetExpr::Select(_) => {
             let rows = select(storage, source, None).await?.map(|row| {
-                let row = row?;
+                let values = row?.into_values();
 
-                if let Row::Vec { values, .. } = &row {
-                    if values.len() > 1 {
-                        return Err(InsertError::OnlySingleValueAcceptedForSchemalessRow.into());
-                    } else if !matches!(&values[0], Value::Map(_)) {
-                        return Err(InsertError::MapTypeValueRequired((&values[0]).into()).into());
-                    }
+                if values.len() > 1 {
+                    return Err(
+                        InsertError::OnlySingleValueAcceptedForSchemalessRow(values.len()).into(),
+                    );
                 }
 
-                Ok(row.into())
+                let map = match values.into_iter().next() {
+                    None => {
+                        return Err(InsertError::OnlySingleValueAcceptedForSchemalessRow(0).into());
+                    }
+                    Some(Value::Map(map)) => map,
+                    Some(Value::Str(s)) => BTreeMap::parse_json_object(&s)?,
+                    Some(v) => return Err(InsertError::MapTypeValueRequired((&v).into()).into()),
+                };
+
+                Ok(vec![Value::Map(map)])
             });
 
             Rows::Select(rows)
         }
     }
-    .try_collect::<Vec<DataRow>>()
+    .try_collect::<Vec<Vec<Value>>>()
     .await?;
 
     Ok(rows)

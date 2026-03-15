@@ -14,7 +14,7 @@ use {
         error::Result,
         parse_sql::parse_data_type,
         prelude::{Error, Value},
-        store::{DataRow, RowIter, Store},
+        store::{RowIter, Store},
         translate::translate_data_type,
     },
     mongodb::{
@@ -51,7 +51,7 @@ impl Store for MongoStorage {
         Ok(schemas)
     }
 
-    async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<DataRow>> {
+    async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<Vec<Value>>> {
         let column_defs = self
             .get_column_defs(table_name)
             .await?
@@ -87,7 +87,6 @@ impl Store for MongoStorage {
                         bson.into_value(&column_def.data_type).map_storage_err()
                     })
                     .collect::<Result<Vec<_>>>()
-                    .map(DataRow::Vec)
             })
             .transpose()
     }
@@ -141,7 +140,7 @@ impl Store for MongoStorage {
                     .map(|(key, bson)| Ok((key, bson.into_value_schemaless().map_storage_err()?)))
                     .collect::<Result<BTreeMap<String, Value>>>()?;
 
-                Ok((key, DataRow::Map(row)))
+                Ok((key, vec![Value::Map(row)]))
             }
         });
 

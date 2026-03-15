@@ -4,9 +4,9 @@ use {
         ast::Expr,
         data::schema::{Schema, SchemaIndex},
         error::{Error, IndexError, Result},
+        executor::RowContext,
         executor::evaluate_stateless,
         prelude::Value,
-        store::DataRow,
     },
     sled::{
         IVec,
@@ -88,7 +88,7 @@ impl<'a> IndexSync<'a> {
     pub async fn insert(
         &self,
         data_key: &IVec,
-        row: &DataRow,
+        row: &[Value],
     ) -> ConflictableTransactionResult<(), Error> {
         for index in self.indexes.iter() {
             self.insert_index(index, data_key, row).await?;
@@ -101,7 +101,7 @@ impl<'a> IndexSync<'a> {
         &self,
         index: &SchemaIndex,
         data_key: &IVec,
-        row: &DataRow,
+        row: &[Value],
     ) -> ConflictableTransactionResult<(), Error> {
         let SchemaIndex {
             name: index_name,
@@ -126,8 +126,8 @@ impl<'a> IndexSync<'a> {
     pub async fn update(
         &self,
         data_key: &IVec,
-        old_row: &DataRow,
-        new_row: &DataRow,
+        old_row: &[Value],
+        new_row: &[Value],
     ) -> ConflictableTransactionResult<(), Error> {
         for index in self.indexes.iter() {
             let SchemaIndex {
@@ -164,7 +164,7 @@ impl<'a> IndexSync<'a> {
     pub async fn delete(
         &self,
         data_key: &IVec,
-        row: &DataRow,
+        row: &[Value],
     ) -> ConflictableTransactionResult<(), Error> {
         for index in self.indexes.iter() {
             self.delete_index(index, data_key, row).await?;
@@ -177,7 +177,7 @@ impl<'a> IndexSync<'a> {
         &self,
         index: &SchemaIndex,
         data_key: &IVec,
-        row: &DataRow,
+        row: &[Value],
     ) -> ConflictableTransactionResult<(), Error> {
         let SchemaIndex {
             name: index_name,
@@ -272,9 +272,12 @@ async fn evaluate_index_key(
     index_name: &str,
     index_expr: &Expr,
     columns: Option<&[String]>,
-    row: &DataRow,
+    row: &[Value],
 ) -> ConflictableTransactionResult<Vec<u8>, Error> {
-    let context = Some(row.as_context(columns));
+    let context = Some(RowContext::RefVecData {
+        columns: columns.unwrap_or(&[]),
+        values: row,
+    });
     let evaluated = evaluate_stateless(context, index_expr)
         .await
         .map_err(ConflictableTransactionError::Abort)?;

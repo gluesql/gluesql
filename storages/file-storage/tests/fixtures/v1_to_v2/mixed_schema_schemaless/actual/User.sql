@@ -1,0 +1,1 @@
+CREATE TABLE User (id INTEGER, name TEXT, active BOOLEAN);

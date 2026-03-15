@@ -1,6 +1,6 @@
 use {
     gluesql_core::store::Transaction,
-    gluesql_redb_storage::RedbStorage,
+    gluesql_redb_storage::{REDB_STORAGE_FORMAT_VERSION, RedbStorage},
     redb::{Database, StorageBackend, TableDefinition, backends::FileBackend},
     std::{
         fs::{OpenOptions, create_dir, remove_file},
@@ -53,6 +53,7 @@ impl StorageBackend for FailingBackend {
 #[tokio::test]
 async fn begin_write_after_io_error() {
     const TABLE: TableDefinition<u64, u64> = TableDefinition::new("x");
+    const META_TABLE: TableDefinition<&str, u32> = TableDefinition::new("__GLUESQL_META__");
 
     let _ = create_dir("tmp");
     let path = "tmp/redb_prev_io";
@@ -71,6 +72,16 @@ async fn begin_write_after_io_error() {
         .create_with_backend(backend)
         .expect("create database");
 
+    {
+        let tx = db.begin_write().expect("begin write for metadata");
+        let mut table = tx.open_table(META_TABLE).expect("open metadata table");
+        table
+            .insert("storage_format_version", &REDB_STORAGE_FORMAT_VERSION)
+            .expect("insert storage format version");
+        drop(table);
+        tx.commit().expect("commit metadata");
+    }
+
     fail_flag.store(true, Ordering::SeqCst);
     let tx = db.begin_write().expect("begin write");
     {
@@ -79,7 +90,7 @@ async fn begin_write_after_io_error() {
     }
     let _ = tx.commit().expect_err("commit should fail");
 
-    let mut storage = RedbStorage::from_database(db);
+    let mut storage = RedbStorage::from_database(db).expect("from_database should validate format");
     let err = storage.begin(true).await.expect_err("begin should fail");
     assert!(err.to_string().contains("Previous I/O error"));
 }

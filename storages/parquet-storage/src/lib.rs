@@ -6,7 +6,7 @@ use {
         data::Schema,
         error::{Error, Result},
         prelude::{DataType, Key, Value},
-        store::{DataRow, Metadata, Planner},
+        store::{Metadata, Planner},
     },
     parquet::{
         file::{reader::FileReader, serialized_reader::SerializedFileReader},
@@ -31,7 +31,7 @@ mod store_mut;
 mod transaction;
 mod value;
 
-type RowIter = Box<dyn Iterator<Item = Result<(Key, DataRow)>> + Send>;
+type RowIter = Box<dyn Iterator<Item = Result<(Key, Vec<Value>)>> + Send>;
 
 #[derive(Debug, Clone)]
 pub struct ParquetStorage {
@@ -159,7 +159,7 @@ impl ParquetStorage {
                     key_counter += 1;
                     generated
                 });
-                rows.push(Ok((generated_key, DataRow::Vec(row))));
+                rows.push(Ok((generated_key, row)));
             }
         } else {
             let tmp_schema = Self::generate_temp_schema();
@@ -175,7 +175,7 @@ impl ParquetStorage {
                         data_map = inner_map;
                     }
 
-                    rows.push(Ok((generated_key, DataRow::Map(data_map.clone()))));
+                    rows.push(Ok((generated_key, vec![Value::Map(data_map.clone())])));
                 }
             }
         }

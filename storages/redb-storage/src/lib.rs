@@ -2,16 +2,19 @@
 
 mod core;
 mod error;
+mod migration;
+
+pub use migration::{MigrationReport, REDB_STORAGE_FORMAT_VERSION, migrate_to_latest};
 
 use {
     async_trait::async_trait,
     core::StorageCore,
     gluesql_core::{
-        data::{Key, Schema},
+        data::{Key, Schema, Value},
         error::Result,
         store::{
-            AlterTable, CustomFunction, CustomFunctionMut, DataRow, Index, IndexMut, Metadata,
-            Planner, RowIter, Store, StoreMut, Transaction,
+            AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Planner,
+            RowIter, Store, StoreMut, Transaction,
         },
     },
     redb::Database,
@@ -25,8 +28,8 @@ impl RedbStorage {
         StorageCore::new(filename).map(Self).map_err(Into::into)
     }
 
-    pub fn from_database(db: Database) -> Self {
-        Self(StorageCore::from_database(db))
+    pub fn from_database(db: Database) -> Result<Self> {
+        StorageCore::from_database(db).map(Self).map_err(Into::into)
     }
 }
 
@@ -40,7 +43,7 @@ impl Store for RedbStorage {
         self.0.fetch_schema(table_name).map_err(Into::into)
     }
 
-    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
+    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Vec<Value>>> {
         self.0.fetch_data(table_name, key).map_err(Into::into)
     }
 
@@ -59,11 +62,11 @@ impl StoreMut for RedbStorage {
         self.0.delete_schema(table_name).map_err(Into::into)
     }
 
-    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
+    async fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
         self.0.append_data(table_name, rows).map_err(Into::into)
     }
 
-    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
+    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
         self.0.insert_data(table_name, rows).map_err(Into::into)
     }
 
