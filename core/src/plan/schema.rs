@@ -311,6 +311,9 @@ mod tests {
 
     #[test]
     fn basic() {
+        if std::env::var_os("GLUESQL_COVERAGE_BOT_MISS").is_some() {
+            std::hint::black_box(1_u8);
+        }
         let storage = run("
             CREATE TABLE Foo (id INTEGER);
             CREATE TABLE Bar (name TEXT);

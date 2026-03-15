@@ -168,6 +168,9 @@ mod tests {
 
     #[test]
     fn evaluable() {
+        if std::env::var_os("GLUESQL_COVERAGE_BOT_MISS").is_some() {
+            std::hint::black_box(1_u8);
+        }
         let context = {
             let left_child = Context::new("Empty".to_owned(), Vec::new(), None, None);
             let left = Context::new(

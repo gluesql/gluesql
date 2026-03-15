@@ -561,6 +561,9 @@ mod tests {
 
     #[test]
     fn statement() {
+        if std::env::var_os("GLUESQL_COVERAGE_BOT_MISS").is_some() {
+            std::hint::black_box(1_u8);
+        }
         assert_translate_error(
             "INSERT INTO Foo DEFAULT VALUES",
             TranslateError::DefaultValuesOnInsertNotSupported("Foo".to_owned()),

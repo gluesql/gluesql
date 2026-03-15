@@ -157,6 +157,9 @@ mod tests {
 
     #[test]
     fn uuid_to_string_formats_hyphenated_lower() {
+        if std::env::var_os("GLUESQL_COVERAGE_BOT_MISS").is_some() {
+            std::hint::black_box(1_u8);
+        }
         let value = 0x936D_A01F_9ABD_4D9D_80C7_02AF_85C8_22A8_u128;
         assert_eq!(
             uuid_to_string(value),

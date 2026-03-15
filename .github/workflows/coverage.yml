@@ -29,6 +29,8 @@ jobs:
           - 27017:27017
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - name: Free disk space (pre-build)
         continue-on-error: true
         run: |
@@ -83,6 +85,233 @@ jobs:
             --ignore "cli/src/{cli,helper,lib,main}.rs" \
             --excl-line "(#\\[derive\\()|(^\s*.await[;,]?$)|(^test_case\!\([\d\w]+,)" \
             -o ./coverage/lcov.info
+      - name: Build patch coverage summary
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const { execSync } = require('child_process');
+
+          const baseSha = process.env.BASE_SHA;
+          const headSha = process.env.HEAD_SHA;
+          const repoRoot = process.cwd();
+          const lcovPath = path.join(repoRoot, 'coverage', 'lcov.info');
+
+          const normalizePath = (filePath) => {
+            const normalized = filePath.replaceAll('\\', '/').replace(/^\.\/+/, '');
+            const rootPrefix = `${repoRoot.replaceAll('\\', '/')}/`;
+
+            if (normalized.startsWith(rootPrefix)) {
+              return normalized.slice(rootPrefix.length);
+            }
+
+            return normalized;
+          };
+
+          const parseLcov = () => {
+            const coverageByFile = new Map();
+            const lines = fs.readFileSync(lcovPath, 'utf8').split('\n');
+            let currentFile = null;
+
+            for (const line of lines) {
+              if (line.startsWith('SF:')) {
+                currentFile = normalizePath(line.slice(3).trim());
+                coverageByFile.set(currentFile, new Map());
+                continue;
+              }
+
+              if (line === 'end_of_record') {
+                currentFile = null;
+                continue;
+              }
+
+              if (!currentFile || !line.startsWith('DA:')) {
+                continue;
+              }
+
+              const payload = line.slice(3);
+              const parts = payload.split(',');
+              const lineNo = Number(parts[0]);
+              const hit = Number(parts[1]);
+
+              if (Number.isNaN(lineNo) || Number.isNaN(hit)) {
+                continue;
+              }
+
+              coverageByFile.get(currentFile).set(lineNo, hit);
+            }
+
+            return coverageByFile;
+          };
+
+          const parseChangedAddedLines = () => {
+            const diffOutput = execSync(
+              `git diff --unified=0 --no-color --find-renames "${baseSha}" "${headSha}"`,
+              { encoding: 'utf8' },
+            );
+            const changedByFile = new Map();
+            let currentFile = null;
+
+            for (const line of diffOutput.split('\n')) {
+              if (line.startsWith('+++ ')) {
+                const rawPath = line.slice(4).trim();
+                if (rawPath === '/dev/null') {
+                  currentFile = null;
+                  continue;
+                }
+
+                currentFile = normalizePath(rawPath.replace(/^b\//, ''));
+                if (!changedByFile.has(currentFile)) {
+                  changedByFile.set(currentFile, new Set());
+                }
+                continue;
+              }
+
+              if (!currentFile || !line.startsWith('@@ ')) {
+                continue;
+              }
+
+              const match = line.match(/\+(\d+)(?:,(\d+))?/);
+              if (!match) {
+                continue;
+              }
+
+              const start = Number(match[1]);
+              const count = Number(match[2] || '1');
+
+              if (Number.isNaN(start) || Number.isNaN(count) || count <= 0) {
+                continue;
+              }
+
+              const added = changedByFile.get(currentFile);
+              for (let lineNo = start; lineNo < start + count; lineNo += 1) {
+                added.add(lineNo);
+              }
+            }
+
+            return changedByFile;
+          };
+
+          const coverageByFile = parseLcov();
+          const changedByFile = parseChangedAddedLines();
+
+          let totalExecutableLines = 0;
+          let totalCoveredLines = 0;
+          for (const lines of coverageByFile.values()) {
+            totalExecutableLines += lines.size;
+            for (const hit of lines.values()) {
+              if (hit > 0) {
+                totalCoveredLines += 1;
+              }
+            }
+          }
+
+          let addedLines = 0;
+          let addedExecutableLines = 0;
+          let coveredAddedExecutableLines = 0;
+          let missedAddedExecutableLines = 0;
+          const perFileStats = [];
+
+          const changedLinesJson = {};
+          for (const [file, addedSet] of changedByFile.entries()) {
+            const sorted = Array.from(addedSet).sort((a, b) => a - b);
+            changedLinesJson[file] = sorted;
+            addedLines += sorted.length;
+            let fileAddedExecutableLines = 0;
+            let fileCoveredAddedExecutableLines = 0;
+            let fileMissedAddedExecutableLines = 0;
+
+            const coverageLines = coverageByFile.get(file);
+            if (!coverageLines) {
+              perFileStats.push({
+                file,
+                added_lines: sorted.length,
+                added_executable_lines: fileAddedExecutableLines,
+                covered_added_executable_lines: fileCoveredAddedExecutableLines,
+                missed_added_executable_lines: fileMissedAddedExecutableLines,
+                patch_coverage_percent: null,
+              });
+              continue;
+            }
+
+            for (const lineNo of sorted) {
+              const hit = coverageLines.get(lineNo);
+              if (typeof hit !== 'number') {
+                continue;
+              }
+
+              addedExecutableLines += 1;
+              fileAddedExecutableLines += 1;
+              if (hit > 0) {
+                coveredAddedExecutableLines += 1;
+                fileCoveredAddedExecutableLines += 1;
+              } else {
+                missedAddedExecutableLines += 1;
+                fileMissedAddedExecutableLines += 1;
+              }
+            }
+
+            perFileStats.push({
+              file,
+              added_lines: sorted.length,
+              added_executable_lines: fileAddedExecutableLines,
+              covered_added_executable_lines: fileCoveredAddedExecutableLines,
+              missed_added_executable_lines: fileMissedAddedExecutableLines,
+              patch_coverage_percent:
+                fileAddedExecutableLines > 0
+                  ? (fileCoveredAddedExecutableLines / fileAddedExecutableLines) * 100
+                  : null,
+            });
+          }
+
+          const topChangedFiles = perFileStats
+            .filter((fileStat) => fileStat.added_executable_lines > 0)
+            .slice()
+            .sort((left, right) => {
+              if (right.added_lines !== left.added_lines) {
+                return right.added_lines - left.added_lines;
+              }
+
+              if (right.added_executable_lines !== left.added_executable_lines) {
+                return right.added_executable_lines - left.added_executable_lines;
+              }
+
+              return left.file.localeCompare(right.file);
+            })
+            .slice(0, 10);
+
+          const summary = {
+            base_sha: baseSha,
+            head_sha: headSha,
+            total_files_with_changes: Object.keys(changedLinesJson).length,
+            added_lines: addedLines,
+            added_executable_lines: addedExecutableLines,
+            covered_added_executable_lines: coveredAddedExecutableLines,
+            missed_added_executable_lines: missedAddedExecutableLines,
+            total_executable_lines: totalExecutableLines,
+            covered_executable_lines: totalCoveredLines,
+            overall_coverage_percent:
+              totalExecutableLines > 0 ? (totalCoveredLines / totalExecutableLines) * 100 : null,
+            patch_coverage_percent:
+              addedExecutableLines > 0
+                ? (coveredAddedExecutableLines / addedExecutableLines) * 100
+                : null,
+            top_changed_files: topChangedFiles,
+          };
+
+          fs.writeFileSync(
+            path.join(repoRoot, 'coverage', 'changed-lines.json'),
+            JSON.stringify(changedLinesJson),
+          );
+          fs.writeFileSync(
+            path.join(repoRoot, 'coverage', 'patch-summary.json'),
+            JSON.stringify(summary, null, 2),
+          );
+          NODE
       - name: Cleanup raw and merged profiles
         if: always()
         run: |
@@ -104,6 +333,11 @@ jobs:
         run: |
           xz -T0 -9e -c coverage/lcov.info > coverage/lcov.info.xz
           rm -f coverage/lcov.info
+      - name: Compress changed lines
+        if: github.event_name == 'pull_request'
+        run: |
+          xz -T0 -9e -c coverage/changed-lines.json > coverage/changed-lines.json.xz
+          rm -f coverage/changed-lines.json
       - name: Record PR number
         if: github.event_name == 'pull_request'
         run: echo "${{ github.event.pull_request.number }}" > coverage/pr-number
