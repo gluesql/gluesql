@@ -170,6 +170,7 @@ fn translate_select(sql_select: &SqlSelect, params: &[ParamLiteral]) -> Result<S
             .as_ref()
             .map(|expr| translate_expr(expr, params))
             .transpose()?,
+        aggregate_slots: None,
     })
 }
 
@@ -446,6 +447,7 @@ mod tests {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
+                aggregate_slots: None,
             })),
             order_by: Vec::new(),
             limit: None,

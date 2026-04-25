@@ -92,8 +92,11 @@ pub enum EvaluateError {
     #[error("context is required for identifier evaluation: {}", .0.to_sql())]
     ContextRequiredForIdentEvaluation(Box<Expr>),
 
-    #[error("unreachable empty aggregate value: {0:?}")]
-    UnreachableEmptyAggregateValue(Box<Aggregate>),
+    #[error("aggregate slot value missing: {0:?}")]
+    AggregateSlotValueMissing(Box<Aggregate>),
+
+    #[error("aggregate expression requires planner binding: {0:?}")]
+    UnplannedAggregate(Box<Aggregate>),
 
     #[error("filter context is required for aggregate function: {0:?}")]
     FilterContextRequiredForAggregate(Box<Aggregate>),

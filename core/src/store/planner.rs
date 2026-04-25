@@ -2,7 +2,10 @@ use {
     super::Store,
     crate::{
         ast::Statement,
-        plan::{fetch_schema_map, plan_join, plan_primary_key, plan_schemaless, validate},
+        plan::{
+            fetch_schema_map, plan_aggregate, plan_join, plan_primary_key, plan_schemaless,
+            validate,
+        },
         result::Result,
     },
     async_trait::async_trait,
@@ -17,6 +20,7 @@ pub trait Planner: Store {
         let statement = plan_schemaless(&schema_map, statement)?;
         let statement = plan_primary_key(&schema_map, statement);
         let statement = plan_join(&schema_map, statement);
+        let statement = plan_aggregate(statement);
 
         Ok(statement)
     }

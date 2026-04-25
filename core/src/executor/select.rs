@@ -126,7 +126,7 @@ where
         projection,
         group_by,
         having,
-        ..
+        aggregate_slots,
     } = match &query.body {
         SetExpr::Select(statement) => statement.as_ref(),
         SetExpr::Values(Values(values_list)) => {
@@ -155,7 +155,6 @@ where
         storage,
         where_clause.as_ref(),
         filter_context.as_ref().map(Arc::clone),
-        None,
     ));
     let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref()).await?;
     let sort = Sort::new(
@@ -178,7 +177,7 @@ where
 
     let rows = aggregate::apply(
         storage,
-        projection,
+        aggregate_slots.as_deref(),
         group_by,
         having.as_ref(),
         filter_context.as_ref().map(Arc::clone),
@@ -194,14 +193,13 @@ where
         let labels = Arc::clone(&project_labels);
         let project = Arc::clone(&project);
         let AggregateContext { aggregated, next } = aggregate_context;
-        let aggregated = aggregated.map(Arc::new);
 
         async move {
             let row = project
                 .apply(
                     aggregated.as_ref().map(Arc::clone),
                     labels,
-                    Arc::clone(&next),
+                    next.as_ref().map(Arc::clone),
                 )
                 .await?;
 

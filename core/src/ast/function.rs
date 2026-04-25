@@ -2,6 +2,7 @@ use {
     super::{DataType, DateTimeField, Expr, literal::TrimWhereField},
     crate::ast::ToSql,
     serde::{Deserialize, Serialize},
+    std::hash::{Hash, Hasher},
     strum_macros::Display,
 };
 
@@ -524,15 +525,25 @@ pub enum AggregateFunction {
     Stdev(Expr),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Aggregate {
     pub func: AggregateFunction,
     pub distinct: bool,
+    /// Planner-assigned aggregate slot.
+    ///
+    /// This is execution metadata, not part of the SQL AST semantics.
+    /// It is ignored by equality, hashing, and serialization.
+    #[serde(default, skip)]
+    pub slot: Option<usize>,
 }
 
 impl Aggregate {
     pub fn new(func: AggregateFunction, distinct: bool) -> Self {
-        Self { func, distinct }
+        Self {
+            func,
+            distinct,
+            slot: None,
+        }
     }
 
     pub fn count(expr: CountArgExpr, distinct: bool) -> Self {
@@ -561,6 +572,21 @@ impl Aggregate {
 
     pub fn stdev(expr: Expr, distinct: bool) -> Self {
         Self::new(AggregateFunction::Stdev(expr), distinct)
+    }
+}
+
+impl PartialEq for Aggregate {
+    fn eq(&self, other: &Self) -> bool {
+        self.func == other.func && self.distinct == other.distinct
+    }
+}
+
+impl Eq for Aggregate {}
+
+impl Hash for Aggregate {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.func.hash(state);
+        self.distinct.hash(state);
     }
 }
 

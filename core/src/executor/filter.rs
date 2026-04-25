@@ -1,12 +1,9 @@
 use {
-    super::{context::RowContext, evaluate::evaluate},
-    crate::{
-        ast::{Aggregate, Expr},
-        data::Value,
-        result::Result,
-        store::GStore,
+    super::{
+        context::{AggregateValues, RowContext},
+        evaluate::evaluate,
     },
-    im::HashMap,
+    crate::{ast::Expr, result::Result, store::GStore},
     std::sync::Arc,
 };
 
@@ -14,7 +11,6 @@ pub struct Filter<'a, T: GStore> {
     storage: &'a T,
     where_clause: Option<&'a Expr>,
     context: Option<Arc<RowContext<'a>>>,
-    aggregated: Option<Arc<HashMap<&'a Aggregate, Value>>>,
 }
 
 impl<'a, T: GStore> Filter<'a, T> {
@@ -22,13 +18,11 @@ impl<'a, T: GStore> Filter<'a, T> {
         storage: &'a T,
         where_clause: Option<&'a Expr>,
         context: Option<Arc<RowContext<'a>>>,
-        aggregated: Option<Arc<HashMap<&'a Aggregate, Value>>>,
     ) -> Self {
         Self {
             storage,
             where_clause,
             context,
-            aggregated,
         }
     }
 
@@ -42,9 +36,8 @@ impl<'a, T: GStore> Filter<'a, T> {
                     None => project_context,
                 };
                 let context = Some(context);
-                let aggregated = self.aggregated.as_ref().map(Arc::clone);
 
-                check_expr(self.storage, context, aggregated, expr).await
+                check_expr(self.storage, context, None, expr).await
             }
             None => Ok(true),
         }
@@ -54,7 +47,7 @@ impl<'a, T: GStore> Filter<'a, T> {
 pub async fn check_expr<'a, T: GStore>(
     storage: &'a T,
     context: Option<Arc<RowContext<'a>>>,
-    aggregated: Option<Arc<HashMap<&'a Aggregate, Value>>>,
+    aggregated: Option<Arc<AggregateValues>>,
     expr: &'a Expr,
 ) -> Result<bool> {
     evaluate(storage, context, aggregated, expr)

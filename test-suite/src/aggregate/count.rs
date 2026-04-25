@@ -79,4 +79,16 @@ test_case!(count, {
     for (sql, expected) in test_cases {
         g.test(sql, Ok(expected)).await;
     }
+
+    g.run("CREATE TABLE EmptyItem (id INTEGER NULL);").await;
+    g.test(
+        "SELECT COUNT(*) FROM EmptyItem;",
+        Ok(select!("COUNT(*)"; I64; 0)),
+    )
+    .await;
+    g.test(
+        "SELECT COUNT(id) FROM EmptyItem;",
+        Ok(select!("COUNT(id)"; I64; 0)),
+    )
+    .await;
 });

@@ -231,6 +231,7 @@ mod tests {
                 selection: Some(expr("PlayerItem.amount > 10").try_into().unwrap()),
                 group_by: Vec::new(),
                 having: None,
+                aggregate_slots: None,
             };
 
             Ok(Statement::Query(Query {

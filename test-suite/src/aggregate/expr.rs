@@ -46,4 +46,18 @@ test_case!(expr, {
         Ok(select!("test" I64; 5)),
     )
     .await;
+
+    g.named_test(
+        "wrapped aggregate inside scalar function",
+        "SELECT COALESCE(COUNT(*), 0) AS test FROM Item;",
+        Ok(select!("test" I64; 5)),
+    )
+    .await;
+
+    g.named_test(
+        "aggregate inside is null predicate",
+        "SELECT SUM(age) IS NULL AS test FROM Item;",
+        Ok(select!("test" Bool; true)),
+    )
+    .await;
 });

@@ -92,6 +92,10 @@ test_case!(group_by, {
                 21                2            "Seoul".to_owned()
             ),
         ),
+        (
+            "SELECT city FROM Item GROUP BY city HAVING COALESCE(COUNT(*), 0) > 1",
+            select!(city Str; "Seoul".to_owned()),
+        ),
     ];
 
     for (sql, expected) in test_cases {

@@ -80,6 +80,7 @@ fn check_select(context: Option<&Arc<Context<'_>>>, select: &Select) -> bool {
         selection,
         group_by,
         having,
+        ..
     } = select;
 
     let projection_ok = match projection {

@@ -267,6 +267,7 @@ mod tests {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
+                aggregate_slots: None,
             };
 
             Ok(Statement::Query(Query {

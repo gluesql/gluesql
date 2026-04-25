@@ -100,4 +100,20 @@ CREATE TABLE Test (
         )),
     )
     .await;
+
+    g.run("CREATE TABLE AggregateTarget (count INTEGER);").await;
+
+    g.named_test(
+        "insert aggregate select result into target",
+        "INSERT INTO AggregateTarget SELECT COUNT(*) FROM Test;",
+        Ok(Payload::Insert(1)),
+    )
+    .await;
+
+    g.named_test(
+        "aggregate insert result",
+        "SELECT * FROM AggregateTarget;",
+        Ok(select!(count; I64; 6)),
+    )
+    .await;
 });

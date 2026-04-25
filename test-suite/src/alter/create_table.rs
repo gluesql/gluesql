@@ -106,12 +106,20 @@ test_case!(create_table, {
             Ok(Payload::Create),
         ),
         (
+            "CREATE TABLE TargetTableWithAggregate AS SELECT COUNT(*) FROM CreateTable2",
+            Ok(Payload::Create),
+        ),
+        (
             "SELECT * FROM TargetTableWithData",
             Ok(select_with_null!(
                 id     | num    | name;
                 Null     I64(1)   Str("1".to_owned());
                 I64(2)   I64(2)   Str("2".to_owned())
             )),
+        ),
+        (
+            "SELECT * FROM TargetTableWithAggregate",
+            Ok(select!("COUNT(*)"; I64; 2)),
         ),
         (
             "CREATE TABLE TargetTableWithLimit AS SELECT * FROM CreateTable2 LIMIT 1",

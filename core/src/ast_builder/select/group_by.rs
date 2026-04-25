@@ -216,6 +216,7 @@ mod tests {
                 selection: None,
                 group_by: vec![col("PlayerItem.category").try_into().unwrap()],
                 having: None,
+                aggregate_slots: None,
             };
 
             Ok(Statement::Query(Query {

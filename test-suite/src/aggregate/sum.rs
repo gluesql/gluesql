@@ -95,4 +95,11 @@ test_case!(sum, {
     for (sql, expected) in test_cases {
         g.test(sql, Ok(expected)).await;
     }
+
+    g.run("CREATE TABLE EmptyItem (id INTEGER NULL);").await;
+    g.test(
+        "SELECT SUM(id) FROM EmptyItem;",
+        Ok(select_with_null!("SUM(id)"; Null)),
+    )
+    .await;
 });

@@ -5,9 +5,12 @@ mod function;
 
 use {
     self::function::BreakCase,
-    super::{context::RowContext, select::select},
+    super::{
+        context::{AggregateValues, RowContext},
+        select::select,
+    },
     crate::{
-        ast::{Aggregate, Expr, Function, Projection, SetExpr},
+        ast::{Expr, Function, Projection, SetExpr},
         data::{CustomFunction, Interval, Row, Value},
         mock::MockStorage,
         result::{Error, Result},
@@ -19,21 +22,19 @@ use {
         future::{ready, try_join_all},
         stream::{self, StreamExt, TryStreamExt},
     },
-    im::HashMap,
     std::{borrow::Cow, ops::ControlFlow, sync::Arc},
 };
 
 pub use {error::EvaluateError, evaluated::Evaluated};
 
-pub async fn evaluate<'a, 'b, 'c, T>(
+pub async fn evaluate<'a, 'b, T>(
     storage: &'a T,
     context: Option<Arc<RowContext<'b>>>,
-    aggregated: Option<Arc<HashMap<&'c Aggregate, Value>>>,
+    aggregated: Option<Arc<AggregateValues>>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>>
 where
     'b: 'a,
-    'c: 'a,
     T: GStore,
 {
     evaluate_inner(Some(storage), context, aggregated, expr).await
@@ -50,15 +51,14 @@ pub async fn evaluate_stateless<'a, 'b: 'a>(
 }
 
 #[async_recursion]
-async fn evaluate_inner<'a, 'b, 'c, T>(
+async fn evaluate_inner<'a, 'b, T>(
     storage: Option<&'a T>,
     context: Option<Arc<RowContext<'b>>>,
-    aggregated: Option<Arc<HashMap<&'c Aggregate, Value>>>,
+    aggregated: Option<Arc<AggregateValues>>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>>
 where
     'b: 'a,
-    'c: 'a,
     T: GStore,
 {
     let eval = |expr| {
@@ -146,10 +146,13 @@ where
         }
         Expr::Aggregate(aggr) => match aggregated
             .as_ref()
-            .and_then(|aggregated| aggregated.get(aggr.as_ref()))
+            .and_then(|aggregated| aggr.slot.and_then(|slot| aggregated.get(slot)))
         {
             Some(value) => Ok(Evaluated::Value(Cow::Owned(value.clone()))),
-            None => Err(EvaluateError::UnreachableEmptyAggregateValue(aggr.clone()).into()),
+            None if aggr.slot.is_none() => {
+                Err(EvaluateError::UnplannedAggregate(aggr.clone()).into())
+            }
+            None => Err(EvaluateError::AggregateSlotValueMissing(aggr.clone()).into()),
         },
         Expr::Function(func) => {
             let context = context.as_ref().map(Arc::clone);
@@ -326,10 +329,10 @@ where
     }
 }
 
-async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
+async fn evaluate_function<'a, 'b: 'a, T: GStore>(
     storage: Option<&'a T>,
     context: Option<Arc<RowContext<'b>>>,
-    aggregated: Option<Arc<HashMap<&'c Aggregate, Value>>>,
+    aggregated: Option<Arc<AggregateValues>>,
     func: &'b Function,
 ) -> Result<Evaluated<'a>> {
     use function as f;
@@ -739,5 +742,76 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         ControlFlow::Continue(v) => Ok(v),
         ControlFlow::Break(BreakCase::Null) => Ok(Evaluated::Value(Cow::Owned(Value::Null))),
         ControlFlow::Break(BreakCase::Err(err)) => Err(err),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::{EvaluateError, evaluate, evaluate_stateless},
+        crate::{
+            ast::{Aggregate, CountArgExpr, Expr, Projection, SelectItem, SetExpr, Statement},
+            executor::context::AggregateValues,
+            mock::MockStorage,
+            parse_sql::parse,
+            result::Error,
+            translate::translate,
+        },
+        futures::executor::block_on,
+        std::sync::Arc,
+    };
+
+    #[test]
+    fn aggregate_requires_planner_binding() {
+        let sql = "SELECT COUNT(*) FROM Item";
+        let parsed = parse(sql)
+            .expect(sql)
+            .into_iter()
+            .next()
+            .expect("query statement");
+        let translated = translate(&parsed).expect("translated statement");
+
+        let expr = if let Statement::Query(query) = translated
+            && let SetExpr::Select(select) = query.body
+            && let Projection::SelectItems(items) = select.projection
+            && let Some(SelectItem::Expr { expr, .. }) = items.into_iter().next()
+        {
+            expr
+        } else {
+            panic!("expected SELECT projection expression: {sql}");
+        };
+
+        let Expr::Aggregate(aggregate) = expr else {
+            panic!("expected aggregate expression");
+        };
+
+        let expr = Expr::Aggregate(aggregate.clone());
+        let result = block_on(evaluate_stateless(None, &expr));
+
+        assert_eq!(
+            result,
+            Err(Error::from(EvaluateError::UnplannedAggregate(Box::new(
+                *aggregate
+            ))))
+        );
+    }
+
+    #[test]
+    fn aggregate_slot_value_must_exist() {
+        let mut aggregate = Aggregate::count(CountArgExpr::Wildcard, false);
+        aggregate.slot = Some(0);
+
+        let expr = Expr::Aggregate(Box::new(aggregate.clone()));
+        let storage = MockStorage::default();
+        let aggregated = Arc::new(AggregateValues::new(Vec::new()));
+
+        let result = block_on(evaluate(&storage, None, Some(aggregated), &expr));
+
+        assert_eq!(
+            result,
+            Err(Error::from(EvaluateError::AggregateSlotValueMissing(
+                Box::new(aggregate)
+            )))
+        );
     }
 }

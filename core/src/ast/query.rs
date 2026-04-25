@@ -3,6 +3,7 @@ use {
     crate::ast::ToSql,
     itertools::Itertools,
     serde::{Deserialize, Serialize},
+    std::hash::{Hash, Hasher},
     strum_macros::Display,
 };
 
@@ -26,7 +27,7 @@ pub enum Projection {
     SchemalessMap,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Select {
     pub distinct: bool,
     pub projection: Projection,
@@ -35,6 +36,36 @@ pub struct Select {
     pub selection: Option<Expr>,
     pub group_by: Vec<Expr>,
     pub having: Option<Expr>,
+    /// Planner-assigned aggregate slot table for this SELECT.
+    ///
+    /// This is execution metadata, not part of the SQL AST semantics.
+    /// It is ignored by equality, hashing, and serialization.
+    #[serde(default, skip)]
+    pub aggregate_slots: Option<Vec<super::Aggregate>>,
+}
+
+impl PartialEq for Select {
+    fn eq(&self, other: &Self) -> bool {
+        self.distinct == other.distinct
+            && self.projection == other.projection
+            && self.from == other.from
+            && self.selection == other.selection
+            && self.group_by == other.group_by
+            && self.having == other.having
+    }
+}
+
+impl Eq for Select {}
+
+impl Hash for Select {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.distinct.hash(state);
+        self.projection.hash(state);
+        self.from.hash(state);
+        self.selection.hash(state);
+        self.group_by.hash(state);
+        self.having.hash(state);
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -254,6 +285,7 @@ impl Select {
             selection,
             group_by,
             having,
+            aggregate_slots: _,
         } = self;
         let projection = match projection {
             Projection::SelectItems(items) => {
@@ -669,6 +701,7 @@ mod tests {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
+                aggregate_slots: None,
             })),
             order_by,
             limit: Some(Expr::Literal(Literal::Number(
@@ -707,6 +740,7 @@ mod tests {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
+                aggregate_slots: None,
             })),
             order_by,
             limit: Some(Expr::Literal(Literal::Number(
@@ -748,6 +782,7 @@ mod tests {
             selection: None,
             group_by: Vec::new(),
             having: None,
+            aggregate_slots: None,
         }))
         .to_sql();
         assert_eq!(actual, expected);
@@ -797,6 +832,7 @@ mod tests {
             selection: None,
             group_by: Vec::new(),
             having: None,
+            aggregate_slots: None,
         }))
         .to_sql_unquoted();
         assert_eq!(actual, expected);
@@ -857,6 +893,7 @@ mod tests {
                 op: BinaryOperator::Eq,
                 right: Box::new(Expr::Literal(Literal::QuotedString("glue".to_owned()))),
             }),
+            aggregate_slots: None,
         }
         .to_sql();
         assert_eq!(actual, expected);
@@ -880,6 +917,7 @@ mod tests {
             }),
             group_by: Vec::new(),
             having: None,
+            aggregate_slots: None,
         }
         .to_sql();
         assert_eq!(actual, expected);
@@ -909,6 +947,7 @@ mod tests {
                 op: BinaryOperator::Eq,
                 right: Box::new(Expr::Literal(Literal::QuotedString("glue".to_owned()))),
             }),
+            aggregate_slots: None,
         }
         .to_sql_unquoted();
         assert_eq!(actual, expected);
@@ -932,6 +971,7 @@ mod tests {
             }),
             group_by: Vec::new(),
             having: None,
+            aggregate_slots: None,
         }
         .to_sql_unquoted();
         assert_eq!(actual, expected);
@@ -1038,6 +1078,7 @@ mod tests {
                     selection: None,
                     group_by: Vec::new(),
                     having: None,
+                    aggregate_slots: None,
                 })),
                 order_by: Vec::new(),
                 limit: None,
@@ -1105,6 +1146,7 @@ mod tests {
                     selection: None,
                     group_by: Vec::new(),
                     having: None,
+                    aggregate_slots: None,
                 })),
                 order_by: Vec::new(),
                 limit: None,

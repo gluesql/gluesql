@@ -1,13 +1,15 @@
 use {
     crate::{
-        ast::{Aggregate, Projection, SelectItem},
+        ast::{Projection, SelectItem},
         data::{Row, SCHEMALESS_DOC_COLUMN, Value},
-        executor::{context::RowContext, evaluate::evaluate},
+        executor::{
+            context::{AggregateValues, RowContext},
+            evaluate::evaluate,
+        },
         result::Result,
         store::GStore,
     },
     futures::stream::{self, StreamExt, TryStreamExt},
-    im::HashMap,
     std::sync::Arc,
 };
 
@@ -32,19 +34,20 @@ impl<'a, T: GStore> Project<'a, T> {
 
     pub async fn apply(
         &self,
-        aggregated: Option<Arc<HashMap<&'a Aggregate, Value>>>,
+        aggregated: Option<Arc<AggregateValues>>,
         labels: Arc<[String]>,
-        context: Arc<RowContext<'a>>,
+        context: Option<Arc<RowContext<'a>>>,
     ) -> Result<Row> {
-        let filter_context = match &self.context {
-            Some(filter_context) => Arc::new(RowContext::concat(
-                Arc::clone(&context),
+        let filter_context = match (&context, &self.context) {
+            (Some(context), Some(filter_context)) => Some(Arc::new(RowContext::concat(
+                Arc::clone(context),
                 Arc::clone(filter_context),
-            )),
-            None => Arc::clone(&context),
+            ))),
+            (Some(context), None) => Some(Arc::clone(context)),
+            (None, Some(filter_context)) => Some(Arc::clone(filter_context)),
+            (None, None) => None,
         };
-        let filter_context = Some(filter_context);
-        let context = &context;
+        let context = context.as_ref();
 
         match self.projection {
             Projection::SelectItems(fields) => {
@@ -55,10 +58,11 @@ impl<'a, T: GStore> Project<'a, T> {
 
                         async move {
                             match item {
-                                SelectItem::Wildcard => Ok(context.get_all_entries()),
-                                SelectItem::QualifiedWildcard(table_alias) => {
-                                    Ok(context.get_alias_entries(table_alias).unwrap_or_default())
-                                }
+                                SelectItem::Wildcard => Ok(context
+                                    .map_or_else(Vec::new, |context| context.get_all_entries())),
+                                SelectItem::QualifiedWildcard(table_alias) => Ok(context
+                                    .and_then(|context| context.get_alias_entries(table_alias))
+                                    .unwrap_or_default()),
                                 SelectItem::Expr { expr, label } => {
                                     evaluate(self.storage, filter_context, aggregated, expr)
                                         .await
@@ -79,7 +83,7 @@ impl<'a, T: GStore> Project<'a, T> {
             }
             Projection::SchemalessMap => {
                 let value = context
-                    .get_value(SCHEMALESS_DOC_COLUMN)
+                    .and_then(|context| context.get_value(SCHEMALESS_DOC_COLUMN))
                     .cloned()
                     .unwrap_or(Value::Null);
 
