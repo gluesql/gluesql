@@ -86,6 +86,29 @@ pub fn plan(statement: Statement) -> Statement {
     }
 }
 
+// Processes a SetExpr that is a branch of UNION/UNION ALL. Unlike plan_query,
+// this operates directly on &mut SetExpr to avoid cloning the AST subtree.
+fn plan_union_body(body: &mut SetExpr) {
+    match body {
+        SetExpr::Select(select) => {
+            plan_select(select);
+            // Union branches carry no ORDER BY, so pass an empty slice.
+            bind_select(select, &mut []);
+        }
+        SetExpr::Values(Values(exprs_list)) => {
+            for exprs in exprs_list {
+                for expr in exprs {
+                    plan_expr(expr);
+                }
+            }
+        }
+        SetExpr::Union { left, right, .. } => {
+            plan_union_body(left);
+            plan_union_body(right);
+        }
+    }
+}
+
 fn plan_query(query: &mut Query) {
     match &mut query.body {
         SetExpr::Select(select) => {
@@ -105,22 +128,8 @@ fn plan_query(query: &mut Query) {
             }
         }
         SetExpr::Union { left, right, .. } => {
-            let mut left_query = Query {
-                body: *left.clone(),
-                order_by: vec![],
-                limit: None,
-                offset: None,
-            };
-            let mut right_query = Query {
-                body: *right.clone(),
-                order_by: vec![],
-                limit: None,
-                offset: None,
-            };
-            plan_query(&mut left_query);
-            plan_query(&mut right_query);
-            *left = Box::new(left_query.body);
-            *right = Box::new(right_query.body);
+            plan_union_body(left);
+            plan_union_body(right);
         }
     }
 

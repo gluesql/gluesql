@@ -109,29 +109,7 @@ fn scan_query<'a, T: Store + ?Sized>(storage: &'a T, query: &'a Query) -> Schema
             ..
         } = query;
 
-        let schema_list = match body {
-            SetExpr::Select(select) => scan_select(storage, select).await?,
-            SetExpr::Values(_) => HashMap::new(),
-            SetExpr::Union { left, right, .. } => {
-                let left_query = Query {
-                    body: *left.clone(),
-                    order_by: vec![],
-                    limit: None,
-                    offset: None,
-                };
-                let right_query = Query {
-                    body: *right.clone(),
-                    order_by: vec![],
-                    limit: None,
-                    offset: None,
-                };
-                scan_query(storage, &left_query)
-                    .await?
-                    .into_iter()
-                    .chain(scan_query(storage, &right_query).await?)
-                    .collect()
-            }
-        };
+        let schema_list = scan_set_expr(storage, body).await?;
 
         let schema_list = match (limit, offset) {
             (Some(limit), Some(offset)) => schema_list
@@ -147,6 +125,22 @@ fn scan_query<'a, T: Store + ?Sized>(storage: &'a T, query: &'a Query) -> Schema
         };
 
         Ok(schema_list)
+    })
+}
+
+// Scans schema references in a SetExpr without wrapping branches in a
+// temporary Query (avoids cloning the AST subtree for Union branches).
+fn scan_set_expr<'a, T: Store + ?Sized>(storage: &'a T, body: &'a SetExpr) -> SchemaFuture<'a> {
+    Box::pin(async move {
+        match body {
+            SetExpr::Select(select) => scan_select(storage, select).await,
+            SetExpr::Values(_) => Ok(HashMap::new()),
+            SetExpr::Union { left, right, .. } => {
+                let left_schemas = scan_set_expr(storage, left).await?;
+                let right_schemas = scan_set_expr(storage, right).await?;
+                Ok(left_schemas.into_iter().chain(right_schemas).collect())
+            }
+        }
     })
 }
 

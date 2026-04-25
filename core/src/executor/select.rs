@@ -119,67 +119,6 @@ where
         Values(S1),
     }
 
-    // Handle UNION / UNION ALL before Select or Values.
-    if let SetExpr::Union { left, right, all } = &query.body {
-        let left_query = Query {
-            body: *left.clone(),
-            order_by: vec![],
-            limit: None,
-            offset: None,
-        };
-        let right_query = Query {
-            body: *right.clone(),
-            order_by: vec![],
-            limit: None,
-            offset: None,
-        };
-
-        let (labels, left_stream) = select_with_labels(
-            storage,
-            &left_query,
-            filter_context.as_ref().map(Arc::clone),
-        )
-        .await?;
-        let (right_labels, right_stream) = select_with_labels(
-            storage,
-            &right_query,
-            filter_context.as_ref().map(Arc::clone),
-        )
-        .await?;
-
-        if labels.len() != right_labels.len() {
-            return Err(SelectError::UnionColumnCountMismatch {
-                left: labels.len(),
-                right: right_labels.len(),
-            }
-            .into());
-        }
-
-        let mut rows: Vec<crate::data::Row> = left_stream.try_collect().await?;
-        let right_rows: Vec<crate::data::Row> = right_stream.try_collect().await?;
-        rows.extend(right_rows);
-
-        if !all {
-            rows = apply_distinct(rows);
-        }
-
-        // Relabel all rows to the left-side labels so ORDER BY column names resolve correctly.
-        let labels_arc: Arc<[String]> = Arc::from(labels.clone());
-        let rows = rows
-            .into_iter()
-            .map(|row| crate::data::Row {
-                columns: Arc::clone(&labels_arc),
-                values: row.values,
-            })
-            .collect::<Vec<_>>();
-
-        let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref()).await?;
-        let rows = sort_stateless(rows, &query.order_by).await?;
-        let rows = stream::iter(rows.into_iter().map(Ok));
-        let rows = limit.apply(rows);
-        return Ok((labels, Row::Values(rows)));
-    }
-
     let Select {
         distinct,
         from: table_with_joins,
@@ -189,7 +128,74 @@ where
         having,
         aggregate_slots,
     } = match &query.body {
-        SetExpr::Select(statement) => statement.as_ref(),
+        SetExpr::Union { left, right, all } => {
+            let left_query = Query {
+                body: *left.clone(),
+                order_by: vec![],
+                limit: None,
+                offset: None,
+            };
+            let right_query = Query {
+                body: *right.clone(),
+                order_by: vec![],
+                limit: None,
+                offset: None,
+            };
+
+            let (labels, left_stream) = select_with_labels(
+                storage,
+                &left_query,
+                filter_context.as_ref().map(Arc::clone),
+            )
+            .await?;
+            let (right_labels, right_stream) = select_with_labels(
+                storage,
+                &right_query,
+                filter_context.as_ref().map(Arc::clone),
+            )
+            .await?;
+
+            if labels.len() != right_labels.len() {
+                return Err(SelectError::UnionColumnCountMismatch {
+                    left: labels.len(),
+                    right: right_labels.len(),
+                }
+                .into());
+            }
+
+            // Relabel rows inline during collection — avoids a separate O(n) pass.
+            let labels_arc: Arc<[String]> = Arc::from(labels.as_slice());
+            let mut rows: Vec<crate::data::Row> = left_stream
+                .map_ok(|row| crate::data::Row {
+                    columns: Arc::clone(&labels_arc),
+                    values: row.values,
+                })
+                .try_collect()
+                .await?;
+            let right_rows: Vec<crate::data::Row> = right_stream
+                .map_ok(|row| crate::data::Row {
+                    columns: Arc::clone(&labels_arc),
+                    values: row.values,
+                })
+                .try_collect()
+                .await?;
+            rows.extend(right_rows);
+
+            if !all {
+                rows = apply_distinct(rows);
+            }
+
+            let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref()).await?;
+            // Skip the sort entirely when there is nothing to sort.
+            let rows = if query.order_by.is_empty() {
+                rows
+            } else {
+                sort_stateless(rows, &query.order_by).await?
+            };
+            let rows = stream::iter(rows.into_iter().map(Ok));
+            let rows = limit.apply(rows);
+            return Ok((labels, Row::Values(rows)));
+        }
         SetExpr::Values(Values(values_list)) => {
             let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref()).await?;
             let (rows, labels) = rows_with_labels(values_list).await?;
@@ -199,9 +205,7 @@ where
 
             return Ok((labels, Row::Values(rows)));
         }
-        SetExpr::Union { .. } => {
-            return Err(SelectError::UnreachableSelectBodyForUnion.into());
-        }
+        SetExpr::Select(statement) => statement.as_ref(),
     };
 
     let TableWithJoins { relation, joins } = &table_with_joins;
