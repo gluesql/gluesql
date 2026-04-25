@@ -1,6 +1,9 @@
 use {
     crate::{row, select, stringify_label, test_case},
-    gluesql_core::prelude::{Payload, Value::Str},
+    gluesql_core::prelude::{
+        Payload,
+        Value::{I64, Str},
+    },
 };
 
 test_case!(table, {
@@ -23,10 +26,7 @@ test_case!(table, {
             "SELECT COUNT(*)
                      FROM GLUE_OBJECTS
                      WHERE CREATED > NOW() - INTERVAL 1 MINUTE",
-            Ok(Payload::Select {
-                labels: vec!["COUNT(*)".to_owned()],
-                rows: Vec::new(),
-            }),
+            Ok(select!("COUNT(*)"; I64; 0)),
         ),
     ];
 
