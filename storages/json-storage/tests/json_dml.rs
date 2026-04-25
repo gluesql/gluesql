@@ -88,7 +88,7 @@ async fn json_dml() {
                 .await,
             Ok(Payload::Select {
                 labels: vec!["COUNT(*)".to_owned()],
-                rows: Vec::new(),
+                rows: vec![vec![Value::I64(0)]],
             }),
         ),
     ];
