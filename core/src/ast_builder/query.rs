@@ -31,6 +31,11 @@ pub enum QueryNode<'a> {
     FilterNode(FilterNode<'a>),
     ProjectNode(ProjectNode<'a>),
     OrderByNode(OrderByNode<'a>),
+    Union {
+        left: Box<QueryNode<'a>>,
+        right: Box<QueryNode<'a>>,
+        all: bool,
+    },
 }
 
 impl<'a> QueryNode<'a> {
@@ -43,6 +48,24 @@ impl<'a> QueryNode<'a> {
             },
             table_alias: None,
             index: None,
+        }
+    }
+
+    #[must_use]
+    pub fn union(self, right: impl Into<QueryNode<'a>>) -> Self {
+        QueryNode::Union {
+            left: Box::new(self),
+            right: Box::new(right.into()),
+            all: false,
+        }
+    }
+
+    #[must_use]
+    pub fn union_all(self, right: impl Into<QueryNode<'a>>) -> Self {
+        QueryNode::Union {
+            left: Box::new(self),
+            right: Box::new(right.into()),
+            all: true,
         }
     }
 }
@@ -115,6 +138,20 @@ impl<'a> TryFrom<QueryNode<'a>> for Query {
             QueryNode::OffsetLimitNode(node) => node.prebuild(),
             QueryNode::ProjectNode(node) => node.prebuild(),
             QueryNode::OrderByNode(node) => node.prebuild(),
+            QueryNode::Union { left, right, all } => {
+                let left = Query::try_from(*left)?.body;
+                let right = Query::try_from(*right)?.body;
+                Ok(Query {
+                    body: SetExpr::Union {
+                        left: Box::new(left),
+                        right: Box::new(right),
+                        all,
+                    },
+                    order_by: Vec::new(),
+                    limit: None,
+                    offset: None,
+                })
+            }
         }
     }
 }
@@ -264,6 +301,21 @@ mod test {
 
         let actual = table("Items").select().alias_as("Sub").select().into();
         let expected = "SELECT * FROM (SELECT * FROM Items) AS Sub";
+        test_query(actual, expected);
+    }
+
+    #[test]
+    fn union_node() {
+        let a: QueryNode = table("A").select().project("id").into();
+        let b: QueryNode = table("B").select().project("id").into();
+        let actual = a.union(b);
+        let expected = "SELECT id FROM A UNION SELECT id FROM B";
+        test_query(actual, expected);
+
+        let a: QueryNode = table("A").select().project("id").into();
+        let b: QueryNode = table("B").select().project("id").into();
+        let actual = a.union_all(b);
+        let expected = "SELECT id FROM A UNION ALL SELECT id FROM B";
         test_query(actual, expected);
     }
 }
