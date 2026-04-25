@@ -87,7 +87,4 @@ pub enum AlterError {
 
     #[error("cannot drop column '{}.{}' referencing with '{}'", referencing.table_name, referencing.foreign_key.referencing_column_name, referencing)]
     CannotAlterReferencingColumn { referencing: Referencing },
-
-    #[error("unreachable")]
-    Unreachable,
 }
