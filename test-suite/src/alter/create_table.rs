@@ -158,6 +158,15 @@ test_case!(create_table, {
             "CREATE TABLE DuplicateColumns (id INT, id INT)",
             Err(AlterError::DuplicateColumnName("id".to_owned()).into()),
         ),
+        ("CREATE TABLE EmptySource (id INTEGER)", Ok(Payload::Create)),
+        (
+            "CREATE TABLE TargetTableWithEmptyAggregate AS SELECT COUNT(*) FROM EmptySource",
+            Ok(Payload::Create),
+        ),
+        (
+            "SELECT * FROM TargetTableWithEmptyAggregate",
+            Ok(select!("COUNT(*)"; I64; 0)),
+        ),
     ];
 
     for (sql, expected) in test_cases {
