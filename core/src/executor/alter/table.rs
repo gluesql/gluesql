@@ -227,6 +227,10 @@ pub async fn create_table<T: GStore + GStoreMut>(
 }
 
 fn can_copy_source_schema(select: &Select) -> bool {
+    if !select.from.joins.is_empty() {
+        return false;
+    }
+
     match &select.projection {
         Projection::SchemalessMap => true,
         Projection::SelectItems(items) => items.iter().all(|item| {

@@ -2,7 +2,7 @@ use {
     crate::*,
     Value::*,
     gluesql_core::{
-        error::{PlanError, TranslateError},
+        error::{AlterError, PlanError, TranslateError},
         prelude::*,
     },
 };
@@ -352,6 +352,10 @@ test_case!(project, {
         (
             "CREATE TABLE Ids AS SELECT id FROM Users A JOIN Users B on A.id = B.id",
             PlanError::ColumnReferenceAmbiguous("id".to_owned()).into(),
+        ),
+        (
+            "CREATE TABLE JoinedUsers AS SELECT * FROM Users JOIN Testers ON Users.id = Testers.id",
+            AlterError::DuplicateColumnName("id".to_owned()).into(),
         ),
         (
             "SELECT * FROM ProjectUser, ProjectItem",
