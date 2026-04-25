@@ -15,7 +15,8 @@ use {
         Distinct as SqlDistinct, Expr as SqlExpr, FunctionArg as SqlFunctionArg,
         GroupByExpr as SqlGroupByExpr, Join as SqlJoin, JoinConstraint as SqlJoinConstraint,
         JoinOperator as SqlJoinOperator, Query as SqlQuery, Select as SqlSelect,
-        SelectItem as SqlSelectItem, SetExpr as SqlSetExpr, TableAlias as SqlTableAlias,
+        SelectItem as SqlSelectItem, SetExpr as SqlSetExpr, SetOperator as SqlSetOperator,
+        SetQuantifier as SqlSetQuantifier, TableAlias as SqlTableAlias,
         TableFactor as SqlTableFactor, TableFunctionArgs as SqlTableFunctionArgs,
         TableWithJoins as SqlTableWithJoins,
     },
@@ -93,6 +94,17 @@ fn translate_set_expr(sql_set_expr: &SqlSetExpr, params: &[ParamLiteral]) -> Res
             .collect::<Result<_>>()
             .map(Values)
             .map(SetExpr::Values),
+        SqlSetExpr::SetOperation {
+            op: SqlSetOperator::Union,
+            set_quantifier,
+            left,
+            right,
+        } => {
+            let all = matches!(set_quantifier, SqlSetQuantifier::All);
+            let left = Box::new(translate_set_expr(left, params)?);
+            let right = Box::new(translate_set_expr(right, params)?);
+            Ok(SetExpr::Union { left, right, all })
+        }
         _ => Err(TranslateError::UnsupportedQuerySetExpr(sql_set_expr.to_string()).into()),
     }
 }
@@ -455,5 +467,107 @@ mod tests {
         };
 
         assert_eq!(translated, expected);
+    }
+
+    fn simple_select_query(table: &str, column: &str) -> Query {
+        use crate::ast::Projection;
+
+        Query {
+            body: SetExpr::Select(Box::new(Select {
+                distinct: false,
+                projection: Projection::SelectItems(vec![SelectItem::Expr {
+                    expr: Expr::Identifier(column.to_owned()),
+                    label: column.to_owned(),
+                }]),
+                from: TableWithJoins {
+                    relation: TableFactor::Table {
+                        name: table.to_owned(),
+                        alias: None,
+                        index: None,
+                    },
+                    joins: Vec::new(),
+                },
+                selection: None,
+                group_by: Vec::new(),
+                having: None,
+                aggregate_slots: None,
+            })),
+            order_by: Vec::new(),
+            limit: None,
+            offset: None,
+        }
+    }
+
+    #[test]
+    fn translate_union_produces_union_set_expr() {
+        let query = parse_query("SELECT id FROM A UNION SELECT id FROM B").expect("parse");
+        let translated = translate_query(query.as_ref(), NO_PARAMS).expect("translate");
+
+        let left = simple_select_query("A", "id");
+        let right = simple_select_query("B", "id");
+
+        let expected = Query {
+            body: SetExpr::Union {
+                left: Box::new(left.body),
+                right: Box::new(right.body),
+                all: false,
+            },
+            order_by: Vec::new(),
+            limit: None,
+            offset: None,
+        };
+
+        assert_eq!(translated, expected);
+    }
+
+    #[test]
+    fn translate_union_all_sets_all_flag() {
+        let query = parse_query("SELECT id FROM A UNION ALL SELECT id FROM B").expect("parse");
+        let translated = translate_query(query.as_ref(), NO_PARAMS).expect("translate");
+
+        assert!(matches!(&translated.body, SetExpr::Union { all: true, .. }));
+    }
+
+    #[test]
+    fn translate_union_default_is_distinct() {
+        let query = parse_query("SELECT id FROM A UNION SELECT id FROM B").expect("parse");
+        let translated = translate_query(query.as_ref(), NO_PARAMS).expect("translate");
+
+        assert!(matches!(
+            &translated.body,
+            SetExpr::Union { all: false, .. }
+        ));
+    }
+
+    #[test]
+    fn union_set_expr_to_sql_roundtrip() {
+        use crate::ast::ToSql;
+
+        let sql = "SELECT id FROM A UNION SELECT id FROM B";
+        let query = parse_query(sql).expect("parse");
+        let translated = translate_query(query.as_ref(), NO_PARAMS).expect("translate");
+
+        let result = translated.to_sql();
+        // The round-trip should contain UNION without ALL.
+        assert!(result.contains("UNION"), "expected UNION in: {result}");
+        assert!(
+            !result.contains("UNION ALL"),
+            "should not contain ALL: {result}"
+        );
+    }
+
+    #[test]
+    fn union_all_set_expr_to_sql_roundtrip() {
+        use crate::ast::ToSql;
+
+        let sql = "SELECT id FROM A UNION ALL SELECT id FROM B";
+        let query = parse_query(sql).expect("parse");
+        let translated = translate_query(query.as_ref(), NO_PARAMS).expect("translate");
+
+        let result = translated.to_sql();
+        assert!(
+            result.contains("UNION ALL"),
+            "expected UNION ALL in: {result}"
+        );
     }
 }

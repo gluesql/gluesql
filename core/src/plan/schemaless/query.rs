@@ -38,7 +38,7 @@ pub(super) fn transform_query<S: BuildHasher>(
             rewrite_select(schema_map, select, &state);
             state
         }
-        SetExpr::Values(_) => QueryRewriteState {
+        SetExpr::Values(_) | SetExpr::Union { .. } => QueryRewriteState {
             rewrite_unqualified_identifiers: false,
             schemaless_aliases: HashSet::new(),
         },

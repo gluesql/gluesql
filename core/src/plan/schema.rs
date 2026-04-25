@@ -11,8 +11,10 @@ use {
     },
     async_recursion::async_recursion,
     futures::stream::{self, StreamExt, TryStreamExt},
-    std::collections::HashMap,
+    std::{collections::HashMap, future::Future, pin::Pin},
 };
+
+type SchemaFuture<'a> = Pin<Box<dyn Future<Output = Result<HashMap<String, Schema>>> + Send + 'a>>;
 
 pub async fn fetch_schema_map<T: Store + ?Sized>(
     storage: &T,
@@ -98,36 +100,54 @@ pub async fn fetch_schema_map<T: Store + ?Sized>(
     }
 }
 
-async fn scan_query<T: Store + ?Sized>(
-    storage: &T,
-    query: &Query,
-) -> Result<HashMap<String, Schema>> {
-    let Query {
-        body,
-        limit,
-        offset,
-        ..
-    } = query;
+fn scan_query<'a, T: Store + ?Sized>(storage: &'a T, query: &'a Query) -> SchemaFuture<'a> {
+    Box::pin(async move {
+        let Query {
+            body,
+            limit,
+            offset,
+            ..
+        } = query;
 
-    let schema_list = match body {
-        SetExpr::Select(select) => scan_select(storage, select).await?,
-        SetExpr::Values(_) => HashMap::new(),
-    };
+        let schema_list = match body {
+            SetExpr::Select(select) => scan_select(storage, select).await?,
+            SetExpr::Values(_) => HashMap::new(),
+            SetExpr::Union { left, right, .. } => {
+                let left_query = Query {
+                    body: *left.clone(),
+                    order_by: vec![],
+                    limit: None,
+                    offset: None,
+                };
+                let right_query = Query {
+                    body: *right.clone(),
+                    order_by: vec![],
+                    limit: None,
+                    offset: None,
+                };
+                scan_query(storage, &left_query)
+                    .await?
+                    .into_iter()
+                    .chain(scan_query(storage, &right_query).await?)
+                    .collect()
+            }
+        };
 
-    let schema_list = match (limit, offset) {
-        (Some(limit), Some(offset)) => schema_list
-            .into_iter()
-            .chain(scan_expr(storage, limit).await?)
-            .chain(scan_expr(storage, offset).await?)
-            .collect(),
-        (Some(expr), None) | (None, Some(expr)) => schema_list
-            .into_iter()
-            .chain(scan_expr(storage, expr).await?)
-            .collect(),
-        (None, None) => schema_list,
-    };
+        let schema_list = match (limit, offset) {
+            (Some(limit), Some(offset)) => schema_list
+                .into_iter()
+                .chain(scan_expr(storage, limit).await?)
+                .chain(scan_expr(storage, offset).await?)
+                .collect(),
+            (Some(expr), None) | (None, Some(expr)) => schema_list
+                .into_iter()
+                .chain(scan_expr(storage, expr).await?)
+                .collect(),
+            (None, None) => schema_list,
+        };
 
-    Ok(schema_list)
+        Ok(schema_list)
+    })
 }
 
 async fn scan_select<T: Store + ?Sized>(

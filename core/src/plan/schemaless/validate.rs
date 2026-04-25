@@ -74,6 +74,22 @@ fn validate_query(
                 }
             }
         }
+        SetExpr::Union { left, right, .. } => {
+            let left_query = Query {
+                body: *left.clone(),
+                order_by: vec![],
+                limit: None,
+                offset: None,
+            };
+            let right_query = Query {
+                body: *right.clone(),
+                order_by: vec![],
+                limit: None,
+                offset: None,
+            };
+            validate_query(schema_map, &left_query)?;
+            validate_query(schema_map, &right_query)?;
+        }
     }
 
     for order_by in &query.order_by {

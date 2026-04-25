@@ -19,6 +19,11 @@ pub struct Query {
 pub enum SetExpr {
     Select(Box<Select>),
     Values(Values),
+    Union {
+        left: Box<SetExpr>,
+        right: Box<SetExpr>,
+        all: bool,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -252,6 +257,15 @@ impl SetExpr {
             (SetExpr::Select(select), false) => select.to_sql_unquoted(),
             (SetExpr::Values(values), true) => format!("VALUES {}", values.to_sql()),
             (SetExpr::Values(values), false) => format!("VALUES {}", values.to_sql_unquoted()),
+            (SetExpr::Union { left, right, all }, _) => {
+                let op = if *all { "UNION ALL" } else { "UNION" };
+                format!(
+                    "{} {} {}",
+                    left.to_sql_with(quoted),
+                    op,
+                    right.to_sql_with(quoted)
+                )
+            }
         }
     }
 }

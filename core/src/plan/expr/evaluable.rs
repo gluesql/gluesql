@@ -52,6 +52,21 @@ fn check_query(context: Option<&Arc<Context<'_>>>, query: &Query) -> bool {
             .iter()
             .flatten()
             .all(|expr| check_expr(context.map(Arc::clone), expr)),
+        SetExpr::Union { left, right, .. } => {
+            let left_query = Query {
+                body: *left.clone(),
+                order_by: vec![],
+                limit: None,
+                offset: None,
+            };
+            let right_query = Query {
+                body: *right.clone(),
+                order_by: vec![],
+                limit: None,
+                offset: None,
+            };
+            check_query(context, &left_query) && check_query(context, &right_query)
+        }
     };
 
     if !body {

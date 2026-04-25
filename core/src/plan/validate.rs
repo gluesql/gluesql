@@ -131,7 +131,7 @@ fn contextualize_query<'a>(
 
             Context::concat(by_table, by_joins)
         }
-        SetExpr::Values(_) => None,
+        SetExpr::Values(_) | SetExpr::Union { .. } => None,
     }
 }
 

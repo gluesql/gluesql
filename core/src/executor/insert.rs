@@ -151,7 +151,7 @@ async fn fetch_vec_rows<T: GStore>(
 
             Rows::Values(rows)
         }
-        SetExpr::Select(_) => {
+        SetExpr::Select(_) | SetExpr::Union { .. } => {
             let rows = select(storage, source, None).await?.map(|row| {
                 let values = row?.into_values();
 
@@ -304,7 +304,7 @@ async fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &Query) -> Result
 
             Rows::Values(rows)
         }
-        SetExpr::Select(_) => {
+        SetExpr::Select(_) | SetExpr::Union { .. } => {
             let rows = select(storage, source, None).await?.map(|row| {
                 let values = row?.into_values();
 

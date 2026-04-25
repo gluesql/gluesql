@@ -119,6 +119,59 @@ where
         Values(S1),
     }
 
+    // Handle UNION / UNION ALL before Select or Values.
+    if let SetExpr::Union { left, right, all } = &query.body {
+        let left_query = Query {
+            body: *left.clone(),
+            order_by: vec![],
+            limit: None,
+            offset: None,
+        };
+        let right_query = Query {
+            body: *right.clone(),
+            order_by: vec![],
+            limit: None,
+            offset: None,
+        };
+
+        let (labels, left_stream) = select_with_labels(
+            storage,
+            &left_query,
+            filter_context.as_ref().map(Arc::clone),
+        )
+        .await?;
+        let (_, right_stream) = select_with_labels(
+            storage,
+            &right_query,
+            filter_context.as_ref().map(Arc::clone),
+        )
+        .await?;
+
+        let mut rows: Vec<crate::data::Row> = left_stream.try_collect().await?;
+        let right_rows: Vec<crate::data::Row> = right_stream.try_collect().await?;
+        rows.extend(right_rows);
+
+        if !all {
+            rows = apply_distinct(rows);
+        }
+
+        // Relabel all rows to the left-side labels so ORDER BY column names resolve correctly.
+        let labels_arc: Arc<[String]> = Arc::from(labels.clone());
+        let rows = rows
+            .into_iter()
+            .map(|row| crate::data::Row {
+                columns: Arc::clone(&labels_arc),
+                values: row.values,
+            })
+            .collect::<Vec<_>>();
+
+        let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref()).await?;
+        let rows = sort_stateless(rows, &query.order_by).await?;
+        let rows = stream::iter(rows.into_iter().map(Ok));
+        let rows = limit.apply(rows);
+        return Ok((labels, Row::Values(rows)));
+    }
+
     let Select {
         distinct,
         from: table_with_joins,
@@ -137,6 +190,9 @@ where
             let rows = limit.apply(rows);
 
             return Ok((labels, Row::Values(rows)));
+        }
+        SetExpr::Union { .. } => {
+            return Err(SelectError::UnreachableSelectBodyForUnion.into());
         }
     };
 

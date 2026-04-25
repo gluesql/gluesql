@@ -48,6 +48,33 @@ impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
                 SetExpr::Select(Box::new(select))
             }
             SetExpr::Values(_) => body,
+            SetExpr::Union { left, right, all } => {
+                let left = Box::new(
+                    self.query(
+                        outer_context.as_ref().map(Arc::clone),
+                        Query {
+                            body: *left,
+                            order_by: vec![],
+                            limit: None,
+                            offset: None,
+                        },
+                    )
+                    .body,
+                );
+                let right = Box::new(
+                    self.query(
+                        outer_context,
+                        Query {
+                            body: *right,
+                            order_by: vec![],
+                            limit: None,
+                            offset: None,
+                        },
+                    )
+                    .body,
+                );
+                SetExpr::Union { left, right, all }
+            }
         };
 
         Query {

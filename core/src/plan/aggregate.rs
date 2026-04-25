@@ -104,6 +104,24 @@ fn plan_query(query: &mut Query) {
                 }
             }
         }
+        SetExpr::Union { left, right, .. } => {
+            let mut left_query = Query {
+                body: *left.clone(),
+                order_by: vec![],
+                limit: None,
+                offset: None,
+            };
+            let mut right_query = Query {
+                body: *right.clone(),
+                order_by: vec![],
+                limit: None,
+                offset: None,
+            };
+            plan_query(&mut left_query);
+            plan_query(&mut right_query);
+            *left = Box::new(left_query.body);
+            *right = Box::new(right_query.body);
+        }
     }
 
     if let Some(limit) = query.limit.as_mut() {

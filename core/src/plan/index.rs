@@ -47,6 +47,33 @@ impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
                 (SetExpr::Select(Box::new(select)), order_by)
             }
             SetExpr::Values(values) => (SetExpr::Values(values), order_by),
+            SetExpr::Union { left, right, all } => {
+                let left = Box::new(
+                    self.query(
+                        outer_context.as_ref().map(Arc::clone),
+                        Query {
+                            body: *left,
+                            order_by: vec![],
+                            limit: None,
+                            offset: None,
+                        },
+                    )
+                    .body,
+                );
+                let right = Box::new(
+                    self.query(
+                        outer_context,
+                        Query {
+                            body: *right,
+                            order_by: vec![],
+                            limit: None,
+                            offset: None,
+                        },
+                    )
+                    .body,
+                );
+                (SetExpr::Union { left, right, all }, order_by)
+            }
         };
 
         Query {

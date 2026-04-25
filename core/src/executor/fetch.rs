@@ -491,6 +491,22 @@ where
 
                 Ok(labels)
             }
+            SetExpr::Union { left, .. } => {
+                // For UNION, column labels are derived from the left side.
+                let left_derived = TableFactor::Derived {
+                    subquery: Query {
+                        body: *left.clone(),
+                        order_by: vec![],
+                        limit: None,
+                        offset: None,
+                    },
+                    alias: TableAlias {
+                        name: name.to_owned(),
+                        columns: alias_columns.clone(),
+                    },
+                };
+                fetch_relation_columns(storage, &left_derived).await
+            }
         },
     }
 }
