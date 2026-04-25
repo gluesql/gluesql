@@ -658,21 +658,64 @@ mod tests {
     use {
         crate::{
             ast::{
-                BinaryOperator, Dictionary, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator,
-                Literal, OrderByExpr, Projection, Query, Select, SelectItem, SetExpr, TableAlias,
-                TableFactor, TableWithJoins, ToSql, ToSqlUnquoted, Values,
+                Aggregate, BinaryOperator, CountArgExpr, Dictionary, Expr, Join, JoinConstraint,
+                JoinExecutor, JoinOperator, Literal, OrderByExpr, Projection, Query, Select,
+                SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, ToSql, ToSqlUnquoted,
+                Values,
             },
             parse_sql::parse_expr,
             translate::{NO_PARAMS, translate_expr},
         },
         bigdecimal::BigDecimal,
-        std::str::FromStr,
+        std::{
+            collections::{HashSet, hash_map::DefaultHasher},
+            hash::{Hash, Hasher},
+            str::FromStr,
+        },
     };
 
     fn expr(sql: &str) -> Expr {
         let parsed = parse_expr(sql).expect(sql);
 
         translate_expr(&parsed, NO_PARAMS).expect(sql)
+    }
+
+    #[test]
+    fn select_eq_and_hash_ignore_aggregate_slots() {
+        let hash = |select: &Select| {
+            let mut hasher = DefaultHasher::new();
+            select.hash(&mut hasher);
+            hasher.finish()
+        };
+        let left = Select {
+            distinct: false,
+            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
+            from: TableWithJoins {
+                relation: TableFactor::Table {
+                    name: "FOO".to_owned(),
+                    alias: None,
+                    index: None,
+                },
+                joins: Vec::new(),
+            },
+            selection: None,
+            group_by: Vec::new(),
+            having: None,
+            aggregate_slots: None,
+        };
+        let mut right = left.clone();
+        let mut aggregate = Aggregate::count(CountArgExpr::Wildcard, false);
+        aggregate.slot = Some(0);
+        right.aggregate_slots = Some(vec![aggregate]);
+
+        assert_eq!(left, right);
+        assert_eq!(hash(&left), hash(&right));
+
+        let mut set = HashSet::new();
+        set.insert(left);
+        set.insert(right);
+
+        assert_eq!(set.len(), 1);
     }
 
     #[test]
