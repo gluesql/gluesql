@@ -100,7 +100,17 @@ fn translate_set_expr(sql_set_expr: &SqlSetExpr, params: &[ParamLiteral]) -> Res
             left,
             right,
         } => {
-            let all = matches!(set_quantifier, SqlSetQuantifier::All);
+            let all = match set_quantifier {
+                SqlSetQuantifier::All => true,
+                SqlSetQuantifier::None | SqlSetQuantifier::Distinct => false,
+                SqlSetQuantifier::ByName
+                | SqlSetQuantifier::AllByName
+                | SqlSetQuantifier::DistinctByName => {
+                    return Err(
+                        TranslateError::UnsupportedQuerySetExpr(sql_set_expr.to_string()).into(),
+                    );
+                }
+            };
             let left = Box::new(translate_set_expr(left, params)?);
             let right = Box::new(translate_set_expr(right, params)?);
             Ok(SetExpr::Union { left, right, all })
@@ -597,5 +607,74 @@ mod tests {
             ),
             "expected UnsupportedQuerySetExpr error, got: {result:?}"
         );
+    }
+
+    #[test]
+    fn union_by_name_variants_are_unsupported() {
+        // UNION BY NAME / UNION ALL BY NAME / UNION DISTINCT BY NAME are
+        // DuckDB/Snowflake extensions that GlueSQL does not support.
+        // Each must return UnsupportedQuerySetExpr rather than silently
+        // treating the BY NAME qualifier as a plain UNION DISTINCT.
+        //
+        // Note: sqlparser only parses these with the DuckDB dialect, so
+        // we construct the AST directly here instead of going through parse_query.
+        use {
+            crate::translate::translate_query,
+            sqlparser::ast::{
+                Query as SqlQuery, SetExpr as SqlSetExpr, SetOperator as SqlSetOperator,
+                SetQuantifier as SqlSetQuantifier,
+            },
+        };
+
+        let make_query = |quantifier: SqlSetQuantifier| -> SqlQuery {
+            let one = Box::new(SqlSetExpr::Query(Box::new(
+                sqlparser::parser::Parser::parse_sql(
+                    &sqlparser::dialect::GenericDialect {},
+                    "SELECT 1",
+                )
+                .unwrap()
+                .into_iter()
+                .next()
+                .and_then(|s| match s {
+                    sqlparser::ast::Statement::Query(q) => Some(*q),
+                    _ => None,
+                })
+                .unwrap(),
+            )));
+            SqlQuery {
+                with: None,
+                body: Box::new(SqlSetExpr::SetOperation {
+                    op: SqlSetOperator::Union,
+                    set_quantifier: quantifier,
+                    left: one.clone(),
+                    right: one,
+                }),
+                order_by: None,
+                limit: None,
+                limit_by: vec![],
+                offset: None,
+                fetch: None,
+                locks: vec![],
+                for_clause: None,
+                settings: None,
+                format_clause: None,
+            }
+        };
+
+        for quantifier in [
+            SqlSetQuantifier::ByName,
+            SqlSetQuantifier::AllByName,
+            SqlSetQuantifier::DistinctByName,
+        ] {
+            let q = make_query(quantifier);
+            let result = translate_query(&q, NO_PARAMS);
+            assert!(
+                matches!(
+                    result,
+                    Err(Error::Translate(TranslateError::UnsupportedQuerySetExpr(_)))
+                ),
+                "expected UnsupportedQuerySetExpr for BY NAME variant, got: {result:?}"
+            );
+        }
     }
 }

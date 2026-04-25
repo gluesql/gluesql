@@ -3,6 +3,7 @@ use {
         ExprList, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
         LimitNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
         TableFactorNode,
+        error::AstBuilderError,
         select::{Prebuild, ValuesNode},
         table_factor::TableType,
     },
@@ -139,12 +140,27 @@ impl<'a> TryFrom<QueryNode<'a>> for Query {
             QueryNode::ProjectNode(node) => node.prebuild(),
             QueryNode::OrderByNode(node) => node.prebuild(),
             QueryNode::Union { left, right, all } => {
-                let left = Query::try_from(*left)?.body;
-                let right = Query::try_from(*right)?.body;
+                let left = Query::try_from(*left)?;
+                let right = Query::try_from(*right)?;
+
+                // Reject branches that carry ORDER BY, LIMIT, or OFFSET.
+                // Those clauses apply to an entire query, not to a UNION branch;
+                // silently dropping them would produce wrong semantics.
+                // Users should wrap such a branch with .alias_as() first.
+                if !left.order_by.is_empty()
+                    || left.limit.is_some()
+                    || left.offset.is_some()
+                    || !right.order_by.is_empty()
+                    || right.limit.is_some()
+                    || right.offset.is_some()
+                {
+                    return Err(AstBuilderError::UnionBranchWithClause.into());
+                }
+
                 Ok(Query {
                     body: SetExpr::Union {
-                        left: Box::new(left),
-                        right: Box::new(right),
+                        left: Box::new(left.body),
+                        right: Box::new(right.body),
                         all,
                     },
                     order_by: Vec::new(),
@@ -317,5 +333,36 @@ mod test {
         let actual = a.union_all(b);
         let expected = "SELECT id FROM A UNION ALL SELECT id FROM B";
         test_query(actual, expected);
+    }
+
+    #[test]
+    fn union_branch_with_order_by_is_rejected() {
+        use crate::ast_builder::AstBuilderError;
+
+        // A branch that carries ORDER BY must be wrapped with .alias_as() first.
+        let a: QueryNode = table("A").select().project("id").order_by("id DESC").into();
+        let b: QueryNode = table("B").select().project("id").into();
+        let result = Query::try_from(a.union(b));
+        assert_eq!(
+            result,
+            Err(crate::result::Error::AstBuilder(
+                AstBuilderError::UnionBranchWithClause
+            ))
+        );
+    }
+
+    #[test]
+    fn union_branch_with_limit_is_rejected() {
+        use crate::ast_builder::AstBuilderError;
+
+        let a: QueryNode = table("A").select().project("id").into();
+        let b: QueryNode = table("B").select().project("id").limit(5).into();
+        let result = Query::try_from(a.union(b));
+        assert_eq!(
+            result,
+            Err(crate::result::Error::AstBuilder(
+                AstBuilderError::UnionBranchWithClause
+            ))
+        );
     }
 }
