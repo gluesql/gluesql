@@ -145,9 +145,22 @@ test_case!(series, {
         (
             "SELECT * FROM TargetTable",
             Ok(select!(
-                N
+                "1"
                 I64;
                 1
+            )),
+        ),
+        (
+            // CTAS without Table uses projection labels for schema
+            "CREATE TABLE TargetTableWithExpressions AS SELECT 3, 4",
+            Ok(Payload::Create),
+        ),
+        (
+            "SELECT * FROM TargetTableWithExpressions",
+            Ok(select!(
+                "3" | "4"
+                I64 | I64;
+                3     4
             )),
         ),
     ];
