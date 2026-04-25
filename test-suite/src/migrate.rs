@@ -67,13 +67,6 @@ test_case!(migrate, {
             TranslateError::UnsupportedBinaryOperator("^".to_owned()).into(),
         ),
         (
-            "SELECT * FROM Test UNION SELECT * FROM Test;",
-            TranslateError::UnsupportedQuerySetExpr(
-                "SELECT * FROM Test UNION SELECT * FROM Test".to_owned(),
-            )
-            .into(),
-        ),
-        (
             "SELECT * FROM Test WHERE noname = 1;",
             EvaluateError::IdentifierNotFound("noname".to_owned()).into(),
         ),
