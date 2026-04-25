@@ -570,4 +570,32 @@ mod tests {
             "expected UNION ALL in: {result}"
         );
     }
+
+    #[test]
+    fn unsupported_set_op_intersect_returns_error() {
+        let result = parse_query("SELECT 1 INTERSECT SELECT 1")
+            .and_then(|q| translate_query(q.as_ref(), NO_PARAMS));
+
+        assert!(
+            matches!(
+                result,
+                Err(Error::Translate(TranslateError::UnsupportedQuerySetExpr(_)))
+            ),
+            "expected UnsupportedQuerySetExpr error, got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn unsupported_set_op_except_returns_error() {
+        let result = parse_query("SELECT 1 EXCEPT SELECT 1")
+            .and_then(|q| translate_query(q.as_ref(), NO_PARAMS));
+
+        assert!(
+            matches!(
+                result,
+                Err(Error::Translate(TranslateError::UnsupportedQuerySetExpr(_)))
+            ),
+            "expected UnsupportedQuerySetExpr error, got: {result:?}"
+        );
+    }
 }

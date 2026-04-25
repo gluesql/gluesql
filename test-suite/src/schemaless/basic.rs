@@ -127,4 +127,21 @@ test_case!(basic, {
         )),
     )
     .await;
+
+    // UNION on schemaless tables (covers plan/schemaless/validate.rs SetExpr::Union branch)
+    g.run("CREATE TABLE Extra").await;
+    g.run(
+        format!(
+            "INSERT INTO Extra VALUES ('{}');",
+            json!({ "id": 9999, "name": "Extra" })
+        )
+        .as_str(),
+    )
+    .await;
+
+    g.test(
+        "SELECT id FROM Player UNION SELECT id FROM Extra ORDER BY id",
+        Ok(select!(id; I64; 1001; 1002; 9999)),
+    )
+    .await;
 });
