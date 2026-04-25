@@ -38,10 +38,34 @@ pub(super) fn transform_query<S: BuildHasher>(
             rewrite_select(schema_map, select, &state);
             state
         }
-        SetExpr::Values(_) | SetExpr::Union { .. } => QueryRewriteState {
+        SetExpr::Values(_) => QueryRewriteState {
             rewrite_unqualified_identifiers: false,
             schemaless_aliases: HashSet::new(),
         },
+        SetExpr::Union { left, right, .. } => {
+            let mut left_query = Query {
+                body: (**left).clone(),
+                order_by: vec![],
+                limit: None,
+                offset: None,
+            };
+            transform_query(schema_map, &mut left_query);
+            **left = left_query.body;
+
+            let mut right_query = Query {
+                body: (**right).clone(),
+                order_by: vec![],
+                limit: None,
+                offset: None,
+            };
+            transform_query(schema_map, &mut right_query);
+            **right = right_query.body;
+
+            QueryRewriteState {
+                rewrite_unqualified_identifiers: false,
+                schemaless_aliases: HashSet::new(),
+            }
+        }
     };
 
     for order_by in &mut query.order_by {

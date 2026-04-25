@@ -140,12 +140,20 @@ where
             filter_context.as_ref().map(Arc::clone),
         )
         .await?;
-        let (_, right_stream) = select_with_labels(
+        let (right_labels, right_stream) = select_with_labels(
             storage,
             &right_query,
             filter_context.as_ref().map(Arc::clone),
         )
         .await?;
+
+        if labels.len() != right_labels.len() {
+            return Err(SelectError::UnionColumnCountMismatch {
+                left: labels.len(),
+                right: right_labels.len(),
+            }
+            .into());
+        }
 
         let mut rows: Vec<crate::data::Row> = left_stream.try_collect().await?;
         let right_rows: Vec<crate::data::Row> = right_stream.try_collect().await?;

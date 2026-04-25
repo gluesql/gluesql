@@ -5,6 +5,11 @@ pub enum SelectError {
     #[error("VALUES lists must all be the same length")]
     NumberOfValuesDifferent,
 
+    #[error(
+        "UNION column count mismatch: left returns {left} column(s) but right returns {right} column(s)"
+    )]
+    UnionColumnCountMismatch { left: usize, right: usize },
+
     #[error("unreachable - union body should have been handled before reaching SelectNode match")]
     UnreachableSelectBodyForUnion,
 }
