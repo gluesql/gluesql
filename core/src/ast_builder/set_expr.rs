@@ -215,7 +215,7 @@ impl<'a, T: Into<SetExprNode<'a>>> SetExprBuild<'a> for T {}
 mod tests {
     use {
         super::SetExprBuild,
-        crate::ast_builder::{QueryNode, table, test_query},
+        crate::ast_builder::{QueryNode, table, test_query, values},
     };
 
     #[test]
@@ -241,6 +241,112 @@ mod tests {
             .union_all(table("C").select().project("id"))
             .into();
         let expected = "SELECT id FROM A UNION ALL SELECT id FROM B UNION ALL SELECT id FROM C";
+        test_query(actual, expected);
+    }
+
+    // ── SetExprNode variant coverage ─────────────────────────────────────────
+
+    #[test]
+    fn values_as_union_branch() {
+        // SetExprNode::Values via prebuild_set_expr
+        let actual: QueryNode = table("A")
+            .select()
+            .project("id")
+            .union(values(vec!["1"]))
+            .into();
+        let expected = "SELECT id FROM A UNION VALUES(1)";
+        test_query(actual, expected);
+    }
+
+    #[test]
+    fn filter_as_union_branch() {
+        // SetExprNode::Filter via prebuild_set_expr
+        let actual: QueryNode = table("A")
+            .select()
+            .filter("id > 1")
+            .union(table("B").select().filter("id > 2"))
+            .into();
+        let expected = "SELECT * FROM A WHERE id > 1 UNION SELECT * FROM B WHERE id > 2";
+        test_query(actual, expected);
+    }
+
+    #[test]
+    fn group_by_as_union_branch() {
+        // SetExprNode::GroupBy via prebuild_set_expr
+        let actual: QueryNode = table("A")
+            .select()
+            .group_by("city")
+            .union(table("B").select().group_by("city"))
+            .into();
+        let expected = "SELECT * FROM A GROUP BY city UNION SELECT * FROM B GROUP BY city";
+        test_query(actual, expected);
+    }
+
+    #[test]
+    fn having_as_union_branch() {
+        // SetExprNode::Having via prebuild_set_expr
+        let actual: QueryNode = table("A")
+            .select()
+            .group_by("city")
+            .having("COUNT(*) > 1")
+            .union(table("B").select().group_by("city").having("COUNT(*) > 2"))
+            .into();
+        let expected = "SELECT * FROM A GROUP BY city HAVING COUNT(*) > 1 UNION SELECT * FROM B GROUP BY city HAVING COUNT(*) > 2";
+        test_query(actual, expected);
+    }
+
+    // ── SetExprNode query-level decorators ───────────────────────────────────
+
+    #[test]
+    fn union_with_limit() {
+        // SetExprNode::limit() → LimitNode with PrevNode::SetExpr
+        let actual: QueryNode = table("A")
+            .select()
+            .project("id")
+            .union(table("B").select().project("id"))
+            .limit(5)
+            .into();
+        let expected = "SELECT id FROM A UNION SELECT id FROM B LIMIT 5";
+        test_query(actual, expected);
+    }
+
+    #[test]
+    fn union_with_offset() {
+        // SetExprNode::offset() → OffsetNode with PrevNode::SetExpr
+        let actual: QueryNode = table("A")
+            .select()
+            .project("id")
+            .union(table("B").select().project("id"))
+            .offset(3)
+            .into();
+        let expected = "SELECT id FROM A UNION SELECT id FROM B OFFSET 3";
+        test_query(actual, expected);
+    }
+
+    #[test]
+    fn union_with_order_by() {
+        // SetExprNode::order_by() → OrderByNode with PrevNode::SetExpr
+        let actual: QueryNode = table("A")
+            .select()
+            .project("id")
+            .union(table("B").select().project("id"))
+            .order_by("id DESC")
+            .into();
+        let expected = "SELECT id FROM A UNION SELECT id FROM B ORDER BY id DESC";
+        test_query(actual, expected);
+    }
+
+    #[test]
+    fn union_alias_as() {
+        // SetExprNode::alias_as() → derived subquery used as a FROM source
+        let actual: QueryNode = table("A")
+            .select()
+            .project("id")
+            .union(table("B").select().project("id"))
+            .alias_as("Sub")
+            .select()
+            .into();
+        let expected = "SELECT * FROM (SELECT id FROM A UNION SELECT id FROM B) Sub";
         test_query(actual, expected);
     }
 }
