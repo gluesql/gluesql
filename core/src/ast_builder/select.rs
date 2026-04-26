@@ -14,6 +14,7 @@ use {
     super::Build,
     crate::{
         ast::{Query, Select, SetExpr, Statement},
+        plan::StatementPlan,
         result::Result,
     },
 };
@@ -51,9 +52,9 @@ impl<T: Prebuild<Select>> Prebuild<Query> for T {
 }
 
 impl<T: Prebuild<Query>> Build for T {
-    fn build(self) -> Result<Statement> {
+    fn build(self) -> Result<StatementPlan> {
         let query = self.prebuild()?;
 
-        Ok(Statement::Query(query))
+        Ok(Statement::Query(query).into())
     }
 }

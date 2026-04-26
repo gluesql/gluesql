@@ -10,9 +10,9 @@ use {
         select::select,
     },
     crate::{
-        ast::{Expr, Function, Projection, SetExpr},
         data::{CustomFunction, Interval, Row, Value},
         mock::MockStorage,
+        plan::{ExprPlan, FunctionPlan, ProjectionPlan, SetExprPlan, plan_scalar_expr},
         result::{Error, Result},
         store::GStore,
     },
@@ -31,7 +31,7 @@ pub async fn evaluate<'a, 'b, T>(
     storage: &'a T,
     context: Option<Arc<RowContext<'b>>>,
     aggregated: Option<Arc<AggregateValues>>,
-    expr: &'a Expr,
+    expr: &'a ExprPlan,
 ) -> Result<Evaluated<'a>>
 where
     'b: 'a,
@@ -42,7 +42,7 @@ where
 
 pub async fn evaluate_stateless<'a, 'b: 'a>(
     context: Option<RowContext<'b>>,
-    expr: &'a Expr,
+    expr: &'a ExprPlan,
 ) -> Result<Evaluated<'a>> {
     let context = context.map(Arc::new);
     let storage: Option<&MockStorage> = None;
@@ -55,7 +55,7 @@ async fn evaluate_inner<'a, 'b, T>(
     storage: Option<&'a T>,
     context: Option<Arc<RowContext<'b>>>,
     aggregated: Option<Arc<AggregateValues>>,
-    expr: &'a Expr,
+    expr: &'a ExprPlan,
 ) -> Result<Evaluated<'a>>
 where
     'b: 'a,
@@ -69,10 +69,10 @@ where
     };
 
     match expr {
-        Expr::Literal(literal) => Ok(expr::literal(literal)),
-        Expr::Value(value) => Ok(Evaluated::Value(Cow::Borrowed(value))),
-        Expr::TypedString { data_type, value } => expr::typed_string(data_type, value),
-        Expr::Identifier(ident) => {
+        ExprPlan::Literal(literal) => Ok(expr::literal(literal)),
+        ExprPlan::Value(value) => Ok(Evaluated::Value(Cow::Borrowed(value))),
+        ExprPlan::TypedString { data_type, value } => expr::typed_string(data_type, value),
+        ExprPlan::Identifier(ident) => {
             let context = context.ok_or_else(|| {
                 EvaluateError::ContextRequiredForIdentEvaluation(Box::new(expr.clone()))
             })?;
@@ -82,8 +82,8 @@ where
                 None => Err(EvaluateError::IdentifierNotFound(ident.to_owned()).into()),
             }
         }
-        Expr::Nested(expr) => eval(expr).await,
-        Expr::CompoundIdentifier { alias, ident } => {
+        ExprPlan::Nested(expr) => eval(expr).await,
+        ExprPlan::CompoundIdentifier { alias, ident } => {
             let context = context.ok_or_else(|| {
                 EvaluateError::ContextRequiredForIdentEvaluation(Box::new(expr.clone()))
             })?;
@@ -97,11 +97,11 @@ where
                 .into()),
             }
         }
-        Expr::Subquery(query) => {
+        ExprPlan::Subquery(query) => {
             let storage = storage
                 .ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(Box::new(expr.clone())))?;
-            if let SetExpr::Select(select) = &query.body
-                && matches!(select.projection, Projection::SchemalessMap)
+            if let SetExprPlan::Select(select) = &query.body
+                && matches!(select.projection, ProjectionPlan::SchemalessMap)
             {
                 return Err(EvaluateError::SchemalessProjectionForSubQuery.into());
             }
@@ -133,18 +133,18 @@ where
 
             Ok(Evaluated::Value(Cow::Owned(value)))
         }
-        Expr::BinaryOp { op, left, right } => {
+        ExprPlan::BinaryOp { op, left, right } => {
             let left = eval(left).await?;
             let right = eval(right).await?;
 
             expr::binary_op(op, left, right)
         }
-        Expr::UnaryOp { op, expr } => {
+        ExprPlan::UnaryOp { op, expr } => {
             let v = eval(expr).await?;
 
             expr::unary_op(op, v)
         }
-        Expr::Aggregate(aggr) => match aggregated
+        ExprPlan::Aggregate(aggr) => match aggregated
             .as_ref()
             .and_then(|aggregated| aggr.slot.and_then(|slot| aggregated.get(slot)))
         {
@@ -154,13 +154,13 @@ where
             }
             None => Err(EvaluateError::AggregateSlotValueMissing(aggr.clone()).into()),
         },
-        Expr::Function(func) => {
+        ExprPlan::Function(func) => {
             let context = context.as_ref().map(Arc::clone);
             let aggregated = aggregated.as_ref().map(Arc::clone);
 
             evaluate_function(storage, context, aggregated, func).await
         }
-        Expr::InList {
+        ExprPlan::InList {
             expr,
             list,
             negated,
@@ -179,15 +179,15 @@ where
 
             Ok(Evaluated::Value(Cow::Owned(Value::Bool(matched ^ negated))))
         }
-        Expr::InSubquery {
+        ExprPlan::InSubquery {
             expr: target_expr,
             subquery,
             negated,
         } => {
             let storage = storage
                 .ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(Box::new(expr.clone())))?;
-            if let SetExpr::Select(select) = &subquery.body
-                && matches!(select.projection, Projection::SchemalessMap)
+            if let SetExprPlan::Select(select) = &subquery.body
+                && matches!(select.projection, ProjectionPlan::SchemalessMap)
             {
                 return Err(EvaluateError::SchemalessProjectionForInSubQuery.into());
             }
@@ -207,7 +207,7 @@ where
                 .map(Value::Bool)
                 .map(|v| Evaluated::Value(Cow::Owned(v)))
         }
-        Expr::Between {
+        ExprPlan::Between {
             expr,
             negated,
             low,
@@ -219,7 +219,7 @@ where
 
             Ok(expr::between(&target, *negated, &low, &high))
         }
-        Expr::Like {
+        ExprPlan::Like {
             expr,
             negated,
             pattern,
@@ -237,7 +237,7 @@ where
                 false => evaluated,
             })
         }
-        Expr::ILike {
+        ExprPlan::ILike {
             expr,
             negated,
             pattern,
@@ -255,7 +255,7 @@ where
                 false => evaluated,
             })
         }
-        Expr::Exists { subquery, negated } => {
+        ExprPlan::Exists { subquery, negated } => {
             let storage = storage
                 .ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(Box::new(expr.clone())))?;
 
@@ -267,17 +267,17 @@ where
                 .map(Value::Bool)
                 .map(|v| Evaluated::Value(Cow::Owned(v)))
         }
-        Expr::IsNull(expr) => {
+        ExprPlan::IsNull(expr) => {
             let v = eval(expr).await?.is_null();
 
             Ok(Evaluated::Value(Cow::Owned(Value::Bool(v))))
         }
-        Expr::IsNotNull(expr) => {
+        ExprPlan::IsNotNull(expr) => {
             let v = eval(expr).await?.is_null();
 
             Ok(Evaluated::Value(Cow::Owned(Value::Bool(!v))))
         }
-        Expr::Case {
+        ExprPlan::Case {
             operand,
             when_then,
             else_result,
@@ -300,19 +300,19 @@ where
                 None => Ok(Evaluated::Value(Cow::Owned(Value::Null))),
             }
         }
-        Expr::ArrayIndex { obj, indexes } => {
+        ExprPlan::ArrayIndex { obj, indexes } => {
             let obj = eval(obj).await?;
             let indexes = try_join_all(indexes.iter().map(eval)).await?;
             expr::array_index(obj, indexes)
         }
-        Expr::Array { elem } => try_join_all(elem.iter().map(eval))
+        ExprPlan::Array { elem } => try_join_all(elem.iter().map(eval))
             .await?
             .into_iter()
             .map(Value::try_from)
             .collect::<Result<Vec<_>>>()
             .map(Value::List)
             .map(|v| Evaluated::Value(Cow::Owned(v))),
-        Expr::Interval {
+        ExprPlan::Interval {
             expr,
             leading_field,
             last_field,
@@ -333,7 +333,7 @@ async fn evaluate_function<'a, 'b: 'a, T: GStore>(
     storage: Option<&'a T>,
     context: Option<Arc<RowContext<'b>>>,
     aggregated: Option<Arc<AggregateValues>>,
-    func: &'b Function,
+    func: &'a FunctionPlan,
 ) -> Result<Evaluated<'a>> {
     use function as f;
 
@@ -348,11 +348,11 @@ async fn evaluate_function<'a, 'b: 'a, T: GStore>(
 
     let result = match func {
         // --- text ---
-        Function::Concat(exprs) => {
+        FunctionPlan::Concat(exprs) => {
             let exprs = stream::iter(exprs).then(eval).try_collect().await?;
             f::concat(exprs)
         }
-        Function::Custom { name, exprs } => {
+        FunctionPlan::Custom { name, exprs } => {
             let CustomFunction {
                 func_name,
                 args,
@@ -376,57 +376,72 @@ async fn evaluate_function<'a, 'b: 'a, T: GStore>(
                 .into());
             }
 
-            let exprs = exprs.iter().chain(
-                args.iter()
-                    .skip(exprs.len())
-                    .filter_map(|arg| arg.default.as_ref()),
-            );
+            let mut pairs = Vec::with_capacity(args.len());
+            for (index, arg) in args.iter().enumerate() {
+                let value = if let Some(expr) = exprs.get(index) {
+                    eval(expr).await?.try_into_value(&arg.data_type, true)
+                } else {
+                    let default = arg.default.as_ref().ok_or_else(|| {
+                        EvaluateError::FunctionArgsLengthNotWithinRange {
+                            name: func_name.to_owned(),
+                            expected_minimum: min,
+                            expected_maximum: max,
+                            found: exprs.len(),
+                        }
+                    })?;
+                    let default = plan_scalar_expr(default.clone());
 
-            let context = stream::iter(args.iter().zip(exprs))
-                .then(|(arg, expr)| async {
-                    eval(expr)
-                        .await?
-                        .try_into_value(&arg.data_type, true)
-                        .map(|value| (arg.name.clone(), value))
-                })
-                .try_collect::<Vec<(String, Value)>>()
-                .await
-                .map(|pairs| {
-                    let (columns, values): (Vec<_>, Vec<_>) = pairs.into_iter().unzip();
-                    let row = Cow::Owned(Row {
-                        columns: columns.into(),
-                        values,
-                    });
-                    let context = RowContext::new(name, row, None);
-                    Some(Arc::new(context))
-                })?;
+                    evaluate_inner(
+                        storage,
+                        context.as_ref().map(Arc::clone),
+                        aggregated.as_ref().map(Arc::clone),
+                        &default,
+                    )
+                    .await?
+                    .try_into_value(&arg.data_type, true)
+                }?;
 
-            return evaluate_inner(storage, context, None, body).await;
+                pairs.push((arg.name.clone(), value));
+            }
+
+            let (columns, values): (Vec<_>, Vec<_>) = pairs.into_iter().unzip();
+            let row = Cow::Owned(Row {
+                columns: columns.into(),
+                values,
+            });
+            let context = RowContext::new(name, row, None);
+            let context = Some(Arc::new(context));
+
+            let body = plan_scalar_expr(body.clone());
+            let evaluated = evaluate_inner(storage, context, None, &body).await?;
+            let value = evaluated.try_into()?;
+
+            return Ok(Evaluated::Value(Cow::Owned(value)));
         }
-        Function::ConcatWs { separator, exprs } => {
+        FunctionPlan::ConcatWs { separator, exprs } => {
             let separator = eval(separator).await?;
             let exprs = stream::iter(exprs).then(eval).try_collect().await?;
             f::concat_ws(&name, separator, exprs)
         }
-        Function::IfNull { expr, then } => f::ifnull(eval(expr).await?, eval(then).await?),
-        Function::NullIf { expr1, expr2 } => f::nullif(eval(expr1).await?, &eval(expr2).await?),
-        Function::Lower(expr) => f::lower(&name, eval(expr).await?),
-        Function::Initcap(expr) => f::initcap(&name, eval(expr).await?),
-        Function::Upper(expr) => f::upper(&name, eval(expr).await?),
-        Function::Left { expr, size } | Function::Right { expr, size } => {
+        FunctionPlan::IfNull { expr, then } => f::ifnull(eval(expr).await?, eval(then).await?),
+        FunctionPlan::NullIf { expr1, expr2 } => f::nullif(eval(expr1).await?, &eval(expr2).await?),
+        FunctionPlan::Lower(expr) => f::lower(&name, eval(expr).await?),
+        FunctionPlan::Initcap(expr) => f::initcap(&name, eval(expr).await?),
+        FunctionPlan::Upper(expr) => f::upper(&name, eval(expr).await?),
+        FunctionPlan::Left { expr, size } | FunctionPlan::Right { expr, size } => {
             let expr = eval(expr).await?;
             let size = eval(size).await?;
 
             f::left_or_right(&name, expr, size)
         }
-        Function::Replace { expr, old, new } => {
+        FunctionPlan::Replace { expr, old, new } => {
             let expr = eval(expr).await?;
             let old = eval(old).await?;
             let new = eval(new).await?;
 
             f::replace(&name, expr, old, new)
         }
-        Function::Lpad { expr, size, fill } | Function::Rpad { expr, size, fill } => {
+        FunctionPlan::Lpad { expr, size, fill } | FunctionPlan::Rpad { expr, size, fill } => {
             let expr = eval(expr).await?;
             let size = eval(size).await?;
             let fill = match fill {
@@ -436,11 +451,11 @@ async fn evaluate_function<'a, 'b: 'a, T: GStore>(
 
             f::lpad_or_rpad(&name, expr, size, fill)
         }
-        Function::LastDay(expr) => {
+        FunctionPlan::LastDay(expr) => {
             let expr = eval(expr).await?;
             f::last_day(&name, expr)
         }
-        Function::Trim {
+        FunctionPlan::Trim {
             expr,
             filter_chars,
             trim_where_field,
@@ -453,7 +468,7 @@ async fn evaluate_function<'a, 'b: 'a, T: GStore>(
 
             return expr.trim(name, filter_chars, trim_where_field.as_ref());
         }
-        Function::Ltrim { expr, chars } => {
+        FunctionPlan::Ltrim { expr, chars } => {
             let expr = eval(expr).await?;
             let chars = match chars {
                 Some(v) => Some(eval(v).await?),
@@ -462,7 +477,7 @@ async fn evaluate_function<'a, 'b: 'a, T: GStore>(
 
             return expr.ltrim(name, chars);
         }
-        Function::Rtrim { expr, chars } => {
+        FunctionPlan::Rtrim { expr, chars } => {
             let expr = eval(expr).await?;
             let chars = match chars {
                 Some(v) => Some(eval(v).await?),
@@ -471,18 +486,18 @@ async fn evaluate_function<'a, 'b: 'a, T: GStore>(
 
             return expr.rtrim(name, chars);
         }
-        Function::Reverse(expr) => {
+        FunctionPlan::Reverse(expr) => {
             let expr = eval(expr).await?;
 
             f::reverse(&name, expr)
         }
-        Function::Repeat { expr, num } => {
+        FunctionPlan::Repeat { expr, num } => {
             let expr = eval(expr).await?;
             let num = eval(num).await?;
 
             f::repeat(&name, expr, num)
         }
-        Function::Substr { expr, start, count } => {
+        FunctionPlan::Substr { expr, start, count } => {
             let expr = eval(expr).await?;
             let start = eval(start).await?;
             let count = match count {
@@ -492,23 +507,23 @@ async fn evaluate_function<'a, 'b: 'a, T: GStore>(
 
             return expr.substr(name, start, count);
         }
-        Function::Ascii(expr) => f::ascii(&name, eval(expr).await?),
-        Function::Chr(expr) => f::chr(&name, eval(expr).await?),
-        Function::Md5(expr) => f::md5(&name, eval(expr).await?),
-        Function::Hex(expr) => f::hex(&name, eval(expr).await?),
+        FunctionPlan::Ascii(expr) => f::ascii(&name, eval(expr).await?),
+        FunctionPlan::Chr(expr) => f::chr(&name, eval(expr).await?),
+        FunctionPlan::Md5(expr) => f::md5(&name, eval(expr).await?),
+        FunctionPlan::Hex(expr) => f::hex(&name, eval(expr).await?),
 
         // --- float ---
-        Function::Abs(expr) => f::abs(&name, eval(expr).await?),
-        Function::Sign(expr) => f::sign(&name, eval(expr).await?),
-        Function::Sqrt(expr) => f::sqrt(eval(expr).await?),
-        Function::Power { expr, power } => {
+        FunctionPlan::Abs(expr) => f::abs(&name, eval(expr).await?),
+        FunctionPlan::Sign(expr) => f::sign(&name, eval(expr).await?),
+        FunctionPlan::Sqrt(expr) => f::sqrt(eval(expr).await?),
+        FunctionPlan::Power { expr, power } => {
             let expr = eval(expr).await?;
             let power = eval(power).await?;
 
             f::power(&name, expr, power)
         }
-        Function::Ceil(expr) => f::ceil(&name, eval(expr).await?),
-        Function::Rand(expr) => {
+        FunctionPlan::Ceil(expr) => f::ceil(&name, eval(expr).await?),
+        FunctionPlan::Rand(expr) => {
             let expr = match expr {
                 Some(v) => Some(eval(v).await?),
                 None => None,
@@ -516,53 +531,53 @@ async fn evaluate_function<'a, 'b: 'a, T: GStore>(
 
             f::rand(&name, expr)
         }
-        Function::Round(expr) => f::round(&name, eval(expr).await?),
-        Function::Trunc(expr) => f::trunc(&name, eval(expr).await?),
-        Function::Floor(expr) => f::floor(&name, eval(expr).await?),
-        Function::Radians(expr) => f::radians(&name, eval(expr).await?),
-        Function::Degrees(expr) => f::degrees(&name, eval(expr).await?),
-        Function::Pi() => {
+        FunctionPlan::Round(expr) => f::round(&name, eval(expr).await?),
+        FunctionPlan::Trunc(expr) => f::trunc(&name, eval(expr).await?),
+        FunctionPlan::Floor(expr) => f::floor(&name, eval(expr).await?),
+        FunctionPlan::Radians(expr) => f::radians(&name, eval(expr).await?),
+        FunctionPlan::Degrees(expr) => f::degrees(&name, eval(expr).await?),
+        FunctionPlan::Pi() => {
             return Ok(Evaluated::Value(Cow::Owned(Value::F64(
                 std::f64::consts::PI,
             ))));
         }
-        Function::Exp(expr) => f::exp(&name, eval(expr).await?),
-        Function::Log { antilog, base } => {
+        FunctionPlan::Exp(expr) => f::exp(&name, eval(expr).await?),
+        FunctionPlan::Log { antilog, base } => {
             let antilog = eval(antilog).await?;
             let base = eval(base).await?;
 
             f::log(&name, antilog, base)
         }
-        Function::Ln(expr) => f::ln(&name, eval(expr).await?),
-        Function::Log2(expr) => f::log2(&name, eval(expr).await?),
-        Function::Log10(expr) => f::log10(&name, eval(expr).await?),
-        Function::Sin(expr) => f::sin(&name, eval(expr).await?),
-        Function::Cos(expr) => f::cos(&name, eval(expr).await?),
-        Function::Tan(expr) => f::tan(&name, eval(expr).await?),
-        Function::Asin(expr) => f::asin(&name, eval(expr).await?),
-        Function::Acos(expr) => f::acos(&name, eval(expr).await?),
-        Function::Atan(expr) => f::atan(&name, eval(expr).await?),
+        FunctionPlan::Ln(expr) => f::ln(&name, eval(expr).await?),
+        FunctionPlan::Log2(expr) => f::log2(&name, eval(expr).await?),
+        FunctionPlan::Log10(expr) => f::log10(&name, eval(expr).await?),
+        FunctionPlan::Sin(expr) => f::sin(&name, eval(expr).await?),
+        FunctionPlan::Cos(expr) => f::cos(&name, eval(expr).await?),
+        FunctionPlan::Tan(expr) => f::tan(&name, eval(expr).await?),
+        FunctionPlan::Asin(expr) => f::asin(&name, eval(expr).await?),
+        FunctionPlan::Acos(expr) => f::acos(&name, eval(expr).await?),
+        FunctionPlan::Atan(expr) => f::atan(&name, eval(expr).await?),
 
         // --- integer ---
-        Function::Div { dividend, divisor } => {
+        FunctionPlan::Div { dividend, divisor } => {
             let dividend = eval(dividend).await?;
             let divisor = eval(divisor).await?;
 
             f::div(&name, dividend, divisor)
         }
-        Function::Mod { dividend, divisor } => {
+        FunctionPlan::Mod { dividend, divisor } => {
             let dividend = eval(dividend).await?;
             let divisor = eval(divisor).await?;
 
             return dividend.modulo(&divisor);
         }
-        Function::Gcd { left, right } => {
+        FunctionPlan::Gcd { left, right } => {
             let left = eval(left).await?;
             let right = eval(right).await?;
 
             f::gcd(&name, left, right)
         }
-        Function::Lcm { left, right } => {
+        FunctionPlan::Lcm { left, right } => {
             let left = eval(left).await?;
             let right = eval(right).await?;
 
@@ -570,15 +585,15 @@ async fn evaluate_function<'a, 'b: 'a, T: GStore>(
         }
 
         // --- spatial ---
-        Function::Point { x, y } => {
+        FunctionPlan::Point { x, y } => {
             let x = eval(x).await?;
             let y = eval(y).await?;
 
             f::point(&name, x, y)
         }
-        Function::GetX(expr) => f::get_x(&name, eval(expr).await?),
-        Function::GetY(expr) => f::get_y(&name, eval(expr).await?),
-        Function::CalcDistance {
+        FunctionPlan::GetX(expr) => f::get_x(&name, eval(expr).await?),
+        FunctionPlan::GetY(expr) => f::get_y(&name, eval(expr).await?),
+        FunctionPlan::CalcDistance {
             geometry1,
             geometry2,
         } => {
@@ -589,52 +604,52 @@ async fn evaluate_function<'a, 'b: 'a, T: GStore>(
         }
 
         // --- etc ---
-        Function::Unwrap { expr, selector } => {
+        FunctionPlan::Unwrap { expr, selector } => {
             let expr = eval(expr).await?;
             let selector = eval(selector).await?;
 
             f::unwrap(&name, expr, selector)
         }
-        Function::GenerateUuid() => return Ok(f::generate_uuid()),
-        Function::Greatest(exprs) => {
+        FunctionPlan::GenerateUuid() => return Ok(f::generate_uuid()),
+        FunctionPlan::Greatest(exprs) => {
             let exprs = stream::iter(exprs).then(eval).try_collect().await?;
             return f::greatest(&name, exprs);
         }
-        Function::Now() | Function::CurrentTimestamp() => {
+        FunctionPlan::Now() | FunctionPlan::CurrentTimestamp() => {
             return Ok(Evaluated::Value(Cow::Owned(Value::Timestamp(
                 Utc::now().naive_utc(),
             ))));
         }
-        Function::CurrentDate() => {
+        FunctionPlan::CurrentDate() => {
             return Ok(Evaluated::Value(Cow::Owned(Value::Date(
                 Utc::now().date_naive(),
             ))));
         }
-        Function::CurrentTime() => {
+        FunctionPlan::CurrentTime() => {
             return Ok(Evaluated::Value(Cow::Owned(Value::Time(Utc::now().time()))));
         }
-        Function::Format { expr, format } => {
+        FunctionPlan::Format { expr, format } => {
             let expr = eval(expr).await?;
             let format = eval(format).await?;
 
             f::format(&name, expr, format)
         }
-        Function::ToDate { expr, format } => {
+        FunctionPlan::ToDate { expr, format } => {
             let expr = eval(expr).await?;
             let format = eval(format).await?;
             f::to_date(&name, expr, format)
         }
-        Function::ToTimestamp { expr, format } => {
+        FunctionPlan::ToTimestamp { expr, format } => {
             let expr = eval(expr).await?;
             let format = eval(format).await?;
             f::to_timestamp(&name, expr, format)
         }
-        Function::ToTime { expr, format } => {
+        FunctionPlan::ToTime { expr, format } => {
             let expr = eval(expr).await?;
             let format = eval(format).await?;
             f::to_time(&name, expr, format)
         }
-        Function::Position {
+        FunctionPlan::Position {
             from_expr,
             sub_expr,
         } => {
@@ -642,7 +657,7 @@ async fn evaluate_function<'a, 'b: 'a, T: GStore>(
             let sub_expr = eval(sub_expr).await?;
             f::position(from_expr, sub_expr)
         }
-        Function::FindIdx {
+        FunctionPlan::FindIdx {
             from_expr,
             sub_expr,
             start,
@@ -655,33 +670,33 @@ async fn evaluate_function<'a, 'b: 'a, T: GStore>(
             };
             f::find_idx(&name, from_expr, sub_expr, start)
         }
-        Function::Cast { expr, data_type } => return eval(expr).await?.cast(data_type),
-        Function::Extract { field, expr } => {
+        FunctionPlan::Cast { expr, data_type } => return eval(expr).await?.cast(data_type),
+        FunctionPlan::Extract { field, expr } => {
             let expr = eval(expr).await?;
             f::extract(*field, expr)
         }
-        Function::Coalesce(exprs) => {
+        FunctionPlan::Coalesce(exprs) => {
             let exprs = stream::iter(exprs).then(eval).try_collect().await?;
             return f::coalesce(exprs);
         }
 
         // --- list ---
-        Function::Append { expr, value } => {
+        FunctionPlan::Append { expr, value } => {
             let expr = eval(expr).await?;
             let value = eval(value).await?;
             f::append(expr, value)
         }
-        Function::Prepend { expr, value } => {
+        FunctionPlan::Prepend { expr, value } => {
             let expr = eval(expr).await?;
             let value = eval(value).await?;
             f::prepend(expr, value)
         }
-        Function::Skip { expr, size } => {
+        FunctionPlan::Skip { expr, size } => {
             let expr = eval(expr).await?;
             let size = eval(size).await?;
             f::skip(&name, expr, size)
         }
-        Function::Sort { expr, order } => {
+        FunctionPlan::Sort { expr, order } => {
             let expr = eval(expr).await?;
             let order = match order {
                 Some(o) => eval(o).await?,
@@ -689,12 +704,12 @@ async fn evaluate_function<'a, 'b: 'a, T: GStore>(
             };
             f::sort(expr, order)
         }
-        Function::Take { expr, size } => {
+        FunctionPlan::Take { expr, size } => {
             let expr = eval(expr).await?;
             let size = eval(size).await?;
             f::take(&name, expr, size)
         }
-        Function::Slice {
+        FunctionPlan::Slice {
             expr,
             start,
             length,
@@ -704,23 +719,23 @@ async fn evaluate_function<'a, 'b: 'a, T: GStore>(
             let length = eval(length).await?;
             f::slice(&name, expr, start, length)
         }
-        Function::IsEmpty(expr) => {
+        FunctionPlan::IsEmpty(expr) => {
             let expr = eval(expr).await?;
             f::is_empty(expr)
         }
-        Function::AddMonth { expr, size } => {
+        FunctionPlan::AddMonth { expr, size } => {
             let expr = eval(expr).await?;
             let size = eval(size).await?;
             f::add_month(&name, expr, size)
         }
-        Function::Length(expr) => f::length(&name, eval(expr).await?),
-        Function::Entries(expr) => f::entries(&name, eval(expr).await?),
-        Function::Keys(expr) => f::keys(eval(expr).await?),
-        Function::Values(expr) => {
+        FunctionPlan::Length(expr) => f::length(&name, eval(expr).await?),
+        FunctionPlan::Entries(expr) => f::entries(&name, eval(expr).await?),
+        FunctionPlan::Keys(expr) => f::keys(eval(expr).await?),
+        FunctionPlan::Values(expr) => {
             let expr = eval(expr).await?;
             f::values(expr)
         }
-        Function::Splice {
+        FunctionPlan::Splice {
             list_data,
             begin_index,
             end_index,
@@ -735,7 +750,7 @@ async fn evaluate_function<'a, 'b: 'a, T: GStore>(
             };
             f::splice(&name, list_data, begin_index, end_index, values)
         }
-        Function::Dedup(list) => f::dedup(eval(list).await?),
+        FunctionPlan::Dedup(list) => f::dedup(eval(list).await?),
     };
 
     match result {
@@ -750,10 +765,11 @@ mod tests {
     use {
         super::{EvaluateError, evaluate, evaluate_stateless},
         crate::{
-            ast::{Aggregate, CountArgExpr, Expr, Projection, SelectItem, SetExpr, Statement},
+            ast::{Expr, Projection, SelectItem, SetExpr, Statement},
             executor::context::AggregateValues,
             mock::MockStorage,
             parse_sql::parse,
+            plan::{AggregateFunctionPlan, AggregatePlan, CountArgExprPlan, ExprPlan},
             result::Error,
             translate::translate,
         },
@@ -785,23 +801,26 @@ mod tests {
             panic!("expected aggregate expression");
         };
 
-        let expr = Expr::Aggregate(aggregate.clone());
+        let expr = ExprPlan::Aggregate(Box::new(AggregatePlan::from((*aggregate).clone())));
         let result = block_on(evaluate_stateless(None, &expr));
 
         assert_eq!(
             result,
             Err(Error::from(EvaluateError::UnplannedAggregate(Box::new(
-                *aggregate
+                AggregatePlan::from(*aggregate)
             ))))
         );
     }
 
     #[test]
     fn aggregate_slot_value_must_exist() {
-        let mut aggregate = Aggregate::count(CountArgExpr::Wildcard, false);
-        aggregate.slot = Some(0);
+        let aggregate = AggregatePlan {
+            func: AggregateFunctionPlan::Count(CountArgExprPlan::Wildcard),
+            distinct: false,
+            slot: Some(0),
+        };
 
-        let expr = Expr::Aggregate(Box::new(aggregate.clone()));
+        let expr = ExprPlan::Aggregate(Box::new(aggregate.clone()));
         let storage = MockStorage::default();
         let aggregated = Arc::new(AggregateValues::new(Vec::new()));
 

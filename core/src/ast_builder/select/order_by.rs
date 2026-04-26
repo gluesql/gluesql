@@ -285,7 +285,6 @@ mod tests {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
-                aggregate_slots: None,
             };
 
             Ok(Statement::Query(Query {
@@ -297,6 +296,7 @@ mod tests {
                 offset: None,
             }))
         };
+        let expected = expected.map(crate::plan::StatementPlan::from);
         assert_eq!(actual, expected);
 
         // select -> order by node -> derived subquery

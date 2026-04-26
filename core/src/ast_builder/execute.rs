@@ -3,6 +3,7 @@ use {
     crate::{
         ast::Statement,
         executor::Payload,
+        plan::StatementPlan,
         prelude::Glue,
         result::Result,
         store::{GStore, GStoreMut, Planner},
@@ -27,7 +28,13 @@ impl<T: GStore + GStoreMut + Planner, B: Build> Execute<T> for B {}
 #[async_trait]
 
 impl Build for Statement {
-    fn build(self) -> Result<Statement> {
+    fn build(self) -> Result<StatementPlan> {
+        Ok(self.into())
+    }
+}
+
+impl Build for StatementPlan {
+    fn build(self) -> Result<StatementPlan> {
         Ok(self)
     }
 }

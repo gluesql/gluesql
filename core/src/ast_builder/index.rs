@@ -1,6 +1,6 @@
 use {
     super::{Build, OrderByExprNode},
-    crate::{ast::Statement, result::Result},
+    crate::{ast::Statement, plan::StatementPlan, result::Result},
 };
 
 #[derive(Clone, Debug)]
@@ -21,7 +21,7 @@ impl<'a> CreateIndexNode<'a> {
 }
 
 impl Build for CreateIndexNode<'_> {
-    fn build(self) -> Result<Statement> {
+    fn build(self) -> Result<StatementPlan> {
         let table_name = self.table_name;
         let name = self.name;
         let column = self.column.try_into()?;
@@ -30,7 +30,8 @@ impl Build for CreateIndexNode<'_> {
             name,
             table_name,
             column,
-        })
+        }
+        .into())
     }
 }
 
@@ -47,11 +48,11 @@ impl DropIndexNode {
 }
 
 impl Build for DropIndexNode {
-    fn build(self) -> Result<Statement> {
+    fn build(self) -> Result<StatementPlan> {
         let table_name = self.table_name;
         let name = self.name;
 
-        Ok(Statement::DropIndex { name, table_name })
+        Ok(Statement::DropIndex { name, table_name }.into())
     }
 }
 

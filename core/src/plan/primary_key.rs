@@ -1,27 +1,27 @@
 use {
     super::{context::Context, planner::Planner},
     crate::{
-        ast::{
-            BinaryOperator, Expr, IndexItem, Query, Select, SetExpr, Statement, TableFactor,
-            TableWithJoins,
-        },
+        ast::BinaryOperator,
         data::Schema,
-        plan::expr::evaluable::check_expr as check_evaluable,
+        plan::{
+            ExprPlan, IndexItemPlan, QueryPlan, SelectPlan, SetExprPlan, StatementPlan,
+            TableFactorPlan, TableWithJoinsPlan, expr::evaluable::check_expr as check_evaluable,
+        },
     },
     std::{collections::HashMap, hash::BuildHasher, sync::Arc},
 };
 
 pub fn plan<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
-    statement: Statement,
-) -> Statement {
+    statement: StatementPlan,
+) -> StatementPlan {
     let planner = PrimaryKeyPlanner { schema_map };
 
     match statement {
-        Statement::Query(query) => {
+        StatementPlan::Query(query) => {
             let query = planner.query(None, query);
 
-            Statement::Query(query)
+            StatementPlan::Query(query)
         }
         _ => statement,
     }
@@ -32,17 +32,17 @@ struct PrimaryKeyPlanner<'a, S> {
 }
 
 impl<'a, S: BuildHasher> Planner<'a> for PrimaryKeyPlanner<'a, S> {
-    fn query(&self, outer_context: Option<Arc<Context<'a>>>, query: Query) -> Query {
+    fn query(&self, outer_context: Option<Arc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
         let body = match query.body {
-            SetExpr::Select(select) => {
+            SetExprPlan::Select(select) => {
                 let select = self.select(outer_context, *select);
 
-                SetExpr::Select(Box::new(select))
+                SetExprPlan::Select(Box::new(select))
             }
-            SetExpr::Values(_) => query.body,
+            SetExprPlan::Values(_) => query.body,
         };
 
-        Query { body, ..query }
+        QueryPlan { body, ..query }
     }
 
     fn get_schema(&self, name: &str) -> Option<&'a Schema> {
@@ -52,14 +52,14 @@ impl<'a, S: BuildHasher> Planner<'a> for PrimaryKeyPlanner<'a, S> {
 
 enum PrimaryKey {
     Found {
-        index_item: IndexItem,
-        expr: Option<Expr>,
+        index_item: IndexItemPlan,
+        expr: Option<ExprPlan>,
     },
-    NotFound(Expr),
+    NotFound(ExprPlan),
 }
 
 impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
-    fn select(&self, outer_context: Option<Arc<Context<'a>>>, select: Select) -> Select {
+    fn select(&self, outer_context: Option<Arc<Context<'a>>>, select: SelectPlan) -> SelectPlan {
         let current_context = self.update_context(None, &select.from.relation);
         let current_context = select
             .from
@@ -77,24 +77,24 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                 PrimaryKey::NotFound(expr) => (None, Some(expr)),
             });
 
-        if let TableFactor::Table {
+        if let TableFactorPlan::Table {
             name,
             alias,
             index: None,
         } = select.from.relation
         {
-            let from = TableWithJoins {
-                relation: TableFactor::Table { name, alias, index },
+            let from = TableWithJoinsPlan {
+                relation: TableFactorPlan::Table { name, alias, index },
                 ..select.from
             };
 
-            Select {
+            SelectPlan {
                 from,
                 selection,
                 ..select
             }
         } else {
-            Select {
+            SelectPlan {
                 selection,
                 ..select
             }
@@ -105,10 +105,11 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
         &self,
         outer_context: Option<Arc<Context<'a>>>,
         current_context: Option<Arc<Context<'a>>>,
-        expr: Expr,
+        expr: ExprPlan,
     ) -> PrimaryKey {
-        let check_primary_key = |key: &Expr| {
-            let (Expr::Identifier(key) | Expr::CompoundIdentifier { ident: key, .. }) = key else {
+        let check_primary_key = |key: &ExprPlan| {
+            let (ExprPlan::Identifier(key) | ExprPlan::CompoundIdentifier { ident: key, .. }) = key
+            else {
                 return false;
             };
 
@@ -118,12 +119,12 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
         };
 
         match expr {
-            Expr::BinaryOp {
+            ExprPlan::BinaryOp {
                 left: key,
                 op: BinaryOperator::Eq,
                 right: value,
             }
-            | Expr::BinaryOp {
+            | ExprPlan::BinaryOp {
                 left: value,
                 op: BinaryOperator::Eq,
                 right: key,
@@ -131,14 +132,14 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                 && check_evaluable(current_context.as_ref().map(Arc::clone), &key)
                 && check_evaluable(None, &value) =>
             {
-                let index_item = IndexItem::PrimaryKey(*value);
+                let index_item = IndexItemPlan::PrimaryKey(*value);
 
                 PrimaryKey::Found {
                     index_item,
                     expr: None,
                 }
             }
-            Expr::BinaryOp {
+            ExprPlan::BinaryOp {
                 left,
                 op: BinaryOperator::And,
                 right,
@@ -152,7 +153,7 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                 let left = match primary_key {
                     PrimaryKey::Found { index_item, expr } => {
                         let expr = match expr {
-                            Some(left) => Expr::BinaryOp {
+                            Some(left) => ExprPlan::BinaryOp {
                                 left: Box::new(left),
                                 op: BinaryOperator::And,
                                 right,
@@ -171,7 +172,7 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                 match self.expr(outer_context, current_context, *right) {
                     PrimaryKey::Found { index_item, expr } => {
                         let expr = match expr {
-                            Some(right) => Expr::BinaryOp {
+                            Some(right) => ExprPlan::BinaryOp {
                                 left: Box::new(left),
                                 op: BinaryOperator::And,
                                 right: Box::new(right),
@@ -185,7 +186,7 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                         }
                     }
                     PrimaryKey::NotFound(expr) => {
-                        let expr = Expr::BinaryOp {
+                        let expr = ExprPlan::BinaryOp {
                             left: Box::new(left),
                             op: BinaryOperator::And,
                             right: Box::new(expr),
@@ -195,13 +196,15 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                     }
                 }
             }
-            Expr::Nested(expr) => match self.expr(outer_context, current_context, *expr) {
+            ExprPlan::Nested(expr) => match self.expr(outer_context, current_context, *expr) {
                 PrimaryKey::Found { index_item, expr } => {
-                    let expr = expr.map(Box::new).map(Expr::Nested);
+                    let expr = expr.map(Box::new).map(ExprPlan::Nested);
 
                     PrimaryKey::Found { index_item, expr }
                 }
-                PrimaryKey::NotFound(expr) => PrimaryKey::NotFound(Expr::Nested(Box::new(expr))),
+                PrimaryKey::NotFound(expr) => {
+                    PrimaryKey::NotFound(ExprPlan::Nested(Box::new(expr)))
+                }
             },
             _ => {
                 let outer_context = Context::concat(current_context, outer_context);
@@ -225,27 +228,27 @@ mod tests {
             },
             mock::{MockStorage, run},
             parse_sql::{parse, parse_expr},
-            plan::fetch_schema_map,
+            plan::{StatementPlan, fetch_schema_map},
             translate::{NO_PARAMS, translate, translate_expr},
         },
         futures::executor::block_on,
     };
 
-    fn plan(storage: &MockStorage, sql: &str) -> Statement {
+    fn plan(storage: &MockStorage, sql: &str) -> StatementPlan {
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
-        let statement = translate(&parsed).unwrap();
+        let statement = StatementPlan::from(translate(&parsed).unwrap());
         let schema_map = block_on(fetch_schema_map(storage, &statement)).unwrap();
 
         plan_primary_key(&schema_map, statement)
     }
 
-    fn select(select: Select) -> Statement {
-        Statement::Query(Query {
+    fn select(select: Select) -> StatementPlan {
+        StatementPlan::from(Statement::Query(Query {
             body: SetExpr::Select(Box::new(select)),
             limit: None,
             offset: None,
             order_by: Vec::new(),
-        })
+        }))
     }
 
     fn expr(sql: &str) -> Expr {
@@ -279,7 +282,6 @@ mod tests {
             selection: None,
             group_by: Vec::new(),
             having: None,
-            aggregate_slots: None,
         });
         assert_eq!(actual, expected, "primary key in lhs:\n{sql}");
 
@@ -299,7 +301,6 @@ mod tests {
             selection: None,
             group_by: Vec::new(),
             having: None,
-            aggregate_slots: None,
         });
         assert_eq!(actual, expected, "primary key in rhs:\n{sql}");
 
@@ -319,7 +320,6 @@ mod tests {
             selection: Some(expr("True")),
             group_by: Vec::new(),
             having: None,
-            aggregate_slots: None,
         });
         assert_eq!(actual, expected, "AND binary op:\n{sql}");
 
@@ -345,7 +345,6 @@ mod tests {
             selection: Some(expr("name IS NOT NULL AND True")),
             group_by: Vec::new(),
             having: None,
-            aggregate_slots: None,
         });
         assert_eq!(actual, expected, "AND binary op 2:\n{sql}");
 
@@ -380,7 +379,6 @@ mod tests {
             selection: Some(expr("name IS NOT NULL AND (True)")),
             group_by: Vec::new(),
             having: None,
-            aggregate_slots: None,
         });
         assert_eq!(actual, expected, "AND binary op 3:\n{sql}");
     }
@@ -422,7 +420,6 @@ mod tests {
             selection: None,
             group_by: Vec::new(),
             having: None,
-            aggregate_slots: None,
         });
         assert_eq!(actual, expected, "basic inner join:\n{sql}");
 
@@ -450,7 +447,6 @@ mod tests {
             selection: Some(expr("Player.id = Badge.user_id")),
             group_by: Vec::new(),
             having: None,
-            aggregate_slots: None,
         });
         assert_eq!(actual, expected, "join but no primary key:\n{sql}");
 
@@ -476,7 +472,6 @@ mod tests {
                     selection: None,
                     group_by: Vec::new(),
                     having: None,
-                    aggregate_slots: None,
                 })),
                 limit: None,
                 offset: None,
@@ -501,7 +496,6 @@ mod tests {
                 }),
                 group_by: Vec::new(),
                 having: None,
-                aggregate_slots: None,
             })
         };
         assert_eq!(actual, expected, "nested select:\n{sql}");
@@ -537,7 +531,6 @@ mod tests {
                     selection: None,
                     group_by: Vec::new(),
                     having: None,
-                    aggregate_slots: None,
                 })),
                 limit: Some(expr("1")),
                 offset: None,
@@ -562,7 +555,6 @@ mod tests {
                 }),
                 group_by: Vec::new(),
                 having: None,
-                aggregate_slots: None,
             })
         };
         assert_eq!(actual, expected, "name is not primary key:\n{sql}");
@@ -592,7 +584,6 @@ mod tests {
                     selection: Some(expr("id = id")),
                     group_by: Vec::new(),
                     having: None,
-                    aggregate_slots: None,
                 })),
                 limit: None,
                 offset: None,
@@ -617,26 +608,25 @@ mod tests {
                 }),
                 group_by: Vec::new(),
                 having: None,
-                aggregate_slots: None,
             })
         };
         assert_eq!(actual, expected, "ambiguous nested contexts:\n{sql}");
 
         let sql = "DELETE FROM Player WHERE id = 1;";
         let actual = plan(&storage, sql);
-        let expected = Statement::Delete {
+        let expected = StatementPlan::from(Statement::Delete {
             table_name: "Player".to_owned(),
             selection: Some(Expr::BinaryOp {
                 left: Box::new(Expr::Identifier("id".to_owned())),
                 op: BinaryOperator::Eq,
                 right: Box::new(Expr::Literal(Literal::Number(1.into()))),
             }),
-        };
+        });
         assert_eq!(actual, expected, "delete statement:\n{sql}");
 
         let sql = "VALUES (1), (2);";
         let actual = plan(&storage, sql);
-        let expected = Statement::Query(Query {
+        let expected = StatementPlan::from(Statement::Query(Query {
             body: SetExpr::Values(Values(vec![
                 vec![Expr::Literal(Literal::Number(1.into()))],
                 vec![Expr::Literal(Literal::Number(2.into()))],
@@ -644,7 +634,7 @@ mod tests {
             limit: None,
             offset: None,
             order_by: Vec::new(),
-        });
+        }));
         assert_eq!(actual, expected, "values:\n{sql}");
 
         let sql = "SELECT * FROM Player WHERE (name);";
@@ -663,7 +653,6 @@ mod tests {
             selection: Some(Expr::Nested(Box::new(expr("name")))),
             group_by: Vec::new(),
             having: None,
-            aggregate_slots: None,
         });
         assert_eq!(actual, expected, "nested:\n{sql}");
     }

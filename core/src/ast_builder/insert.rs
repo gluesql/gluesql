@@ -1,6 +1,6 @@
 use {
     super::{Build, ColumnList, ExprList, QueryNode},
-    crate::{ast::Statement, result::Result},
+    crate::{ast::Statement, plan::StatementPlan, result::Result},
 };
 
 #[derive(Clone, Debug)]
@@ -47,7 +47,7 @@ pub struct InsertSourceNode<'a> {
 }
 
 impl Build for InsertSourceNode<'_> {
-    fn build(self) -> Result<Statement> {
+    fn build(self) -> Result<StatementPlan> {
         let table_name = self.insert_node.table_name;
         let columns = self.insert_node.columns;
         let columns = columns.map_or_else(|| Ok(vec![]), TryInto::try_into)?;
@@ -57,7 +57,8 @@ impl Build for InsertSourceNode<'_> {
             table_name,
             columns,
             source,
-        })
+        }
+        .into())
     }
 }
 

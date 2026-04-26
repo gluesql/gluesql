@@ -1,7 +1,7 @@
 mod aggregate;
 mod function;
 
-use crate::{ast::Expr, plan::PlanError};
+use crate::plan::{ExprPlan, PlanError};
 
 use aggregate::{try_visit_aggregate, visit_mut_aggregate};
 use function::{try_visit_function, visit_mut_function};
@@ -21,49 +21,49 @@ macro_rules! apply_try {
 macro_rules! visit_expr_children {
     ($expr:expr, $visit_expr:ident, $visit_function:ident, $visit_aggregate:ident, $f:expr, $apply:ident) => {
         match $expr {
-            Expr::Identifier(_)
-            | Expr::CompoundIdentifier { .. }
-            | Expr::Literal(_)
-            | Expr::Value(_)
-            | Expr::TypedString { .. }
-            | Expr::Exists { .. }
-            | Expr::Subquery(_) => {}
-            Expr::IsNull(inner) | Expr::IsNotNull(inner) | Expr::Nested(inner) => {
+            ExprPlan::Identifier(_)
+            | ExprPlan::CompoundIdentifier { .. }
+            | ExprPlan::Literal(_)
+            | ExprPlan::Value(_)
+            | ExprPlan::TypedString { .. }
+            | ExprPlan::Exists { .. }
+            | ExprPlan::Subquery(_) => {}
+            ExprPlan::IsNull(inner) | ExprPlan::IsNotNull(inner) | ExprPlan::Nested(inner) => {
                 $apply!($visit_expr(inner, $f));
             }
-            Expr::InList { expr, list, .. } => {
+            ExprPlan::InList { expr, list, .. } => {
                 $apply!($visit_expr(expr, $f));
                 for e in list {
                     $apply!($visit_expr(e, $f));
                 }
             }
-            Expr::InSubquery { expr, .. }
-            | Expr::UnaryOp { expr, .. }
-            | Expr::Interval { expr, .. } => {
+            ExprPlan::InSubquery { expr, .. }
+            | ExprPlan::UnaryOp { expr, .. }
+            | ExprPlan::Interval { expr, .. } => {
                 $apply!($visit_expr(expr, $f));
             }
-            Expr::Between {
+            ExprPlan::Between {
                 expr, low, high, ..
             } => {
                 $apply!($visit_expr(expr, $f));
                 $apply!($visit_expr(low, $f));
                 $apply!($visit_expr(high, $f));
             }
-            Expr::Like { expr, pattern, .. } | Expr::ILike { expr, pattern, .. } => {
+            ExprPlan::Like { expr, pattern, .. } | ExprPlan::ILike { expr, pattern, .. } => {
                 $apply!($visit_expr(expr, $f));
                 $apply!($visit_expr(pattern, $f));
             }
-            Expr::BinaryOp { left, right, .. } => {
+            ExprPlan::BinaryOp { left, right, .. } => {
                 $apply!($visit_expr(left, $f));
                 $apply!($visit_expr(right, $f));
             }
-            Expr::Function(func) => {
+            ExprPlan::Function(func) => {
                 $apply!($visit_function(func, $f));
             }
-            Expr::Aggregate(aggr) => {
+            ExprPlan::Aggregate(aggr) => {
                 $apply!($visit_aggregate(aggr, $f));
             }
-            Expr::Case {
+            ExprPlan::Case {
                 operand,
                 when_then,
                 else_result,
@@ -79,13 +79,13 @@ macro_rules! visit_expr_children {
                     $apply!($visit_expr(e, $f));
                 }
             }
-            Expr::ArrayIndex { obj, indexes } => {
+            ExprPlan::ArrayIndex { obj, indexes } => {
                 $apply!($visit_expr(obj, $f));
                 for e in indexes {
                     $apply!($visit_expr(e, $f));
                 }
             }
-            Expr::Array { elem } => {
+            ExprPlan::Array { elem } => {
                 for e in elem {
                     $apply!($visit_expr(e, $f));
                 }
@@ -94,9 +94,9 @@ macro_rules! visit_expr_children {
     };
 }
 
-pub fn visit_mut_expr<F>(expr: &mut Expr, f: &mut F)
+pub fn visit_mut_expr<F>(expr: &mut ExprPlan, f: &mut F)
 where
-    F: FnMut(&mut Expr),
+    F: FnMut(&mut ExprPlan),
 {
     visit_expr_children!(
         expr,
@@ -110,9 +110,9 @@ where
     f(expr);
 }
 
-pub fn try_visit_expr<F>(expr: &Expr, f: &mut F) -> Result<(), PlanError>
+pub fn try_visit_expr<F>(expr: &ExprPlan, f: &mut F) -> Result<(), PlanError>
 where
-    F: FnMut(&Expr) -> Result<(), PlanError>,
+    F: FnMut(&ExprPlan) -> Result<(), PlanError>,
 {
     visit_expr_children!(
         expr,
@@ -130,25 +130,24 @@ mod tests {
     use {
         super::{try_visit_expr, visit_mut_expr},
         crate::{
-            ast::Expr,
             parse_sql::parse_expr,
-            plan::PlanError,
+            plan::{ExprPlan, PlanError},
             translate::{NO_PARAMS, translate_expr},
         },
     };
 
     fn test(input: &str, expected: &str) {
         let parsed = parse_expr(input).expect(input);
-        let mut expr = translate_expr(&parsed, NO_PARAMS).expect(input);
+        let mut expr = ExprPlan::from(translate_expr(&parsed, NO_PARAMS).expect(input));
 
         visit_mut_expr(&mut expr, &mut |e| {
-            if let Expr::Identifier(ident) = e {
-                *e = Expr::Identifier(format!("_{ident}"));
+            if let ExprPlan::Identifier(ident) = e {
+                *e = ExprPlan::Identifier(format!("_{ident}"));
             }
         });
 
         let expected_parsed = parse_expr(expected).expect(expected);
-        let expected = translate_expr(&expected_parsed, NO_PARAMS).expect(expected);
+        let expected = ExprPlan::from(translate_expr(&expected_parsed, NO_PARAMS).expect(expected));
 
         assert_eq!(expr, expected, "\ninput: {input}\nexpected: {expected:?}");
     }
@@ -191,10 +190,10 @@ mod tests {
     #[test]
     fn try_visit_expr_propagates_error() {
         let parsed = parse_expr("a + b").expect("a + b");
-        let expr = translate_expr(&parsed, NO_PARAMS).expect("a + b");
+        let expr = ExprPlan::from(translate_expr(&parsed, NO_PARAMS).expect("a + b"));
 
         let result = try_visit_expr(&expr, &mut |expr| match expr {
-            Expr::Identifier(ident) if ident == "b" => Err(PlanError::Unreachable),
+            ExprPlan::Identifier(ident) if ident == "b" => Err(PlanError::Unreachable),
             _ => Ok(()),
         });
 
@@ -204,11 +203,11 @@ mod tests {
     #[test]
     fn try_visit_expr_short_circuits_after_error() {
         let parsed = parse_expr("(a + b) + c").expect("(a + b) + c");
-        let expr = translate_expr(&parsed, NO_PARAMS).expect("(a + b) + c");
+        let expr = ExprPlan::from(translate_expr(&parsed, NO_PARAMS).expect("(a + b) + c"));
         let mut visited = Vec::new();
 
         let result = try_visit_expr(&expr, &mut |expr| match expr {
-            Expr::Identifier(ident) => {
+            ExprPlan::Identifier(ident) => {
                 visited.push(ident.clone());
                 if ident == "b" {
                     Err(PlanError::Unreachable)

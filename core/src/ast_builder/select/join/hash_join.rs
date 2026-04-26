@@ -190,7 +190,6 @@ mod tests {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
-                aggregate_slots: None,
             };
 
             Ok(Statement::Query(Query {
@@ -200,6 +199,7 @@ mod tests {
                 offset: None,
             }))
         };
+        let expected = expected.map(crate::plan::StatementPlan::from);
         assert_eq!(actual, expected, "without filter");
 
         let actual = table("Player")
@@ -241,7 +241,6 @@ mod tests {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
-                aggregate_slots: None,
             };
 
             Ok(Statement::Query(Query {
@@ -251,6 +250,7 @@ mod tests {
                 offset: None,
             }))
         };
+        let expected = expected.map(crate::plan::StatementPlan::from);
         assert_eq!(actual, expected, "with filter");
 
         // join -> hash -> derived subquery
@@ -291,7 +291,6 @@ mod tests {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
-                aggregate_slots: None,
             };
 
             let select = Select {
@@ -315,7 +314,6 @@ mod tests {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
-                aggregate_slots: None,
             };
 
             Ok(Statement::Query(Query {
@@ -325,6 +323,7 @@ mod tests {
                 offset: None,
             }))
         };
+        let expected = expected.map(crate::plan::StatementPlan::from);
         assert_eq!(actual, expected);
     }
 }

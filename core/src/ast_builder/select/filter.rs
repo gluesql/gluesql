@@ -231,7 +231,6 @@ mod tests {
                 selection: Some(expr("PlayerItem.amount > 10").try_into().unwrap()),
                 group_by: Vec::new(),
                 having: None,
-                aggregate_slots: None,
             };
 
             Ok(Statement::Query(Query {
@@ -241,6 +240,7 @@ mod tests {
                 offset: None,
             }))
         };
+        let expected = expected.map(crate::plan::StatementPlan::from);
         assert_eq!(actual, expected);
 
         // select node -> filter node -> derived subquery

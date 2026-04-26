@@ -3,6 +3,7 @@ use {
     gluesql_core::{
         ast::*,
         parse_sql::parse_expr,
+        plan::{IndexItemPlan, StatementPlan},
         prelude::{Error, Glue, Payload, Result, parse, translate},
         store::{GStore, GStoreMut, Planner},
         translate::translate_expr,
@@ -18,7 +19,7 @@ pub fn expr(sql: &str) -> Expr {
     translate_expr(&parsed, &[]).unwrap()
 }
 
-pub fn test_indexes(statement: &Statement, indexes: Option<Vec<IndexItem>>) {
+pub fn test_indexes(statement: &StatementPlan, indexes: Option<Vec<IndexItemPlan>>) {
     if let Some(expected) = indexes {
         let found = find_indexes(statement);
 
@@ -38,24 +39,24 @@ pub fn test_indexes(statement: &Statement, indexes: Option<Vec<IndexItem>>) {
     }
 }
 
-fn find_indexes(statement: &Statement) -> Vec<&IndexItem> {
-    fn find_expr_indexes(expr: &Expr) -> Vec<&IndexItem> {
+fn find_indexes(statement: &StatementPlan) -> Vec<&IndexItemPlan> {
+    fn find_expr_indexes(expr: &gluesql_core::plan::ExprPlan) -> Vec<&IndexItemPlan> {
         match expr {
-            Expr::Subquery(query)
-            | Expr::Exists {
+            gluesql_core::plan::ExprPlan::Subquery(query)
+            | gluesql_core::plan::ExprPlan::Exists {
                 subquery: query, ..
             }
-            | Expr::InSubquery {
+            | gluesql_core::plan::ExprPlan::InSubquery {
                 subquery: query, ..
             } => find_query_indexes(query),
             _ => vec![],
         }
     }
 
-    fn find_query_indexes(query: &Query) -> Vec<&IndexItem> {
+    fn find_query_indexes(query: &gluesql_core::plan::QueryPlan) -> Vec<&IndexItemPlan> {
         let select = match &query.body {
-            SetExpr::Select(select) => select,
-            SetExpr::Values(_) => {
+            gluesql_core::plan::SetExprPlan::Select(select) => select,
+            gluesql_core::plan::SetExprPlan::Values(_) => {
                 return vec![];
             }
         };
@@ -67,7 +68,7 @@ fn find_indexes(statement: &Statement) -> Vec<&IndexItem> {
             .unwrap_or_default();
 
         let table_indexes = match &select.from.relation {
-            TableFactor::Table {
+            gluesql_core::plan::TableFactorPlan::Table {
                 index: Some(index), ..
             } => vec![index],
             _ => vec![],
@@ -77,7 +78,7 @@ fn find_indexes(statement: &Statement) -> Vec<&IndexItem> {
     }
 
     match statement {
-        Statement::Query(query) => find_query_indexes(query),
+        StatementPlan::Query(query) => find_query_indexes(query),
         _ => vec![],
     }
 }
@@ -134,7 +135,7 @@ pub trait Tester<T: GStore + GStoreMut + Planner> {
         println!("[RUN] {}", sql);
         let parsed = parse(sql)?;
         let statement = translate(&parsed[0])?;
-        let statement = glue.storage.plan(statement).await?;
+        let statement = glue.storage.plan(statement.into()).await?;
 
         glue.execute_stmt(&statement).await
     }
@@ -175,12 +176,17 @@ pub trait Tester<T: GStore + GStoreMut + Planner> {
         assert_eq!(actual, expected, "[TEST] {name}");
     }
 
-    async fn test_idx(&mut self, sql: &str, expected: Result<Payload>, indexes: Vec<IndexItem>) {
+    async fn test_idx(
+        &mut self,
+        sql: &str,
+        expected: Result<Payload>,
+        indexes: Vec<IndexItemPlan>,
+    ) {
         let glue = self.get_glue();
 
         let parsed = parse(sql).unwrap();
         let statement = translate(&parsed[0]).unwrap();
-        let statement = glue.storage.plan(statement).await.unwrap();
+        let statement = glue.storage.plan(statement.into()).await.unwrap();
 
         test_indexes(&statement, Some(indexes));
 

@@ -607,7 +607,6 @@ mod tests {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
-                aggregate_slots: None,
             };
 
             Ok(Statement::Query(Query {
@@ -637,6 +636,7 @@ mod tests {
 
             gen_expected(other_join)
         };
+        let expected = expected.map(crate::plan::StatementPlan::from);
         assert_eq!(actual, expected, "inner join");
 
         let actual = table("Player")
@@ -661,6 +661,7 @@ mod tests {
 
             gen_expected(other_join)
         };
+        let expected = expected.map(crate::plan::StatementPlan::from);
         assert_eq!(actual, expected, "inner join with alias");
 
         let actual = table("Player")
@@ -682,6 +683,7 @@ mod tests {
 
             gen_expected(other_join)
         };
+        let expected = expected.map(crate::plan::StatementPlan::from);
         assert_eq!(actual, expected, "left join");
 
         let actual = table("Player")
@@ -706,6 +708,7 @@ mod tests {
 
             gen_expected(other_join)
         };
+        let expected = expected.map(crate::plan::StatementPlan::from);
         assert_eq!(actual, expected, "left join with alias");
 
         let actual = table("App").select().alias_as("Sub").select().build();

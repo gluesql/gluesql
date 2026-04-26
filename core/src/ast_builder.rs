@@ -82,11 +82,11 @@ pub use {
 };
 
 #[cfg(test)]
-fn test(actual: &crate::result::Result<crate::ast::Statement>, expected: &str) {
-    use crate::{parse_sql::parse, translate::translate};
+fn test(actual: &crate::result::Result<crate::plan::StatementPlan>, expected: &str) {
+    use crate::{parse_sql::parse, plan::StatementPlan, translate::translate};
 
     let parsed = &parse(expected).expect(expected)[0];
-    let expected = translate(parsed);
+    let expected = translate(parsed).map(StatementPlan::from);
     pretty_assertions::assert_eq!(*actual, expected);
 }
 

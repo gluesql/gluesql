@@ -187,7 +187,6 @@ mod test {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
-                aggregate_slots: None,
             };
 
             Query {

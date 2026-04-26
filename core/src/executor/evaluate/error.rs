@@ -1,5 +1,8 @@
 use {
-    crate::ast::{Aggregate, BinaryOperator, DataType, Expr, ToSql},
+    crate::{
+        ast::{BinaryOperator, DataType, ToSql},
+        plan::{AggregatePlan, ExprPlan},
+    },
     serde::{Serialize, Serializer},
     std::fmt::Debug,
     thiserror::Error,
@@ -86,20 +89,20 @@ pub enum EvaluateError {
     #[error("text literal required for json map conversion: {0}")]
     TextLiteralRequired(String),
 
-    #[error("unsupported stateless expression: {}", .0.to_sql())]
-    UnsupportedStatelessExpr(Box<Expr>),
+    #[error("unsupported stateless expression: {0:?}")]
+    UnsupportedStatelessExpr(Box<ExprPlan>),
 
-    #[error("context is required for identifier evaluation: {}", .0.to_sql())]
-    ContextRequiredForIdentEvaluation(Box<Expr>),
+    #[error("context is required for identifier evaluation: {0:?}")]
+    ContextRequiredForIdentEvaluation(Box<ExprPlan>),
 
     #[error("aggregate slot value missing: {0:?}")]
-    AggregateSlotValueMissing(Box<Aggregate>),
+    AggregateSlotValueMissing(Box<AggregatePlan>),
 
     #[error("aggregate expression requires planner binding: {0:?}")]
-    UnplannedAggregate(Box<Aggregate>),
+    UnplannedAggregate(Box<AggregatePlan>),
 
     #[error("filter context is required for aggregate function: {0:?}")]
-    FilterContextRequiredForAggregate(Box<Aggregate>),
+    FilterContextRequiredForAggregate(Box<AggregatePlan>),
 
     #[error("incompatible bit operation between {0} and {1}")]
     IncompatibleBitOperation(String, String),

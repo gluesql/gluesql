@@ -4,9 +4,10 @@ use {
         validate::{ColumnValidation, validate_unique},
     },
     crate::{
-        ast::{ColumnDef, ColumnUniqueOption, Expr, ForeignKey, Query, SetExpr, Values},
+        ast::{ColumnDef, ColumnUniqueOption, ForeignKey},
         data::{Key, Row, SCHEMALESS_DOC_COLUMN, Schema, Value, value::BTreeMapJsonExt},
         executor::{evaluate::evaluate_stateless, limit::Limit},
+        plan::{ExprPlan, QueryPlan, SetExprPlan, ValuesPlan, plan_scalar_expr},
         result::{Error, Result},
         store::{GStore, GStoreMut},
     },
@@ -61,7 +62,7 @@ pub async fn insert<T: GStore + GStoreMut>(
     storage: &mut T,
     table_name: &str,
     columns: &[String],
-    source: &Query,
+    source: &QueryPlan,
 ) -> Result<usize> {
     let Schema {
         column_defs,
@@ -114,7 +115,7 @@ async fn fetch_vec_rows<T: GStore>(
     table_name: &str,
     column_defs: Vec<ColumnDef>,
     columns: &[String],
-    source: &Query,
+    source: &QueryPlan,
     foreign_keys: Vec<ForeignKey>,
 ) -> Result<RowsData> {
     #[derive(futures_enum::Stream)]
@@ -133,7 +134,7 @@ async fn fetch_vec_rows<T: GStore>(
     let column_validation = ColumnValidation::All(&column_defs);
 
     let rows = match &source.body {
-        SetExpr::Values(Values(values_list)) => {
+        SetExprPlan::Values(ValuesPlan(values_list)) => {
             let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref()).await?;
             let rows = stream::iter(values_list).then(|values| {
                 let column_defs = Arc::clone(&column_defs);
@@ -151,7 +152,7 @@ async fn fetch_vec_rows<T: GStore>(
 
             Rows::Values(rows)
         }
-        SetExpr::Select(_) => {
+        SetExprPlan::Select(_) => {
             let rows = select(storage, source, None).await?.map(|row| {
                 let values = row?.into_values();
 
@@ -259,7 +260,10 @@ async fn validate_foreign_key<T: GStore>(
     Ok(())
 }
 
-async fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &Query) -> Result<Vec<Vec<Value>>> {
+async fn fetch_schemaless_rows<T: GStore>(
+    storage: &T,
+    source: &QueryPlan,
+) -> Result<Vec<Vec<Value>>> {
     #[derive(futures_enum::Stream)]
     enum Rows<I1, I2> {
         Values(I1),
@@ -269,7 +273,7 @@ async fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &Query) -> Result
     let doc_column: Arc<[String]> = Arc::from(vec![SCHEMALESS_DOC_COLUMN.to_owned()]);
 
     let rows = match &source.body {
-        SetExpr::Values(Values(values_list)) => {
+        SetExprPlan::Values(ValuesPlan(values_list)) => {
             let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref()).await?;
             let rows = stream::iter(values_list).then({
                 let doc_column = Arc::clone(&doc_column);
@@ -304,7 +308,7 @@ async fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &Query) -> Result
 
             Rows::Values(rows)
         }
-        SetExpr::Select(_) => {
+        SetExprPlan::Select(_) => {
             let rows = select(storage, source, None).await?.map(|row| {
                 let values = row?.into_values();
 
@@ -338,7 +342,7 @@ async fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &Query) -> Result
 async fn fill_values(
     column_defs: &[ColumnDef],
     columns: &[String],
-    values: &[Expr],
+    values: &[ExprPlan],
 ) -> Result<Vec<Value>> {
     #[derive(iter_enum::Iterator)]
     enum Columns<I1, I2> {
@@ -386,9 +390,16 @@ async fn fill_values(
                     .map(|(_, value)| value);
 
                 match (value, &column_def.default, nullable) {
-                    (Some(&expr), _, _) | (None, Some(expr), _) => evaluate_stateless(None, expr)
+                    (Some(expr), _, _) => evaluate_stateless(None, expr)
                         .await?
                         .try_into_value(data_type, *nullable),
+                    (None, Some(expr), _) => {
+                        let expr = plan_scalar_expr(expr.clone());
+
+                        evaluate_stateless(None, &expr)
+                            .await?
+                            .try_into_value(data_type, *nullable)
+                    }
                     (None, None, true) => Ok(Value::Null),
                     (None, None, false) => {
                         Err(InsertError::LackOfRequiredColumn(def_name.to_owned()).into())

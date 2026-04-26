@@ -4,7 +4,8 @@ use {
         fetch::{fetch, fetch_columns},
     },
     crate::{
-        ast::{BinaryOperator, Expr, ForeignKey, ReferentialAction},
+        ast::{BinaryOperator, ForeignKey, ReferentialAction},
+        plan::ExprPlan,
         result::{Error, Result},
         store::{GStore, GStoreMut},
     },
@@ -26,7 +27,7 @@ pub enum DeleteError {
 pub async fn delete<T: GStore + GStoreMut>(
     storage: &mut T,
     table_name: &str,
-    selection: Option<&Expr>,
+    selection: Option<&ExprPlan>,
 ) -> Result<Payload> {
     let columns = Arc::from(fetch_columns(storage, table_name).await?);
     let referencings = storage.fetch_referencings(table_name).await?;
@@ -52,10 +53,10 @@ pub async fn delete<T: GStore + GStoreMut>(
                     .ok_or(DeleteError::ValueNotFound(referenced_column_name.clone()))?
                     .clone();
 
-                let expr = &Expr::BinaryOp {
-                    left: Box::new(Expr::Identifier(referencing_column_name.clone())),
+                let expr = &ExprPlan::BinaryOp {
+                    left: Box::new(ExprPlan::Identifier(referencing_column_name.clone())),
                     op: BinaryOperator::Eq,
-                    right: Box::new(Expr::Value(value)),
+                    right: Box::new(ExprPlan::Value(value)),
                 };
 
                 let columns = Arc::from(Vec::new());

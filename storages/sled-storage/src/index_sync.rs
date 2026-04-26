@@ -6,6 +6,7 @@ use {
         error::{Error, IndexError, Result},
         executor::RowContext,
         executor::evaluate_stateless,
+        plan::plan_scalar_expr,
         prelude::Value,
     },
     sled::{
@@ -278,7 +279,8 @@ async fn evaluate_index_key(
         columns: columns.unwrap_or(&[]),
         values: row,
     });
-    let evaluated = evaluate_stateless(context, index_expr)
+    let index_expr = plan_scalar_expr(index_expr.clone());
+    let evaluated = evaluate_stateless(context, &index_expr)
         .await
         .map_err(ConflictableTransactionError::Abort)?;
     let value: Value = evaluated

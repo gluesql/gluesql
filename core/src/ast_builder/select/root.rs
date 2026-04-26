@@ -137,7 +137,6 @@ impl Prebuild<Select> for SelectNode<'_> {
             selection: None,
             group_by: Vec::new(),
             having: None,
-            aggregate_slots: None,
         })
     }
 }

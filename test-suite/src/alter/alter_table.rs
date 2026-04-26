@@ -106,9 +106,9 @@ test_case!(alter_table_add_drop, {
         ),
         (
             "ALTER TABLE Foo ADD COLUMN something INTEGER DEFAULT (SELECT id FROM Bar LIMIT 1)",
-            Err(EvaluateError::UnsupportedStatelessExpr(Box::new(expr(
-                "(SELECT id FROM Bar LIMIT 1)",
-            )))
+            Err(EvaluateError::UnsupportedStatelessExpr(Box::new(
+                expr("(SELECT id FROM Bar LIMIT 1)").into(),
+            ))
             .into()),
         ),
         (

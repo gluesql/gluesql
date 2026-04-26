@@ -1,13 +1,13 @@
 use {
     super::{context::RowContext, evaluate::evaluate_stateless, filter::check_expr},
     crate::{
-        ast::{
-            ColumnDef, ColumnUniqueOption, Dictionary, Expr, IndexItem, Join, Projection, Query,
-            Select, SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, ToSql,
-            ToSqlUnquoted, Values,
-        },
-        data::{Key, Row, SCHEMALESS_DOC_COLUMN, Value, get_alias, get_index},
+        ast::{ColumnDef, ColumnUniqueOption, Dictionary, ToSql, ToSqlUnquoted},
+        data::{Key, Row, SCHEMALESS_DOC_COLUMN, Value},
         executor::{evaluate::evaluate, select::select},
+        plan::{
+            ExprPlan, IndexItemPlan, JoinPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
+            SetExprPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan, ValuesPlan,
+        },
         result::Result,
         store::GStore,
     },
@@ -43,7 +43,7 @@ pub async fn fetch<'a, T: GStore>(
     storage: &'a T,
     table_name: &'a str,
     columns: Arc<[String]>,
-    where_clause: Option<&'a Expr>,
+    where_clause: Option<&'a ExprPlan>,
 ) -> Result<impl Stream<Item = Result<(Key, Row)>> + 'a> {
     let rows = storage
         .scan_data(table_name)
@@ -80,13 +80,13 @@ pub enum Rows<I1, I2, I3, I4> {
 
 pub async fn fetch_relation_rows<'a, T: GStore>(
     storage: &'a T,
-    table_factor: &'a TableFactor,
+    table_factor: &'a TableFactorPlan,
     filter_context: Option<&Arc<RowContext<'a>>>,
 ) -> Result<impl Stream<Item = Result<Row>> + 'a> {
     let columns = Arc::from(fetch_relation_columns(storage, table_factor).await?);
 
     match table_factor {
-        TableFactor::Derived { subquery, .. } => {
+        TableFactorPlan::Derived { subquery, .. } => {
             let filter_context = filter_context.map(Arc::clone);
             let rows = select(storage, subquery, filter_context)
                 .await?
@@ -97,7 +97,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
 
             Ok(Rows::Derived(rows))
         }
-        TableFactor::Table { name, .. } => {
+        TableFactorPlan::Table { name, .. } => {
             let rows = {
                 #[derive(futures_enum::Stream)]
                 enum Rows<I1, I2, I3, I4> {
@@ -107,8 +107,8 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                     FullScan(I4),
                 }
 
-                match get_index(table_factor) {
-                    Some(IndexItem::NonClustered {
+                match table_factor.index() {
+                    Some(IndexItemPlan::NonClustered {
                         name: index_name,
                         asc,
                         cmp_expr,
@@ -132,7 +132,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
 
                         Rows::Indexed(rows)
                     }
-                    Some(IndexItem::PrimaryKey(expr)) => {
+                    Some(IndexItemPlan::PrimaryKey(expr)) => {
                         let schema = storage
                             .fetch_schema(name)
                             .await?
@@ -183,7 +183,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
 
             Ok(Rows::Table(rows))
         }
-        TableFactor::Series { size, .. } => {
+        TableFactorPlan::Series { size, .. } => {
             let value: Value = evaluate_stateless(None, size).await?.try_into()?;
             let size: i64 = value.try_into()?;
             let size = match size {
@@ -201,7 +201,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
 
             Ok(Rows::Series(stream::iter(rows)))
         }
-        TableFactor::Dictionary { dict, .. } => {
+        TableFactorPlan::Dictionary { dict, .. } => {
             let rows = {
                 #[derive(futures_enum::Stream)]
                 enum Rows<I1, I2, I3, I4> {
@@ -384,13 +384,13 @@ pub async fn fetch_columns<T: GStore>(storage: &T, table_name: &str) -> Result<V
 #[async_recursion]
 pub async fn fetch_relation_columns<T>(
     storage: &T,
-    table_factor: &TableFactor,
+    table_factor: &TableFactorPlan,
 ) -> Result<Vec<String>>
 where
     T: GStore,
 {
     match table_factor {
-        TableFactor::Table { name, alias, .. } => {
+        TableFactorPlan::Table { name, alias, .. } => {
             let columns = fetch_columns(storage, name).await?;
             match alias {
                 None => Ok(columns),
@@ -410,8 +410,8 @@ where
                     .collect()),
             }
         }
-        TableFactor::Series { .. } => Ok(vec!["N".to_owned()]),
-        TableFactor::Dictionary { dict, .. } => Ok(match dict {
+        TableFactorPlan::Series { .. } => Ok(vec!["N".to_owned()]),
+        TableFactorPlan::Dictionary { dict, .. } => Ok(match dict {
             Dictionary::GlueObjects => vec![
                 "OBJECT_NAME".to_owned(),
                 "OBJECT_TYPE".to_owned(),
@@ -435,18 +435,18 @@ where
                 "UNIQUENESS".to_owned(),
             ],
         }),
-        TableFactor::Derived {
-            subquery: Query { body, .. },
+        TableFactorPlan::Derived {
+            subquery: QueryPlan { body, .. },
             alias:
-                TableAlias {
+                TableAliasPlan {
                     columns: alias_columns,
                     name,
                 },
         } => match body {
-            SetExpr::Select(statement) => {
-                let Select {
+            SetExprPlan::Select(statement) => {
+                let crate::plan::SelectPlan {
                     from:
-                        TableWithJoins {
+                        TableWithJoinsPlan {
                             relation, joins, ..
                         },
                     projection,
@@ -471,7 +471,7 @@ where
                         .collect())
                 }
             }
-            SetExpr::Values(Values(values_list)) => {
+            SetExprPlan::Values(ValuesPlan(values_list)) => {
                 let total_len = values_list[0].len();
                 let alias_len = alias_columns.len();
                 if alias_len > total_len {
@@ -497,12 +497,12 @@ where
 
 async fn fetch_join_columns<'a, T: GStore>(
     storage: &T,
-    joins: &'a [Join],
+    joins: &'a [JoinPlan],
 ) -> Result<Vec<(&'a String, Vec<String>)>> {
     let mut all_columns = Vec::with_capacity(joins.len());
     for join in joins {
         let columns = fetch_relation_columns(storage, &join.relation).await?;
-        let alias = get_alias(&join.relation);
+        let alias = join.relation.alias_name();
         all_columns.push((alias, columns));
     }
     Ok(all_columns)
@@ -510,26 +510,26 @@ async fn fetch_join_columns<'a, T: GStore>(
 
 pub async fn fetch_labels<T: GStore>(
     storage: &T,
-    relation: &TableFactor,
-    joins: &[Join],
-    projection: &Projection,
+    relation: &TableFactorPlan,
+    joins: &[JoinPlan],
+    projection: &ProjectionPlan,
 ) -> Result<Vec<String>> {
-    let table_alias = get_alias(relation);
+    let table_alias = relation.alias_name();
     let columns = fetch_relation_columns(storage, relation).await?;
     let join_columns = fetch_join_columns(storage, joins).await?;
 
     match projection {
-        Projection::SchemalessMap => Ok(vec![SCHEMALESS_DOC_COLUMN.to_owned()]),
-        Projection::SelectItems(projection) => projection
+        ProjectionPlan::SchemalessMap => Ok(vec![SCHEMALESS_DOC_COLUMN.to_owned()]),
+        ProjectionPlan::SelectItems(projection) => projection
             .iter()
             .flat_map(|item| match item {
-                SelectItem::Wildcard => {
+                SelectItemPlan::Wildcard => {
                     let columns = columns.iter().cloned();
                     let join_columns = join_columns.iter().flat_map(|(_, columns)| columns.clone());
 
                     columns.chain(join_columns).map(Ok).collect()
                 }
-                SelectItem::QualifiedWildcard(target_table_alias) => {
+                SelectItemPlan::QualifiedWildcard(target_table_alias) => {
                     if table_alias == target_table_alias {
                         return columns.iter().cloned().map(Ok).collect();
                     }
@@ -549,7 +549,7 @@ pub async fn fetch_labels<T: GStore>(
                         }
                     }
                 }
-                SelectItem::Expr { label, .. } => vec![Ok(label.to_owned())],
+                SelectItemPlan::Expr { label, .. } => vec![Ok(label.to_owned())],
             })
             .collect::<Result<_>>(),
     }

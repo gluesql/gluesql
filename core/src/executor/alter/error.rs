@@ -1,6 +1,6 @@
 use {
     super::table::Referencing,
-    crate::ast::{DataType, Expr},
+    crate::{plan::ExprPlan, prelude::DataType},
     serde::Serialize,
     std::fmt::Debug,
     thiserror::Error,
@@ -31,14 +31,14 @@ pub enum AlterError {
 
     // validate index expr
     #[error("unsupported index expr: {0:#?}")]
-    UnsupportedIndexExpr(Box<Expr>),
+    UnsupportedIndexExpr(Box<ExprPlan>),
 
     // validate index expr
     #[error("unsupported unnamed argument")]
     UnsupportedUnnamedArg,
 
     #[error("identifier not found: {0:#?}")]
-    IdentifierNotFound(Box<Expr>),
+    IdentifierNotFound(Box<ExprPlan>),
 
     #[error("duplicate column name: {0}")]
     DuplicateColumnName(String),

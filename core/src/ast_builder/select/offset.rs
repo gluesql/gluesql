@@ -254,7 +254,6 @@ mod tests {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
-                aggregate_slots: None,
             };
 
             Ok(Statement::Query(Query {
@@ -264,6 +263,7 @@ mod tests {
                 offset: Some(num(100).try_into().unwrap()),
             }))
         };
+        let expected = expected.map(crate::plan::StatementPlan::from);
         assert_eq!(actual, expected);
 
         // select -> offset -> derived subquery
