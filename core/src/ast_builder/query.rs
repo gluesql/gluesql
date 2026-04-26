@@ -3,14 +3,14 @@ use {
         ExprList, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
         LimitNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
         TableFactorNode,
-        error::AstBuilderError,
         select::{Prebuild, ValuesNode},
+        set_expr::SetExprNode,
         table_factor::TableType,
     },
     crate::{
         ast::{Expr, Query, SetExpr, Values},
         parse_sql::parse_query,
-        result::{Error, Result},
+        result::Result,
         translate::{NO_PARAMS, translate_query},
     },
 };
@@ -32,11 +32,12 @@ pub enum QueryNode<'a> {
     FilterNode(FilterNode<'a>),
     ProjectNode(ProjectNode<'a>),
     OrderByNode(OrderByNode<'a>),
-    Union {
-        left: Box<QueryNode<'a>>,
-        right: Box<QueryNode<'a>>,
-        all: bool,
-    },
+    /// A fully-determined set expression (SELECT, VALUES, or UNION).
+    ///
+    /// UNION operands are typed as [`SetExprNode`], so passing a
+    /// `LimitNode` / `OffsetNode` / `OrderByNode` as an operand is a
+    /// **compile-time** error rather than a runtime one.
+    SetExpr(SetExprNode<'a>),
 }
 
 impl<'a> QueryNode<'a> {
@@ -49,24 +50,6 @@ impl<'a> QueryNode<'a> {
             },
             table_alias: None,
             index: None,
-        }
-    }
-
-    #[must_use]
-    pub fn union(self, right: impl Into<QueryNode<'a>>) -> Self {
-        QueryNode::Union {
-            left: Box::new(self),
-            right: Box::new(right.into()),
-            all: false,
-        }
-    }
-
-    #[must_use]
-    pub fn union_all(self, right: impl Into<QueryNode<'a>>) -> Self {
-        QueryNode::Union {
-            left: Box::new(self),
-            right: Box::new(right.into()),
-            all: true,
         }
     }
 }
@@ -105,8 +88,14 @@ impl_from_select_nodes!(OffsetLimitNode);
 impl_from_select_nodes!(ProjectNode);
 impl_from_select_nodes!(OrderByNode);
 
+impl<'a> From<SetExprNode<'a>> for QueryNode<'a> {
+    fn from(node: SetExprNode<'a>) -> Self {
+        QueryNode::SetExpr(node)
+    }
+}
+
 impl<'a> TryFrom<QueryNode<'a>> for Query {
-    type Error = Error;
+    type Error = crate::result::Error;
 
     fn try_from(query_node: QueryNode<'a>) -> Result<Self> {
         match query_node {
@@ -139,35 +128,7 @@ impl<'a> TryFrom<QueryNode<'a>> for Query {
             QueryNode::OffsetLimitNode(node) => node.prebuild(),
             QueryNode::ProjectNode(node) => node.prebuild(),
             QueryNode::OrderByNode(node) => node.prebuild(),
-            QueryNode::Union { left, right, all } => {
-                let left = Query::try_from(*left)?;
-                let right = Query::try_from(*right)?;
-
-                // Reject branches that carry ORDER BY, LIMIT, or OFFSET.
-                // Those clauses apply to an entire query, not to a UNION branch;
-                // silently dropping them would produce wrong semantics.
-                // Users should wrap such a branch with .alias_as() first.
-                if !left.order_by.is_empty()
-                    || left.limit.is_some()
-                    || left.offset.is_some()
-                    || !right.order_by.is_empty()
-                    || right.limit.is_some()
-                    || right.offset.is_some()
-                {
-                    return Err(AstBuilderError::UnionBranchWithClause.into());
-                }
-
-                Ok(Query {
-                    body: SetExpr::Union {
-                        left: Box::new(left.body),
-                        right: Box::new(right.body),
-                        all,
-                    },
-                    order_by: Vec::new(),
-                    limit: None,
-                    offset: None,
-                })
-            }
+            QueryNode::SetExpr(node) => node.prebuild(),
         }
     }
 }
@@ -182,8 +143,8 @@ mod test {
                 SetExpr, TableFactor, TableWithJoins,
             },
             ast_builder::{
-                SelectItemList, col, glue_indexes, glue_objects, glue_table_columns, glue_tables,
-                series, table, test_query,
+                SelectItemList, SetExprBuild, col, glue_indexes, glue_objects, glue_table_columns,
+                glue_tables, series, table, test_query,
             },
         },
         pretty_assertions::assert_eq,
@@ -322,47 +283,20 @@ mod test {
 
     #[test]
     fn union_node() {
-        let a: QueryNode = table("A").select().project("id").into();
-        let b: QueryNode = table("B").select().project("id").into();
-        let actual = a.union(b);
+        let actual: QueryNode = table("A")
+            .select()
+            .project("id")
+            .union(table("B").select().project("id"))
+            .into();
         let expected = "SELECT id FROM A UNION SELECT id FROM B";
         test_query(actual, expected);
 
-        let a: QueryNode = table("A").select().project("id").into();
-        let b: QueryNode = table("B").select().project("id").into();
-        let actual = a.union_all(b);
+        let actual: QueryNode = table("A")
+            .select()
+            .project("id")
+            .union_all(table("B").select().project("id"))
+            .into();
         let expected = "SELECT id FROM A UNION ALL SELECT id FROM B";
         test_query(actual, expected);
-    }
-
-    #[test]
-    fn union_branch_with_order_by_is_rejected() {
-        use crate::ast_builder::AstBuilderError;
-
-        // A branch that carries ORDER BY must be wrapped with .alias_as() first.
-        let a: QueryNode = table("A").select().project("id").order_by("id DESC").into();
-        let b: QueryNode = table("B").select().project("id").into();
-        let result = Query::try_from(a.union(b));
-        assert_eq!(
-            result,
-            Err(crate::result::Error::AstBuilder(
-                AstBuilderError::UnionBranchWithClause
-            ))
-        );
-    }
-
-    #[test]
-    fn union_branch_with_limit_is_rejected() {
-        use crate::ast_builder::AstBuilderError;
-
-        let a: QueryNode = table("A").select().project("id").into();
-        let b: QueryNode = table("B").select().project("id").limit(5).into();
-        let result = Query::try_from(a.union(b));
-        assert_eq!(
-            result,
-            Err(crate::result::Error::AstBuilder(
-                AstBuilderError::UnionBranchWithClause
-            ))
-        );
     }
 }

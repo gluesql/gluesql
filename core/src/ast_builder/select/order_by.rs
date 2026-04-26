@@ -5,7 +5,7 @@ use {
         ast_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
             JoinNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryNode, SelectNode,
-            TableFactorNode,
+            TableFactorNode, set_expr::SetExprNode,
         },
         result::Result,
     },
@@ -22,6 +22,7 @@ pub enum PrevNode<'a> {
     HashJoin(Box<HashJoinNode<'a>>),
     ProjectNode(Box<ProjectNode<'a>>),
     Values(ValuesNode<'a>),
+    SetExpr(SetExprNode<'a>),
 }
 
 impl Prebuild<Query> for PrevNode<'_> {
@@ -36,7 +37,14 @@ impl Prebuild<Query> for PrevNode<'_> {
             Self::HashJoin(node) => node.prebuild(),
             Self::ProjectNode(node) => node.prebuild(),
             Self::Values(node) => node.prebuild(),
+            Self::SetExpr(node) => node.prebuild(),
         }
+    }
+}
+
+impl<'a> From<SetExprNode<'a>> for PrevNode<'a> {
+    fn from(node: SetExprNode<'a>) -> Self {
+        PrevNode::SetExpr(node)
     }
 }
 
