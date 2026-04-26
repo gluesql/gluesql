@@ -210,3 +210,84 @@ pub trait SetExprBuild<'a>: Into<SetExprNode<'a>> + Sized {
 }
 
 impl<'a, T: Into<SetExprNode<'a>>> SetExprBuild<'a> for T {}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::{SetExprBuild, SetExprNode},
+        crate::ast_builder::{table, test_query},
+    };
+
+    /// Verify that chaining .union() twice resolves correctly via the blanket
+    /// `SetExprBuild` impl for `SetExprNode` itself (the `From<SetExprNode>`
+    /// identity conversion).
+    ///
+    /// `a.union(b)` returns `SetExprNode::Union { a, b, all: false }`.
+    /// Calling `.union(c)` on that result must pick up `SetExprBuild` through
+    /// the blanket `impl<T: Into<SetExprNode>> SetExprBuild for T`, which
+    /// requires `SetExprNode: Into<SetExprNode>` — satisfied by the automatic
+    /// reflexive `From<T> for T` impl in std.
+    #[test]
+    fn chained_union_builds_left_deep_tree() {
+        let a = table("A").select().project("id");
+        let b = table("B").select().project("id");
+        let c = table("C").select().project("id");
+
+        // a.union(b) → SetExprNode::Union; .union(c) must also compile,
+        // confirming SetExprNode itself satisfies SetExprBuild.
+        let actual: SetExprNode = a.union(b).union(c);
+
+        // The result must be a left-deep tree:
+        //   Union { left: Union { left: A, right: B }, right: C }
+        assert!(
+            matches!(
+                &actual,
+                SetExprNode::Union {
+                    left,
+                    right: _,
+                    all: false
+                } if matches!(left.as_ref(), SetExprNode::Union { all: false, .. })
+            ),
+            "expected left-deep Union tree, got {actual:?}"
+        );
+    }
+
+    /// Verify that .union_all() also chains and sets all: true at each level.
+    #[test]
+    fn chained_union_all_builds_left_deep_tree() {
+        let a = table("A").select().project("id");
+        let b = table("B").select().project("id");
+        let c = table("C").select().project("id");
+
+        let actual: SetExprNode = a.union_all(b).union_all(c);
+
+        assert!(
+            matches!(
+                &actual,
+                SetExprNode::Union {
+                    left,
+                    right: _,
+                    all: true,
+                } if matches!(left.as_ref(), SetExprNode::Union { all: true, .. })
+            ),
+            "expected left-deep UNION ALL tree, got {actual:?}"
+        );
+    }
+
+    /// Round-trip: chained UNION produces the same SQL as the parsed form.
+    #[test]
+    fn chained_union_roundtrip() {
+        let actual: SetExprNode = table("A")
+            .select()
+            .project("id")
+            .union(table("B").select().project("id"))
+            .union(table("C").select().project("id"));
+
+        // Wrap in QueryNode so test_query can consume it.
+        let query_node = crate::ast_builder::QueryNode::SetExpr(actual);
+        test_query(
+            query_node,
+            "SELECT id FROM A UNION SELECT id FROM B UNION SELECT id FROM C",
+        );
+    }
+}
