@@ -4,7 +4,8 @@ use {
         ast::SelectItem,
         ast_builder::ExprWithAliasNode,
         parse_sql::parse_select_items,
-        result::{Error, Result},
+        plan::SelectItemPlan,
+        result::Result,
         translate::{NO_PARAMS, translate_select_item},
     },
 };
@@ -51,18 +52,29 @@ impl<'a> From<Vec<ExprWithAliasNode<'a>>> for SelectItemList<'a> {
     }
 }
 
-impl<'a> TryFrom<SelectItemList<'a>> for Vec<SelectItem> {
-    type Error = Error;
+impl SelectItemList<'_> {
+    pub(super) fn build_select_items_plan(self) -> Result<Vec<SelectItemPlan>> {
+        match self {
+            SelectItemList::Text(items) => parse_select_items(items)?
+                .iter()
+                .map(|item| translate_select_item(item, NO_PARAMS).map(Into::into))
+                .collect::<Result<Vec<_>>>(),
+            SelectItemList::SelectItems(items) => items
+                .into_iter()
+                .map(SelectItemNode::build_select_item_plan)
+                .collect::<Result<Vec<_>>>(),
+        }
+    }
 
-    fn try_from(select_items: SelectItemList<'a>) -> Result<Self> {
-        match select_items {
+    pub(super) fn build_select_items(self) -> Result<Vec<SelectItem>> {
+        match self {
             SelectItemList::Text(items) => parse_select_items(items)?
                 .iter()
                 .map(|item| translate_select_item(item, NO_PARAMS))
                 .collect::<Result<Vec<_>>>(),
             SelectItemList::SelectItems(items) => items
                 .into_iter()
-                .map(TryInto::try_into)
+                .map(SelectItemNode::build_select_item)
                 .collect::<Result<Vec<_>>>(),
         }
     }
@@ -72,9 +84,9 @@ impl<'a> TryFrom<SelectItemList<'a>> for Vec<SelectItem> {
 mod tests {
     use {
         crate::{
-            ast::SelectItem,
             ast_builder::{SelectItemList, col, expr},
             parse_sql::parse_select_items,
+            plan::SelectItemPlan,
             result::Result,
             translate::{NO_PARAMS, translate_select_item},
         },
@@ -85,10 +97,10 @@ mod tests {
         let parsed = parse_select_items(expected).expect(expected);
         let expected = parsed
             .iter()
-            .map(|item| translate_select_item(item, NO_PARAMS))
-            .collect::<Result<Vec<SelectItem>>>();
+            .map(|item| translate_select_item(item, NO_PARAMS).map(SelectItemPlan::from))
+            .collect::<Result<Vec<SelectItemPlan>>>();
 
-        assert_eq!(actual.try_into(), expected);
+        assert_eq!(actual.build_select_items_plan(), expected);
     }
 
     #[test]

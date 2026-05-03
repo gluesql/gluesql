@@ -1,24 +1,33 @@
 use {
-    super::Prebuild,
+    super::{BuildSelect, BuildSelectPlan},
     crate::{
         ast::Select,
         ast_builder::{
             ExprNode, GroupByNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode,
             ProjectNode, QueryNode, SelectItemList, TableFactorNode,
         },
+        plan::SelectPlan,
         result::Result,
     },
 };
 
 #[derive(Clone, Debug)]
-pub enum PrevNode<'a> {
+pub(super) enum PrevNode<'a> {
     GroupBy(GroupByNode<'a>),
 }
 
-impl Prebuild<Select> for PrevNode<'_> {
-    fn prebuild(self) -> Result<Select> {
+impl BuildSelectPlan for PrevNode<'_> {
+    fn build_select_plan(self) -> Result<SelectPlan> {
         match self {
-            Self::GroupBy(node) => node.prebuild(),
+            Self::GroupBy(node) => node.build_select_plan(),
+        }
+    }
+}
+
+impl BuildSelect for PrevNode<'_> {
+    fn build_select(self) -> Result<Select> {
+        match self {
+            Self::GroupBy(node) => node.build_select(),
         }
     }
 }
@@ -36,7 +45,7 @@ pub struct HavingNode<'a> {
 }
 
 impl<'a> HavingNode<'a> {
-    pub fn new<N: Into<PrevNode<'a>>, T: Into<ExprNode<'a>>>(prev_node: N, expr: T) -> Self {
+    pub(super) fn new<N: Into<PrevNode<'a>>, T: Into<ExprNode<'a>>>(prev_node: N, expr: T) -> Self {
         Self {
             prev_node: prev_node.into(),
             expr: expr.into(),
@@ -64,10 +73,19 @@ impl<'a> HavingNode<'a> {
     }
 }
 
-impl Prebuild<Select> for HavingNode<'_> {
-    fn prebuild(self) -> Result<Select> {
-        let mut select: Select = self.prev_node.prebuild()?;
-        select.having = Some(self.expr.try_into()?);
+impl BuildSelectPlan for HavingNode<'_> {
+    fn build_select_plan(self) -> Result<SelectPlan> {
+        let mut select = self.prev_node.build_select_plan()?;
+        select.having = Some(self.expr.build_expr_plan()?);
+
+        Ok(select)
+    }
+}
+
+impl BuildSelect for HavingNode<'_> {
+    fn build_select(self) -> Result<Select> {
+        let mut select = self.prev_node.build_select()?;
+        select.having = Some(self.expr.build_expr()?);
 
         Ok(select)
     }

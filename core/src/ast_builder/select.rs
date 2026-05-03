@@ -13,8 +13,8 @@ mod values;
 use {
     super::Build,
     crate::{
-        ast::{Query, Select, SetExpr, Statement},
-        plan::StatementPlan,
+        ast::{Query, Select, SetExpr},
+        plan::{QueryPlan, SelectPlan, SetExprPlan, StatementPlan},
         result::Result,
     },
 };
@@ -32,13 +32,40 @@ pub use {
     values::{ValuesNode, values},
 };
 
-pub trait Prebuild<T> {
-    fn prebuild(self) -> Result<T>;
+pub(super) trait BuildSelectPlan {
+    fn build_select_plan(self) -> Result<SelectPlan>;
 }
 
-impl<T: Prebuild<Select>> Prebuild<Query> for T {
-    fn prebuild(self) -> Result<Query> {
-        let select = self.prebuild()?;
+pub(super) trait BuildSelect {
+    fn build_select(self) -> Result<Select>;
+}
+
+pub(super) trait BuildQueryPlan {
+    fn build_query_plan(self) -> Result<QueryPlan>;
+}
+
+pub(super) trait BuildQuery {
+    fn build_query(self) -> Result<Query>;
+}
+
+impl<T: BuildSelectPlan> BuildQueryPlan for T {
+    fn build_query_plan(self) -> Result<QueryPlan> {
+        let select = self.build_select_plan()?;
+        let body = SetExprPlan::Select(Box::new(select));
+        let query = QueryPlan {
+            body,
+            order_by: Vec::new(),
+            limit: None,
+            offset: None,
+        };
+
+        Ok(query)
+    }
+}
+
+impl<T: BuildSelect> BuildQuery for T {
+    fn build_query(self) -> Result<Query> {
+        let select = self.build_select()?;
         let body = SetExpr::Select(Box::new(select));
         let query = Query {
             body,
@@ -51,10 +78,10 @@ impl<T: Prebuild<Select>> Prebuild<Query> for T {
     }
 }
 
-impl<T: Prebuild<Query>> Build for T {
+impl<T: BuildQueryPlan> Build for T {
     fn build(self) -> Result<StatementPlan> {
-        let query = self.prebuild()?;
+        let query = self.build_query_plan()?;
 
-        Ok(Statement::Query(query).into())
+        Ok(StatementPlan::Query(query))
     }
 }

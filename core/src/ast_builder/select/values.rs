@@ -1,9 +1,11 @@
 use crate::{
-    ast::{Expr, Query, SetExpr, Values},
+    ast::{Query, SetExpr, Values},
     ast_builder::{
         ExprList, ExprNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, QueryNode,
-        TableFactorNode, select::Prebuild,
+        TableFactorNode,
+        select::{BuildQuery, BuildQueryPlan},
     },
+    plan::{QueryPlan, SetExprPlan, ValuesPlan},
     result::Result,
 };
 
@@ -30,13 +32,32 @@ impl<'a> ValuesNode<'a> {
     }
 }
 
-impl Prebuild<Query> for ValuesNode<'_> {
-    fn prebuild(self) -> Result<Query> {
+impl BuildQueryPlan for ValuesNode<'_> {
+    fn build_query_plan(self) -> Result<QueryPlan> {
         let values = self
             .values
             .into_iter()
-            .map(TryInto::try_into)
-            .collect::<Result<Vec<Vec<Expr>>>>()?;
+            .map(ExprList::build_exprs_plan)
+            .collect::<Result<Vec<_>>>()?;
+
+        let body = SetExprPlan::Values(ValuesPlan(values));
+
+        Ok(QueryPlan {
+            body,
+            order_by: Vec::new(),
+            limit: None,
+            offset: None,
+        })
+    }
+}
+
+impl BuildQuery for ValuesNode<'_> {
+    fn build_query(self) -> Result<Query> {
+        let values = self
+            .values
+            .into_iter()
+            .map(ExprList::build_exprs)
+            .collect::<Result<Vec<_>>>()?;
 
         let body = SetExpr::Values(Values(values));
 

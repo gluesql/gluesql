@@ -104,17 +104,6 @@ pub struct TableAlias {
 pub struct Join {
     pub relation: TableFactor,
     pub join_operator: JoinOperator,
-    pub join_executor: JoinExecutor,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum JoinExecutor {
-    NestedLoop,
-    Hash {
-        key_expr: Expr,
-        value_expr: Expr,
-        where_clause: Option<Expr>,
-    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -464,7 +453,6 @@ impl Join {
         let Join {
             relation,
             join_operator,
-            join_executor,
         } = self;
 
         let (join_operator, join_constraint) = match join_operator {
@@ -472,66 +460,19 @@ impl Join {
             JoinOperator::LeftOuter(join_constraint) => ("LEFT OUTER JOIN", join_constraint),
         };
 
-        let (join_constraint, join_executor) = if quoted {
-            (join_constraint.to_sql(), join_executor.to_sql())
+        let join_constraint = if quoted {
+            join_constraint.to_sql()
         } else {
-            (
-                join_constraint.to_sql_unquoted(),
-                join_executor.to_sql_unquoted(),
-            )
+            join_constraint.to_sql_unquoted()
         };
 
-        let join_constraints = [join_constraint, join_executor]
-            .iter()
-            .filter(|sql| !sql.is_empty())
-            .join(" AND ");
-
-        if join_constraints.is_empty() {
+        if join_constraint.is_empty() {
             format!("{join_operator} {}", relation.to_sql_with(quoted))
         } else {
             format!(
-                "{join_operator} {} ON {join_constraints}",
+                "{join_operator} {} ON {join_constraint}",
                 relation.to_sql_with(quoted)
             )
-        }
-    }
-}
-
-impl ToSql for JoinExecutor {
-    fn to_sql(&self) -> String {
-        self.to_sql_with(true)
-    }
-}
-
-impl ToSqlUnquoted for JoinExecutor {
-    fn to_sql_unquoted(&self) -> String {
-        self.to_sql_with(false)
-    }
-}
-
-impl JoinExecutor {
-    fn to_sql_with(&self, quoted: bool) -> String {
-        let to_sql = |expr: &Expr| {
-            if quoted {
-                expr.to_sql()
-            } else {
-                expr.to_sql_unquoted()
-            }
-        };
-
-        match self {
-            JoinExecutor::NestedLoop => String::new(),
-            JoinExecutor::Hash {
-                key_expr,
-                value_expr,
-                where_clause,
-            } => {
-                let key_value = format!("{} = {}", to_sql(key_expr), to_sql(value_expr));
-                match where_clause {
-                    Some(expr) => format!("{key_value} AND {}", to_sql(expr)),
-                    None => key_value,
-                }
-            }
         }
     }
 }
@@ -626,8 +567,8 @@ mod tests {
     use {
         crate::{
             ast::{
-                BinaryOperator, Dictionary, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator,
-                Literal, OrderByExpr, Projection, Query, Select, SelectItem, SetExpr, TableAlias,
+                BinaryOperator, Dictionary, Expr, Join, JoinConstraint, JoinOperator, Literal,
+                OrderByExpr, Projection, Query, Select, SelectItem, SetExpr, TableAlias,
                 TableFactor, TableWithJoins, ToSql, ToSqlUnquoted, Values,
             },
             parse_sql::parse_expr,
@@ -742,7 +683,6 @@ mod tests {
                         index: None,
                     },
                     join_operator: JoinOperator::Inner(JoinConstraint::None),
-                    join_executor: JoinExecutor::NestedLoop,
                 }],
             },
             selection: None,
@@ -791,7 +731,6 @@ mod tests {
                         index: None,
                     },
                     join_operator: JoinOperator::Inner(JoinConstraint::None),
-                    join_executor: JoinExecutor::NestedLoop,
                 }],
             },
             selection: None,
@@ -1173,7 +1112,6 @@ mod tests {
                 index: None,
             },
             join_operator: JoinOperator::Inner(JoinConstraint::None),
-            join_executor: JoinExecutor::NestedLoop,
         }
         .to_sql();
         assert_eq!(actual, expected);
@@ -1188,7 +1126,6 @@ mod tests {
             join_operator: JoinOperator::Inner(JoinConstraint::On(expr(
                 r#""PlayerItem"."user_id" = "Player"."id""#,
             ))),
-            join_executor: JoinExecutor::NestedLoop,
         }
         .to_sql();
         assert_eq!(actual, expected);
@@ -1201,7 +1138,6 @@ mod tests {
                 index: None,
             },
             join_operator: JoinOperator::LeftOuter(JoinConstraint::None),
-            join_executor: JoinExecutor::NestedLoop,
         }
         .to_sql();
         assert_eq!(actual, expected);
@@ -1213,12 +1149,9 @@ mod tests {
                 alias: None,
                 index: None,
             },
-            join_operator: JoinOperator::LeftOuter(JoinConstraint::None),
-            join_executor: JoinExecutor::Hash {
-                key_expr: expr("PlayerItem.user_id"),
-                value_expr: expr("Player.id"),
-                where_clause: None,
-            },
+            join_operator: JoinOperator::LeftOuter(JoinConstraint::On(expr(
+                r#""PlayerItem"."user_id" = "Player"."id""#,
+            ))),
         }
         .to_sql();
         assert_eq!(actual, expected);
@@ -1231,15 +1164,8 @@ mod tests {
                 index: None,
             },
             join_operator: JoinOperator::LeftOuter(JoinConstraint::On(expr(
-                r#""PlayerItem"."age" > "Player"."age""#,
+                r#""PlayerItem"."age" > "Player"."age" AND "PlayerItem"."user_id" = "Player"."id" AND "PlayerItem"."amount" > 10 AND "PlayerItem"."amount" * 3 <= 2"#,
             ))),
-            join_executor: JoinExecutor::Hash {
-                key_expr: expr("PlayerItem.user_id"),
-                value_expr: expr("Player.id"),
-                where_clause: Some(expr(
-                    r#""PlayerItem"."amount" > 10 AND "PlayerItem"."amount" * 3 <= 2"#,
-                )),
-            },
         }
         .to_sql();
         assert_eq!(actual, expected);
@@ -1255,7 +1181,6 @@ mod tests {
                 index: None,
             },
             join_operator: JoinOperator::Inner(JoinConstraint::None),
-            join_executor: JoinExecutor::NestedLoop,
         }
         .to_sql_unquoted();
         assert_eq!(actual, expected);
@@ -1268,13 +1193,8 @@ mod tests {
                 index: None,
             },
             join_operator: JoinOperator::Inner(JoinConstraint::On(expr(
-                "PlayerItem.user_id = Player.id",
+                "PlayerItem.user_id = Player.id AND PlayerItem.group_id = Player.group_id",
             ))),
-            join_executor: JoinExecutor::Hash {
-                key_expr: expr("PlayerItem.group_id"),
-                value_expr: expr("Player.group_id"),
-                where_clause: None,
-            },
         }
         .to_sql_unquoted();
         assert_eq!(actual, expected);
@@ -1287,7 +1207,6 @@ mod tests {
                 index: None,
             },
             join_operator: JoinOperator::LeftOuter(JoinConstraint::None),
-            join_executor: JoinExecutor::NestedLoop,
         }
         .to_sql_unquoted();
         assert_eq!(actual, expected);
@@ -1299,12 +1218,9 @@ mod tests {
                 alias: None,
                 index: None,
             },
-            join_operator: JoinOperator::LeftOuter(JoinConstraint::None),
-            join_executor: JoinExecutor::Hash {
-                key_expr: expr("PlayerItem.user_id"),
-                value_expr: expr("Player.id"),
-                where_clause: None,
-            },
+            join_operator: JoinOperator::LeftOuter(JoinConstraint::On(expr(
+                "PlayerItem.user_id = Player.id",
+            ))),
         }
         .to_sql_unquoted();
         assert_eq!(actual, expected);
@@ -1317,15 +1233,8 @@ mod tests {
                 index: None,
             },
             join_operator: JoinOperator::LeftOuter(JoinConstraint::On(expr(
-                "PlayerItem.age > Player.age",
+                "PlayerItem.age > Player.age AND PlayerItem.user_id = Player.id AND PlayerItem.amount > 10 AND PlayerItem.amount * 3 <= 2",
             ))),
-            join_executor: JoinExecutor::Hash {
-                key_expr: expr("PlayerItem.user_id"),
-                value_expr: expr("Player.id"),
-                where_clause: Some(expr(
-                    "PlayerItem.amount > 10 AND PlayerItem.amount * 3 <= 2",
-                )),
-            },
         }
         .to_sql_unquoted();
         assert_eq!(actual, expected);

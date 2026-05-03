@@ -94,22 +94,24 @@ fn test(actual: &crate::result::Result<crate::plan::StatementPlan>, expected: &s
 fn test_expr(actual: crate::ast_builder::ExprNode, expected: &str) {
     use crate::{
         parse_sql::parse_expr,
+        plan::ExprPlan,
         translate::{NO_PARAMS, translate_expr},
     };
 
     let parsed = &parse_expr(expected).expect(expected);
-    let expected = translate_expr(parsed, NO_PARAMS);
-    pretty_assertions::assert_eq!(actual.try_into(), expected);
+    let expected = translate_expr(parsed, NO_PARAMS).map(ExprPlan::from);
+    pretty_assertions::assert_eq!(actual.build_expr_plan(), expected);
 }
 
 #[cfg(test)]
 fn test_query(actual: crate::ast_builder::QueryNode, expected: &str) {
     use crate::{
         parse_sql::parse_query,
+        plan::QueryPlan,
         translate::{NO_PARAMS, translate_query},
     };
 
     let parsed = &parse_query(expected).expect(expected);
-    let expected = translate_query(parsed, NO_PARAMS);
-    pretty_assertions::assert_eq!(actual.try_into(), expected);
+    let expected = translate_query(parsed, NO_PARAMS).map(QueryPlan::from);
+    pretty_assertions::assert_eq!(actual.build_query_plan(), expected);
 }

@@ -1,6 +1,6 @@
 use {
     super::{Build, ColumnList, ExprList, QueryNode},
-    crate::{ast::Statement, plan::StatementPlan, result::Result},
+    crate::{plan::StatementPlan, result::Result},
 };
 
 #[derive(Clone, Debug)]
@@ -51,14 +51,13 @@ impl Build for InsertSourceNode<'_> {
         let table_name = self.insert_node.table_name;
         let columns = self.insert_node.columns;
         let columns = columns.map_or_else(|| Ok(vec![]), TryInto::try_into)?;
-        let source = self.source.try_into()?;
+        let source = self.source.build_query_plan()?;
 
-        Ok(Statement::Insert {
+        Ok(StatementPlan::Insert {
             table_name,
             columns,
             source,
-        }
-        .into())
+        })
     }
 }
 

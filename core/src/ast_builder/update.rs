@@ -1,8 +1,7 @@
 use {
     super::{AssignmentNode, Build, ExprNode},
     crate::{
-        ast::{Assignment, Expr, Statement},
-        plan::StatementPlan,
+        plan::{AssignmentPlan, StatementPlan},
         result::Result,
     },
 };
@@ -83,18 +82,17 @@ impl<'a> UpdateSetNode<'a> {
 impl Build for UpdateSetNode<'_> {
     fn build(self) -> Result<StatementPlan> {
         let table_name = self.table_name;
-        let selection = self.selection.map(Expr::try_from).transpose()?;
+        let selection = self.selection.map(ExprNode::build_expr_plan).transpose()?;
         let assignments = self
             .assignments
             .into_iter()
-            .map(Assignment::try_from)
+            .map(AssignmentPlan::try_from)
             .collect::<Result<Vec<_>>>()?;
-        Ok(Statement::Update {
+        Ok(StatementPlan::Update {
             table_name,
             assignments,
             selection,
-        }
-        .into())
+        })
     }
 }
 

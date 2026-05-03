@@ -1,17 +1,18 @@
 use {
-    super::{Prebuild, values::ValuesNode},
+    super::{BuildQuery, BuildQueryPlan, values::ValuesNode},
     crate::{
         ast::Query,
         ast_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
             JoinNode, OrderByNode, ProjectNode, QueryNode, SelectNode, TableFactorNode,
         },
+        plan::QueryPlan,
         result::Result,
     },
 };
 
 #[derive(Clone, Debug)]
-pub enum PrevNode<'a> {
+pub(super) enum PrevNode<'a> {
     Select(SelectNode<'a>),
     Values(ValuesNode<'a>),
     GroupBy(GroupByNode<'a>),
@@ -24,19 +25,36 @@ pub enum PrevNode<'a> {
     ProjectNode(Box<ProjectNode<'a>>),
 }
 
-impl Prebuild<Query> for PrevNode<'_> {
-    fn prebuild(self) -> Result<Query> {
+impl BuildQueryPlan for PrevNode<'_> {
+    fn build_query_plan(self) -> Result<QueryPlan> {
         match self {
-            Self::Select(node) => node.prebuild(),
-            Self::Values(node) => node.prebuild(),
-            Self::GroupBy(node) => node.prebuild(),
-            Self::Having(node) => node.prebuild(),
-            Self::Join(node) => node.prebuild(),
-            Self::JoinConstraint(node) => node.prebuild(),
-            Self::HashJoin(node) => node.prebuild(),
-            Self::Filter(node) => node.prebuild(),
-            Self::OrderBy(node) => node.prebuild(),
-            Self::ProjectNode(node) => node.prebuild(),
+            Self::Select(node) => node.build_query_plan(),
+            Self::Values(node) => node.build_query_plan(),
+            Self::GroupBy(node) => node.build_query_plan(),
+            Self::Having(node) => node.build_query_plan(),
+            Self::Join(node) => node.build_query_plan(),
+            Self::JoinConstraint(node) => node.build_query_plan(),
+            Self::HashJoin(node) => node.build_query_plan(),
+            Self::Filter(node) => node.build_query_plan(),
+            Self::OrderBy(node) => node.build_query_plan(),
+            Self::ProjectNode(node) => node.build_query_plan(),
+        }
+    }
+}
+
+impl BuildQuery for PrevNode<'_> {
+    fn build_query(self) -> Result<Query> {
+        match self {
+            Self::Select(node) => node.build_query(),
+            Self::Values(node) => node.build_query(),
+            Self::GroupBy(node) => node.build_query(),
+            Self::Having(node) => node.build_query(),
+            Self::Join(node) => node.build_query(),
+            Self::JoinConstraint(node) => node.build_query(),
+            Self::HashJoin(node) => node.build_query(),
+            Self::Filter(node) => node.build_query(),
+            Self::OrderBy(node) => node.build_query(),
+            Self::ProjectNode(node) => node.build_query(),
         }
     }
 }
@@ -108,7 +126,7 @@ pub struct LimitNode<'a> {
 }
 
 impl<'a> LimitNode<'a> {
-    pub fn new<N: Into<PrevNode<'a>>, T: Into<ExprNode<'a>>>(prev_node: N, expr: T) -> Self {
+    pub(super) fn new<N: Into<PrevNode<'a>>, T: Into<ExprNode<'a>>>(prev_node: N, expr: T) -> Self {
         Self {
             prev_node: prev_node.into(),
             expr: expr.into(),
@@ -120,10 +138,19 @@ impl<'a> LimitNode<'a> {
     }
 }
 
-impl Prebuild<Query> for LimitNode<'_> {
-    fn prebuild(self) -> Result<Query> {
-        let mut node_data = self.prev_node.prebuild()?;
-        node_data.limit = Some(self.expr.try_into()?);
+impl BuildQueryPlan for LimitNode<'_> {
+    fn build_query_plan(self) -> Result<QueryPlan> {
+        let mut node_data = self.prev_node.build_query_plan()?;
+        node_data.limit = Some(self.expr.build_expr_plan()?);
+
+        Ok(node_data)
+    }
+}
+
+impl BuildQuery for LimitNode<'_> {
+    fn build_query(self) -> Result<Query> {
+        let mut node_data = self.prev_node.build_query()?;
+        node_data.limit = Some(self.expr.build_expr()?);
 
         Ok(node_data)
     }
@@ -133,11 +160,12 @@ impl Prebuild<Query> for LimitNode<'_> {
 mod tests {
     use {
         crate::{
-            ast::{
-                Join, JoinConstraint, JoinExecutor, JoinOperator, Projection, Query, Select,
-                SetExpr, Statement, TableFactor, TableWithJoins,
-            },
             ast_builder::{Build, SelectItemList, col, num, table, test},
+            plan::{
+                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
+                QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
+                TableWithJoinsPlan,
+            },
         },
         pretty_assertions::assert_eq,
     };
@@ -240,24 +268,26 @@ mod tests {
             .limit(100)
             .build();
         let expected = {
-            let join = Join {
-                relation: TableFactor::Table {
+            let join = JoinPlan {
+                relation: TableFactorPlan::Table {
                     name: "PlayerItem".to_owned(),
                     alias: None,
                     index: None,
                 },
-                join_operator: JoinOperator::Inner(JoinConstraint::None),
-                join_executor: JoinExecutor::Hash {
-                    key_expr: col("PlayerItem.user_id").try_into().unwrap(),
-                    value_expr: col("Player.id").try_into().unwrap(),
+                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
+                join_executor: JoinExecutorPlan::Hash {
+                    key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),
+                    value_expr: col("Player.id").build_expr_plan().unwrap(),
                     where_clause: None,
                 },
             };
-            let select = Select {
+            let select = SelectPlan {
                 distinct: false,
-                projection: Projection::SelectItems(SelectItemList::from("*").try_into().unwrap()),
-                from: TableWithJoins {
-                    relation: TableFactor::Table {
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+                from: TableWithJoinsPlan {
+                    relation: TableFactorPlan::Table {
                         name: "Player".to_owned(),
                         alias: None,
                         index: None,
@@ -267,16 +297,16 @@ mod tests {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
+                aggregate_slots: None,
             };
 
-            Ok(Statement::Query(Query {
-                body: SetExpr::Select(Box::new(select)),
+            Ok(StatementPlan::Query(QueryPlan {
+                body: SetExprPlan::Select(Box::new(select)),
                 order_by: Vec::new(),
-                limit: Some(num(100).try_into().unwrap()),
+                limit: Some(num(100).build_expr_plan().unwrap()),
                 offset: None,
             }))
         };
-        let expected = expected.map(crate::plan::StatementPlan::from);
         assert_eq!(actual, expected);
 
         // select node -> limit node -> derived subquery

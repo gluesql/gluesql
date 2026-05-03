@@ -1,12 +1,14 @@
 use {
-    super::{JoinConstraintData, JoinOperatorType},
+    super::JoinOperatorType,
     crate::{
-        ast::{Join, JoinExecutor, Select},
+        ast::Select,
         ast_builder::{
-            ExprList, ExprNode, FilterNode, GroupByNode, JoinConstraintNode, JoinNode, LimitNode,
-            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode, SelectItemList,
-            TableFactorNode, select::Prebuild,
+            AstBuilderError, ExprList, ExprNode, FilterNode, GroupByNode, JoinConstraintNode,
+            JoinNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
+            SelectItemList, TableFactorNode,
+            select::{BuildSelect, BuildSelectPlan},
         },
+        plan::{JoinConstraintPlan, JoinExecutorPlan, JoinPlan, SelectPlan},
         result::Result,
     },
 };
@@ -20,7 +22,7 @@ pub struct HashJoinNode<'a> {
 }
 
 impl<'a> HashJoinNode<'a> {
-    pub fn new<T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
+    pub(super) fn new<T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
         join_node: JoinNode<'a>,
         key_expr: T,
         value_expr: U,
@@ -99,26 +101,37 @@ impl<'a> HashJoinNode<'a> {
         OrderByNode::new(self, order_by_exprs)
     }
 
-    pub fn prebuild_for_constraint(self) -> Result<JoinConstraintData> {
-        let mut join_constraint_data = self.join_node.prebuild_for_constraint()?;
-
-        join_constraint_data.executor =
-            build_join_executor(self.key_expr, self.value_expr, self.filter_expr)?;
-
-        Ok(join_constraint_data)
-    }
-
     pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
         QueryNode::HashJoinNode(self).alias_as(table_alias)
     }
-}
 
-impl Prebuild<Select> for HashJoinNode<'_> {
-    fn prebuild(self) -> Result<Select> {
-        let (mut select, relation, join_operator) = self.join_node.prebuild_for_hash_join()?;
+    pub(super) fn build_select_plan_with_constraint(
+        self,
+        constraint: JoinConstraintPlan,
+    ) -> Result<SelectPlan> {
+        let (mut select, relation, join_operator) = self
+            .join_node
+            .build_hash_join_data_plan_with_constraint(constraint)?;
         let join_executor = build_join_executor(self.key_expr, self.value_expr, self.filter_expr)?;
 
-        let join = Join {
+        select.from.joins.push(JoinPlan {
+            relation,
+            join_operator,
+            join_executor,
+        });
+
+        Ok(select)
+    }
+}
+
+impl BuildSelectPlan for HashJoinNode<'_> {
+    fn build_select_plan(self) -> Result<SelectPlan> {
+        let (mut select, relation, join_operator) = self
+            .join_node
+            .build_hash_join_data_plan_with_constraint(JoinConstraintPlan::None)?;
+        let join_executor = build_join_executor(self.key_expr, self.value_expr, self.filter_expr)?;
+
+        let join = JoinPlan {
             relation,
             join_operator,
             join_executor,
@@ -130,15 +143,21 @@ impl Prebuild<Select> for HashJoinNode<'_> {
     }
 }
 
+impl BuildSelect for HashJoinNode<'_> {
+    fn build_select(self) -> Result<Select> {
+        Err(AstBuilderError::HashJoinExecutorRequiresPlan.into())
+    }
+}
+
 fn build_join_executor(
     key_expr: ExprNode,
     value_expr: ExprNode,
     filter_expr: Option<ExprNode>,
-) -> Result<JoinExecutor> {
-    Ok(JoinExecutor::Hash {
-        key_expr: key_expr.try_into()?,
-        value_expr: value_expr.try_into()?,
-        where_clause: filter_expr.map(ExprNode::try_into).transpose()?,
+) -> Result<JoinExecutorPlan> {
+    Ok(JoinExecutorPlan::Hash {
+        key_expr: key_expr.build_expr_plan()?,
+        value_expr: value_expr.build_expr_plan()?,
+        where_clause: filter_expr.map(ExprNode::build_expr_plan).transpose()?,
     })
 }
 
@@ -146,11 +165,15 @@ fn build_join_executor(
 mod tests {
     use {
         crate::{
-            ast::{
-                Join, JoinConstraint, JoinExecutor, JoinOperator, Projection, Query, Select,
-                SetExpr, Statement, TableAlias, TableFactor, TableWithJoins,
+            ast_builder::{
+                AstBuilderError, Build, SelectItemList, col, expr, select::BuildSelect, table,
             },
-            ast_builder::{Build, SelectItemList, col, expr, table},
+            plan::{
+                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
+                QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableAliasPlan, TableFactorPlan,
+                TableWithJoinsPlan,
+            },
+            result::Error,
         },
         pretty_assertions::assert_eq,
     };
@@ -163,24 +186,26 @@ mod tests {
             .hash_executor("PlayerItem.user_id", col("Player.id"))
             .build();
         let expected = {
-            let join = Join {
-                relation: TableFactor::Table {
+            let join = JoinPlan {
+                relation: TableFactorPlan::Table {
                     name: "PlayerItem".to_owned(),
                     alias: None,
                     index: None,
                 },
-                join_operator: JoinOperator::Inner(JoinConstraint::None),
-                join_executor: JoinExecutor::Hash {
-                    key_expr: col("PlayerItem.user_id").try_into().unwrap(),
-                    value_expr: col("Player.id").try_into().unwrap(),
+                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
+                join_executor: JoinExecutorPlan::Hash {
+                    key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),
+                    value_expr: col("Player.id").build_expr_plan().unwrap(),
                     where_clause: None,
                 },
             };
-            let select = Select {
+            let select = SelectPlan {
                 distinct: false,
-                projection: Projection::SelectItems(SelectItemList::from("*").try_into().unwrap()),
-                from: TableWithJoins {
-                    relation: TableFactor::Table {
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+                from: TableWithJoinsPlan {
+                    relation: TableFactorPlan::Table {
                         name: "Player".to_owned(),
                         alias: None,
                         index: None,
@@ -190,16 +215,16 @@ mod tests {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
+                aggregate_slots: None,
             };
 
-            Ok(Statement::Query(Query {
-                body: SetExpr::Select(Box::new(select)),
+            Ok(StatementPlan::Query(QueryPlan {
+                body: SetExprPlan::Select(Box::new(select)),
                 order_by: Vec::new(),
                 limit: None,
                 offset: None,
             }))
         };
-        let expected = expected.map(crate::plan::StatementPlan::from);
         assert_eq!(actual, expected, "without filter");
 
         let actual = table("Player")
@@ -210,28 +235,30 @@ mod tests {
             .hash_filter("PlayerItem.amount * 3 <= 2")
             .build();
         let expected = {
-            let join = Join {
-                relation: TableFactor::Table {
+            let join = JoinPlan {
+                relation: TableFactorPlan::Table {
                     name: "PlayerItem".to_owned(),
                     alias: None,
                     index: None,
                 },
-                join_operator: JoinOperator::Inner(JoinConstraint::None),
-                join_executor: JoinExecutor::Hash {
-                    key_expr: col("PlayerItem.user_id").try_into().unwrap(),
-                    value_expr: col("Player.id").try_into().unwrap(),
+                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
+                join_executor: JoinExecutorPlan::Hash {
+                    key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),
+                    value_expr: col("Player.id").build_expr_plan().unwrap(),
                     where_clause: Some(
                         expr("PlayerItem.amount > 10 AND PlayerItem.amount * 3 <= 2")
-                            .try_into()
+                            .build_expr_plan()
                             .unwrap(),
                     ),
                 },
             };
-            let select = Select {
+            let select = SelectPlan {
                 distinct: false,
-                projection: Projection::SelectItems(SelectItemList::from("*").try_into().unwrap()),
-                from: TableWithJoins {
-                    relation: TableFactor::Table {
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+                from: TableWithJoinsPlan {
+                    relation: TableFactorPlan::Table {
                         name: "Player".to_owned(),
                         alias: None,
                         index: None,
@@ -241,16 +268,16 @@ mod tests {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
+                aggregate_slots: None,
             };
 
-            Ok(Statement::Query(Query {
-                body: SetExpr::Select(Box::new(select)),
+            Ok(StatementPlan::Query(QueryPlan {
+                body: SetExprPlan::Select(Box::new(select)),
                 order_by: Vec::new(),
                 limit: None,
                 offset: None,
             }))
         };
-        let expected = expected.map(crate::plan::StatementPlan::from);
         assert_eq!(actual, expected, "with filter");
 
         // join -> hash -> derived subquery
@@ -263,25 +290,27 @@ mod tests {
             .build();
 
         let expected = {
-            let join = Join {
-                relation: TableFactor::Table {
+            let join = JoinPlan {
+                relation: TableFactorPlan::Table {
                     name: "Bar".to_owned(),
                     alias: None,
                     index: None,
                 },
-                join_operator: JoinOperator::Inner(JoinConstraint::None),
-                join_executor: JoinExecutor::Hash {
-                    key_expr: col("Foo.id").try_into().unwrap(),
-                    value_expr: col("Bar.id").try_into().unwrap(),
+                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
+                join_executor: JoinExecutorPlan::Hash {
+                    key_expr: col("Foo.id").build_expr_plan().unwrap(),
+                    value_expr: col("Bar.id").build_expr_plan().unwrap(),
                     where_clause: None,
                 },
             };
 
-            let subquery = Select {
+            let subquery = SelectPlan {
                 distinct: false,
-                projection: Projection::SelectItems(SelectItemList::from("*").try_into().unwrap()),
-                from: TableWithJoins {
-                    relation: TableFactor::Table {
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+                from: TableWithJoinsPlan {
+                    relation: TableFactorPlan::Table {
                         name: "Foo".to_owned(),
                         alias: None,
                         index: None,
@@ -291,20 +320,23 @@ mod tests {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
+                aggregate_slots: None,
             };
 
-            let select = Select {
+            let select = SelectPlan {
                 distinct: false,
-                projection: Projection::SelectItems(SelectItemList::from("*").try_into().unwrap()),
-                from: TableWithJoins {
-                    relation: TableFactor::Derived {
-                        subquery: Query {
-                            body: SetExpr::Select(Box::new(subquery)),
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+                from: TableWithJoinsPlan {
+                    relation: TableFactorPlan::Derived {
+                        subquery: QueryPlan {
+                            body: SetExprPlan::Select(Box::new(subquery)),
                             order_by: Vec::new(),
                             limit: None,
                             offset: None,
                         },
-                        alias: TableAlias {
+                        alias: TableAliasPlan {
                             name: "Sub".to_owned(),
                             columns: Vec::new(),
                         },
@@ -314,16 +346,44 @@ mod tests {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
+                aggregate_slots: None,
             };
 
-            Ok(Statement::Query(Query {
-                body: SetExpr::Select(Box::new(select)),
+            Ok(StatementPlan::Query(QueryPlan {
+                body: SetExprPlan::Select(Box::new(select)),
                 order_by: Vec::new(),
                 limit: None,
                 offset: None,
             }))
         };
-        let expected = expected.map(crate::plan::StatementPlan::from);
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn hash_join_ast_build_requires_plan() {
+        let actual = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .build_select();
+        assert_eq!(
+            actual,
+            Err(Error::AstBuilder(
+                AstBuilderError::HashJoinExecutorRequiresPlan
+            ))
+        );
+
+        let actual = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .on("PlayerItem.flag IS NOT NULL")
+            .build_select();
+        assert_eq!(
+            actual,
+            Err(Error::AstBuilder(
+                AstBuilderError::HashJoinExecutorRequiresPlan
+            ))
+        );
     }
 }

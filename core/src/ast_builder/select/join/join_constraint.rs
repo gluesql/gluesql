@@ -1,27 +1,39 @@
 use {
-    super::{JoinConstraintData, JoinOperatorType},
+    super::JoinOperatorType,
     crate::{
-        ast::{Join, JoinConstraint, JoinOperator, Select},
+        ast::{Expr, Select},
         ast_builder::{
-            ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinNode, LimitNode,
-            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode, SelectItemList,
-            TableFactorNode, select::Prebuild,
+            AstBuilderError, ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinNode,
+            LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
+            SelectItemList, TableFactorNode,
+            select::{BuildSelect, BuildSelectPlan},
         },
+        plan::{JoinConstraintPlan, SelectPlan},
         result::Result,
     },
 };
 
 #[derive(Clone, Debug)]
-pub enum PrevNode<'a> {
+pub(super) enum PrevNode<'a> {
     Join(Box<JoinNode<'a>>),
     HashJoin(Box<HashJoinNode<'a>>),
 }
 
 impl PrevNode<'_> {
-    fn prebuild_for_constraint(self) -> Result<JoinConstraintData> {
+    fn build_select_plan_with_constraint(
+        self,
+        constraint: JoinConstraintPlan,
+    ) -> Result<SelectPlan> {
         match self {
-            PrevNode::Join(node) => node.prebuild_for_constraint(),
-            PrevNode::HashJoin(node) => node.prebuild_for_constraint(),
+            PrevNode::Join(node) => node.build_select_plan_with_constraint(constraint),
+            PrevNode::HashJoin(node) => node.build_select_plan_with_constraint(constraint),
+        }
+    }
+
+    fn build_select_with_constraint(self, constraint: Expr) -> Result<Select> {
+        match self {
+            PrevNode::Join(node) => node.build_select_with_constraint(constraint),
+            PrevNode::HashJoin(_) => Err(AstBuilderError::HashJoinExecutorRequiresPlan.into()),
         }
     }
 }
@@ -45,7 +57,7 @@ pub struct JoinConstraintNode<'a> {
 }
 
 impl<'a> JoinConstraintNode<'a> {
-    pub fn new<N: Into<PrevNode<'a>>, T: Into<ExprNode<'a>>>(prev_node: N, expr: T) -> Self {
+    pub(super) fn new<N: Into<PrevNode<'a>>, T: Into<ExprNode<'a>>>(prev_node: N, expr: T) -> Self {
         Self {
             prev_node: prev_node.into(),
             expr: expr.into(),
@@ -107,29 +119,19 @@ impl<'a> JoinConstraintNode<'a> {
     }
 }
 
-impl Prebuild<Select> for JoinConstraintNode<'_> {
-    fn prebuild(self) -> Result<Select> {
-        let JoinConstraintData {
-            mut select,
-            relation,
-            operator_type,
-            executor: join_executor,
-        } = self.prev_node.prebuild_for_constraint()?;
+impl BuildSelectPlan for JoinConstraintNode<'_> {
+    fn build_select_plan(self) -> Result<SelectPlan> {
+        let constraint = JoinConstraintPlan::On(self.expr.build_expr_plan()?);
 
-        select.from.joins.push(Join {
-            relation,
-            join_operator: match operator_type {
-                JoinOperatorType::Inner => {
-                    JoinOperator::Inner(JoinConstraint::On(self.expr.try_into()?))
-                }
-                JoinOperatorType::Left => {
-                    JoinOperator::LeftOuter(JoinConstraint::On(self.expr.try_into()?))
-                }
-            },
-            join_executor,
-        });
+        self.prev_node.build_select_plan_with_constraint(constraint)
+    }
+}
 
-        Ok(select)
+impl BuildSelect for JoinConstraintNode<'_> {
+    fn build_select(self) -> Result<Select> {
+        let constraint = self.expr.build_expr()?;
+
+        self.prev_node.build_select_with_constraint(constraint)
     }
 }
 
@@ -137,11 +139,12 @@ impl Prebuild<Select> for JoinConstraintNode<'_> {
 mod tests {
     use {
         crate::{
-            ast::{
-                Join, JoinConstraint, JoinExecutor, JoinOperator, Projection, Query, Select,
-                SetExpr, Statement, TableFactor, TableWithJoins,
-            },
             ast_builder::{Build, SelectItemList, col, table, test},
+            plan::{
+                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
+                QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
+                TableWithJoinsPlan,
+            },
         },
         pretty_assertions::assert_eq,
     };
@@ -192,26 +195,31 @@ mod tests {
             .on("PlayerItem.flag IS NOT NULL")
             .build();
         let expected = {
-            let join = Join {
-                relation: TableFactor::Table {
+            let join = JoinPlan {
+                relation: TableFactorPlan::Table {
                     name: "PlayerItem".to_owned(),
                     alias: None,
                     index: None,
                 },
-                join_operator: JoinOperator::Inner(JoinConstraint::On(
-                    col("PlayerItem.flag").is_not_null().try_into().unwrap(),
+                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::On(
+                    col("PlayerItem.flag")
+                        .is_not_null()
+                        .build_expr_plan()
+                        .unwrap(),
                 )),
-                join_executor: JoinExecutor::Hash {
-                    key_expr: col("PlayerItem.user_id").try_into().unwrap(),
-                    value_expr: col("Player.id").try_into().unwrap(),
+                join_executor: JoinExecutorPlan::Hash {
+                    key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),
+                    value_expr: col("Player.id").build_expr_plan().unwrap(),
                     where_clause: None,
                 },
             };
-            let select = Select {
+            let select = SelectPlan {
                 distinct: false,
-                projection: Projection::SelectItems(SelectItemList::from("*").try_into().unwrap()),
-                from: TableWithJoins {
-                    relation: TableFactor::Table {
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+                from: TableWithJoinsPlan {
+                    relation: TableFactorPlan::Table {
                         name: "Player".to_owned(),
                         alias: None,
                         index: None,
@@ -221,16 +229,16 @@ mod tests {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
+                aggregate_slots: None,
             };
 
-            Ok(Statement::Query(Query {
-                body: SetExpr::Select(Box::new(select)),
+            Ok(StatementPlan::Query(QueryPlan {
+                body: SetExprPlan::Select(Box::new(select)),
                 order_by: Vec::new(),
                 limit: None,
                 offset: None,
             }))
         };
-        let expected = expected.map(crate::plan::StatementPlan::from);
         assert_eq!(actual, expected, "hash join -> join constraint");
 
         // join -> on -> derived subquery

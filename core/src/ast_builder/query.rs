@@ -3,13 +3,14 @@ use {
         ExprList, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
         LimitNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
         TableFactorNode,
-        select::{Prebuild, ValuesNode},
+        select::{BuildQuery, BuildQueryPlan, ValuesNode},
         table_factor::TableType,
     },
     crate::{
-        ast::{Expr, Query, SetExpr, Values},
+        ast::{Query, SetExpr, Values},
         parse_sql::parse_query,
-        result::{Error, Result},
+        plan::{QueryPlan, SetExprPlan, ValuesPlan},
+        result::Result,
         translate::{NO_PARAMS, translate_query},
     },
 };
@@ -43,6 +44,73 @@ impl<'a> QueryNode<'a> {
             },
             table_alias: None,
             index: None,
+        }
+    }
+
+    pub(super) fn build_query(self) -> Result<Query> {
+        match self {
+            QueryNode::Text(query_node) => {
+                parse_query(query_node).and_then(|item| translate_query(&item, NO_PARAMS))
+            }
+            QueryNode::Values(values) => {
+                let values = values
+                    .into_iter()
+                    .map(ExprList::build_exprs)
+                    .collect::<Result<Vec<_>>>()?;
+
+                Ok(Query {
+                    body: SetExpr::Values(Values(values)),
+                    order_by: Vec::new(),
+                    limit: None,
+                    offset: None,
+                })
+            }
+            QueryNode::SelectNode(node) => node.build_query(),
+            QueryNode::ValuesNode(node) => node.build_query(),
+            QueryNode::JoinNode(node) => node.build_query(),
+            QueryNode::JoinConstraintNode(node) => node.build_query(),
+            QueryNode::HashJoinNode(node) => node.build_query(),
+            QueryNode::GroupByNode(node) => node.build_query(),
+            QueryNode::HavingNode(node) => node.build_query(),
+            QueryNode::FilterNode(node) => node.build_query(),
+            QueryNode::LimitNode(node) => node.build_query(),
+            QueryNode::OffsetNode(node) => node.build_query(),
+            QueryNode::OffsetLimitNode(node) => node.build_query(),
+            QueryNode::ProjectNode(node) => node.build_query(),
+            QueryNode::OrderByNode(node) => node.build_query(),
+        }
+    }
+
+    pub(super) fn build_query_plan(self) -> Result<QueryPlan> {
+        match self {
+            QueryNode::Text(query_node) => parse_query(query_node)
+                .and_then(|item| translate_query(&item, NO_PARAMS).map(Into::into)),
+            QueryNode::Values(values) => {
+                let values = values
+                    .into_iter()
+                    .map(ExprList::build_exprs_plan)
+                    .collect::<Result<Vec<_>>>()?;
+
+                Ok(QueryPlan {
+                    body: SetExprPlan::Values(ValuesPlan(values)),
+                    order_by: Vec::new(),
+                    limit: None,
+                    offset: None,
+                })
+            }
+            QueryNode::SelectNode(node) => node.build_query_plan(),
+            QueryNode::ValuesNode(node) => node.build_query_plan(),
+            QueryNode::JoinNode(node) => node.build_query_plan(),
+            QueryNode::JoinConstraintNode(node) => node.build_query_plan(),
+            QueryNode::HashJoinNode(node) => node.build_query_plan(),
+            QueryNode::GroupByNode(node) => node.build_query_plan(),
+            QueryNode::HavingNode(node) => node.build_query_plan(),
+            QueryNode::FilterNode(node) => node.build_query_plan(),
+            QueryNode::LimitNode(node) => node.build_query_plan(),
+            QueryNode::OffsetNode(node) => node.build_query_plan(),
+            QueryNode::OffsetLimitNode(node) => node.build_query_plan(),
+            QueryNode::ProjectNode(node) => node.build_query_plan(),
+            QueryNode::OrderByNode(node) => node.build_query_plan(),
         }
     }
 }
@@ -81,56 +149,18 @@ impl_from_select_nodes!(OffsetLimitNode);
 impl_from_select_nodes!(ProjectNode);
 impl_from_select_nodes!(OrderByNode);
 
-impl<'a> TryFrom<QueryNode<'a>> for Query {
-    type Error = Error;
-
-    fn try_from(query_node: QueryNode<'a>) -> Result<Self> {
-        match query_node {
-            QueryNode::Text(query_node) => {
-                parse_query(query_node).and_then(|item| translate_query(&item, NO_PARAMS))
-            }
-            QueryNode::Values(values) => {
-                let values: Vec<Vec<Expr>> = values
-                    .into_iter()
-                    .map(TryInto::try_into)
-                    .collect::<Result<Vec<_>>>()?;
-
-                Ok(Query {
-                    body: SetExpr::Values(Values(values)),
-                    order_by: Vec::new(),
-                    limit: None,
-                    offset: None,
-                })
-            }
-            QueryNode::SelectNode(node) => node.prebuild(),
-            QueryNode::ValuesNode(node) => node.prebuild(),
-            QueryNode::JoinNode(node) => node.prebuild(),
-            QueryNode::JoinConstraintNode(node) => node.prebuild(),
-            QueryNode::HashJoinNode(node) => node.prebuild(),
-            QueryNode::GroupByNode(node) => node.prebuild(),
-            QueryNode::HavingNode(node) => node.prebuild(),
-            QueryNode::FilterNode(node) => node.prebuild(),
-            QueryNode::LimitNode(node) => node.prebuild(),
-            QueryNode::OffsetNode(node) => node.prebuild(),
-            QueryNode::OffsetLimitNode(node) => node.prebuild(),
-            QueryNode::ProjectNode(node) => node.prebuild(),
-            QueryNode::OrderByNode(node) => node.prebuild(),
-        }
-    }
-}
-
 #[cfg(test)]
 mod test {
     use {
         super::QueryNode,
         crate::{
-            ast::{
-                Join, JoinConstraint, JoinExecutor, JoinOperator, Projection, Query, Select,
-                SetExpr, TableFactor, TableWithJoins,
-            },
             ast_builder::{
                 SelectItemList, col, glue_indexes, glue_objects, glue_table_columns, glue_tables,
                 series, table, test_query,
+            },
+            plan::{
+                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
+                QueryPlan, SelectPlan, SetExprPlan, TableFactorPlan, TableWithJoinsPlan,
             },
         },
         pretty_assertions::assert_eq,
@@ -160,24 +190,26 @@ mod test {
             .hash_executor("PlayerItem.user_id", "Player.id")
             .into();
         let expected = {
-            let join = Join {
-                relation: TableFactor::Table {
+            let join = JoinPlan {
+                relation: TableFactorPlan::Table {
                     name: "PlayerItem".to_owned(),
                     alias: None,
                     index: None,
                 },
-                join_operator: JoinOperator::Inner(JoinConstraint::None),
-                join_executor: JoinExecutor::Hash {
-                    key_expr: col("PlayerItem.user_id").try_into().unwrap(),
-                    value_expr: col("Player.id").try_into().unwrap(),
+                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
+                join_executor: JoinExecutorPlan::Hash {
+                    key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),
+                    value_expr: col("Player.id").build_expr_plan().unwrap(),
                     where_clause: None,
                 },
             };
-            let select = Select {
+            let select = SelectPlan {
                 distinct: false,
-                projection: Projection::SelectItems(SelectItemList::from("*").try_into().unwrap()),
-                from: TableWithJoins {
-                    relation: TableFactor::Table {
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+                from: TableWithJoinsPlan {
+                    relation: TableFactorPlan::Table {
                         name: "Player".to_owned(),
                         alias: None,
                         index: None,
@@ -187,16 +219,17 @@ mod test {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
+                aggregate_slots: None,
             };
 
-            Query {
-                body: SetExpr::Select(Box::new(select)),
+            QueryPlan {
+                body: SetExprPlan::Select(Box::new(select)),
                 order_by: Vec::new(),
                 limit: None,
                 offset: None,
             }
         };
-        assert_eq!(Query::try_from(actual).unwrap(), expected);
+        assert_eq!(actual.build_query_plan().unwrap(), expected);
 
         let actual = table("FOO").select().group_by("id").into();
         let expected = "SELECT * FROM FOO GROUP BY id";

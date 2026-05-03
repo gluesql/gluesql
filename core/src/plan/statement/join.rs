@@ -38,30 +38,12 @@ impl From<ast::Join> for JoinPlan {
         let ast::Join {
             relation,
             join_operator,
-            join_executor,
         } = join;
 
         Self {
             relation: relation.into(),
             join_operator: join_operator.into(),
-            join_executor: join_executor.into(),
-        }
-    }
-}
-
-impl From<ast::JoinExecutor> for JoinExecutorPlan {
-    fn from(join_executor: ast::JoinExecutor) -> Self {
-        match join_executor {
-            ast::JoinExecutor::NestedLoop => Self::NestedLoop,
-            ast::JoinExecutor::Hash {
-                key_expr,
-                value_expr,
-                where_clause,
-            } => Self::Hash {
-                key_expr: key_expr.into(),
-                value_expr: value_expr.into(),
-                where_clause: where_clause.map(Into::into),
-            },
+            join_executor: JoinExecutorPlan::NestedLoop,
         }
     }
 }

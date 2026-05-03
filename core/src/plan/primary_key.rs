@@ -222,8 +222,8 @@ mod tests {
         super::plan as plan_primary_key,
         crate::{
             ast::{
-                BinaryOperator, Expr, IndexItem, Join, JoinConstraint, JoinExecutor, JoinOperator,
-                Literal, Projection, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
+                BinaryOperator, Expr, IndexItem, Join, JoinConstraint, JoinOperator, Literal,
+                Projection, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
                 TableWithJoins, Values,
             },
             mock::{MockStorage, run},
@@ -414,7 +414,6 @@ mod tests {
                         index: None,
                     },
                     join_operator: JoinOperator::Inner(JoinConstraint::None),
-                    join_executor: JoinExecutor::NestedLoop,
                 }],
             },
             selection: None,
@@ -441,7 +440,6 @@ mod tests {
                         index: None,
                     },
                     join_operator: JoinOperator::Inner(JoinConstraint::None),
-                    join_executor: JoinExecutor::NestedLoop,
                 }],
             },
             selection: Some(expr("Player.id = Badge.user_id")),

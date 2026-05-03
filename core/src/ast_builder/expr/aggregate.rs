@@ -3,7 +3,8 @@ use {
     crate::{
         ast::{Aggregate, CountArgExpr},
         parse_sql::parse_expr,
-        result::{Error, Result},
+        plan::{AggregateFunctionPlan, AggregatePlan, CountArgExprPlan},
+        result::Result,
         translate::{NO_PARAMS, translate_expr},
     },
 };
@@ -37,49 +38,91 @@ impl<'a> From<ExprNode<'a>> for CountArgExprNode<'a> {
     }
 }
 
-impl<'a> TryFrom<CountArgExprNode<'a>> for CountArgExpr {
-    type Error = Error;
-
-    fn try_from(count_expr_node: CountArgExprNode<'a>) -> Result<Self> {
-        match count_expr_node {
+impl CountArgExprNode<'_> {
+    pub(super) fn build_count_arg_expr(self) -> Result<CountArgExpr> {
+        match self {
             CountArgExprNode::Text(s) if &s == "*" => Ok(CountArgExpr::Wildcard),
             CountArgExprNode::Text(s) => {
                 let expr = parse_expr(s).and_then(|expr| translate_expr(&expr, NO_PARAMS))?;
 
                 Ok(CountArgExpr::Expr(expr))
             }
-            CountArgExprNode::Expr(expr_node) => expr_node.try_into().map(CountArgExpr::Expr),
+            CountArgExprNode::Expr(expr_node) => expr_node.build_expr().map(CountArgExpr::Expr),
+        }
+    }
+
+    pub(super) fn build_count_arg_expr_plan(self) -> Result<CountArgExprPlan> {
+        match self {
+            CountArgExprNode::Text(s) if &s == "*" => Ok(CountArgExprPlan::Wildcard),
+            CountArgExprNode::Text(s) => {
+                let expr = parse_expr(s).and_then(|expr| translate_expr(&expr, NO_PARAMS))?;
+
+                Ok(CountArgExprPlan::Expr(expr.into()))
+            }
+            CountArgExprNode::Expr(expr_node) => {
+                expr_node.build_expr_plan().map(CountArgExprPlan::Expr)
+            }
         }
     }
 }
 
-impl<'a> TryFrom<AggregateNode<'a>> for Aggregate {
-    type Error = Error;
-
-    fn try_from(aggr_node: AggregateNode<'a>) -> Result<Self> {
-        match aggr_node {
+impl AggregateNode<'_> {
+    pub(super) fn build_aggregate(self) -> Result<Aggregate> {
+        match self {
             AggregateNode::Count(count_arg_expr_node, distinct) => count_arg_expr_node
-                .try_into()
+                .build_count_arg_expr()
                 .map(|expr| Aggregate::count(expr, distinct)),
             AggregateNode::Sum(expr_node, distinct) => expr_node
-                .try_into()
+                .build_expr()
                 .map(|expr| Aggregate::sum(expr, distinct)),
             AggregateNode::Min(expr_node, distinct) => expr_node
-                .try_into()
+                .build_expr()
                 .map(|expr| Aggregate::min(expr, distinct)),
             AggregateNode::Max(expr_node, distinct) => expr_node
-                .try_into()
+                .build_expr()
                 .map(|expr| Aggregate::max(expr, distinct)),
             AggregateNode::Avg(expr_node, distinct) => expr_node
-                .try_into()
+                .build_expr()
                 .map(|expr| Aggregate::avg(expr, distinct)),
             AggregateNode::Variance(expr_node, distinct) => expr_node
-                .try_into()
+                .build_expr()
                 .map(|expr| Aggregate::variance(expr, distinct)),
             AggregateNode::Stdev(expr_node, distinct) => expr_node
-                .try_into()
+                .build_expr()
                 .map(|expr| Aggregate::stdev(expr, distinct)),
         }
+    }
+
+    pub(super) fn build_aggregate_plan(self) -> Result<AggregatePlan> {
+        let (func, distinct) = match self {
+            AggregateNode::Count(count_arg_expr_node, distinct) => count_arg_expr_node
+                .build_count_arg_expr_plan()
+                .map(|expr| (AggregateFunctionPlan::Count(expr), distinct)),
+            AggregateNode::Sum(expr_node, distinct) => expr_node
+                .build_expr_plan()
+                .map(|expr| (AggregateFunctionPlan::Sum(expr), distinct)),
+            AggregateNode::Min(expr_node, distinct) => expr_node
+                .build_expr_plan()
+                .map(|expr| (AggregateFunctionPlan::Min(expr), distinct)),
+            AggregateNode::Max(expr_node, distinct) => expr_node
+                .build_expr_plan()
+                .map(|expr| (AggregateFunctionPlan::Max(expr), distinct)),
+            AggregateNode::Avg(expr_node, distinct) => expr_node
+                .build_expr_plan()
+                .map(|expr| (AggregateFunctionPlan::Avg(expr), distinct)),
+            AggregateNode::Variance(expr_node, distinct) => expr_node
+                .build_expr_plan()
+                .map(|expr| (AggregateFunctionPlan::Variance(expr), distinct)),
+            AggregateNode::Stdev(expr_node, distinct) => expr_node
+                .build_expr_plan()
+                .map(|expr| (AggregateFunctionPlan::Stdev(expr), distinct)),
+        }?;
+
+        Ok(AggregatePlan {
+            func,
+            distinct,
+            slot: None,
+        })
     }
 }
 
