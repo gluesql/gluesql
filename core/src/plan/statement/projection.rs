@@ -23,7 +23,6 @@ impl From<ast::Projection> for ProjectionPlan {
             ast::Projection::SelectItems(items) => {
                 Self::SelectItems(items.into_iter().map(Into::into).collect())
             }
-            ast::Projection::SchemalessMap => Self::SchemalessMap,
         }
     }
 }

@@ -23,7 +23,6 @@ pub enum SetExpr {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Projection {
     SelectItems(Vec<SelectItem>),
-    SchemalessMap,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -248,7 +247,6 @@ impl Select {
             Projection::SelectItems(items) => {
                 items.iter().map(|item| item.to_sql_with(quoted)).join(", ")
             }
-            Projection::SchemalessMap => "*".to_owned(),
         };
 
         let selection = match selection {
