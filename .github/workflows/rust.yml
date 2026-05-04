@@ -66,7 +66,6 @@ jobs:
           cargo test -p gluesql-parquet-storage --verbose
           cargo test -p gluesql-file-storage --verbose
           cargo test -p gluesql-redb-storage --verbose
-          cargo test -p gluesql-redb4-storage --verbose
           cargo test -p gluesql_sled_storage --verbose -- --skip sled_transaction_timeout
           cargo test -p gluesql_sled_storage sled_transaction_timeout --verbose -- --test-threads=1
           cargo test -p gluesql_sled_storage --benches
