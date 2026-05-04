@@ -28,7 +28,7 @@ fn remove_path(path: &str) {
     }
 }
 
-/// Creates a database in GlueSQL format v2 (redb internal file format v2).
+/// Creates a database in `GlueSQL` format v2 (redb internal file format v2).
 fn write_v2_storage(path: &str, table_name: &str, rows: Vec<(Key, Vec<Value>)>) {
     let _ = create_dir("tmp");
     remove_path(path);
