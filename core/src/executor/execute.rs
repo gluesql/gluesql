@@ -267,7 +267,8 @@ async fn execute_inner<T: GStore + GStoreMut>(
 
         //- Selection
         Statement::Query(query) => {
-            let (labels, rows) = select_with_labels(storage, query, None).await?;
+            let query = Arc::new(query.clone());
+            let (labels, rows) = select_with_labels(storage, Arc::clone(&query), None).await?;
 
             let is_schemaless_map = matches!(
                 &query.body,
@@ -337,7 +338,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 offset: None,
             };
 
-            let (labels, rows) = select_with_labels(storage, &query, None).await?;
+            let (labels, rows) = select_with_labels(storage, Arc::new(query), None).await?;
             let rows = rows
                 .map(|row| Ok::<_, Error>(row?.into_values()))
                 .try_collect::<Vec<_>>()
