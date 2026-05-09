@@ -69,7 +69,24 @@ test_case!(union, {
     )
     .await;
 
-    // UNION with WHERE clause on each side
+    // UNION ALL with LIMIT but no ORDER BY: rows are streamed lazily and
+    // truncated without materialising the full result set.
+    g.named_test(
+        "UNION ALL with LIMIT streams lazily",
+        "SELECT id FROM A UNION ALL SELECT id FROM B LIMIT 3",
+        Ok(select!(id; I64; 1; 2; 3)),
+    )
+    .await;
+
+    // UNION ALL with OFFSET but no ORDER BY.
+    // A = (1,2,3), B = (2,3,4) → concat: 1,2,3,2,3,4; skip 4 → 3,4
+    g.named_test(
+        "UNION ALL with OFFSET streams lazily",
+        "SELECT id FROM A UNION ALL SELECT id FROM B OFFSET 4",
+        Ok(select!(id; I64; 3; 4)),
+    )
+    .await;
+
     g.named_test(
         "UNION with WHERE on each side",
         "SELECT id FROM A WHERE id < 3 UNION SELECT id FROM B WHERE id > 2 ORDER BY id",
@@ -96,7 +113,6 @@ test_case!(union, {
     )
     .await;
 
-    // UNION with VALUES
     g.named_test(
         "UNION with VALUES",
         "SELECT id FROM A WHERE id = 1 UNION VALUES (10), (20) ORDER BY id",
@@ -104,7 +120,6 @@ test_case!(union, {
     )
     .await;
 
-    // UNION as a derived subquery (covers fetch.rs SetExpr::Union branch)
     g.named_test(
         "UNION as derived subquery",
         "SELECT id, name FROM (SELECT id, name FROM A UNION SELECT id, name FROM B) AS t ORDER BY id",
@@ -119,7 +134,6 @@ test_case!(union, {
     )
     .await;
 
-    // CREATE TABLE AS UNION (covers alter/table.rs SetExpr::Union branch)
     g.named_test(
         "CREATE TABLE AS UNION query",
         "CREATE TABLE Merged AS SELECT id, name FROM A UNION SELECT id, name FROM B",
@@ -141,7 +155,6 @@ test_case!(union, {
     )
     .await;
 
-    // UNION inside IN subquery (covers plan/expr/evaluable.rs SetExpr::Union branch)
     g.named_test(
         "UNION inside IN subquery",
         "SELECT id FROM A WHERE id IN (SELECT id FROM B UNION SELECT id FROM C) ORDER BY id",
@@ -149,7 +162,6 @@ test_case!(union, {
     )
     .await;
 
-    // Column count mismatch returns an error (covers SelectError::UnionColumnCountMismatch)
     g.named_test(
         "UNION column count mismatch returns error",
         "SELECT id, name FROM A UNION SELECT id FROM B",

@@ -195,21 +195,23 @@ mod tests {
 
     #[test]
     fn schemaless_map_projection_returns_none() {
-        // SchemalessMap is set by the planner (never appears in the raw AST),
-        // so this path can only be exercised by constructing a Select directly.
         let result = infer_select_types(&HashMap::new(), &make_select(Projection::SchemalessMap));
-        assert!(result.is_none());
+        assert!(
+            result.is_none(),
+            "SchemalessMap is set by the planner and never appears in the raw AST, so this path can only be exercised by constructing a Select directly",
+        );
     }
 
     #[test]
     fn empty_select_items_returns_none() {
-        // An empty SelectItems vec is rejected by the parser, so again we
-        // construct it manually to cover the guard branch.
         let result = infer_select_types(
             &HashMap::new(),
             &make_select(Projection::SelectItems(vec![])),
         );
-        assert!(result.is_none());
+        assert!(
+            result.is_none(),
+            "an empty SelectItems vec is rejected by the parser, so it must be constructed manually to cover the guard branch",
+        );
     }
 
     #[test]
@@ -268,8 +270,10 @@ mod tests {
     #[test]
     fn unknown_expression_type_is_skipped() {
         let storage = run("");
-        // Complex expression — type not statically known, should not error.
-        assert!(check(&storage, "SELECT 1 + 1 UNION SELECT 'a'").is_ok());
+        assert!(
+            check(&storage, "SELECT 1 + 1 UNION SELECT 'a'").is_ok(),
+            "complex expression type is not statically known, so plan-time validation should skip it",
+        );
     }
 
     #[test]
@@ -308,14 +312,13 @@ mod tests {
     fn compound_identifier_non_matching_alias_is_skipped() {
         let storage = run("CREATE TABLE T (id INTEGER, label TEXT);
              CREATE TABLE S (id INTEGER, code INTEGER);");
-        // aliases 'x' / 'y' don't match the table names so types cannot be
-        // inferred and the check is skipped.
         assert!(
             check(
                 &storage,
                 "SELECT x.id, x.label FROM T UNION SELECT y.id, y.code FROM S",
             )
-            .is_ok()
+            .is_ok(),
+            "aliases 'x' / 'y' don't match the table names so types cannot be inferred and the check is skipped",
         );
     }
 
@@ -323,22 +326,24 @@ mod tests {
     fn wildcard_projection_is_skipped() {
         let storage = run("CREATE TABLE T (id INTEGER);
              CREATE TABLE S (id TEXT);");
-        // Wildcards expand at execute time — plan-time check is skipped.
-        assert!(check(&storage, "SELECT * FROM T UNION SELECT * FROM S").is_ok());
+        assert!(
+            check(&storage, "SELECT * FROM T UNION SELECT * FROM S").is_ok(),
+            "wildcards expand at execute time, so plan-time check is skipped",
+        );
     }
 
     #[test]
     fn values_right_side_is_skipped() {
         let storage = run("");
-        // VALUES types are determined at execute time — plan-time check is skipped.
-        assert!(check(&storage, "SELECT 1, 'a' UNION VALUES (2, 3)").is_ok());
+        assert!(
+            check(&storage, "SELECT 1, 'a' UNION VALUES (2, 3)").is_ok(),
+            "VALUES types are determined at execute time, so plan-time check is skipped",
+        );
     }
 
     #[test]
     fn nested_union_type_inferred_from_left_branch() {
         let storage = run("");
-        // Parsed as (SELECT 1 UNION SELECT 2) UNION SELECT 'a'.
-        // The outer left's type is inferred from its own left branch (INT).
         assert_eq!(
             check(&storage, "SELECT 1 UNION SELECT 2 UNION SELECT 'a'"),
             Err(PlanError::UnionColumnTypeMismatch {
@@ -347,6 +352,7 @@ mod tests {
                 right: "TEXT".to_owned(),
             }
             .into()),
+            "parsed as (SELECT 1 UNION SELECT 2) UNION SELECT 'a'; the outer left's type is inferred from its own left branch (INT)",
         );
     }
 }
