@@ -111,10 +111,12 @@ async fn sort_stateless(rows: Vec<Row>, order_by: &[OrderByExpr]) -> Result<Vec<
 /// `query` is wrapped in [`Arc`] so that recursive UNION branches can each
 /// hold an independent owning reference to their sub-query, allowing the
 /// returned stream to keep the query data alive without borrowing from a
-/// shorter-lived stack frame.  This is what enables true streaming for
-/// `UNION ALL` queries that carry no outer `ORDER BY` / `LIMIT` / `OFFSET`:
-/// the two branch streams are chained and yielded lazily instead of being
-/// fully materialised before the first row reaches the caller.
+/// shorter-lived stack frame.
+///
+/// The body is cloned once so that `query` (which carries `order_by` /
+/// `limit` / `offset`) remains free to be moved into each branch helper.
+/// This lets us use a plain `match` with three exhaustive arms and removes
+/// the need for any `unreachable!` guards.
 #[async_recursion]
 pub async fn select_with_labels<'a, T>(
     storage: &'a T,
@@ -127,125 +129,149 @@ pub async fn select_with_labels<'a, T>(
 where
     T: GStore,
 {
-    // ── UNION branch ─────────────────────────────────────────────────────────
-    if let SetExpr::Union { left, right, all } = &query.body {
-        let all = *all;
-        let left_query = Arc::new(Query {
-            body: *left.clone(),
-            order_by: vec![],
-            limit: None,
-            offset: None,
-        });
-        let right_query = Arc::new(Query {
-            body: *right.clone(),
-            order_by: vec![],
-            limit: None,
-            offset: None,
-        });
+    match query.body.clone() {
+        SetExpr::Union { left, right, all } => {
+            let left_query = Arc::new(Query {
+                body: *left,
+                order_by: vec![],
+                limit: None,
+                offset: None,
+            });
+            let right_query = Arc::new(Query {
+                body: *right,
+                order_by: vec![],
+                limit: None,
+                offset: None,
+            });
+            select_union(storage, query, left_query, right_query, all, filter_context).await
+        }
+        SetExpr::Values(Values(values_list)) => {
+            let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref()).await?;
+            let (rows, labels) = rows_with_labels(&values_list).await?;
+            let rows = sort_stateless(rows, &query.order_by).await?;
+            let rows = stream::iter(rows.into_iter().map(Ok));
+            let stream: Pin<Box<dyn futures::stream::Stream<Item = Result<Row>> + Send + 'a>> =
+                Box::pin(limit.apply(rows));
+            Ok((labels, stream))
+        }
+        SetExpr::Select(select) => {
+            select_from(storage, Arc::new(*select), query, filter_context).await
+        }
+    }
+}
 
-        let (labels, left_stream) =
-            select_with_labels(storage, left_query, filter_context.as_ref().map(Arc::clone))
-                .await?;
-        let (right_labels, right_stream) = select_with_labels(
-            storage,
-            right_query,
-            filter_context.as_ref().map(Arc::clone),
-        )
-        .await?;
+/// Executes both UNION branches and merges their streams.
+///
+/// * UNION ALL without ORDER BY / LIMIT / OFFSET: streams are chained lazily.
+/// * Everything else: rows are materialised, deduplicated (DISTINCT), sorted,
+///   and paginated before being re-wrapped as a stream.
+async fn select_union<'a, T>(
+    storage: &'a T,
+    outer: Arc<Query>,
+    left_query: Arc<Query>,
+    right_query: Arc<Query>,
+    all: bool,
+    filter_context: Option<Arc<RowContext<'a>>>,
+) -> Result<(
+    Vec<String>,
+    Pin<Box<dyn futures::stream::Stream<Item = Result<Row>> + Send + 'a>>,
+)>
+where
+    T: GStore,
+{
+    let (labels, left_stream) =
+        select_with_labels(storage, left_query, filter_context.as_ref().map(Arc::clone)).await?;
+    let (right_labels, right_stream) = select_with_labels(
+        storage,
+        right_query,
+        filter_context.as_ref().map(Arc::clone),
+    )
+    .await?;
 
-        if labels.len() != right_labels.len() {
-            return Err(SelectError::UnionColumnCountMismatch {
-                left: labels.len(),
-                right: right_labels.len(),
+    if labels.len() != right_labels.len() {
+        return Err(SelectError::UnionColumnCountMismatch {
+            left: labels.len(),
+            right: right_labels.len(),
+        }
+        .into());
+    }
+
+    let labels_arc: Arc<[String]> = Arc::from(labels.as_slice());
+
+    // UNION ALL with no outer ORDER BY / LIMIT / OFFSET: chain lazily.
+    if all && outer.order_by.is_empty() && outer.limit.is_none() && outer.offset.is_none() {
+        let left_relabeled = left_stream.map_ok({
+            let la = Arc::clone(&labels_arc);
+            move |row| Row {
+                columns: Arc::clone(&la),
+                values: row.values,
             }
-            .into());
-        }
+        });
+        let right_relabeled = right_stream.map_ok(move |row| Row {
+            columns: Arc::clone(&labels_arc),
+            values: row.values,
+        });
+        return Ok((labels, Box::pin(left_relabeled.chain(right_relabeled))));
+    }
 
-        let labels_arc: Arc<[String]> = Arc::from(labels.as_slice());
-
-        // UNION ALL with no outer ORDER BY / LIMIT / OFFSET: chain streams
-        // lazily — rows flow to the caller without full materialisation.
-        if all && query.order_by.is_empty() && query.limit.is_none() && query.offset.is_none() {
-            let left_relabeled = left_stream.map_ok({
-                let labels_arc = Arc::clone(&labels_arc);
-                move |row| Row {
-                    columns: Arc::clone(&labels_arc),
-                    values: row.values,
-                }
-            });
-            let right_relabeled = right_stream.map_ok(move |row| Row {
-                columns: Arc::clone(&labels_arc),
-                values: row.values,
-            });
-            let chained: Pin<Box<dyn futures::stream::Stream<Item = Result<Row>> + Send + 'a>> =
-                Box::pin(left_relabeled.chain(right_relabeled));
-            return Ok((labels, chained));
-        }
-
-        // Materialise for UNION DISTINCT or when ORDER BY / LIMIT is present.
-        let mut rows: Vec<Row> = left_stream
+    // Materialise for UNION DISTINCT or when ORDER BY / LIMIT is present.
+    let mut rows: Vec<Row> = left_stream
+        .map_ok(|row| Row {
+            columns: Arc::clone(&labels_arc),
+            values: row.values,
+        })
+        .try_collect()
+        .await?;
+    rows.extend(
+        right_stream
             .map_ok(|row| Row {
                 columns: Arc::clone(&labels_arc),
                 values: row.values,
             })
-            .try_collect()
-            .await?;
-        let right_rows: Vec<Row> = right_stream
-            .map_ok(|row| Row {
-                columns: Arc::clone(&labels_arc),
-                values: row.values,
-            })
-            .try_collect()
-            .await?;
-        rows.extend(right_rows);
+            .try_collect::<Vec<_>>()
+            .await?,
+    );
 
-        if !all {
-            rows = apply_distinct(rows);
-        }
-
-        let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref()).await?;
-        let rows = if query.order_by.is_empty() {
-            rows
-        } else {
-            sort_stateless(rows, &query.order_by).await?
-        };
-        let rows = stream::iter(rows.into_iter().map(Ok));
-        let rows = limit.apply(rows);
-        return Ok((labels, Box::pin(rows)));
+    if !all {
+        rows = apply_distinct(rows);
     }
 
-    // ── VALUES branch ────────────────────────────────────────────────────────
-    if let SetExpr::Values(Values(values_list)) = &query.body {
-        let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref()).await?;
-        let (rows, labels) = rows_with_labels(values_list).await?;
-        let rows = sort_stateless(rows, &query.order_by).await?;
-        let rows = stream::iter(rows.into_iter().map(Ok));
-        let rows = limit.apply(rows);
-        return Ok((labels, Box::pin(rows)));
-    }
+    let limit = Limit::new(outer.limit.as_ref(), outer.offset.as_ref()).await?;
+    let rows = if outer.order_by.is_empty() {
+        rows
+    } else {
+        sort_stateless(rows, &outer.order_by).await?
+    };
+    let rows = stream::iter(rows.into_iter().map(Ok));
+    Ok((labels, Box::pin(limit.apply(rows))))
+}
 
-    // ── SELECT branch ────────────────────────────────────────────────────────
-    // Compute labels eagerly (needs refs into `query`) before moving `query`
-    // into the stream generator below.
+/// Executes a plain `SELECT` body and returns a lazy row stream.
+///
+/// `select: Arc<Select>` and `query: Arc<Query>` are moved into the
+/// `try_stream!` generator, so all query data is heap-owned and lives
+/// as long as the stream — no stack-frame borrows, no `unreachable!` guards.
+async fn select_from<'a, T>(
+    storage: &'a T,
+    select: Arc<Select>,
+    query: Arc<Query>,
+    filter_context: Option<Arc<RowContext<'a>>>,
+) -> Result<(
+    Vec<String>,
+    Pin<Box<dyn futures::stream::Stream<Item = Result<Row>> + Send + 'a>>,
+)>
+where
+    T: GStore,
+{
+    // Labels are computed eagerly (they are part of the return value) then
+    // cloned into the generator so the original can be returned alongside.
     let labels = {
-        let select = match &query.body {
-            SetExpr::Select(s) => s.as_ref(),
-            _ => unreachable!(),
-        };
         let TableWithJoins { relation, joins } = &select.from;
         fetch_labels(storage, relation, joins, &select.projection).await?
     };
     let labels_clone = labels.clone();
 
-    // Build the row stream inside `try_stream!` so that `query: Arc<Query>`
-    // is captured by move into the generator state machine.  This keeps all
-    // query data alive for the entire lifetime of the stream without borrowing
-    // from any stack frame.
     let stream = try_stream! {
-        let select = match &query.body {
-            SetExpr::Select(s) => s.as_ref(),
-            _ => unreachable!(),
-        };
         let Select {
             distinct,
             from: table_with_joins,
@@ -254,7 +280,7 @@ where
             group_by,
             having,
             aggregate_slots,
-        } = select;
+        } = select.as_ref();
         let TableWithJoins { relation, joins } = table_with_joins;
 
         let rows = fetch_relation_rows(storage, relation, None).await?;
