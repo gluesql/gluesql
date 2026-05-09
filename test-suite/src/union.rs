@@ -50,6 +50,25 @@ test_case!(union, {
     )
     .await;
 
+    // UNION ALL as a derived subquery: the inner UNION ALL has no ORDER BY /
+    // LIMIT / OFFSET so it takes the lazy-chain streaming path; the outer
+    // ORDER BY makes the result deterministic for comparison.
+    g.named_test(
+        "UNION ALL as derived subquery streams lazily",
+        "SELECT id, name FROM (SELECT id, name FROM A UNION ALL SELECT id, name FROM B) AS t ORDER BY id",
+        Ok(select!(
+            id   | name;
+            I64  | Str;
+            1      "Apple".to_owned();
+            2      "Banana".to_owned();
+            2      "Banana".to_owned();
+            3      "Cherry".to_owned();
+            3      "Cherry".to_owned();
+            4      "Date".to_owned()
+        )),
+    )
+    .await;
+
     // UNION with WHERE clause on each side
     g.named_test(
         "UNION with WHERE on each side",

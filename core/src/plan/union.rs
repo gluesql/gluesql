@@ -152,20 +152,64 @@ fn infer_literal_type(lit: &Literal) -> DataType {
 #[cfg(test)]
 mod tests {
     use {
-        super::validate,
+        super::{infer_select_types, validate},
         crate::{
+            ast::{Projection, Select, TableFactor, TableWithJoins},
             mock::run,
             plan::{PlanError, fetch_schema_map},
             prelude::{parse, translate},
         },
         futures::executor::block_on,
+        std::collections::HashMap,
     };
+
+    fn make_select(projection: Projection) -> Select {
+        Select {
+            distinct: false,
+            projection,
+            from: TableWithJoins {
+                relation: TableFactor::Series {
+                    alias: crate::ast::TableAlias {
+                        name: "s".to_owned(),
+                        columns: vec![],
+                    },
+                    size: crate::ast::Expr::Literal(crate::ast::Literal::Number(
+                        "1".parse().unwrap(),
+                    )),
+                },
+                joins: vec![],
+            },
+            selection: None,
+            group_by: vec![],
+            having: None,
+            aggregate_slots: None,
+        }
+    }
 
     fn check(storage: &impl crate::store::Store, sql: &str) -> crate::result::Result<()> {
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
         let statement = translate(&parsed).unwrap();
         let schema_map = block_on(fetch_schema_map(storage, &statement)).unwrap();
         validate(&schema_map, &statement)
+    }
+
+    #[test]
+    fn schemaless_map_projection_returns_none() {
+        // SchemalessMap is set by the planner (never appears in the raw AST),
+        // so this path can only be exercised by constructing a Select directly.
+        let result = infer_select_types(&HashMap::new(), &make_select(Projection::SchemalessMap));
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn empty_select_items_returns_none() {
+        // An empty SelectItems vec is rejected by the parser, so again we
+        // construct it manually to cover the guard branch.
+        let result = infer_select_types(
+            &HashMap::new(),
+            &make_select(Projection::SelectItems(vec![])),
+        );
+        assert!(result.is_none());
     }
 
     #[test]
@@ -226,5 +270,83 @@ mod tests {
         let storage = run("");
         // Complex expression — type not statically known, should not error.
         assert!(check(&storage, "SELECT 1 + 1 UNION SELECT 'a'").is_ok());
+    }
+
+    #[test]
+    fn float_literal_mismatch_is_rejected() {
+        let storage = run("");
+        assert_eq!(
+            check(&storage, "SELECT 1.5 UNION SELECT 'a'"),
+            Err(PlanError::UnionColumnTypeMismatch {
+                index: 0,
+                left: "FLOAT".to_owned(),
+                right: "TEXT".to_owned(),
+            }
+            .into()),
+        );
+    }
+
+    #[test]
+    fn compound_identifier_matching_alias_mismatch_is_rejected() {
+        let storage = run("CREATE TABLE T (id INTEGER, label TEXT);
+             CREATE TABLE S (id INTEGER, code INTEGER);");
+        assert_eq!(
+            check(
+                &storage,
+                "SELECT t.id, t.label FROM T AS t UNION SELECT s.id, s.code FROM S AS s",
+            ),
+            Err(PlanError::UnionColumnTypeMismatch {
+                index: 1,
+                left: "TEXT".to_owned(),
+                right: "INT".to_owned(),
+            }
+            .into()),
+        );
+    }
+
+    #[test]
+    fn compound_identifier_non_matching_alias_is_skipped() {
+        let storage = run("CREATE TABLE T (id INTEGER, label TEXT);
+             CREATE TABLE S (id INTEGER, code INTEGER);");
+        // aliases 'x' / 'y' don't match the table names so types cannot be
+        // inferred and the check is skipped.
+        assert!(
+            check(
+                &storage,
+                "SELECT x.id, x.label FROM T UNION SELECT y.id, y.code FROM S",
+            )
+            .is_ok()
+        );
+    }
+
+    #[test]
+    fn wildcard_projection_is_skipped() {
+        let storage = run("CREATE TABLE T (id INTEGER);
+             CREATE TABLE S (id TEXT);");
+        // Wildcards expand at execute time — plan-time check is skipped.
+        assert!(check(&storage, "SELECT * FROM T UNION SELECT * FROM S").is_ok());
+    }
+
+    #[test]
+    fn values_right_side_is_skipped() {
+        let storage = run("");
+        // VALUES types are determined at execute time — plan-time check is skipped.
+        assert!(check(&storage, "SELECT 1, 'a' UNION VALUES (2, 3)").is_ok());
+    }
+
+    #[test]
+    fn nested_union_type_inferred_from_left_branch() {
+        let storage = run("");
+        // Parsed as (SELECT 1 UNION SELECT 2) UNION SELECT 'a'.
+        // The outer left's type is inferred from its own left branch (INT).
+        assert_eq!(
+            check(&storage, "SELECT 1 UNION SELECT 2 UNION SELECT 'a'"),
+            Err(PlanError::UnionColumnTypeMismatch {
+                index: 0,
+                left: "INT".to_owned(),
+                right: "TEXT".to_owned(),
+            }
+            .into()),
+        );
     }
 }
