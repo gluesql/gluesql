@@ -160,7 +160,7 @@ impl BuildQuery for LimitNode<'_> {
 mod tests {
     use {
         crate::{
-            ast_builder::{Build, SelectItemList, col, num, table, test},
+            ast_builder::{Build, SelectItemList, col, num, table, test_query_builder},
             plan::{
                 JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
                 QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
@@ -173,92 +173,81 @@ mod tests {
     #[test]
     fn limit() {
         // select node -> limit node -> build
-        let actual = table("Foo").select().limit(10).build();
+        let actual = table("Foo").select().limit(10);
         let expected = "SELECT * FROM Foo LIMIT 10";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // group by node -> limit node -> build
-        let actual = table("Foo").select().group_by("bar").limit(10).build();
+        let actual = table("Foo").select().group_by("bar").limit(10);
         let expected = "SELECT * FROM Foo GROUP BY bar LIMIT 10";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // having node -> limit node -> build
         let actual = table("Foo")
             .select()
             .group_by("bar")
             .having("bar = 10")
-            .limit(10)
-            .build();
+            .limit(10);
         let expected = "SELECT * FROM Foo GROUP BY bar HAVING bar = 10 LIMIT 10";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join node -> limit node -> build
-        let actual = table("Foo").select().join("Bar").limit(10).build();
+        let actual = table("Foo").select().join("Bar").limit(10);
         let expected = "SELECT * FROM Foo JOIN Bar LIMIT 10";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join node -> limit node -> build
-        let actual = table("Foo").select().join_as("Bar", "B").limit(10).build();
+        let actual = table("Foo").select().join_as("Bar", "B").limit(10);
         let expected = "SELECT * FROM Foo JOIN Bar AS B LIMIT 10";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join node -> limit node -> build
-        let actual = table("Foo").select().left_join("Bar").limit(10).build();
+        let actual = table("Foo").select().left_join("Bar").limit(10);
         let expected = "SELECT * FROM Foo LEFT JOIN Bar LIMIT 10";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join node -> limit node -> build
-        let actual = table("Foo")
-            .select()
-            .left_join_as("Bar", "B")
-            .limit(10)
-            .build();
+        let actual = table("Foo").select().left_join_as("Bar", "B").limit(10);
         let expected = "SELECT * FROM Foo LEFT JOIN Bar AS B LIMIT 10";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // group by node -> limit node -> build
-        let actual = table("Foo").select().group_by("id").limit(10).build();
+        let actual = table("Foo").select().group_by("id").limit(10);
         let expected = "SELECT * FROM Foo GROUP BY id LIMIT 10";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // having node -> limit node -> build
         let actual = table("Foo")
             .select()
             .group_by("id")
             .having(col("id").gt(10))
-            .limit(10)
-            .build();
+            .limit(10);
         let expected = "SELECT * FROM Foo GROUP BY id HAVING id > 10 LIMIT 10";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join constraint node -> limit node -> build
         let actual = table("Foo")
             .select()
             .join("Bar")
             .on("Foo.id = Bar.id")
-            .limit(10)
-            .build();
+            .limit(10);
         let expected = "SELECT * FROM Foo JOIN Bar ON Foo.id = Bar.id LIMIT 10";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // filter node -> limit node -> build
-        let actual = table("World")
-            .select()
-            .filter(col("id").gt(2))
-            .limit(100)
-            .build();
+        let actual = table("World").select().filter(col("id").gt(2)).limit(100);
         let expected = "SELECT * FROM World WHERE id > 2 LIMIT 100";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // order by node -> limit node -> build
-        let actual = table("Hello").select().order_by("score").limit(3).build();
+        let actual = table("Hello").select().order_by("score").limit(3);
         let expected = "SELECT * FROM Hello ORDER BY score LIMIT 3";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // project node -> limit node -> build
-        let actual = table("Item").select().project("*").limit(10).build();
+        let actual = table("Item").select().project("*").limit(10);
         let expected = "SELECT * FROM Item LIMIT 10";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // hash join node -> limit node -> build
         let actual = table("Player")
@@ -310,13 +299,8 @@ mod tests {
         assert_eq!(actual, expected);
 
         // select node -> limit node -> derived subquery
-        let actual = table("Foo")
-            .select()
-            .limit(10)
-            .alias_as("Sub")
-            .select()
-            .build();
+        let actual = table("Foo").select().limit(10).alias_as("Sub").select();
         let expected = "SELECT * FROM (SELECT * FROM Foo LIMIT 10) Sub";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
     }
 }

@@ -139,7 +139,7 @@ impl BuildSelect for JoinConstraintNode<'_> {
 mod tests {
     use {
         crate::{
-            ast_builder::{Build, SelectItemList, col, table, test},
+            ast_builder::{Build, SelectItemList, col, table, test_query_builder},
             plan::{
                 JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
                 QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
@@ -152,40 +152,30 @@ mod tests {
     #[test]
     fn join_constraint() {
         // join node ->  join constarint node -> build
-        let actual = table("Foo")
-            .select()
-            .join("Bar")
-            .on("Foo.id = Bar.id")
-            .build();
+        let actual = table("Foo").select().join("Bar").on("Foo.id = Bar.id");
         let expected = "SELECT * FROM Foo INNER JOIN Bar ON Foo.id = Bar.id";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join node ->  join constraint node -> build
         let actual = table("Foo")
             .select()
             .join_as("Bar", "B")
-            .on("Foo.id = B.id")
-            .build();
+            .on("Foo.id = B.id");
         let expected = "SELECT * FROM Foo INNER JOIN Bar B ON Foo.id = B.id";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join node -> join constraint node -> build
-        let actual = table("Foo")
-            .select()
-            .left_join("Bar")
-            .on("Foo.id = Bar.id")
-            .build();
+        let actual = table("Foo").select().left_join("Bar").on("Foo.id = Bar.id");
         let expected = "SELECT * FROM Foo LEFT OUTER JOIN Bar ON Foo.id = Bar.id";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join node -> join constraint node -> build
         let actual = table("Foo")
             .select()
             .left_join_as("Bar", "b")
-            .on("Foo.id = b.id")
-            .build();
+            .on("Foo.id = b.id");
         let expected = "SELECT * FROM Foo LEFT OUTER JOIN Bar b ON Foo.id = b.id";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // hash join node -> join constraint node -> build
         let actual = table("Player")
@@ -247,14 +237,13 @@ mod tests {
             .join("Bar")
             .on("Foo.id = Bar.id")
             .alias_as("Sub")
-            .select()
-            .build();
+            .select();
         let expected = "
             SELECT * FROM (
                 SELECT * FROM Foo
                 INNER JOIN Bar ON Foo.id = Bar.id
             ) Sub
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
     }
 }

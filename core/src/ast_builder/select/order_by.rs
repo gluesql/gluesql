@@ -163,7 +163,9 @@ impl BuildQuery for OrderByNode<'_> {
 mod tests {
     use {
         crate::{
-            ast_builder::{Build, ExprNode, OrderByExprList, SelectItemList, col, table, test},
+            ast_builder::{
+                Build, ExprNode, OrderByExprList, SelectItemList, col, table, test_query_builder,
+            },
             plan::{
                 JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
                 QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
@@ -176,38 +178,36 @@ mod tests {
     #[test]
     fn order_by() {
         // select node -> order by node(exprs vec) -> build
-        let actual = table("Foo").select().order_by(vec!["name desc"]).build();
+        let actual = table("Foo").select().order_by(vec!["name desc"]);
         let expected = "
             SELECT * FROM Foo
             ORDER BY name DESC
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select node -> order by node(exprs string) -> build
         let actual = table("Bar")
             .select()
             .order_by("name asc, id desc, country")
-            .offset(10)
-            .build();
+            .offset(10);
         let expected = "
                 SELECT * FROM Bar
                 ORDER BY name asc, id desc, country
                 OFFSET 10
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // group by node -> order by node -> build
         let actual = table("Bar")
             .select()
             .group_by("name")
-            .order_by(vec!["id desc"])
-            .build();
+            .order_by(vec!["id desc"]);
         let expected = "
                 SELECT * FROM Bar
                 GROUP BY name
                 ORDER BY id desc
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // having node -> order by node -> build
         let actual = table("Foo")
@@ -216,8 +216,7 @@ mod tests {
             .having("COUNT(name) < 100")
             .order_by(ExprNode::Identifier("name".into()))
             .offset(2)
-            .limit(3)
-            .build();
+            .limit(3);
         let expected = "
             SELECT * FROM Foo
             GROUP BY city
@@ -226,56 +225,46 @@ mod tests {
             OFFSET 2
             LIMIT 3
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // filter node -> order by node -> build
         let actual = table("Foo")
             .select()
             .filter("id > 10")
             .filter("id < 20")
-            .order_by("id asc")
-            .build();
+            .order_by("id asc");
         let expected = "
             SELECT * FROM Foo
             WHERE id > 10 AND id < 20
             ORDER BY id ASC";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // project node -> order by node -> build
-        let actual = table("Foo")
-            .select()
-            .project("id")
-            .order_by("id asc")
-            .build();
+        let actual = table("Foo").select().project("id").order_by("id asc");
         let expected = "SELECT id FROM Foo ORDER BY id asc";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join node -> order by node -> build
-        let actual = table("Foo")
-            .select()
-            .join("Bar")
-            .order_by("Foo.id desc")
-            .build();
+        let actual = table("Foo").select().join("Bar").order_by("Foo.id desc");
         let expected = "
             SELECT * FROM Foo
             JOIN Bar
             ORDER BY Foo.id desc
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join constraint node -> order by node -> build
         let actual = table("Foo")
             .select()
             .join("Bar")
             .on("Foo.id = Bar.id")
-            .order_by("Foo.id desc")
-            .build();
+            .order_by("Foo.id desc");
         let expected = "
             SELECT * FROM Foo
             JOIN Bar ON Foo.id = Bar.id
             ORDER BY Foo.id desc
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // hash join node -> order by node -> build
         let actual = table("Player")
@@ -333,14 +322,13 @@ mod tests {
             .select()
             .order_by(vec!["name desc"])
             .alias_as("Sub")
-            .select()
-            .build();
+            .select();
         let expected = "
             SELECT * FROM (
                 SELECT * FROM Foo
                 ORDER BY name DESC
             ) Sub
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
     }
 }

@@ -74,7 +74,7 @@ impl BuildQuery for OffsetLimitNode<'_> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{Build, table, test};
+    use crate::ast_builder::{table, test_query_builder};
 
     #[test]
     fn offset_limit() {
@@ -84,8 +84,7 @@ mod tests {
             .group_by("city")
             .having("COUNT(name) < 100")
             .offset(1)
-            .limit(3)
-            .build();
+            .limit(3);
         let expected = "
             SELECT * FROM Bar
             GROUP BY city
@@ -93,7 +92,7 @@ mod tests {
             OFFSET 1
             LIMIT 3;
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // project node -> offset node -> limit node
         let actual = table("Bar")
@@ -102,8 +101,7 @@ mod tests {
             .having("COUNT(name) < 100")
             .project("city")
             .offset(1)
-            .limit(3)
-            .build();
+            .limit(3);
         let expected = "
             SELECT city FROM Bar
             GROUP BY city
@@ -111,7 +109,7 @@ mod tests {
             OFFSET 1
             LIMIT 3;
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select -> offset -> limit -> derived subquery
         let actual = table("Bar")
@@ -121,8 +119,7 @@ mod tests {
             .offset(1)
             .limit(3)
             .alias_as("Sub")
-            .select()
-            .build();
+            .select();
         let expected = "
             SELECT * FROM (
                 SELECT * FROM Bar
@@ -132,6 +129,6 @@ mod tests {
                 LIMIT 3
             ) Sub
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
     }
 }

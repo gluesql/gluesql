@@ -18,7 +18,7 @@ use {
     },
 };
 
-fn alias_or_name_plan(alias: Option<TableAliasPlan>, name: String) -> TableAliasPlan {
+fn build_alias_or_name_plan(alias: Option<TableAliasPlan>, name: String) -> TableAliasPlan {
     alias.unwrap_or(TableAliasPlan {
         name,
         columns: Vec::new(),
@@ -120,10 +120,10 @@ impl BuildSelectPlan for SelectNode<'_> {
             },
             TableType::Dictionary(dict) => TableFactorPlan::Dictionary {
                 dict,
-                alias: alias_or_name_plan(alias, self.table_node.table_name),
+                alias: build_alias_or_name_plan(alias, self.table_node.table_name),
             },
             TableType::Series(args) => TableFactorPlan::Series {
-                alias: alias_or_name_plan(alias, self.table_node.table_name),
+                alias: build_alias_or_name_plan(alias, self.table_node.table_name),
                 size: args.build_expr_plan()?,
             },
             TableType::Derived { subquery, alias } => TableFactorPlan::Derived {
@@ -218,7 +218,8 @@ mod tests {
     use {
         crate::{
             ast_builder::{
-                AstBuilderError, Build, primary_key, select, select::BuildSelect, table, test,
+                AstBuilderError, primary_key, select, select::BuildSelect, table,
+                test_query_builder,
             },
             result::Error,
         },
@@ -228,33 +229,33 @@ mod tests {
     #[test]
     fn select_root() {
         // select node -> build
-        let actual = table("App").select().build();
+        let actual = table("App").select();
         let expected = "SELECT * FROM App";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
-        let actual = table("Item").alias_as("i").select().build();
+        let actual = table("Item").alias_as("i").select();
         let expected = "SELECT * FROM Item i";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select -> derived subquery
-        let actual = table("App").select().alias_as("Sub").select().build();
+        let actual = table("App").select().alias_as("Sub").select();
         let expected = "SELECT * FROM (SELECT * FROM App) Sub";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select without table
-        let actual = select().project("1 + 1").build();
+        let actual = select().project("1 + 1");
         let expected = "SELECT 1 + 1";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select distinct
-        let actual = table("User").select().distinct().build();
+        let actual = table("User").select().distinct();
         let expected = "SELECT DISTINCT * FROM User";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select distinct with project
-        let actual = table("Item").select().distinct().project("name").build();
+        let actual = table("Item").select().distinct().project("name");
         let expected = "SELECT DISTINCT name FROM Item";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
     }
 
     #[test]

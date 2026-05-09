@@ -99,8 +99,10 @@ fn test_expr(actual: crate::ast_builder::ExprNode, expected: &str) {
     };
 
     let parsed = &parse_expr(expected).expect(expected);
-    let expected = translate_expr(parsed, NO_PARAMS).map(ExprPlan::from);
-    pretty_assertions::assert_eq!(actual.build_expr_plan(), expected);
+    let expected = translate_expr(parsed, NO_PARAMS);
+
+    pretty_assertions::assert_eq!(actual.clone().build_expr(), expected);
+    pretty_assertions::assert_eq!(actual.build_expr_plan(), expected.map(ExprPlan::from));
 }
 
 #[cfg(test)]
@@ -112,6 +114,26 @@ fn test_query(actual: crate::ast_builder::QueryNode, expected: &str) {
     };
 
     let parsed = &parse_query(expected).expect(expected);
-    let expected = translate_query(parsed, NO_PARAMS).map(QueryPlan::from);
-    pretty_assertions::assert_eq!(actual.build_query_plan(), expected);
+    let expected = translate_query(parsed, NO_PARAMS);
+
+    pretty_assertions::assert_eq!(actual.clone().build_query(), expected);
+    pretty_assertions::assert_eq!(actual.build_query_plan(), expected.map(QueryPlan::from));
+}
+
+#[cfg(test)]
+fn test_query_builder<T>(actual: T, expected: &str)
+where
+    T: crate::ast_builder::select::BuildQuery + crate::ast_builder::select::BuildQueryPlan + Clone,
+{
+    use crate::{
+        parse_sql::parse_query,
+        plan::QueryPlan,
+        translate::{NO_PARAMS, translate_query},
+    };
+
+    let parsed = &parse_query(expected).expect(expected);
+    let expected = translate_query(parsed, NO_PARAMS);
+
+    pretty_assertions::assert_eq!(actual.clone().build_query(), expected);
+    pretty_assertions::assert_eq!(actual.build_query_plan(), expected.map(QueryPlan::from));
 }

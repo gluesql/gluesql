@@ -134,7 +134,7 @@ mod tests {
     use {
         crate::{
             ast::{BinaryOperator, Expr},
-            ast_builder::{Build, SelectItemList, col, expr, table, test},
+            ast_builder::{Build, SelectItemList, col, expr, table, test_query_builder},
             plan::{
                 JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
                 QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
@@ -147,77 +147,62 @@ mod tests {
     #[test]
     fn filter() {
         // select node -> filter node -> build
-        let actual = table("Bar").select().filter("id IS NULL").build();
+        let actual = table("Bar").select().filter("id IS NULL");
         let expected = "SELECT * FROM Bar WHERE id IS NULL";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select node -> filter node -> build
-        let actual = table("Foo")
-            .select()
-            .filter(Expr::BinaryOp {
-                left: Box::new(Expr::Identifier("col1".to_owned())),
-                op: BinaryOperator::Gt,
-                right: Box::new(Expr::Identifier("col2".to_owned())),
-            })
-            .build();
+        let actual = table("Foo").select().filter(Expr::BinaryOp {
+            left: Box::new(Expr::Identifier("col1".to_owned())),
+            op: BinaryOperator::Gt,
+            right: Box::new(Expr::Identifier("col2".to_owned())),
+        });
         let expected = "SELECT * FROM Foo WHERE col1 > col2";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // filter node -> filter node -> build
         let actual = table("Bar")
             .select()
             .filter("id IS NULL")
             .filter("id > 10")
-            .filter("id < 20")
-            .build();
+            .filter("id < 20");
         let expected = "SELECT * FROM Bar WHERE id IS NULL AND id > 10 AND id < 20";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join node -> filter node -> build
-        let actual = table("Foo")
-            .select()
-            .join("Bar")
-            .filter("id IS NULL")
-            .build();
+        let actual = table("Foo").select().join("Bar").filter("id IS NULL");
         let expected = "SELECT * FROM Foo JOIN Bar WHERE id IS NULL";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join node -> filter node -> build
         let actual = table("Foo")
             .select()
             .join_as("Bar", "b")
-            .filter("id IS NULL")
-            .build();
+            .filter("id IS NULL");
         let expected = "SELECT * FROM Foo JOIN Bar AS b WHERE id IS NULL";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join node -> filter node -> build
-        let actual = table("Foo")
-            .select()
-            .left_join("Bar")
-            .filter("id IS NULL")
-            .build();
+        let actual = table("Foo").select().left_join("Bar").filter("id IS NULL");
         let expected = "SELECT * FROM Foo LEFT JOIN Bar WHERE id IS NULL";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join node -> filter node -> build
         let actual = table("Foo")
             .select()
             .left_join_as("Bar", "b")
-            .filter("id IS NULL")
-            .build();
+            .filter("id IS NULL");
         let expected = "SELECT * FROM Foo LEFT JOIN Bar AS b WHERE id IS NULL";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join constraint node -> filter node -> build
         let actual = table("Foo")
             .select()
             .join("Bar")
             .on("Foo.id = Bar.id")
-            .filter("id IS NULL")
-            .build();
+            .filter("id IS NULL");
         let expected = "SELECT * FROM Foo JOIN Bar ON Foo.id = Bar.id WHERE id IS NULL";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // hash join node -> filter node -> build
         let actual = table("Player")
@@ -273,9 +258,8 @@ mod tests {
             .select()
             .filter("id IS NULL")
             .alias_as("Sub")
-            .select()
-            .build();
+            .select();
         let expected = "SELECT * FROM (SELECT * FROM Bar WHERE id IS NULL) Sub";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
     }
 }

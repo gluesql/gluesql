@@ -139,7 +139,7 @@ impl BuildSelect for GroupByNode<'_> {
 mod tests {
     use {
         crate::{
-            ast_builder::{Build, SelectItemList, col, table, test},
+            ast_builder::{Build, SelectItemList, col, table, test_query_builder},
             plan::{
                 JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
                 QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
@@ -152,60 +152,50 @@ mod tests {
     #[test]
     fn group_by() {
         // select node -> group by node -> build
-        let actual = table("Foo").select().group_by("a").build();
+        let actual = table("Foo").select().group_by("a");
         let expected = "SELECT * FROM Foo GROUP BY a";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join node -> group by node -> build
-        let actual = table("Foo").select().join("Bar").group_by("b").build();
+        let actual = table("Foo").select().join("Bar").group_by("b");
         let expected = "SELECT * FROM Foo JOIN Bar GROUP BY b";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join node -> group by node -> build
-        let actual = table("Foo")
-            .select()
-            .join_as("Bar", "B")
-            .group_by("b")
-            .build();
+        let actual = table("Foo").select().join_as("Bar", "B").group_by("b");
         let expected = "SELECT * FROM Foo JOIN Bar AS B GROUP BY b";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join node -> group by node -> build
-        let actual = table("Foo").select().left_join("Bar").group_by("b").build();
+        let actual = table("Foo").select().left_join("Bar").group_by("b");
         let expected = "SELECT * FROM Foo LEFT JOIN Bar GROUP BY b";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join node -> group by node -> build
-        let actual = table("Foo")
-            .select()
-            .left_join_as("Bar", "B")
-            .group_by("b")
-            .build();
+        let actual = table("Foo").select().left_join_as("Bar", "B").group_by("b");
         let expected = "SELECT * FROM Foo LEFT JOIN Bar AS B GROUP BY b";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join constraint node -> group by node -> build
         let actual = table("Foo")
             .select()
             .join("Bar")
             .on("Foo.id = Bar.id")
-            .group_by("b")
-            .build();
+            .group_by("b");
         let expected = "SELECT * FROM Foo JOIN Bar ON Foo.id = Bar.id GROUP BY b";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // filter node -> group by node -> build
         let actual = table("Bar")
             .select()
             .filter(col("id").is_null())
-            .group_by("id, (a + name)")
-            .build();
+            .group_by("id, (a + name)");
         let expected = "
                 SELECT * FROM Bar
                 WHERE id IS NULL
                 GROUP BY id, (a + name)
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // hash join node -> group by node -> build
         let actual = table("Player")
@@ -257,13 +247,8 @@ mod tests {
         assert_eq!(actual, expected);
 
         // select -> group by -> derived subquery
-        let actual = table("Foo")
-            .select()
-            .group_by("a")
-            .alias_as("Sub")
-            .select()
-            .build();
+        let actual = table("Foo").select().group_by("a").alias_as("Sub").select();
         let expected = "SELECT * FROM (SELECT * FROM Foo GROUP BY a) Sub";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
     }
 }

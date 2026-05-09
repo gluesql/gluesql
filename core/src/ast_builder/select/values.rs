@@ -78,43 +78,38 @@ pub fn values<'a, T: Into<ExprList<'a>>>(values: Vec<T>) -> ValuesNode<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{Build, num, test};
+    use crate::ast_builder::{num, test_query_builder};
 
     #[test]
     fn values() {
         use crate::ast_builder::values;
 
-        let actual = values(vec![vec![num(7)]]).build();
+        let actual = values(vec![vec![num(7)]]);
         let expected = "VALUES(7)";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
-        let actual = values(vec!["1, 'a'", "2, 'b'"]).build();
+        let actual = values(vec!["1, 'a'", "2, 'b'"]);
         let expected = "VALUES(1, 'a'), (2, 'b')";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
-        let actual = values(vec!["1, 'a'", "2, 'b'"])
-            .order_by(vec!["column1 desc"])
-            .build();
+        let actual = values(vec!["1, 'a'", "2, 'b'"]).order_by(vec!["column1 desc"]);
         let expected = "VALUES(1, 'a'), (2, 'b') ORDER BY column1 desc";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
-        let actual = values(vec!["1, 'a'", "2, 'b'"]).offset(1).build();
+        let actual = values(vec!["1, 'a'", "2, 'b'"]).offset(1);
         let expected = "VALUES(1, 'a'), (2, 'b') offset 1";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
-        let actual = values(vec!["1, 'a'", "2, 'b'"]).limit(1).build();
+        let actual = values(vec!["1, 'a'", "2, 'b'"]).limit(1);
         let expected = "VALUES(1, 'a'), (2, 'b') limit 1";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
-        let actual = values(vec!["1, 'a'", "2, 'b'"]).offset(1).limit(1).build();
+        let actual = values(vec!["1, 'a'", "2, 'b'"]).offset(1).limit(1);
         let expected = "VALUES(1, 'a'), (2, 'b') offset 1 limit 1";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
-        let actual = values(vec!["1, 'a'", "2, 'b'"])
-            .alias_as("Sub")
-            .select()
-            .build();
+        let actual = values(vec!["1, 'a'", "2, 'b'"]).alias_as("Sub").select();
         let expected = "SELECT * FROM (VALUES(1, 'a'), (2, 'b')) AS Sub";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
     }
 }

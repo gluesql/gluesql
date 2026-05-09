@@ -93,7 +93,7 @@ impl BuildSelect for HavingNode<'_> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{Build, table, test};
+    use crate::ast_builder::{table, test_query_builder};
 
     #[test]
     fn having() {
@@ -103,8 +103,7 @@ mod tests {
             .filter("id IS NULL")
             .group_by("id, (a + name)")
             .having("COUNT(id) > 10")
-            .offset(10)
-            .build();
+            .offset(10);
         let expected = "
             SELECT * FROM Bar
             WHERE id IS NULL
@@ -112,7 +111,7 @@ mod tests {
             HAVING COUNT(id) > 10
             OFFSET 10
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // group by node -> having node -> limit node
         let actual = table("Bar")
@@ -120,8 +119,7 @@ mod tests {
             .filter("id IS NULL")
             .group_by("id, (a + name)")
             .having("COUNT(id) > 10")
-            .limit(10)
-            .build();
+            .limit(10);
         let expected = "
             SELECT * FROM Bar
             WHERE id IS NULL
@@ -129,7 +127,7 @@ mod tests {
             HAVING COUNT(id) > 10
             LIMIT 10
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // group by node -> having node -> project node
         let actual = table("Bar")
@@ -137,8 +135,7 @@ mod tests {
             .filter("id IS NULL")
             .group_by("id, (a + name)")
             .having("COUNT(id) > 10")
-            .project(vec!["id", "(a + name) AS b", "COUNT(id) AS c"])
-            .build();
+            .project(vec!["id", "(a + name) AS b", "COUNT(id) AS c"]);
         let expected = "
             SELECT id, (a + name) AS b, COUNT(id) AS c
             FROM Bar
@@ -146,22 +143,21 @@ mod tests {
             GROUP BY id, (a + name)
             HAVING COUNT(id) > 10
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // group by node -> having node -> build
         let actual = table("Bar")
             .select()
             .filter("id IS NULL")
             .group_by("id, (a + name)")
-            .having("COUNT(id) > 10")
-            .build();
+            .having("COUNT(id) > 10");
         let expected = "
                 SELECT * FROM Bar
                 WHERE id IS NULL
                 GROUP BY id, (a + name)
                 HAVING COUNT(id) > 10
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select -> group by -> having -> derived subquery
         let actual = table("Foo")
@@ -169,9 +165,8 @@ mod tests {
             .group_by("a")
             .having("a > 1")
             .alias_as("Sub")
-            .select()
-            .build();
+            .select();
         let expected = "SELECT * FROM (SELECT * FROM Foo GROUP BY a HAVING a > 1) Sub";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
     }
 }

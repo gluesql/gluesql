@@ -93,7 +93,7 @@ impl<'a> JoinNode<'a> {
         }
     }
 
-    fn relation_plan(&self) -> TableFactorPlan {
+    fn build_table_factor_plan(&self) -> TableFactorPlan {
         TableFactorPlan::Table {
             name: self.relation_name.clone(),
             alias: self.relation_alias.as_ref().map(|name| TableAliasPlan {
@@ -104,7 +104,7 @@ impl<'a> JoinNode<'a> {
         }
     }
 
-    fn relation_ast(&self) -> TableFactor {
+    fn build_table_factor(&self) -> TableFactor {
         TableFactor::Table {
             name: self.relation_name.clone(),
             alias: self.relation_alias.as_ref().map(|name| TableAlias {
@@ -188,7 +188,7 @@ impl<'a> JoinNode<'a> {
         self,
         constraint: JoinConstraintPlan,
     ) -> Result<SelectPlan> {
-        let relation = self.relation_plan();
+        let relation = self.build_table_factor_plan();
         let mut select = self.prev_node.build_select_plan()?;
 
         select.from.joins.push(JoinPlan {
@@ -201,7 +201,7 @@ impl<'a> JoinNode<'a> {
     }
 
     pub(super) fn build_select_with_constraint(self, constraint: Expr) -> Result<Select> {
-        let relation = self.relation_ast();
+        let relation = self.build_table_factor();
         let mut select = self.prev_node.build_select()?;
 
         select.from.joins.push(Join {
@@ -212,21 +212,21 @@ impl<'a> JoinNode<'a> {
         Ok(select)
     }
 
-    pub(super) fn build_hash_join_data_plan_with_constraint(
+    pub(super) fn build_join_plan_parts_with_constraint(
         self,
         constraint: JoinConstraintPlan,
     ) -> Result<(SelectPlan, TableFactorPlan, JoinOperatorPlan)> {
-        let relation = self.relation_plan();
-        let select_data = self.prev_node.build_select_plan()?;
+        let relation = self.build_table_factor_plan();
+        let select = self.prev_node.build_select_plan()?;
         let join_operator = join_operator_plan_with_constraint(self.join_operator_type, constraint);
 
-        Ok((select_data, relation, join_operator))
+        Ok((select, relation, join_operator))
     }
 }
 
 impl BuildSelectPlan for JoinNode<'_> {
     fn build_select_plan(self) -> Result<SelectPlan> {
-        let relation = self.relation_plan();
+        let relation = self.build_table_factor_plan();
         let mut select = self.prev_node.build_select_plan()?;
 
         select.from.joins.push(JoinPlan {
@@ -244,7 +244,7 @@ impl BuildSelectPlan for JoinNode<'_> {
 
 impl BuildSelect for JoinNode<'_> {
     fn build_select(self) -> Result<Select> {
-        let relation = self.relation_ast();
+        let relation = self.build_table_factor();
         let mut select = self.prev_node.build_select()?;
 
         select.from.joins.push(Join {
@@ -259,7 +259,7 @@ impl BuildSelect for JoinNode<'_> {
 #[cfg(test)]
 mod tests {
     use {
-        crate::ast_builder::{Build, table, test},
+        crate::ast_builder::{Build, table, test_query_builder},
         pretty_assertions::assert_eq,
     };
 
@@ -270,12 +270,11 @@ mod tests {
             .select()
             .join_as("Player", "p")
             .on("p.id = Item.player_id")
-            .filter("p.id = 1")
-            .build();
+            .filter("p.id = 1");
         let expected = "
         SELECT * FROM Item INNER JOIN Player AS p ON p.id = Item.player_id WHERE p.id = 1;
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select node -> join node ->  join constraint node
         let actual = table("Item")
@@ -283,19 +282,18 @@ mod tests {
             .join_as("Player", "p")
             .on("p.id = Item.player_id")
             .filter("p.id = 1")
-            .project(vec!["p.id", "p.name", "Item.id"])
-            .build();
+            .project(vec!["p.id", "p.name", "Item.id"]);
         let expected = "
         SELECT p.id, p.name, Item.id FROM Item INNER JOIN Player AS p ON p.id = Item.player_id WHERE p.id = 1;
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select node -> join node ->  build
-        let actual = table("Item").select().join_as("Player", "p").build();
+        let actual = table("Item").select().join_as("Player", "p");
         let expected = "
         SELECT * FROM Item INNER JOIN Player AS p;
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join node -> join constraint node -> join node -> join constraint node
         let actual = table("students")
@@ -310,8 +308,7 @@ mod tests {
                 "students.name",
                 "marks.rank",
                 "attendance.attendance",
-            ])
-            .build();
+            ]);
         let expected = "
             SELECT students.id, students.name, marks.rank, attendance.attendance
             FROM students
@@ -319,23 +316,19 @@ mod tests {
             INNER JOIN attendance on marks.id=attendance.id
             WHERE attendance.attendance >= 75;
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select node -> join node -> project node
-        let actual = table("Orders")
-            .select()
-            .join("Customers")
-            .project(vec![
-                "Orders.OrderID",
-                "Customers.CustomerName",
-                "Orders.OrderDate",
-            ])
-            .build();
+        let actual = table("Orders").select().join("Customers").project(vec![
+            "Orders.OrderID",
+            "Customers.CustomerName",
+            "Orders.OrderDate",
+        ]);
         let expected = "
             SELECT Orders.OrderID, Customers.CustomerName, Orders.OrderDate
             FROM Orders INNER JOIN Customers
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
     }
 
     #[test]
@@ -345,15 +338,14 @@ mod tests {
             .select()
             .left_join("item")
             .on("player.id = item.id")
-            .project(vec!["player.id", "item.id"])
-            .build();
+            .project(vec!["player.id", "item.id"]);
         let expected = "
             SELECT player.id, item.id
             FROM player
             LEFT JOIN item
             ON player.id = item.id
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select node -> left join node -> join constraint node -> left join node
         let actual = table("Item")
@@ -378,8 +370,7 @@ mod tests {
             .on("p8.id = Item.player_id")
             .left_join_as("Player", "p9")
             .on("p9.id = Item.player_id")
-            .filter("Player.id = 1")
-            .build();
+            .filter("Player.id = 1");
         let expected = "
             SELECT * FROM Item
             LEFT JOIN Player ON Player.id = Item.player_id
@@ -394,7 +385,7 @@ mod tests {
             LEFT JOIN Player p9 ON p9.id = Item.player_id
             WHERE Player.id = 1;
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select node -> left join node -> join constraint node -> left join node
         let actual = table("Item")
@@ -402,13 +393,12 @@ mod tests {
             .left_join("Player")
             .on("Player.id = Item.player_id")
             .left_join("Player")
-            .on("p1.id = Item.player_id")
-            .build();
+            .on("p1.id = Item.player_id");
         let expected = "
             SELECT * FROM Item
             LEFT JOIN Player ON Player.id = Item.player_id
             LEFT JOIN Player ON p1.id = Item.player_id";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         let actual = table("Item")
             .select()
@@ -422,8 +412,7 @@ mod tests {
             .on("p3.id = Item.player_id")
             .join_as("Player", "p4")
             .on("p4.id = Item.player_id AND Item.id > 101")
-            .filter("Player.id = 1")
-            .build();
+            .filter("Player.id = 1");
         let expected = "
             SELECT * FROM Item
             LEFT JOIN Player ON Player.id = Item.player_id
@@ -433,206 +422,172 @@ mod tests {
             INNER JOIN Player p4 ON p4.id = Item.player_id AND Item.id > 101
             WHERE Player.id = 1;
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
     }
 
     #[test]
     fn join_join() {
         // join - join
-        let actual = table("Foo").select().join("Bar").join("Baz").build();
+        let actual = table("Foo").select().join("Bar").join("Baz");
         let expected = "
             SELECT * FROM Foo
             INNER JOIN Bar
             INNER JOIN Baz
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join - join as
-        let actual = table("Foo")
-            .select()
-            .join("Bar")
-            .join_as("Baz", "B")
-            .build();
+        let actual = table("Foo").select().join("Bar").join_as("Baz", "B");
         let expected = "
             SELECT * FROM Foo
             INNER JOIN Bar
             INNER JOIN Baz B
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join - left join
-        let actual = table("Foo").select().join("Bar").left_join("Baz").build();
+        let actual = table("Foo").select().join("Bar").left_join("Baz");
         let expected = "
             SELECT * FROM Foo
             INNER JOIN Bar
             LEFT JOIN Baz
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join - left join as
-        let actual = table("Foo")
-            .select()
-            .join("Bar")
-            .left_join_as("Baz", "B")
-            .build();
+        let actual = table("Foo").select().join("Bar").left_join_as("Baz", "B");
         let expected = "
             SELECT * FROM Foo
             INNER JOIN Bar
             LEFT JOIN Baz B
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join as - join
-        let actual = table("Foo")
-            .select()
-            .join_as("Bar", "B")
-            .join("Baz")
-            .build();
+        let actual = table("Foo").select().join_as("Bar", "B").join("Baz");
         let expected = "
             SELECT * FROM Foo
             INNER JOIN Bar B
             INNER JOIN Baz
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join as - join as
         let actual = table("Foo")
             .select()
             .join_as("Bar", "B")
-            .join_as("Baz", "C")
-            .build();
+            .join_as("Baz", "C");
         let expected = "
             SELECT * FROM Foo
             INNER JOIN Bar B
             INNER JOIN Baz C
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join as - left join
-        let actual = table("Foo")
-            .select()
-            .join_as("Bar", "B")
-            .left_join("Baz")
-            .build();
+        let actual = table("Foo").select().join_as("Bar", "B").left_join("Baz");
         let expected = "
             SELECT * FROM Foo
             INNER JOIN Bar B
             LEFT JOIN Baz
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join as - left join as
         let actual = table("Foo")
             .select()
             .join_as("Bar", "B")
-            .left_join_as("Baz", "C")
-            .build();
+            .left_join_as("Baz", "C");
         let expected = "
             SELECT * FROM Foo
             INNER JOIN Bar B
             LEFT JOIN Baz C
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // left join - join
-        let actual = table("Foo").select().left_join("Bar").join("Baz").build();
+        let actual = table("Foo").select().left_join("Bar").join("Baz");
         let expected = "
             SELECT * FROM Foo
             LEFT JOIN Bar
             INNER JOIN Baz
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // left join - join as
-        let actual = table("Foo")
-            .select()
-            .left_join("Bar")
-            .join_as("Baz", "B")
-            .build();
+        let actual = table("Foo").select().left_join("Bar").join_as("Baz", "B");
         let expected = "
             SELECT * FROM Foo
             LEFT JOIN Bar
             INNER JOIN Baz B
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // left join - left join
-        let actual = table("Foo")
-            .select()
-            .left_join("Bar")
-            .left_join("Baz")
-            .build();
+        let actual = table("Foo").select().left_join("Bar").left_join("Baz");
         let expected = "
             SELECT * FROM Foo
             LEFT JOIN Bar
             LEFT JOIN Baz
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // left join - left join as
         let actual = table("Foo")
             .select()
             .left_join("Bar")
-            .left_join_as("Baz", "B")
-            .build();
+            .left_join_as("Baz", "B");
         let expected = "
             SELECT * FROM Foo
             LEFT JOIN Bar
             LEFT JOIN Baz B
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // left join as - join
-        let actual = table("Foo")
-            .select()
-            .left_join_as("Bar", "B")
-            .join("Baz")
-            .build();
+        let actual = table("Foo").select().left_join_as("Bar", "B").join("Baz");
         let expected = "
             SELECT * FROM Foo
             LEFT JOIN Bar B
             INNER JOIN Baz
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // left join as - join as
         let actual = table("Foo")
             .select()
             .left_join_as("Bar", "B")
-            .join_as("Baz", "C")
-            .build();
+            .join_as("Baz", "C");
         let expected = "
             SELECT * FROM Foo
             LEFT JOIN Bar B
             INNER JOIN Baz C
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // left join as - left join
         let actual = table("Foo")
             .select()
             .left_join_as("Bar", "B")
-            .left_join("Baz")
-            .build();
+            .left_join("Baz");
         let expected = "
             SELECT * FROM Foo
             LEFT JOIN Bar B
             LEFT JOIN Baz
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // left join as - left join as
         let actual = table("Foo")
             .select()
             .left_join_as("Bar", "B")
-            .left_join_as("Baz", "C")
-            .build();
+            .left_join_as("Baz", "C");
         let expected = "
             SELECT * FROM Foo
             LEFT JOIN Bar B
             LEFT JOIN Baz C
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
     }
 
     #[test]
@@ -777,23 +732,18 @@ mod tests {
         };
         assert_eq!(actual, expected, "left join with alias");
 
-        let actual = table("App").select().alias_as("Sub").select().build();
+        let actual = table("App").select().alias_as("Sub").select();
         let expected = "SELECT * FROM (SELECT * FROM App) Sub";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join -> derived subquery
-        let actual = table("Foo")
-            .select()
-            .join("Bar")
-            .alias_as("Sub")
-            .select()
-            .build();
+        let actual = table("Foo").select().join("Bar").alias_as("Sub").select();
         let expected = "
             SELECT * FROM (
                 SELECT * FROM Foo
                 INNER JOIN Bar
             ) Sub
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
     }
 }

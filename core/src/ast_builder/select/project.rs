@@ -172,7 +172,7 @@ impl BuildSelect for ProjectNode<'_> {
 mod tests {
     use {
         crate::{
-            ast_builder::{Build, SelectItemList, col, table, test},
+            ast_builder::{Build, SelectItemList, col, table, test_query_builder},
             plan::{
                 JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
                 QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
@@ -185,14 +185,14 @@ mod tests {
     #[test]
     fn project() {
         // select node -> project node -> build
-        let actual = table("Good").select().project("id").build();
+        let actual = table("Good").select().project("id");
         let expected = "SELECT id FROM Good";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select node -> project node -> build
-        let actual = table("Group").select().project("*, Group.*, name").build();
+        let actual = table("Group").select().project("*, Group.*, name");
         let expected = "SELECT *, Group.*, name FROM Group";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // project node -> project node -> build
         let actual = table("Foo")
@@ -201,8 +201,7 @@ mod tests {
             .project("col3")
             .project(vec!["col4".into(), col("col5")])
             .project(col("col6"))
-            .project("col7 as hello")
-            .build();
+            .project("col7 as hello");
         let expected = "
             SELECT
                 col1, col2, col3,
@@ -211,37 +210,33 @@ mod tests {
             FROM
                 Foo
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select node -> project node -> build
-        let actual = table("Aliased")
-            .select()
-            .project("1 + 1 as col1, col2")
-            .build();
+        let actual = table("Aliased").select().project("1 + 1 as col1, col2");
         let expected = "SELECT 1 + 1 as col1, col2 FROM Aliased";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
     }
 
     #[test]
     fn prev_nodes() {
         // select node -> project node -> build
-        let actual = table("Foo").select().project("*").build();
+        let actual = table("Foo").select().project("*");
         let expected = "SELECT * FROM Foo";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // group by node -> project node -> build
         let actual = table("Bar")
             .select()
             .group_by("city")
-            .project("city, COUNT(name) as num")
-            .build();
+            .project("city, COUNT(name) as num");
         let expected = "
             SELECT
               city, COUNT(name) as num
             FROM Bar
             GROUP BY city
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // having node -> project node -> build
         let actual = table("Cat")
@@ -250,8 +245,7 @@ mod tests {
             .group_by("age")
             .having("SUM(length) < 1000")
             .project(col("age"))
-            .project("SUM(length)")
-            .build();
+            .project("SUM(length)");
         let expected = r#"
             SELECT age, SUM(length)
             FROM Cat
@@ -259,7 +253,7 @@ mod tests {
             GROUP BY age
             HAVING SUM(length) < 1000;
         "#;
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // hash join node -> project node -> build
         let actual = table("Player")
@@ -313,13 +307,8 @@ mod tests {
         assert_eq!(actual, expected);
 
         // select -> project -> derived subquery
-        let actual = table("Foo")
-            .select()
-            .project("id")
-            .alias_as("Sub")
-            .select()
-            .build();
+        let actual = table("Foo").select().project("id").alias_as("Sub").select();
         let expected = "SELECT * FROM (SELECT id FROM Foo) Sub";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
     }
 }

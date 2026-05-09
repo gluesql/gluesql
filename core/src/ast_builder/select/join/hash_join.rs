@@ -111,7 +111,7 @@ impl<'a> HashJoinNode<'a> {
     ) -> Result<SelectPlan> {
         let (mut select, relation, join_operator) = self
             .join_node
-            .build_hash_join_data_plan_with_constraint(constraint)?;
+            .build_join_plan_parts_with_constraint(constraint)?;
         let join_executor = build_join_executor(self.key_expr, self.value_expr, self.filter_expr)?;
 
         select.from.joins.push(JoinPlan {
@@ -128,7 +128,7 @@ impl BuildSelectPlan for HashJoinNode<'_> {
     fn build_select_plan(self) -> Result<SelectPlan> {
         let (mut select, relation, join_operator) = self
             .join_node
-            .build_hash_join_data_plan_with_constraint(JoinConstraintPlan::None)?;
+            .build_join_plan_parts_with_constraint(JoinConstraintPlan::None)?;
         let join_executor = build_join_executor(self.key_expr, self.value_expr, self.filter_expr)?;
 
         let join = JoinPlan {
