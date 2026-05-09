@@ -498,7 +498,7 @@ where
 async fn fetch_join_columns<'a, T: GStore>(
     storage: &T,
     joins: &'a [JoinPlan],
-) -> Result<Vec<(&'a String, Vec<String>)>> {
+) -> Result<Vec<(&'a str, Vec<String>)>> {
     let mut all_columns = Vec::with_capacity(joins.len());
     for join in joins {
         let columns = fetch_relation_columns(storage, &join.relation).await?;
@@ -536,7 +536,7 @@ pub async fn fetch_labels<T: GStore>(
 
                     let labels = join_columns
                         .iter()
-                        .find(|(table_alias, _)| table_alias == &target_table_alias)
+                        .find(|(table_alias, _)| table_alias == target_table_alias)
                         .map(|(_, columns)| columns.clone());
 
                     match labels {

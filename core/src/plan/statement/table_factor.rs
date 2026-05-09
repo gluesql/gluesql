@@ -48,7 +48,7 @@ pub struct TableAliasPlan {
 }
 
 impl TableFactorPlan {
-    pub fn alias_name(&self) -> &String {
+    pub fn alias_name(&self) -> &str {
         match self {
             Self::Table {
                 name, alias: None, ..
@@ -68,7 +68,7 @@ impl TableFactorPlan {
             | Self::Dictionary {
                 alias: TableAliasPlan { name, .. },
                 ..
-            } => name,
+            } => name.as_str(),
         }
     }
 
