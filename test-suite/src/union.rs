@@ -2,6 +2,7 @@ use {
     crate::*,
     gluesql_core::{
         error::SelectError,
+        plan::PlanError,
         prelude::{Payload, Value::*},
     },
 };
@@ -134,6 +135,19 @@ test_case!(union, {
         "UNION column count mismatch returns error",
         "SELECT id, name FROM A UNION SELECT id FROM B",
         Err(SelectError::UnionColumnCountMismatch { left: 2, right: 1 }.into()),
+    )
+    .await;
+
+    // UNION with literal type mismatch is rejected at plan time
+    g.named_test(
+        "UNION literal type mismatch returns error",
+        "SELECT 1, 'a' UNION SELECT 2, 3",
+        Err(PlanError::UnionColumnTypeMismatch {
+            index: 1,
+            left: "TEXT".to_owned(),
+            right: "INT".to_owned(),
+        }
+        .into()),
     )
     .await;
 });

@@ -15,6 +15,15 @@ pub enum PlanError {
     #[error("specifying columns is not allowed for schemaless table INSERT; omit the column list")]
     SchemalessInsertWithExplicitColumns,
 
+    #[error(
+        "UNION column type mismatch at column index {index}: left returns {left} but right returns {right}"
+    )]
+    UnionColumnTypeMismatch {
+        index: usize,
+        left: String,
+        right: String,
+    },
+
     #[error("unreachable")]
     Unreachable,
 }
