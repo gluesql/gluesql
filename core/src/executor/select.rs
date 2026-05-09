@@ -105,18 +105,6 @@ async fn sort_stateless(rows: Vec<Row>, order_by: &[OrderByExpr]) -> Result<Vec<
     Ok(sorted)
 }
 
-/// Entry point for executing a SELECT/UNION/VALUES query and returning the
-/// column labels alongside a lazy stream of result rows.
-///
-/// `query` is wrapped in [`Arc`] so that recursive UNION branches can each
-/// hold an independent owning reference to their sub-query, allowing the
-/// returned stream to keep the query data alive without borrowing from a
-/// shorter-lived stack frame.
-///
-/// The body is cloned once so that `query` (which carries `order_by` /
-/// `limit` / `offset`) remains free to be moved into each branch helper.
-/// This lets us use a plain `match` with three exhaustive arms and removes
-/// the need for any `unreachable!` guards.
 #[async_recursion]
 pub async fn select_with_labels<'a, T>(
     storage: &'a T,
@@ -160,11 +148,6 @@ where
     }
 }
 
-/// Executes both UNION branches and merges their streams.
-///
-/// * UNION ALL without ORDER BY / LIMIT / OFFSET: streams are chained lazily.
-/// * Everything else: rows are materialised, deduplicated (DISTINCT), sorted,
-///   and paginated before being re-wrapped as a stream.
 async fn select_union<'a, T>(
     storage: &'a T,
     outer: Arc<Query>,
@@ -246,11 +229,6 @@ where
     Ok((labels, Box::pin(limit.apply(rows))))
 }
 
-/// Executes a plain `SELECT` body and returns a lazy row stream.
-///
-/// `select: Arc<Select>` and `query: Arc<Query>` are moved into the
-/// `try_stream!` generator, so all query data is heap-owned and lives
-/// as long as the stream — no stack-frame borrows, no `unreachable!` guards.
 async fn select_from<'a, T>(
     storage: &'a T,
     select: Arc<Select>,
@@ -263,8 +241,6 @@ async fn select_from<'a, T>(
 where
     T: GStore,
 {
-    // Labels are computed eagerly (they are part of the return value) then
-    // cloned into the generator so the original can be returned alongside.
     let labels = {
         let TableWithJoins { relation, joins } = &select.from;
         fetch_labels(storage, relation, joins, &select.projection).await?
