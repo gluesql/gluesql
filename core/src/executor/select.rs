@@ -12,16 +12,20 @@ use {
         filter::Filter,
         join::Join,
         limit::Limit,
-        sort::Sort,
+        sort::{Sort, SortError},
     },
     crate::{
-        ast::{Expr, OrderByExpr, Query, Select, SetExpr, TableWithJoins, Values},
+        ast::{
+            Expr, Literal, OrderByExpr, Query, Select, SetExpr, TableWithJoins, UnaryOperator,
+            Values,
+        },
         data::{Key, Row, Value, get_alias},
         result::Result,
         store::GStore,
     },
     async_recursion::async_recursion,
     async_stream::try_stream,
+    bigdecimal::ToPrimitive,
     futures::stream::{self, StreamExt, TryStreamExt},
     std::{borrow::Cow, collections::HashSet, pin::Pin, sync::Arc},
     utils::Vector,
@@ -75,6 +79,20 @@ async fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> Result<(Vec<Row>, Vec<Str
     Ok((rows, labels))
 }
 
+fn positional_index(expr: &Expr) -> Option<&bigdecimal::BigDecimal> {
+    match expr {
+        Expr::Literal(Literal::Number(n)) => Some(n),
+        Expr::UnaryOp {
+            op: UnaryOperator::Plus,
+            expr,
+        } => match expr.as_ref() {
+            Expr::Literal(Literal::Number(n)) => Some(n),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
 async fn sort_stateless(rows: Vec<Row>, order_by: &[OrderByExpr]) -> Result<Vec<Row>> {
     let sorted = stream::iter(rows.into_iter())
         .then(|row| async move {
@@ -83,6 +101,26 @@ async fn sort_stateless(rows: Vec<Row>, order_by: &[OrderByExpr]) -> Result<Vec<
                     let row = Some(&row);
 
                     async move {
+                        // Positional column index: ORDER BY 1 refers to the first
+                        // output column, not the constant integer 1.
+                        if let Some(n) = positional_index(expr) {
+                            let index = n.to_usize().ok_or_else(|| -> crate::result::Error {
+                                SortError::Unreachable.into()
+                            })?;
+                            let zero_based =
+                                index
+                                    .checked_sub(1)
+                                    .ok_or_else(|| -> crate::result::Error {
+                                        SortError::ColumnIndexOutOfRange(index).into()
+                                    })?;
+                            let value = row
+                                .and_then(|r| r.values.get(zero_based).cloned())
+                                .ok_or_else(|| -> crate::result::Error {
+                                    SortError::ColumnIndexOutOfRange(index).into()
+                                })?;
+                            return Key::try_from(value).map(|key| (key, *asc));
+                        }
+
                         evaluate_stateless(row.map(Row::as_context), expr)
                             .await
                             .and_then(Value::try_from)

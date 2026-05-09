@@ -209,4 +209,49 @@ test_case!(union, {
         )),
     )
     .await;
+
+    // UNION ORDER BY positional index must resolve to the output column,
+    // not evaluate the integer literal as a constant.
+    g.named_test(
+        "UNION ORDER BY positional index 1 ASC",
+        "SELECT 3 UNION SELECT 1 ORDER BY 1 ASC",
+        Ok(select!(
+            "3";
+            I64;
+            1;
+            3
+        )),
+    )
+    .await;
+
+    g.named_test(
+        "UNION ORDER BY positional index 1 DESC",
+        "SELECT 1 UNION SELECT 3 ORDER BY 1 DESC",
+        Ok(select!(
+            "1";
+            I64;
+            3;
+            1
+        )),
+    )
+    .await;
+
+    g.named_test(
+        "UNION ALL ORDER BY positional index 2 ASC",
+        "SELECT 10, 'b' UNION ALL SELECT 5, 'a' ORDER BY 2 ASC",
+        Ok(select!(
+            "10" | "'b'";
+            I64  | Str;
+            5      "a".to_owned();
+            10     "b".to_owned()
+        )),
+    )
+    .await;
+
+    g.named_test(
+        "UNION ORDER BY positional index out of range returns error",
+        "SELECT 1 UNION SELECT 2 ORDER BY 0",
+        Err(gluesql_core::executor::SortError::ColumnIndexOutOfRange(0).into()),
+    )
+    .await;
 });
