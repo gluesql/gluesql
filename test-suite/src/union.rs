@@ -270,9 +270,7 @@ test_case!(union, {
     )
     .await;
 
-    // UNION DISTINCT without ORDER BY: lazy try_filter path.
-    // With LIMIT the stream must stop as soon as enough unique rows are found
-    // without materialising everything.
+    // UNION DISTINCT deduplicates across two scans of the same table.
     g.named_test(
         "UNION DISTINCT deduplicates rows from the same table",
         "SELECT id FROM A UNION SELECT id FROM A ORDER BY id",
@@ -280,6 +278,8 @@ test_case!(union, {
     )
     .await;
 
+    // UNION DISTINCT without ORDER BY: the lazy try_filter path is taken so
+    // LIMIT can short-circuit without materialising the full result set.
     g.named_test(
         "UNION DISTINCT without ORDER BY respects LIMIT lazily",
         "SELECT id FROM A UNION SELECT id FROM B LIMIT 2",
