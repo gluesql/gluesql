@@ -551,6 +551,11 @@ mod tests {
             "redundant plan does not change the plan result:\n{sql}"
         );
 
+        let statement = actual;
+        let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+        let actual = plan(&schema_map, statement.clone());
+        assert_eq!(actual, statement, "planned hash join remains unchanged");
+
         let sql = "
             SELECT * FROM Player
             JOIN PlayerItem ON (SELECT * FROM Player u2)
@@ -758,6 +763,31 @@ mod tests {
             actual,
             expected,
             "hash join with join_constraint AND where_clause 2:\n{sql}"
+        );
+
+        let sql = "
+            SELECT *
+            FROM Player
+            JOIN PlayerItem ON
+                PlayerItem.amount > 10 AND
+                (
+                    Player.id = PlayerItem.user_id AND
+                    PlayerItem.item_id IS NOT NULL
+                )
+            WHERE True;
+        ";
+        let actual = plan_join(&storage, sql);
+        let expected = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .hash_filter("PlayerItem.item_id IS NOT NULL")
+            .hash_filter("PlayerItem.amount > 10")
+            .filter(true);
+        test!(
+            actual,
+            expected,
+            "hash join merges existing where_clause with current-table filter:\n{sql}"
         );
 
         let sql = "
