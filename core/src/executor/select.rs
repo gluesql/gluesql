@@ -219,25 +219,7 @@ where
 
     let labels_arc: Arc<[String]> = Arc::from(labels.as_slice());
 
-    // UNION ALL with no outer ORDER BY / LIMIT / OFFSET: chain lazily.
-    if all && outer.order_by.is_empty() && outer.limit.is_none() && outer.offset.is_none() {
-        let left_relabeled = left_stream.map_ok({
-            let la = Arc::clone(&labels_arc);
-            move |row| Row {
-                columns: Arc::clone(&la),
-                values: row.values,
-            }
-        });
-        let right_relabeled = right_stream.map_ok(move |row| Row {
-            columns: Arc::clone(&labels_arc),
-            values: row.values,
-        });
-        return Ok((labels, Box::pin(left_relabeled.chain(right_relabeled))));
-    }
-
-    // UNION ALL with LIMIT/OFFSET but no ORDER BY: chain lazily then paginate.
-    // Deduplication and sorting both require the full result set, but
-    // simple pagination over an unordered UNION ALL does not.
+    // UNION ALL with (optional) ORDER BY / LIMIT / OFFSET: chain lazily.
     if all && outer.order_by.is_empty() {
         let left_relabeled = left_stream.map_ok({
             let la = Arc::clone(&labels_arc);
@@ -253,6 +235,7 @@ where
         let limit = Limit::new(outer.limit.as_ref(), outer.offset.as_ref()).await?;
         let stream: Pin<Box<dyn futures::stream::Stream<Item = Result<Row>> + Send + 'a>> =
             Box::pin(limit.apply(left_relabeled.chain(right_relabeled)));
+
         return Ok((labels, stream));
     }
 
