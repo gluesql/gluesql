@@ -1,10 +1,11 @@
 mod aggregate;
 mod function;
 
-use crate::plan::{ExprPlan, PlanError};
-
-use aggregate::{try_visit_aggregate, visit_mut_aggregate};
-use function::{try_visit_function, visit_mut_function};
+use {
+    crate::plan::{ExprPlan, PlanError},
+    aggregate::{try_visit_aggregate, visit_mut_aggregate},
+    function::{try_visit_function, visit_mut_function},
+};
 
 macro_rules! apply_mut {
     ($visit:expr) => {

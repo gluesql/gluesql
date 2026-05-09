@@ -1,6 +1,7 @@
-use crate::plan::{ExprPlan, FunctionPlan, PlanError};
-
-use super::{try_visit_expr, visit_mut_expr};
+use {
+    super::{try_visit_expr, visit_mut_expr},
+    crate::plan::{ExprPlan, FunctionPlan, PlanError},
+};
 
 macro_rules! apply_mut {
     ($visit:expr) => {

@@ -1,6 +1,7 @@
-use crate::plan::{AggregateFunctionPlan, AggregatePlan, CountArgExprPlan, ExprPlan, PlanError};
-
-use super::{try_visit_expr, visit_mut_expr};
+use {
+    super::{try_visit_expr, visit_mut_expr},
+    crate::plan::{AggregateFunctionPlan, AggregatePlan, CountArgExprPlan, ExprPlan, PlanError},
+};
 
 macro_rules! apply_mut {
     ($visit:expr) => {
