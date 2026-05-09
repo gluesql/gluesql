@@ -455,7 +455,7 @@ impl<'a, T: GStore> State<'a, T> {
 }
 
 fn empty_value(aggregate: &AggregatePlan) -> Value {
-    match aggregate.func {
+    match &aggregate.func {
         AggregateFunctionPlan::Count(_) => Value::I64(0),
         AggregateFunctionPlan::Sum(_)
         | AggregateFunctionPlan::Min(_)
