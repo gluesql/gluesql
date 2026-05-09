@@ -274,7 +274,7 @@ test_case!(union, {
     // With LIMIT the stream must stop as soon as enough unique rows are found
     // without materialising everything.
     g.named_test(
-        "UNION DISTINCT without ORDER BY deduplicates lazily",
+        "UNION DISTINCT deduplicates rows from the same table",
         "SELECT id FROM A UNION SELECT id FROM A ORDER BY id",
         Ok(select!(id; I64; 1; 2; 3)),
     )
