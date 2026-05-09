@@ -33,33 +33,89 @@ pub fn validate(schema_map: &SchemaMap, statement: &Statement) -> Result<()> {
 }
 
 fn validate_set_expr(schema_map: &SchemaMap, set_expr: &SetExpr) -> Result<()> {
-    let SetExpr::Union { left, right, .. } = set_expr else {
-        return Ok(());
-    };
+    match set_expr {
+        SetExpr::Select(select) => validate_select(schema_map, select),
+        SetExpr::Values(_) => Ok(()),
+        SetExpr::Union { left, right, .. } => {
+            // Recurse first so inner UNIONs are checked before the outer one.
+            validate_set_expr(schema_map, left)?;
+            validate_set_expr(schema_map, right)?;
 
-    // Recurse first so inner UNIONs are checked before the outer one.
-    validate_set_expr(schema_map, left)?;
-    validate_set_expr(schema_map, right)?;
+            let left_types = infer_column_types(schema_map, left);
+            let right_types = infer_column_types(schema_map, right);
 
-    let left_types = infer_column_types(schema_map, left);
-    let right_types = infer_column_types(schema_map, right);
-
-    if let (Some(left_types), Some(right_types)) = (left_types, right_types) {
-        for (index, (lt, rt)) in left_types.iter().zip(right_types.iter()).enumerate() {
-            if let (Some(l), Some(r)) = (lt, rt)
-                && l != r
-            {
-                return Err(PlanError::UnionColumnTypeMismatch {
-                    index,
-                    left: format!("{l}"),
-                    right: format!("{r}"),
+            if let (Some(left_types), Some(right_types)) = (left_types, right_types) {
+                for (index, (lt, rt)) in left_types.iter().zip(right_types.iter()).enumerate() {
+                    if let (Some(l), Some(r)) = (lt, rt)
+                        && l != r
+                    {
+                        return Err(PlanError::UnionColumnTypeMismatch {
+                            index,
+                            left: format!("{l}"),
+                            right: format!("{r}"),
+                        }
+                        .into());
+                    }
                 }
-                .into());
+            }
+
+            Ok(())
+        }
+    }
+}
+
+/// Walk a SELECT body, recursing into any derived tables and subquery
+/// expressions so that nested UNIONs receive the same type-compatibility check.
+fn validate_select(schema_map: &SchemaMap, select: &Select) -> Result<()> {
+    validate_table_factor(schema_map, &select.from.relation)?;
+    for join in &select.from.joins {
+        validate_table_factor(schema_map, &join.relation)?;
+    }
+
+    if let Projection::SelectItems(items) = &select.projection {
+        for item in items {
+            if let SelectItem::Expr { expr, .. } = item {
+                validate_expr(schema_map, expr)?;
             }
         }
     }
 
+    if let Some(selection) = &select.selection {
+        validate_expr(schema_map, selection)?;
+    }
+
+    for expr in &select.group_by {
+        validate_expr(schema_map, expr)?;
+    }
+
+    if let Some(having) = &select.having {
+        validate_expr(schema_map, having)?;
+    }
+
     Ok(())
+}
+
+fn validate_table_factor(schema_map: &SchemaMap, tf: &TableFactor) -> Result<()> {
+    if let TableFactor::Derived { subquery, .. } = tf {
+        validate_set_expr(schema_map, &subquery.body)?;
+    }
+    Ok(())
+}
+
+/// Recursively walk an expression, validating any embedded subquery bodies.
+fn validate_expr(schema_map: &SchemaMap, expr: &Expr) -> Result<()> {
+    match expr {
+        Expr::Subquery(query) => validate_set_expr(schema_map, &query.body),
+        Expr::InSubquery { subquery, .. } | Expr::Exists { subquery, .. } => {
+            validate_set_expr(schema_map, &subquery.body)
+        }
+        Expr::BinaryOp { left, right, .. } => {
+            validate_expr(schema_map, left)?;
+            validate_expr(schema_map, right)
+        }
+        Expr::UnaryOp { expr, .. } | Expr::Nested(expr) => validate_expr(schema_map, expr),
+        _ => Ok(()),
+    }
 }
 
 /// Returns `Some(Vec<Option<DataType>>)` when the column types of a set
@@ -353,6 +409,90 @@ mod tests {
             }
             .into()),
             "parsed as (SELECT 1 UNION SELECT 2) UNION SELECT 'a'; the outer left's type is inferred from its own left branch (INT)",
+        );
+    }
+
+    #[test]
+    fn nested_union_in_derived_table_is_rejected() {
+        let storage = run("");
+        assert_eq!(
+            check(
+                &storage,
+                "SELECT * FROM (SELECT 1, 'a' UNION SELECT 2, 3) AS t",
+            ),
+            Err(PlanError::UnionColumnTypeMismatch {
+                index: 1,
+                left: "TEXT".to_owned(),
+                right: "INT".to_owned(),
+            }
+            .into()),
+            "a UNION inside a derived table must be validated even though the outer body is a plain Select",
+        );
+    }
+
+    #[test]
+    fn nested_union_in_derived_table_match_is_accepted() {
+        let storage = run("");
+        assert!(
+            check(
+                &storage,
+                "SELECT * FROM (SELECT 1, 2 UNION SELECT 3, 4) AS t",
+            )
+            .is_ok(),
+        );
+    }
+
+    #[test]
+    fn nested_union_in_join_derived_table_is_rejected() {
+        let storage = run("CREATE TABLE T (id INTEGER);");
+        assert_eq!(
+            check(
+                &storage,
+                "SELECT * FROM T JOIN (SELECT 1, 'a' UNION SELECT 2, 3) AS u ON TRUE",
+            ),
+            Err(PlanError::UnionColumnTypeMismatch {
+                index: 1,
+                left: "TEXT".to_owned(),
+                right: "INT".to_owned(),
+            }
+            .into()),
+            "a UNION inside a JOIN's derived table must also be validated",
+        );
+    }
+
+    #[test]
+    fn nested_union_in_in_subquery_is_rejected() {
+        let storage = run("CREATE TABLE T (id INTEGER);");
+        assert_eq!(
+            check(
+                &storage,
+                "SELECT id FROM T WHERE id IN (SELECT 1 UNION SELECT 'a')",
+            ),
+            Err(PlanError::UnionColumnTypeMismatch {
+                index: 0,
+                left: "INT".to_owned(),
+                right: "TEXT".to_owned(),
+            }
+            .into()),
+            "a UNION inside an IN subquery must be validated",
+        );
+    }
+
+    #[test]
+    fn nested_union_in_exists_subquery_is_rejected() {
+        let storage = run("CREATE TABLE T (id INTEGER);");
+        assert_eq!(
+            check(
+                &storage,
+                "SELECT id FROM T WHERE EXISTS (SELECT 1 UNION SELECT 'a')",
+            ),
+            Err(PlanError::UnionColumnTypeMismatch {
+                index: 0,
+                left: "INT".to_owned(),
+                right: "TEXT".to_owned(),
+            }
+            .into()),
+            "a UNION inside an EXISTS subquery must be validated",
         );
     }
 }

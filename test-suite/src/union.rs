@@ -181,4 +181,32 @@ test_case!(union, {
         .into()),
     )
     .await;
+
+    // A UNION with a type mismatch inside a derived table must also be caught
+    // at plan time — the outer SELECT body is not a Union, so validate_set_expr
+    // must recurse into the derived subquery.
+    g.named_test(
+        "nested UNION in derived table with type mismatch is rejected at plan time",
+        "SELECT * FROM (SELECT 1, 'a' UNION SELECT 2, 3) AS t",
+        Err(PlanError::UnionColumnTypeMismatch {
+            index: 1,
+            left: "TEXT".to_owned(),
+            right: "INT".to_owned(),
+        }
+        .into()),
+    )
+    .await;
+
+    // A UNION with matching types inside a derived table must still work.
+    g.named_test(
+        "nested UNION in derived table with matching types is accepted",
+        "SELECT * FROM (SELECT 1, 2 UNION SELECT 3, 4) AS t ORDER BY 1",
+        Ok(select!(
+            "1"  | "2";
+            I64  | I64;
+            1      2;
+            3      4
+        )),
+    )
+    .await;
 });
