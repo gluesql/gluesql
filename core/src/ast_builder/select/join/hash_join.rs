@@ -166,7 +166,9 @@ mod tests {
     use {
         crate::{
             ast_builder::{
-                AstBuilderError, Build, SelectItemList, col, expr, select::BuildSelect, table,
+                AstBuilderError, Build, SelectItemList, col, expr,
+                select::{BuildQuery, BuildSelect},
+                table,
             },
             plan::{
                 JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
@@ -361,6 +363,22 @@ mod tests {
 
     #[test]
     fn hash_join_ast_build_requires_plan() {
+        fn expected_error<T>(actual: crate::result::Result<T>) {
+            assert_eq!(
+                actual.map(|_| ()),
+                Err(Error::AstBuilder(
+                    AstBuilderError::HashJoinExecutorRequiresPlan
+                ))
+            );
+        }
+
+        fn hash_join() -> super::HashJoinNode<'static> {
+            table("Player")
+                .select()
+                .join("PlayerItem")
+                .hash_executor("PlayerItem.user_id", "Player.id")
+        }
+
         let actual = table("Player")
             .select()
             .join("PlayerItem")
@@ -385,5 +403,13 @@ mod tests {
                 AstBuilderError::HashJoinExecutorRequiresPlan
             ))
         );
+
+        expected_error(hash_join().filter("Player.id > 0").build_select());
+        expected_error(hash_join().group_by("Player.id").build_select());
+        expected_error(hash_join().join("OtherItem").build_select());
+        expected_error(hash_join().project("*").build_select());
+        expected_error(hash_join().limit(1).build_query());
+        expected_error(hash_join().offset(1).build_query());
+        expected_error(hash_join().order_by("Player.id").build_query());
     }
 }

@@ -168,6 +168,10 @@ mod test {
 
     #[test]
     fn query() {
+        let actual = QueryNode::Values(vec!["1, 'a'".into(), "2, 'b'".into()]);
+        let expected = "VALUES(1, 'a'), (2, 'b')";
+        test_query(actual, expected);
+
         let actual = table("FOO").select().into();
         let expected = "SELECT * FROM FOO";
         test_query(actual, expected);

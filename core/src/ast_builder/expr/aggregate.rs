@@ -256,9 +256,13 @@ pub fn stdev_distinct<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{
-        avg, avg_distinct, col, count, count_distinct, max, max_distinct, min, min_distinct, stdev,
-        stdev_distinct, sum, sum_distinct, test_expr, variance, variance_distinct,
+    use crate::{
+        ast_builder::{
+            avg, avg_distinct, col, count, count_distinct, expr, max, max_distinct, min,
+            min_distinct, stdev, stdev_distinct, sum, sum_distinct, test_expr, variance,
+            variance_distinct,
+        },
+        result::Error,
     };
 
     #[test]
@@ -382,5 +386,12 @@ mod tests {
         let actual = stdev_distinct("scatterplot");
         let expected = "STDEV(DISTINCT scatterplot)";
         test_expr(actual, expected);
+    }
+
+    #[test]
+    fn aggregate_plan_propagates_expr_error() {
+        let actual = sum(expr(")")).build_expr_plan();
+
+        assert!(matches!(actual, Err(Error::Parser(_))));
     }
 }

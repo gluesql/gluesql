@@ -97,7 +97,9 @@ mod tests {
     use {
         crate::{
             ast::SelectItem,
-            ast_builder::{AstBuilderError, SelectItemNode, col, primary_key, subquery, table},
+            ast_builder::{
+                AstBuilderError, SelectItemNode, col, expr, primary_key, subquery, table,
+            },
             parse_sql::parse_select_item,
             plan::SelectItemPlan,
             result::Error,
@@ -108,8 +110,13 @@ mod tests {
 
     fn test(actual: SelectItemNode, expected: &str) {
         let parsed = &parse_select_item(expected).expect(expected);
-        let expected = translate_select_item(parsed, NO_PARAMS).map(SelectItemPlan::from);
-        assert_eq!(actual.build_select_item_plan(), expected);
+        let expected = translate_select_item(parsed, NO_PARAMS);
+
+        assert_eq!(actual.clone().build_select_item(), expected);
+        assert_eq!(
+            actual.build_select_item_plan(),
+            expected.map(SelectItemPlan::from)
+        );
     }
 
     #[test]
@@ -128,6 +135,10 @@ mod tests {
 
         let actual = col("id").into();
         let expected = "id";
+        test(actual, expected);
+
+        let actual = col("id").alias_as("hello").into();
+        let expected = "id as hello";
         test(actual, expected);
     }
 
@@ -185,5 +196,9 @@ mod tests {
             actual.build_select_item_plan(),
             Ok(SelectItemPlan::Expr { label, .. }) if label == "indexed"
         ));
+
+        let actual: SelectItemNode = expr(")").into();
+        let actual = actual.build_select_item_plan().map(|_| ());
+        assert!(matches!(actual, Err(Error::Parser(_))));
     }
 }
