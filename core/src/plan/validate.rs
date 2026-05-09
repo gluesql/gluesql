@@ -21,29 +21,52 @@ pub fn validate(schema_map: &SchemaMap, statement: &Statement) -> Result<()> {
         _ => None,
     };
 
-    if let Some(query) = query
-        && let Query {
-            body: SetExpr::Select(select),
-            ..
-        } = query
-    {
-        let Projection::SelectItems(projection) = &select.projection else {
-            return Ok(());
-        };
-
-        for select_item in projection {
-            if let SelectItem::Expr {
-                expr: Expr::Identifier(ident),
-                ..
-            } = select_item
-                && let Some(context) = contextualize_query(schema_map, query)
-            {
-                context.validate_duplicated(ident)?;
-            }
-        }
+    if let Some(query) = query {
+        validate_query(schema_map, query)?;
     }
 
     Ok(())
+}
+
+fn validate_query(schema_map: &SchemaMap, query: &Query) -> Result<()> {
+    match &query.body {
+        SetExpr::Select(select) => {
+            let Projection::SelectItems(projection) = &select.projection else {
+                return Ok(());
+            };
+
+            for select_item in projection {
+                if let SelectItem::Expr {
+                    expr: Expr::Identifier(ident),
+                    ..
+                } = select_item
+                    && let Some(context) = contextualize_query(schema_map, query)
+                {
+                    context.validate_duplicated(ident)?;
+                }
+            }
+
+            Ok(())
+        }
+        SetExpr::Union { left, right, .. } => {
+            let left_query = Query {
+                body: *left.clone(),
+                order_by: vec![],
+                limit: None,
+                offset: None,
+            };
+            validate_query(schema_map, &left_query)?;
+
+            let right_query = Query {
+                body: *right.clone(),
+                order_by: vec![],
+                limit: None,
+                offset: None,
+            };
+            validate_query(schema_map, &right_query)
+        }
+        SetExpr::Values(_) => Ok(()),
+    }
 }
 
 enum Context<'a> {
@@ -181,6 +204,12 @@ mod tests {
                 "CREATE TABLE Ids AS SELECT id FROM Users A JOIN Users B on A.id = B.id",
                 false,
             ),
+            // UNION branches should also be validated recursively.
+            (
+                "SELECT id FROM Users A JOIN Users B ON A.id = B.id UNION SELECT id FROM Users",
+                false,
+            ),
+            ("SELECT id FROM Users UNION SELECT id FROM Users", true),
         ];
 
         for (sql, expected) in cases {

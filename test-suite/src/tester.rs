@@ -52,28 +52,33 @@ fn find_indexes(statement: &Statement) -> Vec<&IndexItem> {
         }
     }
 
-    fn find_query_indexes(query: &Query) -> Vec<&IndexItem> {
-        let select = match &query.body {
-            SetExpr::Select(select) => select,
-            SetExpr::Values(_) | SetExpr::Union { .. } => {
-                return vec![];
+    fn find_set_expr_indexes(set_expr: &SetExpr) -> Vec<&IndexItem> {
+        match set_expr {
+            SetExpr::Select(select) => {
+                let selection_indexes = select
+                    .selection
+                    .as_ref()
+                    .map(find_expr_indexes)
+                    .unwrap_or_default();
+
+                let table_indexes = match &select.from.relation {
+                    TableFactor::Table {
+                        index: Some(index), ..
+                    } => vec![index],
+                    _ => vec![],
+                };
+
+                [selection_indexes, table_indexes].concat()
             }
-        };
+            SetExpr::Union { left, right, .. } => {
+                [find_set_expr_indexes(left), find_set_expr_indexes(right)].concat()
+            }
+            SetExpr::Values(_) => vec![],
+        }
+    }
 
-        let selection_indexes = select
-            .selection
-            .as_ref()
-            .map(find_expr_indexes)
-            .unwrap_or_default();
-
-        let table_indexes = match &select.from.relation {
-            TableFactor::Table {
-                index: Some(index), ..
-            } => vec![index],
-            _ => vec![],
-        };
-
-        [selection_indexes, table_indexes].concat()
+    fn find_query_indexes(query: &Query) -> Vec<&IndexItem> {
+        find_set_expr_indexes(&query.body)
     }
 
     match statement {
