@@ -111,7 +111,6 @@ impl<'a> JoinNode<'a> {
                 name: name.clone(),
                 columns: vec![],
             }),
-            index: None,
         }
     }
 

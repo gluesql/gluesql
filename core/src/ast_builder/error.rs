@@ -8,6 +8,9 @@ pub enum AstBuilderError {
     #[error("hash join executor can only be built as an execution plan")]
     HashJoinExecutorRequiresPlan,
 
+    #[error("index_by can only be built as an execution plan")]
+    IndexByRequiresPlan,
+
     #[error(
         "projection expression label cannot be derived from a plan-only expression; use an explicit alias"
     )]

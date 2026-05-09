@@ -91,30 +91,13 @@ impl From<ast::TableWithJoins> for TableWithJoinsPlan {
     }
 }
 
-impl From<ast::IndexItem> for IndexItemPlan {
-    fn from(index_item: ast::IndexItem) -> Self {
-        match index_item {
-            ast::IndexItem::PrimaryKey(expr) => Self::PrimaryKey(expr.into()),
-            ast::IndexItem::NonClustered {
-                name,
-                asc,
-                cmp_expr,
-            } => Self::NonClustered {
-                name,
-                asc,
-                cmp_expr: cmp_expr.map(|(op, expr)| (op, expr.into())),
-            },
-        }
-    }
-}
-
 impl From<ast::TableFactor> for TableFactorPlan {
     fn from(table_factor: ast::TableFactor) -> Self {
         match table_factor {
-            ast::TableFactor::Table { name, alias, index } => Self::Table {
+            ast::TableFactor::Table { name, alias } => Self::Table {
                 name,
                 alias: alias.map(Into::into),
-                index: index.map(Into::into),
+                index: None,
             },
             ast::TableFactor::Derived { subquery, alias } => Self::Derived {
                 subquery: subquery.into(),

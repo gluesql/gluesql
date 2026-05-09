@@ -5,9 +5,9 @@ use {
             Expr, Literal, Projection, Select, SelectItem, TableAlias, TableFactor, TableWithJoins,
         },
         ast_builder::{
-            ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode, OffsetNode,
-            OrderByExprList, OrderByNode, ProjectNode, QueryNode, SelectItemList, TableFactorNode,
-            table_factor::TableType,
+            AstBuilderError, ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode,
+            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode, SelectItemList,
+            TableFactorNode, table_factor::TableType,
         },
         plan::{
             ProjectionPlan, SelectItemPlan, SelectPlan, TableAliasPlan, TableFactorPlan,
@@ -159,16 +159,14 @@ impl BuildSelect for SelectNode<'_> {
             columns: Vec::new(),
         });
 
-        let index = match self.table_node.index {
-            Some(index) => Some(index.build_index_item()?),
-            None => None,
-        };
+        if self.table_node.index.is_some() {
+            return Err(AstBuilderError::IndexByRequiresPlan.into());
+        }
 
         let relation = match self.table_node.table_type {
             TableType::Table => TableFactor::Table {
                 name: self.table_node.table_name,
                 alias,
-                index,
             },
             TableType::Dictionary(dict) => TableFactor::Dictionary {
                 dict,
@@ -217,7 +215,15 @@ pub fn select<'a>() -> SelectNode<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{Build, select, table, test};
+    use {
+        crate::{
+            ast_builder::{
+                AstBuilderError, Build, primary_key, select, select::BuildSelect, table, test,
+            },
+            result::Error,
+        },
+        pretty_assertions::assert_eq,
+    };
 
     #[test]
     fn select_root() {
@@ -249,5 +255,18 @@ mod tests {
         let actual = table("Item").select().distinct().project("name").build();
         let expected = "SELECT DISTINCT name FROM Item";
         test(&actual, expected);
+    }
+
+    #[test]
+    fn index_by_ast_build_requires_plan() {
+        let actual = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .build_select();
+
+        assert_eq!(
+            actual,
+            Err(Error::AstBuilder(AstBuilderError::IndexByRequiresPlan))
+        );
     }
 }

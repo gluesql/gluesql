@@ -457,7 +457,6 @@ mod tests {
                             relation: TableFactor::Table {
                                 name: "FOO".to_owned(),
                                 alias: None,
-                                index: None,
                             },
                             joins: Vec::new(),
                         },
@@ -486,7 +485,6 @@ mod tests {
                             relation: TableFactor::Table {
                                 name: "FOO".to_owned(),
                                 alias: None,
-                                index: None,
                             },
                             joins: Vec::new(),
                         },
@@ -514,7 +512,6 @@ mod tests {
                             relation: TableFactor::Table {
                                 name: "FOO".to_owned(),
                                 alias: None,
-                                index: None,
                             },
                             joins: Vec::new(),
                         },
@@ -542,7 +539,6 @@ mod tests {
                             relation: TableFactor::Table {
                                 name: "FOO".to_owned(),
                                 alias: None,
-                                index: None,
                             },
                             joins: Vec::new(),
                         },
@@ -569,7 +565,6 @@ mod tests {
                         relation: TableFactor::Table {
                             name: "FOO".to_owned(),
                             alias: None,
-                            index: None,
                         },
                         joins: Vec::new(),
                     },

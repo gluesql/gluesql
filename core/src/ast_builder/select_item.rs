@@ -53,9 +53,10 @@ impl SelectItemNode<'_> {
                     .clone()
                     .build_expr()
                     .map_err(|error| match error {
-                        Error::AstBuilder(AstBuilderError::HashJoinExecutorRequiresPlan) => {
-                            AstBuilderError::ProjectionLabelRequiresAlias.into()
-                        }
+                        Error::AstBuilder(
+                            AstBuilderError::HashJoinExecutorRequiresPlan
+                            | AstBuilderError::IndexByRequiresPlan,
+                        ) => AstBuilderError::ProjectionLabelRequiresAlias.into(),
                         error => error,
                     })?;
                 let label = expr.to_sql_unquoted();
@@ -96,7 +97,7 @@ mod tests {
     use {
         crate::{
             ast::SelectItem,
-            ast_builder::{AstBuilderError, SelectItemNode, col, subquery, table},
+            ast_builder::{AstBuilderError, SelectItemNode, col, primary_key, subquery, table},
             parse_sql::parse_select_item,
             plan::SelectItemPlan,
             result::Error,
@@ -159,6 +160,30 @@ mod tests {
         assert!(matches!(
             actual.build_select_item_plan(),
             Ok(SelectItemPlan::Expr { label, .. }) if label == "matched"
+        ));
+
+        let actual: SelectItemNode =
+            subquery(table("Player").index_by(primary_key().eq("1")).select()).into();
+
+        assert_eq!(
+            actual.build_select_item_plan(),
+            Err(Error::AstBuilder(
+                AstBuilderError::ProjectionLabelRequiresAlias
+            ))
+        );
+
+        let actual: SelectItemNode = subquery(
+            table("Player")
+                .index_by(primary_key().eq("1"))
+                .select()
+                .project("id"),
+        )
+        .alias_as("indexed")
+        .into();
+
+        assert!(matches!(
+            actual.build_select_item_plan(),
+            Ok(SelectItemPlan::Expr { label, .. }) if label == "indexed"
         ));
     }
 }

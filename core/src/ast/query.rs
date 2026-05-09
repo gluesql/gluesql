@@ -1,5 +1,5 @@
 use {
-    super::{Expr, IndexOperator, ToSqlUnquoted},
+    super::{Expr, ToSqlUnquoted},
     crate::ast::ToSql,
     itertools::Itertools,
     serde::{Deserialize, Serialize},
@@ -53,22 +53,10 @@ pub struct TableWithJoins {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum IndexItem {
-    PrimaryKey(Expr),
-    NonClustered {
-        name: String,
-        asc: Option<bool>,
-        cmp_expr: Option<(IndexOperator, Expr)>,
-    },
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TableFactor {
     Table {
         name: String,
         alias: Option<TableAlias>,
-        /// Query planner result
-        index: Option<IndexItem>,
     },
     Derived {
         subquery: Query,
@@ -382,11 +370,11 @@ impl TableFactor {
         };
 
         match (self, quoted) {
-            (TableFactor::Table { name, alias, .. }, true) => match alias {
+            (TableFactor::Table { name, alias }, true) => match alias {
                 Some(alias) => format!(r#""{}" {}"#, name, alias.to_sql_with(quoted)),
                 None => format!(r#""{name}""#),
             },
-            (TableFactor::Table { name, alias, .. }, false) => match alias {
+            (TableFactor::Table { name, alias }, false) => match alias {
                 Some(alias) => format!("{} {}", name, alias.to_sql_with(quoted)),
                 None => name.to_owned(),
             },
@@ -601,7 +589,6 @@ mod tests {
                             name: "F".to_owned(),
                             columns: Vec::new(),
                         }),
-                        index: None,
                     },
                     joins: Vec::new(),
                 },
@@ -639,7 +626,6 @@ mod tests {
                             name: "F".to_owned(),
                             columns: Vec::new(),
                         }),
-                        index: None,
                     },
                     joins: Vec::new(),
                 },
@@ -672,13 +658,11 @@ mod tests {
                         name: "F".to_owned(),
                         columns: Vec::new(),
                     }),
-                    index: None,
                 },
                 joins: vec![Join {
                     relation: TableFactor::Table {
                         name: "PlayerItem".to_owned(),
                         alias: None,
-                        index: None,
                     },
                     join_operator: JoinOperator::Inner(JoinConstraint::None),
                 }],
@@ -720,13 +704,11 @@ mod tests {
                         name: "F".to_owned(),
                         columns: Vec::new(),
                     }),
-                    index: None,
                 },
                 joins: vec![Join {
                     relation: TableFactor::Table {
                         name: "PlayerItem".to_owned(),
                         alias: None,
-                        index: None,
                     },
                     join_operator: JoinOperator::Inner(JoinConstraint::None),
                 }],
@@ -783,7 +765,6 @@ mod tests {
                         name: "F".to_owned(),
                         columns: Vec::new(),
                     }),
-                    index: None,
                 },
                 joins: Vec::new(),
             },
@@ -806,7 +787,6 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "FOO".to_owned(),
                     alias: None,
-                    index: None,
                 },
                 joins: Vec::new(),
             },
@@ -835,7 +815,6 @@ mod tests {
                         name: "F".to_owned(),
                         columns: Vec::new(),
                     }),
-                    index: None,
                 },
                 joins: Vec::new(),
             },
@@ -858,7 +837,6 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "FOO".to_owned(),
                     alias: None,
-                    index: None,
                 },
                 joins: Vec::new(),
             },
@@ -918,7 +896,6 @@ mod tests {
                     name: "F".to_owned(),
                     columns: Vec::new(),
                 }),
-                index: None,
             },
             joins: Vec::new(),
         }
@@ -936,7 +913,6 @@ mod tests {
                     name: "F".to_owned(),
                     columns: Vec::new(),
                 }),
-                index: None,
             },
             joins: Vec::new(),
         }
@@ -953,7 +929,6 @@ mod tests {
                 name: "F".to_owned(),
                 columns: Vec::new(),
             }),
-            index: None,
         }
         .to_sql();
         assert_eq!(actual, expected);
@@ -968,7 +943,6 @@ mod tests {
                         relation: TableFactor::Table {
                             name: "FOO".to_owned(),
                             alias: None,
-                            index: None,
                         },
                         joins: Vec::new(),
                     },
@@ -1020,7 +994,6 @@ mod tests {
                 name: "F".to_owned(),
                 columns: Vec::new(),
             }),
-            index: None,
         }
         .to_sql_unquoted();
         assert_eq!(actual, expected);
@@ -1035,7 +1008,6 @@ mod tests {
                         relation: TableFactor::Table {
                             name: "FOO".to_owned(),
                             alias: None,
-                            index: None,
                         },
                         joins: Vec::new(),
                     },
@@ -1107,7 +1079,6 @@ mod tests {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_owned(),
                 alias: None,
-                index: None,
             },
             join_operator: JoinOperator::Inner(JoinConstraint::None),
         }
@@ -1119,7 +1090,6 @@ mod tests {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_owned(),
                 alias: None,
-                index: None,
             },
             join_operator: JoinOperator::Inner(JoinConstraint::On(expr(
                 r#""PlayerItem"."user_id" = "Player"."id""#,
@@ -1133,7 +1103,6 @@ mod tests {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_owned(),
                 alias: None,
-                index: None,
             },
             join_operator: JoinOperator::LeftOuter(JoinConstraint::None),
         }
@@ -1145,7 +1114,6 @@ mod tests {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_owned(),
                 alias: None,
-                index: None,
             },
             join_operator: JoinOperator::LeftOuter(JoinConstraint::On(expr(
                 r#""PlayerItem"."user_id" = "Player"."id""#,
@@ -1159,7 +1127,6 @@ mod tests {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_owned(),
                 alias: None,
-                index: None,
             },
             join_operator: JoinOperator::LeftOuter(JoinConstraint::On(expr(
                 r#""PlayerItem"."age" > "Player"."age" AND "PlayerItem"."user_id" = "Player"."id" AND "PlayerItem"."amount" > 10 AND "PlayerItem"."amount" * 3 <= 2"#,
@@ -1176,7 +1143,6 @@ mod tests {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_owned(),
                 alias: None,
-                index: None,
             },
             join_operator: JoinOperator::Inner(JoinConstraint::None),
         }
@@ -1188,7 +1154,6 @@ mod tests {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_owned(),
                 alias: None,
-                index: None,
             },
             join_operator: JoinOperator::Inner(JoinConstraint::On(expr(
                 "PlayerItem.user_id = Player.id AND PlayerItem.group_id = Player.group_id",
@@ -1202,7 +1167,6 @@ mod tests {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_owned(),
                 alias: None,
-                index: None,
             },
             join_operator: JoinOperator::LeftOuter(JoinConstraint::None),
         }
@@ -1214,7 +1178,6 @@ mod tests {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_owned(),
                 alias: None,
-                index: None,
             },
             join_operator: JoinOperator::LeftOuter(JoinConstraint::On(expr(
                 "PlayerItem.user_id = Player.id",
@@ -1228,7 +1191,6 @@ mod tests {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_owned(),
                 alias: None,
-                index: None,
             },
             join_operator: JoinOperator::LeftOuter(JoinConstraint::On(expr(
                 "PlayerItem.age > Player.age AND PlayerItem.user_id = Player.id AND PlayerItem.amount > 10 AND PlayerItem.amount * 3 <= 2",

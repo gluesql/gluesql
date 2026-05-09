@@ -222,10 +222,10 @@ mod tests {
         super::plan as plan_primary_key,
         crate::{
             ast::{
-                BinaryOperator, Expr, IndexItem, Join, JoinConstraint, JoinOperator, Literal,
-                Projection, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
-                TableWithJoins, Values,
+                BinaryOperator, Expr, Join, JoinConstraint, JoinOperator, Literal, Projection,
+                Query, Select, SelectItem, SetExpr, Statement, TableFactor, TableWithJoins, Values,
             },
+            ast_builder::{Build, col, primary_key, table},
             mock::{MockStorage, run},
             parse_sql::{parse, parse_expr},
             plan::{StatementPlan, fetch_schema_map},
@@ -268,59 +268,30 @@ mod tests {
 
         let sql = "SELECT * FROM Player WHERE id = 1;";
         let actual = plan(&storage, sql);
-        let expected = select(Select {
-            distinct: false,
-            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
-            from: TableWithJoins {
-                relation: TableFactor::Table {
-                    name: "Player".to_owned(),
-                    alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
-                },
-                joins: Vec::new(),
-            },
-            selection: None,
-            group_by: Vec::new(),
-            having: None,
-        });
+        let expected = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .build()
+            .unwrap();
         assert_eq!(actual, expected, "primary key in lhs:\n{sql}");
 
         let sql = "SELECT * FROM Player WHERE 1 = id;";
         let actual = plan(&storage, sql);
-        let expected = select(Select {
-            distinct: false,
-            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
-            from: TableWithJoins {
-                relation: TableFactor::Table {
-                    name: "Player".to_owned(),
-                    alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
-                },
-                joins: Vec::new(),
-            },
-            selection: None,
-            group_by: Vec::new(),
-            having: None,
-        });
+        let expected = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .build()
+            .unwrap();
         assert_eq!(actual, expected, "primary key in rhs:\n{sql}");
 
         let sql = "SELECT * FROM Player WHERE id = 1 AND True;";
         let actual = plan(&storage, sql);
-        let expected = select(Select {
-            distinct: false,
-            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
-            from: TableWithJoins {
-                relation: TableFactor::Table {
-                    name: "Player".to_owned(),
-                    alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
-                },
-                joins: Vec::new(),
-            },
-            selection: Some(expr("True")),
-            group_by: Vec::new(),
-            having: None,
-        });
+        let expected = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .filter("True")
+            .build()
+            .unwrap();
         assert_eq!(actual, expected, "AND binary op:\n{sql}");
 
         let sql = "
@@ -331,21 +302,12 @@ mod tests {
                 AND True;
         ";
         let actual = plan(&storage, sql);
-        let expected = select(Select {
-            distinct: false,
-            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
-            from: TableWithJoins {
-                relation: TableFactor::Table {
-                    name: "Player".to_owned(),
-                    alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
-                },
-                joins: Vec::new(),
-            },
-            selection: Some(expr("name IS NOT NULL AND True")),
-            group_by: Vec::new(),
-            having: None,
-        });
+        let expected = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .filter("name IS NOT NULL AND True")
+            .build()
+            .unwrap();
         assert_eq!(actual, expected, "AND binary op 2:\n{sql}");
 
         let sql = "
@@ -365,21 +327,12 @@ mod tests {
                 AND (True AND id = 1);
         ";
         let actual = plan(&storage, sql);
-        let expected = select(Select {
-            distinct: false,
-            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
-            from: TableWithJoins {
-                relation: TableFactor::Table {
-                    name: "Player".to_owned(),
-                    alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
-                },
-                joins: Vec::new(),
-            },
-            selection: Some(expr("name IS NOT NULL AND (True)")),
-            group_by: Vec::new(),
-            having: None,
-        });
+        let expected = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .filter("name IS NOT NULL AND (True)")
+            .build()
+            .unwrap();
         assert_eq!(actual, expected, "AND binary op 3:\n{sql}");
     }
 
@@ -398,28 +351,12 @@ mod tests {
 
         let sql = "SELECT * FROM Player JOIN Badge WHERE Player.id = 1";
         let actual = plan(&storage, sql);
-        let expected = select(Select {
-            distinct: false,
-            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
-            from: TableWithJoins {
-                relation: TableFactor::Table {
-                    name: "Player".to_owned(),
-                    alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
-                },
-                joins: vec![Join {
-                    relation: TableFactor::Table {
-                        name: "Badge".to_owned(),
-                        alias: None,
-                        index: None,
-                    },
-                    join_operator: JoinOperator::Inner(JoinConstraint::None),
-                }],
-            },
-            selection: None,
-            group_by: Vec::new(),
-            having: None,
-        });
+        let expected = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .join("Badge")
+            .build()
+            .unwrap();
         assert_eq!(actual, expected, "basic inner join:\n{sql}");
 
         let sql = "SELECT * FROM Player JOIN Badge WHERE Player.id = Badge.user_id";
@@ -431,13 +368,11 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: None,
                 },
                 joins: vec![Join {
                     relation: TableFactor::Table {
                         name: "Badge".to_owned(),
                         alias: None,
-                        index: None,
                     },
                     join_operator: JoinOperator::Inner(JoinConstraint::None),
                 }],
@@ -454,48 +389,11 @@ mod tests {
                 SELECT * FROM Player WHERE id = 1
             )";
         let actual = plan(&storage, sql);
-        let expected = {
-            let subquery = Query {
-                body: SetExpr::Select(Box::new(Select {
-                    distinct: false,
-                    projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
-                    from: TableWithJoins {
-                        relation: TableFactor::Table {
-                            name: "Player".to_owned(),
-                            alias: None,
-                            index: Some(IndexItem::PrimaryKey(expr("1"))),
-                        },
-                        joins: Vec::new(),
-                    },
-                    selection: None,
-                    group_by: Vec::new(),
-                    having: None,
-                })),
-                limit: None,
-                offset: None,
-                order_by: Vec::new(),
-            };
-
-            select(Select {
-                distinct: false,
-                projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
-                from: TableWithJoins {
-                    relation: TableFactor::Table {
-                        name: "Player".to_owned(),
-                        alias: None,
-                        index: None,
-                    },
-                    joins: Vec::new(),
-                },
-                selection: Some(Expr::InSubquery {
-                    expr: Box::new(expr("name")),
-                    subquery: Box::new(subquery),
-                    negated: false,
-                }),
-                group_by: Vec::new(),
-                having: None,
-            })
-        };
+        let expected = table("Player")
+            .select()
+            .filter(col("name").in_list(table("Player").index_by(primary_key().eq("1")).select()))
+            .build()
+            .unwrap();
         assert_eq!(actual, expected, "nested select:\n{sql}");
     }
 
@@ -522,7 +420,6 @@ mod tests {
                         relation: TableFactor::Table {
                             name: "Player".to_owned(),
                             alias: None,
-                            index: None,
                         },
                         joins: Vec::new(),
                     },
@@ -542,7 +439,6 @@ mod tests {
                     relation: TableFactor::Table {
                         name: "Player".to_owned(),
                         alias: None,
-                        index: None,
                     },
                     joins: Vec::new(),
                 },
@@ -575,7 +471,6 @@ mod tests {
                         relation: TableFactor::Table {
                             name: "Player".to_owned(),
                             alias: None,
-                            index: None,
                         },
                         joins: Vec::new(),
                     },
@@ -595,7 +490,6 @@ mod tests {
                     relation: TableFactor::Table {
                         name: "Player".to_owned(),
                         alias: None,
-                        index: None,
                     },
                     joins: Vec::new(),
                 },
@@ -644,7 +538,6 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: None,
                 },
                 joins: Vec::new(),
             },

@@ -280,13 +280,10 @@ fn translate_table_factor(
                     dict: Dictionary::GlueTableColumns,
                     alias: alias_or_name(alias, object_name),
                 }),
-                _ => {
-                    Ok(TableFactor::Table {
-                        name: translate_object_name(name)?,
-                        alias,
-                        index: None, // query execution plan
-                    })
-                }
+                _ => Ok(TableFactor::Table {
+                    name: translate_object_name(name)?,
+                    alias,
+                }),
             }
         }
         SqlTableFactor::Derived {

@@ -5,7 +5,7 @@ mod primary_key;
 use {
     super::ExprNode,
     crate::{
-        ast::{IndexItem, IndexOperator},
+        ast::IndexOperator,
         plan::{ExprPlan, IndexItemPlan},
     },
 };
@@ -69,27 +69,6 @@ impl IndexItemNode<'_> {
             IndexItemNode::PrimaryKey(expr) => {
                 Ok(IndexItemPlan::PrimaryKey(expr.build_expr_plan()?))
             }
-        }
-    }
-
-    pub(super) fn build_index_item(self) -> Result<IndexItem> {
-        match self {
-            IndexItemNode::NonClustered {
-                name,
-                asc,
-                cmp_expr,
-            } => {
-                let (index_operator, expr) = cmp_expr.unzip();
-                let expr_result = expr.map(ExprNode::build_expr).transpose()?;
-                let cmp_expr_result = index_operator.zip(expr_result);
-
-                Ok(IndexItem::NonClustered {
-                    name,
-                    asc,
-                    cmp_expr: cmp_expr_result,
-                })
-            }
-            IndexItemNode::PrimaryKey(expr) => Ok(IndexItem::PrimaryKey(expr.build_expr()?)),
         }
     }
 }
