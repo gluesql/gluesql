@@ -254,4 +254,51 @@ test_case!(union, {
         Err(gluesql_core::executor::SortError::ColumnIndexOutOfRange(0).into()),
     )
     .await;
+
+    // UNION ALL + ORDER BY: the materialization path must sort before returning.
+    g.named_test(
+        "UNION ALL ORDER BY 1 ASC sorts correctly",
+        "SELECT 3 UNION ALL SELECT 3 UNION ALL SELECT 1 ORDER BY 1 ASC",
+        Ok(select!("3"; I64; 1; 3; 3)),
+    )
+    .await;
+
+    g.named_test(
+        "UNION ALL ORDER BY 1 DESC with LIMIT",
+        "SELECT 1 UNION ALL SELECT 3 UNION ALL SELECT 2 ORDER BY 1 DESC LIMIT 2",
+        Ok(select!("1"; I64; 3; 2)),
+    )
+    .await;
+
+    // UNION DISTINCT without ORDER BY: lazy try_filter path.
+    // With LIMIT the stream must stop as soon as enough unique rows are found
+    // without materialising everything.
+    g.named_test(
+        "UNION DISTINCT without ORDER BY deduplicates lazily",
+        "SELECT id FROM A UNION SELECT id FROM A ORDER BY id",
+        Ok(select!(id; I64; 1; 2; 3)),
+    )
+    .await;
+
+    g.named_test(
+        "UNION DISTINCT without ORDER BY respects LIMIT lazily",
+        "SELECT id FROM A UNION SELECT id FROM B LIMIT 2",
+        Ok(select!(id; I64; 1; 2)),
+    )
+    .await;
+
+    // UNION DISTINCT + ORDER BY: must materialise, deduplicate, then sort.
+    g.named_test(
+        "UNION DISTINCT with ORDER BY deduplicates before sorting",
+        "SELECT 3 UNION SELECT 1 UNION SELECT 3 ORDER BY 1 ASC",
+        Ok(select!("3"; I64; 1; 3)),
+    )
+    .await;
+
+    g.named_test(
+        "UNION DISTINCT with ORDER BY and LIMIT",
+        "SELECT 3 UNION SELECT 1 UNION SELECT 2 ORDER BY 1 DESC LIMIT 2",
+        Ok(select!("3"; I64; 3; 2)),
+    )
+    .await;
 });

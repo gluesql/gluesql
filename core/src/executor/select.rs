@@ -219,54 +219,52 @@ where
 
     let labels_arc: Arc<[String]> = Arc::from(labels.as_slice());
 
-    // UNION ALL with (optional) ORDER BY / LIMIT / OFFSET: chain lazily.
-    if all && outer.order_by.is_empty() {
-        let left_relabeled = left_stream.map_ok({
-            let la = Arc::clone(&labels_arc);
-            move |row| Row {
-                columns: Arc::clone(&la),
-                values: row.values,
-            }
-        });
-        let right_relabeled = right_stream.map_ok(move |row| Row {
-            columns: Arc::clone(&labels_arc),
+    let left_relabeled = left_stream.map_ok({
+        let la = Arc::clone(&labels_arc);
+        move |row| Row {
+            columns: Arc::clone(&la),
             values: row.values,
-        });
-        let limit = Limit::new(outer.limit.as_ref(), outer.offset.as_ref()).await?;
-        let stream: Pin<Box<dyn futures::stream::Stream<Item = Result<Row>> + Send + 'a>> =
-            Box::pin(limit.apply(left_relabeled.chain(right_relabeled)));
+        }
+    });
+    let right_relabeled = right_stream.map_ok(move |row| Row {
+        columns: Arc::clone(&labels_arc),
+        values: row.values,
+    });
 
-        return Ok((labels, stream));
+    // Without ORDER BY, both UNION ALL and UNION DISTINCT can stream lazily:
+    // LIMIT/OFFSET terminate the chain before the full set is materialised.
+    if outer.order_by.is_empty() {
+        let combined = left_relabeled.chain(right_relabeled);
+
+        // UNION ALL  → stream as-is.
+        // UNION DISTINCT → filter duplicates on-the-fly via a HashSet so that
+        //   LIMIT can short-circuit without materialising the full result.
+        let stream: Pin<Box<dyn futures::stream::Stream<Item = Result<Row>> + Send + 'a>> = if all {
+            Box::pin(combined)
+        } else {
+            let mut seen = HashSet::new();
+            Box::pin(combined.try_filter(move |row| {
+                let is_new = seen.insert(row.values.clone());
+                std::future::ready(is_new)
+            }))
+        };
+
+        let limit = Limit::new(outer.limit.as_ref(), outer.offset.as_ref()).await?;
+        return Ok((labels, Box::pin(limit.apply(stream))));
     }
 
-    // Materialise for UNION DISTINCT or when ORDER BY / LIMIT is present.
-    let mut rows: Vec<Row> = left_stream
-        .map_ok(|row| Row {
-            columns: Arc::clone(&labels_arc),
-            values: row.values,
-        })
-        .try_collect()
-        .await?;
-    rows.extend(
-        right_stream
-            .map_ok(|row| Row {
-                columns: Arc::clone(&labels_arc),
-                values: row.values,
-            })
-            .try_collect::<Vec<_>>()
-            .await?,
-    );
+    // ORDER BY is present: the full result set must be materialised before the
+    // sort order can be determined.  Deduplication (UNION DISTINCT) happens
+    // before sorting so that the sort operates on the final row count.
+    let mut rows: Vec<Row> = left_relabeled.try_collect().await?;
+    rows.extend(right_relabeled.try_collect::<Vec<_>>().await?);
 
     if !all {
         rows = apply_distinct(rows);
     }
 
+    let rows = sort_stateless(rows, &outer.order_by).await?;
     let limit = Limit::new(outer.limit.as_ref(), outer.offset.as_ref()).await?;
-    let rows = if outer.order_by.is_empty() {
-        rows
-    } else {
-        sort_stateless(rows, &outer.order_by).await?
-    };
     let rows = stream::iter(rows.into_iter().map(Ok));
     Ok((labels, Box::pin(limit.apply(rows))))
 }
