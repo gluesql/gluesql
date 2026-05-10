@@ -1,5 +1,5 @@
 use {
-    crate::{expr as parse_expr, *},
+    crate::*,
     gluesql_core::{
         ast::IndexOperator::*,
         error::AlterError,
@@ -60,7 +60,7 @@ test_case!(expr, {
 
     g.test(
         "CREATE INDEX idx_literal ON Test (100)",
-        Err(AlterError::IdentifierNotFound(Box::new(parse_expr("100").into())).into()),
+        Err(AlterError::IndexExprRequiresColumnReference.into()),
     )
     .await;
 

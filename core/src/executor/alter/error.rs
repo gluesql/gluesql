@@ -37,8 +37,8 @@ pub enum AlterError {
     #[error("unsupported unnamed argument")]
     UnsupportedUnnamedArg,
 
-    #[error("identifier not found: {0:#?}")]
-    IdentifierNotFound(Box<ExprPlan>),
+    #[error("index expression must reference at least one column")]
+    IndexExprRequiresColumnReference,
 
     #[error("duplicate column name: {0}")]
     DuplicateColumnName(String),

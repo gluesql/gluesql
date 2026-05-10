@@ -30,7 +30,7 @@ pub async fn create_index<T: GStore + GStoreMut>(
     if !valid {
         return Err(AlterError::UnsupportedIndexExpr(Box::new(expr)).into());
     } else if !has_ident {
-        return Err(AlterError::IdentifierNotFound(Box::new(expr)).into());
+        return Err(AlterError::IndexExprRequiresColumnReference.into());
     }
 
     storage.create_index(table_name, index_name, column).await
