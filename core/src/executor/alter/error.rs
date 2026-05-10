@@ -1,8 +1,5 @@
 use {
-    super::table::Referencing,
-    crate::{plan::ExprPlan, prelude::DataType},
-    serde::Serialize,
-    std::fmt::Debug,
+    super::table::Referencing, crate::prelude::DataType, serde::Serialize, std::fmt::Debug,
     thiserror::Error,
 };
 
@@ -30,8 +27,8 @@ pub enum AlterError {
     UnsupportedDataTypeForUniqueColumn(String, DataType),
 
     // validate index expr
-    #[error("unsupported index expr: {0:#?}")]
-    UnsupportedIndexExpr(Box<ExprPlan>),
+    #[error("unsupported index expression")]
+    UnsupportedIndexExpr,
 
     // validate index expr
     #[error("unsupported unnamed argument")]

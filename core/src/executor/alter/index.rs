@@ -28,7 +28,7 @@ pub async fn create_index<T: GStore + GStoreMut>(
 
     let (valid, has_ident) = validate_index_expr(&columns, &expr);
     if !valid {
-        return Err(AlterError::UnsupportedIndexExpr(Box::new(expr)).into());
+        return Err(AlterError::UnsupportedIndexExpr.into());
     } else if !has_ident {
         return Err(AlterError::IndexExprRequiresColumnReference.into());
     }
