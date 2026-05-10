@@ -89,8 +89,14 @@ pub enum EvaluateError {
     #[error("text literal required for json map conversion: {0}")]
     TextLiteralRequired(String),
 
-    #[error("unsupported stateless expression: {0:?}")]
-    UnsupportedStatelessExpr(Box<ExprPlan>),
+    #[error("subquery is not allowed in stateless expression")]
+    SubqueryNotAllowedInStatelessExpr,
+
+    #[error("IN (subquery) is not allowed in stateless expression")]
+    InSubqueryNotAllowedInStatelessExpr,
+
+    #[error("EXISTS (subquery) is not allowed in stateless expression")]
+    ExistsSubqueryNotAllowedInStatelessExpr,
 
     #[error("context is required for identifier evaluation: {0:?}")]
     ContextRequiredForIdentEvaluation(Box<ExprPlan>),

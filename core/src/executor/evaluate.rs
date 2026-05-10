@@ -98,8 +98,7 @@ where
             }
         }
         ExprPlan::Subquery(query) => {
-            let storage = storage
-                .ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(Box::new(expr.clone())))?;
+            let storage = storage.ok_or(EvaluateError::SubqueryNotAllowedInStatelessExpr)?;
             if let SetExprPlan::Select(select) = &query.body
                 && matches!(select.projection, ProjectionPlan::SchemalessMap)
             {
@@ -184,8 +183,7 @@ where
             subquery,
             negated,
         } => {
-            let storage = storage
-                .ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(Box::new(expr.clone())))?;
+            let storage = storage.ok_or(EvaluateError::InSubqueryNotAllowedInStatelessExpr)?;
             if let SetExprPlan::Select(select) = &subquery.body
                 && matches!(select.projection, ProjectionPlan::SchemalessMap)
             {
@@ -256,8 +254,7 @@ where
             })
         }
         ExprPlan::Exists { subquery, negated } => {
-            let storage = storage
-                .ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(Box::new(expr.clone())))?;
+            let storage = storage.ok_or(EvaluateError::ExistsSubqueryNotAllowedInStatelessExpr)?;
 
             select(storage, subquery, context)
                 .await?
