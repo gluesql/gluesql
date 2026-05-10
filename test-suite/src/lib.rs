@@ -82,6 +82,31 @@ macro_rules! generate_store_tests {
         glue!(aggregate_variance, aggregate::variance::variance);
         glue!(aggregate_error, aggregate::error::error);
         glue!(aggregate_expr, aggregate::expr::expr);
+        glue!(
+            aggregate_null_first_row_sum,
+            aggregate::null_handling::null_first_row_sum
+        );
+        glue!(
+            aggregate_null_first_row_min,
+            aggregate::null_handling::null_first_row_min
+        );
+        glue!(
+            aggregate_null_first_row_max,
+            aggregate::null_handling::null_first_row_max
+        );
+        glue!(
+            aggregate_null_first_row_avg,
+            aggregate::null_handling::null_first_row_avg
+        );
+        glue!(
+            aggregate_null_first_row_variance,
+            aggregate::null_handling::null_first_row_variance
+        );
+        glue!(
+            aggregate_null_first_row_stdev,
+            aggregate::null_handling::null_first_row_stdev
+        );
+        glue!(aggregate_all_null, aggregate::null_handling::all_null_aggregates);
         glue!(project, project::project);
 
         // expression tests

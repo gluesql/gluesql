@@ -29,7 +29,7 @@ test_case!(stdev, {
     let test_cases = [
         (
             "SELECT STDEV(age) FROM Item",
-            select_with_null!("STDEV(age)"; Null),
+            select!("STDEV(age)"; F64; 39.262648351270904),
         ),
         (
             "SELECT STDEV(total) FROM Item",
@@ -45,7 +45,7 @@ test_case!(stdev, {
         ),
         (
             "SELECT STDEV(DISTINCT age) FROM Item",
-            select_with_null!("STDEV(DISTINCT age)"; Null),
+            select!("STDEV(DISTINCT age)"; F64; 39.262648351270904),
         ),
     ];
 

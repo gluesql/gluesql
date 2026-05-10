@@ -5,6 +5,7 @@ pub mod expr;
 pub mod group_by;
 pub mod max;
 pub mod min;
+pub mod null_handling;
 pub mod stdev;
 pub mod sum;
 pub mod variance;
