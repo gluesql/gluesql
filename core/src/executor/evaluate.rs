@@ -73,9 +73,8 @@ where
         ExprPlan::Value(value) => Ok(Evaluated::Value(Cow::Borrowed(value))),
         ExprPlan::TypedString { data_type, value } => expr::typed_string(data_type, value),
         ExprPlan::Identifier(ident) => {
-            let context = context.ok_or_else(|| {
-                EvaluateError::ContextRequiredForIdentEvaluation(Box::new(expr.clone()))
-            })?;
+            let context = context
+                .ok_or_else(|| EvaluateError::IdentifierRequiresRowContext(ident.to_owned()))?;
 
             match context.get_value(ident) {
                 Some(value) => Ok(Evaluated::Value(Cow::Owned(value.clone()))),
@@ -84,9 +83,11 @@ where
         }
         ExprPlan::Nested(expr) => eval(expr).await,
         ExprPlan::CompoundIdentifier { alias, ident } => {
-            let context = context.ok_or_else(|| {
-                EvaluateError::ContextRequiredForIdentEvaluation(Box::new(expr.clone()))
-            })?;
+            let context =
+                context.ok_or_else(|| EvaluateError::CompoundIdentifierRequiresRowContext {
+                    alias: alias.to_owned(),
+                    ident: ident.to_owned(),
+                })?;
 
             match context.get_alias_value(alias, ident) {
                 Some(value) => Ok(Evaluated::Value(Cow::Owned(value.clone()))),

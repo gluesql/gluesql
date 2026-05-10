@@ -1,7 +1,7 @@
 use {
     crate::{
         ast::{BinaryOperator, DataType, ToSql},
-        plan::{AggregatePlan, ExprPlan},
+        plan::AggregatePlan,
     },
     serde::{Serialize, Serializer},
     std::fmt::Debug,
@@ -98,8 +98,11 @@ pub enum EvaluateError {
     #[error("EXISTS (subquery) is not allowed in stateless expression")]
     ExistsSubqueryNotAllowedInStatelessExpr,
 
-    #[error("context is required for identifier evaluation: {0:?}")]
-    ContextRequiredForIdentEvaluation(Box<ExprPlan>),
+    #[error("row context is required for identifier evaluation: {0}")]
+    IdentifierRequiresRowContext(String),
+
+    #[error("row context is required for compound identifier evaluation: {alias}.{ident}")]
+    CompoundIdentifierRequiresRowContext { alias: String, ident: String },
 
     #[error("aggregate slot value missing: {0:?}")]
     AggregateSlotValueMissing(Box<AggregatePlan>),

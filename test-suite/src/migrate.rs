@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        ast::{DataType, Expr},
+        ast::DataType,
         error::{EvaluateError, FetchError, TranslateError},
         prelude::Value::*,
     },
@@ -41,21 +41,15 @@ test_case!(migrate, {
         ),
         (
             "INSERT INTO Test (id, num, name) VALUES (1, 1, a.b);",
-            EvaluateError::ContextRequiredForIdentEvaluation(Box::new(
-                Expr::CompoundIdentifier {
-                    alias: "a".to_owned(),
-                    ident: "b".to_owned(),
-                }
-                .into(),
-            ))
+            EvaluateError::CompoundIdentifierRequiresRowContext {
+                alias: "a".to_owned(),
+                ident: "b".to_owned(),
+            }
             .into(),
         ),
         (
             "INSERT INTO Test (id, num, name) VALUES (1, 1, name);",
-            EvaluateError::ContextRequiredForIdentEvaluation(Box::new(
-                Expr::Identifier("name".to_owned()).into(),
-            ))
-            .into(),
+            EvaluateError::IdentifierRequiresRowContext("name".to_owned()).into(),
         ),
         (
             "SELECT * FROM Test WHERE Here.User.id = 1",
