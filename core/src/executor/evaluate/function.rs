@@ -817,10 +817,7 @@ pub fn to_date<'a>(
             chrono::NaiveDate::parse_from_str(&expr, &format)
                 .map(Value::Date)
                 .map(|v| Evaluated::Value(Cow::Owned(v)))
-                .map_err(|err| {
-                    let err: EvaluateError = err.into();
-                    err.into()
-                })
+                .map_err(|err| EvaluateError::FormatParseError(err.to_string()).into())
         }
         _ => Err(EvaluateError::FunctionRequiresStringValue(name.to_owned()).into()),
     }
@@ -839,10 +836,7 @@ pub fn to_timestamp<'a>(
             chrono::NaiveDateTime::parse_from_str(&expr, &format)
                 .map(Value::Timestamp)
                 .map(|v| Evaluated::Value(Cow::Owned(v)))
-                .map_err(|err| {
-                    let err: EvaluateError = err.into();
-                    err.into()
-                })
+                .map_err(|err| EvaluateError::FormatParseError(err.to_string()).into())
         }
         _ => Err(EvaluateError::FunctionRequiresStringValue(name.to_owned()).into()),
     }
@@ -857,7 +851,7 @@ pub fn add_month<'a>(
     let size = eval_to_int(name, size)?;
     let expr = eval_to_str(name, expr)?;
     let expr = chrono::NaiveDate::parse_from_str(&expr, "%Y-%m-%d")
-        .map_err(EvaluateError::from)
+        .map_err(|err| EvaluateError::FormatParseError(err.to_string()))
         .map_err(Error::from)
         .into_control_flow()?;
     let date = {
@@ -890,10 +884,7 @@ pub fn to_time<'a>(
             chrono::NaiveTime::parse_from_str(&expr, &format)
                 .map(Value::Time)
                 .map(|v| Evaluated::Value(Cow::Owned(v)))
-                .map_err(|err| {
-                    let err: EvaluateError = err.into();
-                    err.into()
-                })
+                .map_err(|err| EvaluateError::FormatParseError(err.to_string()).into())
         }
         _ => Err(EvaluateError::FunctionRequiresStringValue(name.to_owned()).into()),
     }
