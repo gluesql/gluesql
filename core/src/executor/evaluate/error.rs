@@ -3,16 +3,15 @@ use {
         ast::{BinaryOperator, DataType, ToSql},
         plan::AggregatePlan,
     },
-    serde::{Serialize, Serializer},
+    serde::Serialize,
     std::fmt::Debug,
     thiserror::Error,
 };
 
 #[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum EvaluateError {
-    #[error(transparent)]
-    #[serde(serialize_with = "error_serialize")]
-    FormatParseError(#[from] chrono::format::ParseError),
+    #[error("{0}")]
+    FormatParseError(String),
 
     #[error("literal add on non-numeric")]
     LiteralAddOnNonNumeric,
@@ -236,13 +235,4 @@ pub enum EvaluateError {
         literal: String,
         data_type: DataType,
     },
-}
-
-#[allow(clippy::trivially_copy_pass_by_ref)]
-fn error_serialize<S>(error: &chrono::format::ParseError, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    let display = format!("{error}");
-    serializer.serialize_str(&display)
 }
