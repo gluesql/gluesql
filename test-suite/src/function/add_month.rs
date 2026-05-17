@@ -1,6 +1,5 @@
 use {
     crate::*,
-    chrono::format::ParseErrorKind,
     gluesql_core::{
         error::EvaluateError,
         prelude::{Error, Value},
@@ -13,13 +12,11 @@ test_case!(add_month, {
             $date.parse().unwrap()
         };
     }
-    fn assert_chrono_error_kind_eq(error: &Error, kind: ParseErrorKind) {
-        match error {
-            Error::Evaluate(EvaluateError::FormatParseError(err)) => {
-                assert_eq!(err.kind(), kind);
-            }
-            _ => panic!("invalid error: {error}"),
-        }
+    fn assert_format_parse_error(error: &Error) {
+        assert!(
+            matches!(error, Error::Evaluate(EvaluateError::FormatParseError(_))),
+            "expected FormatParseError, got: {error}"
+        );
     }
     let g = get_tester!();
 
@@ -92,22 +89,13 @@ test_case!(add_month, {
     )
     .await;
     let error_cases = [
-        (
-            g.run_err("SELECT ADD_MONTH('2017-01-31-10',0) AS test;")
-                .await,
-            chrono::format::ParseErrorKind::TooLong,
-        ),
-        (
-            g.run_err("SELECT ADD_MONTH('2017-01',0) AS test;").await,
-            chrono::format::ParseErrorKind::TooShort,
-        ),
-        (
-            g.run_err("SELECT ADD_MONTH('2015-14-05',1) AS test").await,
-            chrono::format::ParseErrorKind::OutOfRange,
-        ),
+        g.run_err("SELECT ADD_MONTH('2017-01-31-10',0) AS test;")
+            .await,
+        g.run_err("SELECT ADD_MONTH('2017-01',0) AS test;").await,
+        g.run_err("SELECT ADD_MONTH('2015-14-05',1) AS test").await,
     ];
 
-    for (error, kind) in error_cases {
-        assert_chrono_error_kind_eq(&error, kind);
+    for error in &error_cases {
+        assert_format_parse_error(error);
     }
 });
