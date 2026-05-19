@@ -106,7 +106,10 @@ macro_rules! generate_store_tests {
             aggregate_null_first_row_stdev,
             aggregate::null_handling::null_first_row_stdev
         );
-        glue!(aggregate_all_null, aggregate::null_handling::all_null_aggregates);
+        glue!(
+            aggregate_all_null,
+            aggregate::null_handling::all_null_aggregates
+        );
         glue!(project, project::project);
 
         // expression tests

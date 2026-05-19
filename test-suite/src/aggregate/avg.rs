@@ -29,7 +29,7 @@ test_case!(avg, {
     let test_cases = [
         (
             "SELECT AVG(age) FROM Item",
-            select!("AVG(age)"; F64; 34.666666666666664),
+            select!("AVG(age)"; F64; 34.666_666_666_666_664),
         ),
         (
             "SELECT AVG(id), AVG(quantity) FROM Item",
@@ -45,7 +45,7 @@ test_case!(avg, {
         ),
         (
             "SELECT AVG(DISTINCT age) FROM Item",
-            select!("AVG(DISTINCT age)"; F64; 34.666666666666664),
+            select!("AVG(DISTINCT age)"; F64; 34.666_666_666_666_664),
         ),
     ];
 

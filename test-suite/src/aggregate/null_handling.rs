@@ -7,11 +7,8 @@ test_case!(null_first_row_sum, {
     g.run("INSERT INTO T VALUES (NULL), (5), (3);").await;
 
     // SUM should ignore NULL values
-    g.test(
-        "SELECT SUM(val) FROM T",
-        Ok(select!("SUM(val)"; I64; 8)),
-    )
-    .await;
+    g.test("SELECT SUM(val) FROM T", Ok(select!("SUM(val)"; I64; 8)))
+        .await;
 });
 
 test_case!(null_first_row_min, {
@@ -21,11 +18,8 @@ test_case!(null_first_row_min, {
     g.run("INSERT INTO T VALUES (NULL), (5), (3);").await;
 
     // MIN should ignore NULL values, even when NULL is the first row
-    g.test(
-        "SELECT MIN(val) FROM T",
-        Ok(select!("MIN(val)"; I64; 3)),
-    )
-    .await;
+    g.test("SELECT MIN(val) FROM T", Ok(select!("MIN(val)"; I64; 3)))
+        .await;
 });
 
 test_case!(null_first_row_max, {
@@ -35,11 +29,8 @@ test_case!(null_first_row_max, {
     g.run("INSERT INTO T VALUES (NULL), (5), (3);").await;
 
     // MAX should ignore NULL values, even when NULL is the first row
-    g.test(
-        "SELECT MAX(val) FROM T",
-        Ok(select!("MAX(val)"; I64; 5)),
-    )
-    .await;
+    g.test("SELECT MAX(val) FROM T", Ok(select!("MAX(val)"; I64; 5)))
+        .await;
 });
 
 test_case!(null_first_row_avg, {
@@ -49,11 +40,8 @@ test_case!(null_first_row_avg, {
     g.run("INSERT INTO T VALUES (NULL), (5), (3);").await;
 
     // AVG should ignore NULL values in both sum and count
-    g.test(
-        "SELECT AVG(val) FROM T",
-        Ok(select!("AVG(val)"; F64; 4.0)),
-    )
-    .await;
+    g.test("SELECT AVG(val) FROM T", Ok(select!("AVG(val)"; F64; 4.0)))
+        .await;
 });
 
 test_case!(null_first_row_variance, {
@@ -92,12 +80,30 @@ test_case!(all_null_aggregates, {
 
     // All-NULL column should return NULL for non-COUNT aggregates
     let test_cases = [
-        ("SELECT SUM(val) FROM T", select_with_null!("SUM(val)"; Null)),
-        ("SELECT MIN(val) FROM T", select_with_null!("MIN(val)"; Null)),
-        ("SELECT MAX(val) FROM T", select_with_null!("MAX(val)"; Null)),
-        ("SELECT AVG(val) FROM T", select_with_null!("AVG(val)"; Null)),
-        ("SELECT VARIANCE(val) FROM T", select_with_null!("VARIANCE(val)"; Null)),
-        ("SELECT STDEV(val) FROM T", select_with_null!("STDEV(val)"; Null)),
+        (
+            "SELECT SUM(val) FROM T",
+            select_with_null!("SUM(val)"; Null),
+        ),
+        (
+            "SELECT MIN(val) FROM T",
+            select_with_null!("MIN(val)"; Null),
+        ),
+        (
+            "SELECT MAX(val) FROM T",
+            select_with_null!("MAX(val)"; Null),
+        ),
+        (
+            "SELECT AVG(val) FROM T",
+            select_with_null!("AVG(val)"; Null),
+        ),
+        (
+            "SELECT VARIANCE(val) FROM T",
+            select_with_null!("VARIANCE(val)"; Null),
+        ),
+        (
+            "SELECT STDEV(val) FROM T",
+            select_with_null!("STDEV(val)"; Null),
+        ),
         ("SELECT COUNT(val) FROM T", select!("COUNT(val)"; I64; 0)),
     ];
 

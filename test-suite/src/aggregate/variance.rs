@@ -47,7 +47,7 @@ test_case!(variance, {
         ),
         (
             "SELECT VARIANCE(DISTINCT age) FROM Item",
-            select!("VARIANCE(DISTINCT age)"; F64; 1541.5555555555557),
+            select!("VARIANCE(DISTINCT age)"; F64; 1_541.555_555_555_555_7),
         ),
         (
             "SELECT VARIANCE(quantity), VARIANCE(DISTINCT quantity) FROM Item",

@@ -438,18 +438,15 @@ impl<'a, T: GStore> State<'a, T> {
             .groups
             .get_mut(group_index)
             .expect("group index must exist");
-        match group.values[slot].as_mut() {
-            Some(aggr_value) => {
-                aggr_value.accumulate(&value)?;
+        if let Some(aggr_value) = group.values[slot].as_mut() {
+            aggr_value.accumulate(&value)?;
+        } else {
+            // For non-COUNT aggregates, skip NULL values when initializing
+            // Leave the slot as None so the next non-NULL value becomes the first
+            if value.is_null() && !matches!(aggregate.func, AggregateFunction::Count(_)) {
+                return Ok(());
             }
-            None => {
-                // For non-COUNT aggregates, skip NULL values when initializing
-                // Leave the slot as None so the next non-NULL value becomes the first
-                if value.is_null() && !matches!(aggregate.func, AggregateFunction::Count(_)) {
-                    return Ok(());
-                }
-                group.values[slot] = Some(AggrValue::new(aggregate, &value)?);
-            }
+            group.values[slot] = Some(AggrValue::new(aggregate, &value)?);
         }
 
         Ok(())
