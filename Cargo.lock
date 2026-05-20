@@ -1250,7 +1250,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql"
-version = "0.19.0"
+version = "0.19.1"
 dependencies = [
  "futures",
  "gluesql-cli",
@@ -1275,7 +1275,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-cli"
-version = "0.19.0"
+version = "0.19.1"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
@@ -1299,7 +1299,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-composite-storage"
-version = "0.19.0"
+version = "0.19.1"
 dependencies = [
  "async-trait",
  "futures",
@@ -1313,7 +1313,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-core"
-version = "0.19.0"
+version = "0.19.1"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -1343,7 +1343,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-csv-storage"
-version = "0.19.0"
+version = "0.19.1"
 dependencies = [
  "async-trait",
  "csv",
@@ -1361,7 +1361,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-file-storage"
-version = "0.19.0"
+version = "0.19.1"
 dependencies = [
  "async-trait",
  "futures",
@@ -1376,7 +1376,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-git-storage"
-version = "0.19.0"
+version = "0.19.1"
 dependencies = [
  "async-trait",
  "gluesql-core",
@@ -1391,7 +1391,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-idb-storage"
-version = "0.19.0"
+version = "0.19.1"
 dependencies = [
  "async-trait",
  "futures",
@@ -1410,7 +1410,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-js"
-version = "0.19.0"
+version = "0.19.1"
 dependencies = [
  "async-trait",
  "console_error_panic_hook",
@@ -1432,7 +1432,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-json-storage"
-version = "0.19.0"
+version = "0.19.1"
 dependencies = [
  "async-trait",
  "futures",
@@ -1450,7 +1450,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-macros"
-version = "0.19.0"
+version = "0.19.1"
 dependencies = [
  "chrono",
  "futures",
@@ -1466,7 +1466,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-mongo-storage"
-version = "0.19.0"
+version = "0.19.1"
 dependencies = [
  "async-trait",
  "bson",
@@ -1486,7 +1486,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-parquet-storage"
-version = "0.19.0"
+version = "0.19.1"
 dependencies = [
  "async-trait",
  "bincode",
@@ -1506,7 +1506,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-py"
-version = "0.19.0"
+version = "0.19.1"
 dependencies = [
  "gloo-utils 0.1.7",
  "gluesql-composite-storage",
@@ -1527,7 +1527,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-redb-storage"
-version = "0.19.0"
+version = "0.19.1"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -1544,7 +1544,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-redis-storage"
-version = "0.19.0"
+version = "0.19.1"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1560,7 +1560,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-shared-memory-storage"
-version = "0.19.0"
+version = "0.19.1"
 dependencies = [
  "async-trait",
  "futures",
@@ -1573,7 +1573,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-test-suite"
-version = "0.19.0"
+version = "0.19.1"
 dependencies = [
  "async-trait",
  "bigdecimal",
@@ -1588,7 +1588,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-utils"
-version = "0.19.0"
+version = "0.19.1"
 dependencies = [
  "futures",
  "indexmap 1.9.3",
@@ -1597,7 +1597,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-web-storage"
-version = "0.19.0"
+version = "0.19.1"
 dependencies = [
  "async-trait",
  "futures",
@@ -1613,7 +1613,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql_memory_storage"
-version = "0.19.0"
+version = "0.19.1"
 dependencies = [
  "async-trait",
  "futures",
@@ -1625,7 +1625,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql_sled_storage"
-version = "0.19.0"
+version = "0.19.1"
 dependencies = [
  "async-io",
  "async-trait",
@@ -2008,9 +2008,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.172"
+version = "0.2.186"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d750af042f7ef4f724306de029d18836c26c1765a54a6a3f094cbd23a7267ffa"
+checksum = "68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66"
 
 [[package]]
 name = "libm"
