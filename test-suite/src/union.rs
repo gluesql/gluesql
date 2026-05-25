@@ -197,6 +197,20 @@ test_case!(union, {
     )
     .await;
 
+    // The expression visitor must recurse into CASE operands so a UNION with a
+    // type mismatch nested inside CASE WHEN EXISTS is caught at plan time.
+    g.named_test(
+        "UNION type mismatch in CASE WHEN EXISTS is rejected at plan time",
+        "SELECT CASE WHEN EXISTS (SELECT 1 UNION SELECT 'a') THEN 1 ELSE 0 END",
+        Err(PlanError::UnionColumnTypeMismatch {
+            index: 0,
+            left: "INT".to_owned(),
+            right: "TEXT".to_owned(),
+        }
+        .into()),
+    )
+    .await;
+
     // A UNION with matching types inside a derived table must still work.
     g.named_test(
         "nested UNION in derived table with matching types is accepted",

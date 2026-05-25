@@ -1,5 +1,5 @@
 use {
-    super::PlanError,
+    super::{PlanError, expr::try_visit_expr},
     crate::{
         ast::{
             DataType, Expr, Literal, Projection, Select, SelectItem, SetExpr, Statement,
@@ -12,6 +12,7 @@ use {
 };
 
 type SchemaMap = HashMap<String, Schema>;
+type ValidateResult = std::result::Result<(), PlanError>;
 
 /// Validates UNION column type compatibility at plan time for cases where
 /// types can be statically determined — literal projections and schema-backed
@@ -32,7 +33,7 @@ pub fn validate(schema_map: &SchemaMap, statement: &Statement) -> Result<()> {
     Ok(())
 }
 
-fn validate_set_expr(schema_map: &SchemaMap, set_expr: &SetExpr) -> Result<()> {
+fn validate_set_expr(schema_map: &SchemaMap, set_expr: &SetExpr) -> ValidateResult {
     match set_expr {
         SetExpr::Select(select) => validate_select(schema_map, select),
         SetExpr::Values(_) => Ok(()),
@@ -53,8 +54,7 @@ fn validate_set_expr(schema_map: &SchemaMap, set_expr: &SetExpr) -> Result<()> {
                             index,
                             left: format!("{l}"),
                             right: format!("{r}"),
-                        }
-                        .into());
+                        });
                     }
                 }
             }
@@ -66,7 +66,7 @@ fn validate_set_expr(schema_map: &SchemaMap, set_expr: &SetExpr) -> Result<()> {
 
 /// Walk a SELECT body, recursing into any derived tables and subquery
 /// expressions so that nested UNIONs receive the same type-compatibility check.
-fn validate_select(schema_map: &SchemaMap, select: &Select) -> Result<()> {
+fn validate_select(schema_map: &SchemaMap, select: &Select) -> ValidateResult {
     validate_table_factor(schema_map, &select.from.relation)?;
     for join in &select.from.joins {
         validate_table_factor(schema_map, &join.relation)?;
@@ -95,7 +95,7 @@ fn validate_select(schema_map: &SchemaMap, select: &Select) -> Result<()> {
     Ok(())
 }
 
-fn validate_table_factor(schema_map: &SchemaMap, tf: &TableFactor) -> Result<()> {
+fn validate_table_factor(schema_map: &SchemaMap, tf: &TableFactor) -> ValidateResult {
     if let TableFactor::Derived { subquery, .. } = tf {
         validate_set_expr(schema_map, &subquery.body)?;
     }
@@ -103,19 +103,17 @@ fn validate_table_factor(schema_map: &SchemaMap, tf: &TableFactor) -> Result<()>
 }
 
 /// Recursively walk an expression, validating any embedded subquery bodies.
-fn validate_expr(schema_map: &SchemaMap, expr: &Expr) -> Result<()> {
-    match expr {
+/// Uses the full expression visitor so containers like `CASE`, function
+/// arguments, `BETWEEN`, `IN` lists, and array expressions are covered —
+/// not just the subset that was previously matched manually.
+fn validate_expr(schema_map: &SchemaMap, expr: &Expr) -> ValidateResult {
+    try_visit_expr(expr, &mut |expr| match expr {
         Expr::Subquery(query) => validate_set_expr(schema_map, &query.body),
         Expr::InSubquery { subquery, .. } | Expr::Exists { subquery, .. } => {
             validate_set_expr(schema_map, &subquery.body)
         }
-        Expr::BinaryOp { left, right, .. } => {
-            validate_expr(schema_map, left)?;
-            validate_expr(schema_map, right)
-        }
-        Expr::UnaryOp { expr, .. } | Expr::Nested(expr) => validate_expr(schema_map, expr),
         _ => Ok(()),
-    }
+    })
 }
 
 /// Returns `Some(Vec<Option<DataType>>)` when the column types of a set
@@ -493,6 +491,24 @@ mod tests {
             }
             .into()),
             "a UNION inside an EXISTS subquery must be validated",
+        );
+    }
+
+    #[test]
+    fn nested_union_in_case_exists_is_rejected() {
+        let storage = run("");
+        assert_eq!(
+            check(
+                &storage,
+                "SELECT CASE WHEN EXISTS (SELECT 1 UNION SELECT 'a') THEN 1 ELSE 0 END",
+            ),
+            Err(PlanError::UnionColumnTypeMismatch {
+                index: 0,
+                left: "INT".to_owned(),
+                right: "TEXT".to_owned(),
+            }
+            .into()),
+            "a UNION inside a CASE WHEN EXISTS must be caught by the expression visitor",
         );
     }
 }
