@@ -136,14 +136,24 @@ async fn fetch_vec_rows<T: GStore>(
     let rows = match &source.body {
         SetExprPlan::Values(ValuesPlan(values_list)) => {
             let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref()).await?;
-            let rows = stream::iter(values_list).then(|values| {
+            let column_defaults: Arc<[Option<ExprPlan>]> = Arc::from(
+                column_defs
+                    .iter()
+                    .map(|column_def| column_def.default.clone().map(plan_scalar_expr))
+                    .collect::<Vec<_>>(),
+            );
+            let column_defs = Arc::clone(&column_defs);
+            let labels = Arc::clone(&labels);
+            let rows = stream::iter(values_list).then(move |values| {
                 let column_defs = Arc::clone(&column_defs);
+                let column_defaults = Arc::clone(&column_defaults);
                 let labels = Arc::clone(&labels);
 
                 async move {
                     Ok(Row {
                         columns: labels,
-                        values: fill_values(&column_defs, columns, values).await?,
+                        values: fill_values(&column_defs, &column_defaults, columns, values)
+                            .await?,
                     })
                 }
             });
@@ -341,6 +351,7 @@ async fn fetch_schemaless_rows<T: GStore>(
 
 async fn fill_values(
     column_defs: &[ColumnDef],
+    column_defaults: &[Option<ExprPlan>],
     columns: &[String],
     values: &[ExprPlan],
 ) -> Result<Vec<Value>> {
@@ -372,8 +383,8 @@ async fn fill_values(
 
     let column_name_value_list = columns.zip(values.iter()).collect::<Vec<(_, _)>>();
 
-    let values = stream::iter(column_defs)
-        .then(|column_def| {
+    let values = stream::iter(column_defs.iter().zip(column_defaults))
+        .then(|(column_def, default)| {
             let column_name_value_list = &column_name_value_list;
 
             async move {
@@ -389,17 +400,13 @@ async fn fill_values(
                     .find(|(name, _)| name == &def_name)
                     .map(|(_, value)| value);
 
-                match (value, &column_def.default, nullable) {
+                match (value, default, nullable) {
                     (Some(expr), _, _) => evaluate_stateless(None, expr)
                         .await?
                         .try_into_value(data_type, *nullable),
-                    (None, Some(expr), _) => {
-                        let expr = plan_scalar_expr(expr.clone());
-
-                        evaluate_stateless(None, &expr)
-                            .await?
-                            .try_into_value(data_type, *nullable)
-                    }
+                    (None, Some(expr), _) => evaluate_stateless(None, expr)
+                        .await?
+                        .try_into_value(data_type, *nullable),
                     (None, None, true) => Ok(Value::Null),
                     (None, None, false) => {
                         Err(InsertError::LackOfRequiredColumn(def_name.to_owned()).into())
