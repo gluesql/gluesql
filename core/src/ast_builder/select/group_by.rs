@@ -1,5 +1,5 @@
 use {
-    super::Prebuild,
+    super::{BuildSelect, BuildSelectPlan},
     crate::{
         ast::Select,
         ast_builder::{
@@ -7,12 +7,13 @@ use {
             LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
             SelectItemList, SelectNode, TableFactorNode,
         },
+        plan::SelectPlan,
         result::Result,
     },
 };
 
 #[derive(Clone, Debug)]
-pub enum PrevNode<'a> {
+pub(super) enum PrevNode<'a> {
     Select(SelectNode<'a>),
     Join(Box<JoinNode<'a>>),
     JoinConstraint(Box<JoinConstraintNode<'a>>),
@@ -20,14 +21,26 @@ pub enum PrevNode<'a> {
     Filter(FilterNode<'a>),
 }
 
-impl Prebuild<Select> for PrevNode<'_> {
-    fn prebuild(self) -> Result<Select> {
+impl BuildSelectPlan for PrevNode<'_> {
+    fn build_select_plan(self) -> Result<SelectPlan> {
         match self {
-            Self::Select(node) => node.prebuild(),
-            Self::Join(node) => node.prebuild(),
-            Self::JoinConstraint(node) => node.prebuild(),
-            Self::HashJoin(node) => node.prebuild(),
-            Self::Filter(node) => node.prebuild(),
+            Self::Select(node) => node.build_select_plan(),
+            Self::Join(node) => node.build_select_plan(),
+            Self::JoinConstraint(node) => node.build_select_plan(),
+            Self::HashJoin(node) => node.build_select_plan(),
+            Self::Filter(node) => node.build_select_plan(),
+        }
+    }
+}
+
+impl BuildSelect for PrevNode<'_> {
+    fn build_select(self) -> Result<Select> {
+        match self {
+            Self::Select(node) => node.build_select(),
+            Self::Join(node) => node.build_select(),
+            Self::JoinConstraint(node) => node.build_select(),
+            Self::HashJoin(node) => node.build_select(),
+            Self::Filter(node) => node.build_select(),
         }
     }
 }
@@ -69,7 +82,10 @@ pub struct GroupByNode<'a> {
 }
 
 impl<'a> GroupByNode<'a> {
-    pub fn new<N: Into<PrevNode<'a>>, T: Into<ExprList<'a>>>(prev_node: N, expr_list: T) -> Self {
+    pub(super) fn new<N: Into<PrevNode<'a>>, T: Into<ExprList<'a>>>(
+        prev_node: N,
+        expr_list: T,
+    ) -> Self {
         Self {
             prev_node: prev_node.into(),
             expr_list: expr_list.into(),
@@ -101,10 +117,19 @@ impl<'a> GroupByNode<'a> {
     }
 }
 
-impl Prebuild<Select> for GroupByNode<'_> {
-    fn prebuild(self) -> Result<Select> {
-        let mut select: Select = self.prev_node.prebuild()?;
-        select.group_by = self.expr_list.try_into()?;
+impl BuildSelectPlan for GroupByNode<'_> {
+    fn build_select_plan(self) -> Result<SelectPlan> {
+        let mut select = self.prev_node.build_select_plan()?;
+        select.group_by = self.expr_list.build_exprs_plan()?;
+
+        Ok(select)
+    }
+}
+
+impl BuildSelect for GroupByNode<'_> {
+    fn build_select(self) -> Result<Select> {
+        let mut select = self.prev_node.build_select()?;
+        select.group_by = self.expr_list.build_exprs()?;
 
         Ok(select)
     }
@@ -114,11 +139,12 @@ impl Prebuild<Select> for GroupByNode<'_> {
 mod tests {
     use {
         crate::{
-            ast::{
-                Join, JoinConstraint, JoinExecutor, JoinOperator, Projection, Query, Select,
-                SetExpr, Statement, TableFactor, TableWithJoins,
+            ast_builder::{Build, SelectItemList, col, table, test_query_builder},
+            plan::{
+                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
+                QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
+                TableWithJoinsPlan,
             },
-            ast_builder::{Build, SelectItemList, col, table, test},
         },
         pretty_assertions::assert_eq,
     };
@@ -126,60 +152,50 @@ mod tests {
     #[test]
     fn group_by() {
         // select node -> group by node -> build
-        let actual = table("Foo").select().group_by("a").build();
+        let actual = table("Foo").select().group_by("a");
         let expected = "SELECT * FROM Foo GROUP BY a";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join node -> group by node -> build
-        let actual = table("Foo").select().join("Bar").group_by("b").build();
+        let actual = table("Foo").select().join("Bar").group_by("b");
         let expected = "SELECT * FROM Foo JOIN Bar GROUP BY b";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join node -> group by node -> build
-        let actual = table("Foo")
-            .select()
-            .join_as("Bar", "B")
-            .group_by("b")
-            .build();
+        let actual = table("Foo").select().join_as("Bar", "B").group_by("b");
         let expected = "SELECT * FROM Foo JOIN Bar AS B GROUP BY b";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join node -> group by node -> build
-        let actual = table("Foo").select().left_join("Bar").group_by("b").build();
+        let actual = table("Foo").select().left_join("Bar").group_by("b");
         let expected = "SELECT * FROM Foo LEFT JOIN Bar GROUP BY b";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join node -> group by node -> build
-        let actual = table("Foo")
-            .select()
-            .left_join_as("Bar", "B")
-            .group_by("b")
-            .build();
+        let actual = table("Foo").select().left_join_as("Bar", "B").group_by("b");
         let expected = "SELECT * FROM Foo LEFT JOIN Bar AS B GROUP BY b";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join constraint node -> group by node -> build
         let actual = table("Foo")
             .select()
             .join("Bar")
             .on("Foo.id = Bar.id")
-            .group_by("b")
-            .build();
+            .group_by("b");
         let expected = "SELECT * FROM Foo JOIN Bar ON Foo.id = Bar.id GROUP BY b";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // filter node -> group by node -> build
         let actual = table("Bar")
             .select()
             .filter(col("id").is_null())
-            .group_by("id, (a + name)")
-            .build();
+            .group_by("id, (a + name)");
         let expected = "
                 SELECT * FROM Bar
                 WHERE id IS NULL
                 GROUP BY id, (a + name)
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // hash join node -> group by node -> build
         let actual = table("Player")
@@ -189,24 +205,26 @@ mod tests {
             .group_by("PlayerItem.category")
             .build();
         let expected = {
-            let join = Join {
-                relation: TableFactor::Table {
+            let join = JoinPlan {
+                relation: TableFactorPlan::Table {
                     name: "PlayerItem".to_owned(),
                     alias: None,
                     index: None,
                 },
-                join_operator: JoinOperator::Inner(JoinConstraint::None),
-                join_executor: JoinExecutor::Hash {
-                    key_expr: col("PlayerItem.user_id").try_into().unwrap(),
-                    value_expr: col("Player.id").try_into().unwrap(),
+                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
+                join_executor: JoinExecutorPlan::Hash {
+                    key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),
+                    value_expr: col("Player.id").build_expr_plan().unwrap(),
                     where_clause: None,
                 },
             };
-            let select = Select {
+            let select = SelectPlan {
                 distinct: false,
-                projection: Projection::SelectItems(SelectItemList::from("*").try_into().unwrap()),
-                from: TableWithJoins {
-                    relation: TableFactor::Table {
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+                from: TableWithJoinsPlan {
+                    relation: TableFactorPlan::Table {
                         name: "Player".to_owned(),
                         alias: None,
                         index: None,
@@ -214,13 +232,13 @@ mod tests {
                     joins: vec![join],
                 },
                 selection: None,
-                group_by: vec![col("PlayerItem.category").try_into().unwrap()],
+                group_by: vec![col("PlayerItem.category").build_expr_plan().unwrap()],
                 having: None,
                 aggregate_slots: None,
             };
 
-            Ok(Statement::Query(Query {
-                body: SetExpr::Select(Box::new(select)),
+            Ok(StatementPlan::Query(QueryPlan {
+                body: SetExprPlan::Select(Box::new(select)),
                 order_by: Vec::new(),
                 limit: None,
                 offset: None,
@@ -229,13 +247,8 @@ mod tests {
         assert_eq!(actual, expected);
 
         // select -> group by -> derived subquery
-        let actual = table("Foo")
-            .select()
-            .group_by("a")
-            .alias_as("Sub")
-            .select()
-            .build();
+        let actual = table("Foo").select().group_by("a").alias_as("Sub").select();
         let expected = "SELECT * FROM (SELECT * FROM Foo GROUP BY a) Sub";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
     }
 }

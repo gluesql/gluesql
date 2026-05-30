@@ -1,8 +1,8 @@
 use {
     super::ExprNode,
     crate::{
-        ast::{Assignment, Expr},
         parse_sql::parse_assignment,
+        plan::AssignmentPlan,
         result::{Error, Result},
         translate::{NO_PARAMS, translate_assignment},
     },
@@ -20,20 +20,20 @@ impl From<&str> for AssignmentNode<'_> {
     }
 }
 
-impl<'a> TryFrom<AssignmentNode<'a>> for Assignment {
+impl<'a> TryFrom<AssignmentNode<'a>> for AssignmentPlan {
     type Error = Error;
 
     fn try_from(node: AssignmentNode<'a>) -> Result<Self> {
         match node {
             AssignmentNode::Text(expr) => {
-                let expr = parse_assignment(expr)
+                let assignment = parse_assignment(expr)
                     .and_then(|assignment| translate_assignment(&assignment, NO_PARAMS))?;
-                Ok(expr)
+                Ok(assignment.into())
             }
             AssignmentNode::Expr(col, expr_node) => {
-                let value = Expr::try_from(expr_node)?;
+                let value = expr_node.build_expr_plan()?;
                 let id = col;
-                Ok(Assignment { id, value })
+                Ok(AssignmentPlan { id, value })
             }
         }
     }
@@ -45,6 +45,7 @@ mod tests {
         crate::{
             ast_builder::AssignmentNode,
             parse_sql::parse_assignment,
+            plan::AssignmentPlan,
             translate::{NO_PARAMS, translate_assignment},
         },
         pretty_assertions::assert_eq,
@@ -52,7 +53,7 @@ mod tests {
 
     fn test(actual: AssignmentNode, expected: &str) {
         let parsed = &parse_assignment(expected).expect(expected);
-        let expected = translate_assignment(parsed, NO_PARAMS);
+        let expected = translate_assignment(parsed, NO_PARAMS).map(AssignmentPlan::from);
         assert_eq!(actual.try_into(), expected);
     }
 

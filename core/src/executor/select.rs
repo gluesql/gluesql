@@ -15,8 +15,11 @@ use {
         sort::Sort,
     },
     crate::{
-        ast::{Expr, OrderByExpr, Query, Select, SetExpr, TableWithJoins, Values},
-        data::{Key, Row, Value, get_alias},
+        data::{Key, Row, Value},
+        plan::{
+            ExprPlan, OrderByExprPlan, QueryPlan, SelectPlan, SetExprPlan, TableWithJoinsPlan,
+            ValuesPlan,
+        },
         result::Result,
         store::GStore,
     },
@@ -34,7 +37,7 @@ fn apply_distinct(rows: Vec<Row>) -> Vec<Row> {
         .collect()
 }
 
-async fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> Result<(Vec<Row>, Vec<String>)> {
+async fn rows_with_labels(exprs_list: &[Vec<ExprPlan>]) -> Result<(Vec<Row>, Vec<String>)> {
     let first_len = exprs_list[0].len();
     let labels = (1..=first_len)
         .map(|i| format!("column{i}"))
@@ -74,11 +77,11 @@ async fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> Result<(Vec<Row>, Vec<Str
     Ok((rows, labels))
 }
 
-async fn sort_stateless(rows: Vec<Row>, order_by: &[OrderByExpr]) -> Result<Vec<Row>> {
+async fn sort_stateless(rows: Vec<Row>, order_by: &[OrderByExprPlan]) -> Result<Vec<Row>> {
     let sorted = stream::iter(rows.into_iter())
         .then(|row| async move {
             stream::iter(order_by)
-                .then(|OrderByExpr { expr, asc }| {
+                .then(|OrderByExprPlan { expr, asc }| {
                     let row = Some(&row);
 
                     async move {
@@ -107,7 +110,7 @@ async fn sort_stateless(rows: Vec<Row>, order_by: &[OrderByExpr]) -> Result<Vec<
 #[async_recursion]
 pub async fn select_with_labels<'a, T>(
     storage: &'a T,
-    query: &'a Query,
+    query: &'a QueryPlan,
     filter_context: Option<Arc<RowContext<'a>>>,
 ) -> Result<(Vec<String>, impl Stream<Item = Result<Row>> + Send + 'a)>
 where
@@ -119,7 +122,7 @@ where
         Values(S1),
     }
 
-    let Select {
+    let SelectPlan {
         distinct,
         from: table_with_joins,
         selection: where_clause,
@@ -128,8 +131,8 @@ where
         having,
         aggregate_slots,
     } = match &query.body {
-        SetExpr::Select(statement) => statement.as_ref(),
-        SetExpr::Values(Values(values_list)) => {
+        SetExprPlan::Select(statement) => statement.as_ref(),
+        SetExprPlan::Values(ValuesPlan(values_list)) => {
             let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref()).await?;
             let (rows, labels) = rows_with_labels(values_list).await?;
             let rows = sort_stateless(rows, &query.order_by).await?;
@@ -140,12 +143,12 @@ where
         }
     };
 
-    let TableWithJoins { relation, joins } = &table_with_joins;
+    let TableWithJoinsPlan { relation, joins } = &table_with_joins;
     let rows = fetch_relation_rows(storage, relation, None)
         .await?
         .map(move |row| {
             let row = row?;
-            let alias = get_alias(relation);
+            let alias = relation.alias_name();
 
             Ok(RowContext::new(alias, Cow::Owned(row), None))
         });
@@ -207,7 +210,7 @@ where
         }
     });
 
-    let rows = sort.apply(rows, get_alias(relation)).await?;
+    let rows = sort.apply(rows, relation.alias_name()).await?;
 
     let rows: Box<dyn Stream<Item = Result<crate::data::Row>> + Unpin + Send> = if *distinct {
         let all_rows: Vec<crate::data::Row> = rows.try_collect().await?;
@@ -224,7 +227,7 @@ where
 
 pub async fn select<'a, T>(
     storage: &'a T,
-    query: &'a Query,
+    query: &'a QueryPlan,
     filter_context: Option<Arc<RowContext<'a>>>,
 ) -> Result<impl Stream<Item = Result<Row>> + Send + 'a>
 where

@@ -3,6 +3,7 @@ use {
     crate::{
         ast::{AlterTableOperation, Statement},
         ast_builder::ColumnDefNode,
+        plan::StatementPlan,
         result::Result,
     },
 };
@@ -62,7 +63,7 @@ pub struct AddColumnNode {
 }
 
 impl Build for AddColumnNode {
-    fn build(self) -> Result<Statement> {
+    fn build(self) -> Result<StatementPlan> {
         let table_name = self.table_node.table_name;
         let operation = AlterTableOperation::AddColumn {
             column_def: self.column_def.try_into()?,
@@ -70,7 +71,8 @@ impl Build for AddColumnNode {
         Ok(Statement::AlterTable {
             name: table_name,
             operation,
-        })
+        }
+        .into())
     }
 }
 
@@ -81,7 +83,7 @@ pub struct DropColumnNode {
 }
 
 impl Build for DropColumnNode {
-    fn build(self) -> Result<Statement> {
+    fn build(self) -> Result<StatementPlan> {
         let table_name = self.table_node.table_name;
         let operation = AlterTableOperation::DropColumn {
             column_name: self.column_name,
@@ -90,7 +92,8 @@ impl Build for DropColumnNode {
         Ok(Statement::AlterTable {
             name: table_name,
             operation,
-        })
+        }
+        .into())
     }
 }
 
@@ -101,7 +104,7 @@ pub struct RenameColumnNode {
 }
 
 impl Build for RenameColumnNode {
-    fn build(self) -> Result<Statement> {
+    fn build(self) -> Result<StatementPlan> {
         let table_name = self.table_node.table_name;
         let operation = AlterTableOperation::RenameColumn {
             old_column_name: self.old_column_name,
@@ -110,7 +113,8 @@ impl Build for RenameColumnNode {
         Ok(Statement::AlterTable {
             name: table_name,
             operation,
-        })
+        }
+        .into())
     }
 }
 
@@ -120,7 +124,7 @@ pub struct RenameTableNode {
 }
 
 impl Build for RenameTableNode {
-    fn build(self) -> Result<Statement> {
+    fn build(self) -> Result<StatementPlan> {
         let old_table_name = self.table_node.table_name;
         let operation = AlterTableOperation::RenameTable {
             table_name: self.new_table_name,
@@ -128,7 +132,8 @@ impl Build for RenameTableNode {
         Ok(Statement::AlterTable {
             name: old_table_name,
             operation,
-        })
+        }
+        .into())
     }
 }
 

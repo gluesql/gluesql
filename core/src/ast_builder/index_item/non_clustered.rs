@@ -37,70 +37,76 @@ pub fn non_clustered(index_name: String) -> NonClusteredNode {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ast::{Expr, IndexOperator, Literal},
-        ast_builder::{
-            IndexItemNode,
-            index_item::{IndexItem, non_clustered},
-            select::Prebuild,
-        },
+        ast::{IndexOperator, Literal},
+        ast_builder::{IndexItemNode, index_item::non_clustered},
+        plan::{ExprPlan, IndexItemPlan},
     };
 
     #[test]
     fn test() {
         let index_node: IndexItemNode = non_clustered("idx".to_owned()).gt("1").into();
-        let actual = index_node.prebuild().unwrap();
-        let expected = IndexItem::NonClustered {
+        let actual = index_node.build_index_item_plan().unwrap();
+        let expected = IndexItemPlan::NonClustered {
             name: "idx".to_owned(),
             asc: None,
-            cmp_expr: Some((IndexOperator::Gt, Expr::Literal(Literal::Number(1.into())))),
+            cmp_expr: Some((
+                IndexOperator::Gt,
+                ExprPlan::Literal(Literal::Number(1.into())),
+            )),
         };
         assert_eq!(actual, expected);
 
         let index_node: IndexItemNode = non_clustered("idx".to_owned()).lt("1").into();
-        let actual = index_node.prebuild().unwrap();
-        let expected = IndexItem::NonClustered {
+        let actual = index_node.build_index_item_plan().unwrap();
+        let expected = IndexItemPlan::NonClustered {
             name: "idx".to_owned(),
             asc: None,
-            cmp_expr: Some((IndexOperator::Lt, Expr::Literal(Literal::Number(1.into())))),
+            cmp_expr: Some((
+                IndexOperator::Lt,
+                ExprPlan::Literal(Literal::Number(1.into())),
+            )),
         };
         assert_eq!(actual, expected);
 
         let index_node: IndexItemNode = non_clustered("idx".to_owned()).gte("1").into();
-        let actual = index_node.prebuild().unwrap();
-        let expected = IndexItem::NonClustered {
+        let actual = index_node.build_index_item_plan().unwrap();
+        let expected = IndexItemPlan::NonClustered {
             name: "idx".to_owned(),
             asc: None,
             cmp_expr: Some((
                 IndexOperator::GtEq,
-                Expr::Literal(Literal::Number(1.into())),
+                ExprPlan::Literal(Literal::Number(1.into())),
             )),
         };
         assert_eq!(actual, expected);
 
         let index_node: IndexItemNode = non_clustered("idx".to_owned()).lte("1").into();
-        let actual = index_node.prebuild().unwrap();
-        let expected = IndexItem::NonClustered {
+        let actual = index_node.build_index_item_plan().unwrap();
+        let expected = IndexItemPlan::NonClustered {
             name: "idx".to_owned(),
             asc: None,
             cmp_expr: Some((
                 IndexOperator::LtEq,
-                Expr::Literal(Literal::Number(1.into())),
+                ExprPlan::Literal(Literal::Number(1.into())),
             )),
         };
         assert_eq!(actual, expected);
 
         let index_node: IndexItemNode = non_clustered("idx".to_owned()).eq("1").into();
-        let actual = index_node.prebuild().unwrap();
-        let expected = IndexItem::NonClustered {
+        let actual = index_node.build_index_item_plan().unwrap();
+        let expected = IndexItemPlan::NonClustered {
             name: "idx".to_owned(),
             asc: None,
-            cmp_expr: Some((IndexOperator::Eq, Expr::Literal(Literal::Number(1.into())))),
+            cmp_expr: Some((
+                IndexOperator::Eq,
+                ExprPlan::Literal(Literal::Number(1.into())),
+            )),
         };
         assert_eq!(actual, expected);
 
         let index_node: IndexItemNode = non_clustered("idx".to_owned()).into();
-        let actual = index_node.prebuild().unwrap();
-        let expected = IndexItem::NonClustered {
+        let actual = index_node.build_index_item_plan().unwrap();
+        let expected = IndexItemPlan::NonClustered {
             name: "idx".to_owned(),
             asc: None,
             cmp_expr: None,
