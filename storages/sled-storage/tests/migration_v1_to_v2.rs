@@ -12,7 +12,7 @@ use {
     sled::Db,
     std::{
         collections::BTreeMap,
-        fs::{remove_dir_all, remove_file, write},
+        fs::{create_dir_all, remove_dir_all, remove_file, write},
         path::{Path, PathBuf},
         time::{SystemTime, UNIX_EPOCH},
     },
@@ -65,7 +65,10 @@ fn test_path(name: &str) -> PathBuf {
         .expect("system time")
         .as_nanos();
 
-    PathBuf::from(format!("./tmp/{name}-{suffix}"))
+    let path = PathBuf::from("./tmp");
+    create_dir_all(&path).expect("create tmp directory");
+
+    path.join(format!("{name}-{suffix}"))
 }
 
 fn data_key(table_name: &str, key: Vec<u8>) -> Vec<u8> {
