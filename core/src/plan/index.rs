@@ -109,7 +109,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
         }
 
         let selection = selection.and_then(|expr| {
-            if let (Some(indexes), TableFactorPlan::Table { .. }) =
+            if let (Some(indexes), TableFactorPlan::Table { index: None, .. }) =
                 (indexes.as_ref(), &from.relation)
             {
                 match self.plan_index_expr(outer_context.map(Arc::clone), indexes, expr) {
@@ -442,7 +442,9 @@ mod tests {
     use {
         super::plan,
         crate::{
-            ast_builder::{Build, col, exists, nested, non_clustered, null, num, table, text},
+            ast_builder::{
+                Build, col, exists, nested, non_clustered, null, num, primary_key, table, text,
+            },
             mock::{MockStorage, run},
             parse_sql::parse,
             plan::{StatementPlan, fetch_schema_map},
@@ -538,6 +540,38 @@ CREATE INDEX idx_name ON Test (name);
         assert_eq!(
             actual, expected,
             "skips index for non constant expression:\n{sql}"
+        );
+    }
+
+    #[test]
+    fn index_planning_keeps_existing_access_path() {
+        let storage = storage_with_indexes();
+
+        // Simulate the statement produced by the primary key planner, which runs
+        // before the index planner: the table already carries an access path
+        // (here a `PrimaryKey`) while the leftover selection still references an
+        // indexed column (`name`). The index planner must leave the existing
+        // access path untouched instead of overwriting it with `idx_name`,
+        // otherwise the primary key predicate would be silently dropped.
+        let statement = table("Test")
+            .index_by(primary_key().eq(num(1)))
+            .select()
+            .filter("name = 'x'")
+            .build()
+            .unwrap();
+
+        let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+        let actual = plan(&schema_map, statement);
+
+        let expected = table("Test")
+            .index_by(primary_key().eq(num(1)))
+            .select()
+            .filter("name = 'x'")
+            .build()
+            .unwrap();
+        assert_eq!(
+            actual, expected,
+            "keeps existing access path instead of clobbering it with a secondary index"
         );
     }
 
