@@ -149,4 +149,67 @@ CREATE TABLE NullIdx (
         idx!(idx_date, Eq, "DATE '2030-03-01'"),
     )
     .await;
+
+    // Regression: a primary key equality predicate AND a secondary index
+    // equality predicate. The primary key planner chooses the `PrimaryKey`
+    // access path first; the index planner must not clobber it with the
+    // secondary index, otherwise the `id = ...` condition is silently dropped.
+    g.run(
+        "
+CREATE TABLE PkAndIdx (
+    id INTEGER PRIMARY KEY,
+    name TEXT
+)",
+    )
+    .await;
+
+    g.run(
+        "
+        INSERT INTO PkAndIdx
+            (id, name)
+        VALUES
+            (1, 'x'),
+            (2, 'x'),
+            (3, 'y');
+    ",
+    )
+    .await;
+
+    g.test(
+        "CREATE INDEX idx_name ON PkAndIdx (name)",
+        Ok(Payload::CreateIndex),
+    )
+    .await;
+
+    g.test_idx(
+        "
+        SELECT id, name FROM PkAndIdx
+        WHERE
+            id = 1
+            AND name = 'x'
+        ",
+        Ok(select!(
+            id  | name
+            I64 | Str;
+            1     "x".to_owned()
+        )),
+        vec![gluesql_core::ast::IndexItem::PrimaryKey(expr("1"))],
+    )
+    .await;
+
+    g.test_idx(
+        "
+        SELECT id, name FROM PkAndIdx
+        WHERE
+            name = 'x'
+            AND id = 1
+        ",
+        Ok(select!(
+            id  | name
+            I64 | Str;
+            1     "x".to_owned()
+        )),
+        vec![gluesql_core::ast::IndexItem::PrimaryKey(expr("1"))],
+    )
+    .await;
 });
