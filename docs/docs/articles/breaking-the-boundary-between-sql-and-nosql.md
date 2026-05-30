@@ -1,16 +1,15 @@
 ---
 title: Breaking the Boundary between SQL and NoSQL Databases
 description: Breaking the Boundary between SQL and NoSQL Databases
-slug: breaking-the-boundary-between-sql-and-nosql
-authors:
-  - name: Taehoon Moon
-    title: Creator of GlueSQL
-    url: https://github.com/panarch
-    image_url: https://github.com/panarch.png
-tags: [sql, database, nosql]
 ---
 
 # Breaking the Boundary between SQL and NoSQL Databases
+
+> Archived from the GlueSQL blog.
+>
+> - **Published:** May 29, 2023
+> - **Author:** [Taehoon Moon](https://github.com/panarch), Creator of GlueSQL
+> - **Tags:** `sql`, `database`, `nosql`
 
 ## Introduction
 The divide between SQL and NoSQL databases has often presented challenges in database management. GlueSQL, a unique database maker library, aims to blur this boundary, providing a versatile tool for handling these two distinct types of databases.

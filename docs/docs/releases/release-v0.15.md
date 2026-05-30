@@ -1,14 +1,13 @@
 ---
 title: Release v0.15
 description: Release Note - v0.15
-slug: release-v0.15
-authors:
-  - name: Taehoon Moon
-    title: Creator of GlueSQL
-    url: https://github.com/panarch
-    image_url: https://github.com/panarch.png
-tags: [v0.15, release-note]
 ---
+
+> Archived from the GlueSQL blog.
+>
+> - **Published:** November 18, 2023
+> - **Author:** [Taehoon Moon](https://github.com/panarch), Creator of GlueSQL
+> - **Tags:** `v0.15`, `release-note`
 
 ## 🌊 Breaking Changes
 
@@ -77,13 +76,13 @@ print(tabulate(rows, headers="keys", showindex=True, tablefmt="simple_outline"))
 - Implement BIT\_SHIFT\_LEFT operation [@codernineteen](https://github.com/codernineteen) ([#1286](https://github.com/gluesql/gluesql/pull/1286))
 - implement `SORT` function [@Jaehui-Lee](https://github.com/Jaehui-Lee) ([#1300](https://github.com/gluesql/gluesql/pull/1300))
 - feat: Implement `LENGTH` function [@jopemachine](https://github.com/jopemachine) ([#1298](https://github.com/gluesql/gluesql/pull/1298))
-- [Function] Implement TAKE function  [@ding-co](https://github.com/ding-co) ([#1283](https://github.com/gluesql/gluesql/pull/1283))
+- \[Function] Implement TAKE function  [@ding-co](https://github.com/ding-co) ([#1283](https://github.com/gluesql/gluesql/pull/1283))
 - feat: implement `ast_builder` for replace function [@ChobobDev](https://github.com/ChobobDev) ([#1275](https://github.com/gluesql/gluesql/pull/1275))
 - feat: implement IS\_EMPTY function [@julia-ing](https://github.com/julia-ing) ([#1282](https://github.com/gluesql/gluesql/pull/1282))
-- [Function] Implement REPLACE function [@ChobobDev](https://github.com/ChobobDev) ([#1266](https://github.com/gluesql/gluesql/pull/1266))
+- \[Function] Implement REPLACE function [@ChobobDev](https://github.com/ChobobDev) ([#1266](https://github.com/gluesql/gluesql/pull/1266))
 - Implement MD5 Function [@seonghun-dev](https://github.com/seonghun-dev) ([#1242](https://github.com/gluesql/gluesql/pull/1242))
-- [AST Builder] Implement ascii, chr function in ast [@seonghun-dev](https://github.com/seonghun-dev) ([#1244](https://github.com/gluesql/gluesql/pull/1244))
-- [AST Builder] Implement Geometic Point Type and Geometric Function in AST Builder [@seonghun-dev](https://github.com/seonghun-dev) ([#1222](https://github.com/gluesql/gluesql/pull/1222))
+- \[AST Builder] Implement ascii, chr function in ast [@seonghun-dev](https://github.com/seonghun-dev) ([#1244](https://github.com/gluesql/gluesql/pull/1244))
+- \[AST Builder] Implement Geometic Point Type and Geometric Function in AST Builder [@seonghun-dev](https://github.com/seonghun-dev) ([#1222](https://github.com/gluesql/gluesql/pull/1222))
 
 ## 🚀 Features
 

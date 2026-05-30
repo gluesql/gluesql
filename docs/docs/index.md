@@ -19,9 +19,9 @@ GlueSQL is a Rust library for SQL databases that includes a parser ([sqlparser-r
 
 If you're interested in learning more about GlueSQL, we recommend the following blog articles for a deeper dive into its capabilities and benefits:
 
-1. [Breaking the Boundary between SQL and NoSQL Database](https://gluesql.org/blog/breaking-the-boundary-between-sql-and-nosql)
-2. [Revolutionizing Databases by Unifying Query Interfaces](https://gluesql.org/blog/revolutionizing-databases-by-unifying-query-interfaces)
-3. [Test-Driven Documentation - Automating User Manual Creation](https://gluesql.org/blog/test-driven-documentation)
+1. [Breaking the Boundary between SQL and NoSQL Database](articles/breaking-the-boundary-between-sql-and-nosql.md)
+2. [Revolutionizing Databases by Unifying Query Interfaces](articles/revolutionizing-databases-by-unifying-query-interfaces.md)
+3. [Test-Driven Documentation - Automating User Manual Creation](articles/test-driven-documentation.md)
 
 ## Supporting SQL and AST Builder
 GlueSQL supports both SQL and its own query builder (AST Builder). Unlike other ORMs, GlueSQL's AST Builder allows developers to build queries directly with GlueSQL's AST, enabling the use of all of GlueSQL's features. This is why we named it AST Builder instead of Query Builder.
