@@ -1,0 +1,119 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "docs/**"
+
+env:
+  ZENSICAL_VERSION: "0.0.43"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Install Zensical
+        run: python -m pip install "zensical==${ZENSICAL_VERSION}"
+
+      - name: Build docs
+        run: |
+          cd docs
+          zensical build
+
+  deploy:
+    if: ${{ github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Install Zensical
+        run: python -m pip install "zensical==${ZENSICAL_VERSION}"
+
+      - name: Clone gluesql.org
+        run: git clone https://github.com/gluesql/gluesql.github.io.git &&
+          cd gluesql.github.io &&
+          git checkout gh-pages
+
+      - name: Build docs
+        run: |
+          cd docs
+          zensical build
+
+      - name: Add blog redirects
+        run: |
+          create_redirect() {
+            mkdir -p "docs/build/$1"
+            cat > "docs/build/$1/index.html" <<EOF
+          <!doctype html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <meta http-equiv="refresh" content="0; url=$2">
+              <link rel="canonical" href="$2">
+              <title>Redirecting...</title>
+            </head>
+            <body>
+              <a href="$2">Redirecting...</a>
+            </body>
+          </html>
+          EOF
+          }
+
+          create_redirect "blog" "/docs/dev/articles/"
+          create_redirect "blog/archive" "/docs/dev/articles/"
+          create_redirect "blog/tags" "/docs/dev/articles/"
+          create_redirect "blog/tags/automation" "/docs/dev/articles/"
+          create_redirect "blog/tags/chat-gpt" "/docs/dev/articles/"
+          create_redirect "blog/tags/database" "/docs/dev/articles/"
+          create_redirect "blog/tags/documentation" "/docs/dev/articles/"
+          create_redirect "blog/tags/gluesql" "/docs/dev/articles/"
+          create_redirect "blog/tags/nosql" "/docs/dev/articles/"
+          create_redirect "blog/tags/proposal" "/docs/dev/articles/"
+          create_redirect "blog/tags/query-interface" "/docs/dev/articles/"
+          create_redirect "blog/tags/release-note" "/docs/dev/releases/"
+          create_redirect "blog/tags/sql" "/docs/dev/articles/"
+          create_redirect "blog/tags/tdd" "/docs/dev/articles/"
+          create_redirect "blog/tags/test-driven-documentation" "/docs/dev/articles/test-driven-documentation/"
+          create_redirect "blog/tags/v-0-14" "/docs/dev/releases/release-v0.14/"
+          create_redirect "blog/tags/v-0-15" "/docs/dev/releases/release-v0.15/"
+          create_redirect "blog/release-v0.14" "/docs/dev/releases/release-v0.14/"
+          create_redirect "blog/release-v0.15" "/docs/dev/releases/release-v0.15/"
+          create_redirect "blog/breaking-the-boundary-between-sql-and-nosql" "/docs/dev/articles/breaking-the-boundary-between-sql-and-nosql/"
+          create_redirect "blog/revolutionizing-databases-by-unifying-query-interfaces" "/docs/dev/articles/revolutionizing-databases-by-unifying-query-interfaces/"
+          create_redirect "blog/test-driven-documentation" "/docs/dev/articles/test-driven-documentation/"
+
+      - name: Update docs/dev and blog redirects on gluesql.org
+        run: |
+          rm -rf gluesql.github.io/docs/dev gluesql.github.io/blog
+          mkdir -p gluesql.github.io/docs
+          mv docs/build gluesql.github.io/docs/dev
+          mv gluesql.github.io/docs/dev/blog gluesql.github.io/blog
+
+      - name: Prepare
+        run: |
+          git config --global user.email "taehoon.moon@outlook.com"
+          git config --global user.name "Taehoon Moon (Bot)"
+
+      - name: Commit and deploy
+        run: |
+          cd gluesql.github.io
+          git add docs/dev blog
+          git diff-index --quiet HEAD || (
+            git commit -m "Update docs/dev" &&
+            git push https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git
+          )

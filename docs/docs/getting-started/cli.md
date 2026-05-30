@@ -223,7 +223,7 @@ If you execute `.help`, you can see various helper command starting with dot(`.`
 | .spool PATH\|off | spool to PATH or off                  |
 | .show OPTION     | show print option eg).show all        |
 | .set OPTION      | set print option eg).set tabular off  |
-| .edit [PATH]     | open editor with last command or PATH |
+| .edit \[PATH]    | open editor with last command or PATH |
 | .run             | execute last command                  |
 
 ## Migration using CLI
