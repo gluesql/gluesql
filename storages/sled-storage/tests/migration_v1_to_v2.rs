@@ -296,8 +296,7 @@ fn migrate_rejects_unsupported_older_version() {
 
 #[test]
 fn opening_storage_rejects_unsupported_versions() {
-    let path = test_path("sled-open-unsupported-version");
-    let _ = remove_dir_all(&path);
+    let path = test_path("sled-open-unsupported-older-version");
 
     write_storage_format_version(&path, &0_u32.to_be_bytes());
     let actual = SledStorage::new(&path).map(|_| ());
@@ -305,6 +304,10 @@ fn opening_storage_rejects_unsupported_versions() {
         "[SledStorage] unsupported format version v0".to_owned(),
     ));
     assert_eq!(actual, expected);
+
+    remove_dir_all(path).expect("cleanup");
+
+    let path = test_path("sled-open-unsupported-newer-version");
 
     write_storage_format_version(&path, &(SLED_STORAGE_FORMAT_VERSION + 1).to_be_bytes());
     let actual = SledStorage::new(&path).map(|_| ());
