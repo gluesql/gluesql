@@ -1,6 +1,6 @@
 use {
     super::Build,
-    crate::{ast::Statement, result::Result},
+    crate::{ast::Statement, plan::StatementPlan, result::Result},
 };
 
 #[derive(Clone, Debug)]
@@ -21,7 +21,7 @@ impl DropTableNode {
 }
 
 impl Build for DropTableNode {
-    fn build(self) -> Result<Statement> {
+    fn build(self) -> Result<StatementPlan> {
         let names = vec![self.table_name];
         let if_exists = self.if_exists;
         let cascade = self.cascade;
@@ -30,7 +30,8 @@ impl Build for DropTableNode {
             names,
             if_exists,
             cascade,
-        })
+        }
+        .into())
     }
 }
 

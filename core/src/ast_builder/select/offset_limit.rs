@@ -1,21 +1,30 @@
 use {
-    super::Prebuild,
+    super::{BuildQuery, BuildQueryPlan},
     crate::{
         ast::Query,
         ast_builder::{ExprNode, OffsetNode, QueryNode, TableFactorNode},
+        plan::QueryPlan,
         result::Result,
     },
 };
 
 #[derive(Clone, Debug)]
-pub enum PrevNode<'a> {
+pub(super) enum PrevNode<'a> {
     Offset(OffsetNode<'a>),
 }
 
-impl Prebuild<Query> for PrevNode<'_> {
-    fn prebuild(self) -> Result<Query> {
+impl BuildQueryPlan for PrevNode<'_> {
+    fn build_query_plan(self) -> Result<QueryPlan> {
         match self {
-            Self::Offset(node) => node.prebuild(),
+            Self::Offset(node) => node.build_query_plan(),
+        }
+    }
+}
+
+impl BuildQuery for PrevNode<'_> {
+    fn build_query(self) -> Result<Query> {
+        match self {
+            Self::Offset(node) => node.build_query(),
         }
     }
 }
@@ -33,7 +42,7 @@ pub struct OffsetLimitNode<'a> {
 }
 
 impl<'a> OffsetLimitNode<'a> {
-    pub fn new<N: Into<PrevNode<'a>>, T: Into<ExprNode<'a>>>(prev_node: N, expr: T) -> Self {
+    pub(super) fn new<N: Into<PrevNode<'a>>, T: Into<ExprNode<'a>>>(prev_node: N, expr: T) -> Self {
         Self {
             prev_node: prev_node.into(),
             expr: expr.into(),
@@ -45,10 +54,19 @@ impl<'a> OffsetLimitNode<'a> {
     }
 }
 
-impl Prebuild<Query> for OffsetLimitNode<'_> {
-    fn prebuild(self) -> Result<Query> {
-        let mut node_data = self.prev_node.prebuild()?;
-        node_data.limit = Some(self.expr.try_into()?);
+impl BuildQueryPlan for OffsetLimitNode<'_> {
+    fn build_query_plan(self) -> Result<QueryPlan> {
+        let mut node_data = self.prev_node.build_query_plan()?;
+        node_data.limit = Some(self.expr.build_expr_plan()?);
+
+        Ok(node_data)
+    }
+}
+
+impl BuildQuery for OffsetLimitNode<'_> {
+    fn build_query(self) -> Result<Query> {
+        let mut node_data = self.prev_node.build_query()?;
+        node_data.limit = Some(self.expr.build_expr()?);
 
         Ok(node_data)
     }
@@ -56,7 +74,7 @@ impl Prebuild<Query> for OffsetLimitNode<'_> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{Build, table, test};
+    use crate::ast_builder::{table, test_query_builder};
 
     #[test]
     fn offset_limit() {
@@ -66,8 +84,7 @@ mod tests {
             .group_by("city")
             .having("COUNT(name) < 100")
             .offset(1)
-            .limit(3)
-            .build();
+            .limit(3);
         let expected = "
             SELECT * FROM Bar
             GROUP BY city
@@ -75,7 +92,7 @@ mod tests {
             OFFSET 1
             LIMIT 3;
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // project node -> offset node -> limit node
         let actual = table("Bar")
@@ -84,8 +101,7 @@ mod tests {
             .having("COUNT(name) < 100")
             .project("city")
             .offset(1)
-            .limit(3)
-            .build();
+            .limit(3);
         let expected = "
             SELECT city FROM Bar
             GROUP BY city
@@ -93,7 +109,7 @@ mod tests {
             OFFSET 1
             LIMIT 3;
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select -> offset -> limit -> derived subquery
         let actual = table("Bar")
@@ -103,8 +119,7 @@ mod tests {
             .offset(1)
             .limit(3)
             .alias_as("Sub")
-            .select()
-            .build();
+            .select();
         let expected = "
             SELECT * FROM (
                 SELECT * FROM Bar
@@ -114,6 +129,6 @@ mod tests {
                 LIMIT 3
             ) Sub
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
     }
 }

@@ -1,10 +1,10 @@
 use {
-    crate::ast::{Expr, Function},
+    crate::plan::{ExprPlan, FunctionPlan},
     std::iter::{empty, once},
 };
 
-impl Function {
-    pub fn as_exprs(&self) -> impl Iterator<Item = &Expr> {
+impl FunctionPlan {
+    pub fn as_exprs(&self) -> impl Iterator<Item = &ExprPlan> {
         #[derive(iter_enum::Iterator)]
         enum Exprs<I0, I1, I2, I3, I4, I5, I6> {
             Empty(I0),
@@ -18,12 +18,12 @@ impl Function {
 
         match self {
             Self::Now()
-            | Function::Pi()
-            | Function::GenerateUuid()
+            | FunctionPlan::Pi()
+            | FunctionPlan::GenerateUuid()
             | Self::Rand(None)
-            | Function::CurrentDate()
-            | Function::CurrentTime()
-            | Function::CurrentTimestamp() => Exprs::Empty(empty()),
+            | FunctionPlan::CurrentDate()
+            | FunctionPlan::CurrentTime()
+            | FunctionPlan::CurrentTimestamp() => Exprs::Empty(empty()),
             Self::Lower(expr)
             | Self::Length(expr)
             | Self::Initcap(expr)
@@ -225,20 +225,20 @@ impl Function {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ast::Expr,
         parse_sql::parse_expr,
+        plan::ExprPlan,
         translate::{NO_PARAMS, translate_expr},
     };
 
-    fn expr(sql: &str) -> Expr {
+    fn expr(sql: &str) -> ExprPlan {
         let parsed = parse_expr(sql).expect(sql);
 
-        translate_expr(&parsed, NO_PARAMS).expect(sql)
+        translate_expr(&parsed, NO_PARAMS).expect(sql).into()
     }
 
     fn test(sql: &str, expected: &[&str]) {
         let function = match expr(sql) {
-            Expr::Function(function) => *function,
+            ExprPlan::Function(function) => *function,
             _ => unreachable!("only for function tests"),
         };
         let actual = function.as_exprs();

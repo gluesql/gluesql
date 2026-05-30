@@ -1,5 +1,5 @@
 use {
-    super::Prebuild,
+    super::{BuildSelect, BuildSelectPlan},
     crate::{
         ast::{Projection, Select},
         ast_builder::{
@@ -7,12 +7,13 @@ use {
             JoinNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, QueryNode,
             SelectItemList, SelectNode, TableFactorNode,
         },
+        plan::{ProjectionPlan, SelectPlan},
         result::Result,
     },
 };
 
 #[derive(Clone, Debug)]
-pub enum PrevNode<'a> {
+pub(super) enum PrevNode<'a> {
     Select(SelectNode<'a>),
     GroupBy(GroupByNode<'a>),
     Having(HavingNode<'a>),
@@ -22,16 +23,30 @@ pub enum PrevNode<'a> {
     Filter(FilterNode<'a>),
 }
 
-impl Prebuild<Select> for PrevNode<'_> {
-    fn prebuild(self) -> Result<Select> {
+impl BuildSelectPlan for PrevNode<'_> {
+    fn build_select_plan(self) -> Result<SelectPlan> {
         match self {
-            Self::Select(node) => node.prebuild(),
-            Self::GroupBy(node) => node.prebuild(),
-            Self::Having(node) => node.prebuild(),
-            Self::Join(node) => node.prebuild(),
-            Self::JoinConstraint(node) => node.prebuild(),
-            Self::HashJoin(node) => node.prebuild(),
-            Self::Filter(node) => node.prebuild(),
+            Self::Select(node) => node.build_select_plan(),
+            Self::GroupBy(node) => node.build_select_plan(),
+            Self::Having(node) => node.build_select_plan(),
+            Self::Join(node) => node.build_select_plan(),
+            Self::JoinConstraint(node) => node.build_select_plan(),
+            Self::HashJoin(node) => node.build_select_plan(),
+            Self::Filter(node) => node.build_select_plan(),
+        }
+    }
+}
+
+impl BuildSelect for PrevNode<'_> {
+    fn build_select(self) -> Result<Select> {
+        match self {
+            Self::Select(node) => node.build_select(),
+            Self::GroupBy(node) => node.build_select(),
+            Self::Having(node) => node.build_select(),
+            Self::Join(node) => node.build_select(),
+            Self::JoinConstraint(node) => node.build_select(),
+            Self::HashJoin(node) => node.build_select(),
+            Self::Filter(node) => node.build_select(),
         }
     }
 }
@@ -85,7 +100,7 @@ pub struct ProjectNode<'a> {
 }
 
 impl<'a> ProjectNode<'a> {
-    pub fn new<N: Into<PrevNode<'a>>, T: Into<SelectItemList<'a>>>(
+    pub(super) fn new<N: Into<PrevNode<'a>>, T: Into<SelectItemList<'a>>>(
         prev_node: N,
         select_items: T,
     ) -> Self {
@@ -119,13 +134,30 @@ impl<'a> ProjectNode<'a> {
     }
 }
 
-impl Prebuild<Select> for ProjectNode<'_> {
-    fn prebuild(self) -> Result<Select> {
-        let mut query: Select = self.prev_node.prebuild()?;
+impl BuildSelectPlan for ProjectNode<'_> {
+    fn build_select_plan(self) -> Result<SelectPlan> {
+        let mut query = self.prev_node.build_select_plan()?;
+        query.projection = ProjectionPlan::SelectItems(
+            self.select_items_list
+                .into_iter()
+                .map(SelectItemList::build_select_items_plan)
+                .collect::<Result<Vec<Vec<_>>>>()?
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>(),
+        );
+
+        Ok(query)
+    }
+}
+
+impl BuildSelect for ProjectNode<'_> {
+    fn build_select(self) -> Result<Select> {
+        let mut query = self.prev_node.build_select()?;
         query.projection = Projection::SelectItems(
             self.select_items_list
                 .into_iter()
-                .map(TryInto::try_into)
+                .map(SelectItemList::build_select_items)
                 .collect::<Result<Vec<Vec<_>>>>()?
                 .into_iter()
                 .flatten()
@@ -140,11 +172,12 @@ impl Prebuild<Select> for ProjectNode<'_> {
 mod tests {
     use {
         crate::{
-            ast::{
-                Join, JoinConstraint, JoinExecutor, JoinOperator, Projection, Query, Select,
-                SetExpr, Statement, TableFactor, TableWithJoins,
+            ast_builder::{Build, SelectItemList, col, table, test_query_builder},
+            plan::{
+                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
+                QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
+                TableWithJoinsPlan,
             },
-            ast_builder::{Build, SelectItemList, col, table, test},
         },
         pretty_assertions::assert_eq,
     };
@@ -152,14 +185,14 @@ mod tests {
     #[test]
     fn project() {
         // select node -> project node -> build
-        let actual = table("Good").select().project("id").build();
+        let actual = table("Good").select().project("id");
         let expected = "SELECT id FROM Good";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select node -> project node -> build
-        let actual = table("Group").select().project("*, Group.*, name").build();
+        let actual = table("Group").select().project("*, Group.*, name");
         let expected = "SELECT *, Group.*, name FROM Group";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // project node -> project node -> build
         let actual = table("Foo")
@@ -168,8 +201,7 @@ mod tests {
             .project("col3")
             .project(vec!["col4".into(), col("col5")])
             .project(col("col6"))
-            .project("col7 as hello")
-            .build();
+            .project("col7 as hello");
         let expected = "
             SELECT
                 col1, col2, col3,
@@ -178,37 +210,33 @@ mod tests {
             FROM
                 Foo
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select node -> project node -> build
-        let actual = table("Aliased")
-            .select()
-            .project("1 + 1 as col1, col2")
-            .build();
+        let actual = table("Aliased").select().project("1 + 1 as col1, col2");
         let expected = "SELECT 1 + 1 as col1, col2 FROM Aliased";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
     }
 
     #[test]
     fn prev_nodes() {
         // select node -> project node -> build
-        let actual = table("Foo").select().project("*").build();
+        let actual = table("Foo").select().project("*");
         let expected = "SELECT * FROM Foo";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // group by node -> project node -> build
         let actual = table("Bar")
             .select()
             .group_by("city")
-            .project("city, COUNT(name) as num")
-            .build();
+            .project("city, COUNT(name) as num");
         let expected = "
             SELECT
               city, COUNT(name) as num
             FROM Bar
             GROUP BY city
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // having node -> project node -> build
         let actual = table("Cat")
@@ -217,8 +245,7 @@ mod tests {
             .group_by("age")
             .having("SUM(length) < 1000")
             .project(col("age"))
-            .project("SUM(length)")
-            .build();
+            .project("SUM(length)");
         let expected = r#"
             SELECT age, SUM(length)
             FROM Cat
@@ -226,7 +253,7 @@ mod tests {
             GROUP BY age
             HAVING SUM(length) < 1000;
         "#;
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // hash join node -> project node -> build
         let actual = table("Player")
@@ -236,28 +263,28 @@ mod tests {
             .project("Player.name, PlayerItem.name")
             .build();
         let expected = {
-            let join = Join {
-                relation: TableFactor::Table {
+            let join = JoinPlan {
+                relation: TableFactorPlan::Table {
                     name: "PlayerItem".to_owned(),
                     alias: None,
                     index: None,
                 },
-                join_operator: JoinOperator::Inner(JoinConstraint::None),
-                join_executor: JoinExecutor::Hash {
-                    key_expr: col("PlayerItem.user_id").try_into().unwrap(),
-                    value_expr: col("Player.id").try_into().unwrap(),
+                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
+                join_executor: JoinExecutorPlan::Hash {
+                    key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),
+                    value_expr: col("Player.id").build_expr_plan().unwrap(),
                     where_clause: None,
                 },
             };
-            let select = Select {
+            let select = SelectPlan {
                 distinct: false,
-                projection: Projection::SelectItems(
+                projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("Player.name, PlayerItem.name")
-                        .try_into()
+                        .build_select_items_plan()
                         .unwrap(),
                 ),
-                from: TableWithJoins {
-                    relation: TableFactor::Table {
+                from: TableWithJoinsPlan {
+                    relation: TableFactorPlan::Table {
                         name: "Player".to_owned(),
                         alias: None,
                         index: None,
@@ -270,8 +297,8 @@ mod tests {
                 aggregate_slots: None,
             };
 
-            Ok(Statement::Query(Query {
-                body: SetExpr::Select(Box::new(select)),
+            Ok(StatementPlan::Query(QueryPlan {
+                body: SetExprPlan::Select(Box::new(select)),
                 order_by: Vec::new(),
                 limit: None,
                 offset: None,
@@ -280,13 +307,8 @@ mod tests {
         assert_eq!(actual, expected);
 
         // select -> project -> derived subquery
-        let actual = table("Foo")
-            .select()
-            .project("id")
-            .alias_as("Sub")
-            .select()
-            .build();
+        let actual = table("Foo").select().project("id").alias_as("Sub").select();
         let expected = "SELECT * FROM (SELECT id FROM Foo) Sub";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
     }
 }

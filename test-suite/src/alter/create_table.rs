@@ -90,11 +90,8 @@ test_case!(create_table, {
             .into()),
         ),
         (
-            "CREATE TABLE Gluery (id INTEGER DEFAULT (SELECT id FROM Wow))",
-            Err(
-                EvaluateError::UnsupportedStatelessExpr(Box::new(expr("(SELECT id FROM Wow)")))
-                    .into(),
-            ),
+            "CREATE TABLE Gluery (id BOOLEAN DEFAULT 1 IN (SELECT id FROM Wow))",
+            Err(EvaluateError::InSubqueryNotAllowedInStatelessExpr.into()),
         ),
         (
             // Create schema only

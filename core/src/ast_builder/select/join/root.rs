@@ -1,31 +1,47 @@
 use {
-    super::{JoinConstraintData, JoinOperatorType},
+    super::{JoinOperatorType, join_operator_plan_with_constraint, join_operator_with_constraint},
     crate::{
-        ast::{Join, JoinExecutor, JoinOperator, Select, TableAlias, TableFactor},
+        ast::{Expr, Join, Select, TableAlias, TableFactor},
         ast_builder::{
             ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinConstraintNode,
             LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
-            SelectItemList, SelectNode, TableFactorNode, select::Prebuild,
+            SelectItemList, SelectNode, TableFactorNode,
+            select::{BuildSelect, BuildSelectPlan},
+        },
+        plan::{
+            JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, SelectPlan,
+            TableAliasPlan, TableFactorPlan,
         },
         result::Result,
     },
 };
 
 #[derive(Clone, Debug)]
-pub enum PrevNode<'a> {
+pub(in crate::ast_builder::select) enum PrevNode<'a> {
     Select(SelectNode<'a>),
     Join(Box<JoinNode<'a>>),
     JoinConstraint(Box<JoinConstraintNode<'a>>),
     HashJoin(Box<HashJoinNode<'a>>),
 }
 
-impl Prebuild<Select> for PrevNode<'_> {
-    fn prebuild(self) -> Result<Select> {
+impl BuildSelectPlan for PrevNode<'_> {
+    fn build_select_plan(self) -> Result<SelectPlan> {
         match self {
-            Self::Select(node) => node.prebuild(),
-            Self::Join(node) => node.prebuild(),
-            Self::JoinConstraint(node) => node.prebuild(),
-            Self::HashJoin(node) => node.prebuild(),
+            Self::Select(node) => node.build_select_plan(),
+            Self::Join(node) => node.build_select_plan(),
+            Self::JoinConstraint(node) => node.build_select_plan(),
+            Self::HashJoin(node) => node.build_select_plan(),
+        }
+    }
+}
+
+impl BuildSelect for PrevNode<'_> {
+    fn build_select(self) -> Result<Select> {
+        match self {
+            Self::Select(node) => node.build_select(),
+            Self::Join(node) => node.build_select(),
+            Self::JoinConstraint(node) => node.build_select(),
+            Self::HashJoin(node) => node.build_select(),
         }
     }
 }
@@ -57,12 +73,13 @@ impl<'a> From<HashJoinNode<'a>> for PrevNode<'a> {
 #[derive(Clone, Debug)]
 pub struct JoinNode<'a> {
     prev_node: PrevNode<'a>,
-    relation: TableFactor,
+    relation_name: String,
+    relation_alias: Option<String>,
     join_operator_type: JoinOperatorType,
 }
 
 impl<'a> JoinNode<'a> {
-    pub fn new<N: Into<PrevNode<'a>>>(
+    pub(in crate::ast_builder::select) fn new<N: Into<PrevNode<'a>>>(
         prev_node: N,
         name: String,
         alias: Option<String>,
@@ -71,21 +88,29 @@ impl<'a> JoinNode<'a> {
         Self {
             prev_node: prev_node.into(),
             join_operator_type,
-            relation: match alias {
-                Some(alias) => TableFactor::Table {
-                    name,
-                    alias: Some(TableAlias {
-                        name: alias,
-                        columns: vec![],
-                    }),
-                    index: None,
-                },
-                None => TableFactor::Table {
-                    name,
-                    alias: None,
-                    index: None,
-                },
-            },
+            relation_name: name,
+            relation_alias: alias,
+        }
+    }
+
+    fn build_table_factor_plan(&self) -> TableFactorPlan {
+        TableFactorPlan::Table {
+            name: self.relation_name.clone(),
+            alias: self.relation_alias.as_ref().map(|name| TableAliasPlan {
+                name: name.clone(),
+                columns: vec![],
+            }),
+            index: None,
+        }
+    }
+
+    fn build_table_factor(&self) -> TableFactor {
+        TableFactor::Table {
+            name: self.relation_name.clone(),
+            alias: self.relation_alias.as_ref().map(|name| TableAlias {
+                name: name.clone(),
+                columns: vec![],
+            }),
         }
     }
 
@@ -159,31 +184,72 @@ impl<'a> JoinNode<'a> {
         QueryNode::JoinNode(self).alias_as(table_alias)
     }
 
-    pub fn prebuild_for_constraint(self) -> Result<JoinConstraintData> {
-        Ok(JoinConstraintData {
-            select: self.prev_node.prebuild()?,
-            relation: self.relation,
-            operator_type: self.join_operator_type,
-            executor: JoinExecutor::NestedLoop,
-        })
+    pub(super) fn build_select_plan_with_constraint(
+        self,
+        constraint: JoinConstraintPlan,
+    ) -> Result<SelectPlan> {
+        let relation = self.build_table_factor_plan();
+        let mut select = self.prev_node.build_select_plan()?;
+
+        select.from.joins.push(JoinPlan {
+            relation,
+            join_operator: join_operator_plan_with_constraint(self.join_operator_type, constraint),
+            join_executor: JoinExecutorPlan::NestedLoop,
+        });
+
+        Ok(select)
     }
 
-    pub fn prebuild_for_hash_join(self) -> Result<(Select, TableFactor, JoinOperator)> {
-        let select_data = self.prev_node.prebuild()?;
-        let join_operator = JoinOperator::from(self.join_operator_type);
+    pub(super) fn build_select_with_constraint(self, constraint: Expr) -> Result<Select> {
+        let relation = self.build_table_factor();
+        let mut select = self.prev_node.build_select()?;
 
-        Ok((select_data, self.relation, join_operator))
+        select.from.joins.push(Join {
+            relation,
+            join_operator: join_operator_with_constraint(self.join_operator_type, Some(constraint)),
+        });
+
+        Ok(select)
+    }
+
+    pub(super) fn build_join_plan_parts_with_constraint(
+        self,
+        constraint: JoinConstraintPlan,
+    ) -> Result<(SelectPlan, TableFactorPlan, JoinOperatorPlan)> {
+        let relation = self.build_table_factor_plan();
+        let select = self.prev_node.build_select_plan()?;
+        let join_operator = join_operator_plan_with_constraint(self.join_operator_type, constraint);
+
+        Ok((select, relation, join_operator))
     }
 }
 
-impl Prebuild<Select> for JoinNode<'_> {
-    fn prebuild(self) -> Result<Select> {
-        let mut select: Select = self.prev_node.prebuild()?;
+impl BuildSelectPlan for JoinNode<'_> {
+    fn build_select_plan(self) -> Result<SelectPlan> {
+        let relation = self.build_table_factor_plan();
+        let mut select = self.prev_node.build_select_plan()?;
+
+        select.from.joins.push(JoinPlan {
+            relation,
+            join_operator: join_operator_plan_with_constraint(
+                self.join_operator_type,
+                JoinConstraintPlan::None,
+            ),
+            join_executor: JoinExecutorPlan::NestedLoop,
+        });
+
+        Ok(select)
+    }
+}
+
+impl BuildSelect for JoinNode<'_> {
+    fn build_select(self) -> Result<Select> {
+        let relation = self.build_table_factor();
+        let mut select = self.prev_node.build_select()?;
 
         select.from.joins.push(Join {
-            relation: self.relation,
-            join_operator: JoinOperator::from(self.join_operator_type),
-            join_executor: JoinExecutor::NestedLoop,
+            relation,
+            join_operator: join_operator_with_constraint(self.join_operator_type, None),
         });
 
         Ok(select)
@@ -193,7 +259,7 @@ impl Prebuild<Select> for JoinNode<'_> {
 #[cfg(test)]
 mod tests {
     use {
-        crate::ast_builder::{Build, table, test},
+        crate::ast_builder::{Build, table, test_query_builder},
         pretty_assertions::assert_eq,
     };
 
@@ -204,12 +270,11 @@ mod tests {
             .select()
             .join_as("Player", "p")
             .on("p.id = Item.player_id")
-            .filter("p.id = 1")
-            .build();
+            .filter("p.id = 1");
         let expected = "
         SELECT * FROM Item INNER JOIN Player AS p ON p.id = Item.player_id WHERE p.id = 1;
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select node -> join node ->  join constraint node
         let actual = table("Item")
@@ -217,19 +282,18 @@ mod tests {
             .join_as("Player", "p")
             .on("p.id = Item.player_id")
             .filter("p.id = 1")
-            .project(vec!["p.id", "p.name", "Item.id"])
-            .build();
+            .project(vec!["p.id", "p.name", "Item.id"]);
         let expected = "
         SELECT p.id, p.name, Item.id FROM Item INNER JOIN Player AS p ON p.id = Item.player_id WHERE p.id = 1;
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select node -> join node ->  build
-        let actual = table("Item").select().join_as("Player", "p").build();
+        let actual = table("Item").select().join_as("Player", "p");
         let expected = "
         SELECT * FROM Item INNER JOIN Player AS p;
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join node -> join constraint node -> join node -> join constraint node
         let actual = table("students")
@@ -244,8 +308,7 @@ mod tests {
                 "students.name",
                 "marks.rank",
                 "attendance.attendance",
-            ])
-            .build();
+            ]);
         let expected = "
             SELECT students.id, students.name, marks.rank, attendance.attendance
             FROM students
@@ -253,23 +316,19 @@ mod tests {
             INNER JOIN attendance on marks.id=attendance.id
             WHERE attendance.attendance >= 75;
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select node -> join node -> project node
-        let actual = table("Orders")
-            .select()
-            .join("Customers")
-            .project(vec![
-                "Orders.OrderID",
-                "Customers.CustomerName",
-                "Orders.OrderDate",
-            ])
-            .build();
+        let actual = table("Orders").select().join("Customers").project(vec![
+            "Orders.OrderID",
+            "Customers.CustomerName",
+            "Orders.OrderDate",
+        ]);
         let expected = "
             SELECT Orders.OrderID, Customers.CustomerName, Orders.OrderDate
             FROM Orders INNER JOIN Customers
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
     }
 
     #[test]
@@ -279,15 +338,14 @@ mod tests {
             .select()
             .left_join("item")
             .on("player.id = item.id")
-            .project(vec!["player.id", "item.id"])
-            .build();
+            .project(vec!["player.id", "item.id"]);
         let expected = "
             SELECT player.id, item.id
             FROM player
             LEFT JOIN item
             ON player.id = item.id
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select node -> left join node -> join constraint node -> left join node
         let actual = table("Item")
@@ -312,8 +370,7 @@ mod tests {
             .on("p8.id = Item.player_id")
             .left_join_as("Player", "p9")
             .on("p9.id = Item.player_id")
-            .filter("Player.id = 1")
-            .build();
+            .filter("Player.id = 1");
         let expected = "
             SELECT * FROM Item
             LEFT JOIN Player ON Player.id = Item.player_id
@@ -328,7 +385,7 @@ mod tests {
             LEFT JOIN Player p9 ON p9.id = Item.player_id
             WHERE Player.id = 1;
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select node -> left join node -> join constraint node -> left join node
         let actual = table("Item")
@@ -336,13 +393,12 @@ mod tests {
             .left_join("Player")
             .on("Player.id = Item.player_id")
             .left_join("Player")
-            .on("p1.id = Item.player_id")
-            .build();
+            .on("p1.id = Item.player_id");
         let expected = "
             SELECT * FROM Item
             LEFT JOIN Player ON Player.id = Item.player_id
             LEFT JOIN Player ON p1.id = Item.player_id";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         let actual = table("Item")
             .select()
@@ -356,8 +412,7 @@ mod tests {
             .on("p3.id = Item.player_id")
             .join_as("Player", "p4")
             .on("p4.id = Item.player_id AND Item.id > 101")
-            .filter("Player.id = 1")
-            .build();
+            .filter("Player.id = 1");
         let expected = "
             SELECT * FROM Item
             LEFT JOIN Player ON Player.id = Item.player_id
@@ -367,237 +422,206 @@ mod tests {
             INNER JOIN Player p4 ON p4.id = Item.player_id AND Item.id > 101
             WHERE Player.id = 1;
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
     }
 
     #[test]
     fn join_join() {
         // join - join
-        let actual = table("Foo").select().join("Bar").join("Baz").build();
+        let actual = table("Foo").select().join("Bar").join("Baz");
         let expected = "
             SELECT * FROM Foo
             INNER JOIN Bar
             INNER JOIN Baz
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join - join as
-        let actual = table("Foo")
-            .select()
-            .join("Bar")
-            .join_as("Baz", "B")
-            .build();
+        let actual = table("Foo").select().join("Bar").join_as("Baz", "B");
         let expected = "
             SELECT * FROM Foo
             INNER JOIN Bar
             INNER JOIN Baz B
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join - left join
-        let actual = table("Foo").select().join("Bar").left_join("Baz").build();
+        let actual = table("Foo").select().join("Bar").left_join("Baz");
         let expected = "
             SELECT * FROM Foo
             INNER JOIN Bar
             LEFT JOIN Baz
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join - left join as
-        let actual = table("Foo")
-            .select()
-            .join("Bar")
-            .left_join_as("Baz", "B")
-            .build();
+        let actual = table("Foo").select().join("Bar").left_join_as("Baz", "B");
         let expected = "
             SELECT * FROM Foo
             INNER JOIN Bar
             LEFT JOIN Baz B
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join as - join
-        let actual = table("Foo")
-            .select()
-            .join_as("Bar", "B")
-            .join("Baz")
-            .build();
+        let actual = table("Foo").select().join_as("Bar", "B").join("Baz");
         let expected = "
             SELECT * FROM Foo
             INNER JOIN Bar B
             INNER JOIN Baz
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join as - join as
         let actual = table("Foo")
             .select()
             .join_as("Bar", "B")
-            .join_as("Baz", "C")
-            .build();
+            .join_as("Baz", "C");
         let expected = "
             SELECT * FROM Foo
             INNER JOIN Bar B
             INNER JOIN Baz C
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join as - left join
-        let actual = table("Foo")
-            .select()
-            .join_as("Bar", "B")
-            .left_join("Baz")
-            .build();
+        let actual = table("Foo").select().join_as("Bar", "B").left_join("Baz");
         let expected = "
             SELECT * FROM Foo
             INNER JOIN Bar B
             LEFT JOIN Baz
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join as - left join as
         let actual = table("Foo")
             .select()
             .join_as("Bar", "B")
-            .left_join_as("Baz", "C")
-            .build();
+            .left_join_as("Baz", "C");
         let expected = "
             SELECT * FROM Foo
             INNER JOIN Bar B
             LEFT JOIN Baz C
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // left join - join
-        let actual = table("Foo").select().left_join("Bar").join("Baz").build();
+        let actual = table("Foo").select().left_join("Bar").join("Baz");
         let expected = "
             SELECT * FROM Foo
             LEFT JOIN Bar
             INNER JOIN Baz
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // left join - join as
-        let actual = table("Foo")
-            .select()
-            .left_join("Bar")
-            .join_as("Baz", "B")
-            .build();
+        let actual = table("Foo").select().left_join("Bar").join_as("Baz", "B");
         let expected = "
             SELECT * FROM Foo
             LEFT JOIN Bar
             INNER JOIN Baz B
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // left join - left join
-        let actual = table("Foo")
-            .select()
-            .left_join("Bar")
-            .left_join("Baz")
-            .build();
+        let actual = table("Foo").select().left_join("Bar").left_join("Baz");
         let expected = "
             SELECT * FROM Foo
             LEFT JOIN Bar
             LEFT JOIN Baz
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // left join - left join as
         let actual = table("Foo")
             .select()
             .left_join("Bar")
-            .left_join_as("Baz", "B")
-            .build();
+            .left_join_as("Baz", "B");
         let expected = "
             SELECT * FROM Foo
             LEFT JOIN Bar
             LEFT JOIN Baz B
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // left join as - join
-        let actual = table("Foo")
-            .select()
-            .left_join_as("Bar", "B")
-            .join("Baz")
-            .build();
+        let actual = table("Foo").select().left_join_as("Bar", "B").join("Baz");
         let expected = "
             SELECT * FROM Foo
             LEFT JOIN Bar B
             INNER JOIN Baz
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // left join as - join as
         let actual = table("Foo")
             .select()
             .left_join_as("Bar", "B")
-            .join_as("Baz", "C")
-            .build();
+            .join_as("Baz", "C");
         let expected = "
             SELECT * FROM Foo
             LEFT JOIN Bar B
             INNER JOIN Baz C
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // left join as - left join
         let actual = table("Foo")
             .select()
             .left_join_as("Bar", "B")
-            .left_join("Baz")
-            .build();
+            .left_join("Baz");
         let expected = "
             SELECT * FROM Foo
             LEFT JOIN Bar B
             LEFT JOIN Baz
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // left join as - left join as
         let actual = table("Foo")
             .select()
             .left_join_as("Bar", "B")
-            .left_join_as("Baz", "C")
-            .build();
+            .left_join_as("Baz", "C");
         let expected = "
             SELECT * FROM Foo
             LEFT JOIN Bar B
             LEFT JOIN Baz C
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
     }
 
     #[test]
     fn hash_join() {
         use crate::{
-            ast::{
-                Join, JoinConstraint, JoinExecutor, JoinOperator, Projection, Query, Select,
-                SetExpr, Statement, TableAlias, TableFactor, TableWithJoins,
-            },
             ast_builder::{SelectItemList, col},
+            plan::{
+                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
+                QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableAliasPlan, TableFactorPlan,
+                TableWithJoinsPlan,
+            },
         };
 
         let gen_expected = |other_join| {
-            let join = Join {
-                relation: TableFactor::Table {
+            let join = JoinPlan {
+                relation: TableFactorPlan::Table {
                     name: "PlayerItem".to_owned(),
                     alias: None,
                     index: None,
                 },
-                join_operator: JoinOperator::Inner(JoinConstraint::None),
-                join_executor: JoinExecutor::Hash {
-                    key_expr: col("PlayerItem.user_id").try_into().unwrap(),
-                    value_expr: col("Player.id").try_into().unwrap(),
+                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
+                join_executor: JoinExecutorPlan::Hash {
+                    key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),
+                    value_expr: col("Player.id").build_expr_plan().unwrap(),
                     where_clause: None,
                 },
             };
-            let select = Select {
+            let select = SelectPlan {
                 distinct: false,
-                projection: Projection::SelectItems(SelectItemList::from("*").try_into().unwrap()),
-                from: TableWithJoins {
-                    relation: TableFactor::Table {
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+                from: TableWithJoinsPlan {
+                    relation: TableFactorPlan::Table {
                         name: "Player".to_owned(),
                         alias: None,
                         index: None,
@@ -610,8 +634,8 @@ mod tests {
                 aggregate_slots: None,
             };
 
-            Ok(Statement::Query(Query {
-                body: SetExpr::Select(Box::new(select)),
+            Ok(StatementPlan::Query(QueryPlan {
+                body: SetExprPlan::Select(Box::new(select)),
                 order_by: Vec::new(),
                 limit: None,
                 offset: None,
@@ -625,14 +649,14 @@ mod tests {
             .join("OtherItem")
             .build();
         let expected = {
-            let other_join = Join {
-                relation: TableFactor::Table {
+            let other_join = JoinPlan {
+                relation: TableFactorPlan::Table {
                     name: "OtherItem".to_owned(),
                     alias: None,
                     index: None,
                 },
-                join_operator: JoinOperator::Inner(JoinConstraint::None),
-                join_executor: JoinExecutor::NestedLoop,
+                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
+                join_executor: JoinExecutorPlan::NestedLoop,
             };
 
             gen_expected(other_join)
@@ -646,17 +670,17 @@ mod tests {
             .join_as("OtherItem", "Ot")
             .build();
         let expected = {
-            let other_join = Join {
-                relation: TableFactor::Table {
+            let other_join = JoinPlan {
+                relation: TableFactorPlan::Table {
                     name: "OtherItem".to_owned(),
-                    alias: Some(TableAlias {
+                    alias: Some(TableAliasPlan {
                         name: "Ot".to_owned(),
                         columns: Vec::new(),
                     }),
                     index: None,
                 },
-                join_operator: JoinOperator::Inner(JoinConstraint::None),
-                join_executor: JoinExecutor::NestedLoop,
+                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
+                join_executor: JoinExecutorPlan::NestedLoop,
             };
 
             gen_expected(other_join)
@@ -670,14 +694,14 @@ mod tests {
             .left_join("OtherItem")
             .build();
         let expected = {
-            let other_join = Join {
-                relation: TableFactor::Table {
+            let other_join = JoinPlan {
+                relation: TableFactorPlan::Table {
                     name: "OtherItem".to_owned(),
                     alias: None,
                     index: None,
                 },
-                join_operator: JoinOperator::LeftOuter(JoinConstraint::None),
-                join_executor: JoinExecutor::NestedLoop,
+                join_operator: JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None),
+                join_executor: JoinExecutorPlan::NestedLoop,
             };
 
             gen_expected(other_join)
@@ -691,40 +715,35 @@ mod tests {
             .left_join_as("OtherItem", "Ot")
             .build();
         let expected = {
-            let other_join = Join {
-                relation: TableFactor::Table {
+            let other_join = JoinPlan {
+                relation: TableFactorPlan::Table {
                     name: "OtherItem".to_owned(),
-                    alias: Some(TableAlias {
+                    alias: Some(TableAliasPlan {
                         name: "Ot".to_owned(),
                         columns: Vec::new(),
                     }),
                     index: None,
                 },
-                join_operator: JoinOperator::LeftOuter(JoinConstraint::None),
-                join_executor: JoinExecutor::NestedLoop,
+                join_operator: JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None),
+                join_executor: JoinExecutorPlan::NestedLoop,
             };
 
             gen_expected(other_join)
         };
         assert_eq!(actual, expected, "left join with alias");
 
-        let actual = table("App").select().alias_as("Sub").select().build();
+        let actual = table("App").select().alias_as("Sub").select();
         let expected = "SELECT * FROM (SELECT * FROM App) Sub";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join -> derived subquery
-        let actual = table("Foo")
-            .select()
-            .join("Bar")
-            .alias_as("Sub")
-            .select()
-            .build();
+        let actual = table("Foo").select().join("Bar").alias_as("Sub").select();
         let expected = "
             SELECT * FROM (
                 SELECT * FROM Foo
                 INNER JOIN Bar
             ) Sub
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
     }
 }

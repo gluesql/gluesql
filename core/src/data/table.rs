@@ -1,5 +1,5 @@
 use {
-    crate::ast::{IndexItem, TableAlias, TableFactor},
+    crate::ast::{TableAlias, TableFactor},
     serde::Serialize,
     std::fmt::Debug,
     thiserror::Error,
@@ -32,14 +32,5 @@ pub fn get_alias(table_factor: &TableFactor) -> &String {
             alias: TableAlias { name, .. },
             ..
         } => name,
-    }
-}
-
-pub fn get_index(table_factor: &TableFactor) -> Option<&IndexItem> {
-    match table_factor {
-        TableFactor::Table { index, .. } => index.as_ref(),
-        TableFactor::Derived { .. }
-        | TableFactor::Series { .. }
-        | TableFactor::Dictionary { .. } => None,
     }
 }
