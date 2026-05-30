@@ -191,27 +191,43 @@ fn infer_expr_type(expr: &Expr, table: Option<(&str, &Schema)>) -> Option<DataTy
 }
 
 /// Returns true when `left` and `right` may appear as corresponding columns in
-/// a UNION.  Identical types always pass.  Within the numeric family, mixed
-/// integer/float/decimal pairs are also accepted because the result rows can
-/// carry different Value variants without causing a runtime error — matching the
-/// implicit promotion behaviour of `PostgreSQL` and `MySQL`.
+/// a UNION.  Identical types always pass.  Any two distinct numeric types are
+/// also accepted — matching the implicit promotion behaviour of `PostgreSQL`
+/// and `MySQL`.
 fn types_compatible(left: &DataType, right: &DataType) -> bool {
-    left == right || is_numeric_promotable(left, right)
+    left == right || (is_numeric(left) && is_numeric(right))
 }
 
-fn is_numeric_promotable(a: &DataType, b: &DataType) -> bool {
-    use DataType::*;
-    matches!(
-        (a, b),
-        (
-            Int | Int8 | Int16 | Int32 | Int128 | Uint8 | Uint16 | Uint32 | Uint64,
-            Float | Decimal
-        ) | (
-            Float | Decimal,
-            Int | Int8 | Int16 | Int32 | Int128 | Uint8 | Uint16 | Uint32 | Uint64
-        ) | (Float, Decimal)
-            | (Decimal, Float)
-    )
+/// Exhaustive match over every `DataType` variant so that adding a new variant
+/// forces a compile error here, preventing silent misclassification.
+fn is_numeric(t: &DataType) -> bool {
+    match t {
+        DataType::Int8
+        | DataType::Int16
+        | DataType::Int32
+        | DataType::Int
+        | DataType::Int128
+        | DataType::Uint8
+        | DataType::Uint16
+        | DataType::Uint32
+        | DataType::Uint64
+        | DataType::Uint128
+        | DataType::Float32
+        | DataType::Float
+        | DataType::Decimal => true,
+        DataType::Boolean
+        | DataType::Text
+        | DataType::Bytea
+        | DataType::Inet
+        | DataType::Date
+        | DataType::Timestamp
+        | DataType::Time
+        | DataType::Interval
+        | DataType::Uuid
+        | DataType::Map
+        | DataType::List
+        | DataType::Point => false,
+    }
 }
 
 fn infer_literal_type(lit: &Literal) -> DataType {
