@@ -2,8 +2,9 @@ name: Docs
 
 on:
   push:
-    branches: [main]
+    branches: [main, website-migrate-to-zensical]
     paths:
+      - ".github/workflows/docs.yml"
       - "docs/**"
   pull_request:
     branches: [main]
