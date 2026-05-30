@@ -43,14 +43,14 @@ jobs:
       - name: Build docs
         run: |
           cd docs
-          python -c "from pathlib import Path; Path('zensical.release.toml').write_text(Path('zensical.toml').read_text().replace('https://gluesql.org/docs/dev/', 'https://gluesql.org/docs/${{ env.VERSION }}/'))"
+          python -c "import os; from pathlib import Path; version = os.environ['VERSION']; Path('zensical.release.toml').write_text(Path('zensical.toml').read_text().replace('https://gluesql.org/docs/dev/', f'https://gluesql.org/docs/{version}/'))"
           zensical build --config-file zensical.release.toml
 
       - name: Update docs version on gluesql.org
         run: |
-          rm -rf gluesql.github.io/docs/${{ env.VERSION }}
+          rm -rf "gluesql.github.io/docs/$VERSION"
           mkdir -p gluesql.github.io/docs
-          mv docs/build gluesql.github.io/docs/${{ env.VERSION }}
+          mv docs/build "gluesql.github.io/docs/$VERSION"
 
       - name: Update docs index.html redirect
         run: |
@@ -79,8 +79,8 @@ jobs:
       - name: Commit and deploy
         run: |
           cd gluesql.github.io
-          git add docs/${{ env.VERSION }} docs/index.html
+          git add "docs/$VERSION" docs/index.html
           git diff-index --quiet HEAD || (
-            git commit -m "Publish Docs - ${{ env.VERSION }}" &&
+            git commit -m "Publish Docs - $VERSION" &&
             git push https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git
           )
