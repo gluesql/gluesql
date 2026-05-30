@@ -109,7 +109,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
         }
 
         let selection = selection.and_then(|expr| {
-            if let (Some(indexes), TableFactorPlan::Table { index:None }) =
+            if let (Some(indexes), TableFactorPlan::Table { index: None, .. }) =
                 (indexes.as_ref(), &from.relation)
             {
                 match self.plan_index_expr(outer_context.map(Arc::clone), indexes, expr) {
@@ -442,14 +442,9 @@ mod tests {
     use {
         super::plan,
         crate::{
-<<<<<<< HEAD
-            ast::Statement,
             ast_builder::{
                 Build, col, exists, nested, non_clustered, null, num, primary_key, table, text,
             },
-=======
-            ast_builder::{Build, col, exists, nested, non_clustered, null, num, table, text},
->>>>>>> upstream/main
             mock::{MockStorage, run},
             parse_sql::parse,
             plan::{StatementPlan, fetch_schema_map},
