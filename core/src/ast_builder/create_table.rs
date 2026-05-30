@@ -1,6 +1,6 @@
 use {
     super::Build,
-    crate::{ast::Statement, ast_builder::ColumnDefNode, result::Result},
+    crate::{ast::Statement, ast_builder::ColumnDefNode, plan::StatementPlan, result::Result},
 };
 
 #[derive(Clone, Debug)]
@@ -35,7 +35,7 @@ impl CreateTableNode {
 }
 
 impl Build for CreateTableNode {
-    fn build(self) -> Result<Statement> {
+    fn build(self) -> Result<StatementPlan> {
         let table_name = self.table_name;
         let columns = match self.columns {
             Some(columns) => Some(
@@ -55,7 +55,8 @@ impl Build for CreateTableNode {
             engine: None,
             foreign_keys: Vec::new(),
             comment: None,
-        })
+        }
+        .into())
     }
 }
 

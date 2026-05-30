@@ -5,9 +5,8 @@ use {
     },
     crate::{
         ast::{
-            Dictionary, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, Literal,
-            Projection, Query, Select, SelectItem, SetExpr, TableAlias, TableFactor,
-            TableWithJoins, Values,
+            Dictionary, Expr, Join, JoinConstraint, JoinOperator, Literal, Projection, Query,
+            Select, SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, Values,
         },
         result::Result,
     },
@@ -170,7 +169,6 @@ fn translate_select(sql_select: &SqlSelect, params: &[ParamLiteral]) -> Result<S
             .as_ref()
             .map(|expr| translate_expr(expr, params))
             .transpose()?,
-        aggregate_slots: None,
     })
 }
 
@@ -282,13 +280,10 @@ fn translate_table_factor(
                     dict: Dictionary::GlueTableColumns,
                     alias: alias_or_name(alias, object_name),
                 }),
-                _ => {
-                    Ok(TableFactor::Table {
-                        name: translate_object_name(name)?,
-                        alias,
-                        index: None, // query execution plan
-                    })
-                }
+                _ => Ok(TableFactor::Table {
+                    name: translate_object_name(name)?,
+                    alias,
+                }),
             }
         }
         SqlTableFactor::Derived {
@@ -348,7 +343,6 @@ fn translate_join(params: &[ParamLiteral], sql_join: &SqlJoin) -> Result<Join> {
     Ok(Join {
         relation: translate_table_factor(params, relation)?,
         join_operator,
-        join_executor: JoinExecutor::NestedLoop,
     })
 }
 
@@ -447,7 +441,6 @@ mod tests {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
-                aggregate_slots: None,
             })),
             order_by: Vec::new(),
             limit: None,

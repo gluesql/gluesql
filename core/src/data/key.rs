@@ -386,7 +386,7 @@ mod tests {
 
     fn convert(sql: &str) -> Result<Key> {
         let parsed = parse_expr(sql).expect(sql);
-        let expr = translate_expr(&parsed, NO_PARAMS).expect(sql);
+        let expr = translate_expr(&parsed, NO_PARAMS).expect(sql).into();
 
         block_on(evaluate_stateless(None, &expr))
             .expect(sql)

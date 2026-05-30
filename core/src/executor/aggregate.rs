@@ -8,8 +8,8 @@ use {
         filter::check_expr,
     },
     crate::{
-        ast::{Aggregate, Expr},
         data::Value,
+        plan::{AggregatePlan, ExprPlan},
         result::Result,
         store::GStore,
     },
@@ -25,9 +25,9 @@ enum S<T1, T2> {
 
 pub async fn apply<'a, T: GStore, U: Stream<Item = Result<Arc<RowContext<'a>>>> + 'a>(
     storage: &'a T,
-    aggregate_slots: Option<&'a [Aggregate]>,
-    group_by: &'a [Expr],
-    having: Option<&'a Expr>,
+    aggregate_slots: Option<&'a [AggregatePlan]>,
+    group_by: &'a [ExprPlan],
+    having: Option<&'a ExprPlan>,
     filter_context: Option<Arc<RowContext<'a>>>,
     rows: U,
 ) -> Result<impl Stream<Item = Result<AggregateContext<'a>>> + use<'a, T, U>> {
@@ -101,9 +101,9 @@ pub async fn apply<'a, T: GStore, U: Stream<Item = Result<Arc<RowContext<'a>>>> 
 
 fn group_by_having<'a, T: GStore>(
     storage: &'a T,
-    aggregate_slots: &'a [Aggregate],
+    aggregate_slots: &'a [AggregatePlan],
     filter_context: Option<Arc<RowContext<'a>>>,
-    having: Option<&'a Expr>,
+    having: Option<&'a ExprPlan>,
     state: State<'a, T>,
 ) -> Result<impl Stream<Item = Result<AggregateContext<'a>>>> {
     let rows = state.export(aggregate_slots)?.into_iter();

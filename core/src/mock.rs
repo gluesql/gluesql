@@ -23,7 +23,7 @@ pub fn run(sql: &str) -> MockStorage {
     let mut storage = MockStorage::default();
 
     for parsed in parse(sql).unwrap() {
-        let statement = translate(&parsed).unwrap();
+        let statement = translate(&parsed).unwrap().into();
 
         block_on(execute(&mut storage, &statement)).unwrap();
     }
@@ -139,8 +139,9 @@ mod tests {
     use {
         super::MockStorage,
         crate::{
-            ast::{ColumnDef, DataType, Expr, OrderByExpr},
+            ast::{ColumnDef, Expr, OrderByExpr},
             data::{Key, Schema, SchemaIndexOrd},
+            prelude::DataType,
             store::{AlterTable, Index, IndexMut, Transaction},
             store::{Store, StoreMut},
         },

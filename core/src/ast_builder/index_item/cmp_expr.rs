@@ -44,12 +44,9 @@ impl<'a> CmpExprNode<'a> {
 mod tests {
 
     use crate::{
-        ast::{Expr, IndexOperator, Literal},
-        ast_builder::{
-            IndexItemNode,
-            index_item::{IndexItem, non_clustered},
-            select::Prebuild,
-        },
+        ast::{IndexOperator, Literal},
+        ast_builder::{IndexItemNode, index_item::non_clustered},
+        plan::{ExprPlan, IndexItemPlan},
     };
 
     #[test]
@@ -57,33 +54,42 @@ mod tests {
         let actual = non_clustered("idx".to_owned())
             .eq("1")
             .asc()
-            .prebuild()
+            .build_index_item_plan()
             .unwrap();
-        let expected = IndexItem::NonClustered {
+        let expected = IndexItemPlan::NonClustered {
             name: "idx".to_owned(),
             asc: Some(true),
-            cmp_expr: Some((IndexOperator::Eq, Expr::Literal(Literal::Number(1.into())))),
+            cmp_expr: Some((
+                IndexOperator::Eq,
+                ExprPlan::Literal(Literal::Number(1.into())),
+            )),
         };
         assert_eq!(actual, expected);
 
         let actual = non_clustered("idx".to_owned())
             .eq("2")
             .desc()
-            .prebuild()
+            .build_index_item_plan()
             .unwrap();
-        let expected = IndexItem::NonClustered {
+        let expected = IndexItemPlan::NonClustered {
             name: "idx".to_owned(),
             asc: Some(false),
-            cmp_expr: Some((IndexOperator::Eq, Expr::Literal(Literal::Number(2.into())))),
+            cmp_expr: Some((
+                IndexOperator::Eq,
+                ExprPlan::Literal(Literal::Number(2.into())),
+            )),
         };
         assert_eq!(actual, expected);
 
         let index_item: IndexItemNode = non_clustered("idx".to_owned()).eq("3").into();
-        let actual = index_item.prebuild().unwrap();
-        let expected = IndexItem::NonClustered {
+        let actual = index_item.build_index_item_plan().unwrap();
+        let expected = IndexItemPlan::NonClustered {
             name: "idx".to_owned(),
             asc: None,
-            cmp_expr: Some((IndexOperator::Eq, Expr::Literal(Literal::Number(3.into())))),
+            cmp_expr: Some((
+                IndexOperator::Eq,
+                ExprPlan::Literal(Literal::Number(3.into())),
+            )),
         };
         assert_eq!(actual, expected);
     }

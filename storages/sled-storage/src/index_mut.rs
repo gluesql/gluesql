@@ -1,7 +1,7 @@
 use {
     super::{
         SledStorage, Snapshot, err_into,
-        index_sync::IndexSync,
+        index_sync::{IndexSync, PlannedIndex},
         key,
         lock::{self, LockAcquired},
         transaction::TxPayload,
@@ -93,6 +93,8 @@ impl IndexMut for SledStorage {
                 created: Utc::now().naive_utc(),
             };
 
+            let planned_index = PlannedIndex::new(index.clone());
+
             let indexes = indexes
                 .into_iter()
                 .chain(once(index.clone()))
@@ -121,7 +123,9 @@ impl IndexMut for SledStorage {
                         .map_err(ConflictableTransactionError::Abort)
                         .map(|key| key::data(table_name, key))?;
 
-                    index_sync.insert_index(&index, &data_key, row).await?;
+                    index_sync
+                        .insert_index(&planned_index, &data_key, row)
+                        .await?;
                 }
 
                 Ok(()) as ConflictableTransactionResult<(), Error>
@@ -185,6 +189,8 @@ impl IndexMut for SledStorage {
                     IndexError::IndexNameDoesNotExist(index_name.to_owned()).into(),
                 ));
             };
+
+            let index = PlannedIndex::new(index);
 
             let schema = Schema {
                 table_name: table_name.to_owned(),

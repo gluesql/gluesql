@@ -1,6 +1,9 @@
 use {
     super::{Store, StoreMut},
-    crate::{ast::ColumnDef, data::Value, executor::evaluate_stateless, result::Result},
+    crate::{
+        ast::ColumnDef, data::Value, executor::evaluate_stateless, plan::plan_scalar_expr,
+        result::Result,
+    },
     async_trait::async_trait,
     futures::TryStreamExt,
     serde::Serialize,
@@ -97,7 +100,11 @@ pub trait AlterTable: Store + StoreMut {
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
 
         let default_value = match (column_def.default.as_ref(), column_def.nullable) {
-            (Some(default), _) => evaluate_stateless(None, default).await?.try_into()?,
+            (Some(default), _) => {
+                let default = plan_scalar_expr(default.clone());
+
+                evaluate_stateless(None, &default).await?.try_into()?
+            }
             (None, true) => Value::Null,
             (None, false) => {
                 return Err(AlterTableError::DefaultValueRequired(column_def.clone()).into());

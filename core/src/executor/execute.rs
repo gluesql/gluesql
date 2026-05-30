@@ -12,11 +12,12 @@ use {
         validate::{ColumnValidation, validate_unique},
     },
     crate::{
-        ast::{
-            BinaryOperator, DataType, Dictionary, Expr, Literal, Projection, Query, SelectItem,
-            SetExpr, Statement, TableAlias, TableFactor, TableWithJoins, Variable,
-        },
+        ast::{BinaryOperator, DataType, Dictionary, Literal, Variable},
         data::{Key, Row, SCHEMALESS_DOC_COLUMN, Schema, Value},
+        plan::{
+            ExprPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan, SetExprPlan,
+            StatementPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan,
+        },
         result::{Error, Result},
         store::{GStore, GStoreMut},
     },
@@ -105,11 +106,11 @@ pub enum PayloadVariable {
 
 pub async fn execute<T: GStore + GStoreMut>(
     storage: &mut T,
-    statement: &Statement,
+    statement: &StatementPlan,
 ) -> Result<Payload> {
     if matches!(
         statement,
-        Statement::StartTransaction | Statement::Rollback | Statement::Commit
+        StatementPlan::StartTransaction | StatementPlan::Rollback | StatementPlan::Commit
     ) {
         return execute_inner(storage, statement).await;
     }
@@ -133,12 +134,12 @@ pub async fn execute<T: GStore + GStoreMut>(
 
 async fn execute_inner<T: GStore + GStoreMut>(
     storage: &mut T,
-    statement: &Statement,
+    statement: &StatementPlan,
 ) -> Result<Payload> {
     match statement {
         //- Modification
         //-- Tables
-        Statement::CreateTable {
+        StatementPlan::CreateTable {
             name,
             columns,
             if_not_exists,
@@ -161,7 +162,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 .await
                 .map(|()| Payload::Create)
         }
-        Statement::DropTable {
+        StatementPlan::DropTable {
             names,
             if_exists,
             cascade,
@@ -169,36 +170,36 @@ async fn execute_inner<T: GStore + GStoreMut>(
         } => drop_table(storage, names, *if_exists, *cascade)
             .await
             .map(Payload::DropTable),
-        Statement::AlterTable { name, operation } => alter_table(storage, name, operation)
+        StatementPlan::AlterTable { name, operation } => alter_table(storage, name, operation)
             .await
             .map(|()| Payload::AlterTable),
-        Statement::CreateIndex {
+        StatementPlan::CreateIndex {
             name,
             table_name,
             column,
         } => create_index(storage, table_name, name, column)
             .await
             .map(|()| Payload::CreateIndex),
-        Statement::DropIndex { name, table_name } => storage
+        StatementPlan::DropIndex { name, table_name } => storage
             .drop_index(table_name, name)
             .await
             .map(|()| Payload::DropIndex),
         //- Transaction
-        Statement::StartTransaction => storage
+        StatementPlan::StartTransaction => storage
             .begin(false)
             .await
             .map(|_| Payload::StartTransaction),
-        Statement::Commit => storage.commit().await.map(|()| Payload::Commit),
-        Statement::Rollback => storage.rollback().await.map(|()| Payload::Rollback),
+        StatementPlan::Commit => storage.commit().await.map(|()| Payload::Commit),
+        StatementPlan::Rollback => storage.rollback().await.map(|()| Payload::Rollback),
         //-- Rows
-        Statement::Insert {
+        StatementPlan::Insert {
             table_name,
             columns,
             source,
         } => insert(storage, table_name, columns, source)
             .await
             .map(Payload::Insert),
-        Statement::Update {
+        StatementPlan::Update {
             table_name,
             selection,
             assignments,
@@ -260,18 +261,19 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 .await
                 .map(|()| Payload::Update(num_rows))
         }
-        Statement::Delete {
+        StatementPlan::Delete {
             table_name,
             selection,
         } => delete(storage, table_name, selection.as_ref()).await,
 
         //- Selection
-        Statement::Query(query) => {
+        StatementPlan::Query(query) => {
             let (labels, rows) = select_with_labels(storage, query, None).await?;
 
             let is_schemaless_map = matches!(
                 &query.body,
-                SetExpr::Select(select) if matches!(select.projection, Projection::SchemalessMap)
+                SetExprPlan::Select(select)
+                    if matches!(select.projection, ProjectionPlan::SchemalessMap)
             );
 
             if is_schemaless_map {
@@ -292,7 +294,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
                     .map(|rows| Payload::Select { labels, rows })
             }
         }
-        Statement::ShowColumns { table_name } => {
+        StatementPlan::ShowColumns { table_name } => {
             let Schema { column_defs, .. } = storage
                 .fetch_schema(table_name)
                 .await?
@@ -306,25 +308,25 @@ async fn execute_inner<T: GStore + GStoreMut>(
 
             Ok(Payload::ShowColumns(output))
         }
-        Statement::ShowIndexes(table_name) => {
-            let query = Query {
-                body: SetExpr::Select(Box::new(crate::ast::Select {
+        StatementPlan::ShowIndexes(table_name) => {
+            let query = QueryPlan {
+                body: SetExprPlan::Select(Box::new(SelectPlan {
                     distinct: false,
-                    projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
-                    from: TableWithJoins {
-                        relation: TableFactor::Dictionary {
+                    projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
+                    from: TableWithJoinsPlan {
+                        relation: TableFactorPlan::Dictionary {
                             dict: Dictionary::GlueIndexes,
-                            alias: TableAlias {
+                            alias: TableAliasPlan {
                                 name: "GLUE_INDEXES".to_owned(),
                                 columns: Vec::new(),
                             },
                         },
                         joins: Vec::new(),
                     },
-                    selection: Some(Expr::BinaryOp {
-                        left: Box::new(Expr::Identifier("TABLE_NAME".to_owned())),
+                    selection: Some(ExprPlan::BinaryOp {
+                        left: Box::new(ExprPlan::Identifier("TABLE_NAME".to_owned())),
                         op: BinaryOperator::Eq,
-                        right: Box::new(Expr::Literal(Literal::QuotedString(
+                        right: Box::new(ExprPlan::Literal(Literal::QuotedString(
                             table_name.to_owned(),
                         ))),
                     }),
@@ -349,19 +351,19 @@ async fn execute_inner<T: GStore + GStoreMut>(
 
             Ok(Payload::Select { labels, rows })
         }
-        Statement::ShowVariable(variable) => match variable {
+        StatementPlan::ShowVariable(variable) => match variable {
             Variable::Tables => {
-                let query = Query {
-                    body: SetExpr::Select(Box::new(crate::ast::Select {
+                let query = QueryPlan {
+                    body: SetExprPlan::Select(Box::new(SelectPlan {
                         distinct: false,
-                        projection: Projection::SelectItems(vec![SelectItem::Expr {
-                            expr: Expr::Identifier("TABLE_NAME".to_owned()),
+                        projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
+                            expr: ExprPlan::Identifier("TABLE_NAME".to_owned()),
                             label: "TABLE_NAME".to_owned(),
                         }]),
-                        from: TableWithJoins {
-                            relation: TableFactor::Dictionary {
+                        from: TableWithJoinsPlan {
+                            relation: TableFactorPlan::Dictionary {
                                 dict: Dictionary::GlueTables,
-                                alias: TableAlias {
+                                alias: TableAliasPlan {
                                     name: "GLUE_TABLES".to_owned(),
                                     columns: Vec::new(),
                                 },
@@ -409,7 +411,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 Ok(payload)
             }
         },
-        Statement::CreateFunction {
+        StatementPlan::CreateFunction {
             or_replace,
             name,
             args,
@@ -417,8 +419,10 @@ async fn execute_inner<T: GStore + GStoreMut>(
         } => insert_function(storage, name, args, *or_replace, return_)
             .await
             .map(|()| Payload::Create),
-        Statement::DropFunction { if_exists, names } => delete_function(storage, names, *if_exists)
-            .await
-            .map(|()| Payload::DropFunction),
+        StatementPlan::DropFunction { if_exists, names } => {
+            delete_function(storage, names, *if_exists)
+                .await
+                .map(|()| Payload::DropFunction)
+        }
     }
 }

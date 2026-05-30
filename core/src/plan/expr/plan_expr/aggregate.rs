@@ -1,16 +1,16 @@
-use crate::ast::{Aggregate, AggregateFunction, CountArgExpr, Expr};
+use crate::plan::{AggregateFunctionPlan, AggregatePlan, CountArgExprPlan, ExprPlan};
 
-impl Aggregate {
-    pub fn as_expr(&self) -> Option<&Expr> {
+impl AggregatePlan {
+    pub fn as_expr(&self) -> Option<&ExprPlan> {
         match &self.func {
-            AggregateFunction::Count(CountArgExpr::Wildcard) => None,
-            AggregateFunction::Count(CountArgExpr::Expr(expr))
-            | AggregateFunction::Sum(expr)
-            | AggregateFunction::Max(expr)
-            | AggregateFunction::Min(expr)
-            | AggregateFunction::Avg(expr)
-            | AggregateFunction::Variance(expr)
-            | AggregateFunction::Stdev(expr) => Some(expr),
+            AggregateFunctionPlan::Count(CountArgExprPlan::Wildcard) => None,
+            AggregateFunctionPlan::Count(CountArgExprPlan::Expr(expr))
+            | AggregateFunctionPlan::Sum(expr)
+            | AggregateFunctionPlan::Max(expr)
+            | AggregateFunctionPlan::Min(expr)
+            | AggregateFunctionPlan::Avg(expr)
+            | AggregateFunctionPlan::Variance(expr)
+            | AggregateFunctionPlan::Stdev(expr) => Some(expr),
         }
     }
 }
@@ -18,17 +18,17 @@ impl Aggregate {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ast::{Aggregate, Expr},
         parse_sql::parse_expr,
+        plan::{AggregatePlan, ExprPlan},
         translate::{NO_PARAMS, translate_expr},
     };
 
-    fn parse(sql: &str) -> Aggregate {
+    fn parse(sql: &str) -> AggregatePlan {
         let parsed = parse_expr(sql).unwrap();
-        let expr = translate_expr(&parsed, NO_PARAMS).unwrap();
+        let expr = ExprPlan::from(translate_expr(&parsed, NO_PARAMS).unwrap());
 
         match expr {
-            Expr::Aggregate(aggregate) => *aggregate,
+            ExprPlan::Aggregate(aggregate) => *aggregate,
             _ => unreachable!("only for aggregate tests"),
         }
     }
@@ -38,27 +38,27 @@ mod tests {
         assert_eq!(parse("COUNT(*)").as_expr(), None);
 
         let actual = parse("COUNT(id)");
-        let expected = Expr::Identifier("id".to_owned());
+        let expected = ExprPlan::Identifier("id".to_owned());
         assert_eq!(actual.as_expr(), Some(&expected));
 
         let actual = parse("SUM(id)");
-        let expected = Expr::Identifier("id".to_owned());
+        let expected = ExprPlan::Identifier("id".to_owned());
         assert_eq!(actual.as_expr(), Some(&expected));
 
         let actual = parse("MAX(id)");
-        let expected = Expr::Identifier("id".to_owned());
+        let expected = ExprPlan::Identifier("id".to_owned());
         assert_eq!(actual.as_expr(), Some(&expected));
 
         let actual = parse("MIN(id)");
-        let expected = Expr::Identifier("id".to_owned());
+        let expected = ExprPlan::Identifier("id".to_owned());
         assert_eq!(actual.as_expr(), Some(&expected));
 
         let actual = parse("AVG(id)");
-        let expected = Expr::Identifier("id".to_owned());
+        let expected = ExprPlan::Identifier("id".to_owned());
         assert_eq!(actual.as_expr(), Some(&expected));
 
         let actual = parse("VARIANCE(id)");
-        let expected = Expr::Identifier("id".to_owned());
+        let expected = ExprPlan::Identifier("id".to_owned());
         assert_eq!(actual.as_expr(), Some(&expected));
     }
 }

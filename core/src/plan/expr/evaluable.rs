@@ -1,15 +1,16 @@
 use {
     crate::{
-        ast::{
-            Expr, Join, JoinConstraint, JoinOperator, Projection, Query, Select, SelectItem,
-            SetExpr, TableAlias, TableFactor, TableWithJoins, Values,
+        plan::{
+            ExprPlan, JoinConstraintPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan, QueryPlan,
+            SelectItemPlan, SelectPlan, SetExprPlan, TableAliasPlan, TableFactorPlan,
+            TableWithJoinsPlan, ValuesPlan,
         },
         plan::{context::Context, expr::PlanExpr},
     },
     std::sync::Arc,
 };
 
-pub fn check_expr(context: Option<Arc<Context<'_>>>, expr: &Expr) -> bool {
+pub fn check_expr(context: Option<Arc<Context<'_>>>, expr: &ExprPlan) -> bool {
     match expr.into() {
         PlanExpr::None => true,
         PlanExpr::Identifier(ident) => context.is_some_and(|c| c.contains_column(ident)),
@@ -38,8 +39,8 @@ pub fn check_expr(context: Option<Arc<Context<'_>>>, expr: &Expr) -> bool {
     }
 }
 
-fn check_query(context: Option<&Arc<Context<'_>>>, query: &Query) -> bool {
-    let Query {
+fn check_query(context: Option<&Arc<Context<'_>>>, query: &QueryPlan) -> bool {
+    let QueryPlan {
         body,
         order_by,
         limit,
@@ -47,8 +48,8 @@ fn check_query(context: Option<&Arc<Context<'_>>>, query: &Query) -> bool {
     } = query;
 
     let body = match body {
-        SetExpr::Select(select) => check_select(context, select),
-        SetExpr::Values(Values(rows)) => rows
+        SetExprPlan::Select(select) => check_select(context, select),
+        SetExprPlan::Values(ValuesPlan(rows)) => rows
             .iter()
             .flatten()
             .all(|expr| check_expr(context.map(Arc::clone), expr)),
@@ -72,8 +73,8 @@ fn check_query(context: Option<&Arc<Context<'_>>>, query: &Query) -> bool {
         .all(|expr| check_expr(context.map(Arc::clone), expr))
 }
 
-fn check_select(context: Option<&Arc<Context<'_>>>, select: &Select) -> bool {
-    let Select {
+fn check_select(context: Option<&Arc<Context<'_>>>, select: &SelectPlan) -> bool {
+    let SelectPlan {
         distinct: _,
         projection,
         from,
@@ -84,25 +85,25 @@ fn check_select(context: Option<&Arc<Context<'_>>>, select: &Select) -> bool {
     } = select;
 
     let projection_ok = match projection {
-        Projection::SelectItems(items) => items.iter().all(|select_item| match select_item {
-            SelectItem::Expr { expr, .. } => check_expr(context.map(Arc::clone), expr),
-            SelectItem::QualifiedWildcard(_) | SelectItem::Wildcard => true,
+        ProjectionPlan::SelectItems(items) => items.iter().all(|select_item| match select_item {
+            SelectItemPlan::Expr { expr, .. } => check_expr(context.map(Arc::clone), expr),
+            SelectItemPlan::QualifiedWildcard(_) | SelectItemPlan::Wildcard => true,
         }),
-        Projection::SchemalessMap => true,
+        ProjectionPlan::SchemalessMap => true,
     };
 
     if !projection_ok {
         return false;
     }
 
-    let TableWithJoins { relation, joins } = from;
+    let TableWithJoinsPlan { relation, joins } = from;
 
     if !check_table_factor(context.map(Arc::clone), relation) {
         return false;
     }
 
     if !joins.iter().all(|join| {
-        let Join {
+        let JoinPlan {
             relation,
             join_operator,
             ..
@@ -113,12 +114,12 @@ fn check_select(context: Option<&Arc<Context<'_>>>, select: &Select) -> bool {
         }
 
         match join_operator {
-            JoinOperator::Inner(JoinConstraint::On(expr))
-            | JoinOperator::LeftOuter(JoinConstraint::On(expr)) => {
+            JoinOperatorPlan::Inner(JoinConstraintPlan::On(expr))
+            | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::On(expr)) => {
                 check_expr(context.map(Arc::clone), expr)
             }
-            JoinOperator::Inner(JoinConstraint::None)
-            | JoinOperator::LeftOuter(JoinConstraint::None) => true,
+            JoinOperatorPlan::Inner(JoinConstraintPlan::None)
+            | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None) => true,
         }
     }) {
         return false;
@@ -131,14 +132,14 @@ fn check_select(context: Option<&Arc<Context<'_>>>, select: &Select) -> bool {
         .all(|expr| check_expr(context.map(Arc::clone), expr))
 }
 
-fn check_table_factor(context: Option<Arc<Context<'_>>>, table_factor: &TableFactor) -> bool {
+fn check_table_factor(context: Option<Arc<Context<'_>>>, table_factor: &TableFactorPlan) -> bool {
     let alias = match table_factor {
-        TableFactor::Table { name, alias, .. } => alias
+        TableFactorPlan::Table { name, alias, .. } => alias
             .as_ref()
-            .map_or_else(|| name, |TableAlias { name, .. }| name),
-        TableFactor::Derived { alias, .. }
-        | TableFactor::Series { alias, .. }
-        | TableFactor::Dictionary { alias, .. } => &alias.name,
+            .map_or_else(|| name, |TableAliasPlan { name, .. }| name),
+        TableFactorPlan::Derived { alias, .. }
+        | TableFactorPlan::Series { alias, .. }
+        | TableFactorPlan::Dictionary { alias, .. } => &alias.name,
     };
 
     context.is_some_and(|context| context.contains_alias(alias))
@@ -150,6 +151,7 @@ mod tests {
         super::check_expr,
         crate::{
             parse_sql::parse_expr,
+            plan::ExprPlan,
             plan::context::Context,
             translate::{NO_PARAMS, translate_expr},
         },
@@ -160,7 +162,7 @@ mod tests {
         let parsed = parse_expr(sql).unwrap();
         let expr = translate_expr(&parsed, NO_PARAMS);
         let actual = match expr {
-            Ok(expr) => check_expr(context, &expr),
+            Ok(expr) => check_expr(context, &ExprPlan::from(expr)),
             Err(_) => false,
         };
 
