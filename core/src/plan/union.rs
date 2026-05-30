@@ -48,7 +48,7 @@ fn validate_set_expr(schema_map: &SchemaMap, set_expr: &SetExpr) -> ValidateResu
             if let (Some(left_types), Some(right_types)) = (left_types, right_types) {
                 for (index, (lt, rt)) in left_types.iter().zip(right_types.iter()).enumerate() {
                     if let (Some(l), Some(r)) = (lt, rt)
-                        && l != r
+                        && !types_compatible(l, r)
                     {
                         return Err(PlanError::UnionColumnTypeMismatch {
                             index,
@@ -188,6 +188,30 @@ fn infer_expr_type(expr: &Expr, table: Option<(&str, &Schema)>) -> Option<DataTy
         }
         _ => None,
     }
+}
+
+/// Returns true when `left` and `right` may appear as corresponding columns in
+/// a UNION.  Identical types always pass.  Within the numeric family, mixed
+/// integer/float/decimal pairs are also accepted because the result rows can
+/// carry different Value variants without causing a runtime error — matching the
+/// implicit promotion behaviour of `PostgreSQL` and `MySQL`.
+fn types_compatible(left: &DataType, right: &DataType) -> bool {
+    left == right || is_numeric_promotable(left, right)
+}
+
+fn is_numeric_promotable(a: &DataType, b: &DataType) -> bool {
+    use DataType::*;
+    matches!(
+        (a, b),
+        (
+            Int | Int8 | Int16 | Int32 | Int128 | Uint8 | Uint16 | Uint32 | Uint64,
+            Float | Decimal
+        ) | (
+            Float | Decimal,
+            Int | Int8 | Int16 | Int32 | Int128 | Uint8 | Uint16 | Uint32 | Uint64
+        ) | (Float, Decimal)
+            | (Decimal, Float)
+    )
 }
 
 fn infer_literal_type(lit: &Literal) -> DataType {
@@ -509,6 +533,19 @@ mod tests {
             }
             .into()),
             "a UNION inside a CASE WHEN EXISTS must be caught by the expression visitor",
+        );
+    }
+
+    #[test]
+    fn int_float_numeric_promotion_is_accepted() {
+        let storage = run("");
+        assert!(
+            check(&storage, "SELECT 1 UNION SELECT 1.5").is_ok(),
+            "INT and FLOAT are in the same numeric family and should be accepted",
+        );
+        assert!(
+            check(&storage, "SELECT 1.5 UNION SELECT 1").is_ok(),
+            "FLOAT and INT should also be accepted in reverse order",
         );
     }
 }
