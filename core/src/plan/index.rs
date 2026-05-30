@@ -289,7 +289,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
             TableFactorPlan::Table { name, .. } => self
                 .schema_map
                 .get(name)
-                .map(|schema| Indexes(&schema.indexes)),
+                .map(|schema| Indexes::new(&schema.indexes)),
             _ => None,
         }
     }
@@ -381,32 +381,49 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
     }
 }
 
-struct Indexes<'a>(&'a [SchemaIndex]);
+struct PlannedSchemaIndex<'a> {
+    expr: ExprPlan,
+    index: &'a SchemaIndex,
+}
 
-impl Indexes<'_> {
+struct Indexes<'a>(Vec<PlannedSchemaIndex<'a>>);
+
+impl<'a> Indexes<'a> {
+    fn new(indexes: &'a [SchemaIndex]) -> Self {
+        Self(
+            indexes
+                .iter()
+                .map(|index| PlannedSchemaIndex {
+                    expr: plan_scalar_expr(index.expr.clone()),
+                    index,
+                })
+                .collect(),
+        )
+    }
+
     fn find(&self, target: &ExprPlan) -> Option<String> {
         self.0
             .iter()
-            .find(|SchemaIndex { expr, .. }| plan_scalar_expr(expr.clone()) == *target)
-            .map(|SchemaIndex { name, .. }| name.to_owned())
+            .find(|PlannedSchemaIndex { expr, .. }| expr == target)
+            .map(|PlannedSchemaIndex { index, .. }| index.name.clone())
     }
 
     fn find_ordered(&self, target: &OrderByExprPlan) -> Option<String> {
         self.0
             .iter()
-            .find(|SchemaIndex { expr, order, .. }| {
-                if plan_scalar_expr(expr.clone()) != target.expr {
+            .find(|PlannedSchemaIndex { expr, index }| {
+                if expr != &target.expr {
                     return false;
                 }
 
                 matches!(
-                    (target.asc, order),
+                    (target.asc, index.order),
                     (_, SchemaIndexOrd::Both)
                         | (Some(true) | None, SchemaIndexOrd::Asc)
                         | (Some(false), SchemaIndexOrd::Desc)
                 )
             })
-            .map(|SchemaIndex { name, .. }| name.to_owned())
+            .map(|PlannedSchemaIndex { index, .. }| index.name.clone())
     }
 }
 
