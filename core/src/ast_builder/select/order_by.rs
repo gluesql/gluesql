@@ -201,6 +201,30 @@ mod tests {
         ";
         test(&actual, expected);
 
+        // typed order by (single expression) -> build
+        let actual = table("Item")
+            .select()
+            .project("name, price")
+            .order_by(col("price").desc())
+            .build();
+        let expected = "
+            SELECT name, price FROM Item
+            ORDER BY price DESC
+        ";
+        test(&actual, expected);
+
+        // typed order by (multiple expressions) -> build
+        let actual = table("Item")
+            .select()
+            .project("name, price")
+            .order_by(vec![col("price").desc(), col("name").asc()])
+            .build();
+        let expected = "
+            SELECT name, price FROM Item
+            ORDER BY price DESC, name ASC
+        ";
+        test(&actual, expected);
+
         // filter node -> order by node -> build
         let actual = table("Foo")
             .select()

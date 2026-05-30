@@ -57,7 +57,7 @@ impl Build for DropIndexNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{Build, table, test};
+    use crate::ast_builder::{Build, col, table, test};
 
     #[test]
     fn create_index() {
@@ -67,6 +67,12 @@ mod tests {
 
         let actual = table("Foo").create_index("nameIndex", "name desc").build();
         let expected = "CREATE INDEX nameIndex ON Foo (name Desc)";
+        test(&actual, expected);
+
+        let actual = table("Foo")
+            .create_index("nameIndex", col("name").desc())
+            .build();
+        let expected = "CREATE INDEX nameIndex ON Foo (name DESC)";
         test(&actual, expected);
     }
 
