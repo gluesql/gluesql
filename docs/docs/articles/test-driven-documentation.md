@@ -1,16 +1,15 @@
 ---
 title: Test-Driven Documentation - Automating User Manual Creation in GlueSQL
 description: Test-Driven Documentation - Automating User Manual Creation in GlueSQL
-slug: test-driven-documentation
-authors:
-  - name: Taehoon Moon
-    title: Creator of GlueSQL
-    url: https://github.com/panarch
-    image_url: https://github.com/panarch.png
-tags: [ChatGPT, Test-Driven-Documentation, TDD, Database, Documentation, Automation]
 ---
 
 # Test-Driven Documentation - Automating User Manual Creation in GlueSQL
+
+> Archived from the GlueSQL blog.
+>
+> - **Published:** May 30, 2023
+> - **Author:** [Taehoon Moon](https://github.com/panarch), Creator of GlueSQL
+> - **Tags:** `ChatGPT`, `Test-Driven-Documentation`, `TDD`, `Database`, `Documentation`, `Automation`
 
 ## Introduction: GlueSQL and Test-Driven Documentation
 Recently, the GlueSQL project reached a significant milestone with the release of version 0.14. This new version brings a host of fresh features to the table, yet one of the most notable changes is in the realm of documentation. For the first time, we're proud to announce the launch of our official documentation website. Interested readers can explore the full range of user manuals at https://gluesql.org/docs.
@@ -120,13 +119,13 @@ Generally, we used the template above, and copied and pasted the test code from 
 ## Success Case: Automated User Manual of GlueSQL
 Thanks to ChatGPT, the resulting INSERT document page can be viewed at the following link. It's important to note that we used ChatGPT 4 for this task. Version 3.5 wasn't quite up to the task, and using version 4 was the minimum requirement.
 
-https://gluesql.org/docs/dev/sql-syntax/statements/data-manipulation/insert
+[INSERT statement](../sql-syntax/statements/data-manipulation/insert.md)
 
-![INSERT Statement](./assets/blog-test-driven-documentation-insert.jpg)
+![INSERT Statement](../assets/blog-test-driven-documentation-insert.jpg)
 
 The results were quite impressive. ChatGPT neatly categorized the test cases, explained the syntax, outlined constraints, and provided appropriate examples. It didn't stop there; it also skillfully recognized error test cases and incorporated them into the documentation, as shown below.
 
-![INSERT Statement](./assets/blog-test-driven-documentation-insert-errorcase.jpg)
+![INSERT Statement](../assets/blog-test-driven-documentation-insert-errorcase.jpg)
 
 Isn't it amazing?
 

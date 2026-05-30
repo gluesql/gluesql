@@ -1,14 +1,13 @@
 ---
 title: Release v0.14
 description: Release Note - v0.14
-slug: release-v0.14
-authors:
-  - name: Taehoon Moon
-    title: Creator of GlueSQL
-    url: https://github.com/panarch
-    image_url: https://github.com/panarch.png
-tags: [v0.14, release-note]
 ---
+
+> Archived from the GlueSQL blog.
+>
+> - **Published:** May 27, 2023
+> - **Author:** [Taehoon Moon](https://github.com/panarch), Creator of GlueSQL
+> - **Tags:** `v0.14`, `release-note`
 
 We now provide an official documentation website at **https://gluesql.org/docs**
 
@@ -17,7 +16,7 @@ We now provide an official documentation website at **https://gluesql.org/docs**
 ### 🍀 Schemaless data support
 
 GlueSQL now supports creating tables without a schema, allowing for both structured and unstructured data to be stored in the same table.
-To create a schemaless table, simply run CREATE TABLE without specifying any columns. For more information on querying schemaless data, please refer to the following link: **[querying schemaless data](https://gluesql.org/docs/dev/sql-syntax/statements/querying/schemaless)**
+To create a schemaless table, simply run CREATE TABLE without specifying any columns. For more information on querying schemaless data, please refer to the following link: **[querying schemaless data](../sql-syntax/statements/querying/schemaless.md)**
 
 ```sql
 CREATE TABLE Bar;
@@ -191,7 +190,7 @@ The Metadata trait is an optional implementation for providing additional metada
 - Remove ast::ColumnOption and merge UNIQUE option to ColumnDef [@panarch](https://github.com/panarch) ([#1044](https://github.com/gluesql/gluesql/pull/1044))
 - Rewrite \& simplify plan/context.rs codes, [@panarch](https://github.com/panarch) ([#1045](https://github.com/gluesql/gluesql/pull/1045))
 - Move ast::ColumnOption::Default variant to ColumnDef [@panarch](https://github.com/panarch) ([#1042](https://github.com/gluesql/gluesql/pull/1042))
-- [AST-Builder] Remove unused prebuild nodes  [@ding-young](https://github.com/ding-young) ([#1043](https://github.com/gluesql/gluesql/pull/1043))
+- \[AST-Builder] Remove unused prebuild nodes  [@ding-young](https://github.com/ding-young) ([#1043](https://github.com/gluesql/gluesql/pull/1043))
 - Remove data::RowError, [@panarch](https://github.com/panarch) ([#1040](https://github.com/gluesql/gluesql/pull/1040))
 - Reorder project in ASTBuilder (project -> ordery\_by -> limit,offset) [@devgony](https://github.com/devgony) ([#1039](https://github.com/gluesql/gluesql/pull/1039))
 - Remove unused LimitOffsetNode in AST builder [@panarch](https://github.com/panarch) ([#1038](https://github.com/gluesql/gluesql/pull/1038))

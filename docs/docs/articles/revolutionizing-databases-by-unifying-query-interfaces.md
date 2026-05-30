@@ -1,16 +1,15 @@
 ---
 title: GlueSQL - Revolutionizing Databases by Unifying Query Interfaces
 description: GlueSQL - Revolutionizing Databases by Unifying Query Interfaces
-slug: revolutionizing-databases-by-unifying-query-interfaces
-authors:
-  - name: Taehoon Moon
-    title: Creator of GlueSQL
-    url: https://github.com/panarch
-    image_url: https://github.com/panarch.png
-tags: [gluesql, query-interface, database, proposal]
 ---
 
 # GlueSQL: Revolutionizing Databases by Unifying Query Interfaces
+
+> Archived from the GlueSQL blog.
+>
+> - **Published:** May 30, 2023
+> - **Author:** [Taehoon Moon](https://github.com/panarch), Creator of GlueSQL
+> - **Tags:** `gluesql`, `query-interface`, `database`, `proposal`
 
 ## Introduction
 GlueSQL is a versatile database project designed for exceptional portability across a broad range of environments, from embedded systems and servers to web and mobile platforms. The core goal is to support diverse storage environments and manage various data types with a standard SQL approach.
@@ -126,4 +125,3 @@ Since its inception in the fall of 2019, the GlueSQL team has continuously devel
 GlueSQL, distributed under the Apache-2.0 license, is free for anyone to use and adapt. While the GlueSQL team welcomes collaboration with other developers and companies, they also see significant potential for the project as a business venture. The team is working to expand the GlueSQL ecosystem through a variety of initiatives, including technical support and storage development.
 
 With GlueSQL now sufficiently prepared for practical applications, the team invites companies interested in storage development or those who share their vision to join them in their journey of revolutionizing database development.
-
