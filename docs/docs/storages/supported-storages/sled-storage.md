@@ -2,7 +2,7 @@
 
 SledStorage is currently the representative persistent data storage for GlueSQL. As the name suggests, it's a storage option based on the Sled key-value embedded database built in Rust ([Sled on Github](https://github.com/spacejam/sled)).
 
-SledStorage can only be used in a Rust environment. It is the only storage among those currently supported by GlueSQL that implements all Store traits, from non-clustered indexes to transactions. If you're looking for a basic storage to handle and store data in a Rust environment, SledStorage is an excellent choice.
+SledStorage can only be used in a Rust environment. Alongside RedbStorage, it is one of the persistent storages supported by GlueSQL that implements all Store traits, from non-clustered indexes to transactions. If you're looking for a basic storage to handle and store data in a Rust environment, SledStorage is an excellent choice.
 
 ## How to use
 You can simply create a SledStorage instance using a path, as shown below:
