@@ -28,6 +28,7 @@ use {
     async_stream::try_stream,
     bigdecimal::ToPrimitive,
     futures::stream::{self, StreamExt, TryStreamExt},
+    hashbrown::hash_map::RawEntryMut,
     std::{borrow::Cow, collections::HashSet, pin::Pin, sync::Arc},
     utils::Vector,
 };
@@ -269,9 +270,17 @@ where
         let rows = sort.apply(rows, relation.alias_name()).await?;
 
         if *distinct {
-            let all_rows: Vec<Row> = rows.try_collect().await?;
-            let unique_rows = apply_distinct(all_rows);
-            let limited = limit.apply(stream::iter(unique_rows.into_iter().map(Ok)));
+            let mut seen: hashbrown::HashMap<Vec<Value>, ()> = hashbrown::HashMap::new();
+            let rows = rows.try_filter_map(move |row: Row| {
+                match seen.raw_entry_mut().from_key(&row.values) {
+                    RawEntryMut::Occupied(_) => std::future::ready(Ok(None)),
+                    RawEntryMut::Vacant(e) => {
+                        e.insert(row.values.clone(), ());
+                        std::future::ready(Ok(Some(row)))
+                    }
+                }
+            });
+            let limited = limit.apply(rows);
             futures::pin_mut!(limited);
             while let Some(item) = limited.next().await {
                 yield item?;
@@ -340,10 +349,15 @@ where
         let stream: Pin<Box<dyn futures::stream::Stream<Item = Result<Row>> + Send + 'a>> = if all {
             Box::pin(combined)
         } else {
-            let mut seen = HashSet::new();
-            Box::pin(combined.try_filter(move |row| {
-                let is_new = seen.insert(row.values.clone());
-                std::future::ready(is_new)
+            let mut seen: hashbrown::HashMap<Vec<Value>, ()> = hashbrown::HashMap::new();
+            Box::pin(combined.try_filter_map(move |row: Row| {
+                match seen.raw_entry_mut().from_key(&row.values) {
+                    RawEntryMut::Occupied(_) => std::future::ready(Ok(None)),
+                    RawEntryMut::Vacant(e) => {
+                        e.insert(row.values.clone(), ());
+                        std::future::ready(Ok(Some(row)))
+                    }
+                }
             }))
         };
 

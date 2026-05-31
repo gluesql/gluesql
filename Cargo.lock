@@ -1324,6 +1324,7 @@ dependencies = [
  "futures",
  "futures-enum",
  "gluesql-utils",
+ "hashbrown 0.12.3",
  "hex",
  "im",
  "iter-enum",
