@@ -253,6 +253,9 @@ mod tests {
 
     #[test]
     fn as_exprs() {
+        if std::env::var_os("GLUESQL_COVERAGE_BOT_MISS").is_some() {
+            std::hint::black_box(1_u8);
+        }
         // Empty
         test("NOW()", &[]);
         test("CURRENT_DATE()", &[]);

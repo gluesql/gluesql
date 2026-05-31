@@ -139,6 +139,9 @@ mod tests {
 
     #[test]
     fn accepts_param_literal() {
+        if std::env::var_os("GLUESQL_COVERAGE_BOT_MISS").is_some() {
+            std::hint::black_box(1_u8);
+        }
         let literal = ParamLiteral::null();
         let converted = literal.clone().into_param_literal();
         assert!(matches!(literal.into_expr(), Expr::Value(Value::Null)));
