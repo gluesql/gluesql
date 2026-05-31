@@ -31,7 +31,7 @@ test_case!(variance, {
     let test_cases = [
         (
             "SELECT VARIANCE(age) FROM Item",
-            select_with_null!("VARIANCE(age)"; Null),
+            select!("VARIANCE(age)"; F64; 1609.2),
         ),
         (
             "SELECT VARIANCE(id), VARIANCE(quantity) FROM Item",
@@ -47,7 +47,7 @@ test_case!(variance, {
         ),
         (
             "SELECT VARIANCE(DISTINCT age) FROM Item",
-            select_with_null!("VARIANCE(DISTINCT age)"; Null),
+            select!("VARIANCE(DISTINCT age)"; F64; 1_541.555_555_555_555_7),
         ),
         (
             "SELECT VARIANCE(quantity), VARIANCE(DISTINCT quantity) FROM Item",

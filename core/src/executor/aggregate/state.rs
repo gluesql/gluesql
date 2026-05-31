@@ -73,6 +73,12 @@ impl AggrValue {
     fn new(aggregate: &AggregatePlan, value: &Value) -> Result<Self> {
         let value = value.clone();
 
+        // For non-COUNT aggregates, the caller should filter NULL before calling new()
+        debug_assert!(
+            matches!(aggregate.func, AggregateFunction::Count(_)) || !value.is_null(),
+            "AggrValue::new should not be called with NULL for non-COUNT aggregates"
+        );
+
         Ok(match &aggregate.func {
             AggregateFunctionPlan::Count(CountArgExprPlan::Wildcard) => {
                 let distinct_values = aggregate.distinct.then(|| HashSet::from([value.clone()]));
@@ -200,6 +206,10 @@ impl AggrValue {
                 value,
                 distinct_values,
             } => {
+                if new_value.is_null() {
+                    return Ok(false);
+                }
+
                 if !Self::track_distinct(distinct_values, new_value) {
                     return Ok(false);
                 }
@@ -211,6 +221,10 @@ impl AggrValue {
                 value,
                 distinct_values,
             } => {
+                if new_value.is_null() {
+                    return Ok(false);
+                }
+
                 if !Self::track_distinct(distinct_values, new_value) {
                     return Ok(false);
                 }
@@ -225,6 +239,10 @@ impl AggrValue {
                 value,
                 distinct_values,
             } => {
+                if new_value.is_null() {
+                    return Ok(false);
+                }
+
                 if !Self::track_distinct(distinct_values, new_value) {
                     return Ok(false);
                 }
@@ -240,6 +258,10 @@ impl AggrValue {
                 count,
                 distinct_values,
             } => {
+                if new_value.is_null() {
+                    return Ok(false);
+                }
+
                 if !Self::track_distinct(distinct_values, new_value) {
                     return Ok(false);
                 }
@@ -254,6 +276,10 @@ impl AggrValue {
                 count,
                 distinct_values,
             } => {
+                if new_value.is_null() {
+                    return Ok(false);
+                }
+
                 if !Self::track_distinct(distinct_values, new_value) {
                     return Ok(false);
                 }
@@ -269,6 +295,10 @@ impl AggrValue {
                 count,
                 distinct_values,
             } => {
+                if new_value.is_null() {
+                    return Ok(false);
+                }
+
                 if !Self::track_distinct(distinct_values, new_value) {
                     return Ok(false);
                 }
@@ -411,13 +441,15 @@ impl<'a, T: GStore> State<'a, T> {
             .groups
             .get_mut(group_index)
             .expect("group index must exist");
-        match group.values[slot].as_mut() {
-            Some(aggr_value) => {
-                aggr_value.accumulate(&value)?;
+        if let Some(aggr_value) = group.values[slot].as_mut() {
+            aggr_value.accumulate(&value)?;
+        } else {
+            // For non-COUNT aggregates, skip NULL values when initializing
+            // Leave the slot as None so the next non-NULL value becomes the first
+            if value.is_null() && !matches!(aggregate.func, AggregateFunction::Count(_)) {
+                return Ok(());
             }
-            None => {
-                group.values[slot] = Some(AggrValue::new(aggregate, &value)?);
-            }
+            group.values[slot] = Some(AggrValue::new(aggregate, &value)?);
         }
 
         Ok(())
