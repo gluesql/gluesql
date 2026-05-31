@@ -40,7 +40,6 @@ jobs:
         uses: actions/create-github-app-token@v1
         with:
           app-id: ${{ secrets.COVERAGE_APP_ID }}
-          installation-id: ${{ secrets.COVERAGE_APP_INSTALLATION_ID }}
           private-key: ${{ secrets.COVERAGE_APP_PRIVATE_KEY }}
           owner: gluesql
           repositories: gluesql, gluesql.github.io
