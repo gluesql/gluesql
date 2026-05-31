@@ -28,25 +28,20 @@ use {
     async_stream::try_stream,
     bigdecimal::ToPrimitive,
     futures::stream::{self, StreamExt, TryStreamExt},
-    hashbrown::hash_map::RawEntryMut,
-    std::{borrow::Cow, collections::HashSet, pin::Pin, sync::Arc},
+    hashbrown::{HashMap, hash_map::RawEntryMut},
+    std::{borrow::Cow, pin::Pin, sync::Arc},
     utils::Vector,
 };
 
-fn apply_distinct(rows: Vec<Row>) -> Vec<Row> {
-    let mut seen = HashSet::new();
-
-    rows.into_iter()
-        .filter(|row| seen.insert(row.values.clone()))
-        .collect()
-}
-
 async fn rows_with_labels(exprs_list: &[Vec<ExprPlan>]) -> Result<(Vec<Row>, Vec<String>)> {
-    let first_len = exprs_list[0].len();
+    let first_len = exprs_list
+        .first()
+        .ok_or(SelectError::ValuesListEmpty)?
+        .len();
     let labels = (1..=first_len)
         .map(|i| format!("column{i}"))
         .collect::<Vec<_>>();
-    let columns = Arc::from(labels.clone());
+    let columns: Arc<[String]> = Arc::from(labels.as_slice());
 
     let mut column_types = vec![None; first_len];
     let mut rows = Vec::with_capacity(exprs_list.len());
@@ -96,6 +91,10 @@ fn positional_index(expr: &ExprPlan) -> Option<&bigdecimal::BigDecimal> {
 }
 
 async fn sort_stateless(rows: Vec<Row>, order_by: &[OrderByExprPlan]) -> Result<Vec<Row>> {
+    if order_by.is_empty() {
+        return Ok(rows);
+    }
+
     let sorted = stream::iter(rows.into_iter())
         .then(|row| async move {
             stream::iter(order_by)
@@ -167,7 +166,7 @@ where
             let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref()).await?;
             let (rows, labels) = rows_with_labels(&values_list).await?;
             let rows = sort_stateless(rows, &query.order_by).await?;
-            let rows = stream::iter(rows.into_iter().map(Ok));
+            let rows = stream::iter(rows).map(Ok);
             let stream: Pin<Box<dyn futures::stream::Stream<Item = Result<Row>> + Send + 'a>> =
                 Box::pin(limit.apply(rows));
             Ok((labels, stream))
@@ -192,7 +191,7 @@ where
         let TableWithJoinsPlan { relation, joins } = &select.from;
         fetch_labels(storage, relation, joins, &select.projection).await?
     };
-    let labels_clone = labels.clone();
+    let labels_arc: Arc<[String]> = Arc::from(labels.as_slice());
 
     let stream = try_stream! {
         let SelectPlan {
@@ -248,7 +247,6 @@ where
         )
         .await?;
 
-        let labels_arc: Arc<[String]> = Arc::from(labels_clone.as_slice());
         let project = Arc::new(Project::new(storage, filter_context, projection));
         let project_labels = Arc::clone(&labels_arc);
         let rows = rows.and_then(move |aggregate_context| {
@@ -270,7 +268,7 @@ where
         let rows = sort.apply(rows, relation.alias_name()).await?;
 
         if *distinct {
-            let mut seen: hashbrown::HashMap<Vec<Value>, ()> = hashbrown::HashMap::new();
+            let mut seen: HashMap<Vec<Value>, ()> = HashMap::new();
             let rows = rows.try_filter_map(move |row: Row| {
                 match seen.raw_entry_mut().from_key(&row.values) {
                     RawEntryMut::Occupied(_) => std::future::ready(Ok(None)),
@@ -349,7 +347,7 @@ where
         let stream: Pin<Box<dyn futures::stream::Stream<Item = Result<Row>> + Send + 'a>> = if all {
             Box::pin(combined)
         } else {
-            let mut seen: hashbrown::HashMap<Vec<Value>, ()> = hashbrown::HashMap::new();
+            let mut seen: HashMap<Vec<Value>, ()> = HashMap::new();
             Box::pin(combined.try_filter_map(move |row: Row| {
                 match seen.raw_entry_mut().from_key(&row.values) {
                     RawEntryMut::Occupied(_) => std::future::ready(Ok(None)),
@@ -366,16 +364,22 @@ where
     }
 
     // ORDER BY present: materialise then sort.
-    let mut rows: Vec<Row> = left_relabeled.try_collect().await?;
-    rows.extend(right_relabeled.try_collect::<Vec<_>>().await?);
-
+    // Sorting first and deduplicating via adjacent comparison avoids the
+    // HashSet allocation of a pre-sort dedup while keeping O(n log n) overall.
+    // Trade-off: when duplicates are rare (n ≈ d) we sort the full n-row set
+    // instead of a smaller deduplicated one, but we save O(d) HashSet memory
+    // and all clone costs.  For typical UNION DISTINCT workloads the saving is
+    // worthwhile.
+    let rows = left_relabeled
+        .chain(right_relabeled)
+        .try_collect::<Vec<_>>()
+        .await?;
+    let mut rows = sort_stateless(rows, &outer.order_by).await?;
     if !all {
-        rows = apply_distinct(rows);
+        rows.dedup_by(|a, b| a.values == b.values);
     }
-
-    let rows = sort_stateless(rows, &outer.order_by).await?;
     let limit = Limit::new(outer.limit.as_ref(), outer.offset.as_ref()).await?;
-    let rows = stream::iter(rows.into_iter().map(Ok));
+    let rows = stream::iter(rows).map(Ok);
     Ok((labels, Box::pin(limit.apply(rows))))
 }
 
