@@ -146,7 +146,7 @@ async fn sort_stateless(rows: Vec<Row>, order_by: &[OrderByExprPlan]) -> Result<
 #[async_recursion]
 pub async fn select_with_labels<'a, T>(
     storage: &'a T,
-    query: &'a QueryPlan,
+    query: Arc<QueryPlan>,
     filter_context: Option<Arc<RowContext<'a>>>,
 ) -> Result<(
     Vec<String>,
@@ -155,59 +155,63 @@ pub async fn select_with_labels<'a, T>(
 where
     T: GStore,
 {
-    if let SetExprPlan::Union { left, right, all } = &query.body {
-        let left_query = QueryPlan {
-            body: *left.clone(),
-            order_by: vec![],
-            limit: None,
-            offset: None,
-        };
-        let right_query = QueryPlan {
-            body: *right.clone(),
-            order_by: vec![],
-            limit: None,
-            offset: None,
-        };
-        return select_union(
-            storage,
-            query,
-            left_query,
-            right_query,
-            *all,
-            filter_context,
-        )
-        .await;
-    }
-
-    let SelectPlan {
-        distinct,
-        from: table_with_joins,
-        selection: where_clause,
-        projection,
-        group_by,
-        having,
-        aggregate_slots,
-    } = match &query.body {
-        SetExprPlan::Select(statement) => statement.as_ref(),
+    match query.body.clone() {
+        SetExprPlan::Union { left, right, all } => {
+            let left_query = Arc::new(QueryPlan {
+                body: *left,
+                order_by: vec![],
+                limit: None,
+                offset: None,
+            });
+            let right_query = Arc::new(QueryPlan {
+                body: *right,
+                order_by: vec![],
+                limit: None,
+                offset: None,
+            });
+            select_union(storage, query, left_query, right_query, all, filter_context).await
+        }
         SetExprPlan::Values(ValuesPlan(values_list)) => {
             let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref()).await?;
-            let (rows, labels) = rows_with_labels(values_list).await?;
+            let (rows, labels) = rows_with_labels(&values_list).await?;
             let rows = sort_stateless(rows, &query.order_by).await?;
             let rows = stream::iter(rows.into_iter().map(Ok));
             let stream: Pin<Box<dyn futures::stream::Stream<Item = Result<Row>> + Send + 'a>> =
                 Box::pin(limit.apply(rows));
-            return Ok((labels, stream));
+            Ok((labels, stream))
         }
-        SetExprPlan::Union { .. } => unreachable!("Union handled above"),
-    };
+        SetExprPlan::Select(select) => select_from(storage, select, query, filter_context).await,
+    }
+}
 
+async fn select_from<'a, T>(
+    storage: &'a T,
+    select: Box<SelectPlan>,
+    query: Arc<QueryPlan>,
+    filter_context: Option<Arc<RowContext<'a>>>,
+) -> Result<(
+    Vec<String>,
+    Pin<Box<dyn futures::stream::Stream<Item = Result<Row>> + Send + 'a>>,
+)>
+where
+    T: GStore,
+{
     let labels = {
-        let TableWithJoinsPlan { relation, joins } = &table_with_joins;
-        fetch_labels(storage, relation, joins, projection).await?
+        let TableWithJoinsPlan { relation, joins } = &select.from;
+        fetch_labels(storage, relation, joins, &select.projection).await?
     };
     let labels_clone = labels.clone();
 
     let stream = try_stream! {
+        let SelectPlan {
+            distinct,
+            from: table_with_joins,
+            selection: where_clause,
+            projection,
+            group_by,
+            having,
+            aggregate_slots,
+        } = select.as_ref();
         let TableWithJoinsPlan { relation, joins } = table_with_joins;
 
         let rows = fetch_relation_rows(storage, relation, None).await?;
@@ -295,9 +299,9 @@ where
 
 async fn select_union<'a, T>(
     storage: &'a T,
-    outer: &'a QueryPlan,
-    left_query: QueryPlan,
-    right_query: QueryPlan,
+    outer: Arc<QueryPlan>,
+    left_query: Arc<QueryPlan>,
+    right_query: Arc<QueryPlan>,
     all: bool,
     filter_context: Option<Arc<RowContext<'a>>>,
 ) -> Result<(
@@ -307,21 +311,14 @@ async fn select_union<'a, T>(
 where
     T: GStore,
 {
-    let left_query = Box::new(left_query);
-    let right_query = Box::new(right_query);
-    // SAFETY: We pin the queries into a Box, extending their lifetime for the
-    // duration of this function only. `select_with_labels` takes &'a, but
-    // left/right queries are created here. We use unsafe only because the
-    // borrow checker cannot see through the Box pin. The streams are consumed
-    // within this function before the boxes are dropped.
-    let left_ref: &'a QueryPlan = unsafe { &*std::ptr::from_ref::<QueryPlan>(left_query.as_ref()) };
-    let right_ref: &'a QueryPlan =
-        unsafe { &*std::ptr::from_ref::<QueryPlan>(right_query.as_ref()) };
-
     let (labels, left_stream) =
-        select_with_labels(storage, left_ref, filter_context.as_ref().map(Arc::clone)).await?;
-    let (right_labels, right_stream) =
-        select_with_labels(storage, right_ref, filter_context.as_ref().map(Arc::clone)).await?;
+        select_with_labels(storage, left_query, filter_context.as_ref().map(Arc::clone)).await?;
+    let (right_labels, right_stream) = select_with_labels(
+        storage,
+        right_query,
+        filter_context.as_ref().map(Arc::clone),
+    )
+    .await?;
 
     if labels.len() != right_labels.len() {
         return Err(SelectError::UnionColumnCountMismatch {
@@ -385,7 +382,7 @@ pub async fn select<'a, T>(
 where
     T: GStore,
 {
-    select_with_labels(storage, query, filter_context)
+    select_with_labels(storage, Arc::new(query.clone()), filter_context)
         .await
         .map(|(_, rows)| rows)
 }
