@@ -37,14 +37,14 @@ jobs:
           git config --global user.name "CI"
       - name: Create GitHub App token
         id: app-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.COVERAGE_APP_ID }}
           private-key: ${{ secrets.COVERAGE_APP_PRIVATE_KEY }}
           owner: gluesql
           repositories: gluesql, gluesql.github.io
       - name: Resolve coverage run metadata
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const owner = context.repo.owner;
@@ -118,7 +118,7 @@ jobs:
           git commit -m "Coverage: PR#${PR_NUMBER}@${COMMIT_SHA}"
           git push https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/gluesql/gluesql.github.io.git
       - name: Comment coverage link on PR
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
