@@ -10,14 +10,6 @@ on:
         description: "Run ID of the triggering Coverage workflow"
         required: true
         type: string
-      pr_number:
-        description: "Pull Request number"
-        required: true
-        type: string
-      commit_sha:
-        description: "Head commit SHA for the PR run"
-        required: true
-        type: string
       artifact_name:
         description: "Artifact name to download (default: coverage)"
         required: false
@@ -37,6 +29,7 @@ jobs:
     permissions:
       actions: read
       contents: read
+      pull-requests: read
     steps:
       - name: Configure git user
         run: |
@@ -51,19 +44,59 @@ jobs:
           private-key: ${{ secrets.COVERAGE_APP_PRIVATE_KEY }}
           owner: gluesql
           repositories: gluesql, gluesql.github.io
-      - name: Set variables for workflow_dispatch
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          echo "RUN_ID=${{ inputs.run_id }}" >> $GITHUB_ENV
-          echo "COMMIT_SHA=${{ inputs.commit_sha }}" >> $GITHUB_ENV
-          echo "PR_NUMBER=${{ inputs.pr_number }}" >> $GITHUB_ENV
-          echo "ARTIFACT_NAME=${{ inputs.artifact_name }}" >> $GITHUB_ENV
-      - name: Set variables for workflow_run
-        if: github.event_name == 'workflow_run'
-        run: |
-          echo "RUN_ID=${{ github.event.workflow_run.id }}" >> $GITHUB_ENV
-          echo "COMMIT_SHA=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_ENV
-          echo "ARTIFACT_NAME=coverage" >> $GITHUB_ENV
+      - name: Resolve coverage run metadata
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const isDispatch = context.eventName === 'workflow_dispatch';
+
+            let run;
+            let artifactName = 'coverage';
+
+            if (isDispatch) {
+              const inputs = context.payload.inputs || {};
+              const runId = inputs.run_id;
+              artifactName = inputs.artifact_name || artifactName;
+
+              const response = await github.rest.actions.getWorkflowRun({
+                owner,
+                repo,
+                run_id: runId,
+              });
+              run = response.data;
+            } else {
+              run = context.payload.workflow_run;
+            }
+
+            const headSha = run.head_sha;
+            const headBranch = run.head_branch;
+            const headRepository = run.head_repository?.full_name;
+
+            if (!headRepository || !headBranch) {
+              throw new Error(`Missing head repository or branch for coverage run ${run.id}`);
+            }
+
+            const [headOwner] = headRepository.split('/');
+            const response = await github.rest.pulls.list({
+              owner,
+              repo,
+              base: 'main',
+              head: `${headOwner}:${headBranch}`,
+              state: 'open',
+            });
+
+            if (response.data.length !== 1) {
+              throw new Error(`Expected one pull request for coverage run ${run.id}, found ${response.data.length}`);
+            }
+
+            const prNumber = response.data[0].number;
+
+            core.exportVariable('RUN_ID', String(run.id));
+            core.exportVariable('COMMIT_SHA', headSha);
+            core.exportVariable('PR_NUMBER', String(prNumber));
+            core.exportVariable('ARTIFACT_NAME', artifactName);
       - name: Download coverage artifact
         uses: actions/download-artifact@v4
         with:
@@ -71,20 +104,6 @@ jobs:
           run-id: ${{ env.RUN_ID }}
           path: coverage
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Load PR number from artifact
-        if: github.event_name == 'workflow_run'
-        run: |
-          pr_file="coverage/pr-number"
-          if [ ! -f "${pr_file}" ]; then
-            echo "PR number file not found in artifact: ${pr_file}" >&2
-            exit 1
-          fi
-          pr_number=$(cat "${pr_file}" | tr -d '\n\r ')
-          if [ -z "${pr_number}" ]; then
-            echo "PR number file is empty: ${pr_file}" >&2
-            exit 1
-          fi
-          echo "PR_NUMBER=${pr_number}" >> $GITHUB_ENV
       # No normalization needed: file will be at ./coverage/lcov.info.xz
       - name: Set timestamp
         run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H%M%SZ')" >> $GITHUB_ENV
