@@ -1,8 +1,9 @@
 use {
     super::{context::RowContext, evaluate::evaluate},
     crate::{
-        ast::{Assignment, ColumnDef, ColumnUniqueOption, ForeignKey},
+        ast::{ColumnDef, ColumnUniqueOption, ForeignKey},
         data::{Key, Row, Value},
+        plan::AssignmentPlan,
         result::{Error, Result},
         store::GStore,
     },
@@ -39,7 +40,7 @@ pub enum UpdateError {
 pub struct Update<'a, T: GStore> {
     storage: &'a T,
     table_name: &'a str,
-    fields: &'a [Assignment],
+    fields: &'a [AssignmentPlan],
     column_defs: Option<&'a [ColumnDef]>,
 }
 
@@ -47,12 +48,12 @@ impl<'a, T: GStore> Update<'a, T> {
     pub fn new(
         storage: &'a T,
         table_name: &'a str,
-        fields: &'a [Assignment],
+        fields: &'a [AssignmentPlan],
         column_defs: Option<&'a [ColumnDef]>,
     ) -> Result<Self> {
         if let Some(column_defs) = column_defs {
             for assignment in fields {
-                let Assignment { id, .. } = assignment;
+                let AssignmentPlan { id, .. } = assignment;
 
                 if column_defs.iter().all(|col_def| &col_def.name != id) {
                     return Err(UpdateError::ColumnNotFound(id.to_owned()).into());
@@ -78,7 +79,7 @@ impl<'a, T: GStore> Update<'a, T> {
 
         let assignments = stream::iter(self.fields.iter())
             .then(|assignment| {
-                let Assignment {
+                let AssignmentPlan {
                     id,
                     value: value_expr,
                 } = assignment;

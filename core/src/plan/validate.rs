@@ -1,11 +1,11 @@
 use {
     super::PlanError,
     crate::{
-        ast::{
-            Expr, Join, Projection, Query, SelectItem, SetExpr, Statement, TableFactor,
-            TableWithJoins,
-        },
         data::Schema,
+        plan::{
+            ExprPlan, JoinPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SetExprPlan,
+            StatementPlan, TableFactorPlan, TableWithJoinsPlan,
+        },
         result::Result,
     },
     std::{collections::HashMap, sync::Arc},
@@ -13,11 +13,11 @@ use {
 
 type SchemaMap = HashMap<String, Schema>;
 /// Validate user select column should not be ambiguous
-pub fn validate(schema_map: &SchemaMap, statement: &Statement) -> Result<()> {
+pub fn validate(schema_map: &SchemaMap, statement: &StatementPlan) -> Result<()> {
     let query = match statement {
-        Statement::Query(query) => Some(query),
-        Statement::Insert { source, .. } => Some(source),
-        Statement::CreateTable { source, .. } => source.as_deref(),
+        StatementPlan::Query(query) => Some(query),
+        StatementPlan::Insert { source, .. } => Some(source),
+        StatementPlan::CreateTable { source, .. } => source.as_deref(),
         _ => None,
     };
 
@@ -28,16 +28,16 @@ pub fn validate(schema_map: &SchemaMap, statement: &Statement) -> Result<()> {
     Ok(())
 }
 
-fn validate_query(schema_map: &SchemaMap, query: &Query) -> Result<()> {
+fn validate_query(schema_map: &SchemaMap, query: &QueryPlan) -> Result<()> {
     match &query.body {
-        SetExpr::Select(select) => {
-            let Projection::SelectItems(projection) = &select.projection else {
+        SetExprPlan::Select(select) => {
+            let ProjectionPlan::SelectItems(projection) = &select.projection else {
                 return Ok(());
             };
 
             for select_item in projection {
-                if let SelectItem::Expr {
-                    expr: Expr::Identifier(ident),
+                if let SelectItemPlan::Expr {
+                    expr: ExprPlan::Identifier(ident),
                     ..
                 } = select_item
                     && let Some(context) = contextualize_query(schema_map, query)
@@ -48,8 +48,8 @@ fn validate_query(schema_map: &SchemaMap, query: &Query) -> Result<()> {
 
             Ok(())
         }
-        SetExpr::Union { left, right, .. } => {
-            let left_query = Query {
+        SetExprPlan::Union { left, right, .. } => {
+            let left_query = QueryPlan {
                 body: *left.clone(),
                 order_by: vec![],
                 limit: None,
@@ -57,7 +57,7 @@ fn validate_query(schema_map: &SchemaMap, query: &Query) -> Result<()> {
             };
             validate_query(schema_map, &left_query)?;
 
-            let right_query = Query {
+            let right_query = QueryPlan {
                 body: *right.clone(),
                 order_by: vec![],
                 limit: None,
@@ -65,7 +65,7 @@ fn validate_query(schema_map: &SchemaMap, query: &Query) -> Result<()> {
             };
             validate_query(schema_map, &right_query)
         }
-        SetExpr::Values(_) => Ok(()),
+        SetExprPlan::Values(_) => Ok(()),
     }
 }
 
@@ -140,35 +140,35 @@ fn get_labels(schema: &Schema) -> Option<Vec<&str>> {
 
 fn contextualize_query<'a>(
     schema_map: &'a SchemaMap,
-    query: &'a Query,
+    query: &'a QueryPlan,
 ) -> Option<Arc<Context<'a>>> {
-    let Query { body, .. } = query;
+    let QueryPlan { body, .. } = query;
     match body {
-        SetExpr::Select(select) => {
-            let TableWithJoins { relation, joins } = &select.from;
+        SetExprPlan::Select(select) => {
+            let TableWithJoinsPlan { relation, joins } = &select.from;
             let by_table = contextualize_table_factor(schema_map, relation);
             let by_joins = joins
                 .iter()
-                .map(|Join { relation, .. }| contextualize_table_factor(schema_map, relation))
+                .map(|JoinPlan { relation, .. }| contextualize_table_factor(schema_map, relation))
                 .fold(None, Context::concat);
 
             Context::concat(by_table, by_joins)
         }
-        SetExpr::Values(_) | SetExpr::Union { .. } => None,
+        SetExprPlan::Values(_) | SetExprPlan::Union { .. } => None,
     }
 }
 
 fn contextualize_table_factor<'a>(
     schema_map: &'a SchemaMap,
-    table_factor: &'a TableFactor,
+    table_factor: &'a TableFactorPlan,
 ) -> Option<Arc<Context<'a>>> {
     match table_factor {
-        TableFactor::Table { name, .. } => {
+        TableFactorPlan::Table { name, .. } => {
             let schema = schema_map.get(name);
             schema.map(|schema| Arc::from(Context::new(get_labels(schema), None)))
         }
-        TableFactor::Derived { subquery, .. } => contextualize_query(schema_map, subquery),
-        TableFactor::Series { .. } | TableFactor::Dictionary { .. } => None,
+        TableFactorPlan::Derived { subquery, .. } => contextualize_query(schema_map, subquery),
+        TableFactorPlan::Series { .. } | TableFactorPlan::Dictionary { .. } => None,
     }
 }
 
@@ -214,7 +214,7 @@ mod tests {
 
         for (sql, expected) in cases {
             let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
-            let statement = translate(&parsed).unwrap();
+            let statement = translate(&parsed).unwrap().into();
             let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
             let actual = validate(&schema_map, &statement).is_ok();
 

@@ -1,15 +1,17 @@
 use {
-    crate::ast::{Aggregate, BinaryOperator, DataType, Expr, ToSql},
-    serde::{Serialize, Serializer},
+    crate::{
+        ast::{BinaryOperator, DataType, ToSql},
+        plan::AggregatePlan,
+    },
+    serde::Serialize,
     std::fmt::Debug,
     thiserror::Error,
 };
 
 #[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum EvaluateError {
-    #[error(transparent)]
-    #[serde(serialize_with = "error_serialize")]
-    FormatParseError(#[from] chrono::format::ParseError),
+    #[error("{0}")]
+    FormatParseError(String),
 
     #[error("literal add on non-numeric")]
     LiteralAddOnNonNumeric,
@@ -86,20 +88,29 @@ pub enum EvaluateError {
     #[error("text literal required for json map conversion: {0}")]
     TextLiteralRequired(String),
 
-    #[error("unsupported stateless expression: {}", .0.to_sql())]
-    UnsupportedStatelessExpr(Box<Expr>),
+    #[error("subquery is not allowed in stateless expression")]
+    SubqueryNotAllowedInStatelessExpr,
 
-    #[error("context is required for identifier evaluation: {}", .0.to_sql())]
-    ContextRequiredForIdentEvaluation(Box<Expr>),
+    #[error("IN (subquery) is not allowed in stateless expression")]
+    InSubqueryNotAllowedInStatelessExpr,
+
+    #[error("EXISTS (subquery) is not allowed in stateless expression")]
+    ExistsSubqueryNotAllowedInStatelessExpr,
+
+    #[error("row context is required for identifier evaluation: {0}")]
+    IdentifierRequiresRowContext(String),
+
+    #[error("row context is required for compound identifier evaluation: {alias}.{ident}")]
+    CompoundIdentifierRequiresRowContext { alias: String, ident: String },
 
     #[error("aggregate slot value missing: {0:?}")]
-    AggregateSlotValueMissing(Box<Aggregate>),
+    AggregateSlotValueMissing(Box<AggregatePlan>),
 
     #[error("aggregate expression requires planner binding: {0:?}")]
-    UnplannedAggregate(Box<Aggregate>),
+    UnplannedAggregate(Box<AggregatePlan>),
 
     #[error("filter context is required for aggregate function: {0:?}")]
-    FilterContextRequiredForAggregate(Box<Aggregate>),
+    FilterContextRequiredForAggregate(Box<AggregatePlan>),
 
     #[error("incompatible bit operation between {0} and {1}")]
     IncompatibleBitOperation(String, String),
@@ -224,13 +235,4 @@ pub enum EvaluateError {
         literal: String,
         data_type: DataType,
     },
-}
-
-#[allow(clippy::trivially_copy_pass_by_ref)]
-fn error_serialize<S>(error: &chrono::format::ParseError, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    let display = format!("{error}");
-    serializer.serialize_str(&display)
 }

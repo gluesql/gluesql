@@ -1,14 +1,15 @@
 use {
     super::{AlterError, validate, validate_column_names},
     crate::{
-        ast::{
-            ColumnDef, ColumnUniqueOption, ForeignKey, Projection, Query, Select, SelectItem,
-            SetExpr, TableFactor, ToSql, Values,
-        },
+        ast::{ColumnDef, ColumnUniqueOption, ForeignKey, ToSql},
         data::{Row, Schema},
         executor::{
             evaluate_stateless,
             select::{select, select_with_labels},
+        },
+        plan::{
+            ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan, SetExprPlan, TableFactorPlan,
+            ValuesPlan,
         },
         prelude::{DataType, Value},
         result::Result,
@@ -16,14 +17,14 @@ use {
     },
     futures::stream::TryStreamExt,
     serde::Serialize,
-    std::{fmt, sync::Arc},
+    std::fmt,
 };
 
 pub struct CreateTableOptions<'a> {
     pub target_table_name: &'a str,
     pub column_defs: Option<&'a [ColumnDef]>,
     pub if_not_exists: bool,
-    pub source: &'a Option<Box<Query>>,
+    pub source: &'a Option<Box<QueryPlan>>,
     pub engine: &'a Option<String>,
     pub foreign_keys: &'a Vec<ForeignKey>,
     pub comment: &'a Option<String>,
@@ -44,8 +45,8 @@ pub async fn create_table<T: GStore + GStoreMut>(
     let mut selected_source_rows = None;
     let target_columns_defs = match source.as_deref() {
         Some(query) => match &query.body {
-            SetExpr::Select(select_query) => match &select_query.from.relation {
-                TableFactor::Table { name, .. } if can_copy_source_schema(select_query) => {
+            SetExprPlan::Select(select_query) => match &select_query.from.relation {
+                TableFactorPlan::Table { name, .. } if can_copy_source_schema(select_query) => {
                     let schema = storage.fetch_schema(name).await?;
                     let Schema {
                         column_defs: source_column_defs,
@@ -55,7 +56,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
 
                     source_column_defs
                 }
-                TableFactor::Series { .. } if can_copy_source_schema(select_query) => {
+                TableFactorPlan::Series { .. } if can_copy_source_schema(select_query) => {
                     let column_def = ColumnDef {
                         name: "N".into(),
                         data_type: DataType::Int,
@@ -68,8 +69,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
                     Some(vec![column_def])
                 }
                 _ => {
-                    let (labels, rows) =
-                        select_with_labels(storage, Arc::new(query.clone()), None).await?;
+                    let (labels, rows) = select_with_labels(storage, query, None).await?;
                     let rows = rows
                         .map_ok(Row::into_values)
                         .try_collect::<Vec<_>>()
@@ -80,9 +80,8 @@ pub async fn create_table<T: GStore + GStoreMut>(
                     Some(column_defs)
                 }
             },
-            SetExpr::Union { .. } => {
-                let (labels, rows) =
-                    select_with_labels(storage, Arc::new(query.clone()), None).await?;
+            SetExprPlan::Union { .. } => {
+                let (labels, rows) = select_with_labels(storage, query, None).await?;
                 let rows = rows
                     .map_ok(Row::into_values)
                     .try_collect::<Vec<_>>()
@@ -92,7 +91,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
 
                 Some(column_defs)
             }
-            SetExpr::Values(Values(values_list)) => {
+            SetExprPlan::Values(ValuesPlan(values_list)) => {
                 let first_len = values_list[0].len();
                 let mut column_types = vec![None; first_len];
 
@@ -239,17 +238,17 @@ pub async fn create_table<T: GStore + GStoreMut>(
     }
 }
 
-fn can_copy_source_schema(select: &Select) -> bool {
+fn can_copy_source_schema(select: &SelectPlan) -> bool {
     if !select.from.joins.is_empty() {
         return false;
     }
 
     match &select.projection {
-        Projection::SchemalessMap => true,
-        Projection::SelectItems(items) => items.iter().all(|item| {
+        ProjectionPlan::SchemalessMap => true,
+        ProjectionPlan::SelectItems(items) => items.iter().all(|item| {
             matches!(
                 item,
-                SelectItem::Wildcard | SelectItem::QualifiedWildcard(_)
+                SelectItemPlan::Wildcard | SelectItemPlan::QualifiedWildcard(_)
             )
         }),
     }

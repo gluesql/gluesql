@@ -1,5 +1,5 @@
 use {
-    super::{Prebuild, values::ValuesNode},
+    super::{BuildQuery, BuildQueryPlan, values::ValuesNode},
     crate::{
         ast::Query,
         ast_builder::{
@@ -7,12 +7,13 @@ use {
             JoinNode, OrderByNode, ProjectNode, QueryNode, SelectNode, TableFactorNode,
             set_expr::SetExprNode,
         },
+        plan::QueryPlan,
         result::Result,
     },
 };
 
 #[derive(Clone, Debug)]
-pub enum PrevNode<'a> {
+pub(crate) enum PrevNode<'a> {
     Select(SelectNode<'a>),
     Values(ValuesNode<'a>),
     GroupBy(GroupByNode<'a>),
@@ -26,20 +27,38 @@ pub enum PrevNode<'a> {
     SetExpr(SetExprNode<'a>),
 }
 
-impl Prebuild<Query> for PrevNode<'_> {
-    fn prebuild(self) -> Result<Query> {
+impl BuildQueryPlan for PrevNode<'_> {
+    fn build_query_plan(self) -> Result<QueryPlan> {
         match self {
-            Self::Select(node) => node.prebuild(),
-            Self::Values(node) => node.prebuild(),
-            Self::GroupBy(node) => node.prebuild(),
-            Self::Having(node) => node.prebuild(),
-            Self::Join(node) => node.prebuild(),
-            Self::JoinConstraint(node) => node.prebuild(),
-            Self::HashJoin(node) => node.prebuild(),
-            Self::Filter(node) => node.prebuild(),
-            Self::OrderBy(node) => node.prebuild(),
-            Self::ProjectNode(node) => node.prebuild(),
-            Self::SetExpr(node) => node.prebuild(),
+            Self::Select(node) => node.build_query_plan(),
+            Self::Values(node) => node.build_query_plan(),
+            Self::GroupBy(node) => node.build_query_plan(),
+            Self::Having(node) => node.build_query_plan(),
+            Self::Join(node) => node.build_query_plan(),
+            Self::JoinConstraint(node) => node.build_query_plan(),
+            Self::HashJoin(node) => node.build_query_plan(),
+            Self::Filter(node) => node.build_query_plan(),
+            Self::OrderBy(node) => node.build_query_plan(),
+            Self::ProjectNode(node) => node.build_query_plan(),
+            Self::SetExpr(node) => node.build_query_plan(),
+        }
+    }
+}
+
+impl BuildQuery for PrevNode<'_> {
+    fn build_query(self) -> Result<Query> {
+        match self {
+            Self::Select(node) => node.build_query(),
+            Self::Values(node) => node.build_query(),
+            Self::GroupBy(node) => node.build_query(),
+            Self::Having(node) => node.build_query(),
+            Self::Join(node) => node.build_query(),
+            Self::JoinConstraint(node) => node.build_query(),
+            Self::HashJoin(node) => node.build_query(),
+            Self::Filter(node) => node.build_query(),
+            Self::OrderBy(node) => node.build_query(),
+            Self::ProjectNode(node) => node.build_query(),
+            Self::SetExpr(node) => node.build_query(),
         }
     }
 }
@@ -117,7 +136,7 @@ pub struct LimitNode<'a> {
 }
 
 impl<'a> LimitNode<'a> {
-    pub fn new<N: Into<PrevNode<'a>>, T: Into<ExprNode<'a>>>(prev_node: N, expr: T) -> Self {
+    pub(crate) fn new<N: Into<PrevNode<'a>>, T: Into<ExprNode<'a>>>(prev_node: N, expr: T) -> Self {
         Self {
             prev_node: prev_node.into(),
             expr: expr.into(),
@@ -129,10 +148,19 @@ impl<'a> LimitNode<'a> {
     }
 }
 
-impl Prebuild<Query> for LimitNode<'_> {
-    fn prebuild(self) -> Result<Query> {
-        let mut node_data = self.prev_node.prebuild()?;
-        node_data.limit = Some(self.expr.try_into()?);
+impl BuildQueryPlan for LimitNode<'_> {
+    fn build_query_plan(self) -> Result<QueryPlan> {
+        let mut node_data = self.prev_node.build_query_plan()?;
+        node_data.limit = Some(self.expr.build_expr_plan()?);
+
+        Ok(node_data)
+    }
+}
+
+impl BuildQuery for LimitNode<'_> {
+    fn build_query(self) -> Result<Query> {
+        let mut node_data = self.prev_node.build_query()?;
+        node_data.limit = Some(self.expr.build_expr()?);
 
         Ok(node_data)
     }
@@ -142,11 +170,12 @@ impl Prebuild<Query> for LimitNode<'_> {
 mod tests {
     use {
         crate::{
-            ast::{
-                Join, JoinConstraint, JoinExecutor, JoinOperator, Projection, Query, Select,
-                SetExpr, Statement, TableFactor, TableWithJoins,
+            ast_builder::{Build, SelectItemList, col, num, table, test_query_builder},
+            plan::{
+                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
+                QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
+                TableWithJoinsPlan,
             },
-            ast_builder::{Build, SelectItemList, col, num, table, test},
         },
         pretty_assertions::assert_eq,
     };
@@ -154,92 +183,81 @@ mod tests {
     #[test]
     fn limit() {
         // select node -> limit node -> build
-        let actual = table("Foo").select().limit(10).build();
+        let actual = table("Foo").select().limit(10);
         let expected = "SELECT * FROM Foo LIMIT 10";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // group by node -> limit node -> build
-        let actual = table("Foo").select().group_by("bar").limit(10).build();
+        let actual = table("Foo").select().group_by("bar").limit(10);
         let expected = "SELECT * FROM Foo GROUP BY bar LIMIT 10";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // having node -> limit node -> build
         let actual = table("Foo")
             .select()
             .group_by("bar")
             .having("bar = 10")
-            .limit(10)
-            .build();
+            .limit(10);
         let expected = "SELECT * FROM Foo GROUP BY bar HAVING bar = 10 LIMIT 10";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join node -> limit node -> build
-        let actual = table("Foo").select().join("Bar").limit(10).build();
+        let actual = table("Foo").select().join("Bar").limit(10);
         let expected = "SELECT * FROM Foo JOIN Bar LIMIT 10";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join node -> limit node -> build
-        let actual = table("Foo").select().join_as("Bar", "B").limit(10).build();
+        let actual = table("Foo").select().join_as("Bar", "B").limit(10);
         let expected = "SELECT * FROM Foo JOIN Bar AS B LIMIT 10";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join node -> limit node -> build
-        let actual = table("Foo").select().left_join("Bar").limit(10).build();
+        let actual = table("Foo").select().left_join("Bar").limit(10);
         let expected = "SELECT * FROM Foo LEFT JOIN Bar LIMIT 10";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join node -> limit node -> build
-        let actual = table("Foo")
-            .select()
-            .left_join_as("Bar", "B")
-            .limit(10)
-            .build();
+        let actual = table("Foo").select().left_join_as("Bar", "B").limit(10);
         let expected = "SELECT * FROM Foo LEFT JOIN Bar AS B LIMIT 10";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // group by node -> limit node -> build
-        let actual = table("Foo").select().group_by("id").limit(10).build();
+        let actual = table("Foo").select().group_by("id").limit(10);
         let expected = "SELECT * FROM Foo GROUP BY id LIMIT 10";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // having node -> limit node -> build
         let actual = table("Foo")
             .select()
             .group_by("id")
             .having(col("id").gt(10))
-            .limit(10)
-            .build();
+            .limit(10);
         let expected = "SELECT * FROM Foo GROUP BY id HAVING id > 10 LIMIT 10";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // join constraint node -> limit node -> build
         let actual = table("Foo")
             .select()
             .join("Bar")
             .on("Foo.id = Bar.id")
-            .limit(10)
-            .build();
+            .limit(10);
         let expected = "SELECT * FROM Foo JOIN Bar ON Foo.id = Bar.id LIMIT 10";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // filter node -> limit node -> build
-        let actual = table("World")
-            .select()
-            .filter(col("id").gt(2))
-            .limit(100)
-            .build();
+        let actual = table("World").select().filter(col("id").gt(2)).limit(100);
         let expected = "SELECT * FROM World WHERE id > 2 LIMIT 100";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // order by node -> limit node -> build
-        let actual = table("Hello").select().order_by("score").limit(3).build();
+        let actual = table("Hello").select().order_by("score").limit(3);
         let expected = "SELECT * FROM Hello ORDER BY score LIMIT 3";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // project node -> limit node -> build
-        let actual = table("Item").select().project("*").limit(10).build();
+        let actual = table("Item").select().project("*").limit(10);
         let expected = "SELECT * FROM Item LIMIT 10";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // hash join node -> limit node -> build
         let actual = table("Player")
@@ -249,24 +267,26 @@ mod tests {
             .limit(100)
             .build();
         let expected = {
-            let join = Join {
-                relation: TableFactor::Table {
+            let join = JoinPlan {
+                relation: TableFactorPlan::Table {
                     name: "PlayerItem".to_owned(),
                     alias: None,
                     index: None,
                 },
-                join_operator: JoinOperator::Inner(JoinConstraint::None),
-                join_executor: JoinExecutor::Hash {
-                    key_expr: col("PlayerItem.user_id").try_into().unwrap(),
-                    value_expr: col("Player.id").try_into().unwrap(),
+                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
+                join_executor: JoinExecutorPlan::Hash {
+                    key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),
+                    value_expr: col("Player.id").build_expr_plan().unwrap(),
                     where_clause: None,
                 },
             };
-            let select = Select {
+            let select = SelectPlan {
                 distinct: false,
-                projection: Projection::SelectItems(SelectItemList::from("*").try_into().unwrap()),
-                from: TableWithJoins {
-                    relation: TableFactor::Table {
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+                from: TableWithJoinsPlan {
+                    relation: TableFactorPlan::Table {
                         name: "Player".to_owned(),
                         alias: None,
                         index: None,
@@ -279,23 +299,18 @@ mod tests {
                 aggregate_slots: None,
             };
 
-            Ok(Statement::Query(Query {
-                body: SetExpr::Select(Box::new(select)),
+            Ok(StatementPlan::Query(QueryPlan {
+                body: SetExprPlan::Select(Box::new(select)),
                 order_by: Vec::new(),
-                limit: Some(num(100).try_into().unwrap()),
+                limit: Some(num(100).build_expr_plan().unwrap()),
                 offset: None,
             }))
         };
         assert_eq!(actual, expected);
 
         // select node -> limit node -> derived subquery
-        let actual = table("Foo")
-            .select()
-            .limit(10)
-            .alias_as("Sub")
-            .select()
-            .build();
+        let actual = table("Foo").select().limit(10).alias_as("Sub").select();
         let expected = "SELECT * FROM (SELECT * FROM Foo LIMIT 10) Sub";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
     }
 }

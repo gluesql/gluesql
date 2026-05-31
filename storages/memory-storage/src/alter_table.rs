@@ -5,6 +5,7 @@ use {
         ast::ColumnDef,
         data::Value,
         error::{AlterTableError, Result},
+        plan::plan_scalar_expr,
         store::AlterTable,
     },
 };
@@ -87,7 +88,8 @@ impl AlterTable for MemoryStorage {
 
         let value = match (default, nullable) {
             (Some(expr), _) => {
-                let evaluated = gluesql_core::executor::evaluate_stateless(None, expr).await?;
+                let expr = plan_scalar_expr(expr.clone());
+                let evaluated = gluesql_core::executor::evaluate_stateless(None, &expr).await?;
 
                 evaluated.try_into_value(data_type, *nullable)?
             }

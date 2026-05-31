@@ -1,9 +1,8 @@
 use {
-    super::{Expr, IndexOperator, ToSqlUnquoted},
+    super::{Expr, ToSqlUnquoted},
     crate::ast::ToSql,
     itertools::Itertools,
     serde::{Deserialize, Serialize},
-    std::hash::{Hash, Hasher},
     strum_macros::Display,
 };
 
@@ -29,10 +28,9 @@ pub enum SetExpr {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Projection {
     SelectItems(Vec<SelectItem>),
-    SchemalessMap,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Select {
     pub distinct: bool,
     pub projection: Projection,
@@ -41,36 +39,6 @@ pub struct Select {
     pub selection: Option<Expr>,
     pub group_by: Vec<Expr>,
     pub having: Option<Expr>,
-    /// Planner-assigned aggregate slot table for this SELECT.
-    ///
-    /// This is execution metadata, not part of the SQL AST semantics.
-    /// It is ignored by equality, hashing, and serialization.
-    #[serde(default, skip)]
-    pub aggregate_slots: Option<Vec<super::Aggregate>>,
-}
-
-impl PartialEq for Select {
-    fn eq(&self, other: &Self) -> bool {
-        self.distinct == other.distinct
-            && self.projection == other.projection
-            && self.from == other.from
-            && self.selection == other.selection
-            && self.group_by == other.group_by
-            && self.having == other.having
-    }
-}
-
-impl Eq for Select {}
-
-impl Hash for Select {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.distinct.hash(state);
-        self.projection.hash(state);
-        self.from.hash(state);
-        self.selection.hash(state);
-        self.group_by.hash(state);
-        self.having.hash(state);
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -90,22 +58,10 @@ pub struct TableWithJoins {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum IndexItem {
-    PrimaryKey(Expr),
-    NonClustered {
-        name: String,
-        asc: Option<bool>,
-        cmp_expr: Option<(IndexOperator, Expr)>,
-    },
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TableFactor {
     Table {
         name: String,
         alias: Option<TableAlias>,
-        /// Query planner result
-        index: Option<IndexItem>,
     },
     Derived {
         subquery: Query,
@@ -140,17 +96,6 @@ pub struct TableAlias {
 pub struct Join {
     pub relation: TableFactor,
     pub join_operator: JoinOperator,
-    pub join_executor: JoinExecutor,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum JoinExecutor {
-    NestedLoop,
-    Hash {
-        key_expr: Expr,
-        value_expr: Expr,
-        where_clause: Option<Expr>,
-    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -299,13 +244,11 @@ impl Select {
             selection,
             group_by,
             having,
-            aggregate_slots: _,
         } = self;
         let projection = match projection {
             Projection::SelectItems(items) => {
                 items.iter().map(|item| item.to_sql_with(quoted)).join(", ")
             }
-            Projection::SchemalessMap => "*".to_owned(),
         };
 
         let selection = match selection {
@@ -441,11 +384,11 @@ impl TableFactor {
         };
 
         match (self, quoted) {
-            (TableFactor::Table { name, alias, .. }, true) => match alias {
+            (TableFactor::Table { name, alias }, true) => match alias {
                 Some(alias) => format!(r#""{}" {}"#, name, alias.to_sql_with(quoted)),
                 None => format!(r#""{name}""#),
             },
-            (TableFactor::Table { name, alias, .. }, false) => match alias {
+            (TableFactor::Table { name, alias }, false) => match alias {
                 Some(alias) => format!("{} {}", name, alias.to_sql_with(quoted)),
                 None => name.to_owned(),
             },
@@ -510,7 +453,6 @@ impl Join {
         let Join {
             relation,
             join_operator,
-            join_executor,
         } = self;
 
         let (join_operator, join_constraint) = match join_operator {
@@ -518,66 +460,19 @@ impl Join {
             JoinOperator::LeftOuter(join_constraint) => ("LEFT OUTER JOIN", join_constraint),
         };
 
-        let (join_constraint, join_executor) = if quoted {
-            (join_constraint.to_sql(), join_executor.to_sql())
+        let join_constraint = if quoted {
+            join_constraint.to_sql()
         } else {
-            (
-                join_constraint.to_sql_unquoted(),
-                join_executor.to_sql_unquoted(),
-            )
+            join_constraint.to_sql_unquoted()
         };
 
-        let join_constraints = [join_constraint, join_executor]
-            .iter()
-            .filter(|sql| !sql.is_empty())
-            .join(" AND ");
-
-        if join_constraints.is_empty() {
+        if join_constraint.is_empty() {
             format!("{join_operator} {}", relation.to_sql_with(quoted))
         } else {
             format!(
-                "{join_operator} {} ON {join_constraints}",
+                "{join_operator} {} ON {join_constraint}",
                 relation.to_sql_with(quoted)
             )
-        }
-    }
-}
-
-impl ToSql for JoinExecutor {
-    fn to_sql(&self) -> String {
-        self.to_sql_with(true)
-    }
-}
-
-impl ToSqlUnquoted for JoinExecutor {
-    fn to_sql_unquoted(&self) -> String {
-        self.to_sql_with(false)
-    }
-}
-
-impl JoinExecutor {
-    fn to_sql_with(&self, quoted: bool) -> String {
-        let to_sql = |expr: &Expr| {
-            if quoted {
-                expr.to_sql()
-            } else {
-                expr.to_sql_unquoted()
-            }
-        };
-
-        match self {
-            JoinExecutor::NestedLoop => String::new(),
-            JoinExecutor::Hash {
-                key_expr,
-                value_expr,
-                where_clause,
-            } => {
-                let key_value = format!("{} = {}", to_sql(key_expr), to_sql(value_expr));
-                match where_clause {
-                    Some(expr) => format!("{key_value} AND {}", to_sql(expr)),
-                    None => key_value,
-                }
-            }
         }
     }
 }
@@ -672,64 +567,21 @@ mod tests {
     use {
         crate::{
             ast::{
-                Aggregate, BinaryOperator, CountArgExpr, Dictionary, Expr, Join, JoinConstraint,
-                JoinExecutor, JoinOperator, Literal, OrderByExpr, Projection, Query, Select,
-                SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, ToSql, ToSqlUnquoted,
-                Values,
+                BinaryOperator, Dictionary, Expr, Join, JoinConstraint, JoinOperator, Literal,
+                OrderByExpr, Projection, Query, Select, SelectItem, SetExpr, TableAlias,
+                TableFactor, TableWithJoins, ToSql, ToSqlUnquoted, Values,
             },
             parse_sql::parse_expr,
             translate::{NO_PARAMS, translate_expr},
         },
         bigdecimal::BigDecimal,
-        std::{
-            collections::{HashSet, hash_map::DefaultHasher},
-            hash::{Hash, Hasher},
-            str::FromStr,
-        },
+        std::str::FromStr,
     };
 
     fn expr(sql: &str) -> Expr {
         let parsed = parse_expr(sql).expect(sql);
 
         translate_expr(&parsed, NO_PARAMS).expect(sql)
-    }
-
-    #[test]
-    fn select_eq_and_hash_ignore_aggregate_slots() {
-        let hash = |select: &Select| {
-            let mut hasher = DefaultHasher::new();
-            select.hash(&mut hasher);
-            hasher.finish()
-        };
-        let left = Select {
-            distinct: false,
-            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
-            from: TableWithJoins {
-                relation: TableFactor::Table {
-                    name: "FOO".to_owned(),
-                    alias: None,
-                    index: None,
-                },
-                joins: Vec::new(),
-            },
-            selection: None,
-            group_by: Vec::new(),
-            having: None,
-            aggregate_slots: None,
-        };
-        let mut right = left.clone();
-        let mut aggregate = Aggregate::count(CountArgExpr::Wildcard, false);
-        aggregate.slot = Some(0);
-        right.aggregate_slots = Some(vec![aggregate]);
-
-        assert_eq!(left, right);
-        assert_eq!(hash(&left), hash(&right));
-
-        let mut set = HashSet::new();
-        set.insert(left);
-        set.insert(right);
-
-        assert_eq!(set.len(), 1);
     }
 
     #[test]
@@ -751,14 +603,12 @@ mod tests {
                             name: "F".to_owned(),
                             columns: Vec::new(),
                         }),
-                        index: None,
                     },
                     joins: Vec::new(),
                 },
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
-                aggregate_slots: None,
             })),
             order_by,
             limit: Some(Expr::Literal(Literal::Number(
@@ -790,14 +640,12 @@ mod tests {
                             name: "F".to_owned(),
                             columns: Vec::new(),
                         }),
-                        index: None,
                     },
                     joins: Vec::new(),
                 },
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
-                aggregate_slots: None,
             })),
             order_by,
             limit: Some(Expr::Literal(Literal::Number(
@@ -824,22 +672,18 @@ mod tests {
                         name: "F".to_owned(),
                         columns: Vec::new(),
                     }),
-                    index: None,
                 },
                 joins: vec![Join {
                     relation: TableFactor::Table {
                         name: "PlayerItem".to_owned(),
                         alias: None,
-                        index: None,
                     },
                     join_operator: JoinOperator::Inner(JoinConstraint::None),
-                    join_executor: JoinExecutor::NestedLoop,
                 }],
             },
             selection: None,
             group_by: Vec::new(),
             having: None,
-            aggregate_slots: None,
         }))
         .to_sql();
         assert_eq!(actual, expected);
@@ -874,22 +718,18 @@ mod tests {
                         name: "F".to_owned(),
                         columns: Vec::new(),
                     }),
-                    index: None,
                 },
                 joins: vec![Join {
                     relation: TableFactor::Table {
                         name: "PlayerItem".to_owned(),
                         alias: None,
-                        index: None,
                     },
                     join_operator: JoinOperator::Inner(JoinConstraint::None),
-                    join_executor: JoinExecutor::NestedLoop,
                 }],
             },
             selection: None,
             group_by: Vec::new(),
             having: None,
-            aggregate_slots: None,
         }))
         .to_sql_unquoted();
         assert_eq!(actual, expected);
@@ -939,7 +779,6 @@ mod tests {
                         name: "F".to_owned(),
                         columns: Vec::new(),
                     }),
-                    index: None,
                 },
                 joins: Vec::new(),
             },
@@ -950,7 +789,6 @@ mod tests {
                 op: BinaryOperator::Eq,
                 right: Box::new(Expr::Literal(Literal::QuotedString("glue".to_owned()))),
             }),
-            aggregate_slots: None,
         }
         .to_sql();
         assert_eq!(actual, expected);
@@ -963,7 +801,6 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "FOO".to_owned(),
                     alias: None,
-                    index: None,
                 },
                 joins: Vec::new(),
             },
@@ -974,7 +811,6 @@ mod tests {
             }),
             group_by: Vec::new(),
             having: None,
-            aggregate_slots: None,
         }
         .to_sql();
         assert_eq!(actual, expected);
@@ -993,7 +829,6 @@ mod tests {
                         name: "F".to_owned(),
                         columns: Vec::new(),
                     }),
-                    index: None,
                 },
                 joins: Vec::new(),
             },
@@ -1004,7 +839,6 @@ mod tests {
                 op: BinaryOperator::Eq,
                 right: Box::new(Expr::Literal(Literal::QuotedString("glue".to_owned()))),
             }),
-            aggregate_slots: None,
         }
         .to_sql_unquoted();
         assert_eq!(actual, expected);
@@ -1017,7 +851,6 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "FOO".to_owned(),
                     alias: None,
-                    index: None,
                 },
                 joins: Vec::new(),
             },
@@ -1028,7 +861,6 @@ mod tests {
             }),
             group_by: Vec::new(),
             having: None,
-            aggregate_slots: None,
         }
         .to_sql_unquoted();
         assert_eq!(actual, expected);
@@ -1078,7 +910,6 @@ mod tests {
                     name: "F".to_owned(),
                     columns: Vec::new(),
                 }),
-                index: None,
             },
             joins: Vec::new(),
         }
@@ -1096,7 +927,6 @@ mod tests {
                     name: "F".to_owned(),
                     columns: Vec::new(),
                 }),
-                index: None,
             },
             joins: Vec::new(),
         }
@@ -1113,7 +943,6 @@ mod tests {
                 name: "F".to_owned(),
                 columns: Vec::new(),
             }),
-            index: None,
         }
         .to_sql();
         assert_eq!(actual, expected);
@@ -1128,14 +957,12 @@ mod tests {
                         relation: TableFactor::Table {
                             name: "FOO".to_owned(),
                             alias: None,
-                            index: None,
                         },
                         joins: Vec::new(),
                     },
                     selection: None,
                     group_by: Vec::new(),
                     having: None,
-                    aggregate_slots: None,
                 })),
                 order_by: Vec::new(),
                 limit: None,
@@ -1181,7 +1008,6 @@ mod tests {
                 name: "F".to_owned(),
                 columns: Vec::new(),
             }),
-            index: None,
         }
         .to_sql_unquoted();
         assert_eq!(actual, expected);
@@ -1196,14 +1022,12 @@ mod tests {
                         relation: TableFactor::Table {
                             name: "FOO".to_owned(),
                             alias: None,
-                            index: None,
                         },
                         joins: Vec::new(),
                     },
                     selection: None,
                     group_by: Vec::new(),
                     having: None,
-                    aggregate_slots: None,
                 })),
                 order_by: Vec::new(),
                 limit: None,
@@ -1269,10 +1093,8 @@ mod tests {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_owned(),
                 alias: None,
-                index: None,
             },
             join_operator: JoinOperator::Inner(JoinConstraint::None),
-            join_executor: JoinExecutor::NestedLoop,
         }
         .to_sql();
         assert_eq!(actual, expected);
@@ -1282,12 +1104,10 @@ mod tests {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_owned(),
                 alias: None,
-                index: None,
             },
             join_operator: JoinOperator::Inner(JoinConstraint::On(expr(
                 r#""PlayerItem"."user_id" = "Player"."id""#,
             ))),
-            join_executor: JoinExecutor::NestedLoop,
         }
         .to_sql();
         assert_eq!(actual, expected);
@@ -1297,10 +1117,8 @@ mod tests {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_owned(),
                 alias: None,
-                index: None,
             },
             join_operator: JoinOperator::LeftOuter(JoinConstraint::None),
-            join_executor: JoinExecutor::NestedLoop,
         }
         .to_sql();
         assert_eq!(actual, expected);
@@ -1310,14 +1128,10 @@ mod tests {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_owned(),
                 alias: None,
-                index: None,
             },
-            join_operator: JoinOperator::LeftOuter(JoinConstraint::None),
-            join_executor: JoinExecutor::Hash {
-                key_expr: expr("PlayerItem.user_id"),
-                value_expr: expr("Player.id"),
-                where_clause: None,
-            },
+            join_operator: JoinOperator::LeftOuter(JoinConstraint::On(expr(
+                r#""PlayerItem"."user_id" = "Player"."id""#,
+            ))),
         }
         .to_sql();
         assert_eq!(actual, expected);
@@ -1327,18 +1141,10 @@ mod tests {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_owned(),
                 alias: None,
-                index: None,
             },
             join_operator: JoinOperator::LeftOuter(JoinConstraint::On(expr(
-                r#""PlayerItem"."age" > "Player"."age""#,
+                r#""PlayerItem"."age" > "Player"."age" AND "PlayerItem"."user_id" = "Player"."id" AND "PlayerItem"."amount" > 10 AND "PlayerItem"."amount" * 3 <= 2"#,
             ))),
-            join_executor: JoinExecutor::Hash {
-                key_expr: expr("PlayerItem.user_id"),
-                value_expr: expr("Player.id"),
-                where_clause: Some(expr(
-                    r#""PlayerItem"."amount" > 10 AND "PlayerItem"."amount" * 3 <= 2"#,
-                )),
-            },
         }
         .to_sql();
         assert_eq!(actual, expected);
@@ -1351,10 +1157,8 @@ mod tests {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_owned(),
                 alias: None,
-                index: None,
             },
             join_operator: JoinOperator::Inner(JoinConstraint::None),
-            join_executor: JoinExecutor::NestedLoop,
         }
         .to_sql_unquoted();
         assert_eq!(actual, expected);
@@ -1364,16 +1168,10 @@ mod tests {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_owned(),
                 alias: None,
-                index: None,
             },
             join_operator: JoinOperator::Inner(JoinConstraint::On(expr(
-                "PlayerItem.user_id = Player.id",
+                "PlayerItem.user_id = Player.id AND PlayerItem.group_id = Player.group_id",
             ))),
-            join_executor: JoinExecutor::Hash {
-                key_expr: expr("PlayerItem.group_id"),
-                value_expr: expr("Player.group_id"),
-                where_clause: None,
-            },
         }
         .to_sql_unquoted();
         assert_eq!(actual, expected);
@@ -1383,10 +1181,8 @@ mod tests {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_owned(),
                 alias: None,
-                index: None,
             },
             join_operator: JoinOperator::LeftOuter(JoinConstraint::None),
-            join_executor: JoinExecutor::NestedLoop,
         }
         .to_sql_unquoted();
         assert_eq!(actual, expected);
@@ -1396,14 +1192,10 @@ mod tests {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_owned(),
                 alias: None,
-                index: None,
             },
-            join_operator: JoinOperator::LeftOuter(JoinConstraint::None),
-            join_executor: JoinExecutor::Hash {
-                key_expr: expr("PlayerItem.user_id"),
-                value_expr: expr("Player.id"),
-                where_clause: None,
-            },
+            join_operator: JoinOperator::LeftOuter(JoinConstraint::On(expr(
+                "PlayerItem.user_id = Player.id",
+            ))),
         }
         .to_sql_unquoted();
         assert_eq!(actual, expected);
@@ -1413,18 +1205,10 @@ mod tests {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_owned(),
                 alias: None,
-                index: None,
             },
             join_operator: JoinOperator::LeftOuter(JoinConstraint::On(expr(
-                "PlayerItem.age > Player.age",
+                "PlayerItem.age > Player.age AND PlayerItem.user_id = Player.id AND PlayerItem.amount > 10 AND PlayerItem.amount * 3 <= 2",
             ))),
-            join_executor: JoinExecutor::Hash {
-                key_expr: expr("PlayerItem.user_id"),
-                value_expr: expr("Player.id"),
-                where_clause: Some(expr(
-                    "PlayerItem.amount > 10 AND PlayerItem.amount * 3 <= 2",
-                )),
-            },
         }
         .to_sql_unquoted();
         assert_eq!(actual, expected);

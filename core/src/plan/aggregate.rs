@@ -1,33 +1,38 @@
 use {
-    crate::{
-        ast::{
-            Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, OrderByExpr, Projection, Query,
-            Select, SelectItem, SetExpr, Statement, TableFactor, TableWithJoins, Values,
-        },
-        plan::expr::visit_mut_expr,
+    crate::plan::{
+        AggregateFunctionPlan, ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan,
+        JoinPlan, OrderByExprPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan,
+        SetExprPlan, StatementPlan, TableFactorPlan, TableWithJoinsPlan, ValuesPlan,
+        expr::visit_mut_expr,
     },
     std::collections::HashMap,
 };
 
-pub fn plan(statement: Statement) -> Statement {
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct AggregateKey {
+    func: AggregateFunctionPlan,
+    distinct: bool,
+}
+
+pub fn plan(statement: StatementPlan) -> StatementPlan {
     match statement {
-        Statement::Query(mut query) => {
+        StatementPlan::Query(mut query) => {
             plan_query(&mut query);
-            Statement::Query(query)
+            StatementPlan::Query(query)
         }
-        Statement::Insert {
+        StatementPlan::Insert {
             table_name,
             columns,
             mut source,
         } => {
             plan_query(&mut source);
-            Statement::Insert {
+            StatementPlan::Insert {
                 table_name,
                 columns,
                 source,
             }
         }
-        Statement::CreateTable {
+        StatementPlan::CreateTable {
             if_not_exists,
             name,
             columns,
@@ -40,7 +45,7 @@ pub fn plan(statement: Statement) -> Statement {
                 plan_query(source);
             }
 
-            Statement::CreateTable {
+            StatementPlan::CreateTable {
                 if_not_exists,
                 name,
                 columns,
@@ -50,7 +55,7 @@ pub fn plan(statement: Statement) -> Statement {
                 comment,
             }
         }
-        Statement::Update {
+        StatementPlan::Update {
             table_name,
             mut assignments,
             mut selection,
@@ -63,13 +68,13 @@ pub fn plan(statement: Statement) -> Statement {
                 plan_expr(selection);
             }
 
-            Statement::Update {
+            StatementPlan::Update {
                 table_name,
                 assignments,
                 selection,
             }
         }
-        Statement::Delete {
+        StatementPlan::Delete {
             table_name,
             mut selection,
         } => {
@@ -77,7 +82,7 @@ pub fn plan(statement: Statement) -> Statement {
                 plan_expr(selection);
             }
 
-            Statement::Delete {
+            StatementPlan::Delete {
                 table_name,
                 selection,
             }
@@ -86,32 +91,9 @@ pub fn plan(statement: Statement) -> Statement {
     }
 }
 
-// Processes a SetExpr that is a branch of UNION/UNION ALL. Unlike plan_query,
-// this operates directly on &mut SetExpr to avoid cloning the AST subtree.
-fn plan_union_body(body: &mut SetExpr) {
-    match body {
-        SetExpr::Select(select) => {
-            plan_select(select);
-            // Union branches carry no ORDER BY, so pass an empty slice.
-            bind_select(select, &mut []);
-        }
-        SetExpr::Values(Values(exprs_list)) => {
-            for exprs in exprs_list {
-                for expr in exprs {
-                    plan_expr(expr);
-                }
-            }
-        }
-        SetExpr::Union { left, right, .. } => {
-            plan_union_body(left);
-            plan_union_body(right);
-        }
-    }
-}
-
-fn plan_query(query: &mut Query) {
+fn plan_query(query: &mut QueryPlan) {
     match &mut query.body {
-        SetExpr::Select(select) => {
+        SetExprPlan::Select(select) => {
             plan_select(select);
 
             for order_by in &mut query.order_by {
@@ -120,16 +102,16 @@ fn plan_query(query: &mut Query) {
 
             bind_select(select, &mut query.order_by);
         }
-        SetExpr::Values(Values(exprs_list)) => {
+        SetExprPlan::Values(ValuesPlan(exprs_list)) => {
             for exprs in exprs_list {
                 for expr in exprs {
                     plan_expr(expr);
                 }
             }
         }
-        SetExpr::Union { left, right, .. } => {
-            plan_union_body(left);
-            plan_union_body(right);
+        SetExprPlan::Union { left, right, .. } => {
+            plan_set_expr(left);
+            plan_set_expr(right);
         }
     }
 
@@ -142,18 +124,38 @@ fn plan_query(query: &mut Query) {
     }
 }
 
-fn plan_select(select: &mut Select) {
-    plan_table_with_joins(&mut select.from);
-
-    match &mut select.projection {
-        Projection::SelectItems(items) => {
-            for item in items {
-                if let SelectItem::Expr { expr, .. } = item {
+fn plan_set_expr(body: &mut SetExprPlan) {
+    match body {
+        SetExprPlan::Select(select) => {
+            plan_select(select);
+            bind_select(select, &mut []);
+        }
+        SetExprPlan::Values(ValuesPlan(exprs_list)) => {
+            for exprs in exprs_list {
+                for expr in exprs {
                     plan_expr(expr);
                 }
             }
         }
-        Projection::SchemalessMap => {}
+        SetExprPlan::Union { left, right, .. } => {
+            plan_set_expr(left);
+            plan_set_expr(right);
+        }
+    }
+}
+
+fn plan_select(select: &mut SelectPlan) {
+    plan_table_with_joins(&mut select.from);
+
+    match &mut select.projection {
+        ProjectionPlan::SelectItems(items) => {
+            for item in items {
+                if let SelectItemPlan::Expr { expr, .. } = item {
+                    plan_expr(expr);
+                }
+            }
+        }
+        ProjectionPlan::SchemalessMap => {}
     }
 
     if let Some(selection) = select.selection.as_mut() {
@@ -169,7 +171,7 @@ fn plan_select(select: &mut Select) {
     }
 }
 
-fn plan_table_with_joins(table_with_joins: &mut TableWithJoins) {
+fn plan_table_with_joins(table_with_joins: &mut TableWithJoinsPlan) {
     plan_table_factor(&mut table_with_joins.relation);
 
     for join in &mut table_with_joins.joins {
@@ -177,25 +179,25 @@ fn plan_table_with_joins(table_with_joins: &mut TableWithJoins) {
     }
 }
 
-fn plan_table_factor(table_factor: &mut TableFactor) {
+fn plan_table_factor(table_factor: &mut TableFactorPlan) {
     match table_factor {
-        TableFactor::Table { .. } | TableFactor::Dictionary { .. } => {}
-        TableFactor::Derived { subquery, .. } => plan_query(subquery),
-        TableFactor::Series { size, .. } => plan_expr(size),
+        TableFactorPlan::Table { .. } | TableFactorPlan::Dictionary { .. } => {}
+        TableFactorPlan::Derived { subquery, .. } => plan_query(subquery),
+        TableFactorPlan::Series { size, .. } => plan_expr(size),
     }
 }
 
-fn plan_join(join: &mut Join) {
+fn plan_join(join: &mut JoinPlan) {
     plan_table_factor(&mut join.relation);
 
     match &mut join.join_operator {
-        JoinOperator::Inner(JoinConstraint::On(expr))
-        | JoinOperator::LeftOuter(JoinConstraint::On(expr)) => plan_expr(expr),
-        JoinOperator::Inner(JoinConstraint::None)
-        | JoinOperator::LeftOuter(JoinConstraint::None) => {}
+        JoinOperatorPlan::Inner(JoinConstraintPlan::On(expr))
+        | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::On(expr)) => plan_expr(expr),
+        JoinOperatorPlan::Inner(JoinConstraintPlan::None)
+        | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None) => {}
     }
 
-    if let JoinExecutor::Hash {
+    if let JoinExecutorPlan::Hash {
         key_expr,
         value_expr,
         where_clause,
@@ -210,22 +212,27 @@ fn plan_join(join: &mut Join) {
     }
 }
 
-fn plan_expr(expr: &mut Expr) {
+fn plan_expr(expr: &mut ExprPlan) {
     visit_mut_expr(expr, &mut |expr| match expr {
-        Expr::Subquery(subquery)
-        | Expr::Exists { subquery, .. }
-        | Expr::InSubquery { subquery, .. } => plan_query(subquery),
+        ExprPlan::Subquery(subquery)
+        | ExprPlan::Exists { subquery, .. }
+        | ExprPlan::InSubquery { subquery, .. } => plan_query(subquery),
         _ => {}
     });
 }
 
-fn bind_select(select: &mut Select, order_by: &mut [OrderByExpr]) {
+fn bind_select(select: &mut SelectPlan, order_by: &mut [OrderByExprPlan]) {
     let mut slots = HashMap::new();
     let mut aggregates = Vec::new();
-    let mut bind = |expr: &mut Expr| {
+    let mut bind = |expr: &mut ExprPlan| {
         visit_mut_expr(expr, &mut |expr| {
-            if let Expr::Aggregate(aggregate) = expr {
-                let slot = *slots.entry(aggregate.as_ref().clone()).or_insert_with(|| {
+            if let ExprPlan::Aggregate(aggregate) = expr {
+                let key = AggregateKey {
+                    func: aggregate.func.clone(),
+                    distinct: aggregate.distinct,
+                };
+
+                let slot = *slots.entry(key).or_insert_with(|| {
                     let slot = aggregates.len();
                     let mut aggregate = aggregate.as_ref().clone();
                     aggregate.slot = Some(slot);
@@ -238,9 +245,9 @@ fn bind_select(select: &mut Select, order_by: &mut [OrderByExpr]) {
         });
     };
 
-    if let Projection::SelectItems(items) = &mut select.projection {
+    if let ProjectionPlan::SelectItems(items) = &mut select.projection {
         for item in items {
-            if let SelectItem::Expr { expr, .. } = item {
+            if let SelectItemPlan::Expr { expr, .. } = item {
                 bind(expr);
             }
         }
@@ -262,69 +269,71 @@ mod tests {
     use {
         super::plan,
         crate::{
-            ast::{
-                Dictionary, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, Literal,
-                OrderByExpr, Projection, Query, Select, SelectItem, SetExpr, Statement, TableAlias,
-                TableFactor, TableWithJoins,
-            },
+            ast::{Dictionary, Literal},
             parse_sql::parse,
-            plan::expr::try_visit_expr,
+            plan::{
+                ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan,
+                OrderByExprPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan,
+                SetExprPlan, StatementPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan,
+                expr::{try_visit_expr, visit_mut_expr},
+            },
             translate::translate,
         },
     };
 
-    fn parse_and_plan(sql: &str) -> Statement {
+    fn parse_and_plan(sql: &str) -> StatementPlan {
         let parsed = parse(sql).expect(sql).into_iter().next().expect(sql);
-        let translated = translate(&parsed).expect(sql);
+        let translated = StatementPlan::from(translate(&parsed).expect(sql));
 
         plan(translated)
     }
 
-    fn parse_query(sql: &str) -> Query {
+    fn parse_query(sql: &str) -> QueryPlan {
         let parsed = parse(sql).expect(sql).into_iter().next().expect(sql);
-        let Statement::Query(query) = translate(&parsed).expect(sql) else {
+        let StatementPlan::Query(query) = StatementPlan::from(translate(&parsed).expect(sql))
+        else {
             panic!("expected query");
         };
 
         query
     }
 
-    fn select(statement: &Statement) -> &Select {
-        let Statement::Query(query) = statement else {
+    fn select(statement: &StatementPlan) -> &SelectPlan {
+        let StatementPlan::Query(query) = statement else {
             panic!("expected query");
         };
         select_query(query)
     }
 
-    fn select_query(query: &Query) -> &Select {
-        let SetExpr::Select(select) = &query.body else {
+    fn select_query(query: &QueryPlan) -> &SelectPlan {
+        let SetExprPlan::Select(select) = &query.body else {
             panic!("expected select");
         };
 
         select
     }
 
-    fn assert_planned_query(query: &Query) {
+    fn assert_planned_query(query: &QueryPlan) {
         assert_eq!(
             select_query(query).aggregate_slots.as_ref().map(Vec::len),
             Some(1)
         );
     }
 
-    fn assert_unplanned_query(query: &Query) {
+    fn assert_unplanned_query(query: &QueryPlan) {
         assert_eq!(select_query(query).aggregate_slots, None);
     }
 
-    fn count_query() -> Query {
+    fn count_query() -> QueryPlan {
         parse_query("SELECT COUNT(*) FROM Item")
     }
 
-    fn subquery_expr() -> Expr {
-        Expr::Subquery(Box::new(count_query()))
+    fn subquery_expr() -> ExprPlan {
+        ExprPlan::Subquery(Box::new(count_query()))
     }
 
-    fn alias(name: &str) -> TableAlias {
-        TableAlias {
+    fn alias(name: &str) -> TableAliasPlan {
+        TableAliasPlan {
             name: name.to_owned(),
             columns: Vec::new(),
         }
@@ -349,16 +358,16 @@ mod tests {
         assert_eq!(slots.len(), 1);
         assert_eq!(slots[0].slot, Some(0));
 
-        let Projection::SelectItems(items) = &select.projection else {
+        let ProjectionPlan::SelectItems(items) = &select.projection else {
             panic!("expected select items");
         };
-        let SelectItem::Expr { expr, .. } = &items[0] else {
+        let SelectItemPlan::Expr { expr, .. } = &items[0] else {
             panic!("expected expression");
         };
 
         let mut found_slots = Vec::new();
         try_visit_expr(expr, &mut |expr| {
-            if let Expr::Aggregate(aggregate) = expr {
+            if let ExprPlan::Aggregate(aggregate) = expr {
                 found_slots.push(aggregate.slot);
             }
 
@@ -366,7 +375,7 @@ mod tests {
         })
         .expect("projection traversal");
         try_visit_expr(select.having.as_ref().expect("having"), &mut |expr| {
-            if let Expr::Aggregate(aggregate) = expr {
+            if let ExprPlan::Aggregate(aggregate) = expr {
                 found_slots.push(aggregate.slot);
             }
 
@@ -374,11 +383,11 @@ mod tests {
         })
         .expect("having traversal");
 
-        let Statement::Query(query) = &statement else {
+        let StatementPlan::Query(query) = &statement else {
             panic!("expected query");
         };
         try_visit_expr(&query.order_by[0].expr, &mut |expr| {
-            if let Expr::Aggregate(aggregate) = expr {
+            if let ExprPlan::Aggregate(aggregate) = expr {
                 found_slots.push(aggregate.slot);
             }
             Ok(())
@@ -386,6 +395,63 @@ mod tests {
         .expect("order by traversal");
 
         assert_eq!(found_slots, vec![Some(0), Some(0), Some(0)]);
+    }
+
+    #[test]
+    fn ignores_stale_slot_when_binding_same_aggregate() {
+        let mut query = parse_query("SELECT COUNT(*) FROM Item HAVING COUNT(*) > 0");
+        let SetExprPlan::Select(select) = &mut query.body else {
+            panic!("expected select");
+        };
+        let ProjectionPlan::SelectItems(items) = &mut select.projection else {
+            panic!("expected select items");
+        };
+        let SelectItemPlan::Expr { expr, .. } = &mut items[0] else {
+            panic!("expected expression");
+        };
+
+        visit_mut_expr(expr, &mut |expr| {
+            if let ExprPlan::Aggregate(aggregate) = expr {
+                aggregate.slot = Some(99);
+            }
+        });
+
+        let StatementPlan::Query(query) = plan(StatementPlan::Query(query)) else {
+            panic!("expected query");
+        };
+        let select = select_query(&query);
+        let slots = select
+            .aggregate_slots
+            .as_ref()
+            .expect("aggregate slots should be planned");
+
+        assert_eq!(slots.len(), 1);
+        assert_eq!(slots[0].slot, Some(0));
+
+        let ProjectionPlan::SelectItems(items) = &select.projection else {
+            panic!("expected select items");
+        };
+        let SelectItemPlan::Expr { expr, .. } = &items[0] else {
+            panic!("expected expression");
+        };
+
+        let mut found_slots = Vec::new();
+        try_visit_expr(expr, &mut |expr| {
+            if let ExprPlan::Aggregate(aggregate) = expr {
+                found_slots.push(aggregate.slot);
+            }
+            Ok(())
+        })
+        .expect("projection traversal");
+        try_visit_expr(select.having.as_ref().expect("having"), &mut |expr| {
+            if let ExprPlan::Aggregate(aggregate) = expr {
+                found_slots.push(aggregate.slot);
+            }
+            Ok(())
+        })
+        .expect("having traversal");
+
+        assert_eq!(found_slots, vec![Some(0), Some(0)]);
     }
 
     #[test]
@@ -403,10 +469,10 @@ mod tests {
             "outer select slots"
         );
 
-        let TableFactor::Derived { subquery, .. } = &select.from.relation else {
+        let TableFactorPlan::Derived { subquery, .. } = &select.from.relation else {
             panic!("expected derived table");
         };
-        let SetExpr::Select(inner) = &subquery.body else {
+        let SetExprPlan::Select(inner) = &subquery.body else {
             panic!("expected inner select");
         };
 
@@ -422,13 +488,13 @@ mod tests {
     #[test]
     fn binds_insert_and_create_table_source_queries() {
         let statement = parse_and_plan("INSERT INTO Target SELECT COUNT(*) FROM Source");
-        let Statement::Insert { source, .. } = statement else {
+        let StatementPlan::Insert { source, .. } = statement else {
             panic!("expected insert");
         };
         assert_planned_query(&source);
 
         let statement = parse_and_plan("CREATE TABLE Target AS SELECT COUNT(*) FROM Source");
-        let Statement::CreateTable {
+        let StatementPlan::CreateTable {
             source: Some(source),
             ..
         } = statement
@@ -441,38 +507,38 @@ mod tests {
     #[test]
     fn binds_update_and_delete_expr_subqueries() {
         let statement = parse_and_plan("UPDATE Target SET count = (SELECT COUNT(*) FROM Source)");
-        let Statement::Update { assignments, .. } = statement else {
+        let StatementPlan::Update { assignments, .. } = statement else {
             panic!("expected update");
         };
-        let Expr::Subquery(source) = &assignments[0].value else {
+        let ExprPlan::Subquery(source) = &assignments[0].value else {
             panic!("expected assignment subquery");
         };
         assert_planned_query(source);
 
         let statement =
             parse_and_plan("UPDATE Target SET count = 1 WHERE id = (SELECT COUNT(*) FROM Source)");
-        let Statement::Update {
-            selection: Some(Expr::BinaryOp { right, .. }),
+        let StatementPlan::Update {
+            selection: Some(ExprPlan::BinaryOp { right, .. }),
             ..
         } = statement
         else {
             panic!("expected update selection");
         };
-        let Expr::Subquery(source) = right.as_ref() else {
+        let ExprPlan::Subquery(source) = right.as_ref() else {
             panic!("expected selection subquery");
         };
         assert_planned_query(source);
 
         let statement =
             parse_and_plan("DELETE FROM Target WHERE id = (SELECT COUNT(*) FROM Source)");
-        let Statement::Delete {
-            selection: Some(Expr::BinaryOp { right, .. }),
+        let StatementPlan::Delete {
+            selection: Some(ExprPlan::BinaryOp { right, .. }),
             ..
         } = statement
         else {
             panic!("expected delete selection");
         };
-        let Expr::Subquery(source) = right.as_ref() else {
+        let ExprPlan::Subquery(source) = right.as_ref() else {
             panic!("expected delete subquery");
         };
         assert_planned_query(source);
@@ -481,7 +547,7 @@ mod tests {
     #[test]
     fn keeps_create_table_without_source_unplanned() {
         let statement = parse_and_plan("CREATE TABLE Target (id INTEGER)");
-        let Statement::CreateTable { source, .. } = statement else {
+        let StatementPlan::CreateTable { source, .. } = statement else {
             panic!("expected create table");
         };
 
@@ -490,7 +556,7 @@ mod tests {
 
     #[test]
     fn keeps_non_query_statements_unchanged() {
-        let statement = Statement::ShowColumns {
+        let statement = StatementPlan::ShowColumns {
             table_name: "Target".to_owned(),
         };
 
@@ -503,29 +569,29 @@ mod tests {
         query.limit = Some(subquery_expr());
         query.offset = Some(subquery_expr());
 
-        let statement = plan(Statement::Query(query));
-        let Statement::Query(query) = statement else {
+        let statement = plan(StatementPlan::Query(query));
+        let StatementPlan::Query(query) = statement else {
             panic!("expected query");
         };
 
-        let Some(Expr::Subquery(limit)) = &query.limit else {
+        let Some(ExprPlan::Subquery(limit)) = &query.limit else {
             panic!("expected limit subquery");
         };
         assert_planned_query(limit);
 
-        let Some(Expr::Subquery(offset)) = &query.offset else {
+        let Some(ExprPlan::Subquery(offset)) = &query.offset else {
             panic!("expected offset subquery");
         };
         assert_planned_query(offset);
 
         let statement = parse_and_plan("VALUES ((SELECT COUNT(*) FROM Item))");
-        let Statement::Query(query) = statement else {
+        let StatementPlan::Query(query) = statement else {
             panic!("expected query");
         };
-        let SetExpr::Values(values) = &query.body else {
+        let SetExprPlan::Values(values) = &query.body else {
             panic!("expected values");
         };
-        let Expr::Subquery(value_subquery) = &values.0[0][0] else {
+        let ExprPlan::Subquery(value_subquery) = &values.0[0][0] else {
             panic!("expected value subquery");
         };
         assert_planned_query(value_subquery);
@@ -543,12 +609,12 @@ mod tests {
         );
         let select = select(&statement);
 
-        let Some(Expr::Exists { subquery, .. }) = &select.selection else {
+        let Some(ExprPlan::Exists { subquery, .. }) = &select.selection else {
             panic!("expected exists selection");
         };
         assert_planned_query(subquery);
 
-        let Expr::InSubquery { subquery, .. } = &select.group_by[0] else {
+        let ExprPlan::InSubquery { subquery, .. } = &select.group_by[0] else {
             panic!("expected in-subquery group by");
         };
         assert_planned_query(subquery);
@@ -564,12 +630,12 @@ mod tests {
 
     #[test]
     fn keeps_schemaless_projection_unplanned() {
-        let query = Query {
-            body: SetExpr::Select(Box::new(Select {
+        let query = QueryPlan {
+            body: SetExprPlan::Select(Box::new(SelectPlan {
                 distinct: false,
-                projection: Projection::SchemalessMap,
-                from: TableWithJoins {
-                    relation: TableFactor::Dictionary {
+                projection: ProjectionPlan::SchemalessMap,
+                from: TableWithJoinsPlan {
+                    relation: TableFactorPlan::Dictionary {
                         dict: Dictionary::GlueTables,
                         alias: alias("GLUE_TABLES"),
                     },
@@ -585,7 +651,7 @@ mod tests {
             offset: None,
         };
 
-        let Statement::Query(query) = plan(Statement::Query(query)) else {
+        let StatementPlan::Query(query) = plan(StatementPlan::Query(query)) else {
             panic!("expected query");
         };
         assert_unplanned_query(&query);
@@ -593,48 +659,50 @@ mod tests {
 
     #[test]
     fn plans_table_factor_join_and_hash_executor_exprs() {
-        let query = Query {
-            body: SetExpr::Select(Box::new(Select {
+        let query = QueryPlan {
+            body: SetExprPlan::Select(Box::new(SelectPlan {
                 distinct: false,
-                projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
-                from: TableWithJoins {
-                    relation: TableFactor::Derived {
+                projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
+                from: TableWithJoinsPlan {
+                    relation: TableFactorPlan::Derived {
                         subquery: count_query(),
                         alias: alias("derived"),
                     },
                     joins: vec![
-                        Join {
-                            relation: TableFactor::Series {
+                        JoinPlan {
+                            relation: TableFactorPlan::Series {
                                 alias: alias("series"),
                                 size: subquery_expr(),
                             },
-                            join_operator: JoinOperator::Inner(JoinConstraint::On(subquery_expr())),
-                            join_executor: JoinExecutor::Hash {
+                            join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::On(
+                                subquery_expr(),
+                            )),
+                            join_executor: JoinExecutorPlan::Hash {
                                 key_expr: subquery_expr(),
                                 value_expr: subquery_expr(),
                                 where_clause: Some(subquery_expr()),
                             },
                         },
-                        Join {
-                            relation: TableFactor::Table {
+                        JoinPlan {
+                            relation: TableFactorPlan::Table {
                                 name: "Target".to_owned(),
                                 alias: None,
                                 index: None,
                             },
-                            join_operator: JoinOperator::LeftOuter(JoinConstraint::None),
-                            join_executor: JoinExecutor::Hash {
+                            join_operator: JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None),
+                            join_executor: JoinExecutorPlan::Hash {
                                 key_expr: subquery_expr(),
                                 value_expr: subquery_expr(),
                                 where_clause: None,
                             },
                         },
-                        Join {
-                            relation: TableFactor::Dictionary {
+                        JoinPlan {
+                            relation: TableFactorPlan::Dictionary {
                                 dict: Dictionary::GlueIndexes,
                                 alias: alias("GLUE_INDEXES"),
                             },
-                            join_operator: JoinOperator::Inner(JoinConstraint::None),
-                            join_executor: JoinExecutor::NestedLoop,
+                            join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
+                            join_executor: JoinExecutorPlan::NestedLoop,
                         },
                     ],
                 },
@@ -643,40 +711,40 @@ mod tests {
                 having: None,
                 aggregate_slots: None,
             })),
-            order_by: vec![OrderByExpr {
-                expr: Expr::Literal(Literal::Number(1.into())),
+            order_by: vec![OrderByExprPlan {
+                expr: ExprPlan::Literal(Literal::Number(1.into())),
                 asc: None,
             }],
             limit: None,
             offset: None,
         };
 
-        let Statement::Query(query) = plan(Statement::Query(query)) else {
+        let StatementPlan::Query(query) = plan(StatementPlan::Query(query)) else {
             panic!("expected query");
         };
         let select = select_query(&query);
 
-        let TableFactor::Derived { subquery, .. } = &select.from.relation else {
+        let TableFactorPlan::Derived { subquery, .. } = &select.from.relation else {
             panic!("expected derived relation");
         };
         assert_planned_query(subquery);
 
-        let TableFactor::Series { size, .. } = &select.from.joins[0].relation else {
+        let TableFactorPlan::Series { size, .. } = &select.from.joins[0].relation else {
             panic!("expected series relation");
         };
-        let Expr::Subquery(series_size) = size else {
+        let ExprPlan::Subquery(series_size) = size else {
             panic!("expected series size subquery");
         };
         assert_planned_query(series_size);
 
-        let JoinOperator::Inner(JoinConstraint::On(Expr::Subquery(join_on))) =
+        let JoinOperatorPlan::Inner(JoinConstraintPlan::On(ExprPlan::Subquery(join_on))) =
             &select.from.joins[0].join_operator
         else {
             panic!("expected join on subquery");
         };
         assert_planned_query(join_on);
 
-        let JoinExecutor::Hash {
+        let JoinExecutorPlan::Hash {
             key_expr,
             value_expr,
             where_clause: Some(where_clause),
@@ -686,29 +754,31 @@ mod tests {
         };
 
         for expr in [key_expr, value_expr, where_clause] {
-            let Expr::Subquery(query) = expr else {
+            let ExprPlan::Subquery(query) = expr else {
                 panic!("expected hash executor subquery");
             };
             assert_planned_query(query);
         }
 
-        let JoinOperator::LeftOuter(JoinConstraint::None) = &select.from.joins[1].join_operator
+        let JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None) =
+            &select.from.joins[1].join_operator
         else {
             panic!("expected left join without constraint");
         };
-        let JoinExecutor::Hash {
+        let JoinExecutorPlan::Hash {
             where_clause: None, ..
         } = &select.from.joins[1].join_executor
         else {
             panic!("expected hash executor without where clause");
         };
 
-        let JoinOperator::Inner(JoinConstraint::None) = &select.from.joins[2].join_operator else {
+        let JoinOperatorPlan::Inner(JoinConstraintPlan::None) = &select.from.joins[2].join_operator
+        else {
             panic!("expected inner join without constraint");
         };
         assert!(matches!(
             select.from.joins[2].join_executor,
-            JoinExecutor::NestedLoop
+            JoinExecutorPlan::NestedLoop
         ));
     }
 }

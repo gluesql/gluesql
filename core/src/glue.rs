@@ -1,8 +1,8 @@
 use {
     crate::{
-        ast::Statement,
         executor::{Payload, execute},
         parse_sql::parse,
+        plan::StatementPlan,
         result::Result,
         store::{GStore, GStoreMut, Planner},
         translate::{IntoParamLiteral, ParamLiteral, translate_with_params},
@@ -33,7 +33,7 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
         &mut self,
         sql: Sql,
         params: I,
-    ) -> Result<Vec<Statement>>
+    ) -> Result<Vec<StatementPlan>>
     where
         Sql: AsRef<str>,
         I: IntoIterator<Item = P>,
@@ -47,7 +47,7 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
         let storage = &self.storage;
         stream::iter(parsed)
             .map(|p| translate_with_params(&p, &params))
-            .then(|statement| async move { storage.plan(statement?).await })
+            .then(|statement| async move { storage.plan(statement?.into()).await })
             .try_collect()
             .await
     }
@@ -58,12 +58,12 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
     ///
     /// Returns an error when parsing the SQL text fails or when planning one of the
     /// statements fails.
-    pub async fn plan<Sql: AsRef<str>>(&mut self, sql: Sql) -> Result<Vec<Statement>> {
+    pub async fn plan<Sql: AsRef<str>>(&mut self, sql: Sql) -> Result<Vec<StatementPlan>> {
         self.plan_with_params(sql, std::iter::empty::<ParamLiteral>())
             .await
     }
 
-    pub async fn execute_stmt(&mut self, statement: &Statement) -> Result<Payload> {
+    pub async fn execute_stmt(&mut self, statement: &StatementPlan) -> Result<Payload> {
         execute(&mut self.storage, statement).await
     }
 

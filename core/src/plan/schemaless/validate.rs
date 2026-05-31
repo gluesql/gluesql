@@ -1,11 +1,11 @@
 use {
     super::super::{PlanError, expr::try_visit_expr},
     crate::{
-        ast::{
-            Expr, JoinConstraint, JoinExecutor, JoinOperator, Projection, Query, Select,
-            SelectItem, SetExpr, Statement, TableFactor,
-        },
         data::Schema,
+        plan::{
+            ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, ProjectionPlan,
+            QueryPlan, SelectItemPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
+        },
         result::Result,
     },
     std::{collections::HashMap, hash::BuildHasher, iter::once},
@@ -16,18 +16,18 @@ type ValidateResult = std::result::Result<(), PlanError>;
 /// Rejects schemaless-specific unsupported patterns before rewrite.
 pub(super) fn validate_statement<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
-    statement: &Statement,
+    statement: &StatementPlan,
 ) -> Result<()> {
     validate_statement_inner(schema_map, statement).map_err(Into::into)
 }
 
 fn validate_statement_inner(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    statement: &Statement,
+    statement: &StatementPlan,
 ) -> ValidateResult {
     match statement {
-        Statement::Query(query) => validate_query(schema_map, query),
-        Statement::Insert {
+        StatementPlan::Query(query) => validate_query(schema_map, query),
+        StatementPlan::Insert {
             table_name,
             columns,
             source,
@@ -38,10 +38,10 @@ fn validate_statement_inner(
 
             validate_query(schema_map, source)
         }
-        Statement::CreateTable { source, .. } => source
+        StatementPlan::CreateTable { source, .. } => source
             .as_ref()
             .map_or(Ok(()), |query| validate_query(schema_map, query)),
-        Statement::Update {
+        StatementPlan::Update {
             assignments,
             selection,
             ..
@@ -54,7 +54,7 @@ fn validate_statement_inner(
                 .as_ref()
                 .map_or(Ok(()), |expr| validate_expr(schema_map, expr))
         }
-        Statement::Delete { selection, .. } => selection
+        StatementPlan::Delete { selection, .. } => selection
             .as_ref()
             .map_or(Ok(()), |expr| validate_expr(schema_map, expr)),
         _ => Ok(()),
@@ -63,25 +63,25 @@ fn validate_statement_inner(
 
 fn validate_query(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    query: &Query,
+    query: &QueryPlan,
 ) -> ValidateResult {
     match &query.body {
-        SetExpr::Select(select) => validate_select(schema_map, select)?,
-        SetExpr::Values(values) => {
+        SetExprPlan::Select(select) => validate_select(schema_map, select)?,
+        SetExprPlan::Values(values) => {
             for row in &values.0 {
                 for expr in row {
                     validate_expr(schema_map, expr)?;
                 }
             }
         }
-        SetExpr::Union { left, right, .. } => {
-            let left_query = Query {
+        SetExprPlan::Union { left, right, .. } => {
+            let left_query = QueryPlan {
                 body: *left.clone(),
                 order_by: vec![],
                 limit: None,
                 offset: None,
             };
-            let right_query = Query {
+            let right_query = QueryPlan {
                 body: *right.clone(),
                 order_by: vec![],
                 limit: None,
@@ -109,7 +109,7 @@ fn validate_query(
 
 fn validate_select(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    select: &Select,
+    select: &SelectPlan,
 ) -> ValidateResult {
     validate_mixed_join_wildcard_projection(schema_map, select)?;
     validate_table_factor(schema_map, &select.from.relation)?;
@@ -118,14 +118,14 @@ fn validate_select(
         validate_table_factor(schema_map, &join.relation)?;
 
         match &join.join_operator {
-            JoinOperator::Inner(JoinConstraint::On(expr))
-            | JoinOperator::LeftOuter(JoinConstraint::On(expr)) => {
+            JoinOperatorPlan::Inner(JoinConstraintPlan::On(expr))
+            | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::On(expr)) => {
                 validate_expr(schema_map, expr)?;
             }
             _ => {}
         }
 
-        if let JoinExecutor::Hash {
+        if let JoinExecutorPlan::Hash {
             key_expr,
             value_expr,
             where_clause,
@@ -139,9 +139,9 @@ fn validate_select(
         }
     }
 
-    if let Projection::SelectItems(projection) = &select.projection {
+    if let ProjectionPlan::SelectItems(projection) = &select.projection {
         for projection in projection {
-            if let SelectItem::Expr { expr, .. } = projection {
+            if let SelectItemPlan::Expr { expr, .. } = projection {
                 validate_expr(schema_map, expr)?;
             }
         }
@@ -164,37 +164,37 @@ fn validate_select(
 
 fn validate_table_factor(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    table_factor: &TableFactor,
+    table_factor: &TableFactorPlan,
 ) -> ValidateResult {
     match table_factor {
-        TableFactor::Derived { subquery, .. } => validate_query(schema_map, subquery),
+        TableFactorPlan::Derived { subquery, .. } => validate_query(schema_map, subquery),
         _ => Ok(()),
     }
 }
 
 fn validate_expr(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    expr: &Expr,
+    expr: &ExprPlan,
 ) -> ValidateResult {
     try_visit_expr(expr, &mut |expr| match expr {
-        Expr::Subquery(subquery)
-        | Expr::Exists { subquery, .. }
-        | Expr::InSubquery { subquery, .. } => validate_query(schema_map, subquery),
+        ExprPlan::Subquery(subquery)
+        | ExprPlan::Exists { subquery, .. }
+        | ExprPlan::InSubquery { subquery, .. } => validate_query(schema_map, subquery),
         _ => Ok(()),
     })
 }
 
 fn validate_mixed_join_wildcard_projection(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    select: &Select,
+    select: &SelectPlan,
 ) -> ValidateResult {
     if select.from.joins.is_empty()
         || !matches!(
             &select.projection,
-            Projection::SelectItems(projection)
+            ProjectionPlan::SelectItems(projection)
                 if projection
                     .iter()
-                    .any(|item| matches!(item, SelectItem::Wildcard))
+                    .any(|item| matches!(item, SelectItemPlan::Wildcard))
         )
     {
         return Ok(());
@@ -206,7 +206,7 @@ fn validate_mixed_join_wildcard_projection(
     for relation in
         once(&select.from.relation).chain(select.from.joins.iter().map(|join| &join.relation))
     {
-        let TableFactor::Table { name, .. } = relation else {
+        let TableFactorPlan::Table { name, .. } = relation else {
             continue;
         };
 
@@ -238,10 +238,11 @@ mod tests {
     use {
         super::{super::plan as plan_schemaless, validate_statement},
         crate::{
-            ast::{Expr, JoinExecutor, SetExpr, Statement},
             mock::{MockStorage, run},
             parse_sql::parse,
-            plan::{PlanError, fetch_schema_map},
+            plan::{
+                ExprPlan, JoinExecutorPlan, PlanError, SetExprPlan, StatementPlan, fetch_schema_map,
+            },
             translate::translate,
         },
         futures::executor::block_on,
@@ -264,7 +265,7 @@ mod tests {
 
     fn assert_plan_error(storage: &MockStorage, sql: &str, expected: PlanError) {
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
-        let statement = translate(&parsed).unwrap();
+        let statement = StatementPlan::from(translate(&parsed).unwrap());
         let schema_map = block_on(fetch_schema_map(storage, &statement)).unwrap();
         let planned = plan_schemaless(&schema_map, statement);
 
@@ -273,7 +274,7 @@ mod tests {
 
     fn assert_plan_ok(storage: &MockStorage, sql: &str) {
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
-        let statement = translate(&parsed).unwrap();
+        let statement = StatementPlan::from(translate(&parsed).unwrap());
         let schema_map = block_on(fetch_schema_map(storage, &statement)).unwrap();
         let planned = plan_schemaless(&schema_map, statement);
         assert!(planned.is_ok(), "{sql}");
@@ -387,7 +388,7 @@ mod tests {
         let storage = setup_storage();
         let sql = "SELECT id FROM Player ORDER BY id LIMIT 1 OFFSET 0";
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
-        let statement = translate(&parsed).unwrap();
+        let statement = StatementPlan::from(translate(&parsed).unwrap());
         let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
 
         assert!(validate_statement(&schema_map, &statement).is_ok(), "{sql}");
@@ -398,7 +399,7 @@ mod tests {
         let storage = setup_storage();
         let sql = "VALUES (1), (2)";
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
-        let statement = translate(&parsed).unwrap();
+        let statement = StatementPlan::from(translate(&parsed).unwrap());
         let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
 
         assert!(validate_statement(&schema_map, &statement).is_ok(), "{sql}");
@@ -421,7 +422,7 @@ mod tests {
             .into_iter()
             .next()
             .unwrap();
-        let statement = translate(&parsed).unwrap();
+        let statement = StatementPlan::from(translate(&parsed).unwrap());
         let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
 
         let drop_parsed = parse("DROP TABLE IF EXISTS Temp")
@@ -429,7 +430,7 @@ mod tests {
             .into_iter()
             .next()
             .unwrap();
-        let drop_statement = translate(&drop_parsed).unwrap();
+        let drop_statement = StatementPlan::from(translate(&drop_parsed).unwrap());
         assert!(plan_schemaless(&schema_map, drop_statement).is_ok());
     }
 
@@ -438,18 +439,18 @@ mod tests {
         let storage = setup_storage();
         let sql = "SELECT Item.id FROM Player JOIN Item ON Player.id = Item.id";
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
-        let mut statement = translate(&parsed).unwrap();
+        let mut statement = StatementPlan::from(translate(&parsed).unwrap());
         let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
 
         let mut applied = false;
-        if let Statement::Query(query) = &mut statement
-            && let SetExpr::Select(select) = &mut query.body
+        if let StatementPlan::Query(query) = &mut statement
+            && let SetExprPlan::Select(select) = &mut query.body
             && let Some(join) = select.from.joins.first_mut()
         {
-            join.join_executor = JoinExecutor::Hash {
-                key_expr: Expr::Identifier("id".to_owned()),
-                value_expr: Expr::Identifier("id".to_owned()),
-                where_clause: Some(Expr::Identifier("id".to_owned())),
+            join.join_executor = JoinExecutorPlan::Hash {
+                key_expr: ExprPlan::Identifier("id".to_owned()),
+                value_expr: ExprPlan::Identifier("id".to_owned()),
+                where_clause: Some(ExprPlan::Identifier("id".to_owned())),
             };
             applied = true;
         }
@@ -463,17 +464,17 @@ mod tests {
         let storage = setup_storage();
         let sql = "SELECT Item.id FROM Player JOIN Item ON Player.id = Item.id";
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
-        let mut statement = translate(&parsed).unwrap();
+        let mut statement = StatementPlan::from(translate(&parsed).unwrap());
         let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
 
         let mut applied = false;
-        if let Statement::Query(query) = &mut statement
-            && let SetExpr::Select(select) = &mut query.body
+        if let StatementPlan::Query(query) = &mut statement
+            && let SetExprPlan::Select(select) = &mut query.body
             && let Some(join) = select.from.joins.first_mut()
         {
-            join.join_executor = JoinExecutor::Hash {
-                key_expr: Expr::Identifier("id".to_owned()),
-                value_expr: Expr::Identifier("id".to_owned()),
+            join.join_executor = JoinExecutorPlan::Hash {
+                key_expr: ExprPlan::Identifier("id".to_owned()),
+                value_expr: ExprPlan::Identifier("id".to_owned()),
                 where_clause: None,
             };
             applied = true;

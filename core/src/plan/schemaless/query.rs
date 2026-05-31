@@ -1,11 +1,12 @@
 use {
     crate::{
-        ast::{
-            Expr, JoinConstraint, JoinExecutor, JoinOperator, Projection, Query, Select,
-            SelectItem, SetExpr, TableFactor, TableWithJoins,
-        },
+        ast::Literal,
         data::{SCHEMALESS_DOC_COLUMN, Schema},
-        plan::expr::visit_mut_expr,
+        plan::{
+            ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, ProjectionPlan,
+            QueryPlan, SelectItemPlan, SelectPlan, SetExprPlan, TableFactorPlan,
+            TableWithJoinsPlan, expr::visit_mut_expr,
+        },
     },
     std::{
         collections::{HashMap, HashSet},
@@ -21,13 +22,13 @@ struct QueryRewriteState {
 
 pub(super) fn transform_query<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
-    query: &mut Query,
+    query: &mut QueryPlan,
 ) {
     let state = match &mut query.body {
-        SetExpr::Select(select) => {
+        SetExprPlan::Select(select) => {
             let rewrite_unqualified_identifiers = matches!(
                 &select.from.relation,
-                TableFactor::Table { name, .. } if is_schemaless_table(schema_map, name)
+                TableFactorPlan::Table { name, .. } if is_schemaless_table(schema_map, name)
             );
             let schemaless_aliases = collect_schemaless_aliases(schema_map, &select.from);
             let state = QueryRewriteState {
@@ -38,12 +39,12 @@ pub(super) fn transform_query<S: BuildHasher>(
             rewrite_select(schema_map, select, &state);
             state
         }
-        SetExpr::Values(_) => QueryRewriteState {
+        SetExprPlan::Values(_) => QueryRewriteState {
             rewrite_unqualified_identifiers: false,
             schemaless_aliases: HashSet::new(),
         },
-        SetExpr::Union { left, right, .. } => {
-            let mut left_query = Query {
+        SetExprPlan::Union { left, right, .. } => {
+            let mut left_query = QueryPlan {
                 body: (**left).clone(),
                 order_by: vec![],
                 limit: None,
@@ -52,7 +53,7 @@ pub(super) fn transform_query<S: BuildHasher>(
             transform_query(schema_map, &mut left_query);
             **left = left_query.body;
 
-            let mut right_query = Query {
+            let mut right_query = QueryPlan {
                 body: (**right).clone(),
                 order_by: vec![],
                 limit: None,
@@ -83,13 +84,13 @@ pub(super) fn transform_query<S: BuildHasher>(
 
 fn collect_schemaless_aliases(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    table_with_joins: &TableWithJoins,
+    table_with_joins: &TableWithJoinsPlan,
 ) -> HashSet<String> {
-    let TableWithJoins { relation, joins } = table_with_joins;
+    let TableWithJoinsPlan { relation, joins } = table_with_joins;
 
     let mut schemaless_aliases = HashSet::new();
     for relation in once(relation).chain(joins.iter().map(|join| &join.relation)) {
-        if let TableFactor::Table { name, alias, .. } = relation
+        if let TableFactorPlan::Table { name, alias, .. } = relation
             && is_schemaless_table(schema_map, name)
         {
             schemaless_aliases.insert(name.clone());
@@ -104,18 +105,18 @@ fn collect_schemaless_aliases(
 
 fn rewrite_select(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    select: &mut Select,
+    select: &mut SelectPlan,
     state: &QueryRewriteState,
 ) {
     let root_wildcard_maps_to_doc =
         state.rewrite_unqualified_identifiers && select.from.joins.is_empty();
     let use_schemaless_map_projection = match &select.projection {
-        Projection::SelectItems(projection) if root_wildcard_maps_to_doc => {
+        ProjectionPlan::SelectItems(projection) if root_wildcard_maps_to_doc => {
             match projection.as_slice() {
-                [SelectItem::Wildcard] => true,
-                [SelectItem::QualifiedWildcard(alias)] => matches!(
+                [SelectItemPlan::Wildcard] => true,
+                [SelectItemPlan::QualifiedWildcard(alias)] => matches!(
                     &select.from.relation,
-                    TableFactor::Table {
+                    TableFactorPlan::Table {
                         name,
                         alias: table_alias,
                         ..
@@ -131,13 +132,13 @@ fn rewrite_select(
     };
 
     if use_schemaless_map_projection {
-        select.projection = Projection::SchemalessMap;
+        select.projection = ProjectionPlan::SchemalessMap;
     }
 
     // Pass 1: rewrite identifier-based expressions.
-    if let Projection::SelectItems(projection) = &mut select.projection {
+    if let ProjectionPlan::SelectItems(projection) = &mut select.projection {
         for projection in projection {
-            if let SelectItem::Expr { expr, .. } = projection {
+            if let SelectItemPlan::Expr { expr, .. } = projection {
                 transform_query_expr(schema_map, expr, state);
             }
         }
@@ -146,22 +147,22 @@ fn rewrite_select(
     for relation in once(&mut select.from.relation)
         .chain(select.from.joins.iter_mut().map(|join| &mut join.relation))
     {
-        if let TableFactor::Derived { subquery, .. } = relation {
+        if let TableFactorPlan::Derived { subquery, .. } = relation {
             transform_query(schema_map, subquery);
         }
     }
 
     for join in &mut select.from.joins {
         match &mut join.join_operator {
-            JoinOperator::Inner(JoinConstraint::On(expr))
-            | JoinOperator::LeftOuter(JoinConstraint::On(expr)) => {
+            JoinOperatorPlan::Inner(JoinConstraintPlan::On(expr))
+            | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::On(expr)) => {
                 transform_query_expr(schema_map, expr, state);
             }
             _ => {}
         }
 
         match &mut join.join_executor {
-            JoinExecutor::Hash {
+            JoinExecutorPlan::Hash {
                 key_expr,
                 value_expr,
                 where_clause,
@@ -172,7 +173,7 @@ fn rewrite_select(
                     transform_query_expr(schema_map, where_clause, state);
                 }
             }
-            JoinExecutor::NestedLoop => {}
+            JoinExecutorPlan::NestedLoop => {}
         }
     }
 
@@ -189,7 +190,7 @@ fn rewrite_select(
     }
 
     // Pass 2: rewrite wildcard projections.
-    if let Projection::SelectItems(projection) = &mut select.projection {
+    if let ProjectionPlan::SelectItems(projection) = &mut select.projection {
         for projection in projection {
             transform_wildcard_projection(
                 projection,
@@ -202,36 +203,32 @@ fn rewrite_select(
 
 fn transform_query_expr(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    expr: &mut Expr,
+    expr: &mut ExprPlan,
     state: &QueryRewriteState,
 ) {
     visit_mut_expr(expr, &mut |e| match e {
-        Expr::Identifier(ident) => {
+        ExprPlan::Identifier(ident) => {
             if state.rewrite_unqualified_identifiers {
-                *e = Expr::ArrayIndex {
-                    obj: Box::new(Expr::Identifier(SCHEMALESS_DOC_COLUMN.to_owned())),
-                    indexes: vec![Expr::Literal(crate::ast::Literal::QuotedString(
-                        ident.to_owned(),
-                    ))],
+                *e = ExprPlan::ArrayIndex {
+                    obj: Box::new(ExprPlan::Identifier(SCHEMALESS_DOC_COLUMN.to_owned())),
+                    indexes: vec![ExprPlan::Literal(Literal::QuotedString(ident.to_owned()))],
                 };
             }
         }
-        Expr::CompoundIdentifier { alias, ident } => {
+        ExprPlan::CompoundIdentifier { alias, ident } => {
             if state.schemaless_aliases.contains(alias) {
-                *e = Expr::ArrayIndex {
-                    obj: Box::new(Expr::CompoundIdentifier {
+                *e = ExprPlan::ArrayIndex {
+                    obj: Box::new(ExprPlan::CompoundIdentifier {
                         alias: alias.to_owned(),
                         ident: SCHEMALESS_DOC_COLUMN.to_owned(),
                     }),
-                    indexes: vec![Expr::Literal(crate::ast::Literal::QuotedString(
-                        ident.to_owned(),
-                    ))],
+                    indexes: vec![ExprPlan::Literal(Literal::QuotedString(ident.to_owned()))],
                 };
             }
         }
-        Expr::Subquery(subquery)
-        | Expr::Exists { subquery, .. }
-        | Expr::InSubquery { subquery, .. } => {
+        ExprPlan::Subquery(subquery)
+        | ExprPlan::Exists { subquery, .. }
+        | ExprPlan::InSubquery { subquery, .. } => {
             transform_query(schema_map, subquery.as_mut());
         }
         _ => {}
@@ -239,25 +236,25 @@ fn transform_query_expr(
 }
 
 fn transform_wildcard_projection(
-    item: &mut SelectItem,
+    item: &mut SelectItemPlan,
     root_wildcard_maps_to_doc: bool,
     schemaless_aliases: &HashSet<String>,
 ) {
     match item {
-        SelectItem::Expr { .. } => {}
-        SelectItem::Wildcard => {
+        SelectItemPlan::Expr { .. } => {}
+        SelectItemPlan::Wildcard => {
             if root_wildcard_maps_to_doc {
-                *item = SelectItem::Expr {
-                    expr: Expr::Identifier(SCHEMALESS_DOC_COLUMN.to_owned()),
+                *item = SelectItemPlan::Expr {
+                    expr: ExprPlan::Identifier(SCHEMALESS_DOC_COLUMN.to_owned()),
                     label: SCHEMALESS_DOC_COLUMN.to_owned(),
                 };
             }
         }
-        SelectItem::QualifiedWildcard(alias) => {
+        SelectItemPlan::QualifiedWildcard(alias) => {
             if schemaless_aliases.contains(alias) {
                 let alias = std::mem::take(alias);
-                *item = SelectItem::Expr {
-                    expr: Expr::CompoundIdentifier {
+                *item = SelectItemPlan::Expr {
+                    expr: ExprPlan::CompoundIdentifier {
                         alias,
                         ident: SCHEMALESS_DOC_COLUMN.to_owned(),
                     },

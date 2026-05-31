@@ -1,9 +1,6 @@
 use {
     super::{Build, ExprNode},
-    crate::{
-        ast::{Expr, Statement},
-        result::Result,
-    },
+    crate::{plan::StatementPlan, result::Result},
 };
 
 #[derive(Clone, Debug)]
@@ -29,11 +26,14 @@ impl<'a> DeleteNode<'a> {
 }
 
 impl Build for DeleteNode<'_> {
-    fn build(self) -> Result<Statement> {
+    fn build(self) -> Result<StatementPlan> {
         let table_name = self.table_name;
-        let selection = self.filter_expr.map(Expr::try_from).transpose()?;
+        let selection = self
+            .filter_expr
+            .map(ExprNode::build_expr_plan)
+            .transpose()?;
 
-        Ok(Statement::Delete {
+        Ok(StatementPlan::Delete {
             table_name,
             selection,
         })

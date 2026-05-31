@@ -15,11 +15,11 @@ use {
         sort::{Sort, SortError},
     },
     crate::{
-        ast::{
-            Expr, Literal, OrderByExpr, Query, Select, SetExpr, TableWithJoins, UnaryOperator,
-            Values,
+        data::{Key, Row, Value},
+        plan::{
+            ExprPlan, OrderByExprPlan, QueryPlan, SelectPlan, SetExprPlan, TableWithJoinsPlan,
+            ValuesPlan,
         },
-        data::{Key, Row, Value, get_alias},
         result::Result,
         store::GStore,
     },
@@ -39,7 +39,7 @@ fn apply_distinct(rows: Vec<Row>) -> Vec<Row> {
         .collect()
 }
 
-async fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> Result<(Vec<Row>, Vec<String>)> {
+async fn rows_with_labels(exprs_list: &[Vec<ExprPlan>]) -> Result<(Vec<Row>, Vec<String>)> {
     let first_len = exprs_list[0].len();
     let labels = (1..=first_len)
         .map(|i| format!("column{i}"))
@@ -79,25 +79,25 @@ async fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> Result<(Vec<Row>, Vec<Str
     Ok((rows, labels))
 }
 
-fn positional_index(expr: &Expr) -> Option<&bigdecimal::BigDecimal> {
+fn positional_index(expr: &ExprPlan) -> Option<&bigdecimal::BigDecimal> {
     match expr {
-        Expr::Literal(Literal::Number(n)) => Some(n),
-        Expr::UnaryOp {
-            op: UnaryOperator::Plus,
+        ExprPlan::Literal(crate::ast::Literal::Number(n)) => Some(n),
+        ExprPlan::UnaryOp {
+            op: crate::ast::UnaryOperator::Plus,
             expr,
         } => match expr.as_ref() {
-            Expr::Literal(Literal::Number(n)) => Some(n),
+            ExprPlan::Literal(crate::ast::Literal::Number(n)) => Some(n),
             _ => None,
         },
         _ => None,
     }
 }
 
-async fn sort_stateless(rows: Vec<Row>, order_by: &[OrderByExpr]) -> Result<Vec<Row>> {
+async fn sort_stateless(rows: Vec<Row>, order_by: &[OrderByExprPlan]) -> Result<Vec<Row>> {
     let sorted = stream::iter(rows.into_iter())
         .then(|row| async move {
             stream::iter(order_by)
-                .then(|OrderByExpr { expr, asc }| {
+                .then(|OrderByExprPlan { expr, asc }| {
                     let row = Some(&row);
 
                     async move {
@@ -146,7 +146,7 @@ async fn sort_stateless(rows: Vec<Row>, order_by: &[OrderByExpr]) -> Result<Vec<
 #[async_recursion]
 pub async fn select_with_labels<'a, T>(
     storage: &'a T,
-    query: Arc<Query>,
+    query: &'a QueryPlan,
     filter_context: Option<Arc<RowContext<'a>>>,
 ) -> Result<(
     Vec<String>,
@@ -155,154 +155,65 @@ pub async fn select_with_labels<'a, T>(
 where
     T: GStore,
 {
-    match query.body.clone() {
-        SetExpr::Union { left, right, all } => {
-            let left_query = Arc::new(Query {
-                body: *left,
-                order_by: vec![],
-                limit: None,
-                offset: None,
-            });
-            let right_query = Arc::new(Query {
-                body: *right,
-                order_by: vec![],
-                limit: None,
-                offset: None,
-            });
-            select_union(storage, query, left_query, right_query, all, filter_context).await
-        }
-        SetExpr::Values(Values(values_list)) => {
+    if let SetExprPlan::Union { left, right, all } = &query.body {
+        let left_query = QueryPlan {
+            body: *left.clone(),
+            order_by: vec![],
+            limit: None,
+            offset: None,
+        };
+        let right_query = QueryPlan {
+            body: *right.clone(),
+            order_by: vec![],
+            limit: None,
+            offset: None,
+        };
+        return select_union(
+            storage,
+            query,
+            left_query,
+            right_query,
+            *all,
+            filter_context,
+        )
+        .await;
+    }
+
+    let SelectPlan {
+        distinct,
+        from: table_with_joins,
+        selection: where_clause,
+        projection,
+        group_by,
+        having,
+        aggregate_slots,
+    } = match &query.body {
+        SetExprPlan::Select(statement) => statement.as_ref(),
+        SetExprPlan::Values(ValuesPlan(values_list)) => {
             let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref()).await?;
-            let (rows, labels) = rows_with_labels(&values_list).await?;
+            let (rows, labels) = rows_with_labels(values_list).await?;
             let rows = sort_stateless(rows, &query.order_by).await?;
             let rows = stream::iter(rows.into_iter().map(Ok));
             let stream: Pin<Box<dyn futures::stream::Stream<Item = Result<Row>> + Send + 'a>> =
                 Box::pin(limit.apply(rows));
-            Ok((labels, stream))
+            return Ok((labels, stream));
         }
-        SetExpr::Select(select) => {
-            select_from(storage, Arc::new(*select), query, filter_context).await
-        }
-    }
-}
+        SetExprPlan::Union { .. } => unreachable!("Union handled above"),
+    };
 
-async fn select_union<'a, T>(
-    storage: &'a T,
-    outer: Arc<Query>,
-    left_query: Arc<Query>,
-    right_query: Arc<Query>,
-    all: bool,
-    filter_context: Option<Arc<RowContext<'a>>>,
-) -> Result<(
-    Vec<String>,
-    Pin<Box<dyn futures::stream::Stream<Item = Result<Row>> + Send + 'a>>,
-)>
-where
-    T: GStore,
-{
-    let (labels, left_stream) =
-        select_with_labels(storage, left_query, filter_context.as_ref().map(Arc::clone)).await?;
-    let (right_labels, right_stream) = select_with_labels(
-        storage,
-        right_query,
-        filter_context.as_ref().map(Arc::clone),
-    )
-    .await?;
-
-    if labels.len() != right_labels.len() {
-        return Err(SelectError::UnionColumnCountMismatch {
-            left: labels.len(),
-            right: right_labels.len(),
-        }
-        .into());
-    }
-
-    let labels_arc: Arc<[String]> = Arc::from(labels.as_slice());
-
-    let left_relabeled = left_stream.map_ok({
-        let la = Arc::clone(&labels_arc);
-        move |row| Row {
-            columns: Arc::clone(&la),
-            values: row.values,
-        }
-    });
-    let right_relabeled = right_stream.map_ok(move |row| Row {
-        columns: Arc::clone(&labels_arc),
-        values: row.values,
-    });
-
-    // Without ORDER BY, both UNION ALL and UNION DISTINCT can stream lazily:
-    // LIMIT/OFFSET terminate the chain before the full set is materialised.
-    if outer.order_by.is_empty() {
-        let combined = left_relabeled.chain(right_relabeled);
-
-        // UNION ALL  → stream as-is.
-        // UNION DISTINCT → filter duplicates on-the-fly via a HashSet so that
-        //   LIMIT can short-circuit without materialising the full result.
-        let stream: Pin<Box<dyn futures::stream::Stream<Item = Result<Row>> + Send + 'a>> = if all {
-            Box::pin(combined)
-        } else {
-            let mut seen = HashSet::new();
-            Box::pin(combined.try_filter(move |row| {
-                let is_new = seen.insert(row.values.clone());
-                std::future::ready(is_new)
-            }))
-        };
-
-        let limit = Limit::new(outer.limit.as_ref(), outer.offset.as_ref()).await?;
-        return Ok((labels, Box::pin(limit.apply(stream))));
-    }
-
-    // ORDER BY is present: the full result set must be materialised before the
-    // sort order can be determined.  Deduplication (UNION DISTINCT) happens
-    // before sorting so that the sort operates on the final row count.
-    let mut rows: Vec<Row> = left_relabeled.try_collect().await?;
-    rows.extend(right_relabeled.try_collect::<Vec<_>>().await?);
-
-    if !all {
-        rows = apply_distinct(rows);
-    }
-
-    let rows = sort_stateless(rows, &outer.order_by).await?;
-    let limit = Limit::new(outer.limit.as_ref(), outer.offset.as_ref()).await?;
-    let rows = stream::iter(rows.into_iter().map(Ok));
-    Ok((labels, Box::pin(limit.apply(rows))))
-}
-
-async fn select_from<'a, T>(
-    storage: &'a T,
-    select: Arc<Select>,
-    query: Arc<Query>,
-    filter_context: Option<Arc<RowContext<'a>>>,
-) -> Result<(
-    Vec<String>,
-    Pin<Box<dyn futures::stream::Stream<Item = Result<Row>> + Send + 'a>>,
-)>
-where
-    T: GStore,
-{
     let labels = {
-        let TableWithJoins { relation, joins } = &select.from;
-        fetch_labels(storage, relation, joins, &select.projection).await?
+        let TableWithJoinsPlan { relation, joins } = &table_with_joins;
+        fetch_labels(storage, relation, joins, projection).await?
     };
     let labels_clone = labels.clone();
 
     let stream = try_stream! {
-        let Select {
-            distinct,
-            from: table_with_joins,
-            selection: where_clause,
-            projection,
-            group_by,
-            having,
-            aggregate_slots,
-        } = select.as_ref();
-        let TableWithJoins { relation, joins } = table_with_joins;
+        let TableWithJoinsPlan { relation, joins } = table_with_joins;
 
         let rows = fetch_relation_rows(storage, relation, None).await?;
-        let rows = rows.map(|row| {
+        let rows = rows.map(move |row| {
             let row = row?;
-            let alias = get_alias(relation);
+            let alias = relation.alias_name();
             Ok(RowContext::new(alias, Cow::Owned(row), None))
         });
 
@@ -322,6 +233,7 @@ where
         let rows = join.apply(rows).await?;
         let rows = rows.try_filter_map(move |project_context| {
             let filter = Arc::clone(&filter);
+
             async move {
                 filter
                     .check(Arc::clone(&project_context))
@@ -359,7 +271,7 @@ where
             }
         });
 
-        let rows = sort.apply(rows, get_alias(relation)).await?;
+        let rows = sort.apply(rows, relation.alias_name()).await?;
 
         if *distinct {
             let all_rows: Vec<Row> = rows.try_collect().await?;
@@ -381,15 +293,99 @@ where
     Ok((labels, Box::pin(stream)))
 }
 
+async fn select_union<'a, T>(
+    storage: &'a T,
+    outer: &'a QueryPlan,
+    left_query: QueryPlan,
+    right_query: QueryPlan,
+    all: bool,
+    filter_context: Option<Arc<RowContext<'a>>>,
+) -> Result<(
+    Vec<String>,
+    Pin<Box<dyn futures::stream::Stream<Item = Result<Row>> + Send + 'a>>,
+)>
+where
+    T: GStore,
+{
+    let left_query = Box::new(left_query);
+    let right_query = Box::new(right_query);
+    // SAFETY: We pin the queries into a Box, extending their lifetime for the
+    // duration of this function only. `select_with_labels` takes &'a, but
+    // left/right queries are created here. We use unsafe only because the
+    // borrow checker cannot see through the Box pin. The streams are consumed
+    // within this function before the boxes are dropped.
+    let left_ref: &'a QueryPlan = unsafe { &*std::ptr::from_ref::<QueryPlan>(left_query.as_ref()) };
+    let right_ref: &'a QueryPlan =
+        unsafe { &*std::ptr::from_ref::<QueryPlan>(right_query.as_ref()) };
+
+    let (labels, left_stream) =
+        select_with_labels(storage, left_ref, filter_context.as_ref().map(Arc::clone)).await?;
+    let (right_labels, right_stream) =
+        select_with_labels(storage, right_ref, filter_context.as_ref().map(Arc::clone)).await?;
+
+    if labels.len() != right_labels.len() {
+        return Err(SelectError::UnionColumnCountMismatch {
+            left: labels.len(),
+            right: right_labels.len(),
+        }
+        .into());
+    }
+
+    let labels_arc: Arc<[String]> = Arc::from(labels.as_slice());
+
+    let left_relabeled = left_stream.map_ok({
+        let la = Arc::clone(&labels_arc);
+        move |row| Row {
+            columns: Arc::clone(&la),
+            values: row.values,
+        }
+    });
+    let right_relabeled = right_stream.map_ok(move |row| Row {
+        columns: Arc::clone(&labels_arc),
+        values: row.values,
+    });
+
+    // Without ORDER BY, both UNION ALL and UNION DISTINCT can stream lazily.
+    if outer.order_by.is_empty() {
+        let combined = left_relabeled.chain(right_relabeled);
+
+        let stream: Pin<Box<dyn futures::stream::Stream<Item = Result<Row>> + Send + 'a>> = if all {
+            Box::pin(combined)
+        } else {
+            let mut seen = HashSet::new();
+            Box::pin(combined.try_filter(move |row| {
+                let is_new = seen.insert(row.values.clone());
+                std::future::ready(is_new)
+            }))
+        };
+
+        let limit = Limit::new(outer.limit.as_ref(), outer.offset.as_ref()).await?;
+        return Ok((labels, Box::pin(limit.apply(stream))));
+    }
+
+    // ORDER BY present: materialise then sort.
+    let mut rows: Vec<Row> = left_relabeled.try_collect().await?;
+    rows.extend(right_relabeled.try_collect::<Vec<_>>().await?);
+
+    if !all {
+        rows = apply_distinct(rows);
+    }
+
+    let rows = sort_stateless(rows, &outer.order_by).await?;
+    let limit = Limit::new(outer.limit.as_ref(), outer.offset.as_ref()).await?;
+    let rows = stream::iter(rows.into_iter().map(Ok));
+    Ok((labels, Box::pin(limit.apply(rows))))
+}
+
 pub async fn select<'a, T>(
     storage: &'a T,
-    query: &'a Query,
+    query: &'a QueryPlan,
     filter_context: Option<Arc<RowContext<'a>>>,
 ) -> Result<impl futures::stream::Stream<Item = Result<Row>> + Send + 'a>
 where
     T: GStore,
 {
-    select_with_labels(storage, Arc::new(query.clone()), filter_context)
+    select_with_labels(storage, query, filter_context)
         .await
         .map(|(_, rows)| rows)
 }

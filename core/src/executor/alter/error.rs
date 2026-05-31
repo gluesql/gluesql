@@ -1,8 +1,5 @@
 use {
-    super::table::Referencing,
-    crate::ast::{DataType, Expr},
-    serde::Serialize,
-    std::fmt::Debug,
+    super::table::Referencing, crate::prelude::DataType, serde::Serialize, std::fmt::Debug,
     thiserror::Error,
 };
 
@@ -30,15 +27,15 @@ pub enum AlterError {
     UnsupportedDataTypeForUniqueColumn(String, DataType),
 
     // validate index expr
-    #[error("unsupported index expr: {0:#?}")]
-    UnsupportedIndexExpr(Box<Expr>),
+    #[error("unsupported index expression")]
+    UnsupportedIndexExpr,
 
     // validate index expr
     #[error("unsupported unnamed argument")]
     UnsupportedUnnamedArg,
 
-    #[error("identifier not found: {0:#?}")]
-    IdentifierNotFound(Box<Expr>),
+    #[error("index expression must reference at least one column")]
+    IndexExprRequiresColumnReference,
 
     #[error("duplicate column name: {0}")]
     DuplicateColumnName(String),

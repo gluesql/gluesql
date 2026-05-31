@@ -1,6 +1,6 @@
 use {
     crate::*,
-    chrono::{NaiveDate, NaiveTime, format::ParseErrorKind},
+    chrono::{NaiveDate, NaiveTime},
     gluesql_core::{
         error::EvaluateError,
         prelude::{Error, Value::*},
@@ -8,13 +8,11 @@ use {
 };
 
 test_case!(to_date, {
-    fn assert_chrono_error_kind_eq(error: &Error, kind: ParseErrorKind) {
-        match error {
-            Error::Evaluate(EvaluateError::FormatParseError(err)) => {
-                assert_eq!(err.kind(), kind);
-            }
-            _ => panic!("invalid error: {error}"),
-        }
+    fn assert_format_parse_error(error: &Error) {
+        assert!(
+            matches!(error, Error::Evaluate(EvaluateError::FormatParseError(_))),
+            "expected FormatParseError, got: {error}"
+        );
     }
 
     let g = get_tester!();
@@ -95,59 +93,25 @@ test_case!(to_date, {
     }
 
     let error_cases = [
-        (
-            g.run_err("SELECT TO_DATE('2015-09-05', '%Y-%m') AS date")
-                .await,
-            chrono::format::ParseErrorKind::TooLong,
-        ),
-        (
-            g.run_err("SELECT TO_TIME('23:56', '%H:%M:%S') AS time")
-                .await,
-            chrono::format::ParseErrorKind::TooShort,
-        ),
-        (
-            g.run_err("SELECT TO_TIMESTAMP('2015-05 23', '%Y-%d %H') AS timestamp")
-                .await,
-            chrono::format::ParseErrorKind::NotEnough,
-        ),
-        (
-            g.run_err(
-                "SELECT TO_TIMESTAMP('2015-14-05 23:56:12','%Y-%m-%d %H:%M:%S') AS timestamp",
-            )
+        g.run_err("SELECT TO_DATE('2015-09-05', '%Y-%m') AS date")
             .await,
-            chrono::format::ParseErrorKind::OutOfRange,
-        ),
-        (
-            g.run_err(
-                "SELECT TO_TIMESTAMP('2015-14-05 23:56:12','%Y-%m-%d %H:%M:%S') AS timestamp",
-            )
+        g.run_err("SELECT TO_TIME('23:56', '%H:%M:%S') AS time")
             .await,
-            chrono::format::ParseErrorKind::OutOfRange,
-        ),
-        (
-            g.run_err(
-                "SELECT TO_TIMESTAMP('2015-14-05 23:56:12','%Y-%m-%d %H:%M:%%S') AS timestamp;",
-            )
+        g.run_err("SELECT TO_TIMESTAMP('2015-05 23', '%Y-%d %H') AS timestamp")
             .await,
-            chrono::format::ParseErrorKind::OutOfRange,
-        ),
-        (
-            g.run_err(
-                "SELECT TO_TIMESTAMP('2015-09-05 23:56:04', '%Y-%m-%d %H:%M:%M') AS timestamp",
-            )
+        g.run_err("SELECT TO_TIMESTAMP('2015-14-05 23:56:12','%Y-%m-%d %H:%M:%S') AS timestamp")
             .await,
-            chrono::format::ParseErrorKind::Impossible,
-        ),
-        (
-            g.run_err(
-                "SELECT TO_TIMESTAMP('2015-09-05 23:56:04', '%Y-%m-%d %H:%M:%') AS timestamp",
-            )
+        g.run_err("SELECT TO_TIMESTAMP('2015-14-05 23:56:12','%Y-%m-%d %H:%M:%S') AS timestamp")
             .await,
-            chrono::format::ParseErrorKind::BadFormat,
-        ),
+        g.run_err("SELECT TO_TIMESTAMP('2015-14-05 23:56:12','%Y-%m-%d %H:%M:%%S') AS timestamp;")
+            .await,
+        g.run_err("SELECT TO_TIMESTAMP('2015-09-05 23:56:04', '%Y-%m-%d %H:%M:%M') AS timestamp")
+            .await,
+        g.run_err("SELECT TO_TIMESTAMP('2015-09-05 23:56:04', '%Y-%m-%d %H:%M:%') AS timestamp")
+            .await,
     ];
 
-    for (error, kind) in error_cases {
-        assert_chrono_error_kind_eq(&error, kind);
+    for error in &error_cases {
+        assert_format_parse_error(error);
     }
 });

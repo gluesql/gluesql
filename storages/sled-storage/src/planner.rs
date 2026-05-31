@@ -2,11 +2,10 @@ use {
     crate::SledStorage,
     async_trait::async_trait,
     gluesql_core::{
-        ast::Statement,
         error::Result,
         plan::{
-            fetch_schema_map, plan_aggregate, plan_index, plan_join, plan_primary_key,
-            plan_schemaless, validate, validate_union,
+            StatementPlan, fetch_schema_map, plan_aggregate, plan_index, plan_join,
+            plan_primary_key, plan_schemaless, validate, validate_union,
         },
         store::Planner,
     },
@@ -14,7 +13,7 @@ use {
 
 #[async_trait]
 impl Planner for SledStorage {
-    async fn plan(&self, statement: Statement) -> Result<Statement> {
+    async fn plan(&self, statement: StatementPlan) -> Result<StatementPlan> {
         let schema_map = fetch_schema_map(self, &statement).await?;
         validate(&schema_map, &statement)?;
         validate_union(&schema_map, &statement)?;

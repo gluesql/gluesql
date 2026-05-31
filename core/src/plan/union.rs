@@ -1,10 +1,14 @@
 use {
-    super::{PlanError, expr::try_visit_expr},
-    crate::{
-        ast::{
-            DataType, Expr, Literal, Projection, Select, SelectItem, SetExpr, Statement,
-            TableFactor,
+    super::{
+        PlanError,
+        expr::try_visit_expr,
+        statement::{
+            ExprPlan, ProjectionPlan, SelectItemPlan, SelectPlan, SetExprPlan, StatementPlan,
+            TableFactorPlan,
         },
+    },
+    crate::{
+        ast::{DataType, Literal},
         data::{BigDecimalExt, Schema},
         result::Result,
     },
@@ -18,11 +22,11 @@ type ValidateResult = std::result::Result<(), PlanError>;
 /// types can be statically determined — literal projections and schema-backed
 /// identifier projections.  Complex expressions (arithmetic, functions, …) are
 /// left to execute-time validation.
-pub fn validate(schema_map: &SchemaMap, statement: &Statement) -> Result<()> {
+pub fn validate(schema_map: &SchemaMap, statement: &StatementPlan) -> Result<()> {
     let set_expr = match statement {
-        Statement::Query(query) => Some(&query.body),
-        Statement::Insert { source, .. } => Some(&source.body),
-        Statement::CreateTable { source, .. } => source.as_ref().map(|q| &q.body),
+        StatementPlan::Query(query) => Some(&query.body),
+        StatementPlan::Insert { source, .. } => Some(&source.body),
+        StatementPlan::CreateTable { source, .. } => source.as_ref().map(|q| &q.body),
         _ => None,
     };
 
@@ -33,11 +37,11 @@ pub fn validate(schema_map: &SchemaMap, statement: &Statement) -> Result<()> {
     Ok(())
 }
 
-fn validate_set_expr(schema_map: &SchemaMap, set_expr: &SetExpr) -> ValidateResult {
+fn validate_set_expr(schema_map: &SchemaMap, set_expr: &SetExprPlan) -> ValidateResult {
     match set_expr {
-        SetExpr::Select(select) => validate_select(schema_map, select),
-        SetExpr::Values(_) => Ok(()),
-        SetExpr::Union { left, right, .. } => {
+        SetExprPlan::Select(select) => validate_select(schema_map, select),
+        SetExprPlan::Values(_) => Ok(()),
+        SetExprPlan::Union { left, right, .. } => {
             // Recurse first so inner UNIONs are checked before the outer one.
             validate_set_expr(schema_map, left)?;
             validate_set_expr(schema_map, right)?;
@@ -66,15 +70,15 @@ fn validate_set_expr(schema_map: &SchemaMap, set_expr: &SetExpr) -> ValidateResu
 
 /// Walk a SELECT body, recursing into any derived tables and subquery
 /// expressions so that nested UNIONs receive the same type-compatibility check.
-fn validate_select(schema_map: &SchemaMap, select: &Select) -> ValidateResult {
+fn validate_select(schema_map: &SchemaMap, select: &SelectPlan) -> ValidateResult {
     validate_table_factor(schema_map, &select.from.relation)?;
     for join in &select.from.joins {
         validate_table_factor(schema_map, &join.relation)?;
     }
 
-    if let Projection::SelectItems(items) = &select.projection {
+    if let ProjectionPlan::SelectItems(items) = &select.projection {
         for item in items {
-            if let SelectItem::Expr { expr, .. } = item {
+            if let SelectItemPlan::Expr { expr, .. } = item {
                 validate_expr(schema_map, expr)?;
             }
         }
@@ -95,8 +99,8 @@ fn validate_select(schema_map: &SchemaMap, select: &Select) -> ValidateResult {
     Ok(())
 }
 
-fn validate_table_factor(schema_map: &SchemaMap, tf: &TableFactor) -> ValidateResult {
-    if let TableFactor::Derived { subquery, .. } = tf {
+fn validate_table_factor(schema_map: &SchemaMap, tf: &TableFactorPlan) -> ValidateResult {
+    if let TableFactorPlan::Derived { subquery, .. } = tf {
         validate_set_expr(schema_map, &subquery.body)?;
     }
     Ok(())
@@ -106,10 +110,10 @@ fn validate_table_factor(schema_map: &SchemaMap, tf: &TableFactor) -> ValidateRe
 /// Uses the full expression visitor so containers like `CASE`, function
 /// arguments, `BETWEEN`, `IN` lists, and array expressions are covered —
 /// not just the subset that was previously matched manually.
-fn validate_expr(schema_map: &SchemaMap, expr: &Expr) -> ValidateResult {
+fn validate_expr(schema_map: &SchemaMap, expr: &ExprPlan) -> ValidateResult {
     try_visit_expr(expr, &mut |expr| match expr {
-        Expr::Subquery(query) => validate_set_expr(schema_map, &query.body),
-        Expr::InSubquery { subquery, .. } | Expr::Exists { subquery, .. } => {
+        ExprPlan::Subquery(query) => validate_set_expr(schema_map, &query.body),
+        ExprPlan::InSubquery { subquery, .. } | ExprPlan::Exists { subquery, .. } => {
             validate_set_expr(schema_map, &subquery.body)
         }
         _ => Ok(()),
@@ -121,50 +125,58 @@ fn validate_expr(schema_map: &SchemaMap, expr: &Expr) -> ValidateResult {
 /// is `Some(type)` when the type is known, or `None` when it cannot be
 /// inferred statically (e.g. arbitrary expressions).  Returns `None` when no
 /// type information is available at all.
-fn infer_column_types(schema_map: &SchemaMap, set_expr: &SetExpr) -> Option<Vec<Option<DataType>>> {
+fn infer_column_types(
+    schema_map: &SchemaMap,
+    set_expr: &SetExprPlan,
+) -> Option<Vec<Option<DataType>>> {
     match set_expr {
-        SetExpr::Select(select) => infer_select_types(schema_map, select),
+        SetExprPlan::Select(select) => infer_select_types(schema_map, select),
         // VALUES types are determined at execute time.
-        SetExpr::Values(_) => None,
+        SetExprPlan::Values(_) => None,
         // The output type of a UNION equals the left branch's output type.
-        SetExpr::Union { left, .. } => infer_column_types(schema_map, left),
+        SetExprPlan::Union { left, .. } => infer_column_types(schema_map, left),
     }
 }
 
-fn infer_select_types(schema_map: &SchemaMap, select: &Select) -> Option<Vec<Option<DataType>>> {
+fn infer_select_types(
+    schema_map: &SchemaMap,
+    select: &SelectPlan,
+) -> Option<Vec<Option<DataType>>> {
     let items = match &select.projection {
-        Projection::SelectItems(items) => items,
-        Projection::SchemalessMap => return None,
+        ProjectionPlan::SelectItems(items) => items,
+        ProjectionPlan::SchemalessMap => return None,
     };
 
     if items.is_empty() {
         return None;
     }
 
-    // Build a (alias-or-name → schema) lookup for the primary FROM relation.
-    let table_ctx = match &select.from.relation {
-        TableFactor::Table { name, alias, .. } => {
-            let key = alias.as_ref().map_or(name.as_str(), |a| a.name.as_str());
-            schema_map.get(name.as_str()).map(|schema| (key, schema))
+    let table_ctx = {
+        use crate::plan::statement::TableFactorPlan;
+        match &select.from.relation {
+            TableFactorPlan::Table { name, alias, .. } => {
+                let key = alias.as_ref().map_or(name.as_str(), |a| a.name.as_str());
+                schema_map.get(name.as_str()).map(|schema| (key, schema))
+            }
+            _ => None,
         }
-        _ => None,
     };
 
     let types = items
         .iter()
         .map(|item| match item {
-            SelectItem::Expr { expr, .. } => infer_expr_type(expr, table_ctx),
-            SelectItem::Wildcard | SelectItem::QualifiedWildcard(_) => None,
+            SelectItemPlan::Expr { expr, .. } => infer_expr_type(expr, table_ctx),
+            SelectItemPlan::Wildcard | SelectItemPlan::QualifiedWildcard(_) => None,
         })
         .collect();
 
     Some(types)
 }
 
-fn infer_expr_type(expr: &Expr, table: Option<(&str, &Schema)>) -> Option<DataType> {
+fn infer_expr_type(expr: &ExprPlan, table: Option<(&str, &Schema)>) -> Option<DataType> {
     match expr {
-        Expr::Literal(lit) => Some(infer_literal_type(lit)),
-        Expr::Identifier(col) => {
+        ExprPlan::Literal(lit) => Some(infer_literal_type(lit)),
+        ExprPlan::Identifier(col) => {
             let (_, schema) = table?;
             schema
                 .column_defs
@@ -173,7 +185,7 @@ fn infer_expr_type(expr: &Expr, table: Option<(&str, &Schema)>) -> Option<DataTy
                 .find(|cd| &cd.name == col)
                 .map(|cd| cd.data_type.clone())
         }
-        Expr::CompoundIdentifier { alias, ident } => {
+        ExprPlan::CompoundIdentifier { alias, ident } => {
             let (table_alias, schema) = table?;
             if alias == table_alias {
                 schema
@@ -248,28 +260,30 @@ mod tests {
     use {
         super::{infer_select_types, validate},
         crate::{
-            ast::{Projection, Select, TableFactor, TableWithJoins},
             mock::run,
-            plan::{PlanError, fetch_schema_map},
+            plan::{
+                PlanError, SelectPlan, StatementPlan, TableFactorPlan, TableWithJoinsPlan,
+                fetch_schema_map,
+                statement::{ExprPlan, ProjectionPlan},
+            },
             prelude::{parse, translate},
         },
         futures::executor::block_on,
         std::collections::HashMap,
     };
 
-    fn make_select(projection: Projection) -> Select {
-        Select {
+    fn make_select_plan(projection: ProjectionPlan) -> SelectPlan {
+        use crate::plan::statement::TableAliasPlan;
+        SelectPlan {
             distinct: false,
             projection,
-            from: TableWithJoins {
-                relation: TableFactor::Series {
-                    alias: crate::ast::TableAlias {
+            from: TableWithJoinsPlan {
+                relation: TableFactorPlan::Series {
+                    alias: TableAliasPlan {
                         name: "s".to_owned(),
                         columns: vec![],
                     },
-                    size: crate::ast::Expr::Literal(crate::ast::Literal::Number(
-                        "1".parse().unwrap(),
-                    )),
+                    size: ExprPlan::Literal(crate::ast::Literal::Number("1".parse().unwrap())),
                 },
                 joins: vec![],
             },
@@ -282,17 +296,20 @@ mod tests {
 
     fn check(storage: &impl crate::store::Store, sql: &str) -> crate::result::Result<()> {
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
-        let statement = translate(&parsed).unwrap();
+        let statement: StatementPlan = translate(&parsed).unwrap().into();
         let schema_map = block_on(fetch_schema_map(storage, &statement)).unwrap();
         validate(&schema_map, &statement)
     }
 
     #[test]
     fn schemaless_map_projection_returns_none() {
-        let result = infer_select_types(&HashMap::new(), &make_select(Projection::SchemalessMap));
+        let result = infer_select_types(
+            &HashMap::new(),
+            &make_select_plan(ProjectionPlan::SchemalessMap),
+        );
         assert!(
             result.is_none(),
-            "SchemalessMap is set by the planner and never appears in the raw AST, so this path can only be exercised by constructing a Select directly",
+            "SchemalessMap is set by the planner and never appears in the raw AST, so this path can only be exercised by constructing a SelectPlan directly",
         );
     }
 
@@ -300,7 +317,7 @@ mod tests {
     fn empty_select_items_returns_none() {
         let result = infer_select_types(
             &HashMap::new(),
-            &make_select(Projection::SelectItems(vec![])),
+            &make_select_plan(ProjectionPlan::SelectItems(vec![])),
         );
         assert!(
             result.is_none(),

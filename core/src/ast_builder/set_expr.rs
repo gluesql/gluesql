@@ -3,10 +3,11 @@ use {
         ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
         LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, SelectNode,
         TableFactorNode,
-        select::{Prebuild, ValuesNode},
+        select::{BuildQuery, BuildQueryPlan, ValuesNode},
     },
     crate::{
         ast::{Query, SetExpr},
+        plan::{QueryPlan, SetExprPlan},
         result::Result,
     },
 };
@@ -58,8 +59,8 @@ impl<'a> SetExprNode<'a> {
     }
 }
 
-impl Prebuild<Query> for SetExprNode<'_> {
-    fn prebuild(self) -> Result<Query> {
+impl BuildQuery for SetExprNode<'_> {
+    fn build_query(self) -> Result<Query> {
         let body = prebuild_set_expr(self)?;
         Ok(Query {
             body,
@@ -67,6 +68,68 @@ impl Prebuild<Query> for SetExprNode<'_> {
             limit: None,
             offset: None,
         })
+    }
+}
+
+impl BuildQueryPlan for SetExprNode<'_> {
+    fn build_query_plan(self) -> Result<QueryPlan> {
+        let body = build_set_expr_plan(self)?;
+        Ok(QueryPlan {
+            body,
+            order_by: Vec::new(),
+            limit: None,
+            offset: None,
+        })
+    }
+}
+
+pub(super) fn build_set_expr_plan(node: SetExprNode<'_>) -> Result<SetExprPlan> {
+    match node {
+        SetExprNode::Select(n) => {
+            let q = n.build_query_plan()?;
+            Ok(q.body)
+        }
+        SetExprNode::Values(n) => {
+            let q = n.build_query_plan()?;
+            Ok(q.body)
+        }
+        SetExprNode::Join(n) => {
+            let q = n.build_query_plan()?;
+            Ok(q.body)
+        }
+        SetExprNode::JoinConstraint(n) => {
+            let q = n.build_query_plan()?;
+            Ok(q.body)
+        }
+        SetExprNode::HashJoin(n) => {
+            let q = n.build_query_plan()?;
+            Ok(q.body)
+        }
+        SetExprNode::GroupBy(n) => {
+            let q = n.build_query_plan()?;
+            Ok(q.body)
+        }
+        SetExprNode::Having(n) => {
+            let q = n.build_query_plan()?;
+            Ok(q.body)
+        }
+        SetExprNode::Filter(n) => {
+            let q = n.build_query_plan()?;
+            Ok(q.body)
+        }
+        SetExprNode::Project(n) => {
+            let q = n.build_query_plan()?;
+            Ok(q.body)
+        }
+        SetExprNode::Union { left, right, all } => {
+            let left = build_set_expr_plan(*left)?;
+            let right = build_set_expr_plan(*right)?;
+            Ok(SetExprPlan::Union {
+                left: Box::new(left),
+                right: Box::new(right),
+                all,
+            })
+        }
     }
 }
 
@@ -78,39 +141,39 @@ impl Prebuild<Query> for SetExprNode<'_> {
 pub(super) fn prebuild_set_expr(node: SetExprNode<'_>) -> Result<SetExpr> {
     match node {
         SetExprNode::Select(n) => {
-            let q: Query = n.prebuild()?;
+            let q = n.build_query()?;
             Ok(q.body)
         }
         SetExprNode::Values(n) => {
-            let q: Query = n.prebuild()?;
+            let q = n.build_query()?;
             Ok(q.body)
         }
         SetExprNode::Join(n) => {
-            let q: Query = n.prebuild()?;
+            let q = n.build_query()?;
             Ok(q.body)
         }
         SetExprNode::JoinConstraint(n) => {
-            let q: Query = n.prebuild()?;
+            let q = n.build_query()?;
             Ok(q.body)
         }
         SetExprNode::HashJoin(n) => {
-            let q: Query = n.prebuild()?;
+            let q = n.build_query()?;
             Ok(q.body)
         }
         SetExprNode::GroupBy(n) => {
-            let q: Query = n.prebuild()?;
+            let q = n.build_query()?;
             Ok(q.body)
         }
         SetExprNode::Having(n) => {
-            let q: Query = n.prebuild()?;
+            let q = n.build_query()?;
             Ok(q.body)
         }
         SetExprNode::Filter(n) => {
-            let q: Query = n.prebuild()?;
+            let q = n.build_query()?;
             Ok(q.body)
         }
         SetExprNode::Project(n) => {
-            let q: Query = n.prebuild()?;
+            let q = n.build_query()?;
             Ok(q.body)
         }
         SetExprNode::Union { left, right, all } => {

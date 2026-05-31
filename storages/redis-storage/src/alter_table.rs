@@ -5,6 +5,7 @@ use {
         ast::ColumnDef,
         data::Value,
         error::{AlterTableError, Error, Result},
+        plan::plan_scalar_expr,
         store::{AlterTable, Store},
     },
     redis::Commands,
@@ -100,7 +101,8 @@ impl AlterTable for RedisStorage {
 
             let new_value_of_new_column = match (default, nullable) {
                 (Some(expr), _) => {
-                    let evaluated = gluesql_core::executor::evaluate_stateless(None, expr).await?;
+                    let expr = plan_scalar_expr(expr.clone());
+                    let evaluated = gluesql_core::executor::evaluate_stateless(None, &expr).await?;
 
                     evaluated.try_into_value(data_type, *nullable)?
                 }

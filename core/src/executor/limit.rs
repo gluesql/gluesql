@@ -1,8 +1,8 @@
 use {
     super::evaluate::evaluate_stateless,
     crate::{
-        ast::Expr,
         data::{Row, Value},
+        plan::ExprPlan,
         result::{Error, Result},
     },
     futures::stream::{Stream, StreamExt},
@@ -14,7 +14,7 @@ pub struct Limit {
 }
 
 impl Limit {
-    pub async fn new(limit: Option<&Expr>, offset: Option<&Expr>) -> Result<Self> {
+    pub async fn new(limit: Option<&ExprPlan>, offset: Option<&ExprPlan>) -> Result<Self> {
         let eval = |expr| async move {
             let Some(expr) = expr else {
                 return Ok(None);

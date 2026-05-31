@@ -1,12 +1,12 @@
 use {
     super::fetch::{fetch_relation_columns, fetch_relation_rows},
     crate::{
-        ast::{
-            Expr, Join as AstJoin, JoinConstraint, JoinExecutor as AstJoinExecutor,
-            JoinOperator as AstJoinOperator, TableFactor,
-        },
-        data::{Key, Row, Value, get_alias},
+        data::{Key, Row, Value},
         executor::{context::RowContext, evaluate::evaluate, filter::check_expr},
+        plan::{
+            ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan,
+            TableFactorPlan,
+        },
         result::Result,
         store::GStore,
     },
@@ -21,7 +21,7 @@ use {
 
 pub struct Join<'a, T: GStore> {
     storage: &'a T,
-    join_clauses: &'a [AstJoin],
+    join_clauses: &'a [JoinPlan],
     filter_context: Option<Arc<RowContext<'a>>>,
 }
 
@@ -31,7 +31,7 @@ type Joined<'a> = Pin<Box<dyn Stream<Item = Result<JoinItem<'a>>> + Send + 'a>>;
 impl<'a, T: GStore> Join<'a, T> {
     pub fn new(
         storage: &'a T,
-        join_clauses: &'a [AstJoin],
+        join_clauses: &'a [JoinPlan],
         filter_context: Option<Arc<RowContext<'a>>>,
     ) -> Self {
         Self {
@@ -61,16 +61,16 @@ impl<'a, T: GStore> Join<'a, T> {
 async fn join<'a, T: GStore>(
     storage: &'a T,
     filter_context: Option<Arc<RowContext<'a>>>,
-    ast_join: &'a AstJoin,
+    join_plan: &'a JoinPlan,
     left_rows: impl Stream<Item = Result<JoinItem<'a>>> + Send + 'a,
 ) -> Result<Joined<'a>> {
-    let AstJoin {
+    let JoinPlan {
         relation,
         join_operator,
         join_executor,
-    } = ast_join;
+    } = join_plan;
 
-    let table_alias = get_alias(relation);
+    let table_alias = relation.alias_name();
     let join_executor = JoinExecutor::new(
         storage,
         relation,
@@ -81,12 +81,12 @@ async fn join<'a, T: GStore>(
     .map(Arc::new)?;
 
     let (join_operator, where_clause) = match join_operator {
-        AstJoinOperator::Inner(JoinConstraint::None) => (JoinOperator::Inner, None),
-        AstJoinOperator::Inner(JoinConstraint::On(where_clause)) => {
+        JoinOperatorPlan::Inner(JoinConstraintPlan::None) => (JoinOperator::Inner, None),
+        JoinOperatorPlan::Inner(JoinConstraintPlan::On(where_clause)) => {
             (JoinOperator::Inner, Some(where_clause))
         }
-        AstJoinOperator::LeftOuter(JoinConstraint::None) => (JoinOperator::LeftOuter, None),
-        AstJoinOperator::LeftOuter(JoinConstraint::On(where_clause)) => {
+        JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None) => (JoinOperator::LeftOuter, None),
+        JoinOperatorPlan::LeftOuter(JoinConstraintPlan::On(where_clause)) => {
             (JoinOperator::LeftOuter, Some(where_clause))
         }
     };
@@ -212,20 +212,20 @@ enum JoinExecutor<'a> {
     NestedLoop,
     Hash {
         rows_map: HashMap<Key, Vec<Row>>,
-        value_expr: &'a Expr,
+        value_expr: &'a ExprPlan,
     },
 }
 
 impl<'a> JoinExecutor<'a> {
     async fn new<T: GStore>(
         storage: &'a T,
-        relation: &TableFactor,
+        relation: &TableFactorPlan,
         filter_context: Option<Arc<RowContext<'a>>>,
-        ast_join_executor: &'a AstJoinExecutor,
+        join_executor: &'a JoinExecutorPlan,
     ) -> Result<JoinExecutor<'a>> {
-        let (key_expr, value_expr, where_clause) = match ast_join_executor {
-            AstJoinExecutor::NestedLoop => return Ok(Self::NestedLoop),
-            AstJoinExecutor::Hash {
+        let (key_expr, value_expr, where_clause) = match join_executor {
+            JoinExecutorPlan::NestedLoop => return Ok(Self::NestedLoop),
+            JoinExecutorPlan::Hash {
                 key_expr,
                 value_expr,
                 where_clause,
@@ -239,7 +239,7 @@ impl<'a> JoinExecutor<'a> {
 
                 async move {
                     let filter_context = Arc::new(RowContext::new(
-                        get_alias(relation),
+                        relation.alias_name(),
                         Cow::Borrowed(&row),
                         filter_context,
                     ));
@@ -277,7 +277,7 @@ async fn check_where_clause<'a, T: GStore>(
     table_alias: &'a str,
     filter_context: Option<Arc<RowContext<'a>>>,
     project_context: Option<Arc<RowContext<'a>>>,
-    where_clause: Option<&'a Expr>,
+    where_clause: Option<&'a ExprPlan>,
     row: Cow<'_, Row>,
 ) -> Result<Option<Arc<RowContext<'a>>>> {
     let filter_context = RowContext::new(table_alias, Cow::Borrowed(&row), filter_context);

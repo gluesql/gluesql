@@ -12,7 +12,7 @@ use {
     sled::Db,
     std::{
         collections::BTreeMap,
-        fs::{remove_dir_all, remove_file, write},
+        fs::{create_dir_all, remove_dir_all, remove_file, write},
         path::{Path, PathBuf},
         time::{SystemTime, UNIX_EPOCH},
     },
@@ -65,7 +65,10 @@ fn test_path(name: &str) -> PathBuf {
         .expect("system time")
         .as_nanos();
 
-    PathBuf::from(format!("./tmp/{name}-{suffix}"))
+    let path = PathBuf::from("./tmp");
+    create_dir_all(&path).expect("create tmp directory");
+
+    path.join(format!("{name}-{suffix}"))
 }
 
 fn data_key(table_name: &str, key: Vec<u8>) -> Vec<u8> {
@@ -293,8 +296,7 @@ fn migrate_rejects_unsupported_older_version() {
 
 #[test]
 fn opening_storage_rejects_unsupported_versions() {
-    let path = test_path("sled-open-unsupported-version");
-    let _ = remove_dir_all(&path);
+    let path = test_path("sled-open-unsupported-older-version");
 
     write_storage_format_version(&path, &0_u32.to_be_bytes());
     let actual = SledStorage::new(&path).map(|_| ());
@@ -302,6 +304,10 @@ fn opening_storage_rejects_unsupported_versions() {
         "[SledStorage] unsupported format version v0".to_owned(),
     ));
     assert_eq!(actual, expected);
+
+    remove_dir_all(path).expect("cleanup");
+
+    let path = test_path("sled-open-unsupported-newer-version");
 
     write_storage_format_version(&path, &(SLED_STORAGE_FORMAT_VERSION + 1).to_be_bytes());
     let actual = SledStorage::new(&path).map(|_| ());

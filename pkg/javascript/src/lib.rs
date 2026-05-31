@@ -159,7 +159,7 @@ impl Glue {
                         return Err(JsValue::from_str(&format!("{error}")));
                     }
                 };
-                let statement = storage.plan(statement).await;
+                let statement = storage.plan(statement.into()).await;
                 let statement = match statement {
                     Ok(statement) => statement,
                     Err(error) => {

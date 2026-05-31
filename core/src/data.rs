@@ -21,6 +21,6 @@ pub use {
     row::Row,
     schema::{Schema, SchemaIndex, SchemaIndexOrd, SchemaParseError},
     string_ext::{StringExt, StringExtError},
-    table::{TableError, get_alias, get_index},
+    table::{TableError, get_alias},
     value::{BTreeMapJsonExt, NumericBinaryOperator, Value, ValueError},
 };

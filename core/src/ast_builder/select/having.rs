@@ -1,24 +1,33 @@
 use {
-    super::Prebuild,
+    super::{BuildSelect, BuildSelectPlan},
     crate::{
         ast::Select,
         ast_builder::{
             ExprNode, GroupByNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode,
             ProjectNode, QueryNode, SelectItemList, TableFactorNode,
         },
+        plan::SelectPlan,
         result::Result,
     },
 };
 
 #[derive(Clone, Debug)]
-pub enum PrevNode<'a> {
+pub(super) enum PrevNode<'a> {
     GroupBy(GroupByNode<'a>),
 }
 
-impl Prebuild<Select> for PrevNode<'_> {
-    fn prebuild(self) -> Result<Select> {
+impl BuildSelectPlan for PrevNode<'_> {
+    fn build_select_plan(self) -> Result<SelectPlan> {
         match self {
-            Self::GroupBy(node) => node.prebuild(),
+            Self::GroupBy(node) => node.build_select_plan(),
+        }
+    }
+}
+
+impl BuildSelect for PrevNode<'_> {
+    fn build_select(self) -> Result<Select> {
+        match self {
+            Self::GroupBy(node) => node.build_select(),
         }
     }
 }
@@ -36,7 +45,7 @@ pub struct HavingNode<'a> {
 }
 
 impl<'a> HavingNode<'a> {
-    pub fn new<N: Into<PrevNode<'a>>, T: Into<ExprNode<'a>>>(prev_node: N, expr: T) -> Self {
+    pub(super) fn new<N: Into<PrevNode<'a>>, T: Into<ExprNode<'a>>>(prev_node: N, expr: T) -> Self {
         Self {
             prev_node: prev_node.into(),
             expr: expr.into(),
@@ -64,10 +73,19 @@ impl<'a> HavingNode<'a> {
     }
 }
 
-impl Prebuild<Select> for HavingNode<'_> {
-    fn prebuild(self) -> Result<Select> {
-        let mut select: Select = self.prev_node.prebuild()?;
-        select.having = Some(self.expr.try_into()?);
+impl BuildSelectPlan for HavingNode<'_> {
+    fn build_select_plan(self) -> Result<SelectPlan> {
+        let mut select = self.prev_node.build_select_plan()?;
+        select.having = Some(self.expr.build_expr_plan()?);
+
+        Ok(select)
+    }
+}
+
+impl BuildSelect for HavingNode<'_> {
+    fn build_select(self) -> Result<Select> {
+        let mut select = self.prev_node.build_select()?;
+        select.having = Some(self.expr.build_expr()?);
 
         Ok(select)
     }
@@ -75,7 +93,7 @@ impl Prebuild<Select> for HavingNode<'_> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{Build, table, test};
+    use crate::ast_builder::{table, test_query_builder};
 
     #[test]
     fn having() {
@@ -85,8 +103,7 @@ mod tests {
             .filter("id IS NULL")
             .group_by("id, (a + name)")
             .having("COUNT(id) > 10")
-            .offset(10)
-            .build();
+            .offset(10);
         let expected = "
             SELECT * FROM Bar
             WHERE id IS NULL
@@ -94,7 +111,7 @@ mod tests {
             HAVING COUNT(id) > 10
             OFFSET 10
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // group by node -> having node -> limit node
         let actual = table("Bar")
@@ -102,8 +119,7 @@ mod tests {
             .filter("id IS NULL")
             .group_by("id, (a + name)")
             .having("COUNT(id) > 10")
-            .limit(10)
-            .build();
+            .limit(10);
         let expected = "
             SELECT * FROM Bar
             WHERE id IS NULL
@@ -111,7 +127,7 @@ mod tests {
             HAVING COUNT(id) > 10
             LIMIT 10
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // group by node -> having node -> project node
         let actual = table("Bar")
@@ -119,8 +135,7 @@ mod tests {
             .filter("id IS NULL")
             .group_by("id, (a + name)")
             .having("COUNT(id) > 10")
-            .project(vec!["id", "(a + name) AS b", "COUNT(id) AS c"])
-            .build();
+            .project(vec!["id", "(a + name) AS b", "COUNT(id) AS c"]);
         let expected = "
             SELECT id, (a + name) AS b, COUNT(id) AS c
             FROM Bar
@@ -128,22 +143,21 @@ mod tests {
             GROUP BY id, (a + name)
             HAVING COUNT(id) > 10
         ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // group by node -> having node -> build
         let actual = table("Bar")
             .select()
             .filter("id IS NULL")
             .group_by("id, (a + name)")
-            .having("COUNT(id) > 10")
-            .build();
+            .having("COUNT(id) > 10");
         let expected = "
                 SELECT * FROM Bar
                 WHERE id IS NULL
                 GROUP BY id, (a + name)
                 HAVING COUNT(id) > 10
             ";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select -> group by -> having -> derived subquery
         let actual = table("Foo")
@@ -151,9 +165,8 @@ mod tests {
             .group_by("a")
             .having("a > 1")
             .alias_as("Sub")
-            .select()
-            .build();
+            .select();
         let expected = "SELECT * FROM (SELECT * FROM Foo GROUP BY a HAVING a > 1) Sub";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
     }
 }

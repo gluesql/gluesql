@@ -13,6 +13,7 @@ use {
         data::{Value, schema::Schema},
         error::{AlterTableError, Result},
         executor::evaluate_stateless,
+        plan::plan_scalar_expr,
         store::AlterTable,
     },
     sled::transaction::ConflictableTransactionError,
@@ -296,7 +297,8 @@ impl AlterTable for SledStorage {
 
             let value = match (default, nullable) {
                 (Some(expr), _) => {
-                    let evaluated = block_on(evaluate_stateless(None, expr))
+                    let expr = plan_scalar_expr(expr.clone());
+                    let evaluated = block_on(evaluate_stateless(None, &expr))
                         .map_err(ConflictableTransactionError::Abort)?;
 
                     evaluated

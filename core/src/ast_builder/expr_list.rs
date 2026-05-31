@@ -3,7 +3,8 @@ use {
     crate::{
         ast::Expr,
         parse_sql::parse_comma_separated_exprs,
-        result::{Error, Result},
+        plan::ExprPlan,
+        result::Result,
         translate::{NO_PARAMS, translate_expr},
     },
     std::borrow::Cow,
@@ -51,23 +52,35 @@ impl<'a> From<&'a [ExprNode<'a>]> for ExprList<'a> {
     }
 }
 
-impl<'a> TryFrom<ExprList<'a>> for Vec<Expr> {
-    type Error = Error;
-
-    fn try_from(expr_list: ExprList<'a>) -> Result<Self> {
-        match expr_list {
+impl ExprList<'_> {
+    pub(super) fn build_exprs_plan(self) -> Result<Vec<ExprPlan>> {
+        match self {
             ExprList::Text(exprs) => parse_comma_separated_exprs(exprs)?
                 .iter()
-                .map(|expr| translate_expr(expr, NO_PARAMS))
+                .map(|expr| translate_expr(expr, NO_PARAMS).map(Into::into))
                 .collect::<Result<Vec<_>>>(),
             ExprList::Exprs(exprs) => {
                 let exprs = exprs.into_owned();
 
                 exprs
                     .into_iter()
-                    .map(TryInto::try_into)
+                    .map(ExprNode::build_expr_plan)
                     .collect::<Result<Vec<_>>>()
             }
+        }
+    }
+
+    pub(super) fn build_exprs(self) -> Result<Vec<Expr>> {
+        match self {
+            ExprList::Text(exprs) => parse_comma_separated_exprs(exprs)?
+                .iter()
+                .map(|expr| translate_expr(expr, NO_PARAMS))
+                .collect::<Result<Vec<_>>>(),
+            ExprList::Exprs(exprs) => exprs
+                .into_owned()
+                .into_iter()
+                .map(ExprNode::build_expr)
+                .collect::<Result<Vec<_>>>(),
         }
     }
 }
@@ -77,9 +90,9 @@ mod tests {
     use {
         super::ExprList,
         crate::{
-            ast::Expr,
             ast_builder::col,
             parse_sql::parse_comma_separated_exprs,
+            plan::ExprPlan,
             result::Result,
             translate::{NO_PARAMS, translate_expr},
         },
@@ -90,10 +103,10 @@ mod tests {
         let parsed = parse_comma_separated_exprs(expected).expect(expected);
         let expected = parsed
             .iter()
-            .map(|expr| translate_expr(expr, NO_PARAMS))
-            .collect::<Result<Vec<Expr>>>();
+            .map(|expr| translate_expr(expr, NO_PARAMS).map(ExprPlan::from))
+            .collect::<Result<Vec<ExprPlan>>>();
 
-        assert_eq!(actual.try_into(), expected);
+        assert_eq!(actual.build_exprs_plan(), expected);
     }
 
     #[test]

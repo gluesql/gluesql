@@ -11,7 +11,7 @@ use {
 pub async fn insert_function<T: GStore + GStoreMut>(
     storage: &mut T,
     func_name: &str,
-    args: &Vec<OperateFunctionArg>,
+    args: &[OperateFunctionArg],
     or_replace: bool,
     body: &Expr,
 ) -> Result<()> {

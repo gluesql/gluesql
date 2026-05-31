@@ -1,13 +1,13 @@
-use crate::ast::Statement;
+use crate::{ast::Statement, plan::StatementPlan};
 
-pub fn begin() -> Statement {
-    Statement::StartTransaction
+pub fn begin() -> StatementPlan {
+    Statement::StartTransaction.into()
 }
-pub fn commit() -> Statement {
-    Statement::Commit
+pub fn commit() -> StatementPlan {
+    Statement::Commit.into()
 }
-pub fn rollback() -> Statement {
-    Statement::Rollback
+pub fn rollback() -> StatementPlan {
+    Statement::Rollback.into()
 }
 
 #[cfg(test)]
