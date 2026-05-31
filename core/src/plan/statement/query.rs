@@ -43,6 +43,17 @@ pub struct OrderByExprPlan {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ValuesPlan(pub Vec<Vec<ExprPlan>>);
 
+impl From<SetExprPlan> for QueryPlan {
+    fn from(body: SetExprPlan) -> Self {
+        Self {
+            body,
+            order_by: vec![],
+            limit: None,
+            offset: None,
+        }
+    }
+}
+
 impl From<ast::Query> for QueryPlan {
     fn from(query: ast::Query) -> Self {
         let ast::Query {

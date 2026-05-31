@@ -49,20 +49,10 @@ fn validate_query(schema_map: &SchemaMap, query: &QueryPlan) -> Result<()> {
             Ok(())
         }
         SetExprPlan::Union { left, right, .. } => {
-            let left_query = QueryPlan {
-                body: *left.clone(),
-                order_by: vec![],
-                limit: None,
-                offset: None,
-            };
+            let left_query = QueryPlan::from(*left.clone());
             validate_query(schema_map, &left_query)?;
 
-            let right_query = QueryPlan {
-                body: *right.clone(),
-                order_by: vec![],
-                limit: None,
-                offset: None,
-            };
+            let right_query = QueryPlan::from(*right.clone());
             validate_query(schema_map, &right_query)
         }
         SetExprPlan::Values(_) => Ok(()),

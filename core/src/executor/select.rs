@@ -15,6 +15,7 @@ use {
         sort::{Sort, SortError},
     },
     crate::{
+        ast::{Literal, UnaryOperator},
         data::{Key, Row, Value},
         plan::{
             ExprPlan, OrderByExprPlan, QueryPlan, SelectPlan, SetExprPlan, TableWithJoinsPlan,
@@ -81,12 +82,12 @@ async fn rows_with_labels(exprs_list: &[Vec<ExprPlan>]) -> Result<(Vec<Row>, Vec
 
 fn positional_index(expr: &ExprPlan) -> Option<&bigdecimal::BigDecimal> {
     match expr {
-        ExprPlan::Literal(crate::ast::Literal::Number(n)) => Some(n),
+        ExprPlan::Literal(Literal::Number(n)) => Some(n),
         ExprPlan::UnaryOp {
-            op: crate::ast::UnaryOperator::Plus,
+            op: UnaryOperator::Plus,
             expr,
         } => match expr.as_ref() {
-            ExprPlan::Literal(crate::ast::Literal::Number(n)) => Some(n),
+            ExprPlan::Literal(Literal::Number(n)) => Some(n),
             _ => None,
         },
         _ => None,
@@ -157,18 +158,8 @@ where
 {
     match query.body.clone() {
         SetExprPlan::Union { left, right, all } => {
-            let left_query = Arc::new(QueryPlan {
-                body: *left,
-                order_by: vec![],
-                limit: None,
-                offset: None,
-            });
-            let right_query = Arc::new(QueryPlan {
-                body: *right,
-                order_by: vec![],
-                limit: None,
-                offset: None,
-            });
+            let left_query = Arc::new(QueryPlan::from(*left));
+            let right_query = Arc::new(QueryPlan::from(*right));
             select_union(storage, query, left_query, right_query, all, filter_context).await
         }
         SetExprPlan::Values(ValuesPlan(values_list)) => {

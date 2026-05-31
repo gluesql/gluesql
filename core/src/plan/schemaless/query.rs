@@ -44,21 +44,11 @@ pub(super) fn transform_query<S: BuildHasher>(
             schemaless_aliases: HashSet::new(),
         },
         SetExprPlan::Union { left, right, .. } => {
-            let mut left_query = QueryPlan {
-                body: (**left).clone(),
-                order_by: vec![],
-                limit: None,
-                offset: None,
-            };
+            let mut left_query = QueryPlan::from((**left).clone());
             transform_query(schema_map, &mut left_query);
             **left = left_query.body;
 
-            let mut right_query = QueryPlan {
-                body: (**right).clone(),
-                order_by: vec![],
-                limit: None,
-                offset: None,
-            };
+            let mut right_query = QueryPlan::from((**right).clone());
             transform_query(schema_map, &mut right_query);
             **right = right_query.body;
 
