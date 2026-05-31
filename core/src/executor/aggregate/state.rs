@@ -253,17 +253,8 @@ impl AggrValue {
                 sum,
                 count,
                 distinct_values,
-            } => {
-                if !Self::track_distinct(distinct_values, new_value) {
-                    return Ok(false);
-                }
-
-                *sum_square = sum_square.add(&new_value.multiply(new_value)?)?;
-                *sum = sum.add(new_value)?;
-                *count += 1;
-                Ok(true)
             }
-            Self::Stdev {
+            | Self::Stdev {
                 sum_square,
                 sum,
                 count,
