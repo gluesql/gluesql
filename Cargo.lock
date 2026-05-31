@@ -1316,6 +1316,7 @@ name = "gluesql-core"
 version = "0.19.0"
 dependencies = [
  "async-recursion",
+ "async-stream",
  "async-trait",
  "bigdecimal",
  "cfg-if",
@@ -1323,6 +1324,7 @@ dependencies = [
  "futures",
  "futures-enum",
  "gluesql-utils",
+ "hashbrown 0.12.3",
  "hex",
  "im",
  "iter-enum",

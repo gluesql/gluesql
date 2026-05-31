@@ -53,6 +53,11 @@ fn check_query(context: Option<&Arc<Context<'_>>>, query: &QueryPlan) -> bool {
             .iter()
             .flatten()
             .all(|expr| check_expr(context.map(Arc::clone), expr)),
+        SetExprPlan::Union { left, right, .. } => {
+            let left_query = QueryPlan::from(*left.clone());
+            let right_query = QueryPlan::from(*right.clone());
+            check_query(context, &left_query) && check_query(context, &right_query)
+        }
     };
 
     if !body {

@@ -5,6 +5,7 @@ use {
         ast_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
             JoinNode, OrderByNode, ProjectNode, QueryNode, SelectNode, TableFactorNode,
+            set_expr::SetExprNode,
         },
         plan::QueryPlan,
         result::Result,
@@ -12,7 +13,7 @@ use {
 };
 
 #[derive(Clone, Debug)]
-pub(super) enum PrevNode<'a> {
+pub(crate) enum PrevNode<'a> {
     Select(SelectNode<'a>),
     Values(ValuesNode<'a>),
     GroupBy(GroupByNode<'a>),
@@ -23,6 +24,7 @@ pub(super) enum PrevNode<'a> {
     Filter(FilterNode<'a>),
     OrderBy(OrderByNode<'a>),
     ProjectNode(Box<ProjectNode<'a>>),
+    SetExpr(SetExprNode<'a>),
 }
 
 impl BuildQueryPlan for PrevNode<'_> {
@@ -38,6 +40,7 @@ impl BuildQueryPlan for PrevNode<'_> {
             Self::Filter(node) => node.build_query_plan(),
             Self::OrderBy(node) => node.build_query_plan(),
             Self::ProjectNode(node) => node.build_query_plan(),
+            Self::SetExpr(node) => node.build_query_plan(),
         }
     }
 }
@@ -55,7 +58,14 @@ impl BuildQuery for PrevNode<'_> {
             Self::Filter(node) => node.build_query(),
             Self::OrderBy(node) => node.build_query(),
             Self::ProjectNode(node) => node.build_query(),
+            Self::SetExpr(node) => node.build_query(),
         }
+    }
+}
+
+impl<'a> From<SetExprNode<'a>> for PrevNode<'a> {
+    fn from(node: SetExprNode<'a>) -> Self {
+        PrevNode::SetExpr(node)
     }
 }
 
@@ -126,7 +136,7 @@ pub struct LimitNode<'a> {
 }
 
 impl<'a> LimitNode<'a> {
-    pub(super) fn new<N: Into<PrevNode<'a>>, T: Into<ExprNode<'a>>>(prev_node: N, expr: T) -> Self {
+    pub(crate) fn new<N: Into<PrevNode<'a>>, T: Into<ExprNode<'a>>>(prev_node: N, expr: T) -> Self {
         Self {
             prev_node: prev_node.into(),
             expr: expr.into(),

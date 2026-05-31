@@ -21,6 +21,7 @@ mod query;
 mod select;
 mod select_item;
 mod select_item_list;
+mod set_expr;
 mod show_columns;
 mod table_factor;
 mod table_name;
@@ -73,6 +74,7 @@ pub use {
     },
     select_item::SelectItemNode,
     select_item_list::SelectItemList,
+    set_expr::{SetExprBuild, SetExprNode},
     show_columns::ShowColumnsNode,
     table_factor::{
         TableFactorNode, glue_indexes, glue_objects, glue_table_columns, glue_tables, series,

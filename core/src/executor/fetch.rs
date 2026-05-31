@@ -491,6 +491,17 @@ where
 
                 Ok(labels)
             }
+            SetExprPlan::Union { left, .. } => {
+                // For UNION, column labels are derived from the left side.
+                let left_derived = TableFactorPlan::Derived {
+                    subquery: QueryPlan::from(*left.clone()),
+                    alias: TableAliasPlan {
+                        name: name.to_owned(),
+                        columns: alias_columns.clone(),
+                    },
+                };
+                fetch_relation_columns(storage, &left_derived).await
+            }
         },
     }
 }

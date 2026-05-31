@@ -17,7 +17,7 @@ use {
     },
     futures::stream::TryStreamExt,
     serde::Serialize,
-    std::fmt,
+    std::{fmt, sync::Arc},
 };
 
 pub struct CreateTableOptions<'a> {
@@ -69,7 +69,8 @@ pub async fn create_table<T: GStore + GStoreMut>(
                     Some(vec![column_def])
                 }
                 _ => {
-                    let (labels, rows) = select_with_labels(storage, query, None).await?;
+                    let (labels, rows) =
+                        select_with_labels(storage, Arc::new(query.clone()), None).await?;
                     let rows = rows
                         .map_ok(Row::into_values)
                         .try_collect::<Vec<_>>()
@@ -80,6 +81,18 @@ pub async fn create_table<T: GStore + GStoreMut>(
                     Some(column_defs)
                 }
             },
+            SetExprPlan::Union { .. } => {
+                let (labels, rows) =
+                    select_with_labels(storage, Arc::new(query.clone()), None).await?;
+                let rows = rows
+                    .map_ok(Row::into_values)
+                    .try_collect::<Vec<_>>()
+                    .await?;
+                let column_defs = column_defs_from_rows(labels, &rows);
+                selected_source_rows = Some(rows);
+
+                Some(column_defs)
+            }
             SetExprPlan::Values(ValuesPlan(values_list)) => {
                 let first_len = values_list[0].len();
                 let mut column_types = vec![None; first_len];

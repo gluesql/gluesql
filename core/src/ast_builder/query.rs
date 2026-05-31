@@ -4,6 +4,7 @@ use {
         LimitNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
         TableFactorNode,
         select::{BuildQuery, BuildQueryPlan, ValuesNode},
+        set_expr::SetExprNode,
         table_factor::TableType,
     },
     crate::{
@@ -32,6 +33,8 @@ pub enum QueryNode<'a> {
     FilterNode(FilterNode<'a>),
     ProjectNode(ProjectNode<'a>),
     OrderByNode(OrderByNode<'a>),
+    /// A fully-determined set expression (SELECT, VALUES, or UNION).
+    SetExpr(SetExprNode<'a>),
 }
 
 impl<'a> QueryNode<'a> {
@@ -78,6 +81,7 @@ impl<'a> QueryNode<'a> {
             QueryNode::OffsetLimitNode(node) => node.build_query(),
             QueryNode::ProjectNode(node) => node.build_query(),
             QueryNode::OrderByNode(node) => node.build_query(),
+            QueryNode::SetExpr(node) => node.build_query(),
         }
     }
 
@@ -111,6 +115,7 @@ impl<'a> QueryNode<'a> {
             QueryNode::OffsetLimitNode(node) => node.build_query_plan(),
             QueryNode::ProjectNode(node) => node.build_query_plan(),
             QueryNode::OrderByNode(node) => node.build_query_plan(),
+            QueryNode::SetExpr(node) => node.build_query_plan(),
         }
     }
 }
@@ -149,14 +154,20 @@ impl_from_select_nodes!(OffsetLimitNode);
 impl_from_select_nodes!(ProjectNode);
 impl_from_select_nodes!(OrderByNode);
 
+impl<'a> From<SetExprNode<'a>> for QueryNode<'a> {
+    fn from(node: SetExprNode<'a>) -> Self {
+        QueryNode::SetExpr(node)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use {
         super::QueryNode,
         crate::{
             ast_builder::{
-                SelectItemList, col, glue_indexes, glue_objects, glue_table_columns, glue_tables,
-                series, table, test_query,
+                SelectItemList, SetExprBuild, col, glue_indexes, glue_objects, glue_table_columns,
+                glue_tables, series, table, test_query,
             },
             plan::{
                 JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
@@ -300,6 +311,25 @@ mod test {
 
         let actual = table("Items").select().alias_as("Sub").select().into();
         let expected = "SELECT * FROM (SELECT * FROM Items) AS Sub";
+        test_query(actual, expected);
+    }
+
+    #[test]
+    fn union_node() {
+        let actual: QueryNode = table("A")
+            .select()
+            .project("id")
+            .union(table("B").select().project("id"))
+            .into();
+        let expected = "SELECT id FROM A UNION SELECT id FROM B";
+        test_query(actual, expected);
+
+        let actual: QueryNode = table("A")
+            .select()
+            .project("id")
+            .union_all(table("B").select().project("id"))
+            .into();
+        let expected = "SELECT id FROM A UNION ALL SELECT id FROM B";
         test_query(actual, expected);
     }
 }
