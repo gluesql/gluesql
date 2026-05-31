@@ -12,17 +12,10 @@ use {
     },
 };
 
-/// A node that represents a SQL set expression: `SELECT`, `VALUES`, or `UNION`.
+/// A builder node for a SQL set expression (`SELECT`, `VALUES`, or `UNION`).
 ///
-/// This type is the correct operand for `UNION` / `UNION ALL`.  Query-level
-/// clauses (`ORDER BY`, `LIMIT`, `OFFSET`) are intentionally absent — they
-/// belong to the outer [`Query`], not to a branch of a `UNION`.  Trying to
-/// pass a [`LimitNode`] or [`OrderByNode`] as a `UNION` operand is therefore
-/// a **compile-time** error.
-///
-/// Use `.limit()` / `.offset()` / `.order_by()` *on* a `SetExprNode` to apply
-/// those clauses to the entire set expression (including the result of a
-/// `UNION`).
+/// Use `.limit()`, `.offset()`, or `.order_by()` to apply query-level clauses
+/// to the combined result.
 #[derive(Clone, Debug)]
 pub enum SetExprNode<'a> {
     Select(SelectNode<'a>),
@@ -248,12 +241,6 @@ impl<'a> From<ProjectNode<'a>> for SetExprNode<'a> {
 
 /// Extension trait that adds `union` and `union_all` to any node that can
 /// produce a set expression.
-///
-/// Implemented automatically for every `T: Into<SetExprNode<'a>>`, which
-/// includes `SelectNode`, `ProjectNode`, `FilterNode`, `ValuesNode`, and
-/// `SetExprNode` itself.  It is intentionally **not** implemented for
-/// `LimitNode`, `OffsetNode`, or `OrderByNode`, making it a compile-time
-/// error to use those nodes as `UNION` operands.
 pub trait SetExprBuild<'a>: Into<SetExprNode<'a>> + Sized {
     fn union(self, right: impl Into<SetExprNode<'a>>) -> SetExprNode<'a> {
         SetExprNode::Union {

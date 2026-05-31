@@ -34,10 +34,6 @@ pub enum QueryNode<'a> {
     ProjectNode(ProjectNode<'a>),
     OrderByNode(OrderByNode<'a>),
     /// A fully-determined set expression (SELECT, VALUES, or UNION).
-    ///
-    /// UNION operands are typed as [`SetExprNode`], so passing a
-    /// `LimitNode` / `OffsetNode` / `OrderByNode` as an operand is a
-    /// **compile-time** error rather than a runtime one.
     SetExpr(SetExprNode<'a>),
 }
 

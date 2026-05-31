@@ -107,9 +107,6 @@ fn validate_table_factor(schema_map: &SchemaMap, tf: &TableFactorPlan) -> Valida
 }
 
 /// Recursively walk an expression, validating any embedded subquery bodies.
-/// Uses the full expression visitor so containers like `CASE`, function
-/// arguments, `BETWEEN`, `IN` lists, and array expressions are covered —
-/// not just the subset that was previously matched manually.
 fn validate_expr(schema_map: &SchemaMap, expr: &ExprPlan) -> ValidateResult {
     try_visit_expr(expr, &mut |expr| match expr {
         ExprPlan::Subquery(query) => validate_set_expr(schema_map, &query.body),
@@ -210,8 +207,7 @@ fn types_compatible(left: &DataType, right: &DataType) -> bool {
     left == right || (is_numeric(left) && is_numeric(right))
 }
 
-/// Exhaustive match over every `DataType` variant so that adding a new variant
-/// forces a compile error here, preventing silent misclassification.
+/// Returns `true` if `ty` is a numeric data type.
 fn is_numeric(t: &DataType) -> bool {
     match t {
         DataType::Int8
