@@ -144,6 +144,39 @@ async fn sort_stateless(rows: Vec<Row>, order_by: &[OrderByExprPlan]) -> Result<
     Ok(sorted)
 }
 
+/// Checks that every non-positional identifier in `order_by` appears in
+/// `labels`.  Must be called before evaluating ORDER BY under DISTINCT:
+/// SQL standard steps 6 (DISTINCT) → 8 (ORDER BY) mean only projected
+/// columns are visible when ORDER BY is evaluated.
+fn validate_distinct_order_by(order_by: &[OrderByExprPlan], labels: &[String]) -> Result<()> {
+    for OrderByExprPlan { expr, .. } in order_by {
+        if positional_index(expr).is_none()
+            && let ExprPlan::Identifier(col) = expr
+            && !labels.iter().any(|l| l == col)
+        {
+            return Err(SelectError::DistinctOrderByNotInSelectList(col.clone()).into());
+        }
+    }
+    Ok(())
+}
+
+/// Returns `rows` with duplicate values removed, preserving first-occurrence
+/// order.  Uses a hash set keyed on `row.values`.
+fn dedup_rows(rows: Vec<Row>) -> Vec<Row> {
+    let mut seen: HashMap<Vec<Value>, ()> = HashMap::with_capacity(rows.len());
+    let mut unique: Vec<Row> = Vec::with_capacity(rows.len());
+    for row in rows {
+        match seen.raw_entry_mut().from_key(&row.values) {
+            RawEntryMut::Occupied(_) => {}
+            RawEntryMut::Vacant(e) => {
+                e.insert(row.values.clone(), ());
+                unique.push(row);
+            }
+        }
+    }
+    unique
+}
+
 #[async_recursion]
 pub async fn select_with_labels<'a, T>(
     storage: &'a T,
@@ -270,23 +303,10 @@ where
             //   step 5 – projection
             //   step 6 – DISTINCT eliminates duplicates
             //   step 8 – ORDER BY sorts the deduplicated result
-            //
-            // After DISTINCT only the projected columns remain, so ORDER BY
-            // expressions that reference non-projected columns must be rejected.
-            //
-            // Validate every non-positional ORDER BY identifier against the
-            // output column list (labels) gathered by fetch_labels above.
-            for crate::plan::OrderByExprPlan { expr, .. } in &query.order_by {
-                if positional_index(expr).is_none()
-                    && let ExprPlan::Identifier(col) = expr
-                    && !labels_arc.iter().any(|l| l == col)
-                {
-                    Err(SelectError::DistinctOrderByNotInSelectList(col.clone()))?;
-                }
-            }
+            validate_distinct_order_by(&query.order_by, &labels_arc)?;
 
-            // Project rows to their final form, dropping the aggregated/context
-            // wrappers that Sort::apply would otherwise consume.
+            // Drop the aggregated/context wrappers – only the projected Row
+            // survives past DISTINCT.
             let rows = rows.map_ok(|(_, _, row)| row);
 
             if query.order_by.is_empty() {
@@ -308,24 +328,8 @@ where
                 }
             } else {
                 // DISTINCT + ORDER BY: materialise → dedup → sort.
-                // sort_stateless evaluates ORDER BY against the projected Row
-                // context only, so expressions referencing non-projected columns
-                // fail naturally (already caught by the identifier check above
-                // for simple column names).
                 let all_rows = rows.try_collect::<Vec<_>>().await?;
-                let mut seen: HashMap<Vec<Value>, ()> =
-                    HashMap::with_capacity(all_rows.len());
-                let mut unique: Vec<Row> = Vec::with_capacity(all_rows.len());
-                for row in all_rows {
-                    match seen.raw_entry_mut().from_key(&row.values) {
-                        RawEntryMut::Occupied(_) => {}
-                        RawEntryMut::Vacant(e) => {
-                            e.insert(row.values.clone(), ());
-                            unique.push(row);
-                        }
-                    }
-                }
-                let sorted = sort_stateless(unique, &query.order_by).await?;
+                let sorted = sort_stateless(dedup_rows(all_rows), &query.order_by).await?;
                 let rows = stream::iter(sorted).map(Ok);
                 let limited = limit.apply(rows);
                 futures::pin_mut!(limited);
