@@ -75,7 +75,7 @@ impl AggrValue {
 
         // For non-COUNT aggregates, the caller should filter NULL before calling new()
         debug_assert!(
-            matches!(aggregate.func, AggregateFunction::Count(_)) || !value.is_null(),
+            matches!(aggregate.func, AggregateFunctionPlan::Count(_)) || !value.is_null(),
             "AggrValue::new should not be called with NULL for non-COUNT aggregates"
         );
 
@@ -433,7 +433,7 @@ impl<'a, T: GStore> State<'a, T> {
         } else {
             // For non-COUNT aggregates, skip NULL values when initializing
             // Leave the slot as None so the next non-NULL value becomes the first
-            if value.is_null() && !matches!(aggregate.func, AggregateFunction::Count(_)) {
+            if value.is_null() && !matches!(aggregate.func, AggregateFunctionPlan::Count(_)) {
                 return Ok(());
             }
             group.values[slot] = Some(AggrValue::new(aggregate, &value)?);
