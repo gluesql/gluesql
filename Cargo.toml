@@ -41,8 +41,6 @@ gluesql-redb-storage = { path = "./storages/redb-storage", version = "0.19.0" }
 gluesql-json-storage = { path = "./storages/json-storage", version = "0.19.0" }
 gluesql-csv-storage = { path = "./storages/csv-storage", version = "0.19.0" }
 gluesql-composite-storage = { path = "./storages/composite-storage", version = "0.19.0" }
-gluesql-web-storage = { path = "./storages/web-storage", version = "0.19.0" }
-gluesql-idb-storage = { path = "./storages/idb-storage", version = "0.19.0" }
 gluesql-redis-storage = { path = "./storages/redis-storage", version = "0.19.0" }
 gluesql-mongo-storage = { path = "./storages/mongo-storage", version = "0.19.0" }
 gluesql-parquet-storage = { path = "./storages/parquet-storage", version = "0.19.0" }

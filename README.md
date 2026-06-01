@@ -93,7 +93,7 @@ SELECT * FROM Names JOIN Logs ON Names.id = Logs.id;
 
 ## Supported Reference Storages
 
-GlueSQL provides a variety of reference storages out of the box, including simple in-memory storage, key-value databases, log file-based storage like JSON & JSONL, and even Web Storage and IndexedDB supported by web browsers. These reference storages are readily available for use and can be easily adapted to a variety of storage systems. Additionally, GlueSQL is constantly expanding its list of supported storages, making it a versatile tool for developers.
+GlueSQL provides a variety of reference storages out of the box, including simple in-memory storage, key-value databases, and log file-based storage like JSON & JSONL. These reference storages are readily available for use and can be easily adapted to a variety of storage systems. Additionally, GlueSQL is constantly expanding its list of supported storages, making it a versatile tool for developers.
 
 ### Memory Storage
 
@@ -138,17 +138,9 @@ Git Storage is a custom storage option in GlueSQL that integrates seamlessly wit
 With Mongo storage, you can use mongodb as a storage for SQL queries. You can use all the features supported by GlueSQL, such as aggregations and joins, which were previously difficult to handle on an unstructured database. In particular, you can use GlueSQL's powerful schema system on mongodb, which is as strong as an RDBMS.
 To run tests, refer to [here](storages/mongo-storage/README.md)
 
-### Web Storage
-
-WebStorage, specifically localStorage and sessionStorage, can be used as a data storage system for GlueSQL. While WebStorage is a simple key-value database that uses string keys, GlueSQL makes it more powerful by adding support for SQL queries. This allows you to use SQL to interact with WebStorage, making it a convenient option for developers who are familiar with SQL. WebStorage can be used in JavaScript (Web) environments and Rust WebAssembly environments.
-
-### IndexedDB Storage
-
-IndexedDB Storage is a powerful storage system that allows you to interact with IndexedDB using SQL. While using IndexedDB directly can be challenging, GlueSQL makes it easy to use by handling version management internally and storing data in JSON format. With GlueSQL, you can use SQL to interact with IndexedDB, making it a convenient option for developers who are familiar with SQL. You can use IndexedDB Storage in both JavaScript (Web) and Rust WebAssembly environments.
-
 ### Composite Storage
 
-Composite Storage is a powerful feature of GlueSQL that allows you to bundle together multiple existing storages, enabling you to perform JOIN operations across two distinct storages. This feature is utilized in various environments, including GlueSQL's JavaScript (Web) interface. Specifically, GlueSQL bundles together memory, localStorage, sessionStorage, and IndexedDB using Composite Storage in its JavaScript (Web) interface. This allows you to create tables using four different storages and perform operations like JOIN using SQL, all at once. Composite Storage is a versatile feature that can be used in many different scenarios, making it a valuable tool for developers who need to work with multiple storage systems, including those that require data migration between different storage systems.
+Composite Storage is a powerful feature of GlueSQL that allows you to bundle together multiple existing storages, enabling you to perform JOIN operations across two distinct storages. This makes it useful for scenarios where data has to be queried or moved across different storage systems through the same SQL interface.
 
 ## Adapting GlueSQL to Your Environment: Creating Custom Storage
 
