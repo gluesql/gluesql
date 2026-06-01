@@ -30,9 +30,8 @@ jobs:
       - run: |
           publish_args=(
             --workspace
-            # JavaScript and Python packages are published by their own workflows.
+            # The JavaScript package is published by its own workflow.
             --exclude gluesql-js
-            --exclude gluesql-py
           )
 
           if [ "$DRY_RUN" = "true" ]; then
