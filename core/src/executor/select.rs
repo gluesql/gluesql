@@ -265,25 +265,79 @@ where
             }
         });
 
-        let rows = sort.apply(rows, relation.alias_name()).await?;
-
         if *distinct {
-            let mut seen: HashMap<Vec<Value>, ()> = HashMap::new();
-            let rows = rows.try_filter_map(move |row: Row| {
-                match seen.raw_entry_mut().from_key(&row.values) {
-                    RawEntryMut::Occupied(_) => std::future::ready(Ok(None)),
-                    RawEntryMut::Vacant(e) => {
-                        e.insert(row.values.clone(), ());
-                        std::future::ready(Ok(Some(row)))
+            // SQL standard (PostgreSQL docs §SELECT, steps 5-8):
+            //   step 5 – projection
+            //   step 6 – DISTINCT eliminates duplicates
+            //   step 8 – ORDER BY sorts the deduplicated result
+            //
+            // After DISTINCT only the projected columns remain, so ORDER BY
+            // expressions that reference non-projected columns must be rejected.
+            //
+            // Validate every non-positional ORDER BY identifier against the
+            // output column list (labels) gathered by fetch_labels above.
+            for crate::plan::OrderByExprPlan { expr, .. } in &query.order_by {
+                if positional_index(expr).is_none()
+                    && let ExprPlan::Identifier(col) = expr
+                    && !labels_arc.iter().any(|l| l == col)
+                {
+                    Err(SelectError::DistinctOrderByNotInSelectList(col.clone()))?;
+                }
+            }
+
+            // Project rows to their final form, dropping the aggregated/context
+            // wrappers that Sort::apply would otherwise consume.
+            let rows = rows.map_ok(|(_, _, row)| row);
+
+            if query.order_by.is_empty() {
+                // No ORDER BY: stream lazily with hash dedup.
+                let mut seen: HashMap<Vec<Value>, ()> = HashMap::new();
+                let rows = rows.try_filter_map(move |row: Row| {
+                    match seen.raw_entry_mut().from_key(&row.values) {
+                        RawEntryMut::Occupied(_) => std::future::ready(Ok(None)),
+                        RawEntryMut::Vacant(e) => {
+                            e.insert(row.values.clone(), ());
+                            std::future::ready(Ok(Some(row)))
+                        }
+                    }
+                });
+                let limited = limit.apply(rows);
+                futures::pin_mut!(limited);
+                while let Some(item) = limited.next().await {
+                    yield item?;
+                }
+            } else {
+                // DISTINCT + ORDER BY: materialise → dedup → sort.
+                // sort_stateless evaluates ORDER BY against the projected Row
+                // context only, so expressions referencing non-projected columns
+                // fail naturally (already caught by the identifier check above
+                // for simple column names).
+                let all_rows = rows.try_collect::<Vec<_>>().await?;
+                let mut seen: HashMap<Vec<Value>, ()> =
+                    HashMap::with_capacity(all_rows.len());
+                let mut unique: Vec<Row> = Vec::with_capacity(all_rows.len());
+                for row in all_rows {
+                    match seen.raw_entry_mut().from_key(&row.values) {
+                        RawEntryMut::Occupied(_) => {}
+                        RawEntryMut::Vacant(e) => {
+                            e.insert(row.values.clone(), ());
+                            unique.push(row);
+                        }
                     }
                 }
-            });
-            let limited = limit.apply(rows);
-            futures::pin_mut!(limited);
-            while let Some(item) = limited.next().await {
-                yield item?;
+                let sorted = sort_stateless(unique, &query.order_by).await?;
+                let rows = stream::iter(sorted).map(Ok);
+                let limited = limit.apply(rows);
+                futures::pin_mut!(limited);
+                while let Some(item) = limited.next().await {
+                    yield item?;
+                }
             }
         } else {
+            // No DISTINCT: sort first using the full RowContext so ORDER BY can
+            // reference any column from the FROM clause (SQL standard allows
+            // this when DISTINCT is not used).
+            let rows = sort.apply(rows, relation.alias_name()).await?;
             let limited = limit.apply(rows);
             futures::pin_mut!(limited);
             while let Some(item) = limited.next().await {
