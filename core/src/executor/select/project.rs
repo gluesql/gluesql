@@ -1,11 +1,11 @@
 use {
     crate::{
-        ast::{Projection, SelectItem},
         data::{Row, SCHEMALESS_DOC_COLUMN, Value},
         executor::{
             context::{AggregateValues, RowContext},
             evaluate::evaluate,
         },
+        plan::{ProjectionPlan, SelectItemPlan},
         result::Result,
         store::GStore,
     },
@@ -16,14 +16,14 @@ use {
 pub struct Project<'a, T: GStore> {
     storage: &'a T,
     context: Option<Arc<RowContext<'a>>>,
-    projection: &'a Projection,
+    projection: &'a ProjectionPlan,
 }
 
 impl<'a, T: GStore> Project<'a, T> {
     pub fn new(
         storage: &'a T,
         context: Option<Arc<RowContext<'a>>>,
-        projection: &'a Projection,
+        projection: &'a ProjectionPlan,
     ) -> Self {
         Self {
             storage,
@@ -50,7 +50,7 @@ impl<'a, T: GStore> Project<'a, T> {
         let context = context.as_ref();
 
         match self.projection {
-            Projection::SelectItems(fields) => {
+            ProjectionPlan::SelectItems(fields) => {
                 let entries = stream::iter(fields)
                     .then(|item| {
                         let filter_context = filter_context.as_ref().map(Arc::clone);
@@ -58,12 +58,12 @@ impl<'a, T: GStore> Project<'a, T> {
 
                         async move {
                             match item {
-                                SelectItem::Wildcard => Ok(context
+                                SelectItemPlan::Wildcard => Ok(context
                                     .map_or_else(Vec::new, |context| context.get_all_entries())),
-                                SelectItem::QualifiedWildcard(table_alias) => Ok(context
+                                SelectItemPlan::QualifiedWildcard(table_alias) => Ok(context
                                     .and_then(|context| context.get_alias_entries(table_alias))
                                     .unwrap_or_default()),
-                                SelectItem::Expr { expr, label } => {
+                                SelectItemPlan::Expr { expr, label } => {
                                     evaluate(self.storage, filter_context, aggregated, expr)
                                         .await
                                         .map(TryInto::try_into)?
@@ -81,7 +81,7 @@ impl<'a, T: GStore> Project<'a, T> {
 
                 Ok(Row { columns, values })
             }
-            Projection::SchemalessMap => {
+            ProjectionPlan::SchemalessMap => {
                 let value = context
                     .and_then(|context| context.get_value(SCHEMALESS_DOC_COLUMN))
                     .cloned()

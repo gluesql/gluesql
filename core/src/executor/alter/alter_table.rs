@@ -1,8 +1,9 @@
 use {
     super::{AlterError, Referencing, validate},
     crate::{
-        ast::{AlterTableOperation, Expr, Function},
+        ast::{Expr, Function},
         data::{Schema, SchemaIndex},
+        plan::AlterTableOperationPlan,
         result::Result,
         store::{GStore, GStoreMut},
     },
@@ -11,13 +12,13 @@ use {
 pub async fn alter_table<T: GStore + GStoreMut>(
     storage: &mut T,
     table_name: &str,
-    operation: &AlterTableOperation,
+    operation: &AlterTableOperationPlan,
 ) -> Result<()> {
-    if let AlterTableOperation::RenameColumn {
+    if let AlterTableOperationPlan::RenameColumn {
         old_column_name: column_name,
         ..
     }
-    | AlterTableOperation::DropColumn { column_name, .. } = operation
+    | AlterTableOperationPlan::DropColumn { column_name, .. } = operation
     {
         if let Some(schema) = storage.fetch_schema(table_name).await? {
             let referencing_foreign_key = schema
@@ -49,10 +50,10 @@ pub async fn alter_table<T: GStore + GStoreMut>(
     }
 
     match operation {
-        AlterTableOperation::RenameTable {
+        AlterTableOperationPlan::RenameTable {
             table_name: new_table_name,
         } => storage.rename_schema(table_name, new_table_name).await,
-        AlterTableOperation::RenameColumn {
+        AlterTableOperationPlan::RenameColumn {
             old_column_name,
             new_column_name,
         } => {
@@ -60,12 +61,12 @@ pub async fn alter_table<T: GStore + GStoreMut>(
                 .rename_column(table_name, old_column_name, new_column_name)
                 .await
         }
-        AlterTableOperation::AddColumn { column_def } => {
+        AlterTableOperationPlan::AddColumn { column_def } => {
             validate(column_def).await?;
 
             storage.add_column(table_name, column_def).await
         }
-        AlterTableOperation::DropColumn {
+        AlterTableOperationPlan::DropColumn {
             column_name,
             if_exists,
         } => {

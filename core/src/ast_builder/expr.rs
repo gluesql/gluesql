@@ -15,12 +15,13 @@ pub mod numeric;
 
 use {
     crate::{
-        ast::{Aggregate, BinaryOperator, Expr, Function, Literal, Query, UnaryOperator},
+        ast::{BinaryOperator, Expr, Literal, UnaryOperator},
         ast_builder::QueryNode,
         data::Value,
         parse_sql::{parse_comma_separated_exprs, parse_expr, parse_query},
+        plan::{ExprPlan, QueryPlan},
         prelude::DataType,
-        result::{Error, Result},
+        result::Result,
         translate::{NO_PARAMS, translate_expr, translate_query},
     },
     aggregate::AggregateNode,
@@ -95,11 +96,207 @@ pub enum ExprNode<'a> {
     },
 }
 
-impl<'a> TryFrom<ExprNode<'a>> for Expr {
-    type Error = Error;
+impl ExprNode<'_> {
+    pub(super) fn build_expr_plan(self) -> Result<ExprPlan> {
+        match self {
+            ExprNode::Expr(expr) => Ok(expr.into_owned().into()),
+            ExprNode::SqlExpr(expr) => {
+                let expr = parse_expr(expr)?;
 
-    fn try_from(expr_node: ExprNode<'a>) -> Result<Self> {
-        match expr_node {
+                translate_expr(&expr, NO_PARAMS).map(Into::into)
+            }
+            ExprNode::Identifier(value) => {
+                let idents = value.as_ref().split('.').collect::<Vec<_>>();
+
+                Ok(match idents.as_slice() {
+                    [alias, ident] => ExprPlan::CompoundIdentifier {
+                        alias: (*alias).to_owned(),
+                        ident: (*ident).to_owned(),
+                    },
+                    _ => ExprPlan::Identifier(value.into_owned()),
+                })
+            }
+            ExprNode::Numeric(node) => node.try_into().map(ExprPlan::Literal),
+            ExprNode::QuotedString(value) => {
+                let value = value.into_owned();
+
+                Ok(ExprPlan::Literal(Literal::QuotedString(value)))
+            }
+            ExprNode::TypedString { data_type, value } => Ok(ExprPlan::TypedString {
+                data_type,
+                value: value.into_owned(),
+            }),
+            ExprNode::Between {
+                expr,
+                negated,
+                low,
+                high,
+            } => {
+                let expr = (*expr).build_expr_plan().map(Box::new)?;
+                let low = (*low).build_expr_plan().map(Box::new)?;
+                let high = (*high).build_expr_plan().map(Box::new)?;
+
+                Ok(ExprPlan::Between {
+                    expr,
+                    negated,
+                    low,
+                    high,
+                })
+            }
+            ExprNode::Like {
+                expr,
+                negated,
+                pattern,
+            } => {
+                let expr = (*expr).build_expr_plan().map(Box::new)?;
+                let pattern = (*pattern).build_expr_plan().map(Box::new)?;
+
+                Ok(ExprPlan::Like {
+                    expr,
+                    negated,
+                    pattern,
+                })
+            }
+            ExprNode::ILike {
+                expr,
+                negated,
+                pattern,
+            } => {
+                let expr = (*expr).build_expr_plan().map(Box::new)?;
+                let pattern = (*pattern).build_expr_plan().map(Box::new)?;
+
+                Ok(ExprPlan::ILike {
+                    expr,
+                    negated,
+                    pattern,
+                })
+            }
+            ExprNode::BinaryOp { left, op, right } => {
+                let left = (*left).build_expr_plan().map(Box::new)?;
+                let right = (*right).build_expr_plan().map(Box::new)?;
+
+                Ok(ExprPlan::BinaryOp { left, op, right })
+            }
+            ExprNode::UnaryOp { op, expr } => {
+                let expr = (*expr).build_expr_plan().map(Box::new)?;
+                Ok(ExprPlan::UnaryOp { op, expr })
+            }
+            ExprNode::IsNull(expr) => (*expr)
+                .build_expr_plan()
+                .map(Box::new)
+                .map(ExprPlan::IsNull),
+            ExprNode::IsNotNull(expr) => (*expr)
+                .build_expr_plan()
+                .map(Box::new)
+                .map(ExprPlan::IsNotNull),
+            ExprNode::InList {
+                expr,
+                list,
+                negated,
+            } => {
+                let expr = (*expr).build_expr_plan().map(Box::new)?;
+
+                match *list {
+                    InListNode::InList(list) => {
+                        let list = list
+                            .into_iter()
+                            .map(ExprNode::build_expr_plan)
+                            .collect::<Result<Vec<_>>>()?;
+                        Ok(ExprPlan::InList {
+                            expr,
+                            list,
+                            negated,
+                        })
+                    }
+                    InListNode::Query(subquery) => {
+                        let subquery = subquery.build_query_plan().map(Box::new)?;
+                        Ok(ExprPlan::InSubquery {
+                            expr,
+                            subquery,
+                            negated,
+                        })
+                    }
+                    InListNode::Text(value) => {
+                        let subquery = parse_query(value.clone())
+                            .and_then(|item| translate_query(&item, NO_PARAMS))
+                            .map(QueryPlan::from)
+                            .map(Box::new);
+
+                        if let Ok(subquery) = subquery {
+                            return Ok(ExprPlan::InSubquery {
+                                expr,
+                                subquery,
+                                negated,
+                            });
+                        }
+
+                        parse_comma_separated_exprs(&*value)?
+                            .iter()
+                            .map(|expr| translate_expr(expr, NO_PARAMS).map(Into::into))
+                            .collect::<Result<Vec<_>>>()
+                            .map(|list| ExprPlan::InList {
+                                expr,
+                                list,
+                                negated,
+                            })
+                    }
+                }
+            }
+            ExprNode::Nested(expr) => (*expr)
+                .build_expr_plan()
+                .map(Box::new)
+                .map(ExprPlan::Nested),
+            ExprNode::Function(func_expr) => (*func_expr)
+                .build_function_plan()
+                .map(Box::new)
+                .map(ExprPlan::Function),
+            ExprNode::Aggregate(aggr_expr) => (*aggr_expr)
+                .build_aggregate_plan()
+                .map(Box::new)
+                .map(ExprPlan::Aggregate),
+            ExprNode::Exists { subquery, negated } => (*subquery)
+                .build_query_plan()
+                .map(Box::new)
+                .map(|subquery| ExprPlan::Exists { subquery, negated }),
+            ExprNode::Subquery(subquery) => (*subquery)
+                .build_query_plan()
+                .map(Box::new)
+                .map(ExprPlan::Subquery),
+            ExprNode::Case {
+                operand,
+                when_then,
+                else_result,
+            } => {
+                let operand = operand
+                    .map(|expr| (*expr).build_expr_plan())
+                    .transpose()?
+                    .map(Box::new);
+                let when_then = when_then
+                    .into_iter()
+                    .map(|(when, then)| {
+                        let when = when.build_expr_plan()?;
+                        let then = then.build_expr_plan()?;
+                        Ok((when, then))
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+
+                let else_result = else_result
+                    .map(|expr| (*expr).build_expr_plan())
+                    .transpose()?
+                    .map(Box::new);
+                Ok(ExprPlan::Case {
+                    operand,
+                    when_then,
+                    else_result,
+                })
+            }
+        }
+    }
+}
+
+impl ExprNode<'_> {
+    pub(super) fn build_expr(self) -> Result<Expr> {
+        match self {
             ExprNode::Expr(expr) => Ok(expr.into_owned()),
             ExprNode::SqlExpr(expr) => {
                 let expr = parse_expr(expr)?;
@@ -133,9 +330,9 @@ impl<'a> TryFrom<ExprNode<'a>> for Expr {
                 low,
                 high,
             } => {
-                let expr = Expr::try_from(*expr).map(Box::new)?;
-                let low = Expr::try_from(*low).map(Box::new)?;
-                let high = Expr::try_from(*high).map(Box::new)?;
+                let expr = expr.build_expr().map(Box::new)?;
+                let low = low.build_expr().map(Box::new)?;
+                let high = high.build_expr().map(Box::new)?;
 
                 Ok(Expr::Between {
                     expr,
@@ -149,8 +346,8 @@ impl<'a> TryFrom<ExprNode<'a>> for Expr {
                 negated,
                 pattern,
             } => {
-                let expr = Expr::try_from(*expr).map(Box::new)?;
-                let pattern = Expr::try_from(*pattern).map(Box::new)?;
+                let expr = expr.build_expr().map(Box::new)?;
+                let pattern = pattern.build_expr().map(Box::new)?;
 
                 Ok(Expr::Like {
                     expr,
@@ -163,8 +360,8 @@ impl<'a> TryFrom<ExprNode<'a>> for Expr {
                 negated,
                 pattern,
             } => {
-                let expr = Expr::try_from(*expr).map(Box::new)?;
-                let pattern = Expr::try_from(*pattern).map(Box::new)?;
+                let expr = expr.build_expr().map(Box::new)?;
+                let pattern = pattern.build_expr().map(Box::new)?;
 
                 Ok(Expr::ILike {
                     expr,
@@ -173,41 +370,33 @@ impl<'a> TryFrom<ExprNode<'a>> for Expr {
                 })
             }
             ExprNode::BinaryOp { left, op, right } => {
-                let left = Expr::try_from(*left).map(Box::new)?;
-                let right = Expr::try_from(*right).map(Box::new)?;
+                let left = left.build_expr().map(Box::new)?;
+                let right = right.build_expr().map(Box::new)?;
 
                 Ok(Expr::BinaryOp { left, op, right })
             }
             ExprNode::UnaryOp { op, expr } => {
-                let expr = Expr::try_from(*expr).map(Box::new)?;
+                let expr = expr.build_expr().map(Box::new)?;
                 Ok(Expr::UnaryOp { op, expr })
             }
-            ExprNode::IsNull(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::IsNull),
-            ExprNode::IsNotNull(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::IsNotNull),
+            ExprNode::IsNull(expr) => expr.build_expr().map(Box::new).map(Expr::IsNull),
+            ExprNode::IsNotNull(expr) => expr.build_expr().map(Box::new).map(Expr::IsNotNull),
             ExprNode::InList {
                 expr,
                 list,
                 negated,
             } => {
-                let expr = Expr::try_from(*expr).map(Box::new)?;
+                let expr = expr.build_expr().map(Box::new)?;
 
                 match *list {
                     InListNode::InList(list) => {
                         let list = list
                             .into_iter()
-                            .map(Expr::try_from)
+                            .map(ExprNode::build_expr)
                             .collect::<Result<Vec<_>>>()?;
                         Ok(Expr::InList {
                             expr,
                             list,
-                            negated,
-                        })
-                    }
-                    InListNode::Query(subquery) => {
-                        let subquery = Query::try_from(*subquery).map(Box::new)?;
-                        Ok(Expr::InSubquery {
-                            expr,
-                            subquery,
                             negated,
                         })
                     }
@@ -224,7 +413,7 @@ impl<'a> TryFrom<ExprNode<'a>> for Expr {
                             });
                         }
 
-                        parse_comma_separated_exprs(&*value)?
+                        parse_comma_separated_exprs(&value)?
                             .iter()
                             .map(|expr| translate_expr(expr, NO_PARAMS))
                             .collect::<Result<Vec<_>>>()
@@ -234,20 +423,30 @@ impl<'a> TryFrom<ExprNode<'a>> for Expr {
                                 negated,
                             })
                     }
+                    InListNode::Query(subquery) => {
+                        let subquery = (*subquery).build_query().map(Box::new)?;
+                        Ok(Expr::InSubquery {
+                            expr,
+                            subquery,
+                            negated,
+                        })
+                    }
                 }
             }
-            ExprNode::Nested(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::Nested),
-            ExprNode::Function(func_expr) => Function::try_from(*func_expr)
-                .map(Box::new)
-                .map(Expr::Function),
-            ExprNode::Aggregate(aggr_expr) => Aggregate::try_from(*aggr_expr)
+            ExprNode::Nested(expr) => expr.build_expr().map(Box::new).map(Expr::Nested),
+            ExprNode::Function(func_expr) => {
+                func_expr.build_function().map(Box::new).map(Expr::Function)
+            }
+            ExprNode::Aggregate(aggr_expr) => aggr_expr
+                .build_aggregate()
                 .map(Box::new)
                 .map(Expr::Aggregate),
-            ExprNode::Exists { subquery, negated } => Query::try_from(*subquery)
+            ExprNode::Exists { subquery, negated } => (*subquery)
+                .build_query()
                 .map(Box::new)
                 .map(|subquery| Expr::Exists { subquery, negated }),
             ExprNode::Subquery(subquery) => {
-                Query::try_from(*subquery).map(Box::new).map(Expr::Subquery)
+                (*subquery).build_query().map(Box::new).map(Expr::Subquery)
             }
             ExprNode::Case {
                 operand,
@@ -255,20 +454,20 @@ impl<'a> TryFrom<ExprNode<'a>> for Expr {
                 else_result,
             } => {
                 let operand = operand
-                    .map(|expr| Expr::try_from(*expr))
+                    .map(|expr| expr.build_expr())
                     .transpose()?
                     .map(Box::new);
                 let when_then = when_then
                     .into_iter()
                     .map(|(when, then)| {
-                        let when = Expr::try_from(when)?;
-                        let then = Expr::try_from(then)?;
+                        let when = when.build_expr()?;
+                        let then = then.build_expr()?;
                         Ok((when, then))
                     })
                     .collect::<Result<Vec<_>>>()?;
 
                 let else_result = else_result
-                    .map(|expr| Expr::try_from(*expr))
+                    .map(|expr| expr.build_expr())
                     .transpose()?
                     .map(Box::new);
                 Ok(Expr::Case {
@@ -409,6 +608,7 @@ mod tests {
                 time, timestamp, uuid, value,
             },
             data::Value,
+            plan::ExprPlan,
         },
     };
 
@@ -504,16 +704,16 @@ mod tests {
 
     #[test]
     fn value_injection() {
-        let test = |actual: ExprNode, expected: Expr| {
-            pretty_assertions::assert_eq!(Expr::try_from(actual), Ok(expected));
+        let test = |actual: ExprNode, expected: ExprPlan| {
+            pretty_assertions::assert_eq!(actual.build_expr_plan(), Ok(expected));
         };
 
-        test(Value::I64(42).into(), Expr::Value(Value::I64(42)));
+        test(Value::I64(42).into(), ExprPlan::Value(Value::I64(42)));
         test(
             Value::Str("hello".to_owned()).into(),
-            Expr::Value(Value::Str("hello".to_owned())),
+            ExprPlan::Value(Value::Str("hello".to_owned())),
         );
-        test(value(Value::I64(100)), Expr::Value(Value::I64(100)));
-        test(value(Value::Bool(true)), Expr::Value(Value::Bool(true)));
+        test(value(Value::I64(100)), ExprPlan::Value(Value::I64(100)));
+        test(value(Value::Bool(true)), ExprPlan::Value(Value::Bool(true)));
     }
 }

@@ -3,20 +3,20 @@ use {
         context::{AggregateValues, RowContext},
         evaluate::evaluate,
     },
-    crate::{ast::Expr, result::Result, store::GStore},
+    crate::{plan::ExprPlan, result::Result, store::GStore},
     std::sync::Arc,
 };
 
 pub struct Filter<'a, T: GStore> {
     storage: &'a T,
-    where_clause: Option<&'a Expr>,
+    where_clause: Option<&'a ExprPlan>,
     context: Option<Arc<RowContext<'a>>>,
 }
 
 impl<'a, T: GStore> Filter<'a, T> {
     pub fn new(
         storage: &'a T,
-        where_clause: Option<&'a Expr>,
+        where_clause: Option<&'a ExprPlan>,
         context: Option<Arc<RowContext<'a>>>,
     ) -> Self {
         Self {
@@ -48,7 +48,7 @@ pub async fn check_expr<'a, T: GStore>(
     storage: &'a T,
     context: Option<Arc<RowContext<'a>>>,
     aggregated: Option<Arc<AggregateValues>>,
-    expr: &'a Expr,
+    expr: &'a ExprPlan,
 ) -> Result<bool> {
     evaluate(storage, context, aggregated, expr)
         .await

@@ -4,8 +4,9 @@ use {
         evaluate::evaluate,
     },
     crate::{
-        ast::{Expr, Literal, OrderByExpr, UnaryOperator},
+        ast::{Literal, UnaryOperator},
         data::{Key, Row, Value},
+        plan::{ExprPlan, OrderByExprPlan},
         result::{Error, Result},
         store::GStore,
     },
@@ -28,14 +29,14 @@ pub enum SortError {
 pub struct Sort<'a, T: GStore> {
     storage: &'a T,
     context: Option<Arc<RowContext<'a>>>,
-    order_by: &'a [OrderByExpr],
+    order_by: &'a [OrderByExprPlan],
 }
 
 impl<'a, T: GStore> Sort<'a, T> {
     pub fn new(
         storage: &'a T,
         context: Option<Arc<RowContext<'a>>>,
-        order_by: &'a [OrderByExpr],
+        order_by: &'a [OrderByExprPlan],
     ) -> Self {
         Self {
             storage,
@@ -73,20 +74,20 @@ impl<'a, T: GStore> Sort<'a, T> {
             .and_then(|(aggregated, next, row)| {
                 enum SortType<'a> {
                     Value(Value),
-                    Expr(&'a Expr),
+                    Expr(&'a ExprPlan),
                 }
 
                 let order_by = self.order_by;
                 let order_by = order_by
                     .iter()
-                    .map(|OrderByExpr { expr, asc }| -> Result<_> {
+                    .map(|OrderByExprPlan { expr, asc }| -> Result<_> {
                         let big_decimal = match expr {
-                            Expr::Literal(Literal::Number(n)) => Some(n),
-                            Expr::UnaryOp {
+                            ExprPlan::Literal(Literal::Number(n)) => Some(n),
+                            ExprPlan::UnaryOp {
                                 op: UnaryOperator::Plus,
                                 expr,
                             } => match expr.as_ref() {
-                                Expr::Literal(Literal::Number(n)) => Some(n),
+                                ExprPlan::Literal(Literal::Number(n)) => Some(n),
                                 _ => None,
                             },
                             _ => None,

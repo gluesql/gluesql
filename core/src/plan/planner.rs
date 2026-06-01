@@ -1,8 +1,9 @@
 use {
     super::context::Context,
     crate::{
-        ast::{ColumnDef, ColumnUniqueOption, Expr, Function, Query, TableAlias, TableFactor},
+        ast::{ColumnDef, ColumnUniqueOption},
         data::Schema,
+        plan::{ExprPlan, FunctionPlan, QueryPlan, TableAliasPlan, TableFactorPlan},
     },
     std::sync::Arc,
 };
@@ -10,15 +11,17 @@ use {
 pub trait Planner<'a> {
     fn get_schema(&self, name: &str) -> Option<&'a Schema>;
 
-    fn query(&self, outer_context: Option<Arc<Context<'a>>>, query: Query) -> Query;
+    fn query(&self, outer_context: Option<Arc<Context<'a>>>, query: QueryPlan) -> QueryPlan;
 
-    fn subquery_expr(&self, outer_context: Option<Arc<Context<'a>>>, expr: Expr) -> Expr {
+    fn subquery_expr(&self, outer_context: Option<Arc<Context<'a>>>, expr: ExprPlan) -> ExprPlan {
         match expr {
-            Expr::IsNull(expr) => Expr::IsNull(Box::new(self.subquery_expr(outer_context, *expr))),
-            Expr::IsNotNull(expr) => {
-                Expr::IsNotNull(Box::new(self.subquery_expr(outer_context, *expr)))
+            ExprPlan::IsNull(expr) => {
+                ExprPlan::IsNull(Box::new(self.subquery_expr(outer_context, *expr)))
             }
-            Expr::InList {
+            ExprPlan::IsNotNull(expr) => {
+                ExprPlan::IsNotNull(Box::new(self.subquery_expr(outer_context, *expr)))
+            }
+            ExprPlan::InList {
                 expr,
                 list,
                 negated,
@@ -29,18 +32,20 @@ pub trait Planner<'a> {
                     .collect();
                 let expr = Box::new(self.subquery_expr(outer_context, *expr));
 
-                Expr::InList {
+                ExprPlan::InList {
                     expr,
                     list,
                     negated,
                 }
             }
-            Expr::Subquery(query) => Expr::Subquery(Box::new(self.query(outer_context, *query))),
-            Expr::Exists { subquery, negated } => Expr::Exists {
+            ExprPlan::Subquery(query) => {
+                ExprPlan::Subquery(Box::new(self.query(outer_context, *query)))
+            }
+            ExprPlan::Exists { subquery, negated } => ExprPlan::Exists {
                 subquery: Box::new(self.query(outer_context, *subquery)),
                 negated,
             },
-            Expr::InSubquery {
+            ExprPlan::InSubquery {
                 expr,
                 subquery,
                 negated,
@@ -49,13 +54,13 @@ pub trait Planner<'a> {
                     Box::new(self.subquery_expr(outer_context.as_ref().map(Arc::clone), *expr));
                 let subquery = Box::new(self.query(outer_context, *subquery));
 
-                Expr::InSubquery {
+                ExprPlan::InSubquery {
                     expr,
                     subquery,
                     negated,
                 }
             }
-            Expr::Between {
+            ExprPlan::Between {
                 expr,
                 negated,
                 low,
@@ -67,14 +72,14 @@ pub trait Planner<'a> {
                     Box::new(self.subquery_expr(outer_context.as_ref().map(Arc::clone), *low));
                 let high = Box::new(self.subquery_expr(outer_context, *high));
 
-                Expr::Between {
+                ExprPlan::Between {
                     expr,
                     negated,
                     low,
                     high,
                 }
             }
-            Expr::Like {
+            ExprPlan::Like {
                 expr,
                 negated,
                 pattern,
@@ -84,13 +89,13 @@ pub trait Planner<'a> {
                 let pattern =
                     Box::new(self.subquery_expr(outer_context.as_ref().map(Arc::clone), *pattern));
 
-                Expr::Like {
+                ExprPlan::Like {
                     expr,
                     negated,
                     pattern,
                 }
             }
-            Expr::ILike {
+            ExprPlan::ILike {
                 expr,
                 negated,
                 pattern,
@@ -100,23 +105,25 @@ pub trait Planner<'a> {
                 let pattern =
                     Box::new(self.subquery_expr(outer_context.as_ref().map(Arc::clone), *pattern));
 
-                Expr::ILike {
+                ExprPlan::ILike {
                     expr,
                     negated,
                     pattern,
                 }
             }
-            Expr::BinaryOp { left, op, right } => Expr::BinaryOp {
+            ExprPlan::BinaryOp { left, op, right } => ExprPlan::BinaryOp {
                 left: Box::new(self.subquery_expr(outer_context.as_ref().map(Arc::clone), *left)),
                 op,
                 right: Box::new(self.subquery_expr(outer_context, *right)),
             },
-            Expr::UnaryOp { op, expr } => Expr::UnaryOp {
+            ExprPlan::UnaryOp { op, expr } => ExprPlan::UnaryOp {
                 op,
                 expr: Box::new(self.subquery_expr(outer_context, *expr)),
             },
-            Expr::Nested(expr) => Expr::Nested(Box::new(self.subquery_expr(outer_context, *expr))),
-            Expr::Case {
+            ExprPlan::Nested(expr) => {
+                ExprPlan::Nested(Box::new(self.subquery_expr(outer_context, *expr)))
+            }
+            ExprPlan::Case {
                 operand,
                 when_then,
                 else_result,
@@ -136,70 +143,76 @@ pub trait Planner<'a> {
                 let else_result =
                     else_result.map(|expr| Box::new(self.subquery_expr(outer_context, *expr)));
 
-                Expr::Case {
+                ExprPlan::Case {
                     operand,
                     when_then,
                     else_result,
                 }
             }
-            Expr::ArrayIndex { obj, indexes } => {
+            ExprPlan::ArrayIndex { obj, indexes } => {
                 let indexes = indexes
                     .into_iter()
                     .map(|expr| self.subquery_expr(outer_context.as_ref().map(Arc::clone), expr))
                     .collect();
                 let obj = Box::new(self.subquery_expr(outer_context, *obj));
-                Expr::ArrayIndex { obj, indexes }
+                ExprPlan::ArrayIndex { obj, indexes }
             }
-            Expr::Array { elem } => {
+            ExprPlan::Array { elem } => {
                 let elem = elem
                     .into_iter()
                     .map(|expr| self.subquery_expr(outer_context.as_ref().map(Arc::clone), expr))
                     .collect();
-                Expr::Array { elem }
+                ExprPlan::Array { elem }
             }
-            Expr::Interval {
+            ExprPlan::Interval {
                 expr,
                 leading_field,
                 last_field,
-            } => Expr::Interval {
+            } => ExprPlan::Interval {
                 expr: Box::new(self.subquery_expr(outer_context, *expr)),
                 leading_field,
                 last_field,
             },
-            Expr::Function(func) => match *func {
-                Function::Cast { expr, data_type } => Expr::Function(Box::new(Function::Cast {
-                    expr: self.subquery_expr(outer_context, expr),
-                    data_type,
-                })),
-                Function::Extract { field, expr } => Expr::Function(Box::new(Function::Extract {
-                    field,
-                    expr: self.subquery_expr(outer_context, expr),
-                })),
-                _ => Expr::Function(func),
+            ExprPlan::Function(func) => match *func {
+                FunctionPlan::Cast { expr, data_type } => {
+                    ExprPlan::Function(Box::new(FunctionPlan::Cast {
+                        expr: self.subquery_expr(outer_context, expr),
+                        data_type,
+                    }))
+                }
+                FunctionPlan::Extract { field, expr } => {
+                    ExprPlan::Function(Box::new(FunctionPlan::Extract {
+                        field,
+                        expr: self.subquery_expr(outer_context, expr),
+                    }))
+                }
+                _ => ExprPlan::Function(func),
             },
-            Expr::Identifier(_)
-            | Expr::CompoundIdentifier { .. }
-            | Expr::Literal(_)
-            | Expr::Value(_)
-            | Expr::TypedString { .. }
-            | Expr::Aggregate(_) => expr,
+            ExprPlan::Identifier(_)
+            | ExprPlan::CompoundIdentifier { .. }
+            | ExprPlan::Literal(_)
+            | ExprPlan::Value(_)
+            | ExprPlan::TypedString { .. }
+            | ExprPlan::Aggregate(_) => expr,
         }
     }
 
     fn update_context(
         &self,
         next: Option<Arc<Context<'a>>>,
-        table_factor: &TableFactor,
+        table_factor: &TableFactorPlan,
     ) -> Option<Arc<Context<'a>>> {
         let (name, alias) = match table_factor {
-            TableFactor::Table { name, alias, .. } => {
-                let alias = alias.as_ref().map(|TableAlias { name, .. }| name.clone());
+            TableFactorPlan::Table { name, alias, .. } => {
+                let alias = alias
+                    .as_ref()
+                    .map(|TableAliasPlan { name, .. }| name.clone());
 
                 (name, alias)
             }
-            TableFactor::Derived { .. }
-            | TableFactor::Series { .. }
-            | TableFactor::Dictionary { .. } => return next,
+            TableFactorPlan::Derived { .. }
+            | TableFactorPlan::Series { .. }
+            | TableFactorPlan::Dictionary { .. } => return next,
         };
 
         let Some(Schema { column_defs, .. }) = self.get_schema(name) else {

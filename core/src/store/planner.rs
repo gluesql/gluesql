@@ -1,10 +1,9 @@
 use {
     super::Store,
     crate::{
-        ast::Statement,
         plan::{
-            fetch_schema_map, plan_aggregate, plan_join, plan_primary_key, plan_schemaless,
-            validate,
+            StatementPlan, fetch_schema_map, plan_aggregate, plan_join, plan_primary_key,
+            plan_schemaless, validate,
         },
         result::Result,
     },
@@ -13,7 +12,7 @@ use {
 
 #[async_trait]
 pub trait Planner: Store {
-    async fn plan(&self, statement: Statement) -> Result<Statement> {
+    async fn plan(&self, statement: StatementPlan) -> Result<StatementPlan> {
         let schema_map = fetch_schema_map(self, &statement).await?;
         validate(&schema_map, &statement)?;
 

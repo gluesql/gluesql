@@ -3,7 +3,8 @@ use {
     crate::{
         ast::OrderByExpr,
         parse_sql::parse_order_by_exprs,
-        result::{Error, Result},
+        plan::OrderByExprPlan,
+        result::Result,
         translate::{NO_PARAMS, translate_order_by_expr},
     },
 };
@@ -32,18 +33,29 @@ impl<'a> From<ExprNode<'a>> for OrderByExprList<'a> {
     }
 }
 
-impl<'a> TryFrom<OrderByExprList<'a>> for Vec<OrderByExpr> {
-    type Error = Error;
+impl OrderByExprList<'_> {
+    pub(super) fn build_order_by_exprs_plan(self) -> Result<Vec<OrderByExprPlan>> {
+        match self {
+            OrderByExprList::Text(exprs) => parse_order_by_exprs(exprs)?
+                .iter()
+                .map(|expr| translate_order_by_expr(expr, NO_PARAMS).map(Into::into))
+                .collect::<Result<Vec<_>>>(),
+            OrderByExprList::OrderByExprs(exprs) => exprs
+                .into_iter()
+                .map(OrderByExprNode::build_order_by_expr_plan)
+                .collect::<Result<Vec<_>>>(),
+        }
+    }
 
-    fn try_from(order_by_exprs: OrderByExprList<'a>) -> Result<Self> {
-        match order_by_exprs {
+    pub(super) fn build_order_by_exprs(self) -> Result<Vec<OrderByExpr>> {
+        match self {
             OrderByExprList::Text(exprs) => parse_order_by_exprs(exprs)?
                 .iter()
                 .map(|expr| translate_order_by_expr(expr, NO_PARAMS))
                 .collect::<Result<Vec<_>>>(),
             OrderByExprList::OrderByExprs(exprs) => exprs
                 .into_iter()
-                .map(TryInto::try_into)
+                .map(OrderByExprNode::build_order_by_expr)
                 .collect::<Result<Vec<_>>>(),
         }
     }

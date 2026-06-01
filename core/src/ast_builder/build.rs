@@ -1,5 +1,5 @@
-use crate::{ast::Statement, result::Result};
+use crate::{plan::StatementPlan, result::Result};
 
 pub trait Build {
-    fn build(self) -> Result<Statement>;
+    fn build(self) -> Result<StatementPlan>;
 }

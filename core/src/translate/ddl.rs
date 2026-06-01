@@ -89,7 +89,7 @@ pub fn translate_column_def(
                     Ok((nullable, default, unique, comment))
                 }
                 SqlColumnOption::Comment(comment) => {
-                    Ok((nullable, default, unique, Some(comment.to_string())))
+                    Ok((nullable, default, unique, Some(comment.clone())))
                 }
                 _ => Err(TranslateError::UnsupportedColumnOption(option.to_string()).into()),
             }

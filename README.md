@@ -18,9 +18,9 @@ For more information on how to use GlueSQL, please refer to the [**official docu
 
 If you're interested in learning more about GlueSQL, we recommend the following blog articles for a deeper dive into its capabilities and benefits:
 
-1. [Breaking the Boundary between SQL and NoSQL Database](https://gluesql.org/blog/breaking-the-boundary-between-sql-and-nosql)
-2. [Revolutionizing Databases by Unifying Query Interfaces](https://gluesql.org/blog/revolutionizing-databases-by-unifying-query-interfaces)
-3. [Test-Driven Documentation - Automating User Manual Creation](https://gluesql.org/blog/test-driven-documentation)
+1. [Breaking the Boundary between SQL and NoSQL Database](https://gluesql.org/docs/dev/articles/breaking-the-boundary-between-sql-and-nosql)
+2. [Revolutionizing Databases by Unifying Query Interfaces](https://gluesql.org/docs/dev/articles/revolutionizing-databases-by-unifying-query-interfaces)
+3. [Test-Driven Documentation - Automating User Manual Creation](https://gluesql.org/docs/dev/articles/test-driven-documentation)
 
 ## Supporting SQL and AST Builder
 

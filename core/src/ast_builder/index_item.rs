@@ -3,11 +3,14 @@ mod non_clustered;
 mod primary_key;
 
 use {
-    super::{ExprNode, select::Prebuild},
-    crate::ast::{Expr, IndexOperator},
+    super::ExprNode,
+    crate::{
+        ast::IndexOperator,
+        plan::{ExprPlan, IndexItemPlan},
+    },
 };
 pub use {
-    crate::{ast::IndexItem, result::Result},
+    crate::result::Result,
     cmp_expr::CmpExprNode,
     non_clustered::{NonClusteredNode, non_clustered},
     primary_key::{PrimaryKeyNode, primary_key},
@@ -43,8 +46,8 @@ impl From<NonClusteredNode> for IndexItemNode<'_> {
     }
 }
 
-impl Prebuild<IndexItem> for IndexItemNode<'_> {
-    fn prebuild(self) -> Result<IndexItem> {
+impl IndexItemNode<'_> {
+    pub(super) fn build_index_item_plan(self) -> Result<IndexItemPlan> {
         match self {
             IndexItemNode::NonClustered {
                 name,
@@ -52,17 +55,20 @@ impl Prebuild<IndexItem> for IndexItemNode<'_> {
                 cmp_expr,
             } => {
                 let (index_operator, expr) = cmp_expr.unzip();
-                let expr_result: Option<Expr> = expr.map(ExprNode::try_into).transpose()?;
-                let cmp_expr_result: Option<(IndexOperator, Expr)> =
+                let expr_result: Option<ExprPlan> =
+                    expr.map(ExprNode::build_expr_plan).transpose()?;
+                let cmp_expr_result: Option<(IndexOperator, ExprPlan)> =
                     index_operator.zip(expr_result);
 
-                Ok(IndexItem::NonClustered {
+                Ok(IndexItemPlan::NonClustered {
                     name,
                     asc,
                     cmp_expr: cmp_expr_result,
                 })
             }
-            IndexItemNode::PrimaryKey(expr) => Ok(IndexItem::PrimaryKey(expr.try_into()?)),
+            IndexItemNode::PrimaryKey(expr) => {
+                Ok(IndexItemPlan::PrimaryKey(expr.build_expr_plan()?))
+            }
         }
     }
 }
