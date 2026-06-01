@@ -30,8 +30,7 @@ jobs:
       - run: |
           publish_args=(
             --workspace
-            # JavaScript and Python packages are published by their own workflows.
-            --exclude gluesql-js
+            # The Python package is published by its own workflow.
             --exclude gluesql-py
           )
 
