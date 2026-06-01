@@ -146,7 +146,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                             .as_ref()
                             .and_then(|column_defs| {
                                 column_defs.iter().find(|column_def| {
-                                    column_def.unique.map(|u| u.is_primary) == Some(true)
+                                    column_def.unique.is_some_and(|u| u.is_primary)
                                 })
                             })
                             .ok_or(FetchError::Unreachable)?;
@@ -396,7 +396,7 @@ where
                 None => Ok(columns),
                 Some(alias) if alias.columns.len() > columns.len() => {
                     Err(FetchError::TooManyColumnAliases(
-                        name.to_string(),
+                        name.clone(),
                         columns.len(),
                         alias.columns.len(),
                     )
@@ -458,7 +458,7 @@ where
                     Ok(labels)
                 } else if alias_columns.len() > labels.len() {
                     Err(FetchError::TooManyColumnAliases(
-                        name.to_string(),
+                        name.clone(),
                         labels.len(),
                         alias_columns.len(),
                     )
