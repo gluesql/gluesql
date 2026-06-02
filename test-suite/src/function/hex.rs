@@ -16,8 +16,7 @@ test_case!(hex, {
             Str;
             "48656C6C6F20576F726C64".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "VALUES(HEX('ABC'))",
@@ -26,8 +25,7 @@ test_case!(hex, {
             Str;
             "414243".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "VALUES(HEX(''))",
@@ -36,8 +34,7 @@ test_case!(hex, {
             Str;
             String::new()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "VALUES(HEX('228'))",
@@ -46,8 +43,7 @@ test_case!(hex, {
             Str;
             "323238".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "VALUES(HEX(228))",
@@ -56,8 +52,7 @@ test_case!(hex, {
             Str;
             "E4".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "VALUES(HEX(0))",
@@ -66,8 +61,7 @@ test_case!(hex, {
             Str;
             "0".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "VALUES(HEX(-123))",
@@ -76,17 +70,14 @@ test_case!(hex, {
             Str;
             "FFFFFFFFFFFFFF85".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "VALUES(HEX(3.14))",
         Err(EvaluateError::FunctionRequiresIntegerOrStringValue("HEX".to_owned()).into()),
-    )
-    .await;
+    );
 
-    g.test(r"VALUES(HEX(NULL))", Ok(select_with_null!(column1; Null)))
-        .await;
+    g.test(r"VALUES(HEX(NULL))", Ok(select_with_null!(column1; Null)));
 
     g.test(
         r"VALUES(HEX())",
@@ -96,8 +87,7 @@ test_case!(hex, {
             found: 0,
         }
         .into()),
-    )
-    .await;
+    );
 
     g.test(
         r"VALUES(HEX('test', 'extra'))",
@@ -107,6 +97,5 @@ test_case!(hex, {
             found: 2,
         }
         .into()),
-    )
-    .await;
+    );
 });

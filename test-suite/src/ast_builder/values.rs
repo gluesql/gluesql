@@ -7,9 +7,7 @@ test_case!(values, {
     use gluesql_core::ast_builder::values;
     let glue = get_glue!();
 
-    let actual = values(vec!["1, 'Glue'", "2, 'SQL'", "3, 'Rust'"])
-        .execute(glue)
-        .await;
+    let actual = values(vec!["1, 'Glue'", "2, 'SQL'", "3, 'Rust'"]).execute(glue);
     let expected = Ok(select!(
         column1 | column2
         I64     | Str;
@@ -25,8 +23,7 @@ test_case!(values, {
         vec!["2", "'SQL'"],
         vec!["3", "'Rust'"],
     ])
-    .execute(glue)
-    .await;
+    .execute(glue);
     let expected = Ok(select!(
         column1 | column2
         I64     | Str;
@@ -39,8 +36,7 @@ test_case!(values, {
 
     let actual = values(vec!["1, 'Glue'", "2, 'SQL'", "3, 'Rust'"])
         .order_by("column2 desc")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         column1 | column2
         I64     | Str;
@@ -52,8 +48,7 @@ test_case!(values, {
 
     let actual = values(vec!["1, 'Glue'", "2, 'SQL'", "3, 'Rust'"])
         .offset(1)
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         column1 | column2
         I64     | Str;
@@ -64,8 +59,7 @@ test_case!(values, {
 
     let actual = values(vec!["1, 'Glue'", "2, 'SQL'", "3, 'Rust'"])
         .limit(2)
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         column1 | column2
         I64     | Str;
@@ -79,8 +73,7 @@ test_case!(values, {
         .select()
         .project("column1 AS id")
         .project("column2 AS name")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         id  | name
         I64 | Str;

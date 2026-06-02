@@ -16,8 +16,7 @@ test_case!(case_conversion, {
         .add_column("name TEXT DEFAULT UPPER('abc')")
         .add_column("opt_name TEXT DEFAULT LOWER('ABC')")
         .add_column("capped_name TEXT DEFAULT 'pascal'")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table - Item");
 
@@ -28,8 +27,7 @@ test_case!(case_conversion, {
             vec![num(2), text("Abcd"), null(), null()],
             vec![num(3), text("ABCD"), text("EfGi"), text("H/I JK")],
         ])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(3));
     assert_eq!(actual, expected, "insert - Item");
 
@@ -39,8 +37,7 @@ test_case!(case_conversion, {
         .filter(col("name").lower().eq("'abcd'"))
         .project("name")
         .project(f::lower("name"))
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         name                | r#"LOWER("name")"#
         Str                 | Str;
@@ -54,8 +51,7 @@ test_case!(case_conversion, {
         .select()
         .project(col("name").lower())
         .project(col("name").upper())
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         r#"LOWER("name")"#  | "UPPER(\"name\")"
         Str                 | Str;
@@ -69,8 +65,7 @@ test_case!(case_conversion, {
         .select()
         .project(col("opt_name").lower())
         .project(col("opt_name").upper())
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select_with_null!(
         r#"LOWER("opt_name")"#  | "UPPER(\"opt_name\")";
         Str("efgi".to_owned())    Str("EFGI".to_owned());
@@ -84,8 +79,7 @@ test_case!(case_conversion, {
         .select()
         .filter(col("capped_name").initcap().eq("'H/I Jk'"))
         .project("capped_name")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         capped_name
         Str;

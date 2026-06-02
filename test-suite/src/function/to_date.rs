@@ -89,26 +89,18 @@ test_case!(to_date, {
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, expected).await;
+        g.test(sql, expected);
     }
 
     let error_cases = [
-        g.run_err("SELECT TO_DATE('2015-09-05', '%Y-%m') AS date")
-            .await,
-        g.run_err("SELECT TO_TIME('23:56', '%H:%M:%S') AS time")
-            .await,
-        g.run_err("SELECT TO_TIMESTAMP('2015-05 23', '%Y-%d %H') AS timestamp")
-            .await,
-        g.run_err("SELECT TO_TIMESTAMP('2015-14-05 23:56:12','%Y-%m-%d %H:%M:%S') AS timestamp")
-            .await,
-        g.run_err("SELECT TO_TIMESTAMP('2015-14-05 23:56:12','%Y-%m-%d %H:%M:%S') AS timestamp")
-            .await,
-        g.run_err("SELECT TO_TIMESTAMP('2015-14-05 23:56:12','%Y-%m-%d %H:%M:%%S') AS timestamp;")
-            .await,
-        g.run_err("SELECT TO_TIMESTAMP('2015-09-05 23:56:04', '%Y-%m-%d %H:%M:%M') AS timestamp")
-            .await,
-        g.run_err("SELECT TO_TIMESTAMP('2015-09-05 23:56:04', '%Y-%m-%d %H:%M:%') AS timestamp")
-            .await,
+        g.run_err("SELECT TO_DATE('2015-09-05', '%Y-%m') AS date"),
+        g.run_err("SELECT TO_TIME('23:56', '%H:%M:%S') AS time"),
+        g.run_err("SELECT TO_TIMESTAMP('2015-05 23', '%Y-%d %H') AS timestamp"),
+        g.run_err("SELECT TO_TIMESTAMP('2015-14-05 23:56:12','%Y-%m-%d %H:%M:%S') AS timestamp"),
+        g.run_err("SELECT TO_TIMESTAMP('2015-14-05 23:56:12','%Y-%m-%d %H:%M:%S') AS timestamp"),
+        g.run_err("SELECT TO_TIMESTAMP('2015-14-05 23:56:12','%Y-%m-%d %H:%M:%%S') AS timestamp;"),
+        g.run_err("SELECT TO_TIMESTAMP('2015-09-05 23:56:04', '%Y-%m-%d %H:%M:%M') AS timestamp"),
+        g.run_err("SELECT TO_TIMESTAMP('2015-09-05 23:56:04', '%Y-%m-%d %H:%M:%') AS timestamp"),
     ];
 
     for error in &error_cases {

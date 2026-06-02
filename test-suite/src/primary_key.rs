@@ -17,13 +17,11 @@ test_case!(primary_key, {
             name TEXT
         );
     ",
-    )
-    .await;
+    );
     g.test(
         "INSERT INTO Allegro VALUES (1, 'hello'), (3, 'world');",
         Ok(Payload::Insert(2)),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT id, name FROM Allegro",
@@ -33,8 +31,7 @@ test_case!(primary_key, {
             1     "hello".to_owned();
             3     "world".to_owned()
         )),
-    )
-    .await;
+    );
     g.test(
         "SELECT id, name FROM Allegro WHERE id = 1",
         Ok(select!(
@@ -42,8 +39,7 @@ test_case!(primary_key, {
             I64 | Str;
             1     "hello".to_owned()
         )),
-    )
-    .await;
+    );
     g.test(
         "SELECT id, name FROM Allegro WHERE id < 2",
         Ok(select!(
@@ -51,8 +47,7 @@ test_case!(primary_key, {
             I64 | Str;
             1     "hello".to_owned()
         )),
-    )
-    .await;
+    );
     g.test(
         "
             SELECT a.id
@@ -61,8 +56,7 @@ test_case!(primary_key, {
             WHERE a.id = a2.id;
         ",
         Ok(select!(id I64; 1; 3)),
-    )
-    .await;
+    );
     g.test(
         "
             SELECT id FROM Allegro WHERE id IN (
@@ -70,11 +64,9 @@ test_case!(primary_key, {
             );
         ",
         Ok(select!(id I64; 1; 3)),
-    )
-    .await;
+    );
 
-    g.run("INSERT INTO Allegro VALUES (5, 'neon'), (2, 'foo'), (4, 'bar');")
-        .await;
+    g.run("INSERT INTO Allegro VALUES (5, 'neon'), (2, 'foo'), (4, 'bar');");
 
     g.test(
         "SELECT id, name FROM Allegro",
@@ -87,8 +79,7 @@ test_case!(primary_key, {
             4     "bar".to_owned();
             5     "neon".to_owned()
         )),
-    )
-    .await;
+    );
     g.test(
         "SELECT id, name FROM Allegro WHERE id % 2 = 0",
         Ok(select!(
@@ -97,8 +88,7 @@ test_case!(primary_key, {
             2     "foo".to_owned();
             4     "bar".to_owned()
         )),
-    )
-    .await;
+    );
     g.test(
         "SELECT id, name FROM Allegro WHERE id = 4",
         Ok(select!(
@@ -106,10 +96,9 @@ test_case!(primary_key, {
             I64 | Str;
             4     "bar".to_owned()
         )),
-    )
-    .await;
+    );
 
-    g.run("DELETE FROM Allegro WHERE id > 3").await;
+    g.run("DELETE FROM Allegro WHERE id > 3");
     g.test(
         "SELECT id, name FROM Allegro",
         Ok(select!(
@@ -119,37 +108,31 @@ test_case!(primary_key, {
             2     "foo".to_owned();
             3     "world".to_owned()
         )),
-    )
-    .await;
+    );
     g.run(
         "
         CREATE TABLE Strslice (
             name TEXT PRIMARY KEY
         );
         ",
-    )
-    .await;
-    g.run("INSERT INTO Strslice VALUES (SUBSTR(SUBSTR('foo', 1), 1));")
-        .await;
+    );
+    g.run("INSERT INTO Strslice VALUES (SUBSTR(SUBSTR('foo', 1), 1));");
 
     g.named_test(
         "PRIMARY KEY includes UNIQUE constraint",
         "INSERT INTO Allegro VALUES (1, 'another hello');",
         Err(ValidateError::DuplicateEntryOnPrimaryKeyField(Key::I64(1)).into()),
-    )
-    .await;
+    );
 
     g.named_test(
         "PRIMARY KEY includes NOT NULL constraint",
         "INSERT INTO Allegro VALUES (NULL, 'hello');",
         Err(ValueError::NullValueOnNotNullField.into()),
-    )
-    .await;
+    );
 
     g.named_test(
         "UPDATE is not allowed for PRIMARY KEY applied column",
         "UPDATE Allegro SET id = 100 WHERE id = 1",
         Err(UpdateError::UpdateOnPrimaryKeyNotSupported("id".to_owned()).into()),
-    )
-    .await;
+    );
 });

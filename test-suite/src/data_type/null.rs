@@ -7,8 +7,7 @@ test_case!(null, {
         "'NULL IS NULL' should return true",
         "SELECT NULL IS NULL as res;",
         Ok(select!(res; Bool; true)),
-    )
-    .await;
+    );
 
     // TODO: Add "|", "^", "&&" to testcase when it is implemented
     for binary_op in [
@@ -18,8 +17,7 @@ test_case!(null, {
             &format!("'NULL {binary_op} NULL' should return NULL"),
             &format!("SELECT NULL {binary_op} NULL as res;"),
             Ok(select_with_null!(res; Null)),
-        )
-        .await;
+        );
     }
 
     for unary_op in ["-", "+", "NOT"] {
@@ -27,7 +25,6 @@ test_case!(null, {
             &format!("'{unary_op} NULL' should return NULL"),
             &format!("SELECT {unary_op} NULL as res;"),
             Ok(select_with_null!(res; Null)),
-        )
-        .await;
+        );
     }
 });

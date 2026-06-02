@@ -11,8 +11,7 @@ test_case!(data_aggregation, {
         .add_column("id INT")
         .add_column("name TEXT")
         .add_column("age INT")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table");
 
@@ -26,8 +25,7 @@ test_case!(data_aggregation, {
             vec![num(4), text("Dave"), num(50)],
             vec![num(5), text("Eve"), num(50)],
         ])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(5));
     assert_eq!(actual, expected, "insert");
 
@@ -35,8 +33,7 @@ test_case!(data_aggregation, {
         .select()
         .group_by("age")
         .project("age, count(*)")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         age | r"count(*)";
         I64 | I64;
@@ -51,8 +48,7 @@ test_case!(data_aggregation, {
         .group_by("age")
         .having("count(*) > 1")
         .project("age, count(*)")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         age | r"count(*)";
         I64 | I64;
@@ -64,8 +60,7 @@ test_case!(data_aggregation, {
     let actual = table("User")
         .select()
         .project(col("age").count_distinct().alias_as("unique_ages"))
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         unique_ages
         I64;
@@ -76,8 +71,7 @@ test_case!(data_aggregation, {
     let actual = table("User")
         .select()
         .project(col("age").sum_distinct().alias_as("sum_distinct"))
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         sum_distinct
         I64;
@@ -88,8 +82,7 @@ test_case!(data_aggregation, {
     let actual = table("User")
         .select()
         .project(col("age").avg_distinct().alias_as("avg_distinct"))
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         avg_distinct
         F64;
@@ -100,8 +93,7 @@ test_case!(data_aggregation, {
     let actual = table("User")
         .select()
         .project(col("age").min_distinct().alias_as("min_distinct"))
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         min_distinct
         I64;
@@ -112,8 +104,7 @@ test_case!(data_aggregation, {
     let actual = table("User")
         .select()
         .project(col("age").max_distinct().alias_as("max_distinct"))
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         max_distinct
         I64;
@@ -124,8 +115,7 @@ test_case!(data_aggregation, {
     let actual = table("User")
         .select()
         .project(col("age").variance_distinct().alias_as("variance_distinct"))
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         variance_distinct
         F64;
@@ -136,8 +126,7 @@ test_case!(data_aggregation, {
     let actual = table("User")
         .select()
         .project(col("age").stdev_distinct().alias_as("stdev_distinct"))
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         stdev_distinct
         F64;

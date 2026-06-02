@@ -1528,7 +1528,6 @@ dependencies = [
 name = "gluesql-test-suite"
 version = "0.19.0"
 dependencies = [
- "async-trait",
  "bigdecimal",
  "chrono",
  "gluesql-core",
@@ -1566,12 +1565,9 @@ dependencies = [
 name = "gluesql_memory_storage"
 version = "0.19.0"
 dependencies = [
- "async-trait",
- "futures",
  "gluesql-core",
  "gluesql-test-suite",
  "serde",
- "tokio",
 ]
 
 [[package]]

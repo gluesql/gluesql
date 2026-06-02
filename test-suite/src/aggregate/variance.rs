@@ -12,8 +12,7 @@ test_case!(variance, {
         total INTEGER
     );
     ",
-    )
-    .await;
+    );
     g.run(
         "
     INSERT INTO Item (id, quantity, age, total) VALUES
@@ -25,8 +24,7 @@ test_case!(variance, {
         (6, 10,   11, 2),
         (7, 25,   90, 1);
     ",
-    )
-    .await;
+    );
 
     let test_cases = [
         (
@@ -60,6 +58,6 @@ test_case!(variance, {
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, Ok(expected)).await;
+        g.test(sql, Ok(expected));
     }
 });

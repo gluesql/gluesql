@@ -16,8 +16,7 @@ test_case!(nullif, {
         .add_column("id INTEGER ")
         .add_column("name TEXT")
         .add_column("nickname TEXT")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table - Foo");
 
@@ -29,8 +28,7 @@ test_case!(nullif, {
             vec![num(100), text("hello"), text("bye")],
             vec![num(200), text("world"), text("world")],
         ])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(2));
     assert_eq!(actual, expected, "insert into Foo");
 
@@ -39,8 +37,7 @@ test_case!(nullif, {
         .select()
         .project("id")
         .project(col("name").nullif(text("hello")))
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select_with_null!(
         id | "NULLIF(\"name\", 'hello')";
         I64(100)   Null;
@@ -53,8 +50,7 @@ test_case!(nullif, {
         .select()
         .project("id")
         .project(col("name").nullif(col("nickname")))
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select_with_null!(
         id | "NULLIF(\"name\", \"nickname\")";
         I64(100) Str("hello".to_owned());
@@ -70,8 +66,7 @@ test_case!(nullif, {
         vec![f::nullif(text("HELLO"), text("WORLD"))],
         vec![f::nullif(text("WORLD"), text("WORLD"))],
     ])
-    .execute(glue)
-    .await;
+    .execute(glue);
     let expected = Ok(select_with_null!(
         "column1" | Str;
         Str("HELLO".to_owned());

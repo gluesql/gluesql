@@ -18,8 +18,7 @@ test_case!(formatting, {
         .add_column("visit_date DATE")
         .add_column("visit_time TIME")
         .add_column("visit_timestamp TIMESTAMP")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table - Visitor");
 
@@ -42,8 +41,7 @@ test_case!(formatting, {
                 timestamp("2023-04-01 23:24:11"),
             ],
         ])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(2));
     assert_eq!(actual, expected, "insert - Visitor");
 
@@ -54,8 +52,7 @@ test_case!(formatting, {
         .project("visit_date")
         .project(col("visit_date").format(text("%Y-%m")))
         .project(f::format(col("visit_date"), text("%m")))
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         name                    | visit_date                                       | r#"FORMAT("visit_date", '%Y-%m')"#          | r#"FORMAT("visit_date", '%m')"#
         Str                     | Date                                             | Str                                        | Str;
@@ -71,8 +68,7 @@ test_case!(formatting, {
         .project("visit_time")
         .project(col("visit_time").format(text("%H:%M:%S")))
         .project(f::format(col("visit_time"), text("%M:%S")))
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         name                    | visit_time                                       | r#"FORMAT("visit_time", '%H:%M:%S')"#          | r#"FORMAT("visit_time", '%M:%S')"#
         Str                     | Time                                             | Str                                        | Str;
@@ -88,8 +84,7 @@ test_case!(formatting, {
         .project("visit_timestamp")
         .project(col("visit_timestamp").format(text("%Y-%m-%d %H:%M:%S")))
         .project(f::format(col("visit_timestamp"), text("%Y-%m-%d %H:%M:%S")))
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         name                    | visit_timestamp                                                                   | r#"FORMAT("visit_timestamp", '%Y-%m-%d %H:%M:%S')"#           | r#"FORMAT("visit_timestamp", '%Y-%m-%d %H:%M:%S')"#
         Str                     | Timestamp                                                                         | Str                                                           | Str;

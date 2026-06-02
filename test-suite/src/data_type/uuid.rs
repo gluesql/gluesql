@@ -28,12 +28,12 @@ test_case!(uuid, {
         ];
 
         for (sql, expected) in test_cases {
-            g.test(sql, expected).await;
+            g.test(sql, expected);
         }
 
         let glue = g.get_glue();
         let sql = format!("SELECT id FROM posts WHERE id = '{uuid}';");
-        let payload = glue.execute(sql).await.unwrap();
+        let payload = glue.execute(sql).unwrap();
 
         assert_eq!(payload, vec![select!( id Uuid; uuid.as_u128() )]);
     }
@@ -97,6 +97,6 @@ test_case!(uuid, {
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, expected).await;
+        g.test(sql, expected);
     }
 });

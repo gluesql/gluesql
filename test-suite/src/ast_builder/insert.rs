@@ -12,8 +12,7 @@ test_case!(insert, {
         .add_column("id INTEGER PRIMARY KEY")
         .add_column("name TEXT")
         .add_column("rate FLOAT DEFAULT 0.0")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table - Foo");
 
@@ -22,8 +21,7 @@ test_case!(insert, {
         .create_table()
         .add_column("id INTEGER UNIQUE NOT NULL")
         .add_column("name TEXT")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table - Bar");
 
@@ -31,8 +29,7 @@ test_case!(insert, {
     let actual = table("Foo")
         .insert()
         .values(vec!["1, 'Fruit', 0.1", "2, 'Meat', 0.8"])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(2));
     assert_eq!(actual, expected, "insert - basic");
 
@@ -41,8 +38,7 @@ test_case!(insert, {
         .insert()
         .columns("id, name")
         .values(vec![vec![num(3), text("Drink")]])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(1));
     assert_eq!(actual, expected, "insert - specifying columns");
 
@@ -50,13 +46,12 @@ test_case!(insert, {
     let actual = table("Bar")
         .insert()
         .as_select(table("Foo").select().project("id, name"))
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(3));
     assert_eq!(actual, expected, "insert - from source");
 
     // select from Foo
-    let actual = table("Foo").select().execute(glue).await;
+    let actual = table("Foo").select().execute(glue);
     let expected = Ok(select!(
         id  | name               | rate
         I64 | Str                | F64;
@@ -67,7 +62,7 @@ test_case!(insert, {
     assert_eq!(actual, expected, "select from Foo");
 
     // select from Bar
-    let actual = table("Bar").select().execute(glue).await;
+    let actual = table("Bar").select().execute(glue);
     let expected = Ok(select!(
         id  | name
         I64 | Str;

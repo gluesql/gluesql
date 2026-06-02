@@ -56,7 +56,7 @@ pub fn delete<T: GStore + GStoreMut>(
                 right: Box::new(ExprPlan::Value(value)),
             };
 
-            let columns = Arc::from(Vec::new());
+            let columns = Arc::from(fetch_columns(storage, referencing_table_name)?);
             let mut referencing_rows = fetch(storage, referencing_table_name, columns, Some(expr))?;
 
             let referencing_row_exists = referencing_rows.next().transpose()?.is_some();

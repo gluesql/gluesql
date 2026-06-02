@@ -12,8 +12,7 @@ test_case!(max, {
             total INTEGER
         );
     ",
-    )
-    .await;
+    );
     g.run(
         "
         INSERT INTO Item (id, quantity, age, total) VALUES
@@ -23,8 +22,7 @@ test_case!(max, {
             (4,  3,    3, 1),
             (5, 25, NULL, 1);
     ",
-    )
-    .await;
+    );
 
     let test_cases = [
         (
@@ -65,6 +63,6 @@ test_case!(max, {
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, Ok(expected)).await;
+        g.test(sql, Ok(expected));
     }
 });

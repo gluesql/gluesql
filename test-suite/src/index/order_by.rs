@@ -10,8 +10,7 @@ CREATE TABLE Test (
     num INTEGER NULL,
     name TEXT
 )",
-    )
-    .await;
+    );
     g.run(
         "
         INSERT INTO Test (id, num, name)
@@ -21,24 +20,20 @@ CREATE TABLE Test (
             (3, NULL, 'World'),
             (4, 7,    'Monday');
    ",
-    )
-    .await;
+    );
 
     g.test(
         "CREATE INDEX idx_name ON Test (name)",
         Ok(Payload::CreateIndex),
-    )
-    .await;
+    );
     g.test(
         "CREATE INDEX idx_id_num_asc ON Test (id + num ASC)",
         Ok(Payload::CreateIndex),
-    )
-    .await;
+    );
     g.test(
         "CREATE INDEX idx_num_desc ON Test (num DESC)",
         Ok(Payload::CreateIndex),
-    )
-    .await;
+    );
 
     macro_rules! s {
         ($v: literal) => {
@@ -56,8 +51,7 @@ CREATE TABLE Test (
             I64(3)   Null     s!("World")
         )),
         idx!(idx_name),
-    )
-    .await;
+    );
 
     g.test_idx(
         "SELECT * FROM Test ORDER BY id + num",
@@ -69,8 +63,7 @@ CREATE TABLE Test (
             I64(3)   Null     s!("World")
         )),
         idx!(idx_id_num_asc),
-    )
-    .await;
+    );
 
     g.test_idx(
         "SELECT * FROM Test ORDER BY id + num ASC",
@@ -82,8 +75,7 @@ CREATE TABLE Test (
             I64(3)   Null     s!("World")
         )),
         idx!(idx_id_num_asc, ASC),
-    )
-    .await;
+    );
 
     g.test_idx(
         "SELECT * FROM Test where id < 4 ORDER BY num DESC",
@@ -94,8 +86,7 @@ CREATE TABLE Test (
             I64(1)   I64(2)   s!("Hello")
         )),
         idx!(idx_num_desc, DESC),
-    )
-    .await;
+    );
 });
 
 test_case!(order_by_multi, {
@@ -107,8 +98,7 @@ CREATE TABLE Multi (
     id INTEGER,
     num INTEGER
 )",
-    )
-    .await;
+    );
 
     g.run(
         "
@@ -119,14 +109,12 @@ CREATE TABLE Multi (
             (5, 40), (5, 50), (5, 10), (5, 20), (5, 30),
             (1, 30), (1, 40), (1, 20), (1, 50), (1, 10);
     ",
-    )
-    .await;
+    );
 
     g.test(
         "CREATE INDEX idx_id_num ON Multi (id + num DESC)",
         Ok(Payload::CreateIndex),
-    )
-    .await;
+    );
 
     g.test_idx(
         "SELECT * FROM Multi ORDER BY id ASC, num ASC",
@@ -138,14 +126,12 @@ CREATE TABLE Multi (
             5 10; 5 20; 5 30; 5 40; 5 50
         )),
         idx!(),
-    )
-    .await;
+    );
 
     g.test(
         "CREATE INDEX idx_num ON Multi (num ASC)",
         Ok(Payload::CreateIndex),
-    )
-    .await;
+    );
 
     g.test_idx(
         "SELECT * FROM Multi ORDER BY id ASC, num ASC",
@@ -157,8 +143,7 @@ CREATE TABLE Multi (
             5 10; 5 20; 5 30; 5 40; 5 50
         )),
         idx!(idx_num, ASC),
-    )
-    .await;
+    );
 
     g.test_idx(
         "SELECT * FROM Multi ORDER BY num ASC, id ASC",
@@ -170,8 +155,7 @@ CREATE TABLE Multi (
             1 50; 2 50; 3 50; 4 50; 5 50
         )),
         idx!(),
-    )
-    .await;
+    );
 
     g.test_idx(
         "SELECT * FROM Multi ORDER BY id DESC, id + num DESC",
@@ -183,8 +167,7 @@ CREATE TABLE Multi (
             1 50; 1 40; 1 30; 1 20; 1 10
         )),
         idx!(idx_id_num, DESC),
-    )
-    .await;
+    );
 
     g.test_idx(
         "SELECT * FROM Multi ORDER BY id ASC, id + num DESC",
@@ -196,6 +179,5 @@ CREATE TABLE Multi (
             5 50; 5 40; 5 30; 5 20; 5 10
         )),
         idx!(idx_id_num, DESC),
-    )
-    .await;
+    );
 });
