@@ -9,7 +9,7 @@ mod hello_ast_builder {
         std::fs,
     };
 
-    pub async fn run() {
+    pub fn run() {
         /*
             Initiate a connection
         */
@@ -31,7 +31,6 @@ mod hello_ast_builder {
             .create_table()
             .add_column("name TEXT")
             .execute(&mut glue)
-            .await
             .expect("Execution failed");
 
         /*
@@ -41,7 +40,6 @@ mod hello_ast_builder {
             .insert()
             .values(vec!["'AST Builder'"])
             .execute(&mut glue)
-            .await
             .expect("Execution failed");
 
         /*
@@ -51,7 +49,6 @@ mod hello_ast_builder {
             .select()
             .project("name")
             .execute(&mut glue)
-            .await
             .expect("Failed to execute");
 
         /*
@@ -78,5 +75,5 @@ mod hello_ast_builder {
 
 fn main() {
     #[cfg(feature = "gluesql_sled_storage")]
-    futures::executor::block_on(hello_ast_builder::run());
+    hello_ast_builder::run();
 }
