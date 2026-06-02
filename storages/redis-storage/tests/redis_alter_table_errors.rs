@@ -22,19 +22,15 @@ fn get_config() -> (String, u16) {
     (url, port)
 }
 
-#[tokio::test]
-async fn add_column_non_vec_row_error() {
+#[test]
+fn add_column_non_vec_row_error() {
     let (url, port) = get_config();
     let storage = RedisStorage::new("redis_alter_table_non_vec", &url, port);
     let mut glue = Glue::new(storage);
 
-    glue.execute("DROP TABLE IF EXISTS dummy;").await.unwrap();
-    glue.execute("CREATE TABLE dummy (id INTEGER);")
-        .await
-        .unwrap();
-    glue.execute("INSERT INTO dummy (id) VALUES (1);")
-        .await
-        .unwrap();
+    glue.execute("DROP TABLE IF EXISTS dummy;").unwrap();
+    glue.execute("CREATE TABLE dummy (id INTEGER);").unwrap();
+    glue.execute("INSERT INTO dummy (id) VALUES (1);").unwrap();
 
     let key = format!(
         "{}#{}#{}",
@@ -60,7 +56,7 @@ async fn add_column_non_vec_row_error() {
         comment: None,
     };
 
-    let result = glue.storage.add_column("dummy", &column_def).await;
+    let result = glue.storage.add_column("dummy", &column_def);
     assert_eq!(
         result,
         Err(Error::StorageMsg(
@@ -69,19 +65,15 @@ async fn add_column_non_vec_row_error() {
     );
 }
 
-#[tokio::test]
-async fn add_column_deserialize_error() {
+#[test]
+fn add_column_deserialize_error() {
     let (url, port) = get_config();
     let storage = RedisStorage::new("redis_alter_table_bad_row", &url, port);
     let mut glue = Glue::new(storage);
 
-    glue.execute("DROP TABLE IF EXISTS dummy;").await.unwrap();
-    glue.execute("CREATE TABLE dummy (id INTEGER);")
-        .await
-        .unwrap();
-    glue.execute("INSERT INTO dummy (id) VALUES (1);")
-        .await
-        .unwrap();
+    glue.execute("DROP TABLE IF EXISTS dummy;").unwrap();
+    glue.execute("CREATE TABLE dummy (id INTEGER);").unwrap();
+    glue.execute("INSERT INTO dummy (id) VALUES (1);").unwrap();
 
     let key = format!(
         "{}#{}#{}",
@@ -104,7 +96,7 @@ async fn add_column_deserialize_error() {
         comment: None,
     };
 
-    let result = glue.storage.add_column("dummy", &column_def).await;
+    let result = glue.storage.add_column("dummy", &column_def);
     assert_eq!(
         result,
         Err(Error::StorageMsg(
@@ -113,18 +105,16 @@ async fn add_column_deserialize_error() {
     );
 }
 
-#[tokio::test]
-async fn drop_column_non_vec_row_error() {
+#[test]
+fn drop_column_non_vec_row_error() {
     let (url, port) = get_config();
     let storage = RedisStorage::new("redis_drop_column_non_vec", &url, port);
     let mut glue = Glue::new(storage);
 
-    glue.execute("DROP TABLE IF EXISTS dummy;").await.unwrap();
+    glue.execute("DROP TABLE IF EXISTS dummy;").unwrap();
     glue.execute("CREATE TABLE dummy (id INTEGER, foo INTEGER);")
-        .await
         .unwrap();
     glue.execute("INSERT INTO dummy (id, foo) VALUES (1, 10);")
-        .await
         .unwrap();
 
     let key = format!(
@@ -143,7 +133,7 @@ async fn drop_column_non_vec_row_error() {
         .query::<()>(&mut *glue.storage.conn.lock().unwrap())
         .unwrap();
 
-    let result = glue.storage.drop_column("dummy", "foo", false).await;
+    let result = glue.storage.drop_column("dummy", "foo", false);
     assert_eq!(
         result,
         Err(Error::StorageMsg(
@@ -152,18 +142,16 @@ async fn drop_column_non_vec_row_error() {
     );
 }
 
-#[tokio::test]
-async fn drop_column_deserialize_error() {
+#[test]
+fn drop_column_deserialize_error() {
     let (url, port) = get_config();
     let storage = RedisStorage::new("redis_drop_column_bad_row", &url, port);
     let mut glue = Glue::new(storage);
 
-    glue.execute("DROP TABLE IF EXISTS dummy;").await.unwrap();
+    glue.execute("DROP TABLE IF EXISTS dummy;").unwrap();
     glue.execute("CREATE TABLE dummy (id INTEGER, foo INTEGER);")
-        .await
         .unwrap();
     glue.execute("INSERT INTO dummy (id, foo) VALUES (1, 10);")
-        .await
         .unwrap();
 
     let key = format!(
@@ -178,7 +166,7 @@ async fn drop_column_deserialize_error() {
         .query::<()>(&mut *glue.storage.conn.lock().unwrap())
         .unwrap();
 
-    let result = glue.storage.drop_column("dummy", "foo", false).await;
+    let result = glue.storage.drop_column("dummy", "foo", false);
     assert_eq!(
         result,
         Err(Error::StorageMsg(
@@ -187,18 +175,16 @@ async fn drop_column_deserialize_error() {
     );
 }
 
-#[tokio::test]
-async fn drop_column_short_row_error() {
+#[test]
+fn drop_column_short_row_error() {
     let (url, port) = get_config();
     let storage = RedisStorage::new("redis_drop_column_short_row", &url, port);
     let mut glue = Glue::new(storage);
 
-    glue.execute("DROP TABLE IF EXISTS dummy;").await.unwrap();
+    glue.execute("DROP TABLE IF EXISTS dummy;").unwrap();
     glue.execute("CREATE TABLE dummy (id INTEGER, foo INTEGER);")
-        .await
         .unwrap();
     glue.execute("INSERT INTO dummy (id, foo) VALUES (1, 10);")
-        .await
         .unwrap();
 
     let key = glue
@@ -215,7 +201,7 @@ async fn drop_column_short_row_error() {
         .query::<()>(&mut *glue.storage.conn.lock().unwrap())
         .unwrap();
 
-    let result = glue.storage.drop_column("dummy", "foo", false).await;
+    let result = glue.storage.drop_column("dummy", "foo", false);
     assert_eq!(
         result,
         Err(Error::StorageMsg(
