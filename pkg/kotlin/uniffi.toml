@@ -1,0 +1,3 @@
+[bindings.kotlin]
+package_name = "org.gluesql.core"
+cdylib_name = "gluesql_kotlin"
