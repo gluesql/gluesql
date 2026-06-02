@@ -15,14 +15,10 @@ documentation.workspace = true
 gluesql-core.workspace = true
 gluesql_memory_storage.workspace = true
 
-async-trait = "0.1"
 serde = { version = "1", features = ["derive"] }
-tokio = { version = "1", features = ["sync"] }
-futures = "0.3"
 
 [dev-dependencies]
 test-suite.workspace = true
-tokio = { version = "1", features = ["rt", "macros"] }
 
 [lints]
 workspace = true
