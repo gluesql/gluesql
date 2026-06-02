@@ -23,7 +23,7 @@ use {
         result::Result,
         store::GStore,
     },
-    std::{borrow::Cow, collections::HashSet, sync::Arc},
+    std::{borrow::Cow, collections::HashSet, rc::Rc},
     utils::Vector,
 };
 
@@ -42,7 +42,7 @@ fn rows_with_labels(exprs_list: &[Vec<ExprPlan>]) -> Result<(Vec<Row>, Vec<Strin
     let labels = (1..=first_len)
         .map(|i| format!("column{i}"))
         .collect::<Vec<_>>();
-    let columns = Arc::from(labels.clone());
+    let columns = Rc::from(labels.clone());
 
     let mut column_types = vec![None; first_len];
     let mut rows = Vec::with_capacity(exprs_list.len());
@@ -69,7 +69,7 @@ fn rows_with_labels(exprs_list: &[Vec<ExprPlan>]) -> Result<(Vec<Row>, Vec<Strin
         }
 
         rows.push(Row {
-            columns: Arc::clone(&columns),
+            columns: Rc::clone(&columns),
             values,
         });
     }
@@ -105,7 +105,7 @@ fn sort_stateless(rows: Vec<Row>, order_by: &[OrderByExprPlan]) -> Result<Vec<Ro
 pub fn select_with_labels<'a, T>(
     storage: &'a T,
     query: &'a QueryPlan,
-    filter_context: Option<Arc<RowContext<'a>>>,
+    filter_context: Option<Rc<RowContext<'a>>>,
 ) -> Result<(Vec<String>, SelectIter<'a>)>
 where
     T: GStore,
@@ -137,16 +137,16 @@ where
         Ok(RowContext::new(alias, Cow::Owned(row), None))
     });
 
-    let join = Join::new(storage, joins, filter_context.as_ref().map(Arc::clone));
-    let filter = Arc::new(Filter::new(
+    let join = Join::new(storage, joins, filter_context.as_ref().map(Rc::clone));
+    let filter = Rc::new(Filter::new(
         storage,
         where_clause.as_ref(),
-        filter_context.as_ref().map(Arc::clone),
+        filter_context.as_ref().map(Rc::clone),
     ));
     let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
     let sort = Sort::new(
         storage,
-        filter_context.as_ref().map(Arc::clone),
+        filter_context.as_ref().map(Rc::clone),
         &query.order_by,
     );
 
@@ -157,7 +157,7 @@ where
             Err(error) => return Some(Err(error)),
         };
 
-        match filter.check(Arc::clone(&project_context)) {
+        match filter.check(Rc::clone(&project_context)) {
             Ok(true) => Some(Ok(project_context)),
             Ok(false) => None,
             Err(error) => Some(Err(error)),
@@ -174,12 +174,12 @@ where
     )?;
 
     let labels = fetch_labels(storage, relation, joins, projection)?;
-    let labels = Arc::from(labels);
-    let project = Arc::new(Project::new(storage, filter_context, projection));
-    let project_labels = Arc::clone(&labels);
+    let labels = Rc::from(labels);
+    let project = Rc::new(Project::new(storage, filter_context, projection));
+    let project_labels = Rc::clone(&labels);
     let rows = rows.map(move |aggregate_context| {
         let aggregate_context = aggregate_context?;
-        let project = Arc::clone(&project);
+        let project = Rc::clone(&project);
         let AggregateContext { aggregated, next } = aggregate_context;
 
         let row = project.apply(aggregated.as_ref(), &project_labels, next.as_ref())?;
@@ -204,7 +204,7 @@ where
 pub fn select<'a, T>(
     storage: &'a T,
     query: &'a QueryPlan,
-    filter_context: Option<Arc<RowContext<'a>>>,
+    filter_context: Option<Rc<RowContext<'a>>>,
 ) -> Result<SelectIter<'a>>
 where
     T: GStore,

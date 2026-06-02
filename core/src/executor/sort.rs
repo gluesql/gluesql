@@ -12,7 +12,7 @@ use {
     },
     bigdecimal::ToPrimitive,
     serde::Serialize,
-    std::{borrow::Cow, cmp::Ordering, fmt::Debug, sync::Arc},
+    std::{borrow::Cow, cmp::Ordering, fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
     utils::Vector,
 };
@@ -27,14 +27,14 @@ pub enum SortError {
 
 pub struct Sort<'a, T: GStore> {
     storage: &'a T,
-    context: Option<Arc<RowContext<'a>>>,
+    context: Option<Rc<RowContext<'a>>>,
     order_by: &'a [OrderByExprPlan],
 }
 
 impl<'a, T: GStore> Sort<'a, T> {
     pub fn new(
         storage: &'a T,
-        context: Option<Arc<RowContext<'a>>>,
+        context: Option<Rc<RowContext<'a>>>,
         order_by: &'a [OrderByExprPlan],
     ) -> Self {
         Self {
@@ -47,11 +47,7 @@ impl<'a, T: GStore> Sort<'a, T> {
     pub fn apply(
         &self,
         rows: impl Iterator<
-            Item = Result<(
-                Option<Arc<AggregateValues>>,
-                Option<Arc<RowContext<'a>>>,
-                Row,
-            )>,
+            Item = Result<(Option<Rc<AggregateValues>>, Option<Rc<RowContext<'a>>>, Row)>,
         > + 'a,
         table_alias: &'a str,
     ) -> Result<Box<dyn Iterator<Item = Result<Row>> + 'a>> {
@@ -103,23 +99,23 @@ impl<'a, T: GStore> Sort<'a, T> {
                 .collect::<Result<Vec<_>>>()?;
 
             let filter_context = match (&next, &self.context) {
-                (Some(next), Some(context)) => Some(Arc::new(RowContext::concat(
-                    Arc::clone(next),
-                    Arc::clone(context),
+                (Some(next), Some(context)) => Some(Rc::new(RowContext::concat(
+                    Rc::clone(next),
+                    Rc::clone(context),
                 ))),
-                (Some(next), None) => Some(Arc::clone(next)),
-                (None, Some(context)) => Some(Arc::clone(context)),
+                (Some(next), None) => Some(Rc::clone(next)),
+                (None, Some(context)) => Some(Rc::clone(context)),
                 (None, None) => None,
             };
 
             let context = RowContext::new(table_alias, Cow::Borrowed(&row), None);
-            let label_context = Arc::new(context);
+            let label_context = Rc::new(context);
             let filter_context = match filter_context {
-                Some(filter_context) => Some(Arc::new(RowContext::concat(
+                Some(filter_context) => Some(Rc::new(RowContext::concat(
                     filter_context,
-                    Arc::clone(&label_context),
+                    Rc::clone(&label_context),
                 ))),
-                None => Some(Arc::clone(&label_context)),
+                None => Some(Rc::clone(&label_context)),
             };
 
             let keys = order_by

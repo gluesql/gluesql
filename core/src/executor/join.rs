@@ -11,16 +11,16 @@ use {
         store::GStore,
     },
     itertools::Itertools,
-    std::{borrow::Cow, collections::HashMap, sync::Arc},
+    std::{borrow::Cow, collections::HashMap, rc::Rc},
 };
 
 pub struct Join<'a, T: GStore> {
     storage: &'a T,
     join_clauses: &'a [JoinPlan],
-    filter_context: Option<Arc<RowContext<'a>>>,
+    filter_context: Option<Rc<RowContext<'a>>>,
 }
 
-type JoinItem<'a> = Arc<RowContext<'a>>;
+type JoinItem<'a> = Rc<RowContext<'a>>;
 type Joined<'a> = Box<dyn Iterator<Item = Result<JoinItem<'a>>> + 'a>;
 type JoinInput<'a> = Box<dyn Iterator<Item = Result<RowContext<'a>>> + 'a>;
 
@@ -59,7 +59,7 @@ impl<'a, T: GStore> Join<'a, T> {
     pub fn new(
         storage: &'a T,
         join_clauses: &'a [JoinPlan],
-        filter_context: Option<Arc<RowContext<'a>>>,
+        filter_context: Option<Rc<RowContext<'a>>>,
     ) -> Self {
         Self {
             storage,
@@ -69,12 +69,12 @@ impl<'a, T: GStore> Join<'a, T> {
     }
 
     pub fn apply(self, rows: JoinInput<'a>) -> Result<Joined<'a>> {
-        let mut rows: Joined = Box::new(rows.map(|row| row.map(Arc::new)));
+        let mut rows: Joined = Box::new(rows.map(|row| row.map(Rc::new)));
 
         for join_clause in self.join_clauses {
             rows = join(
                 self.storage,
-                self.filter_context.as_ref().map(Arc::clone),
+                self.filter_context.as_ref().map(Rc::clone),
                 join_clause,
                 rows,
             )?;
@@ -86,7 +86,7 @@ impl<'a, T: GStore> Join<'a, T> {
 
 fn join<'a, T: GStore>(
     storage: &'a T,
-    filter_context: Option<Arc<RowContext<'a>>>,
+    filter_context: Option<Rc<RowContext<'a>>>,
     join_plan: &'a JoinPlan,
     left_rows: Joined<'a>,
 ) -> Result<Joined<'a>> {
@@ -111,7 +111,7 @@ fn join<'a, T: GStore>(
         }
     };
 
-    let columns: Arc<[String]> = Arc::from(fetch_relation_columns(storage, relation)?);
+    let columns: Rc<[String]> = Rc::from(fetch_relation_columns(storage, relation)?);
     let rows = left_rows.flat_map(move |project_context| {
         let project_context = match project_context {
             Ok(project_context) => project_context,
@@ -119,25 +119,25 @@ fn join<'a, T: GStore>(
         };
 
         let init_context = {
-            let columns = Arc::clone(&columns);
+            let columns = Rc::clone(&columns);
             let init_row = Row {
                 values: columns.iter().map(|_| Value::Null).collect(),
                 columns,
             };
 
-            Arc::new(RowContext::new(
+            Rc::new(RowContext::new(
                 table_alias,
                 Cow::Owned(init_row),
-                Some(Arc::clone(&project_context)),
+                Some(Rc::clone(&project_context)),
             ))
         };
 
         let row_filter_context = match filter_context.as_ref() {
-            Some(filter_context) => Arc::new(RowContext::concat(
-                Arc::clone(&project_context),
-                Arc::clone(filter_context),
+            Some(filter_context) => Rc::new(RowContext::concat(
+                Rc::clone(&project_context),
+                Rc::clone(filter_context),
             )),
-            None => Arc::clone(&project_context),
+            None => Rc::clone(&project_context),
         };
         let row_filter_context = Some(row_filter_context);
 
@@ -157,8 +157,8 @@ fn join<'a, T: GStore>(
                     match check_where_clause(
                         storage,
                         table_alias,
-                        row_filter_context.as_ref().map(Arc::clone),
-                        Some(Arc::clone(&project_context)),
+                        row_filter_context.as_ref().map(Rc::clone),
+                        Some(Rc::clone(&project_context)),
                         where_clause,
                         Cow::Owned(row),
                     ) {
@@ -187,8 +187,8 @@ fn join<'a, T: GStore>(
                                 move |row| match check_where_clause(
                                     storage,
                                     table_alias,
-                                    row_filter_context.as_ref().map(Arc::clone),
-                                    Some(Arc::clone(&project_context)),
+                                    row_filter_context.as_ref().map(Rc::clone),
+                                    Some(Rc::clone(&project_context)),
                                     where_clause,
                                     Cow::Owned(row),
                                 ) {
@@ -232,7 +232,7 @@ impl<'a> JoinExecutor<'a> {
     fn new<T: GStore>(
         storage: &'a T,
         relation: &TableFactorPlan,
-        filter_context: Option<&Arc<RowContext<'a>>>,
+        filter_context: Option<&Rc<RowContext<'a>>>,
         join_executor: &'a JoinExecutorPlan,
     ) -> Result<JoinExecutor<'a>> {
         let (key_expr, value_expr, where_clause) = match join_executor {
@@ -247,7 +247,7 @@ impl<'a> JoinExecutor<'a> {
         let mut rows = Vec::new();
         for row in fetch_relation_rows(storage, relation, filter_context)? {
             let row = row?;
-            let filter_context = Arc::new(RowContext::new(
+            let filter_context = Rc::new(RowContext::new(
                 relation.alias_name(),
                 Cow::Borrowed(&row),
                 filter_context.cloned(),
@@ -280,20 +280,20 @@ impl<'a> JoinExecutor<'a> {
 fn check_where_clause<'a, T: GStore>(
     storage: &'a T,
     table_alias: &'a str,
-    filter_context: Option<Arc<RowContext<'a>>>,
-    project_context: Option<Arc<RowContext<'a>>>,
+    filter_context: Option<Rc<RowContext<'a>>>,
+    project_context: Option<Rc<RowContext<'a>>>,
     where_clause: Option<&'a ExprPlan>,
     row: Cow<'_, Row>,
-) -> Result<Option<Arc<RowContext<'a>>>> {
+) -> Result<Option<Rc<RowContext<'a>>>> {
     let filter_context = RowContext::new(table_alias, Cow::Borrowed(&row), filter_context);
-    let filter_context = Some(Arc::new(filter_context));
+    let filter_context = Some(Rc::new(filter_context));
 
     match where_clause {
         Some(expr) => check_expr(storage, filter_context.as_ref(), None, expr)?,
         None => true,
     }
     .then(|| RowContext::new(table_alias, Cow::Owned(row.into_owned()), project_context))
-    .map(Arc::new)
+    .map(Rc::new)
     .map(Ok)
     .transpose()
 }

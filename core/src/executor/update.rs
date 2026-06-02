@@ -8,7 +8,7 @@ use {
         store::GStore,
     },
     serde::Serialize,
-    std::{borrow::Cow, fmt::Debug, sync::Arc},
+    std::{borrow::Cow, fmt::Debug, rc::Rc},
     thiserror::Error,
 };
 
@@ -74,7 +74,7 @@ impl<'a, T: GStore> Update<'a, T> {
 
     pub fn apply(&self, row: Row, foreign_keys: &[ForeignKey]) -> Result<Row> {
         let context = RowContext::new(self.table_name, Cow::Borrowed(&row), None);
-        let context = Some(Arc::new(context));
+        let context = Some(Rc::new(context));
 
         let mut assignments = Vec::with_capacity(self.fields.len());
         for assignment in self.fields {

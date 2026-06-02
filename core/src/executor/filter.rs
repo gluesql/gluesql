@@ -4,20 +4,20 @@ use {
         evaluate::evaluate,
     },
     crate::{plan::ExprPlan, result::Result, store::GStore},
-    std::sync::Arc,
+    std::rc::Rc,
 };
 
 pub struct Filter<'a, T: GStore> {
     storage: &'a T,
     where_clause: Option<&'a ExprPlan>,
-    context: Option<Arc<RowContext<'a>>>,
+    context: Option<Rc<RowContext<'a>>>,
 }
 
 impl<'a, T: GStore> Filter<'a, T> {
     pub fn new(
         storage: &'a T,
         where_clause: Option<&'a ExprPlan>,
-        context: Option<Arc<RowContext<'a>>>,
+        context: Option<Rc<RowContext<'a>>>,
     ) -> Self {
         Self {
             storage,
@@ -26,12 +26,12 @@ impl<'a, T: GStore> Filter<'a, T> {
         }
     }
 
-    pub fn check(&self, project_context: Arc<RowContext<'a>>) -> Result<bool> {
+    pub fn check(&self, project_context: Rc<RowContext<'a>>) -> Result<bool> {
         match self.where_clause {
             Some(expr) => {
                 let context = match &self.context {
                     Some(context) => {
-                        Arc::new(RowContext::concat(project_context, Arc::clone(context)))
+                        Rc::new(RowContext::concat(project_context, Rc::clone(context)))
                     }
                     None => project_context,
                 };
@@ -44,8 +44,8 @@ impl<'a, T: GStore> Filter<'a, T> {
 
 pub fn check_expr<'a, T: GStore>(
     storage: &'a T,
-    context: Option<&Arc<RowContext<'a>>>,
-    aggregated: Option<&Arc<AggregateValues>>,
+    context: Option<&Rc<RowContext<'a>>>,
+    aggregated: Option<&Rc<AggregateValues>>,
     expr: &'a ExprPlan,
 ) -> Result<bool> {
     evaluate(storage, context, aggregated, expr).map(|evaluated| {

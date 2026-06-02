@@ -9,7 +9,7 @@ use {
             expr::evaluable::check_expr as check_evaluable,
         },
     },
-    std::{collections::HashMap, hash::BuildHasher, sync::Arc},
+    std::{collections::HashMap, hash::BuildHasher, rc::Rc},
     utils::Vector,
 };
 
@@ -34,7 +34,7 @@ struct JoinPlanner<'a, S> {
 }
 
 impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
-    fn query(&self, outer_context: Option<Arc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
+    fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
         let QueryPlan {
             body,
             order_by,
@@ -65,7 +65,7 @@ impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
 }
 
 impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
-    fn select(&self, outer_context: Option<Arc<Context<'a>>>, select: SelectPlan) -> SelectPlan {
+    fn select(&self, outer_context: Option<Rc<Context<'a>>>, select: SelectPlan) -> SelectPlan {
         let SelectPlan {
             distinct,
             projection,
@@ -92,9 +92,9 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
 
     fn table_with_joins(
         &self,
-        outer_context: Option<Arc<Context<'a>>>,
+        outer_context: Option<Rc<Context<'a>>>,
         table_with_joins: TableWithJoinsPlan,
-    ) -> (Option<Arc<Context<'a>>>, TableWithJoinsPlan) {
+    ) -> (Option<Rc<Context<'a>>>, TableWithJoinsPlan) {
         let TableWithJoinsPlan { relation, joins } = table_with_joins;
         let init_context = self.update_context(None, &relation);
         let (context, joins) =
@@ -114,10 +114,10 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
 
     fn join(
         &self,
-        outer_context: Option<&Arc<Context<'a>>>,
-        inner_context: Option<Arc<Context<'a>>>,
+        outer_context: Option<&Rc<Context<'a>>>,
+        inner_context: Option<Rc<Context<'a>>>,
         join: JoinPlan,
-    ) -> (Option<Arc<Context<'a>>>, JoinPlan) {
+    ) -> (Option<Rc<Context<'a>>>, JoinPlan) {
         enum JoinOp {
             Inner,
             LeftOuter,
@@ -181,9 +181,9 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
 
     fn plan_join_condition(
         &self,
-        outer_context: Option<&Arc<Context<'a>>>,
-        inner_context: Option<&Arc<Context<'a>>>,
-        current_context: Option<&Arc<Context<'a>>>,
+        outer_context: Option<&Rc<Context<'a>>>,
+        inner_context: Option<&Rc<Context<'a>>>,
+        current_context: Option<&Rc<Context<'a>>>,
         expr: ExprPlan,
     ) -> (JoinExecutorPlan, JoinConstraintPlan) {
         let key_context = {
@@ -235,10 +235,10 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
         let (where_clause, remainder) = merge_conjuncts(remaining).map_or((None, None), |expr| {
             find_evaluable(key_context.clone(), expr)
         });
-        let key_expr = self.subquery_expr(key_context.as_ref().map(Arc::clone), key_expr);
-        let value_expr = self.subquery_expr(value_context.as_ref().map(Arc::clone), value_expr);
+        let key_expr = self.subquery_expr(key_context.as_ref().map(Rc::clone), key_expr);
+        let value_expr = self.subquery_expr(value_context.as_ref().map(Rc::clone), value_expr);
         let where_clause =
-            where_clause.map(|expr| self.subquery_expr(key_context.as_ref().map(Arc::clone), expr));
+            where_clause.map(|expr| self.subquery_expr(key_context.as_ref().map(Rc::clone), expr));
         let join_constraint = remainder
             .map(|expr| self.subquery_expr(value_context, expr))
             .map_or(JoinConstraintPlan::None, JoinConstraintPlan::On);
@@ -289,8 +289,8 @@ fn merge_conjuncts(exprs: Vec<ExprPlan>) -> Option<ExprPlan> {
 }
 
 fn match_hash_join_candidate(
-    key_context: Option<&Arc<Context<'_>>>,
-    value_context: Option<&Arc<Context<'_>>>,
+    key_context: Option<&Rc<Context<'_>>>,
+    value_context: Option<&Rc<Context<'_>>>,
     expr: ExprPlan,
 ) -> HashJoinCandidateMatch {
     let ExprPlan::BinaryOp { left, op, right } = expr else {
@@ -301,8 +301,8 @@ fn match_hash_join_candidate(
         return HashJoinCandidateMatch::Unmatched(ExprPlan::BinaryOp { left, op, right });
     }
 
-    let left_as_key = check_evaluable(key_context.map(Arc::clone), &left);
-    let right_as_value = check_evaluable(value_context.map(Arc::clone), &right);
+    let left_as_key = check_evaluable(key_context.map(Rc::clone), &left);
+    let right_as_value = check_evaluable(value_context.map(Rc::clone), &right);
 
     if left_as_key && right_as_value {
         return HashJoinCandidateMatch::Matched(HashJoinCandidate {
@@ -311,8 +311,8 @@ fn match_hash_join_candidate(
         });
     }
 
-    let right_as_key = check_evaluable(key_context.map(Arc::clone), &right);
-    let left_as_value = left_as_key || check_evaluable(value_context.map(Arc::clone), &left);
+    let right_as_key = check_evaluable(key_context.map(Rc::clone), &right);
+    let left_as_value = left_as_key || check_evaluable(value_context.map(Rc::clone), &left);
 
     if right_as_key && left_as_value {
         return HashJoinCandidateMatch::Matched(HashJoinCandidate {
@@ -325,7 +325,7 @@ fn match_hash_join_candidate(
 }
 
 fn find_evaluable(
-    context: Option<Arc<Context<'_>>>,
+    context: Option<Rc<Context<'_>>>,
     expr: ExprPlan,
 ) -> (EvaluableExpr, RemainderExpr) {
     match expr {
@@ -334,7 +334,7 @@ fn find_evaluable(
             op: BinaryOperator::And,
             right,
         } => {
-            let (evaluable, remainder) = find_evaluable(context.as_ref().map(Arc::clone), *left);
+            let (evaluable, remainder) = find_evaluable(context.as_ref().map(Rc::clone), *left);
             let (evaluable2, remainder2) = find_evaluable(context, *right);
 
             let merge = |expr, expr2| match (expr, expr2) {

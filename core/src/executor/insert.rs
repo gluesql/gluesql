@@ -12,7 +12,7 @@ use {
         store::{GStore, GStoreMut},
     },
     serde::Serialize,
-    std::{collections::BTreeMap, fmt::Debug, sync::Arc},
+    std::{collections::BTreeMap, fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
 };
 
@@ -105,30 +105,30 @@ fn fetch_vec_rows<T: GStore>(
     source: &QueryPlan,
     foreign_keys: Vec<ForeignKey>,
 ) -> Result<RowsData> {
-    let labels = Arc::from(
+    let labels = Rc::from(
         column_defs
             .iter()
             .map(|column_def| column_def.name.clone())
             .collect::<Vec<_>>(),
     );
-    let column_defs = Arc::from(column_defs);
+    let column_defs = Rc::from(column_defs);
     let column_validation = ColumnValidation::All(&column_defs);
 
     let rows_iter: Box<dyn Iterator<Item = Result<Vec<Value>>> + '_> = match &source.body {
         SetExprPlan::Values(ValuesPlan(values_list)) => {
             let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref())?;
-            let column_defaults: Arc<[Option<ExprPlan>]> = Arc::from(
+            let column_defaults: Rc<[Option<ExprPlan>]> = Rc::from(
                 column_defs
                     .iter()
                     .map(|column_def| column_def.default.clone().map(plan_scalar_expr))
                     .collect::<Vec<_>>(),
             );
-            let column_defs = Arc::clone(&column_defs);
-            let labels = Arc::clone(&labels);
+            let column_defs = Rc::clone(&column_defs);
+            let labels = Rc::clone(&labels);
             let rows = values_list.iter().map(move |values| {
-                let column_defs = Arc::clone(&column_defs);
-                let column_defaults = Arc::clone(&column_defaults);
-                let labels = Arc::clone(&labels);
+                let column_defs = Rc::clone(&column_defs);
+                let column_defaults = Rc::clone(&column_defaults);
+                let labels = Rc::clone(&labels);
 
                 Ok(Row {
                     columns: labels,
@@ -196,7 +196,7 @@ fn fetch_vec_rows<T: GStore>(
 
 fn validate_foreign_key<T: GStore>(
     storage: &T,
-    column_defs: &Arc<[ColumnDef]>,
+    column_defs: &Rc<[ColumnDef]>,
     foreign_keys: Vec<ForeignKey>,
     rows: &[Vec<Value>],
 ) -> Result<()> {
@@ -246,15 +246,15 @@ fn validate_foreign_key<T: GStore>(
 }
 
 fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &QueryPlan) -> Result<Vec<Vec<Value>>> {
-    let doc_column: Arc<[String]> = Arc::from(vec![SCHEMALESS_DOC_COLUMN.to_owned()]);
+    let doc_column: Rc<[String]> = Rc::from(vec![SCHEMALESS_DOC_COLUMN.to_owned()]);
 
     let rows_iter: Box<dyn Iterator<Item = Result<Vec<Value>>> + '_> = match &source.body {
         SetExprPlan::Values(ValuesPlan(values_list)) => {
             let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref())?;
             let rows = values_list.iter().map({
-                let doc_column = Arc::clone(&doc_column);
+                let doc_column = Rc::clone(&doc_column);
                 move |values| {
-                    let doc_column = Arc::clone(&doc_column);
+                    let doc_column = Rc::clone(&doc_column);
 
                     if values.len() > 1 {
                         return Err(InsertError::OnlySingleValueAcceptedForSchemalessRow(

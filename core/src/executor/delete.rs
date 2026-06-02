@@ -10,7 +10,7 @@ use {
         store::{GStore, GStoreMut},
     },
     serde::Serialize,
-    std::sync::Arc,
+    std::rc::Rc,
     thiserror::Error as ThisError,
 };
 
@@ -28,7 +28,7 @@ pub fn delete<T: GStore + GStoreMut>(
     table_name: &str,
     selection: Option<&ExprPlan>,
 ) -> Result<Payload> {
-    let columns = Arc::from(fetch_columns(storage, table_name)?);
+    let columns = Rc::from(fetch_columns(storage, table_name)?);
     let referencings = storage.fetch_referencings(table_name)?;
     let mut keys = Vec::new();
     for item in fetch(storage, table_name, columns, selection)? {
@@ -56,7 +56,7 @@ pub fn delete<T: GStore + GStoreMut>(
                 right: Box::new(ExprPlan::Value(value)),
             };
 
-            let columns = Arc::from(fetch_columns(storage, referencing_table_name)?);
+            let columns = Rc::from(fetch_columns(storage, referencing_table_name)?);
             let mut referencing_rows = fetch(storage, referencing_table_name, columns, Some(expr))?;
 
             let referencing_row_exists = referencing_rows.next().transpose()?.is_some();

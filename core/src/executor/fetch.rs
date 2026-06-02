@@ -12,7 +12,7 @@ use {
         store::GStore,
     },
     serde::Serialize,
-    std::{borrow::Cow, collections::BTreeMap, fmt::Debug, iter, sync::Arc},
+    std::{borrow::Cow, collections::BTreeMap, fmt::Debug, iter, rc::Rc},
     thiserror::Error as ThisError,
 };
 
@@ -40,7 +40,7 @@ pub enum FetchError {
 pub fn fetch<'a, T: GStore>(
     storage: &'a T,
     table_name: &'a str,
-    columns: Arc<[String]>,
+    columns: Rc<[String]>,
     where_clause: Option<&'a ExprPlan>,
 ) -> Result<KeyedRows<'a>> {
     let rows = storage.scan_data(table_name)?.filter_map(move |row| {
@@ -49,14 +49,14 @@ pub fn fetch<'a, T: GStore>(
             Err(error) => return Some(Err(error)),
         };
         let row = Row {
-            columns: Arc::clone(&columns),
+            columns: Rc::clone(&columns),
             values,
         };
 
         match where_clause {
             Some(expr) => {
                 let context = RowContext::new(table_name, Cow::Borrowed(&row), None);
-                let context = Arc::new(context);
+                let context = Rc::new(context);
                 match check_expr(storage, Some(&context), None, expr) {
                     Ok(true) => Some(Ok((key, row))),
                     Ok(false) => None,
@@ -73,17 +73,17 @@ pub fn fetch<'a, T: GStore>(
 pub fn fetch_relation_rows<'a, T: GStore>(
     storage: &'a T,
     table_factor: &'a TableFactorPlan,
-    filter_context: Option<&Arc<RowContext<'a>>>,
+    filter_context: Option<&Rc<RowContext<'a>>>,
 ) -> Result<RelationRows<'a>> {
-    let columns = Arc::from(fetch_relation_columns(storage, table_factor)?);
+    let columns = Rc::from(fetch_relation_columns(storage, table_factor)?);
 
     match table_factor {
         TableFactorPlan::Derived { subquery, .. } => {
-            let filter_context = filter_context.map(Arc::clone);
+            let filter_context = filter_context.map(Rc::clone);
             let rows = select(storage, subquery, filter_context)?.map(move |row| {
                 let row = row?;
                 Ok(Row {
-                    columns: Arc::clone(&columns),
+                    columns: Rc::clone(&columns),
                     values: row.values,
                 })
             });
@@ -111,7 +111,7 @@ pub fn fetch_relation_rows<'a, T: GStore>(
                         .map(move |row| {
                             let (_, values) = row?;
                             Ok(Row {
-                                columns: Arc::clone(&columns),
+                                columns: Rc::clone(&columns),
                                 values,
                             })
                         });
@@ -138,7 +138,7 @@ pub fn fetch_relation_rows<'a, T: GStore>(
 
                     match storage.fetch_data(name, &key)? {
                         Some(values) => Box::new(iter::once(Ok(Row {
-                            columns: Arc::clone(&columns),
+                            columns: Rc::clone(&columns),
                             values,
                         })))
                             as Box<dyn Iterator<Item = Result<Row>> + 'a>,
@@ -151,7 +151,7 @@ pub fn fetch_relation_rows<'a, T: GStore>(
                     let rows = storage.scan_data(name)?.map(move |row| {
                         let (_, values) = row?;
                         Ok(Row {
-                            columns: Arc::clone(&columns),
+                            columns: Rc::clone(&columns),
                             values,
                         })
                     });
@@ -169,10 +169,10 @@ pub fn fetch_relation_rows<'a, T: GStore>(
                 n => return Err(FetchError::SeriesSizeWrong(n).into()),
             };
 
-            let columns = Arc::from(vec!["N".to_owned()]);
+            let columns = Rc::from(vec!["N".to_owned()]);
             let rows = (1..=size).map(move |v| {
                 Ok(Row {
-                    columns: Arc::clone(&columns),
+                    columns: Rc::clone(&columns),
                     values: vec![Value::I64(v)],
                 })
             });
@@ -223,7 +223,7 @@ pub fn fetch_relation_rows<'a, T: GStore>(
                 Dictionary::GlueTables => {
                     let schemas = storage.fetch_all_schemas()?;
                     let rows = schemas.into_iter().map(move |schema| Row {
-                        columns: Arc::clone(&columns),
+                        columns: Rc::clone(&columns),
                         values: vec![
                             Value::Str(schema.table_name),
                             schema.comment.map_or(Value::Null, Value::Str),
@@ -235,7 +235,7 @@ pub fn fetch_relation_rows<'a, T: GStore>(
                 Dictionary::GlueTableColumns => {
                     let schemas = storage.fetch_all_schemas()?;
                     let rows = schemas.into_iter().flat_map(move |schema| {
-                        let columns = Arc::clone(&columns);
+                        let columns = Rc::clone(&columns);
                         let table_name = schema.table_name;
 
                         schema
@@ -259,7 +259,7 @@ pub fn fetch_relation_rows<'a, T: GStore>(
                                 ];
 
                                 Row {
-                                    columns: Arc::clone(&columns),
+                                    columns: Rc::clone(&columns),
                                     values,
                                 }
                             })
@@ -289,7 +289,7 @@ pub fn fetch_relation_rows<'a, T: GStore>(
                                 ];
 
                                 let row = Row {
-                                    columns: Arc::clone(&columns),
+                                    columns: Rc::clone(&columns),
                                     values,
                                 };
 
@@ -298,7 +298,7 @@ pub fn fetch_relation_rows<'a, T: GStore>(
                             None => Vec::new(),
                         };
 
-                        let columns = Arc::clone(&columns);
+                        let columns = Rc::clone(&columns);
                         let non_clustered = schema.indexes.into_iter().map(move |index| {
                             let values = vec![
                                 Value::Str(schema.table_name.clone()),
@@ -309,7 +309,7 @@ pub fn fetch_relation_rows<'a, T: GStore>(
                             ];
 
                             Row {
-                                columns: Arc::clone(&columns),
+                                columns: Rc::clone(&columns),
                                 values,
                             }
                         });

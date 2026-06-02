@@ -9,19 +9,19 @@ use {
         result::Result,
         store::GStore,
     },
-    std::sync::Arc,
+    std::rc::Rc,
 };
 
 pub struct Project<'a, T: GStore> {
     storage: &'a T,
-    context: Option<Arc<RowContext<'a>>>,
+    context: Option<Rc<RowContext<'a>>>,
     projection: &'a ProjectionPlan,
 }
 
 impl<'a, T: GStore> Project<'a, T> {
     pub fn new(
         storage: &'a T,
-        context: Option<Arc<RowContext<'a>>>,
+        context: Option<Rc<RowContext<'a>>>,
         projection: &'a ProjectionPlan,
     ) -> Self {
         Self {
@@ -33,17 +33,17 @@ impl<'a, T: GStore> Project<'a, T> {
 
     pub fn apply(
         &self,
-        aggregated: Option<&Arc<AggregateValues>>,
-        labels: &Arc<[String]>,
-        context: Option<&Arc<RowContext<'a>>>,
+        aggregated: Option<&Rc<AggregateValues>>,
+        labels: &Rc<[String]>,
+        context: Option<&Rc<RowContext<'a>>>,
     ) -> Result<Row> {
         let filter_context = match (&context, &self.context) {
-            (Some(context), Some(filter_context)) => Some(Arc::new(RowContext::concat(
-                Arc::clone(context),
-                Arc::clone(filter_context),
+            (Some(context), Some(filter_context)) => Some(Rc::new(RowContext::concat(
+                Rc::clone(context),
+                Rc::clone(filter_context),
             ))),
-            (Some(context), None) => Some(Arc::clone(context)),
-            (None, Some(filter_context)) => Some(Arc::clone(filter_context)),
+            (Some(context), None) => Some(Rc::clone(context)),
+            (None, Some(filter_context)) => Some(Rc::clone(filter_context)),
             (None, None) => None,
         };
 
@@ -75,7 +75,7 @@ impl<'a, T: GStore> Project<'a, T> {
                 }
 
                 let values = entries.into_iter().map(|(_, value)| value).collect();
-                let columns = Arc::clone(labels);
+                let columns = Rc::clone(labels);
 
                 Ok(Row { columns, values })
             }
@@ -86,7 +86,7 @@ impl<'a, T: GStore> Project<'a, T> {
                     .unwrap_or(Value::Null);
 
                 Ok(Row {
-                    columns: Arc::clone(labels),
+                    columns: Rc::clone(labels),
                     values: vec![value],
                 })
             }

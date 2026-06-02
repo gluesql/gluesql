@@ -26,7 +26,7 @@ use {
         collections::{BTreeMap, HashMap},
         env::var,
         fmt::Debug,
-        sync::Arc,
+        rc::Rc,
     },
     thiserror::Error as ThisError,
 };
@@ -200,7 +200,7 @@ fn execute_inner<T: GStore + GStoreMut>(
                 .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
 
             let all_columns = column_defs.as_deref().map_or_else(
-                || Arc::from(vec![SCHEMALESS_DOC_COLUMN.to_owned()]),
+                || Rc::from(vec![SCHEMALESS_DOC_COLUMN.to_owned()]),
                 |columns| columns.iter().map(|col_def| col_def.name.clone()).collect(),
             );
             let columns_to_update: Vec<String> = assignments
@@ -210,7 +210,7 @@ fn execute_inner<T: GStore + GStoreMut>(
 
             let update = Update::new(storage, table_name, assignments, column_defs.as_deref())?;
 
-            let foreign_keys = Arc::new(foreign_keys);
+            let foreign_keys = Rc::new(foreign_keys);
 
             let rows = fetch(storage, table_name, all_columns, selection.as_ref())?
                 .map(|item| {

@@ -17,15 +17,15 @@ use {
         store::GStore,
     },
     chrono::prelude::Utc,
-    std::{borrow::Cow, ops::ControlFlow, sync::Arc},
+    std::{borrow::Cow, ops::ControlFlow, rc::Rc},
 };
 
 pub use {error::EvaluateError, evaluated::Evaluated};
 
 pub fn evaluate<'a, 'b, T>(
     storage: &'a T,
-    context: Option<&Arc<RowContext<'b>>>,
-    aggregated: Option<&Arc<AggregateValues>>,
+    context: Option<&Rc<RowContext<'b>>>,
+    aggregated: Option<&Rc<AggregateValues>>,
     expr: &'a ExprPlan,
 ) -> Result<Evaluated<'a>>
 where
@@ -39,7 +39,7 @@ pub fn evaluate_stateless<'a, 'b: 'a>(
     context: Option<RowContext<'b>>,
     expr: &'a ExprPlan,
 ) -> Result<Evaluated<'a>> {
-    let context = context.map(Arc::new);
+    let context = context.map(Rc::new);
     let storage: Option<&MockStorage> = None;
 
     evaluate_inner(storage, context.as_ref(), None, expr)
@@ -47,8 +47,8 @@ pub fn evaluate_stateless<'a, 'b: 'a>(
 
 fn evaluate_inner<'a, 'b, T>(
     storage: Option<&'a T>,
-    context: Option<&Arc<RowContext<'b>>>,
-    aggregated: Option<&Arc<AggregateValues>>,
+    context: Option<&Rc<RowContext<'b>>>,
+    aggregated: Option<&Rc<AggregateValues>>,
     expr: &'a ExprPlan,
 ) -> Result<Evaluated<'a>>
 where
@@ -310,8 +310,8 @@ where
 
 fn evaluate_function<'a, 'b: 'a, T: GStore>(
     storage: Option<&'a T>,
-    context: Option<&Arc<RowContext<'b>>>,
-    aggregated: Option<&Arc<AggregateValues>>,
+    context: Option<&Rc<RowContext<'b>>>,
+    aggregated: Option<&Rc<AggregateValues>>,
     func: &'a FunctionPlan,
 ) -> Result<Evaluated<'a>> {
     use function as f;
@@ -377,7 +377,7 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
                 values,
             });
             let context = RowContext::new(name, row, None);
-            let context = Some(Arc::new(context));
+            let context = Some(Rc::new(context));
 
             let body = plan_scalar_expr(body.clone());
             let evaluated = evaluate_inner(storage, context.as_ref(), None, &body)?;
@@ -740,7 +740,7 @@ mod tests {
             result::Error,
             translate::translate,
         },
-        std::sync::Arc,
+        std::rc::Rc,
     };
 
     #[test]
@@ -788,7 +788,7 @@ mod tests {
 
         let expr = ExprPlan::Aggregate(Box::new(aggregate.clone()));
         let storage = MockStorage::default();
-        let aggregated = Arc::new(AggregateValues::new(Vec::new()));
+        let aggregated = Rc::new(AggregateValues::new(Vec::new()));
 
         let result = evaluate(&storage, None, Some(&aggregated), &expr);
 

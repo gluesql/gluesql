@@ -1,11 +1,11 @@
 use {
     crate::{data::Value, executor::RowContext},
-    std::sync::Arc,
+    std::rc::Rc,
 };
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Row {
-    pub columns: Arc<[String]>,
+    pub columns: Rc<[String]>,
     pub values: Vec<Value>,
 }
 
