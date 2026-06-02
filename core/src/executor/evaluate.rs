@@ -359,7 +359,7 @@ async fn evaluate_function<'a, 'b: 'a, T: GStore>(
                 .ok_or(EvaluateError::UnsupportedCustomFunction)?
                 .fetch_function(name)
                 .await?
-                .ok_or_else(|| EvaluateError::UnsupportedFunction(name.to_string()))?;
+                .ok_or_else(|| EvaluateError::UnsupportedFunction(name.clone()))?;
 
             let min = args.iter().filter(|arg| arg.default.is_none()).count();
             let max = args.len();
