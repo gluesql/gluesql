@@ -1,7 +1,5 @@
 use {
     super::{SledStorage, Snapshot, State, err_into, key, lock},
-    async_trait::async_trait,
-    futures::stream::iter,
     gluesql_core::{
         data::{Key, Schema, Value},
         error::{Error, Result},
@@ -14,9 +12,8 @@ impl SledStorage {
     const SCHEMA_PREFIX: &'static str = "schema/";
 }
 
-#[async_trait]
 impl Store for SledStorage {
-    async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
+    fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         let (txid, created_at) = match self.state {
             State::Transaction {
                 txid, created_at, ..
@@ -38,7 +35,7 @@ impl Store for SledStorage {
             .collect::<Result<Vec<_>>>()
     }
 
-    async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
+    fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         let (txid, created_at, temp) = match self.state {
             State::Transaction {
                 txid, created_at, ..
@@ -65,7 +62,7 @@ impl Store for SledStorage {
         Ok(schema)
     }
 
-    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Vec<Value>>> {
+    fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Vec<Value>>> {
         let (txid, created_at) = match self.state {
             State::Transaction {
                 txid, created_at, ..
@@ -93,7 +90,7 @@ impl Store for SledStorage {
         Ok(row)
     }
 
-    async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
+    fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
         let (txid, created_at) = match self.state {
             State::Transaction {
                 txid, created_at, ..
@@ -123,6 +120,6 @@ impl Store for SledStorage {
             })
             .filter_map(Result::transpose);
 
-        Ok(Box::pin(iter(result_set)))
+        Ok(Box::new(result_set))
     }
 }

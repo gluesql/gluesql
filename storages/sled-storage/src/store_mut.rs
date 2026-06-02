@@ -7,19 +7,16 @@ use {
         transaction::TxPayload,
         tx_err_into,
     },
-    async_io::block_on,
-    async_trait::async_trait,
     gluesql_core::{
         data::{Key, Schema, Value},
-        error::{Error, IndexError, Result},
+        error::{IndexError, Result},
         store::StoreMut,
     },
-    sled::transaction::{ConflictableTransactionError, ConflictableTransactionResult},
+    sled::transaction::ConflictableTransactionError,
 };
 
-#[async_trait]
 impl StoreMut for SledStorage {
-    async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
+    fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
 
@@ -62,13 +59,13 @@ impl StoreMut for SledStorage {
                 .transaction(move |tree| lock::release(tree, lock_txid))
                 .map_err(tx_err_into)?;
 
-            self.insert_schema(schema).await?;
+            self.insert_schema(schema)?;
         }
 
         Ok(())
     }
 
-    async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
+    fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let prefix = format!("data/{table_name}/");
         let items = self
             .tree
@@ -110,32 +107,27 @@ impl StoreMut for SledStorage {
 
             let index_sync = IndexSync::from_schema(tree, txid, &schema);
 
-            // delete data
-            block_on(async {
-                for (row_key, row_snapshot) in &items {
-                    let row_snapshot: Snapshot<Vec<Value>> = bincode::deserialize(row_snapshot)
-                        .map_err(err_into)
-                        .map_err(ConflictableTransactionError::Abort)?;
+            for (row_key, row_snapshot) in &items {
+                let row_snapshot: Snapshot<Vec<Value>> = bincode::deserialize(row_snapshot)
+                    .map_err(err_into)
+                    .map_err(ConflictableTransactionError::Abort)?;
 
-                    let (row_snapshot, deleted_row) = row_snapshot.delete(txid);
-                    let Some(deleted_row) = deleted_row else {
-                        continue;
-                    };
+                let (row_snapshot, deleted_row) = row_snapshot.delete(txid);
+                let Some(deleted_row) = deleted_row else {
+                    continue;
+                };
 
-                    let row_snapshot = bincode::serialize(&row_snapshot)
-                        .map_err(err_into)
-                        .map_err(ConflictableTransactionError::Abort)?;
+                let row_snapshot = bincode::serialize(&row_snapshot)
+                    .map_err(err_into)
+                    .map_err(ConflictableTransactionError::Abort)?;
 
-                    let temp_row_key = key::temp_data(txid, row_key);
+                let temp_row_key = key::temp_data(txid, row_key);
 
-                    tree.insert(row_key, row_snapshot)?;
-                    tree.insert(temp_row_key, row_key)?;
+                tree.insert(row_key, row_snapshot)?;
+                tree.insert(temp_row_key, row_key)?;
 
-                    index_sync.delete(row_key, &deleted_row).await?;
-                }
-
-                Ok(()) as ConflictableTransactionResult<(), Error>
-            })?;
+                index_sync.delete(row_key, &deleted_row)?;
+            }
 
             Ok(TxPayload::Success)
         });
@@ -146,13 +138,13 @@ impl StoreMut for SledStorage {
                 .transaction(move |tree| lock::release(tree, lock_txid))
                 .map_err(tx_err_into)?;
 
-            self.delete_schema(table_name).await?;
+            self.delete_schema(table_name)?;
         }
 
         Ok(())
     }
 
-    async fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
+    fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
         let id_offset = self.id_offset;
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
@@ -168,30 +160,26 @@ impl StoreMut for SledStorage {
 
             let index_sync = IndexSync::new(tree, txid, table_name)?;
 
-            block_on(async {
-                for row in tx_rows {
-                    let id = id_offset + tree.generate_id()?;
-                    let id = id.to_be_bytes();
-                    let key = key::data(table_name, id.to_vec());
+            for row in tx_rows {
+                let id = id_offset + tree.generate_id()?;
+                let id = id.to_be_bytes();
+                let key = key::data(table_name, id.to_vec());
 
-                    index_sync.insert(&key, row).await?;
+                index_sync.insert(&key, row)?;
 
-                    let snapshot = Snapshot::new(txid, row.clone());
-                    let snapshot = bincode::serialize(&snapshot)
-                        .map_err(err_into)
-                        .map_err(ConflictableTransactionError::Abort)?;
+                let snapshot = Snapshot::new(txid, row.clone());
+                let snapshot = bincode::serialize(&snapshot)
+                    .map_err(err_into)
+                    .map_err(ConflictableTransactionError::Abort)?;
 
-                    tree.insert(&key, snapshot)?;
+                tree.insert(&key, snapshot)?;
 
-                    if !autocommit {
-                        let temp_key = key::temp_data(txid, &key);
+                if !autocommit {
+                    let temp_key = key::temp_data(txid, &key);
 
-                        tree.insert(temp_key, key)?;
-                    }
+                    tree.insert(temp_key, key)?;
                 }
-
-                Ok(()) as ConflictableTransactionResult<(), Error>
-            })?;
+            }
 
             Ok(TxPayload::Success)
         });
@@ -202,13 +190,13 @@ impl StoreMut for SledStorage {
                 .transaction(move |tree| lock::release(tree, lock_txid))
                 .map_err(tx_err_into)?;
 
-            self.append_data(table_name, rows).await?;
+            self.append_data(table_name, rows)?;
         }
 
         Ok(())
     }
 
-    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
+    fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
         let tx_rows = &rows;
@@ -223,46 +211,43 @@ impl StoreMut for SledStorage {
 
             let index_sync = IndexSync::new(tree, txid, table_name)?;
 
-            block_on(async {
-                for (key, new_row) in tx_rows {
-                    let key = key
-                        .to_cmp_be_bytes()
-                        .map_err(ConflictableTransactionError::Abort)
-                        .map(|key| key::data(table_name, key))?;
+            for (key, new_row) in tx_rows {
+                let key = key
+                    .to_cmp_be_bytes()
+                    .map_err(ConflictableTransactionError::Abort)
+                    .map(|key| key::data(table_name, key))?;
 
-                    let snapshot = if let Some(snapshot) = tree.get(&key)? {
-                        let snapshot: Snapshot<Vec<Value>> = bincode::deserialize(&snapshot)
-                            .map_err(err_into)
-                            .map_err(ConflictableTransactionError::Abort)?;
-
-                        let (snapshot, old_row) = snapshot.update(txid, new_row.clone());
-                        let Some(old_row) = old_row else {
-                            continue;
-                        };
-
-                        index_sync.update(&key, &old_row, new_row).await?;
-
-                        snapshot
-                    } else {
-                        index_sync.insert(&key, new_row).await?;
-
-                        Snapshot::new(txid, new_row.clone())
-                    };
-
-                    let snapshot = bincode::serialize(&snapshot)
+                let snapshot = if let Some(snapshot) = tree.get(&key)? {
+                    let snapshot: Snapshot<Vec<Value>> = bincode::deserialize(&snapshot)
                         .map_err(err_into)
                         .map_err(ConflictableTransactionError::Abort)?;
 
-                    tree.insert(&key, snapshot)?;
+                    let (snapshot, old_row) = snapshot.update(txid, new_row.clone());
+                    let Some(old_row) = old_row else {
+                        continue;
+                    };
 
-                    if !autocommit {
-                        let temp_key = key::temp_data(txid, &key);
+                    index_sync.update(&key, &old_row, new_row)?;
 
-                        tree.insert(temp_key, key)?;
-                    }
+                    snapshot
+                } else {
+                    index_sync.insert(&key, new_row)?;
+
+                    Snapshot::new(txid, new_row.clone())
+                };
+
+                let snapshot = bincode::serialize(&snapshot)
+                    .map_err(err_into)
+                    .map_err(ConflictableTransactionError::Abort)?;
+
+                tree.insert(&key, snapshot)?;
+
+                if !autocommit {
+                    let temp_key = key::temp_data(txid, &key);
+
+                    tree.insert(temp_key, key)?;
                 }
-                Ok(()) as ConflictableTransactionResult<(), Error>
-            })?;
+            }
 
             Ok(TxPayload::Success)
         });
@@ -273,13 +258,13 @@ impl StoreMut for SledStorage {
                 .transaction(move |tree| lock::release(tree, lock_txid))
                 .map_err(tx_err_into)?;
 
-            self.insert_data(table_name, rows).await?;
+            self.insert_data(table_name, rows)?;
         }
 
         Ok(())
     }
 
-    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
+    fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
         let tx_keys = &keys;
@@ -294,42 +279,38 @@ impl StoreMut for SledStorage {
 
             let index_sync = IndexSync::new(tree, txid, table_name)?;
 
-            block_on(async {
-                for key in tx_keys {
-                    let key = key
-                        .to_cmp_be_bytes()
-                        .map_err(ConflictableTransactionError::Abort)
-                        .map(|key| key::data(table_name, key))?;
+            for key in tx_keys {
+                let key = key
+                    .to_cmp_be_bytes()
+                    .map_err(ConflictableTransactionError::Abort)
+                    .map(|key| key::data(table_name, key))?;
 
-                    let snapshot = tree
-                        .get(&key)?
-                        .ok_or_else(|| IndexError::ConflictOnEmptyIndexValueDelete.into())
-                        .map_err(ConflictableTransactionError::Abort)?;
-                    let snapshot: Snapshot<Vec<Value>> = bincode::deserialize(&snapshot)
-                        .map_err(err_into)
-                        .map_err(ConflictableTransactionError::Abort)?;
+                let snapshot = tree
+                    .get(&key)?
+                    .ok_or_else(|| IndexError::ConflictOnEmptyIndexValueDelete.into())
+                    .map_err(ConflictableTransactionError::Abort)?;
+                let snapshot: Snapshot<Vec<Value>> = bincode::deserialize(&snapshot)
+                    .map_err(err_into)
+                    .map_err(ConflictableTransactionError::Abort)?;
 
-                    let (snapshot, row) = snapshot.delete(txid);
-                    let Some(row) = row else {
-                        continue;
-                    };
+                let (snapshot, row) = snapshot.delete(txid);
+                let Some(row) = row else {
+                    continue;
+                };
 
-                    bincode::serialize(&snapshot)
-                        .map_err(err_into)
-                        .map_err(ConflictableTransactionError::Abort)
-                        .map(|snapshot| tree.insert(&key, snapshot))??;
+                bincode::serialize(&snapshot)
+                    .map_err(err_into)
+                    .map_err(ConflictableTransactionError::Abort)
+                    .map(|snapshot| tree.insert(&key, snapshot))??;
 
-                    index_sync.delete(&key, &row).await?;
+                index_sync.delete(&key, &row)?;
 
-                    if !autocommit {
-                        let temp_key = key::temp_data(txid, &key);
+                if !autocommit {
+                    let temp_key = key::temp_data(txid, &key);
 
-                        tree.insert(temp_key, key)?;
-                    }
+                    tree.insert(temp_key, key)?;
                 }
-
-                Ok(()) as ConflictableTransactionResult<(), Error>
-            })?;
+            }
 
             Ok(TxPayload::Success)
         });
@@ -340,7 +321,7 @@ impl StoreMut for SledStorage {
                 .transaction(move |tree| lock::release(tree, lock_txid))
                 .map_err(tx_err_into)?;
 
-            self.delete_data(table_name, keys).await?;
+            self.delete_data(table_name, keys)?;
         }
 
         Ok(())

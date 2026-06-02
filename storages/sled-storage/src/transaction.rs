@@ -4,7 +4,6 @@ use {
         lock::{self, Lock},
         tx_err_into,
     },
-    async_trait::async_trait,
     gluesql_core::{
         data::{Schema, Value},
         error::{Error, Result},
@@ -26,9 +25,8 @@ pub enum TxPayload {
     RollbackAndRetry(u64),
 }
 
-#[async_trait]
 impl Transaction for SledStorage {
-    async fn begin(&mut self, autocommit: bool) -> Result<bool> {
+    fn begin(&mut self, autocommit: bool) -> Result<bool> {
         match (&self.state, autocommit) {
             (State::Transaction { .. }, false) => Err(Error::StorageMsg(
                 "nested transaction is not supported".to_owned(),
@@ -48,7 +46,7 @@ impl Transaction for SledStorage {
         }
     }
 
-    async fn rollback(&mut self) -> Result<()> {
+    fn rollback(&mut self) -> Result<()> {
         let txid = match self.state {
             State::Transaction { txid, .. } => txid,
             State::Idle => {
@@ -87,7 +85,7 @@ impl Transaction for SledStorage {
         Ok(())
     }
 
-    async fn commit(&mut self) -> Result<()> {
+    fn commit(&mut self) -> Result<()> {
         let (txid, created_at) = match self.state {
             State::Transaction {
                 txid, created_at, ..

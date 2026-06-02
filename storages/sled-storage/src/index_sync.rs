@@ -102,19 +102,19 @@ impl<'a> IndexSync<'a> {
         })
     }
 
-    pub(super) async fn insert(
+    pub(super) fn insert(
         &self,
         data_key: &IVec,
         row: &[Value],
     ) -> ConflictableTransactionResult<(), Error> {
         for index in &self.indexes {
-            self.insert_index(index, data_key, row).await?;
+            self.insert_index(index, data_key, row)?;
         }
 
         Ok(())
     }
 
-    pub(super) async fn insert_index(
+    pub(super) fn insert_index(
         &self,
         index: &PlannedIndex,
         data_key: &IVec,
@@ -131,15 +131,14 @@ impl<'a> IndexSync<'a> {
             index_expr,
             self.columns.as_deref(),
             row,
-        )
-        .await?;
+        )?;
 
         self.insert_index_data(index_key, data_key)?;
 
         Ok(())
     }
 
-    pub(super) async fn update(
+    pub(super) fn update(
         &self,
         data_key: &IVec,
         old_row: &[Value],
@@ -157,8 +156,7 @@ impl<'a> IndexSync<'a> {
                 index_expr,
                 self.columns.as_deref(),
                 old_row,
-            )
-            .await?;
+            )?;
 
             let new_index_key = &evaluate_index_key(
                 self.table_name,
@@ -166,8 +164,7 @@ impl<'a> IndexSync<'a> {
                 index_expr,
                 self.columns.as_deref(),
                 new_row,
-            )
-            .await?;
+            )?;
 
             self.delete_index_data(old_index_key, data_key)?;
             self.insert_index_data(new_index_key, data_key)?;
@@ -176,19 +173,19 @@ impl<'a> IndexSync<'a> {
         Ok(())
     }
 
-    pub(super) async fn delete(
+    pub(super) fn delete(
         &self,
         data_key: &IVec,
         row: &[Value],
     ) -> ConflictableTransactionResult<(), Error> {
         for index in &self.indexes {
-            self.delete_index(index, data_key, row).await?;
+            self.delete_index(index, data_key, row)?;
         }
 
         Ok(())
     }
 
-    pub(super) async fn delete_index(
+    pub(super) fn delete_index(
         &self,
         index: &PlannedIndex,
         data_key: &IVec,
@@ -205,8 +202,7 @@ impl<'a> IndexSync<'a> {
             index_expr,
             self.columns.as_deref(),
             row,
-        )
-        .await?;
+        )?;
 
         self.delete_index_data(index_key, data_key)?;
 
@@ -281,7 +277,7 @@ impl<'a> IndexSync<'a> {
     }
 }
 
-async fn evaluate_index_key(
+fn evaluate_index_key(
     table_name: &str,
     index_name: &str,
     index_expr: &ExprPlan,
@@ -292,9 +288,8 @@ async fn evaluate_index_key(
         columns: columns.unwrap_or(&[]),
         values: row,
     });
-    let evaluated = evaluate_stateless(context, index_expr)
-        .await
-        .map_err(ConflictableTransactionError::Abort)?;
+    let evaluated =
+        evaluate_stateless(context, index_expr).map_err(ConflictableTransactionError::Abort)?;
     let value: Value = evaluated
         .try_into()
         .map_err(ConflictableTransactionError::Abort)?;
