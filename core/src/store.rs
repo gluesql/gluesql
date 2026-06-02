@@ -32,10 +32,10 @@ use crate::{
     result::{Error, Result},
 };
 
-pub type RowIter<'a> = Box<dyn Iterator<Item = Result<(Key, Vec<Value>)>> + Send + 'a>;
+pub type RowIter<'a> = Box<dyn Iterator<Item = Result<(Key, Vec<Value>)>> + 'a>;
 
 /// By implementing `Store` trait, you can run `SELECT` query.
-pub trait Store: Send + Sync {
+pub trait Store {
     fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>>;
 
     fn fetch_all_schemas(&self) -> Result<Vec<Schema>>;
@@ -71,7 +71,7 @@ pub trait Store: Send + Sync {
 
 /// By implementing `StoreMut` trait,
 /// you can run `INSERT`, `CREATE TABLE`, `DELETE`, `UPDATE` and `DROP TABLE` queries.
-pub trait StoreMut: Send + Sync {
+pub trait StoreMut {
     fn insert_schema(&mut self, _schema: &Schema) -> Result<()> {
         let msg = "[Storage] StoreMut::insert_schema is not supported".to_owned();
 

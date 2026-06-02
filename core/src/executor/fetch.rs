@@ -16,8 +16,8 @@ use {
     thiserror::Error as ThisError,
 };
 
-pub type KeyedRows<'a> = Box<dyn Iterator<Item = Result<(Key, Row)>> + Send + 'a>;
-pub type RelationRows<'a> = Box<dyn Iterator<Item = Result<Row>> + Send + 'a>;
+pub type KeyedRows<'a> = Box<dyn Iterator<Item = Result<(Key, Row)>> + 'a>;
+pub type RelationRows<'a> = Box<dyn Iterator<Item = Result<Row>> + 'a>;
 
 #[derive(ThisError, Serialize, Debug, PartialEq, Eq)]
 pub enum FetchError {
@@ -115,7 +115,7 @@ pub fn fetch_relation_rows<'a, T: GStore>(
                                 values,
                             })
                         });
-                    Box::new(rows) as Box<dyn Iterator<Item = Result<Row>> + Send + 'a>
+                    Box::new(rows) as Box<dyn Iterator<Item = Result<Row>> + 'a>
                 }
                 Some(IndexItemPlan::PrimaryKey(expr)) => {
                     let schema = storage.fetch_schema(name)?.ok_or(FetchError::Unreachable)?;
@@ -141,9 +141,10 @@ pub fn fetch_relation_rows<'a, T: GStore>(
                             columns: Arc::clone(&columns),
                             values,
                         })))
-                            as Box<dyn Iterator<Item = Result<Row>> + Send + 'a>,
-                        None => Box::new(iter::empty())
-                            as Box<dyn Iterator<Item = Result<Row>> + Send + 'a>,
+                            as Box<dyn Iterator<Item = Result<Row>> + 'a>,
+                        None => {
+                            Box::new(iter::empty()) as Box<dyn Iterator<Item = Result<Row>> + 'a>
+                        }
                     }
                 }
                 _ => {
@@ -154,7 +155,7 @@ pub fn fetch_relation_rows<'a, T: GStore>(
                             values,
                         })
                     });
-                    Box::new(rows) as Box<dyn Iterator<Item = Result<Row>> + Send + 'a>
+                    Box::new(rows) as Box<dyn Iterator<Item = Result<Row>> + 'a>
                 }
             };
 
@@ -217,7 +218,7 @@ pub fn fetch_relation_rows<'a, T: GStore>(
                         })
                     });
 
-                    Box::new(rows.map(Ok)) as Box<dyn Iterator<Item = Result<Row>> + Send + 'a>
+                    Box::new(rows.map(Ok)) as Box<dyn Iterator<Item = Result<Row>> + 'a>
                 }
                 Dictionary::GlueTables => {
                     let schemas = storage.fetch_all_schemas()?;

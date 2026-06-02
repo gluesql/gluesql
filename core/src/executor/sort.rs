@@ -52,10 +52,9 @@ impl<'a, T: GStore> Sort<'a, T> {
                 Option<Arc<RowContext<'a>>>,
                 Row,
             )>,
-        > + Send
-        + 'a,
+        > + 'a,
         table_alias: &'a str,
-    ) -> Result<Box<dyn Iterator<Item = Result<Row>> + Send + 'a>> {
+    ) -> Result<Box<dyn Iterator<Item = Result<Row>> + 'a>> {
         if self.order_by.is_empty() {
             return Ok(Box::new(rows.map(|row| row.map(|(.., row)| row))));
         }

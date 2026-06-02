@@ -114,7 +114,7 @@ fn fetch_vec_rows<T: GStore>(
     let column_defs = Arc::from(column_defs);
     let column_validation = ColumnValidation::All(&column_defs);
 
-    let rows_iter: Box<dyn Iterator<Item = Result<Vec<Value>>> + Send + '_> = match &source.body {
+    let rows_iter: Box<dyn Iterator<Item = Result<Vec<Value>>> + '_> = match &source.body {
         SetExprPlan::Values(ValuesPlan(values_list)) => {
             let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref())?;
             let column_defaults: Arc<[Option<ExprPlan>]> = Arc::from(
@@ -138,7 +138,7 @@ fn fetch_vec_rows<T: GStore>(
             let rows = limit.apply(rows);
             let rows = rows.map(|row| Ok::<_, Error>(row?.into_values()));
 
-            Box::new(rows) as Box<dyn Iterator<Item = Result<Vec<Value>>> + Send + '_>
+            Box::new(rows) as Box<dyn Iterator<Item = Result<Vec<Value>>> + '_>
         }
         SetExprPlan::Select(_) => {
             let rows = select(storage, source, None)?.map(|row| {
@@ -161,7 +161,7 @@ fn fetch_vec_rows<T: GStore>(
                 Ok(values)
             });
 
-            Box::new(rows) as Box<dyn Iterator<Item = Result<Vec<Value>>> + Send + '_>
+            Box::new(rows) as Box<dyn Iterator<Item = Result<Vec<Value>>> + '_>
         }
     };
     let rows = rows_iter.collect::<Result<Vec<Vec<Value>>>>()?;
@@ -248,7 +248,7 @@ fn validate_foreign_key<T: GStore>(
 fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &QueryPlan) -> Result<Vec<Vec<Value>>> {
     let doc_column: Arc<[String]> = Arc::from(vec![SCHEMALESS_DOC_COLUMN.to_owned()]);
 
-    let rows_iter: Box<dyn Iterator<Item = Result<Vec<Value>>> + Send + '_> = match &source.body {
+    let rows_iter: Box<dyn Iterator<Item = Result<Vec<Value>>> + '_> = match &source.body {
         SetExprPlan::Values(ValuesPlan(values_list)) => {
             let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref())?;
             let rows = values_list.iter().map({
@@ -279,7 +279,7 @@ fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &QueryPlan) -> Result<V
             let rows = limit.apply(rows);
             let rows = rows.map(|row| row.map(Row::into_values));
 
-            Box::new(rows) as Box<dyn Iterator<Item = Result<Vec<Value>>> + Send + '_>
+            Box::new(rows) as Box<dyn Iterator<Item = Result<Vec<Value>>> + '_>
         }
         SetExprPlan::Select(_) => {
             let rows = select(storage, source, None)?.map(|row| {
@@ -303,7 +303,7 @@ fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &QueryPlan) -> Result<V
                 Ok(vec![Value::Map(map)])
             });
 
-            Box::new(rows) as Box<dyn Iterator<Item = Result<Vec<Value>>> + Send + '_>
+            Box::new(rows) as Box<dyn Iterator<Item = Result<Vec<Value>>> + '_>
         }
     };
     let rows = rows_iter.collect::<Result<Vec<Vec<Value>>>>()?;

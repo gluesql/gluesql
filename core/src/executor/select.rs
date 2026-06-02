@@ -27,7 +27,7 @@ use {
     utils::Vector,
 };
 
-pub type SelectIter<'a> = Box<dyn Iterator<Item = Result<Row>> + Send + 'a>;
+pub type SelectIter<'a> = Box<dyn Iterator<Item = Result<Row>> + 'a>;
 
 fn apply_distinct(rows: Vec<Row>) -> Vec<Row> {
     let mut seen = HashSet::new();

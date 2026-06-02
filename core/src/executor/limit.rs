@@ -31,10 +31,10 @@ impl Limit {
         Ok(Self { limit, offset })
     }
 
-    pub fn apply<'a, T: Iterator<Item = Result<Row>> + Send + 'a>(
+    pub fn apply<'a, T: Iterator<Item = Result<Row>> + 'a>(
         &self,
         rows: T,
-    ) -> Box<dyn Iterator<Item = Result<Row>> + Send + 'a> {
+    ) -> Box<dyn Iterator<Item = Result<Row>> + 'a> {
         match (self.offset, self.limit) {
             (Some(offset), Some(limit)) => Box::new(rows.skip(offset).take(limit)),
             (Some(offset), None) => Box::new(rows.skip(offset)),

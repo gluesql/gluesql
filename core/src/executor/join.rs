@@ -21,8 +21,8 @@ pub struct Join<'a, T: GStore> {
 }
 
 type JoinItem<'a> = Arc<RowContext<'a>>;
-type Joined<'a> = Box<dyn Iterator<Item = Result<JoinItem<'a>>> + Send + 'a>;
-type JoinInput<'a> = Box<dyn Iterator<Item = Result<RowContext<'a>>> + Send + 'a>;
+type Joined<'a> = Box<dyn Iterator<Item = Result<JoinItem<'a>>> + 'a>;
+type JoinInput<'a> = Box<dyn Iterator<Item = Result<RowContext<'a>>> + 'a>;
 
 struct LeftOuter<'a> {
     rows: Joined<'a>,

@@ -31,7 +31,7 @@ mod store_mut;
 mod transaction;
 mod value;
 
-type RowIter = Box<dyn Iterator<Item = Result<(Key, Vec<Value>)>> + Send>;
+type RowIter = Box<dyn Iterator<Item = Result<(Key, Vec<Value>)>>>;
 
 #[derive(Debug, Clone)]
 pub struct ParquetStorage {

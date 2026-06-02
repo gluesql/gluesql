@@ -16,7 +16,7 @@ use {
     std::sync::Arc,
 };
 
-pub type AggregateIter<'a> = Box<dyn Iterator<Item = Result<AggregateContext<'a>>> + Send + 'a>;
+pub type AggregateIter<'a> = Box<dyn Iterator<Item = Result<AggregateContext<'a>>> + 'a>;
 
 pub fn apply<'a, T: GStore>(
     storage: &'a T,
@@ -24,7 +24,7 @@ pub fn apply<'a, T: GStore>(
     group_by: &'a [ExprPlan],
     having: Option<&'a ExprPlan>,
     filter_context: Option<&Arc<RowContext<'a>>>,
-    rows: Box<dyn Iterator<Item = Result<Arc<RowContext<'a>>>> + Send + 'a>,
+    rows: Box<dyn Iterator<Item = Result<Arc<RowContext<'a>>>> + 'a>,
 ) -> Result<AggregateIter<'a>> {
     let aggregate_slots = aggregate_slots.unwrap_or(&[]);
     let needs_aggregate = !group_by.is_empty() || !aggregate_slots.is_empty();
