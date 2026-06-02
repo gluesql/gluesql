@@ -5,8 +5,8 @@ use {
     std::{fs::File, io::Read, path::PathBuf},
 };
 
-#[tokio::test]
-async fn dump_and_import() {
+#[test]
+fn dump_and_import() {
     let data_path = "tmp/src";
     let dump_path = PathBuf::from("tmp/dump.sql");
 
@@ -62,10 +62,11 @@ async fn dump_and_import() {
             ('{"a": {"red": "apple", "blue": 1}, "b": 10}'),
             ('{"a": 100, "c": true}');
         "#,
+        "CREATE TABLE Empty (id INTEGER);",
     ];
 
     for sql in sqls {
-        source_glue.execute(sql).await.unwrap();
+        source_glue.execute(sql).unwrap();
     }
 
     dump_database(&mut source_glue.storage, dump_path.clone()).unwrap();
@@ -81,24 +82,32 @@ async fn dump_and_import() {
         .read_to_string(&mut sqls)
         .unwrap();
 
+    let bar_inserts = sqls
+        .lines()
+        .filter(|line| line.starts_with(r#"INSERT INTO "Bar""#))
+        .count();
+    assert_eq!(bar_inserts, 2);
+    assert!(sqls.contains(r#"CREATE TABLE "Empty" ("id" INT NULL);"#));
+    assert!(!sqls.contains(r#"INSERT INTO "Empty""#));
+
     for sql in sqls.split(';').filter(|sql| !sql.trim().is_empty()) {
-        target_glue.execute(sql).await.unwrap();
+        target_glue.execute(sql).unwrap();
     }
 
     // schemas should be identical
     let sql = "SELECT OBJECT_TYPE, OBJECT_NAME FROM GLUE_OBJECTS";
-    let source_data = source_glue.execute(sql).await.unwrap();
-    let target_data = target_glue.execute(sql).await.unwrap();
+    let source_data = source_glue.execute(sql).unwrap();
+    let target_data = target_glue.execute(sql).unwrap();
     assert_eq!(source_data, target_data);
 
     // data should be identical
     let sql = "SELECT * FROM Foo JOIN Bar;";
-    let source_data = source_glue.execute(sql).await.unwrap();
-    let target_data = target_glue.execute(sql).await.unwrap();
+    let source_data = source_glue.execute(sql).unwrap();
+    let target_data = target_glue.execute(sql).unwrap();
     assert_eq!(source_data, target_data);
 
     let sql = "SELECT * FROM Baz;";
-    let source_data = source_glue.execute(sql).await.unwrap();
-    let target_data = target_glue.execute(sql).await.unwrap();
+    let source_data = source_glue.execute(sql).unwrap();
+    let target_data = target_glue.execute(sql).unwrap();
     assert_eq!(source_data, target_data);
 }
