@@ -7,13 +7,11 @@ use {
         },
         result::Result,
     },
-    async_trait::async_trait,
 };
 
-#[async_trait]
 pub trait Planner: Store {
-    async fn plan(&self, statement: StatementPlan) -> Result<StatementPlan> {
-        let schema_map = fetch_schema_map(self, &statement).await?;
+    fn plan(&self, statement: StatementPlan) -> Result<StatementPlan> {
+        let schema_map = fetch_schema_map(self, &statement)?;
         validate(&schema_map, &statement)?;
 
         let statement = plan_schemaless(&schema_map, statement)?;

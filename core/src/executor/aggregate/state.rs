@@ -363,10 +363,10 @@ impl<'a, T: GStore> State<'a, T> {
         index
     }
 
-    pub async fn accumulate(
+    pub fn accumulate(
         &mut self,
         group_index: usize,
-        filter_context: Option<Arc<RowContext<'a>>>,
+        filter_context: Option<&Arc<RowContext<'a>>>,
         slot: usize,
         aggregate: &AggregatePlan,
     ) -> Result<()> {
@@ -392,9 +392,7 @@ impl<'a, T: GStore> State<'a, T> {
             | AggregateFunctionPlan::Avg(expr)
             | AggregateFunctionPlan::Variance(expr)
             | AggregateFunctionPlan::Stdev(expr) => {
-                evaluate(self.storage, filter_context, None, expr)
-                    .await?
-                    .try_into()?
+                evaluate(self.storage, filter_context, None, expr)?.try_into()?
             }
         };
 

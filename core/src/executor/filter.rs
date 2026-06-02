@@ -26,7 +26,7 @@ impl<'a, T: GStore> Filter<'a, T> {
         }
     }
 
-    pub async fn check(&self, project_context: Arc<RowContext<'a>>) -> Result<bool> {
+    pub fn check(&self, project_context: Arc<RowContext<'a>>) -> Result<bool> {
         match self.where_clause {
             Some(expr) => {
                 let context = match &self.context {
@@ -35,28 +35,24 @@ impl<'a, T: GStore> Filter<'a, T> {
                     }
                     None => project_context,
                 };
-                let context = Some(context);
-
-                check_expr(self.storage, context, None, expr).await
+                check_expr(self.storage, Some(&context), None, expr)
             }
             None => Ok(true),
         }
     }
 }
 
-pub async fn check_expr<'a, T: GStore>(
+pub fn check_expr<'a, T: GStore>(
     storage: &'a T,
-    context: Option<Arc<RowContext<'a>>>,
-    aggregated: Option<Arc<AggregateValues>>,
+    context: Option<&Arc<RowContext<'a>>>,
+    aggregated: Option<&Arc<AggregateValues>>,
     expr: &'a ExprPlan,
 ) -> Result<bool> {
-    evaluate(storage, context, aggregated, expr)
-        .await
-        .map(|evaluated| {
-            if evaluated.is_null() {
-                Ok(false)
-            } else {
-                evaluated.try_into()
-            }
-        })?
+    evaluate(storage, context, aggregated, expr).map(|evaluated| {
+        if evaluated.is_null() {
+            Ok(false)
+        } else {
+            evaluated.try_into()
+        }
+    })?
 }

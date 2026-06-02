@@ -231,13 +231,12 @@ mod tests {
             plan::{StatementPlan, fetch_schema_map},
             translate::{NO_PARAMS, translate, translate_expr},
         },
-        futures::executor::block_on,
     };
 
     fn plan(storage: &MockStorage, sql: &str) -> StatementPlan {
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
         let statement = StatementPlan::from(translate(&parsed).unwrap());
-        let schema_map = block_on(fetch_schema_map(storage, &statement)).unwrap();
+        let schema_map = fetch_schema_map(storage, &statement).unwrap();
 
         plan_primary_key(&schema_map, statement)
     }

@@ -451,7 +451,6 @@ mod tests {
             result::{Error, Result},
             translate::translate,
         },
-        futures::executor::block_on,
     };
 
     fn plan_index(storage: &MockStorage, sql: &str) -> Result<crate::plan::StatementPlan> {
@@ -461,7 +460,7 @@ mod tests {
             .next()
             .ok_or_else(|| Error::StorageMsg(format!("no statement parsed from: {sql}")))?;
         let statement = StatementPlan::from(translate(&parsed)?);
-        let schema_map = block_on(fetch_schema_map(storage, &statement))?;
+        let schema_map = fetch_schema_map(storage, &statement)?;
 
         Ok(plan(&schema_map, statement))
     }
@@ -560,7 +559,7 @@ CREATE INDEX idx_name ON Test (name);
             .build()
             .unwrap();
 
-        let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
         let actual = plan(&schema_map, statement);
 
         let expected = table("Test")

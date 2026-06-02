@@ -151,13 +151,10 @@ fn contextualize_table_factor<'a>(
 
 #[cfg(test)]
 mod tests {
-    use {
-        crate::{
-            mock::run,
-            plan::{fetch_schema_map, validate},
-            prelude::{parse, translate},
-        },
-        futures::executor::block_on,
+    use crate::{
+        mock::run,
+        plan::{fetch_schema_map, validate},
+        prelude::{parse, translate},
     };
 
     #[test]
@@ -186,7 +183,7 @@ mod tests {
         for (sql, expected) in cases {
             let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
             let statement = translate(&parsed).unwrap().into();
-            let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+            let schema_map = fetch_schema_map(&storage, &statement).unwrap();
             let actual = validate(&schema_map, &statement).is_ok();
 
             assert_eq!(actual, expected);

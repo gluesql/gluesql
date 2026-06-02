@@ -1,11 +1,7 @@
-use {
-    crate::result::{Error, Result},
-    async_trait::async_trait,
-};
+use crate::result::{Error, Result};
 
-#[async_trait]
 pub trait Transaction {
-    async fn begin(&mut self, autocommit: bool) -> Result<bool> {
+    fn begin(&mut self, autocommit: bool) -> Result<bool> {
         if autocommit {
             return Ok(false);
         }
@@ -15,11 +11,11 @@ pub trait Transaction {
         ))
     }
 
-    async fn rollback(&mut self) -> Result<()> {
+    fn rollback(&mut self) -> Result<()> {
         Ok(())
     }
 
-    async fn commit(&mut self) -> Result<()> {
+    fn commit(&mut self) -> Result<()> {
         Ok(())
     }
 }

@@ -166,7 +166,6 @@ mod tests {
             plan::{ProjectionPlan, SetExprPlan, StatementPlan, fetch_schema_map},
             translate::translate,
         },
-        futures::executor::block_on,
     };
 
     fn setup_schemaless_storage() -> MockStorage {
@@ -183,7 +182,7 @@ mod tests {
         let test = |actual: &str, expected: &str, name: &str| {
             let parsed = parse(actual).expect(actual).into_iter().next().unwrap();
             let statement = StatementPlan::from(translate(&parsed).unwrap());
-            let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+            let schema_map = fetch_schema_map(&storage, &statement).unwrap();
             let result = plan_schemaless(&schema_map, statement).unwrap();
 
             let expected_parsed = parse(expected).expect(expected).into_iter().next().unwrap();
@@ -466,7 +465,7 @@ mod tests {
         let test = |sql: &str, expected_schemaless_map: bool| {
             let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
             let statement = StatementPlan::from(translate(&parsed).unwrap());
-            let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+            let schema_map = fetch_schema_map(&storage, &statement).unwrap();
             let planned = plan_schemaless(&schema_map, statement).unwrap();
 
             let StatementPlan::Query(query) = planned else {
@@ -507,7 +506,7 @@ mod tests {
         let test = |actual: &str, expected: &str, name: &str| {
             let parsed = parse(actual).expect(actual).into_iter().next().unwrap();
             let statement = StatementPlan::from(translate(&parsed).unwrap());
-            let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+            let schema_map = fetch_schema_map(&storage, &statement).unwrap();
             let result = plan_schemaless(&schema_map, statement).unwrap();
 
             let expected_parsed = parse(expected).expect(expected).into_iter().next().unwrap();

@@ -369,13 +369,12 @@ mod tests {
             plan::{StatementPlan, fetch_schema_map},
             translate::translate,
         },
-        futures::executor::block_on,
     };
 
     fn plan_join(storage: &MockStorage, sql: &str) -> crate::plan::StatementPlan {
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
         let statement = StatementPlan::from(translate(&parsed).unwrap());
-        let schema_map = block_on(fetch_schema_map(storage, &statement)).unwrap();
+        let schema_map = fetch_schema_map(storage, &statement).unwrap();
 
         plan(&schema_map, statement)
     }
@@ -478,7 +477,7 @@ mod tests {
         );
 
         let statement = actual;
-        let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
         let actual = plan(&schema_map, statement.clone());
         assert_eq!(actual, statement, "planned hash join remains unchanged");
 

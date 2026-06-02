@@ -11,15 +11,13 @@ use {
         result::Result,
         store::GStore,
     },
-    async_recursion::async_recursion,
-    futures::{
-        future,
-        stream::{self, Stream, TryStreamExt},
-    },
     serde::Serialize,
     std::{borrow::Cow, collections::BTreeMap, fmt::Debug, iter, sync::Arc},
     thiserror::Error as ThisError,
 };
+
+pub type KeyedRows<'a> = Box<dyn Iterator<Item = Result<(Key, Row)>> + Send + 'a>;
+pub type RelationRows<'a> = Box<dyn Iterator<Item = Result<Row>> + Send + 'a>;
 
 #[derive(ThisError, Serialize, Debug, PartialEq, Eq)]
 pub enum FetchError {
@@ -39,152 +37,131 @@ pub enum FetchError {
     Unreachable,
 }
 
-pub async fn fetch<'a, T: GStore>(
+pub fn fetch<'a, T: GStore>(
     storage: &'a T,
     table_name: &'a str,
     columns: Arc<[String]>,
     where_clause: Option<&'a ExprPlan>,
-) -> Result<impl Stream<Item = Result<(Key, Row)>> + 'a> {
-    let rows = storage
-        .scan_data(table_name)
-        .await?
-        .try_filter_map(move |(key, values)| {
-            let row = Row {
-                columns: Arc::clone(&columns),
-                values,
-            };
+) -> Result<KeyedRows<'a>> {
+    let rows = storage.scan_data(table_name)?.filter_map(move |row| {
+        let (key, values) = match row {
+            Ok(row) => row,
+            Err(error) => return Some(Err(error)),
+        };
+        let row = Row {
+            columns: Arc::clone(&columns),
+            values,
+        };
 
-            async move {
-                let Some(expr) = where_clause else {
-                    return Ok(Some((key, row)));
-                };
-
+        match where_clause {
+            Some(expr) => {
                 let context = RowContext::new(table_name, Cow::Borrowed(&row), None);
-
-                check_expr(storage, Some(Arc::new(context)), None, expr)
-                    .await
-                    .map(|pass| pass.then_some((key, row)))
+                let context = Arc::new(context);
+                match check_expr(storage, Some(&context), None, expr) {
+                    Ok(true) => Some(Ok((key, row))),
+                    Ok(false) => None,
+                    Err(error) => Some(Err(error)),
+                }
             }
-        });
+            None => Some(Ok((key, row))),
+        }
+    });
 
-    Ok(rows)
+    Ok(Box::new(rows))
 }
 
-#[derive(futures_enum::Stream)]
-pub enum Rows<I1, I2, I3, I4> {
-    Derived(I1),
-    Table(I2),
-    Series(I3),
-    Dictionary(I4),
-}
-
-pub async fn fetch_relation_rows<'a, T: GStore>(
+pub fn fetch_relation_rows<'a, T: GStore>(
     storage: &'a T,
     table_factor: &'a TableFactorPlan,
     filter_context: Option<&Arc<RowContext<'a>>>,
-) -> Result<impl Stream<Item = Result<Row>> + 'a> {
-    let columns = Arc::from(fetch_relation_columns(storage, table_factor).await?);
+) -> Result<RelationRows<'a>> {
+    let columns = Arc::from(fetch_relation_columns(storage, table_factor)?);
 
     match table_factor {
         TableFactorPlan::Derived { subquery, .. } => {
             let filter_context = filter_context.map(Arc::clone);
-            let rows = select(storage, subquery, filter_context)
-                .await?
-                .map_ok(move |row| Row {
+            let rows = select(storage, subquery, filter_context)?.map(move |row| {
+                let row = row?;
+                Ok(Row {
                     columns: Arc::clone(&columns),
                     values: row.values,
-                });
+                })
+            });
 
-            Ok(Rows::Derived(rows))
+            Ok(Box::new(rows))
         }
         TableFactorPlan::Table { name, .. } => {
-            let rows = {
-                #[derive(futures_enum::Stream)]
-                enum Rows<I1, I2, I3, I4> {
-                    Indexed(I1),
-                    PrimaryKey(I2),
-                    PrimaryKeyEmpty(I3),
-                    FullScan(I4),
-                }
+            let rows = match table_factor.index() {
+                Some(IndexItemPlan::NonClustered {
+                    name: index_name,
+                    asc,
+                    cmp_expr,
+                }) => {
+                    let cmp_value = match cmp_expr {
+                        Some((op, expr)) => {
+                            let evaluated = evaluate(storage, None, None, expr)?;
 
-                match table_factor.index() {
-                    Some(IndexItemPlan::NonClustered {
-                        name: index_name,
-                        asc,
-                        cmp_expr,
-                    }) => {
-                        let cmp_value = match cmp_expr {
-                            Some((op, expr)) => {
-                                let evaluated = evaluate(storage, None, None, expr).await?;
-
-                                Some((op, evaluated.try_into()?))
-                            }
-                            None => None,
-                        };
-
-                        let rows = storage
-                            .scan_indexed_data(name, index_name, *asc, cmp_value)
-                            .await?
-                            .map_ok(move |(_, values)| Row {
-                                columns: Arc::clone(&columns),
-                                values,
-                            });
-
-                        Rows::Indexed(rows)
-                    }
-                    Some(IndexItemPlan::PrimaryKey(expr)) => {
-                        let schema = storage
-                            .fetch_schema(name)
-                            .await?
-                            .ok_or(FetchError::Unreachable)?;
-
-                        let filter_context = filter_context.map(Arc::clone);
-                        let evaluated = evaluate(storage, filter_context, None, expr).await?;
-
-                        let column_def = schema
-                            .column_defs
-                            .as_ref()
-                            .and_then(|column_defs| {
-                                column_defs.iter().find(|column_def| {
-                                    column_def.unique.is_some_and(|u| u.is_primary)
-                                })
-                            })
-                            .ok_or(FetchError::Unreachable)?;
-
-                        let value =
-                            evaluated.try_into_value(&column_def.data_type, column_def.nullable)?;
-                        let key = Key::try_from(value)?;
-
-                        match storage.fetch_data(name, &key).await? {
-                            Some(values) => {
-                                let row = Row {
-                                    columns: Arc::clone(&columns),
-                                    values,
-                                };
-
-                                Rows::PrimaryKey(stream::once(future::ready(Ok(row))))
-                            }
-                            None => Rows::PrimaryKeyEmpty(stream::empty()),
+                            Some((op, evaluated.try_into()?))
                         }
-                    }
-                    _ => {
-                        let rows = storage
-                            .scan_data(name)
-                            .await?
-                            .map_ok(move |(_, values)| Row {
+                        None => None,
+                    };
+
+                    let rows = storage
+                        .scan_indexed_data(name, index_name, *asc, cmp_value)?
+                        .map(move |row| {
+                            let (_, values) = row?;
+                            Ok(Row {
                                 columns: Arc::clone(&columns),
                                 values,
-                            });
+                            })
+                        });
+                    Box::new(rows) as Box<dyn Iterator<Item = Result<Row>> + Send + 'a>
+                }
+                Some(IndexItemPlan::PrimaryKey(expr)) => {
+                    let schema = storage.fetch_schema(name)?.ok_or(FetchError::Unreachable)?;
 
-                        Rows::FullScan(rows)
+                    let evaluated = evaluate(storage, filter_context, None, expr)?;
+
+                    let column_def = schema
+                        .column_defs
+                        .as_ref()
+                        .and_then(|column_defs| {
+                            column_defs
+                                .iter()
+                                .find(|column_def| column_def.unique.is_some_and(|u| u.is_primary))
+                        })
+                        .ok_or(FetchError::Unreachable)?;
+
+                    let value =
+                        evaluated.try_into_value(&column_def.data_type, column_def.nullable)?;
+                    let key = Key::try_from(value)?;
+
+                    match storage.fetch_data(name, &key)? {
+                        Some(values) => Box::new(iter::once(Ok(Row {
+                            columns: Arc::clone(&columns),
+                            values,
+                        })))
+                            as Box<dyn Iterator<Item = Result<Row>> + Send + 'a>,
+                        None => Box::new(iter::empty())
+                            as Box<dyn Iterator<Item = Result<Row>> + Send + 'a>,
                     }
+                }
+                _ => {
+                    let rows = storage.scan_data(name)?.map(move |row| {
+                        let (_, values) = row?;
+                        Ok(Row {
+                            columns: Arc::clone(&columns),
+                            values,
+                        })
+                    });
+                    Box::new(rows) as Box<dyn Iterator<Item = Result<Row>> + Send + 'a>
                 }
             };
 
-            Ok(Rows::Table(rows))
+            Ok(rows)
         }
         TableFactorPlan::Series { size, .. } => {
-            let value: Value = evaluate_stateless(None, size).await?.try_into()?;
+            let value: Value = evaluate_stateless(None, size)?.try_into()?;
             let size: i64 = value.try_into()?;
             let size = match size {
                 n if n >= 0 => size,
@@ -199,173 +176,158 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                 })
             });
 
-            Ok(Rows::Series(stream::iter(rows)))
+            Ok(Box::new(rows))
         }
         TableFactorPlan::Dictionary { dict, .. } => {
-            let rows = {
-                #[derive(futures_enum::Stream)]
-                enum Rows<I1, I2, I3, I4> {
-                    Tables(I1),
-                    TableColumns(I2),
-                    Indexes(I3),
-                    Objects(I4),
-                }
+            let rows = match dict {
+                Dictionary::GlueObjects => {
+                    let schemas = storage.fetch_all_schemas()?;
+                    let table_metas = storage
+                        .scan_table_meta()?
+                        .collect::<Result<BTreeMap<_, _>>>()?;
+                    let rows = schemas.into_iter().flat_map(move |schema| {
+                        let meta = table_metas
+                            .iter()
+                            .find_map(|(table_name, hash_map)| {
+                                (table_name == &schema.table_name).then(|| hash_map.clone())
+                            })
+                            .unwrap_or_default();
 
-                match dict {
-                    Dictionary::GlueObjects => {
-                        let schemas = storage.fetch_all_schemas().await?;
-                        let table_metas = storage
-                            .scan_table_meta()
-                            .await?
-                            .collect::<Result<BTreeMap<_, _>>>()?;
-                        let rows = schemas.into_iter().flat_map(move |schema| {
-                            let meta = table_metas
-                                .iter()
-                                .find_map(|(table_name, hash_map)| {
-                                    (table_name == &schema.table_name).then(|| hash_map.clone())
-                                })
-                                .unwrap_or_default();
+                        let table_rows = BTreeMap::from([
+                            ("OBJECT_NAME".to_owned(), Value::Str(schema.table_name)),
+                            ("OBJECT_TYPE".to_owned(), Value::Str("TABLE".to_owned())),
+                        ])
+                        .into_iter()
+                        .chain(meta)
+                        .collect::<BTreeMap<_, _>>();
 
-                            let table_rows = BTreeMap::from([
-                                ("OBJECT_NAME".to_owned(), Value::Str(schema.table_name)),
-                                ("OBJECT_TYPE".to_owned(), Value::Str("TABLE".to_owned())),
+                        let index_rows = schema.indexes.into_iter().map(|index| {
+                            BTreeMap::from([
+                                ("OBJECT_NAME".to_owned(), Value::Str(index.name)),
+                                ("OBJECT_TYPE".to_owned(), Value::Str("INDEX".to_owned())),
                             ])
+                        });
+
+                        iter::once(table_rows).chain(index_rows).map(|hash_map| {
+                            let (columns, values): (Vec<_>, Vec<_>) = hash_map.into_iter().unzip();
+                            Row {
+                                columns: columns.into(),
+                                values,
+                            }
+                        })
+                    });
+
+                    Box::new(rows.map(Ok)) as Box<dyn Iterator<Item = Result<Row>> + Send + 'a>
+                }
+                Dictionary::GlueTables => {
+                    let schemas = storage.fetch_all_schemas()?;
+                    let rows = schemas.into_iter().map(move |schema| Row {
+                        columns: Arc::clone(&columns),
+                        values: vec![
+                            Value::Str(schema.table_name),
+                            schema.comment.map_or(Value::Null, Value::Str),
+                        ],
+                    });
+
+                    Box::new(rows.map(Ok))
+                }
+                Dictionary::GlueTableColumns => {
+                    let schemas = storage.fetch_all_schemas()?;
+                    let rows = schemas.into_iter().flat_map(move |schema| {
+                        let columns = Arc::clone(&columns);
+                        let table_name = schema.table_name;
+
+                        schema
+                            .column_defs
+                            .unwrap_or_default()
                             .into_iter()
-                            .chain(meta)
-                            .collect::<BTreeMap<_, _>>();
-
-                            let index_rows = schema.indexes.into_iter().map(|index| {
-                                BTreeMap::from([
-                                    ("OBJECT_NAME".to_owned(), Value::Str(index.name)),
-                                    ("OBJECT_TYPE".to_owned(), Value::Str("INDEX".to_owned())),
-                                ])
-                            });
-
-                            iter::once(table_rows).chain(index_rows).map(|hash_map| {
-                                let (columns, values): (Vec<_>, Vec<_>) =
-                                    hash_map.into_iter().unzip();
-                                Ok(Row {
-                                    columns: columns.into(),
-                                    values,
-                                })
-                            })
-                        });
-
-                        Rows::Objects(stream::iter(rows))
-                    }
-                    Dictionary::GlueTables => {
-                        let schemas = storage.fetch_all_schemas().await?;
-                        let rows = schemas.into_iter().map(move |schema| {
-                            Ok(Row {
-                                columns: Arc::clone(&columns),
-                                values: vec![
-                                    Value::Str(schema.table_name),
-                                    schema.comment.map_or(Value::Null, Value::Str),
-                                ],
-                            })
-                        });
-
-                        Rows::Tables(stream::iter(rows))
-                    }
-                    Dictionary::GlueTableColumns => {
-                        let schemas = storage.fetch_all_schemas().await?;
-                        let rows = schemas.into_iter().flat_map(move |schema| {
-                            let columns = Arc::clone(&columns);
-                            let table_name = schema.table_name;
-
-                            schema
-                                .column_defs
-                                .unwrap_or_default()
-                                .into_iter()
-                                .enumerate()
-                                .map(move |(index, column_def)| {
-                                    let values = vec![
-                                        Value::Str(table_name.clone()),
-                                        Value::Str(column_def.name),
-                                        Value::I64(index as i64 + 1),
-                                        Value::Bool(column_def.nullable),
-                                        column_def.unique.map_or(Value::Null, |unique| {
-                                            Value::Str(unique.to_sql())
-                                        }),
-                                        column_def
-                                            .default
-                                            .map_or(Value::Null, |expr| Value::Str(expr.to_sql())),
-                                        column_def.comment.map_or(Value::Null, Value::Str),
-                                    ];
-
-                                    Ok(Row {
-                                        columns: Arc::clone(&columns),
-                                        values,
-                                    })
-                                })
-                        });
-
-                        Rows::TableColumns(stream::iter(rows))
-                    }
-                    Dictionary::GlueIndexes => {
-                        let schemas = storage.fetch_all_schemas().await?;
-                        let rows = schemas.into_iter().flat_map(move |schema| {
-                            let column_defs = schema.column_defs.unwrap_or_default();
-                            let primary_column = column_defs.iter().find_map(|column_def| {
-                                let ColumnDef { name, unique, .. } = column_def;
-
-                                (unique == &Some(ColumnUniqueOption { is_primary: true }))
-                                    .then_some(name)
-                            });
-
-                            let clustered = match primary_column {
-                                Some(column_name) => {
-                                    let values = vec![
-                                        Value::Str(schema.table_name.clone()),
-                                        Value::Str("PRIMARY".to_owned()),
-                                        Value::Str("BOTH".to_owned()),
-                                        Value::Str(column_name.to_owned()),
-                                        Value::Bool(true),
-                                    ];
-
-                                    let row = Row {
-                                        columns: Arc::clone(&columns),
-                                        values,
-                                    };
-
-                                    vec![Ok(row)]
-                                }
-                                None => Vec::new(),
-                            };
-
-                            let columns = Arc::clone(&columns);
-                            let non_clustered = schema.indexes.into_iter().map(move |index| {
+                            .enumerate()
+                            .map(move |(index, column_def)| {
                                 let values = vec![
-                                    Value::Str(schema.table_name.clone()),
-                                    Value::Str(index.name),
-                                    Value::Str(index.order.to_string()),
-                                    Value::Str(index.expr.to_sql_unquoted()),
-                                    Value::Bool(false),
+                                    Value::Str(table_name.clone()),
+                                    Value::Str(column_def.name),
+                                    Value::I64(index as i64 + 1),
+                                    Value::Bool(column_def.nullable),
+                                    column_def
+                                        .unique
+                                        .map_or(Value::Null, |unique| Value::Str(unique.to_sql())),
+                                    column_def
+                                        .default
+                                        .map_or(Value::Null, |expr| Value::Str(expr.to_sql())),
+                                    column_def.comment.map_or(Value::Null, Value::Str),
                                 ];
 
-                                Ok(Row {
+                                Row {
                                     columns: Arc::clone(&columns),
                                     values,
-                                })
-                            });
+                                }
+                            })
+                    });
 
-                            clustered.into_iter().chain(non_clustered)
+                    Box::new(rows.map(Ok))
+                }
+                Dictionary::GlueIndexes => {
+                    let schemas = storage.fetch_all_schemas()?;
+                    let rows = schemas.into_iter().flat_map(move |schema| {
+                        let column_defs = schema.column_defs.unwrap_or_default();
+                        let primary_column = column_defs.iter().find_map(|column_def| {
+                            let ColumnDef { name, unique, .. } = column_def;
+
+                            (unique == &Some(ColumnUniqueOption { is_primary: true }))
+                                .then_some(name)
                         });
 
-                        Rows::Indexes(stream::iter(rows))
-                    }
+                        let clustered = match primary_column {
+                            Some(column_name) => {
+                                let values = vec![
+                                    Value::Str(schema.table_name.clone()),
+                                    Value::Str("PRIMARY".to_owned()),
+                                    Value::Str("BOTH".to_owned()),
+                                    Value::Str(column_name.to_owned()),
+                                    Value::Bool(true),
+                                ];
+
+                                let row = Row {
+                                    columns: Arc::clone(&columns),
+                                    values,
+                                };
+
+                                vec![row]
+                            }
+                            None => Vec::new(),
+                        };
+
+                        let columns = Arc::clone(&columns);
+                        let non_clustered = schema.indexes.into_iter().map(move |index| {
+                            let values = vec![
+                                Value::Str(schema.table_name.clone()),
+                                Value::Str(index.name),
+                                Value::Str(index.order.to_string()),
+                                Value::Str(index.expr.to_sql_unquoted()),
+                                Value::Bool(false),
+                            ];
+
+                            Row {
+                                columns: Arc::clone(&columns),
+                                values,
+                            }
+                        });
+
+                        clustered.into_iter().chain(non_clustered)
+                    });
+
+                    Box::new(rows.map(Ok))
                 }
             };
 
-            Ok(Rows::Dictionary(rows))
+            Ok(rows)
         }
     }
 }
 
-pub async fn fetch_columns<T: GStore>(storage: &T, table_name: &str) -> Result<Vec<String>> {
+pub fn fetch_columns<T: GStore>(storage: &T, table_name: &str) -> Result<Vec<String>> {
     let columns = storage
-        .fetch_schema(table_name)
-        .await?
+        .fetch_schema(table_name)?
         .ok_or_else(|| FetchError::TableNotFound(table_name.to_owned()))?
         .column_defs
         .map_or_else(
@@ -381,17 +343,13 @@ pub async fn fetch_columns<T: GStore>(storage: &T, table_name: &str) -> Result<V
     Ok(columns)
 }
 
-#[async_recursion]
-pub async fn fetch_relation_columns<T>(
-    storage: &T,
-    table_factor: &TableFactorPlan,
-) -> Result<Vec<String>>
+pub fn fetch_relation_columns<T>(storage: &T, table_factor: &TableFactorPlan) -> Result<Vec<String>>
 where
     T: GStore,
 {
     match table_factor {
         TableFactorPlan::Table { name, alias, .. } => {
-            let columns = fetch_columns(storage, name).await?;
+            let columns = fetch_columns(storage, name)?;
             match alias {
                 None => Ok(columns),
                 Some(alias) if alias.columns.len() > columns.len() => {
@@ -453,7 +411,7 @@ where
                     ..
                 } = statement.as_ref();
 
-                let labels = fetch_labels(storage, relation, joins, projection).await?;
+                let labels = fetch_labels(storage, relation, joins, projection)?;
                 if alias_columns.is_empty() {
                     Ok(labels)
                 } else if alias_columns.len() > labels.len() {
@@ -495,28 +453,28 @@ where
     }
 }
 
-async fn fetch_join_columns<'a, T: GStore>(
+fn fetch_join_columns<'a, T: GStore>(
     storage: &T,
     joins: &'a [JoinPlan],
 ) -> Result<Vec<(&'a str, Vec<String>)>> {
     let mut all_columns = Vec::with_capacity(joins.len());
     for join in joins {
-        let columns = fetch_relation_columns(storage, &join.relation).await?;
+        let columns = fetch_relation_columns(storage, &join.relation)?;
         let alias = join.relation.alias_name();
         all_columns.push((alias, columns));
     }
     Ok(all_columns)
 }
 
-pub async fn fetch_labels<T: GStore>(
+pub fn fetch_labels<T: GStore>(
     storage: &T,
     relation: &TableFactorPlan,
     joins: &[JoinPlan],
     projection: &ProjectionPlan,
 ) -> Result<Vec<String>> {
     let table_alias = relation.alias_name();
-    let columns = fetch_relation_columns(storage, relation).await?;
-    let join_columns = fetch_join_columns(storage, joins).await?;
+    let columns = fetch_relation_columns(storage, relation)?;
+    let join_columns = fetch_join_columns(storage, joins)?;
 
     match projection {
         ProjectionPlan::SchemalessMap => Ok(vec![SCHEMALESS_DOC_COLUMN.to_owned()]),

@@ -9,7 +9,7 @@ use {
     },
 };
 
-pub async fn create_index<T: GStore + GStoreMut>(
+pub fn create_index<T: GStore + GStoreMut>(
     storage: &mut T,
     table_name: &str,
     index_name: &str,
@@ -17,8 +17,7 @@ pub async fn create_index<T: GStore + GStoreMut>(
 ) -> Result<()> {
     let expr = plan_scalar_expr(column.expr.clone());
     let Schema { column_defs, .. } = storage
-        .fetch_schema(table_name)
-        .await?
+        .fetch_schema(table_name)?
         .ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
     let columns = column_defs
         .unwrap_or_default()
@@ -33,7 +32,7 @@ pub async fn create_index<T: GStore + GStoreMut>(
         return Err(AlterError::IndexExprRequiresColumnReference.into());
     }
 
-    storage.create_index(table_name, index_name, column).await
+    storage.create_index(table_name, index_name, column)
 }
 
 fn validate_index_expr(columns: &[String], expr: &ExprPlan) -> (bool, bool) {

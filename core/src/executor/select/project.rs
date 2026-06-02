@@ -9,7 +9,6 @@ use {
         result::Result,
         store::GStore,
     },
-    futures::stream::{self, StreamExt, TryStreamExt},
     std::sync::Arc,
 };
 
@@ -32,11 +31,11 @@ impl<'a, T: GStore> Project<'a, T> {
         }
     }
 
-    pub async fn apply(
+    pub fn apply(
         &self,
-        aggregated: Option<Arc<AggregateValues>>,
-        labels: Arc<[String]>,
-        context: Option<Arc<RowContext<'a>>>,
+        aggregated: Option<&Arc<AggregateValues>>,
+        labels: &Arc<[String]>,
+        context: Option<&Arc<RowContext<'a>>>,
     ) -> Result<Row> {
         let filter_context = match (&context, &self.context) {
             (Some(context), Some(filter_context)) => Some(Arc::new(RowContext::concat(
@@ -47,37 +46,36 @@ impl<'a, T: GStore> Project<'a, T> {
             (None, Some(filter_context)) => Some(Arc::clone(filter_context)),
             (None, None) => None,
         };
-        let context = context.as_ref();
 
         match self.projection {
             ProjectionPlan::SelectItems(fields) => {
-                let entries = stream::iter(fields)
-                    .then(|item| {
-                        let filter_context = filter_context.as_ref().map(Arc::clone);
-                        let aggregated = aggregated.as_ref().map(Arc::clone);
-
-                        async move {
-                            match item {
-                                SelectItemPlan::Wildcard => Ok(context
-                                    .map_or_else(Vec::new, |context| context.get_all_entries())),
-                                SelectItemPlan::QualifiedWildcard(table_alias) => Ok(context
-                                    .and_then(|context| context.get_alias_entries(table_alias))
-                                    .unwrap_or_default()),
-                                SelectItemPlan::Expr { expr, label } => {
-                                    evaluate(self.storage, filter_context, aggregated, expr)
-                                        .await
-                                        .map(TryInto::try_into)?
-                                        .map(|v| vec![(label, v)])
-                                }
-                            }
+                let mut entries = Vec::new();
+                for item in fields {
+                    match item {
+                        SelectItemPlan::Wildcard => {
+                            entries.extend(
+                                context.map_or_else(Vec::new, |context| context.get_all_entries()),
+                            );
                         }
-                    })
-                    .try_collect::<Vec<Vec<(&String, Value)>>>()
-                    .await?
-                    .concat();
+                        SelectItemPlan::QualifiedWildcard(table_alias) => {
+                            entries.extend(
+                                context
+                                    .and_then(|context| context.get_alias_entries(table_alias))
+                                    .unwrap_or_default(),
+                            );
+                        }
+                        SelectItemPlan::Expr { expr, label } => {
+                            let value: Value =
+                                evaluate(self.storage, filter_context.as_ref(), aggregated, expr)?
+                                    .try_into()?;
+
+                            entries.push((label, value));
+                        }
+                    }
+                }
 
                 let values = entries.into_iter().map(|(_, value)| value).collect();
-                let columns = Arc::clone(&labels);
+                let columns = Arc::clone(labels);
 
                 Ok(Row { columns, values })
             }
@@ -88,7 +86,7 @@ impl<'a, T: GStore> Project<'a, T> {
                     .unwrap_or(Value::Null);
 
                 Ok(Row {
-                    columns: Arc::clone(&labels),
+                    columns: Arc::clone(labels),
                     values: vec![value],
                 })
             }
