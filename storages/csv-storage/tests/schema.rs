@@ -7,15 +7,14 @@ use {
     test_suite::*,
 };
 
-#[tokio::test]
-async fn schema() {
+#[test]
+fn schema() {
     let path = "./tests/samples/";
     let storage = CsvStorage::new(path).unwrap();
     let mut glue = Glue::new(storage);
 
     let actual = glue
         .execute("SELECT * FROM City")
-        .await
         .unwrap()
         .into_iter()
         .next()
@@ -33,7 +32,6 @@ async fn schema() {
 
     let actual = glue
         .execute("SELECT * FROM City WHERE Population < 10000000")
-        .await
         .unwrap()
         .into_iter()
         .next()
