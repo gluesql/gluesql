@@ -1350,7 +1350,6 @@ dependencies = [
  "futures",
  "gluesql-core",
  "gluesql-test-suite",
- "gluesql-utils",
  "rust_decimal",
  "rust_decimal_macros",
  "serde",
@@ -1438,7 +1437,6 @@ dependencies = [
  "futures",
  "gluesql-core",
  "gluesql-test-suite",
- "gluesql-utils",
  "hex",
  "iter-enum",
  "serde",
@@ -1591,7 +1589,6 @@ name = "gluesql-utils"
 version = "0.19.0"
 dependencies = [
  "futures",
- "indexmap 1.9.3",
  "pin-project",
 ]
 

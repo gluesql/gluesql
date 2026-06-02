@@ -9,7 +9,6 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
-indexmap = "1"
 pin-project = "1"
 futures = "0.3"
 
