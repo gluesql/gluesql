@@ -84,7 +84,11 @@ pub fn migrate_to_latest<P: AsRef<Path>>(path: P) -> Result<MigrationReport> {
         )));
     }
 
-    let tree = sled::open(path).map_err(err_into)?;
+    let tree = sled::Config::new()
+        .path(path)
+        .flush_every_ms(None)
+        .open()
+        .map_err(err_into)?;
     migrate_tree_to_latest(&tree)
 }
 
