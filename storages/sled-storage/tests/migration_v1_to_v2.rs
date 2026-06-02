@@ -79,6 +79,14 @@ fn data_key(table_name: &str, key: Vec<u8>) -> Vec<u8> {
         .collect()
 }
 
+fn open_sled(path: &Path) -> Db {
+    sled::Config::new()
+        .path(path)
+        .flush_every_ms(None)
+        .open()
+        .expect("open sled")
+}
+
 fn write_schema_snapshot(tree: &Db, schema: Schema) {
     let schema_key = format!("schema/{}", schema.table_name);
     let snapshot = V1Snapshot::new(1, schema);
@@ -106,7 +114,7 @@ fn write_v2_data_snapshot(tree: &Db, table_name: &str, key: Vec<u8>, row: Vec<Va
 }
 
 fn write_storage_format_version(path: &Path, version_bytes: &[u8]) {
-    let tree = sled::open(path).expect("open sled");
+    let tree = open_sled(path);
     tree.insert(STORAGE_FORMAT_VERSION_KEY, version_bytes)
         .expect("insert version");
     tree.flush().expect("flush version");
@@ -114,7 +122,7 @@ fn write_storage_format_version(path: &Path, version_bytes: &[u8]) {
 
 fn setup_v1_storage(path: &Path) -> BTreeMap<String, Value> {
     let _ = remove_dir_all(path);
-    let tree = sled::open(path).expect("open sled");
+    let tree = open_sled(path);
 
     let user_schema = Schema {
         table_name: "User".to_owned(),
@@ -177,7 +185,7 @@ fn setup_v1_storage(path: &Path) -> BTreeMap<String, Value> {
 }
 
 fn read_storage_format_version(path: &Path) -> u32 {
-    let tree = sled::open(path).expect("open sled");
+    let tree = open_sled(path);
     let value = tree
         .get(STORAGE_FORMAT_VERSION_KEY)
         .expect("read storage format version key")
@@ -188,7 +196,7 @@ fn read_storage_format_version(path: &Path) -> u32 {
 }
 
 fn read_row_snapshot(path: &Path, table_name: &str, key: Vec<u8>) -> Vec<Value> {
-    let tree = sled::open(path).expect("open sled");
+    let tree = open_sled(path);
     let key = data_key(table_name, key);
     let value = tree
         .get(key)
@@ -234,8 +242,6 @@ fn migrate_v1_to_v2_rewrites_rows_and_sets_version() {
         read_storage_format_version(&path),
         SLED_STORAGE_FORMAT_VERSION
     );
-    assert!(SledStorage::new(&path).is_ok());
-
     let user_row = read_row_snapshot(
         &path,
         "User",
@@ -258,6 +264,8 @@ fn migrate_v1_to_v2_rewrites_rows_and_sets_version() {
             rewritten_rows: 0,
         }
     );
+
+    assert!(SledStorage::new(&path).is_ok());
 
     remove_dir_all(path).expect("cleanup");
 }
@@ -367,7 +375,7 @@ fn migrate_rejects_file_path() {
 fn migrate_v1_to_v2_supports_all_v1_snapshot_shapes() {
     let path = test_path("sled-migration-v1-shapes");
     let _ = remove_dir_all(&path);
-    let tree = sled::open(&path).expect("open sled");
+    let tree = open_sled(&path);
 
     write_schema_snapshot(
         &tree,
@@ -476,7 +484,7 @@ fn migrate_v1_to_v2_supports_all_v1_snapshot_shapes() {
 fn migrate_v1_storage_without_data_rows() {
     let path = test_path("sled-migration-without-data-rows");
     let _ = remove_dir_all(&path);
-    let tree = sled::open(&path).expect("open sled");
+    let tree = open_sled(&path);
 
     write_schema_snapshot(
         &tree,
@@ -520,7 +528,7 @@ fn migrate_v1_storage_without_data_rows() {
 fn migrate_rejects_invalid_v1_row_snapshot_payload() {
     let path = test_path("sled-migration-invalid-v1-row-snapshot");
     let _ = remove_dir_all(&path);
-    let tree = sled::open(&path).expect("open sled");
+    let tree = open_sled(&path);
     write_schema_snapshot(
         &tree,
         Schema {
@@ -553,7 +561,7 @@ fn migrate_rejects_invalid_v1_row_snapshot_payload() {
 fn migrate_v2_storage_with_invalid_schema_snapshot_is_rejected() {
     let path = test_path("sled-v2-invalid-schema-snapshot");
     let _ = remove_dir_all(&path);
-    let tree = sled::open(&path).expect("open sled");
+    let tree = open_sled(&path);
 
     tree.insert(
         STORAGE_FORMAT_VERSION_KEY,
