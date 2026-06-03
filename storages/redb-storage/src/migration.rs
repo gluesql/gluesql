@@ -1,4 +1,5 @@
 mod v1_to_v2;
+mod v2_to_v3;
 
 use {
     crate::{
@@ -10,7 +11,10 @@ use {
     std::path::Path,
 };
 
-pub const REDB_STORAGE_FORMAT_VERSION: u32 = 2;
+pub const REDB_STORAGE_FORMAT_VERSION: u32 = 3;
+
+const V1_REDB_STORAGE_FORMAT_VERSION: u32 = 1;
+const V2_REDB_STORAGE_FORMAT_VERSION: u32 = 2;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct MigrationReport {
@@ -19,7 +23,6 @@ pub struct MigrationReport {
     pub rewritten_rows: usize,
 }
 
-const V1_REDB_STORAGE_FORMAT_VERSION: u32 = 1;
 const SCHEMA_TABLE: TableDefinition<&str, Vec<u8>> = TableDefinition::new(SCHEMA_TABLE_NAME);
 const STORAGE_META_TABLE: TableDefinition<&str, u32> =
     TableDefinition::new(STORAGE_META_TABLE_NAME);
@@ -31,6 +34,7 @@ type StorageResult<T> = std::result::Result<T, StorageError>;
 enum DetectedStorageFormatVersion {
     V1,
     V2,
+    V3,
     UnsupportedNewer(u32),
     Unsupported(u32),
 }
@@ -49,7 +53,11 @@ pub(super) fn ensure_storage_format_version_supported(db: &Database) -> StorageR
             found: V1_REDB_STORAGE_FORMAT_VERSION,
             expected: REDB_STORAGE_FORMAT_VERSION,
         }),
-        DetectedStorageFormatVersion::V2 => Ok(()),
+        DetectedStorageFormatVersion::V2 => Err(StorageError::MigrationRequired {
+            found: V2_REDB_STORAGE_FORMAT_VERSION,
+            expected: REDB_STORAGE_FORMAT_VERSION,
+        }),
+        DetectedStorageFormatVersion::V3 => Ok(()),
         DetectedStorageFormatVersion::UnsupportedNewer(version) => {
             Err(StorageError::UnsupportedNewerFormatVersion(version))
         }
@@ -74,13 +82,14 @@ pub fn migrate_to_latest<P: AsRef<Path>>(filename: P) -> Result<MigrationReport>
         )));
     }
 
-    let db = Database::open(path).map_err(StorageError::from)?;
-    migrate_database_to_latest(&db).map_err(Into::into)
+    let mut db = Database::open(path).map_err(StorageError::from)?;
+    migrate_database_to_latest(&mut db).map_err(Into::into)
 }
 
-fn migrate_database_to_latest(db: &Database) -> StorageResult<MigrationReport> {
+fn migrate_database_to_latest(db: &mut Database) -> StorageResult<MigrationReport> {
     match detect_storage_format_version(db)? {
         DetectedStorageFormatVersion::V1 => {
+            // Phase 1: rewrite rows from GlueSQL v1 serialisation to v2 format.
             let mut report = MigrationReport::default();
             let txn = db.begin_write()?;
             let table_names = list_user_table_names(&txn)?;
@@ -91,12 +100,37 @@ fn migrate_database_to_latest(db: &Database) -> StorageResult<MigrationReport> {
                 report.rewritten_rows += rewritten_rows;
             }
 
+            txn.commit()?;
+
+            // Phase 2: upgrade redb internal file format v2 → v3.
+            v2_to_v3::migrate(db)?;
+
+            // Phase 3: record GlueSQL storage version 3.
+            let txn = db.begin_write()?;
             write_storage_format_version(&txn, REDB_STORAGE_FORMAT_VERSION)?;
             txn.commit()?;
 
             Ok(report)
         }
         DetectedStorageFormatVersion::V2 => {
+            // GlueSQL row format is unchanged; only the redb file format needs upgrading.
+            let read_txn = db.begin_read()?;
+            let unchanged_tables = list_user_table_names_from_read(&read_txn)?.len();
+            drop(read_txn);
+
+            v2_to_v3::migrate(db)?;
+
+            let txn = db.begin_write()?;
+            write_storage_format_version(&txn, REDB_STORAGE_FORMAT_VERSION)?;
+            txn.commit()?;
+
+            Ok(MigrationReport {
+                migrated_tables: 0,
+                unchanged_tables,
+                rewritten_rows: 0,
+            })
+        }
+        DetectedStorageFormatVersion::V3 => {
             let read_txn = db.begin_read()?;
             let unchanged_tables = list_user_table_names_from_read(&read_txn)?.len();
 
@@ -125,7 +159,8 @@ fn detect_storage_format_version(db: &Database) -> StorageResult<DetectedStorage
                 .ok_or(StorageError::MissingFormatVersionMetadata)?;
 
             Ok(match version {
-                REDB_STORAGE_FORMAT_VERSION => DetectedStorageFormatVersion::V2,
+                V2_REDB_STORAGE_FORMAT_VERSION => DetectedStorageFormatVersion::V2,
+                REDB_STORAGE_FORMAT_VERSION => DetectedStorageFormatVersion::V3,
                 version if version > REDB_STORAGE_FORMAT_VERSION => {
                     DetectedStorageFormatVersion::UnsupportedNewer(version)
                 }

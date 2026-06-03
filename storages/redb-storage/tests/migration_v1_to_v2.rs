@@ -192,7 +192,7 @@ fn v1_storage_requires_migration() {
     assert_eq!(
         err,
         Error::StorageMsg(
-            "[RedbStorage] migration required (found v1, expected v2); migrate redb-storage data to the latest format before opening"
+            "[RedbStorage] migration required (found v1, expected v3); migrate redb-storage data to the latest format before opening"
                 .to_owned(),
         ),
     );
