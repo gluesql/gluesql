@@ -10,7 +10,7 @@ use {
     napi_derive::napi,
 };
 
-/// GlueSQL engine backed by in-memory storage.
+/// `GlueSQL` engine backed by in-memory storage.
 ///
 /// ```js
 /// const { Glue } = require('@gluesql/node');
@@ -24,7 +24,7 @@ pub struct Glue {
 
 #[napi]
 impl Glue {
-    /// Create a new in-memory GlueSQL instance.
+    /// Create a new in-memory `GlueSQL` instance.
     #[napi(constructor)]
     pub fn new() -> Self {
         Glue {
@@ -62,10 +62,9 @@ impl Glue {
 
         let mut payloads = Vec::with_capacity(queries.len());
 
-        for query in queries.iter() {
-            let statement = translate(query).map_err(|e| {
-                Error::from_reason(format!("[GlueSQL] translate error: {e}"))
-            })?;
+        for query in &queries {
+            let statement = translate(query)
+                .map_err(|e| Error::from_reason(format!("[GlueSQL] translate error: {e}")))?;
 
             let statement = self
                 .storage
