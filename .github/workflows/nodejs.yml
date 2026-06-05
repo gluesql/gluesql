@@ -1,0 +1,37 @@
+name: Node.js
+
+on:
+  push:
+    branches: [main, release-*]
+    paths-ignore:
+      - "docs/**"
+  pull_request:
+    paths-ignore:
+      - "docs/**"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  nodejs_test:
+    name: test (ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: pkg/nodejs
+
+      - name: Build debug binary
+        run: npm run build:debug
+        working-directory: pkg/nodejs
+
+      - name: Run tests
+        run: npm test
+        working-directory: pkg/nodejs

@@ -1,0 +1,56 @@
+{
+  "name": "@gluesql/node",
+  "version": "0.19.0",
+  "description": "GlueSQL Node.js native bindings (napi-rs)",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gluesql/gluesql.git"
+  },
+  "keywords": [
+    "SQL",
+    "Database",
+    "rust",
+    "napi",
+    "native"
+  ],
+  "author": "Taehoon Moon",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/gluesql/gluesql/issues"
+  },
+  "homepage": "https://gluesql.org/docs",
+  "napi": {
+    "binaryName": "gluesql",
+    "targets": [
+      "x86_64-apple-darwin",
+      "aarch64-apple-darwin",
+      "x86_64-unknown-linux-gnu",
+      "aarch64-unknown-linux-gnu",
+      "x86_64-unknown-linux-musl",
+      "aarch64-unknown-linux-musl"
+    ]
+  },
+  "scripts": {
+    "build": "napi build --platform --release",
+    "build:debug": "napi build --platform",
+    "test": "ava"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^3",
+    "ava": "^6"
+  },
+  "ava": {
+    "timeout": "2m",
+    "workerThreads": false,
+    "files": [
+      "__test__/**/*.spec.mjs"
+    ]
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "gluesql.*.node"
+  ]
+}
