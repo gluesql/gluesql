@@ -3,13 +3,16 @@ use {
     serde_json::{Value as Json, json},
 };
 
-pub fn convert(payloads: Vec<Payload>) -> Json {
-    let payloads = payloads.into_iter().map(convert_payload).collect();
-    Json::Array(payloads)
+pub fn convert(payloads: Vec<Payload>) -> Result<Json, String> {
+    let payloads = payloads
+        .into_iter()
+        .map(convert_payload)
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(Json::Array(payloads))
 }
 
-fn convert_payload(payload: Payload) -> Json {
-    match payload {
+fn convert_payload(payload: Payload) -> Result<Json, String> {
+    let json = match payload {
         Payload::Create => json!({ "type": "CREATE TABLE" }),
         Payload::DropTable(num) => json!({ "type": "DROP TABLE", "affected": num }),
         Payload::Select { labels, rows } => {
@@ -21,13 +24,13 @@ fn convert_payload(payload: Payload) -> Json {
                         .zip(values)
                         .map(|(label, value)| {
                             let key = label.to_owned();
-                            let value = Json::try_from(value).unwrap();
-                            (key, value)
+                            let value = Json::try_from(value).map_err(|e| e.to_string())?;
+                            Ok((key, value))
                         })
-                        .collect();
-                    Json::Object(row)
+                        .collect::<Result<_, String>>()?;
+                    Ok(Json::Object(row))
                 })
-                .collect();
+                .collect::<Result<Vec<_>, String>>()?;
 
             json!({
                 "type": "SELECT",
@@ -41,13 +44,13 @@ fn convert_payload(payload: Payload) -> Json {
                     let row = row
                         .into_iter()
                         .map(|(key, value)| {
-                            let value = Json::try_from(value).unwrap();
-                            (key, value)
+                            let value = Json::try_from(value).map_err(|e| e.to_string())?;
+                            Ok((key, value))
                         })
-                        .collect();
-                    Json::Object(row)
+                        .collect::<Result<_, String>>()?;
+                    Ok(Json::Object(row))
                 })
-                .collect();
+                .collect::<Result<Vec<_>, String>>()?;
 
             json!({
                 "type": "SELECT",
@@ -89,5 +92,7 @@ fn convert_payload(payload: Payload) -> Json {
             json!({ "type": "SHOW FUNCTIONS", "functions": function_names })
         }
         Payload::DropFunction => json!({ "type": "DROP FUNCTION" }),
-    }
+    };
+
+    Ok(json)
 }
