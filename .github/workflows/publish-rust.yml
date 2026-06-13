@@ -30,8 +30,6 @@ jobs:
       - run: |
           publish_args=(
             --workspace
-            # The JavaScript package is published by its own workflow.
-            --exclude gluesql-js
           )
 
           if [ "$DRY_RUN" = "true" ]; then
