@@ -8,7 +8,7 @@ GlueSQL is not only suitable for use as a conventional database, but one of its 
 
 ## Supported Storages
 
-GlueSQL provides a variety of reference storages out of the box, ranging from simple in-memory storage to key-value databases, log file-based storage like JSON & JSONL, and even Web Storage and IndexedDB supported by web browsers.
+GlueSQL provides a variety of reference storages out of the box, ranging from simple in-memory storage to key-value databases and log file-based storage like JSON & JSONL.
 
 ## Developing Custom Storages
 
