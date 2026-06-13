@@ -21,17 +21,12 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-release
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 20
       - name: Bump versions
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cargo release version ${{ github.event.inputs.version }} --workspace --execute --no-confirm
-          cd pkg/javascript
-          NEW_VERSION=$(npm version ${{ github.event.inputs.version }}>&1)
-          cd ../../
+          NEW_VERSION="v$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n 1)"
           NEW_BRANCH="prepare-release-$NEW_VERSION"
           git checkout -b $NEW_BRANCH
           git config --local user.email "taehoon.moon@outlook.com"
