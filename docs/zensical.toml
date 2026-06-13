@@ -222,7 +222,6 @@ nav = [
       "storages/supported-storages/csv-storage.md",
       "storages/supported-storages/file-storage.md",
       "storages/supported-storages/git-storage.md",
-      "storages/supported-storages/idb-storage.md",
       "storages/supported-storages/json-storage.md",
       "storages/supported-storages/memory-storage.md",
       "storages/supported-storages/mongo-storage.md",
@@ -231,7 +230,6 @@ nav = [
       "storages/supported-storages/redis-storage.md",
       "storages/supported-storages/shared-memory-storage.md",
       "storages/supported-storages/sled-storage.md",
-      "storages/supported-storages/web-storage.md",
     ]},
     {"Developing Custom Storages" = [
       "storages/developing-custom-storages/intro.md",
