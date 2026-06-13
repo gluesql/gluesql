@@ -30,8 +30,6 @@ jobs:
       - run: |
           publish_args=(
             --workspace
-            # The Python package is published by its own workflow.
-            --exclude gluesql-py
           )
 
           if [ "$DRY_RUN" = "true" ]; then
