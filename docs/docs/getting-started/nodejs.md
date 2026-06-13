@@ -4,6 +4,8 @@ sidebar_position: 3
 
 # Node.js
 
+The JavaScript package source and release workflows are maintained in the [gluesql-js repository](https://github.com/gluesql/gluesql-js).
+
 This guide will help you get started with GlueSQL in a Node.js project. First, install the `gluesql` package using npm by running the following command in your terminal:
 
 ```sh
