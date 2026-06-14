@@ -31,18 +31,6 @@ jobs:
       contents: read
       pull-requests: read
     steps:
-      - name: Configure git user
-        run: |
-          git config --global user.email "ci@example.com"
-          git config --global user.name "CI"
-      - name: Create GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v3
-        with:
-          client-id: ${{ secrets.COVERAGE_APP_CLIENT_ID }}
-          private-key: ${{ secrets.COVERAGE_APP_PRIVATE_KEY }}
-          owner: gluesql
-          repositories: gluesql, gluesql.github.io
       - name: Resolve coverage run metadata
         uses: actions/github-script@v8
         with:
@@ -90,13 +78,25 @@ jobs:
               throw new Error(`Expected one pull request for coverage run ${run.id}, found ${response.data.length}`);
             }
 
-            const prNumber = response.data[0].number;
+            const pullRequest = response.data[0];
 
+            if (pullRequest.head.sha !== headSha) {
+              core.notice(
+                `Skipping coverage publish: coverage run ${run.id} is for ${headSha}, but PR #${pullRequest.number} currently points to ${pullRequest.head.sha}`,
+              );
+              core.exportVariable('PUBLISH_COVERAGE', 'false');
+              return;
+            }
+
+            const prNumber = pullRequest.number;
+
+            core.exportVariable('PUBLISH_COVERAGE', 'true');
             core.exportVariable('RUN_ID', String(run.id));
             core.exportVariable('COMMIT_SHA', headSha);
             core.exportVariable('PR_NUMBER', String(prNumber));
             core.exportVariable('ARTIFACT_NAME', artifactName);
       - name: Download coverage artifact
+        if: env.PUBLISH_COVERAGE == 'true'
         uses: actions/download-artifact@v7
         with:
           name: ${{ env.ARTIFACT_NAME }}
@@ -105,8 +105,24 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       # No normalization needed: file will be at ./coverage/lcov.info.xz
       - name: Set timestamp
+        if: env.PUBLISH_COVERAGE == 'true'
         run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H%M%SZ')" >> $GITHUB_ENV
+      - name: Configure git user
+        if: env.PUBLISH_COVERAGE == 'true'
+        run: |
+          git config --global user.email "ci@example.com"
+          git config --global user.name "CI"
+      - name: Create GitHub App token
+        if: env.PUBLISH_COVERAGE == 'true'
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.COVERAGE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.COVERAGE_APP_PRIVATE_KEY }}
+          owner: gluesql
+          repositories: gluesql, gluesql.github.io
       - name: Publish coverage to gluesql.github.io
+        if: env.PUBLISH_COVERAGE == 'true'
         run: |
           git clone https://github.com/gluesql/gluesql.github.io.git
           cd gluesql.github.io
@@ -118,6 +134,7 @@ jobs:
           git commit -m "Coverage: PR#${PR_NUMBER}@${COMMIT_SHA}"
           git push https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/gluesql/gluesql.github.io.git
       - name: Comment coverage link on PR
+        if: env.PUBLISH_COVERAGE == 'true'
         uses: actions/github-script@v8
         with:
           github-token: ${{ steps.app-token.outputs.token }}
