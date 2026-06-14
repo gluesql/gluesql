@@ -129,8 +129,8 @@ jobs:
         run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H%M%SZ')" >> $GITHUB_ENV
       - name: Configure git user
         run: |
-          git config --global user.email "ci@example.com"
-          git config --global user.name "CI"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
       - name: Create GitHub App token
         id: app-token
         uses: actions/create-github-app-token@v3
