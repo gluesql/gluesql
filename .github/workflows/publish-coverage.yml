@@ -17,7 +17,7 @@ on:
         type: string
 
 jobs:
-  publish:
+  resolve:
     if: >-
       (github.event_name == 'workflow_dispatch') ||
       (
@@ -30,8 +30,15 @@ jobs:
       actions: read
       contents: read
       pull-requests: read
+    outputs:
+      publish_coverage: ${{ steps.metadata.outputs.publish_coverage }}
+      run_id: ${{ steps.metadata.outputs.run_id }}
+      commit_sha: ${{ steps.metadata.outputs.commit_sha }}
+      pr_number: ${{ steps.metadata.outputs.pr_number }}
+      artifact_name: ${{ steps.metadata.outputs.artifact_name }}
     steps:
       - name: Resolve coverage run metadata
+        id: metadata
         uses: actions/github-script@v8
         with:
           script: |
@@ -84,19 +91,33 @@ jobs:
               core.notice(
                 `Skipping coverage publish: coverage run ${run.id} is for ${headSha}, but PR #${pullRequest.number} currently points to ${pullRequest.head.sha}`,
               );
-              core.exportVariable('PUBLISH_COVERAGE', 'false');
+              core.setOutput('publish_coverage', 'false');
               return;
             }
 
             const prNumber = pullRequest.number;
 
-            core.exportVariable('PUBLISH_COVERAGE', 'true');
-            core.exportVariable('RUN_ID', String(run.id));
-            core.exportVariable('COMMIT_SHA', headSha);
-            core.exportVariable('PR_NUMBER', String(prNumber));
-            core.exportVariable('ARTIFACT_NAME', artifactName);
+            core.setOutput('publish_coverage', 'true');
+            core.setOutput('run_id', String(run.id));
+            core.setOutput('commit_sha', headSha);
+            core.setOutput('pr_number', String(prNumber));
+            core.setOutput('artifact_name', artifactName);
+
+  publish:
+    needs: resolve
+    if: needs.resolve.outputs.publish_coverage == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+    env:
+      RUN_ID: ${{ needs.resolve.outputs.run_id }}
+      COMMIT_SHA: ${{ needs.resolve.outputs.commit_sha }}
+      PR_NUMBER: ${{ needs.resolve.outputs.pr_number }}
+      ARTIFACT_NAME: ${{ needs.resolve.outputs.artifact_name }}
+    steps:
       - name: Download coverage artifact
-        if: env.PUBLISH_COVERAGE == 'true'
         uses: actions/download-artifact@v7
         with:
           name: ${{ env.ARTIFACT_NAME }}
@@ -105,15 +126,12 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       # No normalization needed: file will be at ./coverage/lcov.info.xz
       - name: Set timestamp
-        if: env.PUBLISH_COVERAGE == 'true'
         run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H%M%SZ')" >> $GITHUB_ENV
       - name: Configure git user
-        if: env.PUBLISH_COVERAGE == 'true'
         run: |
           git config --global user.email "ci@example.com"
           git config --global user.name "CI"
       - name: Create GitHub App token
-        if: env.PUBLISH_COVERAGE == 'true'
         id: app-token
         uses: actions/create-github-app-token@v3
         with:
@@ -122,7 +140,6 @@ jobs:
           owner: gluesql
           repositories: gluesql, gluesql.github.io
       - name: Publish coverage to gluesql.github.io
-        if: env.PUBLISH_COVERAGE == 'true'
         run: |
           git clone https://github.com/gluesql/gluesql.github.io.git
           cd gluesql.github.io
@@ -134,7 +151,6 @@ jobs:
           git commit -m "Coverage: PR#${PR_NUMBER}@${COMMIT_SHA}"
           git push https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/gluesql/gluesql.github.io.git
       - name: Comment coverage link on PR
-        if: env.PUBLISH_COVERAGE == 'true'
         uses: actions/github-script@v8
         with:
           github-token: ${{ steps.app-token.outputs.token }}
