@@ -6,6 +6,8 @@ sidebar_position: 2
 
 GlueSQL is a SQL database engine written in Rust, compiled to WebAssembly, and can be used in JavaScript. This guide will walk you through the process of installing and using the GlueSQL package.
 
+The JavaScript package source and release workflows are maintained in the [gluesql-js repository](https://github.com/gluesql/gluesql-js).
+
 ## Installation
 
 Installing GlueSQL is as simple as running the following command:
