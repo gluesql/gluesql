@@ -5,8 +5,6 @@ members = [
   "core",
   "macros",
   "pkg/rust",
-  "pkg/javascript",
-  "pkg/python",
   "storages/*",
   "test-suite",
   "utils",
@@ -16,17 +14,10 @@ default-members = [
   "core",
   "macros",
   "pkg/rust",
-  "pkg/javascript",
-  "pkg/python",
   "storages/*",
   "test-suite",
   "utils",
 ]
-
-# ref. https://github.com/rustwasm/wasm-pack/issues/1111
-# enable this only for gluesql-js build
-# [profile.release]
-# opt-level = "s"
 
 [workspace.package]
 version = "0.19.0"
@@ -48,8 +39,6 @@ gluesql-redb-storage = { path = "./storages/redb-storage", version = "0.19.0" }
 gluesql-json-storage = { path = "./storages/json-storage", version = "0.19.0" }
 gluesql-csv-storage = { path = "./storages/csv-storage", version = "0.19.0" }
 gluesql-composite-storage = { path = "./storages/composite-storage", version = "0.19.0" }
-gluesql-web-storage = { path = "./storages/web-storage", version = "0.19.0" }
-gluesql-idb-storage = { path = "./storages/idb-storage", version = "0.19.0" }
 gluesql-redis-storage = { path = "./storages/redis-storage", version = "0.19.0" }
 gluesql-mongo-storage = { path = "./storages/mongo-storage", version = "0.19.0" }
 gluesql-parquet-storage = { path = "./storages/parquet-storage", version = "0.19.0" }
