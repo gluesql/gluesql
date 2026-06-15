@@ -12,8 +12,10 @@ use {
     },
     async_recursion::async_recursion,
     futures::stream::{self, StreamExt, TryStreamExt},
-    std::collections::HashMap,
+    std::{collections::HashMap, future::Future, pin::Pin},
 };
+
+type SchemaFuture<'a> = Pin<Box<dyn Future<Output = Result<HashMap<String, Schema>>> + Send + 'a>>;
 
 pub async fn fetch_schema_map<T: Store + ?Sized>(
     storage: &T,
@@ -110,10 +112,7 @@ async fn scan_query<T: Store + ?Sized>(
         ..
     } = query;
 
-    let schema_list = match body {
-        SetExprPlan::Select(select) => scan_select(storage, select).await?,
-        SetExprPlan::Values(_) => HashMap::new(),
-    };
+    let schema_list = scan_set_expr_plan(storage, body).await?;
 
     let schema_list = match (limit, offset) {
         (Some(limit), Some(offset)) => schema_list
@@ -129,6 +128,23 @@ async fn scan_query<T: Store + ?Sized>(
     };
 
     Ok(schema_list)
+}
+
+fn scan_set_expr_plan<'a, T: Store + ?Sized>(
+    storage: &'a T,
+    body: &'a SetExprPlan,
+) -> SchemaFuture<'a> {
+    Box::pin(async move {
+        match body {
+            SetExprPlan::Select(select) => scan_select(storage, select).await,
+            SetExprPlan::Values(_) => Ok(HashMap::new()),
+            SetExprPlan::Union { left, right, .. } => {
+                let left_schemas = scan_set_expr_plan(storage, left).await?;
+                let right_schemas = scan_set_expr_plan(storage, right).await?;
+                Ok(left_schemas.into_iter().chain(right_schemas).collect())
+            }
+        }
+    })
 }
 
 async fn scan_select<T: Store + ?Sized>(

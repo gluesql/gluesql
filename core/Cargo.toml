@@ -13,6 +13,7 @@ utils.workspace = true
 
 regex = "1"
 async-trait = "0.1"
+async-stream = "0.3"
 async-recursion = "1"
 cfg-if = "1"
 futures-enum = "0.1.17"
@@ -32,6 +33,7 @@ hex = "0.4"
 rand = "0.8"
 ordered-float = { version = "4", features = ["serde"] }
 md-5 = "0.10.5"
+hashbrown = "0.12"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies.uuid]
 version = "1"

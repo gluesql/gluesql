@@ -74,6 +74,12 @@ fn validate_query(
                 }
             }
         }
+        SetExprPlan::Union { left, right, .. } => {
+            let left_query = QueryPlan::from(*left.clone());
+            let right_query = QueryPlan::from(*right.clone());
+            validate_query(schema_map, &left_query)?;
+            validate_query(schema_map, &right_query)?;
+        }
     }
 
     for order_by in &query.order_by {

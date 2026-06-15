@@ -38,6 +38,7 @@ pub mod store;
 pub mod synthesize;
 pub mod transaction;
 pub mod type_match;
+pub mod union;
 pub mod update;
 pub mod validate;
 pub mod values;
@@ -341,6 +342,7 @@ macro_rules! generate_store_tests {
         glue!(schemaless_project, schemaless::project);
 
         glue!(store_insert_schema, store::insert_schema::insert_schema);
+        glue!(union, union::union);
     };
 }
 

@@ -21,29 +21,42 @@ pub fn validate(schema_map: &SchemaMap, statement: &StatementPlan) -> Result<()>
         _ => None,
     };
 
-    if let Some(query) = query
-        && let QueryPlan {
-            body: SetExprPlan::Select(select),
-            ..
-        } = query
-    {
-        let ProjectionPlan::SelectItems(projection) = &select.projection else {
-            return Ok(());
-        };
-
-        for select_item in projection {
-            if let SelectItemPlan::Expr {
-                expr: ExprPlan::Identifier(ident),
-                ..
-            } = select_item
-                && let Some(context) = contextualize_query(schema_map, query)
-            {
-                context.validate_duplicated(ident)?;
-            }
-        }
+    if let Some(query) = query {
+        validate_query(schema_map, query)?;
     }
 
     Ok(())
+}
+
+fn validate_query(schema_map: &SchemaMap, query: &QueryPlan) -> Result<()> {
+    match &query.body {
+        SetExprPlan::Select(select) => {
+            let ProjectionPlan::SelectItems(projection) = &select.projection else {
+                return Ok(());
+            };
+
+            for select_item in projection {
+                if let SelectItemPlan::Expr {
+                    expr: ExprPlan::Identifier(ident),
+                    ..
+                } = select_item
+                    && let Some(context) = contextualize_query(schema_map, query)
+                {
+                    context.validate_duplicated(ident)?;
+                }
+            }
+
+            Ok(())
+        }
+        SetExprPlan::Union { left, right, .. } => {
+            let left_query = QueryPlan::from(*left.clone());
+            validate_query(schema_map, &left_query)?;
+
+            let right_query = QueryPlan::from(*right.clone());
+            validate_query(schema_map, &right_query)
+        }
+        SetExprPlan::Values(_) => Ok(()),
+    }
 }
 
 enum Context<'a> {
@@ -131,7 +144,7 @@ fn contextualize_query<'a>(
 
             Context::concat(by_table, by_joins)
         }
-        SetExprPlan::Values(_) => None,
+        SetExprPlan::Values(_) | SetExprPlan::Union { .. } => None,
     }
 }
 
@@ -181,6 +194,12 @@ mod tests {
                 "CREATE TABLE Ids AS SELECT id FROM Users A JOIN Users B on A.id = B.id",
                 false,
             ),
+            // UNION branches should also be validated recursively.
+            (
+                "SELECT id FROM Users A JOIN Users B ON A.id = B.id UNION SELECT id FROM Users",
+                false,
+            ),
+            ("SELECT id FROM Users UNION SELECT id FROM Users", true),
         ];
 
         for (sql, expected) in cases {

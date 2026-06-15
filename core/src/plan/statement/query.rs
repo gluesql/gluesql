@@ -16,6 +16,11 @@ pub struct QueryPlan {
 pub enum SetExprPlan {
     Select(Box<SelectPlan>),
     Values(ValuesPlan),
+    Union {
+        left: Box<SetExprPlan>,
+        right: Box<SetExprPlan>,
+        all: bool,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -37,6 +42,17 @@ pub struct OrderByExprPlan {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ValuesPlan(pub Vec<Vec<ExprPlan>>);
+
+impl From<SetExprPlan> for QueryPlan {
+    fn from(body: SetExprPlan) -> Self {
+        Self {
+            body,
+            order_by: vec![],
+            limit: None,
+            offset: None,
+        }
+    }
+}
 
 impl From<ast::Query> for QueryPlan {
     fn from(query: ast::Query) -> Self {
@@ -61,6 +77,11 @@ impl From<ast::SetExpr> for SetExprPlan {
         match set_expr {
             ast::SetExpr::Select(select) => Self::Select(Box::new((*select).into())),
             ast::SetExpr::Values(values) => Self::Values(values.into()),
+            ast::SetExpr::Union { left, right, all } => Self::Union {
+                left: Box::new((*left).into()),
+                right: Box::new((*right).into()),
+                all,
+            },
         }
     }
 }

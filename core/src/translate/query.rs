@@ -14,7 +14,8 @@ use {
         Distinct as SqlDistinct, Expr as SqlExpr, FunctionArg as SqlFunctionArg,
         GroupByExpr as SqlGroupByExpr, Join as SqlJoin, JoinConstraint as SqlJoinConstraint,
         JoinOperator as SqlJoinOperator, Query as SqlQuery, Select as SqlSelect,
-        SelectItem as SqlSelectItem, SetExpr as SqlSetExpr, TableAlias as SqlTableAlias,
+        SelectItem as SqlSelectItem, SetExpr as SqlSetExpr, SetOperator as SqlSetOperator,
+        SetQuantifier as SqlSetQuantifier, TableAlias as SqlTableAlias,
         TableFactor as SqlTableFactor, TableFunctionArgs as SqlTableFunctionArgs,
         TableWithJoins as SqlTableWithJoins,
     },
@@ -92,6 +93,27 @@ fn translate_set_expr(sql_set_expr: &SqlSetExpr, params: &[ParamLiteral]) -> Res
             .collect::<Result<_>>()
             .map(Values)
             .map(SetExpr::Values),
+        SqlSetExpr::SetOperation {
+            op: SqlSetOperator::Union,
+            set_quantifier,
+            left,
+            right,
+        } => {
+            let all = match set_quantifier {
+                SqlSetQuantifier::All => true,
+                SqlSetQuantifier::None | SqlSetQuantifier::Distinct => false,
+                SqlSetQuantifier::ByName
+                | SqlSetQuantifier::AllByName
+                | SqlSetQuantifier::DistinctByName => {
+                    return Err(
+                        TranslateError::UnsupportedQuerySetExpr(sql_set_expr.to_string()).into(),
+                    );
+                }
+            };
+            let left = Box::new(translate_set_expr(left, params)?);
+            let right = Box::new(translate_set_expr(right, params)?);
+            Ok(SetExpr::Union { left, right, all })
+        }
         _ => Err(TranslateError::UnsupportedQuerySetExpr(sql_set_expr.to_string()).into()),
     }
 }
@@ -448,5 +470,202 @@ mod tests {
         };
 
         assert_eq!(translated, expected);
+    }
+
+    fn simple_select_query(table: &str, column: &str) -> Query {
+        use crate::ast::Projection;
+
+        Query {
+            body: SetExpr::Select(Box::new(Select {
+                distinct: false,
+                projection: Projection::SelectItems(vec![SelectItem::Expr {
+                    expr: Expr::Identifier(column.to_owned()),
+                    label: column.to_owned(),
+                }]),
+                from: TableWithJoins {
+                    relation: TableFactor::Table {
+                        name: table.to_owned(),
+                        alias: None,
+                    },
+                    joins: Vec::new(),
+                },
+                selection: None,
+                group_by: Vec::new(),
+                having: None,
+            })),
+            order_by: Vec::new(),
+            limit: None,
+            offset: None,
+        }
+    }
+
+    #[test]
+    fn translate_union_produces_union_set_expr() {
+        let query = parse_query("SELECT id FROM A UNION SELECT id FROM B").expect("parse");
+        let translated = translate_query(query.as_ref(), NO_PARAMS).expect("translate");
+
+        let left = simple_select_query("A", "id");
+        let right = simple_select_query("B", "id");
+
+        let expected = Query {
+            body: SetExpr::Union {
+                left: Box::new(left.body),
+                right: Box::new(right.body),
+                all: false,
+            },
+            order_by: Vec::new(),
+            limit: None,
+            offset: None,
+        };
+
+        assert_eq!(translated, expected);
+    }
+
+    #[test]
+    fn translate_union_all_sets_all_flag() {
+        let query = parse_query("SELECT id FROM A UNION ALL SELECT id FROM B").expect("parse");
+        let translated = translate_query(query.as_ref(), NO_PARAMS).expect("translate");
+
+        assert!(matches!(&translated.body, SetExpr::Union { all: true, .. }));
+    }
+
+    #[test]
+    fn translate_union_default_is_distinct() {
+        let query = parse_query("SELECT id FROM A UNION SELECT id FROM B").expect("parse");
+        let translated = translate_query(query.as_ref(), NO_PARAMS).expect("translate");
+
+        assert!(matches!(
+            &translated.body,
+            SetExpr::Union { all: false, .. }
+        ));
+    }
+
+    #[test]
+    fn union_set_expr_to_sql_roundtrip() {
+        use crate::ast::ToSql;
+
+        let sql = "SELECT id FROM A UNION SELECT id FROM B";
+        let query = parse_query(sql).expect("parse");
+        let translated = translate_query(query.as_ref(), NO_PARAMS).expect("translate");
+
+        let result = translated.to_sql();
+        // The round-trip should contain UNION without ALL.
+        assert!(result.contains("UNION"), "expected UNION in: {result}");
+        assert!(
+            !result.contains("UNION ALL"),
+            "should not contain ALL: {result}"
+        );
+    }
+
+    #[test]
+    fn union_all_set_expr_to_sql_roundtrip() {
+        use crate::ast::ToSql;
+
+        let sql = "SELECT id FROM A UNION ALL SELECT id FROM B";
+        let query = parse_query(sql).expect("parse");
+        let translated = translate_query(query.as_ref(), NO_PARAMS).expect("translate");
+
+        let result = translated.to_sql();
+        assert!(
+            result.contains("UNION ALL"),
+            "expected UNION ALL in: {result}"
+        );
+    }
+
+    #[test]
+    fn unsupported_set_op_intersect_returns_error() {
+        let result = parse_query("SELECT 1 INTERSECT SELECT 1")
+            .and_then(|q| translate_query(q.as_ref(), NO_PARAMS));
+
+        assert!(
+            matches!(
+                result,
+                Err(Error::Translate(TranslateError::UnsupportedQuerySetExpr(_)))
+            ),
+            "expected UnsupportedQuerySetExpr error, got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn unsupported_set_op_except_returns_error() {
+        let result = parse_query("SELECT 1 EXCEPT SELECT 1")
+            .and_then(|q| translate_query(q.as_ref(), NO_PARAMS));
+
+        assert!(
+            matches!(
+                result,
+                Err(Error::Translate(TranslateError::UnsupportedQuerySetExpr(_)))
+            ),
+            "expected UnsupportedQuerySetExpr error, got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn union_by_name_variants_are_unsupported() {
+        // UNION BY NAME / UNION ALL BY NAME / UNION DISTINCT BY NAME are
+        // DuckDB/Snowflake extensions that GlueSQL does not support.
+        // Each must return UnsupportedQuerySetExpr rather than silently
+        // treating the BY NAME qualifier as a plain UNION DISTINCT.
+        //
+        // Note: sqlparser only parses these with the DuckDB dialect, so
+        // we construct the AST directly here instead of going through parse_query.
+        use {
+            crate::translate::translate_query,
+            sqlparser::ast::{
+                Query as SqlQuery, SetExpr as SqlSetExpr, SetOperator as SqlSetOperator,
+                SetQuantifier as SqlSetQuantifier,
+            },
+        };
+
+        let make_query = |quantifier: SqlSetQuantifier| -> SqlQuery {
+            let one = Box::new(SqlSetExpr::Query(Box::new(
+                sqlparser::parser::Parser::parse_sql(
+                    &sqlparser::dialect::GenericDialect {},
+                    "SELECT 1",
+                )
+                .unwrap()
+                .into_iter()
+                .next()
+                .and_then(|s| match s {
+                    sqlparser::ast::Statement::Query(q) => Some(*q),
+                    _ => None,
+                })
+                .unwrap(),
+            )));
+            SqlQuery {
+                with: None,
+                body: Box::new(SqlSetExpr::SetOperation {
+                    op: SqlSetOperator::Union,
+                    set_quantifier: quantifier,
+                    left: one.clone(),
+                    right: one,
+                }),
+                order_by: None,
+                limit: None,
+                limit_by: vec![],
+                offset: None,
+                fetch: None,
+                locks: vec![],
+                for_clause: None,
+                settings: None,
+                format_clause: None,
+            }
+        };
+
+        for quantifier in [
+            SqlSetQuantifier::ByName,
+            SqlSetQuantifier::AllByName,
+            SqlSetQuantifier::DistinctByName,
+        ] {
+            let q = make_query(quantifier);
+            let result = translate_query(&q, NO_PARAMS);
+            assert!(
+                matches!(
+                    result,
+                    Err(Error::Translate(TranslateError::UnsupportedQuerySetExpr(_)))
+                ),
+                "expected UnsupportedQuerySetExpr for BY NAME variant, got: {result:?}"
+            );
+        }
     }
 }

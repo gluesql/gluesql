@@ -109,6 +109,10 @@ fn plan_query(query: &mut QueryPlan) {
                 }
             }
         }
+        SetExprPlan::Union { left, right, .. } => {
+            plan_set_expr(left);
+            plan_set_expr(right);
+        }
     }
 
     if let Some(limit) = query.limit.as_mut() {
@@ -117,6 +121,26 @@ fn plan_query(query: &mut QueryPlan) {
 
     if let Some(offset) = query.offset.as_mut() {
         plan_expr(offset);
+    }
+}
+
+fn plan_set_expr(body: &mut SetExprPlan) {
+    match body {
+        SetExprPlan::Select(select) => {
+            plan_select(select);
+            bind_select(select, &mut []);
+        }
+        SetExprPlan::Values(ValuesPlan(exprs_list)) => {
+            for exprs in exprs_list {
+                for expr in exprs {
+                    plan_expr(expr);
+                }
+            }
+        }
+        SetExprPlan::Union { left, right, .. } => {
+            plan_set_expr(left);
+            plan_set_expr(right);
+        }
     }
 }
 

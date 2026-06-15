@@ -40,6 +40,17 @@ impl<'a, S: BuildHasher> Planner<'a> for PrimaryKeyPlanner<'a, S> {
                 SetExprPlan::Select(Box::new(select))
             }
             SetExprPlan::Values(_) => query.body,
+            SetExprPlan::Union { left, right, all } => {
+                let left = Box::new(
+                    self.query(
+                        outer_context.as_ref().map(Arc::clone),
+                        QueryPlan::from(*left),
+                    )
+                    .body,
+                );
+                let right = Box::new(self.query(outer_context, QueryPlan::from(*right)).body);
+                SetExprPlan::Union { left, right, all }
+            }
         };
 
         QueryPlan { body, ..query }

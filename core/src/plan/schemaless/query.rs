@@ -43,6 +43,20 @@ pub(super) fn transform_query<S: BuildHasher>(
             rewrite_unqualified_identifiers: false,
             schemaless_aliases: HashSet::new(),
         },
+        SetExprPlan::Union { left, right, .. } => {
+            let mut left_query = QueryPlan::from((**left).clone());
+            transform_query(schema_map, &mut left_query);
+            **left = left_query.body;
+
+            let mut right_query = QueryPlan::from((**right).clone());
+            transform_query(schema_map, &mut right_query);
+            **right = right_query.body;
+
+            QueryRewriteState {
+                rewrite_unqualified_identifiers: false,
+                schemaless_aliases: HashSet::new(),
+            }
+        }
     };
 
     for order_by in &mut query.order_by {

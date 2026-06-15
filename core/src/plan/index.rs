@@ -49,6 +49,17 @@ impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
                 (SetExprPlan::Select(Box::new(select)), order_by)
             }
             SetExprPlan::Values(values) => (SetExprPlan::Values(values), order_by),
+            SetExprPlan::Union { left, right, all } => {
+                let left = Box::new(
+                    self.query(
+                        outer_context.as_ref().map(Arc::clone),
+                        QueryPlan::from(*left),
+                    )
+                    .body,
+                );
+                let right = Box::new(self.query(outer_context, QueryPlan::from(*right)).body);
+                (SetExprPlan::Union { left, right, all }, order_by)
+            }
         };
 
         QueryPlan {

@@ -53,28 +53,35 @@ fn find_indexes(statement: &StatementPlan) -> Vec<&IndexItemPlan> {
         }
     }
 
-    fn find_query_indexes(query: &gluesql_core::plan::QueryPlan) -> Vec<&IndexItemPlan> {
-        let select = match &query.body {
-            gluesql_core::plan::SetExprPlan::Select(select) => select,
-            gluesql_core::plan::SetExprPlan::Values(_) => {
-                return vec![];
+    fn find_set_expr_plan_indexes(body: &gluesql_core::plan::SetExprPlan) -> Vec<&IndexItemPlan> {
+        match body {
+            gluesql_core::plan::SetExprPlan::Select(select) => {
+                let selection_indexes = select
+                    .selection
+                    .as_ref()
+                    .map(find_expr_indexes)
+                    .unwrap_or_default();
+
+                let table_indexes = match &select.from.relation {
+                    gluesql_core::plan::TableFactorPlan::Table {
+                        index: Some(index), ..
+                    } => vec![index],
+                    _ => vec![],
+                };
+
+                [selection_indexes, table_indexes].concat()
             }
-        };
+            gluesql_core::plan::SetExprPlan::Values(_) => vec![],
+            gluesql_core::plan::SetExprPlan::Union { left, right, .. } => [
+                find_set_expr_plan_indexes(left),
+                find_set_expr_plan_indexes(right),
+            ]
+            .concat(),
+        }
+    }
 
-        let selection_indexes = select
-            .selection
-            .as_ref()
-            .map(find_expr_indexes)
-            .unwrap_or_default();
-
-        let table_indexes = match &select.from.relation {
-            gluesql_core::plan::TableFactorPlan::Table {
-                index: Some(index), ..
-            } => vec![index],
-            _ => vec![],
-        };
-
-        [selection_indexes, table_indexes].concat()
+    fn find_query_indexes(query: &gluesql_core::plan::QueryPlan) -> Vec<&IndexItemPlan> {
+        find_set_expr_plan_indexes(&query.body)
     }
 
     match statement {
