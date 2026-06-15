@@ -57,7 +57,7 @@ test_case!(expr, {
     g.named_test(
         "aggregate inside is null predicate",
         "SELECT SUM(age) IS NULL AS test FROM Item;",
-        Ok(select!("test" Bool; true)),
+        Ok(select!("test" Bool; false)),
     )
     .await;
 });

@@ -29,9 +29,10 @@ test_case!(sum, {
     let test_cases = [
         (
             "SELECT SUM(age) FROM Item",
-            select_with_null!(
-                "SUM(age)";
-                Null
+            select!(
+                "SUM(age)"
+                I64;
+                104
             ),
         ),
         (
@@ -88,7 +89,7 @@ test_case!(sum, {
         ),
         (
             "SELECT SUM(DISTINCT age) FROM Item",
-            select_with_null!("SUM(DISTINCT age)"; Null),
+            select!("SUM(DISTINCT age)"; I64; 104),
         ),
     ];
 
