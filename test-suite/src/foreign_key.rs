@@ -198,12 +198,20 @@ test_case!(foreign_key, {
         Ok(Payload::Update(1)),
     );
 
+    g.run("INSERT INTO ReferencedTableWithPK VALUES (2, 'unreferenced row');");
+
     g.named_test(
         "Deleting referenced row should fail if referencing value exists (by default: NO ACTION and gets error)",
         "DELETE FROM ReferencedTableWithPK WHERE id = 1;",
         Err(DeleteError::ReferencingColumnExists("ReferencingTable.referenced_id".to_owned()).into()),
     )
     ;
+
+    g.named_test(
+        "Deleting unreferenced row should succeed even if referencing table is not empty",
+        "DELETE FROM ReferencedTableWithPK WHERE id = 2;",
+        Ok(Payload::Delete(1)),
+    );
 
     g.named_test(
         "Deleting referencing table does not care referenced table",
