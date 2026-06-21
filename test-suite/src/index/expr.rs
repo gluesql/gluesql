@@ -18,8 +18,7 @@ test_case!(expr, {
             name TEXT
         )
     ",
-    )
-    .await;
+    );
 
     g.run(
         "
@@ -28,47 +27,39 @@ test_case!(expr, {
         VALUES
             (1, 2, 'Hello');
     ",
-    )
-    .await;
+    );
 
-    g.test("CREATE INDEX idx_id ON Test (id)", Ok(Payload::CreateIndex))
-        .await;
+    g.test("CREATE INDEX idx_id ON Test (id)", Ok(Payload::CreateIndex));
 
     g.test(
         "CREATE INDEX idx_typed_string ON Test ((id))",
         Ok(Payload::CreateIndex),
-    )
-    .await;
+    );
 
     g.test(
         "CREATE INDEX idx_binary_op ON Test (num || name);",
         Ok(Payload::CreateIndex),
-    )
-    .await;
+    );
 
     g.test(
         "CREATE INDEX idx_unary_op ON Test (-num);",
         Ok(Payload::CreateIndex),
-    )
-    .await;
+    );
 
     g.test(
         "CREATE INDEX idx_cast ON Test (CAST(id AS TEXT));",
         Ok(Payload::CreateIndex),
-    )
-    .await;
+    );
 
     g.test(
         "CREATE INDEX idx_literal ON Test (100)",
         Err(AlterError::IndexExprRequiresColumnReference.into()),
-    )
-    .await;
+    );
 
     g.test(
         "INSERT INTO Test VALUES (4, 7, 'Well');",
         Ok(Payload::Insert(1)),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT id, num, name FROM Test",
@@ -78,8 +69,7 @@ test_case!(expr, {
             1     2     "Hello".to_owned();
             4     7     "Well".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test_idx(
         "SELECT id, num, name FROM Test WHERE id <= 1",
@@ -89,8 +79,7 @@ test_case!(expr, {
             1     2     "Hello".to_owned()
         )),
         idx!(idx_id, LtEq, "1"),
-    )
-    .await;
+    );
 
     g.test_idx(
         "SELECT id, num, name FROM Test WHERE id <= (1)",
@@ -100,8 +89,7 @@ test_case!(expr, {
             1     2     "Hello".to_owned()
         )),
         idx!(idx_id, LtEq, "(1)"),
-    )
-    .await;
+    );
 
     g.test_idx(
         "SELECT id, num, name FROM Test WHERE num || name = '2Hello'",
@@ -111,8 +99,7 @@ test_case!(expr, {
             1     2     "Hello".to_owned()
         )),
         idx!(idx_binary_op, Eq, "'2Hello'"),
-    )
-    .await;
+    );
 
     g.test_idx(
         "SELECT id, num, name FROM Test WHERE (num || name) = '2Hello'",
@@ -122,8 +109,7 @@ test_case!(expr, {
             1     2     "Hello".to_owned()
         )),
         idx!(idx_binary_op, Eq, "'2Hello'"),
-    )
-    .await;
+    );
 
     g.test_idx(
         "SELECT id, num, name FROM Test WHERE '7Well' = (num || name)",
@@ -133,8 +119,7 @@ test_case!(expr, {
             4     7     "Well".to_owned()
         )),
         idx!(idx_binary_op, Eq, "'7Well'"),
-    )
-    .await;
+    );
 
     g.test_idx(
         "SELECT id, num, name FROM Test WHERE -num < -2",
@@ -144,8 +129,7 @@ test_case!(expr, {
             4     7     "Well".to_owned()
         )),
         idx!(idx_unary_op, Lt, "-2"),
-    )
-    .await;
+    );
 
     g.test_idx(
         "SELECT id, num, name FROM Test WHERE CAST(id AS TEXT) = '4'",
@@ -155,6 +139,5 @@ test_case!(expr, {
             4     7     "Well".to_owned()
         )),
         idx!(idx_cast, Eq, "'4'"),
-    )
-    .await;
+    );
 });

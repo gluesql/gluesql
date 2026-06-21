@@ -2,7 +2,7 @@
 mod api_usage {
     use gluesql::prelude::{Glue, SledStorage};
 
-    pub async fn run() {
+    pub fn run() {
         let storage = SledStorage::new("data/mutable-api").unwrap();
         let mut glue = Glue::new(storage);
 
@@ -14,12 +14,12 @@ mod api_usage {
         ];
 
         for sql in sqls {
-            glue.execute(sql).await.unwrap();
+            glue.execute(sql).unwrap();
         }
     }
 }
 
 fn main() {
     #[cfg(feature = "gluesql_sled_storage")]
-    futures::executor::block_on(api_usage::run());
+    api_usage::run();
 }

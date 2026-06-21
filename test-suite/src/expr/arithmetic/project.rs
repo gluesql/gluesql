@@ -13,9 +13,8 @@ test_case!(project, {
             num INTEGER
         );
     ",
-    )
-    .await;
-    g.run("DELETE FROM Arith").await;
+    );
+    g.run("DELETE FROM Arith");
     g.run(
         "
         INSERT INTO Arith (id, num) VALUES
@@ -25,8 +24,7 @@ test_case!(project, {
             (4, 2),
             (5, 3);
     ",
-    )
-    .await;
+    );
 
     let test_cases = [
         (
@@ -60,6 +58,6 @@ test_case!(project, {
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, Ok(expected)).await;
+        g.test(sql, Ok(expected));
     }
 });

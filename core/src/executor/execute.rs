@@ -21,13 +21,12 @@ use {
         result::{Error, Result},
         store::{GStore, GStoreMut},
     },
-    futures::stream::{StreamExt, TryStreamExt},
     serde::{Deserialize, Serialize},
     std::{
         collections::{BTreeMap, HashMap},
         env::var,
         fmt::Debug,
-        sync::Arc,
+        rc::Rc,
     },
     thiserror::Error as ThisError,
 };
@@ -104,7 +103,7 @@ pub enum PayloadVariable {
     Version(String),
 }
 
-pub async fn execute<T: GStore + GStoreMut>(
+pub fn execute<T: GStore + GStoreMut>(
     storage: &mut T,
     statement: &StatementPlan,
 ) -> Result<Payload> {
@@ -112,27 +111,27 @@ pub async fn execute<T: GStore + GStoreMut>(
         statement,
         StatementPlan::StartTransaction | StatementPlan::Rollback | StatementPlan::Commit
     ) {
-        return execute_inner(storage, statement).await;
+        return execute_inner(storage, statement);
     }
 
-    let autocommit = storage.begin(true).await?;
-    let result = execute_inner(storage, statement).await;
+    let autocommit = storage.begin(true)?;
+    let result = execute_inner(storage, statement);
 
     if !autocommit {
         return result;
     }
 
     match result {
-        Ok(payload) => storage.commit().await.map(|()| payload),
+        Ok(payload) => storage.commit().map(|()| payload),
         Err(error) => {
-            storage.rollback().await?;
+            storage.rollback()?;
 
             Err(error)
         }
     }
 }
 
-async fn execute_inner<T: GStore + GStoreMut>(
+fn execute_inner<T: GStore + GStoreMut>(
     storage: &mut T,
     statement: &StatementPlan,
 ) -> Result<Payload> {
@@ -158,47 +157,35 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 comment,
             };
 
-            create_table(storage, options)
-                .await
-                .map(|()| Payload::Create)
+            create_table(storage, options).map(|()| Payload::Create)
         }
         StatementPlan::DropTable {
             names,
             if_exists,
             cascade,
             ..
-        } => drop_table(storage, names, *if_exists, *cascade)
-            .await
-            .map(Payload::DropTable),
-        StatementPlan::AlterTable { name, operation } => alter_table(storage, name, operation)
-            .await
-            .map(|()| Payload::AlterTable),
+        } => drop_table(storage, names, *if_exists, *cascade).map(Payload::DropTable),
+        StatementPlan::AlterTable { name, operation } => {
+            alter_table(storage, name, operation).map(|()| Payload::AlterTable)
+        }
         StatementPlan::CreateIndex {
             name,
             table_name,
             column,
-        } => create_index(storage, table_name, name, column)
-            .await
-            .map(|()| Payload::CreateIndex),
+        } => create_index(storage, table_name, name, column).map(|()| Payload::CreateIndex),
         StatementPlan::DropIndex { name, table_name } => storage
             .drop_index(table_name, name)
-            .await
             .map(|()| Payload::DropIndex),
         //- Transaction
-        StatementPlan::StartTransaction => storage
-            .begin(false)
-            .await
-            .map(|_| Payload::StartTransaction),
-        StatementPlan::Commit => storage.commit().await.map(|()| Payload::Commit),
-        StatementPlan::Rollback => storage.rollback().await.map(|()| Payload::Rollback),
+        StatementPlan::StartTransaction => storage.begin(false).map(|_| Payload::StartTransaction),
+        StatementPlan::Commit => storage.commit().map(|()| Payload::Commit),
+        StatementPlan::Rollback => storage.rollback().map(|()| Payload::Rollback),
         //-- Rows
         StatementPlan::Insert {
             table_name,
             columns,
             source,
-        } => insert(storage, table_name, columns, source)
-            .await
-            .map(Payload::Insert),
+        } => insert(storage, table_name, columns, source).map(Payload::Insert),
         StatementPlan::Update {
             table_name,
             selection,
@@ -209,12 +196,11 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 foreign_keys,
                 ..
             } = storage
-                .fetch_schema(table_name)
-                .await?
+                .fetch_schema(table_name)?
                 .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
 
             let all_columns = column_defs.as_deref().map_or_else(
-                || Arc::from(vec![SCHEMALESS_DOC_COLUMN.to_owned()]),
+                || Rc::from(vec![SCHEMALESS_DOC_COLUMN.to_owned()]),
                 |columns| columns.iter().map(|col_def| col_def.name.clone()).collect(),
             );
             let columns_to_update: Vec<String> = assignments
@@ -224,30 +210,23 @@ async fn execute_inner<T: GStore + GStoreMut>(
 
             let update = Update::new(storage, table_name, assignments, column_defs.as_deref())?;
 
-            let foreign_keys = Arc::new(foreign_keys);
+            let foreign_keys = Rc::new(foreign_keys);
 
-            let rows = fetch(storage, table_name, all_columns, selection.as_ref())
-                .await?
-                .and_then(|item| {
-                    let update = &update;
-                    let (key, row) = item;
+            let rows = fetch(storage, table_name, all_columns, selection.as_ref())?
+                .map(|item| {
+                    let (key, row) = item?;
+                    let row = update.apply(row, foreign_keys.as_ref())?;
 
-                    let foreign_keys = Arc::clone(&foreign_keys);
-                    async move {
-                        let row = update.apply(row, foreign_keys.as_ref()).await?;
-
-                        Ok((key, row))
-                    }
+                    Ok((key, row))
                 })
-                .try_collect::<Vec<(Key, Row)>>()
-                .await?;
+                .collect::<Result<Vec<(Key, Row)>>>()?;
 
             if let Some(column_defs) = column_defs {
                 let column_validation =
                     ColumnValidation::SpecifiedColumns(&column_defs, columns_to_update);
                 let rows = rows.iter().map(|(_, row)| row.values.as_slice());
 
-                validate_unique(storage, table_name, column_validation, rows).await?;
+                validate_unique(storage, table_name, &column_validation, rows)?;
             }
 
             let num_rows = rows.len();
@@ -258,17 +237,16 @@ async fn execute_inner<T: GStore + GStoreMut>(
 
             storage
                 .insert_data(table_name, rows)
-                .await
                 .map(|()| Payload::Update(num_rows))
         }
         StatementPlan::Delete {
             table_name,
             selection,
-        } => delete(storage, table_name, selection.as_ref()).await,
+        } => delete(storage, table_name, selection.as_ref()),
 
         //- Selection
         StatementPlan::Query(query) => {
-            let (labels, rows) = select_with_labels(storage, query, None).await?;
+            let (labels, rows) = select_with_labels(storage, query, None)?;
 
             let is_schemaless_map = matches!(
                 &query.body,
@@ -284,20 +262,17 @@ async fn execute_inner<T: GStore + GStoreMut>(
                         _ => Err(ExecuteError::ExpectedMapValueInDocColumn.into()),
                     }
                 })
-                .try_collect::<Vec<_>>()
-                .await
+                .collect::<Result<Vec<_>>>()
                 .map(Payload::SelectMap)
             } else {
                 rows.map(|row| Ok(row?.into_values()))
-                    .try_collect::<Vec<_>>()
-                    .await
+                    .collect::<Result<Vec<_>>>()
                     .map(|rows| Payload::Select { labels, rows })
             }
         }
         StatementPlan::ShowColumns { table_name } => {
             let Schema { column_defs, .. } = storage
-                .fetch_schema(table_name)
-                .await?
+                .fetch_schema(table_name)?
                 .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
 
             let output: Vec<(String, DataType)> = column_defs
@@ -339,11 +314,10 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 offset: None,
             };
 
-            let (labels, rows) = select_with_labels(storage, &query, None).await?;
+            let (labels, rows) = select_with_labels(storage, &query, None)?;
             let rows = rows
                 .map(|row| Ok::<_, Error>(row?.into_values()))
-                .try_collect::<Vec<_>>()
-                .await?;
+                .collect::<Result<Vec<_>>>()?;
 
             if rows.is_empty() {
                 return Err(ExecuteError::TableNotFound(table_name.to_owned()).into());
@@ -380,11 +354,9 @@ async fn execute_inner<T: GStore + GStoreMut>(
                     offset: None,
                 };
 
-                let table_names = select(storage, &query, None)
-                    .await?
+                let table_names = select(storage, &query, None)?
                     .map(|row| Ok::<_, Error>(row?.into_values()))
-                    .try_collect::<Vec<Vec<Value>>>()
-                    .await?
+                    .collect::<Result<Vec<Vec<Value>>>>()?
                     .iter()
                     .flat_map(|values| values.iter().map(Into::into))
                     .collect::<Vec<_>>();
@@ -393,8 +365,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
             }
             Variable::Functions => {
                 let mut function_desc: Vec<_> = storage
-                    .fetch_all_functions()
-                    .await?
+                    .fetch_all_functions()?
                     .iter()
                     .map(|f| f.to_str())
                     .collect();
@@ -416,13 +387,9 @@ async fn execute_inner<T: GStore + GStoreMut>(
             name,
             args,
             return_,
-        } => insert_function(storage, name, args, *or_replace, return_)
-            .await
-            .map(|()| Payload::Create),
+        } => insert_function(storage, name, args, *or_replace, return_).map(|()| Payload::Create),
         StatementPlan::DropFunction { if_exists, names } => {
-            delete_function(storage, names, *if_exists)
-                .await
-                .map(|()| Payload::DropFunction)
+            delete_function(storage, names, *if_exists).map(|()| Payload::DropFunction)
         }
     }
 }

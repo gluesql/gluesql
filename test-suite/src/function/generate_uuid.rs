@@ -17,13 +17,11 @@ test_case!(generate_uuid, {
     )];
 
     for (sql, expected) in test_cases {
-        g.test(sql, expected).await;
+        g.test(sql, expected);
     }
 
-    g.count("SELECT GENERATE_UUID()", 1).await;
-    g.count("VALUES (GENERATE_UUID())", 1).await;
-    g.type_match("SELECT GENERATE_UUID() as uuid", &[DataType::Uuid])
-        .await;
-    g.type_match("VALUES (GENERATE_UUID())", &[DataType::Uuid])
-        .await;
+    g.count("SELECT GENERATE_UUID()", 1);
+    g.count("VALUES (GENERATE_UUID())", 1);
+    g.type_match("SELECT GENERATE_UUID() as uuid", &[DataType::Uuid]);
+    g.type_match("VALUES (GENERATE_UUID())", &[DataType::Uuid]);
 });

@@ -8,7 +8,7 @@ use {
             TableFactorPlan, TableWithJoinsPlan, expr::evaluable::check_expr as check_evaluable,
         },
     },
-    std::{collections::HashMap, hash::BuildHasher, sync::Arc},
+    std::{collections::HashMap, hash::BuildHasher, rc::Rc},
 };
 
 pub fn plan<S: BuildHasher>(
@@ -32,7 +32,7 @@ struct PrimaryKeyPlanner<'a, S> {
 }
 
 impl<'a, S: BuildHasher> Planner<'a> for PrimaryKeyPlanner<'a, S> {
-    fn query(&self, outer_context: Option<Arc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
+    fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
         let body = match query.body {
             SetExprPlan::Select(select) => {
                 let select = self.select(outer_context, *select);
@@ -59,7 +59,7 @@ enum PrimaryKey {
 }
 
 impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
-    fn select(&self, outer_context: Option<Arc<Context<'a>>>, select: SelectPlan) -> SelectPlan {
+    fn select(&self, outer_context: Option<Rc<Context<'a>>>, select: SelectPlan) -> SelectPlan {
         let current_context = self.update_context(None, &select.from.relation);
         let current_context = select
             .from
@@ -103,8 +103,8 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
 
     fn expr(
         &self,
-        outer_context: Option<Arc<Context<'a>>>,
-        current_context: Option<Arc<Context<'a>>>,
+        outer_context: Option<Rc<Context<'a>>>,
+        current_context: Option<Rc<Context<'a>>>,
         expr: ExprPlan,
     ) -> PrimaryKey {
         let check_primary_key = |key: &ExprPlan| {
@@ -129,7 +129,7 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                 op: BinaryOperator::Eq,
                 right: key,
             } if check_primary_key(key.as_ref())
-                && check_evaluable(current_context.as_ref().map(Arc::clone), &key)
+                && check_evaluable(current_context.as_ref().map(Rc::clone), &key)
                 && check_evaluable(None, &value) =>
             {
                 let index_item = IndexItemPlan::PrimaryKey(*value);
@@ -145,8 +145,8 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                 right,
             } => {
                 let primary_key = self.expr(
-                    outer_context.as_ref().map(Arc::clone),
-                    current_context.as_ref().map(Arc::clone),
+                    outer_context.as_ref().map(Rc::clone),
+                    current_context.as_ref().map(Rc::clone),
                     *left,
                 );
 
@@ -231,13 +231,12 @@ mod tests {
             plan::{StatementPlan, fetch_schema_map},
             translate::{NO_PARAMS, translate, translate_expr},
         },
-        futures::executor::block_on,
     };
 
     fn plan(storage: &MockStorage, sql: &str) -> StatementPlan {
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
         let statement = StatementPlan::from(translate(&parsed).unwrap());
-        let schema_map = block_on(fetch_schema_map(storage, &statement)).unwrap();
+        let schema_map = fetch_schema_map(storage, &statement).unwrap();
 
         plan_primary_key(&schema_map, statement)
     }

@@ -5,15 +5,15 @@ use {
         data::Schema,
         plan::{ExprPlan, FunctionPlan, QueryPlan, TableAliasPlan, TableFactorPlan},
     },
-    std::sync::Arc,
+    std::rc::Rc,
 };
 
 pub trait Planner<'a> {
     fn get_schema(&self, name: &str) -> Option<&'a Schema>;
 
-    fn query(&self, outer_context: Option<Arc<Context<'a>>>, query: QueryPlan) -> QueryPlan;
+    fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: QueryPlan) -> QueryPlan;
 
-    fn subquery_expr(&self, outer_context: Option<Arc<Context<'a>>>, expr: ExprPlan) -> ExprPlan {
+    fn subquery_expr(&self, outer_context: Option<Rc<Context<'a>>>, expr: ExprPlan) -> ExprPlan {
         match expr {
             ExprPlan::IsNull(expr) => {
                 ExprPlan::IsNull(Box::new(self.subquery_expr(outer_context, *expr)))
@@ -28,7 +28,7 @@ pub trait Planner<'a> {
             } => {
                 let list = list
                     .into_iter()
-                    .map(|expr| self.subquery_expr(outer_context.as_ref().map(Arc::clone), expr))
+                    .map(|expr| self.subquery_expr(outer_context.as_ref().map(Rc::clone), expr))
                     .collect();
                 let expr = Box::new(self.subquery_expr(outer_context, *expr));
 
@@ -51,7 +51,7 @@ pub trait Planner<'a> {
                 negated,
             } => {
                 let expr =
-                    Box::new(self.subquery_expr(outer_context.as_ref().map(Arc::clone), *expr));
+                    Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *expr));
                 let subquery = Box::new(self.query(outer_context, *subquery));
 
                 ExprPlan::InSubquery {
@@ -67,9 +67,8 @@ pub trait Planner<'a> {
                 high,
             } => {
                 let expr =
-                    Box::new(self.subquery_expr(outer_context.as_ref().map(Arc::clone), *expr));
-                let low =
-                    Box::new(self.subquery_expr(outer_context.as_ref().map(Arc::clone), *low));
+                    Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *expr));
+                let low = Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *low));
                 let high = Box::new(self.subquery_expr(outer_context, *high));
 
                 ExprPlan::Between {
@@ -85,9 +84,9 @@ pub trait Planner<'a> {
                 pattern,
             } => {
                 let expr =
-                    Box::new(self.subquery_expr(outer_context.as_ref().map(Arc::clone), *expr));
+                    Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *expr));
                 let pattern =
-                    Box::new(self.subquery_expr(outer_context.as_ref().map(Arc::clone), *pattern));
+                    Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *pattern));
 
                 ExprPlan::Like {
                     expr,
@@ -101,9 +100,9 @@ pub trait Planner<'a> {
                 pattern,
             } => {
                 let expr =
-                    Box::new(self.subquery_expr(outer_context.as_ref().map(Arc::clone), *expr));
+                    Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *expr));
                 let pattern =
-                    Box::new(self.subquery_expr(outer_context.as_ref().map(Arc::clone), *pattern));
+                    Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *pattern));
 
                 ExprPlan::ILike {
                     expr,
@@ -112,7 +111,7 @@ pub trait Planner<'a> {
                 }
             }
             ExprPlan::BinaryOp { left, op, right } => ExprPlan::BinaryOp {
-                left: Box::new(self.subquery_expr(outer_context.as_ref().map(Arc::clone), *left)),
+                left: Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *left)),
                 op,
                 right: Box::new(self.subquery_expr(outer_context, *right)),
             },
@@ -129,13 +128,13 @@ pub trait Planner<'a> {
                 else_result,
             } => {
                 let operand = operand.map(|expr| {
-                    Box::new(self.subquery_expr(outer_context.as_ref().map(Arc::clone), *expr))
+                    Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *expr))
                 });
                 let when_then = when_then
                     .into_iter()
                     .map(|(when, then)| {
-                        let when = self.subquery_expr(outer_context.as_ref().map(Arc::clone), when);
-                        let then = self.subquery_expr(outer_context.as_ref().map(Arc::clone), then);
+                        let when = self.subquery_expr(outer_context.as_ref().map(Rc::clone), when);
+                        let then = self.subquery_expr(outer_context.as_ref().map(Rc::clone), then);
 
                         (when, then)
                     })
@@ -152,7 +151,7 @@ pub trait Planner<'a> {
             ExprPlan::ArrayIndex { obj, indexes } => {
                 let indexes = indexes
                     .into_iter()
-                    .map(|expr| self.subquery_expr(outer_context.as_ref().map(Arc::clone), expr))
+                    .map(|expr| self.subquery_expr(outer_context.as_ref().map(Rc::clone), expr))
                     .collect();
                 let obj = Box::new(self.subquery_expr(outer_context, *obj));
                 ExprPlan::ArrayIndex { obj, indexes }
@@ -160,7 +159,7 @@ pub trait Planner<'a> {
             ExprPlan::Array { elem } => {
                 let elem = elem
                     .into_iter()
-                    .map(|expr| self.subquery_expr(outer_context.as_ref().map(Arc::clone), expr))
+                    .map(|expr| self.subquery_expr(outer_context.as_ref().map(Rc::clone), expr))
                     .collect();
                 ExprPlan::Array { elem }
             }
@@ -199,9 +198,9 @@ pub trait Planner<'a> {
 
     fn update_context(
         &self,
-        next: Option<Arc<Context<'a>>>,
+        next: Option<Rc<Context<'a>>>,
         table_factor: &TableFactorPlan,
-    ) -> Option<Arc<Context<'a>>> {
+    ) -> Option<Rc<Context<'a>>> {
         let (name, alias) = match table_factor {
             TableFactorPlan::Table { name, alias, .. } => {
                 let alias = alias
@@ -240,6 +239,6 @@ pub trait Planner<'a> {
             primary_key,
             next,
         );
-        Some(Arc::new(context))
+        Some(Rc::new(context))
     }
 }

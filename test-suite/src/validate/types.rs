@@ -10,11 +10,10 @@ use {
 test_case!(types, {
     let g = get_tester!();
 
-    g.run("CREATE TABLE TableB (id BOOLEAN);").await;
-    g.run("CREATE TABLE TableC (uid INTEGER NOT NULL, null_val INTEGER NULL);")
-        .await;
-    g.run("INSERT INTO TableB VALUES (FALSE);").await;
-    g.run("INSERT INTO TableC VALUES (1, NULL);").await;
+    g.run("CREATE TABLE TableB (id BOOLEAN);");
+    g.run("CREATE TABLE TableC (uid INTEGER NOT NULL, null_val INTEGER NULL);");
+    g.run("INSERT INTO TableB VALUES (FALSE);");
+    g.run("INSERT INTO TableC VALUES (1, NULL);");
 
     let test_cases = [
         (
@@ -68,6 +67,6 @@ test_case!(types, {
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, expected).await;
+        g.test(sql, expected);
     }
 });

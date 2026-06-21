@@ -14,8 +14,7 @@ test_case!(nullable, {
             name TEXT
         )
         ",
-    )
-    .await;
+    );
     g.run(
         "
         INSERT INTO Test (id, num, name) VALUES
@@ -23,8 +22,7 @@ test_case!(nullable, {
             (   1, 9, 'World'),
             (   3, 4, 'Great');
         ",
-    )
-    .await;
+    );
 
     let test_cases = [
         (
@@ -224,10 +222,10 @@ test_case!(nullable, {
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, Ok(expected)).await;
+        g.test(sql, Ok(expected));
     }
 
-    g.run("UPDATE Test SET id = 2").await;
+    g.run("UPDATE Test SET id = 2");
 
     let test_cases = [
         ("SELECT id FROM Test", Ok(select!(id I64; 2; 2; 2))),
@@ -248,7 +246,7 @@ test_case!(nullable, {
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, expected).await;
+        g.test(sql, expected);
     }
 });
 
@@ -262,11 +260,9 @@ test_case!(nullable_text, {
             name TEXT NULL
         );
     ",
-    )
-    .await;
+    );
 
-    g.run("INSERT INTO Foo (id, name) VALUES (1, 'Hello'), (2, Null);")
-        .await;
+    g.run("INSERT INTO Foo (id, name) VALUES (1, 'Hello'), (2, Null);");
 });
 
 test_case!(nullable_implicit_insert, {
@@ -279,16 +275,14 @@ test_case!(nullable_implicit_insert, {
             name TEXT NULL
         );
     ",
-    )
-    .await;
+    );
 
-    g.run("INSERT INTO Foo (id) VALUES (1)").await;
+    g.run("INSERT INTO Foo (id) VALUES (1)");
     g.test(
         "SELECT id, name FROM Foo",
         Ok(select_with_null!(
             id   | name;
             I64(1)  Null
         )),
-    )
-    .await;
+    );
 });

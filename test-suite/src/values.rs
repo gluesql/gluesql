@@ -10,7 +10,7 @@ use {
 test_case!(values, {
     let g = get_tester!();
 
-    g.run("CREATE TABLE Items (id INTEGER NOT NULL, name TEXT, status TEXT DEFAULT 'ACTIVE' NOT NULL);").await;
+    g.run("CREATE TABLE Items (id INTEGER NOT NULL, name TEXT, status TEXT DEFAULT 'ACTIVE' NOT NULL);");
 
     let test_cases = [
         (
@@ -160,6 +160,6 @@ test_case!(values, {
         ),
     ];
     for (sql, expected) in test_cases {
-        g.test(sql, expected).await;
+        g.test(sql, expected);
     }
 });

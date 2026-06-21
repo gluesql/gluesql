@@ -8,14 +8,14 @@ use {
 
 macro_rules! exec {
     ($glue: ident $sql: literal) => {
-        $glue.execute($sql).await.unwrap();
+        $glue.execute($sql).unwrap();
     };
 }
 
 /// MUST run redis locally before test
 /// eg.) docker run --rm -p 6379:6379 redis
-#[tokio::test]
-async fn redis_storage_tables() {
+#[test]
+fn redis_storage_tables() {
     use chrono::NaiveDate;
 
     let mut path = env::current_dir().unwrap();
@@ -32,16 +32,15 @@ async fn redis_storage_tables() {
     exec!(glue "DROP TABLE IF EXISTS Marvels;");
 
     exec!(glue "CREATE TABLE DC (id INTEGER, name TEXT, birth DATE);");
-    exec!(glue r#"INSERT INTO DC (id, name, birth) values (1, 'Superman', '2023-12-31');"#);
-    exec!(glue r#"INSERT INTO DC (id, name, birth) values (2, 'Flash', '2011-12-31');"#);
+    exec!(glue "INSERT INTO DC (id, name, birth) values (1, 'Superman', '2023-12-31');");
+    exec!(glue "INSERT INTO DC (id, name, birth) values (2, 'Flash', '2011-12-31');");
 
     exec!(glue "CREATE TABLE Marvels (id INTEGER, name TEXT);");
-    exec!(glue r#"INSERT INTO Marvels (id, name) values (1, 'Ironman');"#);
-    exec!(glue r#"INSERT INTO Marvels (id, name) values (2, 'Wanda');"#);
+    exec!(glue "INSERT INTO Marvels (id, name) values (1, 'Ironman');");
+    exec!(glue "INSERT INTO Marvels (id, name) values (2, 'Wanda');");
 
     let ret: Vec<Payload> = glue
         .execute("SELECT id, name FROM Marvels WHERE name = 'Wanda';")
-        .await
         .unwrap();
     match &ret[0] {
         Payload::Select { labels, rows } => {
@@ -55,11 +54,10 @@ async fn redis_storage_tables() {
     }
 
     exec!(glue "DROP TABLE Marvels;");
-    assert!(glue.execute("SELECT id, name FROM Marvels;").await.is_err());
+    assert!(glue.execute("SELECT id, name FROM Marvels;").is_err());
 
     let ret: Vec<Payload> = glue
         .execute("SELECT id, name, birth FROM DC WHERE name = 'Superman';")
-        .await
         .unwrap();
     match &ret[0] {
         Payload::Select { labels, rows } => {
@@ -80,8 +78,8 @@ async fn redis_storage_tables() {
     exec!(glue "DROP TABLE DC;");
 }
 
-#[tokio::test]
-async fn redis_storage_add_column() {
+#[test]
+fn redis_storage_add_column() {
     let mut path = env::current_dir().unwrap();
     path.push("tests/redis-storage.toml");
     let redis_config_str = fs::read_to_string(path).unwrap();
@@ -97,7 +95,7 @@ async fn redis_storage_add_column() {
     exec!(glue "INSERT INTO dummy (id) values (11)");
     exec!(glue "ALTER TABLE dummy ADD newcol TEXT");
 
-    let ret: Vec<Payload> = glue.execute("SELECT id, newcol FROM dummy;").await.unwrap();
+    let ret: Vec<Payload> = glue.execute("SELECT id, newcol FROM dummy;").unwrap();
     match &ret[0] {
         Payload::Select { labels, rows } => {
             assert_eq!(labels[0], "id");
@@ -122,7 +120,7 @@ async fn redis_storage_add_column() {
     exec!(glue "INSERT INTO dummy (id) values (11)");
     exec!(glue "ALTER TABLE dummy ADD newcol TEXT");
 
-    let ret: Vec<Payload> = glue.execute("SELECT id, newcol FROM dummy;").await.unwrap();
+    let ret: Vec<Payload> = glue.execute("SELECT id, newcol FROM dummy;").unwrap();
     match &ret[0] {
         Payload::Select { labels, rows } => {
             assert_eq!(labels[0], "id");
@@ -138,8 +136,8 @@ async fn redis_storage_add_column() {
     exec!(glue "DROP TABLE dummy;");
 }
 
-#[tokio::test]
-async fn redis_storage_drop_column() {
+#[test]
+fn redis_storage_drop_column() {
     let mut path = env::current_dir().unwrap();
     path.push("tests/redis-storage.toml");
     let redis_config_str = fs::read_to_string(path).unwrap();
@@ -151,11 +149,11 @@ async fn redis_storage_drop_column() {
     let mut glue = Glue::new(storage);
 
     exec!(glue "CREATE TABLE dummy (id INTEGER PRIMARY KEY, name TEXT);");
-    exec!(glue r#"INSERT INTO dummy (id, name) values (1, 'Superman');"#);
-    exec!(glue r#"INSERT INTO dummy (id, name) values (11, 'Batman');"#);
+    exec!(glue "INSERT INTO dummy (id, name) values (1, 'Superman');");
+    exec!(glue "INSERT INTO dummy (id, name) values (11, 'Batman');");
     exec!(glue "ALTER TABLE dummy DROP COLUMN name");
 
-    let ret: Vec<Payload> = glue.execute("SELECT * FROM dummy;").await.unwrap();
+    let ret: Vec<Payload> = glue.execute("SELECT * FROM dummy;").unwrap();
     match &ret[0] {
         Payload::Select { labels, rows } => {
             assert_eq!(labels[0], "id");
@@ -176,11 +174,11 @@ async fn redis_storage_drop_column() {
 
     // Second test without PRIMARY KEY
     exec!(glue "CREATE TABLE dummy (id INTEGER, name TEXT);");
-    exec!(glue r#"INSERT INTO dummy (id, name) values (1, 'Superman');"#);
-    exec!(glue r#"INSERT INTO dummy (id, name) values (11, 'Batman');"#);
+    exec!(glue "INSERT INTO dummy (id, name) values (1, 'Superman');");
+    exec!(glue "INSERT INTO dummy (id, name) values (11, 'Batman');");
     exec!(glue "ALTER TABLE dummy DROP COLUMN name");
 
-    let ret: Vec<Payload> = glue.execute("SELECT * FROM dummy;").await.unwrap();
+    let ret: Vec<Payload> = glue.execute("SELECT * FROM dummy;").unwrap();
     match &ret[0] {
         Payload::Select { labels, rows } => {
             assert_eq!(labels[0], "id");
@@ -195,8 +193,8 @@ async fn redis_storage_drop_column() {
     exec!(glue "DROP TABLE dummy;");
 }
 
-#[tokio::test]
-async fn redis_storage_alter_tablename() {
+#[test]
+fn redis_storage_alter_tablename() {
     let mut path = env::current_dir().unwrap();
     path.push("tests/redis-storage.toml");
     let redis_config_str = fs::read_to_string(path).unwrap();
@@ -212,10 +210,10 @@ async fn redis_storage_alter_tablename() {
     exec!(glue "INSERT INTO dummy (id) values (11)");
     exec!(glue "ALTER TABLE dummy RENAME TO dumdum");
 
-    let ret = glue.execute("SELECT * FROM dummy;").await;
+    let ret = glue.execute("SELECT * FROM dummy;");
     assert!(ret.is_err());
 
-    let ret: Vec<Payload> = glue.execute("SELECT * FROM dumdum;").await.unwrap();
+    let ret: Vec<Payload> = glue.execute("SELECT * FROM dumdum;").unwrap();
     match &ret[0] {
         Payload::Select { labels, rows } => {
             assert_eq!(labels[0], "id");

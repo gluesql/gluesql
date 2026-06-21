@@ -17,8 +17,7 @@ test_case!(position_and_indexing, {
         .create_table()
         .add_column("id INTEGER PRIMARY KEY")
         .add_column("index INTEGER")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table - Item");
 
@@ -28,13 +27,12 @@ test_case!(position_and_indexing, {
         .insert()
         .columns("id, index")
         .values(vec![vec![num(1), test_num]])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(1));
     assert_eq!(actual, expected, "insert - find_idx");
 
     // select - table - Item
-    let actual = table("Item").select().execute(glue).await;
+    let actual = table("Item").select().execute(glue);
     let expected = Ok(select!(
         id  | index
         I64 | I64;
@@ -51,13 +49,12 @@ test_case!(position_and_indexing, {
         .insert()
         .columns("id, index")
         .values(vec![vec![num(2), test_num]])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(1));
     assert_eq!(actual, expected, "insert - find_idx");
 
     // select - table - Item
-    let actual = table("Item").select().execute(glue).await;
+    let actual = table("Item").select().execute(glue);
     let expected = Ok(select!(
         id  | index
         I64 | I64;
@@ -71,13 +68,12 @@ test_case!(position_and_indexing, {
         .insert()
         .columns("id, index")
         .values(vec![vec![num(3), test_num]])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(1));
     assert_eq!(actual, expected, "insert - find_idx");
 
     // select - table - Item
-    let actual = table("Item").select().execute(glue).await;
+    let actual = table("Item").select().execute(glue);
     let expected = Ok(select!(
         id  | index
         I64 | I64;
@@ -95,14 +91,13 @@ test_case!(position_and_indexing, {
         .insert()
         .columns("id, index")
         .values(vec![vec![num(4), test_num]])
-        .execute(glue)
-        .await;
+        .execute(glue);
 
     let expected = Ok(Payload::Insert(1));
     assert_eq!(actual, expected, "insert - position");
 
     // select - table - Item
-    let actual = table("Item").select().execute(glue).await;
+    let actual = table("Item").select().execute(glue);
     let expected = Ok(select!(
         id  | index
         I64 | I64;
@@ -117,8 +112,7 @@ test_case!(position_and_indexing, {
     let actual = table("LeftRight")
         .create_table()
         .add_column("value TEXT")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table - LeftRight");
 
@@ -128,14 +122,13 @@ test_case!(position_and_indexing, {
     let actual = table("LeftRight")
         .insert()
         .values(vec![vec![test_str]])
-        .execute(glue)
-        .await;
+        .execute(glue);
 
     let expected = Ok(Payload::Insert(1));
     assert_eq!(actual, expected, "insert - left");
 
     // select - table - Item
-    let actual = table("LeftRight").select().execute(glue).await;
+    let actual = table("LeftRight").select().execute(glue);
     let expected = Ok(select!(
         value
         Str;
@@ -149,13 +142,12 @@ test_case!(position_and_indexing, {
     let actual = table("LeftRight")
         .insert()
         .values(vec![vec![test_str]])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(1));
     assert_eq!(actual, expected, "insert - right");
 
     // select - table - Item
-    let actual = table("LeftRight").select().execute(glue).await;
+    let actual = table("LeftRight").select().execute(glue);
     let expected = Ok(select!(
         value
         Str;

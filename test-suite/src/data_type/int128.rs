@@ -14,10 +14,8 @@ test_case!(int128, {
         field_one INT128,
         field_two INT128
     );",
-    )
-    .await;
-    g.run("INSERT INTO Item VALUES (1, -1), (-2, 2), (3, 3), (-4, -4);")
-        .await;
+    );
+    g.run("INSERT INTO Item VALUES (1, -1), (-2, 2), (3, 3), (-4, -4);");
 
     let parse_i128 = |text: &str| -> i128 { text.parse().unwrap() };
 
@@ -33,8 +31,7 @@ test_case!(int128, {
             data_type: DataType::Int128,
         }
         .into()),
-    )
-    .await;
+    );
 
     g.test(
         &format!("INSERT INTO Item VALUES ({invalid_small_str}, {invalid_small_str})"),
@@ -43,8 +40,7 @@ test_case!(int128, {
             data_type: DataType::Int128,
         }
         .into()),
-    )
-    .await;
+    );
 
     // cast i128::MAX+1
     g.test(
@@ -54,8 +50,7 @@ test_case!(int128, {
             data_type: DataType::Int128,
         }
         .into()),
-    )
-    .await;
+    );
 
     // cast i128::MIN-1
     g.test(
@@ -65,8 +60,7 @@ test_case!(int128, {
             data_type: DataType::Int128,
         }
         .into()),
-    )
-    .await;
+    );
 
     // lets try some valid SQL
     g.test(
@@ -79,74 +73,62 @@ test_case!(int128, {
             3                    3;
             parse_i128("-4")     parse_i128("-4")
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT field_one FROM Item WHERE field_one = 1",
         Ok(select!(field_one I128; 1)),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT field_one FROM Item WHERE field_one > 0",
         Ok(select!(field_one I128; 1; 3)),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT field_one FROM Item WHERE field_one >= 0",
         Ok(select!(field_one I128; 1; 3)),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT field_one FROM Item WHERE field_one = -2",
         Ok(select!(field_one I128; -2)),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT field_one FROM Item WHERE field_one < 0",
         Ok(select!(field_one I128; -2; -4)),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT field_one FROM Item WHERE field_one <= 0",
         Ok(select!(field_one I128; -2; -4)),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT field_one + field_two AS plus FROM Item;",
         Ok(select!(plus I128; 0; 0; 6; -8)),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT field_one - field_two AS sub FROM Item;",
         Ok(select!(sub I128; 2; -4; 0; 0)),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT field_one * field_two AS mul FROM Item;",
         Ok(select!(mul I128; -1; -4; 9; 16)),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT field_one / field_two AS div FROM Item;",
         Ok(select!(div I128; -1; -1; 1; 1)),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT field_one % field_two AS modulo FROM Item;",
         Ok(select!(modulo I128; 0; 0; 0; 0)),
-    )
-    .await;
+    );
 
-    g.run("DELETE FROM Item").await;
+    g.run("DELETE FROM Item");
 });

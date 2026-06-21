@@ -45,7 +45,7 @@ test_case!(alter_table_rename, {
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, expected).await;
+        g.test(sql, expected);
     }
 });
 
@@ -249,6 +249,6 @@ test_case!(alter_table_add_drop, {
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, expected).await;
+        g.test(sql, expected);
     }
 });

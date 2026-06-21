@@ -13,132 +13,101 @@ use {
         result::Result,
         store::GStore,
     },
-    futures::stream::{self, Stream, StreamExt, TryStreamExt},
-    std::sync::Arc,
+    std::rc::Rc,
 };
 
-#[derive(futures_enum::Stream)]
-enum S<T1, T2> {
-    NonAggregate(T1),
-    Aggregate(T2),
-}
+pub type AggregateIter<'a> = Box<dyn Iterator<Item = Result<AggregateContext<'a>>> + 'a>;
 
-pub async fn apply<'a, T: GStore, U: Stream<Item = Result<Arc<RowContext<'a>>>> + 'a>(
+pub fn apply<'a, T: GStore>(
     storage: &'a T,
     aggregate_slots: Option<&'a [AggregatePlan]>,
     group_by: &'a [ExprPlan],
     having: Option<&'a ExprPlan>,
-    filter_context: Option<Arc<RowContext<'a>>>,
-    rows: U,
-) -> Result<impl Stream<Item = Result<AggregateContext<'a>>> + use<'a, T, U>> {
+    filter_context: Option<&Rc<RowContext<'a>>>,
+    rows: Box<dyn Iterator<Item = Result<Rc<RowContext<'a>>>> + 'a>,
+) -> Result<AggregateIter<'a>> {
     let aggregate_slots = aggregate_slots.unwrap_or(&[]);
     let needs_aggregate = !group_by.is_empty() || !aggregate_slots.is_empty();
 
     if !needs_aggregate {
-        let rows = rows.map_ok(|project_context| AggregateContext {
-            aggregated: None,
-            next: Some(project_context),
-        });
-        return Ok(S::NonAggregate(rows));
+        return Ok(Box::new(rows.map(|project_context| {
+            let project_context = project_context?;
+
+            Ok(AggregateContext {
+                aggregated: None,
+                next: Some(project_context),
+            })
+        })));
     }
 
-    let state = rows
-        .into_stream()
-        .try_fold(
-            State::new(storage, aggregate_slots.len(), group_by.is_empty()),
-            |mut state, project_context| {
-                let filter_context = filter_context.clone();
+    let mut state = State::new(storage, aggregate_slots.len(), group_by.is_empty());
+    for project_context in rows {
+        let project_context = project_context?;
+        let row_filter_context = match filter_context {
+            Some(filter_context) => Some(Rc::new(RowContext::concat(
+                Rc::clone(&project_context),
+                Rc::clone(filter_context),
+            ))),
+            None => Some(Rc::clone(&project_context)),
+        };
 
-                async move {
-                    let row_filter_context = match filter_context {
-                        Some(filter_context) => Some(Arc::new(RowContext::concat(
-                            Arc::clone(&project_context),
-                            filter_context,
-                        ))),
-                        None => Some(Arc::clone(&project_context)),
-                    };
+        let group = group_by
+            .iter()
+            .map(|expr| evaluate(storage, row_filter_context.as_ref(), None, expr)?.try_into())
+            .collect::<Result<Vec<Value>>>()?;
 
-                    let group = if group_by.is_empty() {
-                        Vec::new()
-                    } else {
-                        stream::iter(group_by.iter())
-                            .then(|expr| {
-                                let row_filter_context =
-                                    row_filter_context.as_ref().map(Arc::clone);
+        let group_index = state.apply(group, Rc::clone(&project_context));
+        for (slot, aggregate) in aggregate_slots.iter().enumerate() {
+            state.accumulate(group_index, row_filter_context.as_ref(), slot, aggregate)?;
+        }
+    }
 
-                                async move {
-                                    evaluate(storage, row_filter_context, None, expr)
-                                        .await?
-                                        .try_into()
-                                }
-                            })
-                            .try_collect::<Vec<Value>>()
-                            .await?
-                    };
-
-                    let group_index = state.apply(group, Arc::clone(&project_context));
-                    for (slot, aggregate) in aggregate_slots.iter().enumerate() {
-                        let row_filter_context = row_filter_context.as_ref().map(Arc::clone);
-                        state
-                            .accumulate(group_index, row_filter_context, slot, aggregate)
-                            .await?;
-                    }
-
-                    Ok(state)
-                }
-            },
-        )
-        .await?;
-
-    Ok(S::Aggregate(group_by_having(
+    group_by_having(
         storage,
-        aggregate_slots,
         filter_context,
         having,
-        state,
-    )?))
+        state.export(aggregate_slots)?,
+    )
+    .map(|rows| Box::new(rows.into_iter().map(Ok)) as AggregateIter<'a>)
 }
 
 fn group_by_having<'a, T: GStore>(
     storage: &'a T,
-    aggregate_slots: &'a [AggregatePlan],
-    filter_context: Option<Arc<RowContext<'a>>>,
+    filter_context: Option<&Rc<RowContext<'a>>>,
     having: Option<&'a ExprPlan>,
-    state: State<'a, T>,
-) -> Result<impl Stream<Item = Result<AggregateContext<'a>>>> {
-    let rows = state.export(aggregate_slots)?.into_iter();
-    let rows = stream::iter(rows).filter_map(move |aggregate_context| {
-        let filter_context = filter_context.as_ref().map(Arc::clone);
+    rows: Vec<AggregateContext<'a>>,
+) -> Result<Vec<AggregateContext<'a>>> {
+    let mut filtered = Vec::new();
 
-        async move {
-            let AggregateContext { aggregated, next } = aggregate_context;
+    for aggregate_context in rows {
+        let AggregateContext { aggregated, next } = aggregate_context;
 
-            match having {
-                None => Some(Ok(AggregateContext { aggregated, next })),
-                Some(having) => {
-                    let filter_context = match (&next, filter_context) {
-                        (Some(next), Some(filter_context)) => Some(Arc::new(RowContext::concat(
-                            Arc::clone(next),
-                            filter_context,
-                        ))),
-                        (Some(next), None) => Some(Arc::clone(next)),
-                        (None, Some(filter_context)) => Some(filter_context),
-                        (None, None) => None,
-                    };
+        let pass = match having {
+            None => true,
+            Some(having) => {
+                let filter_context = match (&next, filter_context) {
+                    (Some(next), Some(filter_context)) => Some(Rc::new(RowContext::concat(
+                        Rc::clone(next),
+                        Rc::clone(filter_context),
+                    ))),
+                    (Some(next), None) => Some(Rc::clone(next)),
+                    (None, Some(filter_context)) => Some(Rc::clone(filter_context)),
+                    (None, None) => None,
+                };
 
-                    check_expr(
-                        storage,
-                        filter_context,
-                        aggregated.as_ref().map(Arc::clone),
-                        having,
-                    )
-                    .await
-                    .map(|pass| pass.then_some(AggregateContext { aggregated, next }))
-                    .transpose()
-                }
+                check_expr(
+                    storage,
+                    filter_context.as_ref(),
+                    aggregated.as_ref(),
+                    having,
+                )?
             }
-        }
-    });
+        };
 
-    Ok(rows)
+        if pass {
+            filtered.push(AggregateContext { aggregated, next });
+        }
+    }
+
+    Ok(filtered)
 }

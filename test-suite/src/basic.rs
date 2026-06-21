@@ -34,7 +34,7 @@ test_case!(basic, {
     ];
 
     for query in queries {
-        g.run(query).await;
+        g.run(query);
     }
 
     g.named_test(
@@ -44,8 +44,7 @@ test_case!(basic, {
             id I64;
             1; 1; 3; 4
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT id, num, name FROM TestA",
@@ -57,11 +56,9 @@ test_case!(basic, {
             3     4     "Great".to_owned();
             4     7     "Job".to_owned()
         )),
-    )
-    .await;
+    );
 
-    g.test("SELECT * FROM EmptyTest", Ok(Payload::SelectMap(vec![])))
-        .await;
+    g.test("SELECT * FROM EmptyTest", Ok(Payload::SelectMap(vec![])));
 
     g.test(
         "SELECT * FROM (SELECT * FROM EmptyTest) AS Empty",
@@ -69,12 +66,11 @@ test_case!(basic, {
             labels: vec!["_doc".to_owned()],
             rows: vec![],
         }),
-    )
-    .await;
+    );
 
-    g.count("SELECT * FROM Test", 4).await;
+    g.count("SELECT * FROM Test", 4);
 
-    g.run("UPDATE Test SET id = 2").await;
+    g.run("UPDATE Test SET id = 2");
 
     g.test(
         "SELECT id FROM Test",
@@ -82,8 +78,7 @@ test_case!(basic, {
             id I64;
             2; 2; 2; 2
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT id, num FROM Test",
@@ -95,12 +90,10 @@ test_case!(basic, {
             2     4;
             2     7
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT id FROM FOO.Test",
         Err(TranslateError::CompoundObjectNotSupported("FOO.Test".to_owned()).into()),
-    )
-    .await;
+    );
 });

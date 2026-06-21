@@ -8,14 +8,14 @@ use {
 
 macro_rules! exec {
     ($glue: ident $sql: literal) => {
-        $glue.execute($sql).await.unwrap();
+        $glue.execute($sql).unwrap();
     };
 }
 
 /// MUST run redis locally before test
 /// eg.) docker run --rm -p 6379:6379 redis
-#[tokio::test]
-async fn redis_storage_reconnect() {
+#[test]
+fn redis_storage_reconnect() {
     use gluesql_core::prelude::Glue;
 
     let mut path = env::current_dir().unwrap();
@@ -40,7 +40,7 @@ async fn redis_storage_reconnect() {
         let storage = RedisStorage::new("redis_storage_reconnect", url, port);
         let mut glue = Glue::new(storage);
 
-        let ret = glue.execute("SELECT * FROM dummy;").await.unwrap();
+        let ret = glue.execute("SELECT * FROM dummy;").unwrap();
         match &ret[0] {
             Payload::Select { labels, rows } => {
                 assert_eq!(labels[0], "id");
@@ -55,8 +55,8 @@ async fn redis_storage_reconnect() {
     }
 }
 
-#[tokio::test]
-async fn redis_storage_reconnect_drop() {
+#[test]
+fn redis_storage_reconnect_drop() {
     use gluesql_core::prelude::Glue;
 
     let mut path = env::current_dir().unwrap();
@@ -82,7 +82,7 @@ async fn redis_storage_reconnect_drop() {
         let storage = RedisStorage::new("redis_storage_reconnect_drop", url, port);
         let mut glue = Glue::new(storage);
 
-        if glue.execute("SELECT * FROM dummy;").await.is_ok() {
+        if glue.execute("SELECT * FROM dummy;").is_ok() {
             exec!(glue "DROP TABLE IF EXISTS dummy;");
             panic!("SELECT should fail");
         }

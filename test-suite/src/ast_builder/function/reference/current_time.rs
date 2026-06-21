@@ -15,8 +15,7 @@ test_case!(current_time, {
         .create_table()
         .add_column("id INTEGER PRIMARY KEY")
         .add_column("time_stamp TIME")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table - Record");
 
@@ -24,12 +23,11 @@ test_case!(current_time, {
     let actual = table("Record")
         .insert()
         .values(vec!["1, CURRENT_TIME()"])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(1));
     assert_eq!(actual, expected, "insert into Record");
 
     // check if current_time() returns a Time type
-    let actual = values(vec![vec![f::current_time()]]).execute(glue).await;
+    let actual = values(vec![vec![f::current_time()]]).execute(glue);
     type_match(&[DataType::Time], actual);
 });

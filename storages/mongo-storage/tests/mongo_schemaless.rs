@@ -7,18 +7,16 @@ use {
     std::collections::BTreeMap,
 };
 
-#[tokio::test]
-async fn mongo_schemaless() {
+#[test]
+fn mongo_schemaless() {
     let conn_str = "mongodb://localhost:27017";
 
-    let storage = MongoStorage::new(conn_str, "mongo_schemaless")
-        .await
-        .expect("MongoStorage::new");
-    storage.drop_database().await.expect("database dropped");
+    let storage = MongoStorage::new(conn_str, "mongo_schemaless").expect("MongoStorage::new");
+    storage.drop_database().expect("database dropped");
 
     let mut glue = Glue::new(storage);
 
-    glue.execute("CREATE TABLE Logs").await.unwrap();
+    glue.execute("CREATE TABLE Logs").unwrap();
     glue.execute(
         format!(
             "INSERT INTO Logs VALUES ('{}'), ('{}'), ('{}');",
@@ -28,10 +26,9 @@ async fn mongo_schemaless() {
         )
         .as_str(),
     )
-    .await
     .unwrap();
 
-    let actual = glue.execute("SELECT * FROM Logs").await;
+    let actual = glue.execute("SELECT * FROM Logs");
     let expected = Ok(vec![Payload::SelectMap(vec![
         BTreeMap::from([
             ("id".to_owned(), Value::I64(1)),

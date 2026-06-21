@@ -13,7 +13,7 @@ use {
     std::{
         cmp::Ordering,
         collections::{HashMap, HashSet},
-        sync::Arc,
+        rc::Rc,
     },
 };
 
@@ -308,12 +308,12 @@ impl AggrValue {
 }
 
 struct GroupState<'a> {
-    representative: Option<Arc<RowContext<'a>>>,
+    representative: Option<Rc<RowContext<'a>>>,
     values: Vec<Option<AggrValue>>,
 }
 
 impl<'a> GroupState<'a> {
-    fn new(slot_count: usize, representative: Option<Arc<RowContext<'a>>>) -> Self {
+    fn new(slot_count: usize, representative: Option<Rc<RowContext<'a>>>) -> Self {
         Self {
             representative,
             values: vec![None; slot_count],
@@ -346,7 +346,7 @@ impl<'a, T: GStore> State<'a, T> {
         }
     }
 
-    pub fn apply(&mut self, group: Vec<Value>, context: Arc<RowContext<'a>>) -> usize {
+    pub fn apply(&mut self, group: Vec<Value>, context: Rc<RowContext<'a>>) -> usize {
         if let Some(index) = self.group_indexes.get(&group).copied() {
             if self.groups[index].representative.is_none() {
                 self.groups[index].representative = Some(context);
@@ -357,16 +357,16 @@ impl<'a, T: GStore> State<'a, T> {
 
         let index = self.groups.len();
         self.groups
-            .push(GroupState::new(self.slot_count, Some(Arc::clone(&context))));
+            .push(GroupState::new(self.slot_count, Some(Rc::clone(&context))));
         self.group_indexes.insert(group, index);
 
         index
     }
 
-    pub async fn accumulate(
+    pub fn accumulate(
         &mut self,
         group_index: usize,
-        filter_context: Option<Arc<RowContext<'a>>>,
+        filter_context: Option<&Rc<RowContext<'a>>>,
         slot: usize,
         aggregate: &AggregatePlan,
     ) -> Result<()> {
@@ -392,9 +392,7 @@ impl<'a, T: GStore> State<'a, T> {
             | AggregateFunctionPlan::Avg(expr)
             | AggregateFunctionPlan::Variance(expr)
             | AggregateFunctionPlan::Stdev(expr) => {
-                evaluate(self.storage, filter_context, None, expr)
-                    .await?
-                    .try_into()?
+                evaluate(self.storage, filter_context, None, expr)?.try_into()?
             }
         };
 
@@ -433,7 +431,7 @@ impl<'a, T: GStore> State<'a, T> {
                         })
                         .collect::<Result<Vec<_>>>()?;
 
-                    Some(Arc::new(AggregateValues::new(values)))
+                    Some(Rc::new(AggregateValues::new(values)))
                 };
 
                 Ok(AggregateContext {

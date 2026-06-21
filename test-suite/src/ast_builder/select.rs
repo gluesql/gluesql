@@ -11,8 +11,7 @@ test_case!(select, {
         .create_table()
         .add_column("id INTEGER PRIMARY KEY")
         .add_column("name TEXT")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table - Category");
 
@@ -23,8 +22,7 @@ test_case!(select, {
         .add_column("category_id INTEGER")
         .add_column("name TEXT")
         .add_column("price INTEGER")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table - Item");
 
@@ -32,8 +30,7 @@ test_case!(select, {
     let actual = table("Category")
         .insert()
         .values(vec!["1, 'Fruit'", "2, 'Meat'", "3, 'Drink'"])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(3));
     assert_eq!(actual, expected, "insert into Category");
 
@@ -47,13 +44,12 @@ test_case!(select, {
             "400, 3, 'Coffee', 25",
             "500, 3, 'Orange juice', 60",
         ])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(5));
     assert_eq!(actual, expected, "insert into Item");
 
     // basic select
-    let actual = table("Category").select().execute(glue).await;
+    let actual = table("Category").select().execute(glue);
     let expected = Ok(select!(
         id  | name
         I64 | Str;
@@ -67,8 +63,7 @@ test_case!(select, {
     let actual = table("Category")
         .select()
         .filter("name = 'Meat'")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         id  | name
         I64 | Str;
@@ -85,8 +80,7 @@ test_case!(select, {
         .filter("c.name = 'Fruit' OR c.name = 'Meat'")
         .project("i.name AS item")
         .project("c.name AS category")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         item                    | category
         Str                     | Str;
@@ -108,8 +102,7 @@ test_case!(select, {
             "Item.name AS item",
             "price",
         ])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select_with_null!(
         category                | item                           | price;
         Str("Fruit".to_owned())   Null                             Null;
@@ -127,8 +120,7 @@ test_case!(select, {
         .having("SUM(Item.price) > 80")
         .project("Category.name AS category")
         .project("SUM(Item.price) AS sum_price")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         category           | sum_price
         Str                | I64;
@@ -142,8 +134,7 @@ test_case!(select, {
         .select()
         .project("name, price")
         .order_by("price DESC")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         name                      | price
         Str                       | I64;
@@ -162,8 +153,7 @@ test_case!(select, {
         .order_by("price DESC")
         .offset(1)
         .limit(2)
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         name                      | price
         Str                       | I64;
@@ -178,8 +168,7 @@ test_case!(select, {
         .distinct()
         .project("category_id")
         .order_by("category_id")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         category_id
         I64;
@@ -195,8 +184,7 @@ test_case!(select, {
         .distinct()
         .project("category_id, price")
         .order_by("category_id, price")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         category_id | price
         I64         | I64;
@@ -209,12 +197,7 @@ test_case!(select, {
     assert_eq!(actual, expected, "distinct with multiple columns");
 
     // distinct * (all columns)
-    let actual = table("Item")
-        .select()
-        .distinct()
-        .project("*")
-        .execute(glue)
-        .await;
+    let actual = table("Item").select().distinct().project("*").execute(glue);
     let expected = Ok(select!(
         id | category_id | name | price
         I64 | I64 | Str | I64;

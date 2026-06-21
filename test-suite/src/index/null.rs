@@ -14,8 +14,7 @@ CREATE TABLE NullIdx (
     date DATE NULL,
     flag BOOLEAN NULL
 )",
-    )
-    .await;
+    );
 
     g.run(
         "
@@ -28,24 +27,20 @@ CREATE TABLE NullIdx (
             (3,    '1989-02-01', False),
             (4,    NULL,         True);
     ",
-    )
-    .await;
+    );
 
     g.test(
         "CREATE INDEX idx_id ON NullIdx (id)",
         Ok(Payload::CreateIndex),
-    )
-    .await;
+    );
     g.test(
         "CREATE INDEX idx_date ON NullIdx (date)",
         Ok(Payload::CreateIndex),
-    )
-    .await;
+    );
     g.test(
         "CREATE INDEX idx_flag ON NullIdx (flag)",
         Ok(Payload::CreateIndex),
-    )
-    .await;
+    );
 
     macro_rules! date {
         ($date: expr) => {
@@ -62,8 +57,7 @@ CREATE TABLE NullIdx (
             1     date!("2020-03-20")   true
         )),
         idx!(idx_date, Lt, "DATE '2040-12-24'"),
-    )
-    .await;
+    );
 
     g.test_idx(
         "SELECT id, date, flag FROM NullIdx WHERE date >= DATE '2040-12-24'",
@@ -74,8 +68,7 @@ CREATE TABLE NullIdx (
             I64(4)   Null   Bool(true)
         )),
         idx!(idx_date, GtEq, "DATE '2040-12-24'"),
-    )
-    .await;
+    );
 
     g.test_idx(
         "SELECT * FROM NullIdx WHERE flag = True",
@@ -86,8 +79,7 @@ CREATE TABLE NullIdx (
             I64(4)   Null                        Bool(true)
         )),
         idx!(idx_flag, Eq, "True"),
-    )
-    .await;
+    );
 
     g.test_idx(
         "SELECT * FROM NullIdx WHERE id > 2",
@@ -98,8 +90,7 @@ CREATE TABLE NullIdx (
             Null     Null                        Bool(true)
         )),
         idx!(idx_id, Gt, "2"),
-    )
-    .await;
+    );
 
     g.test_idx(
         "SELECT * FROM NullIdx WHERE id IS NULL",
@@ -108,8 +99,7 @@ CREATE TABLE NullIdx (
             Null   Null   Bool(true)
         )),
         idx!(idx_id, Eq, "NULL"),
-    )
-    .await;
+    );
 
     g.test_idx(
         "SELECT id, date, flag FROM NullIdx WHERE date IS NOT NULL",
@@ -120,8 +110,7 @@ CREATE TABLE NullIdx (
             1     date!("2020-03-20")   true
         )),
         idx!(idx_date, Lt, "NULL"),
-    )
-    .await;
+    );
 
     g.test_idx(
         "SELECT * FROM NullIdx WHERE id = NULL",
@@ -130,6 +119,5 @@ CREATE TABLE NullIdx (
             rows: vec![],
         }),
         idx!(),
-    )
-    .await;
+    );
 });

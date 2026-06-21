@@ -1,15 +1,14 @@
 use {
-    async_trait::async_trait, gluesql_core::prelude::Glue, gluesql_json_storage::JsonStorage,
-    std::fs::remove_dir_all, test_suite::*,
+    gluesql_core::prelude::Glue, gluesql_json_storage::JsonStorage, std::fs::remove_dir_all,
+    test_suite::*,
 };
 
 struct JsonTester {
     glue: Glue<JsonStorage>,
 }
 
-#[async_trait(?Send)]
 impl Tester<JsonStorage> for JsonTester {
-    async fn new(namespace: &str) -> Self {
+    fn new(namespace: &str) -> Self {
         let path = format!("tmp/{namespace}");
 
         if let Err(e) = remove_dir_all(&path) {
@@ -26,5 +25,5 @@ impl Tester<JsonStorage> for JsonTester {
     }
 }
 
-generate_store_tests!(tokio::test, JsonTester);
-generate_alter_table_tests!(tokio::test, JsonTester);
+generate_store_tests!(test, JsonTester);
+generate_alter_table_tests!(test, JsonTester);

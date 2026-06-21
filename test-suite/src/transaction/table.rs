@@ -7,42 +7,39 @@ test_case!(create_drop_table, {
     let g = get_tester!();
 
     // CREATE && ROLLBACK
-    g.run("BEGIN;").await;
-    g.run("CREATE TABLE Test (id INTEGER);").await;
-    g.run("INSERT INTO Test VALUES (1);").await;
-    g.test("SELECT * FROM Test;", Ok(select!(id I64; 1))).await;
-    g.run("ROLLBACK;").await;
+    g.run("BEGIN;");
+    g.run("CREATE TABLE Test (id INTEGER);");
+    g.run("INSERT INTO Test VALUES (1);");
+    g.test("SELECT * FROM Test;", Ok(select!(id I64; 1)));
+    g.run("ROLLBACK;");
     g.test(
         "SELECT * FROM Test;",
         Err(FetchError::TableNotFound("Test".to_owned()).into()),
-    )
-    .await;
+    );
 
     // CREATE && COMMIT
-    g.run("BEGIN;").await;
-    g.run("CREATE TABLE Test (id INTEGER);").await;
-    g.run("INSERT INTO Test VALUES (3);").await;
-    g.run("COMMIT;").await;
-    g.test("SELECT * FROM Test;", Ok(select!(id I64; 3))).await;
+    g.run("BEGIN;");
+    g.run("CREATE TABLE Test (id INTEGER);");
+    g.run("INSERT INTO Test VALUES (3);");
+    g.run("COMMIT;");
+    g.test("SELECT * FROM Test;", Ok(select!(id I64; 3)));
 
     // DROP && ROLLBACK
-    g.run("BEGIN;").await;
-    g.run("DROP TABLE Test;").await;
+    g.run("BEGIN;");
+    g.run("DROP TABLE Test;");
     g.test(
         "SELECT * FROM Test;",
         Err(FetchError::TableNotFound("Test".to_owned()).into()),
-    )
-    .await;
-    g.run("ROLLBACK;").await;
-    g.test("SELECT * FROM Test;", Ok(select!(id I64; 3))).await;
+    );
+    g.run("ROLLBACK;");
+    g.test("SELECT * FROM Test;", Ok(select!(id I64; 3)));
 
     // DROP && COMMIT
-    g.run("BEGIN;").await;
-    g.run("DROP TABLE Test;").await;
-    g.run("COMMIT;").await;
+    g.run("BEGIN;");
+    g.run("DROP TABLE Test;");
+    g.run("COMMIT;");
     g.test(
         "SELECT * FROM Test;",
         Err(FetchError::TableNotFound("Test".to_owned()).into()),
-    )
-    .await;
+    );
 });

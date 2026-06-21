@@ -11,7 +11,7 @@ test_case!(synthesize, {
         );
     ";
 
-    g.run(create_sql).await;
+    g.run(create_sql);
 
     let insert_sqls = [
         "
@@ -26,7 +26,7 @@ test_case!(synthesize, {
     ];
 
     for insert_sql in insert_sqls {
-        g.run(insert_sql).await;
+        g.run(insert_sql);
     }
 
     let test_cases = [
@@ -69,11 +69,11 @@ test_case!(synthesize, {
     ];
 
     for (num, sql) in test_cases {
-        g.count(sql, num).await;
+        g.count(sql, num);
     }
 
     for insert_sql in insert_sqls {
-        g.run(insert_sql).await;
+        g.run(insert_sql);
     }
 
     let test_cases = [
@@ -89,6 +89,6 @@ test_case!(synthesize, {
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, Ok(expected)).await;
+        g.test(sql, Ok(expected));
     }
 });

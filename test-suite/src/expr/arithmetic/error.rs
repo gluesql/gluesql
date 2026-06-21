@@ -17,9 +17,8 @@ test_case!(error, {
             name TEXT
         );
     ",
-    )
-    .await;
-    g.run("DELETE FROM Arith").await;
+    );
+    g.run("DELETE FROM Arith");
     g.run(
         "
         INSERT INTO Arith (id, num, name) VALUES
@@ -29,8 +28,7 @@ test_case!(error, {
             (4, 2, 'D'),
             (5, 3, 'E');
     ",
-    )
-    .await;
+    );
 
     let test_cases = [
         (
@@ -126,6 +124,6 @@ test_case!(error, {
     ];
 
     for (sql, error) in test_cases {
-        g.test(sql, Err(error)).await;
+        g.test(sql, Err(error));
     }
 });

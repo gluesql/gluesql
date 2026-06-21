@@ -26,8 +26,8 @@ test_case!(insert_schema, {
         comment: Some("this is comment for table".to_owned()),
     };
 
-    storage.begin(true).await.unwrap();
-    storage.insert_schema(&schema).await.unwrap();
+    storage.begin(true).unwrap();
+    storage.insert_schema(&schema).unwrap();
 
     schema.column_defs = schema.column_defs.map(|mut column_defs| {
         column_defs.push(ColumnDef {
@@ -42,9 +42,9 @@ test_case!(insert_schema, {
         column_defs
     });
 
-    storage.insert_schema(&schema).await.unwrap();
+    storage.insert_schema(&schema).unwrap();
 
-    let actual = storage.fetch_schema("MutableTable").await.unwrap().unwrap();
+    let actual = storage.fetch_schema("MutableTable").unwrap().unwrap();
     assert_eq!(
         actual.column_defs, schema.column_defs,
         "Consecutive insert_schema failed"
@@ -59,17 +59,13 @@ test_case!(insert_schema, {
         foreign_keys: Vec::new(),
         comment: Some("this is comment for schemaless table".to_owned()),
     };
-    storage.insert_schema(&schema).await.unwrap();
+    storage.insert_schema(&schema).unwrap();
 
-    let actual = storage
-        .fetch_schema("SchemalessTable")
-        .await
-        .unwrap()
-        .unwrap();
+    let actual = storage.fetch_schema("SchemalessTable").unwrap().unwrap();
     assert_eq!(
         actual.comment, schema.comment,
         "Storing comment to schemaless table failed"
     );
 
-    let _ = storage.commit().await;
+    let _ = storage.commit();
 });

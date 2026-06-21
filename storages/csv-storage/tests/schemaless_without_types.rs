@@ -9,15 +9,14 @@ use {
     test_suite::*,
 };
 
-#[tokio::test]
-async fn schemaless_without_types() {
+#[test]
+fn schemaless_without_types() {
     let path = "./tests/samples/";
     let storage = CsvStorage::new(path).unwrap();
     let mut glue = Glue::new(storage);
 
     let actual = glue
         .execute("SELECT * FROM Book")
-        .await
         .unwrap()
         .into_iter()
         .next()
@@ -78,7 +77,6 @@ async fn schemaless_without_types() {
                 END
             ",
         )
-        .await
         .unwrap()
         .into_iter()
         .next()
@@ -99,12 +97,10 @@ async fn schemaless_without_types() {
         )
         "#,
     )
-    .await
     .unwrap();
 
     let actual = glue
         .execute("SELECT * FROM Book WHERE Price = '100'")
-        .await
         .unwrap()
         .into_iter()
         .next()
@@ -120,12 +116,10 @@ async fn schemaless_without_types() {
         UPDATE Book SET Year = '1925' WHERE Title = 'New Book Temporary'
         ",
     )
-    .await
     .unwrap();
 
     let actual = glue
         .execute("SELECT * FROM Book WHERE Year = '1925'")
-        .await
         .unwrap()
         .into_iter()
         .next()
@@ -148,7 +142,6 @@ async fn schemaless_without_types() {
     assert_eq!(actual, expected);
 
     glue.execute("DELETE FROM Book WHERE Title = 'New Book Temporary'")
-        .await
         .unwrap();
 
     fs::remove_file(format!("{path}Book.types.csv")).unwrap_or(());

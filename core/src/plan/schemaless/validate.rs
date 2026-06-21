@@ -229,7 +229,6 @@ mod tests {
             },
             translate::translate,
         },
-        futures::executor::block_on,
     };
 
     fn setup_storage() -> MockStorage {
@@ -250,7 +249,7 @@ mod tests {
     fn assert_plan_error(storage: &MockStorage, sql: &str, expected: PlanError) {
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
         let statement = StatementPlan::from(translate(&parsed).unwrap());
-        let schema_map = block_on(fetch_schema_map(storage, &statement)).unwrap();
+        let schema_map = fetch_schema_map(storage, &statement).unwrap();
         let planned = plan_schemaless(&schema_map, statement);
 
         assert_eq!(planned, Err(expected.into()), "{sql}");
@@ -259,7 +258,7 @@ mod tests {
     fn assert_plan_ok(storage: &MockStorage, sql: &str) {
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
         let statement = StatementPlan::from(translate(&parsed).unwrap());
-        let schema_map = block_on(fetch_schema_map(storage, &statement)).unwrap();
+        let schema_map = fetch_schema_map(storage, &statement).unwrap();
         let planned = plan_schemaless(&schema_map, statement);
         assert!(planned.is_ok(), "{sql}");
     }
@@ -373,7 +372,7 @@ mod tests {
         let sql = "SELECT id FROM Player ORDER BY id LIMIT 1 OFFSET 0";
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
         let statement = StatementPlan::from(translate(&parsed).unwrap());
-        let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
 
         assert!(validate_statement(&schema_map, &statement).is_ok(), "{sql}");
     }
@@ -384,7 +383,7 @@ mod tests {
         let sql = "VALUES (1), (2)";
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
         let statement = StatementPlan::from(translate(&parsed).unwrap());
-        let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
 
         assert!(validate_statement(&schema_map, &statement).is_ok(), "{sql}");
     }
@@ -407,7 +406,7 @@ mod tests {
             .next()
             .unwrap();
         let statement = StatementPlan::from(translate(&parsed).unwrap());
-        let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
 
         let drop_parsed = parse("DROP TABLE IF EXISTS Temp")
             .expect("DROP TABLE IF EXISTS Temp")
@@ -424,7 +423,7 @@ mod tests {
         let sql = "SELECT Item.id FROM Player JOIN Item ON Player.id = Item.id";
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
         let mut statement = StatementPlan::from(translate(&parsed).unwrap());
-        let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
 
         let mut applied = false;
         if let StatementPlan::Query(query) = &mut statement
@@ -449,7 +448,7 @@ mod tests {
         let sql = "SELECT Item.id FROM Player JOIN Item ON Player.id = Item.id";
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
         let mut statement = StatementPlan::from(translate(&parsed).unwrap());
-        let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
 
         let mut applied = false;
         if let StatementPlan::Query(query) = &mut statement

@@ -8,7 +8,7 @@ use {
         },
         result::Result,
     },
-    std::{collections::HashMap, sync::Arc},
+    std::{collections::HashMap, rc::Rc},
 };
 
 type SchemaMap = HashMap<String, Schema>;
@@ -49,25 +49,22 @@ pub fn validate(schema_map: &SchemaMap, statement: &StatementPlan) -> Result<()>
 enum Context<'a> {
     Data {
         labels: Option<Vec<&'a str>>,
-        next: Option<Arc<Context<'a>>>,
+        next: Option<Rc<Context<'a>>>,
     },
     Bridge {
-        left: Arc<Context<'a>>,
-        right: Arc<Context<'a>>,
+        left: Rc<Context<'a>>,
+        right: Rc<Context<'a>>,
     },
 }
 
 impl<'a> Context<'a> {
-    fn new(labels: Option<Vec<&'a str>>, next: Option<Arc<Context<'a>>>) -> Self {
+    fn new(labels: Option<Vec<&'a str>>, next: Option<Rc<Context<'a>>>) -> Self {
         Self::Data { labels, next }
     }
 
-    fn concat(
-        left: Option<Arc<Context<'a>>>,
-        right: Option<Arc<Context<'a>>>,
-    ) -> Option<Arc<Self>> {
+    fn concat(left: Option<Rc<Context<'a>>>, right: Option<Rc<Context<'a>>>) -> Option<Rc<Self>> {
         match (left, right) {
-            (Some(left), Some(right)) => Some(Arc::new(Self::Bridge { left, right })),
+            (Some(left), Some(right)) => Some(Rc::new(Self::Bridge { left, right })),
             (context @ Some(_), None) | (None, context @ Some(_)) => context,
             (None, None) => None,
         }
@@ -118,7 +115,7 @@ fn get_labels(schema: &Schema) -> Option<Vec<&str>> {
 fn contextualize_query<'a>(
     schema_map: &'a SchemaMap,
     query: &'a QueryPlan,
-) -> Option<Arc<Context<'a>>> {
+) -> Option<Rc<Context<'a>>> {
     let QueryPlan { body, .. } = query;
     match body {
         SetExprPlan::Select(select) => {
@@ -138,11 +135,11 @@ fn contextualize_query<'a>(
 fn contextualize_table_factor<'a>(
     schema_map: &'a SchemaMap,
     table_factor: &'a TableFactorPlan,
-) -> Option<Arc<Context<'a>>> {
+) -> Option<Rc<Context<'a>>> {
     match table_factor {
         TableFactorPlan::Table { name, .. } => {
             let schema = schema_map.get(name);
-            schema.map(|schema| Arc::from(Context::new(get_labels(schema), None)))
+            schema.map(|schema| Rc::from(Context::new(get_labels(schema), None)))
         }
         TableFactorPlan::Derived { subquery, .. } => contextualize_query(schema_map, subquery),
         TableFactorPlan::Series { .. } | TableFactorPlan::Dictionary { .. } => None,
@@ -151,13 +148,10 @@ fn contextualize_table_factor<'a>(
 
 #[cfg(test)]
 mod tests {
-    use {
-        crate::{
-            mock::run,
-            plan::{fetch_schema_map, validate},
-            prelude::{parse, translate},
-        },
-        futures::executor::block_on,
+    use crate::{
+        mock::run,
+        plan::{fetch_schema_map, validate},
+        prelude::{parse, translate},
     };
 
     #[test]
@@ -186,7 +180,7 @@ mod tests {
         for (sql, expected) in cases {
             let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
             let statement = translate(&parsed).unwrap().into();
-            let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+            let schema_map = fetch_schema_map(&storage, &statement).unwrap();
             let actual = validate(&schema_map, &statement).is_ok();
 
             assert_eq!(actual, expected);

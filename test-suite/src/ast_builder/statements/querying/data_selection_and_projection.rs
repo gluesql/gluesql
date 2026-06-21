@@ -11,8 +11,7 @@ test_case!(data_selection_and_projection, {
         .add_column("id INT")
         .add_column("name TEXT")
         .add_column("age INT")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table");
 
@@ -26,8 +25,7 @@ test_case!(data_selection_and_projection, {
             vec![num(4), text("Dave"), num(50)],
             vec![num(5), text("Eve"), num(50)],
         ])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(5));
     assert_eq!(actual, expected, "insert");
 
@@ -35,8 +33,7 @@ test_case!(data_selection_and_projection, {
         .select()
         .filter(col("age").gt(30))
         .project("id, age, name")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         id  | age | name;
         I64 | I64 | Str;
@@ -48,8 +45,7 @@ test_case!(data_selection_and_projection, {
     let actual = table("User")
         .select()
         .project("id, age, name")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         id  | age | name;
         I64 | I64 | Str;

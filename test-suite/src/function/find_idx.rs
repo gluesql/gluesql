@@ -51,6 +51,6 @@ test_case!(find_idx, {
         ),
     ];
     for (sql, expected) in test_cases {
-        g.test(sql, expected).await;
+        g.test(sql, expected);
     }
 });

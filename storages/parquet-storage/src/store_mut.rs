@@ -1,6 +1,5 @@
 use {
     crate::{ParquetStorage, ParquetStorageError, error::ResultExt},
-    async_trait::async_trait,
     gluesql_core::{
         ast::{ColumnDef, ToSql},
         chrono::{NaiveDate, Timelike},
@@ -69,15 +68,14 @@ static GLUESQL_TO_PARQUET_DATA_TYPE_MAPPING: LazyLock<HashMap<DataType, &'static
 const DEF_PRESENT: [i16; 1] = [1];
 const DEF_NULL: [i16; 1] = [0];
 
-#[async_trait]
 impl StoreMut for ParquetStorage {
-    async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
+    fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let data_path = self.data_path(schema.table_name.as_str());
         let file = File::create(data_path).map_storage_err()?;
         Self::write(schema, &[], file)
     }
 
-    async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
+    fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let schema_path = self.data_path(table_name);
         if schema_path.exists() {
             remove_file(schema_path).map_storage_err()?;
@@ -85,7 +83,7 @@ impl StoreMut for ParquetStorage {
         Ok(())
     }
 
-    async fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
+    fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
         let schema_path = self.data_path(table_name);
         let (prev_rows, schema) = self.scan_data(table_name)?;
 
@@ -98,11 +96,7 @@ impl StoreMut for ParquetStorage {
         Self::write(&schema, &rows, file)
     }
 
-    async fn insert_data(
-        &mut self,
-        table_name: &str,
-        mut rows: Vec<(Key, Vec<Value>)>,
-    ) -> Result<()> {
+    fn insert_data(&mut self, table_name: &str, mut rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
         let (prev_rows, schema) = self.scan_data(table_name)?;
 
         rows.sort_by(|(key_a, _), (key_b, _)| key_a.cmp(key_b));
@@ -112,7 +106,7 @@ impl StoreMut for ParquetStorage {
         self.rewrite(&schema, &merged)
     }
 
-    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
+    fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let (prev_rows, schema) = self.scan_data(table_name)?;
         let rows = prev_rows
             .filter_map(|result| {

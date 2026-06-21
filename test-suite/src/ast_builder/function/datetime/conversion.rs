@@ -18,8 +18,7 @@ test_case!(conversion, {
         .add_column("visit_date TEXT")
         .add_column("visit_time TEXT")
         .add_column("visit_time_stamp TEXT")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table - Visitor");
 
@@ -29,8 +28,7 @@ test_case!(conversion, {
             "1, 'Bryanna', '2022-12-23', '13:05:26', '2022-12-23 13:05:26'",
             "2, 'Ash', '2023-04-01', '23:24:11', '2023-04-01 23:24:11'",
         ])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(2));
     assert_eq!(actual, expected, "insert - Visitor");
 
@@ -41,8 +39,7 @@ test_case!(conversion, {
         .project("name")
         .project(col("visit_date").to_date("'%Y-%m-%d'"))
         .project(f::to_date("visit_date", "'%Y-%m-%d'"))
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         id  | name                | "TO_DATE(\"visit_date\", '%Y-%m-%d')"          | "TO_DATE(\"visit_date\", '%Y-%m-%d')"
         I64 | Str                 | Date                                           | Date;
@@ -58,8 +55,7 @@ test_case!(conversion, {
         .project("name")
         .project(col("visit_time").to_time("'%H:%M:%S'"))
         .project(f::to_time("visit_time", "'%H:%M:%S'"))
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         id  | name                | "TO_TIME(\"visit_time\", '%H:%M:%S')"       | "TO_TIME(\"visit_time\", '%H:%M:%S')"
         I64 | Str                 | Time                                        | Time;
@@ -75,8 +71,7 @@ test_case!(conversion, {
         .project("name")
         .project(col("visit_time_stamp").to_timestamp("'%Y-%m-%d %H:%M:%S'"))
         .project(f::to_timestamp("visit_time_stamp", "'%Y-%m-%d %H:%M:%S'"))
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         id  | name                 | "TO_TIMESTAMP(\"visit_time_stamp\", '%Y-%m-%d %H:%M:%S')"                      | "TO_TIMESTAMP(\"visit_time_stamp\", '%Y-%m-%d %H:%M:%S')"
         I64 | Str                  | Timestamp                                                                      | Timestamp;

@@ -10,29 +10,56 @@ use {
         result::Result,
         store::GStore,
     },
-    futures::{
-        future,
-        stream::{self, Stream, StreamExt, TryStreamExt, empty, once},
-    },
     itertools::Itertools,
-    std::{borrow::Cow, collections::HashMap, pin::Pin, sync::Arc},
-    utils::OrStream,
+    std::{borrow::Cow, collections::HashMap, rc::Rc},
 };
 
 pub struct Join<'a, T: GStore> {
     storage: &'a T,
     join_clauses: &'a [JoinPlan],
-    filter_context: Option<Arc<RowContext<'a>>>,
+    filter_context: Option<Rc<RowContext<'a>>>,
 }
 
-type JoinItem<'a> = Arc<RowContext<'a>>;
-type Joined<'a> = Pin<Box<dyn Stream<Item = Result<JoinItem<'a>>> + Send + 'a>>;
+type JoinItem<'a> = Rc<RowContext<'a>>;
+type Joined<'a> = Box<dyn Iterator<Item = Result<JoinItem<'a>>> + 'a>;
+type JoinInput<'a> = Box<dyn Iterator<Item = Result<RowContext<'a>>> + 'a>;
+
+struct LeftOuter<'a> {
+    rows: Joined<'a>,
+    init: Option<JoinItem<'a>>,
+    matched: bool,
+}
+
+impl<'a> LeftOuter<'a> {
+    fn new(rows: Joined<'a>, init: JoinItem<'a>) -> Self {
+        Self {
+            rows,
+            init: Some(init),
+            matched: false,
+        }
+    }
+}
+
+impl<'a> Iterator for LeftOuter<'a> {
+    type Item = Result<JoinItem<'a>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.rows.next() {
+            Some(item) => {
+                self.matched = true;
+                Some(item)
+            }
+            None if !self.matched => self.init.take().map(Ok),
+            None => None,
+        }
+    }
+}
 
 impl<'a, T: GStore> Join<'a, T> {
     pub fn new(
         storage: &'a T,
         join_clauses: &'a [JoinPlan],
-        filter_context: Option<Arc<RowContext<'a>>>,
+        filter_context: Option<Rc<RowContext<'a>>>,
     ) -> Self {
         Self {
             storage,
@@ -41,28 +68,27 @@ impl<'a, T: GStore> Join<'a, T> {
         }
     }
 
-    pub async fn apply(
-        self,
-        rows: impl Stream<Item = Result<RowContext<'a>>> + Send + 'a,
-    ) -> Result<Joined<'a>> {
-        let init_rows: Joined = Box::pin(rows.map(|row| row.map(Arc::new)));
+    pub fn apply(self, rows: JoinInput<'a>) -> Result<Joined<'a>> {
+        let mut rows: Joined = Box::new(rows.map(|row| row.map(Rc::new)));
 
-        stream::iter(self.join_clauses)
-            .map(Ok)
-            .try_fold(init_rows, |rows, join_clause| {
-                let filter_context = self.filter_context.as_ref().map(Arc::clone);
+        for join_clause in self.join_clauses {
+            rows = join(
+                self.storage,
+                self.filter_context.as_ref().map(Rc::clone),
+                join_clause,
+                rows,
+            )?;
+        }
 
-                async move { join(self.storage, filter_context, join_clause, rows).await }
-            })
-            .await
+        Ok(rows)
     }
 }
 
-async fn join<'a, T: GStore>(
+fn join<'a, T: GStore>(
     storage: &'a T,
-    filter_context: Option<Arc<RowContext<'a>>>,
+    filter_context: Option<Rc<RowContext<'a>>>,
     join_plan: &'a JoinPlan,
-    left_rows: impl Stream<Item = Result<JoinItem<'a>>> + Send + 'a,
+    left_rows: Joined<'a>,
 ) -> Result<Joined<'a>> {
     let JoinPlan {
         relation,
@@ -71,14 +97,8 @@ async fn join<'a, T: GStore>(
     } = join_plan;
 
     let table_alias = relation.alias_name();
-    let join_executor = JoinExecutor::new(
-        storage,
-        relation,
-        filter_context.as_ref().map(Arc::clone),
-        join_executor,
-    )
-    .await
-    .map(Arc::new)?;
+    let join_executor =
+        JoinExecutor::new(storage, relation, filter_context.as_ref(), join_executor)?;
 
     let (join_operator, where_clause) = match join_operator {
         JoinOperatorPlan::Inner(JoinConstraintPlan::None) => (JoinOperator::Inner, None),
@@ -91,115 +111,107 @@ async fn join<'a, T: GStore>(
         }
     };
 
-    let columns: Arc<[String]> = Arc::from(fetch_relation_columns(storage, relation).await?);
-    let rows = left_rows.and_then(move |project_context| {
+    let columns: Rc<[String]> = Rc::from(fetch_relation_columns(storage, relation)?);
+    let rows = left_rows.flat_map(move |project_context| {
+        let project_context = match project_context {
+            Ok(project_context) => project_context,
+            Err(error) => return Box::new(std::iter::once(Err(error))) as Joined<'a>,
+        };
+
         let init_context = {
-            let columns = Arc::clone(&columns);
+            let columns = Rc::clone(&columns);
             let init_row = Row {
                 values: columns.iter().map(|_| Value::Null).collect(),
                 columns,
             };
 
-            Arc::new(RowContext::new(
+            Rc::new(RowContext::new(
                 table_alias,
                 Cow::Owned(init_row),
-                Some(Arc::clone(&project_context)),
+                Some(Rc::clone(&project_context)),
             ))
         };
-        let filter_context = filter_context.as_ref().map(Arc::clone);
-        let join_executor = Arc::clone(&join_executor);
 
-        async move {
-            #[derive(futures_enum::Stream)]
-            enum Rows<I1, I2, I3> {
-                NestedLoop(I1),
-                Hash(I2),
-                Empty(I3),
-            }
+        let row_filter_context = match filter_context.as_ref() {
+            Some(filter_context) => Rc::new(RowContext::concat(
+                Rc::clone(&project_context),
+                Rc::clone(filter_context),
+            )),
+            None => Rc::clone(&project_context),
+        };
+        let row_filter_context = Some(row_filter_context);
 
-            let filter_context = match filter_context {
-                Some(filter_context) => Arc::new(RowContext::concat(
-                    Arc::clone(&project_context),
-                    Arc::clone(&filter_context),
-                )),
-                None => Arc::clone(&project_context),
-            };
-            let filter_context = Some(filter_context);
-            let rows = match join_executor.as_ref() {
-                JoinExecutor::NestedLoop => {
-                    let rows = fetch_relation_rows(storage, relation, filter_context.as_ref())
-                        .await?
-                        .and_then(|row| future::ok(Cow::Owned(row)))
-                        .try_filter_map(move |row| {
-                            check_where_clause(
-                                storage,
-                                table_alias,
-                                filter_context.as_ref().map(Arc::clone),
-                                Some(Arc::clone(&project_context)),
-                                where_clause,
-                                row,
-                            )
-                        });
-                    Rows::NestedLoop(rows)
-                }
-                JoinExecutor::Hash {
-                    rows_map,
-                    value_expr,
-                } => {
-                    let rows = evaluate(
+        let rows: Joined<'a> = match &join_executor {
+            JoinExecutor::NestedLoop => {
+                let rows = match fetch_relation_rows(storage, relation, row_filter_context.as_ref())
+                {
+                    Ok(rows) => rows,
+                    Err(error) => return Box::new(std::iter::once(Err(error))) as Joined<'a>,
+                };
+                Box::new(rows.filter_map(move |row| {
+                    let row = match row {
+                        Ok(row) => row,
+                        Err(error) => return Some(Err(error)),
+                    };
+
+                    match check_where_clause(
                         storage,
-                        filter_context.as_ref().map(Arc::clone),
-                        None,
-                        value_expr,
-                    )
-                    .await
-                    .map(Key::try_from)?
-                    .map(|hash_key| rows_map.get(&hash_key))?;
-
-                    match rows {
-                        None => Rows::Empty(empty()),
-                        Some(rows) => {
-                            let rows = stream::iter(rows)
-                                .filter_map(|row| {
-                                    let filter_context = filter_context.as_ref().map(Arc::clone);
-                                    let project_context = Some(Arc::clone(&project_context));
-
-                                    async {
-                                        check_where_clause(
-                                            storage,
-                                            table_alias,
-                                            filter_context,
-                                            project_context,
-                                            where_clause,
-                                            Cow::Borrowed(row),
-                                        )
-                                        .await
-                                        .transpose()
-                                    }
-                                })
-                                .collect::<Vec<_>>()
-                                .await;
-
-                            Rows::Hash(stream::iter(rows))
-                        }
+                        table_alias,
+                        row_filter_context.as_ref().map(Rc::clone),
+                        Some(Rc::clone(&project_context)),
+                        where_clause,
+                        Cow::Owned(row),
+                    ) {
+                        Ok(Some(row)) => Some(Ok(row)),
+                        Ok(None) => None,
+                        Err(error) => Some(Err(error)),
                     }
+                }))
+            }
+            JoinExecutor::Hash {
+                rows_map,
+                value_expr,
+            } => {
+                let rows = match evaluate(storage, row_filter_context.as_ref(), None, value_expr)
+                    .and_then(|evaluated| {
+                        Key::try_from(evaluated).map(|hash_key| rows_map.get(&hash_key))
+                    }) {
+                    Ok(rows) => rows,
+                    Err(error) => return Box::new(std::iter::once(Err(error))) as Joined<'a>,
+                };
+
+                match rows {
+                    Some(rows) => {
+                        let rows =
+                            rows.clone().into_iter().filter_map(
+                                move |row| match check_where_clause(
+                                    storage,
+                                    table_alias,
+                                    row_filter_context.as_ref().map(Rc::clone),
+                                    Some(Rc::clone(&project_context)),
+                                    where_clause,
+                                    Cow::Owned(row),
+                                ) {
+                                    Ok(Some(row)) => Some(Ok(row)),
+                                    Ok(None) => None,
+                                    Err(error) => Some(Err(error)),
+                                },
+                            );
+
+                        Box::new(rows)
+                    }
+                    None => Box::new(std::iter::empty()),
                 }
-            };
+            }
+        };
 
-            let rows: Joined = match join_operator {
-                JoinOperator::Inner => Box::pin(rows),
-                JoinOperator::LeftOuter => {
-                    let init_rows = once(async { Ok(init_context) });
-
-                    Box::pin(OrStream::new(rows, init_rows))
-                }
-            };
-
-            Ok(rows)
+        match join_operator {
+            JoinOperator::Inner => rows,
+            JoinOperator::LeftOuter => Box::new(LeftOuter::new(rows, init_context)),
         }
     });
 
-    Ok(Box::pin(rows.try_flatten()))
+    Ok(Box::new(rows))
 }
 
 #[derive(Copy, Clone)]
@@ -217,10 +229,10 @@ enum JoinExecutor<'a> {
 }
 
 impl<'a> JoinExecutor<'a> {
-    async fn new<T: GStore>(
+    fn new<T: GStore>(
         storage: &'a T,
         relation: &TableFactorPlan,
-        filter_context: Option<Arc<RowContext<'a>>>,
+        filter_context: Option<&Rc<RowContext<'a>>>,
         join_executor: &'a JoinExecutorPlan,
     ) -> Result<JoinExecutor<'a>> {
         let (key_expr, value_expr, where_clause) = match join_executor {
@@ -232,63 +244,56 @@ impl<'a> JoinExecutor<'a> {
             } => (key_expr, value_expr, where_clause),
         };
 
-        let rows_map = fetch_relation_rows(storage, relation, filter_context.as_ref())
-            .await?
-            .try_filter_map(|row| {
-                let filter_context = filter_context.as_ref().map(Arc::clone);
+        let mut rows = Vec::new();
+        for row in fetch_relation_rows(storage, relation, filter_context)? {
+            let row = row?;
+            let filter_context = Rc::new(RowContext::new(
+                relation.alias_name(),
+                Cow::Borrowed(&row),
+                filter_context.cloned(),
+            ));
 
-                async move {
-                    let filter_context = Arc::new(RowContext::new(
-                        relation.alias_name(),
-                        Cow::Borrowed(&row),
-                        filter_context,
-                    ));
+            let hash_key: Key =
+                evaluate(storage, Some(&filter_context), None, key_expr)?.try_into()?;
 
-                    let hash_key: Key =
-                        evaluate(storage, Some(Arc::clone(&filter_context)), None, key_expr)
-                            .await?
-                            .try_into()?;
+            if matches!(hash_key, Key::None) {
+                continue;
+            }
 
-                    if matches!(hash_key, Key::None) {
-                        return Ok(None);
-                    }
+            let pass = match where_clause {
+                Some(expr) => check_expr(storage, Some(&filter_context), None, expr)?,
+                None => true,
+            };
 
-                    match where_clause {
-                        Some(expr) => check_expr(storage, Some(filter_context), None, expr)
-                            .await
-                            .map(|pass| pass.then_some((hash_key, row))),
-                        None => Ok(Some((hash_key, row))),
-                    }
-                }
-            })
-            .try_collect::<Vec<_>>()
-            .await?
-            .into_iter()
-            .into_group_map();
+            if pass {
+                rows.push((hash_key, row));
+            }
+        }
+
         Ok(Self::Hash {
-            rows_map,
+            rows_map: rows.into_iter().into_group_map(),
             value_expr,
         })
     }
 }
 
-async fn check_where_clause<'a, T: GStore>(
+fn check_where_clause<'a, T: GStore>(
     storage: &'a T,
     table_alias: &'a str,
-    filter_context: Option<Arc<RowContext<'a>>>,
-    project_context: Option<Arc<RowContext<'a>>>,
+    filter_context: Option<Rc<RowContext<'a>>>,
+    project_context: Option<Rc<RowContext<'a>>>,
     where_clause: Option<&'a ExprPlan>,
     row: Cow<'_, Row>,
-) -> Result<Option<Arc<RowContext<'a>>>> {
+) -> Result<Option<Rc<RowContext<'a>>>> {
     let filter_context = RowContext::new(table_alias, Cow::Borrowed(&row), filter_context);
-    let filter_context = Some(Arc::new(filter_context));
+    let filter_context = Some(Rc::new(filter_context));
 
     match where_clause {
-        Some(expr) => check_expr(storage, filter_context, None, expr).await?,
+        Some(expr) => check_expr(storage, filter_context.as_ref(), None, expr)?,
         None => true,
     }
     .then(|| RowContext::new(table_alias, Cow::Owned(row.into_owned()), project_context))
-    .map(Arc::new)
+    .map(Rc::new)
     .map(Ok)
     .transpose()
 }
