@@ -29,22 +29,32 @@ pub fn delete<T: GStore + GStoreMut>(
     selection: Option<&ExprPlan>,
 ) -> Result<Payload> {
     let columns = Rc::from(fetch_columns(storage, table_name)?);
-    let referencings = storage.fetch_referencings(table_name)?;
+    let referencings = storage
+        .fetch_referencings(table_name)?
+        .into_iter()
+        .map(|referencing| {
+            fetch_columns(storage, &referencing.table_name)
+                .map(Rc::from)
+                .map(|columns| (referencing, columns))
+        })
+        .collect::<Result<Vec<_>>>()?;
+
     let mut keys = Vec::new();
     for item in fetch(storage, table_name, columns, selection)? {
         let (key, row) = item?;
 
-        for Referencing {
-            table_name: referencing_table_name,
-            foreign_key:
-                ForeignKey {
-                    referencing_column_name,
-                    referenced_column_name,
-                    on_delete,
-                    ..
-                },
-        } in &referencings
-        {
+        for (referencing, columns) in &referencings {
+            let Referencing {
+                table_name: referencing_table_name,
+                foreign_key:
+                    ForeignKey {
+                        referencing_column_name,
+                        referenced_column_name,
+                        on_delete,
+                        ..
+                    },
+            } = referencing;
+
             let value = row
                 .get_value(referenced_column_name)
                 .ok_or(DeleteError::ValueNotFound(referenced_column_name.clone()))?
@@ -56,8 +66,12 @@ pub fn delete<T: GStore + GStoreMut>(
                 right: Box::new(ExprPlan::Value(value)),
             };
 
-            let columns = Rc::from(fetch_columns(storage, referencing_table_name)?);
-            let mut referencing_rows = fetch(storage, referencing_table_name, columns, Some(expr))?;
+            let mut referencing_rows = fetch(
+                storage,
+                referencing_table_name,
+                Rc::clone(columns),
+                Some(expr),
+            )?;
 
             let referencing_row_exists = referencing_rows.next().transpose()?.is_some();
             if referencing_row_exists && on_delete == &ReferentialAction::NoAction {
