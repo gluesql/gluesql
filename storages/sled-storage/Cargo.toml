@@ -10,7 +10,6 @@ documentation.workspace = true
 
 [dependencies]
 gluesql-core.workspace = true
-utils.workspace = true
 iter-enum = "1"
 serde = { version = "1", features = ["derive"] }
 thiserror = "1"

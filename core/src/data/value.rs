@@ -2,7 +2,7 @@ use {
     super::{Interval, Key, StringExt},
     crate::{
         ast::{DataType, DateTimeField},
-        data::point::Point,
+        data::{Tribool, point::Point},
         result::Result,
     },
     binary_op::TryBinaryOperator,
@@ -18,7 +18,6 @@ use {
         mem::discriminant,
         net::IpAddr,
     },
-    utils::Tribool,
 };
 
 mod binary_op;
@@ -936,7 +935,7 @@ mod tests {
     #[allow(clippy::eq_op)]
     #[test]
     fn evaluate_eq() {
-        use utils::Tribool;
+        use crate::data::Tribool;
         use {
             super::Interval,
             chrono::{NaiveDateTime, NaiveTime},
@@ -1170,7 +1169,7 @@ mod tests {
     fn arithmetic() {
         use chrono::{NaiveDate, NaiveTime};
 
-        use utils::Tribool::True;
+        use crate::data::Tribool::True;
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
                 assert_eq!(True, $a.$op(&$b).unwrap().evaluate_eq(&$c));
@@ -1955,7 +1954,7 @@ mod tests {
     fn bitwise_shift_left() {
         use {super::error::ValueError, crate::ast::DataType};
 
-        use utils::Tribool::True;
+        use crate::data::Tribool::True;
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
                 assert_eq!(True, $a.$op(&$b).unwrap().evaluate_eq(&$c));
@@ -2118,7 +2117,7 @@ mod tests {
     fn bitwise_shift_right() {
         use {super::error::ValueError, crate::ast::DataType};
 
-        use utils::Tribool::True;
+        use crate::data::Tribool::True;
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
                 assert_eq!(True, $a.$op(&$b).unwrap().evaluate_eq(&$c));
@@ -2741,7 +2740,7 @@ mod tests {
 
     #[test]
     fn bitwise_and() {
-        use utils::Tribool::True;
+        use crate::data::Tribool::True;
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
                 assert_eq!(True, $a.$op(&$b).unwrap().evaluate_eq(&$c));
@@ -3165,7 +3164,7 @@ mod tests {
 
     #[test]
     fn test_conversion_from_tribool() {
-        use {super::Value, utils::Tribool};
+        use {super::Value, crate::data::Tribool};
 
         assert_eq!(Value::from(Tribool::True), Value::Bool(true));
         assert_eq!(Value::from(Tribool::False), Value::Bool(false));

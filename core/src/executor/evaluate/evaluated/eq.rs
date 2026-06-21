@@ -1,7 +1,7 @@
 use {
     super::Evaluated,
     crate::data::{
-        BigDecimalExt, Value,
+        BigDecimalExt, Tribool, Value,
         value::{parse_time, parse_timestamp, parse_uuid},
     },
     chrono::NaiveDate,
@@ -10,7 +10,6 @@ use {
         net::{IpAddr, Ipv4Addr, Ipv6Addr},
         str::FromStr,
     },
-    utils::Tribool,
 };
 
 impl<'a> Evaluated<'a> {
@@ -110,11 +109,11 @@ fn value_eq_with_literal(value: &Value, literal: &Evaluated<'_>) -> Tribool {
 mod tests {
     use {
         super::{Evaluated, value_eq_with_literal},
+        crate::data::Tribool::{False, Null, True},
         crate::data::{Value, value::parse_uuid},
         bigdecimal::BigDecimal,
         chrono::{NaiveDate, NaiveDateTime, NaiveTime},
         std::{borrow::Cow, net::IpAddr, str::FromStr},
-        utils::Tribool::{False, Null, True},
     };
 
     fn date(year: i32, month: u32, day: u32) -> NaiveDate {
