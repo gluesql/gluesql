@@ -362,10 +362,10 @@ mod tests {
         super::plan,
         crate::{
             ast::DateTimeField,
-            ast_builder::{Build, QueryNode, col, exists, num, subquery, table},
             mock::{MockStorage, run},
             parse_sql::parse,
             plan::{StatementPlan, fetch_schema_map},
+            query_builder::{Build, QueryNode, col, exists, num, subquery, table},
             translate::translate,
         },
     };

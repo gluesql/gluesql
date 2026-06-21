@@ -225,10 +225,10 @@ mod tests {
                 BinaryOperator, Expr, Join, JoinConstraint, JoinOperator, Literal, Projection,
                 Query, Select, SelectItem, SetExpr, Statement, TableFactor, TableWithJoins, Values,
             },
-            ast_builder::{Build, col, primary_key, table},
             mock::{MockStorage, run},
             parse_sql::{parse, parse_expr},
             plan::{StatementPlan, fetch_schema_map},
+            query_builder::{Build, col, primary_key, table},
             translate::{NO_PARAMS, translate, translate_expr},
         },
     };

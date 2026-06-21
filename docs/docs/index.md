@@ -12,7 +12,7 @@ sidebar_position: 1
 [![Coverage Status](https://coveralls.io/repos/github/gluesql/gluesql/badge.svg?branch=main)](https://coveralls.io/github/gluesql/gluesql?branch=main)
 
 ## Multi-Model Database Engine as a Library
-GlueSQL is a Rust library for SQL databases that includes a parser ([sqlparser-rs](https://github.com/sqlparser-rs/sqlparser-rs)), an execution layer, and a variety of storage options, both persistent and non-persistent, all in one package. It is a versatile tool for developers, supporting both SQL and its own query builder (AST Builder). GlueSQL can handle structured and unstructured data, making it suitable for a wide range of use cases. It is portable and can be used with various storage types, including log files and read-write capable storage. GlueSQL is designed to be extensible and supports custom planners, making it a powerful tool for developers who need SQL support for their databases or services.
+GlueSQL is a Rust library for SQL databases that includes a parser ([sqlparser-rs](https://github.com/sqlparser-rs/sqlparser-rs)), an execution layer, and a variety of storage options, both persistent and non-persistent, all in one package. It is a versatile tool for developers, supporting both SQL and Query Builder. GlueSQL can handle structured and unstructured data, making it suitable for a wide range of use cases. It is portable and can be used with various storage types, including log files and read-write capable storage. GlueSQL is designed to be extensible and supports custom planners, making it a powerful tool for developers who need SQL support for their databases or services.
 
 "We offer a service where the GlueSQL team can implement and maintain your custom storage, especially beneficial for NoSQL databases with their own query planner and execution layer. We welcome any services wishing to support SQL and GlueSQL query interfaces. For more details, please refer to [**here**](#gluesql-custom-storage-let-us-handle-it-for-you)."
 
@@ -22,21 +22,21 @@ If you're interested in learning more about GlueSQL, we recommend the following 
 2. [Revolutionizing Databases by Unifying Query Interfaces](articles/revolutionizing-databases-by-unifying-query-interfaces.md)
 3. [Test-Driven Documentation - Automating User Manual Creation](articles/test-driven-documentation.md)
 
-## Supporting SQL and AST Builder
-GlueSQL supports both SQL and its own query builder (AST Builder). Unlike other ORMs, GlueSQL's AST Builder allows developers to build queries directly with GlueSQL's AST, enabling the use of all of GlueSQL's features. This is why we named it AST Builder instead of Query Builder.
+## Supporting SQL and Query Builder
+GlueSQL supports both SQL and Query Builder. Unlike ORMs that generate SQL strings, GlueSQL's Query Builder constructs execution-facing statement plans directly while still allowing explicit AST outputs where they are needed. This keeps access to GlueSQL-specific query features without routing every query through SQL text generation.
 
 ### SQL Example
 ```sql
 SELECT id, name FROM Foo WHERE name = 'Lemon' AND price > 100
 ```
 
-### AST Builder Example
+### Query Builder Example
 ```rust
 table("Foo")
     .select()
     // Filter by name using a SQL string
     .filter("name = 'Lemon'")
-    // Filter by price using AST Builder methods
+    // Filter by price using Query Builder methods
     .filter(col("price").gt(100))
     .project("id, name")
     .execute(glue)
@@ -82,7 +82,7 @@ Sled Storage is a persistent data storage option for GlueSQL that is built on th
 Redb Storage leverages the [redb](https://docs.rs/redb) embedded database for persistent storage with transactional support. It keeps all tables in a single database file, offering another simple way to keep your data on disk while enjoying GlueSQL's query capabilities.
 
 ### JSON Storage
-With GlueSQL, you can use JSONL or JSON files as a database that supports SQL and AST Builder, making it a powerful option for developers who need to work with JSON data. JSON Storage is a storage system that uses two types of files: a schema file (optional) and a data file. The schema file is written in Standard SQL and stores the structure of the table, while the data file contains the actual data and supports two file formats: `*.json` and `*.jsonl`. JSON Storage supports all DML features, but is particularly specialized for SELECT and INSERT.
+With GlueSQL, you can use JSONL or JSON files as a database that supports SQL and Query Builder, making it a powerful option for developers who need to work with JSON data. JSON Storage is a storage system that uses two types of files: a schema file (optional) and a data file. The schema file is written in Standard SQL and stores the structure of the table, while the data file contains the actual data and supports two file formats: `*.json` and `*.jsonl`. JSON Storage supports all DML features, but is particularly specialized for SELECT and INSERT.
 
 ### CSV Storage
 CSV Storage in GlueSQL allows you to work with CSV files as if they were SQL databases. This feature is perfect for developers who want to use the simplicity of CSV files while taking advantage of SQL's capabilities.
@@ -111,7 +111,7 @@ If you want to support additional features, such as schema changes, transactions
 
 To make it even easier to develop custom storages, GlueSQL provides a Test Suite that allows you to test your storage implementation against a set of standard SQL queries. This ensures that your storage system is compatible with GlueSQL and can handle common SQL operations.
 
-Overall, creating a custom storage for GlueSQL is a straightforward process that allows you to adapt SQL and the AST Builder to your environment with ease.
+Overall, creating a custom storage for GlueSQL is a straightforward process that allows you to adapt SQL and the Query Builder to your environment with ease.
 
 ## GlueSQL Custom Storage: Let Us Handle It for You
 Although anyone can develop a custom storage for GlueSQL with ease, our GlueSQL team can also implement and maintain it for you. This is especially recommended for NoSQL databases with their own query planner and execution layer, as adapting GlueSQL to them requires a deep understanding of GlueSQL's planner and storage layer details. We welcome not only database companies but also any services that want to support SQL and GlueSQL query interfaces. As GlueSQL is rapidly adding and improving features, we can help you develop and manage your custom storage effectively if you entrust it to us. If you're interested, please contact us at \<taehoon@gluesql.com>.

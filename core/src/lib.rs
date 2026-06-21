@@ -8,11 +8,11 @@ mod mock;
 mod result;
 
 pub mod ast;
-pub mod ast_builder;
 pub mod data;
 pub mod executor;
 pub mod parse_sql;
 pub mod plan;
+pub mod query_builder;
 pub mod row_conversion;
 pub mod store;
 pub mod translate;
