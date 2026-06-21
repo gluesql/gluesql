@@ -10,7 +10,6 @@ use {
         },
     },
     std::{collections::HashMap, hash::BuildHasher, rc::Rc},
-    utils::Vector,
 };
 
 pub fn plan<S: BuildHasher>(
@@ -97,16 +96,16 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
     ) -> (Option<Rc<Context<'a>>>, TableWithJoinsPlan) {
         let TableWithJoinsPlan { relation, joins } = table_with_joins;
         let init_context = self.update_context(None, &relation);
-        let (context, joins) =
-            joins
-                .into_iter()
-                .fold((init_context, Vector::new()), |(context, joins), join| {
-                    let (context, join) = self.join(outer_context.as_ref(), context, join);
-                    let joins = joins.push(join);
+        let mut context = init_context;
+        let mut joined = Vec::with_capacity(joins.len());
 
-                    (context, joins)
-                });
-        let joins = joins.into();
+        for join in joins {
+            let (next_context, join) = self.join(outer_context.as_ref(), context, join);
+            context = next_context;
+            joined.push(join);
+        }
+
+        let joins = joined;
         let context = Context::concat(context, outer_context);
 
         (context, TableWithJoinsPlan { relation, joins })

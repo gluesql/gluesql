@@ -7,7 +7,6 @@ members = [
   "pkg/rust",
   "storages/*",
   "test-suite",
-  "utils",
 ]
 default-members = [
   "cli",
@@ -16,7 +15,6 @@ default-members = [
   "pkg/rust",
   "storages/*",
   "test-suite",
-  "utils",
 ]
 
 [workspace.package]
@@ -44,7 +42,6 @@ gluesql-mongo-storage = { path = "./storages/mongo-storage", version = "0.19.0" 
 gluesql-parquet-storage = { path = "./storages/parquet-storage", version = "0.19.0" }
 gluesql-file-storage = { path = "./storages/file-storage", version = "0.19.0" }
 gluesql-git-storage = { path = "./storages/git-storage", version = "0.19.0" }
-utils = { package = "gluesql-utils", path = "./utils", version = "0.19.0" }
 
 [workspace.lints.clippy]
 pedantic = { level = "deny", priority = -1 }

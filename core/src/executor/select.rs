@@ -24,7 +24,6 @@ use {
         store::GStore,
     },
     std::{borrow::Cow, collections::HashSet, rc::Rc},
-    utils::Vector,
 };
 
 pub type SelectIter<'a> = Box<dyn Iterator<Item = Result<Row>> + 'a>;
@@ -93,8 +92,9 @@ fn sort_stateless(rows: Vec<Row>, order_by: &[OrderByExprPlan]) -> Result<Vec<Ro
         keyed_rows.push((keys, row));
     }
 
-    let sorted = Vector::from(keyed_rows)
-        .sort_by(|(keys_a, _), (keys_b, _)| super::sort::sort_by(keys_a, keys_b))
+    keyed_rows.sort_by(|(keys_a, _), (keys_b, _)| super::sort::sort_by(keys_a, keys_b));
+
+    let sorted = keyed_rows
         .into_iter()
         .map(|(_, row)| row)
         .collect::<Vec<_>>();

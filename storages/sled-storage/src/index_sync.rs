@@ -14,7 +14,6 @@ use {
             ConflictableTransactionError, ConflictableTransactionResult, TransactionalTree,
         },
     },
-    utils::Vector,
 };
 
 pub(super) struct PlannedIndex {
@@ -224,8 +223,9 @@ impl<'a> IndexSync<'a> {
             .unwrap_or_default();
 
         let key_snapshot = Snapshot::<Vec<u8>>::new(self.txid, data_key.to_vec());
-        let data_keys = Vector::from(data_keys).push(key_snapshot);
-        let data_keys = bincode::serialize(&Vec::from(data_keys))
+        let mut data_keys = data_keys;
+        data_keys.push(key_snapshot);
+        let data_keys = bincode::serialize(&data_keys)
             .map_err(err_into)
             .map_err(ConflictableTransactionError::Abort)?;
 

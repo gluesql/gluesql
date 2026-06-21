@@ -1425,7 +1425,6 @@ dependencies = [
  "bigdecimal",
  "cfg-if",
  "chrono",
- "gluesql-utils",
  "hex",
  "im",
  "iter-enum",
@@ -1597,10 +1596,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gluesql-utils"
-version = "0.19.0"
-
-[[package]]
 name = "gluesql_memory_storage"
 version = "0.19.0"
 dependencies = [
@@ -1617,7 +1612,6 @@ dependencies = [
  "criterion",
  "gluesql-core",
  "gluesql-test-suite",
- "gluesql-utils",
  "iter-enum",
  "serde",
  "sled",
