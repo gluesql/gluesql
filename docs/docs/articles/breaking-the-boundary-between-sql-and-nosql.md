@@ -16,7 +16,7 @@ The divide between SQL and NoSQL databases has often presented challenges in dat
 
 In this article, we explore how GlueSQL navigates the features of SQL and NoSQL databases, offering an integrated solution that promotes flexibility and efficiency. With its ability to unify disparate database types, GlueSQL heralds a new age of adaptable database creation and management.
 
-## The Interface Perspective: SQL & AST Builder
+## The Interface Perspective: SQL & Query Builder
 When we talk about SQL databases, it's almost a given that they support SQL - the standard query language. Although there are slight variations between databases, the convenience of using a similar SQL language across multiple databases cannot be overstated. However, from a software engineer's perspective, there's room for improvement. In most software development scenarios, a specific programming language is used. SQL is a separate language, which can cause friction when integrating it into your software. As a result, rather than using raw SQL, many developers employ query builders or ORMs to manipulate SQL conveniently using their preferred programming language. Although it's not efficient to generate SQL using a query builder and then parse it again in the database, it's a practical and effective choice.
 
 On the other hand, NoSQL databases offer different mechanisms. Some of them have their own language similar to SQL, but most provide an interface library developed specifically for each programming language. While SQL databases rely on external query builder libraries to provide an interface for each programming language, NoSQL databases mostly develop and offer these libraries themselves. If we discount the convenience of SQL language, this is one of the major factors that make NoSQL databases more comfortable to use. Since query builder libraries supporting SQL databases often cater to multiple SQL databases, they are limited in fully supporting unique features of each database. NoSQL databases, on the other hand, can freely manage their interface libraries without these restrictions.
@@ -57,7 +57,7 @@ table("Glue")
     .execute(glue);
 ```
 
-Let's reconsider the implicit distinction between SQL and NoSQL. GlueSQL indeed supports SQL, but it also officially develops and offers its own query builder. This query builder is not a secondary tool for SQL. While most SQL query builder libraries ultimately generate SQL strings, GlueSQL's builder directly creates an AST (Abstract Structure Tree) that is used for execution within GlueSQL. Hence, we call it the AST Builder. This means SQL and the AST Builder are two equally supported interfaces in GlueSQL.
+Let's reconsider the implicit distinction between SQL and NoSQL. GlueSQL indeed supports SQL, but it also officially develops and offers its own query builder. This query builder is not a secondary tool for SQL. While most SQL query builder libraries ultimately generate SQL strings, GlueSQL's builder directly creates execution-facing statement plans, with explicit AST outputs still available where needed. Hence, we call it the Query Builder. This means SQL and the Query Builder are two equally supported interfaces in GlueSQL.
 
 This also offers an additional advantage:
 
@@ -71,7 +71,7 @@ table("Glue")
     .execute(glue);
 ```
 
-Because GlueSQL already supports SQL, not only can you use the custom interface in the AST Builder, but you can also use familiar SQL syntax in part. Whether you use `col("id").eq(1)` or `"id = 1"`, you can use it in the way you prefer. The AST Builder interface, although initially unfamiliar, allows a gradual migration similar to writing SQL for your convenience.
+Because GlueSQL already supports SQL, not only can you use the custom interface in the Query Builder, but you can also use familiar SQL syntax in part. Whether you use `col("id").eq(1)` or `"id = 1"`, you can use it in the way you prefer. The Query Builder interface, although initially unfamiliar, allows a gradual migration similar to writing SQL for your convenience.
 
 Thus, we've dismantled one of the implicit distinctions between SQL and NoSQL. However, it's more of an implicit differentiation than a fundamental one. There are more significant design differences that we'll explore next.
 
@@ -132,15 +132,15 @@ Here's an example of querying data by INNER JOINing the Names table, which has a
 
 Thanks to this, the variety of storage that can be supported through GlueSQL has expanded significantly. If there were previously limitations to supporting NoSQL databases that support schemaless data, that is no longer the case. The reference storage where you can directly experience this schemaless data support is JSON Storage. It offers features that allow you to deal directly with unstructured data like JSON using GlueSQL.
 
-If GlueSQL starts from the perspective of an SQL database and expands, by providing the AST Builder directly, it once blurs the boundary, and by supporting unstructured data simultaneously, it knocks down the boundary once more. How do you like it?
+If GlueSQL starts from the perspective of an SQL database and expands, by providing the Query Builder directly, it once blurs the boundary, and by supporting unstructured data simultaneously, it knocks down the boundary once more. How do you like it?
 
 
 ## Decomposing Database Functionality: Breaking Down SQL and NoSQL Features
 The distinction between SQL and NoSQL is not just about whether they support unstructured data. Of course, there are examples like unstructured data, which is mainly supported only in NoSQL, but in many cases, SQL databases tend to support more diverse and complex queries. NoSQL often gains other advantages in exchange for reducing the range of query support provided by SQL databases.
 
-GlueSQL is ambitious. It has devised a rather interesting method to support all of this through SQL and the AST Builder, with the same interface. When we usually say SQL database, it implicitly assumes that a lot of features have been fully implemented. Create tables by specifying a schema, modify schemas with "alter table", support both clustered and non-clustered indexes, and support transactions. And there's so much more. But the functionality that is naturally supported in SQL databases may not be natural in other environments.
+GlueSQL is ambitious. It has devised a rather interesting method to support all of this through SQL and the Query Builder, with the same interface. When we usually say SQL database, it implicitly assumes that a lot of features have been fully implemented. Create tables by specifying a schema, modify schemas with "alter table", support both clustered and non-clustered indexes, and support transactions. And there's so much more. But the functionality that is naturally supported in SQL databases may not be natural in other environments.
 
-Let's think about JSON Storage. GlueSQL's JSON Storage allows you to handle JSON, JSONL files using SQL and the AST Builder. This JSON Storage does not support atomic operations or transactions. Of course, it would be great if it did, but implementing and executing them would be a significant performance burden. In most cases, when you want to simply browse and handle JSONL files, the overhead caused by transactions can be an unnecessary burden. In this case, you want to handle JSON, JSONL files using SQL, but you don't necessarily need transactions.
+Let's think about JSON Storage. GlueSQL's JSON Storage allows you to handle JSON, JSONL files using SQL and the Query Builder. This JSON Storage does not support atomic operations or transactions. Of course, it would be great if it did, but implementing and executing them would be a significant performance burden. In most cases, when you want to simply browse and handle JSONL files, the overhead caused by transactions can be an unnecessary burden. In this case, you want to handle JSON, JSONL files using SQL, but you don't necessarily need transactions.
 
 To meet the requirements of these diverse environments, GlueSQL has separated the functionality of what we usually call an SQL database into multiple independent interfaces.
 `Store`, `StoreMut`, `AlterTable`, `Transaction`, ..
@@ -160,7 +160,7 @@ In addition to supporting both structured and unstructured data simultaneously, 
 ## Conclusion
 GlueSQL, while serving as a database that provides its own reference storage, is fundamentally a library designed to simplify the creation of databases. One of the substantial challenges GlueSQL had to overcome in order to support a diverse array of environments was to address the distinctive features that separate conventional SQL databases from NoSQL databases. GlueSQL achieved this through several innovative approaches, managing to support both categories simultaneously despite their significantly different characteristics.
 
-It offers support for SQL alongside an AST Builder, and accommodates both structured and unstructured data. Additionally, it decomposes database functionalities into multiple independent features, allowing each environment to selectively implement the functionalities it requires.
+It offers support for SQL alongside a Query Builder, and accommodates both structured and unstructured data. Additionally, it decomposes database functionalities into multiple independent features, allowing each environment to selectively implement the functionalities it requires.
 
 These unique attributes enable GlueSQL to live up to its 'Glue' prefix by facilitating effortless porting across various environments. While we have been developing it for several years, there is still much ground to cover. However, the fact that we are now able to introduce it publicly attests to our successful technological validation and completion of a demonstrable level of implementation.
 

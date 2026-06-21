@@ -6,7 +6,7 @@ sidebar_position: 7
 
 The `Index` trait is designed to support non-clustered indexes. If you only need to support pre-built non-clustered indexes, implementing the `Index` trait without the `IndexMut` trait is sufficient. Note that clustered indexes (PRIMARY KEY) are automatically supported by the `Store` & `StoreMut` implementations. The `Index` trait is specifically for non-clustered index support.
 
-Currently, GlueSQL's query planner only supports a logical planner, so the performance of finding non-clustered indexes is not optimal yet, but it is being improved. If you want to use non-clustered indexes more precisely, using the AST Builder to directly specify the index you want to use can be a good approach.
+Currently, GlueSQL's query planner only supports a logical planner, so the performance of finding non-clustered indexes is not optimal yet, but it is being improved. If you want to use non-clustered indexes more precisely, using the Query Builder to directly specify the index you want to use can be a good approach.
 
 A brief explanation of non-clustered and clustered indexes:
 
