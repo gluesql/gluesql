@@ -16,7 +16,6 @@ use {
     },
     sled::transaction::ConflictableTransactionError,
     std::{iter::once, str},
-    utils::Vector,
 };
 
 impl AlterTable for SledStorage {
@@ -202,7 +201,8 @@ impl AlterTable for SledStorage {
                 unique,
                 comment,
             };
-            let column_defs = Vector::from(column_defs).update(i, column_def).into();
+            let mut column_defs = column_defs;
+            column_defs[i] = column_def;
 
             let schema = Schema {
                 table_name: table_name.to_owned(),
