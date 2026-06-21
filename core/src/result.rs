@@ -1,13 +1,13 @@
 use {serde::Serialize, std::fmt::Debug, thiserror::Error as ThisError};
 
 pub use crate::{
-    ast_builder::AstBuilderError,
     data::{IntervalError, KeyError, SchemaParseError, StringExtError, TableError, ValueError},
     executor::{
         AlterError, DeleteError, EvaluateError, ExecuteError, FetchError, InsertError, SelectError,
         SortError, UpdateError, ValidateError,
     },
     plan::PlanError,
+    query_builder::QueryBuilderError,
     row_conversion::RowConversionError,
     store::{AlterTableError, IndexError},
     translate::TranslateError,
@@ -24,8 +24,8 @@ pub enum Error {
     #[error("translate: {0}")]
     Translate(#[from] TranslateError),
 
-    #[error("ast-builder: {0}")]
-    AstBuilder(#[from] AstBuilderError),
+    #[error("query-builder: {0}")]
+    QueryBuilder(#[from] QueryBuilderError),
 
     #[error("alter-table: {0}")]
     AlterTable(#[from] AlterTableError),

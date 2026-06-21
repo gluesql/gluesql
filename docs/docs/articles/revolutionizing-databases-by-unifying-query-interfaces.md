@@ -35,11 +35,11 @@ Whether it's a simple storage environment or a serious task, the key lies in the
 
 
 ## The Vision of GlueSQL
-The GlueSQL project aims to offer a unified query interface for various environments. The goal is to allow anyone to port and use SQL and GlueSQL's proprietary query builder, the AST Builder, in any desired environment. This could range from key-value databases, serious NoSQL databases, log files, and even REST API services. Essentially, if a service supports reading or read-writing data, regardless of the data type, it can readily support a complex query interface via GlueSQL.
+The GlueSQL project aims to offer a unified query interface for various environments. The goal is to allow anyone to port and use SQL and GlueSQL's proprietary query builder, the Query Builder, in any desired environment. This could range from key-value databases, serious NoSQL databases, log files, and even REST API services. Essentially, if a service supports reading or read-writing data, regardless of the data type, it can readily support a complex query interface via GlueSQL.
 
 Presently, the GlueSQL project itself directly supports a few storage types as reference storages. These include in-memory storage for non-persistent data handling, sled storage, which is a key-value database written in Rust, and JSON storage for handling JSON and JSONL files. While the GlueSQL Team is primarily developing these, the aim is to allow anyone to create such custom storages for a wide array of purposes, thus enabling them to assemble the database of their choosing.
 
-Imagine using GlueSQL's SQL and AST Builder everywhere, with the simple method of swapping out storages to operate in diverse settings. It could significantly reduce software development costs. Developers wouldn't need to learn the different usage methods for each database. Instead, they could focus solely on implementing business logic using the same interface.
+Imagine using GlueSQL's SQL and Query Builder everywhere, with the simple method of swapping out storages to operate in diverse settings. It could significantly reduce software development costs. Developers wouldn't need to learn the different usage methods for each database. Instead, they could focus solely on implementing business logic using the same interface.
 
 Our vision is to reduce database development costs by 10 times, or even more than 20 times. We aim to gather diverse database creators under the GlueSQL banner, making it the go-to solution for cost-effective database development.
 
@@ -66,7 +66,7 @@ Lowering development costs in this way will enable a broader range of developers
 
 However, despite all this hard work, it is not easy to attract database users accustomed to different methods.
 
-Consider that the SQL and AST Builder provided by GlueSQL are already securing numerous users. This eliminates the need for efforts to promote a newly planned query interface. Over the years, many new databases have emphasized compatibility with PostgreSQL or MySQL for similar reasons. As GlueSQL places a strong emphasis on portability in its query interface planning, it allows for more flexible configuration according to the desired situation. Through the AST Builder, it also eliminates the cost of porting to different languages.
+Consider that the SQL and Query Builder provided by GlueSQL are already securing numerous users. This eliminates the need for efforts to promote a newly planned query interface. Over the years, many new databases have emphasized compatibility with PostgreSQL or MySQL for similar reasons. As GlueSQL places a strong emphasis on portability in its query interface planning, it allows for more flexible configuration according to the desired situation. Through the Query Builder, it also eliminates the cost of porting to different languages.
 
 For many database developers, using GlueSQL can be an optimal choice, as it can save costs and quickly secure users.
 
@@ -76,7 +76,7 @@ Let me mention one more thing: what's convenient for humans... could be applied 
 ## The Future with GlueSQL
 GlueSQL has been and will continue to improve and develop new features to enable portability in various environments. Thanks to the schemaless data support added last year, it is now possible to handle both structured data with schema and unstructured data like JSON simultaneously. This has significantly increased the range of storage environments that can be supported.
 
-One of the key features added last year was the AST Builder. This feature allowed us to escape the confines of SQL and provide an interface for comfortably handling data in the programming languages used for development.
+One of the key features added last year was the Query Builder. This feature allowed us to escape the confines of SQL and provide an interface for comfortably handling data in the programming languages used for development.
 
 Of course, improving existing features is extremely important, and there are many new features to be added. As a major development plan this year, we aim to develop features to effectively attach GlueSQL to NoSQL databases with their own planners and execution layers. The GlueSQL query planner, currently at a basic level, will see significant changes this year. With the expansion of this planner, not only NoSQL databases but also other SQL databases could be supported without sacrificing performance using GlueSQL.
 

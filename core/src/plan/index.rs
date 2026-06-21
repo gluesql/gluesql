@@ -442,12 +442,12 @@ mod tests {
     use {
         super::plan,
         crate::{
-            ast_builder::{
-                Build, col, exists, nested, non_clustered, null, num, primary_key, table, text,
-            },
             mock::{MockStorage, run},
             parse_sql::parse,
             plan::{StatementPlan, fetch_schema_map},
+            query_builder::{
+                Build, col, exists, nested, non_clustered, null, num, primary_key, table, text,
+            },
             result::{Error, Result},
             translate::translate,
         },
