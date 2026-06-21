@@ -1,5 +1,4 @@
 use {
-    async_trait::async_trait,
     gluesql_core::{
         ast::*,
         parse_sql::parse_expr,
@@ -123,33 +122,32 @@ pub fn type_match(expected: &[DataType], found: Result<Payload>) {
 ///
 /// Actual test cases are in [test-suite/src/](https://github.com/gluesql/gluesql/blob/main/test-suite/src/),
 /// not in `/tests/`.
-#[async_trait(?Send)]
 pub trait Tester<T: GStore + GStoreMut + Planner> {
-    async fn new(namespace: &str) -> Self;
+    fn new(namespace: &str) -> Self;
 
     fn get_glue(&mut self) -> &mut Glue<T>;
 
-    async fn run_inner(&mut self, sql: &str) -> Result<Payload> {
+    fn run_inner(&mut self, sql: &str) -> Result<Payload> {
         let glue = self.get_glue();
 
-        println!("[RUN] {}", sql);
+        println!("[RUN] {sql}");
         let parsed = parse(sql)?;
         let statement = translate(&parsed[0])?;
-        let statement = glue.storage.plan(statement.into()).await?;
+        let statement = glue.storage.plan(statement.into())?;
 
-        glue.execute_stmt(&statement).await
+        glue.execute_stmt(&statement)
     }
 
-    async fn run(&mut self, sql: &str) -> Payload {
-        self.run_inner(sql).await.unwrap()
+    fn run(&mut self, sql: &str) -> Payload {
+        self.run_inner(sql).unwrap()
     }
 
-    async fn run_err(&mut self, sql: &str) -> Error {
-        self.run_inner(sql).await.unwrap_err()
+    fn run_err(&mut self, sql: &str) -> Error {
+        self.run_inner(sql).unwrap_err()
     }
 
-    async fn count(&mut self, sql: &str, expected: usize) {
-        let actual = match self.run_inner(sql).await.unwrap() {
+    fn count(&mut self, sql: &str, expected: usize) {
+        let actual = match self.run_inner(sql).unwrap() {
             Payload::Select { rows, .. } => rows.len(),
             Payload::Delete(num) | Payload::Update(num) => num,
             _ => panic!("compare is only for Select, Delete and Update"),
@@ -158,39 +156,34 @@ pub trait Tester<T: GStore + GStoreMut + Planner> {
         assert_eq!(actual, expected, "[COUNT] {sql}");
     }
 
-    async fn type_match(&mut self, sql: &str, expected: &[DataType]) {
-        let actual = self.run_inner(sql).await.unwrap();
+    fn type_match(&mut self, sql: &str, expected: &[DataType]) {
+        let actual = self.run_inner(sql).unwrap();
 
         type_match(expected, Ok(actual));
     }
 
-    async fn test(&mut self, sql: &str, expected: Result<Payload>) {
-        let actual = self.run_inner(sql).await;
+    fn test(&mut self, sql: &str, expected: Result<Payload>) {
+        let actual = self.run_inner(sql);
 
         assert_eq!(actual, expected, "[TEST] {sql}");
     }
 
-    async fn named_test(&mut self, name: &str, sql: &str, expected: Result<Payload>) {
-        let actual = self.run_inner(sql).await;
+    fn named_test(&mut self, name: &str, sql: &str, expected: Result<Payload>) {
+        let actual = self.run_inner(sql);
 
         assert_eq!(actual, expected, "[TEST] {name}");
     }
 
-    async fn test_idx(
-        &mut self,
-        sql: &str,
-        expected: Result<Payload>,
-        indexes: Vec<IndexItemPlan>,
-    ) {
+    fn test_idx(&mut self, sql: &str, expected: Result<Payload>, indexes: Vec<IndexItemPlan>) {
         let glue = self.get_glue();
 
         let parsed = parse(sql).unwrap();
         let statement = translate(&parsed[0]).unwrap();
-        let statement = glue.storage.plan(statement.into()).await.unwrap();
+        let statement = glue.storage.plan(statement.into()).unwrap();
 
         test_indexes(&statement, Some(indexes));
 
-        let actual = glue.execute_stmt(&statement).await;
+        let actual = glue.execute_stmt(&statement);
 
         assert_eq!(actual, expected, "[TEST IDX] {sql}");
     }
@@ -199,7 +192,7 @@ pub trait Tester<T: GStore + GStoreMut + Planner> {
 #[macro_export]
 macro_rules! test_case {
     ($name: ident, $content: expr) => {
-        pub async fn $name<T>(mut tester: impl $crate::Tester<T>)
+        pub fn $name<T>(mut tester: impl $crate::Tester<T>)
         where
             T: gluesql_core::store::GStore
                 + gluesql_core::store::GStoreMut
@@ -222,13 +215,9 @@ macro_rules! test_case {
                 };
             }
 
-            async {
-                $content;
+            $content;
 
-                gluesql_core::prelude::Result::<()>::Ok(())
-            }
-            .await
-            .unwrap()
+            gluesql_core::prelude::Result::<()>::Ok(()).unwrap()
         }
     };
 }

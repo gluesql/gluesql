@@ -3,8 +3,8 @@ use {
     gluesql_redb_storage::RedbStorage,
 };
 
-#[tokio::test]
-async fn redb_nested_transaction() {
+#[test]
+fn redb_nested_transaction() {
     let _ = std::fs::create_dir("tmp");
     let path = "tmp/redb_nested_transaction";
     let _ = std::fs::remove_file(path);
@@ -12,8 +12,8 @@ async fn redb_nested_transaction() {
     let storage = RedbStorage::new(path).unwrap();
     let mut glue = Glue::new(storage);
 
-    glue.execute("BEGIN").await.unwrap();
-    let result = glue.execute("BEGIN").await;
+    glue.execute("BEGIN").unwrap();
+    let result = glue.execute("BEGIN");
     assert_eq!(
         result,
         Err(Error::StorageMsg(
@@ -21,5 +21,5 @@ async fn redb_nested_transaction() {
         ))
         .map(|payload| vec![payload])
     );
-    glue.execute("COMMIT;").await.unwrap();
+    glue.execute("COMMIT;").unwrap();
 }

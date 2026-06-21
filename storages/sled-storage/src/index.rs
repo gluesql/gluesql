@@ -4,8 +4,6 @@ use {
         index_sync::{build_index_key, build_index_key_prefix},
         lock,
     },
-    async_trait::async_trait,
-    futures::stream::iter,
     gluesql_core::{
         ast::IndexOperator,
         data::{Key, Value},
@@ -18,9 +16,8 @@ use {
     utils::Vector,
 };
 
-#[async_trait]
 impl Index for SledStorage {
-    async fn scan_indexed_data<'a>(
+    fn scan_indexed_data<'a>(
         &'a self,
         table_name: &str,
         index_name: &str,
@@ -146,8 +143,8 @@ impl Index for SledStorage {
         let data_keys = data_keys.map(|v| v.map_err(err_into));
 
         Ok(match asc {
-            Some(true) | None => Box::pin(iter(data_keys.flat_map(flat_map))),
-            Some(false) => Box::pin(iter(data_keys.rev().flat_map(flat_map))),
+            Some(true) | None => Box::new(data_keys.flat_map(flat_map)),
+            Some(false) => Box::new(data_keys.rev().flat_map(flat_map)),
         })
     }
 }

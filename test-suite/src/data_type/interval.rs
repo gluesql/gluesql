@@ -13,8 +13,7 @@ CREATE TABLE IntervalLog (
     interval1 INTERVAL,
     interval2 INTERVAL
 )",
-    )
-    .await;
+    );
 
     g.run(
         "
@@ -27,8 +26,7 @@ INSERT INTO IntervalLog VALUES
     (6, INTERVAL '12:00' HOUR TO MINUTE,      INTERVAL '-12:30:12' HOUR TO SECOND),
     (7, INTERVAL '-1000-11' YEAR TO MONTH,    INTERVAL '-30:11' MINUTE TO SECOND);
 ",
-    )
-    .await;
+    );
 
     g.test(
         "SELECT * FROM IntervalLog;",
@@ -43,7 +41,7 @@ INSERT INTO IntervalLog VALUES
             6     I::hours(12)          I::seconds(-(12 * 3600 + 30 * 60 + 12));
             7     I::months(-12_011)    I::seconds(-(30 * 60 + 11))
         ))
-    ).await;
+    );
 
     g.test(
         "SELECT
@@ -56,8 +54,7 @@ INSERT INTO IntervalLog VALUES
             I64 | Interval      | Interval;
             1     I::months(28)   I::months(66)
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT
@@ -71,71 +68,60 @@ INSERT INTO IntervalLog VALUES
             I64 | Interval   | Interval     | Interval;
             2     I::days(4)   I::hours(34)   I::minutes(1)
         )),
-    )
-    .await;
+    );
 
     g.test(
         "INSERT INTO IntervalLog VALUES (1, INTERVAL '20:00' MINUTE TO HOUR, INTERVAL '1-2' YEAR TO MONTH)",
         Err(IntervalError::UnsupportedRange("Minute".to_owned(), "Hour".to_owned()).into())
-    ).await;
+    );
 
     g.test(
         "SELECT INTERVAL '1' YEAR + INTERVAL '1' HOUR FROM IntervalLog;",
         Err(IntervalError::AddBetweenYearToMonthAndHourToSecond.into()),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT INTERVAL '1' YEAR - INTERVAL '1' HOUR FROM IntervalLog;",
         Err(IntervalError::SubtractBetweenYearToMonthAndHourToSecond.into()),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT INTERVAL '1.4' YEAR FROM IntervalLog;",
         Err(IntervalError::FailedToParseInteger("1.4".to_owned()).into()),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT INTERVAL '1.4ab' HOUR FROM IntervalLog;",
         Err(IntervalError::FailedToParseDecimal("1.4ab".to_owned()).into()),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT INTERVAL '111:34' HOUR TO MINUTE FROM IntervalLog;",
         Err(IntervalError::FailedToParseTime("111:34".to_owned()).into()),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT INTERVAL '111' YEAR TO MONTH FROM IntervalLog;",
         Err(IntervalError::FailedToParseYearToMonth("111".to_owned()).into()),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT INTERVAL '111' DAY TO HOUR FROM IntervalLog;",
         Err(IntervalError::FailedToParseDayToHour("111".to_owned()).into()),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT INTERVAL '111' DAY TO HOUR FROM IntervalLog;",
         Err(IntervalError::FailedToParseDayToHour("111".to_owned()).into()),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT INTERVAL '111' DAY TO MINUTE FROM IntervalLog;",
         Err(IntervalError::FailedToParseDayToMinute("111".to_owned()).into()),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT INTERVAL '111' DAY TO Second FROM IntervalLog;",
         Err(IntervalError::FailedToParseDayToSecond("111".to_owned()).into()),
-    )
-    .await;
+    );
 });

@@ -12,8 +12,7 @@ test_case!(sql_types, {
             ratio FLOAT
         );
     ",
-    )
-    .await;
+    );
     g.run(
         "
         INSERT INTO Item
@@ -23,8 +22,7 @@ test_case!(sql_types, {
             ( 1, 'World',    False,   0.9),
             ( 1, 'test',    False,   0.0);
     ",
-    )
-    .await;
+    );
 
     let test_sqls = [
         (3, "SELECT * FROM Item;"),
@@ -41,8 +39,8 @@ test_case!(sql_types, {
     ];
 
     for (num, sql) in test_sqls {
-        g.count(sql, num).await;
+        g.count(sql, num);
     }
 
-    g.run("DELETE FROM Item").await;
+    g.run("DELETE FROM Item");
 });

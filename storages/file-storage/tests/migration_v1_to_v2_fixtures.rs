@@ -20,8 +20,8 @@ impl Drop for DirGuard {
     }
 }
 
-#[tokio::test]
-async fn migrate_v1_mixed_schema_schemaless_fixture() {
+#[test]
+fn migrate_v1_mixed_schema_schemaless_fixture() {
     let fixture_name = "mixed_schema_schemaless";
     let (path, _guard) = fixture_to_tmp(fixture_name);
 

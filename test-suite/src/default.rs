@@ -43,7 +43,7 @@ test_case!(default, {
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, Ok(expected)).await;
+        g.test(sql, Ok(expected));
     }
 
     let stateless_function_test_cases = [
@@ -65,7 +65,7 @@ test_case!(default, {
     ];
 
     for (sql, expected) in stateless_function_test_cases {
-        g.test(sql, expected).await;
+        g.test(sql, expected);
     }
 
     g.test(
@@ -80,10 +80,9 @@ test_case!(default, {
             flag4 BOOLEAN DEFAULT (1 IS NULL OR NULL IS NOT NULL)
         )",
         Ok(Payload::Create),
-    )
-    .await;
+    );
 
-    g.run("INSERT INTO TestExpr (id) VALUES (1);").await;
+    g.run("INSERT INTO TestExpr (id) VALUES (1);");
 
     let d = |year: i32, month: u32, day: u32| NaiveDate::from_ymd_opt(year, month, day).unwrap();
 
@@ -94,6 +93,5 @@ test_case!(default, {
             I64 | Date          | I64 | Bool | Bool  | Bool  | Bool;
             1     d(2020, 1, 1)   2     true   true    false   false
         )),
-    )
-    .await;
+    );
 });

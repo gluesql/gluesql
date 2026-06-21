@@ -11,8 +11,7 @@ test_case!(pattern_matching, {
         .create_table()
         .add_column("id INTEGER PRIMARY KEY")
         .add_column("name TEXT")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table - Category");
 
@@ -20,8 +19,7 @@ test_case!(pattern_matching, {
     let actual = table("Category")
         .insert()
         .values(vec!["1, 'Meat'", "2, 'meat'", "3, 'Drink'", "4, 'drink'"])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(4));
     assert_eq!(actual, expected, "insert into - Category");
 
@@ -33,8 +31,7 @@ test_case!(pattern_matching, {
                 .like(text("D%"))
                 .or(col("name").like(text("M___"))),
         )
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         id  | name
         I64 | Str;
@@ -51,8 +48,7 @@ test_case!(pattern_matching, {
                 .ilike(text("D%"))
                 .or(col("name").ilike(text("M___"))),
         )
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         id  | name
         I64 | Str;
@@ -71,8 +67,7 @@ test_case!(pattern_matching, {
                 .not_like(text("D%"))
                 .and(col("name").not_like(text("M___"))),
         )
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         id  | name
         I64 | Str;
@@ -89,8 +84,7 @@ test_case!(pattern_matching, {
                 .not_ilike(text("D%"))
                 .and(col("name").not_ilike(text("M___"))),
         )
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Select {
         labels: vec!["id".to_owned(), "name".to_owned()],
         rows: vec![],

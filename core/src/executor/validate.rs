@@ -5,7 +5,6 @@ use {
         result::Result,
         store::Store,
     },
-    futures::stream::TryStreamExt,
     im::HashSet,
     serde::Serialize,
     std::fmt::Debug,
@@ -78,11 +77,11 @@ impl UniqueConstraint {
     }
 }
 
-pub async fn validate_unique<T: Store>(
+pub fn validate_unique<'a, T: Store>(
     storage: &T,
     table_name: &str,
-    column_validation: ColumnValidation<'_>,
-    row_iter: impl Iterator<Item = &[Value]> + Clone,
+    column_validation: &ColumnValidation<'_>,
+    row_iter: impl Iterator<Item = &'a [Value]> + Clone,
 ) -> Result<()> {
     enum Columns {
         /// key index
@@ -124,7 +123,7 @@ pub async fn validate_unique<T: Store>(
             {
                 let key = primary_key?;
 
-                if storage.fetch_data(table_name, &key).await?.is_some() {
+                if storage.fetch_data(table_name, &key)?.is_some() {
                     return Err(ValidateError::DuplicateEntryOnPrimaryKeyField(key).into());
                 }
             }
@@ -137,23 +136,19 @@ pub async fn validate_unique<T: Store>(
                 return Ok(());
             }
 
-            let unique_constraints = &unique_constraints;
-            storage
-                .scan_data(table_name)
-                .await?
-                .try_for_each(|(_, values)| async move {
-                    unique_constraints.iter().try_for_each(|constraint| {
-                        let col_idx = constraint.column_index;
-                        let val = values
-                            .get(col_idx)
-                            .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
+            for row in storage.scan_data(table_name)? {
+                let (_, values) = row?;
+                for constraint in &unique_constraints {
+                    let col_idx = constraint.column_index;
+                    let val = values
+                        .get(col_idx)
+                        .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
 
-                        constraint.check(val)?;
+                    constraint.check(val)?;
+                }
+            }
 
-                        Ok(())
-                    })
-                })
-                .await
+            Ok(())
         }
     }
 }

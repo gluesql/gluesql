@@ -31,6 +31,6 @@ test_case!(table, {
     ];
 
     for (actual, expected) in cases {
-        g.test(actual, expected).await;
+        g.test(actual, expected);
     }
 });

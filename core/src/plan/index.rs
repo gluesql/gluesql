@@ -10,7 +10,7 @@ use {
             plan_scalar_expr,
         },
     },
-    std::{collections::HashMap, hash::BuildHasher, sync::Arc},
+    std::{collections::HashMap, hash::BuildHasher, rc::Rc},
 };
 
 pub fn plan<S: BuildHasher>(
@@ -34,7 +34,7 @@ struct IndexPlanner<'a, S> {
 }
 
 impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
-    fn query(&self, outer_context: Option<Arc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
+    fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
         let QueryPlan {
             body,
             order_by,
@@ -67,7 +67,7 @@ impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
 impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
     fn select(
         &self,
-        outer_context: Option<&Arc<Context<'a>>>,
+        outer_context: Option<&Rc<Context<'a>>>,
         select: SelectPlan,
         mut order_by: Vec<OrderByExprPlan>,
     ) -> (SelectPlan, Vec<OrderByExprPlan>) {
@@ -112,7 +112,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
             if let (Some(indexes), TableFactorPlan::Table { index: None, .. }) =
                 (indexes.as_ref(), &from.relation)
             {
-                match self.plan_index_expr(outer_context.map(Arc::clone), indexes, expr) {
+                match self.plan_index_expr(outer_context.map(Rc::clone), indexes, expr) {
                     Planned::IndexedExpr {
                         index_name,
                         index_op,
@@ -132,7 +132,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                     Planned::Expr(expr) => Some(expr),
                 }
             } else {
-                Some(self.subquery_expr(outer_context.map(Arc::clone), expr))
+                Some(self.subquery_expr(outer_context.map(Rc::clone), expr))
             }
         });
 
@@ -151,7 +151,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
 
     fn plan_index_expr(
         &self,
-        outer_context: Option<Arc<Context<'a>>>,
+        outer_context: Option<Rc<Context<'a>>>,
         indexes: &Indexes<'a>,
         selection: ExprPlan,
     ) -> Planned {
@@ -165,7 +165,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                 Planned::Expr(ExprPlan::Subquery(Box::new(query)))
             }
             ExprPlan::Exists { subquery, negated } => {
-                let subquery = self.query(outer_context.as_ref().map(Arc::clone), *subquery);
+                let subquery = self.query(outer_context.as_ref().map(Rc::clone), *subquery);
 
                 Planned::Expr(ExprPlan::Exists {
                     subquery: Box::new(subquery),
@@ -177,7 +177,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                 subquery,
                 negated,
             } => {
-                let expr = self.subquery_expr(outer_context.as_ref().map(Arc::clone), *expr);
+                let expr = self.subquery_expr(outer_context.as_ref().map(Rc::clone), *expr);
                 let subquery = self.query(outer_context, *subquery);
 
                 Planned::Expr(ExprPlan::InSubquery {
@@ -192,7 +192,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                 right,
             } => {
                 let left = match self.plan_index_expr(
-                    outer_context.as_ref().map(Arc::clone),
+                    outer_context.as_ref().map(Rc::clone),
                     indexes,
                     *left,
                 ) {
@@ -296,7 +296,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
 
     fn search_is_null(
         &self,
-        outer_context: Option<Arc<Context<'a>>>,
+        outer_context: Option<Rc<Context<'a>>>,
         indexes: &Indexes<'a>,
         null: bool,
         expr: ExprPlan,
@@ -328,7 +328,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
 
     fn search_index_op(
         &self,
-        outer_context: Option<Arc<Context<'a>>>,
+        outer_context: Option<Rc<Context<'a>>>,
         indexes: &Indexes<'a>,
         index_op: IndexOperator,
         left: ExprPlan,
@@ -451,7 +451,6 @@ mod tests {
             result::{Error, Result},
             translate::translate,
         },
-        futures::executor::block_on,
     };
 
     fn plan_index(storage: &MockStorage, sql: &str) -> Result<crate::plan::StatementPlan> {
@@ -461,7 +460,7 @@ mod tests {
             .next()
             .ok_or_else(|| Error::StorageMsg(format!("no statement parsed from: {sql}")))?;
         let statement = StatementPlan::from(translate(&parsed)?);
-        let schema_map = block_on(fetch_schema_map(storage, &statement))?;
+        let schema_map = fetch_schema_map(storage, &statement)?;
 
         Ok(plan(&schema_map, statement))
     }
@@ -560,7 +559,7 @@ CREATE INDEX idx_name ON Test (name);
             .build()
             .unwrap();
 
-        let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
         let actual = plan(&schema_map, statement);
 
         let expected = table("Test")

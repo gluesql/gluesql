@@ -16,8 +16,7 @@ CREATE TABLE DateLog (
     date1 DATE,
     date2 DATE
 )",
-    )
-    .await;
+    );
 
     g.run(
         "
@@ -26,8 +25,7 @@ INSERT INTO DateLog VALUES
     (2, '2020-09-30', '1989-01-01'),
     (3, '2021-05-01', '2021-05-01');
 ",
-    )
-    .await;
+    );
 
     macro_rules! date {
         ($date: expr) => {
@@ -44,8 +42,7 @@ INSERT INTO DateLog VALUES
             2     date!("2020-09-30")   date!("1989-01-01");
             3     date!("2021-05-01")   date!("2021-05-01")
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT * FROM DateLog WHERE date1 > date2",
@@ -54,8 +51,7 @@ INSERT INTO DateLog VALUES
             I64 | Date                | Date;
             2     date!("2020-09-30")   date!("1989-01-01")
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT * FROM DateLog WHERE date1 <= date2",
@@ -65,8 +61,7 @@ INSERT INTO DateLog VALUES
             1     date!("2020-06-11")   date!("2021-03-01");
             3     date!("2021-05-01")   date!("2021-05-01")
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT * FROM DateLog WHERE date1 = DATE '2020-06-11';",
@@ -75,8 +70,7 @@ INSERT INTO DateLog VALUES
             I64 | Date                | Date;
             1     date!("2020-06-11")   date!("2021-03-01")
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT * FROM DateLog WHERE date2 < '2000-01-01';",
@@ -85,8 +79,7 @@ INSERT INTO DateLog VALUES
             I64 | Date                | Date;
             2     date!("2020-09-30")   date!("1989-01-01")
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT * FROM DateLog WHERE '1999-01-03' < DATE '2000-01-01';",
@@ -97,8 +90,7 @@ INSERT INTO DateLog VALUES
             2     date!("2020-09-30")   date!("1989-01-01");
             3     date!("2021-05-01")   date!("2021-05-01")
         )),
-    )
-    .await;
+    );
 
     let days = gluesql_core::data::Interval::days;
     let timestamp = |y, m, d| {
@@ -122,8 +114,7 @@ INSERT INTO DateLog VALUES
             2     days(11_595)   timestamp(2020, 9, 29)   timestamp(1989, 2, 1);
             3     days(0)        timestamp(2021, 4, 30)   timestamp(2021, 6, 1)
         )),
-    )
-    .await;
+    );
 
     g.test(
         "INSERT INTO DateLog VALUES (1, '12345-678', '2021-05-01')",
@@ -132,6 +123,5 @@ INSERT INTO DateLog VALUES
             data_type: DataType::Date,
         }
         .into()),
-    )
-    .await;
+    );
 });

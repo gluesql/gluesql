@@ -1,7 +1,5 @@
 use {
     crate::{FileRow, FileStorage, ResultExt},
-    async_trait::async_trait,
-    futures::stream::iter,
     gluesql_core::{
         data::{Key, Schema, Value},
         error::Result,
@@ -10,9 +8,8 @@ use {
     std::{ffi::OsStr, fs},
 };
 
-#[async_trait]
 impl Store for FileStorage {
-    async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
+    fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         let mut schemas = fs::read_dir(&self.path)
             .map_storage_err()?
             .map(|dir_entry| {
@@ -34,7 +31,7 @@ impl Store for FileStorage {
         Ok(schemas)
     }
 
-    async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
+    fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         let path = self.path(table_name).with_extension("sql");
         if !path.exists() {
             return Ok(None);
@@ -43,7 +40,7 @@ impl Store for FileStorage {
         Self::fetch_schema(path).map(Some)
     }
 
-    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Vec<Value>>> {
+    fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Vec<Value>>> {
         let path = self.data_path(table_name, key)?;
         if !path.exists() {
             return Ok(None);
@@ -59,7 +56,7 @@ impl Store for FileStorage {
             .map(Some)
     }
 
-    async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
+    fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
         let path = self.path(table_name);
         let mut entries = fs::read_dir(path)
             .map_storage_err()?
@@ -87,6 +84,6 @@ impl Store for FileStorage {
                 .map(|FileRow { key, row }| (key, row))
         });
 
-        Ok(Box::pin(iter(rows)))
+        Ok(Box::new(rows))
     }
 }

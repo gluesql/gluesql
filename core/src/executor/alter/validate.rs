@@ -9,7 +9,7 @@ use {
     },
 };
 
-pub async fn validate(column_def: &ColumnDef) -> Result<()> {
+pub fn validate(column_def: &ColumnDef) -> Result<()> {
     let ColumnDef {
         data_type,
         default,
@@ -34,7 +34,7 @@ pub async fn validate(column_def: &ColumnDef) -> Result<()> {
     if let Some(expr) = default {
         let expr = plan_scalar_expr(expr.clone());
 
-        evaluate_stateless(None, &expr).await?;
+        evaluate_stateless(None, &expr)?;
     }
 
     Ok(())
@@ -75,11 +75,11 @@ pub fn validate_arg_names(args: &[OperateFunctionArg]) -> Result<()> {
     }
 }
 
-pub async fn validate_default_args(args: &[OperateFunctionArg]) -> Result<()> {
+pub fn validate_default_args(args: &[OperateFunctionArg]) -> Result<()> {
     for expr in args.iter().filter_map(|arg| arg.default.as_ref()) {
         let expr = plan_scalar_expr(expr.clone());
 
-        evaluate_stateless(None, &expr).await?;
+        evaluate_stateless(None, &expr)?;
     }
 
     if args

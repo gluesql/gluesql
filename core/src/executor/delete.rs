@@ -6,12 +6,11 @@ use {
     crate::{
         ast::{BinaryOperator, ForeignKey, ReferentialAction},
         plan::ExprPlan,
-        result::{Error, Result},
+        result::Result,
         store::{GStore, GStoreMut},
     },
-    futures::stream::{StreamExt, TryStreamExt},
     serde::Serialize,
-    std::sync::Arc,
+    std::rc::Rc,
     thiserror::Error as ThisError,
 };
 
@@ -24,20 +23,28 @@ pub enum DeleteError {
     ValueNotFound(String),
 }
 
-pub async fn delete<T: GStore + GStoreMut>(
+pub fn delete<T: GStore + GStoreMut>(
     storage: &mut T,
     table_name: &str,
     selection: Option<&ExprPlan>,
 ) -> Result<Payload> {
-    let columns = Arc::from(fetch_columns(storage, table_name).await?);
-    let referencings = storage.fetch_referencings(table_name).await?;
-    let keys = fetch(storage, table_name, columns, selection)
-        .await?
-        .into_stream()
-        .then(|item| async {
-            let (key, row) = item?;
+    let columns = Rc::from(fetch_columns(storage, table_name)?);
+    let referencings = storage
+        .fetch_referencings(table_name)?
+        .into_iter()
+        .map(|referencing| {
+            fetch_columns(storage, &referencing.table_name)
+                .map(Rc::from)
+                .map(|columns| (referencing, columns))
+        })
+        .collect::<Result<Vec<_>>>()?;
 
-            for Referencing {
+    let mut keys = Vec::new();
+    for item in fetch(storage, table_name, columns, selection)? {
+        let (key, row) = item?;
+
+        for (referencing, columns) in &referencings {
+            let Referencing {
                 table_name: referencing_table_name,
                 foreign_key:
                     ForeignKey {
@@ -46,40 +53,40 @@ pub async fn delete<T: GStore + GStoreMut>(
                         on_delete,
                         ..
                     },
-            } in &referencings
-            {
-                let value = row
-                    .get_value(referenced_column_name)
-                    .ok_or(DeleteError::ValueNotFound(referenced_column_name.clone()))?
-                    .clone();
+            } = referencing;
 
-                let expr = &ExprPlan::BinaryOp {
-                    left: Box::new(ExprPlan::Identifier(referencing_column_name.clone())),
-                    op: BinaryOperator::Eq,
-                    right: Box::new(ExprPlan::Value(value)),
-                };
+            let value = row
+                .get_value(referenced_column_name)
+                .ok_or(DeleteError::ValueNotFound(referenced_column_name.clone()))?
+                .clone();
 
-                let columns = Arc::from(Vec::new());
-                let referencing_rows =
-                    fetch(storage, referencing_table_name, columns, Some(expr)).await?;
+            let expr = &ExprPlan::BinaryOp {
+                left: Box::new(ExprPlan::Identifier(referencing_column_name.clone())),
+                op: BinaryOperator::Eq,
+                right: Box::new(ExprPlan::Value(value)),
+            };
 
-                let referencing_row_exists = Box::pin(referencing_rows).next().await.is_some();
-                if referencing_row_exists && on_delete == &ReferentialAction::NoAction {
-                    return Err(DeleteError::ReferencingColumnExists(format!(
-                        "{referencing_table_name}.{referencing_column_name}"
-                    ))
-                    .into());
-                }
+            let mut referencing_rows = fetch(
+                storage,
+                referencing_table_name,
+                Rc::clone(columns),
+                Some(expr),
+            )?;
+
+            let referencing_row_exists = referencing_rows.next().transpose()?.is_some();
+            if referencing_row_exists && on_delete == &ReferentialAction::NoAction {
+                return Err(DeleteError::ReferencingColumnExists(format!(
+                    "{referencing_table_name}.{referencing_column_name}"
+                ))
+                .into());
             }
+        }
 
-            Ok::<_, Error>(key)
-        })
-        .try_collect::<Vec<_>>()
-        .await?;
+        keys.push(key);
+    }
     let num_keys = keys.len();
 
     storage
         .delete_data(table_name, keys)
-        .await
         .map(|()| Payload::Delete(num_keys))
 }

@@ -16,12 +16,12 @@ CREATE TABLE DropTable (
     name TEXT
 )";
 
-    g.run(create_sql).await;
+    g.run(create_sql);
 
     let sqls = ["INSERT INTO DropTable (id, num, name) VALUES (1, 2, 'Hello')"];
 
     for sql in sqls {
-        g.run(sql).await;
+        g.run(sql);
     }
 
     let sqls = [
@@ -146,6 +146,6 @@ CREATE TABLE DropTable (
     ];
 
     for (sql, expected) in sqls {
-        g.test(sql, expected).await;
+        g.test(sql, expected);
     }
 });

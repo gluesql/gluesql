@@ -13,10 +13,8 @@ test_case!(concat, {
             null_value TEXT NULL
         );
     ",
-    )
-    .await;
-    g.run("INSERT INTO Concat VALUES (1, 2.5, TRUE, 'Foo', NULL);")
-        .await;
+    );
+    g.run("INSERT INTO Concat VALUES (1, 2.5, TRUE, 'Foo', NULL);");
 
     g.test(
         "
@@ -32,8 +30,7 @@ test_case!(concat, {
             Str                 | Str                 | Str                 | Str;
             "FooFoo".to_owned()   "FooBar".to_owned()   "BarFoo".to_owned()   "FooBar".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT
@@ -49,8 +46,7 @@ test_case!(concat, {
             id_n | rate_n | flag_n | text_n | n_id | n_text;
             Null   Null     Null     Null     Null   Null
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT
@@ -65,8 +61,7 @@ test_case!(concat, {
             Str              | Str                 | Str                  | Str;
             "125".to_owned()   "25TRUE".to_owned()   "TRUEFoo".to_owned()   "1Foo".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT
@@ -81,8 +76,7 @@ test_case!(concat, {
             Str               | Str                  | Str                   | Str;
             "12.5".to_owned()   "2.5TRUE".to_owned()   "FALSEFoo".to_owned()   "1Bar".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT
@@ -95,8 +89,7 @@ test_case!(concat, {
             Case1                     | Case2                         | Case3;
             Str("1125Bar".to_owned())   Str("1TRUE3.5Foo".to_owned())   Null
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT 'sand' || SUBSTR('swich', 2) AS test FROM Concat;",
@@ -105,8 +98,7 @@ test_case!(concat, {
            Str;
            "sandwich".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT SUBSTR('ssand', 2) || 'wich' AS test from Concat;",
@@ -115,8 +107,7 @@ test_case!(concat, {
            Str;
            "sandwich".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT LOWER('SAND') || SUBSTR('swich', 2) AS test FROM Concat;",
@@ -125,8 +116,7 @@ test_case!(concat, {
            Str;
            "sandwich".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT SUBSTR('ssand', 2) || LOWER('WICH') AS test FROM Concat;",
@@ -135,6 +125,5 @@ test_case!(concat, {
            Str;
            "sandwich".to_owned()
         )),
-    )
-    .await;
+    );
 });

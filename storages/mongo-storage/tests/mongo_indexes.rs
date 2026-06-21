@@ -8,14 +8,12 @@ use {
     std::vec,
 };
 
-#[tokio::test]
-async fn mongo_indexes() {
+#[test]
+fn mongo_indexes() {
     let conn_str = "mongodb://localhost:27017";
 
-    let storage = MongoStorage::new(conn_str, "mongo_indexes")
-        .await
-        .expect("MongoStorage::new");
-    storage.drop_database().await.expect("database dropped");
+    let storage = MongoStorage::new(conn_str, "mongo_indexes").expect("MongoStorage::new");
+    storage.drop_database().expect("database dropped");
 
     let labels = vec!["id".to_owned(), "name".to_owned()];
     let column_types = doc! {
@@ -32,7 +30,6 @@ async fn mongo_indexes() {
     storage
         .db
         .create_collection(table_name, options)
-        .await
         .expect("create_collection");
 
     let index_options = IndexOptions::builder()
@@ -43,12 +40,12 @@ async fn mongo_indexes() {
         .options(index_options)
         .build();
     let collection = storage.db.collection::<Document>(table_name);
-    collection.create_index(index_model, None).await.unwrap();
+    collection.create_index(index_model, None).unwrap();
 
     let mut glue = Glue::new(storage);
 
     let cases = vec![(
-        glue.execute(format! {"SELECT * FROM {table_name}"}).await,
+        glue.execute(format! {"SELECT * FROM {table_name}"}),
         Ok(Payload::Select {
             labels: vec!["id".to_owned(), "name".to_owned()],
             rows: vec![],

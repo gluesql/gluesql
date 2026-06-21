@@ -12,8 +12,7 @@ test_case!(count, {
             total INTEGER
         );
     ",
-    )
-    .await;
+    );
     g.run(
         "
         INSERT INTO Item (id, quantity, age, total) VALUES
@@ -26,8 +25,7 @@ test_case!(count, {
             (7, 20,   90, 1),
             (1, NULL, 11, 1);
     ",
-    )
-    .await;
+    );
 
     let test_cases = [
         (
@@ -77,18 +75,16 @@ test_case!(count, {
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, Ok(expected)).await;
+        g.test(sql, Ok(expected));
     }
 
-    g.run("CREATE TABLE EmptyItem (id INTEGER NULL);").await;
+    g.run("CREATE TABLE EmptyItem (id INTEGER NULL);");
     g.test(
         "SELECT COUNT(*) FROM EmptyItem;",
         Ok(select!("COUNT(*)"; I64; 0)),
-    )
-    .await;
+    );
     g.test(
         "SELECT COUNT(id) FROM EmptyItem;",
         Ok(select!("COUNT(id)"; I64; 0)),
-    )
-    .await;
+    );
 });

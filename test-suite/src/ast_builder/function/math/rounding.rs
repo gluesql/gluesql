@@ -15,8 +15,7 @@ test_case!(rounding, {
         .create_table()
         .add_column("id INTEGER PRIMARY KEY")
         .add_column("number FLOAT")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table - Number");
 
@@ -24,8 +23,7 @@ test_case!(rounding, {
     let actual = table("Number")
         .insert()
         .values(vec!["1, 0.3", "2, -0.8", "3, 10", "4, 6.87421"])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(4));
     assert_eq!(actual, expected, "insert into Number");
 
@@ -35,8 +33,7 @@ test_case!(rounding, {
         .project("id")
         .project(f::ceil("number"))
         .project(col("number").ceil())
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         id  | "CEIL(\"number\")" | "CEIL(\"number\")"
         I64 | F64                | F64;
@@ -53,8 +50,7 @@ test_case!(rounding, {
         .project("id")
         .project(f::floor("number"))
         .project(col("number").floor())
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         id  | "FLOOR(\"number\")" | "FLOOR(\"number\")"
         I64 | F64                 | F64;
@@ -71,8 +67,7 @@ test_case!(rounding, {
         .project("id")
         .project(f::round("number"))
         .project(col("number").round())
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         id  | "ROUND(\"number\")" | "ROUND(\"number\")"
         I64 | F64                 | F64;
@@ -89,8 +84,7 @@ test_case!(rounding, {
         .project("id")
         .project(f::trunc("number"))
         .project(col("number").trunc())
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         id  | "TRUNC(\"number\")" | "TRUNC(\"number\")"
         I64 | F64                 | F64;

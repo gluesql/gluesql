@@ -36,7 +36,7 @@ test_case!(unique, {
     ];
 
     for query in queries {
-        g.run(query).await;
+        g.run(query);
     }
 
     let error_cases = [
@@ -83,6 +83,6 @@ test_case!(unique, {
     ];
 
     for (sql, error) in error_cases {
-        g.test(sql, Err(error)).await;
+        g.test(sql, Err(error));
     }
 });

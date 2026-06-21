@@ -21,7 +21,7 @@ test_case!(filter, {
     ];
 
     for sql in create_sqls {
-        g.run(sql).await;
+        g.run(sql);
     }
 
     let insert_sqls = [
@@ -42,7 +42,7 @@ test_case!(filter, {
     ];
 
     for sql in insert_sqls {
-        g.run(sql).await;
+        g.run(sql);
     }
 
     let select_sqls = [
@@ -84,7 +84,7 @@ test_case!(filter, {
     ];
 
     for (num, sql) in select_sqls {
-        g.count(sql, num).await;
+        g.count(sql, num);
     }
 
     let select_opt_sqls = [
@@ -95,7 +95,7 @@ test_case!(filter, {
     ];
 
     for (num, sql) in select_opt_sqls {
-        g.count(sql, num).await;
+        g.count(sql, num);
     }
 
     let error_sqls = [
@@ -118,6 +118,6 @@ test_case!(filter, {
     ];
 
     for (sql, error) in error_sqls {
-        g.test(sql, Err(error)).await;
+        g.test(sql, Err(error));
     }
 });

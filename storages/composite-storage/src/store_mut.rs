@@ -1,6 +1,5 @@
 use {
     super::CompositeStorage,
-    async_trait::async_trait,
     gluesql_core::{
         data::{Key, Schema, Value},
         error::{Error, Result},
@@ -8,9 +7,8 @@ use {
     },
 };
 
-#[async_trait]
 impl StoreMut for CompositeStorage {
-    async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
+    fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let storage = schema
             .engine
             .as_ref()
@@ -18,14 +16,14 @@ impl StoreMut for CompositeStorage {
             .and_then(|engine| self.storages.get_mut(engine));
 
         match (storage, schema.engine.is_some()) {
-            (Some(storage), true) => storage.insert_schema(schema).await,
+            (Some(storage), true) => storage.insert_schema(schema),
             (Some(storage), false) => {
                 let schema = Schema {
                     engine: self.default_engine.clone(),
                     ..schema.clone()
                 };
 
-                storage.insert_schema(&schema).await
+                storage.insert_schema(&schema)
             }
             (None, _) => Err(Error::StorageMsg(format!(
                 "storage not found for table: {}",
@@ -34,31 +32,23 @@ impl StoreMut for CompositeStorage {
         }
     }
 
-    async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
-        self.fetch_storage_mut(table_name)
-            .await?
+    fn delete_schema(&mut self, table_name: &str) -> Result<()> {
+        self.fetch_storage_mut(table_name)?
             .delete_schema(table_name)
-            .await
     }
 
-    async fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
-        self.fetch_storage_mut(table_name)
-            .await?
+    fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
+        self.fetch_storage_mut(table_name)?
             .append_data(table_name, rows)
-            .await
     }
 
-    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
-        self.fetch_storage_mut(table_name)
-            .await?
+    fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
+        self.fetch_storage_mut(table_name)?
             .insert_data(table_name, rows)
-            .await
     }
 
-    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
-        self.fetch_storage_mut(table_name)
-            .await?
+    fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
+        self.fetch_storage_mut(table_name)?
             .delete_data(table_name, keys)
-            .await
     }
 }

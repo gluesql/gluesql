@@ -12,8 +12,7 @@ CREATE TABLE Test (
     id INTEGER,
     num INTEGER
 )",
-    )
-    .await;
+    );
 
     g.run(
         r"
@@ -21,8 +20,7 @@ CREATE TABLE OverflowTest (
     id INTEGER,
     num INTEGER
 )",
-    )
-    .await;
+    );
 
     g.run(
         r"
@@ -30,26 +28,21 @@ CREATE TABLE NullTest (
     id INTEGER,
     num INTEGER
 )",
-    )
-    .await;
+    );
 
-    g.run("INSERT INTO Test (id, num) VALUES (1, 1)").await;
-    g.run("INSERT INTO Test (id, num) VALUES (1, 2)").await;
-    g.run("INSERT INTO Test (id, num) VALUES (3, 4), (4, 8)")
-        .await;
+    g.run("INSERT INTO Test (id, num) VALUES (1, 1)");
+    g.run("INSERT INTO Test (id, num) VALUES (1, 2)");
+    g.run("INSERT INTO Test (id, num) VALUES (3, 4), (4, 8)");
 
-    g.run("INSERT INTO OverflowTest (id, num) VALUES (1, 1)")
-        .await;
+    g.run("INSERT INTO OverflowTest (id, num) VALUES (1, 1)");
 
-    g.run("INSERT INTO NullTest (id, num) VALUES (NULL, 1)")
-        .await;
+    g.run("INSERT INTO NullTest (id, num) VALUES (NULL, 1)");
 
     g.named_test(
         "select all from table",
         "SELECT (num >> 1) as num FROM Test",
         Ok(select!(num I64; 0; 1; 2; 4)),
-    )
-    .await;
+    );
 
     g.named_test(
         "test bit shift overflow",
@@ -60,8 +53,7 @@ CREATE TABLE NullTest (
             operator: NumericBinaryOperator::BitwiseShiftRight,
         }
         .into()),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT id, num FROM NullTest",
@@ -69,6 +61,5 @@ CREATE TABLE NullTest (
             id     | num;
             Null     I64(1)
         )),
-    )
-    .await;
+    );
 });

@@ -18,8 +18,7 @@ test_case!(coalesce, {
         .add_column("first TEXT")
         .add_column("second INTEGER")
         .add_column("third TIMESTAMP")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table - Foo");
 
@@ -33,8 +32,7 @@ test_case!(coalesce, {
             vec![num(300), null(), null(), timestamp("2023-06-01 12:00:00")],
             vec![num(400), null(), null(), null()],
         ])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(4));
     assert_eq!(actual, expected, "insert into Foo");
 
@@ -48,8 +46,7 @@ test_case!(coalesce, {
             col("third"),
         ]))
         .order_by("id")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select_with_null!(
         id        | r#"COALESCE(NULL, "first", "second", "third")"#;
         I64(100)    Str("visible".to_owned());
@@ -64,8 +61,7 @@ test_case!(coalesce, {
         f::coalesce(vec![null(), num(1)]),
         f::coalesce(vec![null(), null(), date("2000-01-01")]),
     ]])
-    .execute(glue)
-    .await;
+    .execute(glue);
     let expected = Ok(select_with_null!(
         column1             | column2 | column3;
         Str("뀨".to_owned())   I64(1)    Date("2000-01-01".parse::<NaiveDate>().unwrap())

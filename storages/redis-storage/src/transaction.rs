@@ -1,15 +1,13 @@
 use {
     super::RedisStorage,
-    async_trait::async_trait,
     gluesql_core::{
         error::{Error, Result},
         store::Transaction,
     },
 };
 
-#[async_trait]
 impl Transaction for RedisStorage {
-    async fn begin(&mut self, autocommit: bool) -> Result<bool> {
+    fn begin(&mut self, autocommit: bool) -> Result<bool> {
         if autocommit {
             return Ok(false);
         }
@@ -19,11 +17,11 @@ impl Transaction for RedisStorage {
         ))
     }
 
-    async fn rollback(&mut self) -> Result<()> {
+    fn rollback(&mut self) -> Result<()> {
         Ok(())
     }
 
-    async fn commit(&mut self) -> Result<()> {
+    fn commit(&mut self) -> Result<()> {
         Ok(())
     }
 }

@@ -14,8 +14,7 @@ test_case!(generate_uuid, {
     let actual = table("Foo")
         .create_table()
         .add_column("id UUID PRIMARY KEY")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table - Foo");
 
@@ -24,12 +23,11 @@ test_case!(generate_uuid, {
         .insert()
         .columns("id")
         .values(vec![vec![f::generate_uuid()]])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(1));
     assert_eq!(actual, expected, "insert into Foo");
 
     // check if generate_uuid() returns a Uuid type
-    let actual = values(vec![vec![f::generate_uuid()]]).execute(glue).await;
+    let actual = values(vec![vec![f::generate_uuid()]]).execute(glue);
     type_match(&[DataType::Uuid], actual);
 });

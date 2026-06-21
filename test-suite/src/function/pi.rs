@@ -27,6 +27,6 @@ test_case!(pi, {
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, expected).await;
+        g.test(sql, expected);
     }
 });

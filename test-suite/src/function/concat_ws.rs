@@ -13,8 +13,7 @@ test_case!(concat_ws, {
             Str;
             "AB,CD,EF".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.run(
         "
@@ -25,10 +24,8 @@ test_case!(concat_ws, {
             null_value TEXT NULL
         );
     ",
-    )
-    .await;
-    g.run("INSERT INTO Concat VALUES (1, TRUE, 'Foo', NULL);")
-        .await;
+    );
+    g.run("INSERT INTO Concat VALUES (1, TRUE, 'Foo', NULL);");
 
     g.test(
         "select concat_ws('/', id, flag, null_value, text) as myc from Concat;",
@@ -37,8 +34,7 @@ test_case!(concat_ws, {
            Str;
            "1/TRUE/Foo".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "select concat_ws('', 'ab', 'cd') as myc from Concat;",
@@ -47,8 +43,7 @@ test_case!(concat_ws, {
            Str;
            "abcd".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "select concat_ws('', 'ab', 'cd', 'ef') as myconcat from Concat;",
@@ -57,8 +52,7 @@ test_case!(concat_ws, {
            Str;
            "abcdef".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "select concat_ws(',', 'ab', 'cd', 'ef') as myconcat from Concat;",
@@ -67,8 +61,7 @@ test_case!(concat_ws, {
            Str;
            "ab,cd,ef".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "select concat_ws('/', 'ab', 'cd', 'ef') as myconcat from Concat;",
@@ -77,8 +70,7 @@ test_case!(concat_ws, {
            Str;
            "ab/cd/ef".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "select concat_ws('', 'ab', 'cd', NULL, 'ef') as myconcat from Concat;",
@@ -87,8 +79,7 @@ test_case!(concat_ws, {
            Str;
            "abcdef".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "select concat_ws('', 123, 456, 3.14) as myconcat from Concat;",
@@ -97,8 +88,7 @@ test_case!(concat_ws, {
            Str;
            "1234563.14".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "select concat_ws() as myconcat from Concat;",
@@ -108,6 +98,5 @@ test_case!(concat_ws, {
             found: 0,
         }
         .into()),
-    )
-    .await;
+    );
 });

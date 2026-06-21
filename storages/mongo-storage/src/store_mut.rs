@@ -10,7 +10,6 @@ use {
         },
         utils::{Validator, get_primary_key},
     },
-    async_trait::async_trait,
     gluesql_core::{
         ast::ColumnUniqueOption,
         data::{Key, Schema},
@@ -35,9 +34,8 @@ enum IndexType {
     Unique,
 }
 
-#[async_trait]
 impl StoreMut for MongoStorage {
-    async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
+    fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let (labels, column_types, indexes) = schema
             .column_defs
             .as_ref()
@@ -125,7 +123,6 @@ impl StoreMut for MongoStorage {
 
         let schema_exists = self
             .fetch_schema(&schema.table_name)
-            .await
             .map_storage_err()?
             .is_some();
 
@@ -136,7 +133,7 @@ impl StoreMut for MongoStorage {
                 "validationLevel": "strict",
                 "validationAction": "error",
             };
-            self.db.run_command(command, None).await.map_storage_err()?;
+            self.db.run_command(command, None).map_storage_err()?;
 
             return Ok(());
         }
@@ -145,7 +142,6 @@ impl StoreMut for MongoStorage {
 
         self.db
             .create_collection(&schema.table_name, options)
-            .await
             .map_storage_err()?;
 
         if indexes.is_empty() {
@@ -182,21 +178,19 @@ impl StoreMut for MongoStorage {
         self.db
             .collection::<Document>(&schema.table_name)
             .create_indexes(index_models, None)
-            .await
             .map(|_| ())
             .map_storage_err()
     }
 
-    async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
+    fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         self.db
             .collection::<Document>(table_name)
             .drop(None)
-            .await
             .map_storage_err()
     }
 
-    async fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
-        let column_defs = self.get_column_defs(table_name).await?;
+    fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
+        let column_defs = self.get_column_defs(table_name)?;
 
         let data = if let Some(column_defs) = column_defs.as_ref() {
             rows.into_iter()
@@ -232,13 +226,12 @@ impl StoreMut for MongoStorage {
         self.db
             .collection::<Document>(table_name)
             .insert_many(data, None)
-            .await
             .map(|_| ())
             .map_storage_err()
     }
 
-    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
-        let column_defs = self.get_column_defs(table_name).await?;
+    fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
+        let column_defs = self.get_column_defs(table_name)?;
 
         let primary_key = column_defs
             .as_ref()
@@ -270,15 +263,14 @@ impl StoreMut for MongoStorage {
             self.db
                 .collection::<Document>(table_name)
                 .replace_one(query, doc, options)
-                .await
                 .map_storage_err()?;
         }
 
         Ok(())
     }
 
-    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
-        let column_defs = self.get_column_defs(table_name).await?;
+    fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
+        let column_defs = self.get_column_defs(table_name)?;
         let primary_key = column_defs
             .as_ref()
             .and_then(|column_defs| get_primary_key(column_defs));
@@ -294,7 +286,6 @@ impl StoreMut for MongoStorage {
                 }},
                 None,
             )
-            .await
             .map(|_| ())
             .map_storage_err()
     }

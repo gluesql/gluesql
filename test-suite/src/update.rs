@@ -18,8 +18,7 @@ test_case!(update, {
             num2 INTEGER,
             name TEXT
         )",
-    )
-    .await;
+    );
 
     g.run(
         "
@@ -30,8 +29,7 @@ test_case!(update, {
             (3, 4, 7, 'Great'),
             (4, 7, 10, 'Job');
         ",
-    )
-    .await;
+    );
 
     g.run(
         "
@@ -40,8 +38,7 @@ test_case!(update, {
             num INTEGER,
             rank INTEGER
         )",
-    )
-    .await;
+    );
 
     g.run(
         "
@@ -52,8 +49,7 @@ test_case!(update, {
             (3, 4, 3),
             (4, 7, 4);
         ",
-    )
-    .await;
+    );
 
     let test_cases = [
         ("UPDATE TableA SET id = 2", Ok(Payload::Update(4))),
@@ -100,12 +96,12 @@ test_case!(update, {
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, expected).await;
+        g.test(sql, expected);
     }
 
     // Test Error cases for UPDATE
-    g.run("CREATE TABLE ErrTestTable (id INTEGER);").await;
-    g.run("INSERT INTO ErrTestTable (id) VALUES (1),(9);").await;
+    g.run("CREATE TABLE ErrTestTable (id INTEGER);");
+    g.run("INSERT INTO ErrTestTable (id) VALUES (1),(9);");
 
     let error_cases = [
         (
@@ -136,6 +132,6 @@ test_case!(update, {
         ),
     ];
     for (sql, expected) in error_cases {
-        g.test(sql, expected).await;
+        g.test(sql, expected);
     }
 });

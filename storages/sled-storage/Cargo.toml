@@ -11,19 +11,15 @@ documentation.workspace = true
 [dependencies]
 gluesql-core.workspace = true
 utils.workspace = true
-async-trait = "0.1"
 iter-enum = "1"
 serde = { version = "1", features = ["derive"] }
 thiserror = "1"
 bincode = "1"
 sled = "0.34"
-async-io = "1"
-futures = "0.3"
 
 [dev-dependencies]
 test-suite.workspace = true
 criterion = "0.3"
-tokio = { version = "1", features = ["rt", "macros"] }
 
 [[bench]]
 name = "sled_benchmark"

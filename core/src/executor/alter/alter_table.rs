@@ -9,7 +9,7 @@ use {
     },
 };
 
-pub async fn alter_table<T: GStore + GStoreMut>(
+pub fn alter_table<T: GStore + GStoreMut>(
     storage: &mut T,
     table_name: &str,
     operation: &AlterTableOperationPlan,
@@ -20,7 +20,7 @@ pub async fn alter_table<T: GStore + GStoreMut>(
     }
     | AlterTableOperationPlan::DropColumn { column_name, .. } = operation
     {
-        if let Some(schema) = storage.fetch_schema(table_name).await? {
+        if let Some(schema) = storage.fetch_schema(table_name)? {
             let referencing_foreign_key = schema
                 .foreign_keys
                 .into_iter()
@@ -37,7 +37,7 @@ pub async fn alter_table<T: GStore + GStoreMut>(
             }
         }
 
-        let referencings = storage.fetch_referencings(table_name).await?;
+        let referencings = storage.fetch_referencings(table_name)?;
         let referencing = referencings
             .into_iter()
             .find(|Referencing { foreign_key, .. }| {
@@ -52,25 +52,21 @@ pub async fn alter_table<T: GStore + GStoreMut>(
     match operation {
         AlterTableOperationPlan::RenameTable {
             table_name: new_table_name,
-        } => storage.rename_schema(table_name, new_table_name).await,
+        } => storage.rename_schema(table_name, new_table_name),
         AlterTableOperationPlan::RenameColumn {
             old_column_name,
             new_column_name,
-        } => {
-            storage
-                .rename_column(table_name, old_column_name, new_column_name)
-                .await
-        }
+        } => storage.rename_column(table_name, old_column_name, new_column_name),
         AlterTableOperationPlan::AddColumn { column_def } => {
-            validate(column_def).await?;
+            validate(column_def)?;
 
-            storage.add_column(table_name, column_def).await
+            storage.add_column(table_name, column_def)
         }
         AlterTableOperationPlan::DropColumn {
             column_name,
             if_exists,
         } => {
-            let Some(Schema { indexes, .. }) = storage.fetch_schema(table_name).await? else {
+            let Some(Schema { indexes, .. }) = storage.fetch_schema(table_name)? else {
                 return Err(AlterError::TableNotFound(table_name.to_owned()).into());
             };
 
@@ -80,12 +76,10 @@ pub async fn alter_table<T: GStore + GStoreMut>(
                 .map(|SchemaIndex { name, .. }| name);
 
             for index_name in indexes {
-                storage.drop_index(table_name, index_name).await?;
+                storage.drop_index(table_name, index_name)?;
             }
 
-            storage
-                .drop_column(table_name, column_name, *if_exists)
-                .await
+            storage.drop_column(table_name, column_name, *if_exists)
         }
     }
 }

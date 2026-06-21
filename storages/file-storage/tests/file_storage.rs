@@ -1,5 +1,4 @@
 use {
-    async_trait::async_trait,
     gluesql_core::{data::Value::I64, prelude::Glue, store::StoreMut},
     gluesql_file_storage::FileStorage,
     std::fs::{create_dir, remove_dir_all},
@@ -10,9 +9,8 @@ struct FileStorageTester {
     glue: Glue<FileStorage>,
 }
 
-#[async_trait(?Send)]
 impl Tester<FileStorage> for FileStorageTester {
-    async fn new(namespace: &str) -> Self {
+    fn new(namespace: &str) -> Self {
         let path = format!("tmp/{namespace}");
 
         if let Err(e) = remove_dir_all(&path) {
@@ -29,35 +27,32 @@ impl Tester<FileStorage> for FileStorageTester {
     }
 }
 
-generate_store_tests!(tokio::test, FileStorageTester);
-generate_alter_table_tests!(tokio::test, FileStorageTester);
+generate_store_tests!(test, FileStorageTester);
+generate_alter_table_tests!(test, FileStorageTester);
 
-#[tokio::test]
-async fn scan_data_to_ignore_directory_items() {
+#[test]
+fn scan_data_to_ignore_directory_items() {
     let path = "./tests/ignore_directory_items/";
     let storage = FileStorage::new(path).unwrap();
     let mut glue = Glue::new(storage);
 
-    glue.execute("CREATE TABLE Foo (id INTEGER);")
-        .await
-        .unwrap();
+    glue.execute("CREATE TABLE Foo (id INTEGER);").unwrap();
     glue.execute("INSERT INTO Foo VALUES (1), (2), (3);")
-        .await
         .unwrap();
 
     let dir_path = format!("{path}Foo/something_in_data_directory");
     create_dir(dir_path).unwrap();
 
     assert_eq!(
-        glue.execute("SELECT * FROM Foo").await.unwrap().remove(0),
+        glue.execute("SELECT * FROM Foo").unwrap().remove(0),
         select!(id I64; 1; 2; 3)
     );
 
     remove_dir_all(path).unwrap();
 }
 
-#[tokio::test]
-async fn delete_schema_for_missing_table_is_noop() {
+#[test]
+fn delete_schema_for_missing_table_is_noop() {
     let path = "./tests/delete_schema_missing_table/";
     if let Err(err) = remove_dir_all(path) {
         println!("remove_dir_all error: {err:?}");
@@ -65,7 +60,7 @@ async fn delete_schema_for_missing_table_is_noop() {
     let mut storage = FileStorage::new(path).unwrap();
 
     // Missing table should not produce an error in file storage.
-    storage.delete_schema("MissingTable").await.unwrap();
+    storage.delete_schema("MissingTable").unwrap();
 
     remove_dir_all(path).unwrap();
 }

@@ -1,6 +1,5 @@
 use {
     crate::{RedisStorage, mutex::MutexExt},
-    async_trait::async_trait,
     gluesql_core::{
         data::Value,
         error::{Error, Result},
@@ -10,9 +9,8 @@ use {
     std::collections::BTreeMap,
 };
 
-#[async_trait]
 impl Metadata for RedisStorage {
-    async fn scan_table_meta(&self) -> Result<MetaIter> {
+    fn scan_table_meta(&self) -> Result<MetaIter> {
         let mut all_metadata: BTreeMap<String, BTreeMap<String, Value>> = BTreeMap::new();
         let metadata_scan_key = Self::redis_generate_scan_all_metadata_key(&self.namespace);
         let redis_keys: Vec<String> = {

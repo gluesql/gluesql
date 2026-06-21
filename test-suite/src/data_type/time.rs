@@ -17,8 +17,7 @@ CREATE TABLE TimeLog (
     time1 TIME,
     time2 TIME
 )",
-    )
-    .await;
+    );
 
     g.run(
         "
@@ -27,8 +26,7 @@ INSERT INTO TimeLog VALUES
     (2, '9:2:1', 'AM 08:02:01.001'),
     (3, 'PM 2:59', '9:00:00 AM');
 ",
-    )
-    .await;
+    );
 
     let t = |hour: u32, min: u32, sec: u32, milli: u32| {
         NaiveTime::from_hms_milli_opt(hour, min, sec, milli).unwrap()
@@ -48,8 +46,7 @@ INSERT INTO TimeLog VALUES
             2     t(9, 2, 1, 0)     t(8, 2, 1, 1);
             3     t(14, 59, 0, 0)   t(9, 0, 0, 0)
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT * FROM TimeLog WHERE time1 > time2",
@@ -59,8 +56,7 @@ INSERT INTO TimeLog VALUES
             2     t(9, 2, 1, 0)     t(8, 2, 1, 1);
             3     t(14, 59, 0, 0)   t(9, 0, 0, 0)
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT * FROM TimeLog WHERE time1 <= time2",
@@ -69,8 +65,7 @@ INSERT INTO TimeLog VALUES
             I64 | Time            | Time;
             1     t(12, 30, 0, 0)   t(13, 31, 1, 123)
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT * FROM TimeLog WHERE time1 = TIME '14:59:00'",
@@ -79,8 +74,7 @@ INSERT INTO TimeLog VALUES
             I64 | Time            | Time;
             3     t(14, 59, 0, 0)   t(9, 0, 0, 0)
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT * FROM TimeLog WHERE time1 < '1:00 PM'",
@@ -90,8 +84,7 @@ INSERT INTO TimeLog VALUES
             1     t(12, 30, 0, 0)   t(13, 31, 1, 123);
             2     t(9, 2, 1, 0)     t(8, 2, 1, 1)
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT * FROM TimeLog WHERE TIME '23:00:00.123' > 'PM 1:00';",
@@ -102,8 +95,7 @@ INSERT INTO TimeLog VALUES
             2     t(9, 2, 1, 0)     t(8, 2, 1, 1);
             3     t(14, 59, 0, 0)   t(9, 0, 0, 0)
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT
@@ -119,8 +111,7 @@ INSERT INTO TimeLog VALUES
             2     i(0, 59, 59, 999)               t(10, 2, 1, 0)     t(3, 52, 1, 1);
             3     i(5, 59, 0, 0)                  t(15, 59, 0, 0)    t(4, 50, 0, 0)
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT
@@ -132,7 +123,7 @@ INSERT INTO TimeLog VALUES
             I64 | Timestamp;
             1     NaiveDate::from_ymd_opt(2021, 1, 5).unwrap().and_hms_milli_opt(13, 31, 1, 123).unwrap()
         ))
-    ).await;
+    );
 
     g.test(
         "SELECT * FROM TimeLog WHERE time1 > time2 + INTERVAL '1' YEAR",
@@ -141,8 +132,7 @@ INSERT INTO TimeLog VALUES
             interval: gluesql_core::data::Interval::years(1),
         }
         .into()),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT * FROM TimeLog WHERE time1 > time2 - INTERVAL '1-2' YEAR TO MONTH",
@@ -151,8 +141,7 @@ INSERT INTO TimeLog VALUES
             interval: gluesql_core::data::Interval::months(14),
         }
         .into()),
-    )
-    .await;
+    );
 
     g.test(
         "INSERT INTO TimeLog VALUES (1, '12345-678', '20:05:01')",
@@ -161,6 +150,5 @@ INSERT INTO TimeLog VALUES
             data_type: DataType::Time,
         }
         .into()),
-    )
-    .await;
+    );
 });
