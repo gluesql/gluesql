@@ -1451,7 +1451,6 @@ dependencies = [
  "csv",
  "gluesql-core",
  "gluesql-test-suite",
- "gluesql-utils",
  "rust_decimal",
  "rust_decimal_macros",
  "serde",
@@ -1490,7 +1489,6 @@ version = "0.19.0"
 dependencies = [
  "gluesql-core",
  "gluesql-test-suite",
- "gluesql-utils",
  "hex",
  "iter-enum",
  "serde",
@@ -1601,9 +1599,6 @@ dependencies = [
 [[package]]
 name = "gluesql-utils"
 version = "0.19.0"
-dependencies = [
- "indexmap 1.9.3",
-]
 
 [[package]]
 name = "gluesql_memory_storage"

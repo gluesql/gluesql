@@ -9,7 +9,6 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
-indexmap = "1"
 
 [lints]
 workspace = true
