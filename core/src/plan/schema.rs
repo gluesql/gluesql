@@ -270,7 +270,6 @@ mod tests {
             result::Result,
             translate::translate,
         },
-        utils::Vector,
     };
 
     fn plan(storage: &MockStorage, sql: &str) -> Result<Vec<String>> {
@@ -278,11 +277,10 @@ mod tests {
         let statement = translate(&parsed).unwrap().into();
         let schema_map = fetch_schema_map(storage, &statement);
 
-        Ok(schema_map?
-            .into_keys()
-            .collect::<Vector<String>>()
-            .sort()
-            .into())
+        let mut schema_names = schema_map?.into_keys().collect::<Vec<_>>();
+        schema_names.sort();
+
+        Ok(schema_names)
     }
 
     fn run_test(storage: &MockStorage, sql: &str, expected: &[&str]) {

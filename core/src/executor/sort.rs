@@ -14,7 +14,6 @@ use {
     serde::Serialize,
     std::{borrow::Cow, cmp::Ordering, fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
-    utils::Vector,
 };
 
 #[derive(ThisError, Serialize, Debug, PartialEq, Eq)]
@@ -139,11 +138,9 @@ impl<'a, T: GStore> Sort<'a, T> {
             keyed_rows.push((keys, row));
         }
 
-        let rows = Vector::from(keyed_rows)
-            .sort_by(|(keys_a, ..), (keys_b, ..)| sort_by(keys_a, keys_b))
-            .into_iter()
-            .map(|(.., row)| row)
-            .map(Ok);
+        keyed_rows.sort_by(|(keys_a, ..), (keys_b, ..)| sort_by(keys_a, keys_b));
+
+        let rows = keyed_rows.into_iter().map(|(.., row)| row).map(Ok);
 
         Ok(Box::new(rows))
     }
