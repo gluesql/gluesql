@@ -9,8 +9,6 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
-utils.workspace = true
-
 regex = "1"
 cfg-if = "1"
 chrono = { version = "0.4.38", features = ["serde", "wasmbind"] }

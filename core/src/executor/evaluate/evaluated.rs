@@ -3,7 +3,7 @@ use {
     super::{error::EvaluateError, function},
     crate::{
         ast::{DataType, TrimWhereField},
-        data::{BigDecimalExt, Key, Value, ValueError, value::BTreeMapJsonExt},
+        data::{BigDecimalExt, Key, Tribool, Value, ValueError, value::BTreeMapJsonExt},
         result::{Error, Result},
     },
     bigdecimal::BigDecimal,
@@ -14,7 +14,6 @@ use {
         fmt::{Display, Formatter},
         ops::Range,
     },
-    utils::Tribool,
     uuid::Uuid,
 };
 
