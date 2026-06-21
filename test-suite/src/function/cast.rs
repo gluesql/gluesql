@@ -403,7 +403,7 @@ test_case!(cast_literal, {
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, expected).await;
+        g.test(sql, expected);
     }
 });
 
@@ -494,6 +494,6 @@ test_case!(cast_value, {
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, expected).await;
+        g.test(sql, expected);
     }
 });

@@ -5,9 +5,8 @@ use {
     },
     crate::{
         ast::{
-            Dictionary, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, Literal,
-            Projection, Query, Select, SelectItem, SetExpr, TableAlias, TableFactor,
-            TableWithJoins, Values,
+            Dictionary, Expr, Join, JoinConstraint, JoinOperator, Literal, Projection, Query,
+            Select, SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, Values,
         },
         result::Result,
     },
@@ -281,13 +280,10 @@ fn translate_table_factor(
                     dict: Dictionary::GlueTableColumns,
                     alias: alias_or_name(alias, object_name),
                 }),
-                _ => {
-                    Ok(TableFactor::Table {
-                        name: translate_object_name(name)?,
-                        alias,
-                        index: None, // query execution plan
-                    })
-                }
+                _ => Ok(TableFactor::Table {
+                    name: translate_object_name(name)?,
+                    alias,
+                }),
             }
         }
         SqlTableFactor::Derived {
@@ -347,7 +343,6 @@ fn translate_join(params: &[ParamLiteral], sql_join: &SqlJoin) -> Result<Join> {
     Ok(Join {
         relation: translate_table_factor(params, relation)?,
         join_operator,
-        join_executor: JoinExecutor::NestedLoop,
     })
 }
 

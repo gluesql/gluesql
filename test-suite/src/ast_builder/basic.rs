@@ -10,8 +10,7 @@ test_case!(basic, {
         .create_table()
         .add_column("id INTEGER")
         .add_column("name TEXT")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table");
 
@@ -22,16 +21,11 @@ test_case!(basic, {
             vec![num(100), text("Pickle")],
             vec![num(200), text("Lemon")],
         ])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(2));
     assert_eq!(actual, expected, "insert");
 
-    let actual = table("Foo")
-        .select()
-        .project("id, name")
-        .execute(glue)
-        .await;
+    let actual = table("Foo").select().project("id, name").execute(glue);
     let expected = Ok(select!(
         id  | name
         I64 | Str;
@@ -44,8 +38,7 @@ test_case!(basic, {
         .update()
         .filter(col("id").eq(200))
         .set("id", col("id").mul(2))
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Update(1));
     assert_eq!(actual, expected, "update");
 
@@ -55,8 +48,7 @@ test_case!(basic, {
         .project("id, name")
         .build()
         .expect("build and execute")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         id  | name
         I64 | Str;
@@ -67,12 +59,11 @@ test_case!(basic, {
     let actual = table("Foo")
         .delete()
         .filter(col("id").gt(200))
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Delete(1));
     assert_eq!(actual, expected, "delete");
 
-    let actual = table("Foo").select().execute(glue).await;
+    let actual = table("Foo").select().execute(glue);
     let expected = Ok(select!(
         id  | name
         I64 | Str;
@@ -80,15 +71,14 @@ test_case!(basic, {
     ));
     assert_eq!(actual, expected, "select after delete");
 
-    let actual = table("Foo").drop_table().execute(glue).await;
+    let actual = table("Foo").drop_table().execute(glue);
     let expected = Ok(Payload::DropTable(1));
     assert_eq!(actual, expected, "drop table");
 
     let actual = table("Foo")
         .select()
         .filter(num("NAN").gt(300))
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Err(AstBuilderError::FailedToParseNumeric("NAN".to_owned()).into());
     assert_eq!(actual, expected, "error");
 });

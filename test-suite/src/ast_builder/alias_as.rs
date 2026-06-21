@@ -11,8 +11,7 @@ test_case!(alias_as, {
         .create_table()
         .add_column("category_id INTEGER PRIMARY KEY")
         .add_column("category_name TEXT")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table - Category");
 
@@ -23,8 +22,7 @@ test_case!(alias_as, {
         .add_column("category_id INTEGER")
         .add_column("item_name TEXT")
         .add_column("price INTEGER")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table - Item");
 
@@ -32,8 +30,7 @@ test_case!(alias_as, {
     let actual = table("Category")
         .insert()
         .values(vec!["1, 'Fruit'", "2, 'Meat'", "3, 'Drink'"])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(3));
     assert_eq!(actual, expected, "insert into Category");
 
@@ -47,8 +44,7 @@ test_case!(alias_as, {
             "400, 3, 'Coffee', 25",
             "500, 3, 'Orange juice', 60",
         ])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(5));
     assert_eq!(actual, expected, "insert into Item");
 
@@ -57,8 +53,7 @@ test_case!(alias_as, {
         .select()
         .alias_as("Sub")
         .select()
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         item_id  | category_id | item_name                 | price;
         I64      | I64         | Str                       | I64;
@@ -76,8 +71,7 @@ test_case!(alias_as, {
         .filter("item_id = 300")
         .alias_as("Sub")
         .select()
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         item_id  | category_id | item_name               | price;
         I64      | I64         | Str                     | I64;
@@ -91,8 +85,7 @@ test_case!(alias_as, {
         .project("item_id")
         .alias_as("Sub")
         .select()
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         item_id;
         I64;
@@ -111,8 +104,7 @@ test_case!(alias_as, {
         .join_as("Category", "c")
         .alias_as("Sub")
         .select()
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         item_id | category_id | item_name                 | price | category_id | category_name;
         I64     | I64         | Str                       | I64   | I64         | Str;
@@ -147,8 +139,7 @@ test_case!(alias_as, {
         .select()
         .project("item_name")
         .project("category_name")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         item_name                 | category_name;
         Str                       | Str;
@@ -169,8 +160,7 @@ test_case!(alias_as, {
         .select()
         .project("item_name")
         .project("category_name")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         item_name                 | category_name;
         Str                       | Str;
@@ -194,8 +184,7 @@ test_case!(alias_as, {
         .group_by("category_name")
         .alias_as("Sub2")
         .select()
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         category_name;
         Str;
@@ -218,8 +207,7 @@ test_case!(alias_as, {
         .having("category_name = 'Meat'")
         .alias_as("Sub2")
         .select()
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         category_name;
         Str;
@@ -236,8 +224,7 @@ test_case!(alias_as, {
         .order_by("price DESC")
         .alias_as("Sub")
         .select()
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         item_id  | category_id | item_name                 | price;
         I64      | I64         | Str                       | I64;
@@ -255,8 +242,7 @@ test_case!(alias_as, {
         .offset(4)
         .alias_as("Sub")
         .select()
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         item_id  | category_id | item_name                 | price;
         I64      | I64         | Str                       | I64;
@@ -270,8 +256,7 @@ test_case!(alias_as, {
         .limit(1)
         .alias_as("Sub")
         .select()
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         item_id  | category_id | item_name                 | price;
         I64      | I64         | Str                       | I64;
@@ -286,8 +271,7 @@ test_case!(alias_as, {
         .limit(1)
         .alias_as("Sub")
         .select()
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
          item_id  | category_id | item_name                 | price;
          I64      | I64         | Str                       | I64;

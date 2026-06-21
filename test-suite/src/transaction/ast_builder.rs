@@ -11,8 +11,7 @@ test_case!(ast_builder, {
         .create_table()
         .add_column("id INTEGER")
         .add_column("name TEXT")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected);
 
@@ -23,12 +22,11 @@ test_case!(ast_builder, {
             vec![num(1), text("Friday")],
             vec![num(2), text("Phone")],
         ])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(2));
     assert_eq!(actual, expected);
 
-    let actual = begin().execute(glue).await;
+    let actual = begin().execute(glue);
     let expected = Ok(Payload::StartTransaction);
     assert_eq!(actual, expected);
 
@@ -36,20 +34,15 @@ test_case!(ast_builder, {
         .insert()
         .columns("id, name")
         .values(vec![vec![num(3), text("Vienna")]])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(1));
     assert_eq!(actual, expected);
 
-    let actual = rollback().execute(glue).await;
+    let actual = rollback().execute(glue);
     let expected = Ok(Payload::Rollback);
     assert_eq!(actual, expected);
 
-    let actual = table("TxTest")
-        .select()
-        .project("id, name")
-        .execute(glue)
-        .await;
+    let actual = table("TxTest").select().project("id, name").execute(glue);
     let expected = Ok(select!(
         id  | name
         I64 | Str;
@@ -58,7 +51,7 @@ test_case!(ast_builder, {
     ));
     assert_eq!(actual, expected);
 
-    let actual = begin().execute(glue).await;
+    let actual = begin().execute(glue);
     let expected = Ok(Payload::StartTransaction);
     assert_eq!(actual, expected);
 
@@ -66,16 +59,11 @@ test_case!(ast_builder, {
         .insert()
         .columns("id, name")
         .values(vec![vec![num(3), text("Vienna")]])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(1));
     assert_eq!(actual, expected);
 
-    let actual = table("TxTest")
-        .select()
-        .project("id, name")
-        .execute(glue)
-        .await;
+    let actual = table("TxTest").select().project("id, name").execute(glue);
     let expected = Ok(select!(
         id  | name
         I64 | Str;
@@ -85,15 +73,11 @@ test_case!(ast_builder, {
     ));
     assert_eq!(actual, expected);
 
-    let actual = commit().execute(glue).await;
+    let actual = commit().execute(glue);
     let expected = Ok(Payload::Commit);
     assert_eq!(actual, expected);
 
-    let actual = table("TxTest")
-        .select()
-        .project("id, name")
-        .execute(glue)
-        .await;
+    let actual = table("TxTest").select().project("id, name").execute(glue);
     let expected = Ok(select!(
         id  | name
         I64 | Str;
@@ -104,23 +88,15 @@ test_case!(ast_builder, {
     assert_eq!(actual, expected);
 
     // DELETE
-    let actual = begin().execute(glue).await;
+    let actual = begin().execute(glue);
     let expected = Ok(Payload::StartTransaction);
     assert_eq!(actual, expected);
 
-    let actual = table("TxTest")
-        .delete()
-        .filter("id = 3")
-        .execute(glue)
-        .await;
+    let actual = table("TxTest").delete().filter("id = 3").execute(glue);
     let expected = Ok(Payload::Delete(1));
     assert_eq!(actual, expected);
 
-    let actual = table("TxTest")
-        .select()
-        .project("id, name")
-        .execute(glue)
-        .await;
+    let actual = table("TxTest").select().project("id, name").execute(glue);
     let expected = Ok(select!(
         id  | name
         I64 | Str;
@@ -129,15 +105,11 @@ test_case!(ast_builder, {
     ));
     assert_eq!(actual, expected);
 
-    let actual = rollback().execute(glue).await;
+    let actual = rollback().execute(glue);
     let expected = Ok(Payload::Rollback);
     assert_eq!(actual, expected);
 
-    let actual = table("TxTest")
-        .select()
-        .project("id, name")
-        .execute(glue)
-        .await;
+    let actual = table("TxTest").select().project("id, name").execute(glue);
     let expected = Ok(select!(
         id  | name
         I64 | Str;
@@ -147,23 +119,15 @@ test_case!(ast_builder, {
     ));
     assert_eq!(actual, expected);
 
-    let actual = begin().execute(glue).await;
+    let actual = begin().execute(glue);
     let expected = Ok(Payload::StartTransaction);
     assert_eq!(actual, expected);
 
-    let actual = table("TxTest")
-        .delete()
-        .filter("id = 3")
-        .execute(glue)
-        .await;
+    let actual = table("TxTest").delete().filter("id = 3").execute(glue);
     let expected = Ok(Payload::Delete(1));
     assert_eq!(actual, expected);
 
-    let actual = table("TxTest")
-        .select()
-        .project("id, name")
-        .execute(glue)
-        .await;
+    let actual = table("TxTest").select().project("id, name").execute(glue);
     let expected = Ok(select!(
         id  | name
         I64 | Str;
@@ -172,15 +136,11 @@ test_case!(ast_builder, {
     ));
     assert_eq!(actual, expected);
 
-    let actual = commit().execute(glue).await;
+    let actual = commit().execute(glue);
     let expected = Ok(Payload::Commit);
     assert_eq!(actual, expected);
 
-    let actual = table("TxTest")
-        .select()
-        .project("id, name")
-        .execute(glue)
-        .await;
+    let actual = table("TxTest").select().project("id, name").execute(glue);
     let expected = Ok(select!(
         id  | name
         I64 | Str;
@@ -190,7 +150,7 @@ test_case!(ast_builder, {
     assert_eq!(actual, expected);
 
     // UPDATE
-    let actual = begin().execute(glue).await;
+    let actual = begin().execute(glue);
     let expected = Ok(Payload::StartTransaction);
     assert_eq!(actual, expected);
 
@@ -198,16 +158,11 @@ test_case!(ast_builder, {
         .update()
         .filter("id = 1")
         .set("name", "'Sunday'")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Update(1));
     assert_eq!(actual, expected);
 
-    let actual = table("TxTest")
-        .select()
-        .project("id, name")
-        .execute(glue)
-        .await;
+    let actual = table("TxTest").select().project("id, name").execute(glue);
     let expected = Ok(select!(
         id  | name
         I64 | Str;
@@ -216,15 +171,11 @@ test_case!(ast_builder, {
     ));
     assert_eq!(actual, expected);
 
-    let actual = rollback().execute(glue).await;
+    let actual = rollback().execute(glue);
     let expected = Ok(Payload::Rollback);
     assert_eq!(actual, expected);
 
-    let actual = table("TxTest")
-        .select()
-        .project("id, name")
-        .execute(glue)
-        .await;
+    let actual = table("TxTest").select().project("id, name").execute(glue);
     let expected = Ok(select!(
         id  | name
         I64 | Str;
@@ -233,7 +184,7 @@ test_case!(ast_builder, {
     ));
     assert_eq!(actual, expected);
 
-    let actual = begin().execute(glue).await;
+    let actual = begin().execute(glue);
     let expected = Ok(Payload::StartTransaction);
     assert_eq!(actual, expected);
 
@@ -241,16 +192,11 @@ test_case!(ast_builder, {
         .update()
         .filter("id = 1")
         .set("name", "'Sunday'")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Update(1));
     assert_eq!(actual, expected);
 
-    let actual = table("TxTest")
-        .select()
-        .project("id, name")
-        .execute(glue)
-        .await;
+    let actual = table("TxTest").select().project("id, name").execute(glue);
     let expected = Ok(select!(
         id  | name
         I64 | Str;
@@ -259,15 +205,11 @@ test_case!(ast_builder, {
     ));
     assert_eq!(actual, expected);
 
-    let actual = commit().execute(glue).await;
+    let actual = commit().execute(glue);
     let expected = Ok(Payload::Commit);
     assert_eq!(actual, expected);
 
-    let actual = table("TxTest")
-        .select()
-        .project("id, name")
-        .execute(glue)
-        .await;
+    let actual = table("TxTest").select().project("id, name").execute(glue);
     let expected = Ok(select!(
         id  | name
         I64 | Str;

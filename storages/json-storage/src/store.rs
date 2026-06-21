@@ -3,23 +3,62 @@ use {
         JsonStorage,
         error::{JsonStorageError, OptionExt, ResultExt},
     },
-    async_trait::async_trait,
-    futures::stream::iter,
     gluesql_core::{
         data::{Key, Schema, Value},
-        error::Result,
+        error::{Error, Result},
         store::{RowIter, Store},
     },
-    std::{ffi::OsStr, fs},
+    std::{
+        ffi::OsStr,
+        fs::{self, File},
+        io::Read,
+    },
 };
 
-#[async_trait]
 impl Store for JsonStorage {
-    async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
-        self.fetch_schema(table_name)
+    fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
+        match (
+            self.jsonl_path(table_name).exists(),
+            self.json_path(table_name).exists(),
+        ) {
+            (true, true) => {
+                return Err(Error::StorageMsg(
+                    JsonStorageError::BothJsonlAndJsonExist(table_name.to_owned()).to_string(),
+                ));
+            }
+            (false, false) => return Ok(None),
+            _ => {}
+        }
+
+        let schema_path = self.schema_path(table_name);
+        let (column_defs, foreign_keys, comment) = if schema_path.exists() {
+            let mut file = File::open(&schema_path).map_storage_err()?;
+            let mut ddl = String::new();
+            file.read_to_string(&mut ddl).map_storage_err()?;
+
+            let schema = Schema::from_ddl(&ddl)?;
+            if schema.table_name != table_name {
+                return Err(Error::StorageMsg(
+                    JsonStorageError::TableNameDoesNotMatchWithFile.to_string(),
+                ));
+            }
+
+            (schema.column_defs, schema.foreign_keys, schema.comment)
+        } else {
+            (None, Vec::new(), None)
+        };
+
+        Ok(Some(Schema {
+            table_name: table_name.to_owned(),
+            column_defs,
+            indexes: vec![],
+            engine: None,
+            foreign_keys,
+            comment,
+        }))
     }
 
-    async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
+    fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         let paths = fs::read_dir(&self.path).map_storage_err()?;
         let mut schemas = paths
             .map(|result| {
@@ -46,7 +85,7 @@ impl Store for JsonStorage {
         Ok(schemas)
     }
 
-    async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<Vec<Value>>> {
+    fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<Vec<Value>>> {
         for item in self.scan_data(table_name)?.0 {
             let (key, row) = item?;
 
@@ -58,9 +97,9 @@ impl Store for JsonStorage {
         Ok(None)
     }
 
-    async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
+    fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
         let rows = self.scan_data(table_name)?.0;
 
-        Ok(Box::pin(iter(rows)))
+        Ok(Box::new(rows))
     }
 }

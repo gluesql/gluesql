@@ -2,11 +2,11 @@
 mod api_usage {
     use gluesql::{gluesql_memory_storage::MemoryStorage, prelude::Glue};
 
-    pub async fn run() {
+    pub fn run() {
         let storage = MemoryStorage::default();
         let mut glue = Glue::new(storage);
 
-        glue.execute("DROP TABLE IF EXISTS api_test").await.unwrap();
+        glue.execute("DROP TABLE IF EXISTS api_test").unwrap();
 
         glue.execute(
             "CREATE TABLE api_test (
@@ -16,7 +16,6 @@ mod api_usage {
                 is BOOLEAN
             )",
         )
-        .await
         .unwrap();
 
         glue.execute(
@@ -29,12 +28,11 @@ mod api_usage {
                 (1, 'test1', 'not null', TRUE),
                 (2, 'test2', NULL, FALSE)",
         )
-        .await
         .unwrap();
     }
 }
 
 fn main() {
     #[cfg(feature = "gluesql_memory_storage")]
-    futures::executor::block_on(api_usage::run());
+    api_usage::run();
 }

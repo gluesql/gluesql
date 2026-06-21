@@ -1,17 +1,16 @@
 use {
     super::MemoryStorage,
-    async_trait::async_trait,
     gluesql_core::{
         ast::ColumnDef,
         data::Value,
         error::{AlterTableError, Result},
+        plan::plan_scalar_expr,
         store::AlterTable,
     },
 };
 
-#[async_trait]
 impl AlterTable for MemoryStorage {
-    async fn rename_schema(&mut self, table_name: &str, new_table_name: &str) -> Result<()> {
+    fn rename_schema(&mut self, table_name: &str, new_table_name: &str) -> Result<()> {
         let mut item = self
             .items
             .remove(table_name)
@@ -23,7 +22,7 @@ impl AlterTable for MemoryStorage {
         Ok(())
     }
 
-    async fn rename_column(
+    fn rename_column(
         &mut self,
         table_name: &str,
         old_column_name: &str,
@@ -57,7 +56,7 @@ impl AlterTable for MemoryStorage {
         Ok(())
     }
 
-    async fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
+    fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
         let item = self
             .items
             .get_mut(table_name)
@@ -87,7 +86,8 @@ impl AlterTable for MemoryStorage {
 
         let value = match (default, nullable) {
             (Some(expr), _) => {
-                let evaluated = gluesql_core::executor::evaluate_stateless(None, expr).await?;
+                let expr = plan_scalar_expr(expr.clone());
+                let evaluated = gluesql_core::executor::evaluate_stateless(None, &expr)?;
 
                 evaluated.try_into_value(data_type, *nullable)?
             }
@@ -106,12 +106,7 @@ impl AlterTable for MemoryStorage {
         Ok(())
     }
 
-    async fn drop_column(
-        &mut self,
-        table_name: &str,
-        column_name: &str,
-        if_exists: bool,
-    ) -> Result<()> {
+    fn drop_column(&mut self, table_name: &str, column_name: &str, if_exists: bool) -> Result<()> {
         let item = self
             .items
             .get_mut(table_name)

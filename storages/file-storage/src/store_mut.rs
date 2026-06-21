@@ -1,6 +1,5 @@
 use {
     crate::{FileRow, FileStorage, ResultExt},
-    async_trait::async_trait,
     gluesql_core::{
         data::{Key, Schema, Value},
         error::Result,
@@ -14,9 +13,8 @@ use {
     uuid::Uuid,
 };
 
-#[async_trait]
 impl StoreMut for FileStorage {
-    async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
+    fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let table_name = schema.table_name.clone();
         let path = self.path(table_name);
         if !path.exists() {
@@ -29,7 +27,7 @@ impl StoreMut for FileStorage {
         Ok(())
     }
 
-    async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
+    fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let path = self.path(table_name);
         if !path.exists() {
             return Ok(());
@@ -43,7 +41,7 @@ impl StoreMut for FileStorage {
         Ok(())
     }
 
-    async fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
+    fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
         for row in rows {
             let key = Key::Uuid(Uuid::now_v7().as_u128());
             let path = self.data_path(table_name, &key)?;
@@ -57,7 +55,7 @@ impl StoreMut for FileStorage {
         Ok(())
     }
 
-    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
+    fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
         for (key, row) in rows {
             let path = self.data_path(table_name, &key)?;
             let row = FileRow { key, row };
@@ -70,7 +68,7 @@ impl StoreMut for FileStorage {
         Ok(())
     }
 
-    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
+    fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         for key in keys {
             let path = self.data_path(table_name, &key)?;
 

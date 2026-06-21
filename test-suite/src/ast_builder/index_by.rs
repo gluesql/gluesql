@@ -13,8 +13,7 @@ test_case!(index_by, {
         .create_table()
         .add_column("id INTEGER PRIMARY KEY")
         .add_column("name TEXT")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table - Foo");
 
@@ -22,8 +21,7 @@ test_case!(index_by, {
         .insert()
         .columns("id, name")
         .values(vec![vec![num(1), text("Drink")]])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(1));
     assert_eq!(actual, expected, "insert - specifying columns");
 
@@ -31,8 +29,7 @@ test_case!(index_by, {
         .index_by(primary_key().eq("1"))
         .select()
         .project("id, name")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         id  | name
         I64 | Str;

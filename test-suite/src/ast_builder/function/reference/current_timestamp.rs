@@ -20,8 +20,7 @@ test_case!(current_timestamp, {
         .create_table()
         .add_column("id INTEGER PRIMARY KEY")
         .add_column("time_stamp TIMESTAMP")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table - Record");
 
@@ -33,8 +32,7 @@ test_case!(current_timestamp, {
             "2, CURRENT_TIMESTAMP()",
             "3, '9999-12-31T23:59:40.364832862'",
         ])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(3));
     assert_eq!(actual, expected, "insert into Record");
 
@@ -43,8 +41,7 @@ test_case!(current_timestamp, {
         .select()
         .filter(col("time_stamp").gt(f::now()))
         .project("id, time_stamp")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         id  | time_stamp
         I64 | Timestamp;

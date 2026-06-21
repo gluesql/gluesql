@@ -26,13 +26,13 @@ test_case!(project, {
     ];
 
     for sql in create_sqls {
-        g.run(sql).await;
+        g.run(sql);
     }
 
     let delete_sqls = ["DELETE FROM ProjectUser", "DELETE FROM ProjectItem"];
 
     for sql in delete_sqls {
-        g.run(sql).await;
+        g.run(sql);
     }
 
     let insert_sqls = [
@@ -53,7 +53,7 @@ test_case!(project, {
     ];
 
     for insert_sql in insert_sqls {
-        g.run(insert_sql).await;
+        g.run(insert_sql);
     }
 
     let test_cases = [
@@ -145,7 +145,7 @@ test_case!(project, {
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, Ok(expected)).await;
+        g.test(sql, Ok(expected));
     }
 
     let error_cases = [
@@ -168,6 +168,6 @@ test_case!(project, {
     ];
 
     for (sql, error) in error_cases {
-        g.test(sql, Err(error)).await;
+        g.test(sql, Err(error));
     }
 });

@@ -11,8 +11,7 @@ test_case!(length, {
             U64;
             6
         )),
-    )
-    .await;
+    );
 
     g.named_test(
         "test length with list",
@@ -22,8 +21,7 @@ test_case!(length, {
             U64;
             3
         )),
-    )
-    .await;
+    );
 
     g.named_test(
         "test length with map",
@@ -33,8 +31,7 @@ test_case!(length, {
             U64;
             4
         )),
-    )
-    .await;
+    );
 
     g.named_test(
         "test length string - wide chars 1",
@@ -44,8 +41,7 @@ test_case!(length, {
             U64;
             2
         )),
-    )
-    .await;
+    );
 
     g.named_test(
         "test length string - wide chars 2",
@@ -55,8 +51,7 @@ test_case!(length, {
             U64;
             6
         )),
-    )
-    .await;
+    );
 
     g.named_test(
         "test length string - wide chars 3",
@@ -66,8 +61,7 @@ test_case!(length, {
             U64;
             1
         )),
-    )
-    .await;
+    );
 
     g.named_test(
         "test length string - wide chars 4",
@@ -77,8 +71,7 @@ test_case!(length, {
             U64;
             1
         )),
-    )
-    .await;
+    );
 
     g.named_test(
         "test length string - wide chars 5",
@@ -88,8 +81,7 @@ test_case!(length, {
             U64;
             2
         )),
-    )
-    .await;
+    );
 
     g.named_test(
         "test length string - wide chars 6",
@@ -99,6 +91,5 @@ test_case!(length, {
             U64;
             3
         )),
-    )
-    .await;
+    );
 });

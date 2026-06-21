@@ -9,26 +9,23 @@ test_case!(dictionary, {
         )))
     };
 
-    g.run("CREATE TABLE Garlic (id INTEGER);").await;
-    g.test("SHOW TABLES;", tables(vec!["Garlic"])).await;
+    g.run("CREATE TABLE Garlic (id INTEGER);");
+    g.test("SHOW TABLES;", tables(vec!["Garlic"]));
 
-    g.run("BEGIN;").await;
-    g.test("SHOW TABLES;", tables(vec!["Garlic"])).await;
+    g.run("BEGIN;");
+    g.test("SHOW TABLES;", tables(vec!["Garlic"]));
 
-    g.run("CREATE TABLE Noodle (id INTEGER);").await;
-    g.test("SHOW TABLES;", tables(vec!["Garlic", "Noodle"]))
-        .await;
+    g.run("CREATE TABLE Noodle (id INTEGER);");
+    g.test("SHOW TABLES;", tables(vec!["Garlic", "Noodle"]));
 
-    g.run("ROLLBACK;").await;
-    g.test("SHOW TABLES;", tables(vec!["Garlic"])).await;
+    g.run("ROLLBACK;");
+    g.test("SHOW TABLES;", tables(vec!["Garlic"]));
 
-    g.run("BEGIN;").await;
-    g.run("CREATE TABLE Apple (id INTEGER);").await;
-    g.run("CREATE TABLE Rice (id INTEGER);").await;
-    g.test("SHOW TABLES;", tables(vec!["Apple", "Garlic", "Rice"]))
-        .await;
+    g.run("BEGIN;");
+    g.run("CREATE TABLE Apple (id INTEGER);");
+    g.run("CREATE TABLE Rice (id INTEGER);");
+    g.test("SHOW TABLES;", tables(vec!["Apple", "Garlic", "Rice"]));
 
-    g.run("COMMIT;").await;
-    g.test("SHOW TABLES;", tables(vec!["Apple", "Garlic", "Rice"]))
-        .await;
+    g.run("COMMIT;");
+    g.test("SHOW TABLES;", tables(vec!["Apple", "Garlic", "Rice"]));
 });

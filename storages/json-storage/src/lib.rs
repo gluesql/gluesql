@@ -12,19 +12,19 @@ use {
         ast::ColumnUniqueOption,
         data::{Key, Schema, Value, value::BTreeMapJsonExt},
         error::{Error, Result},
-        store::{Metadata, Planner},
+        store::{Metadata, Planner, Store},
     },
     iter_enum::Iterator,
     serde_json::Value as JsonValue,
     std::{
         collections::BTreeMap,
         fs::{self, File},
-        io::{self, BufRead, Read},
+        io::{self, BufRead},
         path::{Path, PathBuf},
     },
 };
 
-type RowIter = Box<dyn Iterator<Item = Result<(Key, Vec<Value>)>> + Send>;
+type RowIter = Box<dyn Iterator<Item = Result<(Key, Vec<Value>)>>>;
 
 #[derive(Clone, Debug)]
 pub struct JsonStorage {
@@ -37,48 +37,6 @@ impl JsonStorage {
         fs::create_dir_all(path).map_storage_err()?;
 
         Ok(Self { path: path.into() })
-    }
-
-    fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
-        match (
-            self.jsonl_path(table_name).exists(),
-            self.json_path(table_name).exists(),
-        ) {
-            (true, true) => {
-                return Err(Error::StorageMsg(
-                    JsonStorageError::BothJsonlAndJsonExist(table_name.to_owned()).to_string(),
-                ));
-            }
-            (false, false) => return Ok(None),
-            _ => {}
-        }
-
-        let schema_path = self.schema_path(table_name);
-        let (column_defs, foreign_keys, comment) = if schema_path.exists() {
-            let mut file = File::open(&schema_path).map_storage_err()?;
-            let mut ddl = String::new();
-            file.read_to_string(&mut ddl).map_storage_err()?;
-
-            let schema = Schema::from_ddl(&ddl)?;
-            if schema.table_name != table_name {
-                return Err(Error::StorageMsg(
-                    JsonStorageError::TableNameDoesNotMatchWithFile.to_string(),
-                ));
-            }
-
-            (schema.column_defs, schema.foreign_keys, schema.comment)
-        } else {
-            (None, Vec::new(), None)
-        };
-
-        Ok(Some(Schema {
-            table_name: table_name.to_owned(),
-            column_defs,
-            indexes: vec![],
-            engine: None,
-            foreign_keys,
-            comment,
-        }))
     }
 
     fn jsonl_path(&self, table_name: &str) -> PathBuf {
@@ -108,8 +66,7 @@ impl JsonStorage {
             Jsonl(I2),
         }
 
-        let schema = self
-            .fetch_schema(table_name)?
+        let schema = <Self as Store>::fetch_schema(self, table_name)?
             .map_storage_err(JsonStorageError::TableDoesNotExist)?;
         let json_path = self.json_path(table_name);
         let jsons = if let Ok(json_file_str) = fs::read_to_string(json_path) {

@@ -24,8 +24,8 @@ impl Drop for FileGuard {
     }
 }
 
-#[tokio::test]
-async fn test_alltypes_select() {
+#[test]
+fn test_alltypes_select() {
     let path = "./tests/samples/";
     let parquet_storage = ParquetStorage::new(path).unwrap();
     let mut glue = Glue::new(parquet_storage);
@@ -38,7 +38,7 @@ async fn test_alltypes_select() {
 
     let cases = vec![
         (
-            glue.execute("SELECT * FROM alltypes_dictionary").await,
+            glue.execute("SELECT * FROM alltypes_dictionary"),
             Ok(select!(
                 id  | bool_col | tinyint_col | smallint_col | int_col | bigint_col | float_col | double_col | date_string_col  | string_col   | timestamp_col;
                 I32 | Bool     | I32         | I32          | I32     | I64        | F32       | F64        | Value::Bytea     | Value::Bytea | Value::Timestamp;
@@ -47,7 +47,7 @@ async fn test_alltypes_select() {
             )),
         ),
         (
-            glue.execute("SELECT * FROM alltypes_plain_snappy").await,
+            glue.execute("SELECT * FROM alltypes_plain_snappy"),
             Ok(select!(
                 id  | bool_col | tinyint_col | smallint_col | int_col | bigint_col | float_col | double_col | date_string_col  | string_col   | timestamp_col;
                 I32 | Bool     | I32         | I32          | I32     | I64        | F32       | F64        | Value::Bytea     | Value::Bytea | Value::Timestamp;
@@ -56,7 +56,7 @@ async fn test_alltypes_select() {
             )),
         ),
         (
-            glue.execute("SELECT * FROM alltypes_plain").await,
+            glue.execute("SELECT * FROM alltypes_plain"),
             Ok(select!(
                 id  | bool_col | tinyint_col | smallint_col | int_col | bigint_col | float_col | double_col | date_string_col  | string_col   | timestamp_col;
                 I32 | Bool     | I32         | I32          | I32     | I64        | F32       | F64        | Value::Bytea     | Value::Bytea | Value::Timestamp;
@@ -71,7 +71,7 @@ async fn test_alltypes_select() {
             )),
         ),
         (
-            glue.execute("SELECT * FROM nested_lists_snappy").await,
+            glue.execute("SELECT * FROM nested_lists_snappy"),
             Ok(select!(
                 a | b;
                 List | I32;
@@ -106,8 +106,8 @@ async fn test_alltypes_select() {
     }
 }
 
-#[tokio::test]
-async fn test_data_modify() {
+#[test]
+fn test_data_modify() {
     let path = "./tests/samples/";
     let parquet_storage = ParquetStorage::new(path).unwrap();
     let mut glue = Glue::new(parquet_storage);
@@ -123,18 +123,18 @@ async fn test_data_modify() {
 
     let cases = vec![
         (
-            glue.execute("SELECT * FROM all_types_with_nulls_copy").await,
+            glue.execute("SELECT * FROM all_types_with_nulls_copy"),
             Ok(select_with_null!(
                 bool_field | int32_field | int64_field | int96_field | float_field | double_field | binary_field | flba_field;
                 Null         Null          Null          Null          Null          Null           Null           Null
             )),
         ),
         (
-            glue.execute("INSERT INTO all_types_with_nulls_copy VALUES(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)").await,
+            glue.execute("INSERT INTO all_types_with_nulls_copy VALUES(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)"),
             Ok(Payload::Insert(1)),
         ),
         (
-            glue.execute("SELECT * FROM all_types_with_nulls_copy").await,
+            glue.execute("SELECT * FROM all_types_with_nulls_copy"),
             Ok(select_with_null!(
                 bool_field | int32_field | int64_field | int96_field | float_field | double_field | binary_field | flba_field;
                 Null         Null          Null          Null          Null          Null           Null           Null;
@@ -142,17 +142,17 @@ async fn test_data_modify() {
             )),
         ),
         (
-            glue.execute("DELETE FROM all_types_with_nulls_copy").await,
+            glue.execute("DELETE FROM all_types_with_nulls_copy"),
             Ok(Payload::Delete(2)),
         ),
         (
-            glue.execute("SELECT * FROM all_types_with_nulls_copy").await,
+            glue.execute("SELECT * FROM all_types_with_nulls_copy"),
             Ok(select!(
                 bool_field | int32_field | int64_field | int96_field | float_field | double_field | binary_field | flba_field;
             )),
         ),
         (
-            glue.execute("SELECT TABLE_NAME FROM GLUE_TABLES").await,
+            glue.execute("SELECT TABLE_NAME FROM GLUE_TABLES"),
             Ok(select!(
                 TABLE_NAME;
                 Str;

@@ -3,14 +3,14 @@ use {
     gluesql_parquet_storage::{ParquetStorage, error::ParquetStorageError},
 };
 
-#[tokio::test]
-async fn test_from_parquet_storage_error_to_error() {
+#[test]
+fn test_from_parquet_storage_error_to_error() {
     let path_str = "./tests/samples/";
     let parquet_storage = ParquetStorage::new(path_str).unwrap();
     let mut glue = Glue::new(parquet_storage);
 
     let cases = vec![(
-        glue.execute("SELECT * FROM nested_maps_snappy").await,
+        glue.execute("SELECT * FROM nested_maps_snappy"),
         Err(ParquetStorageError::UnexpectedKeyTypeForMap("Int(1)".to_owned()).into()),
     )];
 

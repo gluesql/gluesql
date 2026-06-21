@@ -1,6 +1,6 @@
 use {
     super::Build,
-    crate::{ast::Statement, result::Result},
+    crate::{ast::Statement, plan::StatementPlan, result::Result},
 };
 
 #[derive(Clone, Debug)]
@@ -15,9 +15,9 @@ impl ShowColumnsNode {
 }
 
 impl Build for ShowColumnsNode {
-    fn build(self) -> Result<Statement> {
+    fn build(self) -> Result<StatementPlan> {
         let table_name = self.table_name;
-        Ok(Statement::ShowColumns { table_name })
+        Ok(Statement::ShowColumns { table_name }.into())
     }
 }
 

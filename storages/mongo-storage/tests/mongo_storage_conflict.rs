@@ -10,20 +10,18 @@ use {
     gluesql_mongo_storage::{MongoStorage, error::MongoStorageError},
 };
 
-#[tokio::test]
-async fn mongo_storage_conflict_errors() {
+#[test]
+fn mongo_storage_conflict_errors() {
     let conn_str = "mongodb://localhost:27017";
 
-    let storage = MongoStorage::new(conn_str, "mongo_storage_conflict")
-        .await
-        .expect("MongoStorage::new");
-    storage.drop_database().await.expect("database dropped");
+    let storage = MongoStorage::new(conn_str, "mongo_storage_conflict").expect("MongoStorage::new");
+    storage.drop_database().expect("database dropped");
 
     let mut glue = Glue::new(storage);
 
-    glue.execute("CREATE TABLE Logs").await.unwrap();
+    glue.execute("CREATE TABLE Logs").unwrap();
 
-    let actual = glue.storage.fetch_data("Logs", &Key::I64(1)).await;
+    let actual = glue.storage.fetch_data("Logs", &Key::I64(1));
     let expected = Err(Error::StorageMsg(
         MongoStorageError::ConflictFetchData.to_string(),
     ));
@@ -32,10 +30,7 @@ async fn mongo_storage_conflict_errors() {
         "fetch_data on schemaless table should return conflict error"
     );
 
-    let actual = glue
-        .storage
-        .append_data("Logs", vec![vec![Value::I64(1)]])
-        .await;
+    let actual = glue.storage.append_data("Logs", vec![vec![Value::I64(1)]]);
     let expected = Err(Error::StorageMsg(
         MongoStorageError::ConflictAppendData.to_string(),
     ));
@@ -46,8 +41,7 @@ async fn mongo_storage_conflict_errors() {
 
     let actual = glue
         .storage
-        .insert_data("Logs", vec![(Key::Bytea(vec![0; 12]), vec![Value::I64(1)])])
-        .await;
+        .insert_data("Logs", vec![(Key::Bytea(vec![0; 12]), vec![Value::I64(1)])]);
     let expected = Err(Error::StorageMsg(
         MongoStorageError::ConflictInsertData.to_string(),
     ));

@@ -32,7 +32,7 @@ mod tests {
     fn test(actual: OrderByExprNode, expected: &str) {
         let parsed = &parse_order_by_expr(expected).expect(expected);
         let expected = translate_order_by_expr(parsed, NO_PARAMS);
-        assert_eq!(actual.try_into(), expected);
+        assert_eq!(actual.build_order_by_expr(), expected);
     }
 
     #[test]

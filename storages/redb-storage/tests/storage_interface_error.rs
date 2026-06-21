@@ -4,8 +4,8 @@ use {
     std::fs::{create_dir, remove_file},
 };
 
-#[tokio::test]
-async fn redb_storage_interface_error() {
+#[test]
+fn redb_storage_interface_error() {
     let _ = create_dir("tmp");
     let path = "tmp/redb_storage_interface_error";
     let _ = remove_file(path);

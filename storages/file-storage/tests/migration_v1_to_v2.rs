@@ -38,14 +38,13 @@ fn test_path(name: &str) -> String {
     format!("tmp/{name}-{}", Uuid::now_v7())
 }
 
-#[tokio::test]
-async fn v2_create_table_writes_format_version_marker() {
+#[test]
+fn v2_create_table_writes_format_version_marker() {
     let path = test_path("format-marker");
     let storage = FileStorage::new(&path).expect("FileStorage::new");
     let mut glue = Glue::new(storage);
 
     glue.execute("CREATE TABLE Foo (id INTEGER);")
-        .await
         .expect("create table");
 
     let schema = fs::read_to_string(format!("{path}/Foo.sql")).expect("read schema file");
@@ -56,8 +55,8 @@ async fn v2_create_table_writes_format_version_marker() {
     let _ = fs::remove_dir_all(&path);
 }
 
-#[tokio::test]
-async fn v1_schema_without_version_requires_migration() {
+#[test]
+fn v1_schema_without_version_requires_migration() {
     let path = test_path("v1-requires-migration");
     fs::create_dir_all(&path).expect("create test path");
     fs::write(format!("{path}/Foo.sql"), "CREATE TABLE Foo (id INTEGER);").expect("write schema");
@@ -72,8 +71,8 @@ async fn v1_schema_without_version_requires_migration() {
     let _ = fs::remove_dir_all(&path);
 }
 
-#[tokio::test]
-async fn v1_to_v2_migration_updates_schema_and_rows() {
+#[test]
+fn v1_to_v2_migration_updates_schema_and_rows() {
     let path = test_path("migrate-v1-v2");
     fs::create_dir_all(&path).expect("create test path");
     let storage = FileStorage::new(&path).expect("FileStorage::new");
@@ -113,7 +112,6 @@ async fn v1_to_v2_migration_updates_schema_and_rows() {
     let storage = FileStorage::new(&path).expect("FileStorage::new after migration");
     let row = storage
         .fetch_data("Foo", &key)
-        .await
         .expect("fetch data")
         .expect("row exists");
     assert_eq!(
@@ -125,7 +123,6 @@ async fn v1_to_v2_migration_updates_schema_and_rows() {
     );
     let row2 = storage
         .fetch_data("Foo", &key2)
-        .await
         .expect("fetch data")
         .expect("row exists");
     assert_eq!(row2, vec![Value::I64(10)]);
@@ -137,8 +134,8 @@ async fn v1_to_v2_migration_updates_schema_and_rows() {
     let _ = fs::remove_dir_all(&path);
 }
 
-#[tokio::test]
-async fn newer_version_is_rejected() {
+#[test]
+fn newer_version_is_rejected() {
     let path = test_path("newer-version-rejected");
     fs::create_dir_all(&path).expect("create test path");
     fs::write(
@@ -156,8 +153,8 @@ async fn newer_version_is_rejected() {
     let _ = fs::remove_dir_all(&path);
 }
 
-#[tokio::test]
-async fn unsupported_v0_version_is_rejected() {
+#[test]
+fn unsupported_v0_version_is_rejected() {
     let path = test_path("unsupported-v0-version");
     fs::create_dir_all(&path).expect("create test path");
     fs::write(
@@ -175,8 +172,8 @@ async fn unsupported_v0_version_is_rejected() {
     let _ = fs::remove_dir_all(&path);
 }
 
-#[tokio::test]
-async fn header_v1_version_is_rejected() {
+#[test]
+fn header_v1_version_is_rejected() {
     let path = test_path("header-v1-version-rejected");
     fs::create_dir_all(&path).expect("create test path");
     fs::write(
@@ -194,16 +191,16 @@ async fn header_v1_version_is_rejected() {
     let _ = fs::remove_dir_all(&path);
 }
 
-#[tokio::test]
-async fn migration_path_must_exist() {
+#[test]
+fn migration_path_must_exist() {
     let path = test_path("migration-missing-path");
     let err = migrate_to_latest(&path).expect_err("missing path should fail");
 
     assert!(err.to_string().contains("does not exist"));
 }
 
-#[tokio::test]
-async fn sql_extension_directory_is_ignored() {
+#[test]
+fn sql_extension_directory_is_ignored() {
     let path = test_path("sql-extension-directory");
     fs::create_dir_all(format!("{path}/fake.sql")).expect("create fake schema directory");
 
@@ -216,8 +213,8 @@ async fn sql_extension_directory_is_ignored() {
     let _ = fs::remove_dir_all(&path);
 }
 
-#[tokio::test]
-async fn ron_extension_directory_is_ignored_during_row_migration() {
+#[test]
+fn ron_extension_directory_is_ignored_during_row_migration() {
     let path = test_path("ron-extension-directory");
     fs::create_dir_all(&path).expect("create test path");
     let storage = FileStorage::new(&path).expect("FileStorage::new");
@@ -234,8 +231,8 @@ async fn ron_extension_directory_is_ignored_during_row_migration() {
     let _ = fs::remove_dir_all(&path);
 }
 
-#[tokio::test]
-async fn v1_row_already_in_v2_shape_is_unchanged() {
+#[test]
+fn v1_row_already_in_v2_shape_is_unchanged() {
     let path = test_path("v1-row-already-v2-shape");
     fs::create_dir_all(&path).expect("create test path");
     let storage = FileStorage::new(&path).expect("FileStorage::new");
@@ -263,7 +260,6 @@ async fn v1_row_already_in_v2_shape_is_unchanged() {
     let storage = FileStorage::new(&path).expect("FileStorage::new after migration");
     let row = storage
         .fetch_data("Foo", &key)
-        .await
         .expect("fetch data")
         .expect("row exists");
     assert_eq!(row, vec![Value::I64(123)]);
@@ -271,8 +267,8 @@ async fn v1_row_already_in_v2_shape_is_unchanged() {
     let _ = fs::remove_dir_all(&path);
 }
 
-#[tokio::test]
-async fn migration_path_must_be_directory() {
+#[test]
+fn migration_path_must_be_directory() {
     let path = test_path("migration-not-directory");
     fs::write(&path, "not a directory").expect("write plain file");
 
@@ -282,8 +278,8 @@ async fn migration_path_must_be_directory() {
     let _ = fs::remove_file(&path);
 }
 
-#[tokio::test]
-async fn malformed_schema_header_is_rejected() {
+#[test]
+fn malformed_schema_header_is_rejected() {
     let path = test_path("malformed-schema-header");
     fs::create_dir_all(&path).expect("create test path");
     fs::write(
@@ -309,8 +305,8 @@ async fn malformed_schema_header_is_rejected() {
     let _ = fs::remove_dir_all(&path);
 }
 
-#[tokio::test]
-async fn v1_wrapped_row_is_migrated() {
+#[test]
+fn v1_wrapped_row_is_migrated() {
     let path = test_path("migrate-v1-wrapped");
     fs::create_dir_all(&path).expect("create test path");
     let storage = FileStorage::new(&path).expect("FileStorage::new");
@@ -332,7 +328,6 @@ async fn v1_wrapped_row_is_migrated() {
     let storage = FileStorage::new(&path).expect("FileStorage::new after migration");
     let row = storage
         .fetch_data("Foo", &key)
-        .await
         .expect("fetch data")
         .expect("row exists");
     assert_eq!(row, vec![Value::I64(99), Value::Str("wrapped".to_owned())]);
@@ -340,8 +335,8 @@ async fn v1_wrapped_row_is_migrated() {
     let _ = fs::remove_dir_all(&path);
 }
 
-#[tokio::test]
-async fn v1_invalid_row_file_returns_error() {
+#[test]
+fn v1_invalid_row_file_returns_error() {
     let path = test_path("migrate-v1-invalid-row");
     fs::create_dir_all(&path).expect("create test path");
     let storage = FileStorage::new(&path).expect("FileStorage::new");
@@ -361,8 +356,8 @@ async fn v1_invalid_row_file_returns_error() {
     let _ = fs::remove_dir_all(&path);
 }
 
-#[tokio::test]
-async fn migration_report_counts_migrated_and_unchanged_tables() {
+#[test]
+fn migration_report_counts_migrated_and_unchanged_tables() {
     let path = test_path("migration-report-counts");
     fs::create_dir_all(&path).expect("create test path");
     let storage = FileStorage::new(&path).expect("FileStorage::new");

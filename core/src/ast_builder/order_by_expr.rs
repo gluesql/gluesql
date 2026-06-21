@@ -1,9 +1,10 @@
 use {
     super::ExprNode,
     crate::{
-        ast::{Expr, OrderByExpr},
+        ast::OrderByExpr,
         parse_sql::parse_order_by_expr,
-        result::{Error, Result},
+        plan::OrderByExprPlan,
+        result::Result,
         translate::{NO_PARAMS, translate_order_by_expr},
     },
 };
@@ -32,20 +33,28 @@ impl<'a> From<ExprNode<'a>> for OrderByExprNode<'a> {
     }
 }
 
-impl<'a> TryFrom<OrderByExprNode<'a>> for OrderByExpr {
-    type Error = Error;
-
-    fn try_from(node: OrderByExprNode<'a>) -> Result<Self> {
-        match node {
+impl OrderByExprNode<'_> {
+    pub(super) fn build_order_by_expr(self) -> Result<OrderByExpr> {
+        match self {
             OrderByExprNode::Text(expr) => {
-                let expr = parse_order_by_expr(expr)
-                    .and_then(|op| translate_order_by_expr(&op, NO_PARAMS))?;
-                Ok(expr)
+                parse_order_by_expr(expr).and_then(|op| translate_order_by_expr(&op, NO_PARAMS))
             }
             OrderByExprNode::Expr { expr, asc } => {
-                let expr = Expr::try_from(expr)?;
+                let expr = expr.build_expr()?;
 
                 Ok(OrderByExpr { expr, asc })
+            }
+        }
+    }
+
+    pub(super) fn build_order_by_expr_plan(self) -> Result<OrderByExprPlan> {
+        match self {
+            OrderByExprNode::Text(expr) => parse_order_by_expr(expr)
+                .and_then(|op| translate_order_by_expr(&op, NO_PARAMS).map(Into::into)),
+            OrderByExprNode::Expr { expr, asc } => {
+                let expr = expr.build_expr_plan()?;
+
+                Ok(OrderByExprPlan { expr, asc })
             }
         }
     }
@@ -57,6 +66,7 @@ mod tests {
         crate::{
             ast_builder::{OrderByExprNode, col},
             parse_sql::parse_order_by_expr,
+            plan::OrderByExprPlan,
             translate::{NO_PARAMS, translate_order_by_expr},
         },
         pretty_assertions::assert_eq,
@@ -64,8 +74,8 @@ mod tests {
 
     fn test(actual: OrderByExprNode, expected: &str) {
         let parsed = &parse_order_by_expr(expected).expect(expected);
-        let expected = translate_order_by_expr(parsed, NO_PARAMS);
-        assert_eq!(actual.try_into(), expected);
+        let expected = translate_order_by_expr(parsed, NO_PARAMS).map(OrderByExprPlan::from);
+        assert_eq!(actual.build_order_by_expr_plan(), expected);
     }
 
     #[test]

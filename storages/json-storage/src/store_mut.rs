@@ -3,11 +3,10 @@ use {
         JsonStorage,
         error::{JsonStorageError, OptionExt, ResultExt},
     },
-    async_trait::async_trait,
     gluesql_core::{
         data::{Key, Schema, Value},
         error::Result,
-        store::StoreMut,
+        store::{Store, StoreMut},
     },
     serde_json::{Map, Value as JsonValue, to_string_pretty},
     std::{
@@ -19,9 +18,8 @@ use {
     },
 };
 
-#[async_trait]
 impl StoreMut for JsonStorage {
-    async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
+    fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let data_path = self.jsonl_path(schema.table_name.as_str());
         File::create(data_path).map_storage_err()?;
 
@@ -34,7 +32,7 @@ impl StoreMut for JsonStorage {
         Ok(())
     }
 
-    async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
+    fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let json_path = self.json_path(table_name);
         let jsonl_path = self.jsonl_path(table_name);
 
@@ -52,7 +50,7 @@ impl StoreMut for JsonStorage {
         Ok(())
     }
 
-    async fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
+    fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
         let json_path = self.json_path(table_name);
         if json_path.exists() {
             let (prev_rows, schema) = self.scan_data(table_name)?;
@@ -79,11 +77,7 @@ impl StoreMut for JsonStorage {
         }
     }
 
-    async fn insert_data(
-        &mut self,
-        table_name: &str,
-        mut rows: Vec<(Key, Vec<Value>)>,
-    ) -> Result<()> {
+    fn insert_data(&mut self, table_name: &str, mut rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
         let (prev_rows, schema) = self.scan_data(table_name)?;
         rows.sort_by(|(key_a, _), (key_b, _)| key_a.cmp(key_b));
 
@@ -93,7 +87,7 @@ impl StoreMut for JsonStorage {
         self.rewrite(&schema, merged)
     }
 
-    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
+    fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let (prev_rows, schema) = self.scan_data(table_name)?;
         let rows = prev_rows
             .filter_map(|result| {

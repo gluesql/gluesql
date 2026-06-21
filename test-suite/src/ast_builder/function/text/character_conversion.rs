@@ -27,8 +27,7 @@ test_case!(character_conversion, {
     .select()
     .project("column1 AS ascii")
     .project("column2 AS char")
-    .execute(glue)
-    .await;
+    .execute(glue);
     let expected = Ok(select!(
         ascii | char
         U8    | Str;

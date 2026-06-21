@@ -6,13 +6,12 @@ use {
         lock::{self, LockAcquired},
         transaction::TxPayload,
     },
-    async_io::block_on,
-    async_trait::async_trait,
     gluesql_core::{
         ast::ColumnDef,
         data::{Value, schema::Schema},
         error::{AlterTableError, Result},
         executor::evaluate_stateless,
+        plan::plan_scalar_expr,
         store::AlterTable,
     },
     sled::transaction::ConflictableTransactionError,
@@ -20,9 +19,8 @@ use {
     utils::Vector,
 };
 
-#[async_trait]
 impl AlterTable for SledStorage {
-    async fn rename_schema(&mut self, table_name: &str, new_table_name: &str) -> Result<()> {
+    fn rename_schema(&mut self, table_name: &str, new_table_name: &str) -> Result<()> {
         let prefix = format!("data/{table_name}/");
         let items = self
             .tree
@@ -129,13 +127,13 @@ impl AlterTable for SledStorage {
         });
 
         if self.check_retry(tx_result)? {
-            self.rename_schema(table_name, new_table_name).await?;
+            self.rename_schema(table_name, new_table_name)?;
         }
 
         Ok(())
     }
 
-    async fn rename_column(
+    fn rename_column(
         &mut self,
         table_name: &str,
         old_column_name: &str,
@@ -230,14 +228,13 @@ impl AlterTable for SledStorage {
         });
 
         if self.check_retry(tx_result)? {
-            self.rename_column(table_name, old_column_name, new_column_name)
-                .await?;
+            self.rename_column(table_name, old_column_name, new_column_name)?;
         }
 
         Ok(())
     }
 
-    async fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
+    fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
         let prefix = format!("data/{table_name}/");
         let items = self
             .tree
@@ -296,7 +293,8 @@ impl AlterTable for SledStorage {
 
             let value = match (default, nullable) {
                 (Some(expr), _) => {
-                    let evaluated = block_on(evaluate_stateless(None, expr))
+                    let expr = plan_scalar_expr(expr.clone());
+                    let evaluated = evaluate_stateless(None, &expr)
                         .map_err(ConflictableTransactionError::Abort)?;
 
                     evaluated
@@ -370,18 +368,13 @@ impl AlterTable for SledStorage {
         });
 
         if self.check_retry(tx_result)? {
-            self.add_column(table_name, column_def).await?;
+            self.add_column(table_name, column_def)?;
         }
 
         Ok(())
     }
 
-    async fn drop_column(
-        &mut self,
-        table_name: &str,
-        column_name: &str,
-        if_exists: bool,
-    ) -> Result<()> {
+    fn drop_column(&mut self, table_name: &str, column_name: &str, if_exists: bool) -> Result<()> {
         let prefix = format!("data/{table_name}/");
         let items = self
             .tree
@@ -495,7 +488,7 @@ impl AlterTable for SledStorage {
         });
 
         if self.check_retry(tx_result)? {
-            self.drop_column(table_name, column_name, if_exists).await?;
+            self.drop_column(table_name, column_name, if_exists)?;
         }
 
         Ok(())

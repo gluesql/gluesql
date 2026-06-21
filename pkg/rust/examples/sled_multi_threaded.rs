@@ -1,7 +1,6 @@
 #[cfg(feature = "gluesql_sled_storage")]
 mod sled_multi_threaded {
     use {
-        futures::executor::block_on,
         gluesql::{
             gluesql_sled_storage::SledStorage,
             prelude::{Glue, Payload, Value},
@@ -9,7 +8,7 @@ mod sled_multi_threaded {
         std::thread,
     };
 
-    pub async fn run() {
+    pub fn run() {
         let storage = SledStorage::new("/tmp/gluesql/hello_world").expect("Something went wrong!");
         let mut glue = Glue::new(storage.clone());
         let queries = "
@@ -17,7 +16,7 @@ mod sled_multi_threaded {
             DELETE FROM greet;
         ";
 
-        glue.execute(queries).await.unwrap();
+        glue.execute(queries).unwrap();
 
         /*
             SledStorage supports cloning, using this we can create copies of the storage for new threads;
@@ -28,7 +27,7 @@ mod sled_multi_threaded {
             let mut glue = Glue::new(insert_storage);
             let query = "INSERT INTO greet (name) VALUES ('Foo')";
 
-            block_on(glue.execute(query)).unwrap();
+            glue.execute(query).unwrap();
         });
 
         let select_storage = storage;
@@ -36,7 +35,7 @@ mod sled_multi_threaded {
             let mut glue = Glue::new(select_storage);
             let query = "SELECT * FROM greet;";
 
-            let payloads = block_on(glue.execute(query)).unwrap();
+            let payloads = glue.execute(query).unwrap();
             println!("{payloads:?}");
         });
 
@@ -49,7 +48,7 @@ mod sled_multi_threaded {
             .expect("Something went wrong in the foo thread");
 
         let query = "SELECT name FROM greet";
-        let payloads = glue.execute(query).await.unwrap();
+        let payloads = glue.execute(query).unwrap();
         assert_eq!(payloads.len(), 1);
 
         let Payload::Select { rows, .. } = &payloads[0] else {
@@ -70,5 +69,5 @@ mod sled_multi_threaded {
 
 fn main() {
     #[cfg(feature = "gluesql_sled_storage")]
-    futures::executor::block_on(sled_multi_threaded::run());
+    sled_multi_threaded::run();
 }

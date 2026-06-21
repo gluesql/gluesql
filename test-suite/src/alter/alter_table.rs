@@ -45,7 +45,7 @@ test_case!(alter_table_rename, {
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, expected).await;
+        g.test(sql, expected);
     }
 });
 
@@ -105,11 +105,8 @@ test_case!(alter_table_add_drop, {
             )),
         ),
         (
-            "ALTER TABLE Foo ADD COLUMN something INTEGER DEFAULT (SELECT id FROM Bar LIMIT 1)",
-            Err(EvaluateError::UnsupportedStatelessExpr(Box::new(expr(
-                "(SELECT id FROM Bar LIMIT 1)",
-            )))
-            .into()),
+            "ALTER TABLE Foo ADD COLUMN something BOOLEAN DEFAULT EXISTS (SELECT id FROM Bar LIMIT 1)",
+            Err(EvaluateError::ExistsSubqueryNotAllowedInStatelessExpr.into()),
         ),
         (
             "ALTER TABLE Foo ADD COLUMN something SOMEWHAT",
@@ -252,6 +249,6 @@ test_case!(alter_table_add_drop, {
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, expected).await;
+        g.test(sql, expected);
     }
 });

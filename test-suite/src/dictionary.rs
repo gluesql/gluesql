@@ -16,29 +16,25 @@ test_case!(dictionary, {
     };
 
     assert!(matches!(
-        g.run("SHOW VERSION;").await,
+        g.run("SHOW VERSION;"),
         ShowVariable(PayloadVariable::Version(_))
     ));
 
-    g.test("SHOW TABLES", tables(Vec::new())).await;
+    g.test("SHOW TABLES", tables(Vec::new()));
 
     g.run("CREATE TABLE Foo (id INTEGER, name TEXT NULL, type TEXT NULL) COMMENT='this is table comment';")
-        .await;
-    g.test("SHOW TABLES", tables(vec!["Foo"])).await;
+        ;
+    g.test("SHOW TABLES", tables(vec!["Foo"]));
 
-    g.run("CREATE TABLE Zoo (id INTEGER PRIMARY KEY COMMENT 'hello');")
-        .await;
-    g.run("CREATE TABLE Bar (id INTEGER UNIQUE, name TEXT NOT NULL DEFAULT 'NONE');")
-        .await;
+    g.run("CREATE TABLE Zoo (id INTEGER PRIMARY KEY COMMENT 'hello');");
+    g.run("CREATE TABLE Bar (id INTEGER UNIQUE, name TEXT NOT NULL DEFAULT 'NONE');");
 
-    g.test("SHOW TABLES", tables(vec!["Bar", "Foo", "Zoo"]))
-        .await;
+    g.test("SHOW TABLES", tables(vec!["Bar", "Foo", "Zoo"]));
 
     g.test(
         "SHOW WHATEVER",
         Err(TranslateError::UnsupportedShowVariableKeyword("WHATEVER".to_owned()).into()),
-    )
-    .await;
+    );
 
     g.test(
         "SHOW ME THE CHICKEN",
@@ -46,8 +42,7 @@ test_case!(dictionary, {
             TranslateError::UnsupportedShowVariableStatement("SHOW ME THE CHICKEN".to_owned())
                 .into(),
         ),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT * FROM GLUE_TABLES",
@@ -57,8 +52,7 @@ test_case!(dictionary, {
             Str("Foo".to_owned())   Str("this is table comment".to_owned());
             Str("Zoo".to_owned())   Null
         )),
-    )
-    .await;
+    );
 
     let s = |v: &str| Str(v.to_owned());
 
@@ -73,5 +67,5 @@ test_case!(dictionary, {
             s("Foo")     s("type")     I64(3)      Bool(true)    Null               Null          Null;
             s("Zoo")     s("id")       I64(1)      Bool(false)   s("PRIMARY KEY")   Null          s("hello") 
         ))
-    ).await;
+    );
 });

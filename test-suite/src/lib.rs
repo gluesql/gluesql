@@ -50,11 +50,11 @@ pub use tester::*;
 macro_rules! declare_test_fn {
     ($test: meta, $storage: ident, $title: ident, $func: path) => {
         #[$test]
-        async fn $title() {
+        fn $title() {
             let path = stringify!($title);
-            let storage = $storage::new(path).await;
+            let storage = $storage::new(path);
 
-            $func(storage).await;
+            $func(storage);
         }
     };
 }

@@ -1,8 +1,4 @@
-use crate::{
-    ast::Expr,
-    ast_builder::ExprNode,
-    result::{Error, Result},
-};
+use crate::{ast::Expr, ast_builder::ExprNode, plan::ExprPlan, result::Result};
 
 #[derive(Clone, Debug)]
 pub struct ExprWithAliasNode<'a> {
@@ -10,10 +6,12 @@ pub struct ExprWithAliasNode<'a> {
     pub alias: String,
 }
 
-impl<'a> TryFrom<ExprWithAliasNode<'a>> for (Expr, String) {
-    type Error = Error;
+impl ExprWithAliasNode<'_> {
+    pub(super) fn build_expr_with_alias_plan(self) -> Result<(ExprPlan, String)> {
+        Ok((self.expr.build_expr_plan()?, self.alias))
+    }
 
-    fn try_from(node: ExprWithAliasNode<'a>) -> Result<Self> {
-        Ok((Expr::try_from(node.expr)?, node.alias))
+    pub(super) fn build_expr_with_alias(self) -> Result<(Expr, String)> {
+        Ok((self.expr.build_expr()?, self.alias))
     }
 }

@@ -1,16 +1,18 @@
 use {
-    super::{context::RowContext, evaluate::evaluate},
+    super::{
+        context::{AggregateValues, RowContext},
+        evaluate::evaluate,
+    },
     crate::{
-        ast::{Aggregate, Expr, Literal, OrderByExpr, UnaryOperator},
+        ast::{Literal, UnaryOperator},
         data::{Key, Row, Value},
+        plan::{ExprPlan, OrderByExprPlan},
         result::{Error, Result},
         store::GStore,
     },
     bigdecimal::ToPrimitive,
-    futures::stream::{self, Stream, StreamExt, TryStreamExt},
-    im::HashMap,
     serde::Serialize,
-    std::{borrow::Cow, cmp::Ordering, fmt::Debug, sync::Arc},
+    std::{borrow::Cow, cmp::Ordering, fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
     utils::Vector,
 };
@@ -25,15 +27,15 @@ pub enum SortError {
 
 pub struct Sort<'a, T: GStore> {
     storage: &'a T,
-    context: Option<Arc<RowContext<'a>>>,
-    order_by: &'a [OrderByExpr],
+    context: Option<Rc<RowContext<'a>>>,
+    order_by: &'a [OrderByExprPlan],
 }
 
 impl<'a, T: GStore> Sort<'a, T> {
     pub fn new(
         storage: &'a T,
-        context: Option<Arc<RowContext<'a>>>,
-        order_by: &'a [OrderByExpr],
+        context: Option<Rc<RowContext<'a>>>,
+        order_by: &'a [OrderByExprPlan],
     ) -> Self {
         Self {
             storage,
@@ -42,125 +44,108 @@ impl<'a, T: GStore> Sort<'a, T> {
         }
     }
 
-    pub async fn apply<
-        U: Stream<
-                Item = Result<(
-                    Option<Arc<HashMap<&'a Aggregate, Value>>>,
-                    Arc<RowContext<'a>>,
-                    Row,
-                )>,
-            > + 'a,
-    >(
+    pub fn apply(
         &self,
-        rows: U,
+        rows: impl Iterator<
+            Item = Result<(Option<Rc<AggregateValues>>, Option<Rc<RowContext<'a>>>, Row)>,
+        > + 'a,
         table_alias: &'a str,
-    ) -> Result<impl Stream<Item = Result<Row>> + 'a + use<'a, T, U>> {
-        #[derive(futures_enum::Stream)]
-        enum Rows<I1, I2> {
-            NonOrderBy(I1),
-            OrderBy(I2),
-        }
-
+    ) -> Result<Box<dyn Iterator<Item = Result<Row>> + 'a>> {
         if self.order_by.is_empty() {
-            let rows = rows.map_ok(|(.., row)| row);
-
-            return Ok(Rows::NonOrderBy(Box::pin(rows)));
+            return Ok(Box::new(rows.map(|row| row.map(|(.., row)| row))));
         }
 
-        let rows = rows
-            .and_then(|(aggregated, next, row)| {
-                enum SortType<'a> {
-                    Value(Value),
-                    Expr(&'a Expr),
-                }
+        let rows = rows.collect::<Result<Vec<_>>>()?;
+        let mut keyed_rows = Vec::with_capacity(rows.len());
+        for (aggregated, next, row) in rows {
+            enum SortType<'a> {
+                Value(Value),
+                Expr(&'a ExprPlan),
+            }
 
-                let order_by = self.order_by;
-                let order_by = order_by
-                    .iter()
-                    .map(|OrderByExpr { expr, asc }| -> Result<_> {
-                        let big_decimal = match expr {
-                            Expr::Literal(Literal::Number(n)) => Some(n),
-                            Expr::UnaryOp {
-                                op: UnaryOperator::Plus,
-                                expr,
-                            } => match expr.as_ref() {
-                                Expr::Literal(Literal::Number(n)) => Some(n),
-                                _ => None,
-                            },
+            let order_by = self
+                .order_by
+                .iter()
+                .map(|OrderByExprPlan { expr, asc }| -> Result<_> {
+                    let big_decimal = match expr {
+                        ExprPlan::Literal(Literal::Number(n)) => Some(n),
+                        ExprPlan::UnaryOp {
+                            op: UnaryOperator::Plus,
+                            expr,
+                        } => match expr.as_ref() {
+                            ExprPlan::Literal(Literal::Number(n)) => Some(n),
                             _ => None,
-                        };
+                        },
+                        _ => None,
+                    };
 
-                        match big_decimal {
-                            Some(n) => {
-                                let index = n
-                                    .to_usize()
-                                    .ok_or_else(|| -> Error { SortError::Unreachable.into() })?;
-                                let zero_based = index.checked_sub(1).ok_or_else(|| -> Error {
-                                    SortError::ColumnIndexOutOfRange(index).into()
-                                })?;
-                                let value =
-                                    row.values.get(zero_based).ok_or_else(|| -> Error {
-                                        SortError::ColumnIndexOutOfRange(index).into()
-                                    })?;
+                    match big_decimal {
+                        Some(n) => {
+                            let index = n
+                                .to_usize()
+                                .ok_or_else(|| -> Error { SortError::Unreachable.into() })?;
+                            let zero_based = index.checked_sub(1).ok_or_else(|| -> Error {
+                                SortError::ColumnIndexOutOfRange(index).into()
+                            })?;
+                            let value = row.values.get(zero_based).ok_or_else(|| -> Error {
+                                SortError::ColumnIndexOutOfRange(index).into()
+                            })?;
 
-                                Ok((SortType::Value(value.clone()), *asc))
-                            }
-                            _ => Ok((SortType::Expr(expr), *asc)),
+                            Ok((SortType::Value(value.clone()), *asc))
                         }
-                    })
-                    .collect::<Result<Vec<_>>>();
-
-                let filter_context = match &self.context {
-                    Some(context) => {
-                        Arc::new(RowContext::concat(Arc::clone(&next), Arc::clone(context)))
+                        _ => Ok((SortType::Expr(expr), *asc)),
                     }
-                    None => Arc::clone(&next),
-                };
+                })
+                .collect::<Result<Vec<_>>>()?;
 
-                async move {
-                    let context = RowContext::new(table_alias, Cow::Borrowed(&row), None);
-                    let label_context = Arc::new(context);
-                    let filter_context = Arc::new(RowContext::concat(
-                        filter_context,
-                        Arc::clone(&label_context),
-                    ));
+            let filter_context = match (&next, &self.context) {
+                (Some(next), Some(context)) => Some(Rc::new(RowContext::concat(
+                    Rc::clone(next),
+                    Rc::clone(context),
+                ))),
+                (Some(next), None) => Some(Rc::clone(next)),
+                (None, Some(context)) => Some(Rc::clone(context)),
+                (None, None) => None,
+            };
 
-                    let keys = order_by
-                        .map(stream::iter)?
-                        .then(|(sort_type, asc)| {
-                            let context = Some(Arc::clone(&filter_context));
-                            let aggregated = aggregated.as_ref().map(Arc::clone);
+            let context = RowContext::new(table_alias, Cow::Borrowed(&row), None);
+            let label_context = Rc::new(context);
+            let filter_context = match filter_context {
+                Some(filter_context) => Some(Rc::new(RowContext::concat(
+                    filter_context,
+                    Rc::clone(&label_context),
+                ))),
+                None => Some(Rc::clone(&label_context)),
+            };
 
-                            async move {
-                                match sort_type {
-                                    SortType::Value(value) => value,
-                                    SortType::Expr(expr) => {
-                                        evaluate(self.storage, context, aggregated, expr)
-                                            .await?
-                                            .try_into()?
-                                    }
-                                }
-                                .try_into()
-                                .map(|key| (key, asc))
-                            }
-                        })
-                        .try_collect::<Vec<_>>()
-                        .await?;
+            let keys = order_by
+                .into_iter()
+                .map(|(sort_type, asc)| {
+                    match sort_type {
+                        SortType::Value(value) => Ok(value),
+                        SortType::Expr(expr) => evaluate(
+                            self.storage,
+                            filter_context.as_ref(),
+                            aggregated.as_ref(),
+                            expr,
+                        )?
+                        .try_into(),
+                    }?
+                    .try_into()
+                    .map(|key| (key, asc))
+                })
+                .collect::<Result<Vec<_>>>()?;
 
-                    drop(label_context);
-                    drop(filter_context);
+            keyed_rows.push((keys, row));
+        }
 
-                    Ok((keys, row))
-                }
-            })
-            .try_collect::<Vec<(Vec<(Key, Option<bool>)>, Row)>>()
-            .await
-            .map(Vector::from)?
+        let rows = Vector::from(keyed_rows)
             .sort_by(|(keys_a, ..), (keys_b, ..)| sort_by(keys_a, keys_b))
             .into_iter()
-            .map(|(.., row)| Ok(row));
+            .map(|(.., row)| row)
+            .map(Ok);
 
-        Ok(Rows::OrderBy(stream::iter(rows)))
+        Ok(Box::new(rows))
     }
 }
 

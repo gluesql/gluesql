@@ -1,27 +1,28 @@
 use {
     crate::{
-        ast::{Aggregate, Projection, SelectItem},
         data::{Row, SCHEMALESS_DOC_COLUMN, Value},
-        executor::{context::RowContext, evaluate::evaluate},
+        executor::{
+            context::{AggregateValues, RowContext},
+            evaluate::evaluate,
+        },
+        plan::{ProjectionPlan, SelectItemPlan},
         result::Result,
         store::GStore,
     },
-    futures::stream::{self, StreamExt, TryStreamExt},
-    im::HashMap,
-    std::sync::Arc,
+    std::rc::Rc,
 };
 
 pub struct Project<'a, T: GStore> {
     storage: &'a T,
-    context: Option<Arc<RowContext<'a>>>,
-    projection: &'a Projection,
+    context: Option<Rc<RowContext<'a>>>,
+    projection: &'a ProjectionPlan,
 }
 
 impl<'a, T: GStore> Project<'a, T> {
     pub fn new(
         storage: &'a T,
-        context: Option<Arc<RowContext<'a>>>,
-        projection: &'a Projection,
+        context: Option<Rc<RowContext<'a>>>,
+        projection: &'a ProjectionPlan,
     ) -> Self {
         Self {
             storage,
@@ -30,61 +31,62 @@ impl<'a, T: GStore> Project<'a, T> {
         }
     }
 
-    pub async fn apply(
+    pub fn apply(
         &self,
-        aggregated: Option<Arc<HashMap<&'a Aggregate, Value>>>,
-        labels: Arc<[String]>,
-        context: Arc<RowContext<'a>>,
+        aggregated: Option<&Rc<AggregateValues>>,
+        labels: &Rc<[String]>,
+        context: Option<&Rc<RowContext<'a>>>,
     ) -> Result<Row> {
-        let filter_context = match &self.context {
-            Some(filter_context) => Arc::new(RowContext::concat(
-                Arc::clone(&context),
-                Arc::clone(filter_context),
-            )),
-            None => Arc::clone(&context),
+        let filter_context = match (&context, &self.context) {
+            (Some(context), Some(filter_context)) => Some(Rc::new(RowContext::concat(
+                Rc::clone(context),
+                Rc::clone(filter_context),
+            ))),
+            (Some(context), None) => Some(Rc::clone(context)),
+            (None, Some(filter_context)) => Some(Rc::clone(filter_context)),
+            (None, None) => None,
         };
-        let filter_context = Some(filter_context);
-        let context = &context;
 
         match self.projection {
-            Projection::SelectItems(fields) => {
-                let entries = stream::iter(fields)
-                    .then(|item| {
-                        let filter_context = filter_context.as_ref().map(Arc::clone);
-                        let aggregated = aggregated.as_ref().map(Arc::clone);
-
-                        async move {
-                            match item {
-                                SelectItem::Wildcard => Ok(context.get_all_entries()),
-                                SelectItem::QualifiedWildcard(table_alias) => {
-                                    Ok(context.get_alias_entries(table_alias).unwrap_or_default())
-                                }
-                                SelectItem::Expr { expr, label } => {
-                                    evaluate(self.storage, filter_context, aggregated, expr)
-                                        .await
-                                        .map(TryInto::try_into)?
-                                        .map(|v| vec![(label, v)])
-                                }
-                            }
+            ProjectionPlan::SelectItems(fields) => {
+                let mut entries = Vec::new();
+                for item in fields {
+                    match item {
+                        SelectItemPlan::Wildcard => {
+                            entries.extend(
+                                context.map_or_else(Vec::new, |context| context.get_all_entries()),
+                            );
                         }
-                    })
-                    .try_collect::<Vec<Vec<(&String, Value)>>>()
-                    .await?
-                    .concat();
+                        SelectItemPlan::QualifiedWildcard(table_alias) => {
+                            entries.extend(
+                                context
+                                    .and_then(|context| context.get_alias_entries(table_alias))
+                                    .unwrap_or_default(),
+                            );
+                        }
+                        SelectItemPlan::Expr { expr, label } => {
+                            let value: Value =
+                                evaluate(self.storage, filter_context.as_ref(), aggregated, expr)?
+                                    .try_into()?;
+
+                            entries.push((label, value));
+                        }
+                    }
+                }
 
                 let values = entries.into_iter().map(|(_, value)| value).collect();
-                let columns = Arc::clone(&labels);
+                let columns = Rc::clone(labels);
 
                 Ok(Row { columns, values })
             }
-            Projection::SchemalessMap => {
+            ProjectionPlan::SchemalessMap => {
                 let value = context
-                    .get_value(SCHEMALESS_DOC_COLUMN)
+                    .and_then(|context| context.get_value(SCHEMALESS_DOC_COLUMN))
                     .cloned()
                     .unwrap_or(Value::Null);
 
                 Ok(Row {
-                    columns: Arc::clone(&labels),
+                    columns: Rc::clone(labels),
                     values: vec![value],
                 })
             }

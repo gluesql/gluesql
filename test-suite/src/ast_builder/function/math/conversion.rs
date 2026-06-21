@@ -16,8 +16,7 @@ test_case!(conversion, {
         .create_table()
         .add_column("input INTEGER")
         .add_column("number FLOAT")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table - Number");
 
@@ -25,8 +24,7 @@ test_case!(conversion, {
     let actual = table("Number")
         .insert()
         .values(vec!["0, 0.0", "90, 90.0", "180, 180.0", "360, 360.0"])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(4));
     assert_eq!(actual, expected, "insert into Number");
 
@@ -36,8 +34,7 @@ test_case!(conversion, {
         .project("input")
         .project(f::degrees("number"))
         .project(col("number").degrees())
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         input   | r#"DEGREES("number")"#    | r#"DEGREES("number")"#
         I64     | F64                       | F64;
@@ -54,8 +51,7 @@ test_case!(conversion, {
         .project("input")
         .project(f::radians("number"))
         .project(col("number").radians())
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         input   | r#"RADIANS("number")"#    | r#"RADIANS("number")"#
         I64     | F64                       | F64;

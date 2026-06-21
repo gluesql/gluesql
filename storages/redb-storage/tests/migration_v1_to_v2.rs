@@ -139,26 +139,24 @@ fn read_storage_format_version(path: &str) -> Option<u32> {
     }
 }
 
-#[tokio::test]
-async fn store_methods_without_transaction_return_transaction_not_found() {
+#[test]
+fn store_methods_without_transaction_return_transaction_not_found() {
     let path = test_path("redb-transaction-not-found");
     let mut storage = RedbStorage::new(&path).expect("new storage");
 
     let err = storage
         .fetch_all_schemas()
-        .await
         .expect_err("fetch_all_schemas should fail");
     assert_eq!(err, Error::StorageMsg("transaction not found".to_owned()));
 
     let schema = Schema::from_ddl("CREATE TABLE Foo (id INTEGER);").expect("parse schema");
     let err = storage
         .insert_schema(&schema)
-        .await
         .expect_err("insert_schema should fail");
     assert_eq!(err, Error::StorageMsg("transaction not found".to_owned()));
 
-    storage.rollback().await.expect("rollback without txn");
-    storage.commit().await.expect("commit without txn");
+    storage.rollback().expect("rollback without txn");
+    storage.commit().expect("commit without txn");
 
     remove_path(&path);
 }

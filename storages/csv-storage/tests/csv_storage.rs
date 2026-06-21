@@ -1,15 +1,14 @@
 use {
-    async_trait::async_trait, gluesql_core::prelude::Glue, gluesql_csv_storage::CsvStorage,
-    std::fs::remove_dir_all, test_suite::*,
+    gluesql_core::prelude::Glue, gluesql_csv_storage::CsvStorage, std::fs::remove_dir_all,
+    test_suite::*,
 };
 
 struct CsvTester {
     glue: Glue<CsvStorage>,
 }
 
-#[async_trait(?Send)]
 impl Tester<CsvStorage> for CsvTester {
-    async fn new(namespace: &str) -> Self {
+    fn new(namespace: &str) -> Self {
         let path = format!("tmp/{namespace}");
 
         if let Err(e) = remove_dir_all(&path) {
@@ -26,5 +25,5 @@ impl Tester<CsvStorage> for CsvTester {
     }
 }
 
-generate_store_tests!(tokio::test, CsvTester);
-generate_alter_table_tests!(tokio::test, CsvTester);
+generate_store_tests!(test, CsvTester);
+generate_alter_table_tests!(test, CsvTester);

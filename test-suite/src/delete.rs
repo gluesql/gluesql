@@ -14,8 +14,7 @@ test_case!(delete, {
             flag BOOLEAN
         );
     ",
-    )
-    .await;
+    );
 
     g.run(
         "
@@ -24,8 +23,7 @@ test_case!(delete, {
             (2, 300, FALSE),
             (3, 700, TRUE);
     ",
-    )
-    .await;
+    );
 
     g.test(
         "SELECT * FROM Foo",
@@ -36,15 +34,13 @@ test_case!(delete, {
             2     300     false;
             3     700     true
         )),
-    )
-    .await;
+    );
 
     g.named_test(
         "delete using WHERE",
         "DELETE FROM Foo WHERE flag = FALSE",
         Ok(Payload::Delete(1)),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT * FROM Foo",
@@ -54,11 +50,9 @@ test_case!(delete, {
             1     100     true;
             3     700     true
         )),
-    )
-    .await;
+    );
 
-    g.named_test("delete all", "DELETE FROM Foo;", Ok(Payload::Delete(2)))
-        .await;
+    g.named_test("delete all", "DELETE FROM Foo;", Ok(Payload::Delete(2)));
 
     g.test(
         "SELECT * FROM Foo",
@@ -66,6 +60,5 @@ test_case!(delete, {
             labels: vec!["id".to_owned(), "score".to_owned(), "flag".to_owned()],
             rows: vec![],
         }),
-    )
-    .await;
+    );
 });

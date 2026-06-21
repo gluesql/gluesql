@@ -15,8 +15,7 @@ test_case!(trimming, {
         .create_table()
         .add_column("id INTEGER PRIMARY KEY")
         .add_column("name TEXT")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table - Food");
 
@@ -27,12 +26,11 @@ test_case!(trimming, {
             num(1),
             text("chicken   ").rtrim(Some(text(" "))),
         ]])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(1));
     assert_eq!(actual, expected, "insert - rtrim");
 
-    let actual = table("Food").select().execute(glue).await;
+    let actual = table("Food").select().execute(glue);
     let expected = Ok(select!(
         id  | name
         I64 | Str;
@@ -48,12 +46,11 @@ test_case!(trimming, {
             num(2),
             f::ltrim(text("   chicken"), Some(text(" "))),
         ]])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(1));
     assert_eq!(actual, expected, "insert - ltirm");
 
-    let actual = table("Food").select().execute(glue).await;
+    let actual = table("Food").select().execute(glue);
     let expected = Ok(select!(
         id  | name
         I64 | Str;
@@ -68,12 +65,11 @@ test_case!(trimming, {
         .insert()
         .columns("id, name")
         .values(vec![vec![num(3), test_text]])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(1));
     assert_eq!(actual, expected, "insert - ltrim and rtrim");
 
-    let actual = table("Food").select().execute(glue).await;
+    let actual = table("Food").select().execute(glue);
     let expected = Ok(select!(
         id  | name
         I64 | Str;
@@ -89,12 +85,11 @@ test_case!(trimming, {
         .insert()
         .columns("id, name")
         .values(vec![vec![num(4), test_text]])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(1));
     assert_eq!(actual, expected, "insert - rtrim and ltrim");
 
-    let actual = table("Food").select().execute(glue).await;
+    let actual = table("Food").select().execute(glue);
     let expected = Ok(select!(
         id  | name
         I64 | Str;

@@ -77,11 +77,12 @@ impl<'a> ExprNode<'a> {
 #[cfg(test)]
 mod test {
     use crate::{
-        ast::{
-            Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, Projection, Query, Select,
-            SetExpr, TableFactor, TableWithJoins,
-        },
         ast_builder::{QueryNode, SelectItemList, col, table, test_expr, text},
+        plan::{
+            ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan,
+            ProjectionPlan, QueryPlan, SelectPlan, SetExprPlan, TableFactorPlan,
+            TableWithJoinsPlan,
+        },
     };
 
     #[test]
@@ -140,24 +141,26 @@ mod test {
                 .hash_executor("PlayerItem.user_id", "Player.id"),
         );
         let expected = {
-            let join = Join {
-                relation: TableFactor::Table {
+            let join = JoinPlan {
+                relation: TableFactorPlan::Table {
                     name: "PlayerItem".to_owned(),
                     alias: None,
                     index: None,
                 },
-                join_operator: JoinOperator::Inner(JoinConstraint::None),
-                join_executor: JoinExecutor::Hash {
-                    key_expr: col("PlayerItem.user_id").try_into().unwrap(),
-                    value_expr: col("Player.id").try_into().unwrap(),
+                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
+                join_executor: JoinExecutorPlan::Hash {
+                    key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),
+                    value_expr: col("Player.id").build_expr_plan().unwrap(),
                     where_clause: None,
                 },
             };
-            let select = Select {
+            let select = SelectPlan {
                 distinct: false,
-                projection: Projection::SelectItems(SelectItemList::from("*").try_into().unwrap()),
-                from: TableWithJoins {
-                    relation: TableFactor::Table {
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+                from: TableWithJoinsPlan {
+                    relation: TableFactorPlan::Table {
                         name: "Player".to_owned(),
                         alias: None,
                         index: None,
@@ -167,22 +170,23 @@ mod test {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
+                aggregate_slots: None,
             };
 
-            let query = Query {
-                body: SetExpr::Select(Box::new(select)),
+            let query = QueryPlan {
+                body: SetExprPlan::Select(Box::new(select)),
                 order_by: Vec::new(),
                 limit: None,
                 offset: None,
             };
 
-            Expr::InSubquery {
-                expr: Box::new(Expr::Identifier("id".to_owned())),
+            ExprPlan::InSubquery {
+                expr: Box::new(ExprPlan::Identifier("id".to_owned())),
                 subquery: Box::new(query),
                 negated: false,
             }
         };
-        assert_eq!(Expr::try_from(actual).unwrap(), expected);
+        assert_eq!(actual.build_expr_plan().unwrap(), expected);
 
         // from GroupByNode
         let actual = col("id").not_in_list(

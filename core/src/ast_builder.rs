@@ -82,11 +82,11 @@ pub use {
 };
 
 #[cfg(test)]
-fn test(actual: &crate::result::Result<crate::ast::Statement>, expected: &str) {
-    use crate::{parse_sql::parse, translate::translate};
+fn test(actual: &crate::result::Result<crate::plan::StatementPlan>, expected: &str) {
+    use crate::{parse_sql::parse, plan::StatementPlan, translate::translate};
 
     let parsed = &parse(expected).expect(expected)[0];
-    let expected = translate(parsed);
+    let expected = translate(parsed).map(StatementPlan::from);
     pretty_assertions::assert_eq!(*actual, expected);
 }
 
@@ -94,22 +94,46 @@ fn test(actual: &crate::result::Result<crate::ast::Statement>, expected: &str) {
 fn test_expr(actual: crate::ast_builder::ExprNode, expected: &str) {
     use crate::{
         parse_sql::parse_expr,
+        plan::ExprPlan,
         translate::{NO_PARAMS, translate_expr},
     };
 
     let parsed = &parse_expr(expected).expect(expected);
     let expected = translate_expr(parsed, NO_PARAMS);
-    pretty_assertions::assert_eq!(actual.try_into(), expected);
+
+    pretty_assertions::assert_eq!(actual.clone().build_expr(), expected);
+    pretty_assertions::assert_eq!(actual.build_expr_plan(), expected.map(ExprPlan::from));
 }
 
 #[cfg(test)]
 fn test_query(actual: crate::ast_builder::QueryNode, expected: &str) {
     use crate::{
         parse_sql::parse_query,
+        plan::QueryPlan,
         translate::{NO_PARAMS, translate_query},
     };
 
     let parsed = &parse_query(expected).expect(expected);
     let expected = translate_query(parsed, NO_PARAMS);
-    pretty_assertions::assert_eq!(actual.try_into(), expected);
+
+    pretty_assertions::assert_eq!(actual.clone().build_query(), expected);
+    pretty_assertions::assert_eq!(actual.build_query_plan(), expected.map(QueryPlan::from));
+}
+
+#[cfg(test)]
+fn test_query_builder<T>(actual: T, expected: &str)
+where
+    T: crate::ast_builder::select::BuildQuery + crate::ast_builder::select::BuildQueryPlan + Clone,
+{
+    use crate::{
+        parse_sql::parse_query,
+        plan::QueryPlan,
+        translate::{NO_PARAMS, translate_query},
+    };
+
+    let parsed = &parse_query(expected).expect(expected);
+    let expected = translate_query(parsed, NO_PARAMS);
+
+    pretty_assertions::assert_eq!(actual.clone().build_query(), expected);
+    pretty_assertions::assert_eq!(actual.build_query_plan(), expected.map(QueryPlan::from));
 }

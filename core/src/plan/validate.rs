@@ -1,39 +1,39 @@
 use {
     super::PlanError,
     crate::{
-        ast::{
-            Expr, Join, Projection, Query, SelectItem, SetExpr, Statement, TableFactor,
-            TableWithJoins,
-        },
         data::Schema,
+        plan::{
+            ExprPlan, JoinPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SetExprPlan,
+            StatementPlan, TableFactorPlan, TableWithJoinsPlan,
+        },
         result::Result,
     },
-    std::{collections::HashMap, sync::Arc},
+    std::{collections::HashMap, rc::Rc},
 };
 
 type SchemaMap = HashMap<String, Schema>;
 /// Validate user select column should not be ambiguous
-pub fn validate(schema_map: &SchemaMap, statement: &Statement) -> Result<()> {
+pub fn validate(schema_map: &SchemaMap, statement: &StatementPlan) -> Result<()> {
     let query = match statement {
-        Statement::Query(query) => Some(query),
-        Statement::Insert { source, .. } => Some(source),
-        Statement::CreateTable { source, .. } => source.as_deref(),
+        StatementPlan::Query(query) => Some(query),
+        StatementPlan::Insert { source, .. } => Some(source),
+        StatementPlan::CreateTable { source, .. } => source.as_deref(),
         _ => None,
     };
 
     if let Some(query) = query
-        && let Query {
-            body: SetExpr::Select(select),
+        && let QueryPlan {
+            body: SetExprPlan::Select(select),
             ..
         } = query
     {
-        let Projection::SelectItems(projection) = &select.projection else {
+        let ProjectionPlan::SelectItems(projection) = &select.projection else {
             return Ok(());
         };
 
         for select_item in projection {
-            if let SelectItem::Expr {
-                expr: Expr::Identifier(ident),
+            if let SelectItemPlan::Expr {
+                expr: ExprPlan::Identifier(ident),
                 ..
             } = select_item
                 && let Some(context) = contextualize_query(schema_map, query)
@@ -49,25 +49,22 @@ pub fn validate(schema_map: &SchemaMap, statement: &Statement) -> Result<()> {
 enum Context<'a> {
     Data {
         labels: Option<Vec<&'a str>>,
-        next: Option<Arc<Context<'a>>>,
+        next: Option<Rc<Context<'a>>>,
     },
     Bridge {
-        left: Arc<Context<'a>>,
-        right: Arc<Context<'a>>,
+        left: Rc<Context<'a>>,
+        right: Rc<Context<'a>>,
     },
 }
 
 impl<'a> Context<'a> {
-    fn new(labels: Option<Vec<&'a str>>, next: Option<Arc<Context<'a>>>) -> Self {
+    fn new(labels: Option<Vec<&'a str>>, next: Option<Rc<Context<'a>>>) -> Self {
         Self::Data { labels, next }
     }
 
-    fn concat(
-        left: Option<Arc<Context<'a>>>,
-        right: Option<Arc<Context<'a>>>,
-    ) -> Option<Arc<Self>> {
+    fn concat(left: Option<Rc<Context<'a>>>, right: Option<Rc<Context<'a>>>) -> Option<Rc<Self>> {
         match (left, right) {
-            (Some(left), Some(right)) => Some(Arc::new(Self::Bridge { left, right })),
+            (Some(left), Some(right)) => Some(Rc::new(Self::Bridge { left, right })),
             (context @ Some(_), None) | (None, context @ Some(_)) => context,
             (None, None) => None,
         }
@@ -117,47 +114,44 @@ fn get_labels(schema: &Schema) -> Option<Vec<&str>> {
 
 fn contextualize_query<'a>(
     schema_map: &'a SchemaMap,
-    query: &'a Query,
-) -> Option<Arc<Context<'a>>> {
-    let Query { body, .. } = query;
+    query: &'a QueryPlan,
+) -> Option<Rc<Context<'a>>> {
+    let QueryPlan { body, .. } = query;
     match body {
-        SetExpr::Select(select) => {
-            let TableWithJoins { relation, joins } = &select.from;
+        SetExprPlan::Select(select) => {
+            let TableWithJoinsPlan { relation, joins } = &select.from;
             let by_table = contextualize_table_factor(schema_map, relation);
             let by_joins = joins
                 .iter()
-                .map(|Join { relation, .. }| contextualize_table_factor(schema_map, relation))
+                .map(|JoinPlan { relation, .. }| contextualize_table_factor(schema_map, relation))
                 .fold(None, Context::concat);
 
             Context::concat(by_table, by_joins)
         }
-        SetExpr::Values(_) => None,
+        SetExprPlan::Values(_) => None,
     }
 }
 
 fn contextualize_table_factor<'a>(
     schema_map: &'a SchemaMap,
-    table_factor: &'a TableFactor,
-) -> Option<Arc<Context<'a>>> {
+    table_factor: &'a TableFactorPlan,
+) -> Option<Rc<Context<'a>>> {
     match table_factor {
-        TableFactor::Table { name, .. } => {
+        TableFactorPlan::Table { name, .. } => {
             let schema = schema_map.get(name);
-            schema.map(|schema| Arc::from(Context::new(get_labels(schema), None)))
+            schema.map(|schema| Rc::from(Context::new(get_labels(schema), None)))
         }
-        TableFactor::Derived { subquery, .. } => contextualize_query(schema_map, subquery),
-        TableFactor::Series { .. } | TableFactor::Dictionary { .. } => None,
+        TableFactorPlan::Derived { subquery, .. } => contextualize_query(schema_map, subquery),
+        TableFactorPlan::Series { .. } | TableFactorPlan::Dictionary { .. } => None,
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use {
-        crate::{
-            mock::run,
-            plan::{fetch_schema_map, validate},
-            prelude::{parse, translate},
-        },
-        futures::executor::block_on,
+    use crate::{
+        mock::run,
+        plan::{fetch_schema_map, validate},
+        prelude::{parse, translate},
     };
 
     #[test]
@@ -185,8 +179,8 @@ mod tests {
 
         for (sql, expected) in cases {
             let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
-            let statement = translate(&parsed).unwrap();
-            let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+            let statement = translate(&parsed).unwrap().into();
+            let schema_map = fetch_schema_map(&storage, &statement).unwrap();
             let actual = validate(&schema_map, &statement).is_ok();
 
             assert_eq!(actual, expected);

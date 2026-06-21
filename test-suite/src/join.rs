@@ -2,7 +2,7 @@ use {
     crate::*,
     Value::*,
     gluesql_core::{
-        error::{PlanError, TranslateError},
+        error::{AlterError, PlanError, TranslateError},
         prelude::*,
     },
 };
@@ -27,13 +27,13 @@ test_case!(join, {
     ];
 
     for sql in create_sqls {
-        g.run(sql).await;
+        g.run(sql);
     }
 
     let delete_sqls = ["DELETE FROM Player", "DELETE FROM Item"];
 
     for sql in delete_sqls {
-        g.run(sql).await;
+        g.run(sql);
     }
 
     let insert_sqls = [
@@ -66,7 +66,7 @@ test_case!(join, {
     ];
 
     for insert_sql in insert_sqls {
-        g.run(insert_sql).await;
+        g.run(insert_sql);
     }
 
     let select_sqls = [
@@ -202,11 +202,11 @@ test_case!(join, {
     ];
 
     for (num, sql) in select_sqls {
-        g.count(sql, num).await;
+        g.count(sql, num);
     }
 
     for sql in delete_sqls {
-        g.run(sql).await;
+        g.run(sql);
     }
 });
 
@@ -230,7 +230,7 @@ test_case!(project, {
     ];
 
     for sql in create_sqls {
-        g.run(sql).await;
+        g.run(sql);
     }
 
     let insert_sqls = [
@@ -251,7 +251,7 @@ test_case!(project, {
     ];
 
     for insert_sql in insert_sqls {
-        g.run(insert_sql).await;
+        g.run(insert_sql);
     }
 
     let sql = "
@@ -268,7 +268,7 @@ test_case!(project, {
         I64(4)   I64(103);
         I64(5)   Null
     );
-    g.test(sql, Ok(expected)).await;
+    g.test(sql, Ok(expected));
 
     let sql = "
         SELECT p.id, player_id
@@ -284,7 +284,7 @@ test_case!(project, {
         I64(4)   I64(4);
         I64(5)   Null
     );
-    g.test(sql, Ok(expected)).await;
+    g.test(sql, Ok(expected));
 
     let sql = "
         SELECT Item.*
@@ -300,7 +300,7 @@ test_case!(project, {
         I64(103)   I64(9)     I64(4);
         Null       Null       Null
     );
-    g.test(sql, Ok(expected)).await;
+    g.test(sql, Ok(expected));
 
     let sql = "
         SELECT *
@@ -316,16 +316,13 @@ test_case!(project, {
         I64(4)   Str("Berry".to_owned())     I64(103)   I64(9)     I64(4);
         I64(5)   Str("Hwan".to_owned())      Null       Null       Null
     );
-    g.test(sql, Ok(expected)).await;
+    g.test(sql, Ok(expected));
 
     // To test `PlanError` while using `JOIN`
-    g.run("CREATE TABLE Users (id INTEGER, name TEXT);").await;
-    g.run("INSERT INTO Users (id, name) VALUES (1, 'Harry');")
-        .await;
-    g.run("CREATE TABLE Testers (id INTEGER, nickname TEXT);")
-        .await;
-    g.run("INSERT INTO Testers (id, nickname) VALUES (1, 'Ron');")
-        .await;
+    g.run("CREATE TABLE Users (id INTEGER, name TEXT);");
+    g.run("INSERT INTO Users (id, name) VALUES (1, 'Harry');");
+    g.run("CREATE TABLE Testers (id INTEGER, nickname TEXT);");
+    g.run("INSERT INTO Testers (id, nickname) VALUES (1, 'Ron');");
 
     let error_cases = [
         (
@@ -354,12 +351,16 @@ test_case!(project, {
             PlanError::ColumnReferenceAmbiguous("id".to_owned()).into(),
         ),
         (
+            "CREATE TABLE JoinedUsers AS SELECT * FROM Users JOIN Testers ON Users.id = Testers.id",
+            AlterError::DuplicateColumnName("id".to_owned()).into(),
+        ),
+        (
             "SELECT * FROM ProjectUser, ProjectItem",
             TranslateError::TooManyTables.into(),
         ),
     ];
 
     for (sql, error) in error_cases {
-        g.test(sql, Err(error)).await;
+        g.test(sql, Err(error));
     }
 });

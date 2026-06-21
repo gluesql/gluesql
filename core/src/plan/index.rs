@@ -1,27 +1,29 @@
 use {
     super::{context::Context, planner::Planner},
     crate::{
-        ast::{
-            BinaryOperator, Expr, IndexItem, IndexOperator, OrderByExpr, Query, Select, SetExpr,
-            Statement, TableFactor,
-        },
+        ast::{BinaryOperator, IndexOperator},
         data::{Schema, SchemaIndex, SchemaIndexOrd, Value},
-        plan::expr::{deterministic::is_deterministic, nullability::may_return_null},
+        plan::{
+            ExprPlan, IndexItemPlan, OrderByExprPlan, QueryPlan, SelectPlan, SetExprPlan,
+            StatementPlan, TableFactorPlan,
+            expr::{deterministic::is_deterministic, nullability::may_return_null},
+            plan_scalar_expr,
+        },
     },
-    std::{collections::HashMap, hash::BuildHasher, sync::Arc},
+    std::{collections::HashMap, hash::BuildHasher, rc::Rc},
 };
 
 pub fn plan<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
-    statement: Statement,
-) -> Statement {
+    statement: StatementPlan,
+) -> StatementPlan {
     let planner = IndexPlanner { schema_map };
 
     match statement {
-        Statement::Query(query) => {
+        StatementPlan::Query(query) => {
             let query = planner.query(None, query);
 
-            Statement::Query(query)
+            StatementPlan::Query(query)
         }
         _ => statement,
     }
@@ -32,8 +34,8 @@ struct IndexPlanner<'a, S> {
 }
 
 impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
-    fn query(&self, outer_context: Option<Arc<Context<'a>>>, query: Query) -> Query {
-        let Query {
+    fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
+        let QueryPlan {
             body,
             order_by,
             limit,
@@ -41,15 +43,15 @@ impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
         } = query;
 
         let (body, order_by) = match body {
-            SetExpr::Select(select) => {
+            SetExprPlan::Select(select) => {
                 let (select, order_by) = self.select(outer_context.as_ref(), *select, order_by);
 
-                (SetExpr::Select(Box::new(select)), order_by)
+                (SetExprPlan::Select(Box::new(select)), order_by)
             }
-            SetExpr::Values(values) => (SetExpr::Values(values), order_by),
+            SetExprPlan::Values(values) => (SetExprPlan::Values(values), order_by),
         };
 
-        Query {
+        QueryPlan {
             body,
             order_by,
             limit,
@@ -65,56 +67,60 @@ impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
 impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
     fn select(
         &self,
-        outer_context: Option<&Arc<Context<'a>>>,
-        select: Select,
-        mut order_by: Vec<OrderByExpr>,
-    ) -> (Select, Vec<OrderByExpr>) {
-        let Select {
+        outer_context: Option<&Rc<Context<'a>>>,
+        select: SelectPlan,
+        mut order_by: Vec<OrderByExprPlan>,
+    ) -> (SelectPlan, Vec<OrderByExprPlan>) {
+        let SelectPlan {
             distinct,
             projection,
             mut from,
             selection,
             group_by,
             having,
+            aggregate_slots,
         } = select;
 
         let indexes = self.indexes(&from.relation);
 
         if let (Some(indexes), Some(order_expr)) = (indexes.as_ref(), order_by.last())
-            && let TableFactor::Table { index, .. } = &mut from.relation
+            && let TableFactorPlan::Table { index, .. } = &mut from.relation
             && index.is_none()
             && let Some(index_name) = indexes.find_ordered(order_expr)
         {
-            *index = Some(IndexItem::NonClustered {
+            *index = Some(IndexItemPlan::NonClustered {
                 name: index_name,
                 asc: order_expr.asc,
                 cmp_expr: None,
             });
             order_by.pop();
 
-            let select = Select {
+            let select = SelectPlan {
                 distinct,
                 projection,
                 from,
                 selection,
                 group_by,
                 having,
+                aggregate_slots,
             };
 
             return (select, order_by);
         }
 
         let selection = selection.and_then(|expr| {
-            if let (Some(indexes), TableFactor::Table { .. }) = (indexes.as_ref(), &from.relation) {
-                match self.plan_index_expr(outer_context.map(Arc::clone), indexes, expr) {
+            if let (Some(indexes), TableFactorPlan::Table { index: None, .. }) =
+                (indexes.as_ref(), &from.relation)
+            {
+                match self.plan_index_expr(outer_context.map(Rc::clone), indexes, expr) {
                     Planned::IndexedExpr {
                         index_name,
                         index_op,
                         index_value_expr,
                         selection,
                     } => {
-                        if let TableFactor::Table { index, .. } = &mut from.relation {
-                            *index = Some(IndexItem::NonClustered {
+                        if let TableFactorPlan::Table { index, .. } = &mut from.relation {
+                            *index = Some(IndexItemPlan::NonClustered {
                                 name: index_name,
                                 asc: None,
                                 cmp_expr: Some((index_op, index_value_expr)),
@@ -126,17 +132,18 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                     Planned::Expr(expr) => Some(expr),
                 }
             } else {
-                Some(self.subquery_expr(outer_context.map(Arc::clone), expr))
+                Some(self.subquery_expr(outer_context.map(Rc::clone), expr))
             }
         });
 
-        let select = Select {
+        let select = SelectPlan {
             distinct,
             projection,
             from,
             selection,
             group_by,
             having,
+            aggregate_slots,
         };
 
         (select, order_by)
@@ -144,48 +151,48 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
 
     fn plan_index_expr(
         &self,
-        outer_context: Option<Arc<Context<'a>>>,
+        outer_context: Option<Rc<Context<'a>>>,
         indexes: &Indexes<'a>,
-        selection: Expr,
+        selection: ExprPlan,
     ) -> Planned {
         match selection {
-            Expr::Nested(expr) => self.plan_index_expr(outer_context, indexes, *expr),
-            Expr::IsNull(expr) => self.search_is_null(outer_context, indexes, true, *expr),
-            Expr::IsNotNull(expr) => self.search_is_null(outer_context, indexes, false, *expr),
-            Expr::Subquery(query) => {
+            ExprPlan::Nested(expr) => self.plan_index_expr(outer_context, indexes, *expr),
+            ExprPlan::IsNull(expr) => self.search_is_null(outer_context, indexes, true, *expr),
+            ExprPlan::IsNotNull(expr) => self.search_is_null(outer_context, indexes, false, *expr),
+            ExprPlan::Subquery(query) => {
                 let query = self.query(outer_context, *query);
 
-                Planned::Expr(Expr::Subquery(Box::new(query)))
+                Planned::Expr(ExprPlan::Subquery(Box::new(query)))
             }
-            Expr::Exists { subquery, negated } => {
-                let subquery = self.query(outer_context.as_ref().map(Arc::clone), *subquery);
+            ExprPlan::Exists { subquery, negated } => {
+                let subquery = self.query(outer_context.as_ref().map(Rc::clone), *subquery);
 
-                Planned::Expr(Expr::Exists {
+                Planned::Expr(ExprPlan::Exists {
                     subquery: Box::new(subquery),
                     negated,
                 })
             }
-            Expr::InSubquery {
+            ExprPlan::InSubquery {
                 expr,
                 subquery,
                 negated,
             } => {
-                let expr = self.subquery_expr(outer_context.as_ref().map(Arc::clone), *expr);
+                let expr = self.subquery_expr(outer_context.as_ref().map(Rc::clone), *expr);
                 let subquery = self.query(outer_context, *subquery);
 
-                Planned::Expr(Expr::InSubquery {
+                Planned::Expr(ExprPlan::InSubquery {
                     expr: Box::new(expr),
                     subquery: Box::new(subquery),
                     negated,
                 })
             }
-            Expr::BinaryOp {
+            ExprPlan::BinaryOp {
                 left,
                 op: BinaryOperator::And,
                 right,
             } => {
                 let left = match self.plan_index_expr(
-                    outer_context.as_ref().map(Arc::clone),
+                    outer_context.as_ref().map(Rc::clone),
                     indexes,
                     *left,
                 ) {
@@ -197,7 +204,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                         selection,
                     } => {
                         let selection = match selection {
-                            Some(expr) => Expr::BinaryOp {
+                            Some(expr) => ExprPlan::BinaryOp {
                                 left: Box::new(expr),
                                 op: BinaryOperator::And,
                                 right,
@@ -215,7 +222,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                 };
 
                 match self.plan_index_expr(outer_context, indexes, *right) {
-                    Planned::Expr(expr) => Planned::Expr(Expr::BinaryOp {
+                    Planned::Expr(expr) => Planned::Expr(ExprPlan::BinaryOp {
                         left: Box::new(left),
                         op: BinaryOperator::And,
                         right: Box::new(expr),
@@ -227,7 +234,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                         selection,
                     } => {
                         let selection = match selection {
-                            Some(expr) => Expr::BinaryOp {
+                            Some(expr) => ExprPlan::BinaryOp {
                                 left: Box::new(left),
                                 op: BinaryOperator::And,
                                 right: Box::new(expr),
@@ -244,27 +251,27 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                     }
                 }
             }
-            Expr::BinaryOp {
+            ExprPlan::BinaryOp {
                 left,
                 op: BinaryOperator::Gt,
                 right,
             } => self.search_index_op(outer_context, indexes, IndexOperator::Gt, *left, *right),
-            Expr::BinaryOp {
+            ExprPlan::BinaryOp {
                 left,
                 op: BinaryOperator::Lt,
                 right,
             } => self.search_index_op(outer_context, indexes, IndexOperator::Lt, *left, *right),
-            Expr::BinaryOp {
+            ExprPlan::BinaryOp {
                 left,
                 op: BinaryOperator::GtEq,
                 right,
             } => self.search_index_op(outer_context, indexes, IndexOperator::GtEq, *left, *right),
-            Expr::BinaryOp {
+            ExprPlan::BinaryOp {
                 left,
                 op: BinaryOperator::LtEq,
                 right,
             } => self.search_index_op(outer_context, indexes, IndexOperator::LtEq, *left, *right),
-            Expr::BinaryOp {
+            ExprPlan::BinaryOp {
                 left,
                 op: BinaryOperator::Eq,
                 right,
@@ -277,22 +284,22 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
         }
     }
 
-    fn indexes(&self, relation: &TableFactor) -> Option<Indexes<'_>> {
+    fn indexes(&self, relation: &TableFactorPlan) -> Option<Indexes<'_>> {
         match relation {
-            TableFactor::Table { name, .. } => self
+            TableFactorPlan::Table { name, .. } => self
                 .schema_map
                 .get(name)
-                .map(|schema| Indexes(&schema.indexes)),
+                .map(|schema| Indexes::new(&schema.indexes)),
             _ => None,
         }
     }
 
     fn search_is_null(
         &self,
-        outer_context: Option<Arc<Context<'a>>>,
+        outer_context: Option<Rc<Context<'a>>>,
         indexes: &Indexes<'a>,
         null: bool,
-        expr: Expr,
+        expr: ExprPlan,
     ) -> Planned {
         if let Some(index_name) = indexes.find(&expr) {
             let index_op = if null {
@@ -304,16 +311,16 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
             return Planned::IndexedExpr {
                 index_name,
                 index_op,
-                index_value_expr: Expr::Value(Value::Null),
+                index_value_expr: ExprPlan::Value(Value::Null),
                 selection: None,
             };
         }
 
         let expr = self.subquery_expr(outer_context, expr);
         let expr = if null {
-            Expr::IsNull(Box::new(expr))
+            ExprPlan::IsNull(Box::new(expr))
         } else {
-            Expr::IsNotNull(Box::new(expr))
+            ExprPlan::IsNotNull(Box::new(expr))
         };
 
         Planned::Expr(expr)
@@ -321,11 +328,11 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
 
     fn search_index_op(
         &self,
-        outer_context: Option<Arc<Context<'a>>>,
+        outer_context: Option<Rc<Context<'a>>>,
         indexes: &Indexes<'a>,
         index_op: IndexOperator,
-        left: Expr,
-        right: Expr,
+        left: ExprPlan,
+        right: ExprPlan,
     ) -> Planned {
         if let Some(index_name) = indexes
             .find(&left)
@@ -355,18 +362,18 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
             };
         }
 
-        if let Expr::Nested(left) = left {
+        if let ExprPlan::Nested(left) = left {
             return self.search_index_op(outer_context, indexes, index_op, *left, right);
         }
 
-        if let Expr::Nested(right) = right {
+        if let ExprPlan::Nested(right) = right {
             return self.search_index_op(outer_context, indexes, index_op, left, *right);
         }
 
         let left = self.subquery_expr(outer_context.clone(), left);
         let right = self.subquery_expr(outer_context, right);
 
-        Planned::Expr(Expr::BinaryOp {
+        Planned::Expr(ExprPlan::BinaryOp {
             left: Box::new(left),
             op: index_op.into(),
             right: Box::new(right),
@@ -374,32 +381,49 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
     }
 }
 
-struct Indexes<'a>(&'a [SchemaIndex]);
+struct PlannedSchemaIndex<'a> {
+    expr: ExprPlan,
+    index: &'a SchemaIndex,
+}
 
-impl Indexes<'_> {
-    fn find(&self, target: &Expr) -> Option<String> {
-        self.0
-            .iter()
-            .find(|SchemaIndex { expr, .. }| expr == target)
-            .map(|SchemaIndex { name, .. }| name.to_owned())
+struct Indexes<'a>(Vec<PlannedSchemaIndex<'a>>);
+
+impl<'a> Indexes<'a> {
+    fn new(indexes: &'a [SchemaIndex]) -> Self {
+        Self(
+            indexes
+                .iter()
+                .map(|index| PlannedSchemaIndex {
+                    expr: plan_scalar_expr(index.expr.clone()),
+                    index,
+                })
+                .collect(),
+        )
     }
 
-    fn find_ordered(&self, target: &OrderByExpr) -> Option<String> {
+    fn find(&self, target: &ExprPlan) -> Option<String> {
         self.0
             .iter()
-            .find(|SchemaIndex { expr, order, .. }| {
+            .find(|PlannedSchemaIndex { expr, .. }| expr == target)
+            .map(|PlannedSchemaIndex { index, .. }| index.name.clone())
+    }
+
+    fn find_ordered(&self, target: &OrderByExprPlan) -> Option<String> {
+        self.0
+            .iter()
+            .find(|PlannedSchemaIndex { expr, index }| {
                 if expr != &target.expr {
                     return false;
                 }
 
                 matches!(
-                    (target.asc, order),
+                    (target.asc, index.order),
                     (_, SchemaIndexOrd::Both)
                         | (Some(true) | None, SchemaIndexOrd::Asc)
                         | (Some(false), SchemaIndexOrd::Desc)
                 )
             })
-            .map(|SchemaIndex { name, .. }| name.to_owned())
+            .map(|PlannedSchemaIndex { index, .. }| index.name.clone())
     }
 }
 
@@ -407,10 +431,10 @@ enum Planned {
     IndexedExpr {
         index_name: String,
         index_op: IndexOperator,
-        index_value_expr: Expr,
-        selection: Option<Expr>,
+        index_value_expr: ExprPlan,
+        selection: Option<ExprPlan>,
     },
-    Expr(Expr),
+    Expr(ExprPlan),
 }
 
 #[cfg(test)]
@@ -418,25 +442,25 @@ mod tests {
     use {
         super::plan,
         crate::{
-            ast::Statement,
-            ast_builder::{Build, col, exists, nested, non_clustered, null, num, table, text},
+            ast_builder::{
+                Build, col, exists, nested, non_clustered, null, num, primary_key, table, text,
+            },
             mock::{MockStorage, run},
             parse_sql::parse,
-            plan::fetch_schema_map,
+            plan::{StatementPlan, fetch_schema_map},
             result::{Error, Result},
             translate::translate,
         },
-        futures::executor::block_on,
     };
 
-    fn plan_index(storage: &MockStorage, sql: &str) -> Result<Statement> {
+    fn plan_index(storage: &MockStorage, sql: &str) -> Result<crate::plan::StatementPlan> {
         let parsed = parse(sql)?;
         let parsed = parsed
             .into_iter()
             .next()
             .ok_or_else(|| Error::StorageMsg(format!("no statement parsed from: {sql}")))?;
-        let statement = translate(&parsed)?;
-        let schema_map = block_on(fetch_schema_map(storage, &statement))?;
+        let statement = StatementPlan::from(translate(&parsed)?);
+        let schema_map = fetch_schema_map(storage, &statement)?;
 
         Ok(plan(&schema_map, statement))
     }
@@ -515,6 +539,38 @@ CREATE INDEX idx_name ON Test (name);
         assert_eq!(
             actual, expected,
             "skips index for non constant expression:\n{sql}"
+        );
+    }
+
+    #[test]
+    fn index_planning_keeps_existing_access_path() {
+        let storage = storage_with_indexes();
+
+        // Simulate the statement produced by the primary key planner, which runs
+        // before the index planner: the table already carries an access path
+        // (here a `PrimaryKey`) while the leftover selection still references an
+        // indexed column (`name`). The index planner must leave the existing
+        // access path untouched instead of overwriting it with `idx_name`,
+        // otherwise the primary key predicate would be silently dropped.
+        let statement = table("Test")
+            .index_by(primary_key().eq(num(1)))
+            .select()
+            .filter("name = 'x'")
+            .build()
+            .unwrap();
+
+        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
+        let actual = plan(&schema_map, statement);
+
+        let expected = table("Test")
+            .index_by(primary_key().eq(num(1)))
+            .select()
+            .filter("name = 'x'")
+            .build()
+            .unwrap();
+        assert_eq!(
+            actual, expected,
+            "keeps existing access path instead of clobbering it with a secondary index"
         );
     }
 

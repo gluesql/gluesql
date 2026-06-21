@@ -1,9 +1,9 @@
 use {
     self::{query::transform_query, validate::validate_statement},
     crate::{
-        ast::{Expr, Literal, Statement},
+        ast::Literal,
         data::{SCHEMALESS_DOC_COLUMN, Schema},
-        plan::expr::visit_mut_expr,
+        plan::{ExprPlan, StatementPlan, expr::visit_mut_expr},
         result::Result,
     },
     std::{collections::HashMap, hash::BuildHasher},
@@ -14,8 +14,8 @@ mod validate;
 
 pub fn plan<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
-    statement: Statement,
-) -> Result<Statement> {
+    statement: StatementPlan,
+) -> Result<StatementPlan> {
     if !schema_map
         .values()
         .any(|schema| schema.column_defs.is_none())
@@ -29,14 +29,14 @@ pub fn plan<S: BuildHasher>(
 
 fn transform_statement<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
-    statement: Statement,
-) -> Statement {
+    statement: StatementPlan,
+) -> StatementPlan {
     match statement {
-        Statement::Query(mut query) => {
+        StatementPlan::Query(mut query) => {
             transform_query(schema_map, &mut query);
-            Statement::Query(query)
+            StatementPlan::Query(query)
         }
-        Statement::Insert {
+        StatementPlan::Insert {
             table_name,
             columns,
             mut source,
@@ -48,13 +48,13 @@ fn transform_statement<S: BuildHasher>(
                 columns
             };
 
-            Statement::Insert {
+            StatementPlan::Insert {
                 table_name,
                 columns,
                 source,
             }
         }
-        Statement::Update {
+        StatementPlan::Update {
             table_name,
             assignments,
             selection,
@@ -81,13 +81,13 @@ fn transform_statement<S: BuildHasher>(
                 );
             }
 
-            Statement::Update {
+            StatementPlan::Update {
                 table_name,
                 assignments,
                 selection,
             }
         }
-        Statement::Delete {
+        StatementPlan::Delete {
             table_name,
             selection,
         } => {
@@ -103,7 +103,7 @@ fn transform_statement<S: BuildHasher>(
                 );
             }
 
-            Statement::Delete {
+            StatementPlan::Delete {
                 table_name,
                 selection,
             }
@@ -114,33 +114,33 @@ fn transform_statement<S: BuildHasher>(
 
 fn transform_single_table_expr(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    expr: &mut Expr,
+    expr: &mut ExprPlan,
     table_name: &str,
     table_is_schemaless: bool,
 ) {
     visit_mut_expr(expr, &mut |e| match e {
-        Expr::Identifier(ident) => {
+        ExprPlan::Identifier(ident) => {
             if table_is_schemaless {
-                *e = Expr::ArrayIndex {
-                    obj: Box::new(Expr::Identifier(SCHEMALESS_DOC_COLUMN.to_owned())),
-                    indexes: vec![Expr::Literal(Literal::QuotedString(ident.to_owned()))],
+                *e = ExprPlan::ArrayIndex {
+                    obj: Box::new(ExprPlan::Identifier(SCHEMALESS_DOC_COLUMN.to_owned())),
+                    indexes: vec![ExprPlan::Literal(Literal::QuotedString(ident.to_owned()))],
                 };
             }
         }
-        Expr::CompoundIdentifier { alias, ident } => {
+        ExprPlan::CompoundIdentifier { alias, ident } => {
             if table_is_schemaless && alias == table_name {
-                *e = Expr::ArrayIndex {
-                    obj: Box::new(Expr::CompoundIdentifier {
+                *e = ExprPlan::ArrayIndex {
+                    obj: Box::new(ExprPlan::CompoundIdentifier {
                         alias: alias.to_owned(),
                         ident: SCHEMALESS_DOC_COLUMN.to_owned(),
                     }),
-                    indexes: vec![Expr::Literal(Literal::QuotedString(ident.to_owned()))],
+                    indexes: vec![ExprPlan::Literal(Literal::QuotedString(ident.to_owned()))],
                 };
             }
         }
-        Expr::Subquery(subquery)
-        | Expr::Exists { subquery, .. }
-        | Expr::InSubquery { subquery, .. } => {
+        ExprPlan::Subquery(subquery)
+        | ExprPlan::Exists { subquery, .. }
+        | ExprPlan::InSubquery { subquery, .. } => {
             transform_query(schema_map, subquery.as_mut());
         }
         _ => {}
@@ -161,13 +161,11 @@ mod tests {
     use {
         super::plan as plan_schemaless,
         crate::{
-            ast::{Projection, SetExpr, Statement},
             mock::{MockStorage, run},
             parse_sql::parse,
-            plan::fetch_schema_map,
+            plan::{ProjectionPlan, SetExprPlan, StatementPlan, fetch_schema_map},
             translate::translate,
         },
-        futures::executor::block_on,
     };
 
     fn setup_schemaless_storage() -> MockStorage {
@@ -183,15 +181,15 @@ mod tests {
         let storage = setup_schemaless_storage();
         let test = |actual: &str, expected: &str, name: &str| {
             let parsed = parse(actual).expect(actual).into_iter().next().unwrap();
-            let statement = translate(&parsed).unwrap();
-            let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+            let statement = StatementPlan::from(translate(&parsed).unwrap());
+            let schema_map = fetch_schema_map(&storage, &statement).unwrap();
             let result = plan_schemaless(&schema_map, statement).unwrap();
 
             let expected_parsed = parse(expected).expect(expected).into_iter().next().unwrap();
-            let mut expected_stmt = translate(&expected_parsed).unwrap();
-            if let (Statement::Query(actual_query), Statement::Query(expected_query)) =
+            let mut expected_stmt = StatementPlan::from(translate(&expected_parsed).unwrap());
+            if let (StatementPlan::Query(actual_query), StatementPlan::Query(expected_query)) =
                 (&result, &mut expected_stmt)
-                && let (SetExpr::Select(actual_select), SetExpr::Select(expected_select)) =
+                && let (SetExprPlan::Select(actual_select), SetExprPlan::Select(expected_select)) =
                     (&actual_query.body, &mut expected_query.body)
             {
                 expected_select.projection = actual_select.projection.clone();
@@ -466,18 +464,18 @@ mod tests {
         let storage = setup_schemaless_storage();
         let test = |sql: &str, expected_schemaless_map: bool| {
             let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
-            let statement = translate(&parsed).unwrap();
-            let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+            let statement = StatementPlan::from(translate(&parsed).unwrap());
+            let schema_map = fetch_schema_map(&storage, &statement).unwrap();
             let planned = plan_schemaless(&schema_map, statement).unwrap();
 
-            let crate::ast::Statement::Query(query) = planned else {
+            let StatementPlan::Query(query) = planned else {
                 panic!("expected query statement");
             };
-            let SetExpr::Select(select) = query.body else {
+            let SetExprPlan::Select(select) = query.body else {
                 panic!("expected select query");
             };
             assert_eq!(
-                matches!(select.projection, Projection::SchemalessMap),
+                matches!(select.projection, ProjectionPlan::SchemalessMap),
                 expected_schemaless_map,
                 "{sql}"
             );
@@ -507,12 +505,12 @@ mod tests {
         let storage = run("CREATE TABLE Item (id INTEGER, name TEXT);");
         let test = |actual: &str, expected: &str, name: &str| {
             let parsed = parse(actual).expect(actual).into_iter().next().unwrap();
-            let statement = translate(&parsed).unwrap();
-            let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+            let statement = StatementPlan::from(translate(&parsed).unwrap());
+            let schema_map = fetch_schema_map(&storage, &statement).unwrap();
             let result = plan_schemaless(&schema_map, statement).unwrap();
 
             let expected_parsed = parse(expected).expect(expected).into_iter().next().unwrap();
-            let expected_stmt = translate(&expected_parsed).unwrap();
+            let expected_stmt = StatementPlan::from(translate(&expected_parsed).unwrap());
 
             assert_eq!(
                 result, expected_stmt,

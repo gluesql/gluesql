@@ -16,8 +16,7 @@ test_case!(ifnull, {
         .add_column("id INTEGER")
         .add_column("name TEXT")
         .add_column("nickname TEXT")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table - Foo");
 
@@ -29,8 +28,7 @@ test_case!(ifnull, {
             vec![num(100), text("Pickle"), text("Pi")],
             vec![num(200), null(), text("Hello")],
         ])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(2));
     assert_eq!(actual, expected, "insert into Foo");
 
@@ -39,8 +37,7 @@ test_case!(ifnull, {
         .select()
         .project("id")
         .project(col("name").ifnull(text("isnull")))
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         id  | "IFNULL(\"name\", 'isnull')"
         I64 | Str;
@@ -54,8 +51,7 @@ test_case!(ifnull, {
         .select()
         .project("id")
         .project(col("name").ifnull(col("nickname")))
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(select!(
         id  | "IFNULL(\"name\", \"nickname\")"
         I64 | Str;
@@ -69,8 +65,7 @@ test_case!(ifnull, {
         vec![f::ifnull(text("HELLO"), text("WORLD"))],
         vec![f::ifnull(null(), text("WORLD"))],
     ])
-    .execute(glue)
-    .await;
+    .execute(glue);
     let expected = Ok(select!(
         "column1"
         Str;

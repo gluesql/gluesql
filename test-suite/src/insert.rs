@@ -16,15 +16,13 @@ CREATE TABLE Test (
     num INTEGER NULL,
     name TEXT NOT NULL
 );",
-    )
-    .await;
+    );
 
     g.named_test(
         "basic insert - single item",
         "INSERT INTO Test (id, num, name) VALUES (1, 2, 'Hi boo');",
         Ok(Payload::Insert(1)),
-    )
-    .await;
+    );
 
     g.named_test(
         "insert multiple rows",
@@ -35,32 +33,27 @@ CREATE TABLE Test (
                 (2, 7, 'Monsters');
         ",
         Ok(Payload::Insert(2)),
-    )
-    .await;
+    );
 
     g.test(
         "INSERT INTO Test VALUES(17, 30, 'Sullivan');",
         Ok(Payload::Insert(1)),
-    )
-    .await;
+    );
 
     g.test(
         "INSERT INTO Test (num, name) VALUES (28, 'Wazowski');",
         Ok(Payload::Insert(1)),
-    )
-    .await;
+    );
 
     g.test(
         "INSERT INTO Test (name) VALUES ('The end');",
         Ok(Payload::Insert(1)),
-    )
-    .await;
+    );
 
     g.test(
         "INSERT INTO Test (id, num) VALUES (1, 10);",
         Err(InsertError::LackOfRequiredColumn("name".to_owned()).into()),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT * FROM Test;",
@@ -73,18 +66,15 @@ CREATE TABLE Test (
             I64(1)   I64(28)   Str("Wazowski".to_owned());
             I64(1)   Null      Str("The end".to_owned())
         )),
-    )
-    .await;
+    );
 
-    g.run("CREATE TABLE Target AS SELECT * FROM Test WHERE 1 = 0;")
-        .await;
+    g.run("CREATE TABLE Target AS SELECT * FROM Test WHERE 1 = 0;");
 
     g.named_test(
         "insert into target from source",
         "INSERT INTO Target SELECT * FROM Test;",
         Ok(Payload::Insert(6)),
-    )
-    .await;
+    );
 
     g.named_test(
         "target rows are equivalent to source rows",
@@ -98,6 +88,19 @@ CREATE TABLE Test (
             I64(1)   I64(28)   Str("Wazowski".to_owned());
             I64(1)   Null      Str("The end".to_owned())
         )),
-    )
-    .await;
+    );
+
+    g.run("CREATE TABLE AggregateTarget (count INTEGER);");
+
+    g.named_test(
+        "insert aggregate select result into target",
+        "INSERT INTO AggregateTarget SELECT COUNT(*) FROM Test;",
+        Ok(Payload::Insert(1)),
+    );
+
+    g.named_test(
+        "aggregate insert result",
+        "SELECT * FROM AggregateTarget;",
+        Ok(select!(count; I64; 6)),
+    );
 });

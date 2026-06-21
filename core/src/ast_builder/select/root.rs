@@ -1,19 +1,29 @@
 use {
-    super::{Prebuild, join::JoinOperatorType},
+    super::{BuildSelect, BuildSelectPlan, join::JoinOperatorType},
     crate::{
         ast::{
-            Expr, Literal, Projection, Query, Select, SelectItem, TableAlias, TableFactor,
-            TableWithJoins,
+            Expr, Literal, Projection, Select, SelectItem, TableAlias, TableFactor, TableWithJoins,
         },
         ast_builder::{
-            ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode, OffsetNode,
-            OrderByExprList, OrderByNode, ProjectNode, QueryNode, SelectItemList, TableFactorNode,
-            table_factor::TableType,
+            AstBuilderError, ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode,
+            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode, SelectItemList,
+            TableFactorNode, table_factor::TableType,
+        },
+        plan::{
+            ProjectionPlan, SelectItemPlan, SelectPlan, TableAliasPlan, TableFactorPlan,
+            TableWithJoinsPlan,
         },
         result::Result,
         translate::alias_or_name,
     },
 };
+
+fn build_alias_or_name_plan(alias: Option<TableAliasPlan>, name: String) -> TableAliasPlan {
+    alias.unwrap_or(TableAliasPlan {
+        name,
+        columns: Vec::new(),
+    })
+}
 
 #[derive(Clone, Debug)]
 pub struct SelectNode<'a> {
@@ -22,7 +32,7 @@ pub struct SelectNode<'a> {
 }
 
 impl<'a> SelectNode<'a> {
-    pub fn new(table_node: TableFactorNode<'a>) -> Self {
+    pub(in crate::ast_builder) fn new(table_node: TableFactorNode<'a>) -> Self {
         Self {
             table_node,
             distinct: false,
@@ -90,23 +100,73 @@ impl<'a> SelectNode<'a> {
     }
 }
 
-impl Prebuild<Select> for SelectNode<'_> {
-    fn prebuild(self) -> Result<Select> {
-        let alias = self.table_node.table_alias.map(|name| TableAlias {
+impl BuildSelectPlan for SelectNode<'_> {
+    fn build_select_plan(self) -> Result<SelectPlan> {
+        let alias = self.table_node.table_alias.map(|name| TableAliasPlan {
             name,
             columns: Vec::new(),
         });
 
         let index = match self.table_node.index {
-            Some(index) => Some(index.prebuild()?),
+            Some(index) => Some(index.build_index_item_plan()?),
             None => None,
         };
+
+        let relation = match self.table_node.table_type {
+            TableType::Table => TableFactorPlan::Table {
+                name: self.table_node.table_name,
+                alias,
+                index,
+            },
+            TableType::Dictionary(dict) => TableFactorPlan::Dictionary {
+                dict,
+                alias: build_alias_or_name_plan(alias, self.table_node.table_name),
+            },
+            TableType::Series(args) => TableFactorPlan::Series {
+                alias: build_alias_or_name_plan(alias, self.table_node.table_name),
+                size: args.build_expr_plan()?,
+            },
+            TableType::Derived { subquery, alias } => TableFactorPlan::Derived {
+                subquery: subquery.build_query_plan()?,
+                alias: TableAliasPlan {
+                    name: alias,
+                    columns: Vec::new(),
+                },
+            },
+        };
+
+        let from = TableWithJoinsPlan {
+            relation,
+            joins: Vec::new(),
+        };
+
+        Ok(SelectPlan {
+            distinct: self.distinct,
+            projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
+            from,
+            selection: None,
+            group_by: Vec::new(),
+            having: None,
+            aggregate_slots: None,
+        })
+    }
+}
+
+impl BuildSelect for SelectNode<'_> {
+    fn build_select(self) -> Result<Select> {
+        let alias = self.table_node.table_alias.map(|name| TableAlias {
+            name,
+            columns: Vec::new(),
+        });
+
+        if self.table_node.index.is_some() {
+            return Err(AstBuilderError::IndexByRequiresPlan.into());
+        }
 
         let relation = match self.table_node.table_type {
             TableType::Table => TableFactor::Table {
                 name: self.table_node.table_name,
                 alias,
-                index,
             },
             TableType::Dictionary(dict) => TableFactor::Dictionary {
                 dict,
@@ -114,10 +174,10 @@ impl Prebuild<Select> for SelectNode<'_> {
             },
             TableType::Series(args) => TableFactor::Series {
                 alias: alias_or_name(alias, self.table_node.table_name),
-                size: args.try_into()?,
+                size: args.build_expr()?,
             },
             TableType::Derived { subquery, alias } => TableFactor::Derived {
-                subquery: Query::try_from(*subquery)?,
+                subquery: subquery.build_query()?,
                 alias: TableAlias {
                     name: alias,
                     columns: Vec::new(),
@@ -155,37 +215,59 @@ pub fn select<'a>() -> SelectNode<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{Build, select, table, test};
+    use {
+        crate::{
+            ast_builder::{
+                AstBuilderError, primary_key, select, select::BuildSelect, table,
+                test_query_builder,
+            },
+            result::Error,
+        },
+        pretty_assertions::assert_eq,
+    };
 
     #[test]
     fn select_root() {
         // select node -> build
-        let actual = table("App").select().build();
+        let actual = table("App").select();
         let expected = "SELECT * FROM App";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
-        let actual = table("Item").alias_as("i").select().build();
+        let actual = table("Item").alias_as("i").select();
         let expected = "SELECT * FROM Item i";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select -> derived subquery
-        let actual = table("App").select().alias_as("Sub").select().build();
+        let actual = table("App").select().alias_as("Sub").select();
         let expected = "SELECT * FROM (SELECT * FROM App) Sub";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select without table
-        let actual = select().project("1 + 1").build();
+        let actual = select().project("1 + 1");
         let expected = "SELECT 1 + 1";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select distinct
-        let actual = table("User").select().distinct().build();
+        let actual = table("User").select().distinct();
         let expected = "SELECT DISTINCT * FROM User";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
 
         // select distinct with project
-        let actual = table("Item").select().distinct().project("name").build();
+        let actual = table("Item").select().distinct().project("name");
         let expected = "SELECT DISTINCT name FROM Item";
-        test(&actual, expected);
+        test_query_builder(actual, expected);
+    }
+
+    #[test]
+    fn index_by_ast_build_requires_plan() {
+        let actual = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .build_select();
+
+        assert_eq!(
+            actual,
+            Err(Error::AstBuilder(AstBuilderError::IndexByRequiresPlan))
+        );
     }
 }

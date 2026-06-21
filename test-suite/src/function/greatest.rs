@@ -14,24 +14,21 @@ test_case!(greatest, {
         Ok(select!(
             "goat"; I64; 10
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT GREATEST(1.2,6.8,9.6,7.4,0.1,10.5) AS goat;",
         Ok(select!(
             "goat" ; F64; 10.5
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT GREATEST('bibibik', 'babamba', 'melona') AS goat;",
         Ok(select!(
             "goat"; Str; "melona".to_owned()
         )),
-    )
-    .await;
+    );
 
     macro_rules! date {
         ($date: expr) => {
@@ -49,8 +46,7 @@ test_case!(greatest, {
         Ok(select!(
             "goat"; Date; date!("2024-07-18")
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT GREATEST() AS goat;",
@@ -60,32 +56,27 @@ test_case!(greatest, {
             found: 0,
         }
         .into()),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT GREATEST(1, 2, 'bibibik') AS goat;",
         Err(EvaluateError::NonComparableArgumentError("GREATEST".to_owned()).into()),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT GREATEST(NULL, 'bibibik', 'babamba', 'melona') AS goat;",
         Err(EvaluateError::NonComparableArgumentError("GREATEST".to_owned()).into()),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT GREATEST(NULL, NULL, NULL) AS goat;",
         Err(EvaluateError::NonComparableArgumentError("GREATEST".to_owned()).into()),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT GREATEST(true, false) AS goat;",
         Ok(select!(
             "goat"; Bool; true
         )),
-    )
-    .await;
+    );
 });

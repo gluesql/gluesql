@@ -11,8 +11,7 @@ test_case!(update, {
         .add_column("id INTEGER PRIMARY KEY")
         .add_column("score INTEGER")
         .add_column("flag BOOLEAN")
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table - Foo");
 
@@ -23,12 +22,11 @@ test_case!(update, {
             vec![num(2), num(300), false.into()],
             vec![num(3), num(700), true.into()],
         ])
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Insert(3));
     assert_eq!(actual, expected, "insert into Foo");
 
-    let actual = table("Foo").select().execute(glue).await;
+    let actual = table("Foo").select().execute(glue);
     let expected = Ok(select!(
         id  | score | flag
         I64 | I64   | Bool;
@@ -42,12 +40,11 @@ test_case!(update, {
     let actual = table("Foo")
         .update()
         .set("score", col("score").div(10))
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Update(3));
     assert_eq!(actual, expected, "update all");
 
-    let actual = table("Foo").select().execute(glue).await;
+    let actual = table("Foo").select().execute(glue);
     let expected = Ok(select!(
         id  | score | flag
         I64 | I64   | Bool;
@@ -63,12 +60,11 @@ test_case!(update, {
         .filter(col("score").lte(30))
         .set("score", "score * 2 + 5")
         .set("flag", col("flag").negate())
-        .execute(glue)
-        .await;
+        .execute(glue);
     let expected = Ok(Payload::Update(2));
     assert_eq!(actual, expected, "update set multiple and use filter");
 
-    let actual = table("Foo").select().execute(glue).await;
+    let actual = table("Foo").select().execute(glue);
     let expected = Ok(select!(
         id  | score | flag
         I64 | I64   | Bool;

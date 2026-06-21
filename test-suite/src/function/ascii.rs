@@ -16,13 +16,11 @@ test_case!(ascii, {
             U8;
             65
         )),
-    )
-    .await;
+    );
     g.test(
         "VALUES(ASCII('AB'))",
         Err(EvaluateError::AsciiFunctionRequiresSingleCharacterValue.into()),
-    )
-    .await;
+    );
     g.run(
         "
         CREATE TABLE Ascii (
@@ -30,9 +28,8 @@ test_case!(ascii, {
             text TEXT
         );
     ",
-    )
-    .await;
-    g.run("INSERT INTO Ascii VALUES (1, 'F');").await;
+    );
+    g.run("INSERT INTO Ascii VALUES (1, 'F');");
     g.test(
         r"select ascii(text) as ascii from Ascii;",
         Ok(select!(
@@ -40,8 +37,7 @@ test_case!(ascii, {
             U8;
             70
         )),
-    )
-    .await;
+    );
 
     g.test(
         "select ascii('a') as ascii from Ascii;",
@@ -50,8 +46,7 @@ test_case!(ascii, {
            U8;
            97
         )),
-    )
-    .await;
+    );
 
     g.test(
         "select ascii('A') as ascii from Ascii;",
@@ -60,44 +55,37 @@ test_case!(ascii, {
            U8;
            65
         )),
-    )
-    .await;
+    );
 
     g.test(
         "select ascii('ab') as ascii from Ascii;",
         Err(EvaluateError::AsciiFunctionRequiresSingleCharacterValue.into()),
-    )
-    .await;
+    );
 
     g.test(
         "select ascii('AB') as ascii from Ascii;",
         Err(EvaluateError::AsciiFunctionRequiresSingleCharacterValue.into()),
-    )
-    .await;
+    );
 
     g.test(
         "select ascii('') as ascii from Ascii;",
         Err(EvaluateError::AsciiFunctionRequiresSingleCharacterValue.into()),
-    )
-    .await;
+    );
 
     g.test(
         "select ascii('ukjhg') as ascii from Ascii;",
         Err(EvaluateError::AsciiFunctionRequiresSingleCharacterValue.into()),
-    )
-    .await;
+    );
 
     g.test(
         r"select ascii(NULL) as ascii from Ascii;",
         Ok(select_with_null!(ascii; Null)),
-    )
-    .await;
+    );
 
     g.test(
         "select ascii('ㄱ') as ascii from Ascii;",
         Err(EvaluateError::NonAsciiCharacterNotAllowed.into()),
-    )
-    .await;
+    );
 
     g.test(
         r"select ascii() as ascii from Ascii;",
@@ -107,14 +95,12 @@ test_case!(ascii, {
             found: 0,
         }
         .into()),
-    )
-    .await;
+    );
 
-    g.run("INSERT INTO Ascii VALUES (1, 'Foo');").await;
+    g.run("INSERT INTO Ascii VALUES (1, 'Foo');");
 
     g.test(
         r"select ascii(text) as ascii from Ascii;",
         Err(EvaluateError::AsciiFunctionRequiresSingleCharacterValue.into()),
-    )
-    .await;
+    );
 });

@@ -8,228 +8,106 @@ use {
         filter::check_expr,
     },
     crate::{
-        ast::{Expr, Projection, SelectItem},
         data::Value,
+        plan::{AggregatePlan, ExprPlan},
         result::Result,
         store::GStore,
     },
-    futures::{
-        future::BoxFuture,
-        stream::{self, Stream, StreamExt, TryStreamExt},
-    },
-    std::sync::Arc,
+    std::rc::Rc,
 };
 
-#[derive(futures_enum::Stream)]
-enum S<T1, T2> {
-    NonAggregate(T1),
-    Aggregate(T2),
-}
+pub type AggregateIter<'a> = Box<dyn Iterator<Item = Result<AggregateContext<'a>>> + 'a>;
 
-fn check_aggregate(projection: &Projection, group_by: &[Expr]) -> bool {
-    if !group_by.is_empty() {
-        return true;
-    }
-
-    match projection {
-        Projection::SelectItems(fields) => fields.iter().any(|field| match field {
-            SelectItem::Expr { expr, .. } => check(expr),
-            _ => false,
-        }),
-        Projection::SchemalessMap => false,
-    }
-}
-
-pub async fn apply<'a, T: GStore, U: Stream<Item = Result<Arc<RowContext<'a>>>> + 'a>(
+pub fn apply<'a, T: GStore>(
     storage: &'a T,
-    projection: &'a Projection,
-    group_by: &'a [Expr],
-    having: Option<&'a Expr>,
-    filter_context: Option<Arc<RowContext<'a>>>,
-    rows: U,
-) -> Result<impl Stream<Item = Result<AggregateContext<'a>>> + use<'a, T, U>> {
-    if !check_aggregate(projection, group_by) {
-        let rows = rows.map_ok(|project_context| AggregateContext {
-            aggregated: None,
-            next: project_context,
-        });
-        return Ok(S::NonAggregate(rows));
+    aggregate_slots: Option<&'a [AggregatePlan]>,
+    group_by: &'a [ExprPlan],
+    having: Option<&'a ExprPlan>,
+    filter_context: Option<&Rc<RowContext<'a>>>,
+    rows: Box<dyn Iterator<Item = Result<Rc<RowContext<'a>>>> + 'a>,
+) -> Result<AggregateIter<'a>> {
+    let aggregate_slots = aggregate_slots.unwrap_or(&[]);
+    let needs_aggregate = !group_by.is_empty() || !aggregate_slots.is_empty();
+
+    if !needs_aggregate {
+        return Ok(Box::new(rows.map(|project_context| {
+            let project_context = project_context?;
+
+            Ok(AggregateContext {
+                aggregated: None,
+                next: Some(project_context),
+            })
+        })));
     }
 
-    let state = rows
-        .into_stream()
-        .enumerate()
-        .map(|(i, row)| row.map(|row| (i, row)))
-        .try_fold(State::new(storage), |state, (index, project_context)| {
-            let filter_context = filter_context.clone();
+    let mut state = State::new(storage, aggregate_slots.len(), group_by.is_empty());
+    for project_context in rows {
+        let project_context = project_context?;
+        let row_filter_context = match filter_context {
+            Some(filter_context) => Some(Rc::new(RowContext::concat(
+                Rc::clone(&project_context),
+                Rc::clone(filter_context),
+            ))),
+            None => Some(Rc::clone(&project_context)),
+        };
 
-            async move {
-                let filter_context = match filter_context {
-                    Some(filter_context) => Arc::new(RowContext::concat(
-                        Arc::clone(&project_context),
-                        filter_context,
-                    )),
-                    None => Arc::clone(&project_context),
-                };
-                let filter_context = Some(filter_context);
+        let group = group_by
+            .iter()
+            .map(|expr| evaluate(storage, row_filter_context.as_ref(), None, expr)?.try_into())
+            .collect::<Result<Vec<Value>>>()?;
 
-                let group = stream::iter(group_by.iter())
-                    .then(|expr| {
-                        let filter_clone = filter_context.as_ref().map(Arc::clone);
-                        async move {
-                            evaluate(storage, filter_clone, None, expr)
-                                .await?
-                                .try_into()
-                        }
-                    })
-                    .try_collect::<Vec<Value>>()
-                    .await?;
+        let group_index = state.apply(group, Rc::clone(&project_context));
+        for (slot, aggregate) in aggregate_slots.iter().enumerate() {
+            state.accumulate(group_index, row_filter_context.as_ref(), slot, aggregate)?;
+        }
+    }
 
-                let state = state.apply(index, group, Arc::clone(&project_context));
-                let state = match projection {
-                    Projection::SelectItems(fields) => {
-                        stream::iter(fields)
-                            .map(Ok)
-                            .try_fold(state, |state, field| {
-                                let filter_clone = filter_context.as_ref().map(Arc::clone);
-
-                                async move {
-                                    match field {
-                                        SelectItem::Expr { expr, .. } => {
-                                            aggregate(state, filter_clone, expr).await
-                                        }
-                                        _ => Ok(state),
-                                    }
-                                }
-                            })
-                            .await?
-                    }
-                    Projection::SchemalessMap => state,
-                };
-
-                Ok(state)
-            }
-        })
-        .await?;
-
-    group_by_having(storage, filter_context, having, state)
-        .await
-        .map(S::Aggregate)
+    group_by_having(
+        storage,
+        filter_context,
+        having,
+        state.export(aggregate_slots)?,
+    )
+    .map(|rows| Box::new(rows.into_iter().map(Ok)) as AggregateIter<'a>)
 }
 
-async fn group_by_having<'a, T: GStore>(
+fn group_by_having<'a, T: GStore>(
     storage: &'a T,
-    filter_context: Option<Arc<RowContext<'a>>>,
-    having: Option<&'a Expr>,
-    state: State<'a, T>,
-) -> Result<impl Stream<Item = Result<AggregateContext<'a>>>> {
-    let rows = state
-        .export()
-        .await?
-        .into_iter()
-        .filter_map(|(aggregated, next)| next.map(|next| (aggregated, next)));
-    let rows = stream::iter(rows)
-        .filter_map(move |(aggregated, next)| {
-            let filter_context = filter_context.as_ref().map(Arc::clone);
+    filter_context: Option<&Rc<RowContext<'a>>>,
+    having: Option<&'a ExprPlan>,
+    rows: Vec<AggregateContext<'a>>,
+) -> Result<Vec<AggregateContext<'a>>> {
+    let mut filtered = Vec::new();
 
-            async move {
-                match having {
-                    None => Some(Ok((aggregated, next))),
-                    Some(having) => {
-                        let filter_context = match filter_context {
-                            Some(filter_context) => {
-                                Arc::new(RowContext::concat(Arc::clone(&next), filter_context))
-                            }
-                            None => Arc::clone(&next),
-                        };
-                        let filter_context = Some(filter_context);
-                        let aggr_rc = aggregated.clone().map(Arc::new);
+    for aggregate_context in rows {
+        let AggregateContext { aggregated, next } = aggregate_context;
 
-                        check_expr(storage, filter_context, aggr_rc, having)
-                            .await
-                            .map(|pass| pass.then_some((aggregated, next)))
-                            .transpose()
-                    }
-                }
-            }
-        })
-        .map(|res| res.map(|(aggregated, next)| AggregateContext { aggregated, next }));
-
-    Ok(rows)
-}
-
-fn aggregate<'a, T>(
-    state: State<'a, T>,
-    filter_context: Option<Arc<RowContext<'a>>>,
-    expr: &'a Expr,
-) -> BoxFuture<'a, Result<State<'a, T>>>
-where
-    T: GStore + 'a,
-{
-    Box::pin(async move {
-        match expr {
-            Expr::Between {
-                expr, low, high, ..
-            } => {
-                let state = aggregate(state, filter_context.clone(), expr).await?;
-                let state = aggregate(state, filter_context.clone(), low).await?;
-                aggregate(state, filter_context, high).await
-            }
-            Expr::BinaryOp { left, right, .. } => {
-                let state = aggregate(state, filter_context.clone(), left).await?;
-                aggregate(state, filter_context, right).await
-            }
-            Expr::UnaryOp { expr, .. } | Expr::Nested(expr) => {
-                aggregate(state, filter_context, expr).await
-            }
-            Expr::Case {
-                operand,
-                when_then,
-                else_result,
-            } => {
-                let mut state = match operand.as_deref() {
-                    Some(op) => aggregate(state, filter_context.clone(), op).await?,
-                    None => state,
+        let pass = match having {
+            None => true,
+            Some(having) => {
+                let filter_context = match (&next, filter_context) {
+                    (Some(next), Some(filter_context)) => Some(Rc::new(RowContext::concat(
+                        Rc::clone(next),
+                        Rc::clone(filter_context),
+                    ))),
+                    (Some(next), None) => Some(Rc::clone(next)),
+                    (None, Some(filter_context)) => Some(Rc::clone(filter_context)),
+                    (None, None) => None,
                 };
 
-                for (when, then) in when_then {
-                    state = aggregate(state, filter_context.clone(), when).await?;
-                    state = aggregate(state, filter_context.clone(), then).await?;
-                }
-
-                if let Some(else_expr) = else_result.as_deref() {
-                    state = aggregate(state, filter_context.clone(), else_expr).await?;
-                }
-
-                Ok(state)
+                check_expr(
+                    storage,
+                    filter_context.as_ref(),
+                    aggregated.as_ref(),
+                    having,
+                )?
             }
-            Expr::Aggregate(aggr_expr) => {
-                state.accumulate(filter_context, aggr_expr.as_ref()).await
-            }
-            _ => Ok(state),
-        }
-    })
-}
+        };
 
-fn check(expr: &Expr) -> bool {
-    match expr {
-        Expr::Between {
-            expr, low, high, ..
-        } => check(expr) || check(low) || check(high),
-        Expr::BinaryOp { left, right, .. } => check(left) || check(right),
-        Expr::UnaryOp { expr, .. } | Expr::Nested(expr) => check(expr),
-        Expr::Case {
-            operand,
-            when_then,
-            else_result,
-        } => {
-            operand.as_ref().is_some_and(|expr| check(expr))
-                || when_then
-                    .iter()
-                    .any(|(when, then)| check(when) || check(then))
-                || else_result.as_ref().is_some_and(|expr| check(expr))
+        if pass {
+            filtered.push(AggregateContext { aggregated, next });
         }
-        Expr::Aggregate(_) => true,
-        _ => false,
     }
+
+    Ok(filtered)
 }
