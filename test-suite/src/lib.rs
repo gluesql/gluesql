@@ -244,11 +244,11 @@ macro_rules! generate_store_tests {
         // query-builder
         glue!(query_builder_basic, query_builder::basic::basic);
         glue!(
-            query_builder_statements_queryinng_data_aggregation,
+            query_builder_statements_querying_data_aggregation,
             query_builder::statements::querying::data_aggregation
         );
         glue!(
-            query_builder_statements_queryinng_data_selection_and_projection,
+            query_builder_statements_querying_data_selection_and_projection,
             query_builder::statements::querying::data_selection_and_projection
         );
         glue!(
