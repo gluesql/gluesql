@@ -41,7 +41,6 @@ let mut glue = Glue::new(storage);
 
 let rows = glue
     .execute("SELECT id, name FROM Foo;")
-    .await
     .rows_as::<Row>()
     .unwrap();
 ```
@@ -62,8 +61,7 @@ table("Foo")
     // Filter by price using AST Builder methods
     .filter(col("price").gt(100))
     .project("id, name")
-    .execute(&mut glue)
-    .await;
+    .execute(&mut glue);
 ```
 
 ## Supporting Structured and Unstructured Data with Schema Flexibility

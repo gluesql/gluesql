@@ -100,22 +100,18 @@ let path = "./";
 let parquet_storage = ParquetStorage::new(path).unwrap();
 let mut glue = Glue::new(parquet_storage);
 glue.execute("CREATE TABLE food (name TEXT);")
-    .await
     .unwrap();
 
 glue.execute("INSERT INTO food VALUES('sushi'), ('steak');")
-    .await
     .unwrap();
 
 glue.execute("UPDATE food SET name = 'Nigiri Sushi' WHERE name='sushi';")
-    .await
     .unwrap();
 
 glue.execute("DELETE name FROM food WHERE name = 'steak';")
-    .await
     .unwrap();
 
-glue.execute("SELECT * FROM food;").await.unwrap();
+glue.execute("SELECT * FROM food;").unwrap();
 ```
 
 ## Schemaless File Interaction
@@ -184,26 +180,22 @@ let path = "./";
 let parquet_storage = ParquetStorage::new(path).unwrap();
 let mut glue = Glue::new(parquet_storage);
 glue.execute("CREATE TABLE Logs;")
-    .await
     .unwrap();
 
 glue.execute("INSERT INTO Logs VALUES
     ('{ "id": 1, "value": 30 }'),
     ('{ "id": 2, "rate": 3.0, "list": [1, 2, 3] }'),
     ('{ "id": 3, "rate": 5.0, "value": 100 }');")
-    .await
     .unwrap();
 
 glue.execute("UPDATE Logs SET list='[5,6]' where id = 2;")
-    .await
     .unwrap();
 
 //Caution: Deleting data in a schemaless table removes all the data within it
 glue.execute("DELETE from Logs where id = 2;")
-    .await
     .unwrap();
 
-glue.execute("SELECT * FROM food;").await.unwrap();
+glue.execute("SELECT * FROM food;").unwrap();
 ```
 
 ## Limitations

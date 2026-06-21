@@ -14,16 +14,14 @@ To create a `values()` object, you can either provide a vector of strings or a v
 use gluesql_core::ast_builder::values;
 
 let actual = values(vec!["1, 'Glue'", "2, 'SQL'", "3, 'Rust'"])
-    .execute(glue)
-    .await;
+    .execute(glue);
 
 let actual = values(vec![
     vec!["1", "'Glue'"],
     vec!["2", "'SQL'"],
     vec!["3", "'Rust'"],
 ])
-.execute(glue)
-.await;
+.execute(glue);
 ```
 
 ## Sorting Results (ORDER BY)
@@ -33,8 +31,7 @@ To sort the results of a `values()` query, use the `order_by()` method.
 ```rust
 let actual = values(vec!["1, 'Glue'", "2, 'SQL'", "3, 'Rust'"])
     .order_by("column2 desc")
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ## Pagination (OFFSET, LIMIT)
@@ -44,13 +41,11 @@ You can paginate the results of a `values()` query using the `offset()` and `lim
 ```rust
 let actual = values(vec!["1, 'Glue'", "2, 'SQL'", "3, 'Rust'"])
     .offset(1)
-    .execute(glue)
-    .await;
+    .execute(glue);
 
 let actual = values(vec!["1, 'Glue'", "2, 'SQL'", "3, 'Rust'"])
     .limit(2)
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ## Querying Preloaded Data
@@ -63,6 +58,5 @@ let actual = values(vec!["1, 'Glue'", "2, 'SQL'", "3, 'Rust'"])
     .select()
     .project("column1 AS id")
     .project("column2 AS name")
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```

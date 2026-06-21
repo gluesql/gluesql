@@ -11,8 +11,7 @@ let actual = table("Record")
     .select()
     .filter(col("time_stamp").gt(now()))  // select rows where "time_stamp" is later than current time
     .project("id, time_stamp")
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 In the above example, the `filter` method uses `now` to select rows where the "time_stamp" column is later than the current time.
@@ -27,7 +26,6 @@ let actual = table("Record")
         "2, NOW()",  // Inserts the current time
         "3, '9999-12-31T23:59:40.364832862'",
     ])
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 In the example above, the "time_stamp" column for the row with id 2 is set to the current time at the moment of insertion.

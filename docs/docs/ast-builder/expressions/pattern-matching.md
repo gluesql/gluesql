@@ -21,8 +21,7 @@ let actual = table("Category")
             .like(text("D%"))
             .or(col("name").like(text("M___"))),
     )
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 In this example, the query will return all rows from the `Category` table where the `name` column starts with "D" or where the `name` is exactly four characters long and starts with "M".
@@ -41,8 +40,7 @@ let actual = table("Category")
             .ilike(text("D%"))
             .or(col("name").ilike(text("M___"))),
     )
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 In this example, the query will return all rows from the `Category` table where the `name` column starts with "D" or "d", or where the `name` is exactly four characters long and starts with "M" or "m".
@@ -61,8 +59,7 @@ let actual = table("Category")
             .not_like(text("D%"))
             .and(col("name").not_like(text("M___"))),
     )
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 In this example, the query will return all rows from the `Category` table where the `name` column does not start with "D" and the `name` is not exactly four characters long and does not start with "M".
@@ -81,8 +78,7 @@ let actual = table("Category")
             .not_ilike(text("D%"))
             .and(col("name").not_ilike(text("M___"))),
     )
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 In this example, the query will return all rows from the `Category` table where the `name` column does not start with "D" or "d", and the `name` is not exactly four characters long and does not start with "M" or "m".

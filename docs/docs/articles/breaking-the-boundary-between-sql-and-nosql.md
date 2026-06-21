@@ -41,7 +41,7 @@ table("Glue")
     .create_table()
     .add_column("id INTEGER")
     .add_column("name TEXT")
-    .execute(glue)
+    .execute(glue);
 
 table("Glue")
     .insert()
@@ -49,14 +49,12 @@ table("Glue")
         vec![num(1), text("hello")],
         vec![num(2), text("gluesql")],
     ])
-    .execute(glue)
-    .await;
+    .execute(glue);
 
 table("Glue")
     .select()
     .filter(col("id").eq(1))
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 Let's reconsider the implicit distinction between SQL and NoSQL. GlueSQL indeed supports SQL, but it also officially develops and offers its own query builder. This query builder is not a secondary tool for SQL. While most SQL query builder libraries ultimately generate SQL strings, GlueSQL's builder directly creates an AST (Abstract Structure Tree) that is used for execution within GlueSQL. Hence, we call it the AST Builder. This means SQL and the AST Builder are two equally supported interfaces in GlueSQL.
@@ -70,8 +68,7 @@ table("Glue")
     .filter(col("id").eq(1))
     // 2.
     .filter("id = 1")
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 Because GlueSQL already supports SQL, not only can you use the custom interface in the AST Builder, but you can also use familiar SQL syntax in part. Whether you use `col("id").eq(1)` or `"id = 1"`, you can use it in the way you prefer. The AST Builder interface, although initially unfamiliar, allows a gradual migration similar to writing SQL for your convenience.

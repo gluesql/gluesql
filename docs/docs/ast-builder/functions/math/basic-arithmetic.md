@@ -15,8 +15,7 @@ let actual = values(vec!["0, 0", "1, -3", "2, 4", "3, -29"])
     .project("column1")
     .project(abs("column2"))  // Takes the absolute value of column2
     .project(col("column2").abs())  // Takes the absolute value of column2
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ## Division - DIV
@@ -29,8 +28,7 @@ let actual = table("Number")
     .project("id")
     .project(divide("number", 3))  // Divides the number by 3
     .project(divide(col("number"), 3))  // Divides the number by 3
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ## Modulo - MOD
@@ -43,8 +41,7 @@ let actual = table("Number")
     .project("id")
     .project(modulo("number", 4))  // Gets the remainder of number divided by 4
     .project(modulo(col("number"), 4))  // Gets the remainder of number divided by 4
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ## Greatest Common Divisor - GCD
@@ -57,8 +54,7 @@ let actual = table("Number")
     .project("id")
     .project(gcd("number", 12))  // Gets the GCD of number and 12
     .project(gcd(col("number"), 12))  // Gets the GCD of number and 12
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ## Least Common Multiple - LCM
@@ -71,6 +67,5 @@ let actual = table("Number")
     .project("id")
     .project(lcm("number", 3))  // Gets the LCM of number and 3
     .project(lcm(col("number"), 3))  // Gets the LCM of number and 3
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```

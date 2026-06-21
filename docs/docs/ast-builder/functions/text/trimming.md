@@ -16,8 +16,7 @@ let actual = table("Food")
     .insert()
     .columns("id, name")
     .values(vec![vec![num(1), test_text]])
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ## Left Trimming - ltrim
@@ -32,8 +31,7 @@ let actual = table("Food")
     .insert()
     .columns("id, name")
     .values(vec![vec![num(2), test_text]])
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ## Right and Left Trimming
@@ -48,8 +46,7 @@ let actual = table("Food")
     .insert()
     .columns("id, name")
     .values(vec![vec![num(3), test_text]])
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ```rust
@@ -60,6 +57,5 @@ let actual = table("Food")
     .insert()
     .columns("id, name")
     .values(vec![vec![num(4), test_text]])
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```

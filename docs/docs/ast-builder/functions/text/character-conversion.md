@@ -45,8 +45,7 @@ values(vec![
 .select()
 .project("column1 AS ascii")
 .project("column2 AS char")
-.execute(glue)
-.await;
+.execute(glue);
 ```
 
 | ascii | char |

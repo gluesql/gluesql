@@ -14,8 +14,7 @@ To update data in a table, you can use the `update` method on a table object, fo
 let actual = table("Foo")
     .update()
     .set("score", col("score").div(10))
-    .execute(glue)
-    .await;
+    .execute(glue);
 let expected = Ok(Payload::Update(3));
 test(actual, expected);
 ```
@@ -31,8 +30,7 @@ let actual = table("Foo")
     .update()
     .set("score", "score * 2 + 5")
     .set("flag", col("flag").negate())
-    .execute(glue)
-    .await;
+    .execute(glue);
 let expected = Ok(Payload::Update(3));
 test(actual, expected);
 ```
@@ -51,8 +49,7 @@ let actual = table("Foo")
     .set("score", "score * 2 + 5")
     .set("flag", col("flag").negate())
     .filter(col("score").lte(30))
-    .execute(glue)
-    .await;
+    .execute(glue);
 let expected = Ok(Payload::Update(2));
 test(actual, expected);
 ```

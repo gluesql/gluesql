@@ -25,8 +25,7 @@ let actual = table("Foo")
     .create_table()
     .add_column("id INTEGER")
     .add_column("name TEXT")
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ### INSERT
@@ -38,8 +37,7 @@ let actual = table("Foo")
         vec![num(100), text("Pickle")],
         vec![num(200), text("Lemon")],
     ])
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ### SELECT
@@ -47,8 +45,7 @@ let actual = table("Foo")
 let actual = table("Foo")
     .select()
     .project("id, name")
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ### UPDATE
@@ -57,8 +54,7 @@ let actual = table("Foo")
     .update()
     .set("id", col("id").mul(2))
     .filter(col("id").eq(200))
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ### SELECT with filtering
@@ -69,8 +65,7 @@ let actual = table("Foo")
     .project("id, name")
     .build()
     .expect("build and execute")
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ### DELETE
@@ -78,8 +73,7 @@ let actual = table("Foo")
 let actual = table("Foo")
     .delete()
     .filter(col("id").gt(200))
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ## Summary

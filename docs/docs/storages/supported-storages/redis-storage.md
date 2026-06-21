@@ -28,8 +28,7 @@ Then create the storage by specifying a namespace and connection details.
 ```rust
 use gluesql::{prelude::Glue, redis_storage::RedisStorage};
 
-#[tokio::main]
-async fn main() {
+fn main() {
     // connect to Redis on localhost:6379 using namespace "my_db"
     let storage = RedisStorage::new("my_db", "localhost", 6379);
     let mut glue = Glue::new(storage);
@@ -40,7 +39,7 @@ async fn main() {
         SELECT * FROM Foo;
     ";
 
-    let payloads = glue.execute(sql).await.unwrap();
+    let payloads = glue.execute(sql).unwrap();
     println!("{:#?}", payloads);
 }
 ```

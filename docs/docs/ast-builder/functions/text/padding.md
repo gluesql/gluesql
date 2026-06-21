@@ -51,8 +51,7 @@ test_case!(padding, {
     .select()
     .project("column1 AS lpaded")
     .project("column2 AS rpaded")
-    .execute(glue)
-    .await;
+    .execute(glue);
     let expected = Ok(select_with_null!(
         lpaded                       | rpaded;
         Str("     hello".to_owned())   Str("hello     ".to_owned());

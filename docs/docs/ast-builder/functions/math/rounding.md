@@ -16,8 +16,7 @@ let actual = table("Number")
     .project("id")
     .project(ceil("number"))  // Method 1: Using the ceil function directly
     .project(col("number").ceil())  // Method 2: Calling the ceil method on a column
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ## Floor Function
@@ -32,8 +31,7 @@ let actual = table("Number")
     .project("id")
     .project(floor("number"))  // Method 1: Using the floor function directly
     .project(col("number").floor())  // Method 2: Calling the floor method on a column
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ## Round Function
@@ -48,6 +46,5 @@ let actual = table("Number")
     .project("id")
     .project(round("number"))  // Method 1: Using the round function directly
     .project(col("number").round())  // Method 2: Calling the round method on a column
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```

@@ -16,8 +16,7 @@ let actual = table("Number")
     .project("input")
     .project(degrees("number"))  // Method 1: Using the degrees function directly
     .project(col("number").degrees())  // Method 2: Calling the degrees method on a column
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ## Radians Function
@@ -32,6 +31,5 @@ let actual = table("Number")
     .project("input")
     .project(radians("number"))  // Method 1: Using the radians function directly
     .project(col("number").radians())  // Method 2: Calling the radians method on a column
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```

@@ -37,13 +37,13 @@ use gluesql::prelude::Value::I64;
 
 glue.execute(
     "CREATE TABLE Todo (id INTEGER, task TEXT);"
-).await.unwrap();
+).unwrap();
 
 glue.execute(
     "INSERT INTO Todo VALUES (1, 'write docs'), (2, 'run tests');"
-).await.unwrap();
+).unwrap();
 
-let result = glue.execute("SELECT * FROM Todo;").await.unwrap();
+let result = glue.execute("SELECT * FROM Todo;").unwrap();
 ```
 
 After running these commands the directory structure under `./data` will look similar to:
