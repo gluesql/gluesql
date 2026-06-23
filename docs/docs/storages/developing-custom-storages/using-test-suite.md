@@ -9,18 +9,14 @@ The GlueSQL Test Suite is a valuable tool for validating your custom storage imp
 To use the Test Suite, you will need to implement the `Tester` trait for your custom storage. A great reference for this process is the `MemoryStorage` implementation in the GlueSQL source code. Here's an example of how the `MemoryStorage` implementation looks like:
 
 ```rust
-use {
-    async_trait::async_trait, gluesql_core::prelude::Glue, gluesql_memory_storage::MemoryStorage,
-    test_suite::*,
-};
+use {gluesql_core::prelude::Glue, gluesql_memory_storage::MemoryStorage, test_suite::*};
 
 struct MemoryTester {
     glue: Glue<MemoryStorage>,
 }
 
-#[async_trait]
 impl Tester<MemoryStorage> for MemoryTester {
-    async fn new(_: &str) -> Self {
+    fn new(_: &str) -> Self {
         let storage = MemoryStorage::default();
         let glue = Glue::new(storage);
 
@@ -36,13 +32,13 @@ impl Tester<MemoryStorage> for MemoryTester {
 Once you have implemented the `Tester` trait, you can easily add the relevant test sets for the traits you have implemented in your custom storage. Here's how the `MemoryStorage` implementation adds the test sets:
 
 ```rust
-generate_store_tests!(tokio::test, MemoryTester);
+generate_store_tests!(test, MemoryTester);
 
-generate_alter_table_tests!(tokio::test, MemoryTester);
+generate_alter_table_tests!(test, MemoryTester);
 
-generate_metadata_table_tests!(tokio::test, MemoryTester);
+generate_metadata_table_tests!(test, MemoryTester);
 
-generate_custom_function_tests!(tokio::test, MemoryTester);
+generate_custom_function_tests!(test, MemoryTester);
 ```
 
 The MemoryStorage example demonstrates the use of the four test sets from the Test Suite, indicating that it has implemented the `Store`, `StoreMut`, `AlterTable`, `CustomFunction`, `CustomFunctionMut`, and `Metadata` traits. However, you don't need to implement all Store traits for your custom storage. Instead, you can choose to implement only the traits that are relevant to your use case, and use the corresponding test sets from the Test Suite for validation.

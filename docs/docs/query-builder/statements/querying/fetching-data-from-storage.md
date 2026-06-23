@@ -11,7 +11,7 @@ The Query Builder provides a powerful and flexible way to query data from your t
 To perform a basic SELECT query using the Query Builder, simply call the `select()` method on a table object.
 
 ```rust
-let actual = table("Category").select().execute(glue).await;
+let actual = table("Category").select().execute(glue);
 ```
 
 ## Filtering (WHERE)
@@ -22,8 +22,7 @@ To filter the results of a SELECT query, use the `filter()` method, providing a 
 let actual = table("Category")
     .select()
     .filter("name = 'Meat'")
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ## Joining Tables
@@ -39,8 +38,7 @@ let actual = table("Item")
     .filter("c.name = 'Fruit' OR c.name = 'Meat'")
     .project("i.name AS item")
     .project("c.name AS category")
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 For LEFT OUTER JOIN, use the `left_join()` method:
@@ -57,8 +55,7 @@ let actual = table("Category")
         "Item.name AS item",
         "price",
     ])
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ## Grouping and Aggregating (GROUP BY, HAVING)
@@ -74,8 +71,7 @@ let actual = table("Item")
     .having("SUM(Item.price) > 80")
     .project("Category.name AS category")
     .project("SUM(Item.price) AS sum_price")
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ## Sorting Results (ORDER BY)
@@ -87,8 +83,7 @@ let actual = table("Item")
     .select()
     .project("name, price")
     .order_by("price DESC")
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 You can also use typed expression helpers:
@@ -98,8 +93,7 @@ let actual = table("Item")
     .select()
     .project("name, price")
     .order_by(col("price").desc())
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ## Pagination (OFFSET, LIMIT)
@@ -113,6 +107,5 @@ let actual = table("Item")
     .order_by("price DESC")
     .offset(1)
     .limit(2)
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```

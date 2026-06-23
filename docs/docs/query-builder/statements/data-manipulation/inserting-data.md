@@ -14,8 +14,7 @@ To insert data into a table, you can use the `insert` method on a table object. 
 let actual = table("Foo")
     .insert()
     .values(vec!["1, 'Fruit', 0.1", "2, 'Meat', 0.8"])
-    .execute(glue)
-    .await;
+    .execute(glue);
 let expected = Ok(Payload::Insert(2));
 test(actual, expected);
 ```
@@ -31,8 +30,7 @@ let actual = table("Foo")
     .insert()
     .columns("id, name")
     .values(vec![vec![num(3), text("Drink")]])
-    .execute(glue)
-    .await;
+    .execute(glue);
 let expected = Ok(Payload::Insert(1));
 test(actual, expected);
 ```
@@ -47,8 +45,7 @@ You can also insert data into a table using a `SELECT` statement as the source. 
 let actual = table("Bar")
     .insert()
     .as_select(table("Foo").select().project("id, name"))
-    .execute(glue)
-    .await;
+    .execute(glue);
 let expected = Ok(Payload::Insert(3));
 test(actual, expected);
 ```

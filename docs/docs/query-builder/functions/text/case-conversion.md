@@ -12,8 +12,7 @@ The `upper` function converts a text string to upper case.
 let actual = table("Item")
     .select()
     .project(col("name").upper())  // Convert the 'name' column to upper case
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ## Lower Case Conversion - lower
@@ -24,8 +23,7 @@ The `lower` function converts a text string to lower case.
 let actual = table("Item")
     .select()
     .project(col("name").lower())  // Convert the 'name' column to lower case
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 You can also filter the records based on the lower case conversion:
@@ -36,8 +34,7 @@ let actual = table("Item")
     .filter(col("name").lower().eq("'abcd'"))  // Filter records where lower case of 'name' is 'abcd'
     .project("name")
     .project(lower("name"))
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ## Initial Capital Case Conversion - initcap
@@ -48,8 +45,7 @@ The `initcap` function converts a text string to initial capital case, i.e., it 
 let actual = table("Item")
     .select()
     .project(col("capped_name").initcap())  // Convert the 'capped_name' column to initial capital case
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 You can also filter the records based on the initial capital case conversion:
@@ -59,6 +55,5 @@ let actual = table("Item")
     .select()
     .filter(col("capped_name").initcap().eq("'H/I Jk'"))  // Filter records where initial capital case of 'capped_name' is 'H/I Jk'
     .project("capped_name")
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```

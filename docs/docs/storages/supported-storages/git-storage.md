@@ -12,15 +12,14 @@ Remote synchronisation is kept manual to give you full control. Use [`pull()`](h
 use gluesql::prelude::Glue;
 use gluesql_git_storage::{GitStorage, StorageType};
 
-#[tokio::main]
-async fn main() -> gluesql::result::Result<()> {
+fn main() -> gluesql::result::Result<()> {
     // initialise a new repository using JSON files
     let storage = GitStorage::init("data/git_db", StorageType::Json)?;
     let mut glue = Glue::new(storage);
 
     // create table and insert some rows - each call creates a Git commit
-    glue.execute("CREATE TABLE Foo (id INT);").await?;
-    glue.execute("INSERT INTO Foo VALUES (1), (2);").await?;
+    glue.execute("CREATE TABLE Foo (id INT);")?;
+    glue.execute("INSERT INTO Foo VALUES (1), (2);")?;
 
     // push commits to remote when you are ready
     glue.storage.push()?;

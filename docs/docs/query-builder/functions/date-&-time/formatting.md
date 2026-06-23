@@ -15,8 +15,7 @@ let actual = table("Visitor")
     .project("visit_date")
     .project(col("visit_date").format(text("%Y-%m")))  // Formats the visit_date to the year-month format
     .project(format(col("visit_date"), text("%m")))  // Formats the visit_date to the month format
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ## Formatting Time
@@ -30,8 +29,7 @@ let actual = table("Visitor")
     .project("visit_time")
     .project(col("visit_time").format(text("%H:%M:%S")))  // Formats the visit_time to the hour-minute-second format
     .project(format(col("visit_time"), text("%M:%S")))  // Formats the visit_time to the minute-second format
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ## Formatting Timestamp
@@ -45,7 +43,6 @@ let actual = table("Visitor")
     .project("visit_timestamp")
     .project(col("visit_timestamp").format(text("%Y-%m-%d %H:%M:%S")))  // Formats the visit_timestamp to the year-month-date hour-minute-second format
     .project(format(col("visit_timestamp"), text("%Y-%m-%d %H:%M:%S")))  // Formats the visit_timestamp to the year-month-date hour-minute-second format
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 

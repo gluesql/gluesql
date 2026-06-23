@@ -17,8 +17,7 @@ let actual = table("Visitor")
     .project("name")
     .project(col("visit_date").to_date("'%Y-%m-%d'"))  // Method 1: Calling the to_date method on a column
     .project(to_date("visit_date", "'%Y-%m-%d'"))  // Method 2: Using the to_date function directly
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ## Time Conversion - to_time
@@ -34,8 +33,7 @@ let actual = table("Visitor")
     .project("name")
     .project(col("visit_time").to_time("'%H:%M:%S'"))  // Method 1: Calling the to_time method on a column
     .project(to_time("visit_time", "'%H:%M:%S'"))  // Method 2: Using the to_time function directly
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ## Timestamp Conversion - to_timestamp
@@ -51,6 +49,5 @@ let actual = table("Visitor")
     .project("name")
     .project(col("visit_time_stamp").to_timestamp("'%Y-%m-%d %H:%M:%S'"))  // Method 1: Calling the to_timestamp method on a column
     .project(to_timestamp("visit_time_stamp", "'%Y-%m-%d %H:%M:%S'"))  // Method 2: Using the to_timestamp function directly
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```

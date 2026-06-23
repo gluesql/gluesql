@@ -13,12 +13,11 @@ You can verify your `Transaction` trait implementation using the Test Suite. How
 Currently, the SAVEPOINT feature is not supported, and only three methods are available: BEGIN (or START TRANSACTION), ROLLBACK, and COMMIT.
 
 ```rust
-#[async_trait]
 pub trait Transaction {
-    async fn begin(&mut self, autocommit: bool) -> Result<bool>;
+    fn begin(&mut self, autocommit: bool) -> Result<bool>;
 
-    async fn rollback(&mut self) -> Result<()>;
+    fn rollback(&mut self) -> Result<()>;
 
-    async fn commit(&mut self) -> Result<()>;
+    fn commit(&mut self) -> Result<()>;
 }
 ```

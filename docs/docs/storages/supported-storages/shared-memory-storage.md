@@ -17,32 +17,35 @@ Here's an example of how to use SharedMemoryStorage in a concurrent environment:
 
 ```rust
 use gluesql_core::prelude::{Glue, Payload, Value};
+use gluesql_shared_memory_storage::SharedMemoryStorage;
+use std::thread;
 
-async fn concurrent_access() {
+fn concurrent_access() {
     let storage = SharedMemoryStorage::new();
 
     let mut glue = Glue::new(storage.clone());
     glue.execute("CREATE TABLE Thread (id INTEGER);").unwrap();
 
-    let thread_1 = tokio::spawn({
+    let thread_1 = thread::spawn({
         let storage = storage.clone();
-        async {
+        move || {
             let mut glue = Glue::new(storage);
             glue.execute("INSERT INTO Thread VALUES(1)").unwrap();
         }
     });
 
-    let thread_2 = tokio::spawn({
+    let thread_2 = thread::spawn({
         let storage = storage.clone();
-        async {
+        move || {
             let mut glue = Glue::new(storage);
             glue.execute("INSERT INTO Thread VALUES(2)").unwrap();
         }
     });
 
-    let _ = tokio::join!(thread_1, thread_2);
+    thread_1.join().unwrap();
+    thread_2.join().unwrap();
 
-    let actual = glue.execute("SELECT * FROM Thread").unwrap();
+    let actual = glue.execute("SELECT * FROM Thread ORDER BY id").unwrap();
     let expected = vec![Payload::Select {
         labels: vec!["id".to_owned()],
         rows: vec![vec![Value::I64(1)], vec![Value::I64(2)]],

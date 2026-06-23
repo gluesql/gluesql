@@ -15,8 +15,7 @@ let actual = table("Item")
     .select()
     .alias_as("Sub")
     .select()
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 In this example, the `alias_as` method is used after the `select` method, creating a derived subquery named "Sub" that can be used in subsequent queries.
@@ -33,8 +32,7 @@ let actual = table("Item")
     .filter("item_id = 300")
     .alias_as("Sub")
     .select()
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ### Derived Subquery with Projection
@@ -45,8 +43,7 @@ let actual = table("Item")
     .project("item_id")
     .alias_as("Sub")
     .select()
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ### Derived Subquery with Join
@@ -61,8 +58,7 @@ let actual = table("Item")
     .select()
     .project("item_name")
     .project("category_name")
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ### Derived Subquery with Group By and Having
@@ -77,8 +73,7 @@ let actual = table("Category")
     .having("category_name = 'Meat'")
     .alias_as("Sub2")
     .select()
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ### Derived Subquery with Order By
@@ -89,8 +84,7 @@ let actual = table("Item")
     .order_by("price DESC")
     .alias_as("Sub")
     .select()
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```
 
 ### Derived Subquery with Offset and Limit
@@ -104,6 +98,5 @@ let actual = table("Item")
     .limit(1)
     .alias_as("Sub")
     .select()
-    .execute(glue)
-    .await;
+    .execute(glue);
 ```

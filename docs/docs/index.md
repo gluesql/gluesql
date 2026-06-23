@@ -39,8 +39,7 @@ table("Foo")
     // Filter by price using Query Builder methods
     .filter(col("price").gt(100))
     .project("id, name")
-    .execute(glue)
-    .await;
+    .execute(&mut glue);
 ```
 
 ## Supporting Structured and Unstructured Data with Schema Flexibility

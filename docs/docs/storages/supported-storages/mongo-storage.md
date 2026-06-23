@@ -23,10 +23,9 @@ Below is a minimal example showing how to execute SQL statements on MongoDB usin
 ```rust
 use gluesql::{prelude::Glue, mongo_storage::MongoStorage};
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let conn_str = "mongodb://localhost:27017";
-    let storage = MongoStorage::new(conn_str, "my_db").await.unwrap();
+    let storage = MongoStorage::new(conn_str, "my_db").unwrap();
     let mut glue = Glue::new(storage);
 
     let sql = "
@@ -35,7 +34,7 @@ async fn main() {
         SELECT * FROM Foo;
     ";
 
-    let payloads = glue.execute(sql).await.unwrap();
+    let payloads = glue.execute(sql).unwrap();
     println!("{:#?}", payloads);
 }
 ```
