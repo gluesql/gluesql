@@ -35,7 +35,7 @@ impl IntoValue for Bson {
             Bson::Double(f) => Value::F64(f),
             Bson::Array(arr) => Value::List(
                 arr.into_iter()
-                    .map(|v| v.into_value_schemaless())
+                    .map(IntoValue::into_value_schemaless)
                     .collect::<Result<Vec<_>>>()?,
             ),
             Bson::Null => Value::Null,
@@ -202,7 +202,7 @@ impl IntoBson for Value {
             Value::List(val) => {
                 let bson = val
                     .into_iter()
-                    .map(|val| val.into_bson())
+                    .map(IntoBson::into_bson)
                     .collect::<Result<Vec<_>>>()?;
 
                 Ok(Bson::Array(bson))

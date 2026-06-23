@@ -2,7 +2,7 @@ mod aggregate;
 mod function;
 
 use {
-    crate::ast::{Expr, Query},
+    crate::plan::{ExprPlan, QueryPlan},
     std::iter::once,
 };
 
@@ -10,48 +10,57 @@ use {
 pub enum PlanExpr<'a> {
     None,
     Identifier(&'a str),
-    CompoundIdentifier { alias: &'a str, ident: &'a str },
-    Expr(&'a Expr),
-    TwoExprs(&'a Expr, &'a Expr),
-    ThreeExprs(&'a Expr, &'a Expr, &'a Expr),
-    MultiExprs(Vec<&'a Expr>),
-    Query(&'a Query),
-    QueryAndExpr { query: &'a Query, expr: &'a Expr },
+    CompoundIdentifier {
+        alias: &'a str,
+        ident: &'a str,
+    },
+    Expr(&'a ExprPlan),
+    TwoExprs(&'a ExprPlan, &'a ExprPlan),
+    ThreeExprs(&'a ExprPlan, &'a ExprPlan, &'a ExprPlan),
+    MultiExprs(Vec<&'a ExprPlan>),
+    Query(&'a QueryPlan),
+    QueryAndExpr {
+        query: &'a QueryPlan,
+        expr: &'a ExprPlan,
+    },
 }
-impl<'a> From<&'a Expr> for PlanExpr<'a> {
-    fn from(expr: &'a Expr) -> Self {
+
+impl<'a> From<&'a ExprPlan> for PlanExpr<'a> {
+    fn from(expr: &'a ExprPlan) -> Self {
         match expr {
-            Expr::Literal(_) | Expr::TypedString { .. } => PlanExpr::None,
-            Expr::Identifier(ident) => PlanExpr::Identifier(ident),
-            Expr::CompoundIdentifier { alias, ident } => {
+            ExprPlan::Literal(_) | ExprPlan::Value(_) | ExprPlan::TypedString { .. } => {
+                PlanExpr::None
+            }
+            ExprPlan::Identifier(ident) => PlanExpr::Identifier(ident),
+            ExprPlan::CompoundIdentifier { alias, ident } => {
                 PlanExpr::CompoundIdentifier { alias, ident }
             }
-            Expr::Nested(expr)
-            | Expr::UnaryOp { expr, .. }
-            | Expr::IsNull(expr)
-            | Expr::IsNotNull(expr)
-            | Expr::Interval { expr, .. } => PlanExpr::Expr(expr),
-            Expr::Aggregate(aggregate) => match aggregate.as_expr() {
+            ExprPlan::Nested(expr)
+            | ExprPlan::UnaryOp { expr, .. }
+            | ExprPlan::IsNull(expr)
+            | ExprPlan::IsNotNull(expr)
+            | ExprPlan::Interval { expr, .. } => PlanExpr::Expr(expr),
+            ExprPlan::Aggregate(aggregate) => match aggregate.as_expr() {
                 Some(expr) => PlanExpr::Expr(expr),
                 None => PlanExpr::None,
             },
-            Expr::BinaryOp { left, right, .. } => PlanExpr::TwoExprs(left, right),
-            Expr::Like { expr, pattern, .. } | Expr::ILike { expr, pattern, .. } => {
+            ExprPlan::BinaryOp { left, right, .. } => PlanExpr::TwoExprs(left, right),
+            ExprPlan::Like { expr, pattern, .. } | ExprPlan::ILike { expr, pattern, .. } => {
                 PlanExpr::TwoExprs(expr, pattern)
             }
-            Expr::Between {
+            ExprPlan::Between {
                 expr, low, high, ..
             } => PlanExpr::ThreeExprs(expr, low, high),
-            Expr::InList { expr, list, .. } => {
+            ExprPlan::InList { expr, list, .. } => {
                 let exprs = list.iter().chain(once(expr.as_ref())).collect();
                 PlanExpr::MultiExprs(exprs)
             }
-            Expr::Case {
+            ExprPlan::Case {
                 operand,
                 when_then,
                 else_result,
             } => {
-                let (when, then): (Vec<&Expr>, Vec<_>) =
+                let (when, then): (Vec<&ExprPlan>, Vec<_>) =
                     when_then.iter().map(|(expr, expr2)| (expr, expr2)).unzip();
                 let exprs = when
                     .into_iter()
@@ -61,17 +70,19 @@ impl<'a> From<&'a Expr> for PlanExpr<'a> {
                     .collect();
                 PlanExpr::MultiExprs(exprs)
             }
-            Expr::ArrayIndex { obj, indexes } => {
+            ExprPlan::ArrayIndex { obj, indexes } => {
                 let exprs = indexes.iter().chain(once(obj.as_ref())).collect();
                 PlanExpr::MultiExprs(exprs)
             }
-            Expr::Array { elem } => {
+            ExprPlan::Array { elem } => {
                 let exprs = elem.iter().collect();
                 PlanExpr::MultiExprs(exprs)
             }
-            Expr::Function(function) => PlanExpr::MultiExprs(function.as_exprs().collect()),
-            Expr::Subquery(subquery) | Expr::Exists { subquery, .. } => PlanExpr::Query(subquery),
-            Expr::InSubquery {
+            ExprPlan::Function(function) => PlanExpr::MultiExprs(function.as_exprs().collect()),
+            ExprPlan::Subquery(subquery) | ExprPlan::Exists { subquery, .. } => {
+                PlanExpr::Query(subquery)
+            }
+            ExprPlan::InSubquery {
                 expr,
                 subquery: query,
                 ..
@@ -84,18 +95,18 @@ mod tests {
     use {
         super::PlanExpr,
         crate::{
-            ast::{Expr, Query},
             parse_sql::{parse_expr, parse_query},
+            plan::{ExprPlan, QueryPlan},
             translate::{NO_PARAMS, translate_expr, translate_query},
         },
     };
-    fn expr(sql: &str) -> Expr {
+    fn expr(sql: &str) -> ExprPlan {
         let parsed = parse_expr(sql).expect(sql);
-        translate_expr(&parsed, NO_PARAMS).expect(sql)
+        translate_expr(&parsed, NO_PARAMS).expect(sql).into()
     }
-    fn query(sql: &str) -> Query {
+    fn query(sql: &str) -> QueryPlan {
         let parsed = parse_query(sql).expect(sql);
-        translate_query(&parsed, NO_PARAMS).expect(sql)
+        translate_query(&parsed, NO_PARAMS).expect(sql).into()
     }
     #[test]
     fn expr_to_plan_expr() {
@@ -206,7 +217,7 @@ mod tests {
             .collect::<Vec<_>>();
         let expected = PlanExpr::MultiExprs(expected.iter().collect());
         test!(actual, expected);
-        let actual = Expr::Subquery(Box::new(query("SELECT id FROM Foo")));
+        let actual = ExprPlan::Subquery(Box::new(query("SELECT id FROM Foo")));
         let expected = query("SELECT id FROM Foo");
         let expected = PlanExpr::Query(&expected);
         test!(actual, expected);

@@ -3,24 +3,21 @@ use {
         CsvStorage,
         error::{CsvStorageError, OptionExt, ResultExt},
     },
-    async_trait::async_trait,
-    futures::stream::iter,
     gluesql_core::{
-        data::{Key, Schema},
+        data::{Key, Schema, Value},
         error::Result,
-        store::{DataRow, RowIter, Store},
+        store::{RowIter, Store},
     },
     std::{ffi::OsStr, fs},
 };
 
-#[async_trait]
 impl Store for CsvStorage {
-    async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
+    fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         self.fetch_schema(table_name)
             .map(|schema| schema.map(|(schema, _)| schema))
     }
 
-    async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
+    fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         let paths = fs::read_dir(&self.path).map_storage_err()?;
         let mut schemas = paths
             .map(|result| {
@@ -48,7 +45,7 @@ impl Store for CsvStorage {
         Ok(schemas)
     }
 
-    async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<DataRow>> {
+    fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<Vec<Value>>> {
         let (_, rows) = self.scan_data(table_name)?;
 
         for item in rows {
@@ -62,9 +59,9 @@ impl Store for CsvStorage {
         Ok(None)
     }
 
-    async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
+    fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
         let rows = self.scan_data(table_name).map(|(_, rows)| rows)?;
 
-        Ok(Box::pin(iter(rows)))
+        Ok(Box::new(rows))
     }
 }

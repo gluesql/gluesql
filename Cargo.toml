@@ -5,31 +5,20 @@ members = [
   "core",
   "macros",
   "pkg/rust",
-  "pkg/javascript",
-  "pkg/python",
   "storages/*",
   "test-suite",
-  "utils",
 ]
 default-members = [
   "cli",
   "core",
   "macros",
   "pkg/rust",
-  "pkg/javascript",
-  "pkg/python",
   "storages/*",
   "test-suite",
-  "utils",
 ]
 
-# ref. https://github.com/rustwasm/wasm-pack/issues/1111
-# enable this only for gluesql-js build
-# [profile.release]
-# opt-level = "s"
-
 [workspace.package]
-version = "0.18.0"
+version = "0.19.0"
 edition = "2024"
 description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
 license = "Apache-2.0"
@@ -37,25 +26,22 @@ repository = "https://github.com/gluesql/gluesql"
 documentation = "https://docs.rs/gluesql/"
 
 [workspace.dependencies]
-gluesql-core = { path = "./core", version = "0.18.0" }
+gluesql-core = { path = "./core", version = "0.19.0" }
 
-cli = { package = "gluesql-cli", path = "./cli", version = "0.18.0" }
-test-suite = { package = "gluesql-test-suite", path = "./test-suite", version = "0.18.0" }
-gluesql_memory_storage = { path = "./storages/memory-storage", version = "0.18.0" }
-gluesql-shared-memory-storage = { path = "./storages/shared-memory-storage", version = "0.18.0" }
-gluesql_sled_storage = { path = "./storages/sled-storage", version = "0.18.0" }
-gluesql-redb-storage = { path = "./storages/redb-storage", version = "0.18.0" }
-gluesql-json-storage = { path = "./storages/json-storage", version = "0.18.0" }
-gluesql-csv-storage = { path = "./storages/csv-storage", version = "0.18.0" }
-gluesql-composite-storage = { path = "./storages/composite-storage", version = "0.18.0" }
-gluesql-web-storage = { path = "./storages/web-storage", version = "0.18.0" }
-gluesql-idb-storage = { path = "./storages/idb-storage", version = "0.18.0" }
-gluesql-redis-storage = { path = "./storages/redis-storage", version = "0.18.0" }
-gluesql-mongo-storage = { path = "./storages/mongo-storage", version = "0.18.0" }
-gluesql-parquet-storage = { path = "./storages/parquet-storage", version = "0.18.0" }
-gluesql-file-storage = { path = "./storages/file-storage", version = "0.18.0" }
-gluesql-git-storage = { path = "./storages/git-storage", version = "0.18.0" }
-utils = { package = "gluesql-utils", path = "./utils", version = "0.18.0" }
+cli = { package = "gluesql-cli", path = "./cli", version = "0.19.0" }
+test-suite = { package = "gluesql-test-suite", path = "./test-suite", version = "0.19.0" }
+gluesql_memory_storage = { path = "./storages/memory-storage", version = "0.19.0" }
+gluesql-shared-memory-storage = { path = "./storages/shared-memory-storage", version = "0.19.0" }
+gluesql_sled_storage = { path = "./storages/sled-storage", version = "0.19.0" }
+gluesql-redb-storage = { path = "./storages/redb-storage", version = "0.19.0" }
+gluesql-json-storage = { path = "./storages/json-storage", version = "0.19.0" }
+gluesql-csv-storage = { path = "./storages/csv-storage", version = "0.19.0" }
+gluesql-composite-storage = { path = "./storages/composite-storage", version = "0.19.0" }
+gluesql-redis-storage = { path = "./storages/redis-storage", version = "0.19.0" }
+gluesql-mongo-storage = { path = "./storages/mongo-storage", version = "0.19.0" }
+gluesql-parquet-storage = { path = "./storages/parquet-storage", version = "0.19.0" }
+gluesql-file-storage = { path = "./storages/file-storage", version = "0.19.0" }
+gluesql-git-storage = { path = "./storages/git-storage", version = "0.19.0" }
 
 [workspace.lints.clippy]
 pedantic = { level = "deny", priority = -1 }
@@ -64,24 +50,10 @@ cast_possible_truncation = "allow"
 cast_possible_wrap = "allow"
 cast_precision_loss = "allow"
 cast_sign_loss = "allow"
-default_trait_access = "allow"
 missing_errors_doc = "allow"
 missing_panics_doc = "allow"
-redundant_closure_for_method_calls = "allow"
 must_use_candidate = "allow"
-ref_option = "allow"
-ignored_unit_patterns = "allow"
-implicit_hasher = "allow"
-inconsistent_struct_constructor = "allow"
 struct_field_names = "allow"
-unreadable_literal = "allow"
-explicit_into_iter_loop = "allow"
-explicit_iter_loop = "allow"
-stable_sort_primitive = "allow"
-unnecessary_join = "allow"
-similar_names = "allow"
 float_cmp = "allow"
-trivially_copy_pass_by_ref = "allow"
-return_self_not_must_use = "allow"
 enum_glob_use = "allow"
 wildcard_imports = "allow"

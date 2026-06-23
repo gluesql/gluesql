@@ -6,13 +6,11 @@ mod metadata;
 mod transaction;
 
 use {
-    async_trait::async_trait,
-    futures::stream::iter,
     gluesql_core::{
         chrono::Utc,
         data::{CustomFunction as StructCustomFunction, Key, Schema, Value},
         error::Result,
-        store::{CustomFunction, CustomFunctionMut, DataRow, Planner, RowIter, Store, StoreMut},
+        store::{CustomFunction, CustomFunctionMut, Planner, RowIter, Store, StoreMut},
     },
     serde::{Deserialize, Serialize},
     std::collections::{BTreeMap, HashMap},
@@ -21,7 +19,7 @@ use {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Item {
     pub schema: Schema,
-    pub rows: BTreeMap<Key, DataRow>,
+    pub rows: BTreeMap<Key, Vec<Value>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -33,7 +31,7 @@ pub struct MemoryStorage {
 }
 
 impl MemoryStorage {
-    pub fn scan_data(&self, table_name: &str) -> Vec<(Key, DataRow)> {
+    pub fn scan_data(&self, table_name: &str) -> Vec<(Key, Vec<Value>)> {
         match self.items.get(table_name) {
             Some(item) => item.rows.clone().into_iter().collect(),
             None => vec![],
@@ -41,35 +39,29 @@ impl MemoryStorage {
     }
 }
 
-#[async_trait]
 impl CustomFunction for MemoryStorage {
-    async fn fetch_function<'a>(
-        &'a self,
-        func_name: &str,
-    ) -> Result<Option<&'a StructCustomFunction>> {
+    fn fetch_function<'a>(&'a self, func_name: &str) -> Result<Option<&'a StructCustomFunction>> {
         Ok(self.functions.get(&func_name.to_uppercase()))
     }
-    async fn fetch_all_functions<'a>(&'a self) -> Result<Vec<&'a StructCustomFunction>> {
+    fn fetch_all_functions(&self) -> Result<Vec<&StructCustomFunction>> {
         Ok(self.functions.values().collect())
     }
 }
 
-#[async_trait]
 impl CustomFunctionMut for MemoryStorage {
-    async fn insert_function(&mut self, func: StructCustomFunction) -> Result<()> {
+    fn insert_function(&mut self, func: StructCustomFunction) -> Result<()> {
         self.functions.insert(func.func_name.to_uppercase(), func);
         Ok(())
     }
 
-    async fn delete_function(&mut self, func_name: &str) -> Result<()> {
+    fn delete_function(&mut self, func_name: &str) -> Result<()> {
         self.functions.remove(&func_name.to_uppercase());
         Ok(())
     }
 }
 
-#[async_trait]
 impl Store for MemoryStorage {
-    async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
+    fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         let mut schemas = self
             .items
             .values()
@@ -79,14 +71,14 @@ impl Store for MemoryStorage {
 
         Ok(schemas)
     }
-    async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
+    fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         self.items
             .get(table_name)
             .map(|item| Ok(item.schema.clone()))
             .transpose()
     }
 
-    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
+    fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Vec<Value>>> {
         let row = self
             .items
             .get(table_name)
@@ -95,18 +87,17 @@ impl Store for MemoryStorage {
         Ok(row)
     }
 
-    async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
+    fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
         let rows = MemoryStorage::scan_data(self, table_name)
             .into_iter()
             .map(Ok);
 
-        Ok(Box::pin(iter(rows)))
+        Ok(Box::new(rows))
     }
 }
 
-#[async_trait]
 impl StoreMut for MemoryStorage {
-    async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
+    fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let created = BTreeMap::from([(
             "CREATED".to_owned(),
             Value::Timestamp(Utc::now().naive_utc()),
@@ -124,14 +115,14 @@ impl StoreMut for MemoryStorage {
         Ok(())
     }
 
-    async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
+    fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         self.items.remove(table_name);
         self.metadata.remove(table_name);
 
         Ok(())
     }
 
-    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
+    fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
         if let Some(item) = self.items.get_mut(table_name) {
             for row in rows {
                 self.id_counter += 1;
@@ -143,7 +134,7 @@ impl StoreMut for MemoryStorage {
         Ok(())
     }
 
-    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
+    fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
         if let Some(item) = self.items.get_mut(table_name) {
             for (key, row) in rows {
                 item.rows.insert(key, row);
@@ -153,7 +144,7 @@ impl StoreMut for MemoryStorage {
         Ok(())
     }
 
-    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
+    fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         if let Some(item) = self.items.get_mut(table_name) {
             for key in keys {
                 item.rows.remove(&key);

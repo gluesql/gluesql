@@ -1,19 +1,16 @@
 use {
     crate::*,
-    bigdecimal::BigDecimal,
     gluesql_core::{
         ast::DataType::{Boolean, Int, Text},
-        data::Literal,
-        error::{InsertError, SelectError, ValueError},
+        error::{EvaluateError, InsertError, SelectError},
         prelude::{DataType, Payload, Value::*},
     },
-    std::borrow::Cow,
 };
 
 test_case!(values, {
     let g = get_tester!();
 
-    g.run("CREATE TABLE Items (id INTEGER NOT NULL, name TEXT, status TEXT DEFAULT 'ACTIVE' NOT NULL);").await;
+    g.run("CREATE TABLE Items (id INTEGER NOT NULL, name TEXT, status TEXT DEFAULT 'ACTIVE' NOT NULL);");
 
     let test_cases = [
         (
@@ -78,25 +75,25 @@ test_case!(values, {
         ),
         (
             "VALUES (1, 'a'), (2, 3)",
-            Err(ValueError::IncompatibleLiteralForDataType {
+            Err(EvaluateError::NumberParseFailed {
+                literal: "3".to_owned(),
                 data_type: DataType::Text,
-                literal: format!("{:?}", Literal::Number(Cow::Owned(BigDecimal::from(3)))),
             }
             .into()),
         ),
         (
             "VALUES (1, 'a'), ('b', 'c')",
-            Err(ValueError::IncompatibleLiteralForDataType {
+            Err(EvaluateError::TextParseFailed {
+                literal: "b".to_owned(),
                 data_type: DataType::Int,
-                literal: format!("{:?}", Literal::Text(Cow::Owned("b".to_owned()))),
             }
             .into()),
         ),
         (
             "VALUES (1, NULL), (2, 'a'), (3, 4)",
-            Err(ValueError::IncompatibleLiteralForDataType {
+            Err(EvaluateError::NumberParseFailed {
+                literal: "4".to_owned(),
                 data_type: DataType::Text,
-                literal: format!("{:?}", Literal::Number(Cow::Owned(BigDecimal::from(4)))),
             }
             .into()),
         ),
@@ -163,6 +160,6 @@ test_case!(values, {
         ),
     ];
     for (sql, expected) in test_cases {
-        g.test(sql, expected).await;
+        g.test(sql, expected);
     }
 });

@@ -14,15 +14,14 @@ macro_rules! date {
     };
 }
 
-#[tokio::test]
-async fn types_only() {
+#[test]
+fn types_only() {
     let path = "./tests/samples/";
     let storage = CsvStorage::new(path).unwrap();
     let mut glue = Glue::new(storage);
 
     let actual = glue
         .execute("SELECT * FROM Grocery")
-        .await
         .unwrap()
         .into_iter()
         .next()
@@ -80,7 +79,6 @@ async fn types_only() {
             WHERE "Expiration Date" IS NULL
             "#,
         )
-        .await
         .unwrap()
         .into_iter()
         .next()
@@ -101,7 +99,6 @@ async fn types_only() {
                 "Expiration Date" < DATE '2022-09-02'
             "#,
         )
-        .await
         .unwrap()
         .into_iter()
         .next()

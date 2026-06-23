@@ -15,8 +15,7 @@ test_case!(coalesce, {
             found: 0,
         }
         .into()),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT COALESCE(NULL) AS coalesce",
@@ -24,8 +23,7 @@ test_case!(coalesce, {
             coalesce;
             Null
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT COALESCE(NULL, 42) AS coalesce",
@@ -34,8 +32,7 @@ test_case!(coalesce, {
             I64;
             42
         )),
-    )
-    .await;
+    );
 
     g.test(
         // Test subqueries in COALESCE
@@ -45,8 +42,7 @@ test_case!(coalesce, {
             I64;
             42
         )),
-    )
-    .await;
+    );
 
     g.test(
         // Test nested COALESCE
@@ -59,8 +55,7 @@ test_case!(coalesce, {
             Str;
             "Answer to the Ultimate Question of Life".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         // Test COALESCE with non-NULL value as first argument
@@ -70,8 +65,7 @@ test_case!(coalesce, {
             Str;
             "Hitchhiker".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         // Test COALESCE with all NULL arguments
@@ -80,8 +74,7 @@ test_case!(coalesce, {
             coalesce;
             Null
         )),
-    )
-    .await;
+    );
 
     g.test(
         // Test COALESCE with integer arguments
@@ -91,8 +84,7 @@ test_case!(coalesce, {
             I64;
             42
         )),
-    )
-    .await;
+    );
 
     g.test(
         // Test COALESCE with float arguments
@@ -102,8 +94,7 @@ test_case!(coalesce, {
             F64;
             1.23
         )),
-    )
-    .await;
+    );
 
     g.test(
         // Test COALESCE with boolean arguments
@@ -113,8 +104,7 @@ test_case!(coalesce, {
             Bool;
             true
         )),
-    )
-    .await;
+    );
 
     g.test(
         // Test invalid expression in COALESCE
@@ -125,8 +115,7 @@ test_case!(coalesce, {
             found: 0,
         }
         .into()),
-    )
-    .await;
+    );
 
     g.run(
         "
@@ -137,8 +126,7 @@ test_case!(coalesce, {
             float_value FLOAT NULL,
             boolean_value BOOLEAN NULL
         );",
-    )
-    .await;
+    );
     g.run(
         "
         INSERT INTO TestCoalesce (id, text_value, integer_value, float_value, boolean_value) VALUES 
@@ -148,8 +136,7 @@ test_case!(coalesce, {
             (4, NULL, NULL, NULL, TRUE),
             (5, 'Universe', 84, 2.22, FALSE);
         ",
-    )
-    .await;
+    );
 
     g.test(
         // Test COALESCE with table column values and different types of default values
@@ -170,7 +157,7 @@ test_case!(coalesce, {
             4     "Default".to_owned()           0                  0.1              true;
             5     "Universe".to_owned()          84                 2.22             false
         ))
-    ).await;
+    );
 
     g.test(
         // Test COALESCE with table column values - multiple columns
@@ -183,5 +170,5 @@ test_case!(coalesce, {
             I64(4)   Bool(true);
             I64(5)   Str("Universe".to_owned())
         ))
-    ).await;
+    );
 });

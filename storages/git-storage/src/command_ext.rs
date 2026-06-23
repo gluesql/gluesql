@@ -22,8 +22,7 @@ impl CommandExt for Command {
             ]
             .into_iter()
             .flatten()
-            .collect::<Vec<_>>()
-            .join("");
+            .collect::<String>();
 
             return Err(Error::StorageMsg(out_and_err));
         }

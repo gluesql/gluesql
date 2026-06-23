@@ -50,17 +50,14 @@ impl PrintOption {
     }
 
     fn format(&self, option: ShowOption) -> String {
-        fn string_from(value: &bool) -> String {
-            match value {
-                true => "ON".into(),
-                false => "OFF".into(),
-            }
+        fn string_from(value: bool) -> String {
+            if value { "ON".into() } else { "OFF".into() }
         }
         match option {
-            ShowOption::Tabular => format!("tabular {}", string_from(&self.tabular)),
+            ShowOption::Tabular => format!("tabular {}", string_from(self.tabular)),
             ShowOption::Colsep => format!("colsep \"{}\"", self.colsep),
             ShowOption::Colwrap => format!("colwrap \"{}\"", self.colwrap),
-            ShowOption::Heading => format!("heading {}", string_from(&self.heading)),
+            ShowOption::Heading => format!("heading {}", string_from(self.heading)),
             ShowOption::All => format!(
                 "{}\n{}\n{}\n{}",
                 self.format(ShowOption::Tabular),
@@ -160,7 +157,7 @@ impl<'a, W: Write> Print<W> {
                     self.writeln(table)?;
                 }
                 false => {
-                    self.write_header(labels.iter().map(|s| s.as_str()))?;
+                    self.write_header(labels.iter().map(String::as_str))?;
                     let rows = rows.iter().map(|row| row.iter().map(String::from));
                     self.write_rows(rows)?;
                 }
@@ -173,7 +170,7 @@ impl<'a, W: Write> Print<W> {
                     .collect::<HashSet<&str>>()
                     .into_iter()
                     .collect::<Vec<_>>();
-                labels.sort();
+                labels.sort_unstable();
 
                 match &self.option.tabular {
                     true => {
@@ -326,14 +323,14 @@ impl<'a, W: Write> Print<W> {
 #[cfg(test)]
 mod tests {
     use {
-        super::Print,
+        super::{Print, PrintOption},
         crate::command::{SetOption, ShowOption},
         std::path::PathBuf,
     };
 
     #[test]
     fn print_help() {
-        let mut print = Print::new(Vec::new(), None, Default::default());
+        let mut print = Print::new(Vec::new(), None, PrintOption::default());
 
         let actual = {
             print.help().unwrap();
@@ -369,7 +366,7 @@ mod tests {
             prelude::{Payload, PayloadVariable, Value},
         };
 
-        let mut print = Print::new(Vec::new(), None, Default::default());
+        let mut print = Print::new(Vec::new(), None, PrintOption::default());
 
         macro_rules! test {
             ($payload: expr, $expected: literal ) => {
@@ -773,7 +770,7 @@ heading ON"
     fn print_spool() {
         use std::fs;
 
-        let mut print = Print::new(Vec::new(), None, Default::default());
+        let mut print = Print::new(Vec::new(), None, PrintOption::default());
 
         // Spooling on file
         fs::create_dir_all("tmp").unwrap();

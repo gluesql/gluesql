@@ -28,8 +28,7 @@ Then create the storage by specifying a namespace and connection details.
 ```rust
 use gluesql::{prelude::Glue, redis_storage::RedisStorage};
 
-#[tokio::main]
-async fn main() {
+fn main() {
     // connect to Redis on localhost:6379 using namespace "my_db"
     let storage = RedisStorage::new("my_db", "localhost", 6379);
     let mut glue = Glue::new(storage);
@@ -40,9 +39,16 @@ async fn main() {
         SELECT * FROM Foo;
     ";
 
-    let payloads = glue.execute(sql).await.unwrap();
+    let payloads = glue.execute(sql).unwrap();
     println!("{:#?}", payloads);
 }
 ```
 
 Running this program prints the results of the final SELECT and leaves the data inside your Redis instance.
+
+## Data Compatibility Policy
+
+Redis storage is commonly used as a cache-like backend rather than long-term durable storage.
+For pre-1.0 releases, GlueSQL does not guarantee backward compatibility of serialized Redis row payloads across storage format changes.
+
+When upgrading across a breaking storage-format change, reset only the target namespace keys before reuse.

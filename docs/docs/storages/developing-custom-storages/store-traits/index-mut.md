@@ -15,16 +15,15 @@ The `IndexMut` trait requires the implementation of two methods:
 2. `drop_index`: This method removes a non-clustered index by the specified index name from the provided table. This can be useful when the index is no longer needed or needs to be updated to reflect changes in the data.
 
 ```rust
-#[async_trait]
 pub trait IndexMut {
-    async fn create_index(
+    fn create_index(
         &mut self,
-        _table_name: &str,
-        _index_name: &str,
-        _column: &OrderByExpr,
+        table_name: &str,
+        index_name: &str,
+        column: &OrderByExpr,
     ) -> Result<()>;
 
-    async fn drop_index(&mut self, _table_name: &str, _index_name: &str) -> Result<()>;
+    fn drop_index(&mut self, table_name: &str, index_name: &str) -> Result<()>;
 }
 ```
 

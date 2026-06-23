@@ -1,13 +1,10 @@
 use {
     crate::*,
-    bigdecimal::BigDecimal,
     gluesql_core::{
         ast::DataType,
-        data::Literal,
-        error::ValueError,
+        error::{EvaluateError, ValueError},
         prelude::{Payload, Value::*},
     },
-    std::borrow::Cow,
     uuid::Uuid as UUID,
 };
 
@@ -31,12 +28,12 @@ test_case!(uuid, {
         ];
 
         for (sql, expected) in test_cases {
-            g.test(sql, expected).await;
+            g.test(sql, expected);
         }
 
         let glue = g.get_glue();
         let sql = format!("SELECT id FROM posts WHERE id = '{uuid}';");
-        let payload = glue.execute(sql).await.unwrap();
+        let payload = glue.execute(sql).unwrap();
 
         assert_eq!(payload, vec![select!( id Uuid; uuid.as_u128() )]);
     }
@@ -45,9 +42,9 @@ test_case!(uuid, {
         ("CREATE TABLE UUID (uuid_field UUID)", Ok(Payload::Create)),
         (
             r"INSERT INTO UUID VALUES (0)",
-            Err(ValueError::IncompatibleLiteralForDataType {
+            Err(EvaluateError::NumberParseFailed {
+                literal: "0".to_owned(),
                 data_type: DataType::Uuid,
-                literal: format!("{:?}", Literal::Number(Cow::Owned(BigDecimal::from(0)))),
             }
             .into()),
         ),
@@ -100,6 +97,6 @@ test_case!(uuid, {
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, expected).await;
+        g.test(sql, expected);
     }
 });

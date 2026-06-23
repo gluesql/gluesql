@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Introduction
 
-With GlueSQL, you can adapt SQL and the AST Builder to a wide variety of environments. This includes file systems, key-value databases, complex NoSQL databases, and even remote APIs. As long as a system supports reading, it can support SELECT queries. If it supports both reading and writing, it can support most SQL operations, including UPDATE and DELETE.
+With GlueSQL, you can adapt SQL and the Query Builder to a wide variety of environments. This includes file systems, key-value databases, complex NoSQL databases, and even remote APIs. As long as a system supports reading, it can support SELECT queries. If it supports both reading and writing, it can support most SQL operations, including UPDATE and DELETE.
 
 To implement GlueSQL, you only need to know two things:
 1. Understanding Store traits

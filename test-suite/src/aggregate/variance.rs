@@ -12,8 +12,7 @@ test_case!(variance, {
         total INTEGER
     );
     ",
-    )
-    .await;
+    );
     g.run(
         "
     INSERT INTO Item (id, quantity, age, total) VALUES
@@ -25,8 +24,7 @@ test_case!(variance, {
         (6, 10,   11, 2),
         (7, 25,   90, 1);
     ",
-    )
-    .await;
+    );
 
     let test_cases = [
         (
@@ -38,7 +36,7 @@ test_case!(variance, {
             select!(
                 "VARIANCE(id)" | "VARIANCE(quantity)"
                 F64            | F64;
-                4.0              82.77551020408163
+                4.0              82.775_510_204_081_63
             ),
         ),
         (
@@ -52,14 +50,14 @@ test_case!(variance, {
         (
             "SELECT VARIANCE(quantity), VARIANCE(DISTINCT quantity) FROM Item",
             select!(
-                "VARIANCE(quantity)" | "VARIANCE(DISTINCT quantity)";
-                F64                  | F64;
-                82.77551020408163      74.64
+                "VARIANCE(quantity)"  | "VARIANCE(DISTINCT quantity)";
+                F64                   | F64;
+                82.775_510_204_081_63   74.64
             ),
         ),
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, Ok(expected)).await;
+        g.test(sql, Ok(expected));
     }
 });

@@ -1,21 +1,23 @@
 use {
     super::{EvaluateError, Evaluated},
     crate::{
-        ast::{AstLiteral, BinaryOperator, DataType, UnaryOperator},
-        data::{Literal, Value},
+        ast::{BinaryOperator, DataType, Literal, UnaryOperator},
+        data::Value,
+        executor::evaluate::evaluated::convert::text_to_value,
         result::Result,
     },
     std::{borrow::Cow, cmp::Ordering},
 };
 
-pub fn literal(ast_literal: &AstLiteral) -> Result<Evaluated<'_>> {
-    Literal::try_from(ast_literal).map(Evaluated::Literal)
+pub fn literal(literal: &Literal) -> Evaluated<'_> {
+    match literal {
+        Literal::Number(value) => Evaluated::Number(Cow::Borrowed(value)),
+        Literal::QuotedString(value) => Evaluated::Text(Cow::Borrowed(value)),
+    }
 }
 
-pub fn typed_string<'a>(data_type: &'a DataType, value: Cow<'a, str>) -> Result<Evaluated<'a>> {
-    let literal = Literal::Text(value);
-
-    Value::try_from_literal(data_type, &literal).map(Evaluated::Value)
+pub fn typed_string<'a>(data_type: &'a DataType, value: &'a str) -> Result<Evaluated<'a>> {
+    text_to_value(data_type, value).map(|v| Evaluated::Value(Cow::Owned(v)))
 }
 
 pub fn binary_op<'a>(
@@ -25,7 +27,7 @@ pub fn binary_op<'a>(
 ) -> Result<Evaluated<'a>> {
     macro_rules! cmp {
         ($expr: expr) => {
-            Ok(Evaluated::Value(Value::Bool($expr)))
+            Ok(Evaluated::Value(Cow::Owned(Value::Bool($expr))))
         };
     }
 
@@ -35,12 +37,12 @@ pub fn binary_op<'a>(
             let r: bool = r.try_into()?;
             let v = l $op r;
 
-            Ok(Evaluated::Value(Value::Bool(v)))
+            Ok(Evaluated::Value(Cow::Owned(Value::Bool(v))))
         }};
     }
 
     if l.is_null() || r.is_null() {
-        return Ok(Evaluated::Value(Value::Null));
+        return Ok(Evaluated::Value(Cow::Owned(Value::Null)));
     }
 
     match op {
@@ -49,7 +51,7 @@ pub fn binary_op<'a>(
         BinaryOperator::Multiply => l.multiply(&r),
         BinaryOperator::Divide => l.divide(&r),
         BinaryOperator::Modulo => l.modulo(&r),
-        BinaryOperator::StringConcat => l.concat(r),
+        BinaryOperator::StringConcat => Ok(l.concat(r)),
         BinaryOperator::Eq => Ok(Evaluated::from(l.evaluate_eq(&r))),
         BinaryOperator::NotEq => Ok(Evaluated::from(!l.evaluate_eq(&r))),
         BinaryOperator::Lt => cmp!(l.evaluate_cmp(&r) == Some(Ordering::Less)),
@@ -89,14 +91,14 @@ pub fn between<'a>(
     high: &Evaluated<'a>,
 ) -> Evaluated<'a> {
     if target.is_null() || low.is_null() || high.is_null() {
-        return Evaluated::Value(Value::Null);
+        return Evaluated::Value(Cow::Owned(Value::Null));
     }
 
     let v = low.evaluate_cmp(target) != Some(Ordering::Greater)
         && target.evaluate_cmp(high) != Some(Ordering::Greater);
     let v = negated ^ v;
 
-    Evaluated::Value(Value::Bool(v))
+    Evaluated::Value(Cow::Owned(Value::Bool(v)))
 }
 
 pub fn array_index<'a>(obj: Evaluated<'a>, indexes: Vec<Evaluated<'a>>) -> Result<Evaluated<'a>> {
@@ -107,5 +109,30 @@ pub fn array_index<'a>(obj: Evaluated<'a>, indexes: Vec<Evaluated<'a>>) -> Resul
         .into_iter()
         .map(Value::try_from)
         .collect::<Result<Vec<_>>>()?;
-    value.selector_by_index(&indexes).map(Evaluated::Value)
+    value
+        .into_owned()
+        .selector_by_index(&indexes)
+        .map(|v| Evaluated::Value(Cow::Owned(v)))
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::{Evaluated, literal},
+        crate::ast::Literal,
+        bigdecimal::BigDecimal,
+        std::borrow::Cow,
+    };
+
+    #[test]
+    fn test_literal() {
+        assert_eq!(
+            literal(&Literal::Number(BigDecimal::from(42))),
+            Evaluated::Number(Cow::Owned(BigDecimal::from(42)))
+        );
+        assert_eq!(
+            literal(&Literal::QuotedString("hello".to_owned())),
+            Evaluated::Text(Cow::Owned("hello".to_owned()))
+        );
+    }
 }

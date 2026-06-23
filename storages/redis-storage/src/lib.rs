@@ -8,13 +8,11 @@ mod transaction;
 
 use mutex::MutexExt;
 use {
-    async_trait::async_trait,
-    futures::stream::iter,
     gluesql_core::{
         chrono::Utc,
         data::{CustomFunction as StructCustomFunction, Key, Schema, Value},
         error::{Error, Result},
-        store::{CustomFunction, CustomFunctionMut, DataRow, Planner, RowIter, Store, StoreMut},
+        store::{CustomFunction, CustomFunctionMut, Planner, RowIter, Store, StoreMut},
     },
     redis::{Commands, Connection},
     std::{collections::BTreeMap, sync::Mutex},
@@ -154,7 +152,7 @@ impl RedisStorage {
         let redis_keys: Vec<String> = {
             let mut conn = self.conn.lock_err()?;
             conn.scan_match(&key)
-                .map(|iter| iter.collect::<Vec<String>>())
+                .map(Iterator::collect::<Vec<String>>)
                 .map_err(|e| {
                     Error::StorageMsg(format!(
                         "[RedisStorage] failed to scan data: key={key} error={e}"
@@ -197,48 +195,42 @@ impl RedisStorage {
 
 impl Planner for RedisStorage {}
 
-#[async_trait]
 impl CustomFunction for RedisStorage {
-    async fn fetch_function<'a>(
-        &'a self,
-        _func_name: &str,
-    ) -> Result<Option<&'a StructCustomFunction>> {
+    fn fetch_function<'a>(&'a self, _func_name: &str) -> Result<Option<&'a StructCustomFunction>> {
         Err(Error::StorageMsg(
             "[RedisStorage] fetch_function is not supported yet".to_owned(),
         ))
     }
 
-    async fn fetch_all_functions<'a>(&'a self) -> Result<Vec<&'a StructCustomFunction>> {
+    fn fetch_all_functions(&self) -> Result<Vec<&StructCustomFunction>> {
         Err(Error::StorageMsg(
             "[RedisStorage] fetch_all_functions is not supported yet".to_owned(),
         ))
     }
 }
 
-#[async_trait]
 impl CustomFunctionMut for RedisStorage {
-    async fn insert_function(&mut self, _func: StructCustomFunction) -> Result<()> {
+    fn insert_function(&mut self, _func: StructCustomFunction) -> Result<()> {
         Err(Error::StorageMsg(
             "[RedisStorage] insert_function is not supported yet".to_owned(),
         ))
     }
 
-    async fn delete_function(&mut self, _func_name: &str) -> Result<()> {
+    fn delete_function(&mut self, _func_name: &str) -> Result<()> {
         Err(Error::StorageMsg(
             "[RedisStorage] delete_function is not supported yet".to_owned(),
         ))
     }
 }
 
-#[async_trait]
 impl Store for RedisStorage {
-    async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
+    fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         let mut schemas = Vec::<Schema>::new();
         let scan_schema_key = Self::redis_generate_scan_schema_key(&self.namespace);
         let redis_keys: Vec<String> = {
             let mut conn = self.conn.lock_err()?;
             conn.scan_match(&scan_schema_key)
-                .map(|iter| iter.collect::<Vec<String>>())
+                .map(Iterator::collect::<Vec<String>>)
                 .map_err(|e| {
                     Error::StorageMsg(format!(
                         "[RedisStorage] failed to scan schemas: namespace={} error={}",
@@ -248,7 +240,7 @@ impl Store for RedisStorage {
         };
 
         // Then read all schemas of the namespace
-        for redis_key in redis_keys.into_iter() {
+        for redis_key in redis_keys {
             // Another client just has removed the value with the key.
             // It's not a problem. Just ignore it.
             let value = {
@@ -274,13 +266,13 @@ impl Store for RedisStorage {
         Ok(schemas)
     }
 
-    async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
+    fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         let mut found = None;
         let scan_schema_key = Self::redis_generate_scan_schema_key(&self.namespace);
         let redis_keys: Vec<String> = {
             let mut conn = self.conn.lock_err()?;
             conn.scan_match(&scan_schema_key)
-                .map(|iter| iter.collect::<Vec<String>>())
+                .map(Iterator::collect::<Vec<String>>)
                 .map_err(|e| {
                     Error::StorageMsg(format!(
                         "[RedisStorage] failed to scan schemas: namespace={} error={}",
@@ -290,7 +282,7 @@ impl Store for RedisStorage {
         };
 
         // Then read all schemas of the namespace
-        for redis_key in redis_keys.into_iter() {
+        for redis_key in redis_keys {
             // Another client just has removed the value with the key.
             // It's not a problem. Just ignore it.
             let value = {
@@ -322,7 +314,7 @@ impl Store for RedisStorage {
         Ok(found)
     }
 
-    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
+    fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Vec<Value>>> {
         let key = Self::redis_generate_key(&self.namespace, table_name, key)?;
         // It's not a problem if the value with the key is removed by another client.
         let value = {
@@ -330,7 +322,7 @@ impl Store for RedisStorage {
             redis::cmd("GET").arg(&key).query::<String>(&mut *conn)
         };
         if let Ok(value) = value {
-            return serde_json::from_str::<DataRow>(&value)
+            return serde_json::from_str::<Vec<Value>>(&value)
                 .map_err(|e| {
                     Error::StorageMsg(format!(
                         "[RedisStorage] failed to deserialize value={value} error={e:?}"
@@ -341,12 +333,12 @@ impl Store for RedisStorage {
         Ok(None)
     }
 
-    async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
+    fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
         // First read all keys of the table
         let redis_keys: Vec<String> = {
             let mut conn = self.conn.lock_err()?;
             conn.scan_match(Self::redis_generate_scankey(&self.namespace, table_name))
-                .map(|iter| iter.collect::<Vec<String>>())
+                .map(Iterator::collect::<Vec<String>>)
                 .map_err(|e| {
                     Error::StorageMsg(format!(
                         "[RedisStorage] failed to scan data: namespace={} table_name={} error={}",
@@ -356,7 +348,7 @@ impl Store for RedisStorage {
         };
 
         let mut rows = BTreeMap::new();
-        for redis_key in redis_keys.into_iter() {
+        for redis_key in redis_keys {
             // Another client just has removed the value with the key.
             // It's not a problem. Just ignore it.
             let value = {
@@ -375,7 +367,7 @@ impl Store for RedisStorage {
                 ))
             })?;
 
-            let row = serde_json::from_str::<DataRow>(&value).map_err(|e| {
+            let row = serde_json::from_str::<Vec<Value>>(&value).map_err(|e| {
                 Error::StorageMsg(format!(
                     "[RedisStorage] failed to deserialize value={value} error={e:?}"
                 ))
@@ -384,13 +376,12 @@ impl Store for RedisStorage {
             rows.insert(key, row);
         }
 
-        Ok(Box::pin(iter(rows.into_iter().map(Ok))))
+        Ok(Box::new(rows.into_iter().map(Ok)))
     }
 }
 
-#[async_trait]
 impl StoreMut for RedisStorage {
-    async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
+    fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let current_time = Value::Timestamp(Utc::now().naive_utc());
         let current_time_value = serde_json::to_string(&current_time).map_err(|e| {
             Error::StorageMsg(format!(
@@ -417,7 +408,7 @@ impl StoreMut for RedisStorage {
         Ok(())
     }
 
-    async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
+    fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let redis_key_iter: Vec<String> = self.redis_execute_scan(table_name)?;
         for key in redis_key_iter {
             self.redis_execute_del(&key)?;
@@ -428,7 +419,7 @@ impl StoreMut for RedisStorage {
         let metadata_redis_keys: Vec<String> = {
             let mut conn = self.conn.lock_err()?;
             conn.scan_match(&metadata_scan_key)
-                .map(|iter| iter.collect::<Vec<String>>())
+                .map(Iterator::collect::<Vec<String>>)
                 .map_err(|e| {
                     Error::StorageMsg(format!(
                         "[RedisStorage] failed to scan metadata: namespace={} table_name={} error={}",
@@ -445,7 +436,7 @@ impl StoreMut for RedisStorage {
         Ok(())
     }
 
-    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
+    fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
         for row in rows {
             // Even multiple clients can get an unique value with INCR command.
             // and a shared key "globalkey"
@@ -472,7 +463,7 @@ impl StoreMut for RedisStorage {
         Ok(())
     }
 
-    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
+    fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
         for (key, row) in rows {
             let redis_key = Self::redis_generate_key(&self.namespace, table_name, &key)?;
             let value = serde_json::to_string(&row).map_err(|e| {
@@ -486,7 +477,7 @@ impl StoreMut for RedisStorage {
         Ok(())
     }
 
-    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
+    fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         for key in keys {
             let redis_key = Self::redis_generate_key(&self.namespace, table_name, &key)?;
             self.redis_execute_del(&redis_key)?;

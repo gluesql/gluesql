@@ -1,22 +1,20 @@
 use {
     super::{CompositeStorage, IStorage},
-    async_trait::async_trait,
-    futures::stream::{self, StreamExt, TryStreamExt},
     gluesql_core::{
-        data::{Key, Schema},
+        data::{Key, Schema, Value},
         error::Result,
-        store::{DataRow, RowIter, Store},
+        store::{RowIter, Store},
     },
 };
 
-#[async_trait]
 impl Store for CompositeStorage {
-    async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
-        let schemas = stream::iter(self.storages.values())
+    fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
+        let schemas = self
+            .storages
+            .values()
             .map(AsRef::as_ref)
-            .then(<dyn IStorage>::fetch_all_schemas)
-            .try_collect::<Vec<_>>()
-            .await?
+            .map(<dyn IStorage>::fetch_all_schemas)
+            .collect::<Result<Vec<_>>>()?
             .into_iter()
             .flatten()
             .collect();
@@ -24,9 +22,9 @@ impl Store for CompositeStorage {
         Ok(schemas)
     }
 
-    async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
+    fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         for storage in self.storages.values() {
-            let schema = storage.fetch_schema(table_name).await?;
+            let schema = storage.fetch_schema(table_name)?;
 
             if schema.is_some() {
                 return Ok(schema);
@@ -36,17 +34,11 @@ impl Store for CompositeStorage {
         Ok(None)
     }
 
-    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
-        self.fetch_storage(table_name)
-            .await?
-            .fetch_data(table_name, key)
-            .await
+    fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Vec<Value>>> {
+        self.fetch_storage(table_name)?.fetch_data(table_name, key)
     }
 
-    async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
-        self.fetch_storage(table_name)
-            .await?
-            .scan_data(table_name)
-            .await
+    fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
+        self.fetch_storage(table_name)?.scan_data(table_name)
     }
 }

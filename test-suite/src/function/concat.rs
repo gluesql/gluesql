@@ -1,8 +1,8 @@
 use {
     crate::*,
     gluesql_core::{
-        error::{EvaluateError, ValueError},
-        prelude::Value::*,
+        error::EvaluateError,
+        prelude::{DataType, Value::*},
     },
 };
 
@@ -16,8 +16,7 @@ test_case!(concat, {
            Str;
            "abcd".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "select concat('ab', 'cd', 'ef') as myconcat;",
@@ -26,20 +25,21 @@ test_case!(concat, {
            Str;
            "abcdef".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "select concat('ab', 'cd', NULL, 'ef') as myconcat;",
         Ok(select_with_null!(myconcat; Null)),
-    )
-    .await;
+    );
 
     g.test(
         "select concat(DATE '2020-06-11', DATE '2020-16-3') as myconcat;",
-        Err(ValueError::FailedToParseDate("2020-16-3".to_owned()).into()),
-    )
-    .await;
+        Err(EvaluateError::TextParseFailed {
+            literal: "2020-16-3".to_owned(),
+            data_type: DataType::Date,
+        }
+        .into()),
+    );
 
     // test with non string arguments
     g.test(
@@ -49,14 +49,12 @@ test_case!(concat, {
            Str;
            "1234563.14".to_owned()
         )),
-    )
-    .await;
+    );
     // test with zero arguments
     g.test(
         r"select concat() as myconcat;",
         Err(EvaluateError::EmptyArgNotAllowedInConcat.into()),
-    )
-    .await;
+    );
 
     g.test(
         r#"SELECT CONCAT(
@@ -68,5 +66,5 @@ test_case!(concat, {
            List;
            vec![I64(1), I64(2), I64(3), Str("one".to_owned()), Str("two".to_owned()), Str("three".to_owned())]
         ))
-    ).await;
+    );
 });

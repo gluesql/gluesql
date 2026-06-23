@@ -1,75 +1,101 @@
 use {
     super::expr::PlanExpr,
     crate::{
-        ast::{
-            Expr, Join, JoinConstraint, JoinOperator, Query, Select, SelectItem, SetExpr,
-            Statement, TableFactor, TableWithJoins,
-        },
         data::Schema,
+        plan::{
+            ExprPlan, JoinConstraintPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan, QueryPlan,
+            SelectItemPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
+            TableWithJoinsPlan,
+        },
         result::Result,
         store::Store,
     },
-    async_recursion::async_recursion,
-    futures::stream::{self, StreamExt, TryStreamExt},
     std::collections::HashMap,
 };
 
-pub async fn fetch_schema_map<T: Store + ?Sized>(
+pub fn fetch_schema_map<T: Store + ?Sized>(
     storage: &T,
-    statement: &Statement,
+    statement: &StatementPlan,
 ) -> Result<HashMap<String, Schema>> {
     match statement {
-        Statement::Query(query) => scan_query(storage, query).await,
-        Statement::Insert {
+        StatementPlan::Query(query) => scan_query(storage, query),
+        StatementPlan::Insert {
             table_name, source, ..
         } => {
             let table_schema = storage
-                .fetch_schema(table_name)
-                .await?
+                .fetch_schema(table_name)?
                 .map_or_else(HashMap::new, |schema| {
                     HashMap::from([(table_name.to_owned(), schema)])
                 });
-            let source_schema_list = scan_query(storage, source).await?;
+            let source_schema_list = scan_query(storage, source)?;
             let schema_list = table_schema.into_iter().chain(source_schema_list).collect();
 
             Ok(schema_list)
         }
-        Statement::CreateTable { name, source, .. } => {
+        StatementPlan::CreateTable { name, source, .. } => {
             let table_schema = storage
-                .fetch_schema(name)
-                .await?
+                .fetch_schema(name)?
                 .map_or_else(HashMap::new, |schema| {
                     HashMap::from([(name.to_owned(), schema)])
                 });
             let source_schema_list = match source {
-                Some(source) => scan_query(storage, source).await?,
+                Some(source) => scan_query(storage, source)?,
                 None => HashMap::new(),
             };
             let schema_list = table_schema.into_iter().chain(source_schema_list).collect();
 
             Ok(schema_list)
         }
-        Statement::DropTable { names, .. } => {
-            stream::iter(names)
-                .filter_map(|table_name| async {
-                    storage
-                        .fetch_schema(table_name)
-                        .await
-                        .map(|schema| Some((table_name.clone(), schema?)))
-                        .transpose()
-                })
-                .try_collect()
-                .await
+        StatementPlan::DropTable { names, .. } => {
+            let mut schema_map = HashMap::new();
+            for table_name in names {
+                if let Some(schema) = storage.fetch_schema(table_name)? {
+                    schema_map.insert(table_name.clone(), schema);
+                }
+            }
+
+            Ok(schema_map)
+        }
+        StatementPlan::Update {
+            table_name,
+            selection,
+            ..
+        } => {
+            let table_schema = storage
+                .fetch_schema(table_name)?
+                .map_or_else(HashMap::new, |schema| {
+                    HashMap::from([(table_name.to_owned(), schema)])
+                });
+            let selection_schema = match selection {
+                Some(expr) => scan_expr(storage, expr)?,
+                None => HashMap::new(),
+            };
+            Ok(table_schema.into_iter().chain(selection_schema).collect())
+        }
+        StatementPlan::Delete {
+            table_name,
+            selection,
+        } => {
+            let table_schema = storage
+                .fetch_schema(table_name)?
+                .map_or_else(HashMap::new, |schema| {
+                    HashMap::from([(table_name.to_owned(), schema)])
+                });
+            let selection_schema = match selection {
+                Some(expr) => scan_expr(storage, expr)?,
+                None => HashMap::new(),
+            };
+            Ok(table_schema.into_iter().chain(selection_schema).collect())
         }
         _ => Ok(HashMap::new()),
     }
 }
 
-async fn scan_query<T: Store + ?Sized>(
+fn scan_query<T: Store + ?Sized>(
     storage: &T,
-    query: &Query,
+    query: &QueryPlan,
 ) -> Result<HashMap<String, Schema>> {
-    let Query {
+    let QueryPlan {
         body,
         limit,
         offset,
@@ -77,19 +103,19 @@ async fn scan_query<T: Store + ?Sized>(
     } = query;
 
     let schema_list = match body {
-        SetExpr::Select(select) => scan_select(storage, select).await?,
-        SetExpr::Values(_) => HashMap::new(),
+        SetExprPlan::Select(select) => scan_select(storage, select)?,
+        SetExprPlan::Values(_) => HashMap::new(),
     };
 
     let schema_list = match (limit, offset) {
         (Some(limit), Some(offset)) => schema_list
             .into_iter()
-            .chain(scan_expr(storage, limit).await?)
-            .chain(scan_expr(storage, offset).await?)
+            .chain(scan_expr(storage, limit)?)
+            .chain(scan_expr(storage, offset)?)
             .collect(),
         (Some(expr), None) | (None, Some(expr)) => schema_list
             .into_iter()
-            .chain(scan_expr(storage, expr).await?)
+            .chain(scan_expr(storage, expr)?)
             .collect(),
         (None, None) => schema_list,
     };
@@ -97,39 +123,42 @@ async fn scan_query<T: Store + ?Sized>(
     Ok(schema_list)
 }
 
-async fn scan_select<T: Store + ?Sized>(
+fn scan_select<T: Store + ?Sized>(
     storage: &T,
-    select: &Select,
+    select: &SelectPlan,
 ) -> Result<HashMap<String, Schema>> {
-    let Select {
+    let SelectPlan {
         distinct: _,
         projection,
         from,
         selection,
         group_by,
         having,
+        ..
     } = select;
 
-    let projection = stream::iter(projection)
-        .then(|select_item| async move {
-            match select_item {
-                SelectItem::Expr { expr, .. } => scan_expr(storage, expr).await,
-                SelectItem::QualifiedWildcard(_) | SelectItem::Wildcard => Ok(HashMap::new()),
-            }
+    let projection_items = match projection {
+        ProjectionPlan::SelectItems(items) => items.as_slice(),
+        ProjectionPlan::SchemalessMap => &[],
+    };
+
+    let projection = projection_items
+        .iter()
+        .map(|select_item| match select_item {
+            SelectItemPlan::Expr { expr, .. } => scan_expr(storage, expr),
+            SelectItemPlan::QualifiedWildcard(_) | SelectItemPlan::Wildcard => Ok(HashMap::new()),
         })
-        .try_collect::<Vec<HashMap<String, Schema>>>()
-        .await?
+        .collect::<Result<Vec<HashMap<String, Schema>>>>()?
         .into_iter()
         .flatten();
 
-    let from = scan_table_with_joins(storage, from).await?;
+    let from = scan_table_with_joins(storage, from)?;
 
     let exprs = selection.iter().chain(group_by.iter()).chain(having.iter());
 
-    Ok(stream::iter(exprs)
-        .then(|expr| scan_expr(storage, expr))
-        .try_collect::<Vec<HashMap<String, Schema>>>()
-        .await?
+    Ok(exprs
+        .map(|expr| scan_expr(storage, expr))
+        .collect::<Result<Vec<HashMap<String, Schema>>>>()?
         .into_iter()
         .flatten()
         .chain(projection)
@@ -137,69 +166,66 @@ async fn scan_select<T: Store + ?Sized>(
         .collect())
 }
 
-async fn scan_table_with_joins<T: Store + ?Sized>(
+fn scan_table_with_joins<T: Store + ?Sized>(
     storage: &T,
-    table_with_joins: &TableWithJoins,
+    table_with_joins: &TableWithJoinsPlan,
 ) -> Result<HashMap<String, Schema>> {
-    let TableWithJoins { relation, joins } = table_with_joins;
-    let schema_list = scan_table_factor(storage, relation).await?;
+    let TableWithJoinsPlan { relation, joins } = table_with_joins;
+    let schema_list = scan_table_factor(storage, relation)?;
 
-    Ok(stream::iter(joins)
-        .then(|join| scan_join(storage, join))
-        .try_collect::<Vec<HashMap<String, Schema>>>()
-        .await?
+    Ok(joins
+        .iter()
+        .map(|join| scan_join(storage, join))
+        .collect::<Result<Vec<HashMap<String, Schema>>>>()?
         .into_iter()
         .flatten()
         .chain(schema_list)
         .collect())
 }
 
-async fn scan_join<T: Store + ?Sized>(storage: &T, join: &Join) -> Result<HashMap<String, Schema>> {
-    let Join {
+fn scan_join<T: Store + ?Sized>(storage: &T, join: &JoinPlan) -> Result<HashMap<String, Schema>> {
+    let JoinPlan {
         relation,
         join_operator,
         ..
     } = join;
 
-    let schema_list = scan_table_factor(storage, relation).await?;
+    let schema_list = scan_table_factor(storage, relation)?;
     let schema_list = match join_operator {
-        JoinOperator::Inner(JoinConstraint::On(expr))
-        | JoinOperator::LeftOuter(JoinConstraint::On(expr)) => scan_expr(storage, expr)
-            .await?
+        JoinOperatorPlan::Inner(JoinConstraintPlan::On(expr))
+        | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::On(expr)) => scan_expr(storage, expr)?
             .into_iter()
             .chain(schema_list)
             .collect(),
-        JoinOperator::Inner(JoinConstraint::None)
-        | JoinOperator::LeftOuter(JoinConstraint::None) => schema_list,
+        JoinOperatorPlan::Inner(JoinConstraintPlan::None)
+        | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None) => schema_list,
     };
 
     Ok(schema_list)
 }
 
-#[async_recursion]
-async fn scan_table_factor<T>(
+fn scan_table_factor<T>(
     storage: &T,
-    table_factor: &TableFactor,
+    table_factor: &TableFactorPlan,
 ) -> Result<HashMap<String, Schema>>
 where
     T: Store + ?Sized,
 {
     match table_factor {
-        TableFactor::Table { name, .. } => {
-            let schema = storage.fetch_schema(name).await?;
+        TableFactorPlan::Table { name, .. } => {
+            let schema = storage.fetch_schema(name)?;
             let schema_list: HashMap<String, Schema> = schema.map_or_else(HashMap::new, |schema| {
                 HashMap::from([(name.to_owned(), schema)])
             });
 
             Ok(schema_list)
         }
-        TableFactor::Derived { subquery, .. } => scan_query(storage, subquery).await,
-        TableFactor::Series { .. } | TableFactor::Dictionary { .. } => Ok(HashMap::new()),
+        TableFactorPlan::Derived { subquery, .. } => scan_query(storage, subquery),
+        TableFactorPlan::Series { .. } | TableFactorPlan::Dictionary { .. } => Ok(HashMap::new()),
     }
 }
 
-#[async_recursion]
-async fn scan_expr<T>(storage: &T, expr: &Expr) -> Result<HashMap<String, Schema>>
+fn scan_expr<T>(storage: &T, expr: &ExprPlan) -> Result<HashMap<String, Schema>>
 where
     T: Store + ?Sized,
 {
@@ -207,30 +233,27 @@ where
         PlanExpr::None | PlanExpr::Identifier(_) | PlanExpr::CompoundIdentifier { .. } => {
             HashMap::new()
         }
-        PlanExpr::Expr(expr) => scan_expr(storage, expr).await?,
-        PlanExpr::TwoExprs(expr, expr2) => scan_expr(storage, expr)
-            .await?
+        PlanExpr::Expr(expr) => scan_expr(storage, expr)?,
+        PlanExpr::TwoExprs(expr, expr2) => scan_expr(storage, expr)?
             .into_iter()
-            .chain(scan_expr(storage, expr2).await?)
+            .chain(scan_expr(storage, expr2)?)
             .collect(),
-        PlanExpr::ThreeExprs(expr, expr2, expr3) => scan_expr(storage, expr)
-            .await?
+        PlanExpr::ThreeExprs(expr, expr2, expr3) => scan_expr(storage, expr)?
             .into_iter()
-            .chain(scan_expr(storage, expr2).await?)
-            .chain(scan_expr(storage, expr3).await?)
+            .chain(scan_expr(storage, expr2)?)
+            .chain(scan_expr(storage, expr3)?)
             .collect(),
-        PlanExpr::MultiExprs(exprs) => stream::iter(exprs)
-            .then(|expr| scan_expr(storage, expr))
-            .try_collect::<Vec<HashMap<String, Schema>>>()
-            .await?
+        PlanExpr::MultiExprs(exprs) => exprs
+            .iter()
+            .map(|expr| scan_expr(storage, expr))
+            .collect::<Result<Vec<HashMap<String, Schema>>>>()?
             .into_iter()
             .flatten()
             .collect(),
-        PlanExpr::Query(query) => scan_query(storage, query).await?,
-        PlanExpr::QueryAndExpr { query, expr } => scan_query(storage, query)
-            .await?
+        PlanExpr::Query(query) => scan_query(storage, query)?,
+        PlanExpr::QueryAndExpr { query, expr } => scan_query(storage, query)?
             .into_iter()
-            .chain(scan_expr(storage, expr).await?)
+            .chain(scan_expr(storage, expr)?)
             .collect(),
     };
 
@@ -247,20 +270,17 @@ mod tests {
             result::Result,
             translate::translate,
         },
-        futures::executor::block_on,
-        utils::Vector,
     };
 
     fn plan(storage: &MockStorage, sql: &str) -> Result<Vec<String>> {
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
-        let statement = translate(&parsed).unwrap();
-        let schema_map = block_on(fetch_schema_map(storage, &statement));
+        let statement = translate(&parsed).unwrap().into();
+        let schema_map = fetch_schema_map(storage, &statement);
 
-        Ok(schema_map?
-            .into_keys()
-            .collect::<Vector<String>>()
-            .sort()
-            .into())
+        let mut schema_names = schema_map?.into_keys().collect::<Vec<_>>();
+        schema_names.sort();
+
+        Ok(schema_names)
     }
 
     fn run_test(storage: &MockStorage, sql: &str, expected: &[&str]) {
@@ -282,9 +302,8 @@ mod tests {
         test("SELECT * FROM Foo", &["Foo"]);
         test("INSERT INTO Foo VALUES (1), (2), (3);", &["Foo"]);
         test("DROP TABLE Foo, Bar;", &["Bar", "Foo"]);
-
-        // Unimplemented
-        test("DELETE FROM Foo;", &[]);
+        test("UPDATE Foo SET id = 1;", &["Foo"]);
+        test("DELETE FROM Foo;", &["Foo"]);
     }
 
     #[test]

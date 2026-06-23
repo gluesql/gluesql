@@ -16,8 +16,7 @@ CREATE TABLE Test (
     num INTEGER,
     name TEXT
 )",
-    )
-    .await;
+    );
 
     g.run(
         "
@@ -29,21 +28,17 @@ CREATE TABLE Test (
             (11, 7, 'Great'),
             (4, 7, 'Job');
     ",
-    )
-    .await;
+    );
 
-    g.test("CREATE INDEX idx_id ON Test (id)", Ok(Payload::CreateIndex))
-        .await;
+    g.test("CREATE INDEX idx_id ON Test (id)", Ok(Payload::CreateIndex));
     g.test(
         "CREATE INDEX idx_name ON Test (name)",
         Ok(Payload::CreateIndex),
-    )
-    .await;
+    );
     g.test(
         "CREATE INDEX idx_id2 ON Test (id + num)",
         Ok(Payload::CreateIndex),
-    )
-    .await;
+    );
     g.test(
         "show indexes from Test",
         Ok(select!(
@@ -53,10 +48,9 @@ CREATE TABLE Test (
             "Test".to_owned()   "idx_name".to_owned()   "BOTH".to_owned()   "name".to_owned()       false;
             "Test".to_owned()   "idx_id2".to_owned()    "BOTH".to_owned()   "id + num".to_owned()   false
         ))
-    ).await;
+    );
     g.test(
         "show indexes from NoTable",
         Err(ExecuteError::TableNotFound("NoTable".to_owned()).into()),
-    )
-    .await;
+    );
 });

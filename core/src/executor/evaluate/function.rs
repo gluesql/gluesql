@@ -10,6 +10,7 @@ use {
     rand::{Rng, SeedableRng, rngs::StdRng},
     std::{
         borrow::Cow,
+        fmt::Write,
         ops::ControlFlow::{self as StdControlFlow, Break, Continue},
     },
     uuid::Uuid,
@@ -49,30 +50,22 @@ impl<'a> BreakIfNull<Evaluated<'a>> for Result<Evaluated<'a>> {
     }
 }
 
+impl<'a> BreakIfNull<Evaluated<'a>> for Evaluated<'a> {
+    fn break_if_null(self) -> ControlFlow<Evaluated<'a>> {
+        if self.is_null() {
+            Break(BreakCase::Null)
+        } else {
+            Continue(self)
+        }
+    }
+}
+
 impl BreakIfNull<Value> for Result<Value> {
     fn break_if_null(self) -> ControlFlow<Value> {
         match self {
             Err(err) => Break(BreakCase::Err(err)),
             Ok(value) if value.is_null() => Break(BreakCase::Null),
             Ok(value) => Continue(value),
-        }
-    }
-}
-
-trait ControlFlowMap<T, U, F> {
-    fn map(self, f: F) -> ControlFlow<U>
-    where
-        F: FnOnce(T) -> U;
-}
-
-impl<T, U, F> ControlFlowMap<T, U, F> for ControlFlow<T> {
-    fn map(self, f: F) -> ControlFlow<U>
-    where
-        F: FnOnce(T) -> U,
-    {
-        match self {
-            Continue(v) => Continue(f(v)),
-            Break(v) => Break(v),
         }
     }
 }
@@ -153,7 +146,7 @@ pub fn concat(exprs: Vec<Evaluated<'_>>) -> ControlFlow<Evaluated<'_>> {
         .into_iter()
         .try_fold(None, |left: Option<Evaluated>, right| match left {
             None => Continue(Some(right)),
-            Some(left) => left.concat(right).break_if_null().map(Some),
+            Some(left) => left.concat(right).break_if_null().map_continue(Some),
         })?;
 
     value.continue_or_break(EvaluateError::EmptyArgNotAllowedInConcat.into())
@@ -175,14 +168,14 @@ pub fn concat_ws<'a>(
         .into_control_flow()?
         .join(&separator);
 
-    Continue(Evaluated::Value(Value::Str(result)))
+    Continue(Evaluated::Value(Cow::Owned(Value::Str(result))))
 }
 
 pub fn lower<'a>(name: &str, expr: Evaluated<'a>) -> ControlFlow<Evaluated<'a>> {
     eval_to_str(name, expr)
-        .map(|value| value.to_lowercase())
-        .map(Value::Str)
-        .map(Evaluated::Value)
+        .map_continue(|value| value.to_lowercase())
+        .map_continue(Value::Str)
+        .map_continue(|v| Evaluated::Value(Cow::Owned(v)))
 }
 
 pub fn initcap<'a>(name: &str, expr: Evaluated<'a>) -> ControlFlow<Evaluated<'a>> {
@@ -199,14 +192,14 @@ pub fn initcap<'a>(name: &str, expr: Evaluated<'a>) -> ControlFlow<Evaluated<'a>
         })
         .collect();
 
-    Continue(Evaluated::Value(Value::Str(string)))
+    Continue(Evaluated::Value(Cow::Owned(Value::Str(string))))
 }
 
 pub fn upper<'a>(name: &str, expr: Evaluated<'a>) -> ControlFlow<Evaluated<'a>> {
     eval_to_str(name, expr)
-        .map(|value| value.to_uppercase())
-        .map(Value::Str)
-        .map(Evaluated::Value)
+        .map_continue(|value| value.to_uppercase())
+        .map_continue(Value::Str)
+        .map_continue(|v| Evaluated::Value(Cow::Owned(v)))
 }
 
 pub fn left_or_right<'a>(
@@ -216,12 +209,12 @@ pub fn left_or_right<'a>(
 ) -> ControlFlow<Evaluated<'a>> {
     let string = eval_to_str(name, expr)?;
     let size = eval_to_int(name, size)
-        .map(usize::try_from)?
+        .map_continue(usize::try_from)?
         .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.to_owned()).into())
         .into_control_flow()?;
 
     let converted = if name == "LEFT" {
-        string.get(..size).map(|v| v.to_owned()).unwrap_or(string)
+        string.get(..size).map(ToOwned::to_owned).unwrap_or(string)
     } else {
         let start_pos = if size > string.len() {
             0
@@ -231,11 +224,11 @@ pub fn left_or_right<'a>(
 
         string
             .get(start_pos..)
-            .map(|value| value.to_owned())
+            .map(ToOwned::to_owned)
             .unwrap_or(string)
     };
 
-    Continue(Evaluated::Value(Value::Str(converted)))
+    Continue(Evaluated::Value(Cow::Owned(Value::Str(converted))))
 }
 
 pub fn lpad_or_rpad<'a>(
@@ -246,7 +239,7 @@ pub fn lpad_or_rpad<'a>(
 ) -> ControlFlow<Evaluated<'a>> {
     let string = eval_to_str(name, expr)?;
     let size = eval_to_int(name, size)
-        .map(usize::try_from)?
+        .map_continue(usize::try_from)?
         .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.to_owned()).into())
         .into_control_flow()?;
 
@@ -270,13 +263,13 @@ pub fn lpad_or_rpad<'a>(
         string[0..size].to_owned()
     };
 
-    Continue(Evaluated::Value(Value::Str(result)))
+    Continue(Evaluated::Value(Cow::Owned(Value::Str(result))))
 }
 
 pub fn reverse<'a>(name: &str, expr: Evaluated<'a>) -> ControlFlow<Evaluated<'a>> {
     let value = eval_to_str(name, expr)?.chars().rev().collect::<String>();
 
-    Continue(Evaluated::Value(Value::Str(value)))
+    Continue(Evaluated::Value(Cow::Owned(Value::Str(value))))
 }
 
 pub fn repeat<'a>(
@@ -288,7 +281,7 @@ pub fn repeat<'a>(
     let num = eval_to_int(name, num)? as usize;
     let value = expr.repeat(num);
 
-    Continue(Evaluated::Value(Value::Str(value)))
+    Continue(Evaluated::Value(Cow::Owned(Value::Str(value))))
 }
 
 pub fn replace<'a>(
@@ -302,7 +295,7 @@ pub fn replace<'a>(
     let new = eval_to_str(name, new)?;
     let value = expr.replace(&old, &new);
 
-    Continue(Evaluated::Value(Value::Str(value)))
+    Continue(Evaluated::Value(Cow::Owned(Value::Str(value))))
 }
 
 pub fn ascii<'a>(name: &str, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
@@ -312,7 +305,7 @@ pub fn ascii<'a>(name: &str, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> 
     match (iter.next(), iter.next()) {
         (Some(c), None) => {
             if c.is_ascii() {
-                Continue(Evaluated::Value(Value::U8(c as u8)))
+                Continue(Evaluated::Value(Cow::Owned(Value::U8(c as u8))))
             } else {
                 Err(EvaluateError::NonAsciiCharacterNotAllowed.into()).into_control_flow()
             }
@@ -330,7 +323,9 @@ pub fn chr<'a>(name: &str, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
         0..=255 => {
             let expr = expr as u8;
 
-            Continue(Evaluated::Value(Value::Str((expr as char).to_string())))
+            Continue(Evaluated::Value(Cow::Owned(Value::Str(
+                (expr as char).to_string(),
+            ))))
         }
         _ => Err(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255.into())
             .into_control_flow(),
@@ -344,24 +339,22 @@ pub fn md5<'a>(name: &str, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     let result = hasher.finalize();
     let result = format!("{result:x}");
 
-    Continue(Evaluated::Value(Value::Str(result)))
+    Continue(Evaluated::Value(Cow::Owned(Value::Str(result))))
 }
 
 pub fn hex<'a>(name: &str, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     match expr.try_into().break_if_null()? {
         Value::I64(number) => {
             let result = format!("{number:X}");
-            Continue(Evaluated::Value(Value::Str(result)))
+            Continue(Evaluated::Value(Cow::Owned(Value::Str(result))))
         }
         Value::Str(string) => {
-            use std::fmt::Write;
-
             let result = string.as_bytes().iter().fold(String::new(), |mut acc, b| {
                 let _ = write!(acc, "{b:02X}");
                 acc
             });
 
-            Continue(Evaluated::Value(Value::Str(result)))
+            Continue(Evaluated::Value(Cow::Owned(Value::Str(result))))
         }
         _ => Break(BreakCase::Err(
             EvaluateError::FunctionRequiresIntegerOrStringValue(name.to_owned()).into(),
@@ -386,7 +379,7 @@ pub fn abs<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
         }
     };
 
-    Continue(Evaluated::Value(value))
+    Continue(Evaluated::Value(Cow::Owned(value)))
 }
 
 pub fn ifnull<'a>(expr: Evaluated<'a>, then: Evaluated<'a>) -> ControlFlow<Evaluated<'a>> {
@@ -395,7 +388,7 @@ pub fn ifnull<'a>(expr: Evaluated<'a>, then: Evaluated<'a>) -> ControlFlow<Evalu
 
 pub fn nullif<'a>(expr1: Evaluated<'a>, expr2: &Evaluated<'a>) -> ControlFlow<Evaluated<'a>> {
     Continue(if &expr1 == expr2 {
-        Evaluated::Value(Value::Null)
+        Evaluated::Value(Cow::Owned(Value::Null))
     } else {
         expr1
     })
@@ -404,17 +397,17 @@ pub fn nullif<'a>(expr1: Evaluated<'a>, expr2: &Evaluated<'a>) -> ControlFlow<Ev
 pub fn sign<'a>(name: &str, n: Evaluated<'a>) -> ControlFlow<Evaluated<'a>> {
     let x = eval_to_float(name, n)?;
     if x == 0.0 {
-        return Continue(Evaluated::Value(Value::I8(0)));
+        return Continue(Evaluated::Value(Cow::Owned(Value::I8(0))));
     }
 
-    Continue(Evaluated::Value(Value::I8(x.signum() as i8)))
+    Continue(Evaluated::Value(Cow::Owned(Value::I8(x.signum() as i8))))
 }
 
 pub fn sqrt<'a>(n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     Value::try_from(n)
         .and_then(|v| v.sqrt())
         .into_control_flow()
-        .map(Evaluated::Value)
+        .map_continue(|v| Evaluated::Value(Cow::Owned(v)))
 }
 
 pub fn power<'a>(
@@ -425,11 +418,11 @@ pub fn power<'a>(
     let expr = eval_to_float(name, expr)?;
     let power = eval_to_float(name, power)?;
 
-    Continue(Evaluated::Value(Value::F64(expr.powf(power))))
+    Continue(Evaluated::Value(Cow::Owned(Value::F64(expr.powf(power)))))
 }
 
 pub fn ceil<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.ceil())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Cow::Owned(Value::F64(n.ceil()))))
 }
 
 pub fn rand<'a>(name: &str, seed: Option<Evaluated<'_>>) -> ControlFlow<Evaluated<'a>> {
@@ -438,31 +431,33 @@ pub fn rand<'a>(name: &str, seed: Option<Evaluated<'_>>) -> ControlFlow<Evaluate
     } else {
         rand::random()
     };
-    Continue(Evaluated::Value(Value::F64(seed)))
+    Continue(Evaluated::Value(Cow::Owned(Value::F64(seed))))
 }
 
 pub fn round<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.round())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Cow::Owned(Value::F64(n.round()))))
 }
 
 pub fn trunc<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.trunc())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Cow::Owned(Value::F64(n.trunc()))))
 }
 
 pub fn floor<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.floor())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Cow::Owned(Value::F64(n.floor()))))
 }
 
 pub fn radians<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.to_radians())))
+    eval_to_float(name, n)
+        .map_continue(|n| Evaluated::Value(Cow::Owned(Value::F64(n.to_radians()))))
 }
 
 pub fn degrees<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.to_degrees())))
+    eval_to_float(name, n)
+        .map_continue(|n| Evaluated::Value(Cow::Owned(Value::F64(n.to_degrees()))))
 }
 
 pub fn exp<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.exp())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Cow::Owned(Value::F64(n.exp()))))
 }
 
 pub fn log<'a>(
@@ -473,43 +468,43 @@ pub fn log<'a>(
     let antilog = eval_to_float(name, antilog)?;
     let base = eval_to_float(name, base)?;
 
-    Continue(Evaluated::Value(Value::F64(antilog.log(base))))
+    Continue(Evaluated::Value(Cow::Owned(Value::F64(antilog.log(base)))))
 }
 
 pub fn ln<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.ln())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Cow::Owned(Value::F64(n.ln()))))
 }
 
 pub fn log2<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.log2())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Cow::Owned(Value::F64(n.log2()))))
 }
 
 pub fn log10<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.log10())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Cow::Owned(Value::F64(n.log10()))))
 }
 
 pub fn sin<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.sin())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Cow::Owned(Value::F64(n.sin()))))
 }
 
 pub fn cos<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.cos())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Cow::Owned(Value::F64(n.cos()))))
 }
 
 pub fn tan<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.tan())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Cow::Owned(Value::F64(n.tan()))))
 }
 
 pub fn asin<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.asin())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Cow::Owned(Value::F64(n.asin()))))
 }
 
 pub fn acos<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.acos())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Cow::Owned(Value::F64(n.acos()))))
 }
 
 pub fn atan<'a>(name: &str, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(name, n).map(|n| Evaluated::Value(Value::F64(n.atan())))
+    eval_to_float(name, n).map_continue(|n| Evaluated::Value(Cow::Owned(Value::F64(n.atan()))))
 }
 
 // --- integer ---
@@ -528,7 +523,9 @@ pub fn div<'a>(
         return Err(EvaluateError::DivisorShouldNotBeZero.into()).into_control_flow();
     }
 
-    Continue(Evaluated::Value(Value::I64((dividend / divisor) as i64)))
+    Continue(Evaluated::Value(Cow::Owned(Value::I64(
+        (dividend / divisor) as i64,
+    ))))
 }
 
 pub fn gcd<'a>(
@@ -539,7 +536,7 @@ pub fn gcd<'a>(
     let left = eval_to_int(name, left)?;
     let right = eval_to_int(name, right)?;
 
-    gcd_i64(left, right).map(|gcd| Evaluated::Value(Value::I64(gcd)))
+    gcd_i64(left, right).map_continue(|gcd| Evaluated::Value(Cow::Owned(Value::I64(gcd))))
 }
 
 pub fn lcm<'a>(
@@ -565,7 +562,7 @@ pub fn lcm<'a>(
     let left = eval_to_int(name, left)?;
     let right = eval_to_int(name, right)?;
 
-    lcm(left, right).map(|lcm| Evaluated::Value(Value::I64(lcm)))
+    lcm(left, right).map_continue(|lcm| Evaluated::Value(Cow::Owned(Value::I64(lcm))))
 }
 
 fn gcd_i64(a: i64, b: i64) -> ControlFlow<i64> {
@@ -591,7 +588,7 @@ pub fn append<'a>(expr: Evaluated<'_>, value: Evaluated<'_>) -> ControlFlow<Eval
     match (expr, value) {
         (Value::List(mut l), v) => {
             l.push(v);
-            Continue(Evaluated::Value(Value::List(l)))
+            Continue(Evaluated::Value(Cow::Owned(Value::List(l))))
         }
         _ => Err(EvaluateError::ListTypeRequired.into()).into_control_flow(),
     }
@@ -604,7 +601,7 @@ pub fn prepend<'a>(expr: Evaluated<'_>, value: Evaluated<'_>) -> ControlFlow<Eva
     match (expr, value) {
         (Value::List(mut l), v) => {
             l.insert(0, v);
-            Continue(Evaluated::Value(Value::List(l)))
+            Continue(Evaluated::Value(Cow::Owned(Value::List(l))))
         }
         _ => Err(EvaluateError::ListTypeRequired.into()).into_control_flow(),
     }
@@ -626,7 +623,7 @@ pub fn skip<'a>(
     match expr {
         Value::List(l) => {
             let l = l.into_iter().skip(size).collect();
-            Continue(Evaluated::Value(Value::List(l)))
+            Continue(Evaluated::Value(Cow::Owned(Value::List(l))))
         }
         _ => Err(EvaluateError::ListTypeRequired.into()).into_control_flow(),
     }
@@ -658,9 +655,9 @@ pub fn sort<'a>(expr: Evaluated<'_>, order: Evaluated<'_>) -> ControlFlow<Evalua
 
             l.sort_by(|a, b| if asc { a.0.cmp(&b.0) } else { b.0.cmp(&a.0) });
 
-            Continue(Evaluated::Value(Value::List(
+            Continue(Evaluated::Value(Cow::Owned(Value::List(
                 l.into_iter().map(|(_, v)| v).collect(),
-            )))
+            ))))
         }
         _ => Err(EvaluateError::ListTypeRequired.into()).into_control_flow(),
     }
@@ -675,7 +672,7 @@ pub fn slice<'a>(
     let expr = expr.try_into().break_if_null()?;
     let mut start = eval_to_int(name, start)?;
     let length = eval_to_int(name, length)
-        .map(usize::try_from)?
+        .map_continue(usize::try_from)?
         .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.to_owned()).into())
         .into_control_flow()?;
 
@@ -691,7 +688,7 @@ pub fn slice<'a>(
             let start_usize = start as usize;
 
             let l = l.into_iter().skip(start_usize).take(length).collect();
-            Continue(Evaluated::Value(Value::List(l)))
+            Continue(Evaluated::Value(Cow::Owned(Value::List(l))))
         }
         _ => Err(EvaluateError::ListTypeRequired.into()).into_control_flow(),
     }
@@ -704,14 +701,14 @@ pub fn take<'a>(
 ) -> ControlFlow<Evaluated<'a>> {
     let expr = expr.try_into().break_if_null()?;
     let size = eval_to_int(name, size)
-        .map(usize::try_from)?
+        .map_continue(usize::try_from)?
         .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.to_owned()).into())
         .into_control_flow()?;
 
     match expr {
         Value::List(l) => {
             let l = l.into_iter().take(size).collect();
-            Continue(Evaluated::Value(Value::List(l)))
+            Continue(Evaluated::Value(Cow::Owned(Value::List(l))))
         }
         _ => Err(EvaluateError::ListTypeRequired.into()).into_control_flow(),
     }
@@ -727,7 +724,7 @@ pub fn is_empty<'a>(expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
         }
     };
 
-    Continue(Evaluated::Value(Value::Bool(length == 0)))
+    Continue(Evaluated::Value(Cow::Owned(Value::Bool(length == 0))))
 }
 
 // --- etc ---
@@ -750,11 +747,11 @@ pub fn unwrap<'a>(
     value
         .selector(&selector)
         .into_control_flow()
-        .map(Evaluated::Value)
+        .map_continue(|v| Evaluated::Value(Cow::Owned(v)))
 }
 
 pub fn generate_uuid<'a>() -> Evaluated<'a> {
-    Evaluated::Value(Value::Uuid(Uuid::new_v4().as_u128()))
+    Evaluated::Value(Cow::Owned(Value::Uuid(Uuid::new_v4().as_u128())))
 }
 
 pub fn greatest<'a>(name: &str, exprs: Vec<Evaluated<'a>>) -> Result<Evaluated<'a>> {
@@ -781,16 +778,16 @@ pub fn format<'a>(
 ) -> ControlFlow<Evaluated<'a>> {
     match expr.try_into().break_if_null()? {
         Value::Date(expr) => eval_to_str(name, format)
-            .map(|format| chrono::NaiveDate::format(&expr, &format).to_string()),
+            .map_continue(|format| chrono::NaiveDate::format(&expr, &format).to_string()),
         Value::Timestamp(expr) => eval_to_str(name, format)
-            .map(|format| chrono::NaiveDateTime::format(&expr, &format).to_string()),
+            .map_continue(|format| chrono::NaiveDateTime::format(&expr, &format).to_string()),
         Value::Time(expr) => eval_to_str(name, format)
-            .map(|format| chrono::NaiveTime::format(&expr, &format).to_string()),
+            .map_continue(|format| chrono::NaiveTime::format(&expr, &format).to_string()),
         value => Err(EvaluateError::UnsupportedExprForFormatFunction(value.into()).into())
             .into_control_flow(),
     }
-    .map(Value::Str)
-    .map(Evaluated::Value)
+    .map_continue(Value::Str)
+    .map_continue(|v| Evaluated::Value(Cow::Owned(v)))
 }
 
 pub fn last_day<'a>(name: &str, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
@@ -803,9 +800,9 @@ pub fn last_day<'a>(name: &str, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a
         }
     };
 
-    Continue(Evaluated::Value(Value::Date(
+    Continue(Evaluated::Value(Cow::Owned(Value::Date(
         date + Months::new(1) - Duration::days(i64::from(date.day())),
-    )))
+    ))))
 }
 
 pub fn to_date<'a>(
@@ -819,11 +816,8 @@ pub fn to_date<'a>(
 
             chrono::NaiveDate::parse_from_str(&expr, &format)
                 .map(Value::Date)
-                .map(Evaluated::Value)
-                .map_err(|err| {
-                    let err: EvaluateError = err.into();
-                    err.into()
-                })
+                .map(|v| Evaluated::Value(Cow::Owned(v)))
+                .map_err(|err| EvaluateError::FormatParseError(err.to_string()).into())
         }
         _ => Err(EvaluateError::FunctionRequiresStringValue(name.to_owned()).into()),
     }
@@ -841,11 +835,8 @@ pub fn to_timestamp<'a>(
 
             chrono::NaiveDateTime::parse_from_str(&expr, &format)
                 .map(Value::Timestamp)
-                .map(Evaluated::Value)
-                .map_err(|err| {
-                    let err: EvaluateError = err.into();
-                    err.into()
-                })
+                .map(|v| Evaluated::Value(Cow::Owned(v)))
+                .map_err(|err| EvaluateError::FormatParseError(err.to_string()).into())
         }
         _ => Err(EvaluateError::FunctionRequiresStringValue(name.to_owned()).into()),
     }
@@ -860,7 +851,7 @@ pub fn add_month<'a>(
     let size = eval_to_int(name, size)?;
     let expr = eval_to_str(name, expr)?;
     let expr = chrono::NaiveDate::parse_from_str(&expr, "%Y-%m-%d")
-        .map_err(EvaluateError::from)
+        .map_err(|err| EvaluateError::FormatParseError(err.to_string()))
         .map_err(Error::from)
         .into_control_flow()?;
     let date = {
@@ -878,7 +869,7 @@ pub fn add_month<'a>(
         }
         .continue_or_break(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255.into())?
     };
-    Continue(Evaluated::Value(Value::Date(date)))
+    Continue(Evaluated::Value(Cow::Owned(Value::Date(date))))
 }
 
 pub fn to_time<'a>(
@@ -892,11 +883,8 @@ pub fn to_time<'a>(
 
             chrono::NaiveTime::parse_from_str(&expr, &format)
                 .map(Value::Time)
-                .map(Evaluated::Value)
-                .map_err(|err| {
-                    let err: EvaluateError = err.into();
-                    err.into()
-                })
+                .map(|v| Evaluated::Value(Cow::Owned(v)))
+                .map_err(|err| EvaluateError::FormatParseError(err.to_string()).into())
         }
         _ => Err(EvaluateError::FunctionRequiresStringValue(name.to_owned()).into()),
     }
@@ -911,7 +899,7 @@ pub fn position<'a>(
     let sub = sub_expr.try_into().break_if_null()?;
 
     from.position(&sub)
-        .map(Evaluated::Value)
+        .map(|v| Evaluated::Value(Cow::Owned(v)))
         .into_control_flow()
 }
 
@@ -935,14 +923,14 @@ pub fn find_idx<'a>(
         }
         None => Value::position(&Value::Str(from_expr), &Value::Str(sub_expr)),
     }
-    .map(Evaluated::Value)
+    .map(|v| Evaluated::Value(Cow::Owned(v)))
     .into_control_flow()
 }
 
-pub fn extract<'a>(field: &DateTimeField, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+pub fn extract<'a>(field: DateTimeField, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     Value::try_from(expr)
-        .and_then(|v| v.extract(field))
-        .map(Evaluated::Value)
+        .and_then(|v| v.extract(&field))
+        .map(|v| Evaluated::Value(Cow::Owned(v)))
         .into_control_flow()
 }
 
@@ -950,12 +938,12 @@ pub fn point<'a>(name: &str, x: Evaluated<'_>, y: Evaluated<'_>) -> ControlFlow<
     let x = eval_to_float(name, x)?;
     let y = eval_to_float(name, y)?;
 
-    Continue(Evaluated::Value(Value::Point(Point::new(x, y))))
+    Continue(Evaluated::Value(Cow::Owned(Value::Point(Point::new(x, y)))))
 }
 
 pub fn get_x<'a>(name: &str, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     match expr.try_into().break_if_null()? {
-        Value::Point(v) => Ok(Evaluated::Value(Value::F64(v.x))),
+        Value::Point(v) => Ok(Evaluated::Value(Cow::Owned(Value::F64(v.x)))),
         _ => Err(EvaluateError::FunctionRequiresPointValue(name.to_owned()).into()),
     }
     .into_control_flow()
@@ -963,7 +951,7 @@ pub fn get_x<'a>(name: &str, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> 
 
 pub fn get_y<'a>(name: &str, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     match expr.try_into().break_if_null()? {
-        Value::Point(v) => Ok(Evaluated::Value(Value::F64(v.y))),
+        Value::Point(v) => Ok(Evaluated::Value(Cow::Owned(Value::F64(v.y)))),
         _ => Err(EvaluateError::FunctionRequiresPointValue(name.to_owned()).into()),
     }
     .into_control_flow()
@@ -977,14 +965,18 @@ pub fn calc_distance<'a>(
     let x = eval_to_point(name, x)?;
     let y = eval_to_point(name, y)?;
 
-    Continue(Evaluated::Value(Value::F64(Point::calc_distance(&x, &y))))
+    Continue(Evaluated::Value(Cow::Owned(Value::F64(
+        Point::calc_distance(&x, &y),
+    ))))
 }
 
 pub fn length<'a>(name: &str, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     match expr.try_into().break_if_null()? {
-        Value::Str(expr) => Ok(Evaluated::Value(Value::U64(expr.chars().count() as u64))),
-        Value::List(expr) => Ok(Evaluated::Value(Value::U64(expr.len() as u64))),
-        Value::Map(expr) => Ok(Evaluated::Value(Value::U64(expr.len() as u64))),
+        Value::Str(expr) => Ok(Evaluated::Value(Cow::Owned(Value::U64(
+            expr.chars().count() as u64,
+        )))),
+        Value::List(expr) => Ok(Evaluated::Value(Cow::Owned(Value::U64(expr.len() as u64)))),
+        Value::Map(expr) => Ok(Evaluated::Value(Cow::Owned(Value::U64(expr.len() as u64)))),
         _ => Err(EvaluateError::FunctionRequiresStrOrListOrMapValue(name.to_owned()).into()),
     }
     .into_control_flow()
@@ -1000,18 +992,20 @@ pub fn coalesce<'a>(exprs: Vec<Evaluated<'_>>) -> Result<Evaluated<'a>> {
         .into());
     }
 
-    let control_flow = exprs.into_iter().map(|expr| expr.try_into()).try_for_each(
-        |item: Result<Value>| match item {
-            Ok(value) if value.is_null() => StdControlFlow::Continue(()),
-            Ok(value) => StdControlFlow::Break(Ok(value)),
-            Err(err) => StdControlFlow::Break(Err(err)),
-        },
-    );
+    let control_flow =
+        exprs
+            .into_iter()
+            .map(TryInto::try_into)
+            .try_for_each(|item: Result<Value>| match item {
+                Ok(value) if value.is_null() => StdControlFlow::Continue(()),
+                Ok(value) => StdControlFlow::Break(Ok(value)),
+                Err(err) => StdControlFlow::Break(Err(err)),
+            });
 
     match control_flow {
-        StdControlFlow::Break(Ok(value)) => Ok(Evaluated::Value(value)),
+        StdControlFlow::Break(Ok(value)) => Ok(Evaluated::Value(Cow::Owned(value))),
         StdControlFlow::Break(Err(err)) => Err(err),
-        StdControlFlow::Continue(()) => Ok(Evaluated::Value(Value::Null)),
+        StdControlFlow::Continue(()) => Ok(Evaluated::Value(Cow::Owned(Value::Null))),
     }
 }
 
@@ -1022,7 +1016,7 @@ pub fn entries<'a>(name: &str, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>
                 .into_iter()
                 .map(|(k, v)| Value::List(vec![Value::Str(k), v]))
                 .collect::<Vec<_>>();
-            Ok(Evaluated::Value(Value::List(entries)))
+            Ok(Evaluated::Value(Cow::Owned(Value::List(entries))))
         }
         _ => Err(EvaluateError::FunctionRequiresMapValue(name.to_owned()).into()),
     }
@@ -1031,9 +1025,9 @@ pub fn entries<'a>(name: &str, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>
 
 pub fn keys<'a>(expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     match expr.try_into().break_if_null()? {
-        Value::Map(m) => Ok(Evaluated::Value(Value::List(
+        Value::Map(m) => Ok(Evaluated::Value(Cow::Owned(Value::List(
             m.into_keys().map(Value::Str).collect(),
-        ))),
+        )))),
         _ => Err(EvaluateError::MapTypeRequired.into()),
     }
     .into_control_flow()
@@ -1041,7 +1035,9 @@ pub fn keys<'a>(expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
 
 pub fn values<'a>(expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     match expr.try_into().break_if_null()? {
-        Value::Map(m) => Ok(Evaluated::Value(Value::List(m.into_values().collect()))),
+        Value::Map(m) => Ok(Evaluated::Value(Cow::Owned(Value::List(
+            m.into_values().collect(),
+        )))),
         _ => Err(EvaluateError::MapTypeRequired.into()),
     }
     .into_control_flow()
@@ -1090,14 +1086,14 @@ pub fn splice<'a>(
         result
     };
 
-    Continue(Evaluated::Value(Value::List(result)))
+    Continue(Evaluated::Value(Cow::Owned(Value::List(result))))
 }
 
 pub fn dedup<'a>(list: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     match list.try_into().break_if_null()? {
         Value::List(mut list) => {
             list.dedup();
-            Continue(Evaluated::Value(Value::List(list)))
+            Continue(Evaluated::Value(Cow::Owned(Value::List(list))))
         }
         _ => Err(EvaluateError::ListTypeRequired.into()).into_control_flow(),
     }

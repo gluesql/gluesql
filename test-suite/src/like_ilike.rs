@@ -1,12 +1,9 @@
 use {
     crate::*,
-    bigdecimal::BigDecimal,
     gluesql_core::{
-        data::Literal,
-        error::{LiteralError, ValueError},
+        error::{EvaluateError, ValueError},
         prelude::Value::{self, Bool},
     },
-    std::{borrow::Cow, str::FromStr},
 };
 
 test_case!(like_ilike, {
@@ -23,8 +20,7 @@ test_case!(like_ilike, {
                 ('HELLO' NOT ILIKE '_ELLE');
         ",
         Ok(select!(column1 Bool; true; true; true; true; true)),
-    )
-    .await;
+    );
 
     g.run(
         "
@@ -33,8 +29,7 @@ test_case!(like_ilike, {
             name TEXT
         );
     ",
-    )
-    .await;
+    );
     g.run(
         "
         INSERT INTO Item (id, name) VALUES
@@ -44,8 +39,7 @@ test_case!(like_ilike, {
             (4,   'Gehrman'),
             (5,     'Maria');
     ",
-    )
-    .await;
+    );
 
     let test_cases = [
         (2, "SELECT name FROM Item WHERE name LIKE '_a%'"),
@@ -81,27 +75,24 @@ test_case!(like_ilike, {
     ];
 
     for (num, sql) in test_cases {
-        g.count(sql, num).await;
+        g.count(sql, num);
     }
 
     let error_sqls = [
         (
             "SELECT name FROM Item WHERE 'ABC' LIKE 10",
-            LiteralError::LikeOnNonString {
-                base: format!("{:?}", Literal::Text(Cow::Owned("ABC".to_owned()))),
-                pattern: format!(
-                    "{:?}",
-                    Literal::Number(Cow::Owned(BigDecimal::from_str("10").unwrap()))
-                ),
+            EvaluateError::LikeOnNonStringLiteral {
+                base: "ABC".to_owned(),
+                pattern: "10".to_owned(),
                 case_sensitive: true,
             }
             .into(),
         ),
         (
             "SELECT name FROM Item WHERE True ILIKE '_B_'",
-            LiteralError::LikeOnNonString {
-                base: format!("{:?}", Literal::Boolean(true)),
-                pattern: format!("{:?}", Literal::Text(Cow::Owned("_B_".to_owned()))),
+            ValueError::LikeOnNonString {
+                base: Value::Bool(true),
+                pattern: Value::Str("_B_".to_owned()),
                 case_sensitive: false,
             }
             .into(),
@@ -127,6 +118,6 @@ test_case!(like_ilike, {
     ];
 
     for (sql, error) in error_sqls {
-        g.test(sql, Err(error)).await;
+        g.test(sql, Err(error));
     }
 });

@@ -2,7 +2,7 @@ use {
     crate::{
         MongoStorage,
         description::ColumnDescription,
-        error::{MongoStorageError, OptionExt, ResultExt},
+        error::{MongoStorageError, ResultExt},
         row::{
             data_type::{BsonType, IntoRange},
             key::{KeyIntoBson, into_object_id},
@@ -10,12 +10,12 @@ use {
         },
         utils::{Validator, get_primary_key},
     },
-    async_trait::async_trait,
     gluesql_core::{
         ast::ColumnUniqueOption,
         data::{Key, Schema},
         error::{Error, Result},
-        store::{DataRow, Store, StoreMut},
+        prelude::Value,
+        store::{Store, StoreMut},
     },
     mongodb::{
         bson::{Bson, Document, doc},
@@ -34,9 +34,8 @@ enum IndexType {
     Unique,
 }
 
-#[async_trait]
 impl StoreMut for MongoStorage {
-    async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
+    fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let (labels, column_types, indexes) = schema
             .column_defs
             .as_ref()
@@ -124,7 +123,6 @@ impl StoreMut for MongoStorage {
 
         let schema_exists = self
             .fetch_schema(&schema.table_name)
-            .await
             .map_storage_err()?
             .is_some();
 
@@ -135,7 +133,7 @@ impl StoreMut for MongoStorage {
                 "validationLevel": "strict",
                 "validationAction": "error",
             };
-            self.db.run_command(command, None).await.map_storage_err()?;
+            self.db.run_command(command, None).map_storage_err()?;
 
             return Ok(());
         }
@@ -144,7 +142,6 @@ impl StoreMut for MongoStorage {
 
         self.db
             .create_collection(&schema.table_name, options)
-            .await
             .map_storage_err()?;
 
         if indexes.is_empty() {
@@ -181,48 +178,46 @@ impl StoreMut for MongoStorage {
         self.db
             .collection::<Document>(&schema.table_name)
             .create_indexes(index_models, None)
-            .await
             .map(|_| ())
             .map_storage_err()
     }
 
-    async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
+    fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         self.db
             .collection::<Document>(table_name)
             .drop(None)
-            .await
             .map_storage_err()
     }
 
-    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
-        let column_defs = self.get_column_defs(table_name).await?;
+    fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
+        let column_defs = self.get_column_defs(table_name)?;
 
-        let data = rows
-            .into_iter()
-            .map(|row| match row {
-                DataRow::Vec(values) => column_defs
-                    .as_ref()
-                    .map_storage_err(MongoStorageError::ConflictAppendData)?
-                    .iter()
-                    .zip(values.into_iter())
-                    .try_fold(Document::new(), |mut acc, (column_def, value)| {
-                        acc.extend(
-                            doc! {column_def.name.clone(): value.into_bson().map_storage_err()?},
-                        );
-
-                        Ok(acc)
-                    }),
-                DataRow::Map(hash_map) => {
-                    hash_map
-                        .into_iter()
-                        .try_fold(Document::new(), |mut acc, (key, value)| {
-                            acc.extend(doc! {key: value.into_bson().map_storage_err()?});
+        let data = if let Some(column_defs) = column_defs.as_ref() {
+            rows.into_iter()
+                .map(|values| {
+                    column_defs.iter().zip(values.into_iter()).try_fold(
+                        Document::new(),
+                        |mut acc, (column_def, value)| {
+                            acc.extend(
+                                doc! {column_def.name.clone(): value.into_bson().map_storage_err()?},
+                            );
 
                             Ok(acc)
-                        })
-                }
-            })
-            .collect::<Result<Vec<_>>>()?;
+                        },
+                    )
+                })
+                .collect::<Result<Vec<_>>>()?
+        } else {
+            rows.into_iter()
+                .map(|row| {
+                    schemaless_row_into_document(
+                        row,
+                        Document::new(),
+                        MongoStorageError::ConflictAppendData,
+                    )
+                })
+                .collect::<Result<Vec<_>>>()?
+        };
 
         if data.is_empty() {
             return Ok(());
@@ -231,42 +226,36 @@ impl StoreMut for MongoStorage {
         self.db
             .collection::<Document>(table_name)
             .insert_many(data, None)
-            .await
             .map(|_| ())
             .map_storage_err()
     }
 
-    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
-        let column_defs = self.get_column_defs(table_name).await?;
+    fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
+        let column_defs = self.get_column_defs(table_name)?;
 
         let primary_key = column_defs
             .as_ref()
             .and_then(|column_defs| get_primary_key(column_defs));
 
         for (key, row) in rows {
-            let doc = match row {
-                DataRow::Vec(values) => column_defs
-                    .as_ref()
-                    .map_storage_err(MongoStorageError::Unreachable)?
-                    .iter()
-                    .zip(values.into_iter())
-                    .try_fold(
-                        doc! {"_id": key.clone().into_bson(primary_key.is_some()).map_storage_err()?},
-                        |mut acc, (column_def, value)| {
-                            acc.extend(doc! {column_def.name.clone(): value.into_bson().map_storage_err()?});
+            let doc = if let Some(column_defs) = column_defs.as_ref() {
+                column_defs.iter().zip(row.into_iter()).try_fold(
+                    doc! {"_id": key.clone().into_bson(primary_key.is_some()).map_storage_err()?},
+                    |mut acc, (column_def, value)| {
+                        acc.extend(
+                            doc! {column_def.name.clone(): value.into_bson().map_storage_err()?},
+                        );
 
-                            Ok::<_, Error>(acc)
-                        },
-                    ),
-                DataRow::Map(hash_map) => hash_map.into_iter().try_fold(
-                    doc! {"_id": into_object_id(key.clone()).map_storage_err()?},
-                    |mut acc, (key, value)| {
-                        acc.extend(doc! {key: value.into_bson().map_storage_err()?});
-
-                        Ok(acc)
+                        Ok::<_, Error>(acc)
                     },
-                ),
-            }?;
+                )?
+            } else {
+                schemaless_row_into_document(
+                    row,
+                    doc! {"_id": into_object_id(key.clone()).map_storage_err()?},
+                    MongoStorageError::ConflictInsertData,
+                )?
+            };
 
             let query = doc! {"_id": key.into_bson(primary_key.is_some()).map_storage_err()?};
             let options = ReplaceOptions::builder().upsert(Some(true)).build();
@@ -274,15 +263,14 @@ impl StoreMut for MongoStorage {
             self.db
                 .collection::<Document>(table_name)
                 .replace_one(query, doc, options)
-                .await
                 .map_storage_err()?;
         }
 
         Ok(())
     }
 
-    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
-        let column_defs = self.get_column_defs(table_name).await?;
+    fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
+        let column_defs = self.get_column_defs(table_name)?;
         let primary_key = column_defs
             .as_ref()
             .and_then(|column_defs| get_primary_key(column_defs));
@@ -298,8 +286,25 @@ impl StoreMut for MongoStorage {
                 }},
                 None,
             )
-            .await
             .map(|_| ())
             .map_storage_err()
+    }
+}
+
+fn schemaless_row_into_document(
+    row: Vec<Value>,
+    doc: Document,
+    invalid_error: MongoStorageError,
+) -> Result<Document> {
+    let mut values = row.into_iter();
+    match (values.next(), values.next()) {
+        (Some(Value::Map(hash_map)), None) => {
+            hash_map.into_iter().try_fold(doc, |mut acc, (key, value)| {
+                acc.extend(doc! {key: value.into_bson().map_storage_err()?});
+
+                Ok(acc)
+            })
+        }
+        _ => Err(invalid_error).map_storage_err(),
     }
 }

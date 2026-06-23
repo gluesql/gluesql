@@ -1,6 +1,9 @@
 use {
     crate::*,
-    gluesql_core::{error::ValueError, prelude::Value::*},
+    gluesql_core::{
+        error::EvaluateError,
+        prelude::{DataType, Value::*},
+    },
 };
 
 test_case!(uint16, {
@@ -11,22 +14,26 @@ test_case!(uint16, {
             field_one UINT16,
             field_two UINT16
         );",
-    )
-    .await;
-    g.run(r"INSERT INTO Item VALUES (1, 1), (2, 2), (3, 3), (4, 4);")
-        .await;
+    );
+    g.run(r"INSERT INTO Item VALUES (1, 1), (2, 2), (3, 3), (4, 4);");
 
     g.test(
         "INSERT INTO Item VALUES (327689,327689);",
-        Err(ValueError::FailedToParseNumber.into()),
-    )
-    .await;
+        Err(EvaluateError::NumberParseFailed {
+            literal: "327689".to_owned(),
+            data_type: DataType::Uint16,
+        }
+        .into()),
+    );
 
     g.test(
         "INSERT INTO Item VALUES (-32769, -32769);",
-        Err(ValueError::FailedToParseNumber.into()),
-    )
-    .await;
+        Err(EvaluateError::NumberParseFailed {
+            literal: "-32769".to_owned(),
+            data_type: DataType::Uint16,
+        }
+        .into()),
+    );
     g.test(
         "SELECT field_one, field_two FROM Item",
         Ok(select!(
@@ -37,21 +44,17 @@ test_case!(uint16, {
             3                   3;
             4                   4
         )),
-    )
-    .await;
+    );
     g.test(
         "SELECT field_one FROM Item WHERE field_one > 0",
         Ok(select!(field_one U16; 1; 2;3;4)),
-    )
-    .await;
+    );
     g.test(
         "SELECT field_one FROM Item WHERE field_one >= 0",
         Ok(select!(field_one U16; 1; 2;3;4)),
-    )
-    .await;
+    );
     g.test(
         "SELECT field_one FROM Item WHERE field_one = 2",
         Ok(select!(field_one U16; 2)),
-    )
-    .await;
+    );
 });

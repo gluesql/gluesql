@@ -2,10 +2,9 @@ use {
     crate::{
         command::{Command, CommandError},
         helper::CliHelper,
-        print::Print,
+        print::{Print, PrintOption},
     },
     edit::{Builder, edit_file, edit_with_builder},
-    futures::executor::block_on,
     gluesql_core::{
         prelude::Glue,
         store::{GStore, GStoreMut, Planner},
@@ -35,7 +34,7 @@ where
 {
     pub fn new(storage: T, output: W) -> Self {
         let glue = Glue::new(storage);
-        let print = Print::new(output, None, Default::default());
+        let print = Print::new(output, None, PrintOption::default());
 
         Self { glue, print }
     }
@@ -158,7 +157,7 @@ where
     }
 
     fn execute(&mut self, sql: impl AsRef<str>) -> Result<()> {
-        match block_on(self.glue.execute(sql)) {
+        match self.glue.execute(sql) {
             Ok(payloads) => self.print.payloads(&payloads)?,
             Err(e) => {
                 println!("[error] {e}\n");
@@ -172,7 +171,7 @@ where
         let mut sqls = String::new();
         File::open(filename)?.read_to_string(&mut sqls)?;
         for sql in sqls.split(';').filter(|sql| !sql.trim().is_empty()) {
-            match block_on(self.glue.execute(sql)) {
+            match self.glue.execute(sql) {
                 Ok(payloads) => self.print.payloads(&payloads)?,
                 Err(e) => {
                     println!("[error] {e}\n");

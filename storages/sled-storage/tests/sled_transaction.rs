@@ -23,29 +23,29 @@ const PATH_PREFIX: &str = "tmp/gluesql";
 
 macro_rules! exec {
     ($glue: ident $sql: literal) => {
-        $glue.execute($sql).await.unwrap();
+        $glue.execute($sql).unwrap();
     };
 }
 
 macro_rules! test {
     ($glue: ident $sql: literal, $result: expr) => {
-        let actual = $glue.execute($sql).await;
+        let actual = $glue.execute($sql);
         assert_eq!(actual, $result.map(|payload| vec![payload]));
     };
 }
 
 macro_rules! test_idx {
     ($glue: ident $sql: literal, $idx: expr, $result: expr) => {
-        let statements = $glue.plan($sql).await.unwrap();
+        let statements = $glue.plan($sql).unwrap();
         assert_eq!(statements.len(), 1);
         let first = &statements[0];
         test_indexes(first, Some($idx));
-        assert_eq!($glue.execute_stmt(first).await, $result);
+        assert_eq!($glue.execute_stmt(first), $result);
     };
 }
 
-#[tokio::test]
-async fn sled_transaction_basic() {
+#[test]
+fn sled_transaction_basic() {
     let path = &format!("{PATH_PREFIX}/basic");
     fs::remove_dir_all(path).unwrap_or(());
 
@@ -76,8 +76,8 @@ async fn sled_transaction_basic() {
     );
 }
 
-#[tokio::test]
-async fn sled_transaction_read_uncommitted() {
+#[test]
+fn sled_transaction_read_uncommitted() {
     let path = &format!("{PATH_PREFIX}/read_uncommitted");
     fs::remove_dir_all(path).unwrap_or(());
 
@@ -103,8 +103,8 @@ async fn sled_transaction_read_uncommitted() {
     exec!(glue1 "COMMIT;");
 }
 
-#[tokio::test]
-async fn sled_transaction_read_committed() {
+#[test]
+fn sled_transaction_read_committed() {
     let path = &format!("{PATH_PREFIX}/read_committed");
     fs::remove_dir_all(path).unwrap_or(());
 
@@ -132,8 +132,8 @@ async fn sled_transaction_read_committed() {
     );
 }
 
-#[tokio::test]
-async fn sled_transaction_schema_mut() {
+#[test]
+fn sled_transaction_schema_mut() {
     let path = &format!("{PATH_PREFIX}/transaction_schema_mut");
     fs::remove_dir_all(path).unwrap_or(());
 
@@ -175,8 +175,8 @@ async fn sled_transaction_schema_mut() {
     );
 }
 
-#[tokio::test]
-async fn sled_transaction_data_mut() {
+#[test]
+fn sled_transaction_data_mut() {
     let path = &format!("{PATH_PREFIX}/transaction_data_mut");
     fs::remove_dir_all(path).unwrap_or(());
 
@@ -250,8 +250,8 @@ async fn sled_transaction_data_mut() {
     );
 }
 
-#[tokio::test]
-async fn sled_transaction_index_mut() {
+#[test]
+fn sled_transaction_index_mut() {
     use ast::IndexOperator::Eq;
 
     let path = &format!("{PATH_PREFIX}/transaction_index_mut");
@@ -331,8 +331,8 @@ async fn sled_transaction_index_mut() {
     );
 }
 
-#[tokio::test]
-async fn sled_transaction_gc() {
+#[test]
+fn sled_transaction_gc() {
     let path = &format!("{PATH_PREFIX}/transaction_gc");
     fs::remove_dir_all(path).unwrap_or(());
 
@@ -392,11 +392,7 @@ async fn sled_transaction_gc() {
 
     test!(glue1 "SELECT * FROM NewGarlic", Err(Error::StorageMsg("fetch failed - expired transaction has used (txid)".to_owned())));
     assert_eq!(
-        glue1
-            .storage
-            .insert_data("NewGarlic", vec![])
-            .await
-            .unwrap_err(),
+        glue1.storage.insert_data("NewGarlic", vec![]).unwrap_err(),
         Error::StorageMsg("acquire failed - expired transaction has used (txid)".to_owned()),
     );
 }
@@ -412,8 +408,8 @@ mod timeout_tests {
         std::thread::sleep(TX_SLEEP_TICK);
     }
 
-    #[tokio::test]
-    async fn sled_transaction_timeout_store() {
+    #[test]
+    fn sled_transaction_timeout_store() {
         let path = &format!("{PATH_PREFIX}/transaction_timeout_store");
         fs::remove_dir_all(path).unwrap_or(());
 
@@ -440,7 +436,6 @@ mod timeout_tests {
                 .storage
                 .clone()
                 .insert_data("TxGarlic", vec![])
-                .await
                 .unwrap_err(),
             Error::StorageMsg("acquire failed - expired transaction has used (timeout)".to_owned()),
         );
@@ -535,8 +530,8 @@ mod timeout_tests {
         );
     }
 
-    #[tokio::test]
-    async fn sled_transaction_timeout_alter() {
+    #[test]
+    fn sled_transaction_timeout_alter() {
         let path = &format!("{PATH_PREFIX}/transaction_timeout_alter");
         fs::remove_dir_all(path).unwrap_or(());
 
@@ -607,8 +602,8 @@ mod timeout_tests {
         test!(glue2 "SELECT * FROM TxSoprano;", Ok(select!(kd | num I64 | I64; 1 100)));
     }
 
-    #[tokio::test]
-    async fn sled_transaction_timeout_index() {
+    #[test]
+    fn sled_transaction_timeout_index() {
         use crate::ast::IndexOperator::Eq;
 
         let path = &format!("{PATH_PREFIX}/transaction_timeout_index");
@@ -714,15 +709,15 @@ mod timeout_tests {
     }
 }
 
-#[tokio::test]
-async fn sled_transaction_dictionary() {
+#[test]
+fn sled_transaction_dictionary() {
     macro_rules! test_tables {
         ($glue: ident $( $table_name: literal )*) => {
             let expected = Payload::ShowVariable(PayloadVariable::Tables(
                 vec![$( $table_name.to_owned() ),*]
             ));
 
-            assert_eq!($glue.execute("SHOW TABLES").await, Ok(vec![expected]));
+            assert_eq!($glue.execute("SHOW TABLES"), Ok(vec![expected]));
         };
     }
 

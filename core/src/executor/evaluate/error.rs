@@ -1,15 +1,17 @@
 use {
-    crate::ast::{Aggregate, BinaryOperator, Expr, ToSql},
-    serde::{Serialize, Serializer},
+    crate::{
+        ast::{BinaryOperator, DataType, ToSql},
+        plan::AggregatePlan,
+    },
+    serde::Serialize,
     std::fmt::Debug,
     thiserror::Error,
 };
 
 #[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum EvaluateError {
-    #[error(transparent)]
-    #[serde(serialize_with = "error_serialize")]
-    FormatParseError(#[from] chrono::format::ParseError),
+    #[error("{0}")]
+    FormatParseError(String),
 
     #[error("literal add on non-numeric")]
     LiteralAddOnNonNumeric,
@@ -86,17 +88,29 @@ pub enum EvaluateError {
     #[error("text literal required for json map conversion: {0}")]
     TextLiteralRequired(String),
 
-    #[error("unsupported stateless expression: {}", .0.to_sql())]
-    UnsupportedStatelessExpr(Box<Expr>),
+    #[error("subquery is not allowed in stateless expression")]
+    SubqueryNotAllowedInStatelessExpr,
 
-    #[error("context is required for identifier evaluation: {}", .0.to_sql())]
-    ContextRequiredForIdentEvaluation(Box<Expr>),
+    #[error("IN (subquery) is not allowed in stateless expression")]
+    InSubqueryNotAllowedInStatelessExpr,
 
-    #[error("unreachable empty aggregate value: {0:?}")]
-    UnreachableEmptyAggregateValue(Box<Aggregate>),
+    #[error("EXISTS (subquery) is not allowed in stateless expression")]
+    ExistsSubqueryNotAllowedInStatelessExpr,
+
+    #[error("row context is required for identifier evaluation: {0}")]
+    IdentifierRequiresRowContext(String),
+
+    #[error("row context is required for compound identifier evaluation: {alias}.{ident}")]
+    CompoundIdentifierRequiresRowContext { alias: String, ident: String },
+
+    #[error("aggregate slot value missing: {0:?}")]
+    AggregateSlotValueMissing(Box<AggregatePlan>),
+
+    #[error("aggregate expression requires planner binding: {0:?}")]
+    UnplannedAggregate(Box<AggregatePlan>),
 
     #[error("filter context is required for aggregate function: {0:?}")]
-    FilterContextRequiredForAggregate(Box<Aggregate>),
+    FilterContextRequiredForAggregate(Box<AggregatePlan>),
 
     #[error("incompatible bit operation between {0} and {1}")]
     IncompatibleBitOperation(String, String),
@@ -144,11 +158,18 @@ pub enum EvaluateError {
     #[error("unsupported evaluate string unary minus: {0}")]
     UnsupportedUnaryMinus(String),
 
-    #[error("unsupported evaluate string unary factorial: {0}")]
-    UnsupportedUnaryFactorial(String),
+    #[error("unary factorial requires numeric literal: {0}")]
+    UnaryFactorialRequiresNumericLiteral(String),
 
-    #[error("incompatible bit operation ~{0}")]
-    IncompatibleUnaryBitwiseNotOperation(String),
+    #[error("unary bitwise-not requires integer literal: {0}")]
+    UnaryBitwiseNotRequiresIntegerLiteral(String),
+
+    #[error("operator doesn't exist: {base} {case} {pattern}", case = if *case_sensitive { "LIKE" } else { "ILIKE" })]
+    LikeOnNonStringLiteral {
+        base: String,
+        pattern: String,
+        case_sensitive: bool,
+    },
 
     #[error("unsupported custom function in subqueries")]
     UnsupportedCustomFunction,
@@ -190,12 +211,28 @@ pub enum EvaluateError {
 
     #[error("failed to convert Value to u32: {0}")]
     I64ToU32ConversionFailure(String),
-}
 
-fn error_serialize<S>(error: &chrono::format::ParseError, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    let display = format!("{error}");
-    serializer.serialize_str(&display)
+    #[error("failed to parse number {literal:?} to {data_type}")]
+    NumberParseFailed {
+        literal: String,
+        data_type: DataType,
+    },
+
+    #[error("failed to cast number {literal:?} to {data_type}")]
+    NumberCastFailed {
+        literal: String,
+        data_type: DataType,
+    },
+
+    #[error("failed to parse text {literal:?} to {data_type}")]
+    TextParseFailed {
+        literal: String,
+        data_type: DataType,
+    },
+
+    #[error("failed to cast text {literal:?} to {data_type}")]
+    TextCastFailed {
+        literal: String,
+        data_type: DataType,
+    },
 }

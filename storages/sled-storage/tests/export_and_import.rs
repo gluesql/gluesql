@@ -1,7 +1,11 @@
-use {gluesql_core::prelude::*, gluesql_sled_storage::SledStorage, sled::Config};
+use {
+    gluesql_core::prelude::*,
+    gluesql_sled_storage::{SledStorage, State},
+    sled::Config,
+};
 
-#[tokio::test]
-async fn export_and_import() {
+#[test]
+fn export_and_import() {
     let path1 = "tmp/export_and_import1";
     let path2 = "tmp/export_and_import2";
     let config1 = Config::default().path(path1).temporary(true);
@@ -10,29 +14,25 @@ async fn export_and_import() {
     let storage1 = SledStorage::try_from(config1).unwrap();
     let mut glue1 = Glue::new(storage1);
 
-    glue1
-        .execute("CREATE TABLE Foo (id INTEGER);")
-        .await
-        .unwrap();
+    glue1.execute("CREATE TABLE Foo (id INTEGER);").unwrap();
     glue1
         .execute("INSERT INTO Foo VALUES (1), (2), (3);")
-        .await
         .unwrap();
 
-    let data1 = glue1.execute("SELECT * FROM Foo;").await.unwrap();
+    let data1 = glue1.execute("SELECT * FROM Foo;").unwrap();
     let export = glue1.storage.export().unwrap();
 
     let mut storage2 = SledStorage::try_from(config2).unwrap();
     storage2.import(export).unwrap();
     let mut glue2 = Glue::new(storage2);
 
-    let data2 = glue2.execute("SELECT * FROM Foo;").await.unwrap();
+    let data2 = glue2.execute("SELECT * FROM Foo;").unwrap();
 
     assert_eq!(data1, data2);
 }
 
-#[tokio::test]
-async fn export_and_import_multiple_times() {
+#[test]
+fn export_and_import_multiple_times() {
     let path1 = "tmp/repeated_export_and_import1";
     let path2 = "tmp/repeated_export_and_import2";
     let path3 = "tmp/repeated_export_and_import3";
@@ -43,23 +43,19 @@ async fn export_and_import_multiple_times() {
     let storage1 = SledStorage::try_from(config1).unwrap();
     let mut glue1 = Glue::new(storage1);
 
-    glue1
-        .execute("CREATE TABLE Foo (id INTEGER);")
-        .await
-        .unwrap();
+    glue1.execute("CREATE TABLE Foo (id INTEGER);").unwrap();
     glue1
         .execute("INSERT INTO Foo VALUES (1), (2), (3);")
-        .await
         .unwrap();
 
-    let data1 = glue1.execute("SELECT * FROM Foo;").await.unwrap();
+    let data1 = glue1.execute("SELECT * FROM Foo;").unwrap();
     let export = glue1.storage.export().unwrap();
 
     let mut storage2 = SledStorage::try_from(config2).unwrap();
     storage2.import(export).unwrap();
     let mut glue2 = Glue::new(storage2);
 
-    let data2 = glue2.execute("SELECT * FROM Foo;").await.unwrap();
+    let data2 = glue2.execute("SELECT * FROM Foo;").unwrap();
     let export2 = glue2.storage.export().unwrap();
     assert_eq!(data1, data2);
 
@@ -67,7 +63,7 @@ async fn export_and_import_multiple_times() {
     storage3.import(export2).unwrap();
     let mut glue3 = Glue::new(storage3);
 
-    let data3 = glue3.execute("SELECT * FROM Foo;").await.unwrap();
+    let data3 = glue3.execute("SELECT * FROM Foo;").unwrap();
     assert_eq!(data1, data3);
 }
 
@@ -95,4 +91,81 @@ fn invalid_id_offset() {
             "could not convert slice to array".to_owned()
         ))
     );
+}
+
+#[test]
+fn import_requires_empty_destination() {
+    let path1 = "tmp/import_requires_empty_destination_src";
+    let path2 = "tmp/import_requires_empty_destination_dst";
+    let config1 = Config::default().path(path1).temporary(true);
+    let config2 = Config::default().path(path2).temporary(true);
+
+    let storage1 = SledStorage::try_from(config1).unwrap();
+    let mut glue1 = Glue::new(storage1);
+    glue1.execute("CREATE TABLE Foo (id INTEGER);").unwrap();
+    let export = glue1.storage.export().unwrap();
+
+    let mut storage2 = SledStorage::try_from(config2).unwrap();
+    storage2.tree.insert("seed", "value").unwrap();
+
+    let actual = storage2.import(export);
+    let expected = Err(Error::StorageMsg(
+        "[SledStorage] import requires an empty destination storage".to_owned(),
+    ));
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn import_allows_truly_empty_destination_tree() {
+    let src_path = "tmp/import_empty_dst_src";
+    let dst_path = "tmp/import_empty_dst_raw";
+    let src_config = Config::default().path(src_path).temporary(true);
+    let dst_tree = Config::default()
+        .path(dst_path)
+        .temporary(true)
+        .open()
+        .unwrap();
+
+    let storage1 = SledStorage::try_from(src_config).unwrap();
+    let export = storage1.export().unwrap();
+
+    let mut storage2 = SledStorage {
+        tree: dst_tree,
+        id_offset: 0,
+        state: State::Idle,
+        tx_timeout: None,
+    };
+
+    let actual = storage2.import(export);
+    assert_eq!(actual, Ok(()));
+}
+
+#[test]
+fn import_rejects_single_non_format_key_destination() {
+    let src_path = "tmp/import_single_non_format_key_src";
+    let dst_path = "tmp/import_single_non_format_key_dst";
+    let src_config = Config::default().path(src_path).temporary(true);
+    let dst_tree = Config::default()
+        .path(dst_path)
+        .temporary(true)
+        .open()
+        .unwrap();
+
+    let storage1 = SledStorage::try_from(src_config).unwrap();
+    let export = storage1.export().unwrap();
+
+    dst_tree.insert("seed", "value").unwrap();
+
+    let mut storage2 = SledStorage {
+        tree: dst_tree,
+        id_offset: 0,
+        state: State::Idle,
+        tx_timeout: None,
+    };
+
+    let actual = storage2.import(export);
+    let expected = Err(Error::StorageMsg(
+        "[SledStorage] import requires an empty destination storage".to_owned(),
+    ));
+    assert_eq!(actual, expected);
 }

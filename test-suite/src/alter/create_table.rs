@@ -90,11 +90,8 @@ test_case!(create_table, {
             .into()),
         ),
         (
-            "CREATE TABLE Gluery (id INTEGER DEFAULT (SELECT id FROM Wow))",
-            Err(
-                EvaluateError::UnsupportedStatelessExpr(Box::new(expr("(SELECT id FROM Wow)")))
-                    .into(),
-            ),
+            "CREATE TABLE Gluery (id BOOLEAN DEFAULT 1 IN (SELECT id FROM Wow))",
+            Err(EvaluateError::InSubqueryNotAllowedInStatelessExpr.into()),
         ),
         (
             // Create schema only
@@ -106,12 +103,20 @@ test_case!(create_table, {
             Ok(Payload::Create),
         ),
         (
+            "CREATE TABLE TargetTableWithAggregate AS SELECT COUNT(*) FROM CreateTable2",
+            Ok(Payload::Create),
+        ),
+        (
             "SELECT * FROM TargetTableWithData",
             Ok(select_with_null!(
                 id     | num    | name;
                 Null     I64(1)   Str("1".to_owned());
                 I64(2)   I64(2)   Str("2".to_owned())
             )),
+        ),
+        (
+            "SELECT * FROM TargetTableWithAggregate",
+            Ok(select!("COUNT(*)"; I64; 2)),
         ),
         (
             "CREATE TABLE TargetTableWithLimit AS SELECT * FROM CreateTable2 LIMIT 1",
@@ -150,9 +155,18 @@ test_case!(create_table, {
             "CREATE TABLE DuplicateColumns (id INT, id INT)",
             Err(AlterError::DuplicateColumnName("id".to_owned()).into()),
         ),
+        ("CREATE TABLE EmptySource (id INTEGER)", Ok(Payload::Create)),
+        (
+            "CREATE TABLE TargetTableWithEmptyAggregate AS SELECT COUNT(*) FROM EmptySource",
+            Ok(Payload::Create),
+        ),
+        (
+            "SELECT * FROM TargetTableWithEmptyAggregate",
+            Ok(select!("COUNT(*)"; I64; 0)),
+        ),
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, expected).await;
+        g.test(sql, expected);
     }
 });

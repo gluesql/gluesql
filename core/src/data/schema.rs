@@ -156,7 +156,7 @@ mod tests {
     use {
         super::SchemaParseError,
         crate::{
-            ast::{AstLiteral, ColumnDef, ColumnUniqueOption, Expr},
+            ast::{ColumnDef, ColumnUniqueOption, Expr, Literal},
             chrono::Utc,
             data::{Schema, SchemaIndex, SchemaIndexOrd},
             prelude::DataType,
@@ -226,7 +226,7 @@ mod tests {
                     name: "name".to_owned(),
                     data_type: DataType::Text,
                     nullable: true,
-                    default: Some(Expr::Literal(AstLiteral::QuotedString("glue".to_owned()))),
+                    default: Some(Expr::Literal(Literal::QuotedString("glue".to_owned()))),
                     unique: None,
                     comment: None,
                 },

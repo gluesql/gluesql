@@ -11,15 +11,14 @@ use {
     test_suite::*,
 };
 
-#[tokio::test]
-async fn schemaless() {
+#[test]
+fn schemaless() {
     let path = "./tests/samples/";
     let storage = CsvStorage::new(path).unwrap();
     let mut glue = Glue::new(storage);
 
     let actual = glue
         .execute("SELECT * FROM Student")
-        .await
         .unwrap()
         .into_iter()
         .next()
@@ -61,7 +60,6 @@ async fn schemaless() {
 
     let actual = glue
         .execute("SELECT Name, Gender, Age, Grade FROM Student")
-        .await
         .unwrap()
         .into_iter()
         .next()
@@ -79,7 +77,6 @@ async fn schemaless() {
 
     let actual = glue
         .execute("SELECT Name FROM Student WHERE Age < 18")
-        .await
         .unwrap()
         .into_iter()
         .next()
@@ -88,20 +85,18 @@ async fn schemaless() {
     assert_eq!(actual, expected);
 }
 
-#[tokio::test]
-async fn schemaless_create_and_drop_table() {
+#[test]
+fn schemaless_create_and_drop_table() {
     let path = "./tests/samples/";
     let storage = CsvStorage::new(path).unwrap();
     let mut glue = Glue::new(storage);
 
-    glue.execute("CREATE TABLE Foo").await.unwrap();
+    glue.execute("CREATE TABLE Foo").unwrap();
     glue.execute(r#"INSERT INTO Foo VALUES ('{ "a": 1 }')"#)
-        .await
         .unwrap();
 
     let actual = glue
         .execute("SELECT * FROM Foo")
-        .await
         .unwrap()
         .into_iter()
         .next()
@@ -109,9 +104,9 @@ async fn schemaless_create_and_drop_table() {
     let expected = select_map![json!({ "a": 1 })];
     assert_eq!(actual, expected);
 
-    glue.execute("DROP TABLE Foo").await.unwrap();
+    glue.execute("DROP TABLE Foo").unwrap();
 
-    let actual = glue.execute("SELECT * FROM Foo").await;
+    let actual = glue.execute("SELECT * FROM Foo");
     let expected = Err(FetchError::TableNotFound("Foo".to_owned()).into());
     assert_eq!(actual, expected);
 }

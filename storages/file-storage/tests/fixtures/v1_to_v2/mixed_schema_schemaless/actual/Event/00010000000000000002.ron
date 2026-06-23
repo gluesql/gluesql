@@ -1,0 +1,11 @@
+(
+    key: I64(2),
+    row: Map({
+        "amount": I64(199),
+        "event_id": I64(2),
+        "kind": Str("purchase"),
+        "meta": Map({
+            "ip": Str("10.0.0.2"),
+        }),
+    }),
+)

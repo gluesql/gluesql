@@ -1,9 +1,11 @@
 use {
     super::{
-        Aggregate, AstLiteral, BinaryOperator, DataType, DateTimeField, Function, Query, ToSql,
+        Aggregate, BinaryOperator, DataType, DateTimeField, Function, Literal, Query, ToSql,
         ToSqlUnquoted, UnaryOperator,
     },
+    crate::data::Value,
     serde::{Deserialize, Serialize},
+    std::fmt::Write,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -51,7 +53,8 @@ pub enum Expr {
         expr: Box<Expr>,
     },
     Nested(Box<Expr>),
-    Literal(AstLiteral),
+    Literal(Literal),
+    Value(Value),
     TypedString {
         data_type: DataType,
         value: String,
@@ -187,6 +190,7 @@ impl Expr {
             },
             Expr::Nested(expr) => format!("({})", expr.to_sql_with(quoted)),
             Expr::Literal(s) => s.to_sql(),
+            Expr::Value(v) => v.to_sql(),
             Expr::TypedString { data_type, value } => format!("{data_type} '{value}'"),
             Expr::Case {
                 operand,
@@ -241,11 +245,10 @@ impl Expr {
             },
             Expr::ArrayIndex { obj, indexes } => {
                 let obj = obj.to_sql_with(quoted);
-                let indexes = indexes
-                    .iter()
-                    .map(|index| format!("[{}]", index.to_sql_with(quoted)))
-                    .collect::<Vec<_>>()
-                    .join("");
+                let indexes = indexes.iter().fold(String::new(), |mut acc, index| {
+                    let _ = write!(acc, "[{}]", index.to_sql_with(quoted));
+                    acc
+                });
                 format!("{obj}{indexes}")
             }
             Expr::Array { elem } => {
@@ -265,7 +268,7 @@ impl Expr {
                 let expr = expr.to_sql_with(quoted);
                 let leading_field = leading_field
                     .as_ref()
-                    .map_or_else(String::new, |field| field.to_string());
+                    .map_or_else(String::new, ToString::to_string);
 
                 match last_field {
                     Some(last_field) => format!("INTERVAL {expr} {leading_field} TO {last_field}"),
@@ -281,8 +284,8 @@ mod tests {
 
     use {
         crate::ast::{
-            AstLiteral, BinaryOperator, DataType, DateTimeField, Expr, Query, Select, SelectItem,
-            SetExpr, TableFactor, TableWithJoins, ToSql, ToSqlUnquoted, UnaryOperator,
+            BinaryOperator, DataType, DateTimeField, Expr, Literal, Projection, Query, Select,
+            SelectItem, SetExpr, TableFactor, TableWithJoins, ToSql, ToSqlUnquoted, UnaryOperator,
         },
         bigdecimal::BigDecimal,
         regex::Regex,
@@ -379,7 +382,7 @@ mod tests {
             Expr::Like {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 negated: false,
-                pattern: Box::new(Expr::Literal(AstLiteral::QuotedString("%abc".to_owned()))),
+                pattern: Box::new(Expr::Literal(Literal::QuotedString("%abc".to_owned()))),
             }
             .to_sql()
         );
@@ -389,7 +392,7 @@ mod tests {
             Expr::Like {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 negated: true,
-                pattern: Box::new(Expr::Literal(AstLiteral::QuotedString("%abc".to_owned()))),
+                pattern: Box::new(Expr::Literal(Literal::QuotedString("%abc".to_owned()))),
             }
             .to_sql()
         );
@@ -399,7 +402,7 @@ mod tests {
             Expr::ILike {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 negated: false,
-                pattern: Box::new(Expr::Literal(AstLiteral::QuotedString("%abc_".to_owned()))),
+                pattern: Box::new(Expr::Literal(Literal::QuotedString("%abc_".to_owned()))),
             }
             .to_sql()
         );
@@ -409,7 +412,7 @@ mod tests {
             Expr::ILike {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 negated: true,
-                pattern: Box::new(Expr::Literal(AstLiteral::QuotedString("%abc_".to_owned()))),
+                pattern: Box::new(Expr::Literal(Literal::QuotedString("%abc_".to_owned()))),
             }
             .to_sql()
         );
@@ -419,9 +422,9 @@ mod tests {
             Expr::InList {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 list: vec![
-                    Expr::Literal(AstLiteral::QuotedString("a".to_owned())),
-                    Expr::Literal(AstLiteral::QuotedString("b".to_owned())),
-                    Expr::Literal(AstLiteral::QuotedString("c".to_owned()))
+                    Expr::Literal(Literal::QuotedString("a".to_owned())),
+                    Expr::Literal(Literal::QuotedString("b".to_owned())),
+                    Expr::Literal(Literal::QuotedString("c".to_owned()))
                 ],
                 negated: false
             }
@@ -433,9 +436,9 @@ mod tests {
             Expr::InList {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 list: vec![
-                    Expr::Literal(AstLiteral::QuotedString("a".to_owned())),
-                    Expr::Literal(AstLiteral::QuotedString("b".to_owned())),
-                    Expr::Literal(AstLiteral::QuotedString("c".to_owned()))
+                    Expr::Literal(Literal::QuotedString("a".to_owned())),
+                    Expr::Literal(Literal::QuotedString("b".to_owned())),
+                    Expr::Literal(Literal::QuotedString("c".to_owned()))
                 ],
                 negated: true
             }
@@ -449,12 +452,11 @@ mod tests {
                 subquery: Box::new(Query {
                     body: SetExpr::Select(Box::new(Select {
                         distinct: false,
-                        projection: vec![SelectItem::Wildcard],
+                        projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
                         from: TableWithJoins {
                             relation: TableFactor::Table {
                                 name: "FOO".to_owned(),
                                 alias: None,
-                                index: None,
                             },
                             joins: Vec::new(),
                         },
@@ -478,12 +480,11 @@ mod tests {
                 subquery: Box::new(Query {
                     body: SetExpr::Select(Box::new(Select {
                         distinct: false,
-                        projection: vec![SelectItem::Wildcard],
+                        projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
                         from: TableWithJoins {
                             relation: TableFactor::Table {
                                 name: "FOO".to_owned(),
                                 alias: None,
-                                index: None,
                             },
                             joins: Vec::new(),
                         },
@@ -506,12 +507,11 @@ mod tests {
                 subquery: Box::new(Query {
                     body: SetExpr::Select(Box::new(Select {
                         distinct: false,
-                        projection: vec![SelectItem::Wildcard],
+                        projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
                         from: TableWithJoins {
                             relation: TableFactor::Table {
                                 name: "FOO".to_owned(),
                                 alias: None,
-                                index: None,
                             },
                             joins: Vec::new(),
                         },
@@ -534,12 +534,11 @@ mod tests {
                 subquery: Box::new(Query {
                     body: SetExpr::Select(Box::new(Select {
                         distinct: false,
-                        projection: vec![SelectItem::Wildcard],
+                        projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
                         from: TableWithJoins {
                             relation: TableFactor::Table {
                                 name: "FOO".to_owned(),
                                 alias: None,
-                                index: None,
                             },
                             joins: Vec::new(),
                         },
@@ -561,12 +560,11 @@ mod tests {
             Expr::Subquery(Box::new(Query {
                 body: SetExpr::Select(Box::new(Select {
                     distinct: false,
-                    projection: vec![SelectItem::Wildcard],
+                    projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
                     from: TableWithJoins {
                         relation: TableFactor::Table {
                             name: "FOO".to_owned(),
                             alias: None,
-                            index: None,
                         },
                         joins: Vec::new(),
                     },
@@ -593,15 +591,15 @@ mod tests {
                 operand: Some(Box::new(Expr::Identifier("id".to_owned()))),
                 when_then: vec![
                     (
-                        Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
-                        Expr::Literal(AstLiteral::QuotedString("a".to_owned()))
+                        Expr::Literal(Literal::Number(BigDecimal::from_str("1").unwrap())),
+                        Expr::Literal(Literal::QuotedString("a".to_owned()))
                     ),
                     (
-                        Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())),
-                        Expr::Literal(AstLiteral::QuotedString("b".to_owned()))
+                        Expr::Literal(Literal::Number(BigDecimal::from_str("2").unwrap())),
+                        Expr::Literal(Literal::QuotedString("b".to_owned()))
                     )
                 ],
-                else_result: Some(Box::new(Expr::Literal(AstLiteral::QuotedString(
+                else_result: Some(Box::new(Expr::Literal(Literal::QuotedString(
                     "c".to_owned()
                 ))))
             }
@@ -622,21 +620,21 @@ mod tests {
                         Expr::BinaryOp {
                             left: Box::new(Expr::Identifier("id".to_owned())),
                             op: BinaryOperator::Eq,
-                            right: Box::new(Expr::Literal(AstLiteral::Number(
+                            right: Box::new(Expr::Literal(Literal::Number(
                                 BigDecimal::from_str("1").unwrap()
                             )))
                         },
-                        Expr::Literal(AstLiteral::QuotedString("a".to_owned()))
+                        Expr::Literal(Literal::QuotedString("a".to_owned()))
                     ),
                     (
                         Expr::BinaryOp {
                             left: Box::new(Expr::Identifier("id".to_owned())),
                             op: BinaryOperator::Eq,
-                            right: Box::new(Expr::Literal(AstLiteral::Number(
+                            right: Box::new(Expr::Literal(Literal::Number(
                                 BigDecimal::from_str("2").unwrap()
                             )))
                         },
-                        Expr::Literal(AstLiteral::QuotedString("b".to_owned()))
+                        Expr::Literal(Literal::QuotedString("b".to_owned()))
                     )
                 ],
                 else_result: None,
@@ -655,12 +653,12 @@ mod tests {
                 operand: Some(Box::new(Expr::Identifier("id".to_owned()))),
                 when_then: vec![
                     (
-                        Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
-                        Expr::Literal(AstLiteral::QuotedString("a".to_owned()))
+                        Expr::Literal(Literal::Number(BigDecimal::from_str("1").unwrap())),
+                        Expr::Literal(Literal::QuotedString("a".to_owned()))
                     ),
                     (
-                        Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())),
-                        Expr::Literal(AstLiteral::QuotedString("b".to_owned()))
+                        Expr::Literal(Literal::Number(BigDecimal::from_str("2").unwrap())),
+                        Expr::Literal(Literal::QuotedString("b".to_owned()))
                     )
                 ],
                 else_result: None,
@@ -673,8 +671,8 @@ mod tests {
             Expr::ArrayIndex {
                 obj: Box::new(Expr::Identifier("choco".to_owned())),
                 indexes: vec![
-                    Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
-                    Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap()))
+                    Expr::Literal(Literal::Number(BigDecimal::from_str("1").unwrap())),
+                    Expr::Literal(Literal::Number(BigDecimal::from_str("2").unwrap()))
                 ]
             }
             .to_sql()
@@ -684,8 +682,8 @@ mod tests {
             r"['GlueSQL', 'Rust']",
             Expr::Array {
                 elem: vec![
-                    Expr::Literal(AstLiteral::QuotedString("GlueSQL".to_owned())),
-                    Expr::Literal(AstLiteral::QuotedString("Rust".to_owned()))
+                    Expr::Literal(Literal::QuotedString("GlueSQL".to_owned())),
+                    Expr::Literal(Literal::QuotedString("Rust".to_owned()))
                 ]
             }
             .to_sql()
@@ -697,7 +695,7 @@ mod tests {
                 expr: Box::new(Expr::BinaryOp {
                     left: Box::new(Expr::Identifier("col1".to_owned())),
                     op: BinaryOperator::Plus,
-                    right: Box::new(Expr::Literal(AstLiteral::Number(3.into()))),
+                    right: Box::new(Expr::Literal(Literal::Number(3.into()))),
                 }),
                 leading_field: Some(DateTimeField::Day),
                 last_field: None,
@@ -708,7 +706,7 @@ mod tests {
         assert_eq!(
             "INTERVAL '3-5' HOUR TO MINUTE",
             &Expr::Interval {
-                expr: Box::new(Expr::Literal(AstLiteral::QuotedString("3-5".to_owned()))),
+                expr: Box::new(Expr::Literal(Literal::QuotedString("3-5".to_owned()))),
                 leading_field: Some(DateTimeField::Hour),
                 last_field: Some(DateTimeField::Minute),
             }

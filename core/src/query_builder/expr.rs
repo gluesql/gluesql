@@ -1,0 +1,720 @@
+mod binary_op;
+mod case;
+mod exists;
+mod is_null;
+mod like;
+mod nested;
+mod order_by;
+mod unary_op;
+
+pub mod aggregate;
+pub mod alias_as;
+pub mod between;
+pub mod function;
+pub mod in_list;
+pub mod numeric;
+
+use {
+    crate::{
+        ast::{BinaryOperator, Expr, Literal, UnaryOperator},
+        data::Value,
+        parse_sql::{parse_comma_separated_exprs, parse_expr, parse_query},
+        plan::{ExprPlan, QueryPlan},
+        prelude::DataType,
+        query_builder::QueryNode,
+        result::Result,
+        translate::{NO_PARAMS, translate_expr, translate_query},
+    },
+    aggregate::AggregateNode,
+    bigdecimal::BigDecimal,
+    function::FunctionNode,
+    in_list::InListNode,
+    numeric::NumericNode,
+    std::borrow::Cow,
+};
+pub use {
+    case::case,
+    exists::{exists, not_exists},
+    nested::nested,
+    unary_op::{bitwise_not, factorial, minus, not, plus},
+};
+
+#[derive(Clone, Debug)]
+pub enum ExprNode<'a> {
+    Expr(Cow<'a, Expr>),
+    SqlExpr(Cow<'a, str>),
+    Identifier(Cow<'a, str>),
+    Numeric(NumericNode<'a>),
+    QuotedString(Cow<'a, str>),
+    TypedString {
+        data_type: DataType,
+        value: Cow<'a, str>,
+    },
+    Between {
+        expr: Box<ExprNode<'a>>,
+        negated: bool,
+        low: Box<ExprNode<'a>>,
+        high: Box<ExprNode<'a>>,
+    },
+    Like {
+        expr: Box<ExprNode<'a>>,
+        negated: bool,
+        pattern: Box<ExprNode<'a>>,
+    },
+    ILike {
+        expr: Box<ExprNode<'a>>,
+        negated: bool,
+        pattern: Box<ExprNode<'a>>,
+    },
+    BinaryOp {
+        left: Box<ExprNode<'a>>,
+        op: BinaryOperator,
+        right: Box<ExprNode<'a>>,
+    },
+    UnaryOp {
+        op: UnaryOperator,
+        expr: Box<ExprNode<'a>>,
+    },
+    IsNull(Box<ExprNode<'a>>),
+    IsNotNull(Box<ExprNode<'a>>),
+    InList {
+        expr: Box<ExprNode<'a>>,
+        list: Box<InListNode<'a>>,
+        negated: bool,
+    },
+    Nested(Box<ExprNode<'a>>),
+    Function(Box<FunctionNode<'a>>),
+    Aggregate(Box<AggregateNode<'a>>),
+    Exists {
+        subquery: Box<QueryNode<'a>>,
+        negated: bool,
+    },
+    Subquery(Box<QueryNode<'a>>),
+    Case {
+        operand: Option<Box<ExprNode<'a>>>,
+        when_then: Vec<(ExprNode<'a>, ExprNode<'a>)>,
+        else_result: Option<Box<ExprNode<'a>>>,
+    },
+}
+
+impl ExprNode<'_> {
+    pub(super) fn build_expr_plan(self) -> Result<ExprPlan> {
+        match self {
+            ExprNode::Expr(expr) => Ok(expr.into_owned().into()),
+            ExprNode::SqlExpr(expr) => {
+                let expr = parse_expr(expr)?;
+
+                translate_expr(&expr, NO_PARAMS).map(Into::into)
+            }
+            ExprNode::Identifier(value) => {
+                let idents = value.as_ref().split('.').collect::<Vec<_>>();
+
+                Ok(match idents.as_slice() {
+                    [alias, ident] => ExprPlan::CompoundIdentifier {
+                        alias: (*alias).to_owned(),
+                        ident: (*ident).to_owned(),
+                    },
+                    _ => ExprPlan::Identifier(value.into_owned()),
+                })
+            }
+            ExprNode::Numeric(node) => node.try_into().map(ExprPlan::Literal),
+            ExprNode::QuotedString(value) => {
+                let value = value.into_owned();
+
+                Ok(ExprPlan::Literal(Literal::QuotedString(value)))
+            }
+            ExprNode::TypedString { data_type, value } => Ok(ExprPlan::TypedString {
+                data_type,
+                value: value.into_owned(),
+            }),
+            ExprNode::Between {
+                expr,
+                negated,
+                low,
+                high,
+            } => {
+                let expr = (*expr).build_expr_plan().map(Box::new)?;
+                let low = (*low).build_expr_plan().map(Box::new)?;
+                let high = (*high).build_expr_plan().map(Box::new)?;
+
+                Ok(ExprPlan::Between {
+                    expr,
+                    negated,
+                    low,
+                    high,
+                })
+            }
+            ExprNode::Like {
+                expr,
+                negated,
+                pattern,
+            } => {
+                let expr = (*expr).build_expr_plan().map(Box::new)?;
+                let pattern = (*pattern).build_expr_plan().map(Box::new)?;
+
+                Ok(ExprPlan::Like {
+                    expr,
+                    negated,
+                    pattern,
+                })
+            }
+            ExprNode::ILike {
+                expr,
+                negated,
+                pattern,
+            } => {
+                let expr = (*expr).build_expr_plan().map(Box::new)?;
+                let pattern = (*pattern).build_expr_plan().map(Box::new)?;
+
+                Ok(ExprPlan::ILike {
+                    expr,
+                    negated,
+                    pattern,
+                })
+            }
+            ExprNode::BinaryOp { left, op, right } => {
+                let left = (*left).build_expr_plan().map(Box::new)?;
+                let right = (*right).build_expr_plan().map(Box::new)?;
+
+                Ok(ExprPlan::BinaryOp { left, op, right })
+            }
+            ExprNode::UnaryOp { op, expr } => {
+                let expr = (*expr).build_expr_plan().map(Box::new)?;
+                Ok(ExprPlan::UnaryOp { op, expr })
+            }
+            ExprNode::IsNull(expr) => (*expr)
+                .build_expr_plan()
+                .map(Box::new)
+                .map(ExprPlan::IsNull),
+            ExprNode::IsNotNull(expr) => (*expr)
+                .build_expr_plan()
+                .map(Box::new)
+                .map(ExprPlan::IsNotNull),
+            ExprNode::InList {
+                expr,
+                list,
+                negated,
+            } => {
+                let expr = (*expr).build_expr_plan().map(Box::new)?;
+
+                match *list {
+                    InListNode::InList(list) => {
+                        let list = list
+                            .into_iter()
+                            .map(ExprNode::build_expr_plan)
+                            .collect::<Result<Vec<_>>>()?;
+                        Ok(ExprPlan::InList {
+                            expr,
+                            list,
+                            negated,
+                        })
+                    }
+                    InListNode::Query(subquery) => {
+                        let subquery = subquery.build_query_plan().map(Box::new)?;
+                        Ok(ExprPlan::InSubquery {
+                            expr,
+                            subquery,
+                            negated,
+                        })
+                    }
+                    InListNode::Text(value) => {
+                        let subquery = parse_query(value.clone())
+                            .and_then(|item| translate_query(&item, NO_PARAMS))
+                            .map(QueryPlan::from)
+                            .map(Box::new);
+
+                        if let Ok(subquery) = subquery {
+                            return Ok(ExprPlan::InSubquery {
+                                expr,
+                                subquery,
+                                negated,
+                            });
+                        }
+
+                        parse_comma_separated_exprs(&*value)?
+                            .iter()
+                            .map(|expr| translate_expr(expr, NO_PARAMS).map(Into::into))
+                            .collect::<Result<Vec<_>>>()
+                            .map(|list| ExprPlan::InList {
+                                expr,
+                                list,
+                                negated,
+                            })
+                    }
+                }
+            }
+            ExprNode::Nested(expr) => (*expr)
+                .build_expr_plan()
+                .map(Box::new)
+                .map(ExprPlan::Nested),
+            ExprNode::Function(func_expr) => (*func_expr)
+                .build_function_plan()
+                .map(Box::new)
+                .map(ExprPlan::Function),
+            ExprNode::Aggregate(aggr_expr) => (*aggr_expr)
+                .build_aggregate_plan()
+                .map(Box::new)
+                .map(ExprPlan::Aggregate),
+            ExprNode::Exists { subquery, negated } => (*subquery)
+                .build_query_plan()
+                .map(Box::new)
+                .map(|subquery| ExprPlan::Exists { subquery, negated }),
+            ExprNode::Subquery(subquery) => (*subquery)
+                .build_query_plan()
+                .map(Box::new)
+                .map(ExprPlan::Subquery),
+            ExprNode::Case {
+                operand,
+                when_then,
+                else_result,
+            } => {
+                let operand = operand
+                    .map(|expr| (*expr).build_expr_plan())
+                    .transpose()?
+                    .map(Box::new);
+                let when_then = when_then
+                    .into_iter()
+                    .map(|(when, then)| {
+                        let when = when.build_expr_plan()?;
+                        let then = then.build_expr_plan()?;
+                        Ok((when, then))
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+
+                let else_result = else_result
+                    .map(|expr| (*expr).build_expr_plan())
+                    .transpose()?
+                    .map(Box::new);
+                Ok(ExprPlan::Case {
+                    operand,
+                    when_then,
+                    else_result,
+                })
+            }
+        }
+    }
+}
+
+impl ExprNode<'_> {
+    pub(super) fn build_expr(self) -> Result<Expr> {
+        match self {
+            ExprNode::Expr(expr) => Ok(expr.into_owned()),
+            ExprNode::SqlExpr(expr) => {
+                let expr = parse_expr(expr)?;
+
+                translate_expr(&expr, NO_PARAMS)
+            }
+            ExprNode::Identifier(value) => {
+                let idents = value.as_ref().split('.').collect::<Vec<_>>();
+
+                Ok(match idents.as_slice() {
+                    [alias, ident] => Expr::CompoundIdentifier {
+                        alias: (*alias).to_owned(),
+                        ident: (*ident).to_owned(),
+                    },
+                    _ => Expr::Identifier(value.into_owned()),
+                })
+            }
+            ExprNode::Numeric(node) => node.try_into().map(Expr::Literal),
+            ExprNode::QuotedString(value) => {
+                let value = value.into_owned();
+
+                Ok(Expr::Literal(Literal::QuotedString(value)))
+            }
+            ExprNode::TypedString { data_type, value } => Ok(Expr::TypedString {
+                data_type,
+                value: value.into_owned(),
+            }),
+            ExprNode::Between {
+                expr,
+                negated,
+                low,
+                high,
+            } => {
+                let expr = expr.build_expr().map(Box::new)?;
+                let low = low.build_expr().map(Box::new)?;
+                let high = high.build_expr().map(Box::new)?;
+
+                Ok(Expr::Between {
+                    expr,
+                    negated,
+                    low,
+                    high,
+                })
+            }
+            ExprNode::Like {
+                expr,
+                negated,
+                pattern,
+            } => {
+                let expr = expr.build_expr().map(Box::new)?;
+                let pattern = pattern.build_expr().map(Box::new)?;
+
+                Ok(Expr::Like {
+                    expr,
+                    negated,
+                    pattern,
+                })
+            }
+            ExprNode::ILike {
+                expr,
+                negated,
+                pattern,
+            } => {
+                let expr = expr.build_expr().map(Box::new)?;
+                let pattern = pattern.build_expr().map(Box::new)?;
+
+                Ok(Expr::ILike {
+                    expr,
+                    negated,
+                    pattern,
+                })
+            }
+            ExprNode::BinaryOp { left, op, right } => {
+                let left = left.build_expr().map(Box::new)?;
+                let right = right.build_expr().map(Box::new)?;
+
+                Ok(Expr::BinaryOp { left, op, right })
+            }
+            ExprNode::UnaryOp { op, expr } => {
+                let expr = expr.build_expr().map(Box::new)?;
+                Ok(Expr::UnaryOp { op, expr })
+            }
+            ExprNode::IsNull(expr) => expr.build_expr().map(Box::new).map(Expr::IsNull),
+            ExprNode::IsNotNull(expr) => expr.build_expr().map(Box::new).map(Expr::IsNotNull),
+            ExprNode::InList {
+                expr,
+                list,
+                negated,
+            } => {
+                let expr = expr.build_expr().map(Box::new)?;
+
+                match *list {
+                    InListNode::InList(list) => {
+                        let list = list
+                            .into_iter()
+                            .map(ExprNode::build_expr)
+                            .collect::<Result<Vec<_>>>()?;
+                        Ok(Expr::InList {
+                            expr,
+                            list,
+                            negated,
+                        })
+                    }
+                    InListNode::Text(value) => {
+                        let subquery = parse_query(value.clone())
+                            .and_then(|item| translate_query(&item, NO_PARAMS))
+                            .map(Box::new);
+
+                        if let Ok(subquery) = subquery {
+                            return Ok(Expr::InSubquery {
+                                expr,
+                                subquery,
+                                negated,
+                            });
+                        }
+
+                        parse_comma_separated_exprs(&value)?
+                            .iter()
+                            .map(|expr| translate_expr(expr, NO_PARAMS))
+                            .collect::<Result<Vec<_>>>()
+                            .map(|list| Expr::InList {
+                                expr,
+                                list,
+                                negated,
+                            })
+                    }
+                    InListNode::Query(subquery) => {
+                        let subquery = (*subquery).build_query().map(Box::new)?;
+                        Ok(Expr::InSubquery {
+                            expr,
+                            subquery,
+                            negated,
+                        })
+                    }
+                }
+            }
+            ExprNode::Nested(expr) => expr.build_expr().map(Box::new).map(Expr::Nested),
+            ExprNode::Function(func_expr) => {
+                func_expr.build_function().map(Box::new).map(Expr::Function)
+            }
+            ExprNode::Aggregate(aggr_expr) => aggr_expr
+                .build_aggregate()
+                .map(Box::new)
+                .map(Expr::Aggregate),
+            ExprNode::Exists { subquery, negated } => (*subquery)
+                .build_query()
+                .map(Box::new)
+                .map(|subquery| Expr::Exists { subquery, negated }),
+            ExprNode::Subquery(subquery) => {
+                (*subquery).build_query().map(Box::new).map(Expr::Subquery)
+            }
+            ExprNode::Case {
+                operand,
+                when_then,
+                else_result,
+            } => {
+                let operand = operand
+                    .map(|expr| expr.build_expr())
+                    .transpose()?
+                    .map(Box::new);
+                let when_then = when_then
+                    .into_iter()
+                    .map(|(when, then)| {
+                        let when = when.build_expr()?;
+                        let then = then.build_expr()?;
+                        Ok((when, then))
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+
+                let else_result = else_result
+                    .map(|expr| expr.build_expr())
+                    .transpose()?
+                    .map(Box::new);
+                Ok(Expr::Case {
+                    operand,
+                    when_then,
+                    else_result,
+                })
+            }
+        }
+    }
+}
+
+impl<'a> From<&'a str> for ExprNode<'a> {
+    fn from(expr: &'a str) -> Self {
+        ExprNode::SqlExpr(Cow::Borrowed(expr))
+    }
+}
+
+impl From<String> for ExprNode<'_> {
+    fn from(expr: String) -> Self {
+        ExprNode::SqlExpr(Cow::Owned(expr))
+    }
+}
+
+impl From<i64> for ExprNode<'_> {
+    fn from(n: i64) -> Self {
+        ExprNode::Expr(Cow::Owned(Expr::Literal(Literal::Number(
+            BigDecimal::from(n),
+        ))))
+    }
+}
+
+impl From<bool> for ExprNode<'_> {
+    fn from(b: bool) -> Self {
+        ExprNode::Expr(Cow::Owned(Expr::Value(Value::Bool(b))))
+    }
+}
+
+impl<'a> From<QueryNode<'a>> for ExprNode<'a> {
+    fn from(node: QueryNode<'a>) -> Self {
+        ExprNode::Subquery(Box::new(node))
+    }
+}
+
+impl From<Expr> for ExprNode<'_> {
+    fn from(expr: Expr) -> Self {
+        ExprNode::Expr(Cow::Owned(expr))
+    }
+}
+
+impl<'a> From<&'a Expr> for ExprNode<'a> {
+    fn from(expr: &'a Expr) -> Self {
+        ExprNode::Expr(Cow::Borrowed(expr))
+    }
+}
+
+impl From<Value> for ExprNode<'_> {
+    fn from(v: Value) -> Self {
+        ExprNode::Expr(Cow::Owned(Expr::Value(v)))
+    }
+}
+
+pub fn expr<'a, T: Into<Cow<'a, str>>>(value: T) -> ExprNode<'a> {
+    ExprNode::SqlExpr(value.into())
+}
+
+pub fn col<'a, T: Into<Cow<'a, str>>>(value: T) -> ExprNode<'a> {
+    ExprNode::Identifier(value.into())
+}
+
+pub fn num<'a, T: Into<NumericNode<'a>>>(value: T) -> ExprNode<'a> {
+    ExprNode::Numeric(value.into())
+}
+
+pub fn text<'a, T: Into<Cow<'a, str>>>(value: T) -> ExprNode<'a> {
+    ExprNode::QuotedString(value.into())
+}
+
+pub fn date<'a, T: Into<Cow<'a, str>>>(date: T) -> ExprNode<'a> {
+    ExprNode::TypedString {
+        data_type: DataType::Date,
+        value: date.into(),
+    }
+}
+
+pub fn timestamp<'a, T: Into<Cow<'a, str>>>(timestamp: T) -> ExprNode<'a> {
+    ExprNode::TypedString {
+        data_type: DataType::Timestamp,
+        value: timestamp.into(),
+    }
+}
+
+pub fn time<'a, T: Into<Cow<'a, str>>>(time: T) -> ExprNode<'a> {
+    ExprNode::TypedString {
+        data_type: DataType::Time,
+        value: time.into(),
+    }
+}
+
+pub fn uuid<'a, T: Into<Cow<'a, str>>>(uuid: T) -> ExprNode<'a> {
+    ExprNode::TypedString {
+        data_type: DataType::Uuid,
+        value: uuid.into(),
+    }
+}
+
+/// Returns an AST `ExprNode` containing the provided `Bytea`.
+///
+/// # Arguments
+/// * `bytea` - A byte array to be converted to a Bytea AST node.
+///
+pub fn bytea<'a, T: AsRef<[u8]>>(bytea: T) -> ExprNode<'a> {
+    ExprNode::Expr(Cow::Owned(Expr::Value(Value::Bytea(
+        bytea.as_ref().to_vec(),
+    ))))
+}
+
+pub fn subquery<'a, T: Into<QueryNode<'a>>>(query_node: T) -> ExprNode<'a> {
+    ExprNode::Subquery(Box::new(query_node.into()))
+}
+
+pub fn null() -> ExprNode<'static> {
+    ExprNode::Expr(Cow::Owned(Expr::Value(Value::Null)))
+}
+
+pub fn value(v: Value) -> ExprNode<'static> {
+    ExprNode::Expr(Cow::Owned(Expr::Value(v)))
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::ExprNode,
+        crate::{
+            ast::Expr,
+            data::Value,
+            plan::ExprPlan,
+            query_builder::{
+                QueryNode, bytea, col, date, expr, null, num, subquery, table, test_expr, text,
+                time, timestamp, uuid, value,
+            },
+        },
+    };
+
+    #[test]
+    fn into_expr_node() {
+        let actual: ExprNode = "id IS NOT NULL".into();
+        let expected = "id IS NOT NULL";
+        test_expr(actual, expected);
+
+        let actual: ExprNode = String::from("1 + 10)").into();
+        let expected = "1 + 10";
+        test_expr(actual, expected);
+
+        let actual: ExprNode = 1024.into();
+        let expected = "1024";
+        test_expr(actual, expected);
+
+        let actual: ExprNode = true.into();
+        let expected = "True";
+        test_expr(actual, expected);
+
+        let actual: ExprNode = QueryNode::from(table("Foo").select().project("id")).into();
+        let expected = "(SELECT id FROM Foo)";
+        test_expr(actual, expected);
+
+        let expr = Expr::Identifier("id".to_owned());
+        let actual: ExprNode = (&expr).into();
+        let expected = "id";
+        test_expr(actual, expected);
+
+        let actual: ExprNode = expr.into();
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn syntactic_sugar() {
+        let actual = expr("col1 > 10");
+        let expected = "col1 > 10";
+        test_expr(actual, expected);
+
+        let actual = col("id");
+        let expected = "id";
+        test_expr(actual, expected);
+
+        let actual = col("Foo.id");
+        let expected = "Foo.id";
+        test_expr(actual, expected);
+
+        let actual = num(2048);
+        let expected = "2048";
+        test_expr(actual, expected);
+
+        let actual = num(6.5);
+        let expected = "6.5";
+        test_expr(actual, expected);
+
+        let actual = num("123.456");
+        let expected = "123.456";
+        test_expr(actual, expected);
+
+        let actual = text("hello world");
+        let expected = "'hello world'";
+        test_expr(actual, expected);
+
+        let actual = date("2022-10-11");
+        let expected = "DATE '2022-10-11'";
+        test_expr(actual, expected);
+
+        let actual = timestamp("2022-10-11 13:34:49");
+        let expected = "TIMESTAMP '2022-10-11 13:34:49'";
+        test_expr(actual, expected);
+
+        let actual = time("15:00:07");
+        let expected = "TIME '15:00:07'";
+        test_expr(actual, expected);
+
+        let actual = uuid("936DA01F9ABD4d9d80C702AF85C822A8");
+        let expected = "UUID '936DA01F9ABD4d9d80C702AF85C822A8'";
+        test_expr(actual, expected);
+
+        let actual = bytea(b"hello world");
+        let expected = "X'68656c6c6f20776f726c64'";
+        test_expr(actual, expected);
+
+        let actual = subquery(table("Foo").select().filter("id IS NOT NULL"));
+        let expected = "(SELECT * FROM Foo WHERE id IS NOT NULL)";
+        test_expr(actual, expected);
+
+        let actual = null();
+        let expected = "NULL";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn value_injection() {
+        let test = |actual: ExprNode, expected: ExprPlan| {
+            pretty_assertions::assert_eq!(actual.build_expr_plan(), Ok(expected));
+        };
+
+        test(Value::I64(42).into(), ExprPlan::Value(Value::I64(42)));
+        test(
+            Value::Str("hello".to_owned()).into(),
+            ExprPlan::Value(Value::Str("hello".to_owned())),
+        );
+        test(value(Value::I64(100)), ExprPlan::Value(Value::I64(100)));
+        test(value(Value::Bool(true)), ExprPlan::Value(Value::Bool(true)));
+    }
+}

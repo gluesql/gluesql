@@ -24,8 +24,7 @@ test_case!(show_columns, {
             glist  List
         );
     ",
-    )
-    .await;
+    );
 
     g.test(
         r"Show columns from mytable",
@@ -44,12 +43,10 @@ test_case!(show_columns, {
             ("hash".to_owned(), DataType::Map),
             ("glist".to_owned(), DataType::List),
         ])),
-    )
-    .await;
+    );
 
     g.test(
         r"Show columns from mytable1",
         Err(ExecuteError::TableNotFound("mytable1".to_owned()).into()),
-    )
-    .await;
+    );
 });

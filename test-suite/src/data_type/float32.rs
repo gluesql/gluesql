@@ -44,13 +44,13 @@ test_case!(float32, {
             Ok(select!(
                 float32
                 F32;
-                -71.064544_f32
+                -71.064_544_f32
 
             )),
         ),
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, expected).await;
+        g.test(sql, expected);
     }
 });

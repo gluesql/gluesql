@@ -18,7 +18,6 @@ proc-macro-crate = "3"
 [dev-dependencies]
 gluesql-core.workspace = true
 gluesql_memory_storage.workspace = true
-futures = "0.3"
 chrono = "0.4"
 rust_decimal = "1"
 trybuild = "1"

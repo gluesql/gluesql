@@ -55,7 +55,7 @@ impl Eq for Point {}
 
 impl Hash for Point {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        const CANONICAL_F64_NAN_BITS: u64 = 0x7ff8000000000000;
+        const CANONICAL_F64_NAN_BITS: u64 = 0x7ff8_0000_0000_0000;
         const CANONICAL_F64_ZERO_BITS: u64 = 0;
 
         #[inline]

@@ -1,8 +1,9 @@
 use {
-    super::{DataRow, Store, StoreMut},
-    crate::{ast::ColumnDef, data::Value, executor::evaluate_stateless, result::Result},
-    async_trait::async_trait,
-    futures::TryStreamExt,
+    super::{Store, StoreMut},
+    crate::{
+        ast::ColumnDef, data::Value, executor::evaluate_stateless, plan::plan_scalar_expr,
+        result::Result,
+    },
     serde::Serialize,
     std::fmt::Debug,
     thiserror::Error,
@@ -27,40 +28,30 @@ pub enum AlterTableError {
 
     #[error("Schemaless table does not support ALTER TABLE: {0}")]
     SchemalessTableFound(String),
-
-    #[error("conflict - Vec expected but Map row found")]
-    ConflictOnUnexpectedMapRowFound,
 }
 
-#[async_trait]
 pub trait AlterTable: Store + StoreMut {
-    async fn rename_schema(&mut self, table_name: &str, new_table_name: &str) -> Result<()> {
+    fn rename_schema(&mut self, table_name: &str, new_table_name: &str) -> Result<()> {
         let mut schema = self
-            .fetch_schema(table_name)
-            .await?
+            .fetch_schema(table_name)?
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
         new_table_name.clone_into(&mut schema.table_name);
-        self.insert_schema(&schema).await?;
+        self.insert_schema(&schema)?;
 
-        let rows = self
-            .scan_data(table_name)
-            .await?
-            .try_collect::<Vec<_>>()
-            .await?;
+        let rows = self.scan_data(table_name)?.collect::<Result<Vec<_>>>()?;
 
-        self.insert_data(new_table_name, rows).await?;
-        self.delete_schema(table_name).await
+        self.insert_data(new_table_name, rows)?;
+        self.delete_schema(table_name)
     }
 
-    async fn rename_column(
+    fn rename_column(
         &mut self,
         table_name: &str,
         old_column_name: &str,
         new_column_name: &str,
     ) -> Result<()> {
         let mut schema = self
-            .fetch_schema(table_name)
-            .await?
+            .fetch_schema(table_name)?
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
 
         let column_defs = schema
@@ -83,24 +74,23 @@ pub trait AlterTable: Store + StoreMut {
                 .name,
         );
 
-        let rows = self
-            .scan_data(table_name)
-            .await?
-            .try_collect::<Vec<_>>()
-            .await?;
+        let rows = self.scan_data(table_name)?.collect::<Result<Vec<_>>>()?;
 
-        self.insert_schema(&schema).await?;
-        self.insert_data(table_name, rows).await
+        self.insert_schema(&schema)?;
+        self.insert_data(table_name, rows)
     }
 
-    async fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
+    fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
         let mut schema = self
-            .fetch_schema(table_name)
-            .await?
+            .fetch_schema(table_name)?
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
 
         let default_value = match (column_def.default.as_ref(), column_def.nullable) {
-            (Some(default), _) => evaluate_stateless(None, default).await?.try_into()?,
+            (Some(default), _) => {
+                let default = plan_scalar_expr(default.clone());
+
+                evaluate_stateless(None, &default)?.try_into()?
+            }
             (None, true) => Value::Null,
             (None, false) => {
                 return Err(AlterTableError::DefaultValueRequired(column_def.clone()).into());
@@ -119,40 +109,23 @@ pub trait AlterTable: Store + StoreMut {
         column_defs.push(column_def.clone());
 
         let rows = self
-            .scan_data(table_name)
-            .await?
-            .and_then(|(key, mut data_row)| {
+            .scan_data(table_name)?
+            .map(|row| {
+                let (key, mut values) = row?;
                 let default_value = default_value.clone();
 
-                async move {
-                    match &mut data_row {
-                        DataRow::Map(_) => {
-                            Err(AlterTableError::ConflictOnUnexpectedMapRowFound.into())
-                        }
-                        DataRow::Vec(rows) => {
-                            rows.push(default_value);
-
-                            Ok((key, data_row))
-                        }
-                    }
-                }
+                values.push(default_value);
+                Ok((key, values))
             })
-            .try_collect::<Vec<_>>()
-            .await?;
+            .collect::<Result<Vec<_>>>()?;
 
-        self.insert_schema(&schema).await?;
-        self.insert_data(table_name, rows).await
+        self.insert_schema(&schema)?;
+        self.insert_data(table_name, rows)
     }
 
-    async fn drop_column(
-        &mut self,
-        table_name: &str,
-        column_name: &str,
-        if_exists: bool,
-    ) -> Result<()> {
+    fn drop_column(&mut self, table_name: &str, column_name: &str, if_exists: bool) -> Result<()> {
         let mut schema = self
-            .fetch_schema(table_name)
-            .await?
+            .fetch_schema(table_name)?
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
 
         let column_defs = schema
@@ -174,22 +147,15 @@ pub trait AlterTable: Store + StoreMut {
         column_defs.retain(|column_def| column_def.name != column_name);
 
         let rows = self
-            .scan_data(table_name)
-            .await?
-            .and_then(|(key, mut data_row)| async move {
-                match &mut data_row {
-                    DataRow::Map(_) => Err(AlterTableError::ConflictOnUnexpectedMapRowFound.into()),
-                    DataRow::Vec(rows) => {
-                        rows.remove(i);
-
-                        Ok((key, data_row))
-                    }
-                }
+            .scan_data(table_name)?
+            .map(|row| {
+                let (key, mut values) = row?;
+                values.remove(i);
+                Ok((key, values))
             })
-            .try_collect::<Vec<_>>()
-            .await?;
+            .collect::<Result<Vec<_>>>()?;
 
-        self.insert_schema(&schema).await?;
-        self.insert_data(table_name, rows).await
+        self.insert_schema(&schema)?;
+        self.insert_data(table_name, rows)
     }
 }

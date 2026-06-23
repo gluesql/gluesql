@@ -1,8 +1,8 @@
 use {
     super::{
         ParamLiteral, TranslateError,
-        ast_literal::{translate_datetime_field, translate_trim_where_field},
         expr::translate_expr,
+        literal::{translate_datetime_field, translate_trim_where_field},
         translate_data_type, translate_object_name,
     },
     crate::{
@@ -25,7 +25,7 @@ pub(crate) fn translate_trim(
     trim_what: Option<&SqlExpr>,
 ) -> Result<Expr> {
     let expr = translate_expr(expr, params)?;
-    let trim_where_field = trim_where.map(translate_trim_where_field);
+    let trim_where_field = trim_where.copied().map(translate_trim_where_field);
     let filter_chars = trim_what
         .map(|expr| translate_expr(expr, params))
         .transpose()?;

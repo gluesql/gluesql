@@ -5,16 +5,13 @@ mod index;
 mod transaction;
 
 use {
-    async_trait::async_trait,
-    futures::stream,
     gluesql_core::{
-        data::{Key, Schema},
-        error::Result,
-        store::{DataRow, Metadata, Planner, RowIter, Store, StoreMut},
+        data::{Key, Schema, Value},
+        error::{Error, Result},
+        store::{Metadata, Planner, RowIter, Store, StoreMut},
     },
     gluesql_memory_storage::MemoryStorage,
-    std::sync::Arc,
-    tokio::sync::RwLock,
+    std::sync::{Arc, RwLock},
 };
 
 #[derive(Clone, Debug)]
@@ -44,76 +41,67 @@ impl From<MemoryStorage> for SharedMemoryStorage {
     }
 }
 
-#[async_trait]
 impl Store for SharedMemoryStorage {
-    async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
-        let database = Arc::clone(&self.database);
-        let database = database.read().await;
+    fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
+        let database = self.database.read().map_err(lock_error)?;
 
-        database.fetch_all_schemas().await
-    }
-    async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
-        let database = Arc::clone(&self.database);
-        let database = database.read().await;
-
-        database.fetch_schema(table_name).await
+        database.fetch_all_schemas()
     }
 
-    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
-        let database = Arc::clone(&self.database);
-        let database = database.read().await;
+    fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
+        let database = self.database.read().map_err(lock_error)?;
 
-        database.fetch_data(table_name, key).await
+        database.fetch_schema(table_name)
     }
 
-    async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
+    fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Vec<Value>>> {
+        let database = self.database.read().map_err(lock_error)?;
+
+        database.fetch_data(table_name, key)
+    }
+
+    fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
         let rows = self
             .database
             .read()
-            .await
+            .map_err(lock_error)?
             .scan_data(table_name)
             .into_iter()
             .map(Ok);
 
-        Ok(Box::pin(stream::iter(rows)))
+        Ok(Box::new(rows))
     }
 }
 
-#[async_trait]
 impl StoreMut for SharedMemoryStorage {
-    async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
-        let database = Arc::clone(&self.database);
-        let mut database = database.write().await;
+    fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
+        let mut database = self.database.write().map_err(lock_error)?;
 
-        database.insert_schema(schema).await
+        database.insert_schema(schema)
     }
 
-    async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
-        let database = Arc::clone(&self.database);
-        let mut database = database.write().await;
+    fn delete_schema(&mut self, table_name: &str) -> Result<()> {
+        let mut database = self.database.write().map_err(lock_error)?;
 
-        database.delete_schema(table_name).await
+        database.delete_schema(table_name)
     }
 
-    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
-        let database = Arc::clone(&self.database);
-        let mut database = database.write().await;
+    fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
+        let mut database = self.database.write().map_err(lock_error)?;
 
-        database.append_data(table_name, rows).await
+        database.append_data(table_name, rows)
     }
 
-    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
-        let database = Arc::clone(&self.database);
-        let mut database = database.write().await;
+    fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
+        let mut database = self.database.write().map_err(lock_error)?;
 
-        database.insert_data(table_name, rows).await
+        database.insert_data(table_name, rows)
     }
 
-    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
-        let database = Arc::clone(&self.database);
-        let mut database = database.write().await;
+    fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
+        let mut database = self.database.write().map_err(lock_error)?;
 
-        database.delete_data(table_name, keys).await
+        database.delete_data(table_name, keys)
     }
 }
 
@@ -121,3 +109,7 @@ impl Metadata for SharedMemoryStorage {}
 impl Planner for SharedMemoryStorage {}
 impl gluesql_core::store::CustomFunction for SharedMemoryStorage {}
 impl gluesql_core::store::CustomFunctionMut for SharedMemoryStorage {}
+
+fn lock_error<T>(_: std::sync::PoisonError<T>) -> Error {
+    Error::StorageMsg("[Shared MemoryStorage] lock poisoned".to_owned())
+}

@@ -1,16 +1,20 @@
 use {
     super::{AlterError, validate, validate_column_names},
     crate::{
-        ast::{
-            ColumnDef, ColumnUniqueOption, ForeignKey, Query, SetExpr, TableFactor, ToSql, Values,
+        ast::{ColumnDef, ColumnUniqueOption, ForeignKey, ToSql},
+        data::{Row, Schema},
+        executor::{
+            evaluate_stateless,
+            select::{select, select_with_labels},
         },
-        data::Schema,
-        executor::{evaluate_stateless, select::select},
+        plan::{
+            ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan, SetExprPlan, TableFactorPlan,
+            ValuesPlan,
+        },
         prelude::{DataType, Value},
         result::Result,
         store::{GStore, GStoreMut},
     },
-    futures::stream::TryStreamExt,
     serde::Serialize,
     std::fmt,
 };
@@ -19,13 +23,13 @@ pub struct CreateTableOptions<'a> {
     pub target_table_name: &'a str,
     pub column_defs: Option<&'a [ColumnDef]>,
     pub if_not_exists: bool,
-    pub source: &'a Option<Box<Query>>,
+    pub source: &'a Option<Box<QueryPlan>>,
     pub engine: &'a Option<String>,
     pub foreign_keys: &'a Vec<ForeignKey>,
     pub comment: &'a Option<String>,
 }
 
-pub async fn create_table<T: GStore + GStoreMut>(
+pub fn create_table<T: GStore + GStoreMut>(
     storage: &mut T,
     CreateTableOptions {
         target_table_name,
@@ -37,11 +41,12 @@ pub async fn create_table<T: GStore + GStoreMut>(
         comment,
     }: CreateTableOptions<'_>,
 ) -> Result<()> {
+    let mut selected_source_rows = None;
     let target_columns_defs = match source.as_deref() {
-        Some(Query { body, .. }) => match body {
-            SetExpr::Select(select_query) => match &select_query.from.relation {
-                TableFactor::Table { name, .. } => {
-                    let schema = storage.fetch_schema(name).await?;
+        Some(query) => match &query.body {
+            SetExprPlan::Select(select_query) => match &select_query.from.relation {
+                TableFactorPlan::Table { name, .. } if can_copy_source_schema(select_query) => {
+                    let schema = storage.fetch_schema(name)?;
                     let Schema {
                         column_defs: source_column_defs,
                         ..
@@ -50,7 +55,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
 
                     source_column_defs
                 }
-                TableFactor::Series { .. } => {
+                TableFactorPlan::Series { .. } if can_copy_source_schema(select_query) => {
                     let column_def = ColumnDef {
                         name: "N".into(),
                         data_type: DataType::Int,
@@ -63,10 +68,17 @@ pub async fn create_table<T: GStore + GStoreMut>(
                     Some(vec![column_def])
                 }
                 _ => {
-                    return Err(AlterError::Unreachable.into());
+                    let (labels, rows) = select_with_labels(storage, query, None)?;
+                    let rows = rows
+                        .map(|row| row.map(Row::into_values))
+                        .collect::<Result<Vec<_>>>()?;
+                    let column_defs = column_defs_from_rows(labels, &rows);
+                    selected_source_rows = Some(rows);
+
+                    Some(column_defs)
                 }
             },
-            SetExpr::Values(Values(values_list)) => {
+            SetExprPlan::Values(ValuesPlan(values_list)) => {
                 let first_len = values_list[0].len();
                 let mut column_types = vec![None; first_len];
 
@@ -77,7 +89,6 @@ pub async fn create_table<T: GStore + GStoreMut>(
                         }
 
                         column_types[i] = evaluate_stateless(None, expr)
-                            .await
                             .and_then(Value::try_from)
                             .map(|value| value.get_type())?;
                     }
@@ -115,7 +126,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
         validate_column_names(column_defs)?;
 
         for column_def in column_defs {
-            validate(column_def).await?;
+            validate(column_def)?;
         }
     }
 
@@ -130,12 +141,12 @@ pub async fn create_table<T: GStore + GStoreMut>(
         let column_defs = if referenced_table_name == target_table_name {
             target_columns_defs.clone()
         } else {
-            let referenced_schema = storage
-                .fetch_schema(referenced_table_name)
-                .await?
-                .ok_or_else(|| {
-                    AlterError::ReferencedTableNotFound(referenced_table_name.to_owned())
-                })?;
+            let referenced_schema =
+                storage
+                    .fetch_schema(referenced_table_name)?
+                    .ok_or_else(|| {
+                        AlterError::ReferencedTableNotFound(referenced_table_name.to_owned())
+                    })?;
 
             referenced_schema.column_defs
         };
@@ -179,7 +190,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
         }
     }
 
-    if storage.fetch_schema(target_table_name).await?.is_none() {
+    if storage.fetch_schema(target_table_name)?.is_none() {
         let schema = Schema {
             table_name: target_table_name.to_owned(),
             column_defs: target_columns_defs,
@@ -189,29 +200,66 @@ pub async fn create_table<T: GStore + GStoreMut>(
             comment: comment.clone(),
         };
 
-        storage.insert_schema(&schema).await?;
+        storage.insert_schema(&schema)?;
     } else if !if_not_exists {
         return Err(AlterError::TableAlreadyExists(target_table_name.to_owned()).into());
     }
 
     match source {
         Some(query) => {
-            let rows = select(storage, query, None)
-                .await?
-                .map_ok(Into::into)
-                .try_collect()
-                .await?;
+            let rows = match selected_source_rows {
+                Some(rows) => rows,
+                None => select(storage, query, None)?
+                    .map(|row| row.map(Row::into_values))
+                    .collect::<Result<Vec<_>>>()?,
+            };
 
-            storage
-                .append_data(target_table_name, rows)
-                .await
-                .map(|_| ())
+            storage.append_data(target_table_name, rows)
         }
         None => Ok(()),
     }
 }
 
-pub async fn drop_table<T: GStore + GStoreMut>(
+fn can_copy_source_schema(select: &SelectPlan) -> bool {
+    if !select.from.joins.is_empty() {
+        return false;
+    }
+
+    match &select.projection {
+        ProjectionPlan::SchemalessMap => true,
+        ProjectionPlan::SelectItems(items) => items.iter().all(|item| {
+            matches!(
+                item,
+                SelectItemPlan::Wildcard | SelectItemPlan::QualifiedWildcard(_)
+            )
+        }),
+    }
+}
+
+fn column_defs_from_rows(labels: Vec<String>, rows: &[Vec<Value>]) -> Vec<ColumnDef> {
+    labels
+        .into_iter()
+        .enumerate()
+        .map(|(index, name)| {
+            let data_type = rows
+                .iter()
+                .filter_map(|row| row.get(index))
+                .find_map(Value::get_type)
+                .unwrap_or(DataType::Text);
+
+            ColumnDef {
+                name,
+                data_type,
+                nullable: true,
+                default: None,
+                unique: None,
+                comment: None,
+            }
+        })
+        .collect()
+}
+
+pub fn drop_table<T: GStore + GStoreMut>(
     storage: &mut T,
     table_names: &[String],
     if_exists: bool,
@@ -220,7 +268,7 @@ pub async fn drop_table<T: GStore + GStoreMut>(
     let mut n = 0;
 
     for table_name in table_names {
-        let schema = storage.fetch_schema(table_name).await?;
+        let schema = storage.fetch_schema(table_name)?;
 
         match (schema, if_exists) {
             (None, true) => {
@@ -232,7 +280,7 @@ pub async fn drop_table<T: GStore + GStoreMut>(
             _ => {}
         }
 
-        let referencings = storage.fetch_referencings(table_name).await?;
+        let referencings = storage.fetch_referencings(table_name)?;
 
         if !referencings.is_empty() && !cascade {
             return Err(AlterError::CannotDropTableWithReferencing {
@@ -248,15 +296,14 @@ pub async fn drop_table<T: GStore + GStoreMut>(
         } in referencings
         {
             let mut schema = storage
-                .fetch_schema(&table_name)
-                .await?
+                .fetch_schema(&table_name)?
                 .ok_or_else(|| AlterError::TableNotFound(table_name.clone()))?;
             schema
                 .foreign_keys
                 .retain(|foreign_key| foreign_key.name != name);
-            storage.insert_schema(&schema).await?;
+            storage.insert_schema(&schema)?;
         }
-        storage.delete_schema(table_name).await?;
+        storage.delete_schema(table_name)?;
 
         n += 1;
     }

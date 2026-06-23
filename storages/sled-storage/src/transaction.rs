@@ -4,11 +4,10 @@ use {
         lock::{self, Lock},
         tx_err_into,
     },
-    async_trait::async_trait,
     gluesql_core::{
-        data::Schema,
+        data::{Schema, Value},
         error::{Error, Result},
-        store::{DataRow, Transaction},
+        store::Transaction,
     },
     serde::{Serialize, de::DeserializeOwned},
     sled::{
@@ -26,9 +25,8 @@ pub enum TxPayload {
     RollbackAndRetry(u64),
 }
 
-#[async_trait]
 impl Transaction for SledStorage {
-    async fn begin(&mut self, autocommit: bool) -> Result<bool> {
+    fn begin(&mut self, autocommit: bool) -> Result<bool> {
         match (&self.state, autocommit) {
             (State::Transaction { .. }, false) => Err(Error::StorageMsg(
                 "nested transaction is not supported".to_owned(),
@@ -48,7 +46,7 @@ impl Transaction for SledStorage {
         }
     }
 
-    async fn rollback(&mut self) -> Result<()> {
+    fn rollback(&mut self) -> Result<()> {
         let txid = match self.state {
             State::Transaction { txid, .. } => txid,
             State::Idle => {
@@ -67,7 +65,7 @@ impl Transaction for SledStorage {
                 .unwrap_or_default();
 
             if Some(txid) == lock_txid {
-                self.rollback_txid(txid).map(|_| lock_txid)
+                self.rollback_txid(txid).map(|()| lock_txid)
             } else {
                 Ok(None)
             }
@@ -87,7 +85,7 @@ impl Transaction for SledStorage {
         Ok(())
     }
 
-    async fn commit(&mut self) -> Result<()> {
+    fn commit(&mut self) -> Result<()> {
         let (txid, created_at) = match self.state {
             State::Transaction {
                 txid, created_at, ..
@@ -126,7 +124,7 @@ impl SledStorage {
             txid: u64,
             items: &[(IVec, IVec)],
         ) -> ConflictableTransactionResult<(), Error> {
-            for (temp_key, value_key) in items.iter() {
+            for (temp_key, value_key) in items {
                 tree.remove(temp_key)?;
 
                 let snapshot = tree
@@ -173,10 +171,10 @@ impl SledStorage {
 
         self.tree
             .transaction(move |tree| {
-                rollback_items::<DataRow>(tree, txid, &data_items)?;
+                rollback_items::<Vec<Value>>(tree, txid, &data_items)?;
                 rollback_items::<Schema>(tree, txid, &schema_items)?;
 
-                for (temp_key, value_key) in index_items.iter() {
+                for (temp_key, value_key) in &index_items {
                     tree.remove(temp_key)?;
 
                     let snapshots = tree

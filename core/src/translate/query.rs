@@ -5,7 +5,7 @@ use {
     },
     crate::{
         ast::{
-            AstLiteral, Dictionary, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, Query,
+            Dictionary, Expr, Join, JoinConstraint, JoinOperator, Literal, Projection, Query,
             Select, SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, Values,
         },
         result::Result,
@@ -135,7 +135,7 @@ fn translate_select(sql_select: &SqlSelect, params: &[ParamLiteral]) -> Result<S
                     name: "Series".to_owned(),
                     columns: Vec::new(),
                 },
-                size: Expr::Literal(AstLiteral::Number(1.into())),
+                size: Expr::Literal(Literal::Number(1.into())),
             },
             joins: vec![],
         },
@@ -150,10 +150,12 @@ fn translate_select(sql_select: &SqlSelect, params: &[ParamLiteral]) -> Result<S
 
     Ok(Select {
         distinct,
-        projection: projection
-            .iter()
-            .map(|item| translate_select_item(item, params))
-            .collect::<Result<_>>()?,
+        projection: Projection::SelectItems(
+            projection
+                .iter()
+                .map(|item| translate_select_item(item, params))
+                .collect::<Result<_>>()?,
+        ),
         from,
         selection: selection
             .as_ref()
@@ -222,13 +224,11 @@ fn translate_table_with_joins(
     })
 }
 
-fn translate_table_alias(alias: &Option<SqlTableAlias>) -> Option<TableAlias> {
-    alias
-        .as_ref()
-        .map(|SqlTableAlias { name, columns }| TableAlias {
-            name: name.value.clone(),
-            columns: translate_idents(columns),
-        })
+fn translate_table_alias(alias: Option<&SqlTableAlias>) -> Option<TableAlias> {
+    alias.map(|SqlTableAlias { name, columns }| TableAlias {
+        name: name.value.clone(),
+        columns: translate_idents(columns),
+    })
 }
 
 fn translate_table_factor(
@@ -257,7 +257,7 @@ fn translate_table_factor(
             name, alias, args, ..
         } => {
             let object_name = translate_object_name(name)?.to_uppercase();
-            let alias = translate_table_alias(alias);
+            let alias = translate_table_alias(alias.as_ref());
 
             match (object_name.as_str(), args) {
                 ("SERIES", Some(SqlTableFunctionArgs { args, .. })) => Ok(TableFactor::Series {
@@ -280,13 +280,10 @@ fn translate_table_factor(
                     dict: Dictionary::GlueTableColumns,
                     alias: alias_or_name(alias, object_name),
                 }),
-                _ => {
-                    Ok(TableFactor::Table {
-                        name: translate_object_name(name)?,
-                        alias,
-                        index: None, // query execution plan
-                    })
-                }
+                _ => Ok(TableFactor::Table {
+                    name: translate_object_name(name)?,
+                    alias,
+                }),
             }
         }
         SqlTableFactor::Derived {
@@ -346,7 +343,6 @@ fn translate_join(params: &[ParamLiteral], sql_join: &SqlJoin) -> Result<Join> {
     Ok(Join {
         relation: translate_table_factor(params, relation)?,
         join_operator,
-        join_executor: JoinExecutor::NestedLoop,
     })
 }
 
@@ -355,9 +351,8 @@ mod tests {
     use {
         super::*,
         crate::{
-            ast::{
-                AstLiteral, Expr, Query, Select, SelectItem, SetExpr, TableFactor, TableWithJoins,
-            },
+            ast::{Expr, Literal, Query, Select, SelectItem, SetExpr, TableFactor, TableWithJoins},
+            data::Value,
             parse_sql::{parse, parse_query},
             result::Error,
             translate::{IntoParamLiteral, NO_PARAMS},
@@ -417,32 +412,29 @@ mod tests {
     #[test]
     fn translate_binds_indexed_placeholders() {
         let query = parse_query("SELECT $1, $2").expect("parse placeholder query");
-        let params = [
-            1_i64.into_param_literal().unwrap(),
-            "GlueSQL".into_param_literal().unwrap(),
-        ];
+        let params = [1_i64.into_param_literal(), "GlueSQL".into_param_literal()];
         let translated = translate_query(query.as_ref(), &params).expect("translate");
 
         let expected = Query {
             body: SetExpr::Select(Box::new(Select {
                 distinct: false,
-                projection: vec![
+                projection: Projection::SelectItems(vec![
                     SelectItem::Expr {
-                        expr: Expr::Literal(AstLiteral::Number(1.into())),
+                        expr: Expr::Value(Value::I64(1)),
                         label: "$1".to_owned(),
                     },
                     SelectItem::Expr {
-                        expr: Expr::Literal(AstLiteral::QuotedString("GlueSQL".to_owned())),
+                        expr: Expr::Value(Value::Str("GlueSQL".to_owned())),
                         label: "$2".to_owned(),
                     },
-                ],
+                ]),
                 from: TableWithJoins {
                     relation: TableFactor::Series {
                         alias: TableAlias {
                             name: "Series".to_owned(),
                             columns: Vec::new(),
                         },
-                        size: Expr::Literal(AstLiteral::Number(1.into())),
+                        size: Expr::Literal(Literal::Number(1.into())),
                     },
                     joins: Vec::new(),
                 },

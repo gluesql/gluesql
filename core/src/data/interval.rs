@@ -47,6 +47,7 @@ const HOUR: i64 = 3600 * SECOND;
 const DAY: i64 = 24 * HOUR;
 
 impl Interval {
+    #[must_use]
     pub fn unary_minus(&self) -> Self {
         match self {
             Interval::Month(v) => Interval::Month(-v),
@@ -390,7 +391,7 @@ mod tests {
         assert_eq!(
             Interval::years(999_999).subtract_from_date(&date(2021, 11, 11)),
             Err(IntervalError::DateOverflow {
-                year: -997977,
+                year: -997_977,
                 month: -1,
             }
             .into())
@@ -431,7 +432,7 @@ mod tests {
             Interval::years(999_999)
                 .subtract_from_timestamp(&date(2021, 11, 11).and_hms_opt(0, 0, 0).unwrap()),
             Err(IntervalError::DateOverflow {
-                year: -997977,
+                year: -997_977,
                 month: -1,
             }
             .into())

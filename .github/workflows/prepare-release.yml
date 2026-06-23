@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version number or step to bump'
+        description: "Version number or step to bump"
         required: true
-        default: 'minor'
+        default: "minor"
 
 env:
   CARGO_TERM_COLOR: always
@@ -16,22 +16,17 @@ jobs:
     name: Bump versions
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-release
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
       - name: Bump versions
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cargo release version ${{ github.event.inputs.version }} --workspace --execute --no-confirm
-          cd pkg/javascript 
-          NEW_VERSION=$(npm version ${{ github.event.inputs.version }}>&1)
-          cd ../../
+          NEW_VERSION="v$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n 1)"
           NEW_BRANCH="prepare-release-$NEW_VERSION"
           git checkout -b $NEW_BRANCH
           git config --local user.email "taehoon.moon@outlook.com"

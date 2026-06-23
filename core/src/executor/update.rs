@@ -1,17 +1,14 @@
 use {
-    super::{
-        context::RowContext,
-        evaluate::{Evaluated, evaluate},
-    },
+    super::{context::RowContext, evaluate::evaluate},
     crate::{
-        ast::{Assignment, ColumnDef, ColumnUniqueOption, ForeignKey},
+        ast::{ColumnDef, ColumnUniqueOption, ForeignKey},
         data::{Key, Row, Value},
-        result::{Error, Result},
+        plan::AssignmentPlan,
+        result::Result,
         store::GStore,
     },
-    futures::stream::{self, StreamExt, TryStreamExt},
     serde::Serialize,
-    std::{borrow::Cow, fmt::Debug, sync::Arc},
+    std::{borrow::Cow, fmt::Debug, rc::Rc},
     thiserror::Error,
 };
 
@@ -26,6 +23,9 @@ pub enum UpdateError {
     #[error("conflict on schema, row data does not fit to schema")]
     ConflictOnSchema,
 
+    #[error("conflict on schemaless row, expected first value to be map")]
+    ConflictOnNonMapSchemalessRow,
+
     #[error(
         "cannot find referenced value on {table_name}.{column_name} with value {referenced_value:?}"
     )]
@@ -39,7 +39,7 @@ pub enum UpdateError {
 pub struct Update<'a, T: GStore> {
     storage: &'a T,
     table_name: &'a str,
-    fields: &'a [Assignment],
+    fields: &'a [AssignmentPlan],
     column_defs: Option<&'a [ColumnDef]>,
 }
 
@@ -47,12 +47,12 @@ impl<'a, T: GStore> Update<'a, T> {
     pub fn new(
         storage: &'a T,
         table_name: &'a str,
-        fields: &'a [Assignment],
+        fields: &'a [AssignmentPlan],
         column_defs: Option<&'a [ColumnDef]>,
     ) -> Result<Self> {
         if let Some(column_defs) = column_defs {
-            for assignment in fields.iter() {
-                let Assignment { id, .. } = assignment;
+            for assignment in fields {
+                let AssignmentPlan { id, .. } = assignment;
 
                 if column_defs.iter().all(|col_def| &col_def.name != id) {
                     return Err(UpdateError::ColumnNotFound(id.to_owned()).into());
@@ -72,57 +72,34 @@ impl<'a, T: GStore> Update<'a, T> {
         })
     }
 
-    pub async fn apply(&self, row: Row, foreign_keys: &[ForeignKey]) -> Result<Row> {
+    pub fn apply(&self, row: Row, foreign_keys: &[ForeignKey]) -> Result<Row> {
         let context = RowContext::new(self.table_name, Cow::Borrowed(&row), None);
-        let context = Some(Arc::new(context));
+        let context = Some(Rc::new(context));
 
-        let assignments = stream::iter(self.fields.iter())
-            .then(|assignment| {
-                let Assignment {
-                    id,
-                    value: value_expr,
-                } = assignment;
-                let context = context.as_ref().map(Arc::clone);
+        let mut assignments = Vec::with_capacity(self.fields.len());
+        for assignment in self.fields {
+            let AssignmentPlan {
+                id,
+                value: value_expr,
+            } = assignment;
+            let evaluated = evaluate(self.storage, context.as_ref(), None, value_expr)?;
+            let value = match self.column_defs {
+                Some(column_defs) => {
+                    let ColumnDef {
+                        data_type,
+                        nullable,
+                        ..
+                    } = column_defs
+                        .iter()
+                        .find(|column_def| id == &column_def.name)
+                        .ok_or(UpdateError::ConflictOnSchema)?;
 
-                async move {
-                    let evaluated = evaluate(self.storage, context, None, value_expr).await?;
-                    let value = match self.column_defs {
-                        Some(column_defs) => {
-                            let ColumnDef {
-                                data_type,
-                                nullable,
-                                ..
-                            } = column_defs
-                                .iter()
-                                .find(|column_def| id == &column_def.name)
-                                .ok_or(UpdateError::ConflictOnSchema)?;
-
-                            let value = match evaluated {
-                                Evaluated::Literal(v) => Value::try_from_literal(data_type, &v)?,
-                                Evaluated::Value(v) => {
-                                    v.validate_type(data_type)?;
-                                    v
-                                }
-                                Evaluated::StrSlice {
-                                    source: s,
-                                    range: r,
-                                } => Value::Str(s[r].to_owned()),
-                            };
-
-                            value.validate_null(*nullable)?;
-                            value
-                        }
-                        None => evaluated.try_into()?,
-                    };
-
-                    Ok::<_, Error>((id.as_ref(), value))
+                    evaluated.try_into_value(data_type, *nullable)?
                 }
-            })
-            .and_then(|(id, value)| async move {
-                if value == Value::Null {
-                    return Ok((id, value));
-                }
+                None => evaluated.try_into()?,
+            };
 
+            if value != Value::Null {
                 for foreign_key in foreign_keys {
                     let ForeignKey {
                         referencing_column_name,
@@ -137,8 +114,7 @@ impl<'a, T: GStore> Update<'a, T> {
 
                     let no_referenced = self
                         .storage
-                        .fetch_data(referenced_table_name, &Key::try_from(&value)?)
-                        .await?
+                        .fetch_data(referenced_table_name, &Key::try_from(&value)?)?
                         .is_none();
 
                     if no_referenced {
@@ -150,36 +126,37 @@ impl<'a, T: GStore> Update<'a, T> {
                         .into());
                     }
                 }
-
-                Ok((id, value))
-            })
-            .try_collect::<Vec<(&str, Value)>>()
-            .await?;
-
-        Ok(match row {
-            Row::Vec { columns, values } => {
-                let values = columns
-                    .iter()
-                    .zip(values)
-                    .map(|(column, value)| {
-                        assignments
-                            .iter()
-                            .find_map(|(id, new_value)| (column == id).then_some(new_value.clone()))
-                            .unwrap_or(value)
-                    })
-                    .collect();
-
-                Row::Vec { columns, values }
             }
-            Row::Map(values) => {
-                let assignments = assignments
-                    .into_iter()
-                    .map(|(id, value)| (id.to_owned(), value));
 
-                let mut new_values = values;
-                new_values.extend(assignments);
-                Row::Map(new_values)
+            assignments.push((id.as_str(), value));
+        }
+
+        let Row { columns, values } = row;
+
+        let values = if self.column_defs.is_none() {
+            // Schemaless table: update fields inside the _doc Map
+            let mut values = values;
+            let Some(Value::Map(map)) = values.first_mut() else {
+                return Err(UpdateError::ConflictOnNonMapSchemalessRow.into());
+            };
+
+            for (id, value) in assignments {
+                map.insert(id.to_owned(), value);
             }
-        })
+            values
+        } else {
+            columns
+                .iter()
+                .zip(values)
+                .map(|(column, value)| {
+                    assignments
+                        .iter()
+                        .find_map(|(id, new_value)| (column == id).then_some(new_value.clone()))
+                        .unwrap_or(value)
+                })
+                .collect()
+        };
+
+        Ok(Row { columns, values })
     }
 }

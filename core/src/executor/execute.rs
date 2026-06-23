@@ -12,21 +12,21 @@ use {
         validate::{ColumnValidation, validate_unique},
     },
     crate::{
-        ast::{
-            AstLiteral, BinaryOperator, DataType, Dictionary, Expr, Query, SelectItem, SetExpr,
-            Statement, TableAlias, TableFactor, TableWithJoins, Variable,
+        ast::{BinaryOperator, DataType, Dictionary, Literal, Variable},
+        data::{Key, Row, SCHEMALESS_DOC_COLUMN, Schema, Value},
+        plan::{
+            ExprPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan, SetExprPlan,
+            StatementPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan,
         },
-        data::{Key, Row, Schema, Value},
-        result::Result,
+        result::{Error, Result},
         store::{GStore, GStoreMut},
     },
-    futures::stream::{StreamExt, TryStreamExt},
     serde::{Deserialize, Serialize},
     std::{
         collections::{BTreeMap, HashMap},
         env::var,
         fmt::Debug,
-        sync::Arc,
+        rc::Rc,
     },
     thiserror::Error as ThisError,
 };
@@ -35,6 +35,9 @@ use {
 pub enum ExecuteError {
     #[error("table not found: {0}")]
     TableNotFound(String),
+
+    #[error("expected Map value in _doc column")]
+    ExpectedMapValueInDocColumn,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -100,42 +103,42 @@ pub enum PayloadVariable {
     Version(String),
 }
 
-pub async fn execute<T: GStore + GStoreMut>(
+pub fn execute<T: GStore + GStoreMut>(
     storage: &mut T,
-    statement: &Statement,
+    statement: &StatementPlan,
 ) -> Result<Payload> {
     if matches!(
         statement,
-        Statement::StartTransaction | Statement::Rollback | Statement::Commit
+        StatementPlan::StartTransaction | StatementPlan::Rollback | StatementPlan::Commit
     ) {
-        return execute_inner(storage, statement).await;
+        return execute_inner(storage, statement);
     }
 
-    let autocommit = storage.begin(true).await?;
-    let result = execute_inner(storage, statement).await;
+    let autocommit = storage.begin(true)?;
+    let result = execute_inner(storage, statement);
 
     if !autocommit {
         return result;
     }
 
     match result {
-        Ok(payload) => storage.commit().await.map(|_| payload),
+        Ok(payload) => storage.commit().map(|()| payload),
         Err(error) => {
-            storage.rollback().await?;
+            storage.rollback()?;
 
             Err(error)
         }
     }
 }
 
-async fn execute_inner<T: GStore + GStoreMut>(
+fn execute_inner<T: GStore + GStoreMut>(
     storage: &mut T,
-    statement: &Statement,
+    statement: &StatementPlan,
 ) -> Result<Payload> {
     match statement {
         //- Modification
         //-- Tables
-        Statement::CreateTable {
+        StatementPlan::CreateTable {
             name,
             columns,
             if_not_exists,
@@ -154,48 +157,36 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 comment,
             };
 
-            create_table(storage, options)
-                .await
-                .map(|_| Payload::Create)
+            create_table(storage, options).map(|()| Payload::Create)
         }
-        Statement::DropTable {
+        StatementPlan::DropTable {
             names,
             if_exists,
             cascade,
             ..
-        } => drop_table(storage, names, *if_exists, *cascade)
-            .await
-            .map(Payload::DropTable),
-        Statement::AlterTable { name, operation } => alter_table(storage, name, operation)
-            .await
-            .map(|_| Payload::AlterTable),
-        Statement::CreateIndex {
+        } => drop_table(storage, names, *if_exists, *cascade).map(Payload::DropTable),
+        StatementPlan::AlterTable { name, operation } => {
+            alter_table(storage, name, operation).map(|()| Payload::AlterTable)
+        }
+        StatementPlan::CreateIndex {
             name,
             table_name,
             column,
-        } => create_index(storage, table_name, name, column)
-            .await
-            .map(|_| Payload::CreateIndex),
-        Statement::DropIndex { name, table_name } => storage
+        } => create_index(storage, table_name, name, column).map(|()| Payload::CreateIndex),
+        StatementPlan::DropIndex { name, table_name } => storage
             .drop_index(table_name, name)
-            .await
-            .map(|_| Payload::DropIndex),
+            .map(|()| Payload::DropIndex),
         //- Transaction
-        Statement::StartTransaction => storage
-            .begin(false)
-            .await
-            .map(|_| Payload::StartTransaction),
-        Statement::Commit => storage.commit().await.map(|_| Payload::Commit),
-        Statement::Rollback => storage.rollback().await.map(|_| Payload::Rollback),
+        StatementPlan::StartTransaction => storage.begin(false).map(|_| Payload::StartTransaction),
+        StatementPlan::Commit => storage.commit().map(|()| Payload::Commit),
+        StatementPlan::Rollback => storage.rollback().map(|()| Payload::Rollback),
         //-- Rows
-        Statement::Insert {
+        StatementPlan::Insert {
             table_name,
             columns,
             source,
-        } => insert(storage, table_name, columns, source)
-            .await
-            .map(Payload::Insert),
-        Statement::Update {
+        } => insert(storage, table_name, columns, source).map(Payload::Insert),
+        StatementPlan::Update {
             table_name,
             selection,
             assignments,
@@ -205,13 +196,13 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 foreign_keys,
                 ..
             } = storage
-                .fetch_schema(table_name)
-                .await?
+                .fetch_schema(table_name)?
                 .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
 
-            let all_columns = column_defs
-                .as_deref()
-                .map(|columns| columns.iter().map(|col_def| col_def.name.clone()).collect());
+            let all_columns = column_defs.as_deref().map_or_else(
+                || Rc::from(vec![SCHEMALESS_DOC_COLUMN.to_owned()]),
+                |columns| columns.iter().map(|col_def| col_def.name.clone()).collect(),
+            );
             let columns_to_update: Vec<String> = assignments
                 .iter()
                 .map(|assignment| assignment.id.clone())
@@ -219,72 +210,69 @@ async fn execute_inner<T: GStore + GStoreMut>(
 
             let update = Update::new(storage, table_name, assignments, column_defs.as_deref())?;
 
-            let foreign_keys = Arc::new(foreign_keys);
+            let foreign_keys = Rc::new(foreign_keys);
 
-            let rows = fetch(storage, table_name, all_columns, selection.as_ref())
-                .await?
-                .and_then(|item| {
-                    let update = &update;
-                    let (key, row) = item;
+            let rows = fetch(storage, table_name, all_columns, selection.as_ref())?
+                .map(|item| {
+                    let (key, row) = item?;
+                    let row = update.apply(row, foreign_keys.as_ref())?;
 
-                    let foreign_keys = Arc::clone(&foreign_keys);
-                    async move {
-                        let row = update.apply(row, foreign_keys.as_ref()).await?;
-
-                        Ok((key, row))
-                    }
+                    Ok((key, row))
                 })
-                .try_collect::<Vec<(Key, Row)>>()
-                .await?;
+                .collect::<Result<Vec<(Key, Row)>>>()?;
 
             if let Some(column_defs) = column_defs {
                 let column_validation =
                     ColumnValidation::SpecifiedColumns(&column_defs, columns_to_update);
-                let rows = rows.iter().filter_map(|(_, row)| match row {
-                    Row::Vec { values, .. } => Some(values.as_slice()),
-                    Row::Map(_) => None,
-                });
+                let rows = rows.iter().map(|(_, row)| row.values.as_slice());
 
-                validate_unique(storage, table_name, column_validation, rows).await?;
+                validate_unique(storage, table_name, &column_validation, rows)?;
             }
 
             let num_rows = rows.len();
             let rows = rows
                 .into_iter()
-                .map(|(key, row)| (key, row.into()))
+                .map(|(key, row)| (key, row.into_values()))
                 .collect();
 
             storage
                 .insert_data(table_name, rows)
-                .await
-                .map(|_| Payload::Update(num_rows))
+                .map(|()| Payload::Update(num_rows))
         }
-        Statement::Delete {
+        StatementPlan::Delete {
             table_name,
             selection,
-        } => delete(storage, table_name, selection).await,
+        } => delete(storage, table_name, selection.as_ref()),
 
         //- Selection
-        Statement::Query(query) => {
-            let (labels, rows) = select_with_labels(storage, query, None).await?;
+        StatementPlan::Query(query) => {
+            let (labels, rows) = select_with_labels(storage, query, None)?;
 
-            match labels {
-                Some(labels) => rows
-                    .map(|row| row?.try_into_vec())
-                    .try_collect::<Vec<_>>()
-                    .await
-                    .map(|rows| Payload::Select { labels, rows }),
-                None => rows
-                    .map(|row| row?.try_into_map())
-                    .try_collect::<Vec<_>>()
-                    .await
-                    .map(Payload::SelectMap),
+            let is_schemaless_map = matches!(
+                &query.body,
+                SetExprPlan::Select(select)
+                    if matches!(select.projection, ProjectionPlan::SchemalessMap)
+            );
+
+            if is_schemaless_map {
+                rows.map(|row| {
+                    let mut values = row?.into_values().into_iter();
+                    match (values.next(), values.next()) {
+                        (Some(Value::Map(map)), None) => Ok(map),
+                        _ => Err(ExecuteError::ExpectedMapValueInDocColumn.into()),
+                    }
+                })
+                .collect::<Result<Vec<_>>>()
+                .map(Payload::SelectMap)
+            } else {
+                rows.map(|row| Ok(row?.into_values()))
+                    .collect::<Result<Vec<_>>>()
+                    .map(|rows| Payload::Select { labels, rows })
             }
         }
-        Statement::ShowColumns { table_name } => {
+        StatementPlan::ShowColumns { table_name } => {
             let Schema { column_defs, .. } = storage
-                .fetch_schema(table_name)
-                .await?
+                .fetch_schema(table_name)?
                 .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
 
             let output: Vec<(String, DataType)> = column_defs
@@ -295,42 +283,41 @@ async fn execute_inner<T: GStore + GStoreMut>(
 
             Ok(Payload::ShowColumns(output))
         }
-        Statement::ShowIndexes(table_name) => {
-            let query = Query {
-                body: SetExpr::Select(Box::new(crate::ast::Select {
+        StatementPlan::ShowIndexes(table_name) => {
+            let query = QueryPlan {
+                body: SetExprPlan::Select(Box::new(SelectPlan {
                     distinct: false,
-                    projection: vec![SelectItem::Wildcard],
-                    from: TableWithJoins {
-                        relation: TableFactor::Dictionary {
+                    projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
+                    from: TableWithJoinsPlan {
+                        relation: TableFactorPlan::Dictionary {
                             dict: Dictionary::GlueIndexes,
-                            alias: TableAlias {
+                            alias: TableAliasPlan {
                                 name: "GLUE_INDEXES".to_owned(),
                                 columns: Vec::new(),
                             },
                         },
                         joins: Vec::new(),
                     },
-                    selection: Some(Expr::BinaryOp {
-                        left: Box::new(Expr::Identifier("TABLE_NAME".to_owned())),
+                    selection: Some(ExprPlan::BinaryOp {
+                        left: Box::new(ExprPlan::Identifier("TABLE_NAME".to_owned())),
                         op: BinaryOperator::Eq,
-                        right: Box::new(Expr::Literal(AstLiteral::QuotedString(
+                        right: Box::new(ExprPlan::Literal(Literal::QuotedString(
                             table_name.to_owned(),
                         ))),
                     }),
                     group_by: Vec::new(),
                     having: None,
+                    aggregate_slots: None,
                 })),
                 order_by: Vec::new(),
                 limit: None,
                 offset: None,
             };
 
-            let (labels, rows) = select_with_labels(storage, &query, None).await?;
-            let labels = labels.unwrap_or_default();
+            let (labels, rows) = select_with_labels(storage, &query, None)?;
             let rows = rows
-                .map(|row| row?.try_into_vec())
-                .try_collect::<Vec<_>>()
-                .await?;
+                .map(|row| Ok::<_, Error>(row?.into_values()))
+                .collect::<Result<Vec<_>>>()?;
 
             if rows.is_empty() {
                 return Err(ExecuteError::TableNotFound(table_name.to_owned()).into());
@@ -338,19 +325,19 @@ async fn execute_inner<T: GStore + GStoreMut>(
 
             Ok(Payload::Select { labels, rows })
         }
-        Statement::ShowVariable(variable) => match variable {
+        StatementPlan::ShowVariable(variable) => match variable {
             Variable::Tables => {
-                let query = Query {
-                    body: SetExpr::Select(Box::new(crate::ast::Select {
+                let query = QueryPlan {
+                    body: SetExprPlan::Select(Box::new(SelectPlan {
                         distinct: false,
-                        projection: vec![SelectItem::Expr {
-                            expr: Expr::Identifier("TABLE_NAME".to_owned()),
+                        projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
+                            expr: ExprPlan::Identifier("TABLE_NAME".to_owned()),
                             label: "TABLE_NAME".to_owned(),
-                        }],
-                        from: TableWithJoins {
-                            relation: TableFactor::Dictionary {
+                        }]),
+                        from: TableWithJoinsPlan {
+                            relation: TableFactorPlan::Dictionary {
                                 dict: Dictionary::GlueTables,
-                                alias: TableAlias {
+                                alias: TableAliasPlan {
                                     name: "GLUE_TABLES".to_owned(),
                                     columns: Vec::new(),
                                 },
@@ -360,27 +347,25 @@ async fn execute_inner<T: GStore + GStoreMut>(
                         selection: None,
                         group_by: Vec::new(),
                         having: None,
+                        aggregate_slots: None,
                     })),
                     order_by: Vec::new(),
                     limit: None,
                     offset: None,
                 };
 
-                let table_names = select(storage, &query, None)
-                    .await?
-                    .map(|row| row?.try_into_vec())
-                    .try_collect::<Vec<Vec<Value>>>()
-                    .await?
+                let table_names = select(storage, &query, None)?
+                    .map(|row| Ok::<_, Error>(row?.into_values()))
+                    .collect::<Result<Vec<Vec<Value>>>>()?
                     .iter()
-                    .flat_map(|values| values.iter().map(|value| value.into()))
+                    .flat_map(|values| values.iter().map(Into::into))
                     .collect::<Vec<_>>();
 
                 Ok(Payload::ShowVariable(PayloadVariable::Tables(table_names)))
             }
             Variable::Functions => {
                 let mut function_desc: Vec<_> = storage
-                    .fetch_all_functions()
-                    .await?
+                    .fetch_all_functions()?
                     .iter()
                     .map(|f| f.to_str())
                     .collect();
@@ -397,16 +382,14 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 Ok(payload)
             }
         },
-        Statement::CreateFunction {
+        StatementPlan::CreateFunction {
             or_replace,
             name,
             args,
             return_,
-        } => insert_function(storage, name, args, *or_replace, return_)
-            .await
-            .map(|_| Payload::Create),
-        Statement::DropFunction { if_exists, names } => delete_function(storage, names, *if_exists)
-            .await
-            .map(|_| Payload::DropFunction),
+        } => insert_function(storage, name, args, *or_replace, return_).map(|()| Payload::Create),
+        StatementPlan::DropFunction { if_exists, names } => {
+            delete_function(storage, names, *if_exists).map(|()| Payload::DropFunction)
+        }
     }
 }

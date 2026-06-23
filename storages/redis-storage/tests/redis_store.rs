@@ -1,7 +1,6 @@
 #![cfg(feature = "test-redis")]
 
 use {
-    async_trait::async_trait,
     gluesql_core::prelude::Glue,
     gluesql_redis_storage::RedisStorage,
     redis::Commands,
@@ -15,9 +14,8 @@ struct RedisStorageTester {
 
 /// MUST run redis locally before test
 /// eg.) docker run --rm -p 6379:6379 redis
-#[async_trait(?Send)]
 impl Tester<RedisStorage> for RedisStorageTester {
-    async fn new(namespace: &str) -> Self {
+    fn new(namespace: &str) -> Self {
         let mut path = env::current_dir().unwrap();
         path.push("tests/redis-storage.toml");
         let redis_config_str = fs::read_to_string(path).unwrap();
@@ -30,20 +28,25 @@ impl Tester<RedisStorage> for RedisStorageTester {
         // MUST clear namespace before test
         // DO NOT USE FLUSHALL command because it also flushes all namespaces of other clients.
         // It must clear only its own namespace.
-        let key_iter: Vec<String> = {
-            let mut conn = storage.conn.lock().unwrap();
-            conn.scan_match(&format!("{}#*", namespace))
-                .unwrap()
-                .collect()
-        };
-        for key in key_iter {
-            let _: () = {
+        for pattern in [
+            format!("{namespace}#*"),
+            format!("#schema#{namespace}#*"),
+            format!("#metadata#{namespace}#*"),
+        ] {
+            let key_iter: Vec<String> = {
                 let mut conn = storage.conn.lock().unwrap();
-                redis::cmd("DEL")
-                    .arg(&key)
-                    .query(&mut *conn)
-                    .unwrap_or_else(|_| panic!("failed to execute DEL for key={}", key))
+                conn.scan_match(pattern).unwrap().collect()
             };
+
+            for key in key_iter {
+                let _: () = {
+                    let mut conn = storage.conn.lock().unwrap();
+                    redis::cmd("DEL")
+                        .arg(&key)
+                        .query::<()>(&mut *conn)
+                        .unwrap_or_else(|_| panic!("failed to execute DEL for key={key}"));
+                };
+            }
         }
 
         let glue = Glue::new(storage);
@@ -55,19 +58,19 @@ impl Tester<RedisStorage> for RedisStorageTester {
     }
 }
 
-generate_store_tests!(tokio::test, RedisStorageTester);
-generate_alter_table_tests!(tokio::test, RedisStorageTester);
-generate_metadata_table_tests!(tokio::test, RedisStorageTester);
+generate_store_tests!(test, RedisStorageTester);
+generate_alter_table_tests!(test, RedisStorageTester);
+generate_metadata_table_tests!(test, RedisStorageTester);
 
 macro_rules! exec {
     ($glue: ident $sql: literal) => {
-        $glue.execute($sql).await.unwrap();
+        $glue.execute($sql).unwrap();
     };
 }
 
 /// check if it's able to create tables with same name in different namespace
-#[tokio::test]
-async fn redis_storage_namespace() {
+#[test]
+fn redis_storage_namespace() {
     use gluesql_core::prelude::Glue;
 
     let mut path = env::current_dir().unwrap();
@@ -95,8 +98,8 @@ async fn redis_storage_namespace() {
     exec!(glue_second "DROP TABLE dummy;");
 }
 
-#[tokio::test]
-async fn redis_storage_no_primarykey() {
+#[test]
+fn redis_storage_no_primarykey() {
     use {
         chrono::NaiveDate,
         gluesql_core::prelude::{Glue, Payload, Value},
@@ -114,9 +117,9 @@ async fn redis_storage_no_primarykey() {
 
     exec!(glue "DROP TABLE IF EXISTS Heroes;");
     exec!(glue "CREATE TABLE Heroes (id INTEGER, name TEXT, birth DATE);");
-    exec!(glue r#"INSERT INTO Heroes (id, name, birth) values (1, 'Superman', '2023-12-31');"#);
+    exec!(glue "INSERT INTO Heroes (id, name, birth) values (1, 'Superman', '2023-12-31');");
 
-    let ret: Vec<Payload> = glue.execute("SELECT * FROM Heroes;").await.unwrap();
+    let ret: Vec<Payload> = glue.execute("SELECT * FROM Heroes;").unwrap();
     match &ret[0] {
         Payload::Select { labels, rows } => {
             assert_eq!(labels[0], "id");
@@ -132,21 +135,18 @@ async fn redis_storage_no_primarykey() {
         _ => unreachable!(),
     }
 
-    exec!(glue r#"INSERT INTO Heroes (id, name, birth) values (2, 'Batman', '2000-12-31');"#);
-    exec!(glue r#"INSERT INTO Heroes (id, name, birth) values (3, 'Flash', '2011-12-31');"#);
-    exec!(glue r#"UPDATE Heroes set birth = '1999-12-31' WHERE name = 'Batman';"#);
+    exec!(glue "INSERT INTO Heroes (id, name, birth) values (2, 'Batman', '2000-12-31');");
+    exec!(glue "INSERT INTO Heroes (id, name, birth) values (3, 'Flash', '2011-12-31');");
+    exec!(glue "UPDATE Heroes set birth = '1999-12-31' WHERE name = 'Batman';");
 
-    let ret: Vec<Payload> = glue
-        .execute("SELECT id, name, birth FROM Heroes;")
-        .await
-        .unwrap();
+    let ret: Vec<Payload> = glue.execute("SELECT id, name, birth FROM Heroes;").unwrap();
     match &ret[0] {
         Payload::Select { labels, rows } => {
             assert_eq!(labels[0], "id");
             assert_eq!(labels[1], "name");
             assert_eq!(labels[2], "birth");
 
-            for r in rows.iter() {
+            for r in rows {
                 if r[1] == Value::Str("Batman".to_owned()) {
                     assert_eq!(
                         r[2],
@@ -158,12 +158,9 @@ async fn redis_storage_no_primarykey() {
         _ => unreachable!(),
     }
 
-    exec!(glue r#"DELETE FROM Heroes WHERE name = 'Superman';"#);
+    exec!(glue "DELETE FROM Heroes WHERE name = 'Superman';");
 
-    let ret: Vec<Payload> = glue
-        .execute("SELECT id, name, birth FROM Heroes;")
-        .await
-        .unwrap();
+    let ret: Vec<Payload> = glue.execute("SELECT id, name, birth FROM Heroes;").unwrap();
 
     match &ret[0] {
         Payload::Select { labels, rows } => {
@@ -171,7 +168,7 @@ async fn redis_storage_no_primarykey() {
             assert_eq!(labels[1], "name");
             assert_eq!(labels[2], "birth");
 
-            for r in rows.iter() {
+            for r in rows {
                 assert_ne!(r[1], Value::Str("Super".to_owned()));
             }
         }
@@ -180,14 +177,13 @@ async fn redis_storage_no_primarykey() {
 
     let _: Vec<Payload> = glue
         .execute("SELECT id, name, birth FROM Heroes WHERE id = '2';")
-        .await
         .unwrap();
 
     exec!(glue "DROP TABLE Heroes;");
 }
 
-#[tokio::test]
-async fn redis_storage_primarykey() {
+#[test]
+fn redis_storage_primarykey() {
     use {
         chrono::NaiveDate,
         gluesql_core::prelude::{Glue, Payload, Value},
@@ -208,14 +204,11 @@ async fn redis_storage_primarykey() {
 
     // INSERT with PRIMARY KEY will test the insert_data method
     // Any type can be the PRIMARY KEY
-    exec!(glue r#"INSERT INTO Heroes (name, birth) values ('Superman', '2023-12-31');"#);
-    exec!(glue r#"INSERT INTO Heroes (name, birth) values ('Batman', '2011-12-31');"#);
+    exec!(glue "INSERT INTO Heroes (name, birth) values ('Superman', '2023-12-31');");
+    exec!(glue "INSERT INTO Heroes (name, birth) values ('Batman', '2011-12-31');");
 
     // SELECT with PRIMARY KEY will test the fetch_data method
-    let ret: Vec<Payload> = glue
-        .execute("SELECT name, birth FROM Heroes;")
-        .await
-        .unwrap();
+    let ret: Vec<Payload> = glue.execute("SELECT name, birth FROM Heroes;").unwrap();
     match &ret[0] {
         Payload::Select { labels, rows } => {
             assert_eq!(labels[0], "name");
@@ -226,12 +219,9 @@ async fn redis_storage_primarykey() {
         _ => unreachable!(),
     }
 
-    exec!(glue r#"DELETE FROM Heroes WHERE name = 'Superman';"#);
+    exec!(glue "DELETE FROM Heroes WHERE name = 'Superman';");
 
-    let ret: Vec<Payload> = glue
-        .execute("SELECT name, birth FROM Heroes;")
-        .await
-        .unwrap();
+    let ret: Vec<Payload> = glue.execute("SELECT name, birth FROM Heroes;").unwrap();
     match &ret[0] {
         Payload::Select { labels, rows } => {
             assert_eq!(labels[0], "name");

@@ -1,21 +1,21 @@
 use {
-    super::error::StorageError,
-    async_stream::try_stream,
-    bincode::{deserialize, serialize},
-    futures::stream::iter,
-    gluesql_core::{
-        data::{Key, Schema},
-        store::{DataRow, RowIter},
+    super::{
+        error::StorageError,
+        migration::{ensure_storage_format_version_supported, initialize_storage_format_version},
     },
+    bincode::{deserialize, serialize},
+    gluesql_core::data::{Key, Schema, Value},
     redb::{Database, ReadableTable, TableDefinition, WriteTransaction},
     std::path::Path,
     uuid::Uuid,
 };
 
-const SCHEMA_TABLE_NAME: &str = "__SCHEMA__";
+pub(super) const SCHEMA_TABLE_NAME: &str = "__SCHEMA__";
+pub(super) const STORAGE_META_TABLE_NAME: &str = "__GLUESQL_META__";
 const SCHEMA_TABLE: TableDefinition<&str, Vec<u8>> = TableDefinition::new(SCHEMA_TABLE_NAME);
 
 type Result<T> = std::result::Result<T, StorageError>;
+type RedbRowIter<'a> = Box<dyn Iterator<Item = Result<(Key, Vec<Value>)>> + 'a>;
 
 pub enum TransactionState {
     None,
@@ -32,7 +32,16 @@ pub struct StorageCore {
 
 impl StorageCore {
     pub fn new<P: AsRef<Path>>(filename: P) -> Result<Self> {
-        let db = Database::create(filename)?;
+        let path = filename.as_ref();
+        let db = if path.exists() {
+            let db = Database::open(path)?;
+            ensure_storage_format_version_supported(&db)?;
+            db
+        } else {
+            let db = Database::create(path)?;
+            initialize_storage_format_version(&db)?;
+            db
+        };
 
         Ok(Self {
             db,
@@ -40,15 +49,17 @@ impl StorageCore {
         })
     }
 
-    pub fn from_database(db: Database) -> Self {
-        Self {
+    pub fn from_database(db: Database) -> Result<Self> {
+        ensure_storage_format_version_supported(&db)?;
+
+        Ok(Self {
             db,
             state: TransactionState::None,
-        }
+        })
     }
 
     fn data_table_def(table_name: &str) -> Result<TableDefinition<'_, &'static [u8], Vec<u8>>> {
-        if table_name == SCHEMA_TABLE_NAME {
+        if matches!(table_name, SCHEMA_TABLE_NAME | STORAGE_META_TABLE_NAME) {
             return Err(StorageError::ReservedTableName(table_name.to_owned()));
         }
 
@@ -111,7 +122,7 @@ impl StorageCore {
         Ok(schema)
     }
 
-    pub fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
+    pub fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Vec<Value>>> {
         let txn = self.txn()?;
         let table_def = Self::data_table_def(table_name)?;
         let table = txn.open_table(table_def)?;
@@ -122,12 +133,12 @@ impl StorageCore {
             .get(key)?
             .map(|v| deserialize(&v.value()))
             .transpose()?
-            .map(|(_, row): (Key, DataRow)| row);
+            .map(|(_, row): (Key, Vec<Value>)| row);
 
         Ok(row)
     }
 
-    pub fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
+    pub fn scan_data<'a>(&'a self, table_name: &str) -> Result<RedbRowIter<'a>> {
         if let TransactionState::Active { autocommit, txn } = &self.state
             && !autocommit
         {
@@ -138,29 +149,27 @@ impl StorageCore {
                 .iter()?
                 .map(|entry| {
                     let value = entry?.1.value();
-                    let (key, row): (Key, DataRow) = deserialize(&value)?;
+                    let (key, row): (Key, Vec<Value>) = deserialize(&value)?;
 
                     Ok((key, row))
                 })
                 .collect::<Result<_>>()?;
 
-            return Ok(Box::pin(iter(rows.into_iter().map(Ok))));
+            return Ok(Box::new(rows.into_iter().map(Ok)));
         }
 
         let read_txn = self.db.begin_read()?;
         let table_def = Self::data_table_def(table_name)?;
         let table = read_txn.open_table(table_def)?;
 
-        let rows = try_stream! {
-            for entry in table.iter().map_err(Into::<StorageError>::into)? {
-                let value = entry.map_err(Into::<StorageError>::into)?.1.value();
-                let (key, row): (Key, DataRow) = deserialize(&value).map_err(Into::<StorageError>::into)?;
+        let rows = table.range::<&[u8]>(..)?.map(|entry| -> Result<_> {
+            let value = entry?.1.value();
+            let (key, row): (Key, Vec<Value>) = deserialize(&value)?;
 
-                yield (key, row);
-            }
-        };
+            Ok((key, row))
+        });
 
-        Ok(Box::pin(rows))
+        Ok(Box::new(rows))
     }
 }
 
@@ -187,7 +196,7 @@ impl StorageCore {
         Ok(())
     }
 
-    pub fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
+    pub fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
         let table_def = Self::data_table_def(table_name)?;
         let txn = self.txn_mut()?;
         let mut table = txn.open_table(table_def)?;
@@ -203,7 +212,7 @@ impl StorageCore {
         Ok(())
     }
 
-    pub fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
+    pub fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
         let table_def = Self::data_table_def(table_name)?;
         let txn = self.txn_mut()?;
         let mut table = txn.open_table(table_def)?;

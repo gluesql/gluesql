@@ -1,4 +1,7 @@
-use {crate::*, gluesql_core::data::*};
+use {
+    crate::*,
+    gluesql_core::error::{EvaluateError, ValueError},
+};
 
 test_case!(filter, {
     let g = get_tester!();
@@ -18,7 +21,7 @@ test_case!(filter, {
     ];
 
     for sql in create_sqls {
-        g.run(sql).await;
+        g.run(sql);
     }
 
     let insert_sqls = [
@@ -39,7 +42,7 @@ test_case!(filter, {
     ];
 
     for sql in insert_sqls {
-        g.run(sql).await;
+        g.run(sql);
     }
 
     let select_sqls = [
@@ -81,7 +84,7 @@ test_case!(filter, {
     ];
 
     for (num, sql) in select_sqls {
-        g.count(sql, num).await;
+        g.count(sql, num);
     }
 
     let select_opt_sqls = [
@@ -92,17 +95,17 @@ test_case!(filter, {
     ];
 
     for (num, sql) in select_opt_sqls {
-        g.count(sql, num).await;
+        g.count(sql, num);
     }
 
     let error_sqls = [
         (
             "SELECT id FROM Hunter WHERE +'abcd' > 1.0",
-            LiteralError::UnaryOperationOnNonNumeric.into(),
+            EvaluateError::UnsupportedUnaryPlus("abcd".to_owned()).into(),
         ),
         (
             "SELECT id FROM Hunter WHERE -'abcd' < 1.0",
-            LiteralError::UnaryOperationOnNonNumeric.into(),
+            EvaluateError::UnsupportedUnaryMinus("abcd".to_owned()).into(),
         ),
         (
             "SELECT id FROM Hunter WHERE +name > 1.0",
@@ -115,6 +118,6 @@ test_case!(filter, {
     ];
 
     for (sql, error) in error_sqls {
-        g.test(sql, Err(error)).await;
+        g.test(sql, Err(error));
     }
 });

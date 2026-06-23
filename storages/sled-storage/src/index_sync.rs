@@ -1,12 +1,12 @@
 use {
     super::{Snapshot, err_into, fetch_schema, key},
     gluesql_core::{
-        ast::Expr,
         data::schema::{Schema, SchemaIndex},
         error::{Error, IndexError, Result},
+        executor::RowContext,
         executor::evaluate_stateless,
+        plan::{ExprPlan, plan_scalar_expr},
         prelude::Value,
-        store::DataRow,
     },
     sled::{
         IVec,
@@ -14,20 +14,34 @@ use {
             ConflictableTransactionError, ConflictableTransactionResult, TransactionalTree,
         },
     },
-    std::borrow::Cow,
-    utils::Vector,
 };
 
-pub struct IndexSync<'a> {
+pub(super) struct PlannedIndex {
+    name: String,
+    expr: ExprPlan,
+}
+
+impl PlannedIndex {
+    pub(super) fn new(index: SchemaIndex) -> Self {
+        let SchemaIndex { name, expr, .. } = index;
+
+        Self {
+            name,
+            expr: plan_scalar_expr(expr),
+        }
+    }
+}
+
+pub(super) struct IndexSync<'a> {
     tree: &'a TransactionalTree,
     txid: u64,
     table_name: &'a str,
     columns: Option<Vec<String>>,
-    indexes: Cow<'a, [SchemaIndex]>,
+    indexes: Vec<PlannedIndex>,
 }
 
 impl<'a> IndexSync<'a> {
-    pub fn from_schema(tree: &'a TransactionalTree, txid: u64, schema: &'a Schema) -> Self {
+    pub(super) fn from_schema(tree: &'a TransactionalTree, txid: u64, schema: &'a Schema) -> Self {
         let Schema {
             table_name,
             column_defs,
@@ -42,7 +56,7 @@ impl<'a> IndexSync<'a> {
                 .collect::<Vec<_>>()
         });
 
-        let indexes = Cow::Borrowed(indexes.as_slice());
+        let indexes = indexes.iter().cloned().map(PlannedIndex::new).collect();
 
         Self {
             tree,
@@ -53,7 +67,7 @@ impl<'a> IndexSync<'a> {
         }
     }
 
-    pub fn new(
+    pub(super) fn new(
         tree: &'a TransactionalTree,
         txid: u64,
         table_name: &'a str,
@@ -76,37 +90,38 @@ impl<'a> IndexSync<'a> {
                 .collect::<Vec<_>>()
         });
 
+        let indexes = indexes.into_iter().map(PlannedIndex::new).collect();
+
         Ok(Self {
             tree,
             txid,
             table_name,
             columns,
-            indexes: Cow::Owned(indexes),
+            indexes,
         })
     }
 
-    pub async fn insert(
+    pub(super) fn insert(
         &self,
         data_key: &IVec,
-        row: &DataRow,
+        row: &[Value],
     ) -> ConflictableTransactionResult<(), Error> {
-        for index in self.indexes.iter() {
-            self.insert_index(index, data_key, row).await?;
+        for index in &self.indexes {
+            self.insert_index(index, data_key, row)?;
         }
 
         Ok(())
     }
 
-    pub async fn insert_index(
+    pub(super) fn insert_index(
         &self,
-        index: &SchemaIndex,
+        index: &PlannedIndex,
         data_key: &IVec,
-        row: &DataRow,
+        row: &[Value],
     ) -> ConflictableTransactionResult<(), Error> {
-        let SchemaIndex {
+        let PlannedIndex {
             name: index_name,
             expr: index_expr,
-            ..
         } = index;
 
         let index_key = &evaluate_index_key(
@@ -115,25 +130,23 @@ impl<'a> IndexSync<'a> {
             index_expr,
             self.columns.as_deref(),
             row,
-        )
-        .await?;
+        )?;
 
         self.insert_index_data(index_key, data_key)?;
 
         Ok(())
     }
 
-    pub async fn update(
+    pub(super) fn update(
         &self,
         data_key: &IVec,
-        old_row: &DataRow,
-        new_row: &DataRow,
+        old_row: &[Value],
+        new_row: &[Value],
     ) -> ConflictableTransactionResult<(), Error> {
-        for index in self.indexes.iter() {
-            let SchemaIndex {
+        for index in &self.indexes {
+            let PlannedIndex {
                 name: index_name,
                 expr: index_expr,
-                ..
             } = index;
 
             let old_index_key = &evaluate_index_key(
@@ -142,8 +155,7 @@ impl<'a> IndexSync<'a> {
                 index_expr,
                 self.columns.as_deref(),
                 old_row,
-            )
-            .await?;
+            )?;
 
             let new_index_key = &evaluate_index_key(
                 self.table_name,
@@ -151,8 +163,7 @@ impl<'a> IndexSync<'a> {
                 index_expr,
                 self.columns.as_deref(),
                 new_row,
-            )
-            .await?;
+            )?;
 
             self.delete_index_data(old_index_key, data_key)?;
             self.insert_index_data(new_index_key, data_key)?;
@@ -161,28 +172,27 @@ impl<'a> IndexSync<'a> {
         Ok(())
     }
 
-    pub async fn delete(
+    pub(super) fn delete(
         &self,
         data_key: &IVec,
-        row: &DataRow,
+        row: &[Value],
     ) -> ConflictableTransactionResult<(), Error> {
-        for index in self.indexes.iter() {
-            self.delete_index(index, data_key, row).await?;
+        for index in &self.indexes {
+            self.delete_index(index, data_key, row)?;
         }
 
         Ok(())
     }
 
-    pub async fn delete_index(
+    pub(super) fn delete_index(
         &self,
-        index: &SchemaIndex,
+        index: &PlannedIndex,
         data_key: &IVec,
-        row: &DataRow,
+        row: &[Value],
     ) -> ConflictableTransactionResult<(), Error> {
-        let SchemaIndex {
+        let PlannedIndex {
             name: index_name,
             expr: index_expr,
-            ..
         } = index;
 
         let index_key = &evaluate_index_key(
@@ -191,8 +201,7 @@ impl<'a> IndexSync<'a> {
             index_expr,
             self.columns.as_deref(),
             row,
-        )
-        .await?;
+        )?;
 
         self.delete_index_data(index_key, data_key)?;
 
@@ -214,8 +223,9 @@ impl<'a> IndexSync<'a> {
             .unwrap_or_default();
 
         let key_snapshot = Snapshot::<Vec<u8>>::new(self.txid, data_key.to_vec());
-        let data_keys = Vector::from(data_keys).push(key_snapshot);
-        let data_keys = bincode::serialize(&Vec::from(data_keys))
+        let mut data_keys = data_keys;
+        data_keys.push(key_snapshot);
+        let data_keys = bincode::serialize(&data_keys)
             .map_err(err_into)
             .map_err(ConflictableTransactionError::Abort)?;
 
@@ -267,17 +277,19 @@ impl<'a> IndexSync<'a> {
     }
 }
 
-async fn evaluate_index_key(
+fn evaluate_index_key(
     table_name: &str,
     index_name: &str,
-    index_expr: &Expr,
+    index_expr: &ExprPlan,
     columns: Option<&[String]>,
-    row: &DataRow,
+    row: &[Value],
 ) -> ConflictableTransactionResult<Vec<u8>, Error> {
-    let context = Some(row.as_context(columns));
-    let evaluated = evaluate_stateless(context, index_expr)
-        .await
-        .map_err(ConflictableTransactionError::Abort)?;
+    let context = Some(RowContext::RefVecData {
+        columns: columns.unwrap_or(&[]),
+        values: row,
+    });
+    let evaluated =
+        evaluate_stateless(context, index_expr).map_err(ConflictableTransactionError::Abort)?;
     let value: Value = evaluated
         .try_into()
         .map_err(ConflictableTransactionError::Abort)?;

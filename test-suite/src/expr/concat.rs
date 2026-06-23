@@ -13,10 +13,8 @@ test_case!(concat, {
             null_value TEXT NULL
         );
     ",
-    )
-    .await;
-    g.run("INSERT INTO Concat VALUES (1, 2.3, TRUE, 'Foo', NULL);")
-        .await;
+    );
+    g.run("INSERT INTO Concat VALUES (1, 2.5, TRUE, 'Foo', NULL);");
 
     g.test(
         "
@@ -32,8 +30,7 @@ test_case!(concat, {
             Str                 | Str                 | Str                 | Str;
             "FooFoo".to_owned()   "FooBar".to_owned()   "BarFoo".to_owned()   "FooBar".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT
@@ -49,8 +46,7 @@ test_case!(concat, {
             id_n | rate_n | flag_n | text_n | n_id | n_text;
             Null   Null     Null     Null     Null   Null
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT
@@ -63,15 +59,14 @@ test_case!(concat, {
         Ok(select!(
             Case1            | Case2               | Case3                | Case4
             Str              | Str                 | Str                  | Str;
-            "123".to_owned()   "23TRUE".to_owned()   "TRUEFoo".to_owned()   "1Foo".to_owned()
+            "125".to_owned()   "25TRUE".to_owned()   "TRUEFoo".to_owned()   "1Foo".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT
-            1 || 2.3 AS int_float,
-            2.3 || TRUE AS float_bool,
+            1 || 2.5 AS int_float,
+            2.5 || TRUE AS float_bool,
             FALSE || 'Foo' AS bool_text,
             1 || 'Bar' AS int_text
         FROM
@@ -79,10 +74,9 @@ test_case!(concat, {
         Ok(select!(
             int_float         | float_bool           | bool_text             | int_text
             Str               | Str                  | Str                   | Str;
-            "12.3".to_owned()   "2.3TRUE".to_owned()   "FALSEFoo".to_owned()   "1Bar".to_owned()
+            "12.5".to_owned()   "2.5TRUE".to_owned()   "FALSEFoo".to_owned()   "1Bar".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT
@@ -93,10 +87,9 @@ test_case!(concat, {
             Concat;",
         Ok(select_with_null!(
             Case1                     | Case2                         | Case3;
-            Str("1123Bar".to_owned())   Str("1TRUE3.5Foo".to_owned())   Null
+            Str("1125Bar".to_owned())   Str("1TRUE3.5Foo".to_owned())   Null
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT 'sand' || SUBSTR('swich', 2) AS test FROM Concat;",
@@ -105,8 +98,7 @@ test_case!(concat, {
            Str;
            "sandwich".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT SUBSTR('ssand', 2) || 'wich' AS test from Concat;",
@@ -115,8 +107,7 @@ test_case!(concat, {
            Str;
            "sandwich".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT LOWER('SAND') || SUBSTR('swich', 2) AS test FROM Concat;",
@@ -125,8 +116,7 @@ test_case!(concat, {
            Str;
            "sandwich".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT SUBSTR('ssand', 2) || LOWER('WICH') AS test FROM Concat;",
@@ -135,6 +125,5 @@ test_case!(concat, {
            Str;
            "sandwich".to_owned()
         )),
-    )
-    .await;
+    );
 });

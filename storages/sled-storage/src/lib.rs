@@ -8,6 +8,7 @@ mod index_mut;
 mod index_sync;
 mod key;
 mod lock;
+mod migration;
 mod planner;
 mod snapshot;
 mod store;
@@ -15,10 +16,17 @@ mod store_mut;
 mod transaction;
 
 // re-export
+pub use migration::{MigrationReport, SLED_STORAGE_FORMAT_VERSION, migrate_to_latest};
 pub use sled;
 
 use {
-    self::snapshot::Snapshot,
+    self::{
+        migration::{
+            ensure_storage_format_version_supported, initialize_storage_format_version,
+            prepare_import_destination,
+        },
+        snapshot::Snapshot,
+    },
     error::{err_into, tx_err_into},
     gluesql_core::{
         data::Schema,
@@ -59,7 +67,14 @@ type ExportData<T> = (u64, Vec<(Vec<u8>, Vec<u8>, T)>);
 
 impl SledStorage {
     pub fn new<P: AsRef<std::path::Path>>(filename: P) -> Result<Self> {
-        let tree = sled::open(filename).map_err(err_into)?;
+        let path = filename.as_ref();
+        let path_exists = path.exists();
+        let tree = sled::open(path).map_err(err_into)?;
+        if path_exists {
+            ensure_storage_format_version_supported(&tree)?;
+        } else {
+            initialize_storage_format_version(&tree)?;
+        }
         let id_offset = get_id_offset(&tree)?;
         let state = State::Idle;
         let tx_timeout = Some(DEFAULT_TX_TIMEOUT);
@@ -87,7 +102,10 @@ impl SledStorage {
         let (new_id_offset, data) = export;
         let old_id_offset = get_id_offset(&self.tree)?;
 
+        prepare_import_destination(&self.tree)?;
+
         self.tree.import(data);
+        ensure_storage_format_version_supported(&self.tree)?;
 
         if new_id_offset > old_id_offset {
             self.tree
@@ -105,7 +123,13 @@ impl TryFrom<Config> for SledStorage {
     type Error = Error;
 
     fn try_from(config: Config) -> Result<Self> {
+        let path_exists = config.get_path().exists();
         let tree = config.open().map_err(err_into)?;
+        if path_exists {
+            ensure_storage_format_version_supported(&tree)?;
+        } else {
+            initialize_storage_format_version(&tree)?;
+        }
         let id_offset = get_id_offset(&tree)?;
         let state = State::Idle;
         let tx_timeout = Some(DEFAULT_TX_TIMEOUT);

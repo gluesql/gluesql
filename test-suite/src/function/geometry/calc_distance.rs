@@ -23,8 +23,7 @@ test_case!(calc_distance, {
             Ok(select!(
                 georesult
                 F64;
-                1.104150152832485_f64
-
+                1.104_150_152_832_485_f64
             )),
         ),
         (
@@ -47,6 +46,6 @@ test_case!(calc_distance, {
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, expected).await;
+        g.test(sql, expected);
     }
 });

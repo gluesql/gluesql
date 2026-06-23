@@ -1,15 +1,11 @@
-use {
-    async_trait::async_trait, gluesql_core::prelude::Glue, gluesql_sled_storage::SledStorage,
-    test_suite::*,
-};
+use {gluesql_core::prelude::Glue, gluesql_sled_storage::SledStorage, test_suite::*};
 
 struct SledTester {
     glue: Glue<SledStorage>,
 }
 
-#[async_trait(?Send)]
 impl Tester<SledStorage> for SledTester {
-    async fn new(namespace: &str) -> Self {
+    fn new(namespace: &str) -> Self {
         let path = format!("data/{namespace}");
 
         match std::fs::remove_dir_all(&path) {
@@ -35,16 +31,16 @@ impl Tester<SledStorage> for SledTester {
     }
 }
 
-#[tokio::test]
-async fn sled_basic() {
+#[test]
+fn sled_basic() {
     use gluesql_core::prelude::*;
 
-    let mut tester = SledTester::new("delete").await;
+    let mut tester = SledTester::new("delete");
     let glue = tester.get_glue();
 
     macro_rules! execute {
         ($sql:expr) => {{
-            let mut payloads = glue.execute($sql).await.unwrap();
+            let mut payloads = glue.execute($sql).unwrap();
             payloads.remove(0)
         }};
     }
@@ -86,11 +82,11 @@ async fn sled_basic() {
     );
 }
 
-generate_store_tests!(tokio::test, SledTester);
-generate_index_tests!(tokio::test, SledTester);
-generate_transaction_tests!(tokio::test, SledTester);
-generate_alter_table_tests!(tokio::test, SledTester);
-generate_alter_table_index_tests!(tokio::test, SledTester);
-generate_transaction_alter_table_tests!(tokio::test, SledTester);
-generate_transaction_index_tests!(tokio::test, SledTester);
-generate_metadata_index_tests!(tokio::test, SledTester);
+generate_store_tests!(test, SledTester);
+generate_index_tests!(test, SledTester);
+generate_transaction_tests!(test, SledTester);
+generate_alter_table_tests!(test, SledTester);
+generate_alter_table_index_tests!(test, SledTester);
+generate_transaction_alter_table_tests!(test, SledTester);
+generate_transaction_index_tests!(test, SledTester);
+generate_metadata_index_tests!(test, SledTester);

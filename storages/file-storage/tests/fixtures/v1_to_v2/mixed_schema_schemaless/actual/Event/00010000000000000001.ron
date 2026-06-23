@@ -1,0 +1,14 @@
+(
+    key: I64(1),
+    row: Map({
+        "event_id": I64(1),
+        "kind": Str("login"),
+        "meta": Map({
+            "ip": Str("10.0.0.1"),
+        }),
+        "tags": List([
+            Str("auth"),
+            Str("web"),
+        ]),
+    }),
+)

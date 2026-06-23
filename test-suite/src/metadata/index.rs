@@ -29,6 +29,6 @@ test_case!(index, {
     ];
 
     for (actual, expected) in cases {
-        g.test(actual, expected).await;
+        g.test(actual, expected);
     }
 });

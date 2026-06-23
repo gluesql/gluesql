@@ -77,7 +77,7 @@ impl From<&DataType> for BsonType {
 pub const B15: i64 = 2_i64.pow(15);
 pub const B7: i64 = 2_i64.pow(7);
 pub const B31: i64 = 2_i64.pow(31);
-pub const TIME: i64 = 86400000 - 1;
+pub const TIME: i64 = 86_400_000 - 1;
 
 pub trait IntoRange {
     fn get_max(&self) -> Option<i64>;

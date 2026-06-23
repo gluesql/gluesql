@@ -1,8 +1,8 @@
 use {
     crate::*,
     gluesql_core::{
-        ast::Expr,
-        error::{EvaluateError, FetchError, TranslateError, ValueError},
+        ast::DataType,
+        error::{EvaluateError, FetchError, TranslateError},
         prelude::Value::*,
     },
 };
@@ -18,8 +18,7 @@ test_case!(migrate, {
             name TEXT
         );
     ",
-    )
-    .await;
+    );
     g.run(
         "
         INSERT INTO Test (id, num, name) VALUES
@@ -27,28 +26,28 @@ test_case!(migrate, {
             (-(-1), 9,     'World'),
             (+3,    2 * 2, 'Great');
         ",
-    )
-    .await;
+    );
 
     let error_cases = [
         (
             "INSERT INTO Test (id, num, name) VALUES (1.1, 1, 'good');",
-            ValueError::FailedToParseNumber.into(),
+            EvaluateError::NumberParseFailed {
+                literal: "1.1".to_owned(),
+                data_type: DataType::Int,
+            }
+            .into(),
         ),
         (
             "INSERT INTO Test (id, num, name) VALUES (1, 1, a.b);",
-            EvaluateError::ContextRequiredForIdentEvaluation(Box::new(Expr::CompoundIdentifier {
+            EvaluateError::CompoundIdentifierRequiresRowContext {
                 alias: "a".to_owned(),
                 ident: "b".to_owned(),
-            }))
+            }
             .into(),
         ),
         (
             "INSERT INTO Test (id, num, name) VALUES (1, 1, name);",
-            EvaluateError::ContextRequiredForIdentEvaluation(Box::new(Expr::Identifier(
-                "name".to_owned(),
-            )))
-            .into(),
+            EvaluateError::IdentifierRequiresRowContext("name".to_owned()).into(),
         ),
         (
             "SELECT * FROM Test WHERE Here.User.id = 1",
@@ -88,7 +87,7 @@ test_case!(migrate, {
     ];
 
     for (sql, error) in error_cases {
-        g.test(sql, Err(error)).await;
+        g.test(sql, Err(error));
     }
 
     let found = "SELECT id, num, name FROM Test";
@@ -99,7 +98,7 @@ test_case!(migrate, {
         1     9     "World".to_owned();
         3     4     "Great".to_owned()
     );
-    g.test(found, Ok(expected)).await;
+    g.test(found, Ok(expected));
 
     let found = "SELECT id, num, name FROM Test WHERE id = 1";
     let expected = select!(
@@ -108,9 +107,9 @@ test_case!(migrate, {
         1     2     "Hello".to_owned();
         1     9     "World".to_owned()
     );
-    g.test(found, Ok(expected)).await;
+    g.test(found, Ok(expected));
 
-    g.run("UPDATE Test SET id = 2").await;
+    g.run("UPDATE Test SET id = 2");
 
     let found = "SELECT id, num, name FROM Test";
     let expected = select!(
@@ -120,21 +119,21 @@ test_case!(migrate, {
         2     9     "World".to_owned();
         2     4     "Great".to_owned()
     );
-    g.test(found, Ok(expected)).await;
+    g.test(found, Ok(expected));
 
     let found = "SELECT id FROM Test";
     let expected = select!(id; I64; 2; 2; 2);
-    g.test(found, Ok(expected)).await;
+    g.test(found, Ok(expected));
 
     let found = "SELECT id, num FROM Test";
     let expected = select!(id | num; I64 | I64; 2 2; 2 9; 2 4);
-    g.test(found, Ok(expected)).await;
+    g.test(found, Ok(expected));
 
     let found = "SELECT id, num FROM Test LIMIT 1 OFFSET 1";
     let expected = select!(id | num; I64 | I64; 2 9);
-    g.test(found, Ok(expected)).await;
+    g.test(found, Ok(expected));
 
     let found = "SELECT id, num FROM Test LIMIT 1 OFFSET 1";
     let expected = select!(id | num; I64 | I64; 2 9);
-    g.test(found, Ok(expected)).await;
+    g.test(found, Ok(expected));
 });

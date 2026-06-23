@@ -1,9 +1,9 @@
-mod ast_literal;
 mod data_type;
 mod ddl;
 mod error;
 mod expr;
 mod function;
+mod literal;
 mod operator;
 mod param;
 mod query;
@@ -502,14 +502,14 @@ pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Fo
         } => {
             let referencing_column_name = columns.first().map(|i| i.value.clone()).ok_or(
                 TranslateError::UnreachableForeignKeyColumns(
-                    columns.iter().map(|i| i.to_string()).collect::<String>(),
+                    columns.iter().map(ToString::to_string).collect::<String>(),
                 ),
             )?;
 
             let referenced_column_name = referred_columns
                 .first()
                 .ok_or(TranslateError::UnreachableForeignKeyColumns(
-                    columns.iter().map(|i| i.to_string()).collect::<String>(),
+                    columns.iter().map(ToString::to_string).collect::<String>(),
                 ))?
                 .value
                 .clone();
@@ -660,13 +660,13 @@ mod tests {
 
     #[test]
     fn reject_zero_index_placeholder() {
-        let params = [1_i64.into_param_literal().unwrap()];
+        let params = [1_i64.into_param_literal()];
         assert_invalid_placeholder(&params, "$0");
     }
 
     #[test]
     fn reject_non_numeric_index_placeholder() {
-        let params = [1_i64.into_param_literal().unwrap()];
+        let params = [1_i64.into_param_literal()];
         assert_invalid_placeholder(&params, "$foo");
     }
 }

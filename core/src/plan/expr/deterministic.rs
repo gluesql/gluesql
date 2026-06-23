@@ -1,38 +1,38 @@
-use crate::ast::{Expr, Function};
+use crate::plan::{ExprPlan, FunctionPlan};
 
-pub fn is_deterministic(expr: &Expr) -> bool {
+pub fn is_deterministic(expr: &ExprPlan) -> bool {
     match expr {
-        Expr::Literal(_) | Expr::TypedString { .. } => true,
-        Expr::Identifier(_)
-        | Expr::CompoundIdentifier { .. }
-        | Expr::Subquery(_)
-        | Expr::Exists { .. }
-        | Expr::InSubquery { .. }
-        | Expr::Aggregate(_) => false,
-        Expr::IsNull(inner)
-        | Expr::IsNotNull(inner)
-        | Expr::UnaryOp { expr: inner, .. }
-        | Expr::Nested(inner)
-        | Expr::Interval { expr: inner, .. } => is_deterministic(inner),
-        Expr::BinaryOp { left, right, .. }
-        | Expr::Like {
+        ExprPlan::Literal(_) | ExprPlan::Value(_) | ExprPlan::TypedString { .. } => true,
+        ExprPlan::Identifier(_)
+        | ExprPlan::CompoundIdentifier { .. }
+        | ExprPlan::Subquery(_)
+        | ExprPlan::Exists { .. }
+        | ExprPlan::InSubquery { .. }
+        | ExprPlan::Aggregate(_) => false,
+        ExprPlan::IsNull(inner)
+        | ExprPlan::IsNotNull(inner)
+        | ExprPlan::UnaryOp { expr: inner, .. }
+        | ExprPlan::Nested(inner)
+        | ExprPlan::Interval { expr: inner, .. } => is_deterministic(inner),
+        ExprPlan::BinaryOp { left, right, .. }
+        | ExprPlan::Like {
             expr: left,
             pattern: right,
             ..
         }
-        | Expr::ILike {
+        | ExprPlan::ILike {
             expr: left,
             pattern: right,
             ..
         } => is_deterministic(left) && is_deterministic(right),
-        Expr::Between {
+        ExprPlan::Between {
             expr, low, high, ..
         } => is_deterministic(expr) && is_deterministic(low) && is_deterministic(high),
-        Expr::InList { expr, list, .. } => {
+        ExprPlan::InList { expr, list, .. } => {
             is_deterministic(expr) && list.iter().all(is_deterministic)
         }
-        Expr::Function(function) => is_function_deterministic(function),
-        Expr::Case {
+        ExprPlan::Function(function) => is_function_deterministic(function),
+        ExprPlan::Case {
             operand,
             when_then,
             else_result,
@@ -43,15 +43,15 @@ pub fn is_deterministic(expr: &Expr) -> bool {
                     .all(|(when, then)| is_deterministic(when) && is_deterministic(then))
                 && else_result.as_deref().is_none_or(is_deterministic)
         }
-        Expr::Array { elem } => elem.iter().all(is_deterministic),
-        Expr::ArrayIndex { obj, indexes } => {
+        ExprPlan::Array { elem } => elem.iter().all(is_deterministic),
+        ExprPlan::ArrayIndex { obj, indexes } => {
             is_deterministic(obj) && indexes.iter().all(is_deterministic)
         }
     }
 }
 
-fn is_function_deterministic(function: &Function) -> bool {
-    use Function::*;
+fn is_function_deterministic(function: &FunctionPlan) -> bool {
+    use FunctionPlan::*;
 
     match function {
         Now()
@@ -213,7 +213,7 @@ mod tests {
 
     fn test(sql: &str, expected: bool) {
         let expr = parse_expr(sql).and_then(|parsed| translate_expr(&parsed, NO_PARAMS));
-        let actual = expr.map(|expr| is_deterministic(&expr));
+        let actual = expr.map(|expr| is_deterministic(&expr.into()));
 
         assert_eq!(actual, Ok(expected), "{sql} deterministic mismatch");
     }

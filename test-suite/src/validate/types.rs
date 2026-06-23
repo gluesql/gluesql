@@ -1,17 +1,19 @@
 use {
     crate::*,
-    gluesql_core::{ast::DataType, data::Literal, error::ValueError, prelude::Value},
-    std::borrow::Cow,
+    gluesql_core::{
+        ast::DataType,
+        error::{EvaluateError, ValueError},
+        prelude::Value,
+    },
 };
 
 test_case!(types, {
     let g = get_tester!();
 
-    g.run("CREATE TABLE TableB (id BOOLEAN);").await;
-    g.run("CREATE TABLE TableC (uid INTEGER NOT NULL, null_val INTEGER NULL);")
-        .await;
-    g.run("INSERT INTO TableB VALUES (FALSE);").await;
-    g.run("INSERT INTO TableC VALUES (1, NULL);").await;
+    g.run("CREATE TABLE TableB (id BOOLEAN);");
+    g.run("CREATE TABLE TableC (uid INTEGER NOT NULL, null_val INTEGER NULL);");
+    g.run("INSERT INTO TableB VALUES (FALSE);");
+    g.run("INSERT INTO TableC VALUES (1, NULL);");
 
     let test_cases = [
         (
@@ -24,9 +26,9 @@ test_case!(types, {
         ),
         (
             "INSERT INTO TableC (uid) VALUES ('A')",
-            Err(ValueError::IncompatibleLiteralForDataType {
+            Err(EvaluateError::TextParseFailed {
+                literal: "A".to_owned(),
                 data_type: DataType::Int,
-                literal: format!("{:?}", Literal::Text(Cow::Owned("A".to_owned()))),
             }
             .into()),
         ),
@@ -40,9 +42,9 @@ test_case!(types, {
         ),
         (
             "UPDATE TableC SET uid = TRUE;",
-            Err(ValueError::IncompatibleLiteralForDataType {
+            Err(ValueError::IncompatibleDataType {
                 data_type: DataType::Int,
-                literal: format!("{:?}", Literal::Boolean(true)),
+                value: Value::Bool(true),
             }
             .into()),
         ),
@@ -65,6 +67,6 @@ test_case!(types, {
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, expected).await;
+        g.test(sql, expected);
     }
 });

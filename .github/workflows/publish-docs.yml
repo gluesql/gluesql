@@ -9,17 +9,26 @@ on:
         type: string
 
 env:
-  CARGO_TERM_COLOR: always
+  ZENSICAL_VERSION: "0.0.43"
+
+permissions:
+  contents: read
 
 jobs:
   publish_docs:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
         with:
-          node-version: 20
+          ref: ${{ inputs.sha || 'main' }}
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Install Zensical
+        run: python -m pip install "zensical==${ZENSICAL_VERSION}"
 
       - name: Clone gluesql.org
         run: git clone https://github.com/gluesql/gluesql.github.io.git &&
@@ -30,18 +39,18 @@ jobs:
         run: |
           VERSION=$(grep "^version = " Cargo.toml | sed 's/version = "\(.*\)"/\1/'>&1)
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          
+
       - name: Build docs
         run: |
           cd docs
-          yarn install
-          GLUESQL_DOCS_BASE_URL=/docs/${{ env.VERSION }}/ yarn build
+          python -c "import os; from pathlib import Path; version = os.environ['VERSION']; Path('zensical.release.toml').write_text(Path('zensical.toml').read_text().replace('https://gluesql.org/docs/dev/', f'https://gluesql.org/docs/{version}/'))"
+          zensical build --config-file zensical.release.toml
 
-      - name: Update docs/dev/ to gluesql.org
+      - name: Update docs version on gluesql.org
         run: |
-          rm -rf gluesql.github.io/docs/${{ env.VERSION }}
-          mkdir docs/${{ env.VERSION }}/
-          mv docs/build gluesql.github.io/docs/${{ env.VERSION }}
+          rm -rf "gluesql.github.io/docs/$VERSION"
+          mkdir -p gluesql.github.io/docs
+          mv docs/build "gluesql.github.io/docs/$VERSION"
 
       - name: Update docs index.html redirect
         run: |
@@ -70,8 +79,8 @@ jobs:
       - name: Commit and deploy
         run: |
           cd gluesql.github.io
-          git add docs/${{ env.VERSION }} docs/index.html
+          git add "docs/$VERSION" docs/index.html
           git diff-index --quiet HEAD || (
-            git commit -m "Publish Docs - ${{ env.VERSION }}" &&
+            git commit -m "Publish Docs - $VERSION" &&
             git push https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git
           )

@@ -28,7 +28,7 @@ jobs:
         ports:
           - 27017:27017
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Free disk space (pre-build)
         continue-on-error: true
         run: |

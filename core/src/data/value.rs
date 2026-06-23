@@ -2,7 +2,7 @@ use {
     super::{Interval, Key, StringExt},
     crate::{
         ast::{DataType, DateTimeField},
-        data::point::Point,
+        data::{Tribool, point::Point},
         result::Result,
     },
     binary_op::TryBinaryOperator,
@@ -18,23 +18,25 @@ use {
         mem::discriminant,
         net::IpAddr,
     },
-    utils::Tribool,
 };
 
 mod binary_op;
 mod convert;
 mod date;
 mod error;
-mod expr;
 mod json;
-mod literal;
 mod selector;
+mod to_sql;
 mod uuid;
 
 pub use {
-    convert::ConvertError,
     error::{NumericBinaryOperator, ValueError},
     json::BTreeMapJsonExt,
+};
+
+pub(crate) use {
+    date::{parse_date, parse_time, parse_timestamp},
+    uuid::parse_uuid,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -282,6 +284,7 @@ impl Value {
         }
     }
 
+    #[must_use]
     pub fn concat(self, other: Value) -> Value {
         match (self, other) {
             (Value::Null, _) | (_, Value::Null) => Value::Null,
@@ -653,7 +656,7 @@ impl Value {
             }
 
             (1_i128..=a)
-                .try_fold(1_i128, |mul, x| mul.checked_mul(x))
+                .try_fold(1_i128, i128::checked_mul)
                 .ok_or_else(|| ValueError::FactorialOverflow.into())
         }
 
@@ -846,8 +849,8 @@ impl Eq for Value {}
 
 impl Hash for Value {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        const CANONICAL_F32_NAN_BITS: u32 = 0x7fc00000;
-        const CANONICAL_F64_NAN_BITS: u64 = 0x7ff8000000000000;
+        const CANONICAL_F32_NAN_BITS: u32 = 0x7fc0_0000;
+        const CANONICAL_F64_NAN_BITS: u64 = 0x7ff8_0000_0000_0000;
         const CANONICAL_F32_ZERO_BITS: u32 = 0;
         const CANONICAL_F64_ZERO_BITS: u64 = 0;
 
@@ -932,7 +935,7 @@ mod tests {
     #[allow(clippy::eq_op)]
     #[test]
     fn evaluate_eq() {
-        use utils::Tribool;
+        use crate::data::Tribool;
         use {
             super::Interval,
             chrono::{NaiveDateTime, NaiveTime},
@@ -1166,7 +1169,7 @@ mod tests {
     fn arithmetic() {
         use chrono::{NaiveDate, NaiveTime};
 
-        use utils::Tribool::True;
+        use crate::data::Tribool::True;
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
                 assert_eq!(True, $a.$op(&$b).unwrap().evaluate_eq(&$c));
@@ -1949,9 +1952,9 @@ mod tests {
 
     #[test]
     fn bitwise_shift_left() {
-        use {super::convert::ConvertError, crate::ast::DataType};
+        use {super::error::ValueError, crate::ast::DataType};
 
-        use utils::Tribool::True;
+        use crate::data::Tribool::True;
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
                 assert_eq!(True, $a.$op(&$b).unwrap().evaluate_eq(&$c));
@@ -2081,7 +2084,7 @@ mod tests {
         // cast error test
         assert_eq!(
             I64(1).bitwise_shift_left(&I64(-2)),
-            Err(ConvertError {
+            Err(ValueError::ConvertFailed {
                 value: I64(-2),
                 data_type: DataType::Uint32,
             }
@@ -2112,9 +2115,9 @@ mod tests {
 
     #[test]
     fn bitwise_shift_right() {
-        use {super::convert::ConvertError, crate::ast::DataType};
+        use {super::error::ValueError, crate::ast::DataType};
 
-        use utils::Tribool::True;
+        use crate::data::Tribool::True;
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
                 assert_eq!(True, $a.$op(&$b).unwrap().evaluate_eq(&$c));
@@ -2244,7 +2247,7 @@ mod tests {
         // cast error test
         assert_eq!(
             I64(1).bitwise_shift_right(&I64(-2)),
-            Err(ConvertError {
+            Err(ValueError::ConvertFailed {
                 value: I64(-2),
                 data_type: DataType::Uint32,
             }
@@ -2737,7 +2740,7 @@ mod tests {
 
     #[test]
     fn bitwise_and() {
-        use utils::Tribool::True;
+        use crate::data::Tribool::True;
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
                 assert_eq!(True, $a.$op(&$b).unwrap().evaluate_eq(&$c));
@@ -2903,8 +2906,8 @@ mod tests {
             hasher.finish()
         }
 
-        const CANONICAL_F64_NAN_BITS: u64 = 0x7ff8000000000000;
-        const CANONICAL_F32_NAN_BITS: u32 = 0x7fc00000;
+        const CANONICAL_F64_NAN_BITS: u64 = 0x7ff8_0000_0000_0000;
+        const CANONICAL_F32_NAN_BITS: u32 = 0x7fc0_0000;
         const CANONICAL_F32_ZERO_BITS: u32 = 0;
         const CANONICAL_F64_ZERO_BITS: u64 = 0;
 
@@ -2975,7 +2978,7 @@ mod tests {
                 Time(NaiveTime::from_hms_opt(10, 30, 0).unwrap()),
             ),
             (Interval(Interval::hours(5)), Interval(Interval::hours(5))),
-            (Uuid(123456789), Uuid(123456789)),
+            (Uuid(123_456_789), Uuid(123_456_789)),
             (List(vec![I64(1), I64(2)]), List(vec![I64(1), I64(2)])),
             (Null, Null),
         ];
@@ -3115,7 +3118,7 @@ mod tests {
                 Interval(Interval::hours(5)),
                 true,
             ),
-            (Uuid(123456789), Uuid(123456789), true),
+            (Uuid(123_456_789), Uuid(123_456_789), true),
             (List(vec![I64(1), I64(2)]), List(vec![I64(1), I64(2)]), true),
             (
                 Point(Point::new(1.0, 2.0)),
@@ -3139,7 +3142,7 @@ mod tests {
         assert_eq!(F64(f64::NAN), F64(f64::NAN));
         assert_eq!(F32(0.0), F32(-0.0));
         assert_eq!(F64(0.0), F64(-0.0));
-        assert_eq!(F32(f32::from_bits(0x7fc00001)), F32(f32::NAN));
+        assert_eq!(F32(f32::from_bits(0x7fc0_0001)), F32(f32::NAN));
 
         assert_eq!(
             Point(Point::new(f64::NAN, 1.0)),
@@ -3161,7 +3164,7 @@ mod tests {
 
     #[test]
     fn test_conversion_from_tribool() {
-        use {super::Value, utils::Tribool};
+        use {super::Value, crate::data::Tribool};
 
         assert_eq!(Value::from(Tribool::True), Value::Bool(true));
         assert_eq!(Value::from(Tribool::False), Value::Bool(false));

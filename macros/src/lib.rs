@@ -78,7 +78,7 @@ fn expand_from_glue_row(input: DeriveInput) -> Result<proc_macro2::TokenStream, 
     let mut field_idents = Vec::new();
     let mut fields_meta_pairs = Vec::new();
 
-    for field in fields.iter() {
+    for field in &fields {
         let field_ident = field.ident.clone().expect("named field");
         field_idents.push(field_ident.clone());
         let field_name_literal = field_ident.to_string();

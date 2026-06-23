@@ -1,6 +1,5 @@
 use {
     crate::{RedisStorage, mutex::MutexExt},
-    async_trait::async_trait,
     gluesql_core::{
         data::Value,
         error::{Error, Result},
@@ -10,15 +9,14 @@ use {
     std::collections::BTreeMap,
 };
 
-#[async_trait]
 impl Metadata for RedisStorage {
-    async fn scan_table_meta(&self) -> Result<MetaIter> {
+    fn scan_table_meta(&self) -> Result<MetaIter> {
         let mut all_metadata: BTreeMap<String, BTreeMap<String, Value>> = BTreeMap::new();
         let metadata_scan_key = Self::redis_generate_scan_all_metadata_key(&self.namespace);
         let redis_keys: Vec<String> = {
             let mut conn = self.conn.lock_err()?;
             conn.scan_match(&metadata_scan_key)
-                .map(|iter| iter.collect::<Vec<String>>())
+                .map(Iterator::collect::<Vec<String>>)
                 .map_err(|_| {
                     Error::StorageMsg(format!(
                         "[RedisStorage] failed to scan metadata: namespace={}",
@@ -28,7 +26,7 @@ impl Metadata for RedisStorage {
         };
 
         // Then read all values of the table
-        for redis_key in redis_keys.into_iter() {
+        for redis_key in redis_keys {
             // Another client just has removed the value with the key.
             // It's not a problem. Just ignore it.
             let value = {

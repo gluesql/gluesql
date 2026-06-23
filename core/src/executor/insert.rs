@@ -4,15 +4,15 @@ use {
         validate::{ColumnValidation, validate_unique},
     },
     crate::{
-        ast::{ColumnDef, ColumnUniqueOption, Expr, ForeignKey, Query, SetExpr, Values},
-        data::{Key, Row, Schema, Value},
+        ast::{ColumnDef, ColumnUniqueOption, ForeignKey},
+        data::{Key, Row, SCHEMALESS_DOC_COLUMN, Schema, Value, value::BTreeMapJsonExt},
         executor::{evaluate::evaluate_stateless, limit::Limit},
-        result::Result,
-        store::{DataRow, GStore, GStoreMut},
+        plan::{ExprPlan, QueryPlan, SetExprPlan, ValuesPlan, plan_scalar_expr},
+        result::{Error, Result},
+        store::{GStore, GStoreMut},
     },
-    futures::stream::{self, StreamExt, TryStreamExt},
     serde::Serialize,
-    std::{fmt::Debug, sync::Arc},
+    std::{collections::BTreeMap, fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
 };
 
@@ -33,8 +33,8 @@ pub enum InsertError {
     #[error("literals have more values than target columns")]
     TooManyValues,
 
-    #[error("only single value accepted for schemaless row insert")]
-    OnlySingleValueAcceptedForSchemalessRow,
+    #[error("only single value accepted for schemaless row insert: got {0}")]
+    OnlySingleValueAcceptedForSchemalessRow(usize),
 
     #[error("map type required: {0}")]
     MapTypeValueRequired(String),
@@ -53,105 +53,96 @@ pub enum InsertError {
 }
 
 enum RowsData {
-    Append(Vec<DataRow>),
-    Insert(Vec<(Key, DataRow)>),
+    Append(Vec<Vec<Value>>),
+    Insert(Vec<(Key, Vec<Value>)>),
 }
 
-pub async fn insert<T: GStore + GStoreMut>(
+pub fn insert<T: GStore + GStoreMut>(
     storage: &mut T,
     table_name: &str,
     columns: &[String],
-    source: &Query,
+    source: &QueryPlan,
 ) -> Result<usize> {
     let Schema {
         column_defs,
         foreign_keys,
         ..
     } = storage
-        .fetch_schema(table_name)
-        .await?
+        .fetch_schema(table_name)?
         .ok_or_else(|| InsertError::TableNotFound(table_name.to_owned()))?;
 
     let rows = match column_defs {
-        Some(column_defs) => {
-            fetch_vec_rows(
-                storage,
-                table_name,
-                column_defs,
-                columns,
-                source,
-                foreign_keys,
-            )
-            .await
-        }
-        None => fetch_map_rows(storage, source).await.map(RowsData::Append),
+        Some(column_defs) => fetch_vec_rows(
+            storage,
+            table_name,
+            column_defs,
+            columns,
+            source,
+            foreign_keys,
+        ),
+        None => fetch_schemaless_rows(storage, source).map(RowsData::Append),
     }?;
 
     match rows {
         RowsData::Append(rows) => {
             let num_rows = rows.len();
 
-            storage
-                .append_data(table_name, rows)
-                .await
-                .map(|_| num_rows)
+            storage.append_data(table_name, rows).map(|()| num_rows)
         }
         RowsData::Insert(rows) => {
             let num_rows = rows.len();
 
-            storage
-                .insert_data(table_name, rows)
-                .await
-                .map(|_| num_rows)
+            storage.insert_data(table_name, rows).map(|()| num_rows)
         }
     }
 }
 
-async fn fetch_vec_rows<T: GStore>(
+fn fetch_vec_rows<T: GStore>(
     storage: &T,
     table_name: &str,
     column_defs: Vec<ColumnDef>,
     columns: &[String],
-    source: &Query,
+    source: &QueryPlan,
     foreign_keys: Vec<ForeignKey>,
 ) -> Result<RowsData> {
-    #[derive(futures_enum::Stream)]
-    enum Rows<I1, I2> {
-        Values(I1),
-        Select(I2),
-    }
-
-    let labels = Arc::from(
+    let labels = Rc::from(
         column_defs
             .iter()
             .map(|column_def| column_def.name.clone())
             .collect::<Vec<_>>(),
     );
-    let column_defs = Arc::from(column_defs);
+    let column_defs = Rc::from(column_defs);
     let column_validation = ColumnValidation::All(&column_defs);
 
-    let rows = match &source.body {
-        SetExpr::Values(Values(values_list)) => {
-            let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref()).await?;
-            let rows = stream::iter(values_list).then(|values| {
-                let column_defs = Arc::clone(&column_defs);
-                let labels = Arc::clone(&labels);
+    let rows_iter: Box<dyn Iterator<Item = Result<Vec<Value>>> + '_> = match &source.body {
+        SetExprPlan::Values(ValuesPlan(values_list)) => {
+            let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref())?;
+            let column_defaults: Rc<[Option<ExprPlan>]> = Rc::from(
+                column_defs
+                    .iter()
+                    .map(|column_def| column_def.default.clone().map(plan_scalar_expr))
+                    .collect::<Vec<_>>(),
+            );
+            let column_defs = Rc::clone(&column_defs);
+            let labels = Rc::clone(&labels);
+            let rows = values_list.iter().map(move |values| {
+                let column_defs = Rc::clone(&column_defs);
+                let column_defaults = Rc::clone(&column_defaults);
+                let labels = Rc::clone(&labels);
 
-                async move {
-                    Ok(Row::Vec {
-                        columns: labels,
-                        values: fill_values(&column_defs, columns, values).await?,
-                    })
-                }
+                Ok(Row {
+                    columns: labels,
+                    values: fill_values(&column_defs, &column_defaults, columns, values)?,
+                })
             });
             let rows = limit.apply(rows);
-            let rows = rows.map(|row| row?.try_into_vec());
+            let rows = rows.map(|row| Ok::<_, Error>(row?.into_values()));
 
-            Rows::Values(rows)
+            Box::new(rows) as Box<dyn Iterator<Item = Result<Vec<Value>>> + '_>
         }
-        SetExpr::Select(_) => {
-            let rows = select(storage, source, None).await?.map(|row| {
-                let values = row?.try_into_vec()?;
+        SetExprPlan::Select(_) => {
+            let rows = select(storage, source, None)?.map(|row| {
+                let values = row?.into_values();
 
                 column_defs
                     .iter()
@@ -170,21 +161,19 @@ async fn fetch_vec_rows<T: GStore>(
                 Ok(values)
             });
 
-            Rows::Select(rows)
+            Box::new(rows) as Box<dyn Iterator<Item = Result<Vec<Value>>> + '_>
         }
-    }
-    .try_collect::<Vec<Vec<Value>>>()
-    .await?;
+    };
+    let rows = rows_iter.collect::<Result<Vec<Vec<Value>>>>()?;
 
     validate_unique(
         storage,
         table_name,
-        column_validation,
-        rows.iter().map(|values| values.as_slice()),
-    )
-    .await?;
+        &column_validation,
+        rows.iter().map(std::vec::Vec::as_slice),
+    )?;
 
-    validate_foreign_key(storage, &column_defs, foreign_keys, &rows).await?;
+    validate_foreign_key(storage, &column_defs, foreign_keys, &rows)?;
 
     let primary_key = column_defs.iter().position(|ColumnDef { unique, .. }| {
         unique == &Some(ColumnUniqueOption { is_primary: true })
@@ -193,21 +182,21 @@ async fn fetch_vec_rows<T: GStore>(
     match primary_key {
         Some(i) => rows
             .into_iter()
-            .filter_map(|values| {
+            .filter_map(|values: Vec<Value>| {
                 values
                     .get(i)
                     .map(Key::try_from)
-                    .map(|result| result.map(|key| (key, values.into())))
+                    .map(|result| result.map(|key| (key, values)))
             })
             .collect::<Result<Vec<_>>>()
             .map(RowsData::Insert),
-        None => Ok(RowsData::Append(rows.into_iter().map(Into::into).collect())),
+        None => Ok(RowsData::Append(rows)),
     }
 }
 
-async fn validate_foreign_key<T: GStore>(
+fn validate_foreign_key<T: GStore>(
     storage: &T,
-    column_defs: &Arc<[ColumnDef]>,
+    column_defs: &Rc<[ColumnDef]>,
     foreign_keys: Vec<ForeignKey>,
     rows: &[Vec<Value>],
 ) -> Result<()> {
@@ -227,7 +216,7 @@ async fn validate_foreign_key<T: GStore>(
                 InsertError::ConflictReferencingColumnName(referencing_column_name.to_owned())
             })?;
 
-        for row in rows.iter() {
+        for row in rows {
             let value =
                 row.get(target_index.0)
                     .ok_or(InsertError::ConflictReferencingColumnName(
@@ -239,8 +228,7 @@ async fn validate_foreign_key<T: GStore>(
             }
 
             let no_referenced = storage
-                .fetch_data(referenced_table_name, &Key::try_from(value)?)
-                .await?
+                .fetch_data(referenced_table_name, &Key::try_from(value)?)?
                 .is_none();
 
             if no_referenced {
@@ -257,59 +245,77 @@ async fn validate_foreign_key<T: GStore>(
     Ok(())
 }
 
-async fn fetch_map_rows<T: GStore>(storage: &T, source: &Query) -> Result<Vec<DataRow>> {
-    #[derive(futures_enum::Stream)]
-    enum Rows<I1, I2> {
-        Values(I1),
-        Select(I2),
-    }
+fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &QueryPlan) -> Result<Vec<Vec<Value>>> {
+    let doc_column: Rc<[String]> = Rc::from(vec![SCHEMALESS_DOC_COLUMN.to_owned()]);
 
-    let rows = match &source.body {
-        SetExpr::Values(Values(values_list)) => {
-            let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref()).await?;
-            let rows = stream::iter(values_list).then(|values| async move {
-                if values.len() > 1 {
-                    return Err(InsertError::OnlySingleValueAcceptedForSchemalessRow.into());
+    let rows_iter: Box<dyn Iterator<Item = Result<Vec<Value>>> + '_> = match &source.body {
+        SetExprPlan::Values(ValuesPlan(values_list)) => {
+            let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref())?;
+            let rows = values_list.iter().map({
+                let doc_column = Rc::clone(&doc_column);
+                move |values| {
+                    let doc_column = Rc::clone(&doc_column);
+
+                    if values.len() > 1 {
+                        return Err(InsertError::OnlySingleValueAcceptedForSchemalessRow(
+                            values.len(),
+                        )
+                        .into());
+                    }
+
+                    let Some(value) = values.first() else {
+                        return Err(InsertError::OnlySingleValueAcceptedForSchemalessRow(0).into());
+                    };
+
+                    let map: BTreeMap<String, Value> =
+                        evaluate_stateless(None, value)?.try_into()?;
+
+                    Ok(Row {
+                        columns: doc_column,
+                        values: vec![Value::Map(map)],
+                    })
                 }
-
-                evaluate_stateless(None, &values[0])
-                    .await?
-                    .try_into()
-                    .map(Row::Map)
             });
             let rows = limit.apply(rows);
-            let rows = rows.map_ok(Into::into);
+            let rows = rows.map(|row| row.map(Row::into_values));
 
-            Rows::Values(rows)
+            Box::new(rows) as Box<dyn Iterator<Item = Result<Vec<Value>>> + '_>
         }
-        SetExpr::Select(_) => {
-            let rows = select(storage, source, None).await?.map(|row| {
-                let row = row?;
+        SetExprPlan::Select(_) => {
+            let rows = select(storage, source, None)?.map(|row| {
+                let values = row?.into_values();
 
-                if let Row::Vec { values, .. } = &row {
-                    if values.len() > 1 {
-                        return Err(InsertError::OnlySingleValueAcceptedForSchemalessRow.into());
-                    } else if !matches!(&values[0], Value::Map(_)) {
-                        return Err(InsertError::MapTypeValueRequired((&values[0]).into()).into());
-                    }
+                if values.len() > 1 {
+                    return Err(
+                        InsertError::OnlySingleValueAcceptedForSchemalessRow(values.len()).into(),
+                    );
                 }
 
-                Ok(row.into())
+                let map = match values.into_iter().next() {
+                    None => {
+                        return Err(InsertError::OnlySingleValueAcceptedForSchemalessRow(0).into());
+                    }
+                    Some(Value::Map(map)) => map,
+                    Some(Value::Str(s)) => BTreeMap::parse_json_object(&s)?,
+                    Some(v) => return Err(InsertError::MapTypeValueRequired((&v).into()).into()),
+                };
+
+                Ok(vec![Value::Map(map)])
             });
 
-            Rows::Select(rows)
+            Box::new(rows) as Box<dyn Iterator<Item = Result<Vec<Value>>> + '_>
         }
-    }
-    .try_collect::<Vec<DataRow>>()
-    .await?;
+    };
+    let rows = rows_iter.collect::<Result<Vec<Vec<Value>>>>()?;
 
     Ok(rows)
 }
 
-async fn fill_values(
+fn fill_values(
     column_defs: &[ColumnDef],
+    column_defaults: &[Option<ExprPlan>],
     columns: &[String],
-    values: &[Expr],
+    values: &[ExprPlan],
 ) -> Result<Vec<Value>> {
     #[derive(iter_enum::Iterator)]
     enum Columns<I1, I2> {
@@ -339,36 +345,36 @@ async fn fill_values(
 
     let column_name_value_list = columns.zip(values.iter()).collect::<Vec<(_, _)>>();
 
-    let values = stream::iter(column_defs)
-        .then(|column_def| {
-            let column_name_value_list = &column_name_value_list;
+    let values = column_defs
+        .iter()
+        .zip(column_defaults)
+        .map(|(column_def, default)| {
+            let ColumnDef {
+                name: def_name,
+                data_type,
+                nullable,
+                ..
+            } = column_def;
 
-            async move {
-                let ColumnDef {
-                    name: def_name,
-                    data_type,
-                    nullable,
-                    ..
-                } = column_def;
+            let value = column_name_value_list
+                .iter()
+                .find(|(name, _)| name == &def_name)
+                .map(|(_, value)| value);
 
-                let value = column_name_value_list
-                    .iter()
-                    .find(|(name, _)| name == &def_name)
-                    .map(|(_, value)| value);
-
-                match (value, &column_def.default, nullable) {
-                    (Some(&expr), _, _) | (None, Some(expr), _) => evaluate_stateless(None, expr)
-                        .await?
-                        .try_into_value(data_type, *nullable),
-                    (None, None, true) => Ok(Value::Null),
-                    (None, None, false) => {
-                        Err(InsertError::LackOfRequiredColumn(def_name.to_owned()).into())
-                    }
+            match (value, default, nullable) {
+                (Some(expr), _, _) => {
+                    evaluate_stateless(None, expr)?.try_into_value(data_type, *nullable)
+                }
+                (None, Some(expr), _) => {
+                    evaluate_stateless(None, expr)?.try_into_value(data_type, *nullable)
+                }
+                (None, None, true) => Ok(Value::Null),
+                (None, None, false) => {
+                    Err(InsertError::LackOfRequiredColumn(def_name.to_owned()).into())
                 }
             }
         })
-        .try_collect::<Vec<Value>>()
-        .await?;
+        .collect::<Result<Vec<Value>>>()?;
 
     Ok(values)
 }

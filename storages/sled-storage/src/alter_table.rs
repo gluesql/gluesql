@@ -6,23 +6,20 @@ use {
         lock::{self, LockAcquired},
         transaction::TxPayload,
     },
-    async_io::block_on,
-    async_trait::async_trait,
     gluesql_core::{
         ast::ColumnDef,
         data::{Value, schema::Schema},
-        error::{AlterTableError, Error, Result},
+        error::{AlterTableError, Result},
         executor::evaluate_stateless,
-        store::{AlterTable, DataRow},
+        plan::plan_scalar_expr,
+        store::AlterTable,
     },
     sled::transaction::ConflictableTransactionError,
     std::{iter::once, str},
-    utils::Vector,
 };
 
-#[async_trait]
 impl AlterTable for SledStorage {
-    async fn rename_schema(&mut self, table_name: &str, new_table_name: &str) -> Result<()> {
+    fn rename_schema(&mut self, table_name: &str, new_table_name: &str) -> Result<()> {
         let prefix = format!("data/{table_name}/");
         let items = self
             .tree
@@ -81,13 +78,13 @@ impl AlterTable for SledStorage {
             tree.insert(new_schema_key.as_bytes(), value)?;
 
             // replace data
-            for (old_key, value) in items.iter() {
+            for (old_key, value) in &items {
                 let new_key = str::from_utf8(old_key.as_ref())
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
                 let new_key = new_key.replace(table_name, new_table_name);
 
-                let old_row_snapshot: Snapshot<DataRow> = bincode::deserialize(value)
+                let old_row_snapshot: Snapshot<Vec<Value>> = bincode::deserialize(value)
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
 
@@ -100,7 +97,7 @@ impl AlterTable for SledStorage {
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
 
-                let new_row_snapshot = Snapshot::<DataRow>::new(txid, row);
+                let new_row_snapshot = Snapshot::<Vec<Value>>::new(txid, row);
                 let new_row_snapshot = bincode::serialize(&new_row_snapshot)
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
@@ -129,13 +126,13 @@ impl AlterTable for SledStorage {
         });
 
         if self.check_retry(tx_result)? {
-            self.rename_schema(table_name, new_table_name).await?;
+            self.rename_schema(table_name, new_table_name)?;
         }
 
         Ok(())
     }
 
-    async fn rename_column(
+    fn rename_column(
         &mut self,
         table_name: &str,
         old_column_name: &str,
@@ -204,7 +201,8 @@ impl AlterTable for SledStorage {
                 unique,
                 comment,
             };
-            let column_defs = Vector::from(column_defs).update(i, column_def).into();
+            let mut column_defs = column_defs;
+            column_defs[i] = column_def;
 
             let schema = Schema {
                 table_name: table_name.to_owned(),
@@ -230,14 +228,13 @@ impl AlterTable for SledStorage {
         });
 
         if self.check_retry(tx_result)? {
-            self.rename_column(table_name, old_column_name, new_column_name)
-                .await?;
+            self.rename_column(table_name, old_column_name, new_column_name)?;
         }
 
         Ok(())
     }
 
-    async fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
+    fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
         let prefix = format!("data/{table_name}/");
         let items = self
             .tree
@@ -296,7 +293,8 @@ impl AlterTable for SledStorage {
 
             let value = match (default, nullable) {
                 (Some(expr), _) => {
-                    let evaluated = block_on(evaluate_stateless(None, expr))
+                    let expr = plan_scalar_expr(expr.clone());
+                    let evaluated = evaluate_stateless(None, &expr)
                         .map_err(ConflictableTransactionError::Abort)?;
 
                     evaluated
@@ -312,27 +310,18 @@ impl AlterTable for SledStorage {
             };
 
             // migrate data
-            for (key, snapshot) in items.iter() {
-                let snapshot: Snapshot<DataRow> = bincode::deserialize(snapshot)
+            for (key, snapshot) in &items {
+                let snapshot: Snapshot<Vec<Value>> = bincode::deserialize(snapshot)
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
                 let Some(row) = snapshot.clone().extract(txid, None) else {
                     continue;
                 };
 
-                let values = match row {
-                    DataRow::Vec(values) => values,
-                    DataRow::Map(_) => {
-                        return Err(ConflictableTransactionError::Abort(Error::StorageMsg(
-                            "conflict - add_column failed: schemaless row found".to_owned(),
-                        )));
-                    }
-                };
-                let row = values
+                let row = row
                     .into_iter()
                     .chain(once(value.clone()))
-                    .collect::<Vec<Value>>()
-                    .into();
+                    .collect::<Vec<Value>>();
 
                 let (snapshot, _) = snapshot.update(txid, row);
                 let snapshot = bincode::serialize(&snapshot)
@@ -379,18 +368,13 @@ impl AlterTable for SledStorage {
         });
 
         if self.check_retry(tx_result)? {
-            self.add_column(table_name, column_def).await?;
+            self.add_column(table_name, column_def)?;
         }
 
         Ok(())
     }
 
-    async fn drop_column(
-        &mut self,
-        table_name: &str,
-        column_name: &str,
-        if_exists: bool,
-    ) -> Result<()> {
+    fn drop_column(&mut self, table_name: &str, column_name: &str, if_exists: bool) -> Result<()> {
         let prefix = format!("data/{table_name}/");
         let items = self
             .tree
@@ -445,29 +429,19 @@ impl AlterTable for SledStorage {
             };
 
             // migrate data
-            for (key, snapshot) in items.iter() {
-                let snapshot: Snapshot<DataRow> = bincode::deserialize(snapshot)
+            for (key, snapshot) in &items {
+                let snapshot: Snapshot<Vec<Value>> = bincode::deserialize(snapshot)
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
                 let Some(row) = snapshot.clone().extract(txid, None) else {
                     continue;
                 };
 
-                let values = match row {
-                    DataRow::Vec(values) => values,
-                    DataRow::Map(_) => {
-                        return Err(ConflictableTransactionError::Abort(Error::StorageMsg(
-                            "conflict - drop_column failed: schemaless row found".to_owned(),
-                        )));
-                    }
-                };
-
-                let row = values
+                let row = row
                     .into_iter()
                     .enumerate()
                     .filter_map(|(i, v)| (i != column_index).then_some(v))
-                    .collect::<Vec<_>>()
-                    .into();
+                    .collect::<Vec<_>>();
 
                 let (snapshot, _) = snapshot.update(txid, row);
                 let snapshot = bincode::serialize(&snapshot)
@@ -514,7 +488,7 @@ impl AlterTable for SledStorage {
         });
 
         if self.check_retry(tx_result)? {
-            self.drop_column(table_name, column_name, if_exists).await?;
+            self.drop_column(table_name, column_name, if_exists)?;
         }
 
         Ok(())

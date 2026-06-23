@@ -6,53 +6,53 @@ use {
     gluesql_json_storage::{JsonStorage, error::JsonStorageError},
 };
 
-#[tokio::test]
-async fn json_error() {
+#[test]
+fn json_error() {
     let path = "./tests/samples/";
     let json_storage = JsonStorage::new(path).unwrap();
     let mut glue = Glue::new(json_storage);
 
     let cases = vec![
         (
-            glue.execute("SELECT * FROM WrongFormatJsonl").await,
+            glue.execute("SELECT * FROM WrongFormatJsonl"),
             Err(ValueError::InvalidJsonString("[".to_owned()).into()),
         ),
         (
-            glue.execute("SELECT * FROM WrongFormatJson").await,
+            glue.execute("SELECT * FROM WrongFormatJson"),
             Err(Error::StorageMsg(
                 JsonStorageError::InvalidJsonContent("WrongFormatJson.json".to_owned()).to_string(),
             )),
         ),
         (
-            glue.execute("SELECT * FROM WrongSchema").await,
+            glue.execute("SELECT * FROM WrongSchema"),
             Err(Error::Schema(SchemaParseError::CannotParseDDL)),
         ),
         (
-            glue.execute("SELECT * FROM WrongTableName").await,
+            glue.execute("SELECT * FROM WrongTableName"),
             Err(Error::StorageMsg(
                 JsonStorageError::TableNameDoesNotMatchWithFile.to_string(),
             )),
         ),
         (
-            glue.execute("SELECT * FROM Duplicated").await,
+            glue.execute("SELECT * FROM Duplicated"),
             Err(Error::StorageMsg(
                 JsonStorageError::BothJsonlAndJsonExist("Duplicated".to_owned()).to_string(),
             )),
         ),
         (
-            glue.execute("DROP TABLE Duplicated").await,
+            glue.execute("DROP TABLE Duplicated"),
             Err(Error::StorageMsg(
                 JsonStorageError::BothJsonlAndJsonExist("Duplicated".to_owned()).to_string(),
             )),
         ),
         (
-            glue.execute("SELECT * FROM JsonObjectTypeRequired").await,
+            glue.execute("SELECT * FROM JsonObjectTypeRequired"),
             Err(Error::StorageMsg(
                 JsonStorageError::JsonObjectTypeRequired.to_string(),
             )),
         ),
         (
-            glue.execute("SELECT * FROM JsonArrayTypeRequired").await,
+            glue.execute("SELECT * FROM JsonArrayTypeRequired"),
             Err(Error::StorageMsg(
                 JsonStorageError::JsonArrayTypeRequired.to_string(),
             )),

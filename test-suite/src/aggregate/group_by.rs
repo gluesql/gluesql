@@ -12,8 +12,7 @@ test_case!(group_by, {
             ratio FLOAT
         );
     ",
-    )
-    .await;
+    );
     g.run(
         "
         INSERT INTO Item (id, quantity, city, ratio) VALUES
@@ -24,8 +23,7 @@ test_case!(group_by, {
             (4,   11,   'Seoul',  1.1),
             (5,   24, 'Seattle', 6.11);
     ",
-    )
-    .await;
+    );
     let test_cases = [
         (
             "SELECT id, COUNT(*) FROM Item GROUP BY id",
@@ -92,15 +90,18 @@ test_case!(group_by, {
                 21                2            "Seoul".to_owned()
             ),
         ),
+        (
+            "SELECT city FROM Item GROUP BY city HAVING COALESCE(COUNT(*), 0) > 1",
+            select!(city Str; "Seoul".to_owned()),
+        ),
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, Ok(expected)).await;
+        g.test(sql, Ok(expected));
     }
 
-    g.run("CREATE TABLE Sub (id INTEGER);").await;
-    g.run("INSERT INTO Sub VALUES (101), (102), (103), (104), (105);")
-        .await;
+    g.run("CREATE TABLE Sub (id INTEGER);");
+    g.run("INSERT INTO Sub VALUES (101), (102), (103), (104), (105);");
     g.named_test(
         "HAVING - nested select context handling edge case",
         "
@@ -113,6 +114,5 @@ test_case!(group_by, {
                 HAVING id <= 3
             )",
         Ok(select!(id I64; 101; 102; 103)),
-    )
-    .await;
+    );
 });
