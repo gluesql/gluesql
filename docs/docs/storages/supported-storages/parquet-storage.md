@@ -195,7 +195,7 @@ glue.execute("UPDATE Logs SET list='[5,6]' where id = 2;")
 glue.execute("DELETE from Logs where id = 2;")
     .unwrap();
 
-glue.execute("SELECT * FROM food;").unwrap();
+glue.execute("SELECT * FROM Logs;").unwrap();
 ```
 
 ## Limitations
