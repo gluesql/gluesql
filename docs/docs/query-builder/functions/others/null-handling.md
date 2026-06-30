@@ -1,6 +1,6 @@
-# Null Handling 
+# Null Handling
 
-In some cases, you may need to handle `NULL` values in your database. GlueSQL provides a function called `ifnull` to handle these cases.
+In some cases, you may need to handle `NULL` values in your database. GlueSQL provides functions such as `ifnull` and `nullif` to handle these cases.
 
 ## IFNULL - ifnull
 
@@ -32,10 +32,34 @@ The `ifnull` function can also be used without a table:
 
 ```rust
 let actual = values(vec![
-    vec![query_builder::ifnull(text("HELLO"), text("WORLD"))],  // If "HELLO" is NULL (it's not), return "WORLD". Otherwise, return "HELLO".
-    vec![query_builder::ifnull(null(), text("WORLD"))],  // If NULL is NULL (it is), return "WORLD".
+    vec![query_builder::function::ifnull(text("HELLO"), text("WORLD"))],  // If "HELLO" is NULL (it's not), return "WORLD". Otherwise, return "HELLO".
+    vec![query_builder::function::ifnull(null(), text("WORLD"))],  // If NULL is NULL (it is), return "WORLD".
 ])
 .execute(glue);
 ```
 
 In the first case, "HELLO" is returned because it's not `NULL`. In the second case, "WORLD" is returned because the first value is `NULL`.
+
+## NULLIF - nullif
+
+The `nullif` function compares two expressions. If they are equal, it returns `NULL`; otherwise, it returns the first expression.
+
+```rust
+let actual = table("Foo")
+    .select()
+    .project("id")
+    .project(col("name").nullif(text("hello")))
+    .execute(glue);
+```
+
+You can also use `nullif` without a table:
+
+```rust
+let actual = values(vec![
+    vec![query_builder::function::nullif(text("HELLO"), text("WORLD"))],
+    vec![query_builder::function::nullif(text("WORLD"), text("WORLD"))],
+])
+.execute(glue);
+```
+
+In the first case, "HELLO" is returned because the two values are different. In the second case, `NULL` is returned because the two values are equal.

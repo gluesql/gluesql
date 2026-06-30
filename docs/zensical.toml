@@ -147,6 +147,7 @@ nav = [
         "sql-syntax/functions/others/generate-uuid.md",
         "sql-syntax/functions/others/greatest.md",
         "sql-syntax/functions/others/ifnull.md",
+        "sql-syntax/functions/others/nullif.md",
       ]},
     ]},
   ]},
