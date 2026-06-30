@@ -3,10 +3,11 @@
 RedbStorage allows GlueSQL to persist data using the [redb](https://github.com/cberner/redb) embedded key-value database. It provides ACID transactions, fast single-file access, and a stable API.
 
 RedbStorage implements GlueSQL's `Store`, `StoreMut`, and `Transaction` traits.
+
 ## Example
 
 ```rust
-use gluesql::{prelude::Glue, redb_storage::RedbStorage};
+use gluesql::{gluesql_redb_storage::RedbStorage, prelude::Glue};
 
 fn main() {
     let storage = RedbStorage::new("data/my_db.redb").unwrap();
