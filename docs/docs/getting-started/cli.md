@@ -38,7 +38,7 @@ gluesql --execute ~/sql_path/query.sql
 This option allows you to specify the path to your database's data directory or file. The default `memory` storage is non-persistent and does not use `--path`. For path-backed storages, specify both `--path` and `--storage`. For example, you can use the following command to specify a custom data path `~/mydatabase`:
 
 ```
-gluesql --path ~/mydatabase
+gluesql --path ~/mydatabase --storage=json
 ```
 
 ### --storage
