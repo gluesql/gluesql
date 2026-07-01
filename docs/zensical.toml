@@ -53,6 +53,7 @@ nav = [
       "sql-syntax/data-types/interval.md",
       "sql-syntax/data-types/list.md",
       "sql-syntax/data-types/map.md",
+      "sql-syntax/data-types/point.md",
       "sql-syntax/data-types/bytea.md",
       "sql-syntax/data-types/inet.md",
       "sql-syntax/data-types/uuid.md",
