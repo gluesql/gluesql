@@ -7,4 +7,5 @@ pub mod bitwise_shift_right;
 pub mod case;
 pub mod concat;
 pub mod in_list;
+pub mod long_arrow;
 pub mod unary_operator;
