@@ -2,6 +2,7 @@ use {
     crate::*,
     gluesql_core::{
         ast::IndexOperator::*,
+        executor::EvaluateError,
         prelude::{Payload, Value::*},
     },
 };
@@ -70,11 +71,7 @@ CREATE TABLE User (
         WHERE id IN (
             SELECT * FROM User WHERE id = 1
         )",
-        Ok(select!(
-            id  | num | name
-            I64 | I64 | Str;
-            1     2     "Hello".to_owned()
-        )),
+        Err(EvaluateError::MoreThanOneColumnReturned.into()),
         idx!(idx_id, Eq, "1"),
     );
 });

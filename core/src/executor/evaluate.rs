@@ -7,7 +7,7 @@ use {
     self::function::BreakCase,
     super::{
         context::{AggregateValues, RowContext},
-        select::select,
+        select::{select, select_with_labels},
     },
     crate::{
         data::{CustomFunction, Interval, Row, Value},
@@ -175,9 +175,14 @@ where
                 return Err(EvaluateError::SchemalessProjectionForInSubQuery.into());
             }
             let target = eval(target_expr)?;
+            let (labels, rows) = select_with_labels(storage, subquery, context.cloned())?;
+
+            if labels.len() > 1 {
+                return Err(EvaluateError::MoreThanOneColumnReturned.into());
+            }
 
             let mut matched = false;
-            for row in select(storage, subquery, context.cloned())? {
+            for row in rows {
                 let value = row?.into_values().into_iter().next().unwrap_or(Value::Null);
                 let evaluated = Evaluated::Value(Cow::Owned(value));
 

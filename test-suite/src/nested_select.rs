@@ -1,6 +1,9 @@
 use {
     crate::*,
-    gluesql_core::{executor::Payload, prelude::Value},
+    gluesql_core::{
+        executor::{EvaluateError, Payload},
+        prelude::Value,
+    },
 };
 
 test_case!(nested_select, {
@@ -110,5 +113,14 @@ test_case!(nested_select, {
 
     for (sql, expected) in test_cases {
         g.test(sql, expected);
+    }
+
+    let error_cases = [
+        "SELECT id FROM Player WHERE id IN (SELECT id, name FROM Player)",
+        "SELECT id FROM Player WHERE id IN (SELECT id, name FROM Player WHERE id = 0)",
+    ];
+
+    for sql in error_cases {
+        g.test(sql, Err(EvaluateError::MoreThanOneColumnReturned.into()));
     }
 });
