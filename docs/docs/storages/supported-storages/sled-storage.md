@@ -8,11 +8,7 @@ SledStorage can only be used in a Rust environment. It is the only storage among
 You can simply create a SledStorage instance using a path, as shown below:
 
 ```rust
-use {
-    gluesql::{prelude::Glue, sled_storage::SledStorage},
-    sled_storage::sled,
-    std::convert::TryFrom,
-};
+use gluesql::{gluesql_sled_storage::SledStorage, prelude::Glue};
 
 fn main() {
     let storage = SledStorage::new("data/temp").unwrap();
@@ -30,6 +26,11 @@ fn main() {
 If you want to use the Sled that SledStorage uses directly with a specific configuration, you can do so as follows:
 
 ```rust
+use {
+    gluesql::{gluesql_sled_storage::{sled, SledStorage}, prelude::Glue},
+    std::convert::TryFrom,
+};
+
 let config = sled::Config::default()
     .path("data/using_config")
     .temporary(true)

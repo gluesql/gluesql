@@ -1,6 +1,6 @@
 # Data Aggregation
 
-The Query Builder API in GlueSQL allows you to construct SQL queries programmatically. This page provides an introduction to data aggregation using the Query Builder API.
+The Query Builder API in GlueSQL allows you to construct query plans programmatically. This page provides an introduction to data aggregation using the Query Builder API.
 
 ## Prerequisites
 

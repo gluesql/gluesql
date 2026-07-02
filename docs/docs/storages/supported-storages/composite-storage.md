@@ -8,9 +8,9 @@ CompositeStorage is a special type of Storage. It does not possess any real stor
 
 CompositeStorage lets you create tables backed by different storage implementations and query them through the same SQL interface. You can perform operations like JOIN across those tables without changing the query language for each backing store.
 
-## Potential and Future Plans
+## Working across Storage Types
 
-CompositeStorage can be immensely useful in various applications. At present, GlueSQL might not offer a plethora of reference storages. However, plans are in place to support a diverse range of storages in the future. These include log files like CSV and Parquet, and even NoSQL databases like Redis and MongoDB. They're not exceptions; they can fully provide an SQL interface via GlueSQL.
+CompositeStorage can be immensely useful in applications that need to work across multiple storage backends. It does not hard-code a fixed list of allowed backends. Instead, it combines storages registered through `push` when they implement the required GlueSQL storage traits. This includes bundled storages such as JsonStorage for JSON and JSONL files, CSV and Parquet file storages, and service-backed storages like Redis and MongoDB.
 
 In addition, just as you would use an ORM to handle multiple different SQL databases with the same interface, plans are in place to use existing SQL databases in a similar way as storages in GlueSQL. Once all these plans come to fruition, you will be able to implement your data pipelines very simply.
 

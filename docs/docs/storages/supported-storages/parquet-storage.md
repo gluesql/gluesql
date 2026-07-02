@@ -79,7 +79,7 @@ SELECT * FROM food;
 #### Deleting Data and Querying
 
 ```sql
-DELETE name FROM food WHERE name = 'steak';
+DELETE FROM food WHERE name = 'steak';
 SELECT * FROM food;
 ```
 
@@ -108,7 +108,7 @@ glue.execute("INSERT INTO food VALUES('sushi'), ('steak');")
 glue.execute("UPDATE food SET name = 'Nigiri Sushi' WHERE name='sushi';")
     .unwrap();
 
-glue.execute("DELETE name FROM food WHERE name = 'steak';")
+glue.execute("DELETE FROM food WHERE name = 'steak';")
     .unwrap();
 
 glue.execute("SELECT * FROM food;").unwrap();
