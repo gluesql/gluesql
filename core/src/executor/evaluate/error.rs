@@ -127,6 +127,9 @@ pub enum EvaluateError {
     #[error("subquery returns more than one column")]
     MoreThanOneColumnReturned,
 
+    #[error("IN (subquery) must return one column")]
+    InSubqueryMustReturnOneColumn,
+
     #[error("schemaless projection is not allowed for IN (subquery)")]
     SchemalessProjectionForInSubQuery,
 

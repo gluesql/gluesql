@@ -68,7 +68,7 @@ CREATE TABLE User (
         "
         SELECT * FROM User u1
         WHERE id IN (
-            SELECT * FROM User WHERE id = 1
+            SELECT id FROM User WHERE id = 1
         )",
         Ok(select!(
             id  | num | name
