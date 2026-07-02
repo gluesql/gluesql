@@ -2,7 +2,6 @@ use {
     crate::*,
     gluesql_core::{
         ast::IndexOperator::*,
-        executor::EvaluateError,
         prelude::{Payload, Value::*},
     },
 };
@@ -69,9 +68,13 @@ CREATE TABLE User (
         "
         SELECT * FROM User u1
         WHERE id IN (
-            SELECT * FROM User WHERE id = 1
+            SELECT id FROM User WHERE id = 1
         )",
-        Err(EvaluateError::MoreThanOneColumnReturned.into()),
+        Ok(select!(
+            id  | num | name
+            I64 | I64 | Str;
+            1     2     "Hello".to_owned()
+        )),
         idx!(idx_id, Eq, "1"),
     );
 });

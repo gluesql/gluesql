@@ -121,6 +121,9 @@ test_case!(nested_select, {
     ];
 
     for sql in error_cases {
-        g.test(sql, Err(EvaluateError::MoreThanOneColumnReturned.into()));
+        g.test(
+            sql,
+            Err(EvaluateError::InSubqueryMustReturnOneColumn.into()),
+        );
     }
 });

@@ -178,7 +178,7 @@ where
             let (labels, rows) = select_with_labels(storage, subquery, context.cloned())?;
 
             if labels.len() > 1 {
-                return Err(EvaluateError::MoreThanOneColumnReturned.into());
+                return Err(EvaluateError::InSubqueryMustReturnOneColumn.into());
             }
 
             let mut matched = false;
