@@ -71,53 +71,40 @@ mod tests {
         },
     };
 
-    fn query_plan(sql: &str) -> QueryPlan {
-        let statement = parse(sql)
+    fn statement_plan(sql: &str) -> StatementPlan {
+        parse(sql)
             .and_then(|mut statements| translate(&statements.remove(0)))
             .map(StatementPlan::from)
-            .unwrap();
-
-        let StatementPlan::Query(query) = statement else {
-            panic!("expected query plan");
-        };
-
-        query
+            .unwrap()
     }
 
     #[test]
     fn query_plan_wraps_only_present_limit_and_offset() {
         assert!(matches!(
-            query_plan("SELECT * FROM Item"),
-            QueryPlan::Body(_)
+            statement_plan("SELECT * FROM Item"),
+            StatementPlan::Query(QueryPlan::Body(_))
         ));
         assert!(matches!(
-            query_plan("SELECT * FROM Item LIMIT 3"),
-            QueryPlan::Limit(LimitPlan { input, .. })
+            statement_plan("SELECT * FROM Item LIMIT 3"),
+            StatementPlan::Query(QueryPlan::Limit(LimitPlan { input, .. }))
                 if matches!(input, LimitInputPlan::Body(_))
         ));
         assert!(matches!(
-            query_plan("SELECT * FROM Item OFFSET 2"),
-            QueryPlan::Offset(_)
+            statement_plan("SELECT * FROM Item OFFSET 2"),
+            StatementPlan::Query(QueryPlan::Offset(_))
         ));
-
-        let QueryPlan::Limit(LimitPlan {
-            count: limit,
-            input,
-        }) = query_plan("SELECT * FROM Item LIMIT 3 OFFSET 2")
-        else {
-            panic!("expected limit plan");
-        };
-        let LimitInputPlan::Offset(OffsetPlan {
-            count: offset,
-            input,
-        }) = input
-        else {
-            panic!("expected offset plan");
-        };
-        let QueryBodyPlan { body, .. } = input;
-
-        assert!(matches!(body, SetExprPlan::Select(_)));
-        assert_eq!(limit, ExprPlan::Literal(Literal::Number(3.into())));
-        assert_eq!(offset, ExprPlan::Literal(Literal::Number(2.into())));
+        assert!(matches!(
+            statement_plan("SELECT * FROM Item LIMIT 3 OFFSET 2"),
+            StatementPlan::Query(QueryPlan::Limit(LimitPlan {
+                count: ExprPlan::Literal(Literal::Number(limit)),
+                input: LimitInputPlan::Offset(OffsetPlan {
+                    count: ExprPlan::Literal(Literal::Number(offset)),
+                    input: QueryBodyPlan {
+                        body: SetExprPlan::Select(_),
+                        ..
+                    },
+                }),
+            })) if limit == 3 && offset == 2
+        ));
     }
 }

@@ -285,6 +285,8 @@ mod tests {
         test!("(SELECT id FROM Carry)", false);
         test!("(SELECT id FROM Carry AS Foo)", true);
         test!("(SELECT T.id FROM Carry AS Bar)", false);
+        test!("(SELECT * FROM Foo LIMIT 1)", true);
+        test!("(SELECT * FROM Foo OFFSET 1)", true);
 
         // PlanExpr::QueryAndExpr
         test!(

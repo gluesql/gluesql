@@ -39,36 +39,36 @@ mod tests {
 
     #[test]
     fn limit_accepts_body_input() {
-        let LimitPlan {
-            input: LimitInputPlan::Body(_),
-            count: actual,
-        } = (LimitPlan {
+        let plan = LimitPlan {
             input: LimitInputPlan::Body(body()),
             count: count(3),
-        })
-        else {
-            panic!("expected body input");
         };
 
-        assert_eq!(actual, count(3));
+        assert!(matches!(
+            plan,
+            LimitPlan {
+                input: LimitInputPlan::Body(_),
+                count: actual,
+            } if actual == count(3)
+        ));
     }
 
     #[test]
     fn limit_accepts_offset_input() {
-        let LimitPlan {
-            input: LimitInputPlan::Offset(_),
-            count: actual,
-        } = (LimitPlan {
+        let plan = LimitPlan {
             input: LimitInputPlan::Offset(OffsetPlan {
                 input: body(),
                 count: count(2),
             }),
             count: count(3),
-        })
-        else {
-            panic!("expected offset input");
         };
 
-        assert_eq!(actual, count(3));
+        assert!(matches!(
+            plan,
+            LimitPlan {
+                input: LimitInputPlan::Offset(_),
+                count: actual,
+            } if actual == count(3)
+        ));
     }
 }

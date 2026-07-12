@@ -1,4 +1,8 @@
-use {crate::*, Value::*, gluesql_core::prelude::*};
+use {
+    crate::*,
+    Value::*,
+    gluesql_core::{error::FetchError, prelude::*},
+};
 
 test_case!(limit, {
     let g = get_tester!();
@@ -112,4 +116,9 @@ test_case!(limit, {
     for (sql, expected) in test_cases {
         g.test(sql, Ok(expected));
     }
+
+    g.test(
+        "SELECT * FROM MissingTable LIMIT 1;",
+        Err(FetchError::TableNotFound("MissingTable".to_owned()).into()),
+    );
 });

@@ -296,10 +296,7 @@ mod tests {
     }
 
     fn select_query(query: &QueryPlan) -> &SelectPlan {
-        let QueryPlan::Body(body) = query else {
-            panic!("expected query body");
-        };
-        let SetExprPlan::Select(select) = &body.body else {
+        let SetExprPlan::Select(select) = query.body() else {
             panic!("expected select");
         };
 
@@ -379,10 +376,7 @@ mod tests {
         let StatementPlan::Query(query) = &statement else {
             panic!("expected query");
         };
-        let QueryPlan::Body(body) = query else {
-            panic!("expected query body");
-        };
-        try_visit_expr(&body.order_by[0].expr, &mut |expr| {
+        try_visit_expr(&query.order_by()[0].expr, &mut |expr| {
             if let ExprPlan::Aggregate(aggregate) = expr {
                 found_slots.push(aggregate.slot);
             }
@@ -396,12 +390,11 @@ mod tests {
     #[test]
     fn ignores_stale_slot_when_binding_same_aggregate() {
         let mut query = parse_query("SELECT COUNT(*) FROM Item HAVING COUNT(*) > 0");
-        let QueryPlan::Body(body) = &mut query else {
-            panic!("expected query body");
-        };
-        let SetExprPlan::Select(select) = &mut body.body else {
+        let order_by = query.order_by().to_vec();
+        let SetExprPlan::Select(select) = query.body() else {
             panic!("expected select");
         };
+        let mut select = select.clone();
         let ProjectionPlan::SelectItems(items) = &mut select.projection else {
             panic!("expected select items");
         };
@@ -413,6 +406,10 @@ mod tests {
             if let ExprPlan::Aggregate(aggregate) = expr {
                 aggregate.slot = Some(99);
             }
+        });
+        query = QueryPlan::Body(QueryBodyPlan {
+            body: SetExprPlan::Select(select),
+            order_by,
         });
 
         let StatementPlan::Query(query) = plan(StatementPlan::Query(query)) else {
@@ -471,10 +468,7 @@ mod tests {
         let TableFactorPlan::Derived { subquery, .. } = &select.from.relation else {
             panic!("expected derived table");
         };
-        let QueryPlan::Body(body) = subquery else {
-            panic!("expected query body");
-        };
-        let SetExprPlan::Select(inner) = &body.body else {
+        let SetExprPlan::Select(inner) = subquery.body() else {
             panic!("expected inner select");
         };
 
@@ -567,8 +561,10 @@ mod tests {
 
     #[test]
     fn plans_values_limit_and_offset_subqueries() {
-        let QueryPlan::Body(body) = parse_query("SELECT id FROM Item") else {
-            panic!("expected query body");
+        let body_query = parse_query("SELECT id FROM Item");
+        let body = QueryBodyPlan {
+            body: body_query.body().clone(),
+            order_by: body_query.order_by().to_vec(),
         };
         let offset = OffsetPlan {
             input: body,
@@ -584,30 +580,26 @@ mod tests {
             panic!("expected query");
         };
 
-        let QueryPlan::Limit(LimitPlan { input, count }) = query else {
-            panic!("expected limit plan");
-        };
-        let ExprPlan::Subquery(limit) = count else {
-            panic!("expected limit subquery");
-        };
-        assert_planned_query(limit.as_ref());
-
-        let LimitInputPlan::Offset(OffsetPlan { count, .. }) = input else {
-            panic!("expected offset plan");
-        };
-        let ExprPlan::Subquery(offset) = count else {
-            panic!("expected offset subquery");
-        };
-        assert_planned_query(offset.as_ref());
+        assert!(matches!(
+            query,
+            QueryPlan::Limit(LimitPlan {
+                input: LimitInputPlan::Offset(OffsetPlan {
+                    count: ExprPlan::Subquery(offset),
+                    ..
+                }),
+                count: ExprPlan::Subquery(limit),
+            }) if {
+                assert_planned_query(limit.as_ref());
+                assert_planned_query(offset.as_ref());
+                true
+            }
+        ));
 
         let statement = parse_and_plan("VALUES ((SELECT COUNT(*) FROM Item))");
         let StatementPlan::Query(query) = statement else {
             panic!("expected query");
         };
-        let QueryPlan::Body(body) = query else {
-            panic!("expected query body");
-        };
-        let SetExprPlan::Values(values) = &body.body else {
+        let SetExprPlan::Values(values) = query.body() else {
             panic!("expected values");
         };
         let ExprPlan::Subquery(value_subquery) = &values.0[0][0] else {
