@@ -48,46 +48,38 @@ jobs:
           git config --global user.email "ci@example.com"
           git config --global user.name "CI"
       - run: rustup component add llvm-tools-preview
-      - name: Install grcov (prebuilt)
+      - name: Install cargo-llvm-cov (prebuilt)
         uses: taiki-e/install-action@v2
         with:
-          tool: grcov@0.10.5
-      - name: Prepare coverage dirs
+          tool: cargo-llvm-cov@0.8.7
+      - name: Prepare coverage directory
         run: |
-          mkdir -p coverage/profraw
-      - name: test
+          mkdir -p coverage
+          cargo llvm-cov clean --workspace
+      - name: Generate coverage data
         env:
-          RUSTFLAGS: -Cinstrument-coverage
-          LLVM_PROFILE_FILE: coverage/profraw/%p-%m.profraw
           GIT_REMOTE: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
-        run: GIT_REMOTE=$GIT_REMOTE cargo test --all-features --verbose
-      - name: Merge coverage profiles and free space
         run: |
-          echo "Merging coverage profiles..."
-          LLVM_BIN=$(rustc --print sysroot)/lib/rustlib/$(rustc -vV | sed -n 's|host: ||p')/bin
-          "$LLVM_BIN/llvm-profdata" merge -sparse coverage/profraw/*.profraw -o coverage/merged.profdata
+          cargo llvm-cov \
+            --workspace \
+            --all-features \
+            --no-report
+      - name: Free disk space before coverage report
+        run: |
           echo "Removing incremental build artifacts to free space..."
-          rm -rf target/debug/incremental || true
-          echo "Removing Cargo registry/git caches to free space..."
-          rm -rf ~/.cargo/registry ~/.cargo/git || true
-      - name: Run grcov
+          rm -rf target/llvm-cov-target/debug/incremental || true
+      - name: Generate LCOV report
         run: |
-          grcov . \
-            --binary-path ./target/debug/ \
-            -s . \
-            -t lcov \
-            --branch \
-            --ignore-not-existing \
-            --ignore "/*" \
-            --ignore "pkg/rust/examples/*.rs" \
-            --ignore "cli/src/{cli,helper,lib,main}.rs" \
-            --excl-line "(#\\[derive\\()|(^\s*.await[;,]?$)|(^test_case\!\([\d\w]+,)" \
-            -o ./coverage/lcov.info
-      - name: Cleanup raw and merged profiles
+          cargo llvm-cov report \
+            --lcov \
+            --no-default-ignore-filename-regex \
+            --ignore-filename-regex '(^|/)(pkg/rust/examples/.*|cli/src/(cli|helper|lib|main)\.rs)$' \
+            --output-path ./coverage/lcov.info
+      - name: Cleanup coverage build artifacts
         if: always()
         run: |
-          rm -f coverage/profraw/*.profraw || true
-          rm -f coverage/merged.profdata || true
+          cargo llvm-cov clean --workspace || true
+          rm -rf ~/.cargo/registry ~/.cargo/git || true
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
