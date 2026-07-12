@@ -3,6 +3,9 @@ use {
     gluesql_core::{error::ValueError, prelude::Value::*},
 };
 
+pub mod implicit_insert;
+pub mod text;
+
 test_case!(nullable, {
     let g = get_tester!();
 
@@ -248,41 +251,4 @@ test_case!(nullable, {
     for (sql, expected) in test_cases {
         g.test(sql, expected);
     }
-});
-
-test_case!(nullable_text, {
-    let g = get_tester!();
-
-    g.run(
-        "
-        CREATE TABLE Foo (
-            id INTEGER,
-            name TEXT NULL
-        );
-    ",
-    );
-
-    g.run("INSERT INTO Foo (id, name) VALUES (1, 'Hello'), (2, Null);");
-});
-
-test_case!(nullable_implicit_insert, {
-    let g = get_tester!();
-
-    g.run(
-        "
-        CREATE TABLE Foo (
-            id INTEGER,
-            name TEXT NULL
-        );
-    ",
-    );
-
-    g.run("INSERT INTO Foo (id) VALUES (1)");
-    g.test(
-        "SELECT id, name FROM Foo",
-        Ok(select_with_null!(
-            id   | name;
-            I64(1)  Null
-        )),
-    );
 });

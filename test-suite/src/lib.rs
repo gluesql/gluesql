@@ -85,27 +85,27 @@ macro_rules! generate_store_tests {
         glue!(project, project::project);
 
         // expression tests
-        glue!(arithmetic_error, expr::arithmetic::error::error);
-        glue!(arithmetic_project, expr::arithmetic::project::project);
-        glue!(arithmetic_on_where, expr::arithmetic::on_where::on_where);
-        glue!(bitwise_and, expr::bitwise_and::bitwise_and);
+        glue!(expr_arithmetic_error, expr::arithmetic::error::error);
+        glue!(expr_arithmetic_project, expr::arithmetic::project::project);
+        glue!(expr_arithmetic_on_where, expr::arithmetic::on_where::on_where);
+        glue!(expr_bitwise_and, expr::bitwise_and::bitwise_and);
         glue!(
-            bitwise_shift_left,
+            expr_bitwise_shift_left,
             expr::bitwise_shift_left::bitwise_shift_left
         );
         glue!(
-            bitwise_shift_right,
+            expr_bitwise_shift_right,
             expr::bitwise_shift_right::bitwise_shift_right
         );
-        glue!(case, expr::case::case);
-        glue!(concat, expr::concat::concat);
+        glue!(expr_case, expr::case::case);
+        glue!(expr_concat, expr::concat::concat);
         glue!(expr_between, expr::between::between);
         glue!(expr_in_list, expr::in_list::in_list);
         glue!(expr_arrow, expr::arrow::arrow);
-        glue!(unary_operator, expr::unary_operator::unary_operator);
+        glue!(expr_unary_operator, expr::unary_operator::unary_operator);
 
-        glue!(create_table, alter::create_table);
-        glue!(drop_table, alter::drop_table);
+        glue!(alter_create_table, alter::create_table::create_table);
+        glue!(alter_drop_table, alter::drop_table::drop_table);
         glue!(default, default::default);
         glue!(limit, limit::limit);
         glue!(like_ilike, like_ilike::like_ilike);
@@ -116,25 +116,25 @@ macro_rules! generate_store_tests {
         glue!(function_initcap, function::initcap::initcap);
         glue!(function_gcd_lcm, function::gcd_lcm::gcd_lcm);
         glue!(function_left_right, function::left_right::left_right);
-        glue!(function_sqrt, function::sqrt_power::sqrt);
-        glue!(function_power, function::sqrt_power::power);
+        glue!(function_sqrt_power_sqrt, function::sqrt_power::sqrt::sqrt);
+        glue!(function_sqrt_power_power, function::sqrt_power::power::power);
         glue!(function_lpad_rpad, function::lpad_rpad::lpad_rpad);
         glue!(function_trim, function::trim::trim);
         glue!(function_div_mod, function::div_mod::div_mod);
         glue!(function_ltrim_rtrim, function::ltrim_rtrim::ltrim_rtrim);
-        glue!(function_cast_literal, function::cast::cast_literal);
-        glue!(function_cast_value, function::cast::cast_value);
+        glue!(function_cast_literal, function::cast::literal::literal);
+        glue!(function_cast_value, function::cast::value::value);
         glue!(function_coalesce, function::coalesce::coalesce);
         glue!(function_concat, function::concat::concat);
         glue!(function_concat_ws, function::concat_ws::concat_ws);
         glue!(function_ifnull, function::ifnull::ifnull);
         glue!(function_is_empty, function::is_empty::is_empty);
-        glue!(function_math_function_asin, function::math_function::asin);
-        glue!(function_math_function_acos, function::math_function::acos);
-        glue!(function_math_function_atan, function::math_function::atan);
-        glue!(function_math_function_sin, function::math_function::sin);
-        glue!(function_math_function_cos, function::math_function::cos);
-        glue!(function_math_function_tan, function::math_function::tan);
+        glue!(function_math_function_asin, function::math_function::asin::asin);
+        glue!(function_math_function_acos, function::math_function::acos::acos);
+        glue!(function_math_function_atan, function::math_function::atan::atan);
+        glue!(function_math_function_sin, function::math_function::sin::sin);
+        glue!(function_math_function_cos, function::math_function::cos::cos);
+        glue!(function_math_function_tan, function::math_function::tan::tan);
         glue!(function_abs, function::abs::abs);
         glue!(function_ceil, function::ceil::ceil);
         glue!(function_round, function::round::round);
@@ -143,11 +143,11 @@ macro_rules! generate_store_tests {
         glue!(function_floor, function::floor::floor);
         glue!(function_format, function::format::format);
         glue!(function_last_day, function::last_day::last_day);
-        glue!(function_ln, function::exp_log::ln);
-        glue!(function_log, function::exp_log::log);
-        glue!(function_log2, function::exp_log::log2);
-        glue!(function_log10, function::exp_log::log10);
-        glue!(function_exp, function::exp_log::exp);
+        glue!(function_exp_log_ln, function::exp_log::ln::ln);
+        glue!(function_exp_log_log, function::exp_log::log::log);
+        glue!(function_exp_log_log2, function::exp_log::log2::log2);
+        glue!(function_exp_log_log10, function::exp_log::log10::log10);
+        glue!(function_exp_log_exp, function::exp_log::exp::exp);
         glue!(function_now, function::now::now);
         glue!(function_current_date, function::current_date::current_date);
         glue!(function_current_time, function::current_time::current_time);
@@ -160,16 +160,16 @@ macro_rules! generate_store_tests {
         glue!(function_to_date, function::to_date::to_date);
         glue!(function_ascii, function::ascii::ascii);
         glue!(function_chr, function::chr::chr);
-        glue!(function_mod, function::md5::md5);
+        glue!(function_md5, function::md5::md5);
         glue!(function_replace, function::replace::replace);
         glue!(function_length, function::length::length);
         glue!(function_position, function::position::position);
         glue!(function_find_idx, function::find_idx::find_idx);
-        glue!(function_geometry_get_x, function::geometry::get_x);
-        glue!(function_geometry_get_y, function::geometry::get_y);
+        glue!(function_geometry_get_x, function::geometry::get_x::get_x);
+        glue!(function_geometry_get_y, function::geometry::get_y::get_y);
         glue!(
             function_geometry_calc_distance,
-            function::geometry::calc_distance
+            function::geometry::calc_distance::calc_distance
         );
         glue!(function_add_month, function::add_month::add_month);
         glue!(function_slice, function::slice::slice);
@@ -179,41 +179,44 @@ macro_rules! generate_store_tests {
         glue!(function_nullif, function::nullif::nullif);
         glue!(function_hex, function::hex::hex);
         glue!(join, join::join);
-        glue!(join_project, join::project);
+        glue!(join_project, join::project::project);
         glue!(migrate, migrate::migrate);
         glue!(nested_select, nested_select::nested_select);
         glue!(primary_key, primary_key::primary_key);
         glue!(foreign_key, foreign_key::foreign_key);
         glue!(series, series::series);
         glue!(nullable, nullable::nullable);
-        glue!(nullable_text, nullable::nullable_text);
-        glue!(nullable_implicit_insert, nullable::nullable_implicit_insert);
+        glue!(nullable_text, nullable::text::text);
+        glue!(
+            nullable_implicit_insert,
+            nullable::implicit_insert::implicit_insert
+        );
         glue!(ordering, ordering::ordering);
         glue!(order_by, order_by::order_by);
-        glue!(sql_types, data_type::sql_types::sql_types);
+        glue!(data_type_sql_types, data_type::sql_types::sql_types);
         glue!(show_columns, show_columns::show_columns);
         glue!(distinct, distinct::distinct);
-        glue!(int8, data_type::int8::int8);
-        glue!(int16, data_type::int16::int16);
-        glue!(int32, data_type::int32::int32);
-        glue!(int64, data_type::int64::int64);
-        glue!(int128, data_type::int128::int128);
-        glue!(float32, data_type::float32::float32);
-        glue!(uint16, data_type::uint16::uint16);
-        glue!(uint8, data_type::uint8::uint8);
-        glue!(uint64, data_type::uint64::uint64);
-        glue!(uint32, data_type::uint32::uint32);
-        glue!(uint128, data_type::uint128::uint128);
-        glue!(date, data_type::date::date);
-        glue!(timestamp, data_type::timestamp::timestamp);
-        glue!(time, data_type::time::time);
-        glue!(interval, data_type::interval::interval);
-        glue!(list, data_type::list::list);
-        glue!(map, data_type::map::map);
-        glue!(bytea, data_type::bytea::bytea);
-        glue!(inet, data_type::inet::inet);
-        glue!(point, data_type::point::point);
-        glue!(null, data_type::null::null);
+        glue!(data_type_int8, data_type::int8::int8);
+        glue!(data_type_int16, data_type::int16::int16);
+        glue!(data_type_int32, data_type::int32::int32);
+        glue!(data_type_int64, data_type::int64::int64);
+        glue!(data_type_int128, data_type::int128::int128);
+        glue!(data_type_float32, data_type::float32::float32);
+        glue!(data_type_uint16, data_type::uint16::uint16);
+        glue!(data_type_uint8, data_type::uint8::uint8);
+        glue!(data_type_uint64, data_type::uint64::uint64);
+        glue!(data_type_uint32, data_type::uint32::uint32);
+        glue!(data_type_uint128, data_type::uint128::uint128);
+        glue!(data_type_date, data_type::date::date);
+        glue!(data_type_timestamp, data_type::timestamp::timestamp);
+        glue!(data_type_time, data_type::time::time);
+        glue!(data_type_interval, data_type::interval::interval);
+        glue!(data_type_list, data_type::list::list);
+        glue!(data_type_map, data_type::map::map);
+        glue!(data_type_bytea, data_type::bytea::bytea);
+        glue!(data_type_inet, data_type::inet::inet);
+        glue!(data_type_point, data_type::point::point);
+        glue!(data_type_null, data_type::null::null);
         glue!(synthesize, synthesize::synthesize);
         glue!(validate_unique, validate::unique::unique);
         glue!(validate_types, validate::types::types);
@@ -224,12 +227,9 @@ macro_rules! generate_store_tests {
         glue!(function_reverse, function::reverse::reverse);
         glue!(function_repeat, function::repeat::repeat);
         glue!(function_substr, function::substr::substr);
-        glue!(uuid, data_type::uuid::uuid);
-        glue!(decimal, data_type::decimal::decimal);
-        glue!(
-            function_generate_uuid,
-            function::generate_uuid::generate_uuid
-        );
+        glue!(data_type_uuid, data_type::uuid::uuid);
+        glue!(data_type_decimal, data_type::decimal::decimal);
+        glue!(function_generate_uuid, function::generate_uuid::generate_uuid);
         glue!(function_greatest, function::greatest::greatest);
         glue!(type_match, type_match::type_match);
         glue!(dictionary, dictionary::dictionary);
@@ -245,15 +245,15 @@ macro_rules! generate_store_tests {
         glue!(query_builder_basic, query_builder::basic::basic);
         glue!(
             query_builder_statements_querying_data_aggregation,
-            query_builder::statements::querying::data_aggregation
+            query_builder::statements::querying::data_aggregation::data_aggregation
         );
         glue!(
             query_builder_statements_querying_data_selection_and_projection,
-            query_builder::statements::querying::data_selection_and_projection
+            query_builder::statements::querying::data_selection_and_projection::data_selection_and_projection
         );
         glue!(
             query_builder_function_math_rounding,
-            query_builder::function::math::rounding
+            query_builder::function::math::rounding::rounding
         );
         glue!(
             query_builder_expr_pattern_matching,
@@ -267,78 +267,79 @@ macro_rules! generate_store_tests {
         glue!(query_builder_alias_as, query_builder::alias_as::alias_as);
         glue!(
             query_builder_function_text_case_conversion,
-            query_builder::function::text::case_conversion
+            query_builder::function::text::case_conversion::case_conversion
         );
         glue!(
             query_builder_function_text_character_conversion,
-            query_builder::function::text::character_conversion
+            query_builder::function::text::character_conversion::character_conversion
         );
         glue!(
             query_builder_function_text_padding,
-            query_builder::function::text::padding
+            query_builder::function::text::padding::padding
         );
         glue!(
             query_builder_function_reference_coalesce,
-            query_builder::function::reference::coalesce
+            query_builder::function::reference::coalesce::coalesce
         );
         glue!(
             query_builder_function_reference_ifnull,
-            query_builder::function::reference::ifnull
+            query_builder::function::reference::ifnull::ifnull
+        );
+        glue!(
+            query_builder_function_reference_nullif,
+            query_builder::function::reference::nullif::nullif
         );
         glue!(
             query_builder_function_datetime_conversion,
-            query_builder::function::datetime::conversion
+            query_builder::function::datetime::conversion::conversion
         );
         glue!(
             query_builder_function_math_basic_arithmetic,
-            query_builder::function::math::basic_arithmetic
+            query_builder::function::math::basic_arithmetic::basic_arithmetic
         );
         glue!(
             query_builder_function_math_conversion,
-            query_builder::function::math::conversion
+            query_builder::function::math::conversion::conversion
         );
         glue!(
             query_builder_function_datetime_formatting,
-            query_builder::function::datetime::formatting
+            query_builder::function::datetime::formatting::formatting
         );
         glue!(
             query_builder_function_text_trimming,
-            query_builder::function::text::trimming
+            query_builder::function::text::trimming::trimming
         );
         glue!(
             query_builder_function_datetime_current_date_and_time,
-            query_builder::function::datetime::current_date_and_time
+            query_builder::function::datetime::current_date_and_time::current_date_and_time
         );
         glue!(
             query_builder_function_reference_current_date,
-            query_builder::function::reference::current_date
+            query_builder::function::reference::current_date::current_date
         );
         glue!(
             query_builder_function_reference_current_time,
-            query_builder::function::reference::current_time
+            query_builder::function::reference::current_time::current_time
         );
         glue!(
             query_builder_function_reference_current_timestamp,
-            query_builder::function::reference::current_timestamp
+            query_builder::function::reference::current_timestamp::current_timestamp
         );
         glue!(
             query_builder_function_reference_generate_uuid,
-            query_builder::function::reference::generate_uuid
+            query_builder::function::reference::generate_uuid::generate_uuid
         );
         glue!(
             query_builder_function_text_position_and_indexing,
-            query_builder::function::text::position_and_indexing
+            query_builder::function::text::position_and_indexing::position_and_indexing
         );
         glue!(query_builder_index_by, query_builder::index_by::index_by);
-        glue!(
-            query_builder_schemaless_basic,
-            query_builder::schemaless::basic::basic
-        );
+        glue!(query_builder_schemaless_basic, query_builder::schemaless::basic::basic);
 
         // schemaless data support
-        glue!(schemaless_basic, schemaless::basic);
-        glue!(schemaless_error, schemaless::error);
-        glue!(schemaless_project, schemaless::project);
+        glue!(schemaless_basic, schemaless::basic::basic);
+        glue!(schemaless_error, schemaless::error::error);
+        glue!(schemaless_project, schemaless::project::project);
 
         glue!(store_insert_schema, store::insert_schema::insert_schema);
     };
@@ -353,8 +354,11 @@ macro_rules! generate_alter_table_tests {
             };
         }
 
-        glue!(alter_table_rename, alter::alter_table_rename);
-        glue!(alter_table_add_drop, alter::alter_table_add_drop);
+        glue!(alter_alter_table_rename, alter::alter_table::rename::rename);
+        glue!(
+            alter_alter_table_add_drop,
+            alter::alter_table::add_drop::add_drop
+        );
     };
 }
 
@@ -367,7 +371,7 @@ macro_rules! generate_custom_function_tests {
             };
         }
 
-        glue!(function_custom, custom_function::custom);
+        glue!(custom_function, custom_function::custom_function);
     };
 }
 
@@ -380,16 +384,16 @@ macro_rules! generate_index_tests {
             };
         }
 
-        glue!(index_basic, index::basic);
-        glue!(index_and, index::and);
-        glue!(index_nested, index::nested);
-        glue!(index_null, index::null);
-        glue!(index_expr, index::expr);
-        glue!(index_value, index::value);
-        glue!(index_order_by, index::order_by);
-        glue!(index_order_by_multi, index::order_by_multi);
-        glue!(showindexes, index::showindexes);
-        glue!(dictionary_index, dictionary_index::ditionary_index);
+        glue!(index_basic, index::basic::basic);
+        glue!(index_and, index::and::and);
+        glue!(index_nested, index::nested::nested);
+        glue!(index_null, index::null::null);
+        glue!(index_expr, index::expr::expr);
+        glue!(index_value, index::value::value);
+        glue!(index_order_by, index::order_by::order_by);
+        glue!(index_order_by_multi, index::order_by::multi::multi);
+        glue!(index_showindexes, index::showindexes::showindexes);
+        glue!(dictionary_index, dictionary_index::dictionary_index);
     };
 }
 
@@ -402,13 +406,13 @@ macro_rules! generate_transaction_tests {
             };
         }
 
-        glue!(transaction_basic, transaction::basic);
+        glue!(transaction_basic, transaction::basic::basic);
+        glue!(transaction_table, transaction::table::table);
+        glue!(transaction_dictionary, transaction::dictionary::dictionary);
         glue!(
-            transaction_create_drop_table,
-            transaction::create_drop_table
+            transaction_query_builder,
+            transaction::query_builder::query_builder
         );
-        glue!(transaction_dictionary, transaction::dictionary);
-        glue!(transaction_query_builder, transaction::query_builder);
     };
 }
 
@@ -421,8 +425,11 @@ macro_rules! generate_alter_table_index_tests {
             };
         }
 
-        glue!(alter_table_drop_indexed_table, alter::drop_indexed_table);
-        glue!(alter_table_drop_indexed_column, alter::drop_indexed_column);
+        glue!(alter_drop_indexed_table, alter::drop_indexed::table::table);
+        glue!(
+            alter_drop_indexed_column,
+            alter::drop_indexed::column::column
+        );
     };
 }
 
@@ -437,19 +444,19 @@ macro_rules! generate_transaction_alter_table_tests {
 
         glue!(
             transaction_alter_table_rename_table,
-            transaction::alter_table_rename_table
+            transaction::alter_table::rename_table::rename_table
         );
         glue!(
             transaction_alter_table_rename_column,
-            transaction::alter_table_rename_column
+            transaction::alter_table::rename_column::rename_column
         );
         glue!(
             transaction_alter_table_add_column,
-            transaction::alter_table_add_column
+            transaction::alter_table::add_column::add_column
         );
         glue!(
             transaction_alter_table_drop_column,
-            transaction::alter_table_drop_column
+            transaction::alter_table::drop_column::drop_column
         );
     };
 }
@@ -463,8 +470,8 @@ macro_rules! generate_transaction_index_tests {
             };
         }
 
-        glue!(transaction_index_create, transaction::index_create);
-        glue!(transaction_index_drop, transaction::index_drop);
+        glue!(transaction_index_create, transaction::index::create::create);
+        glue!(transaction_index_drop, transaction::index::drop::drop);
     };
 }
 

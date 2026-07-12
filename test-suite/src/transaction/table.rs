@@ -3,7 +3,7 @@ use {
     gluesql_core::{error::FetchError, prelude::Value::*},
 };
 
-test_case!(create_drop_table, {
+test_case!(table, {
     let g = get_tester!();
 
     // CREATE && ROLLBACK

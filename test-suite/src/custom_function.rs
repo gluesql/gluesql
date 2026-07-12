@@ -6,7 +6,7 @@ use {
     },
 };
 
-test_case!(custom, {
+test_case!(custom_function, {
     let g = get_tester!();
 
     let test_cases = [

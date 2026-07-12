@@ -387,7 +387,7 @@ pub fn ifnull<'a>(expr: Evaluated<'a>, then: Evaluated<'a>) -> ControlFlow<Evalu
 }
 
 pub fn nullif<'a>(expr1: Evaluated<'a>, expr2: &Evaluated<'a>) -> ControlFlow<Evaluated<'a>> {
-    Continue(if &expr1 == expr2 {
+    Continue(if expr1.evaluate_eq(expr2).is_true() {
         Evaluated::Value(Cow::Owned(Value::Null))
     } else {
         expr1

@@ -3,7 +3,7 @@ use {
     gluesql_core::{error::TranslateError, prelude::Value::*},
 };
 
-test_case!(ditionary_index, {
+test_case!(dictionary_index, {
     let g = get_tester!();
 
     g.run("CREATE TABLE Foo (id INT, name TEXT);");
