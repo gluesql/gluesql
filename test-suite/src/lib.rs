@@ -44,6 +44,8 @@ pub mod values;
 
 pub mod tester;
 
+#[doc(hidden)]
+pub use paste::paste;
 pub use tester::*;
 
 #[macro_export]
@@ -59,444 +61,413 @@ macro_rules! declare_test_fn {
     };
 }
 
+#[doc(hidden)]
+#[macro_export]
+macro_rules! declare_rust_case {
+    ($test: meta, $storage: ident, $case: ident) => {
+        $crate::declare_test_fn!($test, $storage, $case, $case::$case);
+    };
+    ($test: meta, $storage: ident, $module: ident::$case: ident) => {
+        $crate::paste! {
+            $crate::declare_test_fn!(
+                $test,
+                $storage,
+                [<$module _ $case>],
+                $module::$case::$case
+            );
+        }
+    };
+    ($test: meta, $storage: ident, $module1: ident::$module2: ident::$case: ident) => {
+        $crate::paste! {
+            $crate::declare_test_fn!(
+                $test,
+                $storage,
+                [<$module1 _ $module2 _ $case>],
+                $module1::$module2::$case::$case
+            );
+        }
+    };
+    ($test: meta, $storage: ident, $module1: ident::$module2: ident::$module3: ident::$case: ident) => {
+        $crate::paste! {
+            $crate::declare_test_fn!(
+                $test,
+                $storage,
+                [<$module1 _ $module2 _ $module3 _ $case>],
+                $module1::$module2::$module3::$case::$case
+            );
+        }
+    };
+}
+
 #[macro_export]
 macro_rules! generate_store_tests {
     ($test: meta, $storage: ident) => {
-        macro_rules! glue {
-            ($title: ident, $func: path) => {
-                declare_test_fn!($test, $storage, $title, $func);
+        $crate::generate_store_tests!(@rust_case $test, $storage, $);
+    };
+    (@rust_case $test: meta, $storage: ident, $d: tt) => {
+        macro_rules! rust_case {
+            ($d($d module:ident)::+) => {
+                $crate::declare_rust_case!($test, $storage, $d($d module)::+);
             };
         }
-        glue!(update, update::update);
-        glue!(insert, insert::insert);
-        glue!(delete, delete::delete);
-        glue!(basic, basic::basic);
-        glue!(array, array::array);
-        glue!(aggregate_avg, aggregate::avg::avg);
-        glue!(aggregate_count, aggregate::count::count);
-        glue!(aggregate_group_by, aggregate::group_by::group_by);
-        glue!(aggregate_max, aggregate::max::max);
-        glue!(aggregate_min, aggregate::min::min);
-        glue!(aggregate_stdev, aggregate::stdev::stdev);
-        glue!(aggregate_sum, aggregate::sum::sum);
-        glue!(aggregate_variance, aggregate::variance::variance);
-        glue!(aggregate_error, aggregate::error::error);
-        glue!(aggregate_expr, aggregate::expr::expr);
-        glue!(project, project::project);
+        rust_case!(update);
+        rust_case!(insert);
+        rust_case!(delete);
+        rust_case!(basic);
+        rust_case!(array);
+        rust_case!(aggregate::avg);
+        rust_case!(aggregate::count);
+        rust_case!(aggregate::group_by);
+        rust_case!(aggregate::max);
+        rust_case!(aggregate::min);
+        rust_case!(aggregate::stdev);
+        rust_case!(aggregate::sum);
+        rust_case!(aggregate::variance);
+        rust_case!(aggregate::error);
+        rust_case!(aggregate::expr);
+        rust_case!(project);
 
         // expression tests
-        glue!(expr_arithmetic_error, expr::arithmetic::error::error);
-        glue!(expr_arithmetic_project, expr::arithmetic::project::project);
-        glue!(expr_arithmetic_on_where, expr::arithmetic::on_where::on_where);
-        glue!(expr_bitwise_and, expr::bitwise_and::bitwise_and);
-        glue!(
-            expr_bitwise_shift_left,
-            expr::bitwise_shift_left::bitwise_shift_left
-        );
-        glue!(
-            expr_bitwise_shift_right,
-            expr::bitwise_shift_right::bitwise_shift_right
-        );
-        glue!(expr_case, expr::case::case);
-        glue!(expr_concat, expr::concat::concat);
-        glue!(expr_between, expr::between::between);
-        glue!(expr_in_list, expr::in_list::in_list);
-        glue!(expr_arrow, expr::arrow::arrow);
-        glue!(expr_unary_operator, expr::unary_operator::unary_operator);
+        rust_case!(expr::arithmetic::error);
+        rust_case!(expr::arithmetic::project);
+        rust_case!(expr::arithmetic::on_where);
+        rust_case!(expr::bitwise_and);
+        rust_case!(expr::bitwise_shift_left);
+        rust_case!(expr::bitwise_shift_right);
+        rust_case!(expr::case);
+        rust_case!(expr::concat);
+        rust_case!(expr::between);
+        rust_case!(expr::in_list);
+        rust_case!(expr::arrow);
+        rust_case!(expr::unary_operator);
 
-        glue!(alter_create_table, alter::create_table::create_table);
-        glue!(alter_drop_table, alter::drop_table::drop_table);
-        glue!(default, default::default);
-        glue!(limit, limit::limit);
-        glue!(like_ilike, like_ilike::like_ilike);
-        glue!(filter, filter::filter);
-        glue!(inline_view, inline_view::inline_view);
-        glue!(values, values::values);
-        glue!(function_upper_lower, function::upper_lower::upper_lower);
-        glue!(function_initcap, function::initcap::initcap);
-        glue!(function_gcd_lcm, function::gcd_lcm::gcd_lcm);
-        glue!(function_left_right, function::left_right::left_right);
-        glue!(function_sqrt_power_sqrt, function::sqrt_power::sqrt::sqrt);
-        glue!(function_sqrt_power_power, function::sqrt_power::power::power);
-        glue!(function_lpad_rpad, function::lpad_rpad::lpad_rpad);
-        glue!(function_trim, function::trim::trim);
-        glue!(function_div_mod, function::div_mod::div_mod);
-        glue!(function_ltrim_rtrim, function::ltrim_rtrim::ltrim_rtrim);
-        glue!(function_cast_literal, function::cast::literal::literal);
-        glue!(function_cast_value, function::cast::value::value);
-        glue!(function_coalesce, function::coalesce::coalesce);
-        glue!(function_concat, function::concat::concat);
-        glue!(function_concat_ws, function::concat_ws::concat_ws);
-        glue!(function_ifnull, function::ifnull::ifnull);
-        glue!(function_is_empty, function::is_empty::is_empty);
-        glue!(function_math_function_asin, function::math_function::asin::asin);
-        glue!(function_math_function_acos, function::math_function::acos::acos);
-        glue!(function_math_function_atan, function::math_function::atan::atan);
-        glue!(function_math_function_sin, function::math_function::sin::sin);
-        glue!(function_math_function_cos, function::math_function::cos::cos);
-        glue!(function_math_function_tan, function::math_function::tan::tan);
-        glue!(function_abs, function::abs::abs);
-        glue!(function_ceil, function::ceil::ceil);
-        glue!(function_round, function::round::round);
-        glue!(function_trunc, function::trunc::trunc);
-        glue!(function_rand, function::rand::rand);
-        glue!(function_floor, function::floor::floor);
-        glue!(function_format, function::format::format);
-        glue!(function_last_day, function::last_day::last_day);
-        glue!(function_exp_log_ln, function::exp_log::ln::ln);
-        glue!(function_exp_log_log, function::exp_log::log::log);
-        glue!(function_exp_log_log2, function::exp_log::log2::log2);
-        glue!(function_exp_log_log10, function::exp_log::log10::log10);
-        glue!(function_exp_log_exp, function::exp_log::exp::exp);
-        glue!(function_now, function::now::now);
-        glue!(function_current_date, function::current_date::current_date);
-        glue!(function_current_time, function::current_time::current_time);
-        glue!(
-            function_current_timestamp,
-            function::current_timestamp::current_timestamp
-        );
-        glue!(function_sign, function::sign::sign);
-        glue!(function_skip, function::skip::skip);
-        glue!(function_to_date, function::to_date::to_date);
-        glue!(function_ascii, function::ascii::ascii);
-        glue!(function_chr, function::chr::chr);
-        glue!(function_md5, function::md5::md5);
-        glue!(function_replace, function::replace::replace);
-        glue!(function_length, function::length::length);
-        glue!(function_position, function::position::position);
-        glue!(function_find_idx, function::find_idx::find_idx);
-        glue!(function_geometry_get_x, function::geometry::get_x::get_x);
-        glue!(function_geometry_get_y, function::geometry::get_y::get_y);
-        glue!(
-            function_geometry_calc_distance,
-            function::geometry::calc_distance::calc_distance
-        );
-        glue!(function_add_month, function::add_month::add_month);
-        glue!(function_slice, function::slice::slice);
-        glue!(function_entries, function::entries::entries);
-        glue!(function_keys, function::keys::keys);
-        glue!(function_values, function::values::values);
-        glue!(function_nullif, function::nullif::nullif);
-        glue!(function_hex, function::hex::hex);
-        glue!(join, join::join);
-        glue!(join_project, join::project::project);
-        glue!(migrate, migrate::migrate);
-        glue!(nested_select, nested_select::nested_select);
-        glue!(primary_key, primary_key::primary_key);
-        glue!(foreign_key, foreign_key::foreign_key);
-        glue!(series, series::series);
-        glue!(nullable, nullable::nullable);
-        glue!(nullable_text, nullable::text::text);
-        glue!(
-            nullable_implicit_insert,
-            nullable::implicit_insert::implicit_insert
-        );
-        glue!(ordering, ordering::ordering);
-        glue!(order_by, order_by::order_by);
-        glue!(data_type_sql_types, data_type::sql_types::sql_types);
-        glue!(show_columns, show_columns::show_columns);
-        glue!(distinct, distinct::distinct);
-        glue!(data_type_int8, data_type::int8::int8);
-        glue!(data_type_int16, data_type::int16::int16);
-        glue!(data_type_int32, data_type::int32::int32);
-        glue!(data_type_int64, data_type::int64::int64);
-        glue!(data_type_int128, data_type::int128::int128);
-        glue!(data_type_float32, data_type::float32::float32);
-        glue!(data_type_uint16, data_type::uint16::uint16);
-        glue!(data_type_uint8, data_type::uint8::uint8);
-        glue!(data_type_uint64, data_type::uint64::uint64);
-        glue!(data_type_uint32, data_type::uint32::uint32);
-        glue!(data_type_uint128, data_type::uint128::uint128);
-        glue!(data_type_date, data_type::date::date);
-        glue!(data_type_timestamp, data_type::timestamp::timestamp);
-        glue!(data_type_time, data_type::time::time);
-        glue!(data_type_interval, data_type::interval::interval);
-        glue!(data_type_list, data_type::list::list);
-        glue!(data_type_map, data_type::map::map);
-        glue!(data_type_bytea, data_type::bytea::bytea);
-        glue!(data_type_inet, data_type::inet::inet);
-        glue!(data_type_point, data_type::point::point);
-        glue!(data_type_null, data_type::null::null);
-        glue!(synthesize, synthesize::synthesize);
-        glue!(validate_unique, validate::unique::unique);
-        glue!(validate_types, validate::types::types);
-        glue!(function_extract, function::extract::extract);
-        glue!(function_radians, function::radians::radians);
-        glue!(function_degrees, function::degrees::degrees);
-        glue!(function_pi, function::pi::pi);
-        glue!(function_reverse, function::reverse::reverse);
-        glue!(function_repeat, function::repeat::repeat);
-        glue!(function_substr, function::substr::substr);
-        glue!(data_type_uuid, data_type::uuid::uuid);
-        glue!(data_type_decimal, data_type::decimal::decimal);
-        glue!(function_generate_uuid, function::generate_uuid::generate_uuid);
-        glue!(function_greatest, function::greatest::greatest);
-        glue!(type_match, type_match::type_match);
-        glue!(dictionary, dictionary::dictionary);
-        glue!(function_append, function::append::append);
-        glue!(function_prepend, function::prepend::prepend);
-        glue!(function_sort, function::sort::sort);
-        glue!(function_take, function::take::take);
-        glue!(column_alias, column_alias::column_alias);
-        glue!(function_splice, function::splice::splice);
-        glue!(function_dedup, function::dedup::dedup);
+        rust_case!(alter::create_table);
+        rust_case!(alter::drop_table);
+        rust_case!(default);
+        rust_case!(limit);
+        rust_case!(like_ilike);
+        rust_case!(filter);
+        rust_case!(inline_view);
+        rust_case!(values);
+        rust_case!(function::upper_lower);
+        rust_case!(function::initcap);
+        rust_case!(function::gcd_lcm);
+        rust_case!(function::left_right);
+        rust_case!(function::sqrt_power::sqrt);
+        rust_case!(function::sqrt_power::power);
+        rust_case!(function::lpad_rpad);
+        rust_case!(function::trim);
+        rust_case!(function::div_mod);
+        rust_case!(function::ltrim_rtrim);
+        rust_case!(function::cast::literal);
+        rust_case!(function::cast::value);
+        rust_case!(function::coalesce);
+        rust_case!(function::concat);
+        rust_case!(function::concat_ws);
+        rust_case!(function::ifnull);
+        rust_case!(function::is_empty);
+        rust_case!(function::math_function::asin);
+        rust_case!(function::math_function::acos);
+        rust_case!(function::math_function::atan);
+        rust_case!(function::math_function::sin);
+        rust_case!(function::math_function::cos);
+        rust_case!(function::math_function::tan);
+        rust_case!(function::abs);
+        rust_case!(function::ceil);
+        rust_case!(function::round);
+        rust_case!(function::trunc);
+        rust_case!(function::rand);
+        rust_case!(function::floor);
+        rust_case!(function::format);
+        rust_case!(function::last_day);
+        rust_case!(function::exp_log::ln);
+        rust_case!(function::exp_log::log);
+        rust_case!(function::exp_log::log2);
+        rust_case!(function::exp_log::log10);
+        rust_case!(function::exp_log::exp);
+        rust_case!(function::now);
+        rust_case!(function::current_date);
+        rust_case!(function::current_time);
+        rust_case!(function::current_timestamp);
+        rust_case!(function::sign);
+        rust_case!(function::skip);
+        rust_case!(function::to_date);
+        rust_case!(function::ascii);
+        rust_case!(function::chr);
+        rust_case!(function::md5);
+        rust_case!(function::replace);
+        rust_case!(function::length);
+        rust_case!(function::position);
+        rust_case!(function::find_idx);
+        rust_case!(function::geometry::get_x);
+        rust_case!(function::geometry::get_y);
+        rust_case!(function::geometry::calc_distance);
+        rust_case!(function::add_month);
+        rust_case!(function::slice);
+        rust_case!(function::entries);
+        rust_case!(function::keys);
+        rust_case!(function::values);
+        rust_case!(function::nullif);
+        rust_case!(function::hex);
+        rust_case!(join);
+        rust_case!(join::project);
+        rust_case!(migrate);
+        rust_case!(nested_select);
+        rust_case!(primary_key);
+        rust_case!(foreign_key);
+        rust_case!(series);
+        rust_case!(nullable);
+        rust_case!(nullable::text);
+        rust_case!(nullable::implicit_insert);
+        rust_case!(ordering);
+        rust_case!(order_by);
+        rust_case!(data_type::sql_types);
+        rust_case!(show_columns);
+        rust_case!(distinct);
+        rust_case!(data_type::int8);
+        rust_case!(data_type::int16);
+        rust_case!(data_type::int32);
+        rust_case!(data_type::int64);
+        rust_case!(data_type::int128);
+        rust_case!(data_type::float32);
+        rust_case!(data_type::uint16);
+        rust_case!(data_type::uint8);
+        rust_case!(data_type::uint64);
+        rust_case!(data_type::uint32);
+        rust_case!(data_type::uint128);
+        rust_case!(data_type::date);
+        rust_case!(data_type::timestamp);
+        rust_case!(data_type::time);
+        rust_case!(data_type::interval);
+        rust_case!(data_type::list);
+        rust_case!(data_type::map);
+        rust_case!(data_type::bytea);
+        rust_case!(data_type::inet);
+        rust_case!(data_type::point);
+        rust_case!(data_type::null);
+        rust_case!(synthesize);
+        rust_case!(validate::unique);
+        rust_case!(validate::types);
+        rust_case!(function::extract);
+        rust_case!(function::radians);
+        rust_case!(function::degrees);
+        rust_case!(function::pi);
+        rust_case!(function::reverse);
+        rust_case!(function::repeat);
+        rust_case!(function::substr);
+        rust_case!(data_type::uuid);
+        rust_case!(data_type::decimal);
+        rust_case!(function::generate_uuid);
+        rust_case!(function::greatest);
+        rust_case!(type_match);
+        rust_case!(dictionary);
+        rust_case!(function::append);
+        rust_case!(function::prepend);
+        rust_case!(function::sort);
+        rust_case!(function::take);
+        rust_case!(column_alias);
+        rust_case!(function::splice);
+        rust_case!(function::dedup);
 
         // query-builder
-        glue!(query_builder_basic, query_builder::basic::basic);
-        glue!(
-            query_builder_statements_querying_data_aggregation,
-            query_builder::statements::querying::data_aggregation::data_aggregation
-        );
-        glue!(
-            query_builder_statements_querying_data_selection_and_projection,
-            query_builder::statements::querying::data_selection_and_projection::data_selection_and_projection
-        );
-        glue!(
-            query_builder_function_math_rounding,
-            query_builder::function::math::rounding::rounding
-        );
-        glue!(
-            query_builder_expr_pattern_matching,
-            query_builder::expr::pattern_matching::pattern_matching
-        );
-        glue!(query_builder_select, query_builder::select::select);
-        glue!(query_builder_values, query_builder::values::values);
-        glue!(query_builder_insert, query_builder::insert::insert);
-        glue!(query_builder_update, query_builder::update::update);
-        glue!(query_builder_delete, query_builder::delete::delete);
-        glue!(query_builder_alias_as, query_builder::alias_as::alias_as);
-        glue!(
-            query_builder_function_text_case_conversion,
-            query_builder::function::text::case_conversion::case_conversion
-        );
-        glue!(
-            query_builder_function_text_character_conversion,
-            query_builder::function::text::character_conversion::character_conversion
-        );
-        glue!(
-            query_builder_function_text_padding,
-            query_builder::function::text::padding::padding
-        );
-        glue!(
-            query_builder_function_reference_coalesce,
-            query_builder::function::reference::coalesce::coalesce
-        );
-        glue!(
-            query_builder_function_reference_ifnull,
-            query_builder::function::reference::ifnull::ifnull
-        );
-        glue!(
-            query_builder_function_reference_nullif,
-            query_builder::function::reference::nullif::nullif
-        );
-        glue!(
-            query_builder_function_datetime_conversion,
-            query_builder::function::datetime::conversion::conversion
-        );
-        glue!(
-            query_builder_function_math_basic_arithmetic,
-            query_builder::function::math::basic_arithmetic::basic_arithmetic
-        );
-        glue!(
-            query_builder_function_math_conversion,
-            query_builder::function::math::conversion::conversion
-        );
-        glue!(
-            query_builder_function_datetime_formatting,
-            query_builder::function::datetime::formatting::formatting
-        );
-        glue!(
-            query_builder_function_text_trimming,
-            query_builder::function::text::trimming::trimming
-        );
-        glue!(
-            query_builder_function_datetime_current_date_and_time,
-            query_builder::function::datetime::current_date_and_time::current_date_and_time
-        );
-        glue!(
-            query_builder_function_reference_current_date,
-            query_builder::function::reference::current_date::current_date
-        );
-        glue!(
-            query_builder_function_reference_current_time,
-            query_builder::function::reference::current_time::current_time
-        );
-        glue!(
-            query_builder_function_reference_current_timestamp,
-            query_builder::function::reference::current_timestamp::current_timestamp
-        );
-        glue!(
-            query_builder_function_reference_generate_uuid,
-            query_builder::function::reference::generate_uuid::generate_uuid
-        );
-        glue!(
-            query_builder_function_text_position_and_indexing,
-            query_builder::function::text::position_and_indexing::position_and_indexing
-        );
-        glue!(query_builder_index_by, query_builder::index_by::index_by);
-        glue!(query_builder_schemaless_basic, query_builder::schemaless::basic::basic);
+        rust_case!(query_builder::basic);
+        rust_case!(query_builder::statements::querying::data_aggregation);
+        rust_case!(query_builder::statements::querying::data_selection_and_projection);
+        rust_case!(query_builder::function::math::rounding);
+        rust_case!(query_builder::expr::pattern_matching);
+        rust_case!(query_builder::select);
+        rust_case!(query_builder::values);
+        rust_case!(query_builder::insert);
+        rust_case!(query_builder::update);
+        rust_case!(query_builder::delete);
+        rust_case!(query_builder::alias_as);
+        rust_case!(query_builder::function::text::case_conversion);
+        rust_case!(query_builder::function::text::character_conversion);
+        rust_case!(query_builder::function::text::padding);
+        rust_case!(query_builder::function::reference::coalesce);
+        rust_case!(query_builder::function::reference::ifnull);
+        rust_case!(query_builder::function::reference::nullif);
+        rust_case!(query_builder::function::datetime::conversion);
+        rust_case!(query_builder::function::math::basic_arithmetic);
+        rust_case!(query_builder::function::math::conversion);
+        rust_case!(query_builder::function::datetime::formatting);
+        rust_case!(query_builder::function::text::trimming);
+        rust_case!(query_builder::function::datetime::current_date_and_time);
+        rust_case!(query_builder::function::reference::current_date);
+        rust_case!(query_builder::function::reference::current_time);
+        rust_case!(query_builder::function::reference::current_timestamp);
+        rust_case!(query_builder::function::reference::generate_uuid);
+        rust_case!(query_builder::function::text::position_and_indexing);
+        rust_case!(query_builder::index_by);
+        rust_case!(query_builder::schemaless::basic);
 
         // schemaless data support
-        glue!(schemaless_basic, schemaless::basic::basic);
-        glue!(schemaless_error, schemaless::error::error);
-        glue!(schemaless_project, schemaless::project::project);
+        rust_case!(schemaless::basic);
+        rust_case!(schemaless::error);
+        rust_case!(schemaless::project);
 
-        glue!(store_insert_schema, store::insert_schema::insert_schema);
+        rust_case!(store::insert_schema);
     };
 }
 
 #[macro_export]
 macro_rules! generate_alter_table_tests {
     ($test: meta, $storage: ident) => {
-        macro_rules! glue {
-            ($title: ident, $func: path) => {
-                declare_test_fn!($test, $storage, $title, $func);
+        $crate::generate_alter_table_tests!(@rust_case $test, $storage, $);
+    };
+    (@rust_case $test: meta, $storage: ident, $d: tt) => {
+        macro_rules! rust_case {
+            ($d($d module:ident)::+) => {
+                $crate::declare_rust_case!($test, $storage, $d($d module)::+);
             };
         }
 
-        glue!(alter_alter_table_rename, alter::alter_table::rename::rename);
-        glue!(
-            alter_alter_table_add_drop,
-            alter::alter_table::add_drop::add_drop
-        );
+        rust_case!(alter::alter_table::rename);
+        rust_case!(alter::alter_table::add_drop);
     };
 }
 
 #[macro_export]
 macro_rules! generate_custom_function_tests {
     ($test: meta, $storage: ident) => {
-        macro_rules! glue {
-            ($title: ident, $func: path) => {
-                declare_test_fn!($test, $storage, $title, $func);
+        $crate::generate_custom_function_tests!(@rust_case $test, $storage, $);
+    };
+    (@rust_case $test: meta, $storage: ident, $d: tt) => {
+        macro_rules! rust_case {
+            ($d($d module:ident)::+) => {
+                $crate::declare_rust_case!($test, $storage, $d($d module)::+);
             };
         }
 
-        glue!(custom_function, custom_function::custom_function);
+        rust_case!(custom_function);
     };
 }
 
 #[macro_export]
 macro_rules! generate_index_tests {
     ($test: meta, $storage: ident) => {
-        macro_rules! glue {
-            ($title: ident, $func: path) => {
-                declare_test_fn!($test, $storage, $title, $func);
+        $crate::generate_index_tests!(@rust_case $test, $storage, $);
+    };
+    (@rust_case $test: meta, $storage: ident, $d: tt) => {
+        macro_rules! rust_case {
+            ($d($d module:ident)::+) => {
+                $crate::declare_rust_case!($test, $storage, $d($d module)::+);
             };
         }
 
-        glue!(index_basic, index::basic::basic);
-        glue!(index_and, index::and::and);
-        glue!(index_nested, index::nested::nested);
-        glue!(index_null, index::null::null);
-        glue!(index_expr, index::expr::expr);
-        glue!(index_value, index::value::value);
-        glue!(index_order_by, index::order_by::order_by);
-        glue!(index_order_by_multi, index::order_by::multi::multi);
-        glue!(index_showindexes, index::showindexes::showindexes);
-        glue!(dictionary_index, dictionary_index::dictionary_index);
+        rust_case!(index::basic);
+        rust_case!(index::and);
+        rust_case!(index::nested);
+        rust_case!(index::null);
+        rust_case!(index::expr);
+        rust_case!(index::value);
+        rust_case!(index::order_by);
+        rust_case!(index::order_by::multi);
+        rust_case!(index::showindexes);
+        rust_case!(dictionary_index);
     };
 }
 
 #[macro_export]
 macro_rules! generate_transaction_tests {
     ($test: meta, $storage: ident) => {
-        macro_rules! glue {
-            ($title: ident, $func: path) => {
-                declare_test_fn!($test, $storage, $title, $func);
+        $crate::generate_transaction_tests!(@rust_case $test, $storage, $);
+    };
+    (@rust_case $test: meta, $storage: ident, $d: tt) => {
+        macro_rules! rust_case {
+            ($d($d module:ident)::+) => {
+                $crate::declare_rust_case!($test, $storage, $d($d module)::+);
             };
         }
 
-        glue!(transaction_basic, transaction::basic::basic);
-        glue!(transaction_table, transaction::table::table);
-        glue!(transaction_dictionary, transaction::dictionary::dictionary);
-        glue!(
-            transaction_query_builder,
-            transaction::query_builder::query_builder
-        );
+        rust_case!(transaction::basic);
+        rust_case!(transaction::table);
+        rust_case!(transaction::dictionary);
+        rust_case!(transaction::query_builder);
     };
 }
 
 #[macro_export]
 macro_rules! generate_alter_table_index_tests {
     ($test: meta, $storage: ident) => {
-        macro_rules! glue {
-            ($title: ident, $func: path) => {
-                declare_test_fn!($test, $storage, $title, $func);
+        $crate::generate_alter_table_index_tests!(@rust_case $test, $storage, $);
+    };
+    (@rust_case $test: meta, $storage: ident, $d: tt) => {
+        macro_rules! rust_case {
+            ($d($d module:ident)::+) => {
+                $crate::declare_rust_case!($test, $storage, $d($d module)::+);
             };
         }
 
-        glue!(alter_drop_indexed_table, alter::drop_indexed::table::table);
-        glue!(
-            alter_drop_indexed_column,
-            alter::drop_indexed::column::column
-        );
+        rust_case!(alter::drop_indexed::table);
+        rust_case!(alter::drop_indexed::column);
     };
 }
 
 #[macro_export]
 macro_rules! generate_transaction_alter_table_tests {
     ($test: meta, $storage: ident) => {
-        macro_rules! glue {
-            ($title: ident, $func: path) => {
-                declare_test_fn!($test, $storage, $title, $func);
+        $crate::generate_transaction_alter_table_tests!(@rust_case $test, $storage, $);
+    };
+    (@rust_case $test: meta, $storage: ident, $d: tt) => {
+        macro_rules! rust_case {
+            ($d($d module:ident)::+) => {
+                $crate::declare_rust_case!($test, $storage, $d($d module)::+);
             };
         }
 
-        glue!(
-            transaction_alter_table_rename_table,
-            transaction::alter_table::rename_table::rename_table
-        );
-        glue!(
-            transaction_alter_table_rename_column,
-            transaction::alter_table::rename_column::rename_column
-        );
-        glue!(
-            transaction_alter_table_add_column,
-            transaction::alter_table::add_column::add_column
-        );
-        glue!(
-            transaction_alter_table_drop_column,
-            transaction::alter_table::drop_column::drop_column
-        );
+        rust_case!(transaction::alter_table::rename_table);
+        rust_case!(transaction::alter_table::rename_column);
+        rust_case!(transaction::alter_table::add_column);
+        rust_case!(transaction::alter_table::drop_column);
     };
 }
 
 #[macro_export]
 macro_rules! generate_transaction_index_tests {
     ($test: meta, $storage: ident) => {
-        macro_rules! glue {
-            ($title: ident, $func: path) => {
-                declare_test_fn!($test, $storage, $title, $func);
+        $crate::generate_transaction_index_tests!(@rust_case $test, $storage, $);
+    };
+    (@rust_case $test: meta, $storage: ident, $d: tt) => {
+        macro_rules! rust_case {
+            ($d($d module:ident)::+) => {
+                $crate::declare_rust_case!($test, $storage, $d($d module)::+);
             };
         }
 
-        glue!(transaction_index_create, transaction::index::create::create);
-        glue!(transaction_index_drop, transaction::index::drop::drop);
+        rust_case!(transaction::index::create);
+        rust_case!(transaction::index::drop);
     };
 }
 
 #[macro_export]
 macro_rules! generate_metadata_table_tests {
     ($test: meta, $storage: ident) => {
-        macro_rules! glue {
-            ($title: ident, $func: path) => {
-                declare_test_fn!($test, $storage, $title, $func);
+        $crate::generate_metadata_table_tests!(@rust_case $test, $storage, $);
+    };
+    (@rust_case $test: meta, $storage: ident, $d: tt) => {
+        macro_rules! rust_case {
+            ($d($d module:ident)::+) => {
+                $crate::declare_rust_case!($test, $storage, $d($d module)::+);
             };
         }
 
-        glue!(metadata_table, metadata::table::table);
+        rust_case!(metadata::table);
     };
 }
 
 #[macro_export]
 macro_rules! generate_metadata_index_tests {
     ($test: meta, $storage: ident) => {
-        macro_rules! glue {
-            ($title: ident, $func: path) => {
-                declare_test_fn!($test, $storage, $title, $func);
+        $crate::generate_metadata_index_tests!(@rust_case $test, $storage, $);
+    };
+    (@rust_case $test: meta, $storage: ident, $d: tt) => {
+        macro_rules! rust_case {
+            ($d($d module:ident)::+) => {
+                $crate::declare_rust_case!($test, $storage, $d($d module)::+);
             };
         }
 
-        glue!(metadata_index, metadata::index::index);
+        rust_case!(metadata::index);
     };
 }
