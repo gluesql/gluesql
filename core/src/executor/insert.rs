@@ -6,7 +6,7 @@ use {
     crate::{
         ast::{ColumnDef, ColumnUniqueOption, ForeignKey},
         data::{Key, Row, SCHEMALESS_DOC_COLUMN, Schema, Value, value::BTreeMapJsonExt},
-        executor::{evaluate::evaluate_stateless, limit::Limit},
+        executor::{evaluate::evaluate_stateless, limit},
         plan::{ExprPlan, QueryPlan, SetExprPlan, ValuesPlan, plan_scalar_expr},
         result::{Error, Result},
         store::{GStore, GStoreMut},
@@ -114,9 +114,8 @@ fn fetch_vec_rows<T: GStore>(
     let column_defs = Rc::from(column_defs);
     let column_validation = ColumnValidation::All(&column_defs);
 
-    let rows_iter: Box<dyn Iterator<Item = Result<Vec<Value>>> + '_> = match &source.body {
+    let rows_iter: Box<dyn Iterator<Item = Result<Vec<Value>>> + '_> = match source.body() {
         SetExprPlan::Values(ValuesPlan(values_list)) => {
-            let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref())?;
             let column_defaults: Rc<[Option<ExprPlan>]> = Rc::from(
                 column_defs
                     .iter()
@@ -135,7 +134,7 @@ fn fetch_vec_rows<T: GStore>(
                     values: fill_values(&column_defs, &column_defaults, columns, values)?,
                 })
             });
-            let rows = limit.apply(rows);
+            let rows = limit::apply(source, rows)?;
             let rows = rows.map(|row| Ok::<_, Error>(row?.into_values()));
 
             Box::new(rows) as Box<dyn Iterator<Item = Result<Vec<Value>>> + '_>
@@ -248,9 +247,8 @@ fn validate_foreign_key<T: GStore>(
 fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &QueryPlan) -> Result<Vec<Vec<Value>>> {
     let doc_column: Rc<[String]> = Rc::from(vec![SCHEMALESS_DOC_COLUMN.to_owned()]);
 
-    let rows_iter: Box<dyn Iterator<Item = Result<Vec<Value>>> + '_> = match &source.body {
+    let rows_iter: Box<dyn Iterator<Item = Result<Vec<Value>>> + '_> = match source.body() {
         SetExprPlan::Values(ValuesPlan(values_list)) => {
-            let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref())?;
             let rows = values_list.iter().map({
                 let doc_column = Rc::clone(&doc_column);
                 move |values| {
@@ -276,7 +274,7 @@ fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &QueryPlan) -> Result<V
                     })
                 }
             });
-            let rows = limit.apply(rows);
+            let rows = limit::apply(source, rows)?;
             let rows = rows.map(|row| row.map(Row::into_values));
 
             Box::new(rows) as Box<dyn Iterator<Item = Result<Vec<Value>>> + '_>

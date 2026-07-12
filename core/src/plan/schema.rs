@@ -3,9 +3,9 @@ use {
     crate::{
         data::Schema,
         plan::{
-            ExprPlan, JoinConstraintPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
-            TableWithJoinsPlan,
+            ExprPlan, JoinConstraintPlan, JoinOperatorPlan, JoinPlan, LimitInputPlan, LimitPlan,
+            OffsetPlan, ProjectionPlan, QueryBodyPlan, QueryPlan, SelectItemPlan, SelectPlan,
+            SetExprPlan, StatementPlan, TableFactorPlan, TableWithJoinsPlan,
         },
         result::Result,
         store::Store,
@@ -95,29 +95,38 @@ fn scan_query<T: Store + ?Sized>(
     storage: &T,
     query: &QueryPlan,
 ) -> Result<HashMap<String, Schema>> {
-    let QueryPlan {
-        body,
-        limit,
-        offset,
-        ..
-    } = query;
+    match query {
+        QueryPlan::Body(body) => scan_query_body(storage, body),
+        QueryPlan::Offset(OffsetPlan { input, count }) => Ok(scan_query_body(storage, input)?
+            .into_iter()
+            .chain(scan_expr(storage, count)?)
+            .collect()),
+        QueryPlan::Limit(LimitPlan { input, count }) => {
+            let schema_list = match input {
+                LimitInputPlan::Body(body) => scan_query_body(storage, body)?,
+                LimitInputPlan::Offset(OffsetPlan { input, count }) => {
+                    scan_query_body(storage, input)?
+                        .into_iter()
+                        .chain(scan_expr(storage, count)?)
+                        .collect()
+                }
+            };
 
-    let schema_list = match body {
+            Ok(schema_list
+                .into_iter()
+                .chain(scan_expr(storage, count)?)
+                .collect())
+        }
+    }
+}
+
+fn scan_query_body<T: Store + ?Sized>(
+    storage: &T,
+    body: &QueryBodyPlan,
+) -> Result<HashMap<String, Schema>> {
+    let schema_list = match &body.body {
         SetExprPlan::Select(select) => scan_select(storage, select)?,
         SetExprPlan::Values(_) => HashMap::new(),
-    };
-
-    let schema_list = match (limit, offset) {
-        (Some(limit), Some(offset)) => schema_list
-            .into_iter()
-            .chain(scan_expr(storage, limit)?)
-            .chain(scan_expr(storage, offset)?)
-            .collect(),
-        (Some(expr), None) | (None, Some(expr)) => schema_list
-            .into_iter()
-            .chain(scan_expr(storage, expr)?)
-            .collect(),
-        (None, None) => schema_list,
     };
 
     Ok(schema_list)

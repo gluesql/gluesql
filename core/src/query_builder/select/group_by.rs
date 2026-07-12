@@ -141,7 +141,7 @@ mod tests {
         crate::{
             plan::{
                 JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
-                QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
+                QueryBodyPlan, QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
                 TableWithJoinsPlan,
             },
             query_builder::{Build, SelectItemList, col, table, test_query_builder},
@@ -237,12 +237,10 @@ mod tests {
                 aggregate_slots: None,
             };
 
-            Ok(StatementPlan::Query(QueryPlan {
+            Ok(StatementPlan::Query(QueryPlan::Body(QueryBodyPlan {
                 body: SetExprPlan::Select(Box::new(select)),
                 order_by: Vec::new(),
-                limit: None,
-                offset: None,
-            }))
+            })))
         };
         assert_eq!(actual, expected);
 

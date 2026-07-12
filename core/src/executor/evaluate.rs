@@ -89,7 +89,7 @@ where
         }
         ExprPlan::Subquery(query) => {
             let storage = storage.ok_or(EvaluateError::SubqueryNotAllowedInStatelessExpr)?;
-            if let SetExprPlan::Select(select) = &query.body
+            if let SetExprPlan::Select(select) = query.body()
                 && matches!(select.projection, ProjectionPlan::SchemalessMap)
             {
                 return Err(EvaluateError::SchemalessProjectionForSubQuery.into());
@@ -169,7 +169,7 @@ where
             negated,
         } => {
             let storage = storage.ok_or(EvaluateError::InSubqueryNotAllowedInStatelessExpr)?;
-            if let SetExprPlan::Select(select) = &subquery.body
+            if let SetExprPlan::Select(select) = subquery.body()
                 && matches!(select.projection, ProjectionPlan::SchemalessMap)
             {
                 return Err(EvaluateError::SchemalessProjectionForInSubQuery.into());

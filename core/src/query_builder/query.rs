@@ -9,7 +9,7 @@ use {
     crate::{
         ast::{Query, SetExpr, Values},
         parse_sql::parse_query,
-        plan::{QueryPlan, SetExprPlan, ValuesPlan},
+        plan::{QueryBodyPlan, QueryPlan, SetExprPlan, ValuesPlan},
         result::Result,
         translate::{NO_PARAMS, translate_query},
     },
@@ -91,12 +91,10 @@ impl<'a> QueryNode<'a> {
                     .map(ExprList::build_exprs_plan)
                     .collect::<Result<Vec<_>>>()?;
 
-                Ok(QueryPlan {
+                Ok(QueryPlan::Body(QueryBodyPlan {
                     body: SetExprPlan::Values(ValuesPlan(values)),
                     order_by: Vec::new(),
-                    limit: None,
-                    offset: None,
-                })
+                }))
             }
             QueryNode::SelectNode(node) => node.build_query_plan(),
             QueryNode::ValuesNode(node) => node.build_query_plan(),
@@ -156,7 +154,8 @@ mod test {
         crate::{
             plan::{
                 JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
-                QueryPlan, SelectPlan, SetExprPlan, TableFactorPlan, TableWithJoinsPlan,
+                QueryBodyPlan, QueryPlan, SelectPlan, SetExprPlan, TableFactorPlan,
+                TableWithJoinsPlan,
             },
             query_builder::{
                 SelectItemList, col, glue_indexes, glue_objects, glue_table_columns, glue_tables,
@@ -226,12 +225,10 @@ mod test {
                 aggregate_slots: None,
             };
 
-            QueryPlan {
+            QueryPlan::Body(QueryBodyPlan {
                 body: SetExprPlan::Select(Box::new(select)),
                 order_by: Vec::new(),
-                limit: None,
-                offset: None,
-            }
+            })
         };
         assert_eq!(actual.build_query_plan().unwrap(), expected);
 

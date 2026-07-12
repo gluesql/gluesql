@@ -1,42 +1,24 @@
+mod body;
+mod limit;
+mod offset;
+
+pub use {
+    body::{OrderByExprPlan, QueryBodyPlan, SelectPlan, SetExprPlan, ValuesPlan},
+    limit::{LimitInputPlan, LimitPlan},
+    offset::OffsetPlan,
+};
+
 use {
-    super::{AggregatePlan, ExprPlan, ProjectionPlan, TableWithJoinsPlan},
     crate::ast,
     serde::{Deserialize, Serialize},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct QueryPlan {
-    pub body: SetExprPlan,
-    pub order_by: Vec<OrderByExprPlan>,
-    pub limit: Option<ExprPlan>,
-    pub offset: Option<ExprPlan>,
+pub enum QueryPlan {
+    Body(QueryBodyPlan),
+    Offset(OffsetPlan),
+    Limit(LimitPlan),
 }
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum SetExprPlan {
-    Select(Box<SelectPlan>),
-    Values(ValuesPlan),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct SelectPlan {
-    pub distinct: bool,
-    pub projection: ProjectionPlan,
-    pub from: TableWithJoinsPlan,
-    pub selection: Option<ExprPlan>,
-    pub group_by: Vec<ExprPlan>,
-    pub having: Option<ExprPlan>,
-    pub aggregate_slots: Option<Vec<AggregatePlan>>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct OrderByExprPlan {
-    pub expr: ExprPlan,
-    pub asc: Option<bool>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct ValuesPlan(pub Vec<Vec<ExprPlan>>);
 
 impl From<ast::Query> for QueryPlan {
     fn from(query: ast::Query) -> Self {
@@ -47,66 +29,95 @@ impl From<ast::Query> for QueryPlan {
             offset,
         } = query;
 
-        Self {
+        let body = QueryBodyPlan {
             body: body.into(),
             order_by: order_by.into_iter().map(Into::into).collect(),
-            limit: limit.map(Into::into),
-            offset: offset.map(Into::into),
+        };
+
+        match (offset, limit) {
+            (None, None) => Self::Body(body),
+            (Some(offset), None) => Self::Offset(OffsetPlan {
+                input: body,
+                count: offset.into(),
+            }),
+            (None, Some(limit)) => Self::Limit(LimitPlan {
+                input: LimitInputPlan::Body(body),
+                count: limit.into(),
+            }),
+            (Some(offset), Some(limit)) => {
+                let offset = OffsetPlan {
+                    input: body,
+                    count: offset.into(),
+                };
+
+                Self::Limit(LimitPlan {
+                    input: LimitInputPlan::Offset(offset),
+                    count: limit.into(),
+                })
+            }
         }
     }
 }
 
-impl From<ast::SetExpr> for SetExprPlan {
-    fn from(set_expr: ast::SetExpr) -> Self {
-        match set_expr {
-            ast::SetExpr::Select(select) => Self::Select(Box::new((*select).into())),
-            ast::SetExpr::Values(values) => Self::Values(values.into()),
-        }
+#[cfg(test)]
+mod tests {
+    use {
+        super::{LimitInputPlan, LimitPlan, OffsetPlan, QueryBodyPlan, QueryPlan, SetExprPlan},
+        crate::{
+            ast::Literal,
+            parse_sql::parse,
+            plan::{ExprPlan, StatementPlan},
+            translate::translate,
+        },
+    };
+
+    fn query_plan(sql: &str) -> QueryPlan {
+        let statement = parse(sql)
+            .and_then(|mut statements| translate(&statements.remove(0)))
+            .map(StatementPlan::from)
+            .unwrap();
+
+        let StatementPlan::Query(query) = statement else {
+            panic!("expected query plan");
+        };
+
+        query
     }
-}
 
-impl From<ast::Select> for SelectPlan {
-    fn from(select: ast::Select) -> Self {
-        let ast::Select {
-            distinct,
-            projection,
-            from,
-            selection,
-            group_by,
-            having,
-        } = select;
+    #[test]
+    fn query_plan_wraps_only_present_limit_and_offset() {
+        assert!(matches!(
+            query_plan("SELECT * FROM Item"),
+            QueryPlan::Body(_)
+        ));
+        assert!(matches!(
+            query_plan("SELECT * FROM Item LIMIT 3"),
+            QueryPlan::Limit(LimitPlan { input, .. })
+                if matches!(input, LimitInputPlan::Body(_))
+        ));
+        assert!(matches!(
+            query_plan("SELECT * FROM Item OFFSET 2"),
+            QueryPlan::Offset(_)
+        ));
 
-        Self {
-            distinct,
-            projection: projection.into(),
-            from: from.into(),
-            selection: selection.map(Into::into),
-            group_by: group_by.into_iter().map(Into::into).collect(),
-            having: having.map(Into::into),
-            aggregate_slots: None,
-        }
-    }
-}
+        let QueryPlan::Limit(LimitPlan {
+            count: limit,
+            input,
+        }) = query_plan("SELECT * FROM Item LIMIT 3 OFFSET 2")
+        else {
+            panic!("expected limit plan");
+        };
+        let LimitInputPlan::Offset(OffsetPlan {
+            count: offset,
+            input,
+        }) = input
+        else {
+            panic!("expected offset plan");
+        };
+        let QueryBodyPlan { body, .. } = input;
 
-impl From<ast::OrderByExpr> for OrderByExprPlan {
-    fn from(order_by: ast::OrderByExpr) -> Self {
-        let ast::OrderByExpr { expr, asc } = order_by;
-
-        Self {
-            expr: expr.into(),
-            asc,
-        }
-    }
-}
-
-impl From<ast::Values> for ValuesPlan {
-    fn from(values: ast::Values) -> Self {
-        Self(
-            values
-                .0
-                .into_iter()
-                .map(|exprs| exprs.into_iter().map(Into::into).collect())
-                .collect(),
-        )
+        assert!(matches!(body, SetExprPlan::Select(_)));
+        assert_eq!(limit, ExprPlan::Literal(Literal::Number(3.into())));
+        assert_eq!(offset, ExprPlan::Literal(Literal::Number(2.into())));
     }
 }

@@ -3,8 +3,9 @@ use {
     crate::{
         data::Schema,
         plan::{
-            ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, ProjectionPlan,
-            QueryPlan, SelectItemPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
+            ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, LimitInputPlan,
+            LimitPlan, OffsetPlan, ProjectionPlan, QueryBodyPlan, QueryPlan, SelectItemPlan,
+            SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
         },
         result::Result,
     },
@@ -65,7 +66,31 @@ fn validate_query(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
     query: &QueryPlan,
 ) -> ValidateResult {
-    match &query.body {
+    match query {
+        QueryPlan::Body(body) => validate_query_body(schema_map, body),
+        QueryPlan::Offset(OffsetPlan { input, count }) => {
+            validate_query_body(schema_map, input)?;
+            validate_expr(schema_map, count)
+        }
+        QueryPlan::Limit(LimitPlan { input, count }) => {
+            match input {
+                LimitInputPlan::Body(body) => validate_query_body(schema_map, body)?,
+                LimitInputPlan::Offset(OffsetPlan { input, count }) => {
+                    validate_query_body(schema_map, input)?;
+                    validate_expr(schema_map, count)?;
+                }
+            }
+
+            validate_expr(schema_map, count)
+        }
+    }
+}
+
+fn validate_query_body(
+    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    body: &QueryBodyPlan,
+) -> ValidateResult {
+    match &body.body {
         SetExprPlan::Select(select) => validate_select(schema_map, select)?,
         SetExprPlan::Values(values) => {
             for row in &values.0 {
@@ -76,16 +101,8 @@ fn validate_query(
         }
     }
 
-    for order_by in &query.order_by {
+    for order_by in &body.order_by {
         validate_expr(schema_map, &order_by.expr)?;
-    }
-
-    if let Some(limit) = &query.limit {
-        validate_expr(schema_map, limit)?;
-    }
-
-    if let Some(offset) = &query.offset {
-        validate_expr(schema_map, offset)?;
     }
 
     Ok(())
@@ -225,7 +242,8 @@ mod tests {
             mock::{MockStorage, run},
             parse_sql::parse,
             plan::{
-                ExprPlan, JoinExecutorPlan, PlanError, SetExprPlan, StatementPlan, fetch_schema_map,
+                ExprPlan, JoinExecutorPlan, PlanError, QueryPlan, SetExprPlan, StatementPlan,
+                fetch_schema_map,
             },
             translate::translate,
         },
@@ -426,8 +444,8 @@ mod tests {
         let schema_map = fetch_schema_map(&storage, &statement).unwrap();
 
         let mut applied = false;
-        if let StatementPlan::Query(query) = &mut statement
-            && let SetExprPlan::Select(select) = &mut query.body
+        if let StatementPlan::Query(QueryPlan::Body(body)) = &mut statement
+            && let SetExprPlan::Select(select) = &mut body.body
             && let Some(join) = select.from.joins.first_mut()
         {
             join.join_executor = JoinExecutorPlan::Hash {
@@ -451,8 +469,8 @@ mod tests {
         let schema_map = fetch_schema_map(&storage, &statement).unwrap();
 
         let mut applied = false;
-        if let StatementPlan::Query(query) = &mut statement
-            && let SetExprPlan::Select(select) = &mut query.body
+        if let StatementPlan::Query(QueryPlan::Body(body)) = &mut statement
+            && let SetExprPlan::Select(select) = &mut body.body
             && let Some(join) = select.from.joins.first_mut()
         {
             join.join_executor = JoinExecutorPlan::Hash {

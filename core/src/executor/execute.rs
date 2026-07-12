@@ -15,8 +15,8 @@ use {
         ast::{BinaryOperator, DataType, Dictionary, Literal, Variable},
         data::{Key, Row, SCHEMALESS_DOC_COLUMN, Schema, Value},
         plan::{
-            ExprPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan, SetExprPlan,
-            StatementPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan,
+            ExprPlan, ProjectionPlan, QueryBodyPlan, QueryPlan, SelectItemPlan, SelectPlan,
+            SetExprPlan, StatementPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan,
         },
         result::{Error, Result},
         store::{GStore, GStoreMut},
@@ -248,11 +248,8 @@ fn execute_inner<T: GStore + GStoreMut>(
         StatementPlan::Query(query) => {
             let (labels, rows) = select_with_labels(storage, query, None)?;
 
-            let is_schemaless_map = matches!(
-                &query.body,
-                SetExprPlan::Select(select)
-                    if matches!(select.projection, ProjectionPlan::SchemalessMap)
-            );
+            let is_schemaless_map = matches!(query.body(), SetExprPlan::Select(select)
+                if matches!(select.projection, ProjectionPlan::SchemalessMap));
 
             if is_schemaless_map {
                 rows.map(|row| {
@@ -284,7 +281,7 @@ fn execute_inner<T: GStore + GStoreMut>(
             Ok(Payload::ShowColumns(output))
         }
         StatementPlan::ShowIndexes(table_name) => {
-            let query = QueryPlan {
+            let query = QueryPlan::Body(QueryBodyPlan {
                 body: SetExprPlan::Select(Box::new(SelectPlan {
                     distinct: false,
                     projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
@@ -310,9 +307,7 @@ fn execute_inner<T: GStore + GStoreMut>(
                     aggregate_slots: None,
                 })),
                 order_by: Vec::new(),
-                limit: None,
-                offset: None,
-            };
+            });
 
             let (labels, rows) = select_with_labels(storage, &query, None)?;
             let rows = rows
@@ -327,7 +322,7 @@ fn execute_inner<T: GStore + GStoreMut>(
         }
         StatementPlan::ShowVariable(variable) => match variable {
             Variable::Tables => {
-                let query = QueryPlan {
+                let query = QueryPlan::Body(QueryBodyPlan {
                     body: SetExprPlan::Select(Box::new(SelectPlan {
                         distinct: false,
                         projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
@@ -350,9 +345,7 @@ fn execute_inner<T: GStore + GStoreMut>(
                         aggregate_slots: None,
                     })),
                     order_by: Vec::new(),
-                    limit: None,
-                    offset: None,
-                };
+                });
 
                 let table_names = select(storage, &query, None)?
                     .map(|row| Ok::<_, Error>(row?.into_values()))

@@ -3,9 +3,9 @@ use {
         ast::Literal,
         data::{SCHEMALESS_DOC_COLUMN, Schema},
         plan::{
-            ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, ProjectionPlan,
-            QueryPlan, SelectItemPlan, SelectPlan, SetExprPlan, TableFactorPlan,
-            TableWithJoinsPlan, expr::visit_mut_expr,
+            ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, LimitInputPlan,
+            LimitPlan, OffsetPlan, ProjectionPlan, QueryBodyPlan, QueryPlan, SelectItemPlan,
+            SelectPlan, SetExprPlan, TableFactorPlan, TableWithJoinsPlan, expr::visit_mut_expr,
         },
     },
     std::{
@@ -24,7 +24,34 @@ pub(super) fn transform_query<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
     query: &mut QueryPlan,
 ) {
-    let state = match &mut query.body {
+    match query {
+        QueryPlan::Body(body) => {
+            transform_query_body(schema_map, body);
+        }
+        QueryPlan::Offset(OffsetPlan { input, count }) => {
+            let state = transform_query_body(schema_map, input);
+            transform_query_expr(schema_map, count, &state);
+        }
+        QueryPlan::Limit(LimitPlan { input, count }) => {
+            let state = match input {
+                LimitInputPlan::Body(body) => transform_query_body(schema_map, body),
+                LimitInputPlan::Offset(OffsetPlan { input, count }) => {
+                    let state = transform_query_body(schema_map, input);
+                    transform_query_expr(schema_map, count, &state);
+
+                    state
+                }
+            };
+            transform_query_expr(schema_map, count, &state);
+        }
+    }
+}
+
+fn transform_query_body<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    body_plan: &mut QueryBodyPlan,
+) -> QueryRewriteState {
+    let state = match &mut body_plan.body {
         SetExprPlan::Select(select) => {
             let rewrite_unqualified_identifiers = matches!(
                 &select.from.relation,
@@ -45,17 +72,11 @@ pub(super) fn transform_query<S: BuildHasher>(
         },
     };
 
-    for order_by in &mut query.order_by {
+    for order_by in &mut body_plan.order_by {
         transform_query_expr(schema_map, &mut order_by.expr, &state);
     }
 
-    if let Some(limit) = query.limit.as_mut() {
-        transform_query_expr(schema_map, limit, &state);
-    }
-
-    if let Some(offset) = query.offset.as_mut() {
-        transform_query_expr(schema_map, offset, &state);
-    }
+    state
 }
 
 fn collect_schemaless_aliases(

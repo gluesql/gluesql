@@ -1,9 +1,9 @@
 use {
     crate::{
         plan::{
-            ExprPlan, JoinConstraintPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, SelectPlan, SetExprPlan, TableAliasPlan, TableFactorPlan,
-            TableWithJoinsPlan, ValuesPlan,
+            ExprPlan, JoinConstraintPlan, JoinOperatorPlan, JoinPlan, LimitInputPlan, LimitPlan,
+            OffsetPlan, ProjectionPlan, QueryBodyPlan, QueryPlan, SelectItemPlan, SelectPlan,
+            SetExprPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan, ValuesPlan,
         },
         plan::{context::Context, expr::PlanExpr},
     },
@@ -40,14 +40,26 @@ pub fn check_expr(context: Option<Rc<Context<'_>>>, expr: &ExprPlan) -> bool {
 }
 
 fn check_query(context: Option<&Rc<Context<'_>>>, query: &QueryPlan) -> bool {
-    let QueryPlan {
-        body,
-        order_by,
-        limit,
-        offset,
-    } = query;
+    match query {
+        QueryPlan::Body(body) => check_query_body(context, body),
+        QueryPlan::Offset(OffsetPlan { input, count }) => {
+            check_query_body(context, input) && check_expr(context.map(Rc::clone), count)
+        }
+        QueryPlan::Limit(LimitPlan { input, count }) => {
+            let input = match input {
+                LimitInputPlan::Body(body) => check_query_body(context, body),
+                LimitInputPlan::Offset(OffsetPlan { input, count }) => {
+                    check_query_body(context, input) && check_expr(context.map(Rc::clone), count)
+                }
+            };
 
-    let body = match body {
+            input && check_expr(context.map(Rc::clone), count)
+        }
+    }
+}
+
+fn check_query_body(context: Option<&Rc<Context<'_>>>, body_plan: &QueryBodyPlan) -> bool {
+    let body = match &body_plan.body {
         SetExprPlan::Select(select) => check_select(context, select),
         SetExprPlan::Values(ValuesPlan(rows)) => rows
             .iter()
@@ -59,7 +71,8 @@ fn check_query(context: Option<&Rc<Context<'_>>>, query: &QueryPlan) -> bool {
         return false;
     }
 
-    let order_by = order_by
+    let order_by = body_plan
+        .order_by
         .iter()
         .map(|order_by| &order_by.expr)
         .all(|expr| check_expr(context.map(Rc::clone), expr));
@@ -67,10 +80,7 @@ fn check_query(context: Option<&Rc<Context<'_>>>, query: &QueryPlan) -> bool {
         return false;
     }
 
-    limit
-        .iter()
-        .chain(offset.iter())
-        .all(|expr| check_expr(context.map(Rc::clone), expr))
+    true
 }
 
 fn check_select(context: Option<&Rc<Context<'_>>>, select: &SelectPlan) -> bool {

@@ -79,7 +79,7 @@ mod test {
     use crate::{
         plan::{
             ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan,
-            ProjectionPlan, QueryPlan, SelectPlan, SetExprPlan, TableFactorPlan,
+            ProjectionPlan, QueryBodyPlan, QueryPlan, SelectPlan, SetExprPlan, TableFactorPlan,
             TableWithJoinsPlan,
         },
         query_builder::{QueryNode, SelectItemList, col, table, test_expr, text},
@@ -173,12 +173,10 @@ mod test {
                 aggregate_slots: None,
             };
 
-            let query = QueryPlan {
+            let query = QueryPlan::Body(QueryBodyPlan {
                 body: SetExprPlan::Select(Box::new(select)),
                 order_by: Vec::new(),
-                limit: None,
-                offset: None,
-            };
+            });
 
             ExprPlan::InSubquery {
                 expr: Box::new(ExprPlan::Identifier("id".to_owned())),

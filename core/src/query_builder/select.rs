@@ -14,7 +14,7 @@ use {
     super::Build,
     crate::{
         ast::{Query, Select, SetExpr},
-        plan::{QueryPlan, SelectPlan, SetExprPlan, StatementPlan},
+        plan::{QueryBodyPlan, QueryPlan, SelectPlan, SetExprPlan, StatementPlan},
         result::Result,
     },
 };
@@ -44,22 +44,29 @@ pub(super) trait BuildQueryPlan {
     fn build_query_plan(self) -> Result<QueryPlan>;
 }
 
+pub(super) trait BuildQueryBodyPlan {
+    fn build_query_body_plan(self) -> Result<QueryBodyPlan>;
+}
+
 pub(super) trait BuildQuery {
     fn build_query(self) -> Result<Query>;
 }
 
-impl<T: BuildSelectPlan> BuildQueryPlan for T {
-    fn build_query_plan(self) -> Result<QueryPlan> {
+impl<T: BuildSelectPlan> BuildQueryBodyPlan for T {
+    fn build_query_body_plan(self) -> Result<QueryBodyPlan> {
         let select = self.build_select_plan()?;
         let body = SetExprPlan::Select(Box::new(select));
-        let query = QueryPlan {
+
+        Ok(QueryBodyPlan {
             body,
             order_by: Vec::new(),
-            limit: None,
-            offset: None,
-        };
+        })
+    }
+}
 
-        Ok(query)
+impl<T: BuildQueryBodyPlan> BuildQueryPlan for T {
+    fn build_query_plan(self) -> Result<QueryPlan> {
+        self.build_query_body_plan().map(QueryPlan::Body)
     }
 }
 

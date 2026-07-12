@@ -1,8 +1,8 @@
 use {
-    super::{BuildQuery, BuildQueryPlan, ValuesNode},
+    super::{BuildQuery, BuildQueryBodyPlan, ValuesNode},
     crate::{
         ast::Query,
-        plan::QueryPlan,
+        plan::QueryBodyPlan,
         query_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
             JoinNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryNode, SelectNode,
@@ -25,18 +25,18 @@ pub(super) enum PrevNode<'a> {
     Values(ValuesNode<'a>),
 }
 
-impl BuildQueryPlan for PrevNode<'_> {
-    fn build_query_plan(self) -> Result<QueryPlan> {
+impl BuildQueryBodyPlan for PrevNode<'_> {
+    fn build_query_body_plan(self) -> Result<QueryBodyPlan> {
         match self {
-            Self::Select(node) => node.build_query_plan(),
-            Self::Having(node) => node.build_query_plan(),
-            Self::GroupBy(node) => node.build_query_plan(),
-            Self::Filter(node) => node.build_query_plan(),
-            Self::JoinNode(node) => node.build_query_plan(),
-            Self::JoinConstraint(node) => node.build_query_plan(),
-            Self::HashJoin(node) => node.build_query_plan(),
-            Self::ProjectNode(node) => node.build_query_plan(),
-            Self::Values(node) => node.build_query_plan(),
+            Self::Select(node) => node.build_query_body_plan(),
+            Self::Having(node) => node.build_query_body_plan(),
+            Self::GroupBy(node) => node.build_query_body_plan(),
+            Self::Filter(node) => node.build_query_body_plan(),
+            Self::JoinNode(node) => node.build_query_body_plan(),
+            Self::JoinConstraint(node) => node.build_query_body_plan(),
+            Self::HashJoin(node) => node.build_query_body_plan(),
+            Self::ProjectNode(node) => node.build_query_body_plan(),
+            Self::Values(node) => node.build_query_body_plan(),
         }
     }
 }
@@ -141,12 +141,12 @@ impl<'a> OrderByNode<'a> {
     }
 }
 
-impl BuildQueryPlan for OrderByNode<'_> {
-    fn build_query_plan(self) -> Result<QueryPlan> {
-        let mut node_data = self.prev_node.build_query_plan()?;
-        node_data.order_by = self.expr_list.build_order_by_exprs_plan()?;
+impl BuildQueryBodyPlan for OrderByNode<'_> {
+    fn build_query_body_plan(self) -> Result<QueryBodyPlan> {
+        let mut body = self.prev_node.build_query_body_plan()?;
+        body.order_by = self.expr_list.build_order_by_exprs_plan()?;
 
-        Ok(node_data)
+        Ok(body)
     }
 }
 
@@ -165,7 +165,7 @@ mod tests {
         crate::{
             plan::{
                 JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
-                QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
+                QueryBodyPlan, QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
                 TableWithJoinsPlan,
             },
             query_builder::{
@@ -328,14 +328,12 @@ mod tests {
                 aggregate_slots: None,
             };
 
-            Ok(StatementPlan::Query(QueryPlan {
+            Ok(StatementPlan::Query(QueryPlan::Body(QueryBodyPlan {
                 body: SetExprPlan::Select(Box::new(select)),
                 order_by: OrderByExprList::from("Player.score DESC")
                     .build_order_by_exprs_plan()
                     .unwrap(),
-                limit: None,
-                offset: None,
-            }))
+            })))
         };
         assert_eq!(actual, expected);
 

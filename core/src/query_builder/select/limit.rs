@@ -1,8 +1,8 @@
 use {
-    super::{BuildQuery, BuildQueryPlan, values::ValuesNode},
+    super::{BuildQuery, BuildQueryBodyPlan, BuildQueryPlan, values::ValuesNode},
     crate::{
         ast::Query,
-        plan::QueryPlan,
+        plan::{LimitInputPlan, LimitPlan, QueryBodyPlan, QueryPlan},
         query_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
             JoinNode, OrderByNode, ProjectNode, QueryNode, SelectNode, TableFactorNode,
@@ -25,19 +25,19 @@ pub(super) enum PrevNode<'a> {
     ProjectNode(Box<ProjectNode<'a>>),
 }
 
-impl BuildQueryPlan for PrevNode<'_> {
-    fn build_query_plan(self) -> Result<QueryPlan> {
+impl BuildQueryBodyPlan for PrevNode<'_> {
+    fn build_query_body_plan(self) -> Result<QueryBodyPlan> {
         match self {
-            Self::Select(node) => node.build_query_plan(),
-            Self::Values(node) => node.build_query_plan(),
-            Self::GroupBy(node) => node.build_query_plan(),
-            Self::Having(node) => node.build_query_plan(),
-            Self::Join(node) => node.build_query_plan(),
-            Self::JoinConstraint(node) => node.build_query_plan(),
-            Self::HashJoin(node) => node.build_query_plan(),
-            Self::Filter(node) => node.build_query_plan(),
-            Self::OrderBy(node) => node.build_query_plan(),
-            Self::ProjectNode(node) => node.build_query_plan(),
+            Self::Select(node) => node.build_query_body_plan(),
+            Self::Values(node) => node.build_query_body_plan(),
+            Self::GroupBy(node) => node.build_query_body_plan(),
+            Self::Having(node) => node.build_query_body_plan(),
+            Self::Join(node) => node.build_query_body_plan(),
+            Self::JoinConstraint(node) => node.build_query_body_plan(),
+            Self::HashJoin(node) => node.build_query_body_plan(),
+            Self::Filter(node) => node.build_query_body_plan(),
+            Self::OrderBy(node) => node.build_query_body_plan(),
+            Self::ProjectNode(node) => node.build_query_body_plan(),
         }
     }
 }
@@ -140,10 +140,13 @@ impl<'a> LimitNode<'a> {
 
 impl BuildQueryPlan for LimitNode<'_> {
     fn build_query_plan(self) -> Result<QueryPlan> {
-        let mut node_data = self.prev_node.build_query_plan()?;
-        node_data.limit = Some(self.expr.build_expr_plan()?);
-
-        Ok(node_data)
+        let count = self.expr.build_expr_plan()?;
+        self.prev_node.build_query_body_plan().map(|body| {
+            QueryPlan::Limit(LimitPlan {
+                input: LimitInputPlan::Body(body),
+                count,
+            })
+        })
     }
 }
 
@@ -161,9 +164,9 @@ mod tests {
     use {
         crate::{
             plan::{
-                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
-                QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
-                TableWithJoinsPlan,
+                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, LimitInputPlan,
+                LimitPlan, ProjectionPlan, QueryBodyPlan, QueryPlan, SelectPlan, SetExprPlan,
+                StatementPlan, TableFactorPlan, TableWithJoinsPlan,
             },
             query_builder::{Build, SelectItemList, col, num, table, test_query_builder},
         },
@@ -289,12 +292,16 @@ mod tests {
                 aggregate_slots: None,
             };
 
-            Ok(StatementPlan::Query(QueryPlan {
+            let body = QueryBodyPlan {
                 body: SetExprPlan::Select(Box::new(select)),
                 order_by: Vec::new(),
-                limit: Some(num(100).build_expr_plan().unwrap()),
-                offset: None,
-            }))
+            };
+            let limit = LimitPlan {
+                input: LimitInputPlan::Body(body),
+                count: num(100).build_expr_plan().unwrap(),
+            };
+
+            Ok(StatementPlan::Query(QueryPlan::Limit(limit)))
         };
         assert_eq!(actual, expected);
 

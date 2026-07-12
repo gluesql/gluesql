@@ -4,8 +4,8 @@ use {
         ast::{BinaryOperator, IndexOperator},
         data::{Schema, SchemaIndex, SchemaIndexOrd, Value},
         plan::{
-            ExprPlan, IndexItemPlan, OrderByExprPlan, QueryPlan, SelectPlan, SetExprPlan,
-            StatementPlan, TableFactorPlan,
+            ExprPlan, IndexItemPlan, LimitInputPlan, LimitPlan, OffsetPlan, OrderByExprPlan,
+            QueryBodyPlan, QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
             expr::{deterministic::is_deterministic, nullability::may_return_null},
             plan_scalar_expr,
         },
@@ -35,27 +35,38 @@ struct IndexPlanner<'a, S> {
 
 impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
     fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
-        let QueryPlan {
-            body,
-            order_by,
-            limit,
-            offset,
-        } = query;
+        let plan_body = |QueryBodyPlan { body, order_by }| {
+            let (body, order_by) = match body {
+                SetExprPlan::Select(select) => {
+                    let (select, order_by) = self.select(outer_context.as_ref(), *select, order_by);
 
-        let (body, order_by) = match body {
-            SetExprPlan::Select(select) => {
-                let (select, order_by) = self.select(outer_context.as_ref(), *select, order_by);
+                    (SetExprPlan::Select(Box::new(select)), order_by)
+                }
+                SetExprPlan::Values(values) => (SetExprPlan::Values(values), order_by),
+            };
 
-                (SetExprPlan::Select(Box::new(select)), order_by)
-            }
-            SetExprPlan::Values(values) => (SetExprPlan::Values(values), order_by),
+            QueryBodyPlan { body, order_by }
         };
 
-        QueryPlan {
-            body,
-            order_by,
-            limit,
-            offset,
+        match query {
+            QueryPlan::Body(body) => QueryPlan::Body(plan_body(body)),
+            QueryPlan::Offset(OffsetPlan { input, count }) => QueryPlan::Offset(OffsetPlan {
+                input: plan_body(input),
+                count,
+            }),
+            QueryPlan::Limit(LimitPlan { input, count }) => {
+                let input = match input {
+                    LimitInputPlan::Body(body) => LimitInputPlan::Body(plan_body(body)),
+                    LimitInputPlan::Offset(OffsetPlan { input, count }) => {
+                        LimitInputPlan::Offset(OffsetPlan {
+                            input: plan_body(input),
+                            count,
+                        })
+                    }
+                };
+
+                QueryPlan::Limit(LimitPlan { input, count })
+            }
         }
     }
 

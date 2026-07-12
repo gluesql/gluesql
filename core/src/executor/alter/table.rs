@@ -43,7 +43,7 @@ pub fn create_table<T: GStore + GStoreMut>(
 ) -> Result<()> {
     let mut selected_source_rows = None;
     let target_columns_defs = match source.as_deref() {
-        Some(query) => match &query.body {
+        Some(query) => match query.body() {
             SetExprPlan::Select(select_query) => match &select_query.from.relation {
                 TableFactorPlan::Table { name, .. } if can_copy_source_schema(select_query) => {
                     let schema = storage.fetch_schema(name)?;

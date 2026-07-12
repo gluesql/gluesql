@@ -11,7 +11,7 @@ use {
         fetch::{fetch_labels, fetch_relation_rows},
         filter::Filter,
         join::Join,
-        limit::Limit,
+        limit,
         sort::Sort,
     },
     crate::{
@@ -118,14 +118,14 @@ where
         group_by,
         having,
         aggregate_slots,
-    } = match &query.body {
+    } = match query.body() {
         SetExprPlan::Select(statement) => statement.as_ref(),
         SetExprPlan::Values(ValuesPlan(values_list)) => {
-            let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
             let (rows, labels) = rows_with_labels(values_list)?;
-            let rows = sort_stateless(rows, &query.order_by)?;
+            let rows = sort_stateless(rows, query.order_by())?;
+            let rows = limit::apply(query, rows.into_iter().map(Ok))?;
 
-            return Ok((labels, limit.apply(rows.into_iter().map(Ok))));
+            return Ok((labels, rows));
         }
     };
 
@@ -143,11 +143,10 @@ where
         where_clause.as_ref(),
         filter_context.as_ref().map(Rc::clone),
     ));
-    let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
     let sort = Sort::new(
         storage,
         filter_context.as_ref().map(Rc::clone),
-        &query.order_by,
+        query.order_by(),
     );
 
     let rows = join.apply(Box::new(rows))?;
@@ -198,7 +197,7 @@ where
     };
     let labels = labels.iter().cloned().collect();
 
-    Ok((labels, limit.apply(rows)))
+    limit::apply(query, rows).map(|rows| (labels, rows))
 }
 
 pub fn select<'a, T>(

@@ -595,8 +595,8 @@ mod tests {
         use crate::{
             plan::{
                 JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
-                QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableAliasPlan, TableFactorPlan,
-                TableWithJoinsPlan,
+                QueryBodyPlan, QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableAliasPlan,
+                TableFactorPlan, TableWithJoinsPlan,
             },
             query_builder::{SelectItemList, col},
         };
@@ -634,12 +634,10 @@ mod tests {
                 aggregate_slots: None,
             };
 
-            Ok(StatementPlan::Query(QueryPlan {
+            Ok(StatementPlan::Query(QueryPlan::Body(QueryBodyPlan {
                 body: SetExprPlan::Select(Box::new(select)),
                 order_by: Vec::new(),
-                limit: None,
-                offset: None,
-            }))
+            })))
         };
 
         let actual = table("Player")
