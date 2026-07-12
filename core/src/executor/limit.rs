@@ -56,11 +56,11 @@ pub fn apply<'a, T: Iterator<Item = Result<Row>> + 'a>(
             Ok(offset.apply(rows))
         }
         QueryPlan::Limit(plan) => {
-            let limit = Limit::new(plan)?;
             let rows: Box<dyn Iterator<Item = Result<Row>> + 'a> = match &plan.input {
                 LimitInputPlan::Body(_) => Box::new(rows),
                 LimitInputPlan::Offset(offset_plan) => Offset::new(offset_plan)?.apply(rows),
             };
+            let limit = Limit::new(plan)?;
 
             Ok(limit.apply(rows))
         }

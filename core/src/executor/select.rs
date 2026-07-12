@@ -11,14 +11,14 @@ use {
         fetch::{fetch_labels, fetch_relation_rows},
         filter::Filter,
         join::Join,
-        limit,
+        limit::{Limit, Offset},
         sort::Sort,
     },
     crate::{
         data::{Key, Row, Value},
         plan::{
-            ExprPlan, OrderByExprPlan, QueryPlan, SelectPlan, SetExprPlan, TableWithJoinsPlan,
-            ValuesPlan,
+            ExprPlan, LimitInputPlan, LimitPlan, OffsetPlan, OrderByExprPlan, QueryBodyPlan,
+            QueryPlan, SelectPlan, SetExprPlan, TableWithJoinsPlan, ValuesPlan,
         },
         result::Result,
         store::GStore,
@@ -102,9 +102,9 @@ fn sort_stateless(rows: Vec<Row>, order_by: &[OrderByExprPlan]) -> Result<Vec<Ro
     Ok(sorted)
 }
 
-pub fn select_with_labels<'a, T>(
+fn select_body_with_labels<'a, T>(
     storage: &'a T,
-    query: &'a QueryPlan,
+    plan: &'a QueryBodyPlan,
     filter_context: Option<Rc<RowContext<'a>>>,
 ) -> Result<(Vec<String>, SelectIter<'a>)>
 where
@@ -118,12 +118,12 @@ where
         group_by,
         having,
         aggregate_slots,
-    } = match query.body() {
+    } = match &plan.body {
         SetExprPlan::Select(statement) => statement.as_ref(),
         SetExprPlan::Values(ValuesPlan(values_list)) => {
             let (rows, labels) = rows_with_labels(values_list)?;
-            let rows = sort_stateless(rows, query.order_by())?;
-            let rows = limit::apply(query, rows.into_iter().map(Ok))?;
+            let rows = sort_stateless(rows, &plan.order_by)?;
+            let rows: SelectIter<'a> = Box::new(rows.into_iter().map(Ok));
 
             return Ok((labels, rows));
         }
@@ -146,7 +146,7 @@ where
     let sort = Sort::new(
         storage,
         filter_context.as_ref().map(Rc::clone),
-        query.order_by(),
+        &plan.order_by,
     );
 
     let rows = join.apply(Box::new(rows))?;
@@ -197,7 +197,55 @@ where
     };
     let labels = labels.iter().cloned().collect();
 
-    limit::apply(query, rows).map(|rows| (labels, rows))
+    Ok((labels, rows))
+}
+
+fn select_offset_with_labels<'a, T>(
+    storage: &'a T,
+    plan: &'a OffsetPlan,
+    filter_context: Option<Rc<RowContext<'a>>>,
+) -> Result<(Vec<String>, SelectIter<'a>)>
+where
+    T: GStore,
+{
+    let (labels, rows) = select_body_with_labels(storage, &plan.input, filter_context)?;
+    let offset = Offset::new(plan)?;
+
+    Ok((labels, offset.apply(rows)))
+}
+
+fn select_limit_with_labels<'a, T>(
+    storage: &'a T,
+    plan: &'a LimitPlan,
+    filter_context: Option<Rc<RowContext<'a>>>,
+) -> Result<(Vec<String>, SelectIter<'a>)>
+where
+    T: GStore,
+{
+    let (labels, rows) = match &plan.input {
+        LimitInputPlan::Body(body) => select_body_with_labels(storage, body, filter_context),
+        LimitInputPlan::Offset(offset) => {
+            select_offset_with_labels(storage, offset, filter_context)
+        }
+    }?;
+    let limit = Limit::new(plan)?;
+
+    Ok((labels, limit.apply(rows)))
+}
+
+pub fn select_with_labels<'a, T>(
+    storage: &'a T,
+    query: &'a QueryPlan,
+    filter_context: Option<Rc<RowContext<'a>>>,
+) -> Result<(Vec<String>, SelectIter<'a>)>
+where
+    T: GStore,
+{
+    match query {
+        QueryPlan::Body(body) => select_body_with_labels(storage, body, filter_context),
+        QueryPlan::Offset(offset) => select_offset_with_labels(storage, offset, filter_context),
+        QueryPlan::Limit(limit) => select_limit_with_labels(storage, limit, filter_context),
+    }
 }
 
 pub fn select<'a, T>(
