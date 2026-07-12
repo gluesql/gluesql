@@ -111,6 +111,14 @@ test_case!(limit, {
             "SELECT id FROM InsertTest WHERE case_no = 6",
             select!(id; I64; 3; 4),
         ),
+        (
+            "INSERT INTO InsertTest VALUES (7, 2), (7, 1), (7, 3) ORDER BY column2 DESC LIMIT 1 OFFSET 1;",
+            Payload::Insert(1),
+        ),
+        (
+            "SELECT id FROM InsertTest WHERE case_no = 7",
+            select!(id; I64; 1),
+        ),
     ];
 
     for (sql, expected) in test_cases {

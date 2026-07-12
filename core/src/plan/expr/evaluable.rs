@@ -2,8 +2,9 @@ use {
     crate::{
         plan::{
             ExprPlan, JoinConstraintPlan, JoinOperatorPlan, JoinPlan, LimitInputPlan, LimitPlan,
-            OffsetPlan, ProjectionPlan, QueryBodyPlan, QueryPlan, SelectItemPlan, SelectPlan,
-            SetExprPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan, ValuesPlan,
+            OffsetInputPlan, OffsetPlan, OrderByPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
+            SelectPlan, SetExprPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan,
+            ValuesPlan,
         },
         plan::{context::Context, expr::PlanExpr},
     },
@@ -41,16 +42,14 @@ pub fn check_expr(context: Option<Rc<Context<'_>>>, expr: &ExprPlan) -> bool {
 
 fn check_query(context: Option<&Rc<Context<'_>>>, query: &QueryPlan) -> bool {
     match query {
-        QueryPlan::Body(body) => check_query_body(context, body),
-        QueryPlan::Offset(OffsetPlan { input, count }) => {
-            check_query_body(context, input) && check_expr(context.map(Rc::clone), count)
-        }
+        QueryPlan::Body(body) => check_set_expr(context, body),
+        QueryPlan::OrderBy(order_by) => check_order_by(context, order_by),
+        QueryPlan::Offset(offset) => check_offset(context, offset),
         QueryPlan::Limit(LimitPlan { input, count }) => {
             let input = match input {
-                LimitInputPlan::Body(body) => check_query_body(context, body),
-                LimitInputPlan::Offset(OffsetPlan { input, count }) => {
-                    check_query_body(context, input) && check_expr(context.map(Rc::clone), count)
-                }
+                LimitInputPlan::Body(body) => check_set_expr(context, body),
+                LimitInputPlan::OrderBy(order_by) => check_order_by(context, order_by),
+                LimitInputPlan::Offset(offset) => check_offset(context, offset),
             };
 
             input && check_expr(context.map(Rc::clone), count)
@@ -58,29 +57,31 @@ fn check_query(context: Option<&Rc<Context<'_>>>, query: &QueryPlan) -> bool {
     }
 }
 
-fn check_query_body(context: Option<&Rc<Context<'_>>>, body_plan: &QueryBodyPlan) -> bool {
-    let body = match &body_plan.body {
+fn check_offset(context: Option<&Rc<Context<'_>>>, plan: &OffsetPlan) -> bool {
+    let input = match &plan.input {
+        OffsetInputPlan::Body(body) => check_set_expr(context, body),
+        OffsetInputPlan::OrderBy(order_by) => check_order_by(context, order_by),
+    };
+
+    input && check_expr(context.map(Rc::clone), &plan.count)
+}
+
+fn check_order_by(context: Option<&Rc<Context<'_>>>, plan: &OrderByPlan) -> bool {
+    check_set_expr(context, &plan.input)
+        && plan
+            .exprs
+            .iter()
+            .all(|order_by| check_expr(context.map(Rc::clone), &order_by.expr))
+}
+
+fn check_set_expr(context: Option<&Rc<Context<'_>>>, body_plan: &SetExprPlan) -> bool {
+    match body_plan {
         SetExprPlan::Select(select) => check_select(context, select),
         SetExprPlan::Values(ValuesPlan(rows)) => rows
             .iter()
             .flatten()
             .all(|expr| check_expr(context.map(Rc::clone), expr)),
-    };
-
-    if !body {
-        return false;
     }
-
-    let order_by = body_plan
-        .order_by
-        .iter()
-        .map(|order_by| &order_by.expr)
-        .all(|expr| check_expr(context.map(Rc::clone), expr));
-    if !order_by {
-        return false;
-    }
-
-    true
 }
 
 fn check_select(context: Option<&Rc<Context<'_>>>, select: &SelectPlan) -> bool {
@@ -158,12 +159,12 @@ fn check_table_factor(context: Option<Rc<Context<'_>>>, table_factor: &TableFact
 #[cfg(test)]
 mod tests {
     use {
-        super::check_expr,
+        super::{check_expr, check_query},
         crate::{
-            parse_sql::parse_expr,
-            plan::ExprPlan,
+            parse_sql::{parse_expr, parse_query},
             plan::context::Context,
-            translate::{NO_PARAMS, translate_expr},
+            plan::{ExprPlan, QueryPlan},
+            translate::{NO_PARAMS, translate_expr, translate_query},
         },
         std::rc::Rc,
     };
@@ -298,5 +299,26 @@ mod tests {
             )",
             true
         );
+    }
+
+    #[test]
+    fn terminal_query_plan_paths_are_evaluable() {
+        for sql in [
+            "VALUES (1)",
+            "VALUES (1) ORDER BY 1",
+            "VALUES (1) OFFSET 1",
+            "VALUES (1) ORDER BY 1 OFFSET 1",
+            "VALUES (1) LIMIT 1",
+            "VALUES (1) ORDER BY 1 LIMIT 1",
+            "VALUES (1) LIMIT 1 OFFSET 1",
+            "VALUES (1) ORDER BY 1 LIMIT 1 OFFSET 1",
+        ] {
+            let parsed = parse_query(sql).expect(sql);
+            let query = translate_query(&parsed, NO_PARAMS)
+                .map(QueryPlan::from)
+                .expect(sql);
+
+            assert!(check_query(None, &query), "{sql}");
+        }
     }
 }

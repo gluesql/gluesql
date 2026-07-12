@@ -4,8 +4,8 @@ use {
         data::Schema,
         plan::{
             ExprPlan, JoinConstraintPlan, JoinOperatorPlan, JoinPlan, LimitInputPlan, LimitPlan,
-            OffsetPlan, ProjectionPlan, QueryBodyPlan, QueryPlan, SelectItemPlan, SelectPlan,
-            SetExprPlan, StatementPlan, TableFactorPlan, TableWithJoinsPlan,
+            OffsetInputPlan, OffsetPlan, OrderByPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
+            SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan, TableWithJoinsPlan,
         },
         result::Result,
         store::Store,
@@ -96,20 +96,14 @@ fn scan_query<T: Store + ?Sized>(
     query: &QueryPlan,
 ) -> Result<HashMap<String, Schema>> {
     match query {
-        QueryPlan::Body(body) => scan_query_body(storage, body),
-        QueryPlan::Offset(OffsetPlan { input, count }) => Ok(scan_query_body(storage, input)?
-            .into_iter()
-            .chain(scan_expr(storage, count)?)
-            .collect()),
+        QueryPlan::Body(body) => scan_set_expr(storage, body),
+        QueryPlan::OrderBy(order_by) => scan_order_by(storage, order_by),
+        QueryPlan::Offset(offset) => scan_offset(storage, offset),
         QueryPlan::Limit(LimitPlan { input, count }) => {
             let schema_list = match input {
-                LimitInputPlan::Body(body) => scan_query_body(storage, body)?,
-                LimitInputPlan::Offset(OffsetPlan { input, count }) => {
-                    scan_query_body(storage, input)?
-                        .into_iter()
-                        .chain(scan_expr(storage, count)?)
-                        .collect()
-                }
+                LimitInputPlan::Body(body) => scan_set_expr(storage, body)?,
+                LimitInputPlan::OrderBy(order_by) => scan_order_by(storage, order_by)?,
+                LimitInputPlan::Offset(offset) => scan_offset(storage, offset)?,
             };
 
             Ok(schema_list
@@ -120,11 +114,43 @@ fn scan_query<T: Store + ?Sized>(
     }
 }
 
-fn scan_query_body<T: Store + ?Sized>(
+fn scan_offset<T: Store + ?Sized>(
     storage: &T,
-    body: &QueryBodyPlan,
+    OffsetPlan { input, count }: &OffsetPlan,
 ) -> Result<HashMap<String, Schema>> {
-    let schema_list = match &body.body {
+    let schema_list = match input {
+        OffsetInputPlan::Body(body) => scan_set_expr(storage, body)?,
+        OffsetInputPlan::OrderBy(order_by) => scan_order_by(storage, order_by)?,
+    };
+
+    Ok(schema_list
+        .into_iter()
+        .chain(scan_expr(storage, count)?)
+        .collect())
+}
+
+fn scan_order_by<T: Store + ?Sized>(
+    storage: &T,
+    OrderByPlan { input, exprs }: &OrderByPlan,
+) -> Result<HashMap<String, Schema>> {
+    let order_by = exprs
+        .iter()
+        .map(|order_by| scan_expr(storage, &order_by.expr))
+        .collect::<Result<Vec<_>>>()?
+        .into_iter()
+        .flatten();
+
+    Ok(scan_set_expr(storage, input)?
+        .into_iter()
+        .chain(order_by)
+        .collect())
+}
+
+fn scan_set_expr<T: Store + ?Sized>(
+    storage: &T,
+    body: &SetExprPlan,
+) -> Result<HashMap<String, Schema>> {
+    let schema_list = match body {
         SetExprPlan::Select(select) => scan_select(storage, select)?,
         SetExprPlan::Values(_) => HashMap::new(),
     };

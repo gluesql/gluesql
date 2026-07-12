@@ -1,5 +1,5 @@
 use {
-    super::{OffsetPlan, QueryBodyPlan},
+    super::{OffsetPlan, OrderByPlan, SetExprPlan},
     crate::plan::ExprPlan,
     serde::{Deserialize, Serialize},
 };
@@ -12,7 +12,8 @@ pub struct LimitPlan {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LimitInputPlan {
-    Body(QueryBodyPlan),
+    Body(SetExprPlan),
+    OrderBy(OrderByPlan),
     Offset(OffsetPlan),
 }
 
@@ -22,15 +23,25 @@ mod tests {
         super::{LimitInputPlan, LimitPlan},
         crate::{
             ast::Literal,
-            plan::{ExprPlan, OffsetPlan, QueryBodyPlan, SetExprPlan, ValuesPlan},
+            plan::{ExprPlan, OffsetInputPlan, OffsetPlan, OrderByPlan, SetExprPlan, ValuesPlan},
         },
     };
 
-    fn body() -> QueryBodyPlan {
-        QueryBodyPlan {
-            body: SetExprPlan::Values(ValuesPlan(Vec::new())),
-            order_by: Vec::new(),
-        }
+    fn body() -> SetExprPlan {
+        SetExprPlan::Values(ValuesPlan(Vec::new()))
+    }
+
+    #[test]
+    fn limit_accepts_order_by_input() {
+        let plan = LimitPlan {
+            input: LimitInputPlan::OrderBy(OrderByPlan {
+                input: body(),
+                exprs: Vec::new(),
+            }),
+            count: count(3),
+        };
+
+        assert!(matches!(plan.input, LimitInputPlan::OrderBy(_)));
     }
 
     fn count(value: i64) -> ExprPlan {
@@ -57,7 +68,7 @@ mod tests {
     fn limit_accepts_offset_input() {
         let plan = LimitPlan {
             input: LimitInputPlan::Offset(OffsetPlan {
-                input: body(),
+                input: OffsetInputPlan::Body(body()),
                 count: count(2),
             }),
             count: count(3),

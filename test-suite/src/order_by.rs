@@ -114,6 +114,64 @@ CREATE TABLE Test (
         )),
     );
 
+    g.named_test(
+        "ORDER BY keeps non-projected row context",
+        "SELECT id FROM Test ORDER BY num DESC",
+        Ok(select!(
+            id;
+            I64;
+            1;
+            4;
+            3;
+            1
+        )),
+    );
+
+    g.named_test(
+        "ORDER BY binds aggregate expressions",
+        "SELECT id % 2 AS parity, COUNT(*) AS count FROM Test GROUP BY id % 2 ORDER BY COUNT(*) DESC, parity",
+        Ok(select!(
+            parity | count;
+            I64    | I64;
+            1        3;
+            0        1
+        )),
+    );
+
+    g.named_test(
+        "ORDER BY runs before OFFSET and LIMIT",
+        "SELECT id, num FROM Test ORDER BY num DESC LIMIT 2 OFFSET 1",
+        Ok(select!(
+            id  | num;
+            I64 | I64;
+            4     7;
+            3     4
+        )),
+    );
+
+    g.named_test(
+        "terminal pipeline composes in a derived subquery",
+        "SELECT id FROM (SELECT id, num FROM Test ORDER BY num DESC LIMIT 2 OFFSET 1) AS Ordered ORDER BY id",
+        Ok(select!(
+            id;
+            I64;
+            3;
+            4
+        )),
+    );
+
+    g.named_test(
+        "DISTINCT remains after ORDER BY",
+        "SELECT DISTINCT id FROM Test ORDER BY num DESC",
+        Ok(select!(
+            id;
+            I64;
+            1;
+            4;
+            3
+        )),
+    );
+
     g.test(
         "
         SELECT id, num FROM Test
@@ -206,6 +264,11 @@ CREATE TABLE Test (
     g.named_test(
         "ORDER BY COLUMN_INDEX should be larger than 0",
         "SELECT id, num FROM Test ORDER BY 0",
+        Err(SortError::ColumnIndexOutOfRange(0).into()),
+    );
+    g.named_test(
+        "ORDER BY error propagates before OFFSET",
+        "SELECT id, num FROM Test ORDER BY 0 OFFSET 1",
         Err(SortError::ColumnIndexOutOfRange(0).into()),
     );
     g.named_test(

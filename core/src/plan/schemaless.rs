@@ -192,7 +192,7 @@ mod tests {
                 StatementPlan::Query(QueryPlan::Body(expected_body)),
             ) = (&result, &mut expected_stmt)
                 && let (SetExprPlan::Select(actual_select), SetExprPlan::Select(expected_select)) =
-                    (&actual_body.body, &mut expected_body.body)
+                    (actual_body, expected_body)
             {
                 expected_select.projection = actual_select.projection.clone();
             }
@@ -206,6 +206,10 @@ mod tests {
         let actual = "SELECT id FROM Player";
         let expected = "SELECT _doc['id'] as id FROM Player";
         test(actual, expected, "single column");
+
+        let actual = "SELECT id FROM Player ORDER BY id LIMIT 1";
+        let expected = "SELECT _doc['id'] as id FROM Player ORDER BY _doc['id'] LIMIT 1";
+        test(actual, expected, "order by before limit");
 
         let actual = "SELECT id FROM Item";
         let expected = "SELECT id FROM Item";
@@ -473,7 +477,7 @@ mod tests {
             let StatementPlan::Query(QueryPlan::Body(body)) = planned else {
                 panic!("expected query statement");
             };
-            let SetExprPlan::Select(select) = &body.body else {
+            let SetExprPlan::Select(select) = &body else {
                 panic!("expected select query");
             };
             assert_eq!(

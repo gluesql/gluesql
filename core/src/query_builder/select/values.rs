@@ -1,10 +1,10 @@
 use crate::{
     ast::{Query, SetExpr, Values},
-    plan::{QueryBodyPlan, SetExprPlan, ValuesPlan},
+    plan::{SetExprPlan, ValuesPlan},
     query_builder::{
         ExprList, ExprNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, QueryNode,
         TableFactorNode,
-        select::{BuildQuery, BuildQueryBodyPlan},
+        select::{BuildQuery, BuildSetExprPlan},
     },
     result::Result,
 };
@@ -32,20 +32,15 @@ impl<'a> ValuesNode<'a> {
     }
 }
 
-impl BuildQueryBodyPlan for ValuesNode<'_> {
-    fn build_query_body_plan(self) -> Result<QueryBodyPlan> {
+impl BuildSetExprPlan for ValuesNode<'_> {
+    fn build_set_expr_plan(self) -> Result<SetExprPlan> {
         let values = self
             .values
             .into_iter()
             .map(ExprList::build_exprs_plan)
             .collect::<Result<Vec<_>>>()?;
 
-        let body = SetExprPlan::Values(ValuesPlan(values));
-
-        Ok(QueryBodyPlan {
-            body,
-            order_by: Vec::new(),
-        })
+        Ok(SetExprPlan::Values(ValuesPlan(values)))
     }
 }
 

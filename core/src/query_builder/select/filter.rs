@@ -136,7 +136,7 @@ mod tests {
             ast::{BinaryOperator, Expr},
             plan::{
                 JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
-                QueryBodyPlan, QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
+                QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
                 TableWithJoinsPlan,
             },
             query_builder::{Build, SelectItemList, col, expr, table, test_query_builder},
@@ -244,10 +244,9 @@ mod tests {
                 aggregate_slots: None,
             };
 
-            Ok(StatementPlan::Query(QueryPlan::Body(QueryBodyPlan {
-                body: SetExprPlan::Select(Box::new(select)),
-                order_by: Vec::new(),
-            })))
+            Ok(StatementPlan::Query(QueryPlan::Body(SetExprPlan::Select(
+                Box::new(select),
+            ))))
         };
         assert_eq!(actual, expected);
 

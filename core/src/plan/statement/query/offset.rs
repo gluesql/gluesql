@@ -1,30 +1,33 @@
 use {
-    super::QueryBodyPlan,
+    super::{OrderByPlan, SetExprPlan},
     crate::plan::ExprPlan,
     serde::{Deserialize, Serialize},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct OffsetPlan {
-    pub input: QueryBodyPlan,
+    pub input: OffsetInputPlan,
     pub count: ExprPlan,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum OffsetInputPlan {
+    Body(SetExprPlan),
+    OrderBy(OrderByPlan),
 }
 
 #[cfg(test)]
 mod tests {
     use {
-        super::OffsetPlan,
+        super::{OffsetInputPlan, OffsetPlan},
         crate::{
             ast::Literal,
-            plan::{ExprPlan, QueryBodyPlan, SetExprPlan, ValuesPlan},
+            plan::{ExprPlan, OrderByPlan, SetExprPlan, ValuesPlan},
         },
     };
 
-    fn body() -> QueryBodyPlan {
-        QueryBodyPlan {
-            body: SetExprPlan::Values(ValuesPlan(Vec::new())),
-            order_by: Vec::new(),
-        }
+    fn body() -> SetExprPlan {
+        SetExprPlan::Values(ValuesPlan(Vec::new()))
     }
 
     fn count(value: i64) -> ExprPlan {
@@ -33,11 +36,30 @@ mod tests {
 
     #[test]
     fn offset_accepts_body_input() {
-        let OffsetPlan { count: actual, .. } = OffsetPlan {
-            input: body(),
+        let plan = OffsetPlan {
+            input: OffsetInputPlan::Body(body()),
             count: count(2),
         };
 
-        assert_eq!(actual, count(2));
+        assert!(matches!(
+            plan,
+            OffsetPlan {
+                input: OffsetInputPlan::Body(_),
+                count: actual,
+            } if actual == count(2)
+        ));
+    }
+
+    #[test]
+    fn offset_accepts_order_by_input() {
+        let plan = OffsetPlan {
+            input: OffsetInputPlan::OrderBy(OrderByPlan {
+                input: body(),
+                exprs: Vec::new(),
+            }),
+            count: count(2),
+        };
+
+        assert!(matches!(plan.input, OffsetInputPlan::OrderBy(_)));
     }
 }

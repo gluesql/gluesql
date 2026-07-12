@@ -42,6 +42,14 @@ test_case!(values, {
             )),
         ),
         (
+            "VALUES (1, 'a'), (3, 'c'), (2, 'b') ORDER BY column1 DESC LIMIT 1 OFFSET 1",
+            Ok(select!(
+                column1 | column2;
+                I64     | Str;
+                2         "b".to_owned()
+            )),
+        ),
+        (
             "VALUES (1), (2) limit 1",
             Ok(select!(
                 column1;

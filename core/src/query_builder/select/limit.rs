@@ -1,8 +1,8 @@
 use {
-    super::{BuildQuery, BuildQueryBodyPlan, BuildQueryPlan, values::ValuesNode},
+    super::{BuildQuery, BuildQueryPlan, BuildSetExprPlan, values::ValuesNode},
     crate::{
         ast::Query,
-        plan::{LimitInputPlan, LimitPlan, QueryBodyPlan, QueryPlan},
+        plan::{LimitInputPlan, LimitPlan, QueryPlan},
         query_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
             JoinNode, OrderByNode, ProjectNode, QueryNode, SelectNode, TableFactorNode,
@@ -25,19 +25,19 @@ pub(super) enum PrevNode<'a> {
     ProjectNode(Box<ProjectNode<'a>>),
 }
 
-impl BuildQueryBodyPlan for PrevNode<'_> {
-    fn build_query_body_plan(self) -> Result<QueryBodyPlan> {
+impl PrevNode<'_> {
+    fn build_limit_input_plan(self) -> Result<LimitInputPlan> {
         match self {
-            Self::Select(node) => node.build_query_body_plan(),
-            Self::Values(node) => node.build_query_body_plan(),
-            Self::GroupBy(node) => node.build_query_body_plan(),
-            Self::Having(node) => node.build_query_body_plan(),
-            Self::Join(node) => node.build_query_body_plan(),
-            Self::JoinConstraint(node) => node.build_query_body_plan(),
-            Self::HashJoin(node) => node.build_query_body_plan(),
-            Self::Filter(node) => node.build_query_body_plan(),
-            Self::OrderBy(node) => node.build_query_body_plan(),
-            Self::ProjectNode(node) => node.build_query_body_plan(),
+            Self::Select(node) => node.build_set_expr_plan().map(LimitInputPlan::Body),
+            Self::Values(node) => node.build_set_expr_plan().map(LimitInputPlan::Body),
+            Self::GroupBy(node) => node.build_set_expr_plan().map(LimitInputPlan::Body),
+            Self::Having(node) => node.build_set_expr_plan().map(LimitInputPlan::Body),
+            Self::Join(node) => node.build_set_expr_plan().map(LimitInputPlan::Body),
+            Self::JoinConstraint(node) => node.build_set_expr_plan().map(LimitInputPlan::Body),
+            Self::HashJoin(node) => node.build_set_expr_plan().map(LimitInputPlan::Body),
+            Self::Filter(node) => node.build_set_expr_plan().map(LimitInputPlan::Body),
+            Self::OrderBy(node) => node.build_order_by_plan().map(LimitInputPlan::OrderBy),
+            Self::ProjectNode(node) => node.build_set_expr_plan().map(LimitInputPlan::Body),
         }
     }
 }
@@ -141,12 +141,9 @@ impl<'a> LimitNode<'a> {
 impl BuildQueryPlan for LimitNode<'_> {
     fn build_query_plan(self) -> Result<QueryPlan> {
         let count = self.expr.build_expr_plan()?;
-        self.prev_node.build_query_body_plan().map(|body| {
-            QueryPlan::Limit(LimitPlan {
-                input: LimitInputPlan::Body(body),
-                count,
-            })
-        })
+        self.prev_node
+            .build_limit_input_plan()
+            .map(|input| QueryPlan::Limit(LimitPlan { input, count }))
     }
 }
 
@@ -165,8 +162,8 @@ mod tests {
         crate::{
             plan::{
                 JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, LimitInputPlan,
-                LimitPlan, ProjectionPlan, QueryBodyPlan, QueryPlan, SelectPlan, SetExprPlan,
-                StatementPlan, TableFactorPlan, TableWithJoinsPlan,
+                LimitPlan, ProjectionPlan, QueryPlan, SelectPlan, SetExprPlan, StatementPlan,
+                TableFactorPlan, TableWithJoinsPlan,
             },
             query_builder::{Build, SelectItemList, col, num, table, test_query_builder},
         },
@@ -292,12 +289,8 @@ mod tests {
                 aggregate_slots: None,
             };
 
-            let body = QueryBodyPlan {
-                body: SetExprPlan::Select(Box::new(select)),
-                order_by: Vec::new(),
-            };
             let limit = LimitPlan {
-                input: LimitInputPlan::Body(body),
+                input: LimitInputPlan::Body(SetExprPlan::Select(Box::new(select))),
                 count: num(100).build_expr_plan().unwrap(),
             };
 

@@ -5,8 +5,8 @@ use {
         data::Schema,
         plan::{
             ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan,
-            LimitInputPlan, LimitPlan, OffsetPlan, QueryBodyPlan, QueryPlan, SelectPlan,
-            SetExprPlan, StatementPlan, TableWithJoinsPlan,
+            LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, OrderByPlan, QueryPlan,
+            SelectPlan, SetExprPlan, StatementPlan, TableWithJoinsPlan,
             expr::evaluable::check_expr as check_evaluable,
         },
     },
@@ -35,31 +35,55 @@ struct JoinPlanner<'a, S> {
 
 impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
     fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
-        let plan_body = |QueryBodyPlan { body, order_by }| {
-            let body = match body {
-                SetExprPlan::Select(select) => {
-                    let select = self.select(outer_context, *select);
+        let plan_body = |body| match body {
+            SetExprPlan::Select(select) => {
+                let select = self.select(outer_context, *select);
 
-                    SetExprPlan::Select(Box::new(select))
-                }
-                SetExprPlan::Values(_) => body,
-            };
-
-            QueryBodyPlan { body, order_by }
+                SetExprPlan::Select(Box::new(select))
+            }
+            SetExprPlan::Values(_) => body,
         };
 
         match query {
             QueryPlan::Body(body) => QueryPlan::Body(plan_body(body)),
-            QueryPlan::Offset(OffsetPlan { input, count }) => QueryPlan::Offset(OffsetPlan {
+            QueryPlan::OrderBy(OrderByPlan { input, exprs }) => QueryPlan::OrderBy(OrderByPlan {
                 input: plan_body(input),
+                exprs,
+            }),
+            QueryPlan::Offset(OffsetPlan { input, count }) => QueryPlan::Offset(OffsetPlan {
+                input: match input {
+                    OffsetInputPlan::Body(body) => OffsetInputPlan::Body(plan_body(body)),
+                    OffsetInputPlan::OrderBy(OrderByPlan { input, exprs }) => {
+                        OffsetInputPlan::OrderBy(OrderByPlan {
+                            input: plan_body(input),
+                            exprs,
+                        })
+                    }
+                },
                 count,
             }),
             QueryPlan::Limit(LimitPlan { input, count }) => {
                 let input = match input {
                     LimitInputPlan::Body(body) => LimitInputPlan::Body(plan_body(body)),
+                    LimitInputPlan::OrderBy(OrderByPlan { input, exprs }) => {
+                        LimitInputPlan::OrderBy(OrderByPlan {
+                            input: plan_body(input),
+                            exprs,
+                        })
+                    }
                     LimitInputPlan::Offset(OffsetPlan { input, count }) => {
                         LimitInputPlan::Offset(OffsetPlan {
-                            input: plan_body(input),
+                            input: match input {
+                                OffsetInputPlan::Body(body) => {
+                                    OffsetInputPlan::Body(plan_body(body))
+                                }
+                                OffsetInputPlan::OrderBy(OrderByPlan { input, exprs }) => {
+                                    OffsetInputPlan::OrderBy(OrderByPlan {
+                                        input: plan_body(input),
+                                        exprs,
+                                    })
+                                }
+                            },
                             count,
                         })
                     }
@@ -416,6 +440,11 @@ mod tests {
         let actual = plan_join(&storage, sql);
         let expected = table("Player").select();
         test!(actual, expected, "basic select:\n{sql}");
+
+        let sql = "SELECT * FROM Player ORDER BY id OFFSET 1";
+        let actual = plan_join(&storage, sql);
+        let expected = table("Player").select().order_by("id").offset(1);
+        test!(actual, expected, "preserves order by before offset:\n{sql}");
 
         let sql = "DELETE FROM Player WHERE id = 1;";
         let actual = plan_join(&storage, sql);
