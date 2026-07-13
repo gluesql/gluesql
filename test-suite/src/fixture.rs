@@ -1,10 +1,11 @@
 use {
-    crate::Tester,
+    crate::{Tester, test_indexes},
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     gluesql_core::{
-        ast::DataType,
+        ast::{DataType, IndexOperator},
         data::{Interval, Point},
         executor::Payload,
+        plan::IndexItemPlan,
         prelude::Value,
         store::{GStore, GStoreMut, Planner},
     },
@@ -47,6 +48,7 @@ struct SerdeExpectation {
 struct FixtureStep {
     name: Option<String>,
     sql: String,
+    indexes: Option<Vec<IndexItemPlan>>,
     expectation: Expectation,
     line: usize,
 }
@@ -94,7 +96,23 @@ where
 
     for step in parse_fixture_with_context(fixture_path, source) {
         let context = step_context(fixture_path, &step);
-        let actual = glue.execute(&step.sql);
+        let actual = match step.indexes {
+            Some(indexes) => {
+                let statements = glue.plan(&step.sql).unwrap_or_else(|error| {
+                    panic!("{context}\nexpected an index plan but planning failed: {error:#?}")
+                });
+                let [statement] = statements.as_slice() else {
+                    panic!(
+                        "{context}\nindex expectation requires one statement, found {}",
+                        statements.len()
+                    );
+                };
+
+                assert_indexes_with_context(statement, indexes, &context);
+                glue.execute_stmt(statement).map(|payload| vec![payload])
+            }
+            None => glue.execute(&step.sql),
+        };
 
         match step.expectation {
             Expectation::Ok => {
@@ -141,6 +159,24 @@ where
             }
         }
     }
+}
+
+fn assert_indexes_with_context(
+    statement: &gluesql_core::plan::StatementPlan,
+    indexes: Vec<IndexItemPlan>,
+    context: &str,
+) {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        test_indexes(statement, Some(indexes));
+    }))
+    .unwrap_or_else(|payload| {
+        let message = payload
+            .downcast_ref::<String>()
+            .map(String::as_str)
+            .or_else(|| payload.downcast_ref::<&str>().copied())
+            .unwrap_or("unknown index assertion panic");
+        panic!("{context}\nindex expectation failed: {message}")
+    });
 }
 
 fn parse_fixture_with_context(fixture_path: &str, source: &str) -> Vec<FixtureStep> {
@@ -237,6 +273,7 @@ fn parse_fixture(source: &str) -> Vec<FixtureStep> {
     let mut steps = Vec::new();
     let mut sql = Vec::new();
     let mut name = None;
+    let mut indexes = None;
     let mut index = 0;
 
     while index < lines.len() {
@@ -262,6 +299,37 @@ fn parse_fixture(source: &str) -> Vec<FixtureStep> {
             continue;
         }
 
+        if let Some(value) = trimmed.strip_prefix("-- expect-index:") {
+            assert!(
+                sql.iter().any(|line: &&str| !line.trim().is_empty()),
+                "index expectation must follow fixture SQL at line {}",
+                index + 1
+            );
+
+            let value = value.trim();
+            assert!(!value.is_empty(), "index expectation cannot be empty");
+
+            if value == "none" {
+                assert!(
+                    indexes.is_none(),
+                    "`none` cannot be combined with another index expectation"
+                );
+                indexes = Some(Vec::new());
+            } else {
+                let expected = parse_index(value);
+                match &mut indexes {
+                    None => indexes = Some(vec![expected]),
+                    Some(indexes) if indexes.is_empty() => {
+                        panic!("`none` cannot be combined with another index expectation")
+                    }
+                    Some(indexes) => indexes.push(expected),
+                }
+            }
+
+            index += 1;
+            continue;
+        }
+
         if let Some(directive) = trimmed.strip_prefix("-- expect:") {
             let step_line = first_sql_line(&sql, index + 1);
             let sql = take_sql(&mut sql);
@@ -270,6 +338,7 @@ fn parse_fixture(source: &str) -> Vec<FixtureStep> {
             steps.push(FixtureStep {
                 name: name.take(),
                 sql,
+                indexes: indexes.take(),
                 expectation,
                 line: step_line,
             });
@@ -289,8 +358,55 @@ fn parse_fixture(source: &str) -> Vec<FixtureStep> {
         name.is_none(),
         "fixture name must be followed by SQL and an expectation"
     );
+    assert!(
+        indexes.is_none(),
+        "index expectation must be followed by a result expectation"
+    );
 
     steps
+}
+
+fn parse_index(value: &str) -> IndexItemPlan {
+    let mut parts = value.splitn(2, char::is_whitespace);
+    let name = parts.next().expect("index expectation requires a name");
+    let detail = parts
+        .next()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+
+    let (asc, cmp_expr) = match detail {
+        None => (None, None),
+        Some("ASC") => (Some(true), None),
+        Some("DESC") => (Some(false), None),
+        Some(detail) => {
+            let mut parts = detail.splitn(2, char::is_whitespace);
+            let operator = match parts.next().unwrap() {
+                ">" => IndexOperator::Gt,
+                "<" => IndexOperator::Lt,
+                ">=" => IndexOperator::GtEq,
+                "<=" => IndexOperator::LtEq,
+                "=" => IndexOperator::Eq,
+                operator => panic!("unsupported index operator: {operator}"),
+            };
+            let expression = parts
+                .next()
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .expect("index comparison requires a SQL expression");
+            let expression = gluesql_core::parse_sql::parse_expr(expression)
+                .expect("index comparison requires a valid SQL expression");
+            let expression = gluesql_core::translate::translate_expr(&expression, &[])
+                .expect("index comparison expression must translate");
+
+            (None, Some((operator, expression.into())))
+        }
+    };
+
+    IndexItemPlan::NonClustered {
+        name: name.to_owned(),
+        asc,
+        cmp_expr,
+    }
 }
 
 fn first_sql_line(lines: &[&str], expectation_line: usize) -> usize {
@@ -631,6 +747,7 @@ fn parse_data_type(value: &str) -> DataType {
 mod tests {
     use {
         super::*,
+        crate::stringify_label,
         gluesql_core::{
             error::{EvaluateError, TranslateError},
             prelude::Error,
@@ -823,6 +940,40 @@ SELECT * FROM Example;
     }
 
     #[test]
+    fn parses_index_expectations() {
+        let source = r"
+SELECT * FROM Example WHERE id < 20;
+
+-- expect-index: idx_id < 20
+-- expect: ok
+
+SELECT * FROM Example ORDER BY id;
+
+-- expect-index: idx_id ASC
+-- expect: ok
+
+SELECT * FROM Example ORDER BY name;
+
+-- expect-index: idx_name
+-- expect: ok
+
+SELECT * FROM Example;
+
+-- expect-index: none
+-- expect: ok
+";
+
+        let steps = parse_fixture(source);
+        assert_eq!(
+            steps[0].indexes,
+            Some(crate::idx!(idx_id, IndexOperator::Lt, "20"))
+        );
+        assert_eq!(steps[1].indexes, Some(crate::idx!(idx_id, ASC)));
+        assert_eq!(steps[2].indexes, Some(crate::idx!(idx_name)));
+        assert_eq!(steps[3].indexes, Some(crate::idx!()));
+    }
+
+    #[test]
     fn rejects_missing_fixture_and_malformed_sources() {
         assert!(std::panic::catch_unwind(|| source("missing.sql")).is_err());
 
@@ -832,6 +983,8 @@ SELECT * FROM Example;
             "SELECT 1;\n",
             "-- expect: ok\n",
             "SELECT 1;\n\n-- expect:\n",
+            "SELECT 1;\n\n-- expect-index: none\n-- expect-index: idx_id\n-- expect: ok\n",
+            "SELECT 1;\n\n-- expect-index: idx_id =\n-- expect: ok\n",
         ];
 
         for source in malformed {

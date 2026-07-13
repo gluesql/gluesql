@@ -402,17 +402,32 @@ macro_rules! generate_index_tests {
                 $crate::declare_rust_case!($test, $storage, $d($d module)::+);
             };
         }
+        macro_rules! sql_case {
+            ($d($d module:ident)::+) => {
+                $crate::declare_sql_case!($test, $storage, $d($d module)::+);
+            };
+        }
 
         rust_case!(index::basic);
+        sql_case!(index::basic);
         rust_case!(index::and);
+        sql_case!(index::and);
         rust_case!(index::nested);
+        sql_case!(index::nested);
         rust_case!(index::null);
+        sql_case!(index::null);
         rust_case!(index::expr);
+        sql_case!(index::expr);
         rust_case!(index::value);
+        sql_case!(index::value);
         rust_case!(index::order_by);
+        sql_case!(index::order_by);
         rust_case!(index::order_by::multi);
+        sql_case!(index::order_by::multi);
         rust_case!(index::showindexes);
+        sql_case!(index::showindexes);
         rust_case!(dictionary_index);
+        sql_case!(dictionary_index);
     };
 }
 
@@ -451,9 +466,16 @@ macro_rules! generate_alter_table_index_tests {
                 $crate::declare_rust_case!($test, $storage, $d($d module)::+);
             };
         }
+        macro_rules! sql_case {
+            ($d($d module:ident)::+) => {
+                $crate::declare_sql_case!($test, $storage, $d($d module)::+);
+            };
+        }
 
         rust_case!(alter::drop_indexed::table);
+        sql_case!(alter::drop_indexed::table);
         rust_case!(alter::drop_indexed::column);
+        sql_case!(alter::drop_indexed::column);
     };
 }
 
@@ -487,9 +509,16 @@ macro_rules! generate_transaction_index_tests {
                 $crate::declare_rust_case!($test, $storage, $d($d module)::+);
             };
         }
+        macro_rules! sql_case {
+            ($d($d module:ident)::+) => {
+                $crate::declare_sql_case!($test, $storage, $d($d module)::+);
+            };
+        }
 
         rust_case!(transaction::index::create);
+        sql_case!(transaction::index::create);
         rust_case!(transaction::index::drop);
+        sql_case!(transaction::index::drop);
     };
 }
 
@@ -520,7 +549,13 @@ macro_rules! generate_metadata_index_tests {
                 $crate::declare_rust_case!($test, $storage, $d($d module)::+);
             };
         }
+        macro_rules! sql_case {
+            ($d($d module:ident)::+) => {
+                $crate::declare_sql_case!($test, $storage, $d($d module)::+);
+            };
+        }
 
         rust_case!(metadata::index);
+        sql_case!(metadata::index);
     };
 }
