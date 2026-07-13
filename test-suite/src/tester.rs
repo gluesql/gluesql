@@ -2,7 +2,7 @@ use {
     gluesql_core::{
         ast::*,
         plan::{IndexItemPlan, StatementPlan},
-        prelude::{Glue, Payload, Result, parse, translate},
+        prelude::{Glue, Payload, Result},
         store::{GStore, GStoreMut, Planner},
     },
     pretty_assertions::assert_eq,
@@ -118,41 +118,6 @@ pub trait Tester<T: GStore + GStoreMut + Planner> {
     fn new(namespace: &str) -> Self;
 
     fn get_glue(&mut self) -> &mut Glue<T>;
-
-    fn run_inner(&mut self, sql: &str) -> Result<Payload> {
-        let glue = self.get_glue();
-
-        println!("[RUN] {sql}");
-        let parsed = parse(sql)?;
-        let statement = translate(&parsed[0])?;
-        let statement = glue.storage.plan(statement.into())?;
-
-        glue.execute_stmt(&statement)
-    }
-
-    fn run(&mut self, sql: &str) -> Payload {
-        self.run_inner(sql).unwrap()
-    }
-
-    fn test(&mut self, sql: &str, expected: Result<Payload>) {
-        let actual = self.run_inner(sql);
-
-        assert_eq!(actual, expected, "[TEST] {sql}");
-    }
-
-    fn test_idx(&mut self, sql: &str, expected: Result<Payload>, indexes: Vec<IndexItemPlan>) {
-        let glue = self.get_glue();
-
-        let parsed = parse(sql).unwrap();
-        let statement = translate(&parsed[0]).unwrap();
-        let statement = glue.storage.plan(statement.into()).unwrap();
-
-        test_indexes(&statement, Some(indexes));
-
-        let actual = glue.execute_stmt(&statement);
-
-        assert_eq!(actual, expected, "[TEST IDX] {sql}");
-    }
 }
 
 #[macro_export]
@@ -171,13 +136,6 @@ macro_rules! test_case {
             macro_rules! get_glue {
                 () => {
                     glue
-                };
-            }
-
-            #[allow(unused_macros)]
-            macro_rules! get_tester {
-                () => {
-                    &mut tester
                 };
             }
 
