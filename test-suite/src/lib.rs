@@ -179,6 +179,14 @@ macro_rules! generate_store_tests {
         glue!(function_nullif, function::nullif::nullif);
         glue!(function_hex, function::hex::hex);
         glue!(join, join::join);
+        glue!(
+            join_primary_key_predicate_on_joined_relation,
+            join::join_primary_key_predicate_on_joined_relation
+        );
+        glue!(
+            join_primary_key_predicate_with_multiple_joins,
+            join::join_primary_key_predicate_with_multiple_joins
+        );
         glue!(join_project, join::project);
         glue!(migrate, migrate::migrate);
         glue!(nested_select, nested_select::nested_select);

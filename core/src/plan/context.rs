@@ -93,4 +93,21 @@ impl<'a> Context<'a> {
             }
         }
     }
+
+    pub fn contains_aliased_primary_key(&self, target_alias: &str, target_column: &str) -> bool {
+        match self {
+            Self::Data {
+                alias,
+                primary_key: Some(primary_key),
+                ..
+            } if alias == target_alias && primary_key == &target_column => true,
+            Self::Data { next, .. } => next
+                .as_ref()
+                .is_some_and(|next| next.contains_aliased_primary_key(target_alias, target_column)),
+            Self::Bridge { left, right } => {
+                left.contains_aliased_primary_key(target_alias, target_column)
+                    || right.contains_aliased_primary_key(target_alias, target_column)
+            }
+        }
+    }
 }

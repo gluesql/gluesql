@@ -58,20 +58,66 @@ enum PrimaryKey {
     NotFound(ExprPlan),
 }
 
+struct PrimaryKeyContext<'a> {
+    first_relation: Option<Rc<Context<'a>>>,
+    joined_relations: Vec<Option<Rc<Context<'a>>>>,
+    can_install: bool,
+}
+
+impl PrimaryKeyContext<'_> {
+    fn contains(&self, key: &ExprPlan) -> bool {
+        if !self.can_install {
+            return false;
+        }
+
+        let Some(first_relation) = self.first_relation.as_ref() else {
+            return false;
+        };
+
+        match key {
+            ExprPlan::Identifier(column) => {
+                first_relation.contains_primary_key(column)
+                    && self.joined_relations.iter().all(|context| {
+                        context
+                            .as_ref()
+                            .is_some_and(|context| !context.contains_column(column))
+                    })
+            }
+            ExprPlan::CompoundIdentifier { alias, ident } => {
+                first_relation.contains_aliased_primary_key(alias, ident)
+            }
+            _ => false,
+        }
+    }
+}
+
 impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
     fn select(&self, outer_context: Option<Rc<Context<'a>>>, select: SelectPlan) -> SelectPlan {
-        let current_context = self.update_context(None, &select.from.relation);
+        let first_relation_context = self.update_context(None, &select.from.relation);
+        let primary_key_context = PrimaryKeyContext {
+            first_relation: first_relation_context.as_ref().map(Rc::clone),
+            joined_relations: select
+                .from
+                .joins
+                .iter()
+                .map(|join| self.update_context(None, &join.relation))
+                .collect(),
+            can_install: matches!(
+                &select.from.relation,
+                TableFactorPlan::Table { index: None, .. }
+            ),
+        };
         let current_context = select
             .from
             .joins
             .iter()
-            .fold(current_context, |context, join| {
+            .fold(first_relation_context, |context, join| {
                 self.update_context(context, &join.relation)
             });
 
         let (index, selection) = select
             .selection
-            .map(|expr| self.expr(outer_context, current_context, expr))
+            .map(|expr| self.expr(outer_context, current_context, &primary_key_context, expr))
             .map_or((None, None), |primary_key| match primary_key {
                 PrimaryKey::Found { index_item, expr } => (Some(index_item), expr),
                 PrimaryKey::NotFound(expr) => (None, Some(expr)),
@@ -105,19 +151,9 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
         &self,
         outer_context: Option<Rc<Context<'a>>>,
         current_context: Option<Rc<Context<'a>>>,
+        primary_key_context: &PrimaryKeyContext<'a>,
         expr: ExprPlan,
     ) -> PrimaryKey {
-        let check_primary_key = |key: &ExprPlan| {
-            let (ExprPlan::Identifier(key) | ExprPlan::CompoundIdentifier { ident: key, .. }) = key
-            else {
-                return false;
-            };
-
-            current_context
-                .as_ref()
-                .is_some_and(|context| context.contains_primary_key(key))
-        };
-
         match expr {
             ExprPlan::BinaryOp {
                 left: key,
@@ -128,7 +164,7 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                 left: value,
                 op: BinaryOperator::Eq,
                 right: key,
-            } if check_primary_key(key.as_ref())
+            } if primary_key_context.contains(key.as_ref())
                 && check_evaluable(current_context.as_ref().map(Rc::clone), &key)
                 && check_evaluable(None, &value) =>
             {
@@ -147,6 +183,7 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                 let primary_key = self.expr(
                     outer_context.as_ref().map(Rc::clone),
                     current_context.as_ref().map(Rc::clone),
+                    primary_key_context,
                     *left,
                 );
 
@@ -169,7 +206,7 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                     PrimaryKey::NotFound(expr) => expr,
                 };
 
-                match self.expr(outer_context, current_context, *right) {
+                match self.expr(outer_context, current_context, primary_key_context, *right) {
                     PrimaryKey::Found { index_item, expr } => {
                         let expr = match expr {
                             Some(right) => ExprPlan::BinaryOp {
@@ -196,16 +233,18 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                     }
                 }
             }
-            ExprPlan::Nested(expr) => match self.expr(outer_context, current_context, *expr) {
-                PrimaryKey::Found { index_item, expr } => {
-                    let expr = expr.map(Box::new).map(ExprPlan::Nested);
+            ExprPlan::Nested(expr) => {
+                match self.expr(outer_context, current_context, primary_key_context, *expr) {
+                    PrimaryKey::Found { index_item, expr } => {
+                        let expr = expr.map(Box::new).map(ExprPlan::Nested);
 
-                    PrimaryKey::Found { index_item, expr }
+                        PrimaryKey::Found { index_item, expr }
+                    }
+                    PrimaryKey::NotFound(expr) => {
+                        PrimaryKey::NotFound(ExprPlan::Nested(Box::new(expr)))
+                    }
                 }
-                PrimaryKey::NotFound(expr) => {
-                    PrimaryKey::NotFound(ExprPlan::Nested(Box::new(expr)))
-                }
-            },
+            }
             _ => {
                 let outer_context = Context::concat(current_context, outer_context);
                 let expr = self.subquery_expr(outer_context, expr);
@@ -227,7 +266,10 @@ mod tests {
             },
             mock::{MockStorage, run},
             parse_sql::{parse, parse_expr},
-            plan::{StatementPlan, fetch_schema_map},
+            plan::{
+                ExprPlan, IndexItemPlan, SetExprPlan, StatementPlan, TableAliasPlan,
+                TableFactorPlan, fetch_schema_map,
+            },
             query_builder::{Build, col, primary_key, table},
             translate::{NO_PARAMS, translate, translate_expr},
         },
@@ -358,6 +400,40 @@ mod tests {
             .unwrap();
         assert_eq!(actual, expected, "basic inner join:\n{sql}");
 
+        let sql = "SELECT * FROM Player JOIN Badge WHERE id = 1";
+        let actual = plan(&storage, sql);
+        assert_eq!(
+            actual, expected,
+            "unqualified primary key on first relation:\n{sql}"
+        );
+
+        let sql = "SELECT * FROM Player p JOIN Badge b WHERE p.id = 1";
+        let actual = plan(&storage, sql);
+        let StatementPlan::Query(query) = actual else {
+            panic!("expected query plan:\n{sql}");
+        };
+        let SetExprPlan::Select(select_plan) = query.body else {
+            panic!("expected select plan:\n{sql}");
+        };
+        assert_eq!(
+            select_plan.from.relation,
+            TableFactorPlan::Table {
+                name: "Player".to_owned(),
+                alias: Some(TableAliasPlan {
+                    name: "p".to_owned(),
+                    columns: Vec::new(),
+                }),
+                index: Some(IndexItemPlan::PrimaryKey(ExprPlan::Literal(
+                    Literal::Number(1.into())
+                ))),
+            },
+            "aliased primary key on first relation:\n{sql}"
+        );
+        assert_eq!(
+            select_plan.selection, None,
+            "selection should be removed:\n{sql}"
+        );
+
         let sql = "SELECT * FROM Player JOIN Badge WHERE Player.id = Badge.user_id";
         let actual = plan(&storage, sql);
         let expected = select(Select {
@@ -394,6 +470,75 @@ mod tests {
             .build()
             .unwrap();
         assert_eq!(actual, expected, "nested select:\n{sql}");
+    }
+
+    #[test]
+    fn joined_relation_primary_key() {
+        let storage = run("
+            CREATE TABLE Tasks (
+                task_id INTEGER PRIMARY KEY,
+                project_id INTEGER,
+                done BOOLEAN NOT NULL
+            );
+            CREATE TABLE Projects (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL
+            );
+        ");
+
+        let sql = "
+            SELECT *
+            FROM Tasks t
+            JOIN Projects p ON p.id = t.project_id
+            WHERE p.id = 1 AND t.done = FALSE;
+        ";
+        let actual = plan(&storage, sql);
+        let expected = table("Tasks")
+            .alias_as("t")
+            .select()
+            .join_as("Projects", "p")
+            .on("p.id = t.project_id")
+            .filter("p.id = 1 AND t.done = FALSE")
+            .build()
+            .unwrap();
+        assert_eq!(actual, expected, "qualified joined relation:\n{sql}");
+
+        let sql = "
+            SELECT *
+            FROM Tasks t
+            JOIN Projects p ON p.id = t.project_id
+            WHERE id = 1 AND t.done = FALSE;
+        ";
+        let actual = plan(&storage, sql);
+        let expected = table("Tasks")
+            .alias_as("t")
+            .select()
+            .join_as("Projects", "p")
+            .on("p.id = t.project_id")
+            .filter("id = 1 AND t.done = FALSE")
+            .build()
+            .unwrap();
+        assert_eq!(actual, expected, "unqualified joined relation:\n{sql}");
+    }
+
+    #[test]
+    fn existing_access_path_preserves_selection() {
+        let storage = run("
+            CREATE TABLE Player (
+                id INTEGER PRIMARY KEY,
+                name TEXT
+            );
+        ");
+        let statement = table("Player")
+            .index_by(primary_key().eq("2"))
+            .select()
+            .filter("id = 1")
+            .build()
+            .unwrap();
+        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
+        let actual = plan_primary_key(&schema_map, statement.clone());
+
+        assert_eq!(actual, statement);
     }
 
     #[test]
