@@ -1,6 +1,6 @@
 SELECT
-        RADIANS(180.0) as radians_1,
-        RADIANS(360.0) as radians_2
+    RADIANS(180.0) as radians_1,
+    RADIANS(360.0) as radians_2
     ;
 -- expect:
 -- | radians_1: F64    | radians_2: F64    |

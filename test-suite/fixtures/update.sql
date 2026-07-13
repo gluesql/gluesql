@@ -7,11 +7,11 @@ CREATE TABLE TableA (
 -- expect: ok
 
 INSERT INTO TableA (id, num, num2, name)
-    VALUES
-        (1, 2, 4, 'Hello'),
-        (1, 9, 5, 'World'),
-        (3, 4, 7, 'Great'),
-        (4, 7, 10, 'Job');
+VALUES
+    (1, 2, 4, 'Hello'),
+    (1, 9, 5, 'World'),
+    (3, 4, 7, 'Great'),
+    (4, 7, 10, 'Job');
 -- expect: ok
 
 CREATE TABLE TableB (
@@ -22,11 +22,11 @@ CREATE TABLE TableB (
 -- expect: ok
 
 INSERT INTO TableB (id, num, rank)
-    VALUES
-        (1, 2, 1),
-        (1, 9, 2),
-        (3, 4, 3),
-        (4, 7, 4);
+VALUES
+    (1, 2, 1),
+    (1, 9, 2),
+    (3, 4, 3),
+    (4, 7, 4);
 -- expect: ok
 
 UPDATE TableA SET id = 2

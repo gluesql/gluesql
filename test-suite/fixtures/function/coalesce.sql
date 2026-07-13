@@ -22,9 +22,9 @@ SELECT COALESCE((SELECT NULL), (SELECT 42)) as coalesce
 -- | 42            |
 
 SELECT COALESCE(
-        COALESCE(NULL),
-        COALESCE(NULL, 'Answer to the Ultimate Question of Life')
-    ) as coalesce
+    COALESCE(NULL),
+    COALESCE(NULL, 'Answer to the Ultimate Question of Life')
+) as coalesce
 -- expect:
 -- | coalesce: Str                             |
 -- | "Answer to the Ultimate Question of Life" |
@@ -80,13 +80,13 @@ INSERT INTO TestCoalesce (id, text_value, integer_value, float_value, boolean_va
 -- expect: ok
 
 SELECT
-        id,
-        COALESCE(text_value, 'Default') AS coalesce_text,
-        COALESCE(integer_value, 0) AS coalesce_integer,
-        COALESCE(float_value, 0.1) AS coalesce_float,
-        COALESCE(boolean_value, FALSE) AS coalesce_boolean
-    FROM TestCoalesce
-    ORDER BY id ASC
+    id,
+    COALESCE(text_value, 'Default') AS coalesce_text,
+    COALESCE(integer_value, 0) AS coalesce_integer,
+    COALESCE(float_value, 0.1) AS coalesce_float,
+    COALESCE(boolean_value, FALSE) AS coalesce_boolean
+FROM TestCoalesce
+ORDER BY id ASC
 -- expect:
 -- | id: I64 | coalesce_text: Str | coalesce_integer: I64 | coalesce_float: F64 | coalesce_boolean: Bool |
 -- | 1       | "Hitchhiker"       | 0                     | 0.1                 | false                  |

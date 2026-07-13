@@ -1,6 +1,6 @@
 SELECT
-        EXP(2.0) as exp1,
-        EXP(5.5) as exp2
+    EXP(2.0) as exp1,
+    EXP(5.5) as exp2
     ;
 -- expect:
 -- | exp1: F64        | exp2: F64          |

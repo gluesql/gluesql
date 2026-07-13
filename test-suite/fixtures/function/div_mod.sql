@@ -5,16 +5,16 @@ CREATE TABLE FloatDiv (
 -- expect: payload Create
 
 INSERT INTO
-        FloatDiv (dividend, divisor)
-    VALUES
-        (12.5, 2.5), (12.34, 56.78), (-12.3, 4.0)
+    FloatDiv (dividend, divisor)
+VALUES
+    (12.5, 2.5), (12.34, 56.78), (-12.3, 4.0)
 -- expect: payload Insert
 -- 3
 
 SELECT
-        DIV(dividend, divisor),
-        MOD(dividend, divisor)
-    FROM FloatDiv
+    DIV(dividend, divisor),
+    MOD(dividend, divisor)
+FROM FloatDiv
 -- expect:
 -- | DIV(dividend, divisor): I64 | MOD(dividend, divisor): F64 |
 -- | 5                           | 0.0                         |
@@ -48,9 +48,9 @@ CREATE TABLE IntDiv (dividend INTEGER, divisor INTEGER)
 -- expect: payload Create
 
 INSERT INTO
-        IntDiv (dividend, divisor)
-    VALUES
-        (12, 3), (12, 7), (12, 34), (-12, 7)
+    IntDiv (dividend, divisor)
+VALUES
+    (12, 3), (12, 7), (12, 34), (-12, 7)
 -- expect: payload Insert
 -- 4
 
@@ -59,9 +59,9 @@ INSERT INTO IntDiv (dividend, divisor) VALUES (12, 2)
 -- 1
 
 SELECT
-        DIV(dividend, divisor),
-        MOD(dividend, divisor)
-    FROM IntDiv
+    DIV(dividend, divisor),
+    MOD(dividend, divisor)
+FROM IntDiv
 -- expect:
 -- | DIV(dividend, divisor): I64 | MOD(dividend, divisor): I64 |
 -- | 4                           | 0                           |
@@ -77,17 +77,17 @@ CREATE TABLE MixDiv (dividend INTEGER NULL, divisor FLOAT NULL)
 -- expect: payload Create
 
 INSERT INTO
-        MixDiv (dividend, divisor)
-    VALUES
-        (12, 3.0), (12, 34.0),
-        (12, NULL), (NULL, 34.0), (NULL, NULL)
+    MixDiv (dividend, divisor)
+VALUES
+    (12, 3.0), (12, 34.0),
+    (12, NULL), (NULL, 34.0), (NULL, NULL)
 -- expect: payload Insert
 -- 5
 
 SELECT
-        DIV(dividend, divisor),
-        MOD(dividend, divisor)
-    FROM MixDiv
+    DIV(dividend, divisor),
+    MOD(dividend, divisor)
+FROM MixDiv
 -- expect:
 -- | DIV(dividend, divisor): I64 | MOD(dividend, divisor): I64 |
 -- | 4                           | 0                           |

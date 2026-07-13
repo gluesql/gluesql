@@ -7,11 +7,11 @@ CREATE TABLE Test (
 -- expect: ok
 
 INSERT INTO Test (id, num, name, rate)
-    VALUES
-        (1, 2, 'Hello',    3.0),
-        (1, 9, NULL,       NULL),
-        (3, 4, 'World',    1.0),
-        (4, 7, 'Thursday', NULL);
+VALUES
+    (1, 2, 'Hello',    3.0),
+    (1, 9, NULL,       NULL),
+    (3, 4, 'World',    1.0),
+    (4, 7, 'Thursday', NULL);
 -- expect: ok
 
 SELECT id, num FROM Test
@@ -71,9 +71,9 @@ SELECT id, num FROM Test ORDER BY id ASC, num DESC
 -- | 4       | 7        |
 
 SELECT id, num FROM Test
-    ORDER BY
-        (SELECT id FROM Test t2 WHERE Test.id = t2.id LIMIT 1) ASC,
-        num DESC
+ORDER BY
+    (SELECT id FROM Test t2 WHERE Test.id = t2.id LIMIT 1) ASC,
+    num DESC
 -- expect:
 -- | id: I64 | num: I64 |
 -- | 1       | 9        |
@@ -82,12 +82,12 @@ SELECT id, num FROM Test
 -- | 4       | 7        |
 
 SELECT id, num FROM Test
-    ORDER BY
-        (SELECT t2.id FROM Test t2
-            WHERE Test.id = t2.id
-            ORDER BY (Test.id + t2.id) LIMIT 1
-        ) ASC,
-        num DESC;
+ORDER BY
+    (SELECT t2.id FROM Test t2
+        WHERE Test.id = t2.id
+        ORDER BY (Test.id + t2.id) LIMIT 1
+    ) ASC,
+    num DESC;
 -- expect:
 -- | id: I64 | num: I64 |
 -- | 1       | 9        |

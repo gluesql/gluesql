@@ -30,9 +30,9 @@ DELETE FROM Item WHERE id > 100
 -- expect: ok
 
 UPDATE Item
-    SET
-        id = id + 1,
-        rare = NOT rare
+SET
+    id = id + 1,
+    rare = NOT rare
 -- expect: ok
 
 SELECT id, name, dex, rare FROM Item
@@ -49,12 +49,12 @@ SELECT new_field, obj['cost'] AS cost FROM Item
 -- | "Hello"        | 3000      |
 
 SELECT
-        Player.id AS player_id,
-        Player.name AS player_name,
-        Item.obj['cost'] AS item_cost
-    FROM Item
-    JOIN Player
-    WHERE flag IS NOT NULL;
+    Player.id AS player_id,
+    Player.name AS player_name,
+    Item.obj['cost'] AS item_cost
+FROM Item
+JOIN Player
+WHERE flag IS NOT NULL;
 -- expect:
 -- | player_id: I64 | player_name: Str | item_cost: I64 |
 -- | 1001           | "Beam"           | 3000           |

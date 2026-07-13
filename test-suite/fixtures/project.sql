@@ -64,23 +64,23 @@ SELECT player_id, player_id FROM ProjectItem
 -- | 3              | 3              |
 
 SELECT u.id, i.id, player_id
-    FROM ProjectUser u
-    JOIN ProjectItem i ON u.id = 1 AND u.id = i.player_id
+FROM ProjectUser u
+JOIN ProjectItem i ON u.id = 1 AND u.id = i.player_id
 -- expect:
 -- | id: I64 | id: I64 | player_id: I64 |
 -- | 1       | 101     | 1              |
 
 SELECT i.*, u.name
-    FROM ProjectUser u
-    JOIN ProjectItem i ON u.id = 2 AND u.id = i.player_id
+FROM ProjectUser u
+JOIN ProjectItem i ON u.id = 2 AND u.id = i.player_id
 -- expect:
 -- | id: I64 | player_id: I64 | quantity: I64 | name: Str |
 -- | 102     | 2              | 4             | "Mike"    |
 -- | 103     | 2              | 9             | "Mike"    |
 
 SELECT u.*, i.*
-    FROM ProjectUser u
-    JOIN ProjectItem i ON u.id = i.player_id
+FROM ProjectUser u
+JOIN ProjectItem i ON u.id = i.player_id
 -- expect:
 -- | id: I64 | name: Str | id: I64 | player_id: I64 | quantity: I64 |
 -- | 1       | "Taehoon" | 101     | 1              | 1             |
@@ -104,10 +104,10 @@ SELECT (1 + 2) as foo, 2+id+2*100-1 as Ident, name FROM ProjectUser
 -- | 3        | 204        | "Jorno"   |
 
 SELECT id FROM ProjectUser
-    WHERE id IN (
-        SELECT ProjectUser.id FROM ProjectItem
-        WHERE quantity > 5 AND ProjectUser.id = player_id
-    );
+WHERE id IN (
+    SELECT ProjectUser.id FROM ProjectItem
+    WHERE quantity > 5 AND ProjectUser.id = player_id
+);
 -- expect:
 -- | id: I64 |
 -- | 2       |

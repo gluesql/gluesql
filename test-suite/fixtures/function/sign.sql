@@ -1,34 +1,34 @@
 SELECT
-        SIGN(2) AS SIGN1,
-        SIGN(-2) AS SIGN2,
-        SIGN(+2) AS SIGN3
+    SIGN(2) AS SIGN1,
+    SIGN(-2) AS SIGN2,
+    SIGN(+2) AS SIGN3
     ;
 -- expect:
 -- | SIGN1: I8 | SIGN2: I8 | SIGN3: I8 |
 -- | 1         | -1        | 1         |
 
 SELECT
-        SIGN(2.0) AS SIGN1,
-        SIGN(-2.0) AS SIGN2,
-        SIGN(+2.0) AS SIGN3
+    SIGN(2.0) AS SIGN1,
+    SIGN(-2.0) AS SIGN2,
+    SIGN(+2.0) AS SIGN3
     ;
 -- expect:
 -- | SIGN1: I8 | SIGN2: I8 | SIGN3: I8 |
 -- | 1         | -1        | 1         |
 
 SELECT
-        SIGN(0.0) AS SIGN1,
-        SIGN(-0.0) AS SIGN2,
-        SIGN(+0.0) AS SIGN3
+    SIGN(0.0) AS SIGN1,
+    SIGN(-0.0) AS SIGN2,
+    SIGN(+0.0) AS SIGN3
     ;
 -- expect:
 -- | SIGN1: I8 | SIGN2: I8 | SIGN3: I8 |
 -- | 0         | 0         | 0         |
 
 SELECT
-        SIGN(0) AS SIGN1,
-        SIGN(-0) AS SIGN2,
-        SIGN(+0) AS SIGN3
+    SIGN(0) AS SIGN1,
+    SIGN(-0) AS SIGN2,
+    SIGN(+0) AS SIGN3
     ;
 -- expect:
 -- | SIGN1: I8 | SIGN2: I8 | SIGN3: I8 |

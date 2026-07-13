@@ -1,8 +1,8 @@
 SELECT
-        FLOOR(0.3) as floor1,
-        FLOOR(-0.8) as floor2,
-        FLOOR(10) as floor3,
-        FLOOR(6.87421) as floor4
+    FLOOR(0.3) as floor1,
+    FLOOR(-0.8) as floor2,
+    FLOOR(10) as floor3,
+    FLOOR(6.87421) as floor4
     ;
 -- expect:
 -- | floor1: F64 | floor2: F64 | floor3: F64 | floor4: F64 |

@@ -52,7 +52,7 @@ SELECT
     time1 - time2 AS time_sub,
     time1 + INTERVAL '1' HOUR AS add,
     time2 - INTERVAL '250' MINUTE AS sub
-    FROM TimeLog;
+FROM TimeLog;
 -- expect:
 -- | id: I64 | time_sub: Interval               | add: Time  | sub: Time      |
 -- | 1       | "'-01:01:01.123' HOUR TO SECOND" | "13:30:00" | "09:21:01.123" |
@@ -60,9 +60,9 @@ SELECT
 -- | 3       | "'05:59' HOUR TO MINUTE"         | "15:59:00" | "04:50:00"     |
 
 SELECT
-        id,
-        DATE '2021-01-05' + time2 AS timestamp
-    FROM TimeLog LIMIT 1;
+    id,
+    DATE '2021-01-05' + time2 AS timestamp
+FROM TimeLog LIMIT 1;
 -- expect:
 -- | id: I64 | timestamp: Timestamp      |
 -- | 1       | "2021-01-05 13:31:01.123" |

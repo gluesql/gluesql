@@ -3,16 +3,16 @@ CREATE TABLE Item (id INTEGER, name TEXT);
 
 INSERT INTO
     Item (id, name)
-    VALUES
-        (1, 'Harry'), (2, 'Ron'), (3, 'Hermione');
+VALUES
+    (1, 'Harry'), (2, 'Ron'), (3, 'Hermione');
 -- expect: payload Insert
 -- 3
 
 SELECT CASE id
-        WHEN 1 THEN name
-        WHEN 2 THEN name
-        WHEN 4 THEN name
-        ELSE 'Malfoy' END
+    WHEN 1 THEN name
+    WHEN 2 THEN name
+    WHEN 4 THEN name
+    ELSE 'Malfoy' END
     AS case FROM Item;
 -- expect:
 -- | case: Str |
@@ -21,10 +21,10 @@ SELECT CASE id
 -- | "Malfoy"  |
 
 SELECT CASE id
-        WHEN 1 THEN name
-        WHEN 2 THEN name
-        WHEN 4 THEN name
-        END
+    WHEN 1 THEN name
+    WHEN 2 THEN name
+    WHEN 4 THEN name
+    END
     AS case FROM Item;
 -- expect:
 -- | case: Str |
@@ -33,10 +33,10 @@ SELECT CASE id
 -- | NULL      |
 
 SELECT CASE
-        WHEN name = 'Harry' THEN id
-        WHEN name = 'Ron' THEN id
-        WHEN name = 'Hermione' THEN id
-        ELSE 404 END
+    WHEN name = 'Harry' THEN id
+    WHEN name = 'Ron' THEN id
+    WHEN name = 'Hermione' THEN id
+    ELSE 404 END
     AS case FROM Item;
 -- expect:
 -- | case: I64 |
@@ -45,10 +45,10 @@ SELECT CASE
 -- | 3         |
 
 SELECT CASE
-        WHEN name = 'Harry' THEN id
-        WHEN name = 'Ron' THEN id
-        WHEN name = 'Hermion' THEN id
-        END
+    WHEN name = 'Harry' THEN id
+    WHEN name = 'Ron' THEN id
+    WHEN name = 'Hermion' THEN id
+    END
     AS case FROM Item;
 -- expect:
 -- | case: I64 |
@@ -57,9 +57,9 @@ SELECT CASE
 -- | NULL      |
 
 SELECT CASE
-        WHEN (name = 'Harry') OR (name = 'Ron') THEN (id + 1)
-        WHEN name = ('Hermi' || 'one') THEN (id + 2)
-        ELSE 404 END
+    WHEN (name = 'Harry') OR (name = 'Ron') THEN (id + 1)
+    WHEN name = ('Hermi' || 'one') THEN (id + 2)
+    ELSE 404 END
     AS case FROM Item;
 -- expect:
 -- | case: I64 |
@@ -68,10 +68,10 @@ SELECT CASE
 -- | 5         |
 
 SELECT CASE 1 COLLATE Item
-        WHEN name = 'Harry' THEN id
-        WHEN name = 'Ron' THEN id
-        WHEN 'Hermione' THEN id
-        END
+    WHEN name = 'Harry' THEN id
+    WHEN name = 'Ron' THEN id
+    WHEN 'Hermione' THEN id
+    END
     AS case FROM Item;
 -- expect: error Translate.UnsupportedExpr
 -- "1 COLLATE Item"

@@ -1,6 +1,6 @@
 SELECT
-        DEGREES(PI() / 2) as degrees_1,
-        DEGREES(PI()) as degrees_2
+    DEGREES(PI() / 2) as degrees_1,
+    DEGREES(PI()) as degrees_2
     ;
 -- expect:
 -- | degrees_1: F64 | degrees_2: F64 |

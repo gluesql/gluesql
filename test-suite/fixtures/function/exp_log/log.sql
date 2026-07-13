@@ -1,6 +1,6 @@
 SELECT
-        LOG(64.0, 2.0) as log_1,
-        LOG(0.04, 10.0) as log_2
+    LOG(64.0, 2.0) as log_1,
+    LOG(0.04, 10.0) as log_2
     ;
 -- expect:
 -- | log_1: F64 | log_2: F64          |

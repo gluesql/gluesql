@@ -92,13 +92,13 @@ INSERT INTO Sub VALUES (101), (102), (103), (104), (105);
 
 -- name: HAVING - nested select context handling edge case
 SELECT id
-    FROM Sub
-    WHERE (id - 100) IN (
-        SELECT id
-        FROM Item
-        GROUP BY id
-        HAVING id <= 3
-    )
+FROM Sub
+WHERE (id - 100) IN (
+    SELECT id
+    FROM Item
+    GROUP BY id
+    HAVING id <= 3
+)
 -- expect:
 -- | id: I64 |
 -- | 101     |

@@ -29,9 +29,9 @@ select concat() as myconcat;
 -- expect: error Evaluate.EmptyArgNotAllowedInConcat
 
 SELECT CONCAT(
-        CAST('[1, 2, 3]' AS LIST),
-        CAST('["one", "two", "three"]' AS LIST)
-    ) AS myconcat;
+    CAST('[1, 2, 3]' AS LIST),
+    CAST('["one", "two", "three"]' AS LIST)
+) AS myconcat;
 -- expect:
 -- | myconcat: List              |
 -- | [1,2,3,"one","two","three"] |

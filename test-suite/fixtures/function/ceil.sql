@@ -1,8 +1,8 @@
 SELECT
-        CEIL(0.3) AS ceil1,
-        CEIL(-0.8) AS ceil2,
-        CEIL(10) AS ceil3,
-        CEIL(6.87421) AS ceil4
+    CEIL(0.3) AS ceil1,
+    CEIL(-0.8) AS ceil2,
+    CEIL(10) AS ceil3,
+    CEIL(6.87421) AS ceil4
     ;
 -- expect:
 -- | ceil1: F64 | ceil2: F64 | ceil3: F64 | ceil4: F64 |

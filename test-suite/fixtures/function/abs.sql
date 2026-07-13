@@ -27,9 +27,9 @@ INSERT INTO SingleItem VALUES (0, -1, -2)
 -- 1
 
 SELECT ABS(id) AS ABS1,
-            ABS(int8) AS ABS2,
-            ABS(dec) AS ABS3
-    FROM SingleItem
+    ABS(int8) AS ABS2,
+    ABS(dec) AS ABS3
+FROM SingleItem
 -- expect:
 -- | ABS1: I64 | ABS2: I8 | ABS3: Decimal |
 -- | 0         | 1        | 2             |

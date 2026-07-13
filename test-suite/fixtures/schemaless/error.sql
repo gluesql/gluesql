@@ -17,10 +17,10 @@ INSERT INTO Food VALUES (SUBSTR(SUBSTR(' hi{"id":1,"name":"meat","weight":10}', 
 -- expect: ok
 
 INSERT INTO Item
-    VALUES (
-        '{ "a": 10 }',
-        '{ "b": true }'
-    );
+VALUES (
+    '{ "a": 10 }',
+    '{ "b": true }'
+);
 -- expect: error Insert.OnlySingleValueAcceptedForSchemalessRow
 -- 2
 

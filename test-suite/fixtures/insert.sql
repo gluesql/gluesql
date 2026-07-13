@@ -12,9 +12,9 @@ INSERT INTO Test (id, num, name) VALUES (1, 2, 'Hi boo');
 
 -- name: insert multiple rows
 INSERT INTO Test (id, num, name)
-    VALUES
-        (3, 9, 'Kitty!'),
-        (2, 7, 'Monsters');
+VALUES
+    (3, 9, 'Kitty!'),
+    (2, 7, 'Monsters');
 -- expect: payload Insert
 -- 2
 

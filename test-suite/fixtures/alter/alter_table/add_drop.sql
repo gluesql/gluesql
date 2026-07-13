@@ -104,9 +104,9 @@ CREATE TABLE Referenced (id INTEGER PRIMARY KEY);
 -- expect: payload Create
 
 CREATE TABLE Referencing (
-        id INTEGER,
-        referenced_id INTEGER,
-        FOREIGN KEY (referenced_id) REFERENCES Referenced (id)
+    id INTEGER,
+    referenced_id INTEGER,
+    FOREIGN KEY (referenced_id) REFERENCES Referenced (id)
 );
 -- expect: payload Create
 

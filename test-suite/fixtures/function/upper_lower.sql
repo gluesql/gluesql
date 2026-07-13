@@ -23,9 +23,9 @@ SELECT LOWER(name), UPPER(name) FROM Item;
 -- | "abcd"           | "ABCD"           |
 
 SELECT
-        LOWER('Abcd') as lower,
-        UPPER('abCd') as upper
-    FROM Item LIMIT 1;
+    LOWER('Abcd') as lower,
+    UPPER('abCd') as upper
+FROM Item LIMIT 1;
 -- expect:
 -- | lower: Str | upper: Str |
 -- | "abcd"     | "ABCD"     |

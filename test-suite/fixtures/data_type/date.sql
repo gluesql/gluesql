@@ -47,11 +47,11 @@ SELECT * FROM DateLog WHERE '1999-01-03' < DATE '2000-01-01';
 -- | 3       | "2021-05-01" | "2021-05-01" |
 
 SELECT
-        id,
-        date1 - date2 AS date_sub,
-        date1 - INTERVAL '1' DAY AS sub,
-        date2 + INTERVAL '1' MONTH AS add
-    FROM DateLog;
+    id,
+    date1 - date2 AS date_sub,
+    date1 - INTERVAL '1' DAY AS sub,
+    date2 + INTERVAL '1' MONTH AS add
+FROM DateLog;
 -- expect:
 -- | id: I64 | date_sub: Interval         | sub: Timestamp        | add: Timestamp        |
 -- | 1       | "'-263' DAY"               | "2020-06-10 00:00:00" | "2021-04-01 00:00:00" |

@@ -27,20 +27,20 @@ SELECT * FROM IntervalLog;
 -- | 7       | "'-1000-11' YEAR TO MONTH" | "'-30:11' MINUTE TO SECOND"       |
 
 SELECT
-        id,
-        interval1 * 2 AS i1,
-        interval2 - INTERVAL '-3' YEAR AS i2
-    FROM IntervalLog WHERE id = 1
+    id,
+    interval1 * 2 AS i1,
+    interval2 - INTERVAL '-3' YEAR AS i2
+FROM IntervalLog WHERE id = 1
 -- expect:
 -- | id: I64 | i1: Interval          | i2: Interval          |
 -- | 1       | "'2-4' YEAR TO MONTH" | "'5-6' YEAR TO MONTH" |
 
 SELECT
-        id,
-        interval1 / 3 AS i1,
-        interval2 - INTERVAL 3600 SECOND AS i2,
-        INTERVAL (20 + 10) SECOND + INTERVAL (10 * 3) SECOND AS i3
-    FROM IntervalLog WHERE id = 2;
+    id,
+    interval1 / 3 AS i1,
+    interval2 - INTERVAL 3600 SECOND AS i2,
+    INTERVAL (20 + 10) SECOND + INTERVAL (10 * 3) SECOND AS i3
+FROM IntervalLog WHERE id = 2;
 -- expect:
 -- | id: I64 | i1: Interval | i2: Interval         | i3: Interval |
 -- | 2       | "'4' DAY"    | "'1 10' DAY TO HOUR" | "'1' MINUTE" |

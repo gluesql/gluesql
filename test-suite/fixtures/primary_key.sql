@@ -25,9 +25,9 @@ SELECT id, name FROM Allegro WHERE id < 2
 -- | 1       | "hello"   |
 
 SELECT a.id
-    FROM Allegro a
-    JOIN Allegro a2
-    WHERE a.id = a2.id;
+FROM Allegro a
+JOIN Allegro a2
+WHERE a.id = a2.id;
 -- expect:
 -- | id: I64 |
 -- | 1       |

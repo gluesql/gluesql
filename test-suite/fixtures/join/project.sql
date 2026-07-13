@@ -26,8 +26,8 @@ INSERT INTO Item (id, quantity, player_id) VALUES
 -- expect: ok
 
 SELECT p.id, i.id
-    FROM Player p
-    LEFT JOIN Item i
+FROM Player p
+LEFT JOIN Item i
     ON p.id = i.player_id
 -- expect:
 -- | id: I64 | id: I64 |
@@ -38,8 +38,8 @@ SELECT p.id, i.id
 -- | 5       | NULL    |
 
 SELECT p.id, player_id
-    FROM Player p
-    LEFT JOIN Item
+FROM Player p
+LEFT JOIN Item
     ON p.id = player_id
 -- expect:
 -- | id: I64 | player_id: I64 |
@@ -50,8 +50,8 @@ SELECT p.id, player_id
 -- | 5       | NULL           |
 
 SELECT Item.*
-    FROM Player p
-    LEFT JOIN Item
+FROM Player p
+LEFT JOIN Item
     ON p.id = player_id
 -- expect:
 -- | id: I64 | quantity: I64 | player_id: I64 |
@@ -62,8 +62,8 @@ SELECT Item.*
 -- | NULL    | NULL          | NULL           |
 
 SELECT *
-    FROM Player p
-    LEFT JOIN Item
+FROM Player p
+LEFT JOIN Item
     ON p.id = player_id
 -- expect:
 -- | id: I64 | name: Str | id: I64 | quantity: I64 | player_id: I64 |

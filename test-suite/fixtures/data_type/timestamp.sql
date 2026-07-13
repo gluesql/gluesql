@@ -53,10 +53,10 @@ SELECT id, t1 - t2 AS timestamp_sub FROM TimestampLog;
 -- | 3       | "'00:00' MINUTE TO SECOND"      |
 
 SELECT
-        id,
-        t1 - INTERVAL '1' DAY AS sub,
-        t2 + INTERVAL '1' MONTH AS add
-    FROM TimestampLog;
+    id,
+    t1 - INTERVAL '1' DAY AS sub,
+    t2 + INTERVAL '1' MONTH AS add
+FROM TimestampLog;
 -- expect:
 -- | id: I64 | sub: Timestamp               | add: Timestamp               |
 -- | 1       | "2020-06-10 11:23:11"        | "2021-04-01 00:00:00"        |

@@ -1,6 +1,6 @@
 SELECT
-        SQRT(4.0) as sqrt_1,
-        SQRT(0.07) as sqrt_2
+    SQRT(4.0) as sqrt_1,
+    SQRT(0.07) as sqrt_2
     ;
 -- expect:
 -- | sqrt_1: F64 | sqrt_2: F64        |

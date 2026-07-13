@@ -6,8 +6,8 @@ CREATE TABLE Test (
 -- expect: ok
 
 INSERT INTO Test
-    VALUES
-        (1, 29, 15);
+VALUES
+    (1, 29, 15);
 -- expect: ok
 
 -- name: bitwise-and for values

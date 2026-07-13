@@ -18,12 +18,12 @@ SELECT id, items FROM ListType
 -- | 3       | [{"bar":[true,0,[10.5,false]],"foo":100},10,20] |
 
 SELECT
-        id,
-        UNWRAP(items, '1') AS foo,
-        UNWRAP(items, '0.foo') + 100 AS bar,
-        UNWRAP(items, '4') AS a,
-        UNWRAP(items, '0.bar.2.0') + UNWRAP(items, '2') AS b
-    FROM ListType
+    id,
+    UNWRAP(items, '1') AS foo,
+    UNWRAP(items, '0.foo') + 100 AS bar,
+    UNWRAP(items, '4') AS a,
+    UNWRAP(items, '0.bar.2.0') + UNWRAP(items, '2') AS b
+FROM ListType
 -- expect:
 -- | id: I64 | foo          | bar: I64 | a: List | b: F64 |
 -- | 1       | I64(2)       | NULL     | NULL    | NULL   |
@@ -58,11 +58,11 @@ INSERT INTO ListType2 VALUES
 -- expect: ok
 
 SELECT
-        id,
-        items['0'] AS foo,
-        items['1'] AS bar,
-        items['3']['0'] AS hundred
-    FROM ListType2
+    id,
+    items['0'] AS foo,
+    items['1'] AS bar,
+    items['3']['0'] AS hundred
+FROM ListType2
 -- expect:
 -- | id: I64 | foo          | bar           | hundred: I64 |
 -- | 1       | I64(1)       | I64(2)        | NULL         |

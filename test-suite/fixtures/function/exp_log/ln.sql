@@ -1,6 +1,6 @@
 SELECT
-        LN(64.0) as ln1,
-        LN(0.04) as ln2
+    LN(64.0) as ln1,
+    LN(0.04) as ln2
     ;
 -- expect:
 -- | ln1: F64           | ln2: F64            |

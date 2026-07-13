@@ -26,62 +26,62 @@ SELECT * FROM InnerTable
 -- | 3       | "SQL"     |
 
 SELECT *
-    FROM (
-        SELECT COUNT(*) AS cnt FROM InnerTable
-    ) AS InlineView
+FROM (
+    SELECT COUNT(*) AS cnt FROM InnerTable
+) AS InlineView
 -- expect:
 -- | cnt: I64 |
 -- | 3        |
 
 SELECT *
-    FROM (
-        SELECT COUNT(*) AS cnt
-        FROM InnerTable
-        WHERE id > 1
-    ) AS InlineView
+FROM (
+    SELECT COUNT(*) AS cnt
+    FROM InnerTable
+    WHERE id > 1
+) AS InlineView
 -- expect:
 -- | cnt: I64 |
 -- | 2        |
 
 SELECT *
-    FROM (
-        SELECT COUNT(*) FROM InnerTable
-    ) AS InlineView
+FROM (
+    SELECT COUNT(*) FROM InnerTable
+) AS InlineView
 -- expect:
 -- | COUNT(*): I64 |
 -- | 3             |
 
 SELECT *
-    FROM (
-        SELECT COUNT(*) AS cnt FROM InnerTable
-    )
+FROM (
+    SELECT COUNT(*) AS cnt FROM InnerTable
+)
 -- expect: error Translate.LackOfAlias
 
 SELECT *
+FROM (
+    SELECT *
     FROM (
-        SELECT *
-        FROM (
-            SELECT COUNT(*) AS cnt FROM InnerTable
-        ) AS InlineView
-    ) AS InlineView2
+        SELECT COUNT(*) AS cnt FROM InnerTable
+    ) AS InlineView
+) AS InlineView2
 -- expect:
 -- | cnt: I64 |
 -- | 3        |
 
 SELECT *
-    FROM OuterTable
-    JOIN (
-        SELECT id, name FROM InnerTable
-    ) AS InlineView ON OuterTable.id = InlineView.id
+FROM OuterTable
+JOIN (
+    SELECT id, name FROM InnerTable
+) AS InlineView ON OuterTable.id = InlineView.id
 -- expect:
 -- | id: I64 | name: Str | id: I64 | name: Str |
 -- | 1       | "WORKS!"  | 1       | "GLUE"    |
 -- | 2       | "EXTRA"   | 2       | "SQL"     |
 
 SELECT *
-    FROM OuterTable JOIN (
-        SELECT name FROM InnerTable
-    ) AS InlineView ON OuterTable.id = InlineView.id
+FROM OuterTable JOIN (
+    SELECT name FROM InnerTable
+) AS InlineView ON OuterTable.id = InlineView.id
 -- expect: error Evaluate.CompoundIdentifierNotFound
 -- {
 --   "column_name": "id",
@@ -89,63 +89,63 @@ SELECT *
 -- }
 
 SELECT *
-    FROM OuterTable
-    JOIN (
-        SELECT id, name
-        FROM InnerTable
-        WHERE id = 1
-    ) AS InlineView ON OuterTable.id = InlineView.id
+FROM OuterTable
+JOIN (
+    SELECT id, name
+    FROM InnerTable
+    WHERE id = 1
+) AS InlineView ON OuterTable.id = InlineView.id
 -- expect:
 -- | id: I64 | name: Str | id: I64 | name: Str |
 -- | 1       | "WORKS!"  | 1       | "GLUE"    |
 
 SELECT *
-    FROM OuterTable JOIN (
-        SELECT * FROM InnerTable
-    ) AS InlineView ON OuterTable.id = InlineView.id
+FROM OuterTable JOIN (
+    SELECT * FROM InnerTable
+) AS InlineView ON OuterTable.id = InlineView.id
 -- expect:
 -- | id: I64 | name: Str | id: I64 | name: Str |
 -- | 1       | "WORKS!"  | 1       | "GLUE"    |
 -- | 2       | "EXTRA"   | 2       | "SQL"     |
 
 SELECT *
-    FROM OuterTable JOIN (
-        SELECT InnerTable.* FROM InnerTable
-    ) AS InlineView ON OuterTable.id = InlineView.id
+FROM OuterTable JOIN (
+    SELECT InnerTable.* FROM InnerTable
+) AS InlineView ON OuterTable.id = InlineView.id
 -- expect:
 -- | id: I64 | name: Str | id: I64 | name: Str |
 -- | 1       | "WORKS!"  | 1       | "GLUE"    |
 -- | 2       | "EXTRA"   | 2       | "SQL"     |
 
 SELECT InlineView.*
-    FROM OuterTable JOIN (
-        SELECT InnerTable.*, 'once' AS literal FROM InnerTable
-    ) AS InlineView ON OuterTable.id = InlineView.id
+FROM OuterTable JOIN (
+    SELECT InnerTable.*, 'once' AS literal FROM InnerTable
+) AS InlineView ON OuterTable.id = InlineView.id
 -- expect:
 -- | id: I64 | name: Str | literal: Str |
 -- | 1       | "GLUE"    | "once"       |
 -- | 2       | "SQL"     | "once"       |
 
 SELECT *
+FROM OuterTable
+JOIN (
+    SELECT OuterTable.id, OuterTable.name
     FROM OuterTable
     JOIN (
-        SELECT OuterTable.id, OuterTable.name
-        FROM OuterTable
-        JOIN (
-            SELECT * FROM InnerTable
-        ) AS InlineView ON OuterTable.id = InlineView.id
-    ) AS InlineView2 ON OuterTable.id = InlineView2.id
+        SELECT * FROM InnerTable
+    ) AS InlineView ON OuterTable.id = InlineView.id
+) AS InlineView2 ON OuterTable.id = InlineView2.id
 -- expect:
 -- | id: I64 | name: Str | id: I64 | name: Str |
 -- | 1       | "WORKS!"  | 1       | "WORKS!"  |
 -- | 2       | "EXTRA"   | 2       | "EXTRA"   |
 
 SELECT *
-    FROM (
-        SELECT name, count(*) as cnt
-        FROM InnerTable
-        GROUP BY name
-    ) AS InlineView
+FROM (
+    SELECT name, count(*) as cnt
+    FROM InnerTable
+    GROUP BY name
+) AS InlineView
 -- expect:
 -- | name: Str | cnt: I64 |
 -- | "GLUE"    | 1        |
@@ -155,7 +155,7 @@ SELECT * FROM (
     SELECT *
     FROM InnerTable
     LIMIT 1
-    ) AS InlineView
+) AS InlineView
 -- expect:
 -- | id: I64 | name: Str |
 -- | 1       | "GLUE"    |
@@ -164,7 +164,7 @@ SELECT * FROM (
     SELECT *
     FROM InnerTable
     OFFSET 2
-    ) AS InlineView
+) AS InlineView
 -- expect:
 -- | id: I64 | name: Str |
 -- | 3       | "SQL"     |
@@ -173,7 +173,7 @@ SELECT * FROM (
     SELECT *
     FROM InnerTable
     ORDER BY id desc
-    ) AS InlineView
+) AS InlineView
 -- expect:
 -- | id: I64 | name: Str |
 -- | 3       | "SQL"     |
@@ -181,11 +181,11 @@ SELECT * FROM (
 -- | 1       | "GLUE"    |
 
 SELECT *
-    FROM OuterTable, (
-            SELECT id
-            FROM InnerTable
-            WHERE InnerTable.id = OuterTable.id
-        ) AS InlineView
+FROM OuterTable, (
+    SELECT id
+    FROM InnerTable
+    WHERE InnerTable.id = OuterTable.id
+) AS InlineView
 -- expect: error Translate.TooManyTables
 
 SELECT DISTINCT id FROM OuterTable
@@ -195,11 +195,11 @@ SELECT DISTINCT id FROM OuterTable
 -- | 2       |
 
 SELECT *
-    FROM (
-        SELECT *
-        FROM InnerTable
-    ) AS InlineView
-    Join OuterTable ON InlineView.id = OuterTable.id
+FROM (
+    SELECT *
+    FROM InnerTable
+) AS InlineView
+Join OuterTable ON InlineView.id = OuterTable.id
 -- expect:
 -- | id: I64 | name: Str | id: I64 | name: Str |
 -- | 1       | "GLUE"    | 1       | "WORKS!"  |

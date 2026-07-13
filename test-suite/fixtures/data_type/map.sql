@@ -16,12 +16,12 @@ SELECT id, nested FROM MapType LIMIT 1
 -- | 1       | {"a":true,"b":2} |
 
 SELECT
-        id,
-        UNWRAP(nested, 'a.foo') || '.yeah' AS foo,
-        UNWRAP(nested, 'a.b.c.d') as good,
-        UNWRAP(nested, 'a.b.c.d') * 2 as good2,
-        UNWRAP(nested, 'a.b') as b
-    FROM MapType
+    id,
+    UNWRAP(nested, 'a.foo') || '.yeah' AS foo,
+    UNWRAP(nested, 'a.b.c.d') as good,
+    UNWRAP(nested, 'a.b.c.d') * 2 as good2,
+    UNWRAP(nested, 'a.b') as b
+FROM MapType
 -- expect:
 -- | id: I64 | foo: Str  | good: I64 | good2: I64 | b                   |
 -- | 1       | NULL      | NULL      | NULL       | NULL                |
@@ -29,10 +29,10 @@ SELECT
 -- | 3       | NULL      | 10        | 20         | Map({"c":{"d":10}}) |
 
 SELECT
-        id,
-        UNWRAP(NULL, 'a.b') as foo,
-        UNWRAP(nested, NULL) as bar
-    FROM MapType LIMIT 1
+    id,
+    UNWRAP(NULL, 'a.b') as foo,
+    UNWRAP(nested, NULL) as bar
+FROM MapType LIMIT 1
 -- expect:
 -- | id: I64 | foo  | bar  |
 -- | 1       | NULL | NULL |
@@ -66,11 +66,11 @@ SELECT id, nested['b'] FROM MapType2
 
 -- name: index expr with non-existent key from MapType Value returns Null
 SELECT
-        id,
-        nested['a']['red'] AS fruit,
-        nested['a']['blue'] + nested['b'] as sum,
-        nested['c'] AS c
-    FROM MapType2
+    id,
+    nested['a']['red'] AS fruit,
+    nested['a']['blue'] + nested['b'] as sum,
+    nested['c'] AS c
+FROM MapType2
 -- expect:
 -- | id: I64 | fruit: Str | sum: I64 | c: Bool |
 -- | 1       | "apple"    | 11       | NULL    |

@@ -7,11 +7,11 @@ CREATE TABLE Item (
 -- expect: ok
 
 INSERT INTO Item
-        (id,   content, verified, ratio)
-    VALUES
-        ( 1, 'Hello',     True,   0.1),
-        ( 1, 'World',    False,   0.9),
-        ( 1, 'test',    False,   0.0);
+    (id,   content, verified, ratio)
+VALUES
+    ( 1, 'Hello',     True,   0.1),
+    ( 1, 'World',    False,   0.9),
+    ( 1, 'test',    False,   0.0);
 -- expect: ok
 
 SELECT * FROM Item;

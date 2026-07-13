@@ -326,7 +326,7 @@ SELECT
     CAST('''3 12:30:12.1324'' DAY TO SECOND' as INTERVAL) as stoi_12,
     CAST('''-12:30:12'' HOUR TO SECOND' as INTERVAL) as stoi_13,
     CAST('''-30:11'' MINUTE TO SECOND' as INTERVAL) as stoi_14
-    FROM Item
+FROM Item
 -- expect:
 -- | stoi_1: Interval      | stoi_2: Interval | stoi_3: Interval | stoi_4: Interval      | stoi_5: Interval     | stoi_6: Interval | stoi_7: Interval           | stoi_8: Interval      | stoi_9: Interval     | stoi_10: Interval | stoi_11: Interval         | stoi_12: Interval                 | stoi_13: Interval            | stoi_14: Interval           |
 -- | "'1-2' YEAR TO MONTH" | "'12' DAY"       | "'12' MINUTE"    | "'-3 14' DAY TO HOUR" | "'3 14' DAY TO HOUR" | "'12' HOUR"      | "'-1000-11' YEAR TO MONTH" | "'2-6' YEAR TO MONTH" | "'1 11' DAY TO HOUR" | "'5' MINUTE"      | "'3 12:30' DAY TO MINUTE" | "'3 12:30:12.1324' DAY TO SECOND" | "'-12:30:12' HOUR TO SECOND" | "'-30:11' MINUTE TO SECOND" |
