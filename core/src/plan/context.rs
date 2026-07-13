@@ -111,3 +111,29 @@ impl<'a> Context<'a> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use {super::Context, std::rc::Rc};
+
+    #[test]
+    fn contains_aliased_primary_key_in_bridge() {
+        let player = Rc::new(Context::new(
+            "Player".to_owned(),
+            vec!["id", "name"],
+            Some("id"),
+            None,
+        ));
+        let badge = Rc::new(Context::new(
+            "Badge".to_owned(),
+            vec!["title", "user_id"],
+            Some("title"),
+            None,
+        ));
+        let context = Context::concat(Some(player), Some(badge)).unwrap();
+
+        assert!(context.contains_aliased_primary_key("Player", "id"));
+        assert!(context.contains_aliased_primary_key("Badge", "title"));
+        assert!(!context.contains_aliased_primary_key("Badge", "id"));
+    }
+}

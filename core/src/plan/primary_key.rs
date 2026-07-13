@@ -267,7 +267,7 @@ mod tests {
             mock::{MockStorage, run},
             parse_sql::{parse, parse_expr},
             plan::{
-                ExprPlan, IndexItemPlan, SetExprPlan, StatementPlan, TableAliasPlan,
+                ExprPlan, IndexItemPlan, QueryPlan, SetExprPlan, StatementPlan, TableAliasPlan,
                 TableFactorPlan, fetch_schema_map,
             },
             query_builder::{Build, col, primary_key, table},
@@ -409,29 +409,26 @@ mod tests {
 
         let sql = "SELECT * FROM Player p JOIN Badge b WHERE p.id = 1";
         let actual = plan(&storage, sql);
-        let StatementPlan::Query(query) = actual else {
-            panic!("expected query plan:\n{sql}");
+        let expected_relation = TableFactorPlan::Table {
+            name: "Player".to_owned(),
+            alias: Some(TableAliasPlan {
+                name: "p".to_owned(),
+                columns: Vec::new(),
+            }),
+            index: Some(IndexItemPlan::PrimaryKey(ExprPlan::Literal(
+                Literal::Number(1.into()),
+            ))),
         };
-        let SetExprPlan::Select(select_plan) = query.body else {
-            panic!("expected select plan:\n{sql}");
-        };
-        assert_eq!(
-            select_plan.from.relation,
-            TableFactorPlan::Table {
-                name: "Player".to_owned(),
-                alias: Some(TableAliasPlan {
-                    name: "p".to_owned(),
-                    columns: Vec::new(),
-                }),
-                index: Some(IndexItemPlan::PrimaryKey(ExprPlan::Literal(
-                    Literal::Number(1.into())
-                ))),
-            },
-            "aliased primary key on first relation:\n{sql}"
-        );
-        assert_eq!(
-            select_plan.selection, None,
-            "selection should be removed:\n{sql}"
+        assert!(
+            matches!(
+                actual,
+                StatementPlan::Query(QueryPlan {
+                    body: SetExprPlan::Select(select_plan),
+                    ..
+                }) if select_plan.from.relation == expected_relation
+                    && select_plan.selection.is_none()
+            ),
+            "aliased primary key should be installed and removed from selection:\n{sql}"
         );
 
         let sql = "SELECT * FROM Player JOIN Badge WHERE Player.id = Badge.user_id";
