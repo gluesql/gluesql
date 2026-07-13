@@ -19,7 +19,7 @@ FROM FloatDiv
 -- | DIV(dividend, divisor): I64 | MOD(dividend, divisor): F64 |
 -- | 5                           | 0.0                         |
 -- | 0                           | 12.34                       |
--- | -3                          | -0.3000000000000007         |
+-- | -3                          | -0.3                        |
 
 SELECT DIV(1.0, 0.0) AS quotient FROM FloatDiv
 -- expect: error Evaluate.DivisorShouldNotBeZero

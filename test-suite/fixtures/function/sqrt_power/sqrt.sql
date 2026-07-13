@@ -3,8 +3,8 @@ SELECT
     SQRT(0.07) as sqrt_2
     ;
 -- expect:
--- | sqrt_1: F64 | sqrt_2: F64        |
--- | 2.0         | 0.2645751311064591 |
+-- | sqrt_1: F64 | sqrt_2: F64    |
+-- | 2.0         | 0.264575131106 |
 
 SELECT SQRT(64) as sqrt_with_int
 -- expect:

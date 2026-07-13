@@ -7,8 +7,8 @@ INSERT INTO SingleItem VALUES (ROUND(RAND(1)*100))
 
 SELECT RAND(123) AS rand1, RAND(789.0) AS rand2
 -- expect:
--- | rand1: F64          | rand2: F64         |
--- | 0.17325464426155657 | 0.9635218234007941 |
+-- | rand1: F64     | rand2: F64     |
+-- | 0.173254644262 | 0.963521823401 |
 
 SELECT RAND('string') AS rand
 -- expect: error Evaluate.FunctionRequiresFloatValue

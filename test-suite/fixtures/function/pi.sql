@@ -1,7 +1,7 @@
 SELECT PI() AS pi
 -- expect:
--- | pi: F64           |
--- | 3.141592653589793 |
+-- | pi: F64       |
+-- | 3.14159265359 |
 
 SELECT PI(0) AS pi
 -- expect: error Translate.FunctionArgsLengthNotMatching

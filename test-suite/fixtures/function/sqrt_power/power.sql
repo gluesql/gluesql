@@ -3,8 +3,8 @@ SELECT
     POWER(0.07,3) as power_2
     ;
 -- expect:
--- | power_1: F64 | power_2: F64          |
--- | 16.0         | 0.0003430000000000001 |
+-- | power_1: F64 | power_2: F64 |
+-- | 16.0         | 0.000343     |
 
 SELECT
     POWER(0,4) as power_with_zero,

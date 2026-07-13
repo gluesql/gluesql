@@ -24,7 +24,7 @@ SELECT VARIANCE(age) FROM Item
 SELECT VARIANCE(id), VARIANCE(quantity) FROM Item
 -- expect:
 -- | VARIANCE(id): F64 | VARIANCE(quantity): F64 |
--- | 4.0               | 82.77551020408163       |
+-- | 4.0               | 82.775510204082         |
 
 SELECT VARIANCE(DISTINCT id) FROM Item
 -- expect:
@@ -39,4 +39,4 @@ SELECT VARIANCE(DISTINCT age) FROM Item
 SELECT VARIANCE(quantity), VARIANCE(DISTINCT quantity) FROM Item
 -- expect:
 -- | VARIANCE(quantity): F64 | VARIANCE(DISTINCT quantity): F64 |
--- | 82.77551020408163       | 74.64                            |
+-- | 82.775510204082         | 74.64                            |

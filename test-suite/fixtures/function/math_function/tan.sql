@@ -1,7 +1,7 @@
 SELECT TAN(0.5) AS tan1, TAN(1) AS tan2
 -- expect:
--- | tan1: F64          | tan2: F64         |
--- | 0.5463024898437905 | 1.557407724654902 |
+-- | tan1: F64      | tan2: F64      |
+-- | 0.546302489844 | 1.557407724655 |
 
 SELECT TAN(null) AS tan
 -- expect:

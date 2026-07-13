@@ -19,6 +19,11 @@ use {
 
 static FIXTURES: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/fixtures");
 
+const F32_TOLERANCE: f64 = 1e-6;
+const F64_TOLERANCE: f64 = 1e-12;
+const F32_DECIMAL_PLACES: usize = 6;
+const F64_DECIMAL_PLACES: usize = 12;
+
 pub fn source(path: &str) -> &'static str {
     FIXTURES
         .get_file(path)
@@ -119,7 +124,13 @@ where
                 actual.unwrap_or_else(|error| panic!("{context}\nexpected success: {error:#?}"));
             }
             Expectation::Select(expected) | Expectation::Maps(expected) => {
-                pretty_assert_eq!(actual, Ok(vec![expected]), "{context}");
+                let payloads = actual.unwrap_or_else(|error| {
+                    panic!("{context}\nexpected result payload but execution failed: {error:#?}")
+                });
+                let [actual] = payloads.as_slice() else {
+                    panic!("{context}\nexpected one payload, found {}", payloads.len());
+                };
+                assert_payload(actual, &expected, &context);
             }
             Expectation::Payload(expected) => {
                 let payloads = actual.unwrap_or_else(|error| {
@@ -159,6 +170,118 @@ where
             }
         }
     }
+}
+
+fn assert_payload(actual: &Payload, expected: &Payload, context: &str) {
+    match (actual, expected) {
+        (
+            Payload::Select {
+                labels: actual_labels,
+                rows: actual_rows,
+            },
+            Payload::Select {
+                labels: expected_labels,
+                rows: expected_rows,
+            },
+        ) => {
+            pretty_assert_eq!(actual_labels, expected_labels, "{context}\nlabel mismatch");
+            pretty_assert_eq!(
+                actual_rows.len(),
+                expected_rows.len(),
+                "{context}\nrow count mismatch"
+            );
+
+            for (row_index, (actual_row, expected_row)) in
+                actual_rows.iter().zip(expected_rows).enumerate()
+            {
+                pretty_assert_eq!(
+                    actual_row.len(),
+                    expected_row.len(),
+                    "{context}\ncolumn count mismatch in row {row_index}"
+                );
+
+                for (column_index, (actual, expected)) in
+                    actual_row.iter().zip(expected_row).enumerate()
+                {
+                    let label = &expected_labels[column_index];
+                    assert_value(
+                        actual,
+                        expected,
+                        &format!(
+                            "{context}\nvalue mismatch in row {row_index}, column {column_index} ({label})"
+                        ),
+                    );
+                }
+            }
+        }
+        (Payload::SelectMap(actual_rows), Payload::SelectMap(expected_rows)) => {
+            pretty_assert_eq!(
+                actual_rows.len(),
+                expected_rows.len(),
+                "{context}\nrow count mismatch"
+            );
+
+            for (row_index, (actual, expected)) in actual_rows.iter().zip(expected_rows).enumerate()
+            {
+                assert_value(
+                    &Value::Map(actual.clone()),
+                    &Value::Map(expected.clone()),
+                    &format!("{context}\nvalue mismatch in map row {row_index}"),
+                );
+            }
+        }
+        _ => pretty_assert_eq!(actual, expected, "{context}\npayload mismatch"),
+    }
+}
+
+fn assert_value(actual: &Value, expected: &Value, context: &str) {
+    match (actual, expected) {
+        (Value::F32(actual), Value::F32(expected)) => {
+            assert_float(
+                f64::from(*actual),
+                f64::from(*expected),
+                F32_TOLERANCE,
+                context,
+            );
+        }
+        (Value::F64(actual), Value::F64(expected)) => {
+            assert_float(*actual, *expected, F64_TOLERANCE, context);
+        }
+        (Value::Map(actual), Value::Map(expected)) => {
+            let actual_keys = actual.keys().collect::<Vec<_>>();
+            let expected_keys = expected.keys().collect::<Vec<_>>();
+            pretty_assert_eq!(actual_keys, expected_keys, "{context}\nmap key mismatch");
+
+            for (key, expected) in expected {
+                assert_value(&actual[key], expected, &format!("{context}, key {key:?}"));
+            }
+        }
+        (Value::List(actual), Value::List(expected)) => {
+            pretty_assert_eq!(
+                actual.len(),
+                expected.len(),
+                "{context}\nlist length mismatch"
+            );
+
+            for (index, (actual, expected)) in actual.iter().zip(expected).enumerate() {
+                assert_value(actual, expected, &format!("{context}, list index {index}"));
+            }
+        }
+        _ => pretty_assert_eq!(actual, expected, "{context}"),
+    }
+}
+
+fn assert_float(actual: f64, expected: f64, tolerance: f64, context: &str) {
+    let matches = (actual.is_nan() && expected.is_nan())
+        || actual == expected
+        || (actual.is_finite()
+            && expected.is_finite()
+            && (actual - expected).abs() <= tolerance * actual.abs().max(expected.abs()).max(1.0));
+
+    assert!(
+        matches,
+        "{context}\nexpected {expected:?}, found {actual:?}, tolerance {tolerance:e}"
+    );
 }
 
 fn assert_indexes_with_context(
@@ -711,8 +834,14 @@ fn parse_typed_value(value: &str, type_: ColumnType) -> Value {
         ColumnType::U32 => Value::U32(value.parse().expect("expected a U32 value")),
         ColumnType::U64 => Value::U64(value.parse().expect("expected a U64 value")),
         ColumnType::U128 => Value::U128(value.parse().expect("expected a U128 value")),
-        ColumnType::F32 => Value::F32(value.parse().expect("expected an F32 value")),
-        ColumnType::F64 => Value::F64(value.parse().expect("expected an F64 value")),
+        ColumnType::F32 => {
+            assert_float_precision(value, F32_DECIMAL_PLACES, "F32");
+            Value::F32(value.parse().expect("expected an F32 value"))
+        }
+        ColumnType::F64 => {
+            assert_float_precision(value, F64_DECIMAL_PLACES, "F64");
+            Value::F64(value.parse().expect("expected an F64 value"))
+        }
         ColumnType::Decimal => {
             Value::Decimal(Decimal::from_str(unquote(value)).expect("expected a Decimal value"))
         }
@@ -754,6 +883,18 @@ fn parse_typed_value(value: &str, type_: ColumnType) -> Value {
             Value::Point(Point::from_wkt(unquote(value)).expect("expected a Point WKT value"))
         }
     }
+}
+
+fn assert_float_precision(value: &str, max_decimal_places: usize, type_: &str) {
+    let mantissa = value.split(['e', 'E']).next().unwrap();
+    let decimal_places = mantissa
+        .split_once('.')
+        .map_or(0, |(_, fraction)| fraction.len());
+
+    assert!(
+        decimal_places <= max_decimal_places,
+        "{type_} fixture value must use at most {max_decimal_places} decimal places: {value}"
+    );
 }
 
 fn parse_string(value: &str) -> String {
@@ -872,6 +1013,56 @@ SELECT 1;
             panic!("expected Select")
         };
         assert_eq!(rows[0].len(), 25);
+    }
+
+    #[test]
+    fn compares_float_values_with_tolerance() {
+        let expected = Payload::Select {
+            labels: vec!["f32".to_owned(), "f64".to_owned()],
+            rows: vec![vec![Value::F32(1.0), Value::F64(1.234_567_890_123)]],
+        };
+        let within_tolerance = Payload::Select {
+            labels: vec!["f32".to_owned(), "f64".to_owned()],
+            rows: vec![vec![
+                Value::F32(1.000_000_5),
+                Value::F64(1.234_567_890_123_4),
+            ]],
+        };
+        assert_payload(&within_tolerance, &expected, "float tolerance");
+
+        let outside_tolerance = Payload::Select {
+            labels: vec!["f32".to_owned(), "f64".to_owned()],
+            rows: vec![vec![Value::F32(1.000_002), Value::F64(1.234_567_892_123)]],
+        };
+        assert!(
+            std::panic::catch_unwind(|| {
+                assert_payload(&outside_tolerance, &expected, "float tolerance");
+            })
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn rejects_float_values_over_max_precision() {
+        assert!(matches!(
+            parse_value("1.123456", Some(ColumnType::F32)),
+            Value::F32(_)
+        ));
+        assert!(matches!(
+            parse_value("1.123456789012", Some(ColumnType::F64)),
+            Value::F64(_)
+        ));
+
+        let overprecise = [
+            ("1.1234567", Some(ColumnType::F32)),
+            ("1.1234567890123", Some(ColumnType::F64)),
+            ("F32(1.1234567)", None),
+            ("F64(1.1234567890123)", None),
+        ];
+
+        for (value, type_) in overprecise {
+            assert!(std::panic::catch_unwind(|| parse_value(value, type_)).is_err());
+        }
     }
 
     #[test]

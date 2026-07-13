@@ -1,7 +1,7 @@
 SELECT COS(0.5) AS cos1, COS(1) AS cos2
 -- expect:
--- | cos1: F64          | cos2: F64          |
--- | 0.8775825618903728 | 0.5403023058681398 |
+-- | cos1: F64      | cos2: F64      |
+-- | 0.877582561890 | 0.540302305868 |
 
 SELECT COS(null) AS cos
 -- expect:

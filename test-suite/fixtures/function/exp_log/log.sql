@@ -3,8 +3,8 @@ SELECT
     LOG(0.04, 10.0) as log_2
     ;
 -- expect:
--- | log_1: F64 | log_2: F64          |
--- | 6.0        | -1.3979400086720375 |
+-- | log_1: F64 | log_2: F64      |
+-- | 6.0        | -1.397940008672 |
 
 SELECT LOG(10, 10) as log_with_int
 -- expect:

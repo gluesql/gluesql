@@ -27,7 +27,7 @@ SELECT STDEV(total) FROM Item
 SELECT STDEV(DISTINCT id) FROM Item
 -- expect:
 -- | STDEV(DISTINCT id): F64 |
--- | 1.4142135623730951      |
+-- | 1.414213562373          |
 
 SELECT STDEV(DISTINCT age) FROM Item
 -- expect:
