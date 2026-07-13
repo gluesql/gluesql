@@ -1,12 +1,10 @@
 CREATE TABLE Item (id INTEGER, name TEXT);
-
 -- expect: payload Create
 
 INSERT INTO
     Item (id, name)
     VALUES
         (1, 'Harry'), (2, 'Ron'), (3, 'Hermione');
-
 -- expect: payload Insert
 -- 3
 
@@ -16,7 +14,6 @@ SELECT CASE id
         WHEN 4 THEN name
         ELSE 'Malfoy' END
     AS case FROM Item;
-
 -- expect:
 -- | case: Str |
 -- | "Harry"   |
@@ -29,7 +26,6 @@ SELECT CASE id
         WHEN 4 THEN name
         END
     AS case FROM Item;
-
 -- expect:
 -- | case: Str |
 -- | "Harry"   |
@@ -42,7 +38,6 @@ SELECT CASE
         WHEN name = 'Hermione' THEN id
         ELSE 404 END
     AS case FROM Item;
-
 -- expect:
 -- | case: I64 |
 -- | 1         |
@@ -55,7 +50,6 @@ SELECT CASE
         WHEN name = 'Hermion' THEN id
         END
     AS case FROM Item;
-
 -- expect:
 -- | case: I64 |
 -- | 1         |
@@ -67,7 +61,6 @@ SELECT CASE
         WHEN name = ('Hermi' || 'one') THEN (id + 2)
         ELSE 404 END
     AS case FROM Item;
-
 -- expect:
 -- | case: I64 |
 -- | 2         |
@@ -80,11 +73,9 @@ SELECT CASE 1 COLLATE Item
         WHEN 'Hermione' THEN id
         END
     AS case FROM Item;
-
 -- expect: error Translate.UnsupportedExpr
 -- "1 COLLATE Item"
 
 SELECT 1 COLLATE Item FROM Item;
-
 -- expect: error Translate.UnsupportedExpr
 -- "1 COLLATE Item"

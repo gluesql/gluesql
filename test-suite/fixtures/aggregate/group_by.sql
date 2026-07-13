@@ -4,7 +4,6 @@ CREATE TABLE Item (
     city TEXT,
     ratio FLOAT
 );
-
 -- expect: ok
 
 INSERT INTO Item (id, quantity, city, ratio) VALUES
@@ -14,11 +13,9 @@ INSERT INTO Item (id, quantity, city, ratio) VALUES
     (3,   30, 'Daejeon',  0.2),
     (4,   11,   'Seoul',  1.1),
     (5,   24, 'Seattle', 6.11);
-
 -- expect: ok
 
 SELECT id, COUNT(*) FROM Item GROUP BY id
-
 -- expect:
 -- | id: I64 | COUNT(*): I64 |
 -- | 1       | 1             |
@@ -28,7 +25,6 @@ SELECT id, COUNT(*) FROM Item GROUP BY id
 -- | 5       | 1             |
 
 SELECT id FROM Item GROUP BY id
-
 -- expect:
 -- | id: I64 |
 -- | 1       |
@@ -38,7 +34,6 @@ SELECT id FROM Item GROUP BY id
 -- | 5       |
 
 SELECT SUM(quantity), COUNT(*), city FROM Item GROUP BY city
-
 -- expect:
 -- | SUM(quantity): I64 | COUNT(*): I64 | city: Str |
 -- | 21                 | 2             | "Seoul"   |
@@ -48,7 +43,6 @@ SELECT SUM(quantity), COUNT(*), city FROM Item GROUP BY city
 -- | 24                 | 1             | "Seattle" |
 
 SELECT id, city FROM Item GROUP BY city
-
 -- expect:
 -- | id: I64 | city: Str |
 -- | 1       | "Seoul"   |
@@ -58,7 +52,6 @@ SELECT id, city FROM Item GROUP BY city
 -- | 5       | "Seattle" |
 
 SELECT ratio, COUNT(*) FROM Item GROUP BY ratio
-
 -- expect:
 -- | ratio: F64 | COUNT(*): I64 |
 -- | 0.2        | 2             |
@@ -66,7 +59,6 @@ SELECT ratio, COUNT(*) FROM Item GROUP BY ratio
 -- | 1.1        | 2             |
 
 SELECT ratio FROM Item GROUP BY id, city
-
 -- expect:
 -- | ratio: F64 |
 -- | 0.2        |
@@ -77,30 +69,25 @@ SELECT ratio FROM Item GROUP BY id, city
 -- | 6.11       |
 
 SELECT id, ratio FROM Item GROUP BY id, city HAVING ratio > 6
-
 -- expect:
 -- | id: I64 | ratio: F64 |
 -- | 2       | 6.11       |
 -- | 5       | 6.11       |
 
 SELECT SUM(quantity), COUNT(*), city FROM Item GROUP BY city HAVING COUNT(*) > 1
-
 -- expect:
 -- | SUM(quantity): I64 | COUNT(*): I64 | city: Str |
 -- | 21                 | 2             | "Seoul"   |
 
 SELECT city FROM Item GROUP BY city HAVING COALESCE(COUNT(*), 0) > 1
-
 -- expect:
 -- | city: Str |
 -- | "Seoul"   |
 
 CREATE TABLE Sub (id INTEGER);
-
 -- expect: ok
 
 INSERT INTO Sub VALUES (101), (102), (103), (104), (105);
-
 -- expect: ok
 
 -- name: HAVING - nested select context handling edge case
@@ -112,7 +99,6 @@ SELECT id
         GROUP BY id
         HAVING id <= 3
     )
-
 -- expect:
 -- | id: I64 |
 -- | 101     |

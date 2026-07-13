@@ -13,11 +13,9 @@ CREATE TABLE mytable (
     hash   Map,
     glist  List
 );
-
 -- expect: ok
 
 Show columns from mytable
-
 -- expect: payload ShowColumns
 -- [
 --   [
@@ -75,6 +73,5 @@ Show columns from mytable
 -- ]
 
 Show columns from mytable1
-
 -- expect: error Execute.TableNotFound
 -- "mytable1"

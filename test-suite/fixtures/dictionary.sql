@@ -1,33 +1,26 @@
 SHOW VERSION;
-
 -- expect: payload ShowVariable.Version
 
 SHOW TABLES
-
 -- expect: payload ShowVariable.Tables
 -- []
 
 CREATE TABLE Foo (id INTEGER, name TEXT NULL, type TEXT NULL) COMMENT='this is table comment';
-
 -- expect: ok
 
 SHOW TABLES
-
 -- expect: payload ShowVariable.Tables
 -- [
 --   "Foo"
 -- ]
 
 CREATE TABLE Zoo (id INTEGER PRIMARY KEY COMMENT 'hello');
-
 -- expect: ok
 
 CREATE TABLE Bar (id INTEGER UNIQUE, name TEXT NOT NULL DEFAULT 'NONE');
-
 -- expect: ok
 
 SHOW TABLES
-
 -- expect: payload ShowVariable.Tables
 -- [
 --   "Bar",
@@ -36,17 +29,14 @@ SHOW TABLES
 -- ]
 
 SHOW WHATEVER
-
 -- expect: error Translate.UnsupportedShowVariableKeyword
 -- "WHATEVER"
 
 SHOW ME THE CHICKEN
-
 -- expect: error Translate.UnsupportedShowVariableStatement
 -- "SHOW ME THE CHICKEN"
 
 SELECT * FROM GLUE_TABLES
-
 -- expect:
 -- | TABLE_NAME: Str | COMMENT: Str            |
 -- | "Bar"           | NULL                    |
@@ -54,7 +44,6 @@ SELECT * FROM GLUE_TABLES
 -- | "Zoo"           | NULL                    |
 
 SELECT * FROM GLUE_TABLE_COLUMNS
-
 -- expect:
 -- | TABLE_NAME: Str | COLUMN_NAME: Str | COLUMN_ID: I64 | NULLABLE: Bool | KEY: Str      | DEFAULT: Str | COMMENT: Str |
 -- | "Bar"           | "id"             | 1              | true           | "UNIQUE"      | NULL         | NULL         |

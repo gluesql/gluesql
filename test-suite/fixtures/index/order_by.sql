@@ -3,7 +3,6 @@ CREATE TABLE Test (
     num INTEGER NULL,
     name TEXT
 );
-
 -- expect: ok
 
 INSERT INTO Test (id, num, name)
@@ -12,23 +11,18 @@ VALUES
     (1, 9, 'Wild'),
     (3, NULL, 'World'),
     (4, 7, 'Monday');
-
 -- expect: ok
 
 CREATE INDEX idx_name ON Test (name);
-
 -- expect: payload CreateIndex
 
 CREATE INDEX idx_id_num_asc ON Test (id + num ASC);
-
 -- expect: payload CreateIndex
 
 CREATE INDEX idx_num_desc ON Test (num DESC);
-
 -- expect: payload CreateIndex
 
 SELECT * FROM Test ORDER BY name;
-
 -- expect-index: idx_name
 -- expect:
 -- | id     | num    | name          |
@@ -38,7 +32,6 @@ SELECT * FROM Test ORDER BY name;
 -- | I64(3) | NULL   | Str("World")  |
 
 SELECT * FROM Test ORDER BY id + num;
-
 -- expect-index: idx_id_num_asc
 -- expect:
 -- | id     | num    | name          |
@@ -48,7 +41,6 @@ SELECT * FROM Test ORDER BY id + num;
 -- | I64(3) | NULL   | Str("World")  |
 
 SELECT * FROM Test ORDER BY id + num ASC;
-
 -- expect-index: idx_id_num_asc ASC
 -- expect:
 -- | id     | num    | name          |
@@ -58,7 +50,6 @@ SELECT * FROM Test ORDER BY id + num ASC;
 -- | I64(3) | NULL   | Str("World")  |
 
 SELECT * FROM Test WHERE id < 4 ORDER BY num DESC;
-
 -- expect-index: idx_num_desc DESC
 -- expect:
 -- | id     | num    | name         |

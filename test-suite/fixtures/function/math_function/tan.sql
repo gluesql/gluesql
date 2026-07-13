@@ -1,32 +1,26 @@
 SELECT TAN(0.5) AS tan1, TAN(1) AS tan2
-
 -- expect:
 -- | tan1: F64          | tan2: F64         |
 -- | 0.5463024898437905 | 1.557407724654902 |
 
 SELECT TAN(null) AS tan
-
 -- expect:
 -- | tan  |
 -- | NULL |
 
 SELECT TAN(true) AS tan
-
 -- expect: error Evaluate.FunctionRequiresFloatValue
 -- "TAN"
 
 SELECT TAN(false) AS tan
-
 -- expect: error Evaluate.FunctionRequiresFloatValue
 -- "TAN"
 
 SELECT TAN('string') AS tan
-
 -- expect: error Evaluate.FunctionRequiresFloatValue
 -- "TAN"
 
 SELECT TAN() AS tan
-
 -- expect: error Translate.FunctionArgsLengthNotMatching
 -- {
 --   "expected": 1,
@@ -35,7 +29,6 @@ SELECT TAN() AS tan
 -- }
 
 SELECT TAN(1.0, 2.0) AS tan
-
 -- expect: error Translate.FunctionArgsLengthNotMatching
 -- {
 --   "expected": 1,

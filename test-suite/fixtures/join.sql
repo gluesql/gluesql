@@ -2,7 +2,6 @@ CREATE TABLE Player (
     id INTEGER,
     name TEXT
 );
-
 -- expect: ok
 
 CREATE TABLE Item (
@@ -10,15 +9,12 @@ CREATE TABLE Item (
     quantity INTEGER,
     player_id INTEGER
 );
-
 -- expect: ok
 
 DELETE FROM Player
-
 -- expect: ok
 
 DELETE FROM Item
-
 -- expect: ok
 
 INSERT INTO Player (id, name) VALUES
@@ -27,7 +23,6 @@ INSERT INTO Player (id, name) VALUES
     (3,   'Jorno'),
     (4,   'Berry'),
     (5,    'Hwan');
-
 -- expect: ok
 
 INSERT INTO Item (id, quantity, player_id) VALUES
@@ -46,27 +41,21 @@ INSERT INTO Item (id, quantity, player_id) VALUES
     (113, 7, 1),
     (114, 1, 1),
     (115, 2, 1);
-
 -- expect: ok
 
 SELECT * FROM Item JOIN Player
-
 -- expect: count 75
 
 SELECT * FROM Item LEFT JOIN Player ON Player.id = Item.player_id;
-
 -- expect: count 15
 
 SELECT * FROM Item LEFT JOIN Player ON Player.id = Item.player_id WHERE quantity = 1;
-
 -- expect: count 5
 
 SELECT * FROM Item LEFT JOIN Player ON Player.id = Item.player_id WHERE Player.id = 1;
-
 -- expect: count 7
 
 SELECT * FROM Item INNER JOIN Player ON Player.id = Item.player_id WHERE Player.id = 1;
-
 -- expect: count 7
 
 SELECT * FROM Item
@@ -81,7 +70,6 @@ SELECT * FROM Item
     LEFT JOIN Player p8 ON p8.id = Item.player_id
     LEFT JOIN Player p9 ON p9.id = Item.player_id
     WHERE Player.id = 1;
-
 -- expect: count 7
 
 SELECT * FROM Item
@@ -96,57 +84,45 @@ SELECT * FROM Item
     LEFT JOIN Player p8 ON p8.id = Item.player_id
     INNER JOIN Player p9 ON p9.id = Item.player_id AND Item.id > 101
     WHERE Player.id = 1;
-
 -- expect: count 6
 
 SELECT * FROM Item LEFT JOIN Player ON Player.id = Item.player_id WHERE Item.quantity = 1;
-
 -- expect: count 5
 
 SELECT * FROM Item i LEFT JOIN Player p ON p.id = i.player_id WHERE i.quantity = 1;
-
 -- expect: count 5
 
 SELECT * FROM Item i LEFT JOIN Player p ON p.id = i.player_id AND p.id = 1;
-
 -- expect: count 15
 
 SELECT * FROM Item i LEFT JOIN Player p ON p.id = i.player_id AND i.quantity = 1;
-
 -- expect: count 15
 
 SELECT * FROM Item LEFT JOIN Player ON Player.id = Item.player_id AND Item.quantity = 1;
-
 -- expect: count 15
 
 SELECT * FROM Item i JOIN Player p ON p.id = i.player_id AND p.id = 1;
-
 -- expect: count 7
 
 SELECT * FROM Item i INNER JOIN Player p ON p.id = i.player_id AND p.id = 1;
-
 -- expect: count 7
 
 SELECT * FROM Item i JOIN Player p ON p.id = i.player_id AND i.quantity = 1;
-
 -- expect: count 5
 
 SELECT * FROM Player
     INNER JOIN Item ON 1 = 2
     INNER JOIN Item i2 ON 1 = 2
-
 -- expect: count 0
 
 SELECT * FROM Item
     LEFT JOIN Player ON Player.id = Item.player_id
     WHERE Player.id = (SELECT id FROM Player LIMIT 1 OFFSET 0);
-
 -- expect: count 7
 
 SELECT * FROM Item i1
     LEFT JOIN Player ON Player.id = i1.player_id
     WHERE Player.id = (SELECT id FROM Item i2 WHERE i2.id = i1.id)
-
 -- expect: count 0
 
 SELECT * FROM Item i1
@@ -158,7 +134,6 @@ SELECT * FROM Item i1
             i2.id = i1.id AND
             i3.id = i2.id AND
             i1.id = i3.id);
-
 -- expect: count 0
 
 SELECT * FROM Item i1
@@ -167,25 +142,19 @@ SELECT * FROM Item i1
         (SELECT i2.player_id FROM Item i2
         JOIN Item i3 ON i3.id = i2.id
         WHERE Player.name = 'Jorno');
-
 -- expect: count 4
 
 SELECT * FROM Player INNER JOIN Item ON Player.id = Item.player_id;
-
 -- expect: count 15
 
 SELECT * FROM Player p1 LEFT JOIN Player p2 ON 1 = 1
-
 -- expect: count 25
 
 SELECT * FROM Item INNER JOIN Item i2 ON i2.id IN (101, 103);
-
 -- expect: count 30
 
 DELETE FROM Player
-
 -- expect: ok
 
 DELETE FROM Item
-
 -- expect: ok

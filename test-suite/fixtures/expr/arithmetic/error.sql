@@ -3,11 +3,9 @@ CREATE TABLE Arith (
     num INTEGER,
     name TEXT
 );
-
 -- expect: ok
 
 DELETE FROM Arith
-
 -- expect: ok
 
 INSERT INTO Arith (id, num, name) VALUES
@@ -16,11 +14,9 @@ INSERT INTO Arith (id, num, name) VALUES
     (3, 4, 'C'),
     (4, 2, 'D'),
     (5, 3, 'E');
-
 -- expect: ok
 
 SELECT * FROM Arith WHERE name + id < 1
-
 -- expect: error Value.NonNumericMathOperation
 -- {
 --   "lhs": {
@@ -33,7 +29,6 @@ SELECT * FROM Arith WHERE name + id < 1
 -- }
 
 SELECT * FROM Arith WHERE name - id < 1
-
 -- expect: error Value.NonNumericMathOperation
 -- {
 --   "lhs": {
@@ -46,7 +41,6 @@ SELECT * FROM Arith WHERE name - id < 1
 -- }
 
 SELECT * FROM Arith WHERE name * id < 1
-
 -- expect: error Value.NonNumericMathOperation
 -- {
 --   "lhs": {
@@ -59,7 +53,6 @@ SELECT * FROM Arith WHERE name * id < 1
 -- }
 
 SELECT * FROM Arith WHERE name / id < 1
-
 -- expect: error Value.NonNumericMathOperation
 -- {
 --   "lhs": {
@@ -72,7 +65,6 @@ SELECT * FROM Arith WHERE name / id < 1
 -- }
 
 SELECT * FROM Arith WHERE name % id < 1
-
 -- expect: error Value.NonNumericMathOperation
 -- {
 --   "lhs": {
@@ -85,12 +77,10 @@ SELECT * FROM Arith WHERE name % id < 1
 -- }
 
 UPDATE Arith SET aaa = 1
-
 -- expect: error Update.ColumnNotFound
 -- "aaa"
 
 SELECT * FROM Arith WHERE TRUE + 1 = 1
-
 -- expect: error Value.NonNumericMathOperation
 -- {
 --   "lhs": {
@@ -103,35 +93,27 @@ SELECT * FROM Arith WHERE TRUE + 1 = 1
 -- }
 
 SELECT * FROM Arith WHERE id = 2 / 0
-
 -- expect: error Evaluate.DivisorShouldNotBeZero
 
 SELECT * FROM Arith WHERE id = 2 / 0.0
-
 -- expect: error Evaluate.DivisorShouldNotBeZero
 
 SELECT * FROM Arith WHERE id = INTERVAL '2' HOUR / 0
-
 -- expect: error Value.DivisorShouldNotBeZero
 
 SELECT * FROM Arith WHERE id = INTERVAL '2' HOUR / 0.0
-
 -- expect: error Value.DivisorShouldNotBeZero
 
 SELECT * FROM Arith WHERE id = 2 % 0
-
 -- expect: error Evaluate.DivisorShouldNotBeZero
 
 SELECT * FROM Arith WHERE id = 2 % 0.0
-
 -- expect: error Evaluate.DivisorShouldNotBeZero
 
 SELECT * FROM Arith WHERE TRUE AND 'hello'
-
 -- expect: error Evaluate.BooleanTypeRequired
 -- "hello"
 
 SELECT * FROM Arith WHERE name AND id
-
 -- expect: error Evaluate.BooleanTypeRequired
 -- "A"

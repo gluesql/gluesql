@@ -2,7 +2,6 @@ CREATE TABLE Multi (
     id INTEGER,
     num INTEGER
 );
-
 -- expect: ok
 
 INSERT INTO Multi VALUES
@@ -11,15 +10,12 @@ INSERT INTO Multi VALUES
     (2, 20), (2, 10), (2, 30), (2, 40), (2, 50),
     (5, 40), (5, 50), (5, 10), (5, 20), (5, 30),
     (1, 30), (1, 40), (1, 20), (1, 50), (1, 10);
-
 -- expect: ok
 
 CREATE INDEX idx_id_num ON Multi (id + num DESC);
-
 -- expect: payload CreateIndex
 
 SELECT * FROM Multi ORDER BY id ASC, num ASC;
-
 -- expect-index: none
 -- expect:
 -- | id: I64 | num: I64 |
@@ -50,11 +46,9 @@ SELECT * FROM Multi ORDER BY id ASC, num ASC;
 -- | 5       | 50       |
 
 CREATE INDEX idx_num ON Multi (num ASC);
-
 -- expect: payload CreateIndex
 
 SELECT * FROM Multi ORDER BY id ASC, num ASC;
-
 -- expect-index: idx_num ASC
 -- expect:
 -- | id: I64 | num: I64 |
@@ -85,7 +79,6 @@ SELECT * FROM Multi ORDER BY id ASC, num ASC;
 -- | 5       | 50       |
 
 SELECT * FROM Multi ORDER BY num ASC, id ASC;
-
 -- expect-index: none
 -- expect:
 -- | id: I64 | num: I64 |
@@ -116,7 +109,6 @@ SELECT * FROM Multi ORDER BY num ASC, id ASC;
 -- | 5       | 50       |
 
 SELECT * FROM Multi ORDER BY id DESC, id + num DESC;
-
 -- expect-index: idx_id_num DESC
 -- expect:
 -- | id: I64 | num: I64 |
@@ -147,7 +139,6 @@ SELECT * FROM Multi ORDER BY id DESC, id + num DESC;
 -- | 1       | 10       |
 
 SELECT * FROM Multi ORDER BY id ASC, id + num DESC;
-
 -- expect-index: idx_id_num DESC
 -- expect:
 -- | id: I64 | num: I64 |

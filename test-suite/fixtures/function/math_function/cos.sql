@@ -1,32 +1,26 @@
 SELECT COS(0.5) AS cos1, COS(1) AS cos2
-
 -- expect:
 -- | cos1: F64          | cos2: F64          |
 -- | 0.8775825618903728 | 0.5403023058681398 |
 
 SELECT COS(null) AS cos
-
 -- expect:
 -- | cos  |
 -- | NULL |
 
 SELECT COS(true) AS cos
-
 -- expect: error Evaluate.FunctionRequiresFloatValue
 -- "COS"
 
 SELECT COS(false) AS cos
-
 -- expect: error Evaluate.FunctionRequiresFloatValue
 -- "COS"
 
 SELECT COS('string') AS cos
-
 -- expect: error Evaluate.FunctionRequiresFloatValue
 -- "COS"
 
 SELECT COS() AS cos
-
 -- expect: error Translate.FunctionArgsLengthNotMatching
 -- {
 --   "expected": 1,
@@ -35,7 +29,6 @@ SELECT COS() AS cos
 -- }
 
 SELECT COS(1.0, 2.0) AS cos
-
 -- expect: error Translate.FunctionArgsLengthNotMatching
 -- {
 --   "expected": 1,
