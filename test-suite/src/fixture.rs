@@ -300,11 +300,7 @@ fn parse_fixture(source: &str) -> Vec<FixtureStep> {
         }
 
         if let Some(value) = trimmed.strip_prefix("-- expect-index:") {
-            assert!(
-                sql.iter().any(|line: &&str| !line.trim().is_empty()),
-                "index expectation must follow fixture SQL at line {}",
-                index + 1
-            );
+            assert_follows_sql(&sql, "index expectation", index + 1);
 
             let value = value.trim();
             assert!(!value.is_empty(), "index expectation cannot be empty");
@@ -331,6 +327,7 @@ fn parse_fixture(source: &str) -> Vec<FixtureStep> {
         }
 
         if let Some(directive) = trimmed.strip_prefix("-- expect:") {
+            assert_follows_sql(&sql, "result expectation", index + 1);
             let step_line = first_sql_line(&sql, index + 1);
             let sql = take_sql(&mut sql);
             let directive = directive.trim();
@@ -344,6 +341,14 @@ fn parse_fixture(source: &str) -> Vec<FixtureStep> {
             });
             index = next_index;
             continue;
+        }
+
+        if name.is_some() && sql.is_empty() {
+            assert!(
+                !trimmed.is_empty(),
+                "fixture name must be immediately followed by SQL at line {}",
+                index + 1
+            );
         }
 
         sql.push(line);
@@ -364,6 +369,13 @@ fn parse_fixture(source: &str) -> Vec<FixtureStep> {
     );
 
     steps
+}
+
+fn assert_follows_sql(lines: &[&str], expectation: &str, line: usize) {
+    assert!(
+        lines.last().is_some_and(|line| !line.trim().is_empty()),
+        "{expectation} must immediately follow fixture SQL at line {line}"
+    );
 }
 
 fn parse_index(value: &str) -> IndexItemPlan {
@@ -475,7 +487,50 @@ fn take_table_rows<'a>(lines: &[&'a str], mut index: usize) -> (Vec<&'a str>, us
         rows.push(lines[index]);
         index += 1;
     }
+    assert_table_format(&rows);
     (rows, index)
+}
+
+fn assert_table_format(lines: &[&str]) {
+    if lines.is_empty() {
+        return;
+    }
+    let rows = lines
+        .iter()
+        .map(|line| parse_table_row(line))
+        .collect::<Vec<_>>();
+    let column_count = rows[0].len();
+
+    for row in &rows {
+        assert_eq!(
+            row.len(),
+            column_count,
+            "table rows must have the same number of columns"
+        );
+    }
+
+    let widths = (0..column_count)
+        .map(|column| {
+            rows.iter()
+                .map(|row| row[column].chars().count())
+                .max()
+                .unwrap()
+        })
+        .collect::<Vec<_>>();
+
+    for (line, row) in lines.iter().zip(rows) {
+        let cells = row
+            .iter()
+            .zip(&widths)
+            .map(|(cell, width)| format!("{cell:<width$}"))
+            .collect::<Vec<_>>()
+            .join(" | ");
+        let expected = format!("-- | {cells} |");
+        assert_eq!(
+            *line, expected,
+            "table rows must use canonical spacing and padding"
+        );
+    }
 }
 
 fn take_json_body(lines: &[&str], mut index: usize) -> (Option<JsonValue>, usize) {
@@ -758,33 +813,27 @@ mod tests {
     fn parses_named_steps_and_all_expectation_kinds() {
         let source = r#"
 CREATE TABLE Example (id INTEGER);
-
 -- expect: ok
 
 -- name: mixed result
 SELECT 1;
-
 -- expect:
 -- | fixed: I64 | dynamic  |
 -- | 1          | Str("a") |
 -- | NULL       | I64(2)   |
 
 UPDATE Example SET id = 1;
-
 -- expect: payload Update
 -- 0
 
 SELECT * FROM Example;
-
 -- expect: count 0
 
 SELECT GENERATE_UUID();
-
 -- expect: types
 -- | Uuid |
 
 SELECT NULLIF();
-
 -- expect: error Translate.FunctionArgsLengthNotMatching
 -- {
 --   "name": "NULLIF",
@@ -793,7 +842,6 @@ SELECT NULLIF();
 -- }
 
 SELECT ADD_MONTH('invalid', 1);
-
 -- expect: error Evaluate.FormatParseError
 "#;
 
@@ -814,10 +862,9 @@ SELECT ADD_MONTH('invalid', 1);
     fn parses_every_value_variant() {
         let source = r#"
 SELECT 1;
-
 -- expect:
--- | bool: Bool | i8: I8 | i16: I16 | i32: I32 | i64: I64 | i128: I128 | u8: U8 | u16: U16 | u32: U32 | u64: U64 | u128: U128 | f32: F32 | f64: F64 | decimal: Decimal | str: Str | bytea: Bytea | inet: Inet | date: Date | timestamp: Timestamp | time: Time | interval: Interval | uuid: Uuid | map: Map | list: List | point: Point |
--- | true | -8 | -16 | -32 | -64 | -128 | 8 | 16 | 32 | 64 | 128 | 1.5 | 2.5 | 3.14 | "text" | "00ff" | "127.0.0.1" | "2025-01-02" | "2025-01-02T03:04:05" | "03:04:05" | "'1' DAY" | "550e8400-e29b-41d4-a716-446655440000" | {"a":1} | [1,"a"] | "POINT(1 2)" |
+-- | bool: Bool | i8: I8 | i16: I16 | i32: I32 | i64: I64 | i128: I128 | u8: U8 | u16: U16 | u32: U32 | u64: U64 | u128: U128 | f32: F32 | f64: F64 | decimal: Decimal | str: Str | bytea: Bytea | inet: Inet  | date: Date   | timestamp: Timestamp  | time: Time | interval: Interval | uuid: Uuid                             | map: Map | list: List | point: Point |
+-- | true       | -8     | -16      | -32      | -64      | -128       | 8      | 16       | 32       | 64       | 128        | 1.5      | 2.5      | 3.14             | "text"   | "00ff"       | "127.0.0.1" | "2025-01-02" | "2025-01-02T03:04:05" | "03:04:05" | "'1' DAY"          | "550e8400-e29b-41d4-a716-446655440000" | {"a":1}  | [1,"a"]    | "POINT(1 2)" |
 "#;
 
         let steps = parse_fixture(source);
@@ -911,10 +958,9 @@ SELECT 1;
     fn parses_select_maps() {
         let source = r#"
 SELECT * FROM Example;
-
 -- expect: maps
 -- | {"id":1,"name":"one"} |
--- | {"id":2} |
+-- | {"id":2}              |
 "#;
 
         let steps = parse_fixture(source);
@@ -928,7 +974,6 @@ SELECT * FROM Example;
     fn parses_empty_select_maps() {
         let source = r"
 SELECT * FROM Example;
-
 -- expect: maps
 ";
 
@@ -943,22 +988,18 @@ SELECT * FROM Example;
     fn parses_index_expectations() {
         let source = r"
 SELECT * FROM Example WHERE id < 20;
-
 -- expect-index: idx_id < 20
 -- expect: ok
 
 SELECT * FROM Example ORDER BY id;
-
 -- expect-index: idx_id ASC
 -- expect: ok
 
 SELECT * FROM Example ORDER BY name;
-
 -- expect-index: idx_name
 -- expect: ok
 
 SELECT * FROM Example;
-
 -- expect-index: none
 -- expect: ok
 ";
@@ -978,13 +1019,38 @@ SELECT * FROM Example;
         assert!(std::panic::catch_unwind(|| source("missing.sql")).is_err());
 
         let malformed = [
-            "SELECT 1;\n\n-- expect: payload Select\n-- {not json}\n",
-            "-- name: first\n-- name: second\nSELECT 1;\n\n-- expect: ok\n",
+            "SELECT 1;\n-- expect: payload Select\n-- {not json}\n",
+            "-- name: first\n-- name: second\nSELECT 1;\n-- expect: ok\n",
             "SELECT 1;\n",
             "-- expect: ok\n",
-            "SELECT 1;\n\n-- expect:\n",
-            "SELECT 1;\n\n-- expect-index: none\n-- expect-index: idx_id\n-- expect: ok\n",
-            "SELECT 1;\n\n-- expect-index: idx_id =\n-- expect: ok\n",
+            "SELECT 1;\n-- expect:\n",
+            "SELECT 1;\n-- expect-index: none\n-- expect-index: idx_id\n-- expect: ok\n",
+            "SELECT 1;\n-- expect-index: idx_id =\n-- expect: ok\n",
+        ];
+
+        for source in malformed {
+            assert!(std::panic::catch_unwind(|| parse_fixture(source)).is_err());
+        }
+    }
+
+    #[test]
+    fn rejects_detached_names_and_expectations() {
+        let detached = [
+            "-- name: detached\n\nSELECT 1;\n-- expect: ok\n",
+            "SELECT 1;\n\n-- expect: ok\n",
+            "SELECT 1;\n-- expect-index: none\n\n-- expect: ok\n",
+        ];
+
+        for source in detached {
+            assert!(std::panic::catch_unwind(|| parse_fixture(source)).is_err());
+        }
+    }
+
+    #[test]
+    fn rejects_non_canonical_table_spacing() {
+        let malformed = [
+            "SELECT 1;\n-- expect:\n-- |id: I64|\n-- |1|\n",
+            "SELECT 1;\n-- expect:\n-- | id: I64 | value: Str |\n-- | 1 | \"a\" |\n",
         ];
 
         for source in malformed {
