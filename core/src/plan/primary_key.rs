@@ -497,6 +497,41 @@ mod tests {
     }
 
     #[test]
+    fn left_outer_join_installs_lookup_on_first_relation() {
+        let storage = run("
+            CREATE TABLE Tasks (
+                task_id INTEGER PRIMARY KEY,
+                project_id INTEGER
+            );
+            CREATE TABLE Projects (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL
+            );
+        ");
+        let sql = "
+            SELECT *
+            FROM Tasks t
+            LEFT JOIN Projects p ON p.id = t.project_id
+            WHERE t.task_id = 1;
+        ";
+
+        let actual = plan(&storage, sql);
+        let select = try_select(actual).expect("expected select plan");
+        let expected_index =
+            IndexItemPlan::PrimaryKey(ExprPlan::Literal(Literal::Number(1.into())));
+
+        assert_eq!(
+            select.from.relation.index(),
+            Some(&expected_index),
+            "left outer join should install a lookup on the first relation:\n{sql}"
+        );
+        assert!(
+            select.selection.is_none(),
+            "left outer join should remove the optimized selection:\n{sql}"
+        );
+    }
+
+    #[test]
     fn positional_column_aliases() {
         let storage = run("
             CREATE TABLE Tasks (
