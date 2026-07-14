@@ -85,6 +85,13 @@ fn read_storage_format_version(path: &str) -> Option<u32> {
     }
 }
 
+fn assert_redb_file_format_v3(path: &str) {
+    let mut db = Database::open(path).expect("open database");
+    let upgraded = db.upgrade().expect("check redb file format");
+
+    assert!(!upgraded, "database should already use redb file format v3");
+}
+
 fn read_rows(path: &str, table_name: &str) -> Vec<(Key, Vec<Value>)> {
     let db = Database::open(path).expect("open database");
     let txn = db.begin_read().expect("begin read transaction");
@@ -141,6 +148,7 @@ fn v2_to_v3_migration_keeps_rows_and_upgrades_format() {
         read_storage_format_version(&path),
         Some(REDB_STORAGE_FORMAT_VERSION),
     );
+    assert_redb_file_format_v3(&path);
 
     // Rows are intact after migration.
     let rows = read_rows(&path, "Foo");

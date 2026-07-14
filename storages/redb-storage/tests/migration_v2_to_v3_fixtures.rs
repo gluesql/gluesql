@@ -4,6 +4,7 @@ use {
         Value::{Bool, I64, List, Map, Str},
     },
     gluesql_redb_storage::{RedbStorage, migrate_to_latest},
+    redb::Database,
     std::{
         collections::BTreeMap,
         fs::{copy, create_dir, remove_file},
@@ -31,6 +32,13 @@ fn fixture_to_tmp(fixture_name: &str) -> (String, FileGuard) {
     (target.clone(), FileGuard { path: target })
 }
 
+fn assert_redb_file_format_v3(path: &str) {
+    let mut db = Database::open(path).expect("open database");
+    let upgraded = db.upgrade().expect("check redb file format");
+
+    assert!(!upgraded, "database should already use redb file format v3");
+}
+
 #[test]
 fn migrate_v2_mixed_schema_schemaless_fixture() {
     let (path, _guard) = fixture_to_tmp("mixed_schema_schemaless");
@@ -44,6 +52,7 @@ fn migrate_v2_mixed_schema_schemaless_fixture() {
     assert_eq!(second.migrated_tables, 0);
     assert_eq!(second.unchanged_tables, 2);
     assert_eq!(second.rewritten_rows, 0);
+    assert_redb_file_format_v3(&path);
 
     let storage = RedbStorage::new(&path).expect("open migrated storage");
     let mut glue = Glue::new(storage);

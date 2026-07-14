@@ -2,8 +2,8 @@ use {crate::error::StorageError, redb::Database};
 
 type StorageResult<T> = std::result::Result<T, StorageError>;
 
-// Upgrades the redb internal file format from v2 to v3 (compatible with redb 3.x and 4.x).
-// GlueSQL's row serialisation format is unchanged between storage format v2 and v3.
+// redb 2.6 supports upgrading its internal file format from v2 to v3.
+// GlueSQL's row serialization format is unchanged between storage format v2 and v3.
 pub(super) fn migrate(db: &mut Database) -> StorageResult<()> {
     db.upgrade()?;
     Ok(())

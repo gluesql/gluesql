@@ -11,6 +11,11 @@ use {
     std::path::Path,
 };
 
+/// `GlueSQL`'s redb storage format version.
+///
+/// This is stored in the `__GLUESQL_META__` table and is independent of both
+/// the redb crate version and redb's internal file format version. Storage
+/// format v3 keeps the v2 row serialization and requires redb file format v3.
 pub const REDB_STORAGE_FORMAT_VERSION: u32 = 3;
 
 const V1_REDB_STORAGE_FORMAT_VERSION: u32 = 1;
