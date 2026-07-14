@@ -17,13 +17,9 @@ impl PrimaryKeyLookupCandidate {
         schema_map: &HashMap<String, Schema, S>,
         from: &TableWithJoinsPlan,
     ) -> Option<Self> {
-        if !from
-            .joins
+        from.joins
             .iter()
-            .all(|join| preserves_lookup_target(&join.join_operator))
-        {
-            return None;
-        }
+            .for_each(|join| validate_join_operator(&join.join_operator));
 
         let target = PrimaryKeyLookupTarget::new(schema_map, &from.relation)?;
         let joined_relations = from
@@ -59,10 +55,10 @@ impl PrimaryKeyLookupCandidate {
     }
 }
 
-fn preserves_lookup_target(join_operator: &JoinOperatorPlan) -> bool {
+fn validate_join_operator(join_operator: &JoinOperatorPlan) {
     // Keep this exhaustive so new join types require an explicit lookup-safety decision.
     match join_operator {
-        JoinOperatorPlan::Inner(_) | JoinOperatorPlan::LeftOuter(_) => true,
+        JoinOperatorPlan::Inner(_) | JoinOperatorPlan::LeftOuter(_) => {}
     }
 }
 
@@ -203,21 +199,20 @@ mod tests {
             .collect()
     }
 
-    fn parse_from(sql: &str) -> TableWithJoinsPlan {
+    fn try_parse_from(sql: &str) -> Option<TableWithJoinsPlan> {
         let parsed = parse(sql).unwrap().into_iter().next().unwrap();
         let statement = StatementPlan::from(translate(&parsed).unwrap());
-        let query = match statement {
-            StatementPlan::Query(query) => Some(query),
+        match statement {
+            StatementPlan::Query(query) => match query.body {
+                SetExprPlan::Select(select) => Some(select.from),
+                SetExprPlan::Values(_) => None,
+            },
             _ => None,
         }
-        .expect("expected query plan");
-        let select = match query.body {
-            SetExprPlan::Select(select) => Some(select),
-            SetExprPlan::Values(_) => None,
-        }
-        .expect("expected select plan");
+    }
 
-        select.from
+    fn parse_from(sql: &str) -> TableWithJoinsPlan {
+        try_parse_from(sql).expect("expected select plan")
     }
 
     fn identifier(column: &str) -> ExprPlan {
@@ -260,6 +255,12 @@ mod tests {
     }
 
     #[test]
+    fn rejects_non_select_test_inputs() {
+        assert!(try_parse_from("VALUES (1)").is_none());
+        assert!(try_parse_from("CREATE TABLE Tasks (id INTEGER)").is_none());
+    }
+
+    #[test]
     fn requires_an_installable_first_relation() {
         let schema_map = schema_map(&[
             "CREATE TABLE Tasks (id INTEGER PRIMARY KEY);",
@@ -268,15 +269,16 @@ mod tests {
         let from = parse_from("SELECT * FROM Logs");
         assert!(PrimaryKeyLookupCandidate::new(&schema_map, &from).is_none());
 
-        let mut from = parse_from("SELECT * FROM Tasks");
-        let index = match &mut from.relation {
-            TableFactorPlan::Table { index, .. } => Some(index),
-            _ => None,
-        }
-        .expect("expected table relation");
-        *index = Some(IndexItemPlan::PrimaryKey(ExprPlan::Literal(
-            Literal::Number(1.into()),
-        )));
+        let from = TableWithJoinsPlan {
+            relation: TableFactorPlan::Table {
+                name: "Tasks".to_owned(),
+                alias: None,
+                index: Some(IndexItemPlan::PrimaryKey(ExprPlan::Literal(
+                    Literal::Number(1.into()),
+                ))),
+            },
+            joins: Vec::new(),
+        };
 
         assert!(PrimaryKeyLookupCandidate::new(&schema_map, &from).is_none());
     }

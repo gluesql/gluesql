@@ -231,8 +231,8 @@ mod tests {
             mock::{MockStorage, run},
             parse_sql::{parse, parse_expr},
             plan::{
-                ExprPlan, IndexItemPlan, QueryPlan, SetExprPlan, StatementPlan, TableAliasPlan,
-                TableFactorPlan, fetch_schema_map,
+                ExprPlan, IndexItemPlan, QueryPlan, SelectPlan, SetExprPlan, StatementPlan,
+                TableAliasPlan, TableFactorPlan, fetch_schema_map,
             },
             query_builder::{Build, col, primary_key, table},
             translate::{NO_PARAMS, translate, translate_expr},
@@ -242,6 +242,16 @@ mod tests {
     fn statement(sql: &str) -> StatementPlan {
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
         StatementPlan::from(translate(&parsed).unwrap())
+    }
+
+    fn try_select(statement: StatementPlan) -> Option<Box<SelectPlan>> {
+        match statement {
+            StatementPlan::Query(QueryPlan {
+                body: SetExprPlan::Select(select),
+                ..
+            }) => Some(select),
+            _ => None,
+        }
     }
 
     fn plan(storage: &MockStorage, sql: &str) -> StatementPlan {
@@ -506,19 +516,8 @@ mod tests {
             WHERE t.id = 1;
         ";
         let actual = plan(&storage, sql);
-        let select = match actual {
-            StatementPlan::Query(QueryPlan {
-                body: SetExprPlan::Select(select),
-                ..
-            }) => Some(select),
-            _ => None,
-        }
-        .expect("expected select plan");
-        let index = match &select.from.relation {
-            TableFactorPlan::Table { index, .. } => Some(index),
-            _ => None,
-        }
-        .expect("expected table relation");
+        let select = try_select(actual).expect("expected select plan");
+        let index = select.from.relation.index();
 
         assert!(
             matches!(index, Some(IndexItemPlan::PrimaryKey(_))),
@@ -563,6 +562,11 @@ mod tests {
             actual, expected,
             "shadowed primary key alias should preserve selection:\n{sql}"
         );
+    }
+
+    #[test]
+    fn rejects_non_select_test_plan() {
+        assert!(try_select(statement("VALUES (1)")).is_none());
     }
 
     #[test]
