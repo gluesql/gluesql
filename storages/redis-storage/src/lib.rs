@@ -8,8 +8,6 @@ mod transaction;
 
 use mutex::MutexExt;
 use {
-    async_trait::async_trait,
-    futures::stream::iter,
     gluesql_core::{
         chrono::Utc,
         data::{CustomFunction as StructCustomFunction, Key, Schema, Value},
@@ -197,42 +195,36 @@ impl RedisStorage {
 
 impl Planner for RedisStorage {}
 
-#[async_trait]
 impl CustomFunction for RedisStorage {
-    async fn fetch_function<'a>(
-        &'a self,
-        _func_name: &str,
-    ) -> Result<Option<&'a StructCustomFunction>> {
+    fn fetch_function<'a>(&'a self, _func_name: &str) -> Result<Option<&'a StructCustomFunction>> {
         Err(Error::StorageMsg(
             "[RedisStorage] fetch_function is not supported yet".to_owned(),
         ))
     }
 
-    async fn fetch_all_functions<'a>(&'a self) -> Result<Vec<&'a StructCustomFunction>> {
+    fn fetch_all_functions(&self) -> Result<Vec<&StructCustomFunction>> {
         Err(Error::StorageMsg(
             "[RedisStorage] fetch_all_functions is not supported yet".to_owned(),
         ))
     }
 }
 
-#[async_trait]
 impl CustomFunctionMut for RedisStorage {
-    async fn insert_function(&mut self, _func: StructCustomFunction) -> Result<()> {
+    fn insert_function(&mut self, _func: StructCustomFunction) -> Result<()> {
         Err(Error::StorageMsg(
             "[RedisStorage] insert_function is not supported yet".to_owned(),
         ))
     }
 
-    async fn delete_function(&mut self, _func_name: &str) -> Result<()> {
+    fn delete_function(&mut self, _func_name: &str) -> Result<()> {
         Err(Error::StorageMsg(
             "[RedisStorage] delete_function is not supported yet".to_owned(),
         ))
     }
 }
 
-#[async_trait]
 impl Store for RedisStorage {
-    async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
+    fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         let mut schemas = Vec::<Schema>::new();
         let scan_schema_key = Self::redis_generate_scan_schema_key(&self.namespace);
         let redis_keys: Vec<String> = {
@@ -274,7 +266,7 @@ impl Store for RedisStorage {
         Ok(schemas)
     }
 
-    async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
+    fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         let mut found = None;
         let scan_schema_key = Self::redis_generate_scan_schema_key(&self.namespace);
         let redis_keys: Vec<String> = {
@@ -322,7 +314,7 @@ impl Store for RedisStorage {
         Ok(found)
     }
 
-    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Vec<Value>>> {
+    fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Vec<Value>>> {
         let key = Self::redis_generate_key(&self.namespace, table_name, key)?;
         // It's not a problem if the value with the key is removed by another client.
         let value = {
@@ -341,7 +333,7 @@ impl Store for RedisStorage {
         Ok(None)
     }
 
-    async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
+    fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
         // First read all keys of the table
         let redis_keys: Vec<String> = {
             let mut conn = self.conn.lock_err()?;
@@ -384,13 +376,12 @@ impl Store for RedisStorage {
             rows.insert(key, row);
         }
 
-        Ok(Box::pin(iter(rows.into_iter().map(Ok))))
+        Ok(Box::new(rows.into_iter().map(Ok)))
     }
 }
 
-#[async_trait]
 impl StoreMut for RedisStorage {
-    async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
+    fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let current_time = Value::Timestamp(Utc::now().naive_utc());
         let current_time_value = serde_json::to_string(&current_time).map_err(|e| {
             Error::StorageMsg(format!(
@@ -417,7 +408,7 @@ impl StoreMut for RedisStorage {
         Ok(())
     }
 
-    async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
+    fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let redis_key_iter: Vec<String> = self.redis_execute_scan(table_name)?;
         for key in redis_key_iter {
             self.redis_execute_del(&key)?;
@@ -445,7 +436,7 @@ impl StoreMut for RedisStorage {
         Ok(())
     }
 
-    async fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
+    fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
         for row in rows {
             // Even multiple clients can get an unique value with INCR command.
             // and a shared key "globalkey"
@@ -472,7 +463,7 @@ impl StoreMut for RedisStorage {
         Ok(())
     }
 
-    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
+    fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
         for (key, row) in rows {
             let redis_key = Self::redis_generate_key(&self.namespace, table_name, &key)?;
             let value = serde_json::to_string(&row).map_err(|e| {
@@ -486,7 +477,7 @@ impl StoreMut for RedisStorage {
         Ok(())
     }
 
-    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
+    fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         for key in keys {
             let redis_key = Self::redis_generate_key(&self.namespace, table_name, &key)?;
             self.redis_execute_del(&redis_key)?;

@@ -47,7 +47,6 @@ jobs:
       - run: |
           cargo test -p gluesql-macros --verbose
           cargo test -p gluesql-core --verbose
-          cargo test -p gluesql-utils --verbose
           cargo test -p gluesql-cli --verbose
           cargo test -p gluesql --lib --bins --tests --examples --verbose --no-default-features --features "gluesql_memory_storage gluesql_sled_storage"
 
@@ -138,5 +137,5 @@ jobs:
           cargo run --package gluesql --example memory_storage_usage
           cargo run --package gluesql --example sled_multi_threaded
           cargo run --package gluesql --example using_config
-          cargo run --package gluesql --example hello_ast_builder
+          cargo run --package gluesql --example hello_query_builder
           cargo run --package gluesql --example parameter_binding

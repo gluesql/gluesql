@@ -10,10 +10,6 @@ use {
     crate::cli::Cli,
     anyhow::Result,
     clap::Parser,
-    futures::{
-        executor::block_on,
-        stream::{StreamExt, TryStreamExt},
-    },
     gluesql_core::{
         ast::{Expr, ToSql},
         store::{GStore, GStoreMut, Planner, Store, Transaction},
@@ -170,50 +166,51 @@ pub fn run() -> Result<()> {
 pub fn dump_database(storage: &mut SledStorage, dump_path: PathBuf) -> Result<()> {
     let file = File::create(dump_path)?;
 
-    block_on(async {
-        storage.begin(true).await?;
-        let schemas = storage.fetch_all_schemas().await?;
-        for schema in schemas {
-            writeln!(&file, "{}", schema.to_ddl())?;
+    storage.begin(true)?;
+    let schemas = storage.fetch_all_schemas()?;
+    for schema in schemas {
+        writeln!(&file, "{}", schema.to_ddl())?;
 
-            let mut rows_list = storage
-                .scan_data(&schema.table_name)
-                .await?
-                .map_ok(|(_, row)| row)
-                .chunks(100);
+        let mut rows = storage
+            .scan_data(&schema.table_name)?
+            .map(|result| result.map(|(_, row)| row));
 
-            while let Some(rows) = rows_list.next().await {
-                let exprs_list = rows
-                    .into_iter()
-                    .map(|result| {
-                        result.map(|row| row.into_iter().map(Expr::Value).collect::<Vec<_>>())
-                    })
-                    .collect::<std::result::Result<Vec<_>, _>>()?;
+        loop {
+            let exprs_list = rows
+                .by_ref()
+                .take(100)
+                .map(|result| {
+                    result.map(|row| row.into_iter().map(Expr::Value).collect::<Vec<_>>())
+                })
+                .collect::<std::result::Result<Vec<_>, _>>()?;
 
-                let values = exprs_list
-                    .into_iter()
-                    .map(|exprs| {
-                        let row = exprs
-                            .into_iter()
-                            .map(|expr| expr.to_sql())
-                            .collect::<Vec<_>>()
-                            .join(", ");
-                        format!("({row})")
-                    })
-                    .collect::<Vec<_>>()
-                    .join(", ");
-
-                let insert_statement =
-                    format!(r#"INSERT INTO "{}" VALUES {values};"#, schema.table_name);
-
-                writeln!(&file, "{insert_statement}")?;
+            if exprs_list.is_empty() {
+                break;
             }
 
-            writeln!(&file)?;
+            let values = exprs_list
+                .into_iter()
+                .map(|exprs| {
+                    let row = exprs
+                        .into_iter()
+                        .map(|expr| expr.to_sql())
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    format!("({row})")
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+
+            let insert_statement =
+                format!(r#"INSERT INTO "{}" VALUES {values};"#, schema.table_name);
+
+            writeln!(&file, "{insert_statement}")?;
         }
 
-        Ok(())
-    })
+        writeln!(&file)?;
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

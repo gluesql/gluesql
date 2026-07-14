@@ -7,15 +7,14 @@ use {
     test_suite::*,
 };
 
-#[tokio::test]
-async fn basic() {
+#[test]
+fn basic() {
     let path = "./tests/samples/";
     let storage = CsvStorage::new(path).unwrap();
     let mut glue = Glue::new(storage);
 
     let actual = glue
         .execute("SELECT * FROM Employee")
-        .await
         .unwrap()
         .into_iter()
         .next()
@@ -40,7 +39,6 @@ async fn basic() {
             FROM Employee
          ",
         )
-        .await
         .unwrap()
         .into_iter()
         .next()

@@ -1,15 +1,11 @@
-use {
-    async_trait::async_trait, futures::stream::TryStreamExt, gluesql_core::prelude::Glue,
-    gluesql_memory_storage::MemoryStorage, test_suite::*,
-};
+use {gluesql_core::prelude::Glue, gluesql_memory_storage::MemoryStorage, test_suite::*};
 
 struct MemoryTester {
     glue: Glue<MemoryStorage>,
 }
 
-#[async_trait(?Send)]
 impl Tester<MemoryStorage> for MemoryTester {
-    async fn new(_: &str) -> Self {
+    fn new(_: &str) -> Self {
         let storage = MemoryStorage::default();
         let glue = Glue::new(storage);
 
@@ -21,28 +17,28 @@ impl Tester<MemoryStorage> for MemoryTester {
     }
 }
 
-generate_store_tests!(tokio::test, MemoryTester);
+generate_store_tests!(test, MemoryTester);
 
-generate_alter_table_tests!(tokio::test, MemoryTester);
+generate_alter_table_tests!(test, MemoryTester);
 
-generate_metadata_table_tests!(tokio::test, MemoryTester);
+generate_metadata_table_tests!(test, MemoryTester);
 
-generate_custom_function_tests!(tokio::test, MemoryTester);
+generate_custom_function_tests!(test, MemoryTester);
 
 macro_rules! exec {
     ($glue: ident $sql: literal) => {
-        $glue.execute($sql).await.unwrap();
+        $glue.execute($sql).unwrap();
     };
 }
 
 macro_rules! test {
     ($glue: ident $sql: expr, $result: expr) => {
-        assert_eq!($glue.execute($sql).await, $result);
+        assert_eq!($glue.execute($sql), $result);
     };
 }
 
-#[tokio::test]
-async fn memory_storage_index() {
+#[test]
+fn memory_storage_index() {
     use gluesql_core::{
         prelude::{Error, Glue},
         store::{Index, Store},
@@ -52,10 +48,8 @@ async fn memory_storage_index() {
 
     assert_eq!(
         Store::scan_data(&storage, "Idx")
-            .await
             .unwrap()
-            .try_collect::<Vec<_>>()
-            .await
+            .collect::<gluesql_core::prelude::Result<Vec<_>>>()
             .as_ref()
             .map(Vec::len),
         Ok(0),
@@ -64,7 +58,6 @@ async fn memory_storage_index() {
     assert_eq!(
         storage
             .scan_indexed_data("Idx", "hello", None, None)
-            .await
             .map(|_| ()),
         Err(Error::StorageMsg(
             "[MemoryStorage] index is not supported".to_owned()
@@ -84,8 +77,8 @@ async fn memory_storage_index() {
     );
 }
 
-#[tokio::test]
-async fn memory_storage_transaction() {
+#[test]
+fn memory_storage_transaction() {
     use gluesql_core::prelude::{Error, Glue, Payload};
 
     let storage = MemoryStorage::default();
@@ -97,8 +90,8 @@ async fn memory_storage_transaction() {
     test!(glue "ROLLBACK", Ok(vec![Payload::Rollback]));
 }
 
-#[tokio::test]
-async fn schemaless_update_conflict_on_non_map_row() {
+#[test]
+fn schemaless_update_conflict_on_non_map_row() {
     use gluesql_core::{
         data::Value,
         error::UpdateError,
@@ -112,7 +105,6 @@ async fn schemaless_update_conflict_on_non_map_row() {
     exec!(glue "CREATE TABLE Logs;");
     glue.storage
         .append_data("Logs", vec![vec![Value::I64(1)]])
-        .await
         .unwrap();
 
     test!(

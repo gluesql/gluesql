@@ -5,15 +5,15 @@ use {
     test_suite::select_map,
 };
 
-#[tokio::test]
-async fn json_schemaless() {
+#[test]
+fn json_schemaless() {
     let path = "./tests/samples/";
     let json_storage = JsonStorage::new(path).unwrap();
     let mut glue = Glue::new(json_storage);
 
     let cases = vec![
         (
-            glue.execute("SELECT * FROM Schemaless").await,
+            glue.execute("SELECT * FROM Schemaless"),
             Ok(select_map![
                 json!({"id": 1}),
                 json!({"name": "Glue"}),
@@ -21,14 +21,14 @@ async fn json_schemaless() {
             ]),
         ),
         (
-            glue.execute("SELECT * FROM ArrayOfJsonsSchemaless").await,
+            glue.execute("SELECT * FROM ArrayOfJsonsSchemaless"),
             Ok(select_map![
                 json!({ "id": 1, "name": "Glue" }),
                 json!({ "id": 2, "name": "SQL" })
             ]),
         ),
         (
-            glue.execute("SELECT * FROM SingleJsonSchemaless").await,
+            glue.execute("SELECT * FROM SingleJsonSchemaless"),
             Ok(select_map![json!(
                 {
                   "data": [

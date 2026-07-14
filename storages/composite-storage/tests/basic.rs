@@ -8,8 +8,8 @@ use {
     test_suite::*,
 };
 
-#[tokio::test]
-async fn basic() {
+#[test]
+fn basic() {
     let m1 = MemoryStorage::default();
     let m2 = MemoryStorage::default();
 
@@ -20,21 +20,13 @@ async fn basic() {
     let mut glue = Glue::new(storage);
 
     glue.storage.set_default("M1");
-    glue.execute("CREATE TABLE Foo (id INTEGER);")
-        .await
-        .unwrap();
+    glue.execute("CREATE TABLE Foo (id INTEGER);").unwrap();
 
     glue.storage.set_default("M2");
-    glue.execute("CREATE TABLE Bar (id INTEGER);")
-        .await
-        .unwrap();
+    glue.execute("CREATE TABLE Bar (id INTEGER);").unwrap();
 
-    glue.execute("INSERT INTO Foo VALUES (1), (2);")
-        .await
-        .unwrap();
-    glue.execute("INSERT INTO Bar VALUES (5), (7);")
-        .await
-        .unwrap();
+    glue.execute("INSERT INTO Foo VALUES (1), (2);").unwrap();
+    glue.execute("INSERT INTO Bar VALUES (5), (7);").unwrap();
 
     assert_eq!(
         glue.execute(
@@ -45,7 +37,6 @@ async fn basic() {
             JOIN Bar;
         "
         )
-        .await
         .unwrap()
         .into_iter()
         .next()
@@ -62,14 +53,14 @@ async fn basic() {
 
     glue.storage.remove("M2");
     assert_eq!(
-        glue.execute("SELECT * FROM Bar;").await,
+        glue.execute("SELECT * FROM Bar;"),
         Err(FetchError::TableNotFound("Bar".to_owned()).into())
     );
 
     glue.storage.set_default("M1");
     glue.storage.remove_default();
     assert_eq!(
-        glue.execute("CREATE TABLE Tae (id INTEGER);").await,
+        glue.execute("CREATE TABLE Tae (id INTEGER);"),
         Err(Error::StorageMsg(
             "storage not found for table: Tae".to_owned()
         ))
@@ -77,7 +68,7 @@ async fn basic() {
 
     glue.storage.clear();
     assert_eq!(
-        glue.execute("SELECT * FROM Foo;").await,
+        glue.execute("SELECT * FROM Foo;"),
         Err(FetchError::TableNotFound("Foo".to_owned()).into())
     );
 }

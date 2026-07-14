@@ -16,8 +16,7 @@ CREATE TABLE User (
     num INTEGER,
     name TEXT
 )",
-    )
-    .await;
+    );
 
     g.run(
         "
@@ -30,11 +29,9 @@ CREATE TABLE User (
             (4, 1, 'Origin'),
             (5, 2, 'Builder');
     ",
-    )
-    .await;
+    );
 
-    g.test("CREATE INDEX idx_id ON User (id)", Ok(Payload::CreateIndex))
-        .await;
+    g.test("CREATE INDEX idx_id ON User (id)", Ok(Payload::CreateIndex));
 
     g.test_idx(
         "
@@ -50,8 +47,7 @@ CREATE TABLE User (
             1     2     "Hello".to_owned()
         )),
         idx!(idx_id, Eq, "1"),
-    )
-    .await;
+    );
 
     g.test_idx(
         "
@@ -66,14 +62,13 @@ CREATE TABLE User (
             1     2     "Hello".to_owned()
         )),
         idx!(idx_id, Eq, "1"),
-    )
-    .await;
+    );
 
     g.test_idx(
         "
         SELECT * FROM User u1
         WHERE id IN (
-            SELECT * FROM User WHERE id = 1
+            SELECT id FROM User WHERE id = 1
         )",
         Ok(select!(
             id  | num | name
@@ -81,6 +76,5 @@ CREATE TABLE User (
             1     2     "Hello".to_owned()
         )),
         idx!(idx_id, Eq, "1"),
-    )
-    .await;
+    );
 });

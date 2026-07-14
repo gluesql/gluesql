@@ -1,4 +1,4 @@
-use {super::RowContext, crate::data::Value, std::sync::Arc};
+use {super::RowContext, crate::data::Value, std::rc::Rc};
 
 #[derive(Debug)]
 pub struct AggregateValues {
@@ -19,6 +19,6 @@ impl AggregateValues {
 
 #[derive(Debug)]
 pub struct AggregateContext<'a> {
-    pub aggregated: Option<Arc<AggregateValues>>,
-    pub next: Option<Arc<RowContext<'a>>>,
+    pub aggregated: Option<Rc<AggregateValues>>,
+    pub next: Option<Rc<RowContext<'a>>>,
 }

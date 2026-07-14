@@ -1,19 +1,18 @@
 use {
     super::{RedisStorage, mutex::MutexExt},
-    async_trait::async_trait,
     gluesql_core::{
         ast::ColumnDef,
         data::Value,
         error::{AlterTableError, Error, Result},
+        plan::plan_scalar_expr,
         store::{AlterTable, Store},
     },
     redis::Commands,
 };
 
-#[async_trait]
 impl AlterTable for RedisStorage {
-    async fn rename_schema(&mut self, table_name: &str, new_table_name: &str) -> Result<()> {
-        if let Some(mut schema) = self.fetch_schema(table_name).await? {
+    fn rename_schema(&mut self, table_name: &str, new_table_name: &str) -> Result<()> {
+        if let Some(mut schema) = self.fetch_schema(table_name)? {
             // Which should be done first? deleting or storing?
             self.redis_delete_schema(table_name)?;
 
@@ -38,13 +37,13 @@ impl AlterTable for RedisStorage {
         Ok(())
     }
 
-    async fn rename_column(
+    fn rename_column(
         &mut self,
         table_name: &str,
         old_column_name: &str,
         new_column_name: &str,
     ) -> Result<()> {
-        if let Some(mut schema) = self.fetch_schema(table_name).await? {
+        if let Some(mut schema) = self.fetch_schema(table_name)? {
             let column_defs = schema
                 .column_defs
                 .as_mut()
@@ -75,8 +74,8 @@ impl AlterTable for RedisStorage {
         Ok(())
     }
 
-    async fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
-        if let Some(mut schema) = self.fetch_schema(table_name).await? {
+    fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
+        if let Some(mut schema) = self.fetch_schema(table_name)? {
             let column_defs = schema
                 .column_defs
                 .as_mut()
@@ -100,7 +99,8 @@ impl AlterTable for RedisStorage {
 
             let new_value_of_new_column = match (default, nullable) {
                 (Some(expr), _) => {
-                    let evaluated = gluesql_core::executor::evaluate_stateless(None, expr).await?;
+                    let expr = plan_scalar_expr(expr.clone());
+                    let evaluated = gluesql_core::executor::evaluate_stateless(None, &expr)?;
 
                     evaluated.try_into_value(data_type, *nullable)?
                 }
@@ -147,9 +147,9 @@ impl AlterTable for RedisStorage {
                 })?;
                 row.push(new_value_of_new_column.clone());
 
-                let new_value = serde_json::to_string(&row).map_err(|_e| {
+                let new_value = serde_json::to_string(&row).map_err(|e| {
                     Error::StorageMsg(format!(
-                        "[RedisStorage] failed to serialize row={row:?} error={_e}"
+                        "[RedisStorage] failed to serialize row={row:?} error={e}"
                     ))
                 })?;
                 let _: () = {
@@ -176,13 +176,8 @@ impl AlterTable for RedisStorage {
         Ok(())
     }
 
-    async fn drop_column(
-        &mut self,
-        table_name: &str,
-        column_name: &str,
-        if_exists: bool,
-    ) -> Result<()> {
-        if let Some(mut schema) = self.fetch_schema(table_name).await? {
+    fn drop_column(&mut self, table_name: &str, column_name: &str, if_exists: bool) -> Result<()> {
+        if let Some(mut schema) = self.fetch_schema(table_name)? {
             let column_defs = schema
                 .column_defs
                 .as_mut()

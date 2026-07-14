@@ -15,8 +15,8 @@ use {
     uuid::Uuid as UUID,
 };
 
-#[tokio::test]
-async fn json_schema() {
+#[test]
+fn json_schema() {
     let path = "./tests/samples/";
     let json_storage = JsonStorage::new(path).unwrap();
     let mut glue = Glue::new(json_storage);
@@ -34,8 +34,7 @@ async fn json_schema() {
 
     let cases = vec![
         (
-            glue.execute("SELECT boolean, int8, int16, int32, int64, uint8 FROM Schema")
-                .await,
+            glue.execute("SELECT boolean, int8, int16, int32, int64, uint8 FROM Schema"),
             Ok(select!(
               boolean | int8 | int16 | int32         | int64                     | uint8
               Bool    | I8   | I16   | I32           | I64                       | U8;
@@ -52,7 +51,7 @@ async fn json_schema() {
             )),
         ),
         (
-            glue.execute("SELECT text, bytea, inet FROM Schema").await,
+            glue.execute("SELECT text, bytea, inet FROM Schema"),
             Ok(select!(
               text                                | bytea               | inet
               Str                                 | Bytea               | Inet;
@@ -69,8 +68,7 @@ async fn json_schema() {
             )),
         ),
         (
-            glue.execute("SELECT date, timestamp, time FROM Schema")
-                .await,
+            glue.execute("SELECT date, timestamp, time FROM Schema"),
             Ok(select!(
               date                | timestamp                    | time
               Date                | Timestamp                    | Time;
@@ -87,7 +85,7 @@ async fn json_schema() {
             )),
         ),
         (
-            glue.execute("SELECT \"interval\" FROM Schema").await,
+            glue.execute("SELECT \"interval\" FROM Schema"),
             Ok(select!(
               "\"interval\""
               Interval;
@@ -104,7 +102,7 @@ async fn json_schema() {
             )),
         ),
         (
-            glue.execute("SELECT uuid FROM Schema").await,
+            glue.execute("SELECT uuid FROM Schema"),
             Ok(select!(
               uuid
               Uuid;
@@ -121,7 +119,7 @@ async fn json_schema() {
             )),
         ),
         (
-            glue.execute("SELECT map FROM Schema").await,
+            glue.execute("SELECT map FROM Schema"),
             Ok(select!(
               map
               Map;
@@ -138,7 +136,7 @@ async fn json_schema() {
             )),
         ),
         (
-            glue.execute("SELECT list FROM Schema").await,
+            glue.execute("SELECT list FROM Schema"),
             Ok(select_with_null!(
               list;
               l(r#"["olive", "turquoise", "plum"]"#);
@@ -154,7 +152,7 @@ async fn json_schema() {
             )),
         ),
         (
-            glue.execute("SELECT * FROM ArrayOfJsonsSchema").await,
+            glue.execute("SELECT * FROM ArrayOfJsonsSchema"),
             Ok(select!(
               id   | name
               I64  | Str;
@@ -163,7 +161,7 @@ async fn json_schema() {
             )),
         ),
         (
-            glue.execute("SELECT * FROM SingleJsonSchema").await,
+            glue.execute("SELECT * FROM SingleJsonSchema"),
             Ok(select_with_null!(
               data;
               l(r#"[

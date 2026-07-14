@@ -1,27 +1,30 @@
 use {
+    self::lookup::PrimaryKeyLookupCandidate,
     super::{context::Context, planner::Planner},
     crate::{
-        ast::{
-            BinaryOperator, Expr, IndexItem, Query, Select, SetExpr, Statement, TableFactor,
-            TableWithJoins,
-        },
+        ast::BinaryOperator,
         data::Schema,
-        plan::expr::evaluable::check_expr as check_evaluable,
+        plan::{
+            ExprPlan, IndexItemPlan, QueryPlan, SelectPlan, SetExprPlan, StatementPlan,
+            TableFactorPlan, TableWithJoinsPlan, expr::evaluable::check_expr as check_evaluable,
+        },
     },
-    std::{collections::HashMap, hash::BuildHasher, sync::Arc},
+    std::{collections::HashMap, hash::BuildHasher, rc::Rc},
 };
+
+mod lookup;
 
 pub fn plan<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
-    statement: Statement,
-) -> Statement {
+    statement: StatementPlan,
+) -> StatementPlan {
     let planner = PrimaryKeyPlanner { schema_map };
 
     match statement {
-        Statement::Query(query) => {
+        StatementPlan::Query(query) => {
             let query = planner.query(None, query);
 
-            Statement::Query(query)
+            StatementPlan::Query(query)
         }
         _ => statement,
     }
@@ -32,17 +35,17 @@ struct PrimaryKeyPlanner<'a, S> {
 }
 
 impl<'a, S: BuildHasher> Planner<'a> for PrimaryKeyPlanner<'a, S> {
-    fn query(&self, outer_context: Option<Arc<Context<'a>>>, query: Query) -> Query {
+    fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
         let body = match query.body {
-            SetExpr::Select(select) => {
+            SetExprPlan::Select(select) => {
                 let select = self.select(outer_context, *select);
 
-                SetExpr::Select(Box::new(select))
+                SetExprPlan::Select(Box::new(select))
             }
-            SetExpr::Values(_) => query.body,
+            SetExprPlan::Values(_) => query.body,
         };
 
-        Query { body, ..query }
+        QueryPlan { body, ..query }
     }
 
     fn get_schema(&self, name: &str) -> Option<&'a Schema> {
@@ -52,49 +55,57 @@ impl<'a, S: BuildHasher> Planner<'a> for PrimaryKeyPlanner<'a, S> {
 
 enum PrimaryKey {
     Found {
-        index_item: IndexItem,
-        expr: Option<Expr>,
+        index_item: IndexItemPlan,
+        expr: Option<ExprPlan>,
     },
-    NotFound(Expr),
+    NotFound(ExprPlan),
 }
 
 impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
-    fn select(&self, outer_context: Option<Arc<Context<'a>>>, select: Select) -> Select {
-        let current_context = self.update_context(None, &select.from.relation);
+    fn select(&self, outer_context: Option<Rc<Context<'a>>>, select: SelectPlan) -> SelectPlan {
+        let first_relation_context = self.update_context(None, &select.from.relation);
+        let lookup_candidate = PrimaryKeyLookupCandidate::new(self.schema_map, &select.from);
         let current_context = select
             .from
             .joins
             .iter()
-            .fold(current_context, |context, join| {
+            .fold(first_relation_context, |context, join| {
                 self.update_context(context, &join.relation)
             });
 
         let (index, selection) = select
             .selection
-            .map(|expr| self.expr(outer_context, current_context, expr))
+            .map(|expr| {
+                self.expr(
+                    outer_context,
+                    current_context,
+                    lookup_candidate.as_ref(),
+                    expr,
+                )
+            })
             .map_or((None, None), |primary_key| match primary_key {
                 PrimaryKey::Found { index_item, expr } => (Some(index_item), expr),
                 PrimaryKey::NotFound(expr) => (None, Some(expr)),
             });
 
-        if let TableFactor::Table {
+        if let TableFactorPlan::Table {
             name,
             alias,
             index: None,
         } = select.from.relation
         {
-            let from = TableWithJoins {
-                relation: TableFactor::Table { name, alias, index },
+            let from = TableWithJoinsPlan {
+                relation: TableFactorPlan::Table { name, alias, index },
                 ..select.from
             };
 
-            Select {
+            SelectPlan {
                 from,
                 selection,
                 ..select
             }
         } else {
-            Select {
+            SelectPlan {
                 selection,
                 ..select
             }
@@ -103,56 +114,47 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
 
     fn expr(
         &self,
-        outer_context: Option<Arc<Context<'a>>>,
-        current_context: Option<Arc<Context<'a>>>,
-        expr: Expr,
+        outer_context: Option<Rc<Context<'a>>>,
+        current_context: Option<Rc<Context<'a>>>,
+        lookup_candidate: Option<&PrimaryKeyLookupCandidate>,
+        expr: ExprPlan,
     ) -> PrimaryKey {
-        let check_primary_key = |key: &Expr| {
-            let (Expr::Identifier(key) | Expr::CompoundIdentifier { ident: key, .. }) = key else {
-                return false;
-            };
-
-            current_context
-                .as_ref()
-                .is_some_and(|context| context.contains_primary_key(key))
-        };
-
         match expr {
-            Expr::BinaryOp {
+            ExprPlan::BinaryOp {
                 left: key,
                 op: BinaryOperator::Eq,
                 right: value,
             }
-            | Expr::BinaryOp {
+            | ExprPlan::BinaryOp {
                 left: value,
                 op: BinaryOperator::Eq,
                 right: key,
-            } if check_primary_key(key.as_ref())
-                && check_evaluable(current_context.as_ref().map(Arc::clone), &key)
+            } if lookup_candidate.is_some_and(|candidate| candidate.contains(key.as_ref()))
                 && check_evaluable(None, &value) =>
             {
-                let index_item = IndexItem::PrimaryKey(*value);
+                let index_item = IndexItemPlan::PrimaryKey(*value);
 
                 PrimaryKey::Found {
                     index_item,
                     expr: None,
                 }
             }
-            Expr::BinaryOp {
+            ExprPlan::BinaryOp {
                 left,
                 op: BinaryOperator::And,
                 right,
             } => {
                 let primary_key = self.expr(
-                    outer_context.as_ref().map(Arc::clone),
-                    current_context.as_ref().map(Arc::clone),
+                    outer_context.as_ref().map(Rc::clone),
+                    current_context.as_ref().map(Rc::clone),
+                    lookup_candidate,
                     *left,
                 );
 
                 let left = match primary_key {
                     PrimaryKey::Found { index_item, expr } => {
                         let expr = match expr {
-                            Some(left) => Expr::BinaryOp {
+                            Some(left) => ExprPlan::BinaryOp {
                                 left: Box::new(left),
                                 op: BinaryOperator::And,
                                 right,
@@ -168,10 +170,10 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                     PrimaryKey::NotFound(expr) => expr,
                 };
 
-                match self.expr(outer_context, current_context, *right) {
+                match self.expr(outer_context, current_context, lookup_candidate, *right) {
                     PrimaryKey::Found { index_item, expr } => {
                         let expr = match expr {
-                            Some(right) => Expr::BinaryOp {
+                            Some(right) => ExprPlan::BinaryOp {
                                 left: Box::new(left),
                                 op: BinaryOperator::And,
                                 right: Box::new(right),
@@ -185,7 +187,7 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                         }
                     }
                     PrimaryKey::NotFound(expr) => {
-                        let expr = Expr::BinaryOp {
+                        let expr = ExprPlan::BinaryOp {
                             left: Box::new(left),
                             op: BinaryOperator::And,
                             right: Box::new(expr),
@@ -195,14 +197,18 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                     }
                 }
             }
-            Expr::Nested(expr) => match self.expr(outer_context, current_context, *expr) {
-                PrimaryKey::Found { index_item, expr } => {
-                    let expr = expr.map(Box::new).map(Expr::Nested);
+            ExprPlan::Nested(expr) => {
+                match self.expr(outer_context, current_context, lookup_candidate, *expr) {
+                    PrimaryKey::Found { index_item, expr } => {
+                        let expr = expr.map(Box::new).map(ExprPlan::Nested);
 
-                    PrimaryKey::Found { index_item, expr }
+                        PrimaryKey::Found { index_item, expr }
+                    }
+                    PrimaryKey::NotFound(expr) => {
+                        PrimaryKey::NotFound(ExprPlan::Nested(Box::new(expr)))
+                    }
                 }
-                PrimaryKey::NotFound(expr) => PrimaryKey::NotFound(Expr::Nested(Box::new(expr))),
-            },
+            }
             _ => {
                 let outer_context = Context::concat(current_context, outer_context);
                 let expr = self.subquery_expr(outer_context, expr);
@@ -219,33 +225,49 @@ mod tests {
         super::plan as plan_primary_key,
         crate::{
             ast::{
-                BinaryOperator, Expr, IndexItem, Join, JoinConstraint, JoinExecutor, JoinOperator,
-                Literal, Projection, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
-                TableWithJoins, Values,
+                BinaryOperator, Expr, Join, JoinConstraint, JoinOperator, Literal, Projection,
+                Query, Select, SelectItem, SetExpr, Statement, TableFactor, TableWithJoins, Values,
             },
             mock::{MockStorage, run},
             parse_sql::{parse, parse_expr},
-            plan::fetch_schema_map,
+            plan::{
+                ExprPlan, IndexItemPlan, QueryPlan, SelectPlan, SetExprPlan, StatementPlan,
+                TableAliasPlan, TableFactorPlan, fetch_schema_map,
+            },
+            query_builder::{Build, col, primary_key, table},
             translate::{NO_PARAMS, translate, translate_expr},
         },
-        futures::executor::block_on,
     };
 
-    fn plan(storage: &MockStorage, sql: &str) -> Statement {
+    fn statement(sql: &str) -> StatementPlan {
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
-        let statement = translate(&parsed).unwrap();
-        let schema_map = block_on(fetch_schema_map(storage, &statement)).unwrap();
+        StatementPlan::from(translate(&parsed).unwrap())
+    }
+
+    fn try_select(statement: StatementPlan) -> Option<Box<SelectPlan>> {
+        match statement {
+            StatementPlan::Query(QueryPlan {
+                body: SetExprPlan::Select(select),
+                ..
+            }) => Some(select),
+            _ => None,
+        }
+    }
+
+    fn plan(storage: &MockStorage, sql: &str) -> StatementPlan {
+        let statement = statement(sql);
+        let schema_map = fetch_schema_map(storage, &statement).unwrap();
 
         plan_primary_key(&schema_map, statement)
     }
 
-    fn select(select: Select) -> Statement {
-        Statement::Query(Query {
+    fn select(select: Select) -> StatementPlan {
+        StatementPlan::from(Statement::Query(Query {
             body: SetExpr::Select(Box::new(select)),
             limit: None,
             offset: None,
             order_by: Vec::new(),
-        })
+        }))
     }
 
     fn expr(sql: &str) -> Expr {
@@ -265,62 +287,30 @@ mod tests {
 
         let sql = "SELECT * FROM Player WHERE id = 1;";
         let actual = plan(&storage, sql);
-        let expected = select(Select {
-            distinct: false,
-            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
-            from: TableWithJoins {
-                relation: TableFactor::Table {
-                    name: "Player".to_owned(),
-                    alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
-                },
-                joins: Vec::new(),
-            },
-            selection: None,
-            group_by: Vec::new(),
-            having: None,
-            aggregate_slots: None,
-        });
+        let expected = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .build()
+            .unwrap();
         assert_eq!(actual, expected, "primary key in lhs:\n{sql}");
 
         let sql = "SELECT * FROM Player WHERE 1 = id;";
         let actual = plan(&storage, sql);
-        let expected = select(Select {
-            distinct: false,
-            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
-            from: TableWithJoins {
-                relation: TableFactor::Table {
-                    name: "Player".to_owned(),
-                    alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
-                },
-                joins: Vec::new(),
-            },
-            selection: None,
-            group_by: Vec::new(),
-            having: None,
-            aggregate_slots: None,
-        });
+        let expected = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .build()
+            .unwrap();
         assert_eq!(actual, expected, "primary key in rhs:\n{sql}");
 
         let sql = "SELECT * FROM Player WHERE id = 1 AND True;";
         let actual = plan(&storage, sql);
-        let expected = select(Select {
-            distinct: false,
-            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
-            from: TableWithJoins {
-                relation: TableFactor::Table {
-                    name: "Player".to_owned(),
-                    alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
-                },
-                joins: Vec::new(),
-            },
-            selection: Some(expr("True")),
-            group_by: Vec::new(),
-            having: None,
-            aggregate_slots: None,
-        });
+        let expected = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .filter("True")
+            .build()
+            .unwrap();
         assert_eq!(actual, expected, "AND binary op:\n{sql}");
 
         let sql = "
@@ -331,22 +321,12 @@ mod tests {
                 AND True;
         ";
         let actual = plan(&storage, sql);
-        let expected = select(Select {
-            distinct: false,
-            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
-            from: TableWithJoins {
-                relation: TableFactor::Table {
-                    name: "Player".to_owned(),
-                    alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
-                },
-                joins: Vec::new(),
-            },
-            selection: Some(expr("name IS NOT NULL AND True")),
-            group_by: Vec::new(),
-            having: None,
-            aggregate_slots: None,
-        });
+        let expected = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .filter("name IS NOT NULL AND True")
+            .build()
+            .unwrap();
         assert_eq!(actual, expected, "AND binary op 2:\n{sql}");
 
         let sql = "
@@ -366,22 +346,12 @@ mod tests {
                 AND (True AND id = 1);
         ";
         let actual = plan(&storage, sql);
-        let expected = select(Select {
-            distinct: false,
-            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
-            from: TableWithJoins {
-                relation: TableFactor::Table {
-                    name: "Player".to_owned(),
-                    alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
-                },
-                joins: Vec::new(),
-            },
-            selection: Some(expr("name IS NOT NULL AND (True)")),
-            group_by: Vec::new(),
-            having: None,
-            aggregate_slots: None,
-        });
+        let expected = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .filter("name IS NOT NULL AND (True)")
+            .build()
+            .unwrap();
         assert_eq!(actual, expected, "AND binary op 3:\n{sql}");
     }
 
@@ -400,31 +370,44 @@ mod tests {
 
         let sql = "SELECT * FROM Player JOIN Badge WHERE Player.id = 1";
         let actual = plan(&storage, sql);
-        let expected = select(Select {
-            distinct: false,
-            projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
-            from: TableWithJoins {
-                relation: TableFactor::Table {
-                    name: "Player".to_owned(),
-                    alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
-                },
-                joins: vec![Join {
-                    relation: TableFactor::Table {
-                        name: "Badge".to_owned(),
-                        alias: None,
-                        index: None,
-                    },
-                    join_operator: JoinOperator::Inner(JoinConstraint::None),
-                    join_executor: JoinExecutor::NestedLoop,
-                }],
-            },
-            selection: None,
-            group_by: Vec::new(),
-            having: None,
-            aggregate_slots: None,
-        });
+        let expected = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .join("Badge")
+            .build()
+            .unwrap();
         assert_eq!(actual, expected, "basic inner join:\n{sql}");
+
+        let sql = "SELECT * FROM Player JOIN Badge WHERE id = 1";
+        let actual = plan(&storage, sql);
+        assert_eq!(
+            actual, expected,
+            "unqualified primary key on first relation:\n{sql}"
+        );
+
+        let sql = "SELECT * FROM Player p JOIN Badge b WHERE p.id = 1";
+        let actual = plan(&storage, sql);
+        let expected_relation = TableFactorPlan::Table {
+            name: "Player".to_owned(),
+            alias: Some(TableAliasPlan {
+                name: "p".to_owned(),
+                columns: Vec::new(),
+            }),
+            index: Some(IndexItemPlan::PrimaryKey(ExprPlan::Literal(
+                Literal::Number(1.into()),
+            ))),
+        };
+        assert!(
+            matches!(
+                actual,
+                StatementPlan::Query(QueryPlan {
+                    body: SetExprPlan::Select(select_plan),
+                    ..
+                }) if select_plan.from.relation == expected_relation
+                    && select_plan.selection.is_none()
+            ),
+            "aliased primary key should be installed and removed from selection:\n{sql}"
+        );
 
         let sql = "SELECT * FROM Player JOIN Badge WHERE Player.id = Badge.user_id";
         let actual = plan(&storage, sql);
@@ -435,22 +418,18 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: None,
                 },
                 joins: vec![Join {
                     relation: TableFactor::Table {
                         name: "Badge".to_owned(),
                         alias: None,
-                        index: None,
                     },
                     join_operator: JoinOperator::Inner(JoinConstraint::None),
-                    join_executor: JoinExecutor::NestedLoop,
                 }],
             },
             selection: Some(expr("Player.id = Badge.user_id")),
             group_by: Vec::new(),
             having: None,
-            aggregate_slots: None,
         });
         assert_eq!(actual, expected, "join but no primary key:\n{sql}");
 
@@ -460,51 +439,189 @@ mod tests {
                 SELECT * FROM Player WHERE id = 1
             )";
         let actual = plan(&storage, sql);
-        let expected = {
-            let subquery = Query {
-                body: SetExpr::Select(Box::new(Select {
-                    distinct: false,
-                    projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
-                    from: TableWithJoins {
-                        relation: TableFactor::Table {
-                            name: "Player".to_owned(),
-                            alias: None,
-                            index: Some(IndexItem::PrimaryKey(expr("1"))),
-                        },
-                        joins: Vec::new(),
-                    },
-                    selection: None,
-                    group_by: Vec::new(),
-                    having: None,
-                    aggregate_slots: None,
-                })),
-                limit: None,
-                offset: None,
-                order_by: Vec::new(),
-            };
-
-            select(Select {
-                distinct: false,
-                projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
-                from: TableWithJoins {
-                    relation: TableFactor::Table {
-                        name: "Player".to_owned(),
-                        alias: None,
-                        index: None,
-                    },
-                    joins: Vec::new(),
-                },
-                selection: Some(Expr::InSubquery {
-                    expr: Box::new(expr("name")),
-                    subquery: Box::new(subquery),
-                    negated: false,
-                }),
-                group_by: Vec::new(),
-                having: None,
-                aggregate_slots: None,
-            })
-        };
+        let expected = table("Player")
+            .select()
+            .filter(col("name").in_list(table("Player").index_by(primary_key().eq("1")).select()))
+            .build()
+            .unwrap();
         assert_eq!(actual, expected, "nested select:\n{sql}");
+    }
+
+    #[test]
+    fn joined_relation_primary_key() {
+        let storage = run("
+            CREATE TABLE Tasks (
+                task_id INTEGER PRIMARY KEY,
+                project_id INTEGER,
+                done BOOLEAN NOT NULL
+            );
+            CREATE TABLE Projects (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL
+            );
+        ");
+
+        let sql = "
+            SELECT *
+            FROM Tasks t
+            JOIN Projects p ON p.id = t.project_id
+            WHERE p.id = 1 AND t.done = FALSE;
+        ";
+        let actual = plan(&storage, sql);
+        let expected = table("Tasks")
+            .alias_as("t")
+            .select()
+            .join_as("Projects", "p")
+            .on("p.id = t.project_id")
+            .filter("p.id = 1 AND t.done = FALSE")
+            .build()
+            .unwrap();
+        assert_eq!(actual, expected, "qualified joined relation:\n{sql}");
+
+        let sql = "
+            SELECT *
+            FROM Tasks t
+            JOIN Projects p ON p.id = t.project_id
+            WHERE id = 1 AND t.done = FALSE;
+        ";
+        let actual = plan(&storage, sql);
+        let expected = table("Tasks")
+            .alias_as("t")
+            .select()
+            .join_as("Projects", "p")
+            .on("p.id = t.project_id")
+            .filter("id = 1 AND t.done = FALSE")
+            .build()
+            .unwrap();
+        assert_eq!(actual, expected, "unqualified joined relation:\n{sql}");
+    }
+
+    #[test]
+    fn left_outer_join_installs_lookup_on_first_relation() {
+        let storage = run("
+            CREATE TABLE Tasks (
+                task_id INTEGER PRIMARY KEY,
+                project_id INTEGER
+            );
+            CREATE TABLE Projects (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL
+            );
+        ");
+        let sql = "
+            SELECT *
+            FROM Tasks t
+            LEFT JOIN Projects p ON p.id = t.project_id
+            WHERE t.task_id = 1;
+        ";
+
+        let actual = plan(&storage, sql);
+        let select = try_select(actual).expect("expected select plan");
+        let expected_index =
+            IndexItemPlan::PrimaryKey(ExprPlan::Literal(Literal::Number(1.into())));
+
+        assert_eq!(
+            select.from.relation.index(),
+            Some(&expected_index),
+            "left outer join should install a lookup on the first relation:\n{sql}"
+        );
+        assert!(
+            select.selection.is_none(),
+            "left outer join should remove the optimized selection:\n{sql}"
+        );
+    }
+
+    #[test]
+    fn positional_column_aliases() {
+        let storage = run("
+            CREATE TABLE Tasks (
+                task_id INTEGER PRIMARY KEY,
+                project_id INTEGER,
+                done BOOLEAN NOT NULL
+            );
+            CREATE TABLE Projects (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL
+            );
+        ");
+
+        let sql = "
+            SELECT *
+            FROM Tasks AS t(id, project_id, done)
+            WHERE t.id = 1;
+        ";
+        let actual = plan(&storage, sql);
+        let select = try_select(actual).expect("expected select plan");
+        let index = select.from.relation.index();
+
+        assert!(
+            matches!(index, Some(IndexItemPlan::PrimaryKey(_))),
+            "effective primary key alias should install a lookup:\n{sql}"
+        );
+        assert!(
+            select.selection.is_none(),
+            "effective primary key alias should remove the selection:\n{sql}"
+        );
+
+        let sql = "
+            SELECT t.id
+            FROM Tasks AS t(id, project_id, done)
+            JOIN Projects AS p(task_id, name)
+              ON p.task_id = t.project_id
+            WHERE task_id = 1
+            ORDER BY t.id;
+        ";
+        let actual = plan(&storage, sql);
+        let expected = statement(sql);
+
+        assert_eq!(
+            actual, expected,
+            "joined positional alias should preserve selection:\n{sql}"
+        );
+
+        let storage = run("
+            CREATE TABLE Tasks (
+                project_id INTEGER,
+                task_id INTEGER PRIMARY KEY
+            );
+        ");
+        let sql = "
+            SELECT *
+            FROM Tasks AS t(id, id)
+            WHERE t.id = 1;
+        ";
+        let actual = plan(&storage, sql);
+        let expected = statement(sql);
+
+        assert_eq!(
+            actual, expected,
+            "shadowed primary key alias should preserve selection:\n{sql}"
+        );
+    }
+
+    #[test]
+    fn rejects_non_select_test_plan() {
+        assert!(try_select(statement("VALUES (1)")).is_none());
+    }
+
+    #[test]
+    fn existing_access_path_preserves_selection() {
+        let storage = run("
+            CREATE TABLE Player (
+                id INTEGER PRIMARY KEY,
+                name TEXT
+            );
+        ");
+        let statement = table("Player")
+            .index_by(primary_key().eq("2"))
+            .select()
+            .filter("id = 1")
+            .build()
+            .unwrap();
+        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
+        let actual = plan_primary_key(&schema_map, statement.clone());
+
+        assert_eq!(actual, statement);
     }
 
     #[test]
@@ -530,14 +647,12 @@ mod tests {
                         relation: TableFactor::Table {
                             name: "Player".to_owned(),
                             alias: None,
-                            index: None,
                         },
                         joins: Vec::new(),
                     },
                     selection: None,
                     group_by: Vec::new(),
                     having: None,
-                    aggregate_slots: None,
                 })),
                 limit: Some(expr("1")),
                 offset: None,
@@ -551,7 +666,6 @@ mod tests {
                     relation: TableFactor::Table {
                         name: "Player".to_owned(),
                         alias: None,
-                        index: None,
                     },
                     joins: Vec::new(),
                 },
@@ -562,7 +676,6 @@ mod tests {
                 }),
                 group_by: Vec::new(),
                 having: None,
-                aggregate_slots: None,
             })
         };
         assert_eq!(actual, expected, "name is not primary key:\n{sql}");
@@ -585,14 +698,12 @@ mod tests {
                         relation: TableFactor::Table {
                             name: "Player".to_owned(),
                             alias: None,
-                            index: None,
                         },
                         joins: Vec::new(),
                     },
                     selection: Some(expr("id = id")),
                     group_by: Vec::new(),
                     having: None,
-                    aggregate_slots: None,
                 })),
                 limit: None,
                 offset: None,
@@ -606,7 +717,6 @@ mod tests {
                     relation: TableFactor::Table {
                         name: "Player".to_owned(),
                         alias: None,
-                        index: None,
                     },
                     joins: Vec::new(),
                 },
@@ -617,26 +727,25 @@ mod tests {
                 }),
                 group_by: Vec::new(),
                 having: None,
-                aggregate_slots: None,
             })
         };
         assert_eq!(actual, expected, "ambiguous nested contexts:\n{sql}");
 
         let sql = "DELETE FROM Player WHERE id = 1;";
         let actual = plan(&storage, sql);
-        let expected = Statement::Delete {
+        let expected = StatementPlan::from(Statement::Delete {
             table_name: "Player".to_owned(),
             selection: Some(Expr::BinaryOp {
                 left: Box::new(Expr::Identifier("id".to_owned())),
                 op: BinaryOperator::Eq,
                 right: Box::new(Expr::Literal(Literal::Number(1.into()))),
             }),
-        };
+        });
         assert_eq!(actual, expected, "delete statement:\n{sql}");
 
         let sql = "VALUES (1), (2);";
         let actual = plan(&storage, sql);
-        let expected = Statement::Query(Query {
+        let expected = StatementPlan::from(Statement::Query(Query {
             body: SetExpr::Values(Values(vec![
                 vec![Expr::Literal(Literal::Number(1.into()))],
                 vec![Expr::Literal(Literal::Number(2.into()))],
@@ -644,7 +753,7 @@ mod tests {
             limit: None,
             offset: None,
             order_by: Vec::new(),
-        });
+        }));
         assert_eq!(actual, expected, "values:\n{sql}");
 
         let sql = "SELECT * FROM Player WHERE (name);";
@@ -656,14 +765,12 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: None,
                 },
                 joins: Vec::new(),
             },
             selection: Some(Expr::Nested(Box::new(expr("name")))),
             group_by: Vec::new(),
             having: None,
-            aggregate_slots: None,
         });
         assert_eq!(actual, expected, "nested:\n{sql}");
     }

@@ -6,23 +6,7 @@ CompositeStorage is a special type of Storage. It does not possess any real stor
 
 ## Unified Interface across Different Storages
 
-In fact, the Javascript (Web) GlueSQL interface already utilizes CompositeStorage. Take a look at this:
-
-```sql
-CREATE TABLE Mem (mid INTEGER) ENGINE = memory;
-CREATE TABLE Loc (lid INTEGER) ENGINE = localStorage;
-CREATE TABLE Ses (sid INTEGER) ENGINE = sessionStorage;
-CREATE TABLE Idb (iid INTEGER) ENGINE = indexedDB;
-
-SELECT
-    mid, lid, sid, iid 
-FROM Mem
-JOIN Loc
-JOIN Ses
-JOIN Idb;
-```
-
-You can create tables using four different storages and perform operations like JOIN using SQL! All you have to do is specify the ENGINE during `CREATE TABLE`. That's all it takes.
+CompositeStorage lets you create tables backed by different storage implementations and query them through the same SQL interface. You can perform operations like JOIN across those tables without changing the query language for each backing store.
 
 ## Potential and Future Plans
 
@@ -30,7 +14,7 @@ CompositeStorage can be immensely useful in various applications. At present, Gl
 
 In addition, just as you would use an ORM to handle multiple different SQL databases with the same interface, plans are in place to use existing SQL databases in a similar way as storages in GlueSQL. Once all these plans come to fruition, you will be able to implement your data pipelines very simply.
 
-Moving data from Redis to MongoDB, or from MySQL to Redis will be a breeze - just by specifying the ENGINE using the same GlueSQL SQL or AST Builder.
+Moving data from Redis to MongoDB, or from MySQL to Redis will be a breeze - just by specifying the ENGINE using the same GlueSQL SQL or Query Builder.
 
 ## Limitations and Considerations
 

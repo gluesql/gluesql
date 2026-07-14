@@ -1,14 +1,11 @@
 #![cfg(any(feature = "gluesql_memory_storage", feature = "gluesql_sled_storage"))]
-use {
-    futures::executor::block_on,
-    gluesql::{
-        FromGlueRow,
-        core::store::{GStore, GStoreMut, Planner},
-        prelude::*,
-    },
+use gluesql::{
+    FromGlueRow,
+    core::store::{GStore, GStoreMut, Planner},
+    prelude::*,
 };
 
-async fn basic<T: GStore + GStoreMut + Planner>(mut glue: Glue<T>) {
+fn basic<T: GStore + GStoreMut + Planner>(mut glue: Glue<T>) {
     // Demonstrate FromGlueRow derive + Payload conversion to struct
     #[derive(Debug, PartialEq, FromGlueRow)]
     struct ApiRow {
@@ -18,15 +15,14 @@ async fn basic<T: GStore + GStoreMut + Planner>(mut glue: Glue<T>) {
     }
 
     assert_eq!(
-        glue.execute("DROP TABLE IF EXISTS api_test").await,
+        glue.execute("DROP TABLE IF EXISTS api_test"),
         Ok(vec![Payload::DropTable(0)])
     );
 
     assert_eq!(
         glue.execute(
             "CREATE TABLE api_test (id INTEGER, name TEXT, nullable TEXT NULL, is BOOLEAN)"
-        )
-        .await,
+        ),
         Ok(vec![Payload::Create])
     );
 
@@ -38,14 +34,12 @@ async fn basic<T: GStore + GStoreMut + Planner>(mut glue: Glue<T>) {
                 VALUES
                     (1, 'test1', 'not null', TRUE),
                     (2, 'test2', NULL, FALSE)"
-        )
-        .await,
+        ),
         Ok(vec![Payload::Insert(2)])
     );
 
     let rows: Vec<ApiRow> = glue
         .execute("SELECT id, name, is FROM api_test")
-        .await
         .rows_as::<ApiRow>()
         .unwrap();
     assert_eq!(
@@ -77,7 +71,7 @@ fn sled_basic() {
     let storage = SledStorage::try_from(config).unwrap();
     let glue = Glue::new(storage);
 
-    block_on(basic(glue));
+    basic(glue);
 }
 
 #[cfg(feature = "gluesql_memory_storage")]
@@ -88,5 +82,5 @@ fn memory_basic() {
     let storage = MemoryStorage::default();
     let glue = Glue::new(storage);
 
-    block_on(basic(glue));
+    basic(glue);
 }

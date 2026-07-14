@@ -13,13 +13,11 @@ test_case!(chr, {
             Str;
             "F".to_owned()
         )),
-    )
-    .await;
+    );
     g.test(
         "VALUES(CHR(7070))",
         Err(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255.into()),
-    )
-    .await;
+    );
     g.run(
         "
         CREATE TABLE Chr (
@@ -27,9 +25,8 @@ test_case!(chr, {
             num INTEGER
         );
     ",
-    )
-    .await;
-    g.run("INSERT INTO Chr VALUES (1, 70);").await;
+    );
+    g.run("INSERT INTO Chr VALUES (1, 70);");
 
     g.test(
         "select chr(num) as chr from Chr;",
@@ -38,8 +35,7 @@ test_case!(chr, {
             Str;
             "F".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "select chr(65) as chr from Chr;",
@@ -48,25 +44,21 @@ test_case!(chr, {
            Str;
            "A".to_owned()
         )),
-    )
-    .await;
+    );
 
     g.test(
         "select chr(532) as chr from Chr;",
         Err(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255.into()),
-    )
-    .await;
+    );
     g.test(
         "select chr('ukjhg') as chr from Chr;",
         Err(EvaluateError::FunctionRequiresIntegerValue("CHR".to_owned()).into()),
-    )
-    .await;
+    );
 
-    g.run("INSERT INTO Chr VALUES (1, 4345);").await;
+    g.run("INSERT INTO Chr VALUES (1, 4345);");
 
     g.test(
         "select chr(num) as chr from Chr;",
         Err(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255.into()),
-    )
-    .await;
+    );
 });

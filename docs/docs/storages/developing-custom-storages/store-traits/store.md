@@ -17,17 +17,16 @@ Here are the four methods required to implement the `Store` trait:
 4. `scan_data`: This method is used to scan all the data rows in a table. It returns an iterator over the rows in the specified table.
 
 ```rust
-pub type RowIter = Box<dyn Iterator<Item = Result<(Key, DataRow)>>>;
+pub type RowIter<'a> = Box<dyn Iterator<Item = Result<(Key, Vec<Value>)>> + 'a>;
 
 /// By implementing `Store` trait, you can run `SELECT` query.
-#[async_trait]
 pub trait Store {
-    async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>>;
+    fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>>;
 
-    async fn fetch_all_schemas(&self) -> Result<Vec<Schema>>;
+    fn fetch_all_schemas(&self) -> Result<Vec<Schema>>;
 
-    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>>;
+    fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Vec<Value>>>;
 
-    async fn scan_data(&self, table_name: &str) -> Result<RowIter>;
+    fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>>;
 }
 ```

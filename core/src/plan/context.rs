@@ -1,39 +1,32 @@
-use std::sync::Arc;
+use std::rc::Rc;
 
 pub enum Context<'a> {
     Data {
         alias: String,
         columns: Vec<&'a str>,
-        primary_key: Option<&'a str>,
-        next: Option<Arc<Context<'a>>>,
+        next: Option<Rc<Context<'a>>>,
     },
     Bridge {
-        left: Arc<Context<'a>>,
-        right: Arc<Context<'a>>,
+        left: Rc<Context<'a>>,
+        right: Rc<Context<'a>>,
     },
 }
 
 impl<'a> Context<'a> {
-    pub fn new(
-        alias: String,
-        columns: Vec<&'a str>,
-        primary_key: Option<&'a str>,
-        next: Option<Arc<Context<'a>>>,
-    ) -> Self {
+    pub fn new(alias: String, columns: Vec<&'a str>, next: Option<Rc<Context<'a>>>) -> Self {
         Context::Data {
             alias,
             columns,
-            primary_key,
             next,
         }
     }
 
     pub fn concat(
-        left: Option<Arc<Context<'a>>>,
-        right: Option<Arc<Context<'a>>>,
-    ) -> Option<Arc<Self>> {
+        left: Option<Rc<Context<'a>>>,
+        right: Option<Rc<Context<'a>>>,
+    ) -> Option<Rc<Self>> {
         match (left, right) {
-            (Some(left), Some(right)) => Some(Arc::new(Self::Bridge { left, right })),
+            (Some(left), Some(right)) => Some(Rc::new(Self::Bridge { left, right })),
             (context @ Some(_), None) | (None, context @ Some(_)) => context,
             (None, None) => None,
         }
@@ -74,22 +67,6 @@ impl<'a> Context<'a> {
             Self::Bridge { left, right } => {
                 left.contains_aliased_column(target_alias, target_column)
                     || right.contains_aliased_column(target_alias, target_column)
-            }
-        }
-    }
-
-    pub fn contains_primary_key(&self, target_column: &str) -> bool {
-        match self {
-            Self::Data {
-                primary_key: Some(primary_key),
-                ..
-            } if primary_key == &target_column => true,
-            Self::Data { next, .. } => next
-                .as_ref()
-                .is_some_and(|next| next.contains_primary_key(target_column)),
-            Self::Bridge { left, right } => {
-                left.contains_primary_key(target_column)
-                    || right.contains_primary_key(target_column)
             }
         }
     }

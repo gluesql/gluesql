@@ -50,8 +50,8 @@ impl StorageBackend for FailingBackend {
     }
 }
 
-#[tokio::test]
-async fn begin_write_after_io_error() {
+#[test]
+fn begin_write_after_io_error() {
     const TABLE: TableDefinition<u64, u64> = TableDefinition::new("x");
     const META_TABLE: TableDefinition<&str, u32> = TableDefinition::new("__GLUESQL_META__");
 
@@ -91,6 +91,6 @@ async fn begin_write_after_io_error() {
     let _ = tx.commit().expect_err("commit should fail");
 
     let mut storage = RedbStorage::from_database(db).expect("from_database should validate format");
-    let err = storage.begin(true).await.expect_err("begin should fail");
+    let err = storage.begin(true).expect_err("begin should fail");
     assert!(err.to_string().contains("Previous I/O error"));
 }

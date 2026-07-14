@@ -1,15 +1,13 @@
 use {
     crate::{prelude::Value, result::Result},
-    async_trait::async_trait,
     std::{collections::BTreeMap, iter::empty},
 };
 
 type ObjectName = String;
 pub type MetaIter = Box<dyn Iterator<Item = Result<(ObjectName, BTreeMap<String, Value>)>>>;
 
-#[async_trait]
 pub trait Metadata {
-    async fn scan_table_meta(&self) -> Result<MetaIter> {
+    fn scan_table_meta(&self) -> Result<MetaIter> {
         Ok(Box::new(empty()))
     }
 }

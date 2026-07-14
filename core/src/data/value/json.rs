@@ -273,7 +273,7 @@ mod tests {
 
     #[test]
     fn json_to_value() {
-        use utils::Tribool::True;
+        use crate::data::Tribool::True;
 
         assert!(Value::try_from(JsonValue::Null).unwrap().is_null());
         assert_eq!(

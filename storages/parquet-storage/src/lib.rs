@@ -1,18 +1,16 @@
 use {
-    column_def::ParquetSchemaType,
     error::{OptionExt, ParquetStorageError, ResultExt},
     gluesql_core::{
-        ast::{ColumnDef, ColumnUniqueOption, ForeignKey},
+        ast::{ColumnDef, ColumnUniqueOption},
         data::Schema,
-        error::{Error, Result},
+        error::Result,
         prelude::{DataType, Key, Value},
-        store::{Metadata, Planner},
+        store::{Metadata, Planner, Store},
     },
     parquet::{
         file::{reader::FileReader, serialized_reader::SerializedFileReader},
         record::Row,
     },
-    serde_json::from_str,
     std::{
         collections::BTreeMap,
         fs::{self, File},
@@ -31,7 +29,7 @@ mod store_mut;
 mod transaction;
 mod value;
 
-type RowIter = Box<dyn Iterator<Item = Result<(Key, Vec<Value>)>> + Send>;
+type RowIter = Box<dyn Iterator<Item = Result<(Key, Vec<Value>)>>>;
 
 #[derive(Debug, Clone)]
 pub struct ParquetStorage {
@@ -51,70 +49,6 @@ impl ParquetStorage {
         Ok(Self { path: path.into() })
     }
 
-    fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
-        let schema_path = self.data_path(table_name);
-        let is_schema_path_exist = schema_path.exists();
-        if !is_schema_path_exist {
-            return Ok(None);
-        }
-        let file = File::open(&schema_path).map_storage_err()?;
-        let reader = SerializedFileReader::new(file).map_storage_err()?;
-        let parquet_metadata = reader.metadata();
-        let file_metadata = parquet_metadata.file_metadata();
-        let schema = file_metadata.schema();
-        let key_value_file_metadata = file_metadata.key_value_metadata();
-
-        let mut is_schemaless = false;
-        let mut foreign_keys = Vec::new();
-        let mut comment = None;
-        if let Some(metadata) = key_value_file_metadata {
-            for kv in metadata {
-                if kv.key == "schemaless" {
-                    is_schemaless = matches!(kv.value.as_deref(), Some("true"));
-                } else if kv.key == "comment" {
-                    comment.clone_from(&kv.value);
-                } else if kv.key.starts_with("foreign_key") {
-                    let fk = kv
-                        .value
-                        .as_ref()
-                        .map(|x| from_str::<ForeignKey>(x))
-                        .map_storage_err(Error::StorageMsg(
-                            "No value found on metadata".to_owned(),
-                        ))?
-                        .map_storage_err()?;
-
-                    foreign_keys.push(fk);
-                }
-            }
-        }
-
-        let column_defs = if is_schemaless {
-            None
-        } else {
-            Some(
-                schema
-                    .get_fields()
-                    .iter()
-                    .map(|field| {
-                        ColumnDef::try_from(ParquetSchemaType {
-                            inner: field,
-                            metadata: key_value_file_metadata,
-                        })
-                    })
-                    .collect::<Result<Vec<ColumnDef>, _>>()?,
-            )
-        };
-
-        Ok(Some(Schema {
-            table_name: table_name.to_owned(),
-            column_defs,
-            indexes: vec![],
-            engine: None,
-            foreign_keys,
-            comment,
-        }))
-    }
-
     fn data_path(&self, table_name: &str) -> PathBuf {
         self.path_by(table_name, "parquet")
     }
@@ -128,7 +62,7 @@ impl ParquetStorage {
     }
 
     fn scan_data(&self, table_name: &str) -> Result<(RowIter, Schema)> {
-        let fetched_schema = self.fetch_schema(table_name)?.map_storage_err(
+        let fetched_schema = <Self as Store>::fetch_schema(self, table_name)?.map_storage_err(
             ParquetStorageError::TableDoesNotExist(table_name.to_owned()),
         )?;
         let file = File::open(self.data_path(table_name)).map_storage_err()?;

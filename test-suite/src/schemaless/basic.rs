@@ -7,7 +7,7 @@ use {
 test_case!(basic, {
     let g = get_tester!();
 
-    g.run("CREATE TABLE Player").await;
+    g.run("CREATE TABLE Player");
     g.run(
         format!(
             "INSERT INTO Player VALUES ('{}'), ('{}');",
@@ -15,10 +15,9 @@ test_case!(basic, {
             json!({ "id": 1002, "name": "Seo" }),
         )
         .as_str(),
-    )
-    .await;
+    );
 
-    g.run("CREATE TABLE Item").await;
+    g.run("CREATE TABLE Item");
     g.run(
         format!(
             "INSERT INTO Item VALUES ('{}'), ('{}');",
@@ -36,8 +35,7 @@ test_case!(basic, {
             })
         )
         .as_str(),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT name, dex, rare FROM Item WHERE id = 100",
@@ -46,8 +44,7 @@ test_case!(basic, {
             Str                   | I64 | Bool;
             "Test 001".to_owned()   324   false
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT name, dex, rare FROM Item",
@@ -56,8 +53,7 @@ test_case!(basic, {
             Str("Test 001".to_owned())   I64(324)   Bool(false);
             Null                         Null       Null
         )),
-    )
-    .await;
+    );
 
     g.test(
         "SELECT * FROM Item",
@@ -75,10 +71,9 @@ test_case!(basic, {
                 "id": 200
             })
         ]),
-    )
-    .await;
+    );
 
-    g.run("DELETE FROM Item WHERE id > 100").await;
+    g.run("DELETE FROM Item WHERE id > 100");
     g.run(
         "
         UPDATE Item
@@ -86,8 +81,7 @@ test_case!(basic, {
             id = id + 1,
             rare = NOT rare
     ",
-    )
-    .await;
+    );
     g.test(
         "SELECT id, name, dex, rare FROM Item",
         Ok(select!(
@@ -95,11 +89,10 @@ test_case!(basic, {
             I64 | Str                   | I64 | Bool;
             101   "Test 001".to_owned()   324   true
         )),
-    )
-    .await;
+    );
 
     // add new field to existing row
-    g.run("UPDATE Item SET new_field = 'Hello'").await;
+    g.run("UPDATE Item SET new_field = 'Hello'");
     g.test(
         r"SELECT new_field, obj['cost'] AS cost FROM Item",
         Ok(select!(
@@ -107,8 +100,7 @@ test_case!(basic, {
             Str                | I64;
             "Hello".to_owned()   3000
         )),
-    )
-    .await;
+    );
 
     // join
     g.test(
@@ -125,6 +117,5 @@ test_case!(basic, {
             I64       | Str               | I64;
             1001        "Beam".to_owned()   3000
         )),
-    )
-    .await;
+    );
 });

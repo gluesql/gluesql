@@ -11,9 +11,8 @@ test_case!(on_where, {
             name TEXT
         );
     ",
-    )
-    .await;
-    g.run("DELETE FROM Arith").await;
+    );
+    g.run("DELETE FROM Arith");
     g.run(
         "
         INSERT INTO Arith (id, num, name) VALUES
@@ -23,8 +22,7 @@ test_case!(on_where, {
             (4, 2, 'D'),
             (5, 3, 'E');
     ",
-    )
-    .await;
+    );
 
     let test_cases = [
         // add on WHERE
@@ -65,6 +63,6 @@ test_case!(on_where, {
     ];
 
     for (num, sql) in test_cases {
-        g.count(sql, num).await;
+        g.count(sql, num);
     }
 });

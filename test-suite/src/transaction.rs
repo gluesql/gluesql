@@ -1,10 +1,10 @@
 mod alter_table;
-mod ast_builder;
 mod basic;
 mod dictionary;
 mod index;
+mod query_builder;
 mod table;
 
 pub use {
-    alter_table::*, ast_builder::*, basic::basic, dictionary::dictionary, index::*, table::*,
+    alter_table::*, basic::basic, dictionary::dictionary, index::*, query_builder::*, table::*,
 };

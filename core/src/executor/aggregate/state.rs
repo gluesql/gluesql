@@ -1,18 +1,19 @@
 use {
     crate::{
-        ast::{Aggregate, AggregateFunction, CountArgExpr, DataType},
+        ast::DataType,
         data::Value,
         executor::{
             context::{AggregateContext, AggregateValues, RowContext},
             evaluate::{EvaluateError, evaluate},
         },
+        plan::{AggregateFunctionPlan, AggregatePlan, CountArgExprPlan},
         result::Result,
         store::GStore,
     },
     std::{
         cmp::Ordering,
         collections::{HashMap, HashSet},
-        sync::Arc,
+        rc::Rc,
     },
 };
 
@@ -69,11 +70,11 @@ impl AggrValue {
         }
     }
 
-    fn new(aggregate: &Aggregate, value: &Value) -> Result<Self> {
+    fn new(aggregate: &AggregatePlan, value: &Value) -> Result<Self> {
         let value = value.clone();
 
         Ok(match &aggregate.func {
-            AggregateFunction::Count(CountArgExpr::Wildcard) => {
+            AggregateFunctionPlan::Count(CountArgExprPlan::Wildcard) => {
                 let distinct_values = aggregate.distinct.then(|| HashSet::from([value.clone()]));
 
                 Self::Count {
@@ -82,7 +83,7 @@ impl AggrValue {
                     distinct_values,
                 }
             }
-            AggregateFunction::Count(CountArgExpr::Expr(_)) => {
+            AggregateFunctionPlan::Count(CountArgExprPlan::Expr(_)) => {
                 let mut distinct_values = aggregate.distinct.then(HashSet::new);
 
                 if let Some(set) = distinct_values.as_mut()
@@ -97,7 +98,7 @@ impl AggrValue {
                     distinct_values,
                 }
             }
-            AggregateFunction::Sum(_) => {
+            AggregateFunctionPlan::Sum(_) => {
                 let mut distinct_values = aggregate.distinct.then(HashSet::new);
 
                 if let Some(set) = distinct_values.as_mut() {
@@ -109,7 +110,7 @@ impl AggrValue {
                     distinct_values,
                 }
             }
-            AggregateFunction::Min(_) => {
+            AggregateFunctionPlan::Min(_) => {
                 let mut distinct_values = aggregate.distinct.then(HashSet::new);
 
                 if let Some(set) = distinct_values.as_mut() {
@@ -121,7 +122,7 @@ impl AggrValue {
                     distinct_values,
                 }
             }
-            AggregateFunction::Max(_) => {
+            AggregateFunctionPlan::Max(_) => {
                 let mut distinct_values = aggregate.distinct.then(HashSet::new);
 
                 if let Some(set) = distinct_values.as_mut() {
@@ -133,7 +134,7 @@ impl AggrValue {
                     distinct_values,
                 }
             }
-            AggregateFunction::Avg(_) => {
+            AggregateFunctionPlan::Avg(_) => {
                 let mut distinct_values = aggregate.distinct.then(HashSet::new);
 
                 if let Some(set) = distinct_values.as_mut() {
@@ -146,7 +147,7 @@ impl AggrValue {
                     distinct_values,
                 }
             }
-            AggregateFunction::Variance(_) => {
+            AggregateFunctionPlan::Variance(_) => {
                 let mut distinct_values = aggregate.distinct.then(HashSet::new);
 
                 if let Some(set) = distinct_values.as_mut() {
@@ -160,7 +161,7 @@ impl AggrValue {
                     distinct_values,
                 }
             }
-            AggregateFunction::Stdev(_) => {
+            AggregateFunctionPlan::Stdev(_) => {
                 let mut distinct_values = aggregate.distinct.then(HashSet::new);
 
                 if let Some(set) = distinct_values.as_mut() {
@@ -252,17 +253,8 @@ impl AggrValue {
                 sum,
                 count,
                 distinct_values,
-            } => {
-                if !Self::track_distinct(distinct_values, new_value) {
-                    return Ok(false);
-                }
-
-                *sum_square = sum_square.add(&new_value.multiply(new_value)?)?;
-                *sum = sum.add(new_value)?;
-                *count += 1;
-                Ok(true)
             }
-            Self::Stdev {
+            | Self::Stdev {
                 sum_square,
                 sum,
                 count,
@@ -316,12 +308,12 @@ impl AggrValue {
 }
 
 struct GroupState<'a> {
-    representative: Option<Arc<RowContext<'a>>>,
+    representative: Option<Rc<RowContext<'a>>>,
     values: Vec<Option<AggrValue>>,
 }
 
 impl<'a> GroupState<'a> {
-    fn new(slot_count: usize, representative: Option<Arc<RowContext<'a>>>) -> Self {
+    fn new(slot_count: usize, representative: Option<Rc<RowContext<'a>>>) -> Self {
         Self {
             representative,
             values: vec![None; slot_count],
@@ -354,7 +346,7 @@ impl<'a, T: GStore> State<'a, T> {
         }
     }
 
-    pub fn apply(&mut self, group: Vec<Value>, context: Arc<RowContext<'a>>) -> usize {
+    pub fn apply(&mut self, group: Vec<Value>, context: Rc<RowContext<'a>>) -> usize {
         if let Some(index) = self.group_indexes.get(&group).copied() {
             if self.groups[index].representative.is_none() {
                 self.groups[index].representative = Some(context);
@@ -365,21 +357,21 @@ impl<'a, T: GStore> State<'a, T> {
 
         let index = self.groups.len();
         self.groups
-            .push(GroupState::new(self.slot_count, Some(Arc::clone(&context))));
+            .push(GroupState::new(self.slot_count, Some(Rc::clone(&context))));
         self.group_indexes.insert(group, index);
 
         index
     }
 
-    pub async fn accumulate(
+    pub fn accumulate(
         &mut self,
         group_index: usize,
-        filter_context: Option<Arc<RowContext<'a>>>,
+        filter_context: Option<&Rc<RowContext<'a>>>,
         slot: usize,
-        aggregate: &Aggregate,
+        aggregate: &AggregatePlan,
     ) -> Result<()> {
         let value = match &aggregate.func {
-            AggregateFunction::Count(CountArgExpr::Wildcard) => {
+            AggregateFunctionPlan::Count(CountArgExprPlan::Wildcard) => {
                 if aggregate.distinct {
                     let context = filter_context.as_ref().ok_or_else(|| {
                         EvaluateError::FilterContextRequiredForAggregate(Box::new(
@@ -393,15 +385,15 @@ impl<'a, T: GStore> State<'a, T> {
                     Value::Null
                 }
             }
-            AggregateFunction::Count(CountArgExpr::Expr(expr))
-            | AggregateFunction::Sum(expr)
-            | AggregateFunction::Min(expr)
-            | AggregateFunction::Max(expr)
-            | AggregateFunction::Avg(expr)
-            | AggregateFunction::Variance(expr)
-            | AggregateFunction::Stdev(expr) => evaluate(self.storage, filter_context, None, expr)
-                .await?
-                .try_into()?,
+            AggregateFunctionPlan::Count(CountArgExprPlan::Expr(expr))
+            | AggregateFunctionPlan::Sum(expr)
+            | AggregateFunctionPlan::Min(expr)
+            | AggregateFunctionPlan::Max(expr)
+            | AggregateFunctionPlan::Avg(expr)
+            | AggregateFunctionPlan::Variance(expr)
+            | AggregateFunctionPlan::Stdev(expr) => {
+                evaluate(self.storage, filter_context, None, expr)?.try_into()?
+            }
         };
 
         let group = self
@@ -420,7 +412,7 @@ impl<'a, T: GStore> State<'a, T> {
         Ok(())
     }
 
-    pub fn export(self, aggregate_slots: &[Aggregate]) -> Result<Vec<AggregateContext<'a>>> {
+    pub fn export(self, aggregate_slots: &[AggregatePlan]) -> Result<Vec<AggregateContext<'a>>> {
         let groups = self.groups;
 
         groups
@@ -439,7 +431,7 @@ impl<'a, T: GStore> State<'a, T> {
                         })
                         .collect::<Result<Vec<_>>>()?;
 
-                    Some(Arc::new(AggregateValues::new(values)))
+                    Some(Rc::new(AggregateValues::new(values)))
                 };
 
                 Ok(AggregateContext {
@@ -451,14 +443,14 @@ impl<'a, T: GStore> State<'a, T> {
     }
 }
 
-fn empty_value(aggregate: &Aggregate) -> Value {
-    match aggregate.func {
-        AggregateFunction::Count(_) => Value::I64(0),
-        AggregateFunction::Sum(_)
-        | AggregateFunction::Min(_)
-        | AggregateFunction::Max(_)
-        | AggregateFunction::Avg(_)
-        | AggregateFunction::Variance(_)
-        | AggregateFunction::Stdev(_) => Value::Null,
+fn empty_value(aggregate: &AggregatePlan) -> Value {
+    match &aggregate.func {
+        AggregateFunctionPlan::Count(_) => Value::I64(0),
+        AggregateFunctionPlan::Sum(_)
+        | AggregateFunctionPlan::Min(_)
+        | AggregateFunctionPlan::Max(_)
+        | AggregateFunctionPlan::Avg(_)
+        | AggregateFunctionPlan::Variance(_)
+        | AggregateFunctionPlan::Stdev(_) => Value::Null,
     }
 }

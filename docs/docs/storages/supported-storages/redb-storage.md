@@ -8,8 +8,7 @@ RedbStorage implements GlueSQL's `Store`, `StoreMut`, and `Transaction` traits.
 ```rust
 use gluesql::{prelude::Glue, redb_storage::RedbStorage};
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let storage = RedbStorage::new("data/my_db.redb").unwrap();
     let mut glue = Glue::new(storage);
 
@@ -19,7 +18,7 @@ async fn main() {
         SELECT * FROM Foo;
     ";
 
-    let payloads = glue.execute(sql).await.unwrap();
+    let payloads = glue.execute(sql).unwrap();
     println!("{:#?}", payloads);
 }
 ```

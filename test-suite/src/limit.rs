@@ -110,6 +110,6 @@ test_case!(limit, {
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, Ok(expected)).await;
+        g.test(sql, Ok(expected));
     }
 });

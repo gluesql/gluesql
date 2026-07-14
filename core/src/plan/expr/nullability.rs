@@ -1,45 +1,45 @@
 use crate::{
-    ast::{Expr, Function},
     data::Value,
+    plan::{ExprPlan, FunctionPlan},
 };
 
-pub fn may_return_null(expr: &Expr) -> bool {
+pub fn may_return_null(expr: &ExprPlan) -> bool {
     match expr {
-        Expr::Value(Value::Null)
-        | Expr::Identifier(_)
-        | Expr::CompoundIdentifier { .. }
-        | Expr::ArrayIndex { .. }
-        | Expr::Subquery(_)
-        | Expr::Exists { .. }
-        | Expr::InSubquery { .. }
-        | Expr::Aggregate(_) => true,
-        Expr::Literal(_)
-        | Expr::Value(_)
-        | Expr::TypedString { .. }
-        | Expr::IsNull(_)
-        | Expr::IsNotNull(_) => false,
-        Expr::UnaryOp { expr: inner, .. }
-        | Expr::Nested(inner)
-        | Expr::Interval { expr: inner, .. } => may_return_null(inner),
-        Expr::BinaryOp { left, right, .. }
-        | Expr::Like {
+        ExprPlan::Value(Value::Null)
+        | ExprPlan::Identifier(_)
+        | ExprPlan::CompoundIdentifier { .. }
+        | ExprPlan::ArrayIndex { .. }
+        | ExprPlan::Subquery(_)
+        | ExprPlan::Exists { .. }
+        | ExprPlan::InSubquery { .. }
+        | ExprPlan::Aggregate(_) => true,
+        ExprPlan::Literal(_)
+        | ExprPlan::Value(_)
+        | ExprPlan::TypedString { .. }
+        | ExprPlan::IsNull(_)
+        | ExprPlan::IsNotNull(_) => false,
+        ExprPlan::UnaryOp { expr: inner, .. }
+        | ExprPlan::Nested(inner)
+        | ExprPlan::Interval { expr: inner, .. } => may_return_null(inner),
+        ExprPlan::BinaryOp { left, right, .. }
+        | ExprPlan::Like {
             expr: left,
             pattern: right,
             ..
         }
-        | Expr::ILike {
+        | ExprPlan::ILike {
             expr: left,
             pattern: right,
             ..
         } => may_return_null(left) || may_return_null(right),
-        Expr::Between {
+        ExprPlan::Between {
             expr, low, high, ..
         } => may_return_null(expr) || may_return_null(low) || may_return_null(high),
-        Expr::InList { expr, list, .. } => {
+        ExprPlan::InList { expr, list, .. } => {
             may_return_null(expr) || list.iter().any(may_return_null)
         }
-        Expr::Function(function) => function_may_return_null(function),
-        Expr::Case {
+        ExprPlan::Function(function) => function_may_return_null(function),
+        ExprPlan::Case {
             operand,
             when_then,
             else_result,
@@ -50,12 +50,12 @@ pub fn may_return_null(expr: &Expr) -> bool {
                     .any(|(when, then)| may_return_null(when) || may_return_null(then))
                 || else_result.as_deref().is_none_or(may_return_null)
         }
-        Expr::Array { elem } => elem.iter().any(may_return_null),
+        ExprPlan::Array { elem } => elem.iter().any(may_return_null),
     }
 }
 
-fn function_may_return_null(function: &Function) -> bool {
-    use Function::*;
+fn function_may_return_null(function: &FunctionPlan) -> bool {
+    use FunctionPlan::*;
 
     match function {
         Coalesce(exprs) => exprs.iter().all(may_return_null),
@@ -209,7 +209,7 @@ mod tests {
 
     fn test(sql: &str, expected: bool) {
         let expr = parse_expr(sql).and_then(|parsed| translate_expr(&parsed, NO_PARAMS));
-        let actual = expr.map(|expr| may_return_null(&expr));
+        let actual = expr.map(|expr| may_return_null(&expr.into()));
 
         assert_eq!(actual, Ok(expected), "{sql} nullability mismatch");
     }

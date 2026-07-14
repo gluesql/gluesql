@@ -14,14 +14,14 @@ Consider the Rust code structure for MemoryStorage:
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Item {
     pub schema: Schema,
-    pub rows: BTreeMap<Key, DataRow>,
+    pub rows: BTreeMap<Key, Vec<Value>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MemoryStorage {
     pub id_counter: i64,
     pub items: HashMap<String, Item>,
-    pub metadata: HashMap<String, HashMap<String, Value>>,
+    pub metadata: HashMap<String, BTreeMap<String, Value>>,
     pub functions: HashMap<String, StructCustomFunction>,
 }
 ```
@@ -31,12 +31,10 @@ This structure defines the `Item` and `MemoryStorage` structs. `Item` struct hol
 Below are the implementations of the `Store` and `StoreMut` traits for `MemoryStorage`:
 
 ```rust
-#[async_trait]
 impl Store for MemoryStorage {
     // Code for fetching schemas and data
 }
 
-#[async_trait]
 impl StoreMut for MemoryStorage {
     // Code for manipulating schemas and data
 }

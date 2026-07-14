@@ -1,0 +1,300 @@
+use {
+    super::{BuildQuery, BuildQueryPlan, ValuesNode},
+    crate::{
+        ast::Query,
+        plan::QueryPlan,
+        query_builder::{
+            ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
+            JoinNode, OffsetLimitNode, OrderByNode, ProjectNode, QueryNode, SelectNode,
+            TableFactorNode,
+        },
+        result::Result,
+    },
+};
+
+#[derive(Clone, Debug)]
+pub(super) enum PrevNode<'a> {
+    Select(SelectNode<'a>),
+    Values(ValuesNode<'a>),
+    GroupBy(GroupByNode<'a>),
+    Having(HavingNode<'a>),
+    Join(Box<JoinNode<'a>>),
+    JoinConstraint(Box<JoinConstraintNode<'a>>),
+    HashJoin(HashJoinNode<'a>),
+    Filter(FilterNode<'a>),
+    OrderBy(OrderByNode<'a>),
+    ProjectNode(Box<ProjectNode<'a>>),
+}
+
+impl BuildQueryPlan for PrevNode<'_> {
+    fn build_query_plan(self) -> Result<QueryPlan> {
+        match self {
+            Self::Select(node) => node.build_query_plan(),
+            Self::Values(node) => node.build_query_plan(),
+            Self::GroupBy(node) => node.build_query_plan(),
+            Self::Having(node) => node.build_query_plan(),
+            Self::Join(node) => node.build_query_plan(),
+            Self::JoinConstraint(node) => node.build_query_plan(),
+            Self::HashJoin(node) => node.build_query_plan(),
+            Self::Filter(node) => node.build_query_plan(),
+            Self::OrderBy(node) => node.build_query_plan(),
+            Self::ProjectNode(node) => node.build_query_plan(),
+        }
+    }
+}
+
+impl BuildQuery for PrevNode<'_> {
+    fn build_query(self) -> Result<Query> {
+        match self {
+            Self::Select(node) => node.build_query(),
+            Self::Values(node) => node.build_query(),
+            Self::GroupBy(node) => node.build_query(),
+            Self::Having(node) => node.build_query(),
+            Self::Join(node) => node.build_query(),
+            Self::JoinConstraint(node) => node.build_query(),
+            Self::HashJoin(node) => node.build_query(),
+            Self::Filter(node) => node.build_query(),
+            Self::OrderBy(node) => node.build_query(),
+            Self::ProjectNode(node) => node.build_query(),
+        }
+    }
+}
+
+impl<'a> From<SelectNode<'a>> for PrevNode<'a> {
+    fn from(node: SelectNode<'a>) -> Self {
+        PrevNode::Select(node)
+    }
+}
+
+impl<'a> From<ValuesNode<'a>> for PrevNode<'a> {
+    fn from(node: ValuesNode<'a>) -> Self {
+        PrevNode::Values(node)
+    }
+}
+
+impl<'a> From<GroupByNode<'a>> for PrevNode<'a> {
+    fn from(node: GroupByNode<'a>) -> Self {
+        PrevNode::GroupBy(node)
+    }
+}
+
+impl<'a> From<HavingNode<'a>> for PrevNode<'a> {
+    fn from(node: HavingNode<'a>) -> Self {
+        PrevNode::Having(node)
+    }
+}
+
+impl<'a> From<JoinConstraintNode<'a>> for PrevNode<'a> {
+    fn from(node: JoinConstraintNode<'a>) -> Self {
+        PrevNode::JoinConstraint(Box::new(node))
+    }
+}
+
+impl<'a> From<JoinNode<'a>> for PrevNode<'a> {
+    fn from(node: JoinNode<'a>) -> Self {
+        PrevNode::Join(Box::new(node))
+    }
+}
+
+impl<'a> From<HashJoinNode<'a>> for PrevNode<'a> {
+    fn from(node: HashJoinNode<'a>) -> Self {
+        PrevNode::HashJoin(node)
+    }
+}
+
+impl<'a> From<FilterNode<'a>> for PrevNode<'a> {
+    fn from(node: FilterNode<'a>) -> Self {
+        PrevNode::Filter(node)
+    }
+}
+
+impl<'a> From<OrderByNode<'a>> for PrevNode<'a> {
+    fn from(node: OrderByNode<'a>) -> Self {
+        PrevNode::OrderBy(node)
+    }
+}
+
+impl<'a> From<ProjectNode<'a>> for PrevNode<'a> {
+    fn from(node: ProjectNode<'a>) -> Self {
+        PrevNode::ProjectNode(Box::new(node))
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct OffsetNode<'a> {
+    prev_node: PrevNode<'a>,
+    expr: ExprNode<'a>,
+}
+
+impl<'a> OffsetNode<'a> {
+    pub(super) fn new<N: Into<PrevNode<'a>>, T: Into<ExprNode<'a>>>(prev_node: N, expr: T) -> Self {
+        Self {
+            prev_node: prev_node.into(),
+            expr: expr.into(),
+        }
+    }
+
+    pub fn limit<T: Into<ExprNode<'a>>>(self, expr: T) -> OffsetLimitNode<'a> {
+        OffsetLimitNode::new(self, expr)
+    }
+
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
+        QueryNode::OffsetNode(self).alias_as(table_alias)
+    }
+}
+
+impl BuildQueryPlan for OffsetNode<'_> {
+    fn build_query_plan(self) -> Result<QueryPlan> {
+        let mut node_data = self.prev_node.build_query_plan()?;
+        node_data.offset = Some(self.expr.build_expr_plan()?);
+
+        Ok(node_data)
+    }
+}
+
+impl BuildQuery for OffsetNode<'_> {
+    fn build_query(self) -> Result<Query> {
+        let mut node_data = self.prev_node.build_query()?;
+        node_data.offset = Some(self.expr.build_expr()?);
+
+        Ok(node_data)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        crate::{
+            plan::{
+                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
+                QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
+                TableWithJoinsPlan,
+            },
+            query_builder::{Build, SelectItemList, col, num, table, test_query_builder},
+        },
+        pretty_assertions::assert_eq,
+    };
+
+    #[test]
+    fn offset() {
+        // select node -> offset node -> build
+        let actual = table("Foo").select().offset(10);
+        let expected = "SELECT * FROM Foo OFFSET 10";
+        test_query_builder(actual, expected);
+
+        // group by node -> offset node -> build
+        let actual = table("Foo").select().group_by("id").offset(10);
+        let expected = "SELECT * FROM Foo GROUP BY id OFFSET 10";
+        test_query_builder(actual, expected);
+
+        // having node -> offset node -> build
+        let actual = table("Foo")
+            .select()
+            .group_by("id")
+            .having("id > 10")
+            .offset(10);
+        let expected = "SELECT * FROM Foo GROUP BY id HAVING id > 10 OFFSET 10";
+        test_query_builder(actual, expected);
+
+        // join node -> offset node -> build
+        let actual = table("Foo").select().join("Bar").offset(10);
+        let expected = "SELECT * FROM Foo JOIN Bar OFFSET 10";
+        test_query_builder(actual, expected);
+
+        // join node -> offset node -> build
+        let actual = table("Foo").select().join_as("Bar", "B").offset(10);
+        let expected = "SELECT * FROM Foo JOIN Bar AS B OFFSET 10";
+        test_query_builder(actual, expected);
+
+        // join node -> offset node -> build
+        let actual = table("Foo")
+            .select()
+            .left_join("Bar")
+            .on("Foo.id = Bar.id")
+            .offset(10);
+        let expected = "SELECT * FROM Foo LEFT JOIN Bar ON Foo.id = Bar.id OFFSET 10";
+        test_query_builder(actual, expected);
+
+        // join node -> offset node -> build
+        let actual = table("Foo")
+            .select()
+            .left_join_as("Bar", "B")
+            .on("Foo.id = B.id")
+            .offset(10);
+        let expected = "SELECT * FROM Foo LEFT JOIN Bar AS B ON Foo.id = B.id OFFSET 10";
+        test_query_builder(actual, expected);
+
+        // join constraint node -> offset node -> build
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .on("Foo.id = Bar.id")
+            .offset(10);
+        let expected = "SELECT * FROM Foo JOIN Bar ON Foo.id = Bar.id OFFSET 10";
+        test_query_builder(actual, expected);
+
+        // filter node -> offset node -> build
+        let actual = table("Bar").select().filter("id > 2").offset(100);
+        let expected = "SELECT * FROM Bar WHERE id > 2 OFFSET 100";
+        test_query_builder(actual, expected);
+
+        // project node -> offset node -> build
+        let actual = table("Item").select().project("*").offset(10);
+        let expected = "SELECT * FROM Item OFFSET 10";
+        test_query_builder(actual, expected);
+
+        // hash join node -> offset node -> build
+        let actual = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .offset(100)
+            .build();
+        let expected = {
+            let join = JoinPlan {
+                relation: TableFactorPlan::Table {
+                    name: "PlayerItem".to_owned(),
+                    alias: None,
+                    index: None,
+                },
+                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
+                join_executor: JoinExecutorPlan::Hash {
+                    key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),
+                    value_expr: col("Player.id").build_expr_plan().unwrap(),
+                    where_clause: None,
+                },
+            };
+            let select = SelectPlan {
+                distinct: false,
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+                from: TableWithJoinsPlan {
+                    relation: TableFactorPlan::Table {
+                        name: "Player".to_owned(),
+                        alias: None,
+                        index: None,
+                    },
+                    joins: vec![join],
+                },
+                selection: None,
+                group_by: Vec::new(),
+                having: None,
+                aggregate_slots: None,
+            };
+
+            Ok(StatementPlan::Query(QueryPlan {
+                body: SetExprPlan::Select(Box::new(select)),
+                order_by: Vec::new(),
+                limit: None,
+                offset: Some(num(100).build_expr_plan().unwrap()),
+            }))
+        };
+        assert_eq!(actual, expected);
+
+        // select -> offset -> derived subquery
+        let actual = table("Foo").select().offset(10).alias_as("Sub").select();
+        let expected = "SELECT * FROM (SELECT * FROM Foo OFFSET 10) Sub";
+        test_query_builder(actual, expected);
+    }
+}

@@ -20,8 +20,7 @@ test_case!(like_ilike, {
                 ('HELLO' NOT ILIKE '_ELLE');
         ",
         Ok(select!(column1 Bool; true; true; true; true; true)),
-    )
-    .await;
+    );
 
     g.run(
         "
@@ -30,8 +29,7 @@ test_case!(like_ilike, {
             name TEXT
         );
     ",
-    )
-    .await;
+    );
     g.run(
         "
         INSERT INTO Item (id, name) VALUES
@@ -41,8 +39,7 @@ test_case!(like_ilike, {
             (4,   'Gehrman'),
             (5,     'Maria');
     ",
-    )
-    .await;
+    );
 
     let test_cases = [
         (2, "SELECT name FROM Item WHERE name LIKE '_a%'"),
@@ -78,7 +75,7 @@ test_case!(like_ilike, {
     ];
 
     for (num, sql) in test_cases {
-        g.count(sql, num).await;
+        g.count(sql, num);
     }
 
     let error_sqls = [
@@ -121,6 +118,6 @@ test_case!(like_ilike, {
     ];
 
     for (sql, error) in error_sqls {
-        g.test(sql, Err(error)).await;
+        g.test(sql, Err(error));
     }
 });

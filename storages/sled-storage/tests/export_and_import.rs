@@ -4,8 +4,8 @@ use {
     sled::Config,
 };
 
-#[tokio::test]
-async fn export_and_import() {
+#[test]
+fn export_and_import() {
     let path1 = "tmp/export_and_import1";
     let path2 = "tmp/export_and_import2";
     let config1 = Config::default().path(path1).temporary(true);
@@ -14,29 +14,25 @@ async fn export_and_import() {
     let storage1 = SledStorage::try_from(config1).unwrap();
     let mut glue1 = Glue::new(storage1);
 
-    glue1
-        .execute("CREATE TABLE Foo (id INTEGER);")
-        .await
-        .unwrap();
+    glue1.execute("CREATE TABLE Foo (id INTEGER);").unwrap();
     glue1
         .execute("INSERT INTO Foo VALUES (1), (2), (3);")
-        .await
         .unwrap();
 
-    let data1 = glue1.execute("SELECT * FROM Foo;").await.unwrap();
+    let data1 = glue1.execute("SELECT * FROM Foo;").unwrap();
     let export = glue1.storage.export().unwrap();
 
     let mut storage2 = SledStorage::try_from(config2).unwrap();
     storage2.import(export).unwrap();
     let mut glue2 = Glue::new(storage2);
 
-    let data2 = glue2.execute("SELECT * FROM Foo;").await.unwrap();
+    let data2 = glue2.execute("SELECT * FROM Foo;").unwrap();
 
     assert_eq!(data1, data2);
 }
 
-#[tokio::test]
-async fn export_and_import_multiple_times() {
+#[test]
+fn export_and_import_multiple_times() {
     let path1 = "tmp/repeated_export_and_import1";
     let path2 = "tmp/repeated_export_and_import2";
     let path3 = "tmp/repeated_export_and_import3";
@@ -47,23 +43,19 @@ async fn export_and_import_multiple_times() {
     let storage1 = SledStorage::try_from(config1).unwrap();
     let mut glue1 = Glue::new(storage1);
 
-    glue1
-        .execute("CREATE TABLE Foo (id INTEGER);")
-        .await
-        .unwrap();
+    glue1.execute("CREATE TABLE Foo (id INTEGER);").unwrap();
     glue1
         .execute("INSERT INTO Foo VALUES (1), (2), (3);")
-        .await
         .unwrap();
 
-    let data1 = glue1.execute("SELECT * FROM Foo;").await.unwrap();
+    let data1 = glue1.execute("SELECT * FROM Foo;").unwrap();
     let export = glue1.storage.export().unwrap();
 
     let mut storage2 = SledStorage::try_from(config2).unwrap();
     storage2.import(export).unwrap();
     let mut glue2 = Glue::new(storage2);
 
-    let data2 = glue2.execute("SELECT * FROM Foo;").await.unwrap();
+    let data2 = glue2.execute("SELECT * FROM Foo;").unwrap();
     let export2 = glue2.storage.export().unwrap();
     assert_eq!(data1, data2);
 
@@ -71,7 +63,7 @@ async fn export_and_import_multiple_times() {
     storage3.import(export2).unwrap();
     let mut glue3 = Glue::new(storage3);
 
-    let data3 = glue3.execute("SELECT * FROM Foo;").await.unwrap();
+    let data3 = glue3.execute("SELECT * FROM Foo;").unwrap();
     assert_eq!(data1, data3);
 }
 
@@ -101,8 +93,8 @@ fn invalid_id_offset() {
     );
 }
 
-#[tokio::test]
-async fn import_requires_empty_destination() {
+#[test]
+fn import_requires_empty_destination() {
     let path1 = "tmp/import_requires_empty_destination_src";
     let path2 = "tmp/import_requires_empty_destination_dst";
     let config1 = Config::default().path(path1).temporary(true);
@@ -110,10 +102,7 @@ async fn import_requires_empty_destination() {
 
     let storage1 = SledStorage::try_from(config1).unwrap();
     let mut glue1 = Glue::new(storage1);
-    glue1
-        .execute("CREATE TABLE Foo (id INTEGER);")
-        .await
-        .unwrap();
+    glue1.execute("CREATE TABLE Foo (id INTEGER);").unwrap();
     let export = glue1.storage.export().unwrap();
 
     let mut storage2 = SledStorage::try_from(config2).unwrap();

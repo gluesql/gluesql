@@ -6,6 +6,7 @@ mod point;
 mod row;
 mod string_ext;
 mod table;
+mod tribool;
 
 pub(crate) const SCHEMALESS_DOC_COLUMN: &str = "_doc";
 
@@ -21,6 +22,7 @@ pub use {
     row::Row,
     schema::{Schema, SchemaIndex, SchemaIndexOrd, SchemaParseError},
     string_ext::{StringExt, StringExtError},
-    table::{TableError, get_alias, get_index},
+    table::{TableError, get_alias},
+    tribool::Tribool,
     value::{BTreeMapJsonExt, NumericBinaryOperator, Value, ValueError},
 };

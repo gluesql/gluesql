@@ -5,7 +5,6 @@ use {
         data::Value,
         result::{Error, Result},
     },
-    async_trait::async_trait,
     serde::Serialize,
     std::fmt::Debug,
     thiserror::Error as ThisError,
@@ -38,9 +37,8 @@ pub enum IndexError {
     ConflictOnIndexDataDeleteSync,
 }
 
-#[async_trait]
 pub trait Index {
-    async fn scan_indexed_data<'a>(
+    fn scan_indexed_data<'a>(
         &'a self,
         _table_name: &str,
         _index_name: &str,
@@ -53,9 +51,8 @@ pub trait Index {
     }
 }
 
-#[async_trait]
 pub trait IndexMut {
-    async fn create_index(
+    fn create_index(
         &mut self,
         _table_name: &str,
         _index_name: &str,
@@ -66,7 +63,7 @@ pub trait IndexMut {
         Err(Error::StorageMsg(msg))
     }
 
-    async fn drop_index(&mut self, _table_name: &str, _index_name: &str) -> Result<()> {
+    fn drop_index(&mut self, _table_name: &str, _index_name: &str) -> Result<()> {
         let msg = "[Storage] Index::drop_index is not supported".to_owned();
 
         Err(Error::StorageMsg(msg))

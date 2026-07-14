@@ -1,14 +1,11 @@
 use {
     super::{
         SledStorage, Snapshot, err_into,
-        index_sync::IndexSync,
+        index_sync::{IndexSync, PlannedIndex},
         key,
         lock::{self, LockAcquired},
         transaction::TxPayload,
     },
-    async_io::block_on,
-    async_trait::async_trait,
-    futures::stream::TryStreamExt,
     gluesql_core::{
         ast::OrderByExpr,
         chrono::Utc,
@@ -37,19 +34,14 @@ fn fetch_schema(
     Ok((key, schema_snapshot))
 }
 
-#[async_trait]
 impl IndexMut for SledStorage {
-    async fn create_index(
+    fn create_index(
         &mut self,
         table_name: &str,
         index_name: &str,
         column: &OrderByExpr,
     ) -> Result<()> {
-        let rows = self
-            .scan_data(table_name)
-            .await?
-            .try_collect::<Vec<_>>()
-            .await?;
+        let rows = self.scan_data(table_name)?.collect::<Result<Vec<_>>>()?;
 
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
@@ -93,6 +85,8 @@ impl IndexMut for SledStorage {
                 created: Utc::now().naive_utc(),
             };
 
+            let planned_index = PlannedIndex::new(index.clone());
+
             let indexes = indexes
                 .into_iter()
                 .chain(once(index.clone()))
@@ -114,18 +108,14 @@ impl IndexMut for SledStorage {
                 .map_err(err_into)
                 .map_err(ConflictableTransactionError::Abort)?;
 
-            block_on(async {
-                for (data_key, row) in &rows {
-                    let data_key = data_key
-                        .to_cmp_be_bytes()
-                        .map_err(ConflictableTransactionError::Abort)
-                        .map(|key| key::data(table_name, key))?;
+            for (data_key, row) in &rows {
+                let data_key = data_key
+                    .to_cmp_be_bytes()
+                    .map_err(ConflictableTransactionError::Abort)
+                    .map(|key| key::data(table_name, key))?;
 
-                    index_sync.insert_index(&index, &data_key, row).await?;
-                }
-
-                Ok(()) as ConflictableTransactionResult<(), Error>
-            })?;
+                index_sync.insert_index(&planned_index, &data_key, row)?;
+            }
 
             tree.insert(schema_key.as_bytes(), schema_snapshot)?;
 
@@ -136,18 +126,14 @@ impl IndexMut for SledStorage {
         });
 
         if self.check_retry(tx_result)? {
-            self.create_index(table_name, index_name, column).await?;
+            self.create_index(table_name, index_name, column)?;
         }
 
         Ok(())
     }
 
-    async fn drop_index(&mut self, table_name: &str, index_name: &str) -> Result<()> {
-        let rows = self
-            .scan_data(table_name)
-            .await?
-            .try_collect::<Vec<_>>()
-            .await?;
+    fn drop_index(&mut self, table_name: &str, index_name: &str) -> Result<()> {
+        let rows = self.scan_data(table_name)?.collect::<Result<Vec<_>>>()?;
 
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
@@ -186,6 +172,8 @@ impl IndexMut for SledStorage {
                 ));
             };
 
+            let index = PlannedIndex::new(index);
+
             let schema = Schema {
                 table_name: table_name.to_owned(),
                 column_defs,
@@ -202,18 +190,14 @@ impl IndexMut for SledStorage {
                 .map_err(err_into)
                 .map_err(ConflictableTransactionError::Abort)?;
 
-            block_on(async {
-                for (data_key, row) in &rows {
-                    let data_key = data_key
-                        .to_cmp_be_bytes()
-                        .map_err(ConflictableTransactionError::Abort)
-                        .map(|key| key::data(table_name, key))?;
+            for (data_key, row) in &rows {
+                let data_key = data_key
+                    .to_cmp_be_bytes()
+                    .map_err(ConflictableTransactionError::Abort)
+                    .map(|key| key::data(table_name, key))?;
 
-                    index_sync.delete_index(&index, &data_key, row).await?;
-                }
-
-                Ok(()) as ConflictableTransactionResult<(), Error>
-            })?;
+                index_sync.delete_index(&index, &data_key, row)?;
+            }
 
             tree.insert(schema_key.as_bytes(), schema_snapshot)?;
 
@@ -224,7 +208,7 @@ impl IndexMut for SledStorage {
         });
 
         if self.check_retry(tx_result)? {
-            self.drop_index(table_name, index_name).await?;
+            self.drop_index(table_name, index_name)?;
         }
 
         Ok(())

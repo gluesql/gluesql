@@ -7,14 +7,12 @@ use {
     std::{collections::BTreeMap, vec},
 };
 
-#[tokio::test]
-async fn mongo_types() {
+#[test]
+fn mongo_types() {
     let conn_str = "mongodb://localhost:27017";
 
-    let storage = MongoStorage::new(conn_str, "mongo_types")
-        .await
-        .expect("MongoStorage::new");
-    storage.drop_database().await.expect("database dropped");
+    let storage = MongoStorage::new(conn_str, "mongo_types").expect("MongoStorage::new");
+    storage.drop_database().expect("database dropped");
 
     let labels = vec![
         "col_javascript".to_owned(),
@@ -40,7 +38,6 @@ async fn mongo_types() {
     storage
         .db
         .create_collection(table_name, options)
-        .await
         .expect("create_collection");
 
     let data = doc! {
@@ -61,13 +58,12 @@ async fn mongo_types() {
         .db
         .collection(table_name)
         .insert_one(data, None)
-        .await
         .expect("insert_data");
 
     let mut glue = Glue::new(storage);
 
     let cases = vec![(
-        glue.execute(format! {"SELECT * FROM {table_name}"}).await,
+        glue.execute(format! {"SELECT * FROM {table_name}"}),
         Ok(Payload::Select {
             labels: vec![
                 "col_javascript".to_owned(),

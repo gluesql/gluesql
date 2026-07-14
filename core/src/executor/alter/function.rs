@@ -8,44 +8,42 @@ use {
     },
 };
 
-pub async fn insert_function<T: GStore + GStoreMut>(
+pub fn insert_function<T: GStore + GStoreMut>(
     storage: &mut T,
     func_name: &str,
-    args: &Vec<OperateFunctionArg>,
+    args: &[OperateFunctionArg],
     or_replace: bool,
     body: &Expr,
 ) -> Result<()> {
     validate_arg_names(args)?;
-    validate_default_args(args).await?;
+    validate_default_args(args)?;
 
-    if storage.fetch_function(func_name).await?.is_none() || or_replace {
-        storage.delete_function(func_name).await?;
-        storage
-            .insert_function(CustomFunction {
-                func_name: func_name.to_owned(),
-                args: args.to_owned(),
-                body: body.to_owned(),
-            })
-            .await?;
+    if storage.fetch_function(func_name)?.is_none() || or_replace {
+        storage.delete_function(func_name)?;
+        storage.insert_function(CustomFunction {
+            func_name: func_name.to_owned(),
+            args: args.to_owned(),
+            body: body.to_owned(),
+        })?;
         Ok(())
     } else {
         Err(AlterError::FunctionAlreadyExists(func_name.to_owned()).into())
     }
 }
 
-pub async fn delete_function<T: GStore + GStoreMut>(
+pub fn delete_function<T: GStore + GStoreMut>(
     storage: &mut T,
     func_names: &[String],
     if_exists: bool,
 ) -> Result<()> {
     for func_name in func_names {
-        let function = storage.fetch_function(func_name).await?;
+        let function = storage.fetch_function(func_name)?;
 
         if !if_exists {
             function.ok_or_else(|| AlterError::FunctionNotFound(func_name.to_owned()))?;
         }
 
-        storage.delete_function(func_name).await?;
+        storage.delete_function(func_name)?;
     }
     Ok(())
 }

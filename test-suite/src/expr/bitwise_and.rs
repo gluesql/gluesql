@@ -14,8 +14,7 @@ test_case!(bitwise_and, {
             rhs INTEGER
         );
         ",
-    )
-    .await;
+    );
 
     g.run(
         "
@@ -23,69 +22,59 @@ test_case!(bitwise_and, {
         VALUES
             (1, 29, 15);
         ",
-    )
-    .await;
+    );
 
     g.named_test(
         "bitwise-and for values",
         "SELECT lhs & rhs AS and_result FROM Test",
         Ok(select!(and_result I64; 13)),
-    )
-    .await;
+    );
 
     g.named_test(
         "bitwise-and for literals",
         "SELECT 29 & 15 AS column1;",
         Ok(select!(column1 I64; 13)),
-    )
-    .await;
+    );
 
     g.named_test(
         "bitwise-and between a value and a literal",
         "SELECT 29 & rhs AS and_result FROM Test",
         Ok(select!(and_result I64; 13)),
-    )
-    .await;
+    );
 
     g.named_test(
         "bitwise_and between multiple values",
         "SELECT 29 & rhs & 3 AS and_result FROM Test",
         Ok(select!(and_result I64; 1)),
-    )
-    .await;
+    );
 
     g.named_test(
         "bitwise_and between wrong type values shoud occurs error",
         "SELECT 1.1 & 12 AS and_result FROM Test",
         Err(EvaluateError::IncompatibleBitOperation("1.1".to_owned(), "12".to_owned()).into()),
-    )
-    .await;
+    );
 
     // About NULL
     g.named_test(
         "bitwise_and between null and value",
         "SELECT null & rhs AS and_result from Test",
         Ok(select_with_null!(and_result; Null)),
-    )
-    .await;
+    );
     g.named_test(
         "bitwise_and between value and null",
         "SELECT rhs & null AS and_result from Test",
         Ok(select_with_null!(and_result; Null)),
-    )
-    .await;
+    );
     g.named_test(
         "bitwise_and between null and literal",
         "SELECT null & 12 AS and_result from Test",
         Ok(select_with_null!(and_result; Null)),
-    )
-    .await;
+    );
     g.named_test(
         "bitwise_and between literal and null",
         "SELECT 12 & null AS and_result from Test",
         Ok(select_with_null!(and_result; Null)),
-    )
-    .await;
+    );
 
     g.named_test(
         "bitwise_and for unsupported value",
@@ -96,6 +85,5 @@ test_case!(bitwise_and, {
             right: "sp".to_owned(),
         }
         .into()),
-    )
-    .await;
+    );
 });

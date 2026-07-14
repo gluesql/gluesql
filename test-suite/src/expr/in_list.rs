@@ -10,8 +10,7 @@ test_case!(in_list, {
             res;
             Null
         )),
-    )
-    .await;
+    );
 
     g.named_test(
         "'NULL IN (...)' should return 'NULL' even if the list includes 'NULL'",
@@ -20,6 +19,5 @@ test_case!(in_list, {
             res;
             Null
         )),
-    )
-    .await;
+    );
 });

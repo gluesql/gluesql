@@ -1,11 +1,10 @@
 use {
     super::evaluate::evaluate_stateless,
     crate::{
-        ast::Expr,
         data::{Row, Value},
+        plan::ExprPlan,
         result::{Error, Result},
     },
-    futures::stream::{Stream, StreamExt},
 };
 
 pub struct Limit {
@@ -14,41 +13,33 @@ pub struct Limit {
 }
 
 impl Limit {
-    pub async fn new(limit: Option<&Expr>, offset: Option<&Expr>) -> Result<Self> {
-        let eval = |expr| async move {
+    pub fn new(limit: Option<&ExprPlan>, offset: Option<&ExprPlan>) -> Result<Self> {
+        let eval = |expr| {
             let Some(expr) = expr else {
                 return Ok(None);
             };
 
-            let evaluated = evaluate_stateless(None, expr).await?;
+            let evaluated = evaluate_stateless(None, expr)?;
             let size: usize = Value::try_from(evaluated)?.try_into()?;
 
             Result::<Option<usize>, Error>::Ok(Some(size))
         };
 
-        let limit = eval(limit).await?;
-        let offset = eval(offset).await?;
+        let limit = eval(limit)?;
+        let offset = eval(offset)?;
 
         Ok(Self { limit, offset })
     }
 
-    pub fn apply<'a, T: Stream<Item = Result<Row>> + 'a>(
+    pub fn apply<'a, T: Iterator<Item = Result<Row>> + 'a>(
         &self,
         rows: T,
-    ) -> impl Stream<Item = Result<Row>> + 'a + use<'a, T> {
-        #[derive(futures_enum::Stream)]
-        enum S<S1, S2, S3, S4> {
-            Both(S3),
-            Offset(S2),
-            Limit(S1),
-            None(S4),
-        }
-
+    ) -> Box<dyn Iterator<Item = Result<Row>> + 'a> {
         match (self.offset, self.limit) {
-            (Some(offset), Some(limit)) => S::Both(rows.skip(offset).take(limit)),
-            (Some(offset), None) => S::Offset(rows.skip(offset)),
-            (None, Some(limit)) => S::Limit(rows.take(limit)),
-            (None, None) => S::None(rows),
+            (Some(offset), Some(limit)) => Box::new(rows.skip(offset).take(limit)),
+            (Some(offset), None) => Box::new(rows.skip(offset)),
+            (None, Some(limit)) => Box::new(rows.take(limit)),
+            (None, None) => Box::new(rows),
         }
     }
 }

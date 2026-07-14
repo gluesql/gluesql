@@ -5,30 +5,26 @@ mod parameter_binding_example {
         prelude::{Glue, Result},
     };
 
-    pub async fn run() -> Result<()> {
+    pub fn run() -> Result<()> {
         let storage = MemoryStorage::default();
         let mut glue = Glue::new(storage);
 
-        glue.execute("DROP TABLE IF EXISTS bind_example").await?;
+        glue.execute("DROP TABLE IF EXISTS bind_example")?;
 
         glue.execute(
             "CREATE TABLE bind_example (
                 id INTEGER,
                 name TEXT
             )",
-        )
-        .await?;
+        )?;
 
         let first = gluesql::params![1_i64, "Alice"];
-        glue.execute_with_params("INSERT INTO bind_example (id, name) VALUES ($1, $2)", first)
-            .await?;
+        glue.execute_with_params("INSERT INTO bind_example (id, name) VALUES ($1, $2)", first)?;
 
-        let rows = glue
-            .execute_with_params(
-                "SELECT name FROM bind_example WHERE id = $1",
-                gluesql::params![1_i64],
-            )
-            .await?;
+        let rows = glue.execute_with_params(
+            "SELECT name FROM bind_example WHERE id = $1",
+            gluesql::params![1_i64],
+        )?;
 
         println!("query result: {rows:?}");
 
@@ -39,7 +35,7 @@ mod parameter_binding_example {
 fn main() {
     #[cfg(feature = "gluesql_memory_storage")]
     {
-        if let Err(error) = futures::executor::block_on(parameter_binding_example::run()) {
+        if let Err(error) = parameter_binding_example::run() {
             eprintln!("error: {error}");
         }
     }

@@ -3,7 +3,6 @@
 pub mod aggregate;
 pub mod alter;
 pub mod array;
-pub mod ast_builder;
 pub mod basic;
 pub mod column_alias;
 pub mod custom_function;
@@ -31,6 +30,7 @@ pub mod order_by;
 pub mod ordering;
 pub mod primary_key;
 pub mod project;
+pub mod query_builder;
 pub mod schemaless;
 pub mod series;
 pub mod show_columns;
@@ -50,11 +50,11 @@ pub use tester::*;
 macro_rules! declare_test_fn {
     ($test: meta, $storage: ident, $title: ident, $func: path) => {
         #[$test]
-        async fn $title() {
+        fn $title() {
             let path = stringify!($title);
-            let storage = $storage::new(path).await;
+            let storage = $storage::new(path);
 
-            $func(storage).await;
+            $func(storage);
         }
     };
 }
@@ -241,98 +241,98 @@ macro_rules! generate_store_tests {
         glue!(function_splice, function::splice::splice);
         glue!(function_dedup, function::dedup::dedup);
 
-        // ast-builder
-        glue!(ast_builder_basic, ast_builder::basic::basic);
+        // query-builder
+        glue!(query_builder_basic, query_builder::basic::basic);
         glue!(
-            ast_builder_statements_queryinng_data_aggregation,
-            ast_builder::statements::querying::data_aggregation
+            query_builder_statements_querying_data_aggregation,
+            query_builder::statements::querying::data_aggregation
         );
         glue!(
-            ast_builder_statements_queryinng_data_selection_and_projection,
-            ast_builder::statements::querying::data_selection_and_projection
+            query_builder_statements_querying_data_selection_and_projection,
+            query_builder::statements::querying::data_selection_and_projection
         );
         glue!(
-            ast_builder_function_math_rounding,
-            ast_builder::function::math::rounding
+            query_builder_function_math_rounding,
+            query_builder::function::math::rounding
         );
         glue!(
-            ast_builder_expr_pattern_matching,
-            ast_builder::expr::pattern_matching::pattern_matching
+            query_builder_expr_pattern_matching,
+            query_builder::expr::pattern_matching::pattern_matching
         );
-        glue!(ast_builder_select, ast_builder::select::select);
-        glue!(ast_builder_values, ast_builder::values::values);
-        glue!(ast_builder_insert, ast_builder::insert::insert);
-        glue!(ast_builder_update, ast_builder::update::update);
-        glue!(ast_builder_delete, ast_builder::delete::delete);
-        glue!(ast_builder_alias_as, ast_builder::alias_as::alias_as);
+        glue!(query_builder_select, query_builder::select::select);
+        glue!(query_builder_values, query_builder::values::values);
+        glue!(query_builder_insert, query_builder::insert::insert);
+        glue!(query_builder_update, query_builder::update::update);
+        glue!(query_builder_delete, query_builder::delete::delete);
+        glue!(query_builder_alias_as, query_builder::alias_as::alias_as);
         glue!(
-            ast_builder_function_text_case_conversion,
-            ast_builder::function::text::case_conversion
-        );
-        glue!(
-            ast_builder_function_text_character_conversion,
-            ast_builder::function::text::character_conversion
+            query_builder_function_text_case_conversion,
+            query_builder::function::text::case_conversion
         );
         glue!(
-            ast_builder_function_text_padding,
-            ast_builder::function::text::padding
+            query_builder_function_text_character_conversion,
+            query_builder::function::text::character_conversion
         );
         glue!(
-            ast_builder_function_reference_coalesce,
-            ast_builder::function::reference::coalesce
+            query_builder_function_text_padding,
+            query_builder::function::text::padding
         );
         glue!(
-            ast_builder_function_reference_ifnull,
-            ast_builder::function::reference::ifnull
+            query_builder_function_reference_coalesce,
+            query_builder::function::reference::coalesce
         );
         glue!(
-            ast_builder_function_datetime_conversion,
-            ast_builder::function::datetime::conversion
+            query_builder_function_reference_ifnull,
+            query_builder::function::reference::ifnull
         );
         glue!(
-            ast_builder_function_math_basic_arithmetic,
-            ast_builder::function::math::basic_arithmetic
+            query_builder_function_datetime_conversion,
+            query_builder::function::datetime::conversion
         );
         glue!(
-            ast_builder_function_math_conversion,
-            ast_builder::function::math::conversion
+            query_builder_function_math_basic_arithmetic,
+            query_builder::function::math::basic_arithmetic
         );
         glue!(
-            ast_builder_function_datetime_formatting,
-            ast_builder::function::datetime::formatting
+            query_builder_function_math_conversion,
+            query_builder::function::math::conversion
         );
         glue!(
-            ast_builder_function_text_trimming,
-            ast_builder::function::text::trimming
+            query_builder_function_datetime_formatting,
+            query_builder::function::datetime::formatting
         );
         glue!(
-            ast_builder_function_datetime_current_date_and_time,
-            ast_builder::function::datetime::current_date_and_time
+            query_builder_function_text_trimming,
+            query_builder::function::text::trimming
         );
         glue!(
-            ast_builder_function_reference_current_date,
-            ast_builder::function::reference::current_date
+            query_builder_function_datetime_current_date_and_time,
+            query_builder::function::datetime::current_date_and_time
         );
         glue!(
-            ast_builder_function_reference_current_time,
-            ast_builder::function::reference::current_time
+            query_builder_function_reference_current_date,
+            query_builder::function::reference::current_date
         );
         glue!(
-            ast_builder_function_reference_current_timestamp,
-            ast_builder::function::reference::current_timestamp
+            query_builder_function_reference_current_time,
+            query_builder::function::reference::current_time
         );
         glue!(
-            ast_builder_function_reference_generate_uuid,
-            ast_builder::function::reference::generate_uuid
+            query_builder_function_reference_current_timestamp,
+            query_builder::function::reference::current_timestamp
         );
         glue!(
-            ast_builder_function_text_position_and_indexing,
-            ast_builder::function::text::position_and_indexing
+            query_builder_function_reference_generate_uuid,
+            query_builder::function::reference::generate_uuid
         );
-        glue!(ast_builder_index_by, ast_builder::index_by::index_by);
         glue!(
-            ast_builder_schemaless_basic,
-            ast_builder::schemaless::basic::basic
+            query_builder_function_text_position_and_indexing,
+            query_builder::function::text::position_and_indexing
+        );
+        glue!(query_builder_index_by, query_builder::index_by::index_by);
+        glue!(
+            query_builder_schemaless_basic,
+            query_builder::schemaless::basic::basic
         );
 
         // schemaless data support
@@ -408,7 +408,7 @@ macro_rules! generate_transaction_tests {
             transaction::create_drop_table
         );
         glue!(transaction_dictionary, transaction::dictionary);
-        glue!(transaction_ast_builder, transaction::ast_builder);
+        glue!(transaction_query_builder, transaction::query_builder);
     };
 }
 

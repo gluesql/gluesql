@@ -3,13 +3,8 @@ use {
         error::StorageError,
         migration::{ensure_storage_format_version_supported, initialize_storage_format_version},
     },
-    async_stream::try_stream,
     bincode::{deserialize, serialize},
-    futures::stream::iter,
-    gluesql_core::{
-        data::{Key, Schema, Value},
-        store::RowIter,
-    },
+    gluesql_core::data::{Key, Schema, Value},
     redb::{Builder, Database, ReadableTable, TableDefinition, WriteTransaction},
     std::path::Path,
     uuid::Uuid,
@@ -20,6 +15,7 @@ pub(super) const STORAGE_META_TABLE_NAME: &str = "__GLUESQL_META__";
 const SCHEMA_TABLE: TableDefinition<&str, Vec<u8>> = TableDefinition::new(SCHEMA_TABLE_NAME);
 
 type Result<T> = std::result::Result<T, StorageError>;
+type RedbRowIter<'a> = Box<dyn Iterator<Item = Result<(Key, Vec<Value>)>> + 'a>;
 
 pub enum TransactionState {
     None,
@@ -144,7 +140,7 @@ impl StorageCore {
         Ok(row)
     }
 
-    pub fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
+    pub fn scan_data<'a>(&'a self, table_name: &str) -> Result<RedbRowIter<'a>> {
         if let TransactionState::Active { autocommit, txn } = &self.state
             && !autocommit
         {
@@ -161,23 +157,21 @@ impl StorageCore {
                 })
                 .collect::<Result<_>>()?;
 
-            return Ok(Box::pin(iter(rows.into_iter().map(Ok))));
+            return Ok(Box::new(rows.into_iter().map(Ok)));
         }
 
         let read_txn = self.db.begin_read()?;
         let table_def = Self::data_table_def(table_name)?;
         let table = read_txn.open_table(table_def)?;
 
-        let rows = try_stream! {
-            for entry in table.iter().map_err(Into::<StorageError>::into)? {
-                let value = entry.map_err(Into::<StorageError>::into)?.1.value();
-                let (key, row): (Key, Vec<Value>) = deserialize(&value).map_err(Into::<StorageError>::into)?;
+        let rows = table.range::<&[u8]>(..)?.map(|entry| -> Result<_> {
+            let value = entry?.1.value();
+            let (key, row): (Key, Vec<Value>) = deserialize(&value)?;
 
-                yield (key, row);
-            }
-        };
+            Ok((key, row))
+        });
 
-        Ok(Box::pin(rows))
+        Ok(Box::new(rows))
     }
 }
 

@@ -3,7 +3,6 @@ use {
         CsvStorage,
         error::{CsvStorageError, ResultExt},
     },
-    async_trait::async_trait,
     csv::Writer,
     gluesql_core::{
         data::{Key, Schema, Value},
@@ -20,9 +19,8 @@ use {
     },
 };
 
-#[async_trait]
 impl StoreMut for CsvStorage {
-    async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
+    fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let schema_path = self.schema_path(schema.table_name.as_str());
         let ddl = schema.to_ddl();
         let mut file = File::create(schema_path).map_storage_err()?;
@@ -45,7 +43,7 @@ impl StoreMut for CsvStorage {
             .map_storage_err()
     }
 
-    async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
+    fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let data_path = self.data_path(table_name);
         if data_path.exists() {
             remove_file(data_path).map_storage_err()?;
@@ -64,7 +62,7 @@ impl StoreMut for CsvStorage {
         Ok(())
     }
 
-    async fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
+    fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
         let (columns, prev_rows) = self.scan_data(table_name)?;
 
         if columns.is_some() {
@@ -91,11 +89,7 @@ impl StoreMut for CsvStorage {
         }
     }
 
-    async fn insert_data(
-        &mut self,
-        table_name: &str,
-        mut rows: Vec<(Key, Vec<Value>)>,
-    ) -> Result<()> {
+    fn insert_data(&mut self, table_name: &str, mut rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
         let (columns, prev_rows) = self.scan_data(table_name)?;
 
         rows.sort_by(|(key_a, _), (key_b, _)| key_a.cmp(key_b));
@@ -105,7 +99,7 @@ impl StoreMut for CsvStorage {
         self.write(table_name, columns, merged)
     }
 
-    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
+    fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let (columns, prev_rows) = self.scan_data(table_name)?;
         let rows = prev_rows.filter_map(|item| {
             let (key, data_row) = match item {

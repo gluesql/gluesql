@@ -1,6 +1,9 @@
 use {
     crate::*,
-    gluesql_core::{executor::Payload, prelude::Value},
+    gluesql_core::{
+        executor::{EvaluateError, Payload},
+        prelude::Value,
+    },
 };
 
 test_case!(nested_select, {
@@ -23,7 +26,7 @@ test_case!(nested_select, {
     ];
 
     for sql in create_sqls {
-        g.run(sql).await;
+        g.run(sql);
     }
 
     let insert_sqls = [
@@ -56,7 +59,7 @@ test_case!(nested_select, {
     ];
 
     for insert_sql in insert_sqls {
-        g.run(insert_sql).await;
+        g.run(insert_sql);
     }
 
     let select_sqls = [
@@ -88,7 +91,7 @@ test_case!(nested_select, {
         ),
     ];
     for (num, sql) in select_sqls {
-        g.count(sql, num).await;
+        g.count(sql, num);
     }
 
     let test_cases = [
@@ -109,6 +112,18 @@ test_case!(nested_select, {
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, expected).await;
+        g.test(sql, expected);
+    }
+
+    let error_cases = [
+        "SELECT id FROM Player WHERE id IN (SELECT id, name FROM Player)",
+        "SELECT id FROM Player WHERE id IN (SELECT id, name FROM Player WHERE id = 0)",
+    ];
+
+    for sql in error_cases {
+        g.test(
+            sql,
+            Err(EvaluateError::InSubqueryMustReturnOneColumn.into()),
+        );
     }
 });

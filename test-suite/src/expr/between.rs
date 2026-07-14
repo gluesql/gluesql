@@ -24,8 +24,7 @@ test_case!(between, {
             format!("'{expr}' should return {expected}").as_str(),
             format!("SELECT {expr} as res;").as_str(),
             result_macro,
-        )
-        .await;
+        );
     }
 
     // Related with NULL
@@ -41,8 +40,7 @@ test_case!(between, {
            res;
            Null
         )),
-    )
-    .await;
+    );
 
     g.named_test(
         "'NULL BETWEEN NULL AND NULL' should return NULL",
@@ -51,8 +49,7 @@ test_case!(between, {
            res;
            Null
         )),
-    )
-    .await;
+    );
 
     for (target, rhs) in [
         (1, 1),                 // 'target' is same as 'rhs' but they are positive.
@@ -71,8 +68,7 @@ test_case!(between, {
                     res;
                     Null
             )),
-        )
-        .await;
+        );
     }
 
     for (target, lhs) in [
@@ -92,7 +88,6 @@ test_case!(between, {
                     res;
                     Null
             )),
-        )
-        .await;
+        );
     }
 });

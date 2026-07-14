@@ -5,12 +5,10 @@ use {
         result::Result,
         store::Store,
     },
-    futures::stream::TryStreamExt,
     im::HashSet,
     serde::Serialize,
     std::fmt::Debug,
     thiserror::Error as ThisError,
-    utils::Vector,
 };
 
 #[derive(ThisError, Debug, PartialEq, Serialize)]
@@ -78,11 +76,11 @@ impl UniqueConstraint {
     }
 }
 
-pub async fn validate_unique<T: Store>(
+pub fn validate_unique<'a, T: Store>(
     storage: &T,
     table_name: &str,
-    column_validation: ColumnValidation<'_>,
-    row_iter: impl Iterator<Item = &[Value]> + Clone,
+    column_validation: &ColumnValidation<'_>,
+    row_iter: impl Iterator<Item = &'a [Value]> + Clone,
 ) -> Result<()> {
     enum Columns {
         /// key index
@@ -124,7 +122,7 @@ pub async fn validate_unique<T: Store>(
             {
                 let key = primary_key?;
 
-                if storage.fetch_data(table_name, &key).await?.is_some() {
+                if storage.fetch_data(table_name, &key)?.is_some() {
                     return Err(ValidateError::DuplicateEntryOnPrimaryKeyField(key).into());
                 }
             }
@@ -132,28 +130,24 @@ pub async fn validate_unique<T: Store>(
             Ok(())
         }
         Columns::All(columns) => {
-            let unique_constraints: Vec<_> = create_unique_constraints(columns, &row_iter)?.into();
+            let unique_constraints = create_unique_constraints(columns, &row_iter)?;
             if unique_constraints.is_empty() {
                 return Ok(());
             }
 
-            let unique_constraints = &unique_constraints;
-            storage
-                .scan_data(table_name)
-                .await?
-                .try_for_each(|(_, values)| async move {
-                    unique_constraints.iter().try_for_each(|constraint| {
-                        let col_idx = constraint.column_index;
-                        let val = values
-                            .get(col_idx)
-                            .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
+            for row in storage.scan_data(table_name)? {
+                let (_, values) = row?;
+                for constraint in &unique_constraints {
+                    let col_idx = constraint.column_index;
+                    let val = values
+                        .get(col_idx)
+                        .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
 
-                        constraint.check(val)?;
+                    constraint.check(val)?;
+                }
+            }
 
-                        Ok(())
-                    })
-                })
-                .await
+            Ok(())
         }
     }
 }
@@ -161,23 +155,25 @@ pub async fn validate_unique<T: Store>(
 fn create_unique_constraints<'a>(
     unique_columns: Vec<(usize, String)>,
     row_iter: &(impl Iterator<Item = &'a [Value]> + Clone),
-) -> Result<Vector<UniqueConstraint>> {
-    unique_columns
-        .into_iter()
-        .try_fold(Vector::new(), |constraints, col| {
-            let (col_idx, col_name) = col;
-            let new_constraint = UniqueConstraint::new(col_idx, col_name);
-            let new_constraint = row_iter
-                .clone()
-                .try_fold(new_constraint, |constraint, row| {
-                    let val = row
-                        .get(col_idx)
-                        .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
+) -> Result<Vec<UniqueConstraint>> {
+    let mut constraints = Vec::with_capacity(unique_columns.len());
 
-                    constraint.add(val)
-                })?;
-            Ok(constraints.push(new_constraint))
-        })
+    for (col_idx, col_name) in unique_columns {
+        let new_constraint = UniqueConstraint::new(col_idx, col_name);
+        let new_constraint = row_iter
+            .clone()
+            .try_fold(new_constraint, |constraint, row| {
+                let val = row
+                    .get(col_idx)
+                    .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
+
+                constraint.add(val)
+            })?;
+
+        constraints.push(new_constraint);
+    }
+
+    Ok(constraints)
 }
 
 fn fetch_all_unique_columns(column_defs: &[ColumnDef]) -> Vec<(usize, String)> {

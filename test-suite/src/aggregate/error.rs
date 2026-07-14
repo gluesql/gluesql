@@ -15,8 +15,7 @@ test_case!(error, {
             total INTEGER
         );
     ",
-    )
-    .await;
+    );
     g.run(
         "
         INSERT INTO Item (id, quantity, age, total) VALUES
@@ -26,8 +25,7 @@ test_case!(error, {
             (4,  3,    3, 1),
             (5, 25, NULL, 1);
     ",
-    )
-    .await;
+    );
 
     let test_cases = [
         (
@@ -45,6 +43,6 @@ test_case!(error, {
     ];
 
     for (sql, error) in test_cases {
-        g.test(sql, Err(error)).await;
+        g.test(sql, Err(error));
     }
 });

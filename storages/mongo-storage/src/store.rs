@@ -6,8 +6,6 @@ use {
         row::{IntoRow, key::KeyIntoBson, value::IntoValue},
         utils::get_primary_key,
     },
-    async_trait::async_trait,
-    futures::{Stream, StreamExt, TryStreamExt, stream},
     gluesql_core::{
         ast::{ColumnDef, ColumnUniqueOption},
         data::{Key, Schema},
@@ -23,38 +21,27 @@ use {
         options::{FindOptions, ListIndexesOptions},
     },
     serde_json::from_str,
-    std::{
-        collections::{BTreeMap, HashMap},
-        future,
-    },
+    std::collections::{BTreeMap, HashMap},
 };
 
-#[async_trait]
 impl Store for MongoStorage {
-    async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
-        self.fetch_schemas_iter(Some(table_name))
-            .await?
+    fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
+        self.fetch_schemas_iter(Some(table_name))?
             .next()
-            .await
             .transpose()
     }
 
-    async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
-        let mut schemas = self
-            .fetch_schemas_iter(None)
-            .await?
-            .try_collect::<Vec<_>>()
-            .await?;
+    fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
+        let mut schemas = self.fetch_schemas_iter(None)?.collect::<Result<Vec<_>>>()?;
 
         schemas.sort_by(|a, b| a.table_name.cmp(&b.table_name));
 
         Ok(schemas)
     }
 
-    async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<Vec<Value>>> {
+    fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<Vec<Value>>> {
         let column_defs = self
-            .get_column_defs(table_name)
-            .await?
+            .get_column_defs(table_name)?
             .map_storage_err(MongoStorageError::ConflictFetchData)?;
 
         let primary_key = get_primary_key(&column_defs)
@@ -72,12 +59,10 @@ impl Store for MongoStorage {
             .db
             .collection::<Document>(table_name)
             .find(filter, options)
-            .await
             .map_storage_err()?;
 
         cursor
             .next()
-            .await
             .transpose()
             .map_storage_err()?
             .map(|doc| {
@@ -91,8 +76,8 @@ impl Store for MongoStorage {
             .transpose()
     }
 
-    async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
-        let column_defs = self.get_column_defs(table_name).await?;
+    fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
+        let column_defs = self.get_column_defs(table_name)?;
 
         let primary_key = column_defs
             .as_ref()
@@ -110,7 +95,6 @@ impl Store for MongoStorage {
             .db
             .collection::<Document>(table_name)
             .find(Document::new(), options)
-            .await
             .map_storage_err()?;
 
         let column_types = column_defs.as_ref().map(|column_defs| {
@@ -144,15 +128,15 @@ impl Store for MongoStorage {
             }
         });
 
-        Ok(Box::pin(row_iter))
+        Ok(Box::new(row_iter))
     }
 }
 
 impl MongoStorage {
-    async fn fetch_schemas_iter<'a>(
+    fn fetch_schemas_iter<'a>(
         &'a self,
         table_name: Option<&'a str>,
-    ) -> Result<impl Stream<Item = Result<Schema>> + 'a> {
+    ) -> Result<impl Iterator<Item = Result<Schema>> + 'a> {
         let command = if let Some(table_name) = table_name {
             doc! { "listCollections": 1, "filter": { "name": table_name } }
         } else {
@@ -162,14 +146,13 @@ impl MongoStorage {
         let validators_list = self
             .db
             .run_command(command, None)
-            .await
             .map_storage_err()?
             .get_document("cursor")
             .and_then(|doc| doc.get_array("firstBatch"))
             .map_storage_err()?
             .to_owned();
 
-        let schemas = stream::iter(validators_list).then(move |validators| async move {
+        let schemas = validators_list.into_iter().map(move |validators| {
             let doc = validators
                 .as_document()
                 .map_storage_err(MongoStorageError::InvalidDocument)?;
@@ -183,24 +166,23 @@ impl MongoStorage {
 
             let collection = self.db.collection::<Document>(collection_name);
             let options = ListIndexesOptions::builder().build();
-            let cursor = collection.list_indexes(options).await.map_storage_err()?;
+            let cursor = collection.list_indexes(options).map_storage_err()?;
             let indexes = cursor
-                .into_stream()
-                .map_err(|e| Error::StorageMsg(e.to_string()))
-                .try_filter_map(|index_model| {
+                .map(|index_model| {
+                    let index_model = index_model.map_err(|e| Error::StorageMsg(e.to_string()))?;
                     let IndexModel { keys, options, .. } = index_model;
                     if keys.len() > 1 {
-                        return future::ready(Ok::<_, Error>(None));
+                        return Ok(None);
                     }
 
                     let index_keys = &mut keys.into_iter().map(|(index_key, _)| index_key);
                     let index_key = index_keys.next();
                     let name = options.and_then(|options| options.name);
 
-                    future::ready(Ok::<_, Error>(index_key.zip(name)))
+                    Ok(index_key.zip(name))
                 })
-                .try_collect::<HashMap<String, String>>()
-                .await?;
+                .filter_map(Result::transpose)
+                .collect::<Result<HashMap<String, String>>>()?;
 
             let column_defs = validator
                 .get_document("properties")
@@ -288,13 +270,12 @@ impl MongoStorage {
             Ok::<_, Error>(schema)
         });
 
-        Ok(Box::pin(schemas))
+        Ok(schemas)
     }
 
-    pub async fn get_column_defs(&self, table_name: &str) -> Result<Option<Vec<ColumnDef>>> {
+    pub fn get_column_defs(&self, table_name: &str) -> Result<Option<Vec<ColumnDef>>> {
         Ok(self
-            .fetch_schema(table_name)
-            .await?
+            .fetch_schema(table_name)?
             .and_then(|schema| schema.column_defs))
     }
 }

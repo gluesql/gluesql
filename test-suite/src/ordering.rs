@@ -10,9 +10,8 @@ test_case!(ordering, {
             name TEXT
         );
     ",
-    )
-    .await;
-    g.run("DELETE FROM Operator").await;
+    );
+    g.run("DELETE FROM Operator");
     g.run(
         "
         INSERT INTO Operator (id, name) VALUES
@@ -22,8 +21,7 @@ test_case!(ordering, {
             (4,    'Romeo'),
             (5,    'Trade');
     ",
-    )
-    .await;
+    );
 
     let test_cases = [
         (1, "SELECT * FROM Operator WHERE id < 2;"),
@@ -66,14 +64,11 @@ test_case!(ordering, {
     ];
 
     for (num, sql) in test_cases {
-        g.count(sql, num).await;
+        g.count(sql, num);
     }
 
     // Literal comparison with BinaryOperator
-    g.test("select 1 < 'a' as test", Ok(select!(test Bool; false)))
-        .await;
-    g.test("select 1 >= 'a' as test", Ok(select!(test Bool; false)))
-        .await;
-    g.test("select 1 = 'a' as test", Ok(select!(test Bool; false)))
-        .await;
+    g.test("select 1 < 'a' as test", Ok(select!(test Bool; false)));
+    g.test("select 1 >= 'a' as test", Ok(select!(test Bool; false)));
+    g.test("select 1 = 'a' as test", Ok(select!(test Bool; false)));
 });

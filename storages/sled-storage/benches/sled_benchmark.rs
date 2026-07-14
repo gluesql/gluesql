@@ -1,6 +1,5 @@
 use {
     criterion::{Criterion, criterion_group, criterion_main},
-    futures::executor::block_on,
     gluesql_core::prelude::Glue,
     gluesql_sled_storage::SledStorage,
 };
@@ -32,7 +31,7 @@ pub fn bench_insert(c: &mut Criterion) {
         );
     ";
 
-    block_on(glue.execute(sqls)).unwrap();
+    glue.execute(sqls).unwrap();
 
     // Prepare query out of scope, and copy it at the beginning
     let mut id = 0;
@@ -40,13 +39,13 @@ pub fn bench_insert(c: &mut Criterion) {
     c.bench_function("insert_one", |b| {
         b.iter(|| {
             let query_str = format!(
-                "INSERT INTO Testing 
+                "INSERT INTO Testing
                  VALUES ({:#}, 'Testing 1', 'Testing 2', 'Testing 3');",
                 &id
             );
             id += 1;
 
-            block_on(glue.execute(&query_str)).unwrap();
+            glue.execute(&query_str).unwrap();
         });
     });
 }
@@ -84,7 +83,7 @@ pub fn bench_select(c: &mut Criterion) {
             );
         }
 
-        block_on(glue.execute(&sqls)).unwrap();
+        glue.execute(&sqls).unwrap();
     }
 
     // Prepare query out of scope, and copy it at the beginning
@@ -99,7 +98,7 @@ pub fn bench_select(c: &mut Criterion) {
                 id = 1;
             }
 
-            block_on(glue.execute(&query_str)).unwrap();
+            glue.execute(&query_str).unwrap();
         });
     });
 
@@ -116,7 +115,7 @@ pub fn bench_select(c: &mut Criterion) {
                 id = 1;
             }
 
-            block_on(glue.execute(&query_str)).unwrap();
+            glue.execute(&query_str).unwrap();
         });
     });
 }
@@ -163,7 +162,7 @@ pub fn bench_select_tainted(c: &mut Criterion) {
             );
         }
 
-        block_on(glue.execute(&sqls)).unwrap();
+        glue.execute(&sqls).unwrap();
     }
 
     // Prepare query out of scope, and copy it at the beginning
@@ -178,7 +177,7 @@ pub fn bench_select_tainted(c: &mut Criterion) {
                 id = 1;
             }
 
-            block_on(glue.execute(&query_str)).unwrap();
+            glue.execute(&query_str).unwrap();
         });
     });
     c.bench_function("select_many_tainted", |b| {
@@ -194,7 +193,7 @@ pub fn bench_select_tainted(c: &mut Criterion) {
                 id = 1;
             }
 
-            block_on(glue.execute(&query_str)).unwrap();
+            glue.execute(&query_str).unwrap();
         });
     });
 }

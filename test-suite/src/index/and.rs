@@ -14,8 +14,7 @@ CREATE TABLE NullIdx (
     date DATE,
     flag BOOLEAN
 )",
-    )
-    .await;
+    );
 
     g.run(
         "
@@ -28,19 +27,16 @@ CREATE TABLE NullIdx (
             (4, '2002-06-11', True),
             (5, '2030-03-01', False);
     ",
-    )
-    .await;
+    );
 
     g.test(
         "CREATE INDEX idx_id ON NullIdx (id)",
         Ok(Payload::CreateIndex),
-    )
-    .await;
+    );
     g.test(
         "CREATE INDEX idx_date ON NullIdx (date)",
         Ok(Payload::CreateIndex),
-    )
-    .await;
+    );
 
     macro_rules! date {
         ($date: expr) => {
@@ -62,8 +58,7 @@ CREATE TABLE NullIdx (
             5     date!("2030-03-01")   false
         )),
         idx!(idx_date, Lt, "DATE '2040-12-24'"),
-    )
-    .await;
+    );
 
     g.test_idx(
         "
@@ -78,8 +73,7 @@ CREATE TABLE NullIdx (
             3     date!("1989-02-01")   false
         )),
         idx!(idx_date, Lt, "DATE '2020-12-24'"),
-    )
-    .await;
+    );
 
     g.test_idx(
         "
@@ -96,8 +90,7 @@ CREATE TABLE NullIdx (
             5     date!("2030-03-01")   false
         )),
         idx!(idx_date, Lt, "DATE '2030-11-24'"),
-    )
-    .await;
+    );
 
     g.test_idx(
         "
@@ -114,8 +107,7 @@ CREATE TABLE NullIdx (
             5     date!("2030-03-01")   false
         )),
         idx!(idx_id, Gt, "1"),
-    )
-    .await;
+    );
 
     g.test_idx(
         "
@@ -130,8 +122,7 @@ CREATE TABLE NullIdx (
             5     date!("2030-03-01")   false
         )),
         idx!(),
-    )
-    .await;
+    );
 
     g.test_idx(
         "
@@ -147,6 +138,5 @@ CREATE TABLE NullIdx (
             5     date!("2030-03-01")   false
         )),
         idx!(idx_date, Eq, "DATE '2030-03-01'"),
-    )
-    .await;
+    );
 });

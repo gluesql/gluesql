@@ -12,8 +12,7 @@ test_case!(sum, {
             total INTEGER
         );
     ",
-    )
-    .await;
+    );
     g.run(
         "
         INSERT INTO Item (id, quantity, age, total) VALUES
@@ -23,8 +22,7 @@ test_case!(sum, {
             (4,  3,    3, 1),
             (5, 25, NULL, 1);
     ",
-    )
-    .await;
+    );
 
     let test_cases = [
         (
@@ -93,13 +91,12 @@ test_case!(sum, {
     ];
 
     for (sql, expected) in test_cases {
-        g.test(sql, Ok(expected)).await;
+        g.test(sql, Ok(expected));
     }
 
-    g.run("CREATE TABLE EmptyItem (id INTEGER NULL);").await;
+    g.run("CREATE TABLE EmptyItem (id INTEGER NULL);");
     g.test(
         "SELECT SUM(id) FROM EmptyItem;",
         Ok(select_with_null!("SUM(id)"; Null)),
-    )
-    .await;
+    );
 });

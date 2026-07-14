@@ -8,20 +8,20 @@ use {
 
 macro_rules! exec {
     ($glue: ident $sql: literal) => {
-        $glue.execute($sql).await.unwrap();
+        $glue.execute($sql).unwrap();
     };
 }
 
 macro_rules! test {
     ($glue: ident $sql: expr, $result: expr) => {
-        assert_eq!($glue.execute($sql).await, $result);
+        assert_eq!($glue.execute($sql), $result);
     };
 }
 
 /// MUST run redis locally before test
 /// eg.) docker run --rm -p 6379:6379 redis
-#[tokio::test]
-async fn redis_storage_errors() {
+#[test]
+fn redis_storage_errors() {
     use gluesql_core::prelude::Glue;
 
     let mut path = env::current_dir().unwrap();
@@ -55,14 +55,8 @@ async fn redis_storage_errors() {
         glue "BEGIN",
         Err(Error::StorageMsg("[RedisStorage] transaction is not supported".to_owned()))
     );
-    assert_eq!(
-        glue.execute("COMMIT;").await.unwrap(),
-        vec![Payload::Commit]
-    );
-    assert_eq!(
-        glue.execute("ROLLBACK;").await.unwrap(),
-        vec![Payload::Rollback]
-    );
+    assert_eq!(glue.execute("COMMIT;").unwrap(), vec![Payload::Commit]);
+    assert_eq!(glue.execute("ROLLBACK;").unwrap(), vec![Payload::Rollback]);
 
     exec!(glue "DROP TABLE dummy;");
 }

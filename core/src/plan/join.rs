@@ -1,28 +1,28 @@
 use {
     super::{context::Context, planner::Planner},
     crate::{
-        ast::{
-            BinaryOperator, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select,
-            SetExpr, Statement, TableWithJoins,
-        },
+        ast::BinaryOperator,
         data::Schema,
-        plan::expr::evaluable::check_expr as check_evaluable,
+        plan::{
+            ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, QueryPlan,
+            SelectPlan, SetExprPlan, StatementPlan, TableWithJoinsPlan,
+            expr::evaluable::check_expr as check_evaluable,
+        },
     },
-    std::{collections::HashMap, hash::BuildHasher, sync::Arc},
-    utils::Vector,
+    std::{collections::HashMap, hash::BuildHasher, rc::Rc},
 };
 
 pub fn plan<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
-    statement: Statement,
-) -> Statement {
+    statement: StatementPlan,
+) -> StatementPlan {
     let planner = JoinPlanner { schema_map };
 
     match statement {
-        Statement::Query(query) => {
+        StatementPlan::Query(query) => {
             let query = planner.query(None, query);
 
-            Statement::Query(query)
+            StatementPlan::Query(query)
         }
         _ => statement,
     }
@@ -33,8 +33,8 @@ struct JoinPlanner<'a, S> {
 }
 
 impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
-    fn query(&self, outer_context: Option<Arc<Context<'a>>>, query: Query) -> Query {
-        let Query {
+    fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
+        let QueryPlan {
             body,
             order_by,
             limit,
@@ -42,15 +42,15 @@ impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
         } = query;
 
         let body = match body {
-            SetExpr::Select(select) => {
+            SetExprPlan::Select(select) => {
                 let select = self.select(outer_context, *select);
 
-                SetExpr::Select(Box::new(select))
+                SetExprPlan::Select(Box::new(select))
             }
-            SetExpr::Values(_) => body,
+            SetExprPlan::Values(_) => body,
         };
 
-        Query {
+        QueryPlan {
             body,
             order_by,
             limit,
@@ -64,8 +64,8 @@ impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
 }
 
 impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
-    fn select(&self, outer_context: Option<Arc<Context<'a>>>, select: Select) -> Select {
-        let Select {
+    fn select(&self, outer_context: Option<Rc<Context<'a>>>, select: SelectPlan) -> SelectPlan {
+        let SelectPlan {
             distinct,
             projection,
             from,
@@ -78,7 +78,7 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
         let (outer_context, from) = self.table_with_joins(outer_context, from);
         let selection = selection.map(|expr| self.subquery_expr(outer_context, expr));
 
-        Select {
+        SelectPlan {
             distinct,
             projection,
             from,
@@ -91,47 +91,46 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
 
     fn table_with_joins(
         &self,
-        outer_context: Option<Arc<Context<'a>>>,
-        table_with_joins: TableWithJoins,
-    ) -> (Option<Arc<Context<'a>>>, TableWithJoins) {
-        let TableWithJoins { relation, joins } = table_with_joins;
+        outer_context: Option<Rc<Context<'a>>>,
+        table_with_joins: TableWithJoinsPlan,
+    ) -> (Option<Rc<Context<'a>>>, TableWithJoinsPlan) {
+        let TableWithJoinsPlan { relation, joins } = table_with_joins;
         let init_context = self.update_context(None, &relation);
-        let (context, joins) =
-            joins
-                .into_iter()
-                .fold((init_context, Vector::new()), |(context, joins), join| {
-                    let outer_context = outer_context.as_ref().map(Arc::clone);
-                    let (context, join) = self.join(outer_context, context, join);
-                    let joins = joins.push(join);
+        let mut context = init_context;
+        let mut joined = Vec::with_capacity(joins.len());
 
-                    (context, joins)
-                });
-        let joins = joins.into();
+        for join in joins {
+            let (next_context, join) = self.join(outer_context.as_ref(), context, join);
+            context = next_context;
+            joined.push(join);
+        }
+
+        let joins = joined;
         let context = Context::concat(context, outer_context);
 
-        (context, TableWithJoins { relation, joins })
+        (context, TableWithJoinsPlan { relation, joins })
     }
 
     fn join(
         &self,
-        outer_context: Option<Arc<Context<'a>>>,
-        inner_context: Option<Arc<Context<'a>>>,
-        join: Join,
-    ) -> (Option<Arc<Context<'a>>>, Join) {
+        outer_context: Option<&Rc<Context<'a>>>,
+        inner_context: Option<Rc<Context<'a>>>,
+        join: JoinPlan,
+    ) -> (Option<Rc<Context<'a>>>, JoinPlan) {
         enum JoinOp {
             Inner,
             LeftOuter,
         }
 
-        let Join {
+        let JoinPlan {
             relation,
             join_operator,
             join_executor,
         } = join;
 
-        if matches!(join_executor, JoinExecutor::Hash { .. }) {
+        if matches!(join_executor, JoinExecutorPlan::Hash { .. }) {
             let context = self.update_context(inner_context, &relation);
-            let join = Join {
+            let join = JoinPlan {
                 relation,
                 join_operator,
                 join_executor,
@@ -141,12 +140,12 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
         }
 
         let (join_op, expr) = match join_operator {
-            JoinOperator::Inner(JoinConstraint::On(expr)) => (JoinOp::Inner, expr),
-            JoinOperator::LeftOuter(JoinConstraint::On(expr)) => (JoinOp::LeftOuter, expr),
-            JoinOperator::Inner(JoinConstraint::None)
-            | JoinOperator::LeftOuter(JoinConstraint::None) => {
+            JoinOperatorPlan::Inner(JoinConstraintPlan::On(expr)) => (JoinOp::Inner, expr),
+            JoinOperatorPlan::LeftOuter(JoinConstraintPlan::On(expr)) => (JoinOp::LeftOuter, expr),
+            JoinOperatorPlan::Inner(JoinConstraintPlan::None)
+            | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None) => {
                 let context = self.update_context(inner_context, &relation);
-                let join = Join {
+                let join = JoinPlan {
                     relation,
                     join_operator,
                     join_executor,
@@ -157,22 +156,20 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
         };
 
         let current_context = self.update_context(None, &relation);
-        let (join_executor, expr) = self.join_expr(
+        let (join_executor, join_constraint) = self.plan_join_condition(
             outer_context,
-            inner_context.as_ref().map(Arc::clone),
-            current_context,
+            inner_context.as_ref(),
+            current_context.as_ref(),
             expr,
         );
 
-        let join_operator = match (join_op, expr) {
-            (JoinOp::Inner, Some(expr)) => JoinOperator::Inner(JoinConstraint::On(expr)),
-            (JoinOp::Inner, None) => JoinOperator::Inner(JoinConstraint::None),
-            (JoinOp::LeftOuter, Some(expr)) => JoinOperator::LeftOuter(JoinConstraint::On(expr)),
-            (JoinOp::LeftOuter, None) => JoinOperator::LeftOuter(JoinConstraint::None),
+        let join_operator = match join_op {
+            JoinOp::Inner => JoinOperatorPlan::Inner(join_constraint),
+            JoinOp::LeftOuter => JoinOperatorPlan::LeftOuter(join_constraint),
         };
 
         let context = self.update_context(inner_context, &relation);
-        let join = Join {
+        let join = JoinPlan {
             relation,
             join_operator,
             join_executor,
@@ -181,232 +178,166 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
         (context, join)
     }
 
-    fn join_expr(
+    fn plan_join_condition(
         &self,
-        outer_context: Option<Arc<Context<'a>>>,
-        inner_context: Option<Arc<Context<'a>>>,
-        current_context: Option<Arc<Context<'a>>>,
-        expr: Expr,
-    ) -> (JoinExecutor, Option<Expr>) {
-        match expr {
-            Expr::BinaryOp {
-                left,
-                op: BinaryOperator::Eq,
-                right,
-            } => {
-                let key_context = {
-                    let current = current_context.as_ref().map(Arc::clone);
-                    let outer = outer_context.as_ref().map(Arc::clone);
+        outer_context: Option<&Rc<Context<'a>>>,
+        inner_context: Option<&Rc<Context<'a>>>,
+        current_context: Option<&Rc<Context<'a>>>,
+        expr: ExprPlan,
+    ) -> (JoinExecutorPlan, JoinConstraintPlan) {
+        let key_context = {
+            let current = current_context.cloned();
+            let outer = outer_context.cloned();
 
-                    Context::concat(current, outer)
-                };
-                let value_context = {
-                    let context = Context::concat(current_context, inner_context);
+            Context::concat(current, outer)
+        };
+        let value_context = {
+            let context = Context::concat(current_context.cloned(), inner_context.cloned());
 
-                    Context::concat(context, outer_context)
-                };
+            Context::concat(context, outer_context.cloned())
+        };
 
-                let left_as_key = check_evaluable(key_context.as_ref().map(Arc::clone), &left);
-                let right_as_value =
-                    check_evaluable(value_context.as_ref().map(Arc::clone), &right);
+        let mut candidate = None;
+        let mut before_candidate = Vec::new();
+        let mut after_candidate = Vec::new();
 
-                if left_as_key && right_as_value {
-                    let join_executor = JoinExecutor::Hash {
-                        key_expr: *left,
-                        value_expr: *right,
-                        where_clause: None,
-                    };
-
-                    return (join_executor, None);
-                }
-
-                let right_as_key = check_evaluable(key_context, &right);
-                let left_as_value = left_as_key || check_evaluable(value_context, &left);
-
-                if right_as_key && left_as_value {
-                    let join_executor = JoinExecutor::Hash {
-                        key_expr: *right,
-                        value_expr: *left,
-                        where_clause: None,
-                    };
-
-                    return (join_executor, None);
-                }
-
-                let expr = Expr::BinaryOp {
-                    left,
-                    op: BinaryOperator::Eq,
-                    right,
-                };
-
-                (JoinExecutor::NestedLoop, Some(expr))
-            }
-            Expr::BinaryOp {
-                left,
-                op: BinaryOperator::And,
-                right,
-            } => {
-                let (join_executor, left) = self.join_expr(
-                    outer_context.as_ref().map(Arc::clone),
-                    inner_context.as_ref().map(Arc::clone),
-                    current_context.as_ref().map(Arc::clone),
-                    *left,
-                );
-
-                if let JoinExecutor::Hash {
-                    key_expr,
-                    value_expr,
-                    where_clause,
-                } = join_executor
+        for expr in split_conjuncts(expr) {
+            if candidate.is_none() {
+                match match_hash_join_candidate(key_context.as_ref(), value_context.as_ref(), expr)
                 {
-                    let context = {
-                        let current = current_context.as_ref().map(Arc::clone);
-                        let outer = outer_context.as_ref().map(Arc::clone);
-
-                        Context::concat(current, outer)
-                    };
-
-                    let expr = match left {
-                        Some(left) => Expr::BinaryOp {
-                            left: Box::new(left),
-                            op: BinaryOperator::And,
-                            right,
-                        },
-                        None => *right,
-                    };
-
-                    let (evaluable_expr, expr) = find_evaluable(context, expr);
-
-                    let where_clause = match (where_clause, evaluable_expr) {
-                        (Some(expr), Some(expr2)) => Some(Expr::BinaryOp {
-                            left: Box::new(expr),
-                            op: BinaryOperator::And,
-                            right: Box::new(expr2),
-                        }),
-                        (Some(expr), None) | (None, Some(expr)) => Some(expr),
-                        (None, None) => None,
-                    };
-
-                    let join_executor = JoinExecutor::Hash {
-                        key_expr,
-                        value_expr,
-                        where_clause,
-                    };
-
-                    return (join_executor, expr);
-                }
-
-                let (join_executor, right) = self.join_expr(
-                    outer_context.as_ref().map(Arc::clone),
-                    inner_context,
-                    current_context.as_ref().map(Arc::clone),
-                    *right,
-                );
-
-                let expr = match (left, right) {
-                    (Some(left), Some(right)) => Some(Expr::BinaryOp {
-                        left: Box::new(left),
-                        op: BinaryOperator::And,
-                        right: Box::new(right),
-                    }),
-                    (expr @ Some(_), None) | (None, expr @ Some(_)) => expr,
-                    // (None,None) -> unreachable
-                    // To resolve this,
-                    // join_expr should return an enum of
-                    //   Consumed(Option<Expr>) or NotConsumed(Expr)
-                    (None, None) => None,
-                };
-
-                match join_executor {
-                    JoinExecutor::NestedLoop => (join_executor, expr),
-                    JoinExecutor::Hash {
-                        key_expr,
-                        value_expr,
-                        where_clause,
-                    } => {
-                        let context = Context::concat(current_context, outer_context);
-                        let (evaluable_expr, expr) =
-                            expr.map_or((None, None), |expr| find_evaluable(context, expr));
-
-                        let where_clause = match (where_clause, evaluable_expr) {
-                            (Some(expr), Some(expr2)) => Some(Expr::BinaryOp {
-                                left: Box::new(expr),
-                                op: BinaryOperator::And,
-                                right: Box::new(expr2),
-                            }),
-                            (Some(expr), None) | (None, Some(expr)) => Some(expr),
-                            (None, None) => None,
-                        };
-
-                        let join_executor = JoinExecutor::Hash {
-                            key_expr,
-                            value_expr,
-                            where_clause,
-                        };
-
-                        (join_executor, expr)
+                    HashJoinCandidateMatch::Matched(hash_candidate) => {
+                        candidate = Some(hash_candidate);
                     }
+                    HashJoinCandidateMatch::Unmatched(expr) => before_candidate.push(expr),
                 }
+            } else {
+                after_candidate.push(expr);
             }
-            Expr::Nested(expr) => {
-                self.join_expr(outer_context, inner_context, current_context, *expr)
-            }
-            Expr::Subquery(query) => {
-                let context = Context::concat(current_context, inner_context);
-                let context = Context::concat(context, outer_context);
-
-                let query = self.query(context, *query);
-                let expr = Some(Expr::Subquery(Box::new(query)));
-
-                (JoinExecutor::NestedLoop, expr)
-            }
-            Expr::InSubquery {
-                expr,
-                subquery,
-                negated,
-            } => {
-                let context = Context::concat(current_context, inner_context);
-                let context = Context::concat(context, outer_context);
-
-                let subquery = self.query(context, *subquery);
-                let expr = Some(Expr::InSubquery {
-                    expr,
-                    subquery: Box::new(subquery),
-                    negated,
-                });
-                (JoinExecutor::NestedLoop, expr)
-            }
-            Expr::Exists { subquery, negated } => {
-                let context = Context::concat(current_context, inner_context);
-                let context = Context::concat(context, outer_context);
-
-                let subquery = self.query(context, *subquery);
-                let expr = Some(Expr::Exists {
-                    subquery: Box::new(subquery),
-                    negated,
-                });
-                (JoinExecutor::NestedLoop, expr)
-            }
-            _ => (JoinExecutor::NestedLoop, Some(expr)),
         }
+
+        let Some(HashJoinCandidate {
+            key_expr,
+            value_expr,
+        }) = candidate
+        else {
+            let expr = merge_conjuncts(before_candidate)
+                .map(|expr| self.subquery_expr(value_context, expr))
+                .map_or(JoinConstraintPlan::None, JoinConstraintPlan::On);
+
+            return (JoinExecutorPlan::NestedLoop, expr);
+        };
+
+        let remaining = after_candidate
+            .into_iter()
+            .chain(before_candidate)
+            .collect();
+        let (where_clause, remainder) = merge_conjuncts(remaining).map_or((None, None), |expr| {
+            find_evaluable(key_context.clone(), expr)
+        });
+        let key_expr = self.subquery_expr(key_context.as_ref().map(Rc::clone), key_expr);
+        let value_expr = self.subquery_expr(value_context.as_ref().map(Rc::clone), value_expr);
+        let where_clause =
+            where_clause.map(|expr| self.subquery_expr(key_context.as_ref().map(Rc::clone), expr));
+        let join_constraint = remainder
+            .map(|expr| self.subquery_expr(value_context, expr))
+            .map_or(JoinConstraintPlan::None, JoinConstraintPlan::On);
+        let join_executor = JoinExecutorPlan::Hash {
+            key_expr,
+            value_expr,
+            where_clause,
+        };
+
+        (join_executor, join_constraint)
     }
 }
 
-type EvaluableExpr = Option<Expr>;
-type RemainderExpr = Option<Expr>;
+type EvaluableExpr = Option<ExprPlan>;
+type RemainderExpr = Option<ExprPlan>;
 
-fn find_evaluable(context: Option<Arc<Context<'_>>>, expr: Expr) -> (EvaluableExpr, RemainderExpr) {
+struct HashJoinCandidate {
+    key_expr: ExprPlan,
+    value_expr: ExprPlan,
+}
+
+enum HashJoinCandidateMatch {
+    Matched(HashJoinCandidate),
+    Unmatched(ExprPlan),
+}
+
+fn split_conjuncts(expr: ExprPlan) -> Vec<ExprPlan> {
     match expr {
-        Expr::BinaryOp {
+        ExprPlan::BinaryOp {
+            left,
+            op: BinaryOperator::And,
+            right,
+        } => split_conjuncts(*left)
+            .into_iter()
+            .chain(split_conjuncts(*right))
+            .collect(),
+        ExprPlan::Nested(expr) => split_conjuncts(*expr),
+        expr => vec![expr],
+    }
+}
+
+fn merge_conjuncts(exprs: Vec<ExprPlan>) -> Option<ExprPlan> {
+    exprs.into_iter().reduce(|left, right| ExprPlan::BinaryOp {
+        left: Box::new(left),
+        op: BinaryOperator::And,
+        right: Box::new(right),
+    })
+}
+
+fn match_hash_join_candidate(
+    key_context: Option<&Rc<Context<'_>>>,
+    value_context: Option<&Rc<Context<'_>>>,
+    expr: ExprPlan,
+) -> HashJoinCandidateMatch {
+    let ExprPlan::BinaryOp { left, op, right } = expr else {
+        return HashJoinCandidateMatch::Unmatched(expr);
+    };
+
+    if op != BinaryOperator::Eq {
+        return HashJoinCandidateMatch::Unmatched(ExprPlan::BinaryOp { left, op, right });
+    }
+
+    let left_as_key = check_evaluable(key_context.map(Rc::clone), &left);
+    let right_as_value = check_evaluable(value_context.map(Rc::clone), &right);
+
+    if left_as_key && right_as_value {
+        return HashJoinCandidateMatch::Matched(HashJoinCandidate {
+            key_expr: *left,
+            value_expr: *right,
+        });
+    }
+
+    let right_as_key = check_evaluable(key_context.map(Rc::clone), &right);
+    let left_as_value = left_as_key || check_evaluable(value_context.map(Rc::clone), &left);
+
+    if right_as_key && left_as_value {
+        return HashJoinCandidateMatch::Matched(HashJoinCandidate {
+            key_expr: *right,
+            value_expr: *left,
+        });
+    }
+
+    HashJoinCandidateMatch::Unmatched(ExprPlan::BinaryOp { left, op, right })
+}
+
+fn find_evaluable(
+    context: Option<Rc<Context<'_>>>,
+    expr: ExprPlan,
+) -> (EvaluableExpr, RemainderExpr) {
+    match expr {
+        ExprPlan::BinaryOp {
             left,
             op: BinaryOperator::And,
             right,
         } => {
-            let (evaluable, remainder) = find_evaluable(context.as_ref().map(Arc::clone), *left);
+            let (evaluable, remainder) = find_evaluable(context.as_ref().map(Rc::clone), *left);
             let (evaluable2, remainder2) = find_evaluable(context, *right);
 
             let merge = |expr, expr2| match (expr, expr2) {
-                (Some(expr), Some(expr2)) => Some(Expr::BinaryOp {
+                (Some(expr), Some(expr2)) => Some(ExprPlan::BinaryOp {
                     left: Box::new(expr),
                     op: BinaryOperator::And,
                     right: Box::new(expr2),
@@ -430,20 +361,19 @@ mod tests {
     use {
         super::plan,
         crate::{
-            ast::{DateTimeField, Statement},
-            ast_builder::{Build, QueryNode, col, exists, num, subquery, table},
+            ast::DateTimeField,
             mock::{MockStorage, run},
             parse_sql::parse,
-            plan::fetch_schema_map,
+            plan::{StatementPlan, fetch_schema_map},
+            query_builder::{Build, QueryNode, col, exists, num, subquery, table},
             translate::translate,
         },
-        futures::executor::block_on,
     };
 
-    fn plan_join(storage: &MockStorage, sql: &str) -> Statement {
+    fn plan_join(storage: &MockStorage, sql: &str) -> crate::plan::StatementPlan {
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
-        let statement = translate(&parsed).unwrap();
-        let schema_map = block_on(fetch_schema_map(storage, &statement)).unwrap();
+        let statement = StatementPlan::from(translate(&parsed).unwrap());
+        let schema_map = fetch_schema_map(storage, &statement).unwrap();
 
         plan(&schema_map, statement)
     }
@@ -535,11 +465,6 @@ mod tests {
             JOIN PlayerItem ON PlayerItem.user_id = Player.id
         ";
         let actual = plan_join(&storage, sql);
-        let actual = {
-            let schema_map = block_on(fetch_schema_map(&storage, &actual)).unwrap();
-
-            plan(&schema_map, actual)
-        };
         let expected = table("Player")
             .select()
             .join("PlayerItem")
@@ -549,6 +474,11 @@ mod tests {
             expected,
             "redundant plan does not change the plan result:\n{sql}"
         );
+
+        let statement = actual;
+        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
+        let actual = plan(&schema_map, statement.clone());
+        assert_eq!(actual, statement, "planned hash join remains unchanged");
 
         let sql = "
             SELECT * FROM Player
@@ -757,6 +687,31 @@ mod tests {
             actual,
             expected,
             "hash join with join_constraint AND where_clause 2:\n{sql}"
+        );
+
+        let sql = "
+            SELECT *
+            FROM Player
+            JOIN PlayerItem ON
+                PlayerItem.amount > 10 AND
+                (
+                    Player.id = PlayerItem.user_id AND
+                    PlayerItem.item_id IS NOT NULL
+                )
+            WHERE True;
+        ";
+        let actual = plan_join(&storage, sql);
+        let expected = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .hash_filter("PlayerItem.item_id IS NOT NULL")
+            .hash_filter("PlayerItem.amount > 10")
+            .filter(true);
+        test!(
+            actual,
+            expected,
+            "hash join merges existing where_clause with current-table filter:\n{sql}"
         );
 
         let sql = "

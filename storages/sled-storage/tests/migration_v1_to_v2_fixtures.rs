@@ -79,8 +79,8 @@ fn copy_fixture_tree(source: &Path, target: &Path) {
     }
 }
 
-#[tokio::test]
-async fn migrate_v1_mixed_schema_schemaless_fixture() {
+#[test]
+fn migrate_v1_mixed_schema_schemaless_fixture() {
     let (path, _guard) = fixture_to_tmp("mixed_schema_schemaless");
 
     let first = migrate_to_latest(&path).expect("migrate fixture");
@@ -98,7 +98,6 @@ async fn migrate_v1_mixed_schema_schemaless_fixture() {
 
     let user_rows = glue
         .execute("SELECT id, name, active FROM User ORDER BY id;")
-        .await
         .expect("select User");
     assert_eq!(
         user_rows,
@@ -113,13 +112,11 @@ async fn migrate_v1_mixed_schema_schemaless_fixture() {
 
     let inserted_user = glue
         .execute("INSERT INTO User VALUES (3, 'Carol', TRUE);")
-        .await
         .expect("insert User row");
     assert_eq!(inserted_user, vec![Payload::Insert(1)]);
 
     let user_count = glue
         .execute("SELECT COUNT(*) AS cnt FROM User;")
-        .await
         .expect("count User rows");
     assert_eq!(
         user_count,
@@ -131,7 +128,6 @@ async fn migrate_v1_mixed_schema_schemaless_fixture() {
 
     let event_query = glue
         .execute("SELECT kind, meta['ip'] AS ip FROM Event WHERE event_id = 1;")
-        .await
         .expect("select Event projection");
     assert_eq!(
         event_query,
@@ -145,13 +141,12 @@ async fn migrate_v1_mixed_schema_schemaless_fixture() {
         .execute(
             "INSERT INTO Event VALUES ('{\"event_id\":3,\"kind\":\"logout\",\"meta\":{\"ip\":\"10.0.0.3\"}}');",
         )
-        .await
+
         .expect("insert Event row");
     assert_eq!(inserted_event, vec![Payload::Insert(1)]);
 
     let inserted_event_kind = glue
         .execute("SELECT kind FROM Event WHERE event_id = 3;")
-        .await
         .expect("select inserted Event");
     assert_eq!(
         inserted_event_kind,
@@ -163,7 +158,6 @@ async fn migrate_v1_mixed_schema_schemaless_fixture() {
 
     let event_map_rows = glue
         .execute("SELECT * FROM Event WHERE event_id = 1;")
-        .await
         .expect("select schemaless Event rows");
     assert_eq!(
         event_map_rows,

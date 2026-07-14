@@ -12,11 +12,10 @@ Currently, the `Metadata` trait supports the `scan_table_meta` method for retrie
 
 ```rust
 type ObjectName = String;
-pub type MetaIter = Box<dyn Iterator<Item = Result<(ObjectName, HashMap<String, Value>)>>>;
+pub type MetaIter = Box<dyn Iterator<Item = Result<(ObjectName, BTreeMap<String, Value>)>>>;
 
-#[async_trait]
 pub trait Metadata {
-    async fn scan_table_meta(&self) -> Result<MetaIter> {
+    fn scan_table_meta(&self) -> Result<MetaIter> {
         Ok(Box::new(empty()))
     }
 }

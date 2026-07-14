@@ -6,7 +6,7 @@ sidebar_position: 7
 
 The `Index` trait is designed to support non-clustered indexes. If you only need to support pre-built non-clustered indexes, implementing the `Index` trait without the `IndexMut` trait is sufficient. Note that clustered indexes (PRIMARY KEY) are automatically supported by the `Store` & `StoreMut` implementations. The `Index` trait is specifically for non-clustered index support.
 
-Currently, GlueSQL's query planner only supports a logical planner, so the performance of finding non-clustered indexes is not optimal yet, but it is being improved. If you want to use non-clustered indexes more precisely, using the AST Builder to directly specify the index you want to use can be a good approach.
+Currently, GlueSQL's query planner only supports a logical planner, so the performance of finding non-clustered indexes is not optimal yet, but it is being improved. If you want to use non-clustered indexes more precisely, using the Query Builder to directly specify the index you want to use can be a good approach.
 
 A brief explanation of non-clustered and clustered indexes:
 
@@ -19,14 +19,13 @@ There is one method to implement for the `Index` trait:
 1. `scan_indexed_data`: This method retrieves indexed data from the storage system using the provided table name, index name, sorting order, and comparison value.
 
 ```rust
-#[async_trait]
 pub trait Index {
-    async fn scan_indexed_data(
-        &self,
-        _table_name: &str,
-        _index_name: &str,
-        _asc: Option<bool>,
-        _cmp_value: Option<(&IndexOperator, Value)>,
-    ) -> Result<RowIter>;
+    fn scan_indexed_data<'a>(
+        &'a self,
+        table_name: &str,
+        index_name: &str,
+        asc: Option<bool>,
+        cmp_value: Option<(&IndexOperator, Value)>,
+    ) -> Result<RowIter<'a>>;
 }
 ```

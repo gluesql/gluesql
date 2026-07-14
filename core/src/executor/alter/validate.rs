@@ -1,13 +1,15 @@
 use {
     super::AlterError,
     crate::{
-        ast::{ColumnDef, ColumnUniqueOption, DataType, OperateFunctionArg},
+        ast::{ColumnDef, ColumnUniqueOption, OperateFunctionArg},
         executor::evaluate_stateless,
+        plan::plan_scalar_expr,
+        prelude::DataType,
         result::Result,
     },
 };
 
-pub async fn validate(column_def: &ColumnDef) -> Result<()> {
+pub fn validate(column_def: &ColumnDef) -> Result<()> {
     let ColumnDef {
         data_type,
         default,
@@ -30,7 +32,9 @@ pub async fn validate(column_def: &ColumnDef) -> Result<()> {
     }
 
     if let Some(expr) = default {
-        evaluate_stateless(None, expr).await?;
+        let expr = plan_scalar_expr(expr.clone());
+
+        evaluate_stateless(None, &expr)?;
     }
 
     Ok(())
@@ -71,9 +75,11 @@ pub fn validate_arg_names(args: &[OperateFunctionArg]) -> Result<()> {
     }
 }
 
-pub async fn validate_default_args(args: &[OperateFunctionArg]) -> Result<()> {
+pub fn validate_default_args(args: &[OperateFunctionArg]) -> Result<()> {
     for expr in args.iter().filter_map(|arg| arg.default.as_ref()) {
-        evaluate_stateless(None, expr).await?;
+        let expr = plan_scalar_expr(expr.clone());
+
+        evaluate_stateless(None, &expr)?;
     }
 
     if args

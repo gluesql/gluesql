@@ -1,15 +1,13 @@
 use {
-    async_trait::async_trait, futures::stream::TryStreamExt, gluesql_core::prelude::Glue,
-    gluesql_shared_memory_storage::SharedMemoryStorage, test_suite::*,
+    gluesql_core::prelude::Glue, gluesql_shared_memory_storage::SharedMemoryStorage, test_suite::*,
 };
 
 struct SharedMemoryTester {
     glue: Glue<SharedMemoryStorage>,
 }
 
-#[async_trait(?Send)]
 impl Tester<SharedMemoryStorage> for SharedMemoryTester {
-    async fn new(_: &str) -> Self {
+    fn new(_: &str) -> Self {
         let storage = SharedMemoryStorage::new();
         let glue = Glue::new(storage);
 
@@ -21,24 +19,24 @@ impl Tester<SharedMemoryStorage> for SharedMemoryTester {
     }
 }
 
-generate_store_tests!(tokio::test, SharedMemoryTester);
+generate_store_tests!(test, SharedMemoryTester);
 
-generate_alter_table_tests!(tokio::test, SharedMemoryTester);
+generate_alter_table_tests!(test, SharedMemoryTester);
 
 macro_rules! exec {
     ($glue: ident $sql: literal) => {
-        $glue.execute($sql).await.unwrap();
+        $glue.execute($sql).unwrap();
     };
 }
 
 macro_rules! test {
     ($glue: ident $sql: literal, $result: expr) => {
-        assert_eq!($glue.execute($sql).await, $result);
+        assert_eq!($glue.execute($sql), $result);
     };
 }
 
-#[tokio::test]
-async fn shared_memory_storage_index() {
+#[test]
+fn shared_memory_storage_index() {
     use gluesql_core::{
         error::Error,
         prelude::Glue,
@@ -50,10 +48,8 @@ async fn shared_memory_storage_index() {
     assert_eq!(
         storage
             .scan_data("Idx")
-            .await
             .unwrap()
-            .try_collect::<Vec<_>>()
-            .await
+            .collect::<gluesql_core::prelude::Result<Vec<_>>>()
             .as_ref()
             .map(Vec::len),
         Ok(0),
@@ -62,7 +58,6 @@ async fn shared_memory_storage_index() {
     assert_eq!(
         storage
             .scan_indexed_data("Idx", "hello", None, None)
-            .await
             .map(|_| ()),
         Err(Error::StorageMsg(
             "[Shared MemoryStorage] index is not supported".to_owned()
@@ -82,8 +77,8 @@ async fn shared_memory_storage_index() {
     );
 }
 
-#[tokio::test]
-async fn shared_memory_storage_transaction() {
+#[test]
+fn shared_memory_storage_transaction() {
     use gluesql_core::{error::Error, prelude::Glue};
 
     let storage = SharedMemoryStorage::new();
@@ -95,8 +90,8 @@ async fn shared_memory_storage_transaction() {
     test!(glue "ROLLBACK", Err(Error::StorageMsg("[Shared MemoryStorage] transaction is not supported".to_owned())));
 }
 
-#[tokio::test]
-async fn shared_memory_storage_function() {
+#[test]
+fn shared_memory_storage_function() {
     use gluesql_core::error::Error;
 
     let storage = SharedMemoryStorage::new();

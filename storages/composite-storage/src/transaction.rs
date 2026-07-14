@@ -1,18 +1,16 @@
 use {
     super::CompositeStorage,
-    async_trait::async_trait,
     gluesql_core::{
         error::{Error, Result},
         store::Transaction,
     },
 };
 
-#[async_trait]
 impl Transaction for CompositeStorage {
-    async fn begin(&mut self, autocommit: bool) -> Result<bool> {
+    fn begin(&mut self, autocommit: bool) -> Result<bool> {
         if autocommit {
             for storage in self.storages.values_mut() {
-                storage.begin(autocommit).await?;
+                storage.begin(autocommit)?;
             }
 
             return Ok(true);
@@ -23,17 +21,17 @@ impl Transaction for CompositeStorage {
         ))
     }
 
-    async fn rollback(&mut self) -> Result<()> {
+    fn rollback(&mut self) -> Result<()> {
         for storage in self.storages.values_mut() {
-            storage.commit().await?;
+            storage.commit()?;
         }
 
         Ok(())
     }
 
-    async fn commit(&mut self) -> Result<()> {
+    fn commit(&mut self) -> Result<()> {
         for storage in self.storages.values_mut() {
-            storage.commit().await?;
+            storage.commit()?;
         }
 
         Ok(())

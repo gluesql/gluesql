@@ -55,34 +55,32 @@ impl CompositeStorage {
         self.default_engine = None;
     }
 
-    async fn fetch_engine(&self, table_name: &str) -> Result<String> {
-        self.fetch_schema(table_name)
-            .await?
+    fn fetch_engine(&self, table_name: &str) -> Result<String> {
+        self.fetch_schema(table_name)?
             .and_then(|Schema { engine, .. }| engine)
             .or_else(|| self.default_engine.clone())
             .ok_or_else(|| Error::StorageMsg(format!("engine not found for table: {table_name}")))
     }
 
-    async fn fetch_storage(&self, table_name: &str) -> Result<&Box<dyn IStorage>> {
-        self.fetch_engine(table_name)
-            .await
-            .map(|engine| self.storages.get(&engine))?
-            .ok_or_else(|| {
-                Error::StorageMsg(format!(
-                    "[fetch_storage] storage not found for table: {table_name}"
-                ))
-            })
+    fn fetch_storage(&self, table_name: &str) -> Result<&dyn IStorage> {
+        let engine = self.fetch_engine(table_name)?;
+
+        self.storages.get(&engine).map(Box::as_ref).ok_or_else(|| {
+            Error::StorageMsg(format!(
+                "[fetch_storage] storage not found for table: {table_name}"
+            ))
+        })
     }
 
-    async fn fetch_storage_mut(&mut self, table_name: &str) -> Result<&mut Box<dyn IStorage>> {
-        self.fetch_engine(table_name)
-            .await
-            .map(|engine| self.storages.get_mut(&engine))?
-            .ok_or_else(|| {
-                Error::StorageMsg(format!(
-                    "[fetch_storage_mut] storage not found for table: {table_name}"
-                ))
-            })
+    fn fetch_storage_mut(&mut self, table_name: &str) -> Result<&mut dyn IStorage> {
+        let engine = self.fetch_engine(table_name)?;
+
+        match self.storages.get_mut(&engine) {
+            Some(storage) => Ok(storage.as_mut()),
+            None => Err(Error::StorageMsg(format!(
+                "[fetch_storage_mut] storage not found for table: {table_name}"
+            ))),
+        }
     }
 }
 
