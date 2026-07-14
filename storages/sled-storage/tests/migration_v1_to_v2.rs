@@ -13,12 +13,16 @@ use {
     std::{
         collections::BTreeMap,
         fs::{create_dir_all, remove_dir_all, remove_file, write},
+        io::ErrorKind,
         path::{Path, PathBuf},
-        time::{SystemTime, UNIX_EPOCH},
+        thread,
+        time::{Duration, Instant, SystemTime, UNIX_EPOCH},
     },
 };
 
 const STORAGE_FORMAT_VERSION_KEY: &str = "__GLUESQL_STORAGE_FORMAT_VERSION__";
+const LOCK_WAIT_TIMEOUT: Duration = Duration::from_secs(1);
+const LOCK_WAIT_INTERVAL: Duration = Duration::from_millis(10);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct V1SnapshotItem<T> {
@@ -80,11 +84,23 @@ fn data_key(table_name: &str, key: Vec<u8>) -> Vec<u8> {
 }
 
 fn open_sled(path: &Path) -> Db {
-    sled::Config::new()
-        .path(path)
-        .flush_every_ms(None)
-        .open()
-        .expect("open sled")
+    let config = sled::Config::new().path(path).flush_every_ms(None);
+    let started_at = Instant::now();
+
+    loop {
+        match config.open() {
+            Ok(tree) => return tree,
+            Err(sled::Error::Io(error))
+                if error.kind() == ErrorKind::Other
+                    && error.to_string().starts_with("could not acquire lock on ") =>
+            {
+                let remaining = LOCK_WAIT_TIMEOUT.saturating_sub(started_at.elapsed());
+                assert!(!remaining.is_zero(), "open sled: {error}");
+                thread::sleep(LOCK_WAIT_INTERVAL.min(remaining));
+            }
+            Err(error) => panic!("open sled: {error}"),
+        }
+    }
 }
 
 fn write_schema_snapshot(tree: &Db, schema: Schema) {
@@ -184,8 +200,7 @@ fn setup_v1_storage(path: &Path) -> BTreeMap<String, Value> {
     log_row
 }
 
-fn read_storage_format_version(path: &Path) -> u32 {
-    let tree = open_sled(path);
+fn read_storage_format_version(tree: &Db) -> u32 {
     let value = tree
         .get(STORAGE_FORMAT_VERSION_KEY)
         .expect("read storage format version key")
@@ -195,8 +210,7 @@ fn read_storage_format_version(path: &Path) -> u32 {
     u32::from_be_bytes(bytes)
 }
 
-fn read_row_snapshot(path: &Path, table_name: &str, key: Vec<u8>) -> Vec<Value> {
-    let tree = open_sled(path);
+fn read_row_snapshot(tree: &Db, table_name: &str, key: Vec<u8>) -> Vec<Value> {
     let key = data_key(table_name, key);
     let value = tree
         .get(key)
@@ -238,12 +252,13 @@ fn migrate_v1_to_v2_rewrites_rows_and_sets_version() {
         }
     );
 
+    let tree = open_sled(&path);
     assert_eq!(
-        read_storage_format_version(&path),
+        read_storage_format_version(&tree),
         SLED_STORAGE_FORMAT_VERSION
     );
     let user_row = read_row_snapshot(
-        &path,
+        &tree,
         "User",
         Key::I64(1).to_cmp_be_bytes().expect("user key"),
     );
@@ -252,8 +267,9 @@ fn migrate_v1_to_v2_rewrites_rows_and_sets_version() {
         vec![Value::I64(1), Value::Str("Alice".to_owned())]
     );
 
-    let logs_row = read_row_snapshot(&path, "Logs", vec![0, 0, 0, 0, 0, 0, 0, 1]);
+    let logs_row = read_row_snapshot(&tree, "Logs", vec![0, 0, 0, 0, 0, 0, 0, 1]);
     assert_eq!(logs_row, vec![Value::Map(expected_log_row)]);
+    drop(tree);
 
     let report = migrate_to_latest(&path).expect("idempotent migration");
     assert_eq!(
@@ -436,9 +452,10 @@ fn migrate_v1_to_v2_supports_all_v1_snapshot_shapes() {
         }
     );
 
+    let tree = open_sled(&path);
     assert_eq!(
         read_row_snapshot(
-            &path,
+            &tree,
             "Mixed",
             Key::I64(1).to_cmp_be_bytes().expect("key 1")
         ),
@@ -446,7 +463,7 @@ fn migrate_v1_to_v2_supports_all_v1_snapshot_shapes() {
     );
     assert_eq!(
         read_row_snapshot(
-            &path,
+            &tree,
             "Mixed",
             Key::I64(2).to_cmp_be_bytes().expect("key 2")
         ),
@@ -454,7 +471,7 @@ fn migrate_v1_to_v2_supports_all_v1_snapshot_shapes() {
     );
     assert_eq!(
         read_row_snapshot(
-            &path,
+            &tree,
             "Mixed",
             Key::I64(3).to_cmp_be_bytes().expect("key 3")
         ),
@@ -462,7 +479,7 @@ fn migrate_v1_to_v2_supports_all_v1_snapshot_shapes() {
     );
     assert_eq!(
         read_row_snapshot(
-            &path,
+            &tree,
             "Mixed",
             Key::I64(4).to_cmp_be_bytes().expect("key 4")
         ),
@@ -470,12 +487,13 @@ fn migrate_v1_to_v2_supports_all_v1_snapshot_shapes() {
     );
     assert_eq!(
         read_row_snapshot(
-            &path,
+            &tree,
             "Mixed",
             Key::I64(5).to_cmp_be_bytes().expect("key 5")
         ),
         vec![Value::I64(5)]
     );
+    drop(tree);
 
     remove_dir_all(path).expect("cleanup");
 }
@@ -516,10 +534,12 @@ fn migrate_v1_storage_without_data_rows() {
             rewritten_rows: 0,
         }
     );
+    let tree = open_sled(&path);
     assert_eq!(
-        read_storage_format_version(&path),
+        read_storage_format_version(&tree),
         SLED_STORAGE_FORMAT_VERSION
     );
+    drop(tree);
 
     remove_dir_all(path).expect("cleanup");
 }
