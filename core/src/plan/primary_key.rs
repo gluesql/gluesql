@@ -1,4 +1,5 @@
 use {
+    self::lookup::PrimaryKeyLookupCandidate,
     super::{context::Context, planner::Planner},
     crate::{
         ast::BinaryOperator,
@@ -10,6 +11,8 @@ use {
     },
     std::{collections::HashMap, hash::BuildHasher, rc::Rc},
 };
+
+mod lookup;
 
 pub fn plan<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
@@ -58,55 +61,10 @@ enum PrimaryKey {
     NotFound(ExprPlan),
 }
 
-struct PrimaryKeyContext<'a> {
-    first_relation: Option<Rc<Context<'a>>>,
-    joined_relations: Vec<Option<Rc<Context<'a>>>>,
-    can_install: bool,
-}
-
-impl PrimaryKeyContext<'_> {
-    fn contains(&self, key: &ExprPlan) -> bool {
-        if !self.can_install {
-            return false;
-        }
-
-        let Some(first_relation) = self.first_relation.as_ref() else {
-            return false;
-        };
-
-        match key {
-            ExprPlan::Identifier(column) => {
-                first_relation.contains_primary_key(column)
-                    && self.joined_relations.iter().all(|context| {
-                        context
-                            .as_ref()
-                            .is_some_and(|context| !context.contains_column(column))
-                    })
-            }
-            ExprPlan::CompoundIdentifier { alias, ident } => {
-                first_relation.contains_aliased_primary_key(alias, ident)
-            }
-            _ => false,
-        }
-    }
-}
-
 impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
     fn select(&self, outer_context: Option<Rc<Context<'a>>>, select: SelectPlan) -> SelectPlan {
         let first_relation_context = self.update_context(None, &select.from.relation);
-        let primary_key_context = PrimaryKeyContext {
-            first_relation: first_relation_context.as_ref().map(Rc::clone),
-            joined_relations: select
-                .from
-                .joins
-                .iter()
-                .map(|join| self.update_context(None, &join.relation))
-                .collect(),
-            can_install: matches!(
-                &select.from.relation,
-                TableFactorPlan::Table { index: None, .. }
-            ),
-        };
+        let lookup_candidate = PrimaryKeyLookupCandidate::new(self.schema_map, &select.from);
         let current_context = select
             .from
             .joins
@@ -117,7 +75,14 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
 
         let (index, selection) = select
             .selection
-            .map(|expr| self.expr(outer_context, current_context, &primary_key_context, expr))
+            .map(|expr| {
+                self.expr(
+                    outer_context,
+                    current_context,
+                    lookup_candidate.as_ref(),
+                    expr,
+                )
+            })
             .map_or((None, None), |primary_key| match primary_key {
                 PrimaryKey::Found { index_item, expr } => (Some(index_item), expr),
                 PrimaryKey::NotFound(expr) => (None, Some(expr)),
@@ -151,7 +116,7 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
         &self,
         outer_context: Option<Rc<Context<'a>>>,
         current_context: Option<Rc<Context<'a>>>,
-        primary_key_context: &PrimaryKeyContext<'a>,
+        lookup_candidate: Option<&PrimaryKeyLookupCandidate>,
         expr: ExprPlan,
     ) -> PrimaryKey {
         match expr {
@@ -164,8 +129,7 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                 left: value,
                 op: BinaryOperator::Eq,
                 right: key,
-            } if primary_key_context.contains(key.as_ref())
-                && check_evaluable(current_context.as_ref().map(Rc::clone), &key)
+            } if lookup_candidate.is_some_and(|candidate| candidate.contains(key.as_ref()))
                 && check_evaluable(None, &value) =>
             {
                 let index_item = IndexItemPlan::PrimaryKey(*value);
@@ -183,7 +147,7 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                 let primary_key = self.expr(
                     outer_context.as_ref().map(Rc::clone),
                     current_context.as_ref().map(Rc::clone),
-                    primary_key_context,
+                    lookup_candidate,
                     *left,
                 );
 
@@ -206,7 +170,7 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                     PrimaryKey::NotFound(expr) => expr,
                 };
 
-                match self.expr(outer_context, current_context, primary_key_context, *right) {
+                match self.expr(outer_context, current_context, lookup_candidate, *right) {
                     PrimaryKey::Found { index_item, expr } => {
                         let expr = match expr {
                             Some(right) => ExprPlan::BinaryOp {
@@ -234,7 +198,7 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                 }
             }
             ExprPlan::Nested(expr) => {
-                match self.expr(outer_context, current_context, primary_key_context, *expr) {
+                match self.expr(outer_context, current_context, lookup_candidate, *expr) {
                     PrimaryKey::Found { index_item, expr } => {
                         let expr = expr.map(Box::new).map(ExprPlan::Nested);
 
@@ -275,9 +239,13 @@ mod tests {
         },
     };
 
-    fn plan(storage: &MockStorage, sql: &str) -> StatementPlan {
+    fn statement(sql: &str) -> StatementPlan {
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
-        let statement = StatementPlan::from(translate(&parsed).unwrap());
+        StatementPlan::from(translate(&parsed).unwrap())
+    }
+
+    fn plan(storage: &MockStorage, sql: &str) -> StatementPlan {
+        let statement = statement(sql);
         let schema_map = fetch_schema_map(storage, &statement).unwrap();
 
         plan_primary_key(&schema_map, statement)
@@ -516,6 +484,79 @@ mod tests {
             .build()
             .unwrap();
         assert_eq!(actual, expected, "unqualified joined relation:\n{sql}");
+    }
+
+    #[test]
+    fn positional_column_aliases() {
+        let storage = run("
+            CREATE TABLE Tasks (
+                task_id INTEGER PRIMARY KEY,
+                project_id INTEGER,
+                done BOOLEAN NOT NULL
+            );
+            CREATE TABLE Projects (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL
+            );
+        ");
+
+        let sql = "
+            SELECT *
+            FROM Tasks AS t(id, project_id, done)
+            WHERE t.id = 1;
+        ";
+        let actual = plan(&storage, sql);
+        assert!(
+            matches!(
+                actual,
+                StatementPlan::Query(QueryPlan {
+                    body: SetExprPlan::Select(select),
+                    ..
+                }) if matches!(
+                    select.from.relation,
+                    TableFactorPlan::Table {
+                        index: Some(IndexItemPlan::PrimaryKey(_)),
+                        ..
+                    }
+                ) && select.selection.is_none()
+            ),
+            "effective primary key alias should install a lookup:\n{sql}"
+        );
+
+        let sql = "
+            SELECT t.id
+            FROM Tasks AS t(id, project_id, done)
+            JOIN Projects AS p(task_id, name)
+              ON p.task_id = t.project_id
+            WHERE task_id = 1
+            ORDER BY t.id;
+        ";
+        let actual = plan(&storage, sql);
+        let expected = statement(sql);
+
+        assert_eq!(
+            actual, expected,
+            "joined positional alias should preserve selection:\n{sql}"
+        );
+
+        let storage = run("
+            CREATE TABLE Tasks (
+                project_id INTEGER,
+                task_id INTEGER PRIMARY KEY
+            );
+        ");
+        let sql = "
+            SELECT *
+            FROM Tasks AS t(id, id)
+            WHERE t.id = 1;
+        ";
+        let actual = plan(&storage, sql);
+        let expected = statement(sql);
+
+        assert_eq!(
+            actual, expected,
+            "shadowed primary key alias should preserve selection:\n{sql}"
+        );
     }
 
     #[test]
