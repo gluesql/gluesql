@@ -13,7 +13,7 @@ use {
     std::{
         collections::BTreeMap,
         fs::{create_dir_all, remove_dir_all, remove_file, write},
-        io::ErrorKind,
+        io::{self, ErrorKind},
         path::{Path, PathBuf},
         thread,
         time::{Duration, Instant, SystemTime, UNIX_EPOCH},
@@ -85,22 +85,105 @@ fn data_key(table_name: &str, key: Vec<u8>) -> Vec<u8> {
 
 fn open_sled(path: &Path) -> Db {
     let config = sled::Config::new().path(path).flush_every_ms(None);
-    let started_at = Instant::now();
+
+    open_sled_with_lock_wait_by(
+        || config.open(),
+        Instant::now,
+        thread::sleep,
+        LOCK_WAIT_TIMEOUT,
+        LOCK_WAIT_INTERVAL,
+    )
+}
+
+fn open_sled_with_lock_wait_by<T>(
+    mut open: impl FnMut() -> sled::Result<T>,
+    mut now: impl FnMut() -> Instant,
+    mut sleep: impl FnMut(Duration),
+    timeout: Duration,
+    interval: Duration,
+) -> T {
+    let started_at = now();
 
     loop {
-        match config.open() {
+        match open() {
             Ok(tree) => return tree,
             Err(sled::Error::Io(error))
                 if error.kind() == ErrorKind::Other
                     && error.to_string().starts_with("could not acquire lock on ") =>
             {
-                let remaining = LOCK_WAIT_TIMEOUT.saturating_sub(started_at.elapsed());
-                assert!(!remaining.is_zero(), "open sled: {error}");
-                thread::sleep(LOCK_WAIT_INTERVAL.min(remaining));
+                let remaining = timeout.saturating_sub(now().duration_since(started_at));
+                assert!(
+                    !remaining.is_zero(),
+                    "open sled: timed out after {} ms waiting for the database lock: {error}",
+                    timeout.as_millis(),
+                );
+                sleep(interval.min(remaining));
             }
             Err(error) => panic!("open sled: {error}"),
         }
     }
+}
+
+fn lock_error() -> sled::Error {
+    sled::Error::Io(io::Error::other(
+        "could not acquire lock on \"db\": Resource temporarily unavailable",
+    ))
+}
+
+#[test]
+fn open_sled_waits_for_lock_release() {
+    let mut attempts = 0;
+    let started_at = Instant::now();
+    let mut now = [started_at, started_at].into_iter();
+    let mut sleeps = Vec::new();
+
+    let actual = open_sled_with_lock_wait_by(
+        || {
+            attempts += 1;
+            if attempts == 1 {
+                Err(lock_error())
+            } else {
+                Ok(7)
+            }
+        },
+        || now.next().expect("current time"),
+        |duration| sleeps.push(duration),
+        Duration::from_secs(1),
+        Duration::from_millis(10),
+    );
+
+    assert_eq!(actual, 7);
+    assert_eq!(attempts, 2);
+    assert_eq!(sleeps, [Duration::from_millis(10)]);
+}
+
+#[test]
+#[should_panic(expected = "timed out after 20 ms waiting for the database lock")]
+fn open_sled_panics_after_lock_timeout() {
+    let started_at = Instant::now();
+    let mut now = [started_at, started_at + Duration::from_millis(20)].into_iter();
+
+    open_sled_with_lock_wait_by(
+        || Err::<(), _>(lock_error()),
+        || now.next().expect("current time"),
+        thread::sleep,
+        Duration::from_millis(20),
+        Duration::from_millis(10),
+    );
+}
+
+#[test]
+#[should_panic(expected = "open sled: Unsupported: invalid config")]
+fn open_sled_panics_on_non_lock_error() {
+    let now = Instant::now();
+
+    open_sled_with_lock_wait_by(
+        || Err::<(), _>(sled::Error::Unsupported("invalid config".to_owned())),
+        || now,
+        thread::sleep,
+        Duration::from_secs(1),
+        Duration::from_millis(10),
+    );
 }
 
 fn write_schema_snapshot(tree: &Db, schema: Schema) {
