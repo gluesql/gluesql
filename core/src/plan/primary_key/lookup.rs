@@ -2,7 +2,7 @@ use {
     crate::{
         ast::{ColumnDef, ColumnUniqueOption},
         data::Schema,
-        plan::{ExprPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan},
+        plan::{ExprPlan, JoinOperatorPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan},
     },
     std::{collections::HashMap, hash::BuildHasher},
 };
@@ -17,6 +17,14 @@ impl PrimaryKeyLookupCandidate {
         schema_map: &HashMap<String, Schema, S>,
         from: &TableWithJoinsPlan,
     ) -> Option<Self> {
+        if !from
+            .joins
+            .iter()
+            .all(|join| preserves_lookup_target(&join.join_operator))
+        {
+            return None;
+        }
+
         let target = PrimaryKeyLookupTarget::new(schema_map, &from.relation)?;
         let joined_relations = from
             .joins
@@ -48,6 +56,13 @@ impl PrimaryKeyLookupCandidate {
             }
             _ => false,
         }
+    }
+}
+
+fn preserves_lookup_target(join_operator: &JoinOperatorPlan) -> bool {
+    // Keep this exhaustive so new join types require an explicit lookup-safety decision.
+    match join_operator {
+        JoinOperatorPlan::Inner(_) | JoinOperatorPlan::LeftOuter(_) => true,
     }
 }
 
@@ -191,12 +206,16 @@ mod tests {
     fn parse_from(sql: &str) -> TableWithJoinsPlan {
         let parsed = parse(sql).unwrap().into_iter().next().unwrap();
         let statement = StatementPlan::from(translate(&parsed).unwrap());
-        let StatementPlan::Query(query) = statement else {
-            panic!("expected query plan");
-        };
-        let SetExprPlan::Select(select) = query.body else {
-            panic!("expected select plan");
-        };
+        let query = match statement {
+            StatementPlan::Query(query) => Some(query),
+            _ => None,
+        }
+        .expect("expected query plan");
+        let select = match query.body {
+            SetExprPlan::Select(select) => Some(select),
+            SetExprPlan::Values(_) => None,
+        }
+        .expect("expected select plan");
 
         select.from
     }
@@ -228,6 +247,19 @@ mod tests {
     }
 
     #[test]
+    fn accepts_left_outer_join_that_preserves_the_lookup_target() {
+        let schema_map = schema_map(&[
+            "CREATE TABLE Tasks (id INTEGER PRIMARY KEY, project_id INTEGER);",
+            "CREATE TABLE Projects (project_id INTEGER PRIMARY KEY, name TEXT);",
+        ]);
+        let from =
+            parse_from("SELECT * FROM Tasks t LEFT JOIN Projects p ON p.project_id = t.project_id");
+        let candidate = PrimaryKeyLookupCandidate::new(&schema_map, &from).unwrap();
+
+        assert!(candidate.contains(&qualified("t", "id")));
+    }
+
+    #[test]
     fn requires_an_installable_first_relation() {
         let schema_map = schema_map(&[
             "CREATE TABLE Tasks (id INTEGER PRIMARY KEY);",
@@ -237,9 +269,11 @@ mod tests {
         assert!(PrimaryKeyLookupCandidate::new(&schema_map, &from).is_none());
 
         let mut from = parse_from("SELECT * FROM Tasks");
-        let TableFactorPlan::Table { index, .. } = &mut from.relation else {
-            panic!("expected table relation");
-        };
+        let index = match &mut from.relation {
+            TableFactorPlan::Table { index, .. } => Some(index),
+            _ => None,
+        }
+        .expect("expected table relation");
         *index = Some(IndexItemPlan::PrimaryKey(ExprPlan::Literal(
             Literal::Number(1.into()),
         )));

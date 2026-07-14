@@ -506,21 +506,27 @@ mod tests {
             WHERE t.id = 1;
         ";
         let actual = plan(&storage, sql);
+        let select = match actual {
+            StatementPlan::Query(QueryPlan {
+                body: SetExprPlan::Select(select),
+                ..
+            }) => Some(select),
+            _ => None,
+        }
+        .expect("expected select plan");
+        let index = match &select.from.relation {
+            TableFactorPlan::Table { index, .. } => Some(index),
+            _ => None,
+        }
+        .expect("expected table relation");
+
         assert!(
-            matches!(
-                actual,
-                StatementPlan::Query(QueryPlan {
-                    body: SetExprPlan::Select(select),
-                    ..
-                }) if matches!(
-                    select.from.relation,
-                    TableFactorPlan::Table {
-                        index: Some(IndexItemPlan::PrimaryKey(_)),
-                        ..
-                    }
-                ) && select.selection.is_none()
-            ),
+            matches!(index, Some(IndexItemPlan::PrimaryKey(_))),
             "effective primary key alias should install a lookup:\n{sql}"
+        );
+        assert!(
+            select.selection.is_none(),
+            "effective primary key alias should remove the selection:\n{sql}"
         );
 
         let sql = "
