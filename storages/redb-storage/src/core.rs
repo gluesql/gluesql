@@ -1,12 +1,16 @@
 use {
     super::{
         error::StorageError,
+        index_sync::{delete_index_table, prepare_delete, prepare_insert, prepare_update},
         migration::{ensure_storage_format_version_supported, initialize_storage_format_version},
     },
     bincode::{deserialize, serialize},
-    gluesql_core::data::{Key, Schema, Value},
+    gluesql_core::{
+        data::{Key, Schema, Value},
+        error::IndexError,
+    },
     redb::{Database, ReadableTable, TableDefinition, WriteTransaction},
-    std::path::Path,
+    std::{collections::HashMap, path::Path},
     uuid::Uuid,
 };
 
@@ -58,7 +62,9 @@ impl StorageCore {
         })
     }
 
-    fn data_table_def(table_name: &str) -> Result<TableDefinition<'_, &'static [u8], Vec<u8>>> {
+    pub(super) fn data_table_def(
+        table_name: &str,
+    ) -> Result<TableDefinition<'_, &'static [u8], Vec<u8>>> {
         if matches!(table_name, SCHEMA_TABLE_NAME | STORAGE_META_TABLE_NAME) {
             return Err(StorageError::ReservedTableName(table_name.to_owned()));
         }
@@ -66,14 +72,14 @@ impl StorageCore {
         Ok(TableDefinition::new(table_name))
     }
 
-    fn txn(&self) -> Result<&WriteTransaction> {
+    pub(super) fn txn(&self) -> Result<&WriteTransaction> {
         match &self.state {
             TransactionState::Active { txn, .. } => Ok(txn),
             TransactionState::None => Err(StorageError::TransactionNotFound),
         }
     }
 
-    fn txn_mut(&mut self) -> Result<&mut WriteTransaction> {
+    pub(super) fn txn_mut(&mut self) -> Result<&mut WriteTransaction> {
         match &mut self.state {
             TransactionState::Active { txn, .. } => Ok(txn),
             TransactionState::None => Err(StorageError::TransactionNotFound),
@@ -85,6 +91,23 @@ impl StorageCore {
             TransactionState::Active { txn, .. } => Some(*txn),
             TransactionState::None => None,
         }
+    }
+
+    pub(super) fn explicit_txn(&self) -> Option<&WriteTransaction> {
+        match &self.state {
+            TransactionState::Active {
+                txn,
+                autocommit: false,
+            } => Some(txn),
+            TransactionState::Active {
+                autocommit: true, ..
+            }
+            | TransactionState::None => None,
+        }
+    }
+
+    pub(super) fn database(&self) -> &Database {
+        &self.db
     }
 }
 
@@ -187,55 +210,128 @@ impl StorageCore {
     }
 
     pub fn delete_schema(&mut self, table_name: &str) -> Result<()> {
+        let schema = self.fetch_schema(table_name)?;
         let table_def = Self::data_table_def(table_name)?;
         let txn = self.txn_mut()?;
+
+        if let Some(schema) = schema {
+            for index in schema.indexes {
+                delete_index_table(txn, table_name, &index.name).map_err(StorageError::from)?;
+            }
+        }
+
         let mut table = txn.open_table(SCHEMA_TABLE)?;
         table.remove(table_name)?;
+        drop(table);
         txn.delete_table(table_def)?;
 
         Ok(())
     }
 
     pub fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
+        let schema = self.fetch_schema(table_name)?.ok_or_else(|| {
+            StorageError::Glue(IndexError::ConflictTableNotFound(table_name.to_owned()).into())
+        })?;
+        let rows = rows
+            .into_iter()
+            .map(|row| {
+                let key = Key::Uuid(Uuid::now_v7().as_u128());
+                let table_key = key.to_cmp_be_bytes()?;
+
+                Ok((table_key, row, key))
+            })
+            .collect::<Result<Vec<_>>>()?;
+        let index_rows = rows
+            .iter()
+            .map(|(table_key, row, _)| (table_key.clone(), row.clone()))
+            .collect::<Vec<_>>();
+        let index_changes = prepare_insert(&schema, &index_rows).map_err(StorageError::from)?;
         let table_def = Self::data_table_def(table_name)?;
         let txn = self.txn_mut()?;
+        index_changes.apply(txn).map_err(StorageError::from)?;
         let mut table = txn.open_table(table_def)?;
 
-        for row in rows {
-            let key = Key::Uuid(Uuid::now_v7().as_u128());
+        for (table_key, row, key) in rows {
             let value = serialize(&(&key, row))?;
-            let table_key = key.to_cmp_be_bytes()?;
-            let table_key = table_key.as_slice();
-            table.insert(table_key, value)?;
+            table.insert(table_key.as_slice(), value)?;
         }
 
         Ok(())
     }
 
     pub fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
+        let schema = self.fetch_schema(table_name)?.ok_or_else(|| {
+            StorageError::Glue(IndexError::ConflictTableNotFound(table_name.to_owned()).into())
+        })?;
         let table_def = Self::data_table_def(table_name)?;
         let txn = self.txn_mut()?;
+        let table = txn.open_table(table_def)?;
+        let mut pending_rows: HashMap<Vec<u8>, Vec<Value>> = HashMap::new();
+        let rows = rows
+            .into_iter()
+            .map(|(key, row)| {
+                let table_key = key.to_cmp_be_bytes()?;
+                let old_row = if let Some(pending_row) = pending_rows.get(&table_key) {
+                    Some(pending_row.clone())
+                } else {
+                    table
+                        .get(table_key.as_slice())?
+                        .map(|value| deserialize(&value.value()))
+                        .transpose()?
+                        .map(|(_, row): (Key, Vec<Value>)| row)
+                };
+                pending_rows.insert(table_key.clone(), row.clone());
+
+                Ok((table_key, old_row, row, key))
+            })
+            .collect::<Result<Vec<_>>>()?;
+        drop(table);
+        let index_rows = rows
+            .iter()
+            .map(|(table_key, old_row, row, _)| (table_key.clone(), old_row.clone(), row.clone()))
+            .collect::<Vec<_>>();
+        let index_changes = prepare_update(&schema, &index_rows).map_err(StorageError::from)?;
+        index_changes.apply(txn).map_err(StorageError::from)?;
         let mut table = txn.open_table(table_def)?;
 
-        for (key, row) in rows {
+        for (table_key, _, row, key) in rows {
             let value = serialize(&(&key, row))?;
-            let table_key = key.to_cmp_be_bytes()?;
-            let table_key = table_key.as_slice();
-            table.insert(table_key, value)?;
+            table.insert(table_key.as_slice(), value)?;
         }
 
         Ok(())
     }
 
     pub fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
+        let schema = self.fetch_schema(table_name)?.ok_or_else(|| {
+            StorageError::Glue(IndexError::ConflictTableNotFound(table_name.to_owned()).into())
+        })?;
         let table_def = Self::data_table_def(table_name)?;
         let txn = self.txn_mut()?;
-        let mut table = txn.open_table(table_def)?;
+        let table = txn.open_table(table_def)?;
+        let mut table_keys = Vec::with_capacity(keys.len());
+        let mut index_rows = Vec::with_capacity(keys.len());
 
         for key in keys {
             let table_key = key.to_cmp_be_bytes()?;
-            let table_key = table_key.as_slice();
-            table.remove(table_key)?;
+            let old_row = table
+                .get(table_key.as_slice())?
+                .map(|value| deserialize(&value.value()))
+                .transpose()?
+                .map(|(_, row): (Key, Vec<Value>)| row);
+
+            if let Some(row) = old_row {
+                index_rows.push((table_key.clone(), row));
+            }
+            table_keys.push(table_key);
+        }
+        drop(table);
+        let index_changes = prepare_delete(&schema, &index_rows).map_err(StorageError::from)?;
+        index_changes.apply(txn).map_err(StorageError::from)?;
+        let mut table = txn.open_table(table_def)?;
+
+        for table_key in table_keys {
+            table.remove(table_key.as_slice())?;
         }
 
         Ok(())

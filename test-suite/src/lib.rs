@@ -465,6 +465,7 @@ macro_rules! generate_transaction_index_tests {
 
         glue!(transaction_index_create, transaction::index_create);
         glue!(transaction_index_drop, transaction::index_drop);
+        glue!(transaction_index_dml, transaction::index_dml);
     };
 }
 

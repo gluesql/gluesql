@@ -2,7 +2,11 @@
 
 mod core;
 mod error;
+mod index;
+mod index_mut;
+mod index_sync;
 mod migration;
+mod planner;
 
 pub use migration::{MigrationReport, REDB_STORAGE_FORMAT_VERSION, migrate_to_latest};
 
@@ -12,8 +16,8 @@ use {
         data::{Key, Schema, Value},
         error::Result,
         store::{
-            AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Planner,
-            RowIter, Store, StoreMut, Transaction,
+            AlterTable, CustomFunction, CustomFunctionMut, Metadata, RowIter, Store, StoreMut,
+            Transaction,
         },
     },
     redb::Database,
@@ -89,9 +93,6 @@ impl Transaction for RedbStorage {
 }
 
 impl AlterTable for RedbStorage {}
-impl Index for RedbStorage {}
-impl IndexMut for RedbStorage {}
 impl Metadata for RedbStorage {}
 impl CustomFunction for RedbStorage {}
 impl CustomFunctionMut for RedbStorage {}
-impl Planner for RedbStorage {}
