@@ -181,7 +181,7 @@ mod tests {
             data::Schema,
             parse_sql::parse,
             plan::{
-                ExprPlan, IndexItemPlan, SetExprPlan, StatementPlan, TableFactorPlan,
+                ExprPlan, IndexItemPlan, QueryPlan, SetExprPlan, StatementPlan, TableFactorPlan,
                 TableWithJoinsPlan,
             },
             translate::translate,
@@ -203,7 +203,7 @@ mod tests {
         let parsed = parse(sql).unwrap().into_iter().next().unwrap();
         let statement = StatementPlan::from(translate(&parsed).unwrap());
         match statement {
-            StatementPlan::Query(query) => match query.body {
+            StatementPlan::Query(QueryPlan::Body(body)) => match body {
                 SetExprPlan::Select(select) => Some(select.from),
                 SetExprPlan::Values(_) => None,
             },

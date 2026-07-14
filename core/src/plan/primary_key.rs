@@ -294,10 +294,7 @@ mod tests {
 
     fn try_select(statement: StatementPlan) -> Option<Box<SelectPlan>> {
         match statement {
-            StatementPlan::Query(QueryPlan {
-                body: SetExprPlan::Select(select),
-                ..
-            }) => Some(select),
+            StatementPlan::Query(QueryPlan::Body(SetExprPlan::Select(select))) => Some(select),
             _ => None,
         }
     }
@@ -458,10 +455,8 @@ mod tests {
         assert!(
             matches!(
                 actual,
-                StatementPlan::Query(QueryPlan {
-                    body: SetExprPlan::Select(select_plan),
-                    ..
-                }) if select_plan.from.relation == expected_relation
+                StatementPlan::Query(QueryPlan::Body(SetExprPlan::Select(select_plan)))
+                    if select_plan.from.relation == expected_relation
                     && select_plan.selection.is_none()
             ),
             "aliased primary key should be installed and removed from selection:\n{sql}"
