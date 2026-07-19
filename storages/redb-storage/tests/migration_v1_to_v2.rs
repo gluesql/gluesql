@@ -139,6 +139,13 @@ fn read_storage_format_version(path: &str) -> Option<u32> {
     }
 }
 
+fn assert_redb_file_format_v3(path: &str) {
+    let mut db = Database::open(path).expect("open database");
+    let upgraded = db.upgrade().expect("check redb file format");
+
+    assert!(!upgraded, "database should already use redb file format v3");
+}
+
 #[test]
 fn store_methods_without_transaction_return_transaction_not_found() {
     let path = test_path("redb-transaction-not-found");
@@ -170,6 +177,7 @@ fn new_storage_initializes_format_version() {
         read_storage_format_version(&path),
         Some(REDB_STORAGE_FORMAT_VERSION),
     );
+    assert_redb_file_format_v3(&path);
 
     remove_path(&path);
 }
@@ -190,7 +198,7 @@ fn v1_storage_requires_migration() {
     assert_eq!(
         err,
         Error::StorageMsg(
-            "[RedbStorage] migration required (found v1, expected v2); migrate redb-storage data to the latest format before opening"
+            "[RedbStorage] migration required (found v1, expected v3); migrate redb-storage data to the latest format before opening"
                 .to_owned(),
         ),
     );
@@ -199,8 +207,8 @@ fn v1_storage_requires_migration() {
 }
 
 #[test]
-fn v1_to_v2_migration_rewrites_rows_and_is_idempotent() {
-    let path = test_path("redb-v1-to-v2");
+fn v1_to_v3_migration_rewrites_rows_and_is_idempotent() {
+    let path = test_path("redb-v1-to-v3");
     write_v1_storage(
         &path,
         "Foo",
@@ -221,6 +229,7 @@ fn v1_to_v2_migration_rewrites_rows_and_is_idempotent() {
         read_storage_format_version(&path),
         Some(REDB_STORAGE_FORMAT_VERSION),
     );
+    assert_redb_file_format_v3(&path);
 
     let rows = read_v2_rows(&path, "Foo");
     assert!(rows.iter().any(|(key, row)| {
@@ -446,11 +455,11 @@ fn invalid_v1_row_payload_returns_error() {
 }
 
 #[test]
-fn migrate_v2_storage_without_schema_table_is_unchanged() {
-    let path = test_path("redb-v2-without-schema-table");
+fn migrate_v3_storage_without_schema_table_is_unchanged() {
+    let path = test_path("redb-v3-without-schema-table");
     RedbStorage::new(&path).expect("new storage");
 
-    let report = migrate_to_latest(&path).expect("migrate v2 storage without schema table");
+    let report = migrate_to_latest(&path).expect("migrate v3 storage without schema table");
     assert_eq!(report.migrated_tables, 0);
     assert_eq!(report.unchanged_tables, 0);
     assert_eq!(report.rewritten_rows, 0);
