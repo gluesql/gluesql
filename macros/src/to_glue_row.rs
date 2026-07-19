@@ -30,6 +30,7 @@ pub(crate) fn expand_to_glue_row(
         }
     };
 
+    let mut seen_columns: Vec<String> = Vec::new();
     let mut column_names = Vec::new();
     let mut field_literals = Vec::new();
 
@@ -48,6 +49,13 @@ pub(crate) fn expand_to_glue_row(
             }
         }
         let column_name = rename.unwrap_or_else(|| field_name_literal.clone());
+        if seen_columns.contains(&column_name) {
+            return Err(syn::Error::new(
+                field.span(),
+                format!("duplicate column name `{column_name}`"),
+            ));
+        }
+        seen_columns.push(column_name.clone());
         column_names.push(quote! { #column_name });
 
         field_literals.push(quote! {
@@ -113,6 +121,19 @@ mod tests {
             }
         };
         let _ = expand_to_glue_row(di).expect("expand ok");
+    }
+
+    #[test]
+    fn duplicate_column_name_returns_error() {
+        let di: syn::DeriveInput = parse_quote! {
+            struct S {
+                value: i64,
+                #[glue(rename = "value")]
+                previous_value: i64,
+            }
+        };
+        let err = expand_to_glue_row(di).unwrap_err();
+        assert!(err.to_string().contains("duplicate column name `value`"));
     }
 
     #[test]
