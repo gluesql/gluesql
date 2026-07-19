@@ -2,7 +2,7 @@
 
 RedbStorage allows GlueSQL to persist data using the [redb](https://github.com/cberner/redb) embedded key-value database. It provides ACID transactions, fast single-file access, and a stable API.
 
-RedbStorage implements GlueSQL's `Store`, `StoreMut`, and `Transaction` traits.
+RedbStorage implements GlueSQL's `Store`, `StoreMut`, `Index`, `IndexMut`, and `Transaction` traits. Non-clustered indexes are stored in Redb multimap tables and participate in the same transaction as their table data and schema metadata.
 
 ## Example
 
