@@ -1,0 +1,23 @@
+error[E0277]: the trait bound `T: Clone` is not satisfied
+ --> tests/compile-fail/to_glue_row_missing_bounds.rs:8:10
+  |
+8 | #[derive(ToGlueRow)]
+  |          ^^^^^^^^^ the trait `Clone` is not implemented for `T`
+  |
+  = note: this error originates in the derive macro `ToGlueRow` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider restricting type parameter `T` with trait `Clone`
+  |
+9 | struct Record<T: std::clone::Clone> {
+  |                +++++++++++++++++++
+
+error[E0277]: the trait bound `T: IntoParamLiteral` is not satisfied
+ --> tests/compile-fail/to_glue_row_missing_bounds.rs:8:10
+  |
+8 | #[derive(ToGlueRow)]
+  |          ^^^^^^^^^ the trait `IntoParamLiteral` is not implemented for `T`
+  |
+  = note: this error originates in the derive macro `ToGlueRow` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider restricting type parameter `T` with trait `IntoParamLiteral`
+  |
+9 | struct Record<T: gluesql_core::translate::IntoParamLiteral> {
+  |                +++++++++++++++++++++++++++++++++++++++++++
