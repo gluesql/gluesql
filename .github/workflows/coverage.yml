@@ -3,8 +3,6 @@ name: Coverage
 on:
   push:
     branches: [main, release-*]
-    paths-ignore:
-      - "docs/**"
   pull_request:
     branches: [main]
     paths-ignore:

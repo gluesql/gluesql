@@ -1,22 +1,14 @@
 use {
     gluesql_core::{
         ast::*,
-        parse_sql::parse_expr,
         plan::{IndexItemPlan, StatementPlan},
-        prelude::{Error, Glue, Payload, Result, parse, translate},
+        prelude::{Glue, Payload, Result},
         store::{GStore, GStoreMut, Planner},
-        translate::translate_expr,
     },
     pretty_assertions::assert_eq,
 };
 
 pub mod macros;
-
-pub fn expr(sql: &str) -> Expr {
-    let parsed = parse_expr(sql).unwrap();
-
-    translate_expr(&parsed, &[]).unwrap()
-}
 
 pub fn test_indexes(statement: &StatementPlan, indexes: Option<Vec<IndexItemPlan>>) {
     if let Some(expected) = indexes {
@@ -126,67 +118,6 @@ pub trait Tester<T: GStore + GStoreMut + Planner> {
     fn new(namespace: &str) -> Self;
 
     fn get_glue(&mut self) -> &mut Glue<T>;
-
-    fn run_inner(&mut self, sql: &str) -> Result<Payload> {
-        let glue = self.get_glue();
-
-        println!("[RUN] {sql}");
-        let parsed = parse(sql)?;
-        let statement = translate(&parsed[0])?;
-        let statement = glue.storage.plan(statement.into())?;
-
-        glue.execute_stmt(&statement)
-    }
-
-    fn run(&mut self, sql: &str) -> Payload {
-        self.run_inner(sql).unwrap()
-    }
-
-    fn run_err(&mut self, sql: &str) -> Error {
-        self.run_inner(sql).unwrap_err()
-    }
-
-    fn count(&mut self, sql: &str, expected: usize) {
-        let actual = match self.run_inner(sql).unwrap() {
-            Payload::Select { rows, .. } => rows.len(),
-            Payload::Delete(num) | Payload::Update(num) => num,
-            _ => panic!("compare is only for Select, Delete and Update"),
-        };
-
-        assert_eq!(actual, expected, "[COUNT] {sql}");
-    }
-
-    fn type_match(&mut self, sql: &str, expected: &[DataType]) {
-        let actual = self.run_inner(sql).unwrap();
-
-        type_match(expected, Ok(actual));
-    }
-
-    fn test(&mut self, sql: &str, expected: Result<Payload>) {
-        let actual = self.run_inner(sql);
-
-        assert_eq!(actual, expected, "[TEST] {sql}");
-    }
-
-    fn named_test(&mut self, name: &str, sql: &str, expected: Result<Payload>) {
-        let actual = self.run_inner(sql);
-
-        assert_eq!(actual, expected, "[TEST] {name}");
-    }
-
-    fn test_idx(&mut self, sql: &str, expected: Result<Payload>, indexes: Vec<IndexItemPlan>) {
-        let glue = self.get_glue();
-
-        let parsed = parse(sql).unwrap();
-        let statement = translate(&parsed[0]).unwrap();
-        let statement = glue.storage.plan(statement.into()).unwrap();
-
-        test_indexes(&statement, Some(indexes));
-
-        let actual = glue.execute_stmt(&statement);
-
-        assert_eq!(actual, expected, "[TEST IDX] {sql}");
-    }
 }
 
 #[macro_export]
@@ -205,13 +136,6 @@ macro_rules! test_case {
             macro_rules! get_glue {
                 () => {
                     glue
-                };
-            }
-
-            #[allow(unused_macros)]
-            macro_rules! get_tester {
-                () => {
-                    &mut tester
                 };
             }
 
