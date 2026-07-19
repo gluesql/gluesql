@@ -18,4 +18,7 @@ pub enum QueryBuilderError {
 
     #[error("values_from requires at least one row")]
     ValuesFromRequiresRows,
+
+    #[error("values_from row has {found} values but {expected} columns are declared")]
+    ValuesFromColumnCountMismatch { expected: usize, found: usize },
 }

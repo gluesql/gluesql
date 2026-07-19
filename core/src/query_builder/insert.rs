@@ -51,13 +51,22 @@ impl InsertNode {
         let values = rows
             .iter()
             .map(|row| {
-                row.to_glue_row()
+                let literals = row.to_glue_row();
+                if literals.len() != columns.len() {
+                    return Err(QueryBuilderError::ValuesFromColumnCountMismatch {
+                        expected: columns.len(),
+                        found: literals.len(),
+                    }
+                    .into());
+                }
+
+                Ok(literals
                     .into_iter()
                     .map(|literal| ExprNode::Expr(Cow::Owned(literal.into_expr())))
                     .collect::<Vec<_>>()
-                    .into()
+                    .into())
             })
-            .collect();
+            .collect::<Result<_>>()?;
 
         Ok(InsertSourceNode {
             insert_node: self.columns(columns),
@@ -211,6 +220,34 @@ mod tests {
         let actual = table("Foo").insert().values_from::<Item>(&[]).map(|_| ());
         let expected = Err(Error::QueryBuilder(
             QueryBuilderError::ValuesFromRequiresRows,
+        ));
+        pretty_assertions::assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn insert_values_from_rejects_column_count_mismatch() {
+        struct Mismatched;
+
+        impl ToGlueRow for Mismatched {
+            fn glue_columns() -> &'static [&'static str] {
+                static COLUMNS: [&str; 2] = ["id", "name"];
+                &COLUMNS
+            }
+
+            fn to_glue_row(&self) -> Vec<ParamLiteral> {
+                vec![1_i64.into_param_literal()]
+            }
+        }
+
+        let actual = table("Foo")
+            .insert()
+            .values_from(&[Mismatched])
+            .map(|_| ());
+        let expected = Err(Error::QueryBuilder(
+            QueryBuilderError::ValuesFromColumnCountMismatch {
+                expected: 2,
+                found: 1,
+            },
         ));
         pretty_assertions::assert_eq!(actual, expected);
     }
