@@ -13,16 +13,12 @@ use {
     std::{
         collections::BTreeMap,
         fs::{create_dir_all, remove_dir_all, remove_file, write},
-        io::{self, ErrorKind},
         path::{Path, PathBuf},
-        thread,
-        time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+        time::{SystemTime, UNIX_EPOCH},
     },
 };
 
 const STORAGE_FORMAT_VERSION_KEY: &str = "__GLUESQL_STORAGE_FORMAT_VERSION__";
-const LOCK_WAIT_TIMEOUT: Duration = Duration::from_secs(1);
-const LOCK_WAIT_INTERVAL: Duration = Duration::from_millis(10);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct V1SnapshotItem<T> {
@@ -83,107 +79,20 @@ fn data_key(table_name: &str, key: Vec<u8>) -> Vec<u8> {
         .collect()
 }
 
-fn open_sled(path: &Path) -> Db {
+fn create_sled(path: &Path) -> Db {
+    sled::Config::new()
+        .path(path)
+        .flush_every_ms(None)
+        .open()
+        .expect("create sled")
+}
+
+fn open_migrated_sled(path: &Path) -> Db {
     let config = sled::Config::new().path(path).flush_every_ms(None);
 
-    open_sled_with_lock_wait_by(
-        || config.open(),
-        Instant::now,
-        thread::sleep,
-        LOCK_WAIT_TIMEOUT,
-        LOCK_WAIT_INTERVAL,
-    )
-}
-
-fn open_sled_with_lock_wait_by<T>(
-    mut open: impl FnMut() -> sled::Result<T>,
-    mut now: impl FnMut() -> Instant,
-    mut sleep: impl FnMut(Duration),
-    timeout: Duration,
-    interval: Duration,
-) -> T {
-    let started_at = now();
-
-    loop {
-        match open() {
-            Ok(tree) => return tree,
-            Err(sled::Error::Io(error))
-                if error.kind() == ErrorKind::Other
-                    && error.to_string().starts_with("could not acquire lock on ") =>
-            {
-                let remaining = timeout.saturating_sub(now().duration_since(started_at));
-                assert!(
-                    !remaining.is_zero(),
-                    "open sled: timed out after {} ms waiting for the database lock: {error}",
-                    timeout.as_millis(),
-                );
-                sleep(interval.min(remaining));
-            }
-            Err(error) => panic!("open sled: {error}"),
-        }
-    }
-}
-
-fn lock_error() -> sled::Error {
-    sled::Error::Io(io::Error::other(
-        "could not acquire lock on \"db\": Resource temporarily unavailable",
-    ))
-}
-
-#[test]
-fn open_sled_waits_for_lock_release() {
-    let mut attempts = 0;
-    let started_at = Instant::now();
-    let mut now = [started_at, started_at].into_iter();
-    let mut sleeps = Vec::new();
-
-    let actual = open_sled_with_lock_wait_by(
-        || {
-            attempts += 1;
-            if attempts == 1 {
-                Err(lock_error())
-            } else {
-                Ok(7)
-            }
-        },
-        || now.next().expect("current time"),
-        |duration| sleeps.push(duration),
-        Duration::from_secs(1),
-        Duration::from_millis(10),
-    );
-
-    assert_eq!(actual, 7);
-    assert_eq!(attempts, 2);
-    assert_eq!(sleeps, [Duration::from_millis(10)]);
-}
-
-#[test]
-#[should_panic(expected = "timed out after 20 ms waiting for the database lock")]
-fn open_sled_panics_after_lock_timeout() {
-    let started_at = Instant::now();
-    let mut now = [started_at, started_at + Duration::from_millis(20)].into_iter();
-
-    open_sled_with_lock_wait_by(
-        || Err::<(), _>(lock_error()),
-        || now.next().expect("current time"),
-        thread::sleep,
-        Duration::from_millis(20),
-        Duration::from_millis(10),
-    );
-}
-
-#[test]
-#[should_panic(expected = "open sled: Unsupported: invalid config")]
-fn open_sled_panics_on_non_lock_error() {
-    let now = Instant::now();
-
-    open_sled_with_lock_wait_by(
-        || Err::<(), _>(sled::Error::Unsupported("invalid config".to_owned())),
-        || now,
-        thread::sleep,
-        Duration::from_secs(1),
-        Duration::from_millis(10),
-    );
+    SledStorage::try_from(config)
+        .expect("open migrated sled")
+        .tree
 }
 
 fn write_schema_snapshot(tree: &Db, schema: Schema) {
@@ -213,7 +122,7 @@ fn write_v2_data_snapshot(tree: &Db, table_name: &str, key: Vec<u8>, row: Vec<Va
 }
 
 fn write_storage_format_version(path: &Path, version_bytes: &[u8]) {
-    let tree = open_sled(path);
+    let tree = create_sled(path);
     tree.insert(STORAGE_FORMAT_VERSION_KEY, version_bytes)
         .expect("insert version");
     tree.flush().expect("flush version");
@@ -221,7 +130,7 @@ fn write_storage_format_version(path: &Path, version_bytes: &[u8]) {
 
 fn setup_v1_storage(path: &Path) -> BTreeMap<String, Value> {
     let _ = remove_dir_all(path);
-    let tree = open_sled(path);
+    let tree = create_sled(path);
 
     let user_schema = Schema {
         table_name: "User".to_owned(),
@@ -335,7 +244,7 @@ fn migrate_v1_to_v2_rewrites_rows_and_sets_version() {
         }
     );
 
-    let tree = open_sled(&path);
+    let tree = open_migrated_sled(&path);
     assert_eq!(
         read_storage_format_version(&tree),
         SLED_STORAGE_FORMAT_VERSION
@@ -474,7 +383,7 @@ fn migrate_rejects_file_path() {
 fn migrate_v1_to_v2_supports_all_v1_snapshot_shapes() {
     let path = test_path("sled-migration-v1-shapes");
     let _ = remove_dir_all(&path);
-    let tree = open_sled(&path);
+    let tree = create_sled(&path);
 
     write_schema_snapshot(
         &tree,
@@ -535,7 +444,7 @@ fn migrate_v1_to_v2_supports_all_v1_snapshot_shapes() {
         }
     );
 
-    let tree = open_sled(&path);
+    let tree = open_migrated_sled(&path);
     assert_eq!(
         read_row_snapshot(
             &tree,
@@ -585,7 +494,7 @@ fn migrate_v1_to_v2_supports_all_v1_snapshot_shapes() {
 fn migrate_v1_storage_without_data_rows() {
     let path = test_path("sled-migration-without-data-rows");
     let _ = remove_dir_all(&path);
-    let tree = open_sled(&path);
+    let tree = create_sled(&path);
 
     write_schema_snapshot(
         &tree,
@@ -617,7 +526,7 @@ fn migrate_v1_storage_without_data_rows() {
             rewritten_rows: 0,
         }
     );
-    let tree = open_sled(&path);
+    let tree = open_migrated_sled(&path);
     assert_eq!(
         read_storage_format_version(&tree),
         SLED_STORAGE_FORMAT_VERSION
@@ -631,7 +540,7 @@ fn migrate_v1_storage_without_data_rows() {
 fn migrate_rejects_invalid_v1_row_snapshot_payload() {
     let path = test_path("sled-migration-invalid-v1-row-snapshot");
     let _ = remove_dir_all(&path);
-    let tree = open_sled(&path);
+    let tree = create_sled(&path);
     write_schema_snapshot(
         &tree,
         Schema {
@@ -664,7 +573,7 @@ fn migrate_rejects_invalid_v1_row_snapshot_payload() {
 fn migrate_v2_storage_with_invalid_schema_snapshot_is_rejected() {
     let path = test_path("sled-v2-invalid-schema-snapshot");
     let _ = remove_dir_all(&path);
-    let tree = open_sled(&path);
+    let tree = create_sled(&path);
 
     tree.insert(
         STORAGE_FORMAT_VERSION_KEY,
