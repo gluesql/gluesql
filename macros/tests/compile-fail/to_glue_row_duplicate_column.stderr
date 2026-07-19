@@ -1,0 +1,11 @@
+error: duplicate column name `value`
+ --> tests/compile-fail/to_glue_row_duplicate_column.rs:6:5
+  |
+6 |     #[glue(rename = "value")]
+  |     ^
+
+error[E0601]: `main` function not found in crate `$CRATE`
+ --> tests/compile-fail/to_glue_row_duplicate_column.rs:8:2
+  |
+8 | }
+  |  ^ consider adding a `main` function to `$DIR/tests/compile-fail/to_glue_row_duplicate_column.rs`

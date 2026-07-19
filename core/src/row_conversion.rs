@@ -51,6 +51,11 @@ pub trait FromGlueRow: Sized {
     ) -> Result<Self, RowConversionError>;
 }
 
+pub trait ToGlueRow {
+    fn glue_columns() -> &'static [&'static str];
+    fn to_glue_row(&self) -> Vec<crate::translate::ParamLiteral>;
+}
+
 pub trait SelectExt {
     fn rows_as<T: FromGlueRow>(self) -> Result<Vec<T>, RowConversionError>;
     fn one_as<T: FromGlueRow>(self) -> Result<T, RowConversionError>;
