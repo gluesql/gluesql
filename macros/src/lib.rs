@@ -976,8 +976,55 @@ fn match_expected(
 
 #[cfg(test)]
 mod tests {
-    use super::expand_from_glue_row;
+    use super::{expand_from_glue_row, expand_to_glue_row};
     use syn::parse_quote;
+
+    #[test]
+    fn to_glue_row_non_struct_input_returns_error() {
+        let di: syn::DeriveInput = parse_quote! {
+            enum E { A }
+        };
+        let err = expand_to_glue_row(di).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("ToGlueRow can only be derived for structs")
+        );
+    }
+
+    #[test]
+    fn to_glue_row_non_named_fields_struct_returns_error() {
+        let di: syn::DeriveInput = parse_quote! {
+            struct T(i32);
+        };
+        let err = expand_to_glue_row(di).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("ToGlueRow supports only named fields")
+        );
+    }
+
+    #[test]
+    fn to_glue_row_glue_rename_ok_some_and_ok_none() {
+        let di: syn::DeriveInput = parse_quote! {
+            struct S {
+                #[glue(rename = "col")] a: i64,
+                #[glue(other = "x")] b: String,
+            }
+        };
+        let _ = expand_to_glue_row(di).expect("expand ok");
+    }
+
+    #[test]
+    fn to_glue_row_glue_rename_wrong_literal_type() {
+        let di: syn::DeriveInput = parse_quote! {
+            struct S { #[glue(rename = 123)] a: i64 }
+        };
+        let err = expand_to_glue_row(di).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("expected string literal for rename")
+        );
+    }
 
     #[test]
     fn non_struct_input_returns_error() {
