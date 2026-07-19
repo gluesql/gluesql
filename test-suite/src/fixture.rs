@@ -940,6 +940,9 @@ fn parse_data_type(value: &str) -> DataType {
 }
 
 #[cfg(test)]
+mod registration;
+
+#[cfg(test)]
 mod tests {
     use {
         super::*,
