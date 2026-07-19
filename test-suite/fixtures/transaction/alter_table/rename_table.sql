@@ -1,32 +1,32 @@
 CREATE TABLE RenameTable (id INTEGER);
--- expect: ok
+-- @expect: ok
 
 INSERT INTO RenameTable VALUES (1);
--- expect: ok
+-- @expect: ok
 
 BEGIN;
--- expect: ok
+-- @expect: ok
 
 ALTER TABLE RenameTable RENAME TO NewName;
--- expect: ok
+-- @expect: ok
 
 SELECT * FROM RenameTable
--- expect: error Fetch.TableNotFound
--- "RenameTable"
+-- @expect: error Fetch.TableNotFound
+-- @json: "RenameTable"
 
 SELECT * FROM NewName
--- expect:
+-- @expect:
 -- | id: I64 |
 -- | 1       |
 
 ROLLBACK;
--- expect: ok
+-- @expect: ok
 
 SELECT * FROM NewName
--- expect: error Fetch.TableNotFound
--- "NewName"
+-- @expect: error Fetch.TableNotFound
+-- @json: "NewName"
 
 SELECT * FROM RenameTable
--- expect:
+-- @expect:
 -- | id: I64 |
 -- | 1       |

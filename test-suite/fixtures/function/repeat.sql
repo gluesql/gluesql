@@ -1,17 +1,18 @@
 CREATE TABLE Item (name TEXT DEFAULT REPEAT('hello', 2))
--- expect: payload Create
+-- @expect: payload Create
 
 INSERT INTO Item VALUES ('hello')
--- expect: payload Insert
--- 1
+-- @expect: payload Insert
+-- @json: 1
 
 SELECT REPEAT(name, 2) AS test FROM Item
--- expect:
+-- @expect:
 -- | test: Str    |
 -- | "hellohello" |
 
 SELECT REPEAT('abcd') AS test FROM Item
--- expect: error Translate.FunctionArgsLengthNotMatching
+-- @expect: error Translate.FunctionArgsLengthNotMatching
+-- @json:
 -- {
 --   "expected": 2,
 --   "found": 1,
@@ -19,7 +20,8 @@ SELECT REPEAT('abcd') AS test FROM Item
 -- }
 
 SELECT REPEAT('abcd', 2, 2) AS test FROM Item
--- expect: error Translate.FunctionArgsLengthNotMatching
+-- @expect: error Translate.FunctionArgsLengthNotMatching
+-- @json:
 -- {
 --   "expected": 2,
 --   "found": 3,
@@ -27,22 +29,22 @@ SELECT REPEAT('abcd', 2, 2) AS test FROM Item
 -- }
 
 SELECT REPEAT(1, 1) AS test FROM Item
--- expect: error Evaluate.FunctionRequiresStringValue
--- "REPEAT"
+-- @expect: error Evaluate.FunctionRequiresStringValue
+-- @json: "REPEAT"
 
 SELECT REPEAT(name, null) AS test FROM Item
--- expect:
+-- @expect:
 -- | test |
 -- | NULL |
 
 CREATE TABLE NullTest (name TEXT null)
--- expect: payload Create
+-- @expect: payload Create
 
 INSERT INTO NullTest VALUES (null)
--- expect: payload Insert
--- 1
+-- @expect: payload Insert
+-- @json: 1
 
 SELECT REPEAT(name, 2) AS test FROM NullTest
--- expect:
+-- @expect:
 -- | test |
 -- | NULL |

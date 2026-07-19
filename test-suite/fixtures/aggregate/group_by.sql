@@ -4,7 +4,7 @@ CREATE TABLE Item (
     city TEXT,
     ratio FLOAT
 );
--- expect: ok
+-- @expect: ok
 
 INSERT INTO Item (id, quantity, city, ratio) VALUES
     (1,   10,   'Seoul',  0.2),
@@ -13,10 +13,10 @@ INSERT INTO Item (id, quantity, city, ratio) VALUES
     (3,   30, 'Daejeon',  0.2),
     (4,   11,   'Seoul',  1.1),
     (5,   24, 'Seattle', 6.11);
--- expect: ok
+-- @expect: ok
 
 SELECT id, COUNT(*) FROM Item GROUP BY id
--- expect:
+-- @expect:
 -- | id: I64 | COUNT(*): I64 |
 -- | 1       | 1             |
 -- | 2       | 1             |
@@ -25,7 +25,7 @@ SELECT id, COUNT(*) FROM Item GROUP BY id
 -- | 5       | 1             |
 
 SELECT id FROM Item GROUP BY id
--- expect:
+-- @expect:
 -- | id: I64 |
 -- | 1       |
 -- | 2       |
@@ -34,7 +34,7 @@ SELECT id FROM Item GROUP BY id
 -- | 5       |
 
 SELECT SUM(quantity), COUNT(*), city FROM Item GROUP BY city
--- expect:
+-- @expect:
 -- | SUM(quantity): I64 | COUNT(*): I64 | city: Str |
 -- | 21                 | 2             | "Seoul"   |
 -- | 0                  | 1             | "Dhaka"   |
@@ -43,7 +43,7 @@ SELECT SUM(quantity), COUNT(*), city FROM Item GROUP BY city
 -- | 24                 | 1             | "Seattle" |
 
 SELECT id, city FROM Item GROUP BY city
--- expect:
+-- @expect:
 -- | id: I64 | city: Str |
 -- | 1       | "Seoul"   |
 -- | 2       | "Dhaka"   |
@@ -52,14 +52,14 @@ SELECT id, city FROM Item GROUP BY city
 -- | 5       | "Seattle" |
 
 SELECT ratio, COUNT(*) FROM Item GROUP BY ratio
--- expect:
+-- @expect:
 -- | ratio: F64 | COUNT(*): I64 |
 -- | 0.2        | 2             |
 -- | 6.11       | 2             |
 -- | 1.1        | 2             |
 
 SELECT ratio FROM Item GROUP BY id, city
--- expect:
+-- @expect:
 -- | ratio: F64 |
 -- | 0.2        |
 -- | 6.11       |
@@ -69,28 +69,28 @@ SELECT ratio FROM Item GROUP BY id, city
 -- | 6.11       |
 
 SELECT id, ratio FROM Item GROUP BY id, city HAVING ratio > 6
--- expect:
+-- @expect:
 -- | id: I64 | ratio: F64 |
 -- | 2       | 6.11       |
 -- | 5       | 6.11       |
 
 SELECT SUM(quantity), COUNT(*), city FROM Item GROUP BY city HAVING COUNT(*) > 1
--- expect:
+-- @expect:
 -- | SUM(quantity): I64 | COUNT(*): I64 | city: Str |
 -- | 21                 | 2             | "Seoul"   |
 
 SELECT city FROM Item GROUP BY city HAVING COALESCE(COUNT(*), 0) > 1
--- expect:
+-- @expect:
 -- | city: Str |
 -- | "Seoul"   |
 
 CREATE TABLE Sub (id INTEGER);
--- expect: ok
+-- @expect: ok
 
 INSERT INTO Sub VALUES (101), (102), (103), (104), (105);
--- expect: ok
+-- @expect: ok
 
--- name: HAVING - nested select context handling edge case
+-- @name: HAVING - nested select context handling edge case
 SELECT id
 FROM Sub
 WHERE (id - 100) IN (
@@ -99,7 +99,7 @@ WHERE (id - 100) IN (
     GROUP BY id
     HAVING id <= 3
 )
--- expect:
+-- @expect:
 -- | id: I64 |
 -- | 101     |
 -- | 102     |

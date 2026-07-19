@@ -4,7 +4,7 @@ CREATE TABLE Item (
     age INTEGER NULL,
     total INTEGER
 );
--- expect: ok
+-- @expect: ok
 
 INSERT INTO Item (id, quantity, age, total) VALUES
     (1, 10,   11, 1),
@@ -12,34 +12,34 @@ INSERT INTO Item (id, quantity, age, total) VALUES
     (3,  9, NULL, 3),
     (4,  3,    3, 1),
     (5, 25, NULL, 1);
--- expect: ok
+-- @expect: ok
 
 SELECT MAX(age) FROM Item
--- expect:
+-- @expect:
 -- | MAX(age): I64 |
 -- | 90            |
 
 SELECT MAX(id), MAX(quantity) FROM Item
--- expect:
+-- @expect:
 -- | MAX(id): I64 | MAX(quantity): I64 |
 -- | 5            | 25                 |
 
 SELECT MAX(id - quantity) FROM Item;
--- expect:
+-- @expect:
 -- | MAX(id - quantity): I64 |
 -- | 2                       |
 
 SELECT SUM(quantity) * 2 + MAX(quantity) - 3 / 1 FROM Item
--- expect:
+-- @expect:
 -- | SUM(quantity) * 2 + MAX(quantity) - 3 / 1: I64 |
 -- | 116                                            |
 
 SELECT MAX(DISTINCT id) FROM Item
--- expect:
+-- @expect:
 -- | MAX(DISTINCT id): I64 |
 -- | 5                     |
 
 SELECT MAX(DISTINCT age) FROM Item
--- expect:
+-- @expect:
 -- | MAX(DISTINCT age): I64 |
 -- | 90                     |

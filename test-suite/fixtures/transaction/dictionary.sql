@@ -1,51 +1,56 @@
 CREATE TABLE Garlic (id INTEGER);
--- expect: ok
+-- @expect: ok
 
 SHOW TABLES;
--- expect: payload ShowVariable.Tables
+-- @expect: payload ShowVariable.Tables
+-- @json:
 -- [
 --   "Garlic"
 -- ]
 
 BEGIN;
--- expect: ok
+-- @expect: ok
 
 SHOW TABLES;
--- expect: payload ShowVariable.Tables
+-- @expect: payload ShowVariable.Tables
+-- @json:
 -- [
 --   "Garlic"
 -- ]
 
 CREATE TABLE Noodle (id INTEGER);
--- expect: ok
+-- @expect: ok
 
 SHOW TABLES;
--- expect: payload ShowVariable.Tables
+-- @expect: payload ShowVariable.Tables
+-- @json:
 -- [
 --   "Garlic",
 --   "Noodle"
 -- ]
 
 ROLLBACK;
--- expect: ok
+-- @expect: ok
 
 SHOW TABLES;
--- expect: payload ShowVariable.Tables
+-- @expect: payload ShowVariable.Tables
+-- @json:
 -- [
 --   "Garlic"
 -- ]
 
 BEGIN;
--- expect: ok
+-- @expect: ok
 
 CREATE TABLE Apple (id INTEGER);
--- expect: ok
+-- @expect: ok
 
 CREATE TABLE Rice (id INTEGER);
--- expect: ok
+-- @expect: ok
 
 SHOW TABLES;
--- expect: payload ShowVariable.Tables
+-- @expect: payload ShowVariable.Tables
+-- @json:
 -- [
 --   "Apple",
 --   "Garlic",
@@ -53,10 +58,11 @@ SHOW TABLES;
 -- ]
 
 COMMIT;
--- expect: ok
+-- @expect: ok
 
 SHOW TABLES;
--- expect: payload ShowVariable.Tables
+-- @expect: payload ShowVariable.Tables
+-- @json:
 -- [
 --   "Apple",
 --   "Garlic",

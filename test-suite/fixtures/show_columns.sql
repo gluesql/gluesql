@@ -13,10 +13,11 @@ CREATE TABLE mytable (
     hash   Map,
     glist  List
 );
--- expect: ok
+-- @expect: ok
 
 Show columns from mytable
--- expect: payload ShowColumns
+-- @expect: payload ShowColumns
+-- @json:
 -- [
 --   [
 --     "id8",
@@ -73,5 +74,5 @@ Show columns from mytable
 -- ]
 
 Show columns from mytable1
--- expect: error Execute.TableNotFound
--- "mytable1"
+-- @expect: error Execute.TableNotFound
+-- @json: "mytable1"

@@ -4,7 +4,7 @@ CREATE TABLE Item (
     age INTEGER NULL,
     total INTEGER
 );
--- expect: ok
+-- @expect: ok
 
 INSERT INTO Item (id, quantity, age, total) VALUES
     (1, NULL,   11, 1),
@@ -15,52 +15,52 @@ INSERT INTO Item (id, quantity, age, total) VALUES
     (6, 15,   11, 2),
     (7, 20,   90, 1),
     (1, NULL, 11, 1);
--- expect: ok
+-- @expect: ok
 
 SELECT COUNT(*) FROM Item;
--- expect:
+-- @expect:
 -- | COUNT(*): I64 |
 -- | 8             |
 
 SELECT COUNT(age), COUNT(quantity) FROM Item;
--- expect:
+-- @expect:
 -- | COUNT(age): I64 | COUNT(quantity): I64 |
 -- | 6               | 6                    |
 
 SELECT COUNT(NULL);
--- expect:
+-- @expect:
 -- | COUNT(NULL): I64 |
 -- | 0                |
 
 SELECT COUNT(DISTINCT id) FROM Item
--- expect:
+-- @expect:
 -- | COUNT(DISTINCT id): I64 |
 -- | 7                       |
 
 SELECT COUNT(DISTINCT age) FROM Item
--- expect:
+-- @expect:
 -- | COUNT(DISTINCT age): I64 |
 -- | 3                        |
 
 SELECT COUNT(age), COUNT(DISTINCT age) FROM Item
--- expect:
+-- @expect:
 -- | COUNT(age): I64 | COUNT(DISTINCT age): I64 |
 -- | 6               | 3                        |
 
 SELECT COUNT(DISTINCT *) FROM Item
--- expect:
+-- @expect:
 -- | COUNT(DISTINCT *): I64 |
 -- | 7                      |
 
 CREATE TABLE EmptyItem (id INTEGER NULL);
--- expect: ok
+-- @expect: ok
 
 SELECT COUNT(*) FROM EmptyItem;
--- expect:
+-- @expect:
 -- | COUNT(*): I64 |
 -- | 0             |
 
 SELECT COUNT(id) FROM EmptyItem;
--- expect:
+-- @expect:
 -- | COUNT(id): I64 |
 -- | 0              |

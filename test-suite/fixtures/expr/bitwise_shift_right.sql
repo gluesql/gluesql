@@ -2,47 +2,48 @@ CREATE TABLE Test (
     id INTEGER,
     num INTEGER
 )
--- expect: ok
+-- @expect: ok
 
 CREATE TABLE OverflowTest (
     id INTEGER,
     num INTEGER
 )
--- expect: ok
+-- @expect: ok
 
 CREATE TABLE NullTest (
     id INTEGER,
     num INTEGER
 )
--- expect: ok
+-- @expect: ok
 
 INSERT INTO Test (id, num) VALUES (1, 1)
--- expect: ok
+-- @expect: ok
 
 INSERT INTO Test (id, num) VALUES (1, 2)
--- expect: ok
+-- @expect: ok
 
 INSERT INTO Test (id, num) VALUES (3, 4), (4, 8)
--- expect: ok
+-- @expect: ok
 
 INSERT INTO OverflowTest (id, num) VALUES (1, 1)
--- expect: ok
+-- @expect: ok
 
 INSERT INTO NullTest (id, num) VALUES (NULL, 1)
--- expect: ok
+-- @expect: ok
 
--- name: select all from table
+-- @name: select all from table
 SELECT (num >> 1) as num FROM Test
--- expect:
+-- @expect:
 -- | num: I64 |
 -- | 0        |
 -- | 1        |
 -- | 2        |
 -- | 4        |
 
--- name: test bit shift overflow
+-- @name: test bit shift overflow
 SELECT (num >> 65) as overflowed FROM OverflowTest
--- expect: error Value.BinaryOperationOverflow
+-- @expect: error Value.BinaryOperationOverflow
+-- @json:
 -- {
 --   "lhs": {
 --     "I64": 1
@@ -54,6 +55,6 @@ SELECT (num >> 65) as overflowed FROM OverflowTest
 -- }
 
 SELECT id, num FROM NullTest
--- expect:
+-- @expect:
 -- | id   | num: I64 |
 -- | NULL | 1        |

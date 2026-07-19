@@ -2,27 +2,28 @@ SELECT
     SQRT(4.0) as sqrt_1,
     SQRT(0.07) as sqrt_2
     ;
--- expect:
+-- @expect:
 -- | sqrt_1: F64 | sqrt_2: F64    |
 -- | 2.0         | 0.264575131106 |
 
 SELECT SQRT(64) as sqrt_with_int
--- expect:
+-- @expect:
 -- | sqrt_with_int: F64 |
 -- | 8.0                |
 
 SELECT SQRT(0) as sqrt_with_zero
--- expect:
+-- @expect:
 -- | sqrt_with_zero: F64 |
 -- | 0.0                 |
 
 SELECT SQRT('string') AS sqrt
--- expect: error Value.SqrtOnNonNumeric
+-- @expect: error Value.SqrtOnNonNumeric
+-- @json:
 -- {
 --   "Str": "string"
 -- }
 
 SELECT SQRT(NULL) AS sqrt
--- expect:
+-- @expect:
 -- | sqrt |
 -- | NULL |

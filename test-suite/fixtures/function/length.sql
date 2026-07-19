@@ -1,53 +1,53 @@
--- name: test length with string
+-- @name: test length with string
 SELECT LENGTH('Hello.');
--- expect:
+-- @expect:
 -- | LENGTH('Hello.'): U64 |
 -- | 6                     |
 
--- name: test length with list
+-- @name: test length with list
 SELECT LENGTH(CAST('[1, 2, 3]' AS LIST))
--- expect:
+-- @expect:
 -- | LENGTH(CAST('[1, 2, 3]' AS LIST)): U64 |
 -- | 3                                      |
 
--- name: test length with map
+-- @name: test length with map
 SELECT LENGTH(CAST('{"a": 1, "b": 5, "c": 9, "d": 10}' AS MAP))
--- expect:
+-- @expect:
 -- | LENGTH(CAST('{"a": 1, "b": 5, "c": 9, "d": 10}' AS MAP)): U64 |
 -- | 4                                                             |
 
--- name: test length string - wide chars 1
+-- @name: test length string - wide chars 1
 SELECT LENGTH('한글');
--- expect:
+-- @expect:
 -- | LENGTH('한글'): U64 |
 -- | 2                 |
 
--- name: test length string - wide chars 2
+-- @name: test length string - wide chars 2
 SELECT LENGTH('한글 abc');
--- expect:
+-- @expect:
 -- | LENGTH('한글 abc'): U64 |
 -- | 6                     |
 
--- name: test length string - wide chars 3
+-- @name: test length string - wide chars 3
 SELECT LENGTH('é');
--- expect:
+-- @expect:
 -- | LENGTH('é'): U64 |
 -- | 1                |
 
--- name: test length string - wide chars 4
+-- @name: test length string - wide chars 4
 SELECT LENGTH('🧑');
--- expect:
+-- @expect:
 -- | LENGTH('🧑'): U64 |
 -- | 1                |
 
--- name: test length string - wide chars 5
+-- @name: test length string - wide chars 5
 SELECT LENGTH('❤️');
--- expect:
+-- @expect:
 -- | LENGTH('❤️'): U64 |
 -- | 2                 |
 
--- name: test length string - wide chars 6
+-- @name: test length string - wide chars 6
 SELECT LENGTH('👩‍🔬');
--- expect:
+-- @expect:
 -- | LENGTH('👩‍🔬'): U64 |
 -- | 3                  |

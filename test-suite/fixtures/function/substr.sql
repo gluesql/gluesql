@@ -1,181 +1,182 @@
 CREATE TABLE Item (name TEXT DEFAULT SUBSTR('abc', 0, 2))
--- expect: payload Create
+-- @expect: payload Create
 
 INSERT INTO Item VALUES ('Blop mc blee'), ('B'), ('Steven the &long named$ folken!')
--- expect: payload Insert
--- 3
+-- @expect: payload Insert
+-- @json: 3
 
 CREATE TABLE SingleItem (food TEXT)
--- expect: payload Create
+-- @expect: payload Create
 
 INSERT INTO SingleItem VALUES (SUBSTR('LobSter',1))
--- expect: payload Insert
--- 1
+-- @expect: payload Insert
+-- @json: 1
 
 CREATE TABLE NullName (name TEXT NULL)
--- expect: payload Create
+-- @expect: payload Create
 
 INSERT INTO NullName VALUES (NULL)
--- expect: payload Insert
--- 1
+-- @expect: payload Insert
+-- @json: 1
 
 CREATE TABLE NullNumber (number INTEGER NULL)
--- expect: payload Create
+-- @expect: payload Create
 
 INSERT INTO NullNumber VALUES (NULL)
--- expect: payload Insert
--- 1
+-- @expect: payload Insert
+-- @json: 1
 
 SELECT SUBSTR(SUBSTR(name, 1), 1) AS test FROM Item
--- expect:
+-- @expect:
 -- | test: Str                         |
 -- | "Blop mc blee"                    |
 -- | "B"                               |
 -- | "Steven the &long named$ folken!" |
 
 SELECT * FROM Item WHERE name = SUBSTR('ABC', 2, 1)
--- expect:
+-- @expect:
 -- | name: Str |
 -- | "B"       |
 
 SELECT * FROM Item WHERE SUBSTR(name, 1, 1) = 'B'
--- expect:
+-- @expect:
 -- | name: Str      |
 -- | "Blop mc blee" |
 -- | "B"            |
 
 SELECT * FROM Item WHERE 'B' = SUBSTR(name, 1, 1)
--- expect:
+-- @expect:
 -- | name: Str      |
 -- | "Blop mc blee" |
 -- | "B"            |
 
 SELECT * FROM Item WHERE SUBSTR(name, 1, 1) = UPPER('b')
--- expect:
+-- @expect:
 -- | name: Str      |
 -- | "Blop mc blee" |
 -- | "B"            |
 
 SELECT * FROM Item WHERE SUBSTR(name, 1, 4) = SUBSTR('Blop', 1)
--- expect:
+-- @expect:
 -- | name: Str      |
 -- | "Blop mc blee" |
 
 SELECT * FROM Item WHERE SUBSTR(name, 1, 4) > SUBSTR('Blop', 1)
--- expect:
+-- @expect:
 -- | name: Str                         |
 -- | "Steven the &long named$ folken!" |
 
 SELECT * FROM Item WHERE SUBSTR(name, 1, 4) > 'B'
--- expect:
+-- @expect:
 -- | name: Str                         |
 -- | "Blop mc blee"                    |
 -- | "Steven the &long named$ folken!" |
 
 SELECT * FROM Item WHERE 'B' < SUBSTR(name, 1, 4)
--- expect:
+-- @expect:
 -- | name: Str                         |
 -- | "Blop mc blee"                    |
 -- | "Steven the &long named$ folken!" |
 
 SELECT * FROM Item WHERE SUBSTR(name, 1, 4) > UPPER('b')
--- expect:
+-- @expect:
 -- | name: Str                         |
 -- | "Blop mc blee"                    |
 -- | "Steven the &long named$ folken!" |
 
 SELECT * FROM Item WHERE UPPER('b') < SUBSTR(name, 1, 4)
--- expect:
+-- @expect:
 -- | name: Str                         |
 -- | "Blop mc blee"                    |
 -- | "Steven the &long named$ folken!" |
 
 SELECT SUBSTR(name, 2) AS test FROM Item
--- expect:
+-- @expect:
 -- | test: Str                        |
 -- | "lop mc blee"                    |
 -- | ""                               |
 -- | "teven the &long named$ folken!" |
 
 SELECT SUBSTR(name, 999) AS test FROM Item
--- expect:
+-- @expect:
 -- | test: Str |
 -- | ""        |
 -- | ""        |
 -- | ""        |
 
 SELECT SUBSTR('ABC', -3, 0) AS test FROM SingleItem
--- expect:
+-- @expect:
 -- | test: Str |
 -- | ""        |
 
 SELECT SUBSTR('ABC', 0, 3) AS test FROM SingleItem
--- expect:
+-- @expect:
 -- | test: Str |
 -- | "AB"      |
 
 SELECT SUBSTR('ABC', 1, 3) AS test FROM SingleItem
--- expect:
+-- @expect:
 -- | test: Str |
 -- | "ABC"     |
 
 SELECT SUBSTR('ABC', 1, 999) AS test FROM SingleItem
--- expect:
+-- @expect:
 -- | test: Str |
 -- | "ABC"     |
 
 SELECT SUBSTR('ABC', -1000, 1003) AS test FROM SingleItem
--- expect:
+-- @expect:
 -- | test: Str |
 -- | "AB"      |
 
 SELECT SUBSTR('ABC', -1, 3) AS test FROM SingleItem
--- expect:
+-- @expect:
 -- | test: Str |
 -- | "A"       |
 
 SELECT SUBSTR('ABC', -1, 4) AS test FROM SingleItem
--- expect:
+-- @expect:
 -- | test: Str |
 -- | "AB"      |
 
 SELECT SUBSTR(SUBSTR('ABC', 2, 3), 1, 1) AS test FROM SingleItem
--- expect:
+-- @expect:
 -- | test: Str |
 -- | "B"       |
 
 SELECT SUBSTR('ABC', -1, NULL) AS test FROM SingleItem
--- expect:
+-- @expect:
 -- | test |
 -- | NULL |
 
 SELECT SUBSTR(name, 3) AS test FROM NullName
--- expect:
+-- @expect:
 -- | test |
 -- | NULL |
 
 SELECT SUBSTR('Words', number) AS test FROM NullNumber
--- expect:
+-- @expect:
 -- | test |
 -- | NULL |
 
 SELECT * FROM SingleItem WHERE TRUE AND SUBSTR('wine',2,3)
--- expect: error Evaluate.BooleanTypeRequired
--- "ine"
+-- @expect: error Evaluate.BooleanTypeRequired
+-- @json: "ine"
 
 SELECT SUBSTR(1, 1) AS test FROM SingleItem
--- expect: error Evaluate.FunctionRequiresStringValue
--- "SUBSTR"
+-- @expect: error Evaluate.FunctionRequiresStringValue
+-- @json: "SUBSTR"
 
 SELECT SUBSTR('Words', 1.1) AS test FROM SingleItem
--- expect: error Evaluate.FunctionRequiresIntegerValue
--- "SUBSTR"
+-- @expect: error Evaluate.FunctionRequiresIntegerValue
+-- @json: "SUBSTR"
 
 SELECT SUBSTR('Words', 1, -4) AS test FROM SingleItem
--- expect: error Evaluate.NegativeSubstrLenNotAllowed
+-- @expect: error Evaluate.NegativeSubstrLenNotAllowed
 
 SELECT SUBSTR('123', 2, 3) - '3' AS test FROM SingleItem
--- expect: error Evaluate.UnsupportedBinaryOperation
+-- @expect: error Evaluate.UnsupportedBinaryOperation
+-- @json:
 -- {
 --   "left": "23",
 --   "op": "Minus",
@@ -183,17 +184,17 @@ SELECT SUBSTR('123', 2, 3) - '3' AS test FROM SingleItem
 -- }
 
 SELECT +SUBSTR('123', 2, 3) AS test FROM SingleItem
--- expect: error Evaluate.UnsupportedUnaryPlus
--- "23"
+-- @expect: error Evaluate.UnsupportedUnaryPlus
+-- @json: "23"
 
 SELECT -SUBSTR('123', 2, 3) AS test FROM SingleItem
--- expect: error Evaluate.UnsupportedUnaryMinus
--- "23"
+-- @expect: error Evaluate.UnsupportedUnaryMinus
+-- @json: "23"
 
 SELECT SUBSTR('123', 2, 3)! AS test FROM SingleItem
--- expect: error Evaluate.UnaryFactorialRequiresNumericLiteral
--- "23"
+-- @expect: error Evaluate.UnaryFactorialRequiresNumericLiteral
+-- @json: "23"
 
 SELECT ~SUBSTR('123', 2, 3) AS test FROM SingleItem
--- expect: error Evaluate.UnaryBitwiseNotRequiresIntegerLiteral
--- "23"
+-- @expect: error Evaluate.UnaryBitwiseNotRequiresIntegerLiteral
+-- @json: "23"

@@ -1,38 +1,38 @@
 CREATE TABLE AddCol (id INTEGER);
--- expect: ok
+-- @expect: ok
 
 INSERT INTO AddCol VALUES (1);
--- expect: ok
+-- @expect: ok
 
 BEGIN;
--- expect: ok
+-- @expect: ok
 
 ALTER TABLE AddCol ADD COLUMN new_col INTEGER DEFAULT 3;
--- expect: ok
+-- @expect: ok
 
 SELECT * FROM AddCol
--- expect:
+-- @expect:
 -- | id: I64 | new_col: I64 |
 -- | 1       | 3            |
 
 ROLLBACK;
--- expect: ok
+-- @expect: ok
 
 SELECT * FROM AddCol
--- expect:
+-- @expect:
 -- | id: I64 |
 -- | 1       |
 
 BEGIN;
--- expect: ok
+-- @expect: ok
 
 ALTER TABLE AddCol ADD COLUMN new_col INTEGER DEFAULT 3;
--- expect: ok
+-- @expect: ok
 
 COMMIT;
--- expect: ok
+-- @expect: ok
 
 SELECT * FROM AddCol
--- expect:
+-- @expect:
 -- | id: I64 | new_col: I64 |
 -- | 1       | 3            |

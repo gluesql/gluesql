@@ -2,45 +2,45 @@ CREATE TABLE Test (
     id INTEGER,
     list LIST
     )
--- expect: ok
+-- @expect: ok
 
 INSERT INTO Test (id, list) VALUES (1,'[1,2,3,4,5]')
--- expect: ok
+-- @expect: ok
 
--- name: skip function with normal usage
+-- @name: skip function with normal usage
 SELECT SKIP(list, 2) as col1 FROM Test
--- expect:
+-- @expect:
 -- | col1: List |
 -- | [3,4,5]    |
 
--- name: skip function with out of range index
+-- @name: skip function with out of range index
 SELECT SKIP(list, 6) as col1 FROM Test
--- expect:
+-- @expect:
 -- | col1: List |
 -- | []         |
 
--- name: skip function with null list
+-- @name: skip function with null list
 SELECT SKIP(NULL, 2) as col1 FROM Test
--- expect:
+-- @expect:
 -- | col1 |
 -- | NULL |
 
--- name: skip function with null size
+-- @name: skip function with null size
 SELECT SKIP(list, NULL) as col1 FROM Test
--- expect:
+-- @expect:
 -- | col1 |
 -- | NULL |
 
--- name: skip function with non integer parameter
+-- @name: skip function with non integer parameter
 SELECT SKIP(list, 'd') as col1 FROM Test
--- expect: error Evaluate.FunctionRequiresIntegerValue
--- "SKIP"
+-- @expect: error Evaluate.FunctionRequiresIntegerValue
+-- @json: "SKIP"
 
--- name: skip function with non list
+-- @name: skip function with non list
 SELECT SKIP(id, 2) as col1 FROM Test
--- expect: error Evaluate.ListTypeRequired
+-- @expect: error Evaluate.ListTypeRequired
 
--- name: skip function with negative size
+-- @name: skip function with negative size
 SELECT SKIP(id, -2) as col1 FROM Test
--- expect: error Evaluate.FunctionRequiresUSizeValue
--- "SKIP"
+-- @expect: error Evaluate.FunctionRequiresUSizeValue
+-- @json: "SKIP"

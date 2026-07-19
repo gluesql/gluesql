@@ -1,38 +1,38 @@
 CREATE TABLE RenameCol (id INTEGER);
--- expect: ok
+-- @expect: ok
 
 INSERT INTO RenameCol VALUES (1);
--- expect: ok
+-- @expect: ok
 
 BEGIN;
--- expect: ok
+-- @expect: ok
 
 ALTER TABLE RenameCol RENAME COLUMN id TO new_id;
--- expect: ok
+-- @expect: ok
 
 SELECT * FROM RenameCol
--- expect:
+-- @expect:
 -- | new_id: I64 |
 -- | 1           |
 
 ROLLBACK;
--- expect: ok
+-- @expect: ok
 
 SELECT * FROM RenameCol
--- expect:
+-- @expect:
 -- | id: I64 |
 -- | 1       |
 
 BEGIN;
--- expect: ok
+-- @expect: ok
 
 ALTER TABLE RenameCol RENAME COLUMN id TO new_id;
--- expect: ok
+-- @expect: ok
 
 COMMIT;
--- expect: ok
+-- @expect: ok
 
 SELECT * FROM RenameCol
--- expect:
+-- @expect:
 -- | new_id: I64 |
 -- | 1           |

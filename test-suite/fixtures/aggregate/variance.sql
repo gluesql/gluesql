@@ -4,7 +4,7 @@ CREATE TABLE Item (
     age INTEGER NULL,
     total INTEGER
 );
--- expect: ok
+-- @expect: ok
 
 INSERT INTO Item (id, quantity, age, total) VALUES
     (1, 10,   11, 1),
@@ -14,29 +14,29 @@ INSERT INTO Item (id, quantity, age, total) VALUES
     (5, 25, NULL, 1),
     (6, 10,   11, 2),
     (7, 25,   90, 1);
--- expect: ok
+-- @expect: ok
 
 SELECT VARIANCE(age) FROM Item
--- expect:
+-- @expect:
 -- | VARIANCE(age) |
 -- | NULL          |
 
 SELECT VARIANCE(id), VARIANCE(quantity) FROM Item
--- expect:
+-- @expect:
 -- | VARIANCE(id): F64 | VARIANCE(quantity): F64 |
 -- | 4.0               | 82.775510204082         |
 
 SELECT VARIANCE(DISTINCT id) FROM Item
--- expect:
+-- @expect:
 -- | VARIANCE(DISTINCT id): F64 |
 -- | 4.0                        |
 
 SELECT VARIANCE(DISTINCT age) FROM Item
--- expect:
+-- @expect:
 -- | VARIANCE(DISTINCT age) |
 -- | NULL                   |
 
 SELECT VARIANCE(quantity), VARIANCE(DISTINCT quantity) FROM Item
--- expect:
+-- @expect:
 -- | VARIANCE(quantity): F64 | VARIANCE(DISTINCT quantity): F64 |
 -- | 82.775510204082         | 74.64                            |

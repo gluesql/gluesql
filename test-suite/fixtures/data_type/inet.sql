@@ -1,5 +1,5 @@
 CREATE TABLE computer (ip INET)
--- expect: payload Create
+-- @expect: payload Create
 
 INSERT INTO computer VALUES
     ('::1'),
@@ -7,11 +7,11 @@ INSERT INTO computer VALUES
     ('0.0.0.0'),
     (4294967295),
     (9876543210);
--- expect: payload Insert
--- 5
+-- @expect: payload Insert
+-- @json: 5
 
 SELECT * FROM computer
--- expect:
+-- @expect:
 -- | ip: Inet          |
 -- | "::1"             |
 -- | "127.0.0.1"       |
@@ -20,23 +20,24 @@ SELECT * FROM computer
 -- | "::2:4cb0:16ea"   |
 
 SELECT * FROM computer WHERE ip > '127.0.0.1'
--- expect:
+-- @expect:
 -- | ip: Inet          |
 -- | "::1"             |
 -- | "255.255.255.255" |
 -- | "::2:4cb0:16ea"   |
 
 SELECT * FROM computer WHERE ip = '127.0.0.1'
--- expect:
+-- @expect:
 -- | ip: Inet    |
 -- | "127.0.0.1" |
 
 INSERT INTO computer VALUES (0)
--- expect: payload Insert
--- 1
+-- @expect: payload Insert
+-- @json: 1
 
 INSERT INTO computer VALUES ('127.0.0.0.1')
--- expect: error Evaluate.TextParseFailed
+-- @expect: error Evaluate.TextParseFailed
+-- @json:
 -- {
 --   "data_type": "Inet",
 --   "literal": "127.0.0.0.1"

@@ -3,10 +3,10 @@ CREATE TABLE Arith (
     num INTEGER,
     name TEXT
 );
--- expect: ok
+-- @expect: ok
 
 DELETE FROM Arith
--- expect: ok
+-- @expect: ok
 
 INSERT INTO Arith (id, num, name) VALUES
     (1, 6, 'A'),
@@ -14,10 +14,11 @@ INSERT INTO Arith (id, num, name) VALUES
     (3, 4, 'C'),
     (4, 2, 'D'),
     (5, 3, 'E');
--- expect: ok
+-- @expect: ok
 
 SELECT * FROM Arith WHERE name + id < 1
--- expect: error Value.NonNumericMathOperation
+-- @expect: error Value.NonNumericMathOperation
+-- @json:
 -- {
 --   "lhs": {
 --     "Str": "A"
@@ -29,7 +30,8 @@ SELECT * FROM Arith WHERE name + id < 1
 -- }
 
 SELECT * FROM Arith WHERE name - id < 1
--- expect: error Value.NonNumericMathOperation
+-- @expect: error Value.NonNumericMathOperation
+-- @json:
 -- {
 --   "lhs": {
 --     "Str": "A"
@@ -41,7 +43,8 @@ SELECT * FROM Arith WHERE name - id < 1
 -- }
 
 SELECT * FROM Arith WHERE name * id < 1
--- expect: error Value.NonNumericMathOperation
+-- @expect: error Value.NonNumericMathOperation
+-- @json:
 -- {
 --   "lhs": {
 --     "Str": "A"
@@ -53,7 +56,8 @@ SELECT * FROM Arith WHERE name * id < 1
 -- }
 
 SELECT * FROM Arith WHERE name / id < 1
--- expect: error Value.NonNumericMathOperation
+-- @expect: error Value.NonNumericMathOperation
+-- @json:
 -- {
 --   "lhs": {
 --     "Str": "A"
@@ -65,7 +69,8 @@ SELECT * FROM Arith WHERE name / id < 1
 -- }
 
 SELECT * FROM Arith WHERE name % id < 1
--- expect: error Value.NonNumericMathOperation
+-- @expect: error Value.NonNumericMathOperation
+-- @json:
 -- {
 --   "lhs": {
 --     "Str": "A"
@@ -77,11 +82,12 @@ SELECT * FROM Arith WHERE name % id < 1
 -- }
 
 UPDATE Arith SET aaa = 1
--- expect: error Update.ColumnNotFound
--- "aaa"
+-- @expect: error Update.ColumnNotFound
+-- @json: "aaa"
 
 SELECT * FROM Arith WHERE TRUE + 1 = 1
--- expect: error Value.NonNumericMathOperation
+-- @expect: error Value.NonNumericMathOperation
+-- @json:
 -- {
 --   "lhs": {
 --     "Bool": true
@@ -93,27 +99,27 @@ SELECT * FROM Arith WHERE TRUE + 1 = 1
 -- }
 
 SELECT * FROM Arith WHERE id = 2 / 0
--- expect: error Evaluate.DivisorShouldNotBeZero
+-- @expect: error Evaluate.DivisorShouldNotBeZero
 
 SELECT * FROM Arith WHERE id = 2 / 0.0
--- expect: error Evaluate.DivisorShouldNotBeZero
+-- @expect: error Evaluate.DivisorShouldNotBeZero
 
 SELECT * FROM Arith WHERE id = INTERVAL '2' HOUR / 0
--- expect: error Value.DivisorShouldNotBeZero
+-- @expect: error Value.DivisorShouldNotBeZero
 
 SELECT * FROM Arith WHERE id = INTERVAL '2' HOUR / 0.0
--- expect: error Value.DivisorShouldNotBeZero
+-- @expect: error Value.DivisorShouldNotBeZero
 
 SELECT * FROM Arith WHERE id = 2 % 0
--- expect: error Evaluate.DivisorShouldNotBeZero
+-- @expect: error Evaluate.DivisorShouldNotBeZero
 
 SELECT * FROM Arith WHERE id = 2 % 0.0
--- expect: error Evaluate.DivisorShouldNotBeZero
+-- @expect: error Evaluate.DivisorShouldNotBeZero
 
 SELECT * FROM Arith WHERE TRUE AND 'hello'
--- expect: error Evaluate.BooleanTypeRequired
--- "hello"
+-- @expect: error Evaluate.BooleanTypeRequired
+-- @json: "hello"
 
 SELECT * FROM Arith WHERE name AND id
--- expect: error Evaluate.BooleanTypeRequired
--- "A"
+-- @expect: error Evaluate.BooleanTypeRequired
+-- @json: "A"

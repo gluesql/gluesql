@@ -1,38 +1,38 @@
 CREATE TABLE DropCol (id INTEGER, num INTEGER);
--- expect: ok
+-- @expect: ok
 
 INSERT INTO DropCol VALUES (1, 2);
--- expect: ok
+-- @expect: ok
 
 BEGIN;
--- expect: ok
+-- @expect: ok
 
 ALTER TABLE DropCol DROP COLUMN num;
--- expect: ok
+-- @expect: ok
 
 SELECT * FROM DropCol
--- expect:
+-- @expect:
 -- | id: I64 |
 -- | 1       |
 
 ROLLBACK;
--- expect: ok
+-- @expect: ok
 
 SELECT * FROM DropCol
--- expect:
+-- @expect:
 -- | id: I64 | num: I64 |
 -- | 1       | 2        |
 
 BEGIN;
--- expect: ok
+-- @expect: ok
 
 ALTER TABLE DropCol DROP COLUMN num;
--- expect: ok
+-- @expect: ok
 
 COMMIT;
--- expect: ok
+-- @expect: ok
 
 SELECT * FROM DropCol
--- expect:
+-- @expect:
 -- | id: I64 |
 -- | 1       |

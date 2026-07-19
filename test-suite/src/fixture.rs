@@ -374,7 +374,7 @@ fn parse_fixture(source: &str) -> Vec<FixtureStep> {
         let line = lines[index];
         let trimmed = line.trim();
 
-        if let Some(value) = trimmed.strip_prefix("-- name:") {
+        if let Some(value) = trimmed.strip_prefix("-- @name:") {
             assert!(
                 sql.iter().all(|line: &&str| line.trim().is_empty()),
                 "name must appear before fixture SQL at line {}",
@@ -393,7 +393,7 @@ fn parse_fixture(source: &str) -> Vec<FixtureStep> {
             continue;
         }
 
-        if let Some(value) = trimmed.strip_prefix("-- expect-index:") {
+        if let Some(value) = trimmed.strip_prefix("-- @expect-index:") {
             assert_follows_sql(&sql, "index expectation", index + 1);
 
             let value = value.trim();
@@ -420,7 +420,7 @@ fn parse_fixture(source: &str) -> Vec<FixtureStep> {
             continue;
         }
 
-        if let Some(directive) = trimmed.strip_prefix("-- expect:") {
+        if let Some(directive) = trimmed.strip_prefix("-- @expect:") {
             assert_follows_sql(&sql, "result expectation", index + 1);
             let step_line = first_sql_line(&sql, index + 1);
             let sql = take_sql(&mut sql);
@@ -628,27 +628,38 @@ fn assert_table_format(lines: &[&str]) {
 }
 
 fn take_json_body(lines: &[&str], mut index: usize) -> (Option<JsonValue>, usize) {
-    let mut body = Vec::new();
+    let Some(directive) = lines
+        .get(index)
+        .and_then(|line| line.trim().strip_prefix("-- @json:"))
+    else {
+        return (None, index);
+    };
 
-    while index < lines.len() {
-        let trimmed = lines[index].trim_start();
-        if trimmed.starts_with("-- name:") || trimmed.starts_with("-- expect:") {
-            break;
-        }
+    let directive = directive.trim();
+    if !directive.is_empty() {
+        let value =
+            serde_json::from_str(directive).expect("@json directive requires valid inline JSON");
+        return (Some(value), index + 1);
+    }
+
+    index += 1;
+    let mut body = Vec::new();
+    while let Some(line) = lines.get(index) {
+        let trimmed = line.trim_start();
         let Some(comment) = trimmed.strip_prefix("--") else {
             break;
         };
         body.push(comment.strip_prefix(' ').unwrap_or(comment));
         index += 1;
+
+        match serde_json::from_str(&body.join("\n")) {
+            Ok(value) => return (Some(value), index),
+            Err(error) if error.is_eof() => {}
+            Err(error) => panic!("@json directive requires valid JSON: {error}"),
+        }
     }
 
-    if body.is_empty() {
-        (None, index)
-    } else {
-        let value = serde_json::from_str(&body.join("\n"))
-            .expect("payload or error expectation requires valid JSON");
-        (Some(value), index)
-    }
+    panic!("@json directive requires a complete JSON value")
 }
 
 fn parse_variant_path(path: &str) -> Vec<String> {
@@ -905,28 +916,29 @@ mod tests {
     fn parses_named_steps_and_all_expectation_kinds() {
         let source = r#"
 CREATE TABLE Example (id INTEGER);
--- expect: ok
+-- @expect: ok
 
--- name: mixed result
+-- @name: mixed result
 SELECT 1;
--- expect:
+-- @expect:
 -- | fixed: I64 | dynamic  |
 -- | 1          | Str("a") |
 -- | NULL       | I64(2)   |
 
 UPDATE Example SET id = 1;
--- expect: payload Update
--- 0
+-- @expect: payload Update
+-- @json: 0
 
 SELECT * FROM Example;
--- expect: count 0
+-- @expect: count 0
 
 SELECT GENERATE_UUID();
--- expect: types
+-- @expect: types
 -- | Uuid |
 
 SELECT NULLIF();
--- expect: error Translate.FunctionArgsLengthNotMatching
+-- @expect: error Translate.FunctionArgsLengthNotMatching
+-- @json:
 -- {
 --   "name": "NULLIF",
 --   "expected": 2,
@@ -934,7 +946,7 @@ SELECT NULLIF();
 -- }
 
 SELECT ADD_MONTH('invalid', 1);
--- expect: error Evaluate.FormatParseError
+-- @expect: error Evaluate.FormatParseError
 "#;
 
         let steps = parse_fixture(source);
@@ -951,10 +963,49 @@ SELECT ADD_MONTH('invalid', 1);
     }
 
     #[test]
+    fn keeps_ordinary_comments_out_of_json_bodies() {
+        let source = r#"
+CREATE TABLE Example (id INTEGER);
+-- @expect: payload Create
+-- ordinary SQL comment
+-- expect: ordinary SQL comment using the legacy directive spelling
+INSERT INTO Example VALUES (1);
+-- @expect: payload Insert
+-- @json: 1
+
+SELECT NULLIF();
+-- @expect: error Translate.FunctionArgsLengthNotMatching
+-- @json:
+-- {
+--   "name": "NULLIF",
+--   "expected": 2,
+--   "found": 0
+-- }
+-- ordinary SQL comment after multiline JSON
+SELECT * FROM Example;
+-- @expect: count 1
+"#;
+
+        let steps = parse_fixture(source);
+        assert_eq!(steps.len(), 4);
+        let Expectation::Payload(expected) = &steps[0].expectation else {
+            panic!("expected Payload")
+        };
+        assert_eq!(expected.body, None);
+        assert!(steps[1].sql.starts_with("-- ordinary SQL comment\n"));
+        assert!(steps[1].sql.contains("-- expect: ordinary SQL comment"));
+        assert!(
+            steps[3]
+                .sql
+                .starts_with("-- ordinary SQL comment after multiline JSON\n")
+        );
+    }
+
+    #[test]
     fn parses_every_value_variant() {
         let source = r#"
 SELECT 1;
--- expect:
+-- @expect:
 -- | bool: Bool | i8: I8 | i16: I16 | i32: I32 | i64: I64 | i128: I128 | u8: U8 | u16: U16 | u32: U32 | u64: U64 | u128: U128 | f32: F32 | f64: F64 | decimal: Decimal | str: Str | bytea: Bytea | inet: Inet  | date: Date   | timestamp: Timestamp  | time: Time | interval: Interval | uuid: Uuid                             | map: Map | list: List | point: Point |
 -- | true       | -8     | -16      | -32      | -64      | -128       | 8      | 16       | 32       | 64       | 128        | 1.5      | 2.5      | 3.14             | "text"   | "00ff"       | "127.0.0.1" | "2025-01-02" | "2025-01-02T03:04:05" | "03:04:05" | "'1' DAY"          | "550e8400-e29b-41d4-a716-446655440000" | {"a":1}  | [1,"a"]    | "POINT(1 2)" |
 "#;
@@ -1100,7 +1151,7 @@ SELECT 1;
     fn parses_select_maps() {
         let source = r#"
 SELECT * FROM Example;
--- expect: maps
+-- @expect: maps
 -- | {"id":1,"name":"one"} |
 -- | {"id":2}              |
 "#;
@@ -1116,7 +1167,7 @@ SELECT * FROM Example;
     fn parses_empty_select_maps() {
         let source = r"
 SELECT * FROM Example;
--- expect: maps
+-- @expect: maps
 ";
 
         let steps = parse_fixture(source);
@@ -1130,20 +1181,20 @@ SELECT * FROM Example;
     fn parses_index_expectations() {
         let source = r"
 SELECT * FROM Example WHERE id < 20;
--- expect-index: idx_id < 20
--- expect: ok
+-- @expect-index: idx_id < 20
+-- @expect: ok
 
 SELECT * FROM Example ORDER BY id;
--- expect-index: idx_id ASC
--- expect: ok
+-- @expect-index: idx_id ASC
+-- @expect: ok
 
 SELECT * FROM Example ORDER BY name;
--- expect-index: idx_name
--- expect: ok
+-- @expect-index: idx_name
+-- @expect: ok
 
 SELECT * FROM Example;
--- expect-index: none
--- expect: ok
+-- @expect-index: none
+-- @expect: ok
 ";
 
         let steps = parse_fixture(source);
@@ -1161,13 +1212,15 @@ SELECT * FROM Example;
         assert!(std::panic::catch_unwind(|| source("missing.sql")).is_err());
 
         let malformed = [
-            "SELECT 1;\n-- expect: payload Select\n-- {not json}\n",
-            "-- name: first\n-- name: second\nSELECT 1;\n-- expect: ok\n",
+            "SELECT 1;\n-- @expect: payload Select\n-- @json:\n-- {not json}\n",
+            "SELECT 1;\n-- @expect: payload Select\n-- @json: {not json}\n",
+            "SELECT 1;\n-- @expect: payload Select\n-- @json:\n",
+            "-- @name: first\n-- @name: second\nSELECT 1;\n-- @expect: ok\n",
             "SELECT 1;\n",
-            "-- expect: ok\n",
-            "SELECT 1;\n-- expect:\n",
-            "SELECT 1;\n-- expect-index: none\n-- expect-index: idx_id\n-- expect: ok\n",
-            "SELECT 1;\n-- expect-index: idx_id =\n-- expect: ok\n",
+            "-- @expect: ok\n",
+            "SELECT 1;\n-- @expect:\n",
+            "SELECT 1;\n-- @expect-index: none\n-- @expect-index: idx_id\n-- @expect: ok\n",
+            "SELECT 1;\n-- @expect-index: idx_id =\n-- @expect: ok\n",
         ];
 
         for source in malformed {
@@ -1178,9 +1231,9 @@ SELECT * FROM Example;
     #[test]
     fn rejects_detached_names_and_expectations() {
         let detached = [
-            "-- name: detached\n\nSELECT 1;\n-- expect: ok\n",
-            "SELECT 1;\n\n-- expect: ok\n",
-            "SELECT 1;\n-- expect-index: none\n\n-- expect: ok\n",
+            "-- @name: detached\n\nSELECT 1;\n-- @expect: ok\n",
+            "SELECT 1;\n\n-- @expect: ok\n",
+            "SELECT 1;\n-- @expect-index: none\n\n-- @expect: ok\n",
         ];
 
         for source in detached {
@@ -1191,8 +1244,8 @@ SELECT * FROM Example;
     #[test]
     fn rejects_non_canonical_table_spacing() {
         let malformed = [
-            "SELECT 1;\n-- expect:\n-- |id: I64|\n-- |1|\n",
-            "SELECT 1;\n-- expect:\n-- | id: I64 | value: Str |\n-- | 1 | \"a\" |\n",
+            "SELECT 1;\n-- @expect:\n-- |id: I64|\n-- |1|\n",
+            "SELECT 1;\n-- @expect:\n-- | id: I64 | value: Str |\n-- | 1 | \"a\" |\n",
         ];
 
         for source in malformed {

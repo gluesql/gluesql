@@ -1,5 +1,6 @@
 SELECT COALESCE() AS coalesce
--- expect: error Evaluate.FunctionRequiresMoreArguments
+-- @expect: error Evaluate.FunctionRequiresMoreArguments
+-- @json:
 -- {
 --   "found": 0,
 --   "function_name": "COALESCE",
@@ -7,17 +8,17 @@ SELECT COALESCE() AS coalesce
 -- }
 
 SELECT COALESCE(NULL) AS coalesce
--- expect:
+-- @expect:
 -- | coalesce |
 -- | NULL     |
 
 SELECT COALESCE(NULL, 42) AS coalesce
--- expect:
+-- @expect:
 -- | coalesce: I64 |
 -- | 42            |
 
 SELECT COALESCE((SELECT NULL), (SELECT 42)) as coalesce
--- expect:
+-- @expect:
 -- | coalesce: I64 |
 -- | 42            |
 
@@ -25,37 +26,38 @@ SELECT COALESCE(
     COALESCE(NULL),
     COALESCE(NULL, 'Answer to the Ultimate Question of Life')
 ) as coalesce
--- expect:
+-- @expect:
 -- | coalesce: Str                             |
 -- | "Answer to the Ultimate Question of Life" |
 
 SELECT COALESCE('Hitchhiker', NULL) AS coalesce
--- expect:
+-- @expect:
 -- | coalesce: Str |
 -- | "Hitchhiker"  |
 
 SELECT COALESCE(NULL, NULL, NULL) AS coalesce
--- expect:
+-- @expect:
 -- | coalesce |
 -- | NULL     |
 
 SELECT COALESCE(NULL, 42, 84) AS coalesce
--- expect:
+-- @expect:
 -- | coalesce: I64 |
 -- | 42            |
 
 SELECT COALESCE(NULL, 1.23, 4.56) AS coalesce
--- expect:
+-- @expect:
 -- | coalesce: F64 |
 -- | 1.23          |
 
 SELECT COALESCE(NULL, TRUE, FALSE) AS coalesce
--- expect:
+-- @expect:
 -- | coalesce: Bool |
 -- | true           |
 
 SELECT COALESCE(NULL, COALESCE());
--- expect: error Evaluate.FunctionRequiresMoreArguments
+-- @expect: error Evaluate.FunctionRequiresMoreArguments
+-- @json:
 -- {
 --   "found": 0,
 --   "function_name": "COALESCE",
@@ -69,7 +71,7 @@ CREATE TABLE TestCoalesce (
     float_value FLOAT NULL,
     boolean_value BOOLEAN NULL
 );
--- expect: ok
+-- @expect: ok
 
 INSERT INTO TestCoalesce (id, text_value, integer_value, float_value, boolean_value) VALUES
     (1, 'Hitchhiker', NULL, NULL, NULL),
@@ -77,7 +79,7 @@ INSERT INTO TestCoalesce (id, text_value, integer_value, float_value, boolean_va
     (3, NULL, NULL, 1.11, NULL),
     (4, NULL, NULL, NULL, TRUE),
     (5, 'Universe', 84, 2.22, FALSE);
--- expect: ok
+-- @expect: ok
 
 SELECT
     id,
@@ -87,7 +89,7 @@ SELECT
     COALESCE(boolean_value, FALSE) AS coalesce_boolean
 FROM TestCoalesce
 ORDER BY id ASC
--- expect:
+-- @expect:
 -- | id: I64 | coalesce_text: Str | coalesce_integer: I64 | coalesce_float: F64 | coalesce_boolean: Bool |
 -- | 1       | "Hitchhiker"       | 0                     | 0.1                 | false                  |
 -- | 2       | "Default"          | 42                    | 0.1                 | false                  |
@@ -96,7 +98,7 @@ ORDER BY id ASC
 -- | 5       | "Universe"         | 84                    | 2.22                | false                  |
 
 SELECT id, COALESCE(text_value, integer_value, float_value, boolean_value) AS coalesce FROM TestCoalesce ORDER BY id ASC
--- expect:
+-- @expect:
 -- | id: I64 | coalesce          |
 -- | 1       | Str("Hitchhiker") |
 -- | 2       | I64(42)           |

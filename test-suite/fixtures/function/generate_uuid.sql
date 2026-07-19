@@ -1,5 +1,6 @@
 SELECT generate_uuid(0) as uuid
--- expect: error Translate.FunctionArgsLengthNotMatching
+-- @expect: error Translate.FunctionArgsLengthNotMatching
+-- @json:
 -- {
 --   "expected": 0,
 --   "found": 1,
@@ -7,15 +8,15 @@ SELECT generate_uuid(0) as uuid
 -- }
 
 SELECT GENERATE_UUID()
--- expect: count 1
+-- @expect: count 1
 
 VALUES (GENERATE_UUID())
--- expect: count 1
+-- @expect: count 1
 
 SELECT GENERATE_UUID() as uuid
--- expect: types
+-- @expect: types
 -- | Uuid |
 
 VALUES (GENERATE_UUID())
--- expect: types
+-- @expect: types
 -- | Uuid |

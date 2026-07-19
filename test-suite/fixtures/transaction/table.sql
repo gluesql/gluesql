@@ -1,68 +1,68 @@
 BEGIN;
--- expect: ok
+-- @expect: ok
 
 CREATE TABLE Test (id INTEGER);
--- expect: ok
+-- @expect: ok
 
 INSERT INTO Test VALUES (1);
--- expect: ok
+-- @expect: ok
 
 SELECT * FROM Test;
--- expect:
+-- @expect:
 -- | id: I64 |
 -- | 1       |
 
 ROLLBACK;
--- expect: ok
+-- @expect: ok
 
 SELECT * FROM Test;
--- expect: error Fetch.TableNotFound
--- "Test"
+-- @expect: error Fetch.TableNotFound
+-- @json: "Test"
 
 BEGIN;
--- expect: ok
+-- @expect: ok
 
 CREATE TABLE Test (id INTEGER);
--- expect: ok
+-- @expect: ok
 
 INSERT INTO Test VALUES (3);
--- expect: ok
+-- @expect: ok
 
 COMMIT;
--- expect: ok
+-- @expect: ok
 
 SELECT * FROM Test;
--- expect:
+-- @expect:
 -- | id: I64 |
 -- | 3       |
 
 BEGIN;
--- expect: ok
+-- @expect: ok
 
 DROP TABLE Test;
--- expect: ok
+-- @expect: ok
 
 SELECT * FROM Test;
--- expect: error Fetch.TableNotFound
--- "Test"
+-- @expect: error Fetch.TableNotFound
+-- @json: "Test"
 
 ROLLBACK;
--- expect: ok
+-- @expect: ok
 
 SELECT * FROM Test;
--- expect:
+-- @expect:
 -- | id: I64 |
 -- | 3       |
 
 BEGIN;
--- expect: ok
+-- @expect: ok
 
 DROP TABLE Test;
--- expect: ok
+-- @expect: ok
 
 COMMIT;
--- expect: ok
+-- @expect: ok
 
 SELECT * FROM Test;
--- expect: error Fetch.TableNotFound
--- "Test"
+-- @expect: error Fetch.TableNotFound
+-- @json: "Test"
