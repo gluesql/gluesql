@@ -58,39 +58,10 @@ struct FixtureStep {
     line: usize,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum ColumnType {
-    Bool,
-    I8,
-    I16,
-    I32,
-    I64,
-    I128,
-    U8,
-    U16,
-    U32,
-    U64,
-    U128,
-    F32,
-    F64,
-    Decimal,
-    Str,
-    Bytea,
-    Inet,
-    Date,
-    Timestamp,
-    Time,
-    Interval,
-    Uuid,
-    Map,
-    List,
-    Point,
-}
-
 #[derive(Debug, PartialEq)]
 struct Column {
     label: String,
-    type_: Option<ColumnType>,
+    type_: Option<DataType>,
 }
 
 pub fn run_fixture<T>(mut tester: impl Tester<T>, fixture_path: &str, source: &str)
@@ -715,7 +686,7 @@ fn parse_select(lines: &[&str]) -> Payload {
             cells
                 .into_iter()
                 .zip(&columns)
-                .map(|(cell, column)| parse_value(cell, column.type_))
+                .map(|(cell, column)| parse_value(cell, column.type_.as_ref()))
                 .collect()
         })
         .collect();
@@ -773,38 +744,38 @@ fn parse_label(label: &str) -> String {
     }
 }
 
-fn parse_column_type(type_: &str) -> Option<ColumnType> {
+fn parse_column_type(type_: &str) -> Option<DataType> {
     Some(match type_ {
-        "Bool" => ColumnType::Bool,
-        "I8" => ColumnType::I8,
-        "I16" => ColumnType::I16,
-        "I32" => ColumnType::I32,
-        "I64" => ColumnType::I64,
-        "I128" => ColumnType::I128,
-        "U8" => ColumnType::U8,
-        "U16" => ColumnType::U16,
-        "U32" => ColumnType::U32,
-        "U64" => ColumnType::U64,
-        "U128" => ColumnType::U128,
-        "F32" => ColumnType::F32,
-        "F64" => ColumnType::F64,
-        "Decimal" => ColumnType::Decimal,
-        "Str" => ColumnType::Str,
-        "Bytea" => ColumnType::Bytea,
-        "Inet" => ColumnType::Inet,
-        "Date" => ColumnType::Date,
-        "Timestamp" => ColumnType::Timestamp,
-        "Time" => ColumnType::Time,
-        "Interval" => ColumnType::Interval,
-        "Uuid" => ColumnType::Uuid,
-        "Map" => ColumnType::Map,
-        "List" => ColumnType::List,
-        "Point" => ColumnType::Point,
+        "Bool" => DataType::Boolean,
+        "I8" => DataType::Int8,
+        "I16" => DataType::Int16,
+        "I32" => DataType::Int32,
+        "I64" => DataType::Int,
+        "I128" => DataType::Int128,
+        "U8" => DataType::Uint8,
+        "U16" => DataType::Uint16,
+        "U32" => DataType::Uint32,
+        "U64" => DataType::Uint64,
+        "U128" => DataType::Uint128,
+        "F32" => DataType::Float32,
+        "F64" => DataType::Float,
+        "Decimal" => DataType::Decimal,
+        "Str" => DataType::Text,
+        "Bytea" => DataType::Bytea,
+        "Inet" => DataType::Inet,
+        "Date" => DataType::Date,
+        "Timestamp" => DataType::Timestamp,
+        "Time" => DataType::Time,
+        "Interval" => DataType::Interval,
+        "Uuid" => DataType::Uuid,
+        "Map" => DataType::Map,
+        "List" => DataType::List,
+        "Point" => DataType::Point,
         _ => return None,
     })
 }
 
-fn parse_value(value: &str, type_: Option<ColumnType>) -> Value {
+fn parse_value(value: &str, type_: Option<&DataType>) -> Value {
     if value == "NULL" {
         return Value::Null;
     }
@@ -817,72 +788,75 @@ fn parse_value(value: &str, type_: Option<ColumnType>) -> Value {
             .and_then(|(type_, value)| value.strip_suffix(')').map(|value| (type_, value)))
             .expect("dynamic value should use `Type(value)`");
         let type_ = parse_column_type(type_).expect("unsupported dynamic value type");
-        parse_typed_value(value.trim(), type_)
+        parse_typed_value(value.trim(), &type_)
     }
 }
 
-fn parse_typed_value(value: &str, type_: ColumnType) -> Value {
-    match type_ {
-        ColumnType::Bool => Value::Bool(value.parse().expect("expected a Bool value")),
-        ColumnType::I8 => Value::I8(value.parse().expect("expected an I8 value")),
-        ColumnType::I16 => Value::I16(value.parse().expect("expected an I16 value")),
-        ColumnType::I32 => Value::I32(value.parse().expect("expected an I32 value")),
-        ColumnType::I64 => Value::I64(value.parse().expect("expected an I64 value")),
-        ColumnType::I128 => Value::I128(value.parse().expect("expected an I128 value")),
-        ColumnType::U8 => Value::U8(value.parse().expect("expected a U8 value")),
-        ColumnType::U16 => Value::U16(value.parse().expect("expected a U16 value")),
-        ColumnType::U32 => Value::U32(value.parse().expect("expected a U32 value")),
-        ColumnType::U64 => Value::U64(value.parse().expect("expected a U64 value")),
-        ColumnType::U128 => Value::U128(value.parse().expect("expected a U128 value")),
-        ColumnType::F32 => {
+fn parse_typed_value(value: &str, type_: &DataType) -> Value {
+    let value = match type_ {
+        DataType::Boolean => Value::Bool(value.parse().expect("expected a Bool value")),
+        DataType::Int8 => Value::I8(value.parse().expect("expected an I8 value")),
+        DataType::Int16 => Value::I16(value.parse().expect("expected an I16 value")),
+        DataType::Int32 => Value::I32(value.parse().expect("expected an I32 value")),
+        DataType::Int => Value::I64(value.parse().expect("expected an I64 value")),
+        DataType::Int128 => Value::I128(value.parse().expect("expected an I128 value")),
+        DataType::Uint8 => Value::U8(value.parse().expect("expected a U8 value")),
+        DataType::Uint16 => Value::U16(value.parse().expect("expected a U16 value")),
+        DataType::Uint32 => Value::U32(value.parse().expect("expected a U32 value")),
+        DataType::Uint64 => Value::U64(value.parse().expect("expected a U64 value")),
+        DataType::Uint128 => Value::U128(value.parse().expect("expected a U128 value")),
+        DataType::Float32 => {
             assert_float_precision(value, F32_DECIMAL_PLACES, "F32");
             Value::F32(value.parse().expect("expected an F32 value"))
         }
-        ColumnType::F64 => {
+        DataType::Float => {
             assert_float_precision(value, F64_DECIMAL_PLACES, "F64");
             Value::F64(value.parse().expect("expected an F64 value"))
         }
-        ColumnType::Decimal => {
+        DataType::Decimal => {
             Value::Decimal(Decimal::from_str(unquote(value)).expect("expected a Decimal value"))
         }
-        ColumnType::Str => Value::Str(parse_string(value)),
-        ColumnType::Bytea => {
+        DataType::Text => Value::Str(parse_string(value)),
+        DataType::Bytea => {
             Value::Bytea(hex::decode(unquote(value)).expect("expected hexadecimal Bytea"))
         }
-        ColumnType::Inet => Value::Inet(
+        DataType::Inet => Value::Inet(
             unquote(value)
                 .parse::<IpAddr>()
                 .expect("expected an Inet value"),
         ),
-        ColumnType::Date => Value::Date(
+        DataType::Date => Value::Date(
             unquote(value)
                 .parse::<NaiveDate>()
                 .expect("expected a Date value"),
         ),
-        ColumnType::Timestamp => Value::Timestamp(
+        DataType::Timestamp => Value::Timestamp(
             NaiveDateTime::parse_from_str(unquote(value), "%Y-%m-%d %H:%M:%S%.f")
                 .or_else(|_| unquote(value).parse::<NaiveDateTime>())
                 .expect("expected a Timestamp value"),
         ),
-        ColumnType::Time => Value::Time(
+        DataType::Time => Value::Time(
             unquote(value)
                 .parse::<NaiveTime>()
                 .expect("expected a Time value"),
         ),
-        ColumnType::Interval => Value::Interval(
+        DataType::Interval => Value::Interval(
             Interval::parse(unquote(value)).expect("expected an Interval SQL literal"),
         ),
-        ColumnType::Uuid => Value::Uuid(
+        DataType::Uuid => Value::Uuid(
             Uuid::parse_str(unquote(value))
                 .expect("expected a UUID value")
                 .as_u128(),
         ),
-        ColumnType::Map => Value::parse_json_map(value).expect("expected a JSON Map value"),
-        ColumnType::List => Value::parse_json_list(value).expect("expected a JSON List value"),
-        ColumnType::Point => {
+        DataType::Map => Value::parse_json_map(value).expect("expected a JSON Map value"),
+        DataType::List => Value::parse_json_list(value).expect("expected a JSON List value"),
+        DataType::Point => {
             Value::Point(Point::from_wkt(unquote(value)).expect("expected a Point WKT value"))
         }
-    }
+    };
+
+    value.validate_type(type_).unwrap();
+    value
 }
 
 fn assert_float_precision(value: &str, max_decimal_places: usize, type_: &str) {
@@ -909,34 +883,8 @@ fn unquote(value: &str) -> &str {
 }
 
 fn parse_data_type(value: &str) -> DataType {
-    match value {
-        "Boolean" => DataType::Boolean,
-        "Int8" => DataType::Int8,
-        "Int16" => DataType::Int16,
-        "Int32" => DataType::Int32,
-        "Int" => DataType::Int,
-        "Int128" => DataType::Int128,
-        "Uint8" => DataType::Uint8,
-        "Uint16" => DataType::Uint16,
-        "Uint32" => DataType::Uint32,
-        "Uint64" => DataType::Uint64,
-        "Uint128" => DataType::Uint128,
-        "Float32" => DataType::Float32,
-        "Float" => DataType::Float,
-        "Text" => DataType::Text,
-        "Bytea" => DataType::Bytea,
-        "Inet" => DataType::Inet,
-        "Date" => DataType::Date,
-        "Timestamp" => DataType::Timestamp,
-        "Time" => DataType::Time,
-        "Interval" => DataType::Interval,
-        "Uuid" => DataType::Uuid,
-        "Map" => DataType::Map,
-        "List" => DataType::List,
-        "Decimal" => DataType::Decimal,
-        "Point" => DataType::Point,
-        _ => panic!("unsupported DataType: {value}"),
-    }
+    serde_json::from_value(serde_json::Value::String(value.to_owned()))
+        .unwrap_or_else(|_| panic!("unsupported DataType: {value}"))
 }
 
 #[cfg(test)]
@@ -1048,17 +996,17 @@ SELECT 1;
     #[test]
     fn rejects_float_values_over_max_precision() {
         assert!(matches!(
-            parse_value("1.123456", Some(ColumnType::F32)),
+            parse_value("1.123456", Some(&DataType::Float32)),
             Value::F32(_)
         ));
         assert!(matches!(
-            parse_value("1.123456789012", Some(ColumnType::F64)),
+            parse_value("1.123456789012", Some(&DataType::Float)),
             Value::F64(_)
         ));
 
         let overprecise = [
-            ("1.1234567", Some(ColumnType::F32)),
-            ("1.1234567890123", Some(ColumnType::F64)),
+            ("1.1234567", Some(&DataType::Float32)),
+            ("1.1234567890123", Some(&DataType::Float)),
             ("F32(1.1234567)", None),
             ("F64(1.1234567890123)", None),
         ];
