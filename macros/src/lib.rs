@@ -8,6 +8,8 @@ use {
     },
 };
 
+mod to_glue_row;
+
 fn resolve_gluesql_crate() -> Result<syn::Path, syn::Error> {
     if std::env::var("CARGO_PKG_NAME")
         .map(|name| name == "gluesql")
@@ -191,79 +193,10 @@ pub fn derive_from_glue_row(input: TokenStream) -> TokenStream {
     }
 }
 
-fn expand_to_glue_row(input: DeriveInput) -> Result<proc_macro2::TokenStream, syn::Error> {
-    let input_span = input.span();
-
-    let gluesql_crate_path = resolve_gluesql_crate()?;
-    let gluesql_crate = quote! { #gluesql_crate_path };
-
-    let ident = input.ident.clone();
-    let Data::Struct(data) = input.data else {
-        return Err(syn::Error::new(
-            input_span,
-            "ToGlueRow can only be derived for structs",
-        ));
-    };
-
-    let fields = match data.fields {
-        Fields::Named(f) => f.named,
-        _ => {
-            return Err(syn::Error::new(
-                input_span,
-                "ToGlueRow supports only named fields",
-            ));
-        }
-    };
-
-    let mut column_names = Vec::new();
-    let mut field_literals = Vec::new();
-
-    for field in &fields {
-        let field_ident = field.ident.clone().expect("named field");
-        let field_name_literal = field_ident.to_string();
-
-        let mut rename: Option<String> = None;
-        for attr in &field.attrs {
-            if let Some(res) = parse_glue_rename(attr) {
-                match res {
-                    Ok(Some(name)) => rename = Some(name),
-                    Ok(None) => {}
-                    Err(e) => return Err(e),
-                }
-            }
-        }
-        let column_name = rename.unwrap_or_else(|| field_name_literal.clone());
-        column_names.push(quote! { #column_name });
-
-        field_literals.push(quote! {
-            #gluesql_crate::translate::IntoParamLiteral::into_param_literal(
-                ::core::clone::Clone::clone(&self.#field_ident)
-            )
-        });
-    }
-
-    let columns_len = column_names.len();
-
-    let expanded = quote! {
-        impl #gluesql_crate::row_conversion::ToGlueRow for #ident {
-            fn glue_columns() -> &'static [&'static str] {
-                static COLUMNS: [&str; #columns_len] = [ #(#column_names),* ];
-                &COLUMNS
-            }
-
-            fn to_glue_row(&self) -> ::std::vec::Vec<#gluesql_crate::translate::ParamLiteral> {
-                ::std::vec![ #(#field_literals),* ]
-            }
-        }
-    };
-
-    Ok(expanded)
-}
-
 #[proc_macro_derive(ToGlueRow, attributes(glue))]
 pub fn derive_to_glue_row(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    match expand_to_glue_row(input) {
+    match to_glue_row::expand_to_glue_row(input) {
         Ok(ts) => TokenStream::from(ts),
         Err(e) => e.to_compile_error().into(),
     }
@@ -976,55 +909,8 @@ fn match_expected(
 
 #[cfg(test)]
 mod tests {
-    use super::{expand_from_glue_row, expand_to_glue_row};
+    use super::expand_from_glue_row;
     use syn::parse_quote;
-
-    #[test]
-    fn to_glue_row_non_struct_input_returns_error() {
-        let di: syn::DeriveInput = parse_quote! {
-            enum E { A }
-        };
-        let err = expand_to_glue_row(di).unwrap_err();
-        assert!(
-            err.to_string()
-                .contains("ToGlueRow can only be derived for structs")
-        );
-    }
-
-    #[test]
-    fn to_glue_row_non_named_fields_struct_returns_error() {
-        let di: syn::DeriveInput = parse_quote! {
-            struct T(i32);
-        };
-        let err = expand_to_glue_row(di).unwrap_err();
-        assert!(
-            err.to_string()
-                .contains("ToGlueRow supports only named fields")
-        );
-    }
-
-    #[test]
-    fn to_glue_row_glue_rename_ok_some_and_ok_none() {
-        let di: syn::DeriveInput = parse_quote! {
-            struct S {
-                #[glue(rename = "col")] a: i64,
-                #[glue(other = "x")] b: String,
-            }
-        };
-        let _ = expand_to_glue_row(di).expect("expand ok");
-    }
-
-    #[test]
-    fn to_glue_row_glue_rename_wrong_literal_type() {
-        let di: syn::DeriveInput = parse_quote! {
-            struct S { #[glue(rename = 123)] a: i64 }
-        };
-        let err = expand_to_glue_row(di).unwrap_err();
-        assert!(
-            err.to_string()
-                .contains("expected string literal for rename")
-        );
-    }
 
     #[test]
     fn non_struct_input_returns_error() {

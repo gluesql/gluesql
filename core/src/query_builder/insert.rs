@@ -239,10 +239,7 @@ mod tests {
             }
         }
 
-        let actual = table("Foo")
-            .insert()
-            .values_from(&[Mismatched])
-            .map(|_| ());
+        let actual = table("Foo").insert().values_from(&[Mismatched]).map(|_| ());
         let expected = Err(Error::QueryBuilder(
             QueryBuilderError::ValuesFromColumnCountMismatch {
                 expected: 2,
