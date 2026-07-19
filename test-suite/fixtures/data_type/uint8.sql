@@ -26,6 +26,7 @@ INSERT INTO Item VALUES (-129, -129);
 SELECT field_one, field_two FROM Item
 -- @expect:
 -- | field_one: U8 | field_two: U8 |
+-- | ------------- | ------------- |
 -- | 1             | 1             |
 -- | 2             | 2             |
 -- | 3             | 3             |
@@ -34,6 +35,7 @@ SELECT field_one, field_two FROM Item
 SELECT field_one FROM Item WHERE field_one > 0
 -- @expect:
 -- | field_one: U8 |
+-- | ------------- |
 -- | 1             |
 -- | 2             |
 -- | 3             |
@@ -42,6 +44,7 @@ SELECT field_one FROM Item WHERE field_one > 0
 SELECT field_one FROM Item WHERE field_one >= 0
 -- @expect:
 -- | field_one: U8 |
+-- | ------------- |
 -- | 1             |
 -- | 2             |
 -- | 3             |
@@ -50,4 +53,5 @@ SELECT field_one FROM Item WHERE field_one >= 0
 SELECT field_one FROM Item WHERE field_one = 2
 -- @expect:
 -- | field_one: U8 |
+-- | ------------- |
 -- | 2             |

@@ -8,6 +8,7 @@ INSERT INTO Foo VALUES (POINT(0.3134, 3.156), POINT(1.415, 3.231), 3)
 SELECT CALC_DISTANCE(geo1, geo2) AS georesult FROM Foo
 -- @expect:
 -- | georesult: F64 |
+-- | -------------- |
 -- | 1.104150152832 |
 
 SELECT CALC_DISTANCE(geo1) AS georesult FROM Foo
@@ -26,4 +27,5 @@ SELECT CALC_DISTANCE(geo1, bar) AS georesult FROM Foo
 SELECT CALC_DISTANCE(geo1, NULL) AS georesult FROM Foo
 -- @expect:
 -- | georesult |
+-- | --------- |
 -- | NULL      |

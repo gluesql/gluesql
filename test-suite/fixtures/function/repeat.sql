@@ -8,6 +8,7 @@ INSERT INTO Item VALUES ('hello')
 SELECT REPEAT(name, 2) AS test FROM Item
 -- @expect:
 -- | test: Str    |
+-- | ------------ |
 -- | "hellohello" |
 
 SELECT REPEAT('abcd') AS test FROM Item
@@ -35,6 +36,7 @@ SELECT REPEAT(1, 1) AS test FROM Item
 SELECT REPEAT(name, null) AS test FROM Item
 -- @expect:
 -- | test |
+-- | ---- |
 -- | NULL |
 
 CREATE TABLE NullTest (name TEXT null)
@@ -47,4 +49,5 @@ INSERT INTO NullTest VALUES (null)
 SELECT REPEAT(name, 2) AS test FROM NullTest
 -- @expect:
 -- | test |
+-- | ---- |
 -- | NULL |

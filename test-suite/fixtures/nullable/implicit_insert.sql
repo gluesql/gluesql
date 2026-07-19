@@ -10,4 +10,5 @@ INSERT INTO Foo (id) VALUES (1)
 SELECT id, name FROM Foo
 -- @expect:
 -- | id: I64 | name |
+-- | ------- | ---- |
 -- | 1       | NULL |

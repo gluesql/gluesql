@@ -23,16 +23,19 @@ CREATE FUNCTION add_two (n INT, x INT DEFAULT 1, y INT DEFAULT 1) RETURN n + x +
 SELECT add_none() AS r
 -- @expect:
 -- | r    |
+-- | ---- |
 -- | NULL |
 
 SELECT add_one(1) AS r
 -- @expect:
 -- | r: I64 |
+-- | ------ |
 -- | 2      |
 
 SELECT add_one(1, 8) AS r
 -- @expect:
 -- | r: I64 |
+-- | ------ |
 -- | 9      |
 
 SELECT add_one(1, 2, 4)
@@ -58,11 +61,13 @@ SELECT add_one()
 SELECT add_two(1, null, 2) as r
 -- @expect:
 -- | r    |
+-- | ---- |
 -- | NULL |
 
 SELECT add_two(1) as r
 -- @expect:
 -- | r: I64 |
+-- | ------ |
 -- | 3      |
 
 DROP FUNCTION add_none

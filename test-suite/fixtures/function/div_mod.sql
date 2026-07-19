@@ -17,6 +17,7 @@ SELECT
 FROM FloatDiv
 -- @expect:
 -- | DIV(dividend, divisor): I64 | MOD(dividend, divisor): F64 |
+-- | --------------------------- | --------------------------- |
 -- | 5                           | 0.0                         |
 -- | 0                           | 12.34                       |
 -- | -3                          | -0.3                        |
@@ -66,6 +67,7 @@ SELECT
 FROM IntDiv
 -- @expect:
 -- | DIV(dividend, divisor): I64 | MOD(dividend, divisor): I64 |
+-- | --------------------------- | --------------------------- |
 -- | 4                           | 0                           |
 -- | 1                           | 5                           |
 -- | 0                           | 12                          |
@@ -92,6 +94,7 @@ SELECT
 FROM MixDiv
 -- @expect:
 -- | DIV(dividend, divisor): I64 | MOD(dividend, divisor): I64 |
+-- | --------------------------- | --------------------------- |
 -- | 4                           | 0                           |
 -- | 0                           | 12                          |
 -- | NULL                        | NULL                        |

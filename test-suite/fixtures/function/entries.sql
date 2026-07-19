@@ -11,6 +11,7 @@ INSERT INTO Item VALUES ('{"name":"GlueSQL"}')
 SELECT ENTRIES(map) AS test FROM Item
 -- @expect:
 -- | test: List           |
+-- | -------------------- |
 -- | [["name","GlueSQL"]] |
 
 -- @name: test ENTRIES function requires map value

@@ -8,6 +8,7 @@ INSERT INTO Item VALUES ('Let''s meet')
 SELECT REVERSE(name) AS test FROM Item;
 -- @expect:
 -- | test: Str    |
+-- | ------------ |
 -- | "teem s'teL" |
 
 SELECT REVERSE(1) AS test FROM Item
@@ -24,4 +25,5 @@ INSERT INTO NullTest VALUES (null)
 SELECT REVERSE(name) AS test FROM NullTest
 -- @expect:
 -- | test |
+-- | ---- |
 -- | NULL |

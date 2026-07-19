@@ -10,6 +10,7 @@ CREATE INDEX Meta_name ON Meta (name);
 SELECT OBJECT_NAME, OBJECT_TYPE FROM GLUE_OBJECTS;
 -- @expect:
 -- | OBJECT_NAME: Str | OBJECT_TYPE: Str |
+-- | ---------------- | ---------------- |
 -- | "Meta"           | "TABLE"          |
 -- | "Meta_id"        | "INDEX"          |
 -- | "Meta_name"      | "INDEX"          |

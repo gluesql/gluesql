@@ -4,6 +4,7 @@ CREATE TABLE Items (id INTEGER NOT NULL, name TEXT, status TEXT DEFAULT 'ACTIVE'
 VALUES (1), (2), (3)
 -- @expect:
 -- | column1: I64 |
+-- | ------------ |
 -- | 1            |
 -- | 2            |
 -- | 3            |
@@ -11,28 +12,33 @@ VALUES (1), (2), (3)
 VALUES (1, 'a'), (2, 'b')
 -- @expect:
 -- | column1: I64 | column2: Str |
+-- | ------------ | ------------ |
 -- | 1            | "a"          |
 -- | 2            | "b"          |
 
 VALUES (1, 'a'), (2, 'b') ORDER BY column1 DESC
 -- @expect:
 -- | column1: I64 | column2: Str |
+-- | ------------ | ------------ |
 -- | 2            | "b"          |
 -- | 1            | "a"          |
 
 VALUES (1), (2) limit 1
 -- @expect:
 -- | column1: I64 |
+-- | ------------ |
 -- | 1            |
 
 VALUES (1), (2) offset 1
 -- @expect:
 -- | column1: I64 |
+-- | ------------ |
 -- | 2            |
 
 VALUES (1, NULL), (2, NULL)
 -- @expect:
 -- | column1: I64 | column2 |
+-- | ------------ | ------- |
 -- | 1            | NULL    |
 -- | 2            | NULL    |
 
@@ -72,6 +78,7 @@ CREATE TABLE TableFromValues AS VALUES (1, 'a', True, Null, Null), (2, 'b', Fals
 SELECT * FROM TableFromValues
 -- @expect:
 -- | column1: I64 | column2: Str | column3: Bool | column4: I64 | column5 |
+-- | ------------ | ------------ | ------------- | ------------ | ------- |
 -- | 1            | "a"          | true          | NULL         | NULL    |
 -- | 2            | "b"          | false         | 3            | NULL    |
 
@@ -104,12 +111,14 @@ SHOW COLUMNS FROM TableFromValues
 SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS Derived
 -- @expect:
 -- | column1: I64 | column2: Str |
+-- | ------------ | ------------ |
 -- | 1            | "a"          |
 -- | 2            | "b"          |
 
 SELECT column1 AS id, column2 AS name FROM (VALUES (1, 'a'), (2, 'b')) AS Derived
 -- @expect:
 -- | id: I64 | name: Str |
+-- | ------- | --------- |
 -- | 1       | "a"       |
 -- | 2       | "b"       |
 

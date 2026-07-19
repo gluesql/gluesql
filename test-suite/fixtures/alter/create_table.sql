@@ -82,12 +82,14 @@ CREATE TABLE TargetTableWithAggregate AS SELECT COUNT(*) FROM CreateTable2
 SELECT * FROM TargetTableWithData
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | NULL    | 1        | "1"       |
 -- | 2       | 2        | "2"       |
 
 SELECT * FROM TargetTableWithAggregate
 -- @expect:
 -- | COUNT(*): I64 |
+-- | ------------- |
 -- | 2             |
 
 CREATE TABLE TargetTableWithLimit AS SELECT * FROM CreateTable2 LIMIT 1
@@ -96,6 +98,7 @@ CREATE TABLE TargetTableWithLimit AS SELECT * FROM CreateTable2 LIMIT 1
 SELECT * FROM TargetTableWithLimit
 -- @expect:
 -- | id   | num: I64 | name: Str |
+-- | ---- | -------- | --------- |
 -- | NULL | 1        | "1"       |
 
 CREATE TABLE TargetTableWithOffset AS SELECT * FROM CreateTable2 OFFSET 1
@@ -104,6 +107,7 @@ CREATE TABLE TargetTableWithOffset AS SELECT * FROM CreateTable2 OFFSET 1
 SELECT * FROM TargetTableWithOffset
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 2       | 2        | "2"       |
 
 CREATE TABLE TargetTableWithData AS SELECT * FROM CreateTable2
@@ -127,4 +131,5 @@ CREATE TABLE TargetTableWithEmptyAggregate AS SELECT COUNT(*) FROM EmptySource
 SELECT * FROM TargetTableWithEmptyAggregate
 -- @expect:
 -- | COUNT(*): I64 |
+-- | ------------- |
 -- | 0             |

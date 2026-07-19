@@ -13,11 +13,13 @@ INSERT INTO Item VALUES ('{"dex":324,"id":100,"name":"Test 001","obj":{"cost":30
 SELECT name, dex, rare FROM Item WHERE id = 100
 -- @expect:
 -- | name: Str  | dex: I64 | rare: Bool |
+-- | ---------- | -------- | ---------- |
 -- | "Test 001" | 324      | false      |
 
 SELECT name, dex, rare FROM Item
 -- @expect:
 -- | name: Str  | dex: I64 | rare: Bool |
+-- | ---------- | -------- | ---------- |
 -- | "Test 001" | 324      | false      |
 -- | NULL       | NULL     | NULL       |
 
@@ -38,6 +40,7 @@ SET
 SELECT id, name, dex, rare FROM Item
 -- @expect:
 -- | id: I64 | name: Str  | dex: I64 | rare: Bool |
+-- | ------- | ---------- | -------- | ---------- |
 -- | 101     | "Test 001" | 324      | true       |
 
 UPDATE Item SET new_field = 'Hello'
@@ -46,6 +49,7 @@ UPDATE Item SET new_field = 'Hello'
 SELECT new_field, obj['cost'] AS cost FROM Item
 -- @expect:
 -- | new_field: Str | cost: I64 |
+-- | -------------- | --------- |
 -- | "Hello"        | 3000      |
 
 SELECT
@@ -57,4 +61,5 @@ JOIN Player
 WHERE flag IS NOT NULL;
 -- @expect:
 -- | player_id: I64 | player_name: Str | item_cost: I64 |
+-- | -------------- | ---------------- | -------------- |
 -- | 1001           | "Beam"           | 3000           |

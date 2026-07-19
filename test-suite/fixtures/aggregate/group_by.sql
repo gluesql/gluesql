@@ -18,6 +18,7 @@ INSERT INTO Item (id, quantity, city, ratio) VALUES
 SELECT id, COUNT(*) FROM Item GROUP BY id
 -- @expect:
 -- | id: I64 | COUNT(*): I64 |
+-- | ------- | ------------- |
 -- | 1       | 1             |
 -- | 2       | 1             |
 -- | 3       | 2             |
@@ -27,6 +28,7 @@ SELECT id, COUNT(*) FROM Item GROUP BY id
 SELECT id FROM Item GROUP BY id
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |
 -- | 2       |
 -- | 3       |
@@ -36,6 +38,7 @@ SELECT id FROM Item GROUP BY id
 SELECT SUM(quantity), COUNT(*), city FROM Item GROUP BY city
 -- @expect:
 -- | SUM(quantity): I64 | COUNT(*): I64 | city: Str |
+-- | ------------------ | ------------- | --------- |
 -- | 21                 | 2             | "Seoul"   |
 -- | 0                  | 1             | "Dhaka"   |
 -- | NULL               | 1             | "Beijing" |
@@ -45,6 +48,7 @@ SELECT SUM(quantity), COUNT(*), city FROM Item GROUP BY city
 SELECT id, city FROM Item GROUP BY city
 -- @expect:
 -- | id: I64 | city: Str |
+-- | ------- | --------- |
 -- | 1       | "Seoul"   |
 -- | 2       | "Dhaka"   |
 -- | 3       | "Beijing" |
@@ -54,6 +58,7 @@ SELECT id, city FROM Item GROUP BY city
 SELECT ratio, COUNT(*) FROM Item GROUP BY ratio
 -- @expect:
 -- | ratio: F64 | COUNT(*): I64 |
+-- | ---------- | ------------- |
 -- | 0.2        | 2             |
 -- | 6.11       | 2             |
 -- | 1.1        | 2             |
@@ -61,6 +66,7 @@ SELECT ratio, COUNT(*) FROM Item GROUP BY ratio
 SELECT ratio FROM Item GROUP BY id, city
 -- @expect:
 -- | ratio: F64 |
+-- | ---------- |
 -- | 0.2        |
 -- | 6.11       |
 -- | 1.1        |
@@ -71,17 +77,20 @@ SELECT ratio FROM Item GROUP BY id, city
 SELECT id, ratio FROM Item GROUP BY id, city HAVING ratio > 6
 -- @expect:
 -- | id: I64 | ratio: F64 |
+-- | ------- | ---------- |
 -- | 2       | 6.11       |
 -- | 5       | 6.11       |
 
 SELECT SUM(quantity), COUNT(*), city FROM Item GROUP BY city HAVING COUNT(*) > 1
 -- @expect:
 -- | SUM(quantity): I64 | COUNT(*): I64 | city: Str |
+-- | ------------------ | ------------- | --------- |
 -- | 21                 | 2             | "Seoul"   |
 
 SELECT city FROM Item GROUP BY city HAVING COALESCE(COUNT(*), 0) > 1
 -- @expect:
 -- | city: Str |
+-- | --------- |
 -- | "Seoul"   |
 
 CREATE TABLE Sub (id INTEGER);
@@ -101,6 +110,7 @@ WHERE (id - 100) IN (
 )
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 101     |
 -- | 102     |
 -- | 103     |

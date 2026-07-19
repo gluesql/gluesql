@@ -13,6 +13,7 @@ ALTER TABLE DropCol DROP COLUMN num;
 SELECT * FROM DropCol
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |
 
 ROLLBACK;
@@ -21,6 +22,7 @@ ROLLBACK;
 SELECT * FROM DropCol
 -- @expect:
 -- | id: I64 | num: I64 |
+-- | ------- | -------- |
 -- | 1       | 2        |
 
 BEGIN;
@@ -35,4 +37,5 @@ COMMIT;
 SELECT * FROM DropCol
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |

@@ -13,12 +13,14 @@ INSERT INTO Item VALUES
 SELECT name FROM Item WHERE INITCAP(name) = 'H/I Jk';
 -- @expect:
 -- | name: Str |
+-- | --------- |
 -- | "h/i jk"  |
 -- | "H/I JK"  |
 
 SELECT INITCAP(name) FROM Item;
 -- @expect:
 -- | INITCAP(name): Str |
+-- | ------------------ |
 -- | "H/I Jk"           |
 -- | NULL               |
 -- | "H/I Jk"           |

@@ -17,6 +17,7 @@ SELECT * FROM RenameTable
 SELECT * FROM NewName
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |
 
 ROLLBACK;
@@ -29,4 +30,5 @@ SELECT * FROM NewName
 SELECT * FROM RenameTable
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |

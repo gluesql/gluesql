@@ -4,16 +4,19 @@ SELECT
     ;
 -- @expect:
 -- | sqrt_1: F64 | sqrt_2: F64    |
+-- | ----------- | -------------- |
 -- | 2.0         | 0.264575131106 |
 
 SELECT SQRT(64) as sqrt_with_int
 -- @expect:
 -- | sqrt_with_int: F64 |
+-- | ------------------ |
 -- | 8.0                |
 
 SELECT SQRT(0) as sqrt_with_zero
 -- @expect:
 -- | sqrt_with_zero: F64 |
+-- | ------------------- |
 -- | 0.0                 |
 
 SELECT SQRT('string') AS sqrt
@@ -26,4 +29,5 @@ SELECT SQRT('string') AS sqrt
 SELECT SQRT(NULL) AS sqrt
 -- @expect:
 -- | sqrt |
+-- | ---- |
 -- | NULL |

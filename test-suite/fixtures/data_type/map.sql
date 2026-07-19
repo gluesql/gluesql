@@ -13,6 +13,7 @@ INSERT INTO MapType VALUES
 SELECT id, nested FROM MapType LIMIT 1
 -- @expect:
 -- | id: I64 | nested: Map      |
+-- | ------- | ---------------- |
 -- | 1       | {"a":true,"b":2} |
 
 SELECT
@@ -24,6 +25,7 @@ SELECT
 FROM MapType
 -- @expect:
 -- | id: I64 | foo: Str  | good: I64 | good2: I64 | b                   |
+-- | ------- | --------- | --------- | ---------- | ------------------- |
 -- | 1       | NULL      | NULL      | NULL       | NULL                |
 -- | 2       | "ok.yeah" | NULL      | NULL       | Str("steak")        |
 -- | 3       | NULL      | 10        | 20         | Map({"c":{"d":10}}) |
@@ -35,6 +37,7 @@ SELECT
 FROM MapType LIMIT 1
 -- @expect:
 -- | id: I64 | foo  | bar  |
+-- | ------- | ---- | ---- |
 -- | 1       | NULL | NULL |
 
 CREATE TABLE MapType2 (
@@ -52,6 +55,7 @@ INSERT INTO MapType2 VALUES
 SELECT id, nested['b'] as b FROM MapType2
 -- @expect:
 -- | id: I64 | b: I64 |
+-- | ------- | ------ |
 -- | 1       | 10     |
 -- | 2       | 20     |
 -- | 3       | 30     |
@@ -60,6 +64,7 @@ SELECT id, nested['b'] as b FROM MapType2
 SELECT id, nested['b'] FROM MapType2
 -- @expect:
 -- | id: I64 | nested['b']: I64 |
+-- | ------- | ---------------- |
 -- | 1       | 10               |
 -- | 2       | 20               |
 -- | 3       | 30               |
@@ -73,6 +78,7 @@ SELECT
 FROM MapType2
 -- @expect:
 -- | id: I64 | fruit: Str | sum: I64 | c: Bool |
+-- | ------- | ---------- | -------- | ------- |
 -- | 1       | "apple"    | 11       | NULL    |
 -- | 2       | "cherry"   | 22       | NULL    |
 -- | 3       | "berry"    | 33       | true    |
@@ -81,6 +87,7 @@ FROM MapType2
 SELECT CAST('{"a": 1}' AS MAP) AS map
 -- @expect:
 -- | map: Map |
+-- | -------- |
 -- | {"a":1}  |
 
 SELECT UNWRAP('abc', 'a.b.c') FROM MapType
@@ -96,6 +103,7 @@ SELECT id, nested['a']['blue']['first'] FROM MapType2
 SELECT id FROM MapType GROUP BY nested
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |
 -- | 2       |
 -- | 3       |

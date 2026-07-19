@@ -2,30 +2,35 @@
 SELECT ADD_MONTH('2017-06-15',1) AS test;
 -- @expect:
 -- | test: Date   |
+-- | ------------ |
 -- | "2017-07-15" |
 
 -- @name: minus test on general case
 SELECT ADD_MONTH('2017-06-15',-1) AS test;
 -- @expect:
 -- | test: Date   |
+-- | ------------ |
 -- | "2017-05-15" |
 
 -- @name: the last day of February test
 SELECT ADD_MONTH('2017-01-31',1) AS test;
 -- @expect:
 -- | test: Date   |
+-- | ------------ |
 -- | "2017-02-28" |
 
 -- @name: year change test
 SELECT ADD_MONTH('2017-01-31',13) AS test;
 -- @expect:
 -- | test: Date   |
+-- | ------------ |
 -- | "2018-02-28" |
 
 -- @name: zero test
 SELECT ADD_MONTH('2017-01-31',0) AS test;
 -- @expect:
 -- | test: Date   |
+-- | ------------ |
 -- | "2017-01-31" |
 
 -- @name: out of range test with i64::MAX

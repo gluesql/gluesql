@@ -8,6 +8,7 @@ INSERT INTO Foo VALUES (1, 'a'), (2, 'b'), (3, 'c');
 SELECT id FROM Foo
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |
 -- | 2       |
 -- | 3       |
@@ -22,6 +23,7 @@ ALTER TABLE Foo RENAME TO Bar;
 SELECT id FROM Bar
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |
 -- | 2       |
 -- | 3       |
@@ -32,6 +34,7 @@ ALTER TABLE Bar RENAME COLUMN id TO new_id
 SELECT new_id FROM Bar
 -- @expect:
 -- | new_id: I64 |
+-- | ----------- |
 -- | 1           |
 -- | 2           |
 -- | 3           |

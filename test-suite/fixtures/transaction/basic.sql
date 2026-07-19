@@ -22,6 +22,7 @@ ROLLBACK;
 SELECT id, name FROM TxTest
 -- @expect:
 -- | id: I64 | name: Str |
+-- | ------- | --------- |
 -- | 1       | "Friday"  |
 -- | 2       | "Phone"   |
 
@@ -35,6 +36,7 @@ INSERT INTO TxTest VALUES (3, 'Vienna');
 SELECT id, name FROM TxTest
 -- @expect:
 -- | id: I64 | name: Str |
+-- | ------- | --------- |
 -- | 1       | "Friday"  |
 -- | 2       | "Phone"   |
 -- | 3       | "Vienna"  |
@@ -45,29 +47,7 @@ COMMIT;
 SELECT id, name FROM TxTest
 -- @expect:
 -- | id: I64 | name: Str |
--- | 1       | "Friday"  |
--- | 2       | "Phone"   |
--- | 3       | "Vienna"  |
-
-BEGIN;
--- @expect: payload StartTransaction
-
-DELETE FROM TxTest WHERE id = 3;
--- @expect: payload Delete
--- @json: 1
-
-SELECT id, name FROM TxTest
--- @expect:
--- | id: I64 | name: Str |
--- | 1       | "Friday"  |
--- | 2       | "Phone"   |
-
-ROLLBACK;
--- @expect: payload Rollback
-
-SELECT id, name FROM TxTest
--- @expect:
--- | id: I64 | name: Str |
+-- | ------- | --------- |
 -- | 1       | "Friday"  |
 -- | 2       | "Phone"   |
 -- | 3       | "Vienna"  |
@@ -82,6 +62,32 @@ DELETE FROM TxTest WHERE id = 3;
 SELECT id, name FROM TxTest
 -- @expect:
 -- | id: I64 | name: Str |
+-- | ------- | --------- |
+-- | 1       | "Friday"  |
+-- | 2       | "Phone"   |
+
+ROLLBACK;
+-- @expect: payload Rollback
+
+SELECT id, name FROM TxTest
+-- @expect:
+-- | id: I64 | name: Str |
+-- | ------- | --------- |
+-- | 1       | "Friday"  |
+-- | 2       | "Phone"   |
+-- | 3       | "Vienna"  |
+
+BEGIN;
+-- @expect: payload StartTransaction
+
+DELETE FROM TxTest WHERE id = 3;
+-- @expect: payload Delete
+-- @json: 1
+
+SELECT id, name FROM TxTest
+-- @expect:
+-- | id: I64 | name: Str |
+-- | ------- | --------- |
 -- | 1       | "Friday"  |
 -- | 2       | "Phone"   |
 
@@ -91,6 +97,7 @@ COMMIT;
 SELECT id, name FROM TxTest
 -- @expect:
 -- | id: I64 | name: Str |
+-- | ------- | --------- |
 -- | 1       | "Friday"  |
 -- | 2       | "Phone"   |
 
@@ -104,6 +111,7 @@ UPDATE TxTest SET name = 'Sunday' WHERE id = 1;
 SELECT id, name FROM TxTest
 -- @expect:
 -- | id: I64 | name: Str |
+-- | ------- | --------- |
 -- | 1       | "Sunday"  |
 -- | 2       | "Phone"   |
 
@@ -113,6 +121,7 @@ ROLLBACK;
 SELECT id, name FROM TxTest
 -- @expect:
 -- | id: I64 | name: Str |
+-- | ------- | --------- |
 -- | 1       | "Friday"  |
 -- | 2       | "Phone"   |
 
@@ -126,6 +135,7 @@ UPDATE TxTest SET name = 'Sunday' WHERE id = 1;
 SELECT id, name FROM TxTest
 -- @expect:
 -- | id: I64 | name: Str |
+-- | ------- | --------- |
 -- | 1       | "Sunday"  |
 -- | 2       | "Phone"   |
 
@@ -135,6 +145,7 @@ COMMIT;
 SELECT id, name FROM TxTest
 -- @expect:
 -- | id: I64 | name: Str |
+-- | ------- | --------- |
 -- | 1       | "Sunday"  |
 -- | 2       | "Phone"   |
 

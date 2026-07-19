@@ -63,11 +63,13 @@ SELECT * FROM Request WHERE user_id IN (SELECT id FROM Player WHERE name IN ('Ta
 
 SELECT * FROM Player WHERE id = (SELECT id FROM Player WHERE id = 9)
 -- @expect:
--- | id | name |
+-- | id  | name |
+-- | --- | ---- |
 
 SELECT (SELECT N FROM SERIES(3) WHERE N = 4) N
 -- @expect:
 -- | N    |
+-- | ---- |
 -- | NULL |
 
 SELECT id FROM Player WHERE id IN (SELECT id, name FROM Player)

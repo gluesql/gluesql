@@ -8,6 +8,7 @@ INSERT INTO posts ("id") VALUES ('019f576b-437e-7fe1-bf9d-f9b30f69fae1')
 SELECT id FROM posts WHERE id = '019f576b-437e-7fe1-bf9d-f9b30f69fae1';
 -- @expect:
 -- | id: Uuid                               |
+-- | -------------------------------------- |
 -- | "019f576b-437e-7fe1-bf9d-f9b30f69fae1" |
 
 CREATE TABLE UUID (uuid_field UUID)
@@ -39,6 +40,7 @@ INSERT INTO UUID VALUES
 SELECT uuid_field AS uuid_field FROM UUID;
 -- @expect:
 -- | uuid_field: Uuid                       |
+-- | -------------------------------------- |
 -- | "936da01f-9abd-4d9d-80c7-02af85c822a8" |
 -- | "550e8400-e29b-41d4-a716-446655440000" |
 -- | "f9168c5e-ceb2-4faa-b6bf-329bf39fa1e4" |
@@ -50,6 +52,7 @@ UPDATE UUID SET uuid_field = 'urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4' WHE
 SELECT uuid_field AS uuid_field, COUNT(*) FROM UUID GROUP BY uuid_field
 -- @expect:
 -- | uuid_field: Uuid                       | COUNT(*): I64 |
+-- | -------------------------------------- | ------------- |
 -- | "936da01f-9abd-4d9d-80c7-02af85c822a8" | 1             |
 -- | "f9168c5e-ceb2-4faa-b6bf-329bf39fa1e4" | 2             |
 

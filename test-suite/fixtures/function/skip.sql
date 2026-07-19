@@ -11,24 +11,28 @@ INSERT INTO Test (id, list) VALUES (1,'[1,2,3,4,5]')
 SELECT SKIP(list, 2) as col1 FROM Test
 -- @expect:
 -- | col1: List |
+-- | ---------- |
 -- | [3,4,5]    |
 
 -- @name: skip function with out of range index
 SELECT SKIP(list, 6) as col1 FROM Test
 -- @expect:
 -- | col1: List |
+-- | ---------- |
 -- | []         |
 
 -- @name: skip function with null list
 SELECT SKIP(NULL, 2) as col1 FROM Test
 -- @expect:
 -- | col1 |
+-- | ---- |
 -- | NULL |
 
 -- @name: skip function with null size
 SELECT SKIP(list, NULL) as col1 FROM Test
 -- @expect:
 -- | col1 |
+-- | ---- |
 -- | NULL |
 
 -- @name: skip function with non integer parameter

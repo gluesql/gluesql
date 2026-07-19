@@ -10,6 +10,7 @@ INSERT INTO Test VALUES (1);
 SELECT * FROM Test;
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |
 
 ROLLBACK;
@@ -34,6 +35,7 @@ COMMIT;
 SELECT * FROM Test;
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 3       |
 
 BEGIN;
@@ -52,6 +54,7 @@ ROLLBACK;
 SELECT * FROM Test;
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 3       |
 
 BEGIN;

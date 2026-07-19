@@ -8,6 +8,7 @@ INSERT INTO Foo VALUES (1), (2);
 SELECT * FROM Foo;
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |
 -- | 2       |
 
@@ -33,6 +34,7 @@ ALTER TABLE Foo ADD COLUMN amount INTEGER DEFAULT 10
 SELECT * FROM Foo;
 -- @expect:
 -- | id: I64 | amount: I64 |
+-- | ------- | ----------- |
 -- | 1       | 10          |
 -- | 2       | 10          |
 
@@ -42,6 +44,7 @@ ALTER TABLE Foo ADD COLUMN opt BOOLEAN NULL
 SELECT * FROM Foo;
 -- @expect:
 -- | id: I64 | amount: I64 | opt  |
+-- | ------- | ----------- | ---- |
 -- | 1       | 10          | NULL |
 -- | 2       | 10          | NULL |
 
@@ -51,6 +54,7 @@ ALTER TABLE Foo ADD COLUMN opt2 BOOLEAN NULL DEFAULT true
 SELECT * FROM Foo;
 -- @expect:
 -- | id: I64 | amount: I64 | opt  | opt2: Bool |
+-- | ------- | ----------- | ---- | ---------- |
 -- | 1       | 10          | NULL | true       |
 -- | 2       | 10          | NULL | true       |
 
@@ -82,6 +86,7 @@ ALTER TABLE Foo DROP COLUMN amount;
 SELECT * FROM Foo;
 -- @expect:
 -- | id: I64 | opt  | opt2: Bool |
+-- | ------- | ---- | ---------- |
 -- | 1       | NULL | true       |
 -- | 2       | NULL | true       |
 
@@ -91,6 +96,7 @@ ALTER TABLE Foo DROP COLUMN IF EXISTS opt2;
 SELECT * FROM Foo;
 -- @expect:
 -- | id: I64 | opt  |
+-- | ------- | ---- |
 -- | 1       | NULL |
 -- | 2       | NULL |
 

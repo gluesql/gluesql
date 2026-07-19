@@ -8,18 +8,21 @@ INSERT INTO Test1 (list) VALUES ('[2, 1, 4, 3]')
 SELECT SORT(list) AS list FROM Test1
 -- @expect:
 -- | list: List |
+-- | ---------- |
 -- | [1,2,3,4]  |
 
 -- @name: sort the list by ascending order
 SELECT SORT(list, 'ASC') AS list FROM Test1
 -- @expect:
 -- | list: List |
+-- | ---------- |
 -- | [1,2,3,4]  |
 
 -- @name: sort the list by descending order
 SELECT SORT(list, 'DESC') AS list FROM Test1
 -- @expect:
 -- | list: List |
+-- | ---------- |
 -- | [4,3,2,1]  |
 
 -- @name: sort the list by wrong order

@@ -15,6 +15,7 @@ SELECT
 FROM DECIMAL_ITEM
 -- @expect:
 -- | a: Decimal | b: Decimal | c: I64 | d: Decimal | e: I64 | f: Decimal | g: I64 |
+-- | ---------- | ---------- | ------ | ---------- | ------ | ---------- | ------ |
 -- | 1          | 2          | 2      | 0          | 0      | 2          | 2      |
 
 SELECT
@@ -25,6 +26,7 @@ SELECT
 FROM DECIMAL_ITEM
 -- @expect:
 -- | h: Decimal | i: I64 | j: I64 | k: Decimal |
+-- | ---------- | ------ | ------ | ---------- |
 -- | 0.5        | 2      | 0      | 1          |
 
 INSERT INTO DECIMAL_ITEM VALUES (1.5), (2.0), (25.12)
@@ -33,5 +35,6 @@ INSERT INTO DECIMAL_ITEM VALUES (1.5), (2.0), (25.12)
 SELECT v FROM DECIMAL_ITEM WHERE v > 1.5 AND v <= 25.12
 -- @expect:
 -- | v: Decimal |
+-- | ---------- |
 -- | 2          |
 -- | 25.12      |

@@ -12,17 +12,20 @@ INSERT INTO Food VALUES ('burger')
 SELECT POSITION('e' IN name) AS test FROM Food
 -- @expect:
 -- | test: I64 |
+-- | --------- |
 -- | 0         |
 -- | 5         |
 
 SELECT POSITION('s' IN 'cheese') AS test
 -- @expect:
 -- | test: I64 |
+-- | --------- |
 -- | 5         |
 
 SELECT POSITION(NULL IN 'cheese') AS test
 -- @expect:
 -- | test |
+-- | ---- |
 -- | NULL |
 
 SELECT POSITION(1 IN 'cheese') AS test

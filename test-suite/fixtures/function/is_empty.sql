@@ -16,6 +16,7 @@ INSERT INTO IsEmpty VALUES
 SELECT id FROM IsEmpty WHERE IS_EMPTY(list_items);
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |
 -- | 3       |
 
@@ -23,12 +24,14 @@ SELECT id FROM IsEmpty WHERE IS_EMPTY(list_items);
 SELECT IS_EMPTY(list_items) as result FROM IsEmpty WHERE id=2;
 -- @expect:
 -- | result: Bool |
+-- | ------------ |
 -- | false        |
 
 -- @name: is_empty for map, return true
 SELECT id FROM IsEmpty WHERE IS_EMPTY(map_items);
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 3       |
 -- | 4       |
 
@@ -36,6 +39,7 @@ SELECT id FROM IsEmpty WHERE IS_EMPTY(map_items);
 SELECT IS_EMPTY(map_items) as result FROM IsEmpty WHERE id=1;
 -- @expect:
 -- | result: Bool |
+-- | ------------ |
 -- | false        |
 
 -- @name: other argument types, return error

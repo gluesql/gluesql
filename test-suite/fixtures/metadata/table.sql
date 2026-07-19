@@ -6,6 +6,7 @@ FROM GLUE_OBJECTS
 WHERE CREATED > NOW() - INTERVAL 1 MINUTE
 -- @expect:
 -- | OBJECT_NAME: Str | OBJECT_TYPE: Str |
+-- | ---------------- | ---------------- |
 -- | "Meta"           | "TABLE"          |
 
 DROP TABLE Meta
@@ -17,4 +18,5 @@ FROM GLUE_OBJECTS
 WHERE CREATED > NOW() - INTERVAL 1 MINUTE
 -- @expect:
 -- | COUNT(*): I64 |
+-- | ------------- |
 -- | 0             |

@@ -84,14 +84,17 @@ SELECT * FROM Operator WHERE NOT (1 != 1);
 select 1 < 'a' as test
 -- @expect:
 -- | test: Bool |
+-- | ---------- |
 -- | false      |
 
 select 1 >= 'a' as test
 -- @expect:
 -- | test: Bool |
+-- | ---------- |
 -- | false      |
 
 select 1 = 'a' as test
 -- @expect:
 -- | test: Bool |
+-- | ---------- |
 -- | false      |

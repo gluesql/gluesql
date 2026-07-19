@@ -11,6 +11,7 @@ INSERT INTO GcdI64 VALUES (0, 3), (2,4), (6,8), (3,5), (1, NULL), (NULL, 1);
 SELECT GCD(left, right) AS test FROM GcdI64
 -- @expect:
 -- | test: I64 |
+-- | --------- |
 -- | 3         |
 -- | 2         |
 -- | 2         |
@@ -49,6 +50,7 @@ INSERT INTO LcmI64 VALUES (0, 3), (2,4), (6,8), (3,5), (1, NULL), (NULL, 1);
 SELECT LCM(left, right) AS test FROM LcmI64
 -- @expect:
 -- | test: I64 |
+-- | --------- |
 -- | 0         |
 -- | 4         |
 -- | 24        |
@@ -77,6 +79,7 @@ SELECT LCM(right, left) AS test FROM LcmStr
 SELECT GCD(0, 0) as test
 -- @expect:
 -- | test: I64 |
+-- | --------- |
 -- | 0         |
 
 VALUES(
@@ -86,6 +89,7 @@ VALUES(
 )
 -- @expect:
 -- | column1: I64 | column2: I64 | column3: I64 |
+-- | ------------ | ------------ | ------------ |
 -- | 1            | 2            | 7            |
 
 SELECT GCD(-9223372036854775808, -9223372036854775808)
@@ -95,6 +99,7 @@ SELECT GCD(-9223372036854775808, -9223372036854775808)
 SELECT LCM(0, 0) as test
 -- @expect:
 -- | test: I64 |
+-- | --------- |
 -- | 0         |
 
 VALUES(
@@ -104,6 +109,7 @@ VALUES(
 )
 -- @expect:
 -- | column1: I64 | column2: I64 | column3: I64 |
+-- | ------------ | ------------ | ------------ |
 -- | 15           | 0            | 12           |
 
 SELECT LCM(-9223372036854775808, -9223372036854775808)

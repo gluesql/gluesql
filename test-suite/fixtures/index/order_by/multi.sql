@@ -19,6 +19,7 @@ SELECT * FROM Multi ORDER BY id ASC, num ASC;
 -- @expect-index: none
 -- @expect:
 -- | id: I64 | num: I64 |
+-- | ------- | -------- |
 -- | 1       | 10       |
 -- | 1       | 20       |
 -- | 1       | 30       |
@@ -52,6 +53,7 @@ SELECT * FROM Multi ORDER BY id ASC, num ASC;
 -- @expect-index: idx_num ASC
 -- @expect:
 -- | id: I64 | num: I64 |
+-- | ------- | -------- |
 -- | 1       | 10       |
 -- | 1       | 20       |
 -- | 1       | 30       |
@@ -82,6 +84,7 @@ SELECT * FROM Multi ORDER BY num ASC, id ASC;
 -- @expect-index: none
 -- @expect:
 -- | id: I64 | num: I64 |
+-- | ------- | -------- |
 -- | 1       | 10       |
 -- | 2       | 10       |
 -- | 3       | 10       |
@@ -112,6 +115,7 @@ SELECT * FROM Multi ORDER BY id DESC, id + num DESC;
 -- @expect-index: idx_id_num DESC
 -- @expect:
 -- | id: I64 | num: I64 |
+-- | ------- | -------- |
 -- | 5       | 50       |
 -- | 5       | 40       |
 -- | 5       | 30       |
@@ -142,6 +146,7 @@ SELECT * FROM Multi ORDER BY id ASC, id + num DESC;
 -- @expect-index: idx_id_num DESC
 -- @expect:
 -- | id: I64 | num: I64 |
+-- | ------- | -------- |
 -- | 1       | 50       |
 -- | 1       | 40       |
 -- | 1       | 30       |

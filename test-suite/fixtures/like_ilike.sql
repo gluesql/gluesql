@@ -7,6 +7,7 @@ VALUES
     ('HELLO' NOT ILIKE '_ELLE');
 -- @expect:
 -- | column1: Bool |
+-- | ------------- |
 -- | true          |
 -- | true          |
 -- | true          |

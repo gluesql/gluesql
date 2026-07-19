@@ -1,6 +1,7 @@
 SELECT PI() AS pi
 -- @expect:
 -- | pi: F64       |
+-- | ------------- |
 -- | 3.14159265359 |
 
 SELECT PI(0) AS pi

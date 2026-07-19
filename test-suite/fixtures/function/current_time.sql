@@ -13,10 +13,12 @@ INSERT INTO Item VALUES
 SELECT CURRENT_TIME IS NOT NULL as is_not_null
 -- @expect:
 -- | is_not_null: Bool |
+-- | ----------------- |
 -- | true              |
 
 -- @name: CURRENT_TIME in valid range
 SELECT CURRENT_TIME >= TIME '00:00:00' AND CURRENT_TIME <= TIME '23:59:59' as is_valid_range
 -- @expect:
 -- | is_valid_range: Bool |
+-- | -------------------- |
 -- | true                 |

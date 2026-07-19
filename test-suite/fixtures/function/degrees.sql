@@ -4,21 +4,25 @@ SELECT
     ;
 -- @expect:
 -- | degrees_1: F64 | degrees_2: F64 |
+-- | -------------- | -------------- |
 -- | 90.0           | 180.0          |
 
 SELECT DEGREES(PI() / 2) as degrees_with_int;
 -- @expect:
 -- | degrees_with_int: F64 |
+-- | --------------------- |
 -- | 90.0                  |
 
 SELECT DEGREES(0) as degrees_with_zero;
 -- @expect:
 -- | degrees_with_zero: F64 |
+-- | ---------------------- |
 -- | 0.0                    |
 
 SELECT DEGREES(RADIANS(90)) as radians_to_degrees;
 -- @expect:
 -- | radians_to_degrees: F64 |
+-- | ----------------------- |
 -- | 90.0                    |
 
 SELECT DEGREES(0, 0) as degrees_arg2;
@@ -46,4 +50,5 @@ SELECT DEGREES('string') AS degrees;
 SELECT DEGREES(NULL) AS degrees;
 -- @expect:
 -- | degrees |
+-- | ------- |
 -- | NULL    |

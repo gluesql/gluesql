@@ -65,6 +65,7 @@ SELECT DISTINCT ON (id) id, num, name FROM Test;
 SELECT id, num, name FROM Test
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 1       | 2        | "Hello"   |
 -- | 1       | 9        | "World"   |
 -- | 3       | 4        | "Great"   |
@@ -72,6 +73,7 @@ SELECT id, num, name FROM Test
 SELECT id, num, name FROM Test WHERE id = 1
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 1       | 2        | "Hello"   |
 -- | 1       | 9        | "World"   |
 
@@ -81,6 +83,7 @@ UPDATE Test SET id = 2
 SELECT id, num, name FROM Test
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 2       | 2        | "Hello"   |
 -- | 2       | 9        | "World"   |
 -- | 2       | 4        | "Great"   |
@@ -88,6 +91,7 @@ SELECT id, num, name FROM Test
 SELECT id FROM Test
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 2       |
 -- | 2       |
 -- | 2       |
@@ -95,6 +99,7 @@ SELECT id FROM Test
 SELECT id, num FROM Test
 -- @expect:
 -- | id: I64 | num: I64 |
+-- | ------- | -------- |
 -- | 2       | 2        |
 -- | 2       | 9        |
 -- | 2       | 4        |
@@ -102,9 +107,11 @@ SELECT id, num FROM Test
 SELECT id, num FROM Test LIMIT 1 OFFSET 1
 -- @expect:
 -- | id: I64 | num: I64 |
+-- | ------- | -------- |
 -- | 2       | 9        |
 
 SELECT id, num FROM Test LIMIT 1 OFFSET 1
 -- @expect:
 -- | id: I64 | num: I64 |
+-- | ------- | -------- |
 -- | 2       | 9        |

@@ -10,4 +10,5 @@ INSERT INTO Item VALUES
 SELECT time FROM Item WHERE time > NOW();
 -- @expect:
 -- | time: Timestamp                 |
+-- | ------------------------------- |
 -- | "9999-12-31 23:59:40.364832862" |

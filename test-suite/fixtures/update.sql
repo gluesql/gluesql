@@ -36,6 +36,7 @@ UPDATE TableA SET id = 2
 SELECT id, num FROM TableA
 -- @expect:
 -- | id: I64 | num: I64 |
+-- | ------- | -------- |
 -- | 2       | 2        |
 -- | 2       | 9        |
 -- | 2       | 4        |
@@ -52,6 +53,7 @@ UPDATE TableA SET name = SUBSTR('John', 1) WHERE num = 9
 SELECT id, num FROM TableA
 -- @expect:
 -- | id: I64 | num: I64 |
+-- | ------- | -------- |
 -- | 2       | 2        |
 -- | 4       | 9        |
 -- | 2       | 4        |
@@ -64,6 +66,7 @@ UPDATE TableA SET num2 = (SELECT num FROM TableA WHERE num = 9 LIMIT 1) WHERE nu
 SELECT id, num, num2 FROM TableA
 -- @expect:
 -- | id: I64 | num: I64 | num2: I64 |
+-- | ------- | -------- | --------- |
 -- | 2       | 2        | 4         |
 -- | 4       | 9        | 9         |
 -- | 2       | 4        | 7         |
@@ -76,6 +79,7 @@ UPDATE TableA SET num2 = (SELECT rank FROM TableB WHERE num = TableA.num) WHERE 
 SELECT id, num, num2 FROM TableA
 -- @expect:
 -- | id: I64 | num: I64 | num2: I64 |
+-- | ------- | -------- | --------- |
 -- | 2       | 2        | 4         |
 -- | 4       | 9        | 9         |
 -- | 2       | 4        | 7         |
@@ -88,6 +92,7 @@ UPDATE TableA SET num2 = (SELECT rank FROM TableB WHERE num = TableA.num) WHERE 
 SELECT id, num, num2 FROM TableA
 -- @expect:
 -- | id: I64 | num: I64 | num2: I64 |
+-- | ------- | -------- | --------- |
 -- | 2       | 2        | 1         |
 -- | 4       | 9        | 9         |
 -- | 2       | 4        | 7         |

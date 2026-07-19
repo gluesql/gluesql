@@ -1,6 +1,7 @@
 SELECT ACOS(0.5) AS acos1, ACOS(1) AS acos2
 -- @expect:
 -- | acos1: F64     | acos2: F64 |
+-- | -------------- | ---------- |
 -- | 1.047197551197 | 0.0        |
 
 SELECT ACOS('string') AS acos
@@ -10,6 +11,7 @@ SELECT ACOS('string') AS acos
 SELECT ACOS(null) AS acos
 -- @expect:
 -- | acos |
+-- | ---- |
 -- | NULL |
 
 SELECT ACOS(true) AS acos

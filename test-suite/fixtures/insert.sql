@@ -37,6 +37,7 @@ INSERT INTO Test (id, num) VALUES (1, 10);
 SELECT * FROM Test;
 -- @expect:
 -- | id: I64 | num: I64 | name: Str  |
+-- | ------- | -------- | ---------- |
 -- | 1       | 2        | "Hi boo"   |
 -- | 3       | 9        | "Kitty!"   |
 -- | 2       | 7        | "Monsters" |
@@ -56,6 +57,7 @@ INSERT INTO Target SELECT * FROM Test;
 SELECT * FROM Target;
 -- @expect:
 -- | id: I64 | num: I64 | name: Str  |
+-- | ------- | -------- | ---------- |
 -- | 1       | 2        | "Hi boo"   |
 -- | 3       | 9        | "Kitty!"   |
 -- | 2       | 7        | "Monsters" |
@@ -75,4 +77,5 @@ INSERT INTO AggregateTarget SELECT COUNT(*) FROM Test;
 SELECT * FROM AggregateTarget;
 -- @expect:
 -- | count: I64 |
+-- | ---------- |
 -- | 6          |

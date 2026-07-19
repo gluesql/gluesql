@@ -31,6 +31,7 @@ LEFT JOIN Item i
     ON p.id = i.player_id
 -- @expect:
 -- | id: I64 | id: I64 |
+-- | ------- | ------- |
 -- | 1       | 101     |
 -- | 2       | 102     |
 -- | 3       | NULL    |
@@ -43,6 +44,7 @@ LEFT JOIN Item
     ON p.id = player_id
 -- @expect:
 -- | id: I64 | player_id: I64 |
+-- | ------- | -------------- |
 -- | 1       | 1              |
 -- | 2       | 2              |
 -- | 3       | NULL           |
@@ -55,6 +57,7 @@ LEFT JOIN Item
     ON p.id = player_id
 -- @expect:
 -- | id: I64 | quantity: I64 | player_id: I64 |
+-- | ------- | ------------- | -------------- |
 -- | 101     | 1             | 1              |
 -- | 102     | 4             | 2              |
 -- | NULL    | NULL          | NULL           |
@@ -67,6 +70,7 @@ LEFT JOIN Item
     ON p.id = player_id
 -- @expect:
 -- | id: I64 | name: Str | id: I64 | quantity: I64 | player_id: I64 |
+-- | ------- | --------- | ------- | ------------- | -------------- |
 -- | 1       | "Taehoon" | 101     | 1             | 1              |
 -- | 2       | "Mike"    | 102     | 4             | 2              |
 -- | 3       | "Jorno"   | NULL    | NULL          | NULL           |

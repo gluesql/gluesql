@@ -26,6 +26,7 @@ INSERT INTO Test (name) VALUES (['GlueSQL']);
 SELECT * FROM Test;
 -- @expect:
 -- | id: I64 | name: List                        |
+-- | ------- | --------------------------------- |
 -- | 1       | ["Seongbin","Bernie"]             |
 -- | 3       | ["Seongbin","Bernie","Chobobdev"] |
 -- | 2       | ["devgony","Henry"]               |
@@ -36,9 +37,11 @@ SELECT * FROM Test;
 SELECT ['name', 1, True] AS list;
 -- @expect:
 -- | list: List      |
+-- | --------------- |
 -- | ["name",1,true] |
 
 SELECT ['GlueSQL', 1, True] [0] AS list;
 -- @expect:
 -- | list: Str |
+-- | --------- |
 -- | "GlueSQL" |

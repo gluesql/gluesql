@@ -1,6 +1,7 @@
 VALUES(CHR(70))
 -- @expect:
 -- | column1: Str |
+-- | ------------ |
 -- | "F"          |
 
 VALUES(CHR(7070))
@@ -18,11 +19,13 @@ INSERT INTO Chr VALUES (1, 70);
 select chr(num) as chr from Chr;
 -- @expect:
 -- | chr: Str |
+-- | -------- |
 -- | "F"      |
 
 select chr(65) as chr from Chr;
 -- @expect:
 -- | chr: Str |
+-- | -------- |
 -- | "A"      |
 
 select chr(532) as chr from Chr;

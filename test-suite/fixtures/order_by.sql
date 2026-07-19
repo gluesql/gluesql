@@ -17,6 +17,7 @@ VALUES
 SELECT id, num FROM Test
 -- @expect:
 -- | id: I64 | num: I64 |
+-- | ------- | -------- |
 -- | 1       | 2        |
 -- | 1       | 9        |
 -- | 3       | 4        |
@@ -25,6 +26,7 @@ SELECT id, num FROM Test
 SELECT id, num, name FROM Test ORDER BY id + num ASC
 -- @expect:
 -- | id: I64 | num: I64 | name: Str  |
+-- | ------- | -------- | ---------- |
 -- | 1       | 2        | "Hello"    |
 -- | 3       | 4        | "World"    |
 -- | 1       | 9        | NULL       |
@@ -33,6 +35,7 @@ SELECT id, num, name FROM Test ORDER BY id + num ASC
 SELECT id, num, name FROM Test ORDER BY num DESC
 -- @expect:
 -- | id: I64 | num: I64 | name: Str  |
+-- | ------- | -------- | ---------- |
 -- | 1       | 9        | NULL       |
 -- | 4       | 7        | "Thursday" |
 -- | 3       | 4        | "World"    |
@@ -41,6 +44,7 @@ SELECT id, num, name FROM Test ORDER BY num DESC
 SELECT id, num, name FROM Test ORDER BY name
 -- @expect:
 -- | id: I64 | num: I64 | name: Str  |
+-- | ------- | -------- | ---------- |
 -- | 1       | 2        | "Hello"    |
 -- | 4       | 7        | "Thursday" |
 -- | 3       | 4        | "World"    |
@@ -49,6 +53,7 @@ SELECT id, num, name FROM Test ORDER BY name
 SELECT id, num, name FROM Test ORDER BY name DESC
 -- @expect:
 -- | id: I64 | num: I64 | name: Str  |
+-- | ------- | -------- | ---------- |
 -- | 1       | 9        | NULL       |
 -- | 3       | 4        | "World"    |
 -- | 4       | 7        | "Thursday" |
@@ -57,6 +62,7 @@ SELECT id, num, name FROM Test ORDER BY name DESC
 SELECT id, num, name, rate FROM Test ORDER BY rate DESC, id DESC
 -- @expect:
 -- | id: I64 | num: I64 | name: Str  | rate: F64 |
+-- | ------- | -------- | ---------- | --------- |
 -- | 4       | 7        | "Thursday" | NULL      |
 -- | 1       | 9        | NULL       | NULL      |
 -- | 1       | 2        | "Hello"    | 3.0       |
@@ -65,6 +71,7 @@ SELECT id, num, name, rate FROM Test ORDER BY rate DESC, id DESC
 SELECT id, num FROM Test ORDER BY id ASC, num DESC
 -- @expect:
 -- | id: I64 | num: I64 |
+-- | ------- | -------- |
 -- | 1       | 9        |
 -- | 1       | 2        |
 -- | 3       | 4        |
@@ -76,6 +83,7 @@ ORDER BY
     num DESC
 -- @expect:
 -- | id: I64 | num: I64 |
+-- | ------- | -------- |
 -- | 1       | 9        |
 -- | 1       | 2        |
 -- | 3       | 4        |
@@ -90,6 +98,7 @@ ORDER BY
     num DESC;
 -- @expect:
 -- | id: I64 | num: I64 |
+-- | ------- | -------- |
 -- | 1       | 9        |
 -- | 1       | 2        |
 -- | 3       | 4        |
@@ -102,6 +111,7 @@ SELECT * FROM Test ORDER BY id NULLS FIRST
 SELECT id AS C1, num AS C2 FROM Test ORDER BY C1 ASC, C2 DESC
 -- @expect:
 -- | C1: I64 | C2: I64 |
+-- | ------- | ------- |
 -- | 1       | 9       |
 -- | 1       | 2       |
 -- | 3       | 4       |
@@ -111,6 +121,7 @@ SELECT id AS C1, num AS C2 FROM Test ORDER BY C1 ASC, C2 DESC
 SELECT id AS C1, num AS C2 FROM Test ORDER BY id ASC, num DESC
 -- @expect:
 -- | C1: I64 | C2: I64 |
+-- | ------- | ------- |
 -- | 1       | 9       |
 -- | 1       | 2       |
 -- | 3       | 4       |
@@ -120,6 +131,7 @@ SELECT id AS C1, num AS C2 FROM Test ORDER BY id ASC, num DESC
 SELECT id, num FROM Test ORDER BY 1 ASC, +2 DESC
 -- @expect:
 -- | id: I64 | num: I64 |
+-- | ------- | -------- |
 -- | 1       | 9        |
 -- | 1       | 2        |
 -- | 3       | 4        |
@@ -129,6 +141,7 @@ SELECT id, num FROM Test ORDER BY 1 ASC, +2 DESC
 SELECT id, num FROM Test ORDER BY -1
 -- @expect:
 -- | id: I64 | num: I64 |
+-- | ------- | -------- |
 -- | 1       | 2        |
 -- | 1       | 9        |
 -- | 3       | 4        |

@@ -6,6 +6,7 @@ SELECT
     ;
 -- @expect:
 -- | floor1: F64 | floor2: F64 | floor3: F64 | floor4: F64 |
+-- | ----------- | ----------- | ----------- | ----------- |
 -- | 0.0         | -1.0        | 10.0        | 6.0         |
 
 SELECT FLOOR('string') AS floor
@@ -15,6 +16,7 @@ SELECT FLOOR('string') AS floor
 SELECT FLOOR(NULL) AS floor
 -- @expect:
 -- | floor |
+-- | ----- |
 -- | NULL  |
 
 SELECT FLOOR(TRUE) AS floor

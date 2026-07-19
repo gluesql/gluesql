@@ -11,17 +11,20 @@ INSERT INTO Allegro VALUES (1, 'hello'), (3, 'world');
 SELECT id, name FROM Allegro
 -- @expect:
 -- | id: I64 | name: Str |
+-- | ------- | --------- |
 -- | 1       | "hello"   |
 -- | 3       | "world"   |
 
 SELECT id, name FROM Allegro WHERE id = 1
 -- @expect:
 -- | id: I64 | name: Str |
+-- | ------- | --------- |
 -- | 1       | "hello"   |
 
 SELECT id, name FROM Allegro WHERE id < 2
 -- @expect:
 -- | id: I64 | name: Str |
+-- | ------- | --------- |
 -- | 1       | "hello"   |
 
 SELECT a.id
@@ -30,6 +33,7 @@ JOIN Allegro a2
 WHERE a.id = a2.id;
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |
 -- | 3       |
 
@@ -38,6 +42,7 @@ SELECT id FROM Allegro WHERE id IN (
 );
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |
 -- | 3       |
 
@@ -47,6 +52,7 @@ INSERT INTO Allegro VALUES (5, 'neon'), (2, 'foo'), (4, 'bar');
 SELECT id, name FROM Allegro
 -- @expect:
 -- | id: I64 | name: Str |
+-- | ------- | --------- |
 -- | 1       | "hello"   |
 -- | 2       | "foo"     |
 -- | 3       | "world"   |
@@ -56,12 +62,14 @@ SELECT id, name FROM Allegro
 SELECT id, name FROM Allegro WHERE id % 2 = 0
 -- @expect:
 -- | id: I64 | name: Str |
+-- | ------- | --------- |
 -- | 2       | "foo"     |
 -- | 4       | "bar"     |
 
 SELECT id, name FROM Allegro WHERE id = 4
 -- @expect:
 -- | id: I64 | name: Str |
+-- | ------- | --------- |
 -- | 4       | "bar"     |
 
 DELETE FROM Allegro WHERE id > 3
@@ -70,6 +78,7 @@ DELETE FROM Allegro WHERE id > 3
 SELECT id, name FROM Allegro
 -- @expect:
 -- | id: I64 | name: Str |
+-- | ------- | --------- |
 -- | 1       | "hello"   |
 -- | 2       | "foo"     |
 -- | 3       | "world"   |

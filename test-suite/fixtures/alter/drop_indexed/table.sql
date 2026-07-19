@@ -14,6 +14,7 @@ SELECT * FROM Test WHERE id = 1;
 -- @expect-index: idx_id = 1
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |
 
 DROP TABLE Test;
@@ -33,6 +34,7 @@ SELECT * FROM Test WHERE id = 3;
 -- @expect-index: none
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 3       |
 
 CREATE INDEX idx_id ON Test (id);
@@ -42,6 +44,7 @@ SELECT * FROM Test WHERE id < 10;
 -- @expect-index: idx_id < 10
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 3       |
 -- | 4       |
 

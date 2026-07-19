@@ -34,6 +34,7 @@ INSERT INTO ProjectItem (id, player_id, quantity) VALUES
 SELECT 1 FROM ProjectUser
 -- @expect:
 -- | 1: I64 |
+-- | ------ |
 -- | 1      |
 -- | 1      |
 -- | 1      |
@@ -41,6 +42,7 @@ SELECT 1 FROM ProjectUser
 SELECT id, name FROM ProjectUser
 -- @expect:
 -- | id: I64 | name: Str |
+-- | ------- | --------- |
 -- | 1       | "Taehoon" |
 -- | 2       | "Mike"    |
 -- | 3       | "Jorno"   |
@@ -48,6 +50,7 @@ SELECT id, name FROM ProjectUser
 SELECT player_id, quantity FROM ProjectItem
 -- @expect:
 -- | player_id: I64 | quantity: I64 |
+-- | -------------- | ------------- |
 -- | 1              | 1             |
 -- | 2              | 4             |
 -- | 2              | 9             |
@@ -57,6 +60,7 @@ SELECT player_id, quantity FROM ProjectItem
 SELECT player_id, player_id FROM ProjectItem
 -- @expect:
 -- | player_id: I64 | player_id: I64 |
+-- | -------------- | -------------- |
 -- | 1              | 1              |
 -- | 2              | 2              |
 -- | 2              | 2              |
@@ -68,6 +72,7 @@ FROM ProjectUser u
 JOIN ProjectItem i ON u.id = 1 AND u.id = i.player_id
 -- @expect:
 -- | id: I64 | id: I64 | player_id: I64 |
+-- | ------- | ------- | -------------- |
 -- | 1       | 101     | 1              |
 
 SELECT i.*, u.name
@@ -75,6 +80,7 @@ FROM ProjectUser u
 JOIN ProjectItem i ON u.id = 2 AND u.id = i.player_id
 -- @expect:
 -- | id: I64 | player_id: I64 | quantity: I64 | name: Str |
+-- | ------- | -------------- | ------------- | --------- |
 -- | 102     | 2              | 4             | "Mike"    |
 -- | 103     | 2              | 9             | "Mike"    |
 
@@ -83,6 +89,7 @@ FROM ProjectUser u
 JOIN ProjectItem i ON u.id = i.player_id
 -- @expect:
 -- | id: I64 | name: Str | id: I64 | player_id: I64 | quantity: I64 |
+-- | ------- | --------- | ------- | -------------- | ------------- |
 -- | 1       | "Taehoon" | 101     | 1              | 1             |
 -- | 2       | "Mike"    | 102     | 2              | 4             |
 -- | 2       | "Mike"    | 103     | 2              | 9             |
@@ -92,6 +99,7 @@ JOIN ProjectItem i ON u.id = i.player_id
 SELECT id as Ident, name FROM ProjectUser
 -- @expect:
 -- | Ident: I64 | name: Str |
+-- | ---------- | --------- |
 -- | 1          | "Taehoon" |
 -- | 2          | "Mike"    |
 -- | 3          | "Jorno"   |
@@ -99,6 +107,7 @@ SELECT id as Ident, name FROM ProjectUser
 SELECT (1 + 2) as foo, 2+id+2*100-1 as Ident, name FROM ProjectUser
 -- @expect:
 -- | foo: I64 | Ident: I64 | name: Str |
+-- | -------- | ---------- | --------- |
 -- | 3        | 202        | "Taehoon" |
 -- | 3        | 203        | "Mike"    |
 -- | 3        | 204        | "Jorno"   |
@@ -110,6 +119,7 @@ WHERE id IN (
 );
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 2       |
 
 SELECT Whatever.* FROM ProjectUser

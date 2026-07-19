@@ -27,6 +27,7 @@ WHERE
 -- @expect-index: idx_date < DATE '2040-12-24'
 -- @expect:
 -- | id: I64 | date: Date | flag: Bool |
+-- | ------- | ---------- | ---------- |
 -- | 3       | 1989-02-01 | false      |
 -- | 5       | 2030-03-01 | false      |
 
@@ -37,6 +38,7 @@ WHERE
 -- @expect-index: idx_date < DATE '2020-12-24'
 -- @expect:
 -- | id: I64 | date: Date | flag: Bool |
+-- | ------- | ---------- | ---------- |
 -- | 3       | 1989-02-01 | false      |
 
 SELECT * FROM NullIdx
@@ -47,6 +49,7 @@ WHERE
 -- @expect-index: idx_date < DATE '2030-11-24'
 -- @expect:
 -- | id: I64 | date: Date | flag: Bool |
+-- | ------- | ---------- | ---------- |
 -- | 3       | 1989-02-01 | false      |
 -- | 5       | 2030-03-01 | false      |
 
@@ -58,6 +61,7 @@ WHERE
 -- @expect-index: idx_id > 1
 -- @expect:
 -- | id: I64 | date: Date | flag: Bool |
+-- | ------- | ---------- | ---------- |
 -- | 3       | 1989-02-01 | false      |
 -- | 5       | 2030-03-01 | false      |
 
@@ -68,6 +72,7 @@ WHERE
 -- @expect-index: none
 -- @expect:
 -- | id: I64 | date: Date | flag: Bool |
+-- | ------- | ---------- | ---------- |
 -- | 5       | 2030-03-01 | false      |
 
 SELECT * FROM NullIdx
@@ -78,4 +83,5 @@ WHERE
 -- @expect-index: idx_date = DATE '2030-03-01'
 -- @expect:
 -- | id: I64 | date: Date | flag: Bool |
+-- | ------- | ---------- | ---------- |
 -- | 5       | 2030-03-01 | false      |

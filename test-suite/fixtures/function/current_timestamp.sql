@@ -13,4 +13,5 @@ INSERT INTO Item VALUES
 SELECT timestamp FROM Item WHERE timestamp > CURRENT_TIMESTAMP;
 -- @expect:
 -- | timestamp: Timestamp            |
+-- | ------------------------------- |
 -- | "9999-12-31 23:59:40.364832862" |

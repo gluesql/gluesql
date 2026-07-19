@@ -17,6 +17,7 @@ SELECT id FROM IdxDrop WHERE id = 1;
 -- @expect-index: none
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |
 
 ROLLBACK;
@@ -26,6 +27,7 @@ SELECT id FROM IdxDrop WHERE id = 1;
 -- @expect-index: idx_id = 1
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |
 
 BEGIN;
@@ -38,6 +40,7 @@ SELECT id FROM IdxDrop WHERE id = 1;
 -- @expect-index: none
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |
 
 COMMIT;
@@ -47,4 +50,5 @@ SELECT id FROM IdxDrop WHERE id = 1;
 -- @expect-index: none
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |

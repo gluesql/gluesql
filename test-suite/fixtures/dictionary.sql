@@ -42,6 +42,7 @@ SHOW ME THE CHICKEN
 SELECT * FROM GLUE_TABLES
 -- @expect:
 -- | TABLE_NAME: Str | COMMENT: Str            |
+-- | --------------- | ----------------------- |
 -- | "Bar"           | NULL                    |
 -- | "Foo"           | "this is table comment" |
 -- | "Zoo"           | NULL                    |
@@ -49,6 +50,7 @@ SELECT * FROM GLUE_TABLES
 SELECT * FROM GLUE_TABLE_COLUMNS
 -- @expect:
 -- | TABLE_NAME: Str | COLUMN_NAME: Str | COLUMN_ID: I64 | NULLABLE: Bool | KEY: Str      | DEFAULT: Str | COMMENT: Str |
+-- | --------------- | ---------------- | -------------- | -------------- | ------------- | ------------ | ------------ |
 -- | "Bar"           | "id"             | 1              | true           | "UNIQUE"      | NULL         | NULL         |
 -- | "Bar"           | "name"           | 2              | false          | NULL          | "'NONE'"     | NULL         |
 -- | "Foo"           | "id"             | 1              | true           | NULL          | NULL         | NULL         |

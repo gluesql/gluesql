@@ -13,21 +13,25 @@ INSERT INTO Item VALUES (0, TRUE, NULL, '1')
 SELECT CAST(LOWER(number) AS INTEGER) AS cast FROM Item
 -- @expect:
 -- | cast: I64 |
+-- | --------- |
 -- | 1         |
 
 SELECT CAST(id AS BOOLEAN) AS cast FROM Item
 -- @expect:
 -- | cast: Bool |
+-- | ---------- |
 -- | false      |
 
 SELECT CAST(flag AS TEXT) AS cast FROM Item
 -- @expect:
 -- | cast: Str |
+-- | --------- |
 -- | "TRUE"    |
 
 SELECT CAST(ratio AS INTEGER) AS cast FROM Item
 -- @expect:
 -- | cast |
+-- | ---- |
 -- | NULL |
 
 SELECT CAST(number AS BOOLEAN) FROM Item
@@ -61,6 +65,7 @@ INSERT INTO IntervalLog VALUES
 SELECT id, CAST(interval_str_1 as INTERVAL) as stoi_1, CAST(interval_str_2 as INTERVAL) as stoi_2 FROM IntervalLog;
 -- @expect:
 -- | id: I64 | stoi_1: Interval           | stoi_2: Interval                  |
+-- | ------- | -------------------------- | --------------------------------- |
 -- | 1       | "'1-2' YEAR TO MONTH"      | "'2-6' YEAR TO MONTH"             |
 -- | 2       | "'12' DAY"                 | "'1 11' DAY TO HOUR"              |
 -- | 3       | "'12' MINUTE"              | "'5' MINUTE"                      |

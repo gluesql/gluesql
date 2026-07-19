@@ -13,6 +13,7 @@ ALTER TABLE AddCol ADD COLUMN new_col INTEGER DEFAULT 3;
 SELECT * FROM AddCol
 -- @expect:
 -- | id: I64 | new_col: I64 |
+-- | ------- | ------------ |
 -- | 1       | 3            |
 
 ROLLBACK;
@@ -21,6 +22,7 @@ ROLLBACK;
 SELECT * FROM AddCol
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |
 
 BEGIN;
@@ -35,4 +37,5 @@ COMMIT;
 SELECT * FROM AddCol
 -- @expect:
 -- | id: I64 | new_col: I64 |
+-- | ------- | ------------ |
 -- | 1       | 3            |

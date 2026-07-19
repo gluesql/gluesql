@@ -20,36 +20,43 @@ INSERT INTO Item (id, quantity, age, total) VALUES
 SELECT COUNT(*) FROM Item;
 -- @expect:
 -- | COUNT(*): I64 |
+-- | ------------- |
 -- | 8             |
 
 SELECT COUNT(age), COUNT(quantity) FROM Item;
 -- @expect:
 -- | COUNT(age): I64 | COUNT(quantity): I64 |
+-- | --------------- | -------------------- |
 -- | 6               | 6                    |
 
 SELECT COUNT(NULL);
 -- @expect:
 -- | COUNT(NULL): I64 |
+-- | ---------------- |
 -- | 0                |
 
 SELECT COUNT(DISTINCT id) FROM Item
 -- @expect:
 -- | COUNT(DISTINCT id): I64 |
+-- | ----------------------- |
 -- | 7                       |
 
 SELECT COUNT(DISTINCT age) FROM Item
 -- @expect:
 -- | COUNT(DISTINCT age): I64 |
+-- | ------------------------ |
 -- | 3                        |
 
 SELECT COUNT(age), COUNT(DISTINCT age) FROM Item
 -- @expect:
 -- | COUNT(age): I64 | COUNT(DISTINCT age): I64 |
+-- | --------------- | ------------------------ |
 -- | 6               | 3                        |
 
 SELECT COUNT(DISTINCT *) FROM Item
 -- @expect:
 -- | COUNT(DISTINCT *): I64 |
+-- | ---------------------- |
 -- | 7                      |
 
 CREATE TABLE EmptyItem (id INTEGER NULL);
@@ -58,9 +65,11 @@ CREATE TABLE EmptyItem (id INTEGER NULL);
 SELECT COUNT(*) FROM EmptyItem;
 -- @expect:
 -- | COUNT(*): I64 |
+-- | ------------- |
 -- | 0             |
 
 SELECT COUNT(id) FROM EmptyItem;
 -- @expect:
 -- | COUNT(id): I64 |
+-- | -------------- |
 -- | 0              |

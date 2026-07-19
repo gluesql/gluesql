@@ -16,6 +16,7 @@ SELECT CASE id
     AS case FROM Item;
 -- @expect:
 -- | case: Str |
+-- | --------- |
 -- | "Harry"   |
 -- | "Ron"     |
 -- | "Malfoy"  |
@@ -28,6 +29,7 @@ SELECT CASE id
     AS case FROM Item;
 -- @expect:
 -- | case: Str |
+-- | --------- |
 -- | "Harry"   |
 -- | "Ron"     |
 -- | NULL      |
@@ -40,6 +42,7 @@ SELECT CASE
     AS case FROM Item;
 -- @expect:
 -- | case: I64 |
+-- | --------- |
 -- | 1         |
 -- | 2         |
 -- | 3         |
@@ -52,6 +55,7 @@ SELECT CASE
     AS case FROM Item;
 -- @expect:
 -- | case: I64 |
+-- | --------- |
 -- | 1         |
 -- | 2         |
 -- | NULL      |
@@ -63,6 +67,7 @@ SELECT CASE
     AS case FROM Item;
 -- @expect:
 -- | case: I64 |
+-- | --------- |
 -- | 2         |
 -- | 3         |
 -- | 5         |

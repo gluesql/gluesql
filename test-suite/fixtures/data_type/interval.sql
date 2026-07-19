@@ -18,6 +18,7 @@ INSERT INTO IntervalLog VALUES
 SELECT * FROM IntervalLog;
 -- @expect:
 -- | id: I64 | interval1: Interval        | interval2: Interval               |
+-- | ------- | -------------------------- | --------------------------------- |
 -- | 1       | "'1-2' YEAR TO MONTH"      | "'2-6' YEAR TO MONTH"             |
 -- | 2       | "'12' DAY"                 | "'1 11' DAY TO HOUR"              |
 -- | 3       | "'12' MINUTE"              | "'5' MINUTE"                      |
@@ -33,6 +34,7 @@ SELECT
 FROM IntervalLog WHERE id = 1
 -- @expect:
 -- | id: I64 | i1: Interval          | i2: Interval          |
+-- | ------- | --------------------- | --------------------- |
 -- | 1       | "'2-4' YEAR TO MONTH" | "'5-6' YEAR TO MONTH" |
 
 SELECT
@@ -43,6 +45,7 @@ SELECT
 FROM IntervalLog WHERE id = 2;
 -- @expect:
 -- | id: I64 | i1: Interval | i2: Interval         | i3: Interval |
+-- | ------- | ------------ | -------------------- | ------------ |
 -- | 2       | "'4' DAY"    | "'1 10' DAY TO HOUR" | "'1' MINUTE" |
 
 INSERT INTO IntervalLog VALUES (1, INTERVAL '20:00' MINUTE TO HOUR, INTERVAL '1-2' YEAR TO MONTH)

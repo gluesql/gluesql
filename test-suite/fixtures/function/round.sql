@@ -6,6 +6,7 @@ SELECT
     ;
 -- @expect:
 -- | round1: F64 | round2: F64 | round3: F64 | round4: F64 |
+-- | ----------- | ----------- | ----------- | ----------- |
 -- | 0.0         | -1.0        | 10.0        | 7.0         |
 
 SELECT ROUND('string') AS round
@@ -15,6 +16,7 @@ SELECT ROUND('string') AS round
 SELECT ROUND(NULL) AS round
 -- @expect:
 -- | round |
+-- | ----- |
 -- | NULL  |
 
 SELECT ROUND(TRUE) AS round

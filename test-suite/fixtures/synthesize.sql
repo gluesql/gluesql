@@ -101,14 +101,17 @@ INSERT INTO TableA VALUES (4, 500, 3);
 SELECT id, test FROM TableA LIMIT 1;
 -- @expect:
 -- | id: I64 | test: I64 |
+-- | ------- | --------- |
 -- | 1       | 100       |
 
 SELECT id FROM TableA LIMIT 1;
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |
 
 SELECT * FROM TableA LIMIT 1;
 -- @expect:
 -- | id: I64 | test: I64 | target_id: I64 |
+-- | ------- | --------- | -------------- |
 -- | 1       | 100       | 2              |

@@ -36,6 +36,7 @@ INSERT INTO NullableName VALUES ('name')
 SELECT LEFT(name, 3) AS test FROM Item
 -- @expect:
 -- | test: Str |
+-- | --------- |
 -- | "Blo"     |
 -- | "B"       |
 -- | "Ste"     |
@@ -43,6 +44,7 @@ SELECT LEFT(name, 3) AS test FROM Item
 SELECT RIGHT(name, 10) AS test FROM Item
 -- @expect:
 -- | test: Str    |
+-- | ------------ |
 -- | "op mc blee" |
 -- | "B"          |
 -- | "d$ folken!" |
@@ -50,6 +52,7 @@ SELECT RIGHT(name, 10) AS test FROM Item
 SELECT LEFT((name || 'bobbert'), 10) AS test FROM Item
 -- @expect:
 -- | test: Str    |
+-- | ------------ |
 -- | "Blop mc bl" |
 -- | "Bbobbert"   |
 -- | "Steven the" |
@@ -57,31 +60,37 @@ SELECT LEFT((name || 'bobbert'), 10) AS test FROM Item
 SELECT LEFT('blue', 10) AS test FROM SingleItem
 -- @expect:
 -- | test: Str |
+-- | --------- |
 -- | "blue"    |
 
 SELECT LEFT('blunder', 3) AS test FROM SingleItem
 -- @expect:
 -- | test: Str |
+-- | --------- |
 -- | "blu"     |
 
 SELECT LEFT(name, 3) AS test FROM NullName
 -- @expect:
 -- | test |
+-- | ---- |
 -- | NULL |
 
 SELECT LEFT('Words', number) AS test FROM NullNumber
 -- @expect:
 -- | test |
+-- | ---- |
 -- | NULL |
 
 SELECT LEFT(name, number) AS test FROM NullNumber INNER JOIN NullName ON 1 = 1
 -- @expect:
 -- | test |
+-- | ---- |
 -- | NULL |
 
 SELECT LEFT(name, 1) AS test FROM NullableName
 -- @expect:
 -- | test: Str |
+-- | --------- |
 -- | "n"       |
 
 SELECT RIGHT(name, 10, 10) AS test FROM SingleItem

@@ -5,6 +5,7 @@ SELECT
     ;
 -- @expect:
 -- | SIGN1: I8 | SIGN2: I8 | SIGN3: I8 |
+-- | --------- | --------- | --------- |
 -- | 1         | -1        | 1         |
 
 SELECT
@@ -14,6 +15,7 @@ SELECT
     ;
 -- @expect:
 -- | SIGN1: I8 | SIGN2: I8 | SIGN3: I8 |
+-- | --------- | --------- | --------- |
 -- | 1         | -1        | 1         |
 
 SELECT
@@ -23,6 +25,7 @@ SELECT
     ;
 -- @expect:
 -- | SIGN1: I8 | SIGN2: I8 | SIGN3: I8 |
+-- | --------- | --------- | --------- |
 -- | 0         | 0         | 0         |
 
 SELECT
@@ -32,6 +35,7 @@ SELECT
     ;
 -- @expect:
 -- | SIGN1: I8 | SIGN2: I8 | SIGN3: I8 |
+-- | --------- | --------- | --------- |
 -- | 0         | 0         | 0         |
 
 SELECT SIGN('string') AS SIGN
@@ -41,6 +45,7 @@ SELECT SIGN('string') AS SIGN
 SELECT SIGN(NULL) AS sign
 -- @expect:
 -- | sign |
+-- | ---- |
 -- | NULL |
 
 SELECT SIGN(TRUE) AS sign

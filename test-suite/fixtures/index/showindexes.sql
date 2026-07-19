@@ -25,6 +25,7 @@ CREATE INDEX idx_id2 ON Test (id + num);
 SHOW INDEXES FROM Test;
 -- @expect:
 -- | TABLE_NAME: Str | INDEX_NAME: Str | ORDER: Str | EXPRESSION: Str | UNIQUENESS: Bool |
+-- | --------------- | --------------- | ---------- | --------------- | ---------------- |
 -- | "Test"          | "idx_id"        | "BOTH"     | "id"            | false            |
 -- | "Test"          | "idx_name"      | "BOTH"     | "name"          | false            |
 -- | "Test"          | "idx_id2"       | "BOTH"     | "id + num"      | false            |

@@ -37,6 +37,7 @@ INSERT INTO TestB (id) SELECT id FROM Test
 SELECT * FROM TestB
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |
 -- | 1       |
 -- | 3       |
@@ -45,6 +46,7 @@ SELECT * FROM TestB
 SELECT id, num, name FROM TestA
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 1       | 2        | "Hello"   |
 -- | 1       | 9        | "World"   |
 -- | 3       | 4        | "Great"   |
@@ -56,6 +58,7 @@ SELECT * FROM EmptyTest
 SELECT * FROM (SELECT * FROM EmptyTest) AS Empty
 -- @expect:
 -- | _doc |
+-- | ---- |
 
 SELECT * FROM Test
 -- @expect: count 4
@@ -66,6 +69,7 @@ UPDATE Test SET id = 2
 SELECT id FROM Test
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 2       |
 -- | 2       |
 -- | 2       |
@@ -74,6 +78,7 @@ SELECT id FROM Test
 SELECT id, num FROM Test
 -- @expect:
 -- | id: I64 | num: I64 |
+-- | ------- | -------- |
 -- | 2       | 2        |
 -- | 2       | 9        |
 -- | 2       | 4        |

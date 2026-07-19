@@ -13,4 +13,5 @@ INSERT INTO Item VALUES
 SELECT date FROM Item WHERE date > CURRENT_DATE;
 -- @expect:
 -- | date: Date   |
+-- | ------------ |
 -- | "9999-12-31" |

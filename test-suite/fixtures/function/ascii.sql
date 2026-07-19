@@ -1,6 +1,7 @@
 VALUES(ASCII('A'))
 -- @expect:
 -- | column1: U8 |
+-- | ----------- |
 -- | 65          |
 
 VALUES(ASCII('AB'))
@@ -18,16 +19,19 @@ INSERT INTO Ascii VALUES (1, 'F');
 select ascii(text) as ascii from Ascii;
 -- @expect:
 -- | ascii: U8 |
+-- | --------- |
 -- | 70        |
 
 select ascii('a') as ascii from Ascii;
 -- @expect:
 -- | ascii: U8 |
+-- | --------- |
 -- | 97        |
 
 select ascii('A') as ascii from Ascii;
 -- @expect:
 -- | ascii: U8 |
+-- | --------- |
 -- | 65        |
 
 select ascii('ab') as ascii from Ascii;
@@ -45,6 +49,7 @@ select ascii('ukjhg') as ascii from Ascii;
 select ascii(NULL) as ascii from Ascii;
 -- @expect:
 -- | ascii |
+-- | ----- |
 -- | NULL  |
 
 select ascii('ㄱ') as ascii from Ascii;

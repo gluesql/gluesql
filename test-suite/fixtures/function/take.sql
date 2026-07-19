@@ -10,31 +10,37 @@ INSERT INTO Take VALUES
 select take(items, 0) as mygoodtake from Take;
 -- @expect:
 -- | mygoodtake: List |
+-- | ---------------- |
 -- | []               |
 
 select take(items, 3) as mygoodtake from Take;
 -- @expect:
 -- | mygoodtake: List |
+-- | ---------------- |
 -- | [1,2,3]          |
 
 select take(items, 5) as mygoodtake from Take;
 -- @expect:
 -- | mygoodtake: List |
+-- | ---------------- |
 -- | [1,2,3,4,5]      |
 
 select take(items, 10) as mygoodtake from Take;
 -- @expect:
 -- | mygoodtake: List |
+-- | ---------------- |
 -- | [1,2,3,4,5]      |
 
 select take(NULL, 3) as mynulltake from Take;
 -- @expect:
 -- | mynulltake |
+-- | ---------- |
 -- | NULL       |
 
 select take(items, NULL) as mynulltake from Take;
 -- @expect:
 -- | mynulltake |
+-- | ---------- |
 -- | NULL       |
 
 select take(items, -5) as mymistake from Take;

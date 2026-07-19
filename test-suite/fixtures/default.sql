@@ -24,6 +24,7 @@ INSERT INTO Test (num, flag) VALUES (30, NULL), (40, true);
 SELECT * FROM Test;
 -- @expect:
 -- | id: I64 | num: I64 | flag: Bool |
+-- | ------- | -------- | ---------- |
 -- | 8       | 80       | true       |
 -- | 1       | 10       | false      |
 -- | 2       | 20       | false      |
@@ -60,4 +61,5 @@ INSERT INTO TestExpr (id) VALUES (1);
 SELECT * FROM TestExpr
 -- @expect:
 -- | id: I64 | date: Date   | num: I64 | flag: Bool | flag2: Bool | flag3: Bool | flag4: Bool |
+-- | ------- | ------------ | -------- | ---------- | ----------- | ----------- | ----------- |
 -- | 1       | "2020-01-01" | 2        | true       | true        | false       | false       |

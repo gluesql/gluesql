@@ -8,66 +8,77 @@ INSERT INTO Item VALUES (' zzzytest'), ('testxxzx ')
 SELECT LTRIM('x', 'xyz') AS test from Item;
 -- @expect:
 -- | test: Str |
+-- | --------- |
 -- | ""        |
 -- | ""        |
 
 SELECT LTRIM('txu', 'xyz') AS test from Item;
 -- @expect:
 -- | test: Str |
+-- | --------- |
 -- | "txu"     |
 -- | "txu"     |
 
 SELECT LTRIM(name) AS test FROM Item
 -- @expect:
 -- | test: Str   |
+-- | ----------- |
 -- | "zzzytest"  |
 -- | "testxxzx " |
 
 SELECT LTRIM(RTRIM('GlueSQLABC', 'ABC')) AS test FROM Item;
 -- @expect:
 -- | test: Str |
+-- | --------- |
 -- | "GlueSQL" |
 -- | "GlueSQL" |
 
 SELECT LTRIM(name, ' xyz') AS test FROM Item
 -- @expect:
 -- | test: Str   |
+-- | ----------- |
 -- | "test"      |
 -- | "testxxzx " |
 
 SELECT RTRIM(name) AS test FROM Item
 -- @expect:
 -- | test: Str   |
+-- | ----------- |
 -- | " zzzytest" |
 -- | "testxxzx"  |
 
 SELECT RTRIM(name, 'xyz ') AS test FROM Item
 -- @expect:
 -- | test: Str   |
+-- | ----------- |
 -- | " zzzytest" |
 -- | "test"      |
 
 SELECT RTRIM('x', 'xyz') AS test from Item;
 -- @expect:
 -- | test: Str |
+-- | --------- |
 -- | ""        |
 -- | ""        |
 
 SELECT RTRIM('tuv', 'xyz') AS test from Item;
 -- @expect:
 -- | test: Str |
+-- | --------- |
 -- | "tuv"     |
 -- | "tuv"     |
 
 SELECT RTRIM('txu', 'xyz') AS test from Item;
 -- @expect:
 -- | test: Str |
+-- | --------- |
 -- | "txu"     |
 -- | "txu"     |
 
 SELECT RTRIM('xux', 'xyz') AS test from Item;
 -- @expect:
 -- | test: Str |
+-- | --------- |
 -- | "xu"      |
 -- | "xu"      |
 
@@ -97,39 +108,47 @@ INSERT INTO NullTest VALUES (null)
 SELECT LTRIM('name', NULL) AS test FROM NullTest
 -- @expect:
 -- | test |
+-- | ---- |
 -- | NULL |
 
 SELECT LTRIM(name) AS test FROM NullTest
 -- @expect:
 -- | test |
+-- | ---- |
 -- | NULL |
 
 SELECT RTRIM(name) AS test FROM NullTest
 -- @expect:
 -- | test |
+-- | ---- |
 -- | NULL |
 
 SELECT RTRIM('name', NULL) AS test FROM NullTest
 -- @expect:
 -- | test |
+-- | ---- |
 -- | NULL |
 
 SELECT LTRIM(NULL, '123') AS test FROM NullTest
 -- @expect:
 -- | test |
+-- | ---- |
 -- | NULL |
 
 SELECT LTRIM(name, NULL) AS test FROM NullTest
 -- @expect:
 -- | test |
+-- | ---- |
 -- | NULL |
 
 SELECT RTRIM(NULL, '123') AS test FROM NullTest
 -- @expect:
 -- | test |
+-- | ---- |
 -- | NULL |
 
 SELECT RTRIM(name, NULL) AS test FROM NullTest
 -- @expect:
 -- | test |
+-- | ---- |
 -- | NULL |

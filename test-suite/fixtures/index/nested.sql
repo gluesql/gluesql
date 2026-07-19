@@ -26,6 +26,7 @@ WHERE (
 -- @expect-index: idx_id = 1
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 1       | 2        | "Hello"   |
 
 SELECT * FROM User u1
@@ -36,6 +37,7 @@ WHERE EXISTS(
 -- @expect-index: idx_id = 1
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 1       | 2        | "Hello"   |
 
 SELECT * FROM User u1
@@ -45,4 +47,5 @@ WHERE id IN (
 -- @expect-index: idx_id = 1
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 1       | 2        | "Hello"   |

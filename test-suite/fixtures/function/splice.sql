@@ -14,24 +14,28 @@ INSERT INTO ListTable VALUES
 SELECT SPLICE(CAST('[1, 2, 3, 4, 5]' AS List), 1, 3) AS actual
 -- @expect:
 -- | actual: List |
+-- | ------------ |
 -- | [1,4,5]      |
 
 -- @name: SPLICE(CAST('[1, 2, 3, 4, 5]' AS List), 1, 3, CAST('[100, 99]' AS List)) should return '[1, 100, 99, 4, 5]'
 SELECT SPLICE(CAST('[1, 2, 3, 4, 5]' AS List), 1, 3, CAST('[100, 99]' AS List)) AS actual
 -- @expect:
 -- | actual: List   |
+-- | -------------- |
 -- | [1,100,99,4,5] |
 
 -- @name: SPLICE(CAST('[1, 2, 3]' AS List), -1, 2, CAST('[100, 99]' AS List)) should return '[100, 99, 3]'
 SELECT SPLICE(CAST('[1, 2, 3]' AS List), -1, 2, CAST('[100, 99]' AS List)) AS actual
 -- @expect:
 -- | actual: List |
+-- | ------------ |
 -- | [100,99,3]   |
 
 -- @name: SPLICE(CAST('[1, 2, 3]' AS List), 1, 100, CAST('[100, 99]' AS List)) should return '[1, 100, 99]')
 SELECT SPLICE(CAST('[1, 2, 3]' AS List), 1, 100, CAST('[100, 99]' AS List)) AS actual
 -- @expect:
 -- | actual: List |
+-- | ------------ |
 -- | [1,100,99]   |
 
 -- @name: SPLICE(3, 1, 2) sholud return EvaluateError::ListTypeRequired

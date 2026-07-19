@@ -35,6 +35,7 @@ INSERT INTO NullTest (id, num) VALUES (NULL, 1)
 SELECT (num << 1) as num FROM Test
 -- @expect:
 -- | num: I64 |
+-- | -------- |
 -- | 2        |
 -- | 4        |
 -- | 8        |
@@ -57,4 +58,5 @@ SELECT (num << 65) as overflowed FROM OverflowTest
 SELECT id, num FROM NullTest
 -- @expect:
 -- | id   | num: I64 |
+-- | ---- | -------- |
 -- | NULL | 1        |

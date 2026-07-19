@@ -21,6 +21,7 @@ INSERT INTO OuterTable VALUES (1, 'WORKS!'), (2, 'EXTRA')
 SELECT * FROM InnerTable
 -- @expect:
 -- | id: I64 | name: Str |
+-- | ------- | --------- |
 -- | 1       | "GLUE"    |
 -- | 2       | "SQL"     |
 -- | 3       | "SQL"     |
@@ -31,6 +32,7 @@ FROM (
 ) AS InlineView
 -- @expect:
 -- | cnt: I64 |
+-- | -------- |
 -- | 3        |
 
 SELECT *
@@ -41,6 +43,7 @@ FROM (
 ) AS InlineView
 -- @expect:
 -- | cnt: I64 |
+-- | -------- |
 -- | 2        |
 
 SELECT *
@@ -49,6 +52,7 @@ FROM (
 ) AS InlineView
 -- @expect:
 -- | COUNT(*): I64 |
+-- | ------------- |
 -- | 3             |
 
 SELECT *
@@ -66,6 +70,7 @@ FROM (
 ) AS InlineView2
 -- @expect:
 -- | cnt: I64 |
+-- | -------- |
 -- | 3        |
 
 SELECT *
@@ -75,6 +80,7 @@ JOIN (
 ) AS InlineView ON OuterTable.id = InlineView.id
 -- @expect:
 -- | id: I64 | name: Str | id: I64 | name: Str |
+-- | ------- | --------- | ------- | --------- |
 -- | 1       | "WORKS!"  | 1       | "GLUE"    |
 -- | 2       | "EXTRA"   | 2       | "SQL"     |
 
@@ -98,6 +104,7 @@ JOIN (
 ) AS InlineView ON OuterTable.id = InlineView.id
 -- @expect:
 -- | id: I64 | name: Str | id: I64 | name: Str |
+-- | ------- | --------- | ------- | --------- |
 -- | 1       | "WORKS!"  | 1       | "GLUE"    |
 
 SELECT *
@@ -106,6 +113,7 @@ FROM OuterTable JOIN (
 ) AS InlineView ON OuterTable.id = InlineView.id
 -- @expect:
 -- | id: I64 | name: Str | id: I64 | name: Str |
+-- | ------- | --------- | ------- | --------- |
 -- | 1       | "WORKS!"  | 1       | "GLUE"    |
 -- | 2       | "EXTRA"   | 2       | "SQL"     |
 
@@ -115,6 +123,7 @@ FROM OuterTable JOIN (
 ) AS InlineView ON OuterTable.id = InlineView.id
 -- @expect:
 -- | id: I64 | name: Str | id: I64 | name: Str |
+-- | ------- | --------- | ------- | --------- |
 -- | 1       | "WORKS!"  | 1       | "GLUE"    |
 -- | 2       | "EXTRA"   | 2       | "SQL"     |
 
@@ -124,6 +133,7 @@ FROM OuterTable JOIN (
 ) AS InlineView ON OuterTable.id = InlineView.id
 -- @expect:
 -- | id: I64 | name: Str | literal: Str |
+-- | ------- | --------- | ------------ |
 -- | 1       | "GLUE"    | "once"       |
 -- | 2       | "SQL"     | "once"       |
 
@@ -138,6 +148,7 @@ JOIN (
 ) AS InlineView2 ON OuterTable.id = InlineView2.id
 -- @expect:
 -- | id: I64 | name: Str | id: I64 | name: Str |
+-- | ------- | --------- | ------- | --------- |
 -- | 1       | "WORKS!"  | 1       | "WORKS!"  |
 -- | 2       | "EXTRA"   | 2       | "EXTRA"   |
 
@@ -149,6 +160,7 @@ FROM (
 ) AS InlineView
 -- @expect:
 -- | name: Str | cnt: I64 |
+-- | --------- | -------- |
 -- | "GLUE"    | 1        |
 -- | "SQL"     | 2        |
 
@@ -159,6 +171,7 @@ SELECT * FROM (
 ) AS InlineView
 -- @expect:
 -- | id: I64 | name: Str |
+-- | ------- | --------- |
 -- | 1       | "GLUE"    |
 
 SELECT * FROM (
@@ -168,6 +181,7 @@ SELECT * FROM (
 ) AS InlineView
 -- @expect:
 -- | id: I64 | name: Str |
+-- | ------- | --------- |
 -- | 3       | "SQL"     |
 
 SELECT * FROM (
@@ -177,6 +191,7 @@ SELECT * FROM (
 ) AS InlineView
 -- @expect:
 -- | id: I64 | name: Str |
+-- | ------- | --------- |
 -- | 3       | "SQL"     |
 -- | 2       | "SQL"     |
 -- | 1       | "GLUE"    |
@@ -192,6 +207,7 @@ FROM OuterTable, (
 SELECT DISTINCT id FROM OuterTable
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |
 -- | 2       |
 
@@ -203,5 +219,6 @@ FROM (
 Join OuterTable ON InlineView.id = OuterTable.id
 -- @expect:
 -- | id: I64 | name: Str | id: I64 | name: Str |
+-- | ------- | --------- | ------- | --------- |
 -- | 1       | "GLUE"    | 1       | "WORKS!"  |
 -- | 2       | "SQL"     | 2       | "EXTRA"   |

@@ -11,6 +11,7 @@ INSERT INTO DropTable (id, num, name) VALUES (1, 2, 'Hello')
 SELECT id, num, name FROM DropTable;
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 1       | 2        | "Hello"   |
 
 DROP TABLE DropTable;
@@ -49,7 +50,8 @@ CREATE TABLE DropTable (
 
 SELECT id, num, name FROM DropTable;
 -- @expect:
--- | id | num | name |
+-- | id  | num | name |
+-- | --- | --- | ---- |
 
 DROP VIEW DropTable;
 -- @expect: error Translate.UnsupportedStatement

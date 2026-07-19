@@ -13,6 +13,7 @@ INSERT INTO computer VALUES
 SELECT * FROM computer
 -- @expect:
 -- | ip: Inet          |
+-- | ----------------- |
 -- | "::1"             |
 -- | "127.0.0.1"       |
 -- | "0.0.0.0"         |
@@ -22,6 +23,7 @@ SELECT * FROM computer
 SELECT * FROM computer WHERE ip > '127.0.0.1'
 -- @expect:
 -- | ip: Inet          |
+-- | ----------------- |
 -- | "::1"             |
 -- | "255.255.255.255" |
 -- | "::2:4cb0:16ea"   |
@@ -29,6 +31,7 @@ SELECT * FROM computer WHERE ip > '127.0.0.1'
 SELECT * FROM computer WHERE ip = '127.0.0.1'
 -- @expect:
 -- | ip: Inet    |
+-- | ----------- |
 -- | "127.0.0.1" |
 
 INSERT INTO computer VALUES (0)

@@ -14,6 +14,7 @@ INSERT INTO Foo VALUES
 SELECT * FROM Foo
 -- @expect:
 -- | id: I64 | score: I64 | flag: Bool |
+-- | ------- | ---------- | ---------- |
 -- | 1       | 100        | true       |
 -- | 2       | 300        | false      |
 -- | 3       | 700        | true       |
@@ -26,6 +27,7 @@ DELETE FROM Foo WHERE flag = FALSE
 SELECT * FROM Foo
 -- @expect:
 -- | id: I64 | score: I64 | flag: Bool |
+-- | ------- | ---------- | ---------- |
 -- | 1       | 100        | true       |
 -- | 3       | 700        | true       |
 
@@ -36,4 +38,5 @@ DELETE FROM Foo;
 
 SELECT * FROM Foo
 -- @expect:
--- | id | score | flag |
+-- | id  | score | flag |
+-- | --- | ----- | ---- |

@@ -6,6 +6,7 @@ SELECT
     ;
 -- @expect:
 -- | ceil1: F64 | ceil2: F64 | ceil3: F64 | ceil4: F64 |
+-- | ---------- | ---------- | ---------- | ---------- |
 -- | 1.0        | 0.0        | 10.0       | 7.0        |
 
 SELECT CEIL('string') AS ceil;
@@ -15,6 +16,7 @@ SELECT CEIL('string') AS ceil;
 SELECT CEIL(NULL) AS ceil;
 -- @expect:
 -- | ceil |
+-- | ---- |
 -- | NULL |
 
 SELECT CEIL(TRUE) AS ceil;

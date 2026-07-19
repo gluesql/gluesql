@@ -11,6 +11,7 @@ INSERT INTO Bytea VALUES
 SELECT * FROM Bytea
 -- @expect:
 -- | bytes: Bytea |
+-- | ------------ |
 -- | "123456"     |
 -- | "ab0123"     |
 -- | "936da0"     |

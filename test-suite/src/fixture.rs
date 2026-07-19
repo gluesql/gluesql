@@ -539,15 +539,18 @@ fn parse_expectation(lines: &[&str], index: usize, directive: &str) -> (Expectat
                 !table.is_empty(),
                 "select expectation requires a header row"
             );
+            assert_table_format(&table, Some(1));
             (Expectation::Select(parse_select(&table)), index)
         }
         "ok" => (Expectation::Ok, index),
         "maps" => {
             let (rows, index) = take_table_rows(lines, index);
+            assert_table_format(&rows, None);
             (Expectation::Maps(parse_maps(&rows)), index)
         }
         "types" => {
             let (rows, index) = take_table_rows(lines, index);
+            assert_table_format(&rows, None);
             assert_eq!(rows.len(), 1, "types expectation requires one type row");
             let types = parse_table_row(rows[0])
                 .into_iter()
@@ -581,14 +584,20 @@ fn take_table_rows<'a>(lines: &[&'a str], mut index: usize) -> (Vec<&'a str>, us
         rows.push(lines[index]);
         index += 1;
     }
-    assert_table_format(&rows);
     (rows, index)
 }
 
-fn assert_table_format(lines: &[&str]) {
+fn assert_table_format(lines: &[&str], separator: Option<usize>) {
     if lines.is_empty() {
         return;
     }
+    if let Some(separator) = separator {
+        assert!(
+            separator < lines.len(),
+            "select expectation requires a separator row after the header"
+        );
+    }
+
     let rows = lines
         .iter()
         .map(|line| parse_table_row(line))
@@ -606,19 +615,29 @@ fn assert_table_format(lines: &[&str]) {
     let widths = (0..column_count)
         .map(|column| {
             rows.iter()
-                .map(|row| row[column].chars().count())
+                .enumerate()
+                .filter(|(index, _)| Some(*index) != separator)
+                .map(|(_, row)| row[column].chars().count())
                 .max()
                 .unwrap()
+                .max(separator.map_or(0, |_| 3))
         })
         .collect::<Vec<_>>();
 
-    for (line, row) in lines.iter().zip(rows) {
-        let cells = row
-            .iter()
-            .zip(&widths)
-            .map(|(cell, width)| format!("{cell:<width$}"))
-            .collect::<Vec<_>>()
-            .join(" | ");
+    for (index, (line, row)) in lines.iter().zip(rows).enumerate() {
+        let cells = if Some(index) == separator {
+            widths
+                .iter()
+                .map(|width| "-".repeat(*width))
+                .collect::<Vec<_>>()
+                .join(" | ")
+        } else {
+            row.iter()
+                .zip(&widths)
+                .map(|(cell, width)| format!("{cell:<width$}"))
+                .collect::<Vec<_>>()
+                .join(" | ")
+        };
         let expected = format!("-- | {cells} |");
         assert_eq!(
             *line, expected,
@@ -685,7 +704,7 @@ fn parse_select(lines: &[&str]) -> Payload {
         .map(parse_column)
         .collect::<Vec<_>>();
     let labels = columns.iter().map(|column| column.label.clone()).collect();
-    let rows = lines[1..]
+    let rows = lines[2..]
         .iter()
         .map(|line| {
             let cells = parse_table_row(line);
@@ -922,6 +941,7 @@ CREATE TABLE Example (id INTEGER);
 SELECT 1;
 -- @expect:
 -- | fixed: I64 | dynamic  |
+-- | ---------- | -------- |
 -- | 1          | Str("a") |
 -- | NULL       | I64(2)   |
 
@@ -1007,6 +1027,7 @@ SELECT * FROM Example;
 SELECT 1;
 -- @expect:
 -- | bool: Bool | i8: I8 | i16: I16 | i32: I32 | i64: I64 | i128: I128 | u8: U8 | u16: U16 | u32: U32 | u64: U64 | u128: U128 | f32: F32 | f64: F64 | decimal: Decimal | str: Str | bytea: Bytea | inet: Inet  | date: Date   | timestamp: Timestamp  | time: Time | interval: Interval | uuid: Uuid                             | map: Map | list: List | point: Point |
+-- | ---------- | ------ | -------- | -------- | -------- | ---------- | ------ | -------- | -------- | -------- | ---------- | -------- | -------- | ---------------- | -------- | ------------ | ----------- | ------------ | --------------------- | ---------- | ------------------ | -------------------------------------- | -------- | ---------- | ------------ |
 -- | true       | -8     | -16      | -32      | -64      | -128       | 8      | 16       | 32       | 64       | 128        | 1.5      | 2.5      | 3.14             | "text"   | "00ff"       | "127.0.0.1" | "2025-01-02" | "2025-01-02T03:04:05" | "03:04:05" | "'1' DAY"          | "550e8400-e29b-41d4-a716-446655440000" | {"a":1}  | [1,"a"]    | "POINT(1 2)" |
 "#;
 
@@ -1015,6 +1036,22 @@ SELECT 1;
             panic!("expected Select")
         };
         assert_eq!(rows[0].len(), 25);
+    }
+
+    #[test]
+    fn parses_empty_select_results() {
+        let source = r"
+SELECT * FROM Example;
+-- @expect:
+-- | id: I64 |
+-- | ------- |
+";
+
+        let steps = parse_fixture(source);
+        let Expectation::Select(Payload::Select { rows, .. }) = &steps[0].expectation else {
+            panic!("expected Select")
+        };
+        assert!(rows.is_empty());
     }
 
     #[test]
@@ -1244,8 +1281,10 @@ SELECT * FROM Example;
     #[test]
     fn rejects_non_canonical_table_spacing() {
         let malformed = [
-            "SELECT 1;\n-- @expect:\n-- |id: I64|\n-- |1|\n",
-            "SELECT 1;\n-- @expect:\n-- | id: I64 | value: Str |\n-- | 1 | \"a\" |\n",
+            "SELECT 1;\n-- @expect:\n-- |id: I64|\n-- |-------|\n-- |1|\n",
+            "SELECT 1;\n-- @expect:\n-- | id: I64 | value: Str |\n-- | ------- | ---------- |\n-- | 1 | \"a\" |\n",
+            "SELECT 1;\n-- @expect:\n-- | id: I64 |\n-- | 1       |\n",
+            "SELECT 1;\n-- @expect:\n-- | id: I64 |\n-- | ------  |\n-- | 1       |\n",
         ];
 
         for source in malformed {

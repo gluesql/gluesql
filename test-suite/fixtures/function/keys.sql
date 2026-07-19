@@ -11,18 +11,21 @@ INSERT INTO USER VALUES
 SELECT SORT(KEYS(data), 'ASC') as result FROM USER WHERE id=1
 -- @expect:
 -- | result: List            |
+-- | ----------------------- |
 -- | ["id","is_male","name"] |
 
 -- @name: return one key from map
 SELECT KEYS(data) as result FROM USER WHERE id=2
 -- @expect:
 -- | result: List |
+-- | ------------ |
 -- | ["name"]     |
 
 -- @name: return null from empty map
 SELECT KEYS(data) as result FROM USER WHERE id=3
 -- @expect:
 -- | result: List |
+-- | ------------ |
 -- | []           |
 
 -- @name: return argument type error

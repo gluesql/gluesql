@@ -11,6 +11,7 @@ INSERT INTO Item VALUES ('abcd', 'efgi'), ('Abcd', NULL), ('ABCD', 'EfGi')
 SELECT name FROM Item WHERE LOWER(name) = 'abcd';
 -- @expect:
 -- | name: Str |
+-- | --------- |
 -- | "abcd"    |
 -- | "Abcd"    |
 -- | "ABCD"    |
@@ -18,6 +19,7 @@ SELECT name FROM Item WHERE LOWER(name) = 'abcd';
 SELECT LOWER(name), UPPER(name) FROM Item;
 -- @expect:
 -- | LOWER(name): Str | UPPER(name): Str |
+-- | ---------------- | ---------------- |
 -- | "abcd"           | "ABCD"           |
 -- | "abcd"           | "ABCD"           |
 -- | "abcd"           | "ABCD"           |
@@ -28,11 +30,13 @@ SELECT
 FROM Item LIMIT 1;
 -- @expect:
 -- | lower: Str | upper: Str |
+-- | ---------- | ---------- |
 -- | "abcd"     | "ABCD"     |
 
 SELECT LOWER(opt_name), UPPER(opt_name) FROM Item;
 -- @expect:
 -- | LOWER(opt_name): Str | UPPER(opt_name): Str |
+-- | -------------------- | -------------------- |
 -- | "efgi"               | "EFGI"               |
 -- | NULL                 | NULL                 |
 -- | "efgi"               | "EFGI"               |

@@ -19,24 +19,29 @@ INSERT INTO Item (id, quantity, age, total) VALUES
 SELECT VARIANCE(age) FROM Item
 -- @expect:
 -- | VARIANCE(age) |
+-- | ------------- |
 -- | NULL          |
 
 SELECT VARIANCE(id), VARIANCE(quantity) FROM Item
 -- @expect:
 -- | VARIANCE(id): F64 | VARIANCE(quantity): F64 |
+-- | ----------------- | ----------------------- |
 -- | 4.0               | 82.775510204082         |
 
 SELECT VARIANCE(DISTINCT id) FROM Item
 -- @expect:
 -- | VARIANCE(DISTINCT id): F64 |
+-- | -------------------------- |
 -- | 4.0                        |
 
 SELECT VARIANCE(DISTINCT age) FROM Item
 -- @expect:
 -- | VARIANCE(DISTINCT age) |
+-- | ---------------------- |
 -- | NULL                   |
 
 SELECT VARIANCE(quantity), VARIANCE(DISTINCT quantity) FROM Item
 -- @expect:
 -- | VARIANCE(quantity): F64 | VARIANCE(DISTINCT quantity): F64 |
+-- | ----------------------- | -------------------------------- |
 -- | 82.775510204082         | 74.64                            |

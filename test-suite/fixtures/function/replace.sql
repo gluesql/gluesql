@@ -11,6 +11,7 @@ INSERT INTO Item VALUES ('Tticky GlueTQL')
 SELECT REPLACE(name,'T','S') AS test FROM Item;
 -- @expect:
 -- | test: Str        |
+-- | ---------------- |
 -- | "Sticky GlueSQL" |
 
 -- @name: test when one argument was given
@@ -42,6 +43,7 @@ SELECT REPLACE(1,1,1) AS test FROM Item
 SELECT REPLACE(name, null,null) AS test FROM Item
 -- @expect:
 -- | test |
+-- | ---- |
 -- | NULL |
 
 -- @name: test if the table can be created will null value
@@ -57,6 +59,7 @@ INSERT INTO NullTest VALUES (null)
 SELECT REPLACE(name, 'G','T') AS test FROM NullTest
 -- @expect:
 -- | test |
+-- | ---- |
 -- | NULL |
 
 DELETE FROM Item

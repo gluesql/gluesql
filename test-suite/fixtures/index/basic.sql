@@ -26,6 +26,7 @@ SELECT id, num, name FROM Test;
 -- @expect-index: none
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 1       | 2        | "Hello"   |
 -- | 1       | 17       | "World"   |
 -- | 11      | 7        | "Great"   |
@@ -35,6 +36,7 @@ SELECT id, num, name FROM Test WHERE id < 20;
 -- @expect-index: idx_id < 20
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 1       | 2        | "Hello"   |
 -- | 1       | 17       | "World"   |
 -- | 4       | 7        | "Job"     |
@@ -44,6 +46,7 @@ SELECT id, num, name FROM Test WHERE 20 > id;
 -- @expect-index: idx_id < 20
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 1       | 2        | "Hello"   |
 -- | 1       | 17       | "World"   |
 -- | 4       | 7        | "Job"     |
@@ -53,6 +56,7 @@ SELECT id, num, name FROM Test WHERE id <= 4;
 -- @expect-index: idx_id <= 4
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 1       | 2        | "Hello"   |
 -- | 1       | 17       | "World"   |
 -- | 4       | 7        | "Job"     |
@@ -61,6 +65,7 @@ SELECT id, num, name FROM Test WHERE 4 >= id;
 -- @expect-index: idx_id <= 4
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 1       | 2        | "Hello"   |
 -- | 1       | 17       | "World"   |
 -- | 4       | 7        | "Job"     |
@@ -69,6 +74,7 @@ SELECT id, num, name FROM Test WHERE id >= 4;
 -- @expect-index: idx_id >= 4
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 4       | 7        | "Job"     |
 -- | 11      | 7        | "Great"   |
 
@@ -76,6 +82,7 @@ SELECT id, num, name FROM Test WHERE 4 <= id;
 -- @expect-index: idx_id >= 4
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 4       | 7        | "Job"     |
 -- | 11      | 7        | "Great"   |
 
@@ -83,6 +90,7 @@ SELECT id, num, name FROM Test WHERE id > 0;
 -- @expect-index: idx_id > 0
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 1       | 2        | "Hello"   |
 -- | 1       | 17       | "World"   |
 -- | 4       | 7        | "Job"     |
@@ -92,12 +100,14 @@ SELECT id, num, name FROM Test WHERE 4 < id;
 -- @expect-index: idx_id > 4
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 11      | 7        | "Great"   |
 
 SELECT id, num, name FROM Test WHERE id = 1;
 -- @expect-index: idx_id = 1
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 1       | 2        | "Hello"   |
 -- | 1       | 17       | "World"   |
 
@@ -109,6 +119,7 @@ SELECT id, num, name FROM Test WHERE 1 = id;
 -- @expect-index: idx_id = 1
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 1       | 2        | "Hello"   |
 -- | 1       | 17       | "World"   |
 -- | 1       | 30       | "New one" |
@@ -117,29 +128,34 @@ SELECT id, num, name FROM Test WHERE name = 'New one';
 -- @expect-index: idx_name = 'New one'
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 1       | 30       | "New one" |
 
 SELECT id, num, name FROM Test WHERE id + num = 10;
 -- @expect-index: idx_id2 = 10
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 
 SELECT id, num, name FROM Test WHERE id + num < 11;
 -- @expect-index: idx_id2 < 11
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 1       | 2        | "Hello"   |
 
 SELECT id, num, name FROM Test WHERE 11 > id + num;
 -- @expect-index: idx_id2 < 11
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 1       | 2        | "Hello"   |
 
 SELECT id, num, name FROM Test WHERE id + num = 18;
 -- @expect-index: idx_id2 = 18
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 1       | 17       | "World"   |
 -- | 11      | 7        | "Great"   |
 
@@ -151,6 +167,7 @@ SELECT id, num, name FROM Test WHERE id + num = 3;
 -- @expect-index: idx_id2 = 3
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 1       | 2        | "Hello"   |
 
 UPDATE Test SET id = id + 1 WHERE id = 1;
@@ -161,6 +178,7 @@ SELECT * FROM Test WHERE 19 = id + num;
 -- @expect-index: idx_id2 = 19
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 2       | 17       | "World"   |
 
 DROP INDEX Test.idx_id2;
@@ -170,17 +188,20 @@ SELECT * FROM Test WHERE id + num = 19;
 -- @expect-index: none
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 2       | 17       | "World"   |
 
 SELECT id FROM Test WHERE id + num = id;
 -- @expect-index: none
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 
 SELECT id, num, name FROM Test WHERE id < 20;
 -- @expect-index: idx_id < 20
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
 -- | 2       | 2        | "Hello"   |
 -- | 2       | 17       | "World"   |
 -- | 2       | 30       | "New one" |

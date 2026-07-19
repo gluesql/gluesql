@@ -40,18 +40,21 @@ SELECT P.* FROM A AS P
 SELECT A.a_id AS a_id, B.b_id AS b_id FROM A JOIN B WHERE A.a_id = B.a_id
 -- @expect:
 -- | a_id: I64 | b_id: I64 |
+-- | --------- | --------- |
 -- | 1         | 10        |
 
 -- @name: schemaless qualified wildcard keeps tabular output in join
 SELECT B.* FROM A JOIN B WHERE A.a_id = B.a_id
 -- @expect:
 -- | _doc: Map                        |
+-- | -------------------------------- |
 -- | {"a_id":1,"b":"right","b_id":10} |
 
 -- @name: schemaless qualified wildcard keeps table side in join
 SELECT A.*, B.* FROM A JOIN B WHERE A.a_id = B.a_id
 -- @expect:
 -- | _doc: Map             | _doc: Map                        |
+-- | --------------------- | -------------------------------- |
 -- | {"a":"left","a_id":1} | {"a_id":1,"b":"right","b_id":10} |
 
 -- @name: wildcard join with schemaless root and schemaful join is rejected
@@ -72,4 +75,5 @@ INSERT INTO C VALUES (7);
 SELECT _doc FROM C
 -- @expect:
 -- | _doc: I64 |
+-- | --------- |
 -- | 7         |

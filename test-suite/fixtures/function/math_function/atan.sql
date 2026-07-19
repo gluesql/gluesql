@@ -8,6 +8,7 @@ INSERT INTO SingleItem VALUES (0)
 SELECT ATAN(0.5) AS atan1, ATAN(1) AS atan2
 -- @expect:
 -- | atan1: F64     | atan2: F64     |
+-- | -------------- | -------------- |
 -- | 0.463647609001 | 0.785398163397 |
 
 SELECT ATAN('string') AS atan
@@ -17,6 +18,7 @@ SELECT ATAN('string') AS atan
 SELECT ATAN(null) AS atan
 -- @expect:
 -- | atan |
+-- | ---- |
 -- | NULL |
 
 SELECT ATAN(true) AS atan

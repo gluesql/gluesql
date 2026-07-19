@@ -8,6 +8,7 @@ INSERT INTO Item VALUES (1, 'Apple', 100), (2, 'Banana', NULL), (1, 'Apple', 100
 SELECT DISTINCT name FROM Item WHERE name IS NOT NULL ORDER BY name
 -- @expect:
 -- | name: Str |
+-- | --------- |
 -- | "Apple"   |
 -- | "Banana"  |
 
@@ -15,6 +16,7 @@ SELECT DISTINCT name FROM Item WHERE name IS NOT NULL ORDER BY name
 SELECT DISTINCT id, name FROM Item ORDER BY id
 -- @expect:
 -- | id: I64 | name: Str |
+-- | ------- | --------- |
 -- | 1       | "Apple"   |
 -- | 2       | "Banana"  |
 -- | 3       | NULL      |
@@ -32,6 +34,7 @@ INSERT INTO Restaurant VALUES
 SELECT DISTINCT menu FROM Restaurant ORDER BY UNWRAP(menu, 'price')
 -- @expect:
 -- | menu: Map                      |
+-- | ------------------------------ |
 -- | {"dish":"pizza","price":12000} |
 -- | {"dish":"pasta","price":15000} |
 

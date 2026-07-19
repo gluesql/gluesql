@@ -34,6 +34,7 @@ select cast(-2147483649 as INT32) from Item
 SELECT field_one, field_two FROM Item
 -- @expect:
 -- | field_one: I32 | field_two: I32 |
+-- | -------------- | -------------- |
 -- | 1              | -1             |
 -- | -2             | 2              |
 -- | 3              | 3              |
@@ -42,40 +43,47 @@ SELECT field_one, field_two FROM Item
 SELECT field_one FROM Item WHERE field_one = 1
 -- @expect:
 -- | field_one: I32 |
+-- | -------------- |
 -- | 1              |
 
 SELECT field_one FROM Item WHERE field_one > 0
 -- @expect:
 -- | field_one: I32 |
+-- | -------------- |
 -- | 1              |
 -- | 3              |
 
 SELECT field_one FROM Item WHERE field_one >= 0
 -- @expect:
 -- | field_one: I32 |
+-- | -------------- |
 -- | 1              |
 -- | 3              |
 
 SELECT field_one FROM Item WHERE field_one = -2
 -- @expect:
 -- | field_one: I32 |
+-- | -------------- |
 -- | -2             |
 
 SELECT field_one FROM Item WHERE field_one < 0
 -- @expect:
 -- | field_one: I32 |
+-- | -------------- |
 -- | -2             |
 -- | -4             |
 
 SELECT field_one FROM Item WHERE field_one <= 0
 -- @expect:
 -- | field_one: I32 |
+-- | -------------- |
 -- | -2             |
 -- | -4             |
 
 SELECT field_one + field_two AS plus FROM Item;
 -- @expect:
 -- | plus: I32 |
+-- | --------- |
 -- | 0         |
 -- | 0         |
 -- | 6         |
@@ -84,6 +92,7 @@ SELECT field_one + field_two AS plus FROM Item;
 SELECT field_one - field_two AS sub FROM Item;
 -- @expect:
 -- | sub: I32 |
+-- | -------- |
 -- | 2        |
 -- | -4       |
 -- | 0        |
@@ -92,6 +101,7 @@ SELECT field_one - field_two AS sub FROM Item;
 SELECT field_one * field_two AS mul FROM Item;
 -- @expect:
 -- | mul: I32 |
+-- | -------- |
 -- | -1       |
 -- | -4       |
 -- | 9        |
@@ -100,6 +110,7 @@ SELECT field_one * field_two AS mul FROM Item;
 SELECT field_one / field_two AS div FROM Item;
 -- @expect:
 -- | div: I32 |
+-- | -------- |
 -- | -1       |
 -- | -1       |
 -- | 1        |
@@ -108,6 +119,7 @@ SELECT field_one / field_two AS div FROM Item;
 SELECT field_one % field_two AS modulo FROM Item;
 -- @expect:
 -- | modulo: I32 |
+-- | ----------- |
 -- | 0           |
 -- | 0           |
 -- | 0           |

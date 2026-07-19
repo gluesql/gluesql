@@ -13,6 +13,7 @@ ALTER TABLE RenameCol RENAME COLUMN id TO new_id;
 SELECT * FROM RenameCol
 -- @expect:
 -- | new_id: I64 |
+-- | ----------- |
 -- | 1           |
 
 ROLLBACK;
@@ -21,6 +22,7 @@ ROLLBACK;
 SELECT * FROM RenameCol
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |
 
 BEGIN;
@@ -35,4 +37,5 @@ COMMIT;
 SELECT * FROM RenameCol
 -- @expect:
 -- | new_id: I64 |
+-- | ----------- |
 -- | 1           |

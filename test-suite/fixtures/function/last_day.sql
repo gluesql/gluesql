@@ -12,6 +12,7 @@ INSERT INTO LastDay (id, date) VALUES (1, LAST_DAY(DATE '2017-12-15'));
 SELECT date FROM LastDay WHERE id = 1;
 -- @expect:
 -- | date: Date   |
+-- | ------------ |
 -- | "2017-12-31" |
 
 INSERT INTO LastDay (id, date) VALUES (2, DATE '2017-01-01');
@@ -21,6 +22,7 @@ INSERT INTO LastDay (id, date) VALUES (2, DATE '2017-01-01');
 SELECT LAST_DAY(date) as date FROM LastDay WHERE id = 2;
 -- @expect:
 -- | date: Date   |
+-- | ------------ |
 -- | "2017-01-31" |
 
 INSERT INTO LastDay (id, date) VALUES (3, LAST_DAY(TIMESTAMP '2017-12-15 12:12:20'));
@@ -30,6 +32,7 @@ INSERT INTO LastDay (id, date) VALUES (3, LAST_DAY(TIMESTAMP '2017-12-15 12:12:2
 SELECT date FROM LastDay WHERE id = 3;
 -- @expect:
 -- | date: Date   |
+-- | ------------ |
 -- | "2017-12-31" |
 
 INSERT INTO LastDay (id, timestamp) VALUES (4, TIMESTAMP '2017-01-01 12:12:20');
@@ -39,6 +42,7 @@ INSERT INTO LastDay (id, timestamp) VALUES (4, TIMESTAMP '2017-01-01 12:12:20');
 SELECT LAST_DAY(timestamp) as date FROM LastDay WHERE id = 4;
 -- @expect:
 -- | date: Date   |
+-- | ------------ |
 -- | "2017-01-31" |
 
 -- @name: Should only give date or timestamp value to LAST_DAY function

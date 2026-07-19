@@ -13,6 +13,7 @@ INSERT INTO ListType VALUES
 SELECT id, items FROM ListType
 -- @expect:
 -- | id: I64 | items: List                                     |
+-- | ------- | ----------------------------------------------- |
 -- | 1       | [1,2,3]                                         |
 -- | 2       | ["hello","world",30,true,[9,8]]                 |
 -- | 3       | [{"bar":[true,0,[10.5,false]],"foo":100},10,20] |
@@ -26,6 +27,7 @@ SELECT
 FROM ListType
 -- @expect:
 -- | id: I64 | foo          | bar: I64 | a: List | b: F64 |
+-- | ------- | ------------ | -------- | ------- | ------ |
 -- | 1       | I64(2)       | NULL     | NULL    | NULL   |
 -- | 2       | Str("world") | NULL     | [9,8]   | NULL   |
 -- | 3       | I64(10)      | 200      | NULL    | 30.5   |
@@ -33,6 +35,7 @@ FROM ListType
 SELECT id, items[1] AS second FROM ListType
 -- @expect:
 -- | id: I64 | second       |
+-- | ------- | ------------ |
 -- | 1       | I64(2)       |
 -- | 2       | Str("world") |
 -- | 3       | I64(10)      |
@@ -41,6 +44,7 @@ SELECT id, items[1] AS second FROM ListType
 SELECT id, items[1] FROM ListType
 -- @expect:
 -- | id: I64 | items[1]     |
+-- | ------- | ------------ |
 -- | 1       | I64(2)       |
 -- | 2       | Str("world") |
 -- | 3       | I64(10)      |
@@ -65,6 +69,7 @@ SELECT
 FROM ListType2
 -- @expect:
 -- | id: I64 | foo          | bar           | hundred: I64 |
+-- | ------- | ------------ | ------------- | ------------ |
 -- | 1       | I64(1)       | I64(2)        | NULL         |
 -- | 2       | Str("one")   | Str("two")    | 100          |
 -- | 3       | Str("first") | Str("second") | NULL         |
@@ -73,6 +78,7 @@ FROM ListType2
 SELECT CAST('[1, 2, 3]' AS LIST) AS list
 -- @expect:
 -- | list: List |
+-- | ---------- |
 -- | [1,2,3]    |
 
 SELECT id, items['not']['list'] AS foo FROM ListType2
@@ -81,6 +87,7 @@ SELECT id, items['not']['list'] AS foo FROM ListType2
 SELECT id FROM ListType GROUP BY items
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |
 -- | 2       |
 -- | 3       |

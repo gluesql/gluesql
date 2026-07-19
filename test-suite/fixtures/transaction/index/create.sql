@@ -14,6 +14,7 @@ SELECT id FROM IdxCreate WHERE id = 1;
 -- @expect-index: idx_id = 1
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |
 
 ROLLBACK;
@@ -23,6 +24,7 @@ SELECT id FROM IdxCreate WHERE id = 1;
 -- @expect-index: none
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |
 
 BEGIN;
@@ -35,6 +37,7 @@ SELECT id FROM IdxCreate WHERE id = 1;
 -- @expect-index: idx_id = 1
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |
 
 COMMIT;
@@ -44,6 +47,7 @@ SELECT id FROM IdxCreate WHERE id = 1;
 -- @expect-index: idx_id = 1
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 1       |
 
 DELETE FROM IdxCreate;
@@ -62,12 +66,14 @@ SELECT id FROM IdxCreate WHERE id = 3;
 -- @expect-index: idx_id = 3
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 3       |
 
 SELECT id FROM IdxCreate WHERE id * 2 = 6;
 -- @expect-index: idx_id2 = 6
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 3       |
 
 ROLLBACK;
@@ -77,10 +83,12 @@ SELECT id FROM IdxCreate WHERE id = 3;
 -- @expect-index: idx_id = 3
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 3       |
 
 SELECT id FROM IdxCreate WHERE id * 2 = 6;
 -- @expect-index: none
 -- @expect:
 -- | id: I64 |
+-- | ------- |
 -- | 3       |

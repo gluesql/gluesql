@@ -13,11 +13,13 @@ INSERT INTO Append VALUES
 select append(items, element) as myappend from Append;
 -- @expect:
 -- | myappend: List |
+-- | -------------- |
 -- | [1,2,3,4]      |
 
 select append(items, element2) as myappend from Append;
 -- @expect:
 -- | myappend: List |
+-- | -------------- |
 -- | [1,2,3,"Foo"]  |
 
 select append(element, element2) as myappend from Append
@@ -34,4 +36,5 @@ INSERT INTO Foo VALUES (APPEND(CAST('[1, 2, 3]' AS LIST), 4));
 select elements as myappend from Foo;
 -- @expect:
 -- | myappend: List |
+-- | -------------- |
 -- | [1,2,3,4]      |

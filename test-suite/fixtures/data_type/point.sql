@@ -8,6 +8,7 @@ INSERT INTO POINT VALUES (POINT(0.3134, 0.156))
 SELECT point_field AS point_field FROM POINT;
 -- @expect:
 -- | point_field: Point    |
+-- | --------------------- |
 -- | "POINT(0.3134 0.156)" |
 
 UPDATE POINT SET point_field=POINT(2.0, 1.0) WHERE point_field=POINT(0.3134, 0.156)
@@ -17,6 +18,7 @@ UPDATE POINT SET point_field=POINT(2.0, 1.0) WHERE point_field=POINT(0.3134, 0.1
 SELECT point_field AS point_field FROM POINT
 -- @expect:
 -- | point_field: Point |
+-- | ------------------ |
 -- | "POINT(2 1)"       |
 
 DELETE FROM POINT WHERE point_field=POINT(2.0, 1.0)
@@ -43,6 +45,7 @@ INSERT INTO POINT VALUES (POINT(0.3134))
 SELECT CAST('POINT(-71.064544 42.28787)' AS POINT) AS pt
 -- @expect:
 -- | pt: Point                    |
+-- | ---------------------------- |
 -- | "POINT(-71.064544 42.28787)" |
 
 SELECT CAST('POINT(-71.06454t4 42.28787)' AS POINT) AS pt
