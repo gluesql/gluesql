@@ -68,7 +68,7 @@ test_case!(nullif, {
     ])
     .execute(glue);
     let expected = Ok(select_with_null!(
-        "column1" | Str;
+        "column1";
         Str("HELLO".to_owned());
         Null
     ));
