@@ -196,8 +196,25 @@ pub fn translate_with_params(
             engine,
             constraints,
             comment,
+            temporary,
+            like,
+            clone,
             ..
         }) => {
+            let violation = if *temporary {
+                Some("TEMPORARY clause")
+            } else if like.is_some() {
+                Some("LIKE clause")
+            } else if clone.is_some() {
+                Some("CLONE clause")
+            } else {
+                None
+            };
+
+            if let Some(reason) = violation {
+                return Err(TranslateError::UnsupportedCreateTableOption(reason).into());
+            }
+
             let columns = columns
                 .iter()
                 .map(|column_def| translate_column_def(column_def, params))
@@ -645,6 +662,28 @@ mod tests {
             (
                 "DELETE FROM Foo WHERE id = 1 LIMIT 1",
                 TranslateError::UnsupportedDeleteOption("LIMIT clause"),
+            ),
+        ];
+
+        for (sql, err) in cases {
+            assert_translate_error(sql, err);
+        }
+    }
+
+    #[test]
+    fn create_table_options_not_supported() {
+        let cases = [
+            (
+                "CREATE TEMPORARY TABLE Foo (id INTEGER)",
+                TranslateError::UnsupportedCreateTableOption("TEMPORARY clause"),
+            ),
+            (
+                "CREATE TABLE Foo LIKE Bar",
+                TranslateError::UnsupportedCreateTableOption("LIKE clause"),
+            ),
+            (
+                "CREATE TABLE Foo CLONE Bar",
+                TranslateError::UnsupportedCreateTableOption("CLONE clause"),
             ),
         ];
 
