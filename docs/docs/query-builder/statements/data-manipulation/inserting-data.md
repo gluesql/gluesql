@@ -51,3 +51,33 @@ test(actual, expected);
 ```
 
 This code inserts data into the table `Bar` using the `SELECT` statement on the table `Foo`. The `project` method is used to specify the columns `id` and `name` as the source data.
+
+## Insert from Structs
+
+If you derive `ToGlueRow` on a struct, you can insert struct values directly with the `values_from` method — no manual field-to-expression mapping required. Columns are set automatically from the struct fields, and `#[glue(rename = "...")]` lets a field map to a different column name. `Option` fields convert `None` to `NULL`.
+
+```rust
+use gluesql::ToGlueRow;
+
+#[derive(ToGlueRow)]
+struct Item {
+    id: i64,
+    #[glue(rename = "name")]
+    title: String,
+    rate: Option<f64>, // None -> NULL
+}
+
+let items = vec![
+    Item { id: 4, title: "Fish".to_owned(), rate: Some(0.2) },
+    Item { id: 5, title: "Bread".to_owned(), rate: None },
+];
+
+let actual = table("Foo")
+    .insert()
+    .values_from(&items)?
+    .execute(glue);
+let expected = Ok(Payload::Insert(2));
+test(actual, expected);
+```
+
+`values_from` returns an error if the given slice is empty, and it always sets the insert columns from the struct metadata so the columns stay aligned with the generated values.

@@ -79,12 +79,20 @@ fn data_key(table_name: &str, key: Vec<u8>) -> Vec<u8> {
         .collect()
 }
 
-fn open_sled(path: &Path) -> Db {
+fn create_sled(path: &Path) -> Db {
     sled::Config::new()
         .path(path)
         .flush_every_ms(None)
         .open()
-        .expect("open sled")
+        .expect("create sled")
+}
+
+fn open_migrated_sled(path: &Path) -> Db {
+    let config = sled::Config::new().path(path).flush_every_ms(None);
+
+    SledStorage::try_from(config)
+        .expect("open migrated sled")
+        .tree
 }
 
 fn write_schema_snapshot(tree: &Db, schema: Schema) {
@@ -114,7 +122,7 @@ fn write_v2_data_snapshot(tree: &Db, table_name: &str, key: Vec<u8>, row: Vec<Va
 }
 
 fn write_storage_format_version(path: &Path, version_bytes: &[u8]) {
-    let tree = open_sled(path);
+    let tree = create_sled(path);
     tree.insert(STORAGE_FORMAT_VERSION_KEY, version_bytes)
         .expect("insert version");
     tree.flush().expect("flush version");
@@ -122,7 +130,7 @@ fn write_storage_format_version(path: &Path, version_bytes: &[u8]) {
 
 fn setup_v1_storage(path: &Path) -> BTreeMap<String, Value> {
     let _ = remove_dir_all(path);
-    let tree = open_sled(path);
+    let tree = create_sled(path);
 
     let user_schema = Schema {
         table_name: "User".to_owned(),
@@ -184,8 +192,7 @@ fn setup_v1_storage(path: &Path) -> BTreeMap<String, Value> {
     log_row
 }
 
-fn read_storage_format_version(path: &Path) -> u32 {
-    let tree = open_sled(path);
+fn read_storage_format_version(tree: &Db) -> u32 {
     let value = tree
         .get(STORAGE_FORMAT_VERSION_KEY)
         .expect("read storage format version key")
@@ -195,8 +202,7 @@ fn read_storage_format_version(path: &Path) -> u32 {
     u32::from_be_bytes(bytes)
 }
 
-fn read_row_snapshot(path: &Path, table_name: &str, key: Vec<u8>) -> Vec<Value> {
-    let tree = open_sled(path);
+fn read_row_snapshot(tree: &Db, table_name: &str, key: Vec<u8>) -> Vec<Value> {
     let key = data_key(table_name, key);
     let value = tree
         .get(key)
@@ -238,12 +244,13 @@ fn migrate_v1_to_v2_rewrites_rows_and_sets_version() {
         }
     );
 
+    let tree = open_migrated_sled(&path);
     assert_eq!(
-        read_storage_format_version(&path),
+        read_storage_format_version(&tree),
         SLED_STORAGE_FORMAT_VERSION
     );
     let user_row = read_row_snapshot(
-        &path,
+        &tree,
         "User",
         Key::I64(1).to_cmp_be_bytes().expect("user key"),
     );
@@ -252,8 +259,9 @@ fn migrate_v1_to_v2_rewrites_rows_and_sets_version() {
         vec![Value::I64(1), Value::Str("Alice".to_owned())]
     );
 
-    let logs_row = read_row_snapshot(&path, "Logs", vec![0, 0, 0, 0, 0, 0, 0, 1]);
+    let logs_row = read_row_snapshot(&tree, "Logs", vec![0, 0, 0, 0, 0, 0, 0, 1]);
     assert_eq!(logs_row, vec![Value::Map(expected_log_row)]);
+    drop(tree);
 
     let report = migrate_to_latest(&path).expect("idempotent migration");
     assert_eq!(
@@ -375,7 +383,7 @@ fn migrate_rejects_file_path() {
 fn migrate_v1_to_v2_supports_all_v1_snapshot_shapes() {
     let path = test_path("sled-migration-v1-shapes");
     let _ = remove_dir_all(&path);
-    let tree = open_sled(&path);
+    let tree = create_sled(&path);
 
     write_schema_snapshot(
         &tree,
@@ -436,9 +444,10 @@ fn migrate_v1_to_v2_supports_all_v1_snapshot_shapes() {
         }
     );
 
+    let tree = open_migrated_sled(&path);
     assert_eq!(
         read_row_snapshot(
-            &path,
+            &tree,
             "Mixed",
             Key::I64(1).to_cmp_be_bytes().expect("key 1")
         ),
@@ -446,7 +455,7 @@ fn migrate_v1_to_v2_supports_all_v1_snapshot_shapes() {
     );
     assert_eq!(
         read_row_snapshot(
-            &path,
+            &tree,
             "Mixed",
             Key::I64(2).to_cmp_be_bytes().expect("key 2")
         ),
@@ -454,7 +463,7 @@ fn migrate_v1_to_v2_supports_all_v1_snapshot_shapes() {
     );
     assert_eq!(
         read_row_snapshot(
-            &path,
+            &tree,
             "Mixed",
             Key::I64(3).to_cmp_be_bytes().expect("key 3")
         ),
@@ -462,7 +471,7 @@ fn migrate_v1_to_v2_supports_all_v1_snapshot_shapes() {
     );
     assert_eq!(
         read_row_snapshot(
-            &path,
+            &tree,
             "Mixed",
             Key::I64(4).to_cmp_be_bytes().expect("key 4")
         ),
@@ -470,12 +479,13 @@ fn migrate_v1_to_v2_supports_all_v1_snapshot_shapes() {
     );
     assert_eq!(
         read_row_snapshot(
-            &path,
+            &tree,
             "Mixed",
             Key::I64(5).to_cmp_be_bytes().expect("key 5")
         ),
         vec![Value::I64(5)]
     );
+    drop(tree);
 
     remove_dir_all(path).expect("cleanup");
 }
@@ -484,7 +494,7 @@ fn migrate_v1_to_v2_supports_all_v1_snapshot_shapes() {
 fn migrate_v1_storage_without_data_rows() {
     let path = test_path("sled-migration-without-data-rows");
     let _ = remove_dir_all(&path);
-    let tree = open_sled(&path);
+    let tree = create_sled(&path);
 
     write_schema_snapshot(
         &tree,
@@ -516,10 +526,12 @@ fn migrate_v1_storage_without_data_rows() {
             rewritten_rows: 0,
         }
     );
+    let tree = open_migrated_sled(&path);
     assert_eq!(
-        read_storage_format_version(&path),
+        read_storage_format_version(&tree),
         SLED_STORAGE_FORMAT_VERSION
     );
+    drop(tree);
 
     remove_dir_all(path).expect("cleanup");
 }
@@ -528,7 +540,7 @@ fn migrate_v1_storage_without_data_rows() {
 fn migrate_rejects_invalid_v1_row_snapshot_payload() {
     let path = test_path("sled-migration-invalid-v1-row-snapshot");
     let _ = remove_dir_all(&path);
-    let tree = open_sled(&path);
+    let tree = create_sled(&path);
     write_schema_snapshot(
         &tree,
         Schema {
@@ -561,7 +573,7 @@ fn migrate_rejects_invalid_v1_row_snapshot_payload() {
 fn migrate_v2_storage_with_invalid_schema_snapshot_is_rejected() {
     let path = test_path("sled-v2-invalid-schema-snapshot");
     let _ = remove_dir_all(&path);
-    let tree = open_sled(&path);
+    let tree = create_sled(&path);
 
     tree.insert(
         STORAGE_FORMAT_VERSION_KEY,

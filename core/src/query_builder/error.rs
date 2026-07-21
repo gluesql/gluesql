@@ -15,4 +15,10 @@ pub enum QueryBuilderError {
         "projection expression label cannot be derived from a plan-only expression; use an explicit alias"
     )]
     ProjectionLabelRequiresAlias,
+
+    #[error("values_from requires at least one row")]
+    ValuesFromRequiresRows,
+
+    #[error("values_from row has {found} values but {expected} columns are declared")]
+    ValuesFromColumnCountMismatch { expected: usize, found: usize },
 }

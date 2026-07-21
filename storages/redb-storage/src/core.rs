@@ -5,7 +5,7 @@ use {
     },
     bincode::{deserialize, serialize},
     gluesql_core::data::{Key, Schema, Value},
-    redb::{Database, ReadableTable, TableDefinition, WriteTransaction},
+    redb::{Builder, Database, ReadableTable, TableDefinition, WriteTransaction},
     std::path::Path,
     uuid::Uuid,
 };
@@ -38,7 +38,9 @@ impl StorageCore {
             ensure_storage_format_version_supported(&db)?;
             db
         } else {
-            let db = Database::create(path)?;
+            let db = Builder::new()
+                .create_with_file_format_v3(true)
+                .create(path)?;
             initialize_storage_format_version(&db)?;
             db
         };
