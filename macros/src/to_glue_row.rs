@@ -66,9 +66,10 @@ pub(crate) fn expand_to_glue_row(
     }
 
     let columns_len = column_names.len();
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     let expanded = quote! {
-        impl #gluesql_crate::row_conversion::ToGlueRow for #ident {
+        impl #impl_generics #gluesql_crate::row_conversion::ToGlueRow for #ident #ty_generics #where_clause {
             fn glue_columns() -> &'static [&'static str] {
                 static COLUMNS: [&str; #columns_len] = [ #(#column_names),* ];
                 &COLUMNS
@@ -146,5 +147,22 @@ mod tests {
             err.to_string()
                 .contains("expected string literal for rename")
         );
+    }
+
+    #[test]
+    fn generics_and_lifetimes_preserved() {
+        let di: syn::DeriveInput = parse_quote! {
+            struct Record<'a, T>
+            where
+                T: Clone + crate::translate::IntoParamLiteral,
+            {
+                name: &'a str,
+                value: T,
+            }
+        };
+        let ts = expand_to_glue_row(di).expect("expand ok").to_string();
+        assert!(ts.contains("impl < 'a , T >"));
+        assert!(ts.contains("ToGlueRow for Record < 'a , T >"));
+        assert!(ts.contains("where T : Clone + crate :: translate :: IntoParamLiteral"));
     }
 }
