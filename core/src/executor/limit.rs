@@ -2,44 +2,67 @@ use {
     super::evaluate::evaluate_stateless,
     crate::{
         data::{Row, Value},
-        plan::ExprPlan,
+        plan::{ExprPlan, LimitInputPlan, LimitPlan, OffsetPlan, QueryPlan},
         result::{Error, Result},
     },
 };
 
-pub struct Limit {
-    limit: Option<usize>,
-    offset: Option<usize>,
-}
+pub struct Limit(usize);
+
+pub struct Offset(usize);
 
 impl Limit {
-    pub fn new(limit: Option<&ExprPlan>, offset: Option<&ExprPlan>) -> Result<Self> {
-        let eval = |expr| {
-            let Some(expr) = expr else {
-                return Ok(None);
-            };
-
-            let evaluated = evaluate_stateless(None, expr)?;
-            let size: usize = Value::try_from(evaluated)?.try_into()?;
-
-            Result::<Option<usize>, Error>::Ok(Some(size))
-        };
-
-        let limit = eval(limit)?;
-        let offset = eval(offset)?;
-
-        Ok(Self { limit, offset })
+    pub fn new(plan: &LimitPlan) -> Result<Self> {
+        evaluate_count(&plan.count).map(Self)
     }
 
     pub fn apply<'a, T: Iterator<Item = Result<Row>> + 'a>(
         &self,
         rows: T,
     ) -> Box<dyn Iterator<Item = Result<Row>> + 'a> {
-        match (self.offset, self.limit) {
-            (Some(offset), Some(limit)) => Box::new(rows.skip(offset).take(limit)),
-            (Some(offset), None) => Box::new(rows.skip(offset)),
-            (None, Some(limit)) => Box::new(rows.take(limit)),
-            (None, None) => Box::new(rows),
+        Box::new(rows.take(self.0))
+    }
+}
+
+impl Offset {
+    pub fn new(plan: &OffsetPlan) -> Result<Self> {
+        evaluate_count(&plan.count).map(Self)
+    }
+
+    pub fn apply<'a, T: Iterator<Item = Result<Row>> + 'a>(
+        &self,
+        rows: T,
+    ) -> Box<dyn Iterator<Item = Result<Row>> + 'a> {
+        Box::new(rows.skip(self.0))
+    }
+}
+
+fn evaluate_count(expr: &ExprPlan) -> Result<usize> {
+    let evaluated = evaluate_stateless(None, expr)?;
+    let size: usize = Value::try_from(evaluated)?.try_into()?;
+
+    Result::<usize, Error>::Ok(size)
+}
+
+pub fn apply<'a, T: Iterator<Item = Result<Row>> + 'a>(
+    query: &QueryPlan,
+    rows: T,
+) -> Result<Box<dyn Iterator<Item = Result<Row>> + 'a>> {
+    match query {
+        QueryPlan::Body(_) | QueryPlan::OrderBy(_) => Ok(Box::new(rows)),
+        QueryPlan::Offset(plan) => {
+            let offset = Offset::new(plan)?;
+
+            Ok(offset.apply(rows))
+        }
+        QueryPlan::Limit(plan) => {
+            let rows: Box<dyn Iterator<Item = Result<Row>> + 'a> = match &plan.input {
+                LimitInputPlan::Body(_) | LimitInputPlan::OrderBy(_) => Box::new(rows),
+                LimitInputPlan::Offset(offset_plan) => Offset::new(offset_plan)?.apply(rows),
+            };
+            let limit = Limit::new(plan)?;
+
+            Ok(limit.apply(rows))
         }
     }
 }

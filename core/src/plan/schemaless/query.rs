@@ -3,9 +3,10 @@ use {
         ast::Literal,
         data::{SCHEMALESS_DOC_COLUMN, Schema},
         plan::{
-            ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, ProjectionPlan,
-            QueryPlan, SelectItemPlan, SelectPlan, SetExprPlan, TableFactorPlan,
-            TableWithJoinsPlan, expr::visit_mut_expr,
+            ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, LimitInputPlan,
+            LimitPlan, OffsetInputPlan, OffsetPlan, OrderByPlan, ProjectionPlan, QueryPlan,
+            SelectItemPlan, SelectPlan, SetExprPlan, TableFactorPlan, TableWithJoinsPlan,
+            expr::visit_mut_expr,
         },
     },
     std::{
@@ -24,7 +25,57 @@ pub(super) fn transform_query<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
     query: &mut QueryPlan,
 ) {
-    let state = match &mut query.body {
+    match query {
+        QueryPlan::Body(body) => {
+            transform_set_expr(schema_map, body);
+        }
+        QueryPlan::OrderBy(order_by) => {
+            transform_order_by(schema_map, order_by);
+        }
+        QueryPlan::Offset(offset) => {
+            transform_offset(schema_map, offset);
+        }
+        QueryPlan::Limit(LimitPlan { input, count }) => {
+            let state = match input {
+                LimitInputPlan::Body(body) => transform_set_expr(schema_map, body),
+                LimitInputPlan::OrderBy(order_by) => transform_order_by(schema_map, order_by),
+                LimitInputPlan::Offset(offset) => transform_offset(schema_map, offset),
+            };
+            transform_query_expr(schema_map, count, &state);
+        }
+    }
+}
+
+fn transform_offset<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    OffsetPlan { input, count }: &mut OffsetPlan,
+) -> QueryRewriteState {
+    let state = match input {
+        OffsetInputPlan::Body(body) => transform_set_expr(schema_map, body),
+        OffsetInputPlan::OrderBy(order_by) => transform_order_by(schema_map, order_by),
+    };
+    transform_query_expr(schema_map, count, &state);
+
+    state
+}
+
+fn transform_order_by<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    OrderByPlan { input, exprs }: &mut OrderByPlan,
+) -> QueryRewriteState {
+    let state = transform_set_expr(schema_map, input);
+    for order_by in exprs {
+        transform_query_expr(schema_map, &mut order_by.expr, &state);
+    }
+
+    state
+}
+
+fn transform_set_expr<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    body_plan: &mut SetExprPlan,
+) -> QueryRewriteState {
+    match body_plan {
         SetExprPlan::Select(select) => {
             let rewrite_unqualified_identifiers = matches!(
                 &select.from.relation,
@@ -43,18 +94,6 @@ pub(super) fn transform_query<S: BuildHasher>(
             rewrite_unqualified_identifiers: false,
             schemaless_aliases: HashSet::new(),
         },
-    };
-
-    for order_by in &mut query.order_by {
-        transform_query_expr(schema_map, &mut order_by.expr, &state);
-    }
-
-    if let Some(limit) = query.limit.as_mut() {
-        transform_query_expr(schema_map, limit, &state);
-    }
-
-    if let Some(offset) = query.offset.as_mut() {
-        transform_query_expr(schema_map, offset, &state);
     }
 }
 

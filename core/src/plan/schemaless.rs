@@ -163,7 +163,7 @@ mod tests {
         crate::{
             mock::{MockStorage, run},
             parse_sql::parse,
-            plan::{ProjectionPlan, SetExprPlan, StatementPlan, fetch_schema_map},
+            plan::{ProjectionPlan, QueryPlan, SetExprPlan, StatementPlan, fetch_schema_map},
             translate::translate,
         },
     };
@@ -187,10 +187,12 @@ mod tests {
 
             let expected_parsed = parse(expected).expect(expected).into_iter().next().unwrap();
             let mut expected_stmt = StatementPlan::from(translate(&expected_parsed).unwrap());
-            if let (StatementPlan::Query(actual_query), StatementPlan::Query(expected_query)) =
-                (&result, &mut expected_stmt)
+            if let (
+                StatementPlan::Query(QueryPlan::Body(actual_body)),
+                StatementPlan::Query(QueryPlan::Body(expected_body)),
+            ) = (&result, &mut expected_stmt)
                 && let (SetExprPlan::Select(actual_select), SetExprPlan::Select(expected_select)) =
-                    (&actual_query.body, &mut expected_query.body)
+                    (actual_body, expected_body)
             {
                 expected_select.projection = actual_select.projection.clone();
             }
@@ -204,6 +206,10 @@ mod tests {
         let actual = "SELECT id FROM Player";
         let expected = "SELECT _doc['id'] as id FROM Player";
         test(actual, expected, "single column");
+
+        let actual = "SELECT id FROM Player ORDER BY id LIMIT 1";
+        let expected = "SELECT _doc['id'] as id FROM Player ORDER BY _doc['id'] LIMIT 1";
+        test(actual, expected, "order by before limit");
 
         let actual = "SELECT id FROM Item";
         let expected = "SELECT id FROM Item";
@@ -468,10 +474,10 @@ mod tests {
             let schema_map = fetch_schema_map(&storage, &statement).unwrap();
             let planned = plan_schemaless(&schema_map, statement).unwrap();
 
-            let StatementPlan::Query(query) = planned else {
+            let StatementPlan::Query(QueryPlan::Body(body)) = planned else {
                 panic!("expected query statement");
             };
-            let SetExprPlan::Select(select) = query.body else {
+            let SetExprPlan::Select(select) = &body else {
                 panic!("expected select query");
             };
             assert_eq!(

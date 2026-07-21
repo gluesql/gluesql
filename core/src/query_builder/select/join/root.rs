@@ -634,12 +634,9 @@ mod tests {
                 aggregate_slots: None,
             };
 
-            Ok(StatementPlan::Query(QueryPlan {
-                body: SetExprPlan::Select(Box::new(select)),
-                order_by: Vec::new(),
-                limit: None,
-                offset: None,
-            }))
+            Ok(StatementPlan::Query(QueryPlan::Body(SetExprPlan::Select(
+                Box::new(select),
+            ))))
         };
 
         let actual = table("Player")

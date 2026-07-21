@@ -5,8 +5,8 @@ use {
         data::{Key, Row, SCHEMALESS_DOC_COLUMN, Value},
         executor::{evaluate::evaluate, select::select},
         plan::{
-            ExprPlan, IndexItemPlan, JoinPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
-            SetExprPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan, ValuesPlan,
+            ExprPlan, IndexItemPlan, JoinPlan, ProjectionPlan, SelectItemPlan, SetExprPlan,
+            TableAliasPlan, TableFactorPlan, TableWithJoinsPlan, ValuesPlan,
         },
         result::Result,
         store::GStore,
@@ -395,13 +395,13 @@ where
             ],
         }),
         TableFactorPlan::Derived {
-            subquery: QueryPlan { body, .. },
+            subquery,
             alias:
                 TableAliasPlan {
                     columns: alias_columns,
                     name,
                 },
-        } => match body {
+        } => match subquery.body() {
             SetExprPlan::Select(statement) => {
                 let crate::plan::SelectPlan {
                     from:

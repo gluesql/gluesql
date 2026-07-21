@@ -1,8 +1,8 @@
 use {
-    super::{BuildQuery, BuildQueryPlan, ValuesNode},
+    super::{BuildQuery, BuildQueryPlan, BuildSetExprPlan, ValuesNode},
     crate::{
         ast::Query,
-        plan::QueryPlan,
+        plan::{OffsetInputPlan, OffsetPlan, QueryPlan},
         query_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
             JoinNode, OffsetLimitNode, OrderByNode, ProjectNode, QueryNode, SelectNode,
@@ -26,19 +26,19 @@ pub(super) enum PrevNode<'a> {
     ProjectNode(Box<ProjectNode<'a>>),
 }
 
-impl BuildQueryPlan for PrevNode<'_> {
-    fn build_query_plan(self) -> Result<QueryPlan> {
+impl PrevNode<'_> {
+    fn build_offset_input_plan(self) -> Result<OffsetInputPlan> {
         match self {
-            Self::Select(node) => node.build_query_plan(),
-            Self::Values(node) => node.build_query_plan(),
-            Self::GroupBy(node) => node.build_query_plan(),
-            Self::Having(node) => node.build_query_plan(),
-            Self::Join(node) => node.build_query_plan(),
-            Self::JoinConstraint(node) => node.build_query_plan(),
-            Self::HashJoin(node) => node.build_query_plan(),
-            Self::Filter(node) => node.build_query_plan(),
-            Self::OrderBy(node) => node.build_query_plan(),
-            Self::ProjectNode(node) => node.build_query_plan(),
+            Self::Select(node) => node.build_set_expr_plan().map(OffsetInputPlan::Body),
+            Self::Values(node) => node.build_set_expr_plan().map(OffsetInputPlan::Body),
+            Self::GroupBy(node) => node.build_set_expr_plan().map(OffsetInputPlan::Body),
+            Self::Having(node) => node.build_set_expr_plan().map(OffsetInputPlan::Body),
+            Self::Join(node) => node.build_set_expr_plan().map(OffsetInputPlan::Body),
+            Self::JoinConstraint(node) => node.build_set_expr_plan().map(OffsetInputPlan::Body),
+            Self::HashJoin(node) => node.build_set_expr_plan().map(OffsetInputPlan::Body),
+            Self::Filter(node) => node.build_set_expr_plan().map(OffsetInputPlan::Body),
+            Self::OrderBy(node) => node.build_order_by_plan().map(OffsetInputPlan::OrderBy),
+            Self::ProjectNode(node) => node.build_set_expr_plan().map(OffsetInputPlan::Body),
         }
     }
 }
@@ -141,14 +141,18 @@ impl<'a> OffsetNode<'a> {
     pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
         QueryNode::OffsetNode(self).alias_as(table_alias)
     }
+
+    pub(super) fn build_offset_plan(self) -> Result<OffsetPlan> {
+        let count = self.expr.build_expr_plan()?;
+        let input = self.prev_node.build_offset_input_plan()?;
+
+        Ok(OffsetPlan { input, count })
+    }
 }
 
 impl BuildQueryPlan for OffsetNode<'_> {
     fn build_query_plan(self) -> Result<QueryPlan> {
-        let mut node_data = self.prev_node.build_query_plan()?;
-        node_data.offset = Some(self.expr.build_expr_plan()?);
-
-        Ok(node_data)
+        self.build_offset_plan().map(QueryPlan::Offset)
     }
 }
 
@@ -166,9 +170,9 @@ mod tests {
     use {
         crate::{
             plan::{
-                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
-                QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
-                TableWithJoinsPlan,
+                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, OffsetInputPlan,
+                OffsetPlan, ProjectionPlan, QueryPlan, SelectPlan, SetExprPlan, StatementPlan,
+                TableFactorPlan, TableWithJoinsPlan,
             },
             query_builder::{Build, SelectItemList, col, num, table, test_query_builder},
         },
@@ -283,12 +287,12 @@ mod tests {
                 aggregate_slots: None,
             };
 
-            Ok(StatementPlan::Query(QueryPlan {
-                body: SetExprPlan::Select(Box::new(select)),
-                order_by: Vec::new(),
-                limit: None,
-                offset: Some(num(100).build_expr_plan().unwrap()),
-            }))
+            let offset = OffsetPlan {
+                input: OffsetInputPlan::Body(SetExprPlan::Select(Box::new(select))),
+                count: num(100).build_expr_plan().unwrap(),
+            };
+
+            Ok(StatementPlan::Query(QueryPlan::Offset(offset)))
         };
         assert_eq!(actual, expected);
 

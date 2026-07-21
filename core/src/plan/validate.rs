@@ -21,12 +21,10 @@ pub fn validate(schema_map: &SchemaMap, statement: &StatementPlan) -> Result<()>
         _ => None,
     };
 
-    if let Some(query) = query
-        && let QueryPlan {
-            body: SetExprPlan::Select(select),
-            ..
-        } = query
-    {
+    if let Some(query) = query {
+        let SetExprPlan::Select(select) = query.body() else {
+            return Ok(());
+        };
         let ProjectionPlan::SelectItems(projection) = &select.projection else {
             return Ok(());
         };
@@ -116,7 +114,13 @@ fn contextualize_query<'a>(
     schema_map: &'a SchemaMap,
     query: &'a QueryPlan,
 ) -> Option<Rc<Context<'a>>> {
-    let QueryPlan { body, .. } = query;
+    contextualize_query_body(schema_map, query.body())
+}
+
+fn contextualize_query_body<'a>(
+    schema_map: &'a SchemaMap,
+    body: &'a SetExprPlan,
+) -> Option<Rc<Context<'a>>> {
     match body {
         SetExprPlan::Select(select) => {
             let TableWithJoinsPlan { relation, joins } = &select.from;

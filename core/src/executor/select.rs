@@ -6,19 +6,19 @@ use {
     self::project::Project,
     super::{
         aggregate,
-        context::{AggregateContext, RowContext},
+        context::{AggregateContext, AggregateValues, RowContext},
         evaluate::evaluate_stateless,
         fetch::{fetch_labels, fetch_relation_rows},
         filter::Filter,
         join::Join,
-        limit::Limit,
+        limit::{Limit, Offset},
         sort::Sort,
     },
     crate::{
         data::{Key, Row, Value},
         plan::{
-            ExprPlan, OrderByExprPlan, QueryPlan, SelectPlan, SetExprPlan, TableWithJoinsPlan,
-            ValuesPlan,
+            ExprPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan,
+            OrderByPlan, QueryPlan, SelectPlan, SetExprPlan, TableWithJoinsPlan, ValuesPlan,
         },
         result::Result,
         store::GStore,
@@ -27,6 +27,21 @@ use {
 };
 
 pub type SelectIter<'a> = Box<dyn Iterator<Item = Result<Row>> + 'a>;
+type ProjectedRow<'a> = (Option<Rc<AggregateValues>>, Option<Rc<RowContext<'a>>>, Row);
+type ProjectedIter<'a> = Box<dyn Iterator<Item = Result<ProjectedRow<'a>>> + 'a>;
+
+enum BodyRows<'a> {
+    Select {
+        labels: Vec<String>,
+        rows: ProjectedIter<'a>,
+        table_alias: &'a str,
+        distinct: bool,
+    },
+    Values {
+        labels: Vec<String>,
+        rows: Vec<Row>,
+    },
+}
 
 fn apply_distinct(rows: Vec<Row>) -> Vec<Row> {
     let mut seen = HashSet::new();
@@ -102,11 +117,22 @@ fn sort_stateless(rows: Vec<Row>, order_by: &[OrderByExprPlan]) -> Result<Vec<Ro
     Ok(sorted)
 }
 
-pub fn select_with_labels<'a, T>(
+fn finish_select_rows(rows: SelectIter<'_>, distinct: bool) -> Result<SelectIter<'_>> {
+    if distinct {
+        let rows = rows.collect::<Result<Vec<_>>>()?;
+        let rows = apply_distinct(rows);
+
+        Ok(Box::new(rows.into_iter().map(Ok)))
+    } else {
+        Ok(rows)
+    }
+}
+
+fn select_body<'a, T>(
     storage: &'a T,
-    query: &'a QueryPlan,
+    plan: &'a SetExprPlan,
     filter_context: Option<Rc<RowContext<'a>>>,
-) -> Result<(Vec<String>, SelectIter<'a>)>
+) -> Result<BodyRows<'a>>
 where
     T: GStore,
 {
@@ -118,14 +144,12 @@ where
         group_by,
         having,
         aggregate_slots,
-    } = match &query.body {
+    } = match plan {
         SetExprPlan::Select(statement) => statement.as_ref(),
         SetExprPlan::Values(ValuesPlan(values_list)) => {
-            let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
             let (rows, labels) = rows_with_labels(values_list)?;
-            let rows = sort_stateless(rows, &query.order_by)?;
 
-            return Ok((labels, limit.apply(rows.into_iter().map(Ok))));
+            return Ok(BodyRows::Values { labels, rows });
         }
     };
 
@@ -143,13 +167,6 @@ where
         where_clause.as_ref(),
         filter_context.as_ref().map(Rc::clone),
     ));
-    let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
-    let sort = Sort::new(
-        storage,
-        filter_context.as_ref().map(Rc::clone),
-        &query.order_by,
-    );
-
     let rows = join.apply(Box::new(rows))?;
     let rows = rows.filter_map(move |project_context| {
         let project_context = match project_context {
@@ -187,18 +204,127 @@ where
         Ok((aggregated, next, row))
     });
 
-    let rows = sort.apply(rows, relation.alias_name())?;
-
-    let rows: SelectIter<'a> = if *distinct {
-        let rows = rows.collect::<Result<Vec<_>>>()?;
-        let rows = apply_distinct(rows);
-        Box::new(rows.into_iter().map(Ok))
-    } else {
-        rows
-    };
     let labels = labels.iter().cloned().collect();
 
+    Ok(BodyRows::Select {
+        labels,
+        rows: Box::new(rows),
+        table_alias: relation.alias_name(),
+        distinct: *distinct,
+    })
+}
+
+fn select_body_with_labels<'a, T>(
+    storage: &'a T,
+    plan: &'a SetExprPlan,
+    filter_context: Option<Rc<RowContext<'a>>>,
+) -> Result<(Vec<String>, SelectIter<'a>)>
+where
+    T: GStore,
+{
+    match select_body(storage, plan, filter_context)? {
+        BodyRows::Select {
+            labels,
+            rows,
+            distinct,
+            ..
+        } => {
+            let rows = rows.map(|row| row.map(|(.., row)| row));
+            let rows = finish_select_rows(Box::new(rows), distinct)?;
+
+            Ok((labels, rows))
+        }
+        BodyRows::Values { labels, rows } => Ok((labels, Box::new(rows.into_iter().map(Ok)))),
+    }
+}
+
+fn select_order_by_with_labels<'a, T>(
+    storage: &'a T,
+    plan: &'a OrderByPlan,
+    filter_context: Option<Rc<RowContext<'a>>>,
+) -> Result<(Vec<String>, SelectIter<'a>)>
+where
+    T: GStore,
+{
+    let sort_context = filter_context.as_ref().map(Rc::clone);
+    match select_body(storage, &plan.input, filter_context)? {
+        BodyRows::Select {
+            labels,
+            rows,
+            table_alias,
+            distinct,
+        } => {
+            let sort = Sort::new(storage, sort_context, &plan.exprs);
+            let rows = sort.apply(rows, table_alias)?;
+            let rows = finish_select_rows(rows, distinct)?;
+
+            Ok((labels, rows))
+        }
+        BodyRows::Values { labels, rows } => {
+            let rows = sort_stateless(rows, &plan.exprs)?;
+
+            Ok((labels, Box::new(rows.into_iter().map(Ok))))
+        }
+    }
+}
+
+fn select_offset_with_labels<'a, T>(
+    storage: &'a T,
+    plan: &'a OffsetPlan,
+    filter_context: Option<Rc<RowContext<'a>>>,
+) -> Result<(Vec<String>, SelectIter<'a>)>
+where
+    T: GStore,
+{
+    let (labels, rows) = match &plan.input {
+        OffsetInputPlan::Body(body) => select_body_with_labels(storage, body, filter_context),
+        OffsetInputPlan::OrderBy(order_by) => {
+            select_order_by_with_labels(storage, order_by, filter_context)
+        }
+    }?;
+    let offset = Offset::new(plan)?;
+
+    Ok((labels, offset.apply(rows)))
+}
+
+fn select_limit_with_labels<'a, T>(
+    storage: &'a T,
+    plan: &'a LimitPlan,
+    filter_context: Option<Rc<RowContext<'a>>>,
+) -> Result<(Vec<String>, SelectIter<'a>)>
+where
+    T: GStore,
+{
+    let (labels, rows) = match &plan.input {
+        LimitInputPlan::Body(body) => select_body_with_labels(storage, body, filter_context),
+        LimitInputPlan::OrderBy(order_by) => {
+            select_order_by_with_labels(storage, order_by, filter_context)
+        }
+        LimitInputPlan::Offset(offset) => {
+            select_offset_with_labels(storage, offset, filter_context)
+        }
+    }?;
+    let limit = Limit::new(plan)?;
+
     Ok((labels, limit.apply(rows)))
+}
+
+pub fn select_with_labels<'a, T>(
+    storage: &'a T,
+    query: &'a QueryPlan,
+    filter_context: Option<Rc<RowContext<'a>>>,
+) -> Result<(Vec<String>, SelectIter<'a>)>
+where
+    T: GStore,
+{
+    match query {
+        QueryPlan::Body(body) => select_body_with_labels(storage, body, filter_context),
+        QueryPlan::OrderBy(order_by) => {
+            select_order_by_with_labels(storage, order_by, filter_context)
+        }
+        QueryPlan::Offset(offset) => select_offset_with_labels(storage, offset, filter_context),
+        QueryPlan::Limit(limit) => select_limit_with_labels(storage, limit, filter_context),
+    }
 }
 
 pub fn select<'a, T>(

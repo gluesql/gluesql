@@ -44,22 +44,24 @@ pub(super) trait BuildQueryPlan {
     fn build_query_plan(self) -> Result<QueryPlan>;
 }
 
+pub(super) trait BuildSetExprPlan {
+    fn build_set_expr_plan(self) -> Result<SetExprPlan>;
+}
+
 pub(super) trait BuildQuery {
     fn build_query(self) -> Result<Query>;
 }
 
-impl<T: BuildSelectPlan> BuildQueryPlan for T {
-    fn build_query_plan(self) -> Result<QueryPlan> {
+impl<T: BuildSelectPlan> BuildSetExprPlan for T {
+    fn build_set_expr_plan(self) -> Result<SetExprPlan> {
         let select = self.build_select_plan()?;
-        let body = SetExprPlan::Select(Box::new(select));
-        let query = QueryPlan {
-            body,
-            order_by: Vec::new(),
-            limit: None,
-            offset: None,
-        };
+        Ok(SetExprPlan::Select(Box::new(select)))
+    }
+}
 
-        Ok(query)
+impl<T: BuildSetExprPlan> BuildQueryPlan for T {
+    fn build_query_plan(self) -> Result<QueryPlan> {
+        self.build_set_expr_plan().map(QueryPlan::Body)
     }
 }
 

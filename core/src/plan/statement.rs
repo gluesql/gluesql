@@ -10,7 +10,10 @@ pub use {
     expr::{AggregateFunctionPlan, AggregatePlan, CountArgExprPlan, ExprPlan, FunctionPlan},
     join::{JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan},
     projection::{ProjectionPlan, SelectItemPlan},
-    query::{OrderByExprPlan, QueryPlan, SelectPlan, SetExprPlan, ValuesPlan},
+    query::{
+        LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan, OrderByPlan,
+        QueryPlan, SelectPlan, SetExprPlan, ValuesPlan,
+    },
     table_factor::{IndexItemPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan},
 };
 

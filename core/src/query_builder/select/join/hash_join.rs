@@ -207,12 +207,9 @@ mod tests {
                 aggregate_slots: None,
             };
 
-            Ok(StatementPlan::Query(QueryPlan {
-                body: SetExprPlan::Select(Box::new(select)),
-                order_by: Vec::new(),
-                limit: None,
-                offset: None,
-            }))
+            Ok(StatementPlan::Query(QueryPlan::Body(SetExprPlan::Select(
+                Box::new(select),
+            ))))
         };
         assert_eq!(actual, expected, "without filter");
 
@@ -260,12 +257,9 @@ mod tests {
                 aggregate_slots: None,
             };
 
-            Ok(StatementPlan::Query(QueryPlan {
-                body: SetExprPlan::Select(Box::new(select)),
-                order_by: Vec::new(),
-                limit: None,
-                offset: None,
-            }))
+            Ok(StatementPlan::Query(QueryPlan::Body(SetExprPlan::Select(
+                Box::new(select),
+            ))))
         };
         assert_eq!(actual, expected, "with filter");
 
@@ -319,12 +313,7 @@ mod tests {
                 ),
                 from: TableWithJoinsPlan {
                     relation: TableFactorPlan::Derived {
-                        subquery: QueryPlan {
-                            body: SetExprPlan::Select(Box::new(subquery)),
-                            order_by: Vec::new(),
-                            limit: None,
-                            offset: None,
-                        },
+                        subquery: QueryPlan::Body(SetExprPlan::Select(Box::new(subquery))),
                         alias: TableAliasPlan {
                             name: "Sub".to_owned(),
                             columns: Vec::new(),
@@ -338,12 +327,9 @@ mod tests {
                 aggregate_slots: None,
             };
 
-            Ok(StatementPlan::Query(QueryPlan {
-                body: SetExprPlan::Select(Box::new(select)),
-                order_by: Vec::new(),
-                limit: None,
-                offset: None,
-            }))
+            Ok(StatementPlan::Query(QueryPlan::Body(SetExprPlan::Select(
+                Box::new(select),
+            ))))
         };
         assert_eq!(actual, expected);
     }

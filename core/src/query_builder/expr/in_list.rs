@@ -173,12 +173,7 @@ mod test {
                 aggregate_slots: None,
             };
 
-            let query = QueryPlan {
-                body: SetExprPlan::Select(Box::new(select)),
-                order_by: Vec::new(),
-                limit: None,
-                offset: None,
-            };
+            let query = QueryPlan::Body(SetExprPlan::Select(Box::new(select)));
 
             ExprPlan::InSubquery {
                 expr: Box::new(ExprPlan::Identifier("id".to_owned())),

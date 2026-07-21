@@ -23,6 +23,12 @@ VALUES (1, 'a'), (2, 'b') ORDER BY column1 DESC
 -- | 2            | "b"          |
 -- | 1            | "a"          |
 
+VALUES (1, 'a'), (3, 'c'), (2, 'b') ORDER BY column1 DESC LIMIT 1 OFFSET 1
+-- @expect:
+-- | column1: I64 | column2: Str |
+-- | ------------ | ------------ |
+-- | 2            | "b"          |
+
 VALUES (1), (2) limit 1
 -- @expect:
 -- | column1: I64 |

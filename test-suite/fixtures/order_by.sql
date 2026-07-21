@@ -104,6 +104,54 @@ ORDER BY
 -- | 3       | 4        |
 -- | 4       | 7        |
 
+-- @name: ORDER BY keeps non-projected row context
+SELECT id FROM Test ORDER BY num DESC
+-- @expect:
+-- | id: I64 |
+-- | ------- |
+-- | 1       |
+-- | 4       |
+-- | 3       |
+-- | 1       |
+
+-- @name: ORDER BY binds aggregate expressions
+SELECT id % 2 AS parity, COUNT(*) AS count
+FROM Test
+GROUP BY id % 2
+ORDER BY COUNT(*) DESC, parity
+-- @expect:
+-- | parity: I64 | count: I64 |
+-- | ----------- | ---------- |
+-- | 1           | 3          |
+-- | 0           | 1          |
+
+-- @name: ORDER BY runs before OFFSET and LIMIT
+SELECT id, num FROM Test ORDER BY num DESC LIMIT 2 OFFSET 1
+-- @expect:
+-- | id: I64 | num: I64 |
+-- | ------- | -------- |
+-- | 4       | 7        |
+-- | 3       | 4        |
+
+-- @name: terminal pipeline composes in a derived subquery
+SELECT id
+FROM (SELECT id, num FROM Test ORDER BY num DESC LIMIT 2 OFFSET 1) AS Ordered
+ORDER BY id
+-- @expect:
+-- | id: I64 |
+-- | ------- |
+-- | 3       |
+-- | 4       |
+
+-- @name: DISTINCT remains after ORDER BY
+SELECT DISTINCT id FROM Test ORDER BY num DESC
+-- @expect:
+-- | id: I64 |
+-- | ------- |
+-- | 1       |
+-- | 4       |
+-- | 3       |
+
 SELECT * FROM Test ORDER BY id NULLS FIRST
 -- @expect: error Translate.OrderByNullsFirstOrLastNotSupported
 
@@ -149,6 +197,11 @@ SELECT id, num FROM Test ORDER BY -1
 
 -- @name: ORDER BY COLUMN_INDEX should be larger than 0
 SELECT id, num FROM Test ORDER BY 0
+-- @expect: error Sort.ColumnIndexOutOfRange
+-- @json: 0
+
+-- @name: ORDER BY error propagates before OFFSET
+SELECT id, num FROM Test ORDER BY 0 OFFSET 1
 -- @expect: error Sort.ColumnIndexOutOfRange
 -- @json: 0
 

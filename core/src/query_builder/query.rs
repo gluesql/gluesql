@@ -91,12 +91,7 @@ impl<'a> QueryNode<'a> {
                     .map(ExprList::build_exprs_plan)
                     .collect::<Result<Vec<_>>>()?;
 
-                Ok(QueryPlan {
-                    body: SetExprPlan::Values(ValuesPlan(values)),
-                    order_by: Vec::new(),
-                    limit: None,
-                    offset: None,
-                })
+                Ok(QueryPlan::Body(SetExprPlan::Values(ValuesPlan(values))))
             }
             QueryNode::SelectNode(node) => node.build_query_plan(),
             QueryNode::ValuesNode(node) => node.build_query_plan(),
@@ -155,8 +150,9 @@ mod test {
         super::QueryNode,
         crate::{
             plan::{
-                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
-                QueryPlan, SelectPlan, SetExprPlan, TableFactorPlan, TableWithJoinsPlan,
+                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, LimitInputPlan,
+                LimitPlan, OffsetInputPlan, OffsetPlan, OrderByPlan, ProjectionPlan, QueryPlan,
+                SelectPlan, SetExprPlan, TableFactorPlan, TableWithJoinsPlan,
             },
             query_builder::{
                 SelectItemList, col, glue_indexes, glue_objects, glue_table_columns, glue_tables,
@@ -226,12 +222,7 @@ mod test {
                 aggregate_slots: None,
             };
 
-            QueryPlan {
-                body: SetExprPlan::Select(Box::new(select)),
-                order_by: Vec::new(),
-                limit: None,
-                offset: None,
-            }
+            QueryPlan::Body(SetExprPlan::Select(Box::new(select)))
         };
         assert_eq!(actual.build_query_plan().unwrap(), expected);
 
@@ -301,5 +292,91 @@ mod test {
         let actual = table("Items").select().alias_as("Sub").select().into();
         let expected = "SELECT * FROM (SELECT * FROM Items) AS Sub";
         test_query(actual, expected);
+    }
+
+    #[test]
+    fn query_builder_builds_only_valid_terminal_stage_relations() {
+        let body = QueryNode::from(table("Foo").select())
+            .build_query_plan()
+            .unwrap();
+        assert!(matches!(body, QueryPlan::Body(_)));
+
+        let order_by = QueryNode::from(table("Foo").select().order_by("id"))
+            .build_query_plan()
+            .unwrap();
+        assert!(matches!(order_by, QueryPlan::OrderBy(_)));
+
+        let offset = QueryNode::from(table("Foo").select().offset(2))
+            .build_query_plan()
+            .unwrap();
+        assert!(matches!(
+            offset,
+            QueryPlan::Offset(OffsetPlan {
+                input: OffsetInputPlan::Body(_),
+                ..
+            })
+        ));
+
+        let order_by_offset = QueryNode::from(table("Foo").select().order_by("id").offset(2))
+            .build_query_plan()
+            .unwrap();
+        assert!(matches!(
+            order_by_offset,
+            QueryPlan::Offset(OffsetPlan {
+                input: OffsetInputPlan::OrderBy(OrderByPlan { .. }),
+                ..
+            })
+        ));
+
+        let limit = QueryNode::from(table("Foo").select().limit(3))
+            .build_query_plan()
+            .unwrap();
+        assert!(matches!(
+            limit,
+            QueryPlan::Limit(LimitPlan {
+                input: LimitInputPlan::Body(_),
+                ..
+            })
+        ));
+
+        let order_by_limit = QueryNode::from(table("Foo").select().order_by("id").limit(3))
+            .build_query_plan()
+            .unwrap();
+        assert!(matches!(
+            order_by_limit,
+            QueryPlan::Limit(LimitPlan {
+                input: LimitInputPlan::OrderBy(OrderByPlan { .. }),
+                ..
+            })
+        ));
+
+        let offset_limit = QueryNode::from(table("Foo").select().offset(2).limit(3))
+            .build_query_plan()
+            .unwrap();
+        assert!(matches!(
+            offset_limit,
+            QueryPlan::Limit(LimitPlan {
+                input: LimitInputPlan::Offset(OffsetPlan {
+                    input: OffsetInputPlan::Body(_),
+                    ..
+                }),
+                ..
+            })
+        ));
+
+        let order_by_offset_limit =
+            QueryNode::from(table("Foo").select().order_by("id").offset(2).limit(3))
+                .build_query_plan()
+                .unwrap();
+        assert!(matches!(
+            order_by_offset_limit,
+            QueryPlan::Limit(LimitPlan {
+                input: LimitInputPlan::Offset(OffsetPlan {
+                    input: OffsetInputPlan::OrderBy(OrderByPlan { .. }),
+                    ..
+                }),
+                ..
+            })
+        ));
     }
 }

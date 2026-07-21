@@ -1,7 +1,7 @@
 use {
     gluesql_core::{
         ast::*,
-        plan::{IndexItemPlan, StatementPlan},
+        plan::{IndexItemPlan, QueryPlan, SetExprPlan, StatementPlan},
         prelude::{Glue, Payload, Result},
         store::{GStore, GStoreMut, Planner},
     },
@@ -44,10 +44,10 @@ fn find_indexes(statement: &StatementPlan) -> Vec<&IndexItemPlan> {
         }
     }
 
-    fn find_query_indexes(query: &gluesql_core::plan::QueryPlan) -> Vec<&IndexItemPlan> {
-        let select = match &query.body {
-            gluesql_core::plan::SetExprPlan::Select(select) => select,
-            gluesql_core::plan::SetExprPlan::Values(_) => {
+    fn find_query_indexes(query: &QueryPlan) -> Vec<&IndexItemPlan> {
+        let select = match query.body() {
+            SetExprPlan::Select(select) => select,
+            SetExprPlan::Values(_) => {
                 return vec![];
             }
         };
