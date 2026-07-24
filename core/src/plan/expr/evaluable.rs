@@ -98,7 +98,7 @@ fn check_select(context: Option<&Rc<Context<'_>>>, select: &SelectPlan) -> bool 
 
     let TableWithJoinsPlan { relation, joins } = from;
 
-    if !check_table_factor(context.map(Rc::clone), relation) {
+    if !check_table_factor(context, relation) {
         return false;
     }
 
@@ -109,7 +109,7 @@ fn check_select(context: Option<&Rc<Context<'_>>>, select: &SelectPlan) -> bool 
             ..
         } = join;
 
-        if !check_table_factor(context.map(Rc::clone), relation) {
+        if !check_table_factor(context, relation) {
             return false;
         }
 
@@ -132,17 +132,25 @@ fn check_select(context: Option<&Rc<Context<'_>>>, select: &SelectPlan) -> bool 
         .all(|expr| check_expr(context.map(Rc::clone), expr))
 }
 
-fn check_table_factor(context: Option<Rc<Context<'_>>>, table_factor: &TableFactorPlan) -> bool {
-    let alias = match table_factor {
-        TableFactorPlan::Table { name, alias, .. } => alias
-            .as_ref()
-            .map_or_else(|| name, |TableAliasPlan { name, .. }| name),
-        TableFactorPlan::Derived { alias, .. }
-        | TableFactorPlan::Series { alias, .. }
-        | TableFactorPlan::Dictionary { alias, .. } => &alias.name,
-    };
+fn check_table_factor(context: Option<&Rc<Context<'_>>>, table_factor: &TableFactorPlan) -> bool {
+    let contains_alias = |alias: &str| context.is_some_and(|context| context.contains_alias(alias));
 
-    context.is_some_and(|context| context.contains_alias(alias))
+    match table_factor {
+        TableFactorPlan::Table { name, alias, .. } => {
+            let alias = alias
+                .as_ref()
+                .map_or_else(|| name, |TableAliasPlan { name, .. }| name);
+
+            contains_alias(alias)
+        }
+        TableFactorPlan::Derived { subquery, alias } => {
+            contains_alias(&alias.name) && check_query(context, subquery)
+        }
+        TableFactorPlan::Series { alias, size } => {
+            contains_alias(&alias.name) && check_expr(context.map(Rc::clone), size)
+        }
+        TableFactorPlan::Dictionary { alias, .. } => contains_alias(&alias.name),
+    }
 }
 
 #[cfg(test)]
@@ -273,6 +281,13 @@ mod tests {
         test!("(SELECT id FROM Carry)", false);
         test!("(SELECT id FROM Carry AS Foo)", true);
         test!("(SELECT T.id FROM Carry AS Bar)", false);
+        test!("(SELECT * FROM (SELECT id FROM Foo) AS Bar)", true);
+        test!("(SELECT * FROM (SELECT id FROM Berry) AS Bar)", false);
+        test!("(SELECT * FROM (SELECT id FROM Foo) AS Unknown)", false);
+        test!("(SELECT * FROM SERIES(id) AS Bar)", true);
+        test!("(SELECT * FROM SERIES(unknown) AS Bar)", false);
+        test!("(SELECT * FROM SERIES(id) AS Unknown)", false);
+        test!("(SELECT * FROM GLUE_TABLES AS Bar)", true);
 
         // PlanExpr::QueryAndExpr
         test!(
