@@ -133,16 +133,25 @@ fn check_select(context: Option<&Rc<Context<'_>>>, select: &SelectPlan) -> bool 
 }
 
 fn check_table_factor(context: Option<Rc<Context<'_>>>, table_factor: &TableFactorPlan) -> bool {
+    let Some(context) = context else {
+        return false;
+    };
+
     let alias = match table_factor {
         TableFactorPlan::Table { name, alias, .. } => alias
             .as_ref()
             .map_or_else(|| name, |TableAliasPlan { name, .. }| name),
-        TableFactorPlan::Derived { alias, .. }
-        | TableFactorPlan::Series { alias, .. }
-        | TableFactorPlan::Dictionary { alias, .. } => &alias.name,
+        TableFactorPlan::Derived { subquery, alias } => {
+            return context.contains_alias(&alias.name) && check_query(Some(&context), subquery);
+        }
+        TableFactorPlan::Series { alias, size } => {
+            return context.contains_alias(&alias.name)
+                && check_expr(Some(Rc::clone(&context)), size);
+        }
+        TableFactorPlan::Dictionary { alias, .. } => &alias.name,
     };
 
-    context.is_some_and(|context| context.contains_alias(alias))
+    context.contains_alias(alias)
 }
 
 #[cfg(test)]
@@ -273,6 +282,10 @@ mod tests {
         test!("(SELECT id FROM Carry)", false);
         test!("(SELECT id FROM Carry AS Foo)", true);
         test!("(SELECT T.id FROM Carry AS Bar)", false);
+        test!("(SELECT * FROM (SELECT id FROM Foo) AS Bar)", true);
+        test!("(SELECT * FROM (SELECT id FROM Berry) AS Bar)", false);
+        test!("(SELECT * FROM SERIES(id) AS Bar)", true);
+        test!("(SELECT * FROM SERIES(unknown) AS Bar)", false);
 
         // PlanExpr::QueryAndExpr
         test!(
