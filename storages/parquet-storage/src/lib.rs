@@ -157,3 +157,79 @@ impl ParquetStorage {
 
 impl Metadata for ParquetStorage {}
 impl Planner for ParquetStorage {}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        gluesql_core::prelude::Error,
+        parquet::{
+            basic::{Repetition, Type},
+            column::writer::ColumnWriter,
+            data_type::ByteArray,
+            file::{properties::WriterProperties, writer::SerializedFileWriter},
+            format::KeyValue,
+            schema::types::Type as SchemaType,
+        },
+        std::{
+            fs::{File, remove_dir_all},
+            sync::Arc,
+        },
+        uuid::Uuid,
+    };
+
+    #[test]
+    fn scan_data_returns_schemaless_value_conversion_errors() {
+        let path = std::env::temp_dir().join(format!("parquet-storage-{}", Uuid::new_v4()));
+        let storage = ParquetStorage::new(&path).expect("create parquet storage");
+        let field = SchemaType::primitive_type_builder("schemaless", Type::BYTE_ARRAY)
+            .with_repetition(Repetition::OPTIONAL)
+            .build()
+            .expect("build parquet field");
+        let schema = SchemaType::group_type_builder("schema")
+            .with_fields(&mut vec![Arc::new(field)])
+            .build()
+            .map(Arc::new)
+            .expect("build parquet schema");
+        let properties = Arc::new(
+            WriterProperties::builder()
+                .set_key_value_metadata(Some(vec![KeyValue {
+                    key: "schemaless".to_owned(),
+                    value: Some("true".to_owned()),
+                }]))
+                .build(),
+        );
+        let file = File::create(storage.data_path("Foo")).expect("create parquet file");
+        let mut file_writer =
+            SerializedFileWriter::new(file, schema, properties).expect("create parquet writer");
+
+        {
+            let mut row_group = file_writer.next_row_group().expect("create row group");
+            let mut column = row_group
+                .next_column()
+                .expect("read column")
+                .expect("expected column");
+
+            match column.untyped() {
+                ColumnWriter::ByteArrayColumnWriter(writer) => writer
+                    .write_batch(&[ByteArray::from(vec![0_u8])], Some(&[1]), None)
+                    .expect("write invalid serialized map"),
+                _ => panic!("expected byte array column"),
+            };
+
+            column.close().expect("close column");
+            row_group.close().expect("close row group");
+        }
+
+        file_writer.close().expect("close parquet writer");
+
+        let (mut rows, _) = storage.scan_data("Foo").expect("scan data");
+        let error = rows
+            .next()
+            .expect("conversion error row")
+            .expect_err("invalid schemaless map should fail to deserialize");
+
+        assert!(matches!(error, Error::StorageMsg(_)));
+        remove_dir_all(path).expect("remove temporary storage");
+    }
+}
