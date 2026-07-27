@@ -1,3 +1,4 @@
+pub(crate) mod accumulator;
 mod state;
 
 use {
