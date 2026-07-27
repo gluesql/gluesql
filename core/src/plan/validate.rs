@@ -135,12 +135,10 @@ fn validate_select(
     let mut identifiers = HashSet::new();
 
     validate_table_factor(schema_map, &select.from.relation, outer.as_ref())?;
-    push_relation(
-        schema_map,
-        &select.from.relation,
-        &mut relations,
-        &mut identifiers,
-    )?;
+    identifiers.insert(select.from.relation.alias_name().to_owned());
+    relations.push(RelationBinding {
+        columns: relation_columns(schema_map, &select.from.relation),
+    });
 
     for join in &select.from.joins {
         validate_table_factor(schema_map, &join.relation, outer.as_ref())?;
@@ -312,7 +310,10 @@ mod tests {
         crate::{
             mock::{MockStorage, run},
             parse_sql::parse,
-            plan::{PlanError, StatementPlan, fetch_schema_map},
+            plan::{
+                PlanError, ProjectionPlan, QueryPlan, SelectPlan, SetExprPlan, StatementPlan,
+                TableAliasPlan, TableFactorPlan, TableWithJoinsPlan, fetch_schema_map,
+            },
             translate::translate,
         },
     };
@@ -404,5 +405,42 @@ mod tests {
         for sql in cases {
             assert_plan_ok(&storage, sql);
         }
+    }
+
+    #[test]
+    fn allows_schemaless_map_projections() {
+        let storage = setup_storage();
+        let query = |relation| QueryPlan {
+            body: SetExprPlan::Select(Box::new(SelectPlan {
+                distinct: false,
+                projection: ProjectionPlan::SchemalessMap,
+                from: TableWithJoinsPlan {
+                    relation,
+                    joins: Vec::new(),
+                },
+                selection: None,
+                group_by: Vec::new(),
+                having: None,
+                aggregate_slots: None,
+            })),
+            order_by: Vec::new(),
+            limit: None,
+            offset: None,
+        };
+        let derived = query(TableFactorPlan::Table {
+            name: "Users".to_owned(),
+            alias: None,
+            index: None,
+        });
+        let statement = StatementPlan::Query(query(TableFactorPlan::Derived {
+            subquery: derived,
+            alias: TableAliasPlan {
+                name: "D".to_owned(),
+                columns: Vec::new(),
+            },
+        }));
+
+        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
+        assert!(validate(&schema_map, &statement).is_ok());
     }
 }

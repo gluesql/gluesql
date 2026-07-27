@@ -160,4 +160,17 @@ mod tests {
 
         assert!(!joined.contains_column("id"));
     }
+
+    #[test]
+    fn unqualified_column_resolves_data_before_bridge_outer_scope() {
+        let outer_left = Rc::new(Context::new("A".to_owned(), vec!["name"], None));
+        let outer_right = Rc::new(Context::new("B".to_owned(), vec!["id"], None));
+        let outer = Context::concat(Some(outer_left), Some(outer_right)).unwrap();
+
+        let current = Context::new("C".to_owned(), vec!["quantity"], Some(Rc::clone(&outer)));
+        assert!(current.contains_column("id"));
+
+        let current = Context::new("C".to_owned(), vec!["id"], Some(outer));
+        assert!(current.contains_column("id"));
+    }
 }

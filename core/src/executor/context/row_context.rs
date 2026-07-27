@@ -277,6 +277,37 @@ mod tests {
     }
 
     #[test]
+    fn unqualified_lookup_handles_unbound_and_bridge_chains() {
+        let outer_left = context("A", &["name"], None);
+        let outer_right = context("B", &["id"], None);
+        let outer = Rc::new(RowContext::concat(outer_left, outer_right));
+        let current = context("C", &["quantity"], Some(outer));
+
+        assert!(matches!(
+            current.lookup_value("id"),
+            ValueLookup::Found(Value::I64(0))
+        ));
+        assert_eq!(current.get_value("missing"), None);
+        assert_eq!(current.get_alias_value("missing", "id"), None);
+    }
+
+    #[test]
+    fn missing_document_key_falls_back_only_to_a_bound_value() {
+        let missing = document_context("A", &[], None);
+        let unbound = context("B", &["name"], None);
+        let scope = RowContext::concat(missing, unbound);
+        assert!(matches!(scope.lookup_value("id"), ValueLookup::Missing));
+
+        let missing = document_context("A", &[], None);
+        let found = context("B", &["id"], None);
+        let scope = RowContext::concat(missing, found);
+        assert!(matches!(
+            scope.lookup_value("id"),
+            ValueLookup::Found(Value::I64(0))
+        ));
+    }
+
+    #[test]
     fn schemaless_lookup_counts_actual_document_keys() {
         let left = document_context("A", &[("id", Value::I64(1))], None);
         let joined = document_context("B", &[("name", Value::Str("B".to_owned()))], Some(left));
