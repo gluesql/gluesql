@@ -1,6 +1,6 @@
 ---
 title: "Schemaless Data"
-sidebar_position: 5
+sidebar_position: 6
 ---
 
 # Querying Schemaless Data
