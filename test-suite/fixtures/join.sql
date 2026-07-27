@@ -29,6 +29,59 @@ CREATE TABLE AliasScopeBar (
 );
 -- @expect: ok
 
+INSERT INTO AliasScopeFoo VALUES
+    (1, 'Zulu'),
+    (2, 'Alpha');
+-- @expect: ok
+
+INSERT INTO AliasScopeBar VALUES
+    (1, 'A'),
+    (2, 'Z');
+-- @expect: ok
+
+SELECT F.name AS title
+FROM AliasScopeFoo AS F
+JOIN AliasScopeBar AS B ON F.id = B.id
+ORDER BY title;
+-- @expect:
+-- | title: Str |
+-- | ---------- |
+-- | "Alpha"    |
+-- | "Zulu"     |
+
+-- ORDER BY expressions keep input-column resolution.
+SELECT F.name AS title
+FROM AliasScopeFoo AS F
+JOIN AliasScopeBar AS B ON F.id = B.id
+ORDER BY F.id + 0;
+-- @expect:
+-- | title: Str |
+-- | ---------- |
+-- | "Zulu"     |
+-- | "Alpha"    |
+
+SELECT D.id
+FROM (
+    SELECT F.id AS id, B.id AS id
+    FROM AliasScopeFoo AS F
+    JOIN AliasScopeBar AS B ON F.id = B.id
+) AS D;
+-- @expect: error Plan.ColumnReferenceAmbiguous
+-- @json: "id"
+
+SELECT D.id
+FROM (
+    SELECT *
+    FROM AliasScopeFoo AS F
+    JOIN AliasScopeBar AS B ON F.id = B.id
+) AS D;
+-- @expect: error Plan.ColumnReferenceAmbiguous
+-- @json: "id"
+
+SELECT id FROM AliasScopeFoo AS F(id, id);
+-- @expect: error Plan.ColumnReferenceAmbiguous
+-- @json: "id"
+
 SELECT A.id
 FROM AliasScopeFoo AS A
 JOIN AliasScopeBar AS A ON A.id = A.id;

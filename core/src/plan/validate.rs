@@ -20,7 +20,8 @@ type ValidateResult<T = ()> = std::result::Result<T, PlanError>;
 
 #[derive(Clone)]
 struct RelationBinding {
-    columns: Option<HashSet<String>>,
+    identifier: String,
+    columns: Option<Vec<String>>,
 }
 
 struct Scope {
@@ -38,8 +39,12 @@ impl Scope {
 
             for relation in &current.relations {
                 match &relation.columns {
-                    Some(columns) if columns.contains(column_name) => matches += 1,
-                    Some(_) => {}
+                    Some(columns) => {
+                        matches += columns
+                            .iter()
+                            .filter(|column| column == &column_name)
+                            .count();
+                    }
                     None => has_unknown = true,
                 }
             }
@@ -49,6 +54,34 @@ impl Scope {
             }
 
             if matches == 1 || has_unknown {
+                return Ok(());
+            }
+
+            scope = current.outer.as_deref();
+        }
+
+        Ok(())
+    }
+
+    fn validate_qualified_column(&self, identifier: &str, column_name: &str) -> ValidateResult {
+        let mut scope = Some(self);
+
+        while let Some(current) = scope {
+            if let Some(relation) = current
+                .relations
+                .iter()
+                .find(|relation| relation.identifier == identifier)
+            {
+                if relation.columns.as_ref().is_some_and(|columns| {
+                    columns
+                        .iter()
+                        .filter(|column| column == &column_name)
+                        .count()
+                        > 1
+                }) {
+                    return Err(PlanError::ColumnReferenceAmbiguous(column_name.to_owned()));
+                }
+
                 return Ok(());
             }
 
@@ -113,8 +146,14 @@ fn validate_query(
         }
     };
 
+    let output_columns = query_output_columns(schema_map, query);
     for order_by in &query.order_by {
-        validate_expr(schema_map, &order_by.expr, scope.as_ref())?;
+        validate_order_by(
+            schema_map,
+            &order_by.expr,
+            scope.as_ref(),
+            output_columns.as_deref(),
+        )?;
     }
     if let Some(limit) = &query.limit {
         validate_expr(schema_map, limit, scope.as_ref())?;
@@ -135,8 +174,10 @@ fn validate_select(
     let mut identifiers = HashSet::new();
 
     validate_table_factor(schema_map, &select.from.relation, outer.as_ref())?;
-    identifiers.insert(select.from.relation.alias_name().to_owned());
+    let identifier = select.from.relation.alias_name().to_owned();
+    identifiers.insert(identifier.clone());
     relations.push(RelationBinding {
+        identifier,
         columns: relation_columns(schema_map, &select.from.relation),
     });
 
@@ -206,15 +247,13 @@ fn push_relation(
     }
 
     relations.push(RelationBinding {
+        identifier,
         columns: relation_columns(schema_map, table_factor),
     });
     Ok(())
 }
 
-fn relation_columns(
-    schema_map: &SchemaMap,
-    table_factor: &TableFactorPlan,
-) -> Option<HashSet<String>> {
+fn relation_columns(schema_map: &SchemaMap, table_factor: &TableFactorPlan) -> Option<Vec<String>> {
     let columns = match table_factor {
         TableFactorPlan::Table { name, alias, .. } => {
             let columns = schema_map
@@ -227,7 +266,7 @@ fn relation_columns(
             apply_column_aliases(columns, alias.as_ref())
         }
         TableFactorPlan::Derived { subquery, alias } => {
-            let columns = query_output_columns(subquery)?;
+            let columns = query_output_columns(schema_map, subquery)?;
             apply_column_aliases(columns, Some(alias))
         }
         TableFactorPlan::Series { alias, .. } => {
@@ -236,7 +275,7 @@ fn relation_columns(
         TableFactorPlan::Dictionary { .. } => return None,
     };
 
-    Some(columns.into_iter().collect())
+    Some(columns)
 }
 
 fn apply_column_aliases(columns: Vec<String>, alias: Option<&TableAliasPlan>) -> Vec<String> {
@@ -252,19 +291,38 @@ fn apply_column_aliases(columns: Vec<String>, alias: Option<&TableAliasPlan>) ->
         .collect()
 }
 
-fn query_output_columns(query: &QueryPlan) -> Option<Vec<String>> {
+fn query_output_columns(schema_map: &SchemaMap, query: &QueryPlan) -> Option<Vec<String>> {
     match &query.body {
         SetExprPlan::Select(select) => match &select.projection {
-            ProjectionPlan::SelectItems(items) => items
-                .iter()
-                .map(|item| match item {
-                    SelectItemPlan::Expr { label, .. } => Some(label.clone()),
-                    SelectItemPlan::QualifiedWildcard(_) | SelectItemPlan::Wildcard => None,
-                })
-                .collect(),
+            ProjectionPlan::SelectItems(items) => {
+                let mut output = Vec::new();
+                for item in items {
+                    match item {
+                        SelectItemPlan::Expr { label, .. } => output.push(label.clone()),
+                        SelectItemPlan::QualifiedWildcard(identifier) => {
+                            let relation = std::iter::once(&select.from.relation)
+                                .chain(select.from.joins.iter().map(|join| &join.relation))
+                                .find(|relation| relation.alias_name() == identifier)?;
+                            output.extend(relation_columns(schema_map, relation)?);
+                        }
+                        SelectItemPlan::Wildcard => {
+                            for relation in std::iter::once(&select.from.relation)
+                                .chain(select.from.joins.iter().map(|join| &join.relation))
+                            {
+                                output.extend(relation_columns(schema_map, relation)?);
+                            }
+                        }
+                    }
+                }
+                Some(output)
+            }
             ProjectionPlan::SchemalessMap => None,
         },
-        SetExprPlan::Values(_) => None,
+        SetExprPlan::Values(values) => values.0.first().map(|row| {
+            (1..=row.len())
+                .map(|index| format!("column{index}"))
+                .collect()
+        }),
     }
 }
 
@@ -275,10 +333,11 @@ fn single_table_scope(schema_map: &SchemaMap, table_name: &str) -> Option<Rc<Sco
         .as_ref()?
         .iter()
         .map(|column| column.name.clone())
-        .collect::<HashSet<_>>();
+        .collect::<Vec<_>>();
 
     Some(Rc::new(Scope {
         relations: vec![RelationBinding {
+            identifier: table_name.to_owned(),
             columns: Some(columns),
         }],
         outer: None,
@@ -294,6 +353,9 @@ fn validate_expr(
         ExprPlan::Identifier(ident) => {
             scope.map_or(Ok(()), |scope| scope.validate_unqualified_column(ident))
         }
+        ExprPlan::CompoundIdentifier { alias, ident } => scope.map_or(Ok(()), |scope| {
+            scope.validate_qualified_column(alias, ident)
+        }),
         ExprPlan::Subquery(subquery)
         | ExprPlan::Exists { subquery, .. }
         | ExprPlan::InSubquery { subquery, .. } => {
@@ -301,6 +363,27 @@ fn validate_expr(
         }
         _ => Ok(()),
     })
+}
+
+fn validate_order_by(
+    schema_map: &SchemaMap,
+    expr: &ExprPlan,
+    scope: Option<&Rc<Scope>>,
+    output_columns: Option<&[String]>,
+) -> ValidateResult {
+    if let (ExprPlan::Identifier(identifier), Some(output_columns)) = (expr, output_columns) {
+        match output_columns
+            .iter()
+            .filter(|column| column == &identifier)
+            .count()
+        {
+            0 => {}
+            1 => return Ok(()),
+            _ => return Err(PlanError::ColumnReferenceAmbiguous(identifier.clone())),
+        }
+    }
+
+    validate_expr(schema_map, expr, scope)
 }
 
 #[cfg(test)]
@@ -358,7 +441,7 @@ mod tests {
             "SELECT U.name FROM Users U JOIN Items I ON id = I.id",
             "SELECT U.id FROM Users U JOIN Items I ON U.id = I.id GROUP BY id",
             "SELECT U.id FROM Users U JOIN Items I ON U.id = I.id HAVING id > 0",
-            "SELECT U.id FROM Users U JOIN Items I ON U.id = I.id ORDER BY id",
+            "SELECT U.id AS id FROM Users U JOIN Items I ON U.id = I.id ORDER BY id + 0",
         ];
 
         for sql in cases {
@@ -393,6 +476,33 @@ mod tests {
     }
 
     #[test]
+    fn rejects_duplicate_columns_within_relation() {
+        let storage = setup_storage();
+        let cases = [
+            "SELECT D.id FROM (SELECT U.id AS id, I.id AS id FROM Users U JOIN Items I ON U.id = I.id) D",
+            "SELECT D.id FROM (SELECT * FROM Users U JOIN Items I ON U.id = I.id) D",
+            "SELECT id FROM Users U(id, id)",
+            "SELECT D.id FROM (SELECT U.id, I.id FROM Users U JOIN Items I ON U.id = I.id) D(id, id)",
+            "SELECT U.id AS value, I.id AS value FROM Users U JOIN Items I ON U.id = I.id ORDER BY value",
+        ];
+
+        for sql in cases {
+            assert_plan_error(
+                &storage,
+                sql,
+                PlanError::ColumnReferenceAmbiguous(
+                    if sql.contains("ORDER BY value") {
+                        "value"
+                    } else {
+                        "id"
+                    }
+                    .to_owned(),
+                ),
+            );
+        }
+    }
+
+    #[test]
     fn allows_unambiguous_and_correlated_references() {
         let storage = setup_storage();
         let cases = [
@@ -400,11 +510,21 @@ mod tests {
             "SELECT name FROM Users U JOIN Items I ON U.id = I.id",
             "SELECT U.name FROM Users U WHERE EXISTS (SELECT 1 FROM Items I WHERE I.id = U.id)",
             "SELECT U.name FROM Users U WHERE EXISTS (SELECT 1 FROM Items U WHERE U.id = 1)",
+            "SELECT U.id FROM Users U JOIN Items I ON U.id = I.id ORDER BY id",
+            "SELECT U.name AS quantity FROM Users U JOIN Items I ON U.id = I.id ORDER BY quantity",
+            "SELECT U.name AS title FROM Users U JOIN Items I ON U.id = I.id ORDER BY quantity",
         ];
 
         for sql in cases {
             assert_plan_ok(&storage, sql);
         }
+    }
+
+    #[test]
+    fn defers_unknown_qualified_references() {
+        let storage = setup_storage();
+
+        assert_plan_ok(&storage, "SELECT Missing.id FROM Users U");
     }
 
     #[test]
