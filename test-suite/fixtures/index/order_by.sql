@@ -16,6 +16,9 @@ VALUES
 CREATE INDEX idx_name ON Test (name);
 -- @expect: payload CreateIndex
 
+CREATE INDEX idx_id ON Test (id);
+-- @expect: payload CreateIndex
+
 CREATE INDEX idx_id_num_asc ON Test (id + num ASC);
 -- @expect: payload CreateIndex
 
@@ -31,6 +34,16 @@ SELECT * FROM Test ORDER BY name;
 -- | I64(4) | I64(7) | Str("Monday") |
 -- | I64(1) | I64(9) | Str("Wild")   |
 -- | I64(3) | NULL   | Str("World")  |
+
+SELECT name AS id FROM Test ORDER BY id;
+-- @expect-index: none
+-- @expect:
+-- | id            |
+-- | ------------- |
+-- | Str("Hello")  |
+-- | Str("Monday") |
+-- | Str("Wild")   |
+-- | Str("World")  |
 
 SELECT * FROM Test ORDER BY id + num;
 -- @expect-index: idx_id_num_asc
