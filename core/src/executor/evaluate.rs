@@ -6,7 +6,7 @@ mod function;
 use {
     self::function::BreakCase,
     super::{
-        context::{AggregateValues, RowContext},
+        context::{AggregateValues, RowContext, ValueLookup},
         select::{select, select_with_labels},
     },
     crate::{
@@ -65,9 +65,15 @@ where
             let context = context
                 .ok_or_else(|| EvaluateError::IdentifierRequiresRowContext(ident.to_owned()))?;
 
-            match context.get_value(ident) {
-                Some(value) => Ok(Evaluated::Value(Cow::Owned(value.clone()))),
-                None => Err(EvaluateError::IdentifierNotFound(ident.to_owned()).into()),
+            match context.lookup_value(ident) {
+                ValueLookup::Found(value) => Ok(Evaluated::Value(Cow::Owned(value.clone()))),
+                ValueLookup::Unbound => {
+                    Err(EvaluateError::IdentifierNotFound(ident.to_owned()).into())
+                }
+                ValueLookup::Missing => Ok(Evaluated::Value(Cow::Owned(Value::Null))),
+                ValueLookup::Ambiguous => {
+                    Err(EvaluateError::IdentifierAmbiguous(ident.to_owned()).into())
+                }
             }
         }
         ExprPlan::Nested(expr) => eval(expr),

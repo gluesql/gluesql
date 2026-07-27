@@ -17,6 +17,49 @@ DELETE FROM Player
 DELETE FROM Item
 -- @expect: ok
 
+CREATE TABLE AliasScopeFoo (
+    id INTEGER,
+    name TEXT
+);
+-- @expect: ok
+
+CREATE TABLE AliasScopeBar (
+    id INTEGER,
+    title TEXT
+);
+-- @expect: ok
+
+SELECT A.id
+FROM AliasScopeFoo AS A
+JOIN AliasScopeBar AS A ON A.id = A.id;
+-- @expect: error Plan.DuplicateRelationIdentifier
+-- @json: "A"
+
+SELECT AliasScopeFoo.id
+FROM AliasScopeFoo
+JOIN AliasScopeFoo ON AliasScopeFoo.id = AliasScopeFoo.id;
+-- @expect: error Plan.DuplicateRelationIdentifier
+-- @json: "AliasScopeFoo"
+
+SELECT id + 1
+FROM AliasScopeFoo AS F
+JOIN AliasScopeBar AS B ON F.id = B.id;
+-- @expect: error Plan.ColumnReferenceAmbiguous
+-- @json: "id"
+
+SELECT F.name
+FROM AliasScopeFoo AS F
+JOIN AliasScopeBar AS B ON F.id = B.id
+WHERE id > 0;
+-- @expect: error Plan.ColumnReferenceAmbiguous
+-- @json: "id"
+
+SELECT F.name
+FROM AliasScopeFoo AS F
+JOIN AliasScopeBar AS B ON id = B.id;
+-- @expect: error Plan.ColumnReferenceAmbiguous
+-- @json: "id"
+
 INSERT INTO Player (id, name) VALUES
     (1, 'Taehoon'),
     (2,    'Mike'),

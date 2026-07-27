@@ -77,3 +77,26 @@ SELECT id FROM Player WHERE id IN (SELECT id, name FROM Player)
 
 SELECT id FROM Player WHERE id IN (SELECT id, name FROM Player WHERE id = 0)
 -- @expect: error Evaluate.InSubqueryMustReturnOneColumn
+
+SELECT P.name
+FROM Player AS P
+WHERE EXISTS (
+    SELECT 1
+    FROM Request AS P
+    WHERE P.name = 'Taehoon'
+);
+-- @expect: error Evaluate.CompoundIdentifierNotFound
+-- @json:
+-- {
+--   "table_alias": "P",
+--   "column_name": "name"
+-- }
+
+SELECT P.name
+FROM Player AS P
+WHERE EXISTS (
+    SELECT 1
+    FROM Request AS R
+    WHERE R.user_id = P.id
+);
+-- @expect: count 4
