@@ -206,4 +206,19 @@ pub enum TranslateError {
 
     #[error("invalid parameter placeholder: {placeholder}")]
     InvalidPlaceholder { placeholder: String },
+
+    #[error("named window is not supported")]
+    NamedWindowNotSupported,
+
+    #[error("window frame clause is not supported")]
+    WindowFrameNotSupported,
+
+    #[error("DISTINCT is not supported inside a window aggregate")]
+    DistinctNotSupportedInWindowFunction,
+
+    #[error("unsupported window function: {0}")]
+    UnsupportedWindowFunction(String),
+
+    #[error("window offset must be a non-negative integer literal: {0}")]
+    InvalidWindowOffset(String),
 }

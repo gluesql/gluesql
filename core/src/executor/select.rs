@@ -13,6 +13,7 @@ use {
         join::Join,
         limit::Limit,
         sort::Sort,
+        window,
     },
     crate::{
         data::{Key, Row, Value},
@@ -118,6 +119,7 @@ where
         group_by,
         having,
         aggregate_slots,
+        window_slots,
     } = match &query.body {
         SetExprPlan::Select(statement) => statement.as_ref(),
         SetExprPlan::Values(ValuesPlan(values_list)) => {
@@ -173,16 +175,28 @@ where
         Box::new(rows),
     )?;
 
+    let rows = window::apply(
+        storage,
+        window_slots.as_deref(),
+        filter_context.as_ref(),
+        Box::new(rows),
+    )?;
+
     let labels = fetch_labels(storage, relation, joins, projection)?;
     let labels = Rc::from(labels);
     let project = Rc::new(Project::new(storage, filter_context, projection));
     let project_labels = Rc::clone(&labels);
-    let rows = rows.map(move |aggregate_context| {
-        let aggregate_context = aggregate_context?;
+    let rows = rows.map(move |window_context| {
+        let (aggregate_context, windowed) = window_context?;
         let project = Rc::clone(&project);
         let AggregateContext { aggregated, next } = aggregate_context;
 
-        let row = project.apply(aggregated.as_ref(), &project_labels, next.as_ref())?;
+        let row = project.apply(
+            aggregated.as_ref(),
+            windowed.as_ref(),
+            &project_labels,
+            next.as_ref(),
+        )?;
 
         Ok((aggregated, next, row))
     });

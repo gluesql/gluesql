@@ -4,6 +4,7 @@ pub mod fixture;
 pub mod query_builder;
 pub mod store;
 pub mod transaction;
+pub mod window_error;
 
 pub mod tester;
 
@@ -169,6 +170,18 @@ macro_rules! generate_store_tests {
         sql_case!(aggregate::variance);
         sql_case!(aggregate::error);
         sql_case!(aggregate::expr);
+
+        // window function tests
+        sql_case!(window::row_number);
+        sql_case!(window::rank_dense);
+        sql_case!(window::agg_partition);
+        sql_case!(window::agg_running);
+        sql_case!(window::lag_lead);
+        sql_case!(window::partitions);
+        sql_case!(window::mixed);
+        sql_case!(window::expr);
+        rust_case!(window_error);
+
         sql_case!(project);
 
         // expression tests

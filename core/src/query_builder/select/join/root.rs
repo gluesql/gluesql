@@ -632,6 +632,7 @@ mod tests {
                 group_by: Vec::new(),
                 having: None,
                 aggregate_slots: None,
+                window_slots: None,
             };
 
             Ok(StatementPlan::Query(QueryPlan {

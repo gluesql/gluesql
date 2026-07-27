@@ -13,6 +13,7 @@ mod select;
 mod sort;
 mod update;
 mod validate;
+mod window;
 
 pub use {
     alter::{AlterError, Referencing},

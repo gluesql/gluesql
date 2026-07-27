@@ -8,7 +8,8 @@ pub fn is_deterministic(expr: &ExprPlan) -> bool {
         | ExprPlan::Subquery(_)
         | ExprPlan::Exists { .. }
         | ExprPlan::InSubquery { .. }
-        | ExprPlan::Aggregate(_) => false,
+        | ExprPlan::Aggregate(_)
+        | ExprPlan::Window(_) => false,
         ExprPlan::IsNull(inner)
         | ExprPlan::IsNotNull(inner)
         | ExprPlan::UnaryOp { expr: inner, .. }

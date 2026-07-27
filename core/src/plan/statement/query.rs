@@ -1,5 +1,5 @@
 use {
-    super::{AggregatePlan, ExprPlan, ProjectionPlan, TableWithJoinsPlan},
+    super::{AggregatePlan, ExprPlan, ProjectionPlan, TableWithJoinsPlan, WindowPlan},
     crate::ast,
     serde::{Deserialize, Serialize},
 };
@@ -27,6 +27,7 @@ pub struct SelectPlan {
     pub group_by: Vec<ExprPlan>,
     pub having: Option<ExprPlan>,
     pub aggregate_slots: Option<Vec<AggregatePlan>>,
+    pub window_slots: Option<Vec<WindowPlan>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -84,6 +85,7 @@ impl From<ast::Select> for SelectPlan {
             group_by: group_by.into_iter().map(Into::into).collect(),
             having: having.map(Into::into),
             aggregate_slots: None,
+            window_slots: None,
         }
     }
 }

@@ -126,6 +126,7 @@ impl<'a, T: GStore> Sort<'a, T> {
                             self.storage,
                             filter_context.as_ref(),
                             aggregated.as_ref(),
+                            None,
                             expr,
                         )?
                         .try_into(),

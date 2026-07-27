@@ -17,4 +17,16 @@ pub enum PlanError {
 
     #[error("unreachable")]
     Unreachable,
+
+    #[error("window functions are only allowed in the SELECT projection: found in {0}")]
+    WindowFunctionNotAllowedInClause(&'static str),
+
+    #[error("window functions cannot be combined with GROUP BY, HAVING, or DISTINCT")]
+    WindowWithGroupByHavingOrDistinctNotSupported,
+
+    #[error("window functions cannot be nested inside an aggregate function")]
+    WindowNestedInAggregate,
+
+    #[error("window functions cannot be nested inside another window function")]
+    WindowNestedInWindow,
 }

@@ -73,6 +73,7 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
             group_by,
             having,
             aggregate_slots,
+            window_slots,
         } = select;
 
         let (outer_context, from) = self.table_with_joins(outer_context, from);
@@ -86,6 +87,7 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
             group_by,
             having,
             aggregate_slots,
+            window_slots,
         }
     }
 

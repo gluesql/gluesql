@@ -171,6 +171,7 @@ mod test {
                 group_by: Vec::new(),
                 having: None,
                 aggregate_slots: None,
+                window_slots: None,
             };
 
             let query = QueryPlan {

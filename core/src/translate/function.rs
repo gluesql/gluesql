@@ -1,20 +1,24 @@
 use {
     super::{
         ParamLiteral, TranslateError,
-        expr::translate_expr,
+        expr::{translate_expr, translate_order_by_expr},
         literal::{translate_datetime_field, translate_trim_where_field},
         translate_data_type, translate_object_name,
     },
     crate::{
-        ast::{Aggregate, CountArgExpr, Expr, Function},
+        ast::{
+            Aggregate, CountArgExpr, Expr, Function, Literal, ToSql, Window, WindowFunction,
+            WindowSpec,
+        },
         result::Result,
     },
+    bigdecimal::BigDecimal,
     sqlparser::ast::{
         CastFormat as SqlCastFormat, CastKind as SqlCastKind, DataType as SqlDataType,
         DateTimeField as SqlDateTimeField, DuplicateTreatment as SqlDuplicateTreatment,
         Expr as SqlExpr, Function as SqlFunction, FunctionArg as SqlFunctionArg,
         FunctionArgExpr as SqlFunctionArgExpr, FunctionArguments as SqlFunctionArguments,
-        TrimWhereField as SqlTrimWhereField,
+        TrimWhereField as SqlTrimWhereField, WindowType as SqlWindowType,
     },
 };
 
@@ -206,12 +210,175 @@ pub fn translate_function_arg_exprs(
         .collect::<Result<Vec<_>>>()
 }
 
+fn translate_window_offset(sql_expr: &SqlExpr, params: &[ParamLiteral]) -> Result<Expr> {
+    let expr = translate_expr(sql_expr, params)?;
+
+    match &expr {
+        Expr::Literal(Literal::Number(n)) if n.is_integer() && n >= &BigDecimal::from(0) => {
+            Ok(expr)
+        }
+        _ => Err(TranslateError::InvalidWindowOffset(expr.to_sql()).into()),
+    }
+}
+
+fn translate_window_function(
+    params: &[ParamLiteral],
+    name: String,
+    args: &SqlFunctionArguments,
+    over: &SqlWindowType,
+) -> Result<Expr> {
+    let sql_window_spec = match over {
+        SqlWindowType::WindowSpec(spec) => spec,
+        SqlWindowType::NamedWindow(_) => {
+            return Err(TranslateError::NamedWindowNotSupported.into());
+        }
+    };
+
+    if sql_window_spec.window_frame.is_some() {
+        return Err(TranslateError::WindowFrameNotSupported.into());
+    }
+
+    let partition_by = sql_window_spec
+        .partition_by
+        .iter()
+        .map(|expr| translate_expr(expr, params))
+        .collect::<Result<Vec<_>>>()?;
+    let order_by = sql_window_spec
+        .order_by
+        .iter()
+        .map(|expr| translate_order_by_expr(expr, params))
+        .collect::<Result<Vec<_>>>()?;
+    let window_spec = WindowSpec {
+        partition_by,
+        order_by,
+    };
+
+    let (args, distinct) = match args {
+        SqlFunctionArguments::None => (Vec::new(), false),
+        SqlFunctionArguments::Subquery(_) => {
+            return Err(TranslateError::UnreachableSubqueryFunctionArgNotSupported.into());
+        }
+        SqlFunctionArguments::List(list) => {
+            let distinct = list
+                .duplicate_treatment
+                .is_some_and(|dt| matches!(dt, SqlDuplicateTreatment::Distinct));
+            (list.args.iter().collect(), distinct)
+        }
+    };
+
+    let function_arg_exprs = args
+        .iter()
+        .map(|arg| match arg {
+            SqlFunctionArg::Named { .. } => {
+                Err(TranslateError::NamedFunctionArgNotSupported.into())
+            }
+            SqlFunctionArg::Unnamed(arg_expr) => Ok(arg_expr),
+        })
+        .collect::<Result<Vec<_>>>()?;
+
+    let func = match name.as_str() {
+        "ROW_NUMBER" => {
+            check_len(name, args.len(), 0)?;
+            WindowFunction::RowNumber
+        }
+        "RANK" => {
+            check_len(name, args.len(), 0)?;
+            WindowFunction::Rank
+        }
+        "DENSE_RANK" => {
+            check_len(name, args.len(), 0)?;
+            WindowFunction::DenseRank
+        }
+        "LAG" | "LEAD" => {
+            check_len_range(name.clone(), args.len(), 1, 3)?;
+
+            let raw_args = translate_function_arg_exprs(function_arg_exprs)?;
+            let expr = translate_expr(raw_args[0], params)?;
+            let offset = raw_args
+                .get(1)
+                .map(|offset| translate_window_offset(offset, params))
+                .transpose()?
+                .unwrap_or_else(|| Expr::Literal(Literal::Number(BigDecimal::from(1))));
+            let default = raw_args
+                .get(2)
+                .map(|default| translate_expr(default, params))
+                .transpose()?;
+
+            if name == "LAG" {
+                WindowFunction::Lag {
+                    expr,
+                    offset,
+                    default,
+                }
+            } else {
+                WindowFunction::Lead {
+                    expr,
+                    offset,
+                    default,
+                }
+            }
+        }
+        "COUNT" => {
+            check_len(name, args.len(), 1)?;
+
+            if distinct {
+                return Err(TranslateError::DistinctNotSupportedInWindowFunction.into());
+            }
+
+            let count_arg = match function_arg_exprs[0] {
+                SqlFunctionArgExpr::Expr(expr) => CountArgExpr::Expr(translate_expr(expr, params)?),
+                SqlFunctionArgExpr::QualifiedWildcard(idents) => {
+                    let table_name = translate_object_name(idents)?;
+                    let idents = format!("{table_name}.*");
+
+                    return Err(TranslateError::QualifiedWildcardInCountNotSupported(idents).into());
+                }
+                SqlFunctionArgExpr::Wildcard => CountArgExpr::Wildcard,
+            };
+
+            WindowFunction::Aggregate(Aggregate::count(count_arg, false))
+        }
+        "SUM" | "MIN" | "MAX" | "AVG" => {
+            if distinct {
+                return Err(TranslateError::DistinctNotSupportedInWindowFunction.into());
+            }
+
+            check_len(name.clone(), args.len(), 1)?;
+            let raw_args = translate_function_arg_exprs(function_arg_exprs)?;
+            let expr = translate_expr(raw_args[0], params)?;
+
+            let aggregate = match name.as_str() {
+                "SUM" => Aggregate::sum(expr, false),
+                "MIN" => Aggregate::min(expr, false),
+                "MAX" => Aggregate::max(expr, false),
+                "AVG" => Aggregate::avg(expr, false),
+                _ => unreachable!(),
+            };
+
+            WindowFunction::Aggregate(aggregate)
+        }
+        _ => return Err(TranslateError::UnsupportedWindowFunction(name).into()),
+    };
+
+    Ok(Expr::Window(Box::new(Window {
+        func,
+        over: window_spec,
+    })))
+}
+
 pub(crate) fn translate_function(
     params: &[ParamLiteral],
     sql_function: &SqlFunction,
 ) -> Result<Expr> {
-    let SqlFunction { name, args, .. } = sql_function;
+    let SqlFunction {
+        name, args, over, ..
+    } = sql_function;
     let name = translate_object_name(name)?.to_uppercase();
+
+    if let Some(over) = over {
+        return translate_window_function(params, name, args, over);
+    }
+
     let (args, distinct) = match args {
         SqlFunctionArguments::None => (Vec::new(), false),
         SqlFunctionArguments::Subquery(_) => {

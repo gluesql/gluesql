@@ -192,7 +192,8 @@ pub trait Planner<'a> {
             | ExprPlan::Literal(_)
             | ExprPlan::Value(_)
             | ExprPlan::TypedString { .. }
-            | ExprPlan::Aggregate(_) => expr,
+            | ExprPlan::Aggregate(_)
+            | ExprPlan::Window(_) => expr,
         }
     }
 

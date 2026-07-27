@@ -172,13 +172,14 @@ fn join<'a, T: GStore>(
                 rows_map,
                 value_expr,
             } => {
-                let rows = match evaluate(storage, row_filter_context.as_ref(), None, value_expr)
-                    .and_then(|evaluated| {
-                        Key::try_from(evaluated).map(|hash_key| rows_map.get(&hash_key))
-                    }) {
-                    Ok(rows) => rows,
-                    Err(error) => return Box::new(std::iter::once(Err(error))) as Joined<'a>,
-                };
+                let rows =
+                    match evaluate(storage, row_filter_context.as_ref(), None, None, value_expr)
+                        .and_then(|evaluated| {
+                            Key::try_from(evaluated).map(|hash_key| rows_map.get(&hash_key))
+                        }) {
+                        Ok(rows) => rows,
+                        Err(error) => return Box::new(std::iter::once(Err(error))) as Joined<'a>,
+                    };
 
                 match rows {
                     Some(rows) => {
@@ -254,7 +255,7 @@ impl<'a> JoinExecutor<'a> {
             ));
 
             let hash_key: Key =
-                evaluate(storage, Some(&filter_context), None, key_expr)?.try_into()?;
+                evaluate(storage, Some(&filter_context), None, None, key_expr)?.try_into()?;
 
             if matches!(hash_key, Key::None) {
                 continue;

@@ -235,6 +235,7 @@ mod tests {
                 group_by: vec![col("PlayerItem.category").build_expr_plan().unwrap()],
                 having: None,
                 aggregate_slots: None,
+                window_slots: None,
             };
 
             Ok(StatementPlan::Query(QueryPlan {

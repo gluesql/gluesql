@@ -621,6 +621,7 @@ mod tests {
                 group_by: Vec::new(),
                 having: None,
                 aggregate_slots: None,
+                window_slots: None,
             })),
             order_by: Vec::new(),
             limit: None,
@@ -686,6 +687,7 @@ mod tests {
                 group_by: Vec::new(),
                 having: None,
                 aggregate_slots: None,
+                window_slots: None,
             })),
             order_by: vec![OrderByExprPlan {
                 expr: ExprPlan::Literal(Literal::Number(1.into())),

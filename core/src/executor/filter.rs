@@ -48,7 +48,7 @@ pub fn check_expr<'a, T: GStore>(
     aggregated: Option<&Rc<AggregateValues>>,
     expr: &'a ExprPlan,
 ) -> Result<bool> {
-    evaluate(storage, context, aggregated, expr).map(|evaluated| {
+    evaluate(storage, context, aggregated, None, expr).map(|evaluated| {
         if evaluated.is_null() {
             Ok(false)
         } else {

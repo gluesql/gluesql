@@ -3,7 +3,7 @@ use {
     crate::{
         plan::{
             StatementPlan, fetch_schema_map, plan_aggregate, plan_join, plan_primary_key,
-            plan_schemaless, validate,
+            plan_schemaless, plan_window, validate,
         },
         result::Result,
     },
@@ -18,6 +18,7 @@ pub trait Planner: Store {
         let statement = plan_primary_key(&schema_map, statement);
         let statement = plan_join(&schema_map, statement);
         let statement = plan_aggregate(statement);
+        let statement = plan_window(statement)?;
 
         Ok(statement)
     }

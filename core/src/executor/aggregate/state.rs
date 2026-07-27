@@ -98,7 +98,7 @@ impl<'a, T: GStore> State<'a, T> {
             | AggregateFunctionPlan::Avg(expr)
             | AggregateFunctionPlan::Variance(expr)
             | AggregateFunctionPlan::Stdev(expr) => {
-                evaluate(self.storage, filter_context, None, expr)?.try_into()?
+                evaluate(self.storage, filter_context, None, None, expr)?.try_into()?
             }
         };
 

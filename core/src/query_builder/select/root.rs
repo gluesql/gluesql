@@ -148,6 +148,7 @@ impl BuildSelectPlan for SelectNode<'_> {
             group_by: Vec::new(),
             having: None,
             aggregate_slots: None,
+            window_slots: None,
         })
     }
 }
