@@ -33,7 +33,11 @@ gluesql-file-storage = { workspace = true, optional = true }
 gluesql-git-storage = { workspace = true, optional = true }
 
 [features]
-tracing = ["gluesql-core/tracing", "cli?/tracing"]
+tracing = [
+  "gluesql-core/tracing",
+  "gluesql-redb-storage?/tracing",
+  "cli?/tracing",
+]
 
 # DB User
 default = [

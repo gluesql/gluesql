@@ -1557,6 +1557,7 @@ dependencies = [
  "redb",
  "serde",
  "thiserror 2.0.3",
+ "tracing",
  "uuid",
 ]
 

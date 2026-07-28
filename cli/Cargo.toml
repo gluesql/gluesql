@@ -9,7 +9,11 @@ repository.workspace = true
 documentation.workspace = true
 
 [features]
-tracing = ["gluesql-core/tracing", "dep:tracing-subscriber"]
+tracing = [
+  "gluesql-core/tracing",
+  "gluesql-redb-storage/tracing",
+  "dep:tracing-subscriber",
+]
 
 [dependencies]
 gluesql-core.workspace = true
