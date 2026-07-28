@@ -393,7 +393,14 @@ fn is_output_alias(projection: &ProjectionPlan, expr: &ExprPlan) -> bool {
     items.iter().any(|item| {
         matches!(
             item,
-            SelectItemPlan::Expr { label, .. } if label == identifier
+            SelectItemPlan::Expr {
+                expr: output_expr,
+                label,
+            } if label == identifier
+                && !matches!(
+                    output_expr,
+                    ExprPlan::Identifier(output_identifier) if output_identifier == identifier
+                )
         )
     })
 }
@@ -532,6 +539,15 @@ CREATE INDEX idx_name ON Test (name);
             .build();
         assert_eq!(actual, expected, "applies order by index:\n{sql}");
 
+        let sql = "SELECT id FROM Test ORDER BY id";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_id".to_owned()))
+            .select()
+            .project("id")
+            .build();
+        assert_eq!(actual, expected, "applies order by index:\n{sql}");
+
         let sql = "SELECT * FROM Test WHERE flag IS NULL";
         let actual = plan_index(&storage, sql);
         let expected = table("Test")
@@ -620,6 +636,18 @@ CREATE INDEX idx_name ON Test (name);
             &identifier
         ));
         assert!(!is_output_alias(&projection, &identifier));
+
+        let identity_projection = ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
+            expr: identifier.clone(),
+            label: "id".to_owned(),
+        }]);
+        assert!(!is_output_alias(&identity_projection, &identifier));
+
+        let renamed_projection = ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
+            expr: ExprPlan::Identifier("name".to_owned()),
+            label: "id".to_owned(),
+        }]);
+        assert!(is_output_alias(&renamed_projection, &identifier));
     }
 
     #[test]
