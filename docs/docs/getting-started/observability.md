@@ -34,7 +34,7 @@ The levels have the following intended scope:
 | --- | --- |
 | `info` | Total query execution time |
 | `debug` | Parse, translate, plan, statement execution, and selected access path |
-| `trace` | Transaction and primary storage call boundaries |
+| `trace` | Transaction, primary storage, and enabled backend call boundaries |
 
 The CLI reports span close events, including busy and idle durations.
 
@@ -77,12 +77,22 @@ gluesql.execute
 ├── gluesql.plan
 └── gluesql.execute_statement
     ├── gluesql.storage.begin
+    │   └── gluesql.redb.begin
     ├── gluesql.storage.fetch_data
+    │   └── gluesql.redb.fetch_data
     ├── gluesql.storage.scan_data
+    │   └── gluesql.redb.scan_data
+    ├── gluesql.redb.scan_rows
     ├── gluesql.storage.scan_indexed_data
     ├── gluesql.storage.commit
+    │   └── gluesql.redb.commit
     └── gluesql.storage.rollback
+        └── gluesql.redb.rollback
 ```
+
+The `gluesql.redb.*` spans are emitted when RedbStorage and its `tracing` feature are enabled. The
+top-level `gluesql` and CLI `tracing` features enable Redb instrumentation when they include
+RedbStorage.
 
 Access-path events use one of these stable values:
 
@@ -92,8 +102,12 @@ secondary_index
 full_scan
 ```
 
-`scan_data` and `scan_indexed_data` return lazy iterators. Their storage spans currently measure
-iterator creation; `gluesql.execute_statement` includes the subsequent iterator consumption.
+`scan_data` and `scan_indexed_data` return lazy iterators. Their generic storage spans measure
+iterator creation; `gluesql.execute_statement` includes subsequent iterator consumption.
+RedbStorage additionally emits `gluesql.redb.scan_rows` from the first iterator read until the
+iterator is dropped. Its busy duration measures Redb row reads and deserialization, its idle
+duration covers time spent by the consumer between reads, and its `row_count` field records the
+number of yielded items.
 
 ## OpenTelemetry
 
