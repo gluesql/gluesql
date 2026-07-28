@@ -84,13 +84,16 @@ where
                     ident: ident.to_owned(),
                 })?;
 
-            match context.get_alias_value(alias, ident) {
-                Some(value) => Ok(Evaluated::Value(Cow::Owned(value.clone()))),
-                None => Err(EvaluateError::CompoundIdentifierNotFound {
-                    table_alias: alias.to_owned(),
-                    column_name: ident.to_owned(),
+            match context.lookup_alias_value(alias, ident) {
+                ValueLookup::Found(value) => Ok(Evaluated::Value(Cow::Owned(value.clone()))),
+                ValueLookup::Missing => Ok(Evaluated::Value(Cow::Owned(Value::Null))),
+                ValueLookup::Unbound | ValueLookup::Ambiguous => {
+                    Err(EvaluateError::CompoundIdentifierNotFound {
+                        table_alias: alias.to_owned(),
+                        column_name: ident.to_owned(),
+                    }
+                    .into())
                 }
-                .into()),
             }
         }
         ExprPlan::Subquery(query) => {
@@ -741,18 +744,37 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
 #[cfg(test)]
 mod tests {
     use {
-        super::{EvaluateError, evaluate, evaluate_stateless},
+        super::{EvaluateError, Evaluated, evaluate, evaluate_stateless},
         crate::{
             ast::{Expr, Projection, SelectItem, SetExpr, Statement},
-            executor::context::AggregateValues,
+            data::{Row, SCHEMALESS_DOC_COLUMN, Value},
+            executor::context::{AggregateValues, RowContext},
             mock::MockStorage,
             parse_sql::parse,
             plan::{AggregateFunctionPlan, AggregatePlan, CountArgExprPlan, ExprPlan},
             result::Error,
             translate::translate,
         },
-        std::rc::Rc,
+        std::{borrow::Cow, collections::BTreeMap, rc::Rc},
     };
+
+    #[test]
+    fn missing_qualified_schemaless_key_evaluates_to_null() {
+        let row = Row {
+            columns: vec![SCHEMALESS_DOC_COLUMN.to_owned()].into(),
+            values: vec![Value::Map(BTreeMap::new())],
+        };
+        let context = RowContext::new("Item", Cow::Owned(row), None);
+        let expr = ExprPlan::CompoundIdentifier {
+            alias: "Item".to_owned(),
+            ident: "missing".to_owned(),
+        };
+
+        assert_eq!(
+            evaluate_stateless(Some(context), &expr),
+            Ok(Evaluated::Value(Cow::Owned(Value::Null)))
+        );
+    }
 
     #[test]
     fn aggregate_requires_planner_binding() {

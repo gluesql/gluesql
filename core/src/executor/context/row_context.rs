@@ -124,32 +124,37 @@ impl<'a> RowContext<'a> {
 
     pub fn get_alias_value(&'a self, target_table_alias: &str, target: &str) -> Option<&'a Value> {
         match self.lookup_alias_value(target_table_alias, target) {
-            AliasLookup::Bound(value) => value,
-            AliasLookup::Unbound => None,
+            ValueLookup::Found(value) => Some(value),
+            ValueLookup::Unbound | ValueLookup::Missing | ValueLookup::Ambiguous => None,
         }
     }
 
-    fn lookup_alias_value(
+    pub fn lookup_alias_value(&'a self, target_table_alias: &str, target: &str) -> ValueLookup<'a> {
+        match self.lookup_bound_alias_value(target_table_alias, target) {
+            AliasLookup::Bound(value) => value,
+            AliasLookup::Unbound => ValueLookup::Unbound,
+        }
+    }
+
+    fn lookup_bound_alias_value(
         &'a self,
         target_table_alias: &str,
         target: &str,
-    ) -> AliasLookup<Option<&'a Value>> {
+    ) -> AliasLookup<ValueLookup<'a>> {
         match self {
             Self::Data {
                 table_alias, row, ..
             } if *table_alias == target_table_alias => {
-                let value = match lookup_row_value(row, target) {
-                    ValueLookup::Found(value) => Some(value),
-                    ValueLookup::Unbound | ValueLookup::Missing | ValueLookup::Ambiguous => None,
-                };
-                AliasLookup::Bound(value)
+                AliasLookup::Bound(lookup_row_value(row, target))
             }
             Self::Data {
                 next: Some(next), ..
-            } => next.lookup_alias_value(target_table_alias, target),
+            } => next.lookup_bound_alias_value(target_table_alias, target),
             Self::Bridge { left, right } => {
-                match left.lookup_alias_value(target_table_alias, target) {
-                    AliasLookup::Unbound => right.lookup_alias_value(target_table_alias, target),
+                match left.lookup_bound_alias_value(target_table_alias, target) {
+                    AliasLookup::Unbound => {
+                        right.lookup_bound_alias_value(target_table_alias, target)
+                    }
                     bound @ AliasLookup::Bound(_) => bound,
                 }
             }
@@ -304,6 +309,20 @@ mod tests {
         assert!(matches!(
             scope.lookup_value("id"),
             ValueLookup::Found(Value::I64(0))
+        ));
+    }
+
+    #[test]
+    fn qualified_lookup_preserves_missing_document_key() {
+        let context = document_context("A", &[], None);
+
+        assert!(matches!(
+            context.lookup_alias_value("A", "id"),
+            ValueLookup::Missing
+        ));
+        assert!(matches!(
+            context.lookup_alias_value("B", "id"),
+            ValueLookup::Unbound
         ));
     }
 
