@@ -14,6 +14,14 @@ tracing = [
   "gluesql-redb-storage/tracing",
   "dep:tracing-subscriber",
 ]
+tracing-flame = ["tracing", "dep:tracing-flame"]
+opentelemetry = [
+  "tracing",
+  "dep:opentelemetry",
+  "dep:opentelemetry-otlp",
+  "dep:opentelemetry_sdk",
+  "dep:tracing-opentelemetry",
+]
 
 [dependencies]
 gluesql-core.workspace = true
@@ -34,6 +42,19 @@ edit = "0.1.4"
 anyhow = "1.0"
 strum_macros = "0.25"
 tracing-subscriber = { version = "0.3", optional = true, features = ["env-filter", "fmt"] }
+tracing-flame = { version = "0.2", optional = true }
+opentelemetry = { version = "0.32", optional = true, default-features = false, features = [
+  "trace",
+] }
+opentelemetry-otlp = { version = "0.32", optional = true, default-features = false, features = [
+  "http-proto",
+  "reqwest-blocking-client",
+  "trace",
+] }
+opentelemetry_sdk = { version = "0.32", optional = true, default-features = false, features = [
+  "trace",
+] }
+tracing-opentelemetry = { version = "0.33", optional = true, default-features = false }
 
 [lints]
 workspace = true

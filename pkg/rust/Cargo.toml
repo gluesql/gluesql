@@ -38,6 +38,8 @@ tracing = [
   "gluesql-redb-storage?/tracing",
   "cli?/tracing",
 ]
+tracing-flame = ["cli?/tracing-flame"]
+opentelemetry = ["cli?/opentelemetry"]
 
 # DB User
 default = [
