@@ -8,6 +8,9 @@ license.workspace = true
 repository.workspace = true
 documentation.workspace = true
 
+[features]
+tracing = ["gluesql-core/tracing", "dep:tracing-subscriber"]
+
 [dependencies]
 gluesql-core.workspace = true
 gluesql_sled_storage.workspace = true
@@ -26,6 +29,7 @@ thiserror = "1.0"
 edit = "0.1.4"
 anyhow = "1.0"
 strum_macros = "0.25"
+tracing-subscriber = { version = "0.3", optional = true, features = ["env-filter", "fmt"] }
 
 [lints]
 workspace = true

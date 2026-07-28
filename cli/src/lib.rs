@@ -63,6 +63,18 @@ enum Storage {
     File,
 }
 
+#[cfg(feature = "tracing")]
+fn init_tracing() {
+    use tracing_subscriber::{EnvFilter, fmt::format::FmtSpan};
+
+    let filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("gluesql=info"));
+    let _ = tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .with_span_events(FmtSpan::CLOSE)
+        .try_init();
+}
+
 pub fn run() -> Result<()> {
     fn run<T: GStore + GStoreMut + Planner>(storage: T, input: Option<PathBuf>) {
         let output = std::io::stdout();
@@ -78,6 +90,9 @@ pub fn run() -> Result<()> {
             eprintln!("{e}");
         }
     }
+
+    #[cfg(feature = "tracing")]
+    init_tracing();
 
     let Args {
         execute,
