@@ -284,6 +284,10 @@ RUST_LOG=gluesql=trace \
 After exiting the CLI, generate an SVG with Inferno:
 
 ```sh
+cargo install inferno
+```
+
+```sh
 inferno-flamegraph < /tmp/gluesql.folded > /tmp/gluesql.svg
 ```
 
