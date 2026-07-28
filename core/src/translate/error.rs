@@ -71,6 +71,9 @@ pub enum TranslateError {
     #[error("unsupported INSERT option: {0}")]
     UnsupportedInsertOption(&'static str),
 
+    #[error("unsupported CREATE TABLE option: {0}")]
+    UnsupportedCreateTableOption(&'static str),
+
     #[error("unsupported UPDATE option: {0}")]
     UnsupportedUpdateOption(&'static str),
 

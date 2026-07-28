@@ -122,6 +122,18 @@ CREATE TABLE DuplicateColumns (id INT, id INT)
 -- @expect: error Alter.DuplicateColumnName
 -- @json: "id"
 
+CREATE TEMPORARY TABLE TempTable (id INTEGER)
+-- @expect: error Translate.UnsupportedCreateTableOption
+-- @json: "TEMPORARY clause"
+
+CREATE TABLE LikeTable LIKE CreateTable1
+-- @expect: error Translate.UnsupportedCreateTableOption
+-- @json: "LIKE clause"
+
+CREATE TABLE CloneTable CLONE CreateTable1
+-- @expect: error Translate.UnsupportedCreateTableOption
+-- @json: "CLONE clause"
+
 CREATE TABLE EmptySource (id INTEGER)
 -- @expect: payload Create
 
