@@ -38,7 +38,7 @@ FROM Sale;
 
 `PARTITION BY` splits the rows into independent groups. Rows whose partition expressions are all equal belong to the same partition, and rows with `NULL` partition values group together the same way `GROUP BY` groups them. Omitting `PARTITION BY` treats the whole result as one partition.
 
-`ORDER BY` inside `OVER` orders the rows of each partition and follows the same `ASC` and `DESC` behavior as query level `ORDER BY`. Rows that tie on every ordering expression are peers. With no `ORDER BY`, every row of the partition is a peer of every other.
+`ORDER BY` inside `OVER` orders the rows of each partition and follows the same `ASC` and `DESC` behavior as query-level `ORDER BY`. Rows that tie on every ordering expression are peers. With no `ORDER BY`, every row of the partition is a peer of every other.
 
 ## Window aggregates
 
@@ -48,7 +48,7 @@ An aggregate with no `ORDER BY` in its `OVER` clause computes over the whole par
 SELECT region, amount, SUM(amount) OVER (PARTITION BY region) AS region_total FROM Sale;
 ```
 
-With `ORDER BY` it computes a running value. For each row it covers the partition from its first row through the current row and all of the current row's peers, so peers always share the same result:
+With `ORDER BY` it computes a running value. For each row it covers the partition from its first row through the current row and all the current row's peers, so peers always share the same result:
 
 ```sql
 SELECT region, amount, SUM(amount) OVER (PARTITION BY region ORDER BY id) AS running_total FROM Sale;

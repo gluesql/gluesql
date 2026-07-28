@@ -54,6 +54,10 @@ test_case!(window_error, {
             "DISTINCT inside a window aggregate",
         ),
         (
+            "SELECT LAG(DISTINCT v) OVER (ORDER BY id) FROM T",
+            "DISTINCT inside a non-aggregate window function",
+        ),
+        (
             "SELECT region, COUNT(*) FROM T GROUP BY region HAVING SUM(v) OVER () > 0",
             "window function in HAVING",
         ),

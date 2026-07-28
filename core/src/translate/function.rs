@@ -227,6 +227,23 @@ fn translate_window_function(
     args: &SqlFunctionArguments,
     over: &SqlWindowType,
 ) -> Result<Expr> {
+    let (args, distinct) = match args {
+        SqlFunctionArguments::None => (Vec::new(), false),
+        SqlFunctionArguments::Subquery(_) => {
+            return Err(TranslateError::UnreachableSubqueryFunctionArgNotSupported.into());
+        }
+        SqlFunctionArguments::List(list) => {
+            let distinct = list
+                .duplicate_treatment
+                .is_some_and(|dt| matches!(dt, SqlDuplicateTreatment::Distinct));
+            (list.args.iter().collect(), distinct)
+        }
+    };
+
+    if distinct {
+        return Err(TranslateError::DistinctNotSupportedInWindowFunction.into());
+    }
+
     let sql_window_spec = match over {
         SqlWindowType::WindowSpec(spec) => spec,
         SqlWindowType::NamedWindow(_) => {
@@ -251,19 +268,6 @@ fn translate_window_function(
     let window_spec = WindowSpec {
         partition_by,
         order_by,
-    };
-
-    let (args, distinct) = match args {
-        SqlFunctionArguments::None => (Vec::new(), false),
-        SqlFunctionArguments::Subquery(_) => {
-            return Err(TranslateError::UnreachableSubqueryFunctionArgNotSupported.into());
-        }
-        SqlFunctionArguments::List(list) => {
-            let distinct = list
-                .duplicate_treatment
-                .is_some_and(|dt| matches!(dt, SqlDuplicateTreatment::Distinct));
-            (list.args.iter().collect(), distinct)
-        }
     };
 
     let function_arg_exprs = args
@@ -321,10 +325,6 @@ fn translate_window_function(
         "COUNT" => {
             check_len(name, args.len(), 1)?;
 
-            if distinct {
-                return Err(TranslateError::DistinctNotSupportedInWindowFunction.into());
-            }
-
             let count_arg = match function_arg_exprs[0] {
                 SqlFunctionArgExpr::Expr(expr) => CountArgExpr::Expr(translate_expr(expr, params)?),
                 SqlFunctionArgExpr::QualifiedWildcard(idents) => {
@@ -339,10 +339,6 @@ fn translate_window_function(
             WindowFunction::Aggregate(Aggregate::count(count_arg, false))
         }
         "SUM" | "MIN" | "MAX" | "AVG" => {
-            if distinct {
-                return Err(TranslateError::DistinctNotSupportedInWindowFunction.into());
-            }
-
             check_len(name.clone(), args.len(), 1)?;
             let raw_args = translate_function_arg_exprs(function_arg_exprs)?;
             let expr = translate_expr(raw_args[0], params)?;

@@ -4,7 +4,7 @@ use {
         error::Result,
         plan::{
             StatementPlan, fetch_schema_map, plan_aggregate, plan_index, plan_join,
-            plan_primary_key, plan_schemaless, validate,
+            plan_primary_key, plan_schemaless, plan_window, validate,
         },
         store::Planner,
     },
@@ -20,6 +20,7 @@ impl Planner for SledStorage {
         let statement = plan_index(&schema_map, statement);
         let statement = plan_join(&schema_map, statement);
         let statement = plan_aggregate(statement);
+        let statement = plan_window(statement)?;
 
         Ok(statement)
     }
