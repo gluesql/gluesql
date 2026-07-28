@@ -38,6 +38,16 @@ The levels have the following intended scope:
 
 The CLI reports span close events, including busy and idle durations.
 
+Optional CLI exporter features build on the same instrumentation:
+
+| Feature | Output |
+| --- | --- |
+| `tracing` | Formatted span close events on standard error |
+| `tracing-flame` | Formatted events and folded stack data |
+| `opentelemetry` | Formatted events and OTLP traces over HTTP/Protobuf |
+
+`tracing-flame` and `opentelemetry` both enable `tracing` and can be enabled together.
+
 ### Try Redb tracing locally
 
 From the repository root, build the CLI with tracing enabled:
@@ -175,6 +185,32 @@ number of yielded items.
 OpenTelemetry integration belongs to the host application rather than `gluesql-core`. Add the
 OpenTelemetry crates that match the application's chosen transport:
 
+### CLI OTLP export
+
+Build the CLI with the OpenTelemetry exporter:
+
+```sh
+cargo build -p gluesql-cli --features opentelemetry
+```
+
+Set the standard OpenTelemetry environment variables and run the CLI:
+
+```sh
+OTEL_SERVICE_NAME=gluesql-cli \
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
+OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf \
+RUST_LOG=gluesql=trace \
+./target/debug/gluesql-cli \
+  --storage redb \
+  --path /tmp/gluesql-tracing-demo.redb
+```
+
+The CLI exports completed spans to `/v1/traces` and flushes pending batches when it exits. The
+configured endpoint must accept OTLP over HTTP/Protobuf. A collector can forward those traces to
+Jaeger, Grafana Tempo, or another compatible backend.
+
+### Application integration
+
 ```sh
 cargo add tracing-opentelemetry opentelemetry opentelemetry_sdk
 cargo add opentelemetry-otlp --features grpc-tonic
@@ -225,6 +261,36 @@ for transport and SDK-specific configuration.
 ## Flamegraphs
 
 `tracing-flame` can convert the same span hierarchy into folded stack data:
+
+### CLI flamegraph
+
+Build the CLI with the flame exporter:
+
+```sh
+cargo build -p gluesql-cli --features tracing-flame
+```
+
+Run a workload and choose the folded output path with `GLUESQL_FLAMEGRAPH_PATH`. The default path
+is `tracing.folded`.
+
+```sh
+GLUESQL_FLAMEGRAPH_PATH=/tmp/gluesql.folded \
+RUST_LOG=gluesql=trace \
+./target/debug/gluesql-cli \
+  --storage redb \
+  --path /tmp/gluesql-tracing-demo.redb
+```
+
+After exiting the CLI, generate an SVG with Inferno:
+
+```sh
+inferno-flamegraph < /tmp/gluesql.folded > /tmp/gluesql.svg
+```
+
+The CLI keeps empty samples out of the folded output so time waiting at the interactive prompt
+does not dominate the graph.
+
+### Application integration
 
 ```rust
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
