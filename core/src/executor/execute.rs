@@ -20,7 +20,7 @@ use {
             TableAliasPlan,
         },
         result::{Error, Result},
-        store::{GStore, GStoreMut},
+        store::{GStore, GStoreMut, Transaction},
     },
     serde::{Deserialize, Serialize},
     std::{
@@ -104,6 +104,46 @@ pub enum PayloadVariable {
     Version(String),
 }
 
+#[cfg_attr(
+    feature = "tracing",
+    tracing::instrument(
+        name = "gluesql.storage.begin",
+        target = "gluesql",
+        level = "trace",
+        skip_all,
+        fields(autocommit = autocommit)
+    )
+)]
+fn begin_transaction<T: Transaction>(storage: &mut T, autocommit: bool) -> Result<bool> {
+    storage.begin(autocommit)
+}
+
+#[cfg_attr(
+    feature = "tracing",
+    tracing::instrument(
+        name = "gluesql.storage.commit",
+        target = "gluesql",
+        level = "trace",
+        skip_all
+    )
+)]
+fn commit_transaction<T: Transaction>(storage: &mut T) -> Result<()> {
+    storage.commit()
+}
+
+#[cfg_attr(
+    feature = "tracing",
+    tracing::instrument(
+        name = "gluesql.storage.rollback",
+        target = "gluesql",
+        level = "trace",
+        skip_all
+    )
+)]
+fn rollback_transaction<T: Transaction>(storage: &mut T) -> Result<()> {
+    storage.rollback()
+}
+
 pub fn execute<T: GStore + GStoreMut>(
     storage: &mut T,
     statement: &StatementPlan,
@@ -115,7 +155,7 @@ pub fn execute<T: GStore + GStoreMut>(
         return execute_inner(storage, statement);
     }
 
-    let autocommit = storage.begin(true)?;
+    let autocommit = begin_transaction(storage, true)?;
     let result = execute_inner(storage, statement);
 
     if !autocommit {
@@ -123,9 +163,9 @@ pub fn execute<T: GStore + GStoreMut>(
     }
 
     match result {
-        Ok(payload) => storage.commit().map(|()| payload),
+        Ok(payload) => commit_transaction(storage).map(|()| payload),
         Err(error) => {
-            storage.rollback()?;
+            rollback_transaction(storage)?;
 
             Err(error)
         }
@@ -178,9 +218,11 @@ fn execute_inner<T: GStore + GStoreMut>(
             .drop_index(table_name, name)
             .map(|()| Payload::DropIndex),
         //- Transaction
-        StatementPlan::StartTransaction => storage.begin(false).map(|_| Payload::StartTransaction),
-        StatementPlan::Commit => storage.commit().map(|()| Payload::Commit),
-        StatementPlan::Rollback => storage.rollback().map(|()| Payload::Rollback),
+        StatementPlan::StartTransaction => {
+            begin_transaction(storage, false).map(|_| Payload::StartTransaction)
+        }
+        StatementPlan::Commit => commit_transaction(storage).map(|()| Payload::Commit),
+        StatementPlan::Rollback => rollback_transaction(storage).map(|()| Payload::Rollback),
         //-- Rows
         StatementPlan::Insert {
             table_name,

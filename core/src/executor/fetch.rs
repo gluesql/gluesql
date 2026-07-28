@@ -1,10 +1,11 @@
 use {
     super::{context::RowContext, filter::check_expr},
     crate::{
-        data::{Key, Row, SCHEMALESS_DOC_COLUMN},
+        ast::IndexOperator,
+        data::{Key, Row, SCHEMALESS_DOC_COLUMN, Value},
         plan::ExprPlan,
         result::Result,
-        store::GStore,
+        store::{GStore, RowIter},
     },
     serde::Serialize,
     std::{borrow::Cow, fmt::Debug, rc::Rc},
@@ -19,13 +20,73 @@ pub enum FetchError {
     TableNotFound(String),
 }
 
+#[cfg(feature = "tracing")]
+fn trace_access_path(access_path: &'static str) {
+    tracing::debug!(target: "gluesql", access_path, "selected query access path");
+}
+
+#[cfg_attr(
+    feature = "tracing",
+    tracing::instrument(
+        name = "gluesql.storage.scan_data",
+        target = "gluesql",
+        level = "trace",
+        skip_all
+    )
+)]
+pub(crate) fn trace_scan<'a, T: GStore>(storage: &'a T, table_name: &str) -> Result<RowIter<'a>> {
+    #[cfg(feature = "tracing")]
+    trace_access_path("full_scan");
+    storage.scan_data(table_name)
+}
+
+#[cfg_attr(
+    feature = "tracing",
+    tracing::instrument(
+        name = "gluesql.storage.scan_indexed_data",
+        target = "gluesql",
+        level = "trace",
+        skip_all
+    )
+)]
+pub(crate) fn trace_index_scan<'a, T: GStore>(
+    storage: &'a T,
+    table_name: &str,
+    index_name: &str,
+    asc: Option<bool>,
+    cmp_value: Option<(&IndexOperator, Value)>,
+) -> Result<RowIter<'a>> {
+    #[cfg(feature = "tracing")]
+    trace_access_path("secondary_index");
+    storage.scan_indexed_data(table_name, index_name, asc, cmp_value)
+}
+
+#[cfg_attr(
+    feature = "tracing",
+    tracing::instrument(
+        name = "gluesql.storage.fetch_data",
+        target = "gluesql",
+        level = "trace",
+        skip_all
+    )
+)]
+pub(crate) fn trace_fetch<T: GStore>(
+    storage: &T,
+    table_name: &str,
+    key: &Key,
+) -> Result<Option<Vec<Value>>> {
+    #[cfg(feature = "tracing")]
+    trace_access_path("primary_key");
+    storage.fetch_data(table_name, key)
+}
+
 pub fn fetch<'a, T: GStore>(
     storage: &'a T,
     table_name: &'a str,
     columns: Rc<[String]>,
     where_clause: Option<&'a ExprPlan>,
 ) -> Result<KeyedRows<'a>> {
-    let rows = storage.scan_data(table_name)?.filter_map(move |row| {
+    let rows = trace_scan(storage, table_name)?.filter_map(move |row| {
         let (key, values) = match row {
             Ok(row) => row,
             Err(error) => return Some(Err(error)),
