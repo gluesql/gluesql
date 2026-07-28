@@ -777,6 +777,42 @@ mod tests {
     }
 
     #[test]
+    fn qualified_identifier_evaluation_boundaries() {
+        let expr = ExprPlan::CompoundIdentifier {
+            alias: "Item".to_owned(),
+            ident: "id".to_owned(),
+        };
+        let row = Row {
+            columns: vec!["id".to_owned()].into(),
+            values: vec![Value::I64(1)],
+        };
+
+        assert_eq!(
+            evaluate_stateless(
+                Some(RowContext::new("Item", Cow::Owned(row.clone()), None)),
+                &expr
+            ),
+            Ok(Evaluated::Value(Cow::Owned(Value::I64(1))))
+        );
+        assert_eq!(
+            evaluate_stateless(None, &expr),
+            Err(Error::from(
+                EvaluateError::CompoundIdentifierRequiresRowContext {
+                    alias: "Item".to_owned(),
+                    ident: "id".to_owned(),
+                }
+            ))
+        );
+        assert_eq!(
+            evaluate_stateless(Some(RowContext::new("Other", Cow::Owned(row), None)), &expr),
+            Err(Error::from(EvaluateError::CompoundIdentifierNotFound {
+                table_alias: "Item".to_owned(),
+                column_name: "id".to_owned(),
+            }))
+        );
+    }
+
+    #[test]
     fn aggregate_requires_planner_binding() {
         let sql = "SELECT COUNT(*) FROM Item";
         let parsed = parse(sql)
