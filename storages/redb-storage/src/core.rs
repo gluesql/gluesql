@@ -17,6 +17,69 @@ const SCHEMA_TABLE: TableDefinition<&str, Vec<u8>> = TableDefinition::new(SCHEMA
 type Result<T> = std::result::Result<T, StorageError>;
 type RedbRowIter<'a> = Box<dyn Iterator<Item = Result<(Key, Vec<Value>)>> + 'a>;
 
+#[cfg(feature = "tracing")]
+struct TracedRows<I> {
+    inner: I,
+    span: Option<tracing::Span>,
+    row_count: usize,
+}
+
+#[cfg(feature = "tracing")]
+impl<I> TracedRows<I> {
+    fn new(inner: I) -> Self {
+        Self {
+            inner,
+            span: None,
+            row_count: 0,
+        }
+    }
+}
+
+#[cfg(feature = "tracing")]
+impl<I: Iterator> Iterator for TracedRows<I> {
+    type Item = I::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let Self {
+            inner,
+            span,
+            row_count,
+        } = self;
+        let span = span.get_or_insert_with(|| {
+            tracing::trace_span!(
+                target: "gluesql",
+                "gluesql.redb.scan_rows",
+                row_count = tracing::field::Empty
+            )
+        });
+
+        span.in_scope(|| {
+            let item = inner.next();
+            *row_count += usize::from(item.is_some());
+            item
+        })
+    }
+}
+
+#[cfg(feature = "tracing")]
+impl<I> Drop for TracedRows<I> {
+    fn drop(&mut self) {
+        if let Some(span) = &self.span {
+            span.record("row_count", self.row_count);
+        }
+    }
+}
+
+#[cfg(feature = "tracing")]
+fn trace_rows<I: Iterator>(rows: I) -> TracedRows<I> {
+    TracedRows::new(rows)
+}
+
+#[cfg(not(feature = "tracing"))]
+fn trace_rows<I: Iterator>(rows: I) -> I {
+    rows
+}
+
 pub enum TransactionState {
     None,
     Active {
@@ -92,6 +155,15 @@ impl StorageCore {
 
 // Store
 impl StorageCore {
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            target = "gluesql",
+            name = "gluesql.redb.fetch_all_schemas",
+            level = "trace",
+            skip_all
+        )
+    )]
     pub fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         let txn = self.txn()?;
         let table = txn.open_table(SCHEMA_TABLE)?;
@@ -106,6 +178,15 @@ impl StorageCore {
             .collect()
     }
 
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            target = "gluesql",
+            name = "gluesql.redb.fetch_schema",
+            level = "trace",
+            skip_all
+        )
+    )]
     pub fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         let schema = match &self.state {
             TransactionState::Active { txn, .. } => txn
@@ -124,6 +205,15 @@ impl StorageCore {
         Ok(schema)
     }
 
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            target = "gluesql",
+            name = "gluesql.redb.fetch_data",
+            level = "trace",
+            skip_all
+        )
+    )]
     pub fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Vec<Value>>> {
         let txn = self.txn()?;
         let table_def = Self::data_table_def(table_name)?;
@@ -140,6 +230,15 @@ impl StorageCore {
         Ok(row)
     }
 
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            target = "gluesql",
+            name = "gluesql.redb.scan_data",
+            level = "trace",
+            skip_all
+        )
+    )]
     pub fn scan_data<'a>(&'a self, table_name: &str) -> Result<RedbRowIter<'a>> {
         if let TransactionState::Active { autocommit, txn } = &self.state
             && !autocommit
@@ -157,7 +256,7 @@ impl StorageCore {
                 })
                 .collect::<Result<_>>()?;
 
-            return Ok(Box::new(rows.into_iter().map(Ok)));
+            return Ok(Box::new(trace_rows(rows.into_iter().map(Ok))));
         }
 
         let read_txn = self.db.begin_read()?;
@@ -171,12 +270,21 @@ impl StorageCore {
             Ok((key, row))
         });
 
-        Ok(Box::new(rows))
+        Ok(Box::new(trace_rows(rows)))
     }
 }
 
 // StoreMut
 impl StorageCore {
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            target = "gluesql",
+            name = "gluesql.redb.insert_schema",
+            level = "trace",
+            skip_all
+        )
+    )]
     pub fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let data_def = Self::data_table_def(&schema.table_name)?;
         let txn = self.txn_mut()?;
@@ -188,6 +296,15 @@ impl StorageCore {
         Ok(())
     }
 
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            target = "gluesql",
+            name = "gluesql.redb.delete_schema",
+            level = "trace",
+            skip_all
+        )
+    )]
     pub fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let table_def = Self::data_table_def(table_name)?;
         let txn = self.txn_mut()?;
@@ -198,6 +315,16 @@ impl StorageCore {
         Ok(())
     }
 
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            target = "gluesql",
+            name = "gluesql.redb.append_data",
+            level = "trace",
+            skip_all,
+            fields(row_count = rows.len())
+        )
+    )]
     pub fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
         let table_def = Self::data_table_def(table_name)?;
         let txn = self.txn_mut()?;
@@ -214,6 +341,16 @@ impl StorageCore {
         Ok(())
     }
 
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            target = "gluesql",
+            name = "gluesql.redb.insert_data",
+            level = "trace",
+            skip_all,
+            fields(row_count = rows.len())
+        )
+    )]
     pub fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
         let table_def = Self::data_table_def(table_name)?;
         let txn = self.txn_mut()?;
@@ -229,6 +366,16 @@ impl StorageCore {
         Ok(())
     }
 
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            target = "gluesql",
+            name = "gluesql.redb.delete_data",
+            level = "trace",
+            skip_all,
+            fields(row_count = keys.len())
+        )
+    )]
     pub fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let table_def = Self::data_table_def(table_name)?;
         let txn = self.txn_mut()?;
@@ -246,6 +393,16 @@ impl StorageCore {
 
 // Transaction
 impl StorageCore {
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            target = "gluesql",
+            name = "gluesql.redb.begin",
+            level = "trace",
+            skip_all,
+            fields(autocommit)
+        )
+    )]
     pub fn begin(&mut self, autocommit: bool) -> Result<bool> {
         match (&self.state, autocommit) {
             (TransactionState::Active { .. }, true) => Ok(false),
@@ -264,6 +421,15 @@ impl StorageCore {
         }
     }
 
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            target = "gluesql",
+            name = "gluesql.redb.rollback",
+            level = "trace",
+            skip_all
+        )
+    )]
     pub fn rollback(&mut self) -> Result<()> {
         if let Some(txn) = self.take_txn() {
             txn.abort()?;
@@ -272,6 +438,15 @@ impl StorageCore {
         Ok(())
     }
 
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            target = "gluesql",
+            name = "gluesql.redb.commit",
+            level = "trace",
+            skip_all
+        )
+    )]
     pub fn commit(&mut self) -> Result<()> {
         if let Some(txn) = self.take_txn() {
             txn.commit()?;
