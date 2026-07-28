@@ -38,6 +38,67 @@ The levels have the following intended scope:
 
 The CLI reports span close events, including busy and idle durations.
 
+### Try Redb tracing locally
+
+From the repository root, build the CLI with tracing enabled:
+
+```sh
+cargo build -p gluesql-cli --features tracing
+```
+
+Start the CLI with RedbStorage and trace-level logging. Use a new database path if the example has
+already been run:
+
+```sh
+RUST_LOG=gluesql=trace \
+./target/debug/gluesql-cli \
+  --storage redb \
+  --path /tmp/gluesql-tracing-demo.redb
+```
+
+Run these statements at the `gluesql>` prompt:
+
+```sql
+CREATE TABLE Items (
+    id INTEGER PRIMARY KEY,
+    name TEXT
+);
+
+INSERT INTO Items VALUES
+    (1, 'apple'),
+    (2, 'banana'),
+    (3, 'cherry');
+
+SELECT * FROM Items WHERE id = 1;
+SELECT * FROM Items;
+```
+
+The query with the primary-key predicate emits `gluesql.storage.fetch_data` and
+`gluesql.redb.fetch_data`. The query without a predicate uses a full scan and emits
+`gluesql.storage.scan_data`, `gluesql.redb.scan_data`, and
+`gluesql.redb.scan_rows{row_count=3}`.
+
+Tracing output is written to standard error. Redirect it to a file while keeping query results in
+the terminal:
+
+```sh
+RUST_LOG=gluesql=trace \
+./target/debug/gluesql-cli \
+  --storage redb \
+  --path /tmp/gluesql-tracing-demo.redb \
+  2> /tmp/gluesql-trace.log
+```
+
+Follow the trace from another terminal:
+
+```sh
+tail -f /tmp/gluesql-trace.log
+```
+
+For `gluesql.redb.scan_rows`, `time.busy` is time spent reading and deserializing rows,
+`time.idle` is time spent by the consumer between iterator reads, and `row_count` is the number of
+items yielded by the iterator.
+
 ## Library logging
 
 Enable GlueSQL instrumentation and add a subscriber in the application:
