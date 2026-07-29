@@ -1,4 +1,82 @@
-use {serde::Serialize, std::fmt::Debug, thiserror::Error};
+use {serde::Serialize, std::fmt::Debug, strum_macros::Display, thiserror::Error};
+
+#[derive(Display, Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+pub enum CreateTableOption {
+    #[strum(to_string = "TEMPORARY clause")]
+    Temporary,
+
+    #[strum(to_string = "LIKE clause")]
+    Like,
+
+    #[strum(to_string = "CLONE clause")]
+    Clone,
+}
+
+#[derive(Display, Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+pub enum InsertOption {
+    #[strum(to_string = "RETURNING clause")]
+    Returning,
+
+    #[strum(to_string = "ON CONFLICT clause")]
+    OnConflict,
+
+    #[strum(to_string = "table alias")]
+    TableAlias,
+
+    #[strum(to_string = "PARTITION clause")]
+    Partition,
+
+    #[strum(to_string = "OVERWRITE clause")]
+    Overwrite,
+
+    #[strum(to_string = "TABLE keyword")]
+    TableKeyword,
+}
+
+#[derive(Display, Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+pub enum UpdateOption {
+    #[strum(to_string = "FROM clause")]
+    From,
+
+    #[strum(to_string = "RETURNING clause")]
+    Returning,
+}
+
+#[derive(Display, Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+pub enum DeleteOption {
+    #[strum(to_string = "USING clause")]
+    Using,
+
+    #[strum(to_string = "RETURNING clause")]
+    Returning,
+
+    #[strum(to_string = "ORDER BY clause")]
+    OrderBy,
+
+    #[strum(to_string = "LIMIT clause")]
+    Limit,
+}
+
+#[derive(Display, Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+pub enum QueryOption {
+    #[strum(to_string = "WITH clause")]
+    With,
+
+    #[strum(to_string = "FETCH clause")]
+    Fetch,
+
+    #[strum(to_string = "LOCK clause")]
+    Lock,
+}
+
+#[derive(Display, Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+pub enum SelectOption {
+    #[strum(to_string = "INTO clause")]
+    Into,
+
+    #[strum(to_string = "WINDOW clause")]
+    Window,
+}
 
 #[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum TranslateError {
@@ -69,22 +147,22 @@ pub enum TranslateError {
     UnsupportedUnnamedIndex,
 
     #[error("unsupported INSERT option: {0}")]
-    UnsupportedInsertOption(&'static str),
+    UnsupportedInsertOption(InsertOption),
 
     #[error("unsupported CREATE TABLE option: {0}")]
-    UnsupportedCreateTableOption(&'static str),
+    UnsupportedCreateTableOption(CreateTableOption),
 
     #[error("unsupported UPDATE option: {0}")]
-    UnsupportedUpdateOption(&'static str),
+    UnsupportedUpdateOption(UpdateOption),
 
     #[error("unsupported DELETE option: {0}")]
-    UnsupportedDeleteOption(&'static str),
+    UnsupportedDeleteOption(DeleteOption),
 
     #[error("unsupported query option: {0}")]
-    UnsupportedQueryOption(&'static str),
+    UnsupportedQueryOption(QueryOption),
 
     #[error("unsupported SELECT option: {0}")]
-    UnsupportedSelectOption(&'static str),
+    UnsupportedSelectOption(SelectOption),
 
     #[error(
         "unsupported trim chars: expected: `TRIM((BOTH | LEADING | TRAILING) <text> FROM <expr>)`, got: `TRIM(<expr> [<chars>, ..])` syntax"
