@@ -1,6 +1,6 @@
 use {
     super::{
-        ParamLiteral, QueryOption, SelectOption, TranslateError,
+        JoinConstraintReason, ParamLiteral, QueryOption, SelectOption, TranslateError,
         function::translate_function_arg_exprs, translate_expr, translate_idents,
         translate_object_name, translate_order_by_expr,
     },
@@ -324,10 +324,10 @@ fn translate_join(params: &[ParamLiteral], sql_join: &SqlJoin) -> Result<Join> {
         SqlJoinConstraint::On(expr) => translate_expr(expr, params).map(JoinConstraint::On),
         SqlJoinConstraint::None => Ok(JoinConstraint::None),
         SqlJoinConstraint::Using(_) => {
-            Err(TranslateError::UnsupportedJoinConstraint("USING".to_owned()).into())
+            Err(TranslateError::UnsupportedJoinConstraint(JoinConstraintReason::Using).into())
         }
         SqlJoinConstraint::Natural => {
-            Err(TranslateError::UnsupportedJoinConstraint("NATURAL".to_owned()).into())
+            Err(TranslateError::UnsupportedJoinConstraint(JoinConstraintReason::Natural).into())
         }
     };
 
@@ -398,6 +398,18 @@ mod tests {
         assert_query_error(
             "SELECT * FROM Foo WINDOW w AS (PARTITION BY id)",
             TranslateError::UnsupportedSelectOption(SelectOption::Window),
+        );
+    }
+
+    #[test]
+    fn join_constraint_not_supported() {
+        assert_query_error(
+            "SELECT * FROM TableA JOIN TableB USING (id)",
+            TranslateError::UnsupportedJoinConstraint(JoinConstraintReason::Using),
+        );
+        assert_query_error(
+            "SELECT * FROM TableA NATURAL JOIN TableB",
+            TranslateError::UnsupportedJoinConstraint(JoinConstraintReason::Natural),
         );
     }
 

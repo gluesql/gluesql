@@ -12,8 +12,8 @@ pub use self::{
     data_type::translate_data_type,
     ddl::translate_column_def,
     error::{
-        CreateTableOption, DeleteOption, InsertOption, QueryOption, SelectOption, TranslateError,
-        UpdateOption,
+        CreateTableOption, DeleteOption, InsertOption, JoinConstraintReason, QueryOption,
+        SelectOption, TranslateError, UpdateOption,
     },
     expr::{translate_expr, translate_order_by_expr},
     param::{IntoParamLiteral, ParamLiteral},
