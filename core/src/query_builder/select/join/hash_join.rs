@@ -5,8 +5,8 @@ use {
         plan::{JoinConstraintPlan, JoinExecutorPlan, JoinPlan, SelectPlan},
         query_builder::{
             ExprList, ExprNode, FilterNode, GroupByNode, JoinConstraintNode, JoinNode, LimitNode,
-            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryBuilderError, QueryNode,
-            SelectItemList, TableFactorNode,
+            OffsetNode, OrderByExprList, ProjectNode, QueryBuilderError, QueryNode, SelectItemList,
+            SelectOrderByNode, TableFactorNode,
             select::{BuildSelect, BuildSelectPlan},
         },
         result::Result,
@@ -97,8 +97,11 @@ impl<'a> HashJoinNode<'a> {
         FilterNode::new(self, expr)
     }
 
-    pub fn order_by<T: Into<OrderByExprList<'a>>>(self, order_by_exprs: T) -> OrderByNode<'a> {
-        OrderByNode::new(self, order_by_exprs)
+    pub fn order_by<T: Into<OrderByExprList<'a>>>(
+        self,
+        order_by_exprs: T,
+    ) -> SelectOrderByNode<'a> {
+        SelectOrderByNode::new(self, order_by_exprs)
     }
 
     pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
@@ -154,7 +157,7 @@ mod tests {
         crate::{
             plan::{
                 JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
-                QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableAliasPlan, TableFactorPlan,
+                QueryPlan, SelectPlan, StatementPlan, TableAliasPlan, TableFactorPlan,
                 TableWithJoinsPlan,
             },
             query_builder::{
@@ -207,9 +210,7 @@ mod tests {
                 aggregate_slots: None,
             };
 
-            Ok(StatementPlan::Query(QueryPlan::Body(SetExprPlan::Select(
-                Box::new(select),
-            ))))
+            Ok(StatementPlan::Query(QueryPlan::Select(Box::new(select))))
         };
         assert_eq!(actual, expected, "without filter");
 
@@ -257,9 +258,7 @@ mod tests {
                 aggregate_slots: None,
             };
 
-            Ok(StatementPlan::Query(QueryPlan::Body(SetExprPlan::Select(
-                Box::new(select),
-            ))))
+            Ok(StatementPlan::Query(QueryPlan::Select(Box::new(select))))
         };
         assert_eq!(actual, expected, "with filter");
 
@@ -313,7 +312,7 @@ mod tests {
                 ),
                 from: TableWithJoinsPlan {
                     relation: TableFactorPlan::Derived {
-                        subquery: QueryPlan::Body(SetExprPlan::Select(Box::new(subquery))),
+                        subquery: QueryPlan::Select(Box::new(subquery)),
                         alias: TableAliasPlan {
                             name: "Sub".to_owned(),
                             columns: Vec::new(),
@@ -327,9 +326,7 @@ mod tests {
                 aggregate_slots: None,
             };
 
-            Ok(StatementPlan::Query(QueryPlan::Body(SetExprPlan::Select(
-                Box::new(select),
-            ))))
+            Ok(StatementPlan::Query(QueryPlan::Select(Box::new(select))))
         };
         assert_eq!(actual, expected);
     }

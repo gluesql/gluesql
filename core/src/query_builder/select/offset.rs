@@ -1,12 +1,12 @@
 use {
-    super::{BuildQuery, BuildQueryPlan, BuildSetExprPlan, ValuesNode},
+    super::{BuildQuery, BuildQueryPlan, BuildSelectPlan, ValuesNode},
     crate::{
         ast::Query,
         plan::{OffsetInputPlan, OffsetPlan, QueryPlan},
         query_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
-            JoinNode, OffsetLimitNode, OrderByNode, ProjectNode, QueryNode, SelectNode,
-            TableFactorNode,
+            JoinNode, OffsetLimitNode, ProjectNode, QueryNode, SelectNode, SelectOrderByNode,
+            TableFactorNode, ValuesOrderByNode,
         },
         result::Result,
     },
@@ -22,23 +22,53 @@ pub(super) enum PrevNode<'a> {
     JoinConstraint(Box<JoinConstraintNode<'a>>),
     HashJoin(HashJoinNode<'a>),
     Filter(FilterNode<'a>),
-    OrderBy(OrderByNode<'a>),
+    SelectOrderBy(SelectOrderByNode<'a>),
+    ValuesOrderBy(ValuesOrderByNode<'a>),
     ProjectNode(Box<ProjectNode<'a>>),
 }
 
 impl PrevNode<'_> {
     fn build_offset_input_plan(self) -> Result<OffsetInputPlan> {
         match self {
-            Self::Select(node) => node.build_set_expr_plan().map(OffsetInputPlan::Body),
-            Self::Values(node) => node.build_set_expr_plan().map(OffsetInputPlan::Body),
-            Self::GroupBy(node) => node.build_set_expr_plan().map(OffsetInputPlan::Body),
-            Self::Having(node) => node.build_set_expr_plan().map(OffsetInputPlan::Body),
-            Self::Join(node) => node.build_set_expr_plan().map(OffsetInputPlan::Body),
-            Self::JoinConstraint(node) => node.build_set_expr_plan().map(OffsetInputPlan::Body),
-            Self::HashJoin(node) => node.build_set_expr_plan().map(OffsetInputPlan::Body),
-            Self::Filter(node) => node.build_set_expr_plan().map(OffsetInputPlan::Body),
-            Self::OrderBy(node) => node.build_order_by_plan().map(OffsetInputPlan::OrderBy),
-            Self::ProjectNode(node) => node.build_set_expr_plan().map(OffsetInputPlan::Body),
+            Self::Select(node) => node
+                .build_select_plan()
+                .map(Box::new)
+                .map(OffsetInputPlan::Select),
+            Self::Values(node) => node.build_values_plan().map(OffsetInputPlan::Values),
+            Self::GroupBy(node) => node
+                .build_select_plan()
+                .map(Box::new)
+                .map(OffsetInputPlan::Select),
+            Self::Having(node) => node
+                .build_select_plan()
+                .map(Box::new)
+                .map(OffsetInputPlan::Select),
+            Self::Join(node) => node
+                .build_select_plan()
+                .map(Box::new)
+                .map(OffsetInputPlan::Select),
+            Self::JoinConstraint(node) => node
+                .build_select_plan()
+                .map(Box::new)
+                .map(OffsetInputPlan::Select),
+            Self::HashJoin(node) => node
+                .build_select_plan()
+                .map(Box::new)
+                .map(OffsetInputPlan::Select),
+            Self::Filter(node) => node
+                .build_select_plan()
+                .map(Box::new)
+                .map(OffsetInputPlan::Select),
+            Self::SelectOrderBy(node) => node
+                .build_select_order_by_plan()
+                .map(OffsetInputPlan::SelectOrderBy),
+            Self::ValuesOrderBy(node) => node
+                .build_values_order_by_plan()
+                .map(OffsetInputPlan::ValuesOrderBy),
+            Self::ProjectNode(node) => node
+                .build_select_plan()
+                .map(Box::new)
+                .map(OffsetInputPlan::Select),
         }
     }
 }
@@ -54,7 +84,8 @@ impl BuildQuery for PrevNode<'_> {
             Self::JoinConstraint(node) => node.build_query(),
             Self::HashJoin(node) => node.build_query(),
             Self::Filter(node) => node.build_query(),
-            Self::OrderBy(node) => node.build_query(),
+            Self::SelectOrderBy(node) => node.build_query(),
+            Self::ValuesOrderBy(node) => node.build_query(),
             Self::ProjectNode(node) => node.build_query(),
         }
     }
@@ -108,9 +139,15 @@ impl<'a> From<FilterNode<'a>> for PrevNode<'a> {
     }
 }
 
-impl<'a> From<OrderByNode<'a>> for PrevNode<'a> {
-    fn from(node: OrderByNode<'a>) -> Self {
-        PrevNode::OrderBy(node)
+impl<'a> From<SelectOrderByNode<'a>> for PrevNode<'a> {
+    fn from(node: SelectOrderByNode<'a>) -> Self {
+        Self::SelectOrderBy(node)
+    }
+}
+
+impl<'a> From<ValuesOrderByNode<'a>> for PrevNode<'a> {
+    fn from(node: ValuesOrderByNode<'a>) -> Self {
+        Self::ValuesOrderBy(node)
     }
 }
 
@@ -171,8 +208,8 @@ mod tests {
         crate::{
             plan::{
                 JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, OffsetInputPlan,
-                OffsetPlan, ProjectionPlan, QueryPlan, SelectPlan, SetExprPlan, StatementPlan,
-                TableFactorPlan, TableWithJoinsPlan,
+                OffsetPlan, ProjectionPlan, QueryPlan, SelectPlan, StatementPlan, TableFactorPlan,
+                TableWithJoinsPlan,
             },
             query_builder::{Build, SelectItemList, col, num, table, test_query_builder},
         },
@@ -288,7 +325,7 @@ mod tests {
             };
 
             let offset = OffsetPlan {
-                input: OffsetInputPlan::Body(SetExprPlan::Select(Box::new(select))),
+                input: OffsetInputPlan::Select(Box::new(select)),
                 count: num(100).build_expr_plan().unwrap(),
             };
 

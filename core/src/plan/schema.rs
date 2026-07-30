@@ -4,8 +4,9 @@ use {
         data::Schema,
         plan::{
             ExprPlan, JoinConstraintPlan, JoinOperatorPlan, JoinPlan, LimitInputPlan, LimitPlan,
-            OffsetInputPlan, OffsetPlan, OrderByPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
-            SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan, TableWithJoinsPlan,
+            OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectionPlan, QueryPlan,
+            SelectItemPlan, SelectOrderByPlan, SelectPlan, StatementPlan, TableFactorPlan,
+            TableWithJoinsPlan, ValuesOrderByPlan,
         },
         result::Result,
         store::Store,
@@ -96,13 +97,17 @@ fn scan_query<T: Store + ?Sized>(
     query: &QueryPlan,
 ) -> Result<HashMap<String, Schema>> {
     match query {
-        QueryPlan::Body(body) => scan_set_expr(storage, body),
-        QueryPlan::OrderBy(order_by) => scan_order_by(storage, order_by),
+        QueryPlan::Select(select) => scan_select(storage, select),
+        QueryPlan::Values(_) => Ok(HashMap::new()),
+        QueryPlan::SelectOrderBy(order_by) => scan_select_order_by(storage, order_by),
+        QueryPlan::ValuesOrderBy(order_by) => scan_values_order_by(storage, order_by),
         QueryPlan::Offset(offset) => scan_offset(storage, offset),
         QueryPlan::Limit(LimitPlan { input, count }) => {
             let schema_list = match input {
-                LimitInputPlan::Body(body) => scan_set_expr(storage, body)?,
-                LimitInputPlan::OrderBy(order_by) => scan_order_by(storage, order_by)?,
+                LimitInputPlan::Select(select) => scan_select(storage, select)?,
+                LimitInputPlan::Values(_) => HashMap::new(),
+                LimitInputPlan::SelectOrderBy(order_by) => scan_select_order_by(storage, order_by)?,
+                LimitInputPlan::ValuesOrderBy(order_by) => scan_values_order_by(storage, order_by)?,
                 LimitInputPlan::Offset(offset) => scan_offset(storage, offset)?,
             };
 
@@ -119,8 +124,10 @@ fn scan_offset<T: Store + ?Sized>(
     OffsetPlan { input, count }: &OffsetPlan,
 ) -> Result<HashMap<String, Schema>> {
     let schema_list = match input {
-        OffsetInputPlan::Body(body) => scan_set_expr(storage, body)?,
-        OffsetInputPlan::OrderBy(order_by) => scan_order_by(storage, order_by)?,
+        OffsetInputPlan::Select(select) => scan_select(storage, select)?,
+        OffsetInputPlan::Values(_) => HashMap::new(),
+        OffsetInputPlan::SelectOrderBy(order_by) => scan_select_order_by(storage, order_by)?,
+        OffsetInputPlan::ValuesOrderBy(order_by) => scan_values_order_by(storage, order_by)?,
     };
 
     Ok(schema_list
@@ -129,9 +136,26 @@ fn scan_offset<T: Store + ?Sized>(
         .collect())
 }
 
-fn scan_order_by<T: Store + ?Sized>(
+fn scan_select_order_by<T: Store + ?Sized>(
     storage: &T,
-    OrderByPlan { input, exprs }: &OrderByPlan,
+    SelectOrderByPlan { input, exprs }: &SelectOrderByPlan,
+) -> Result<HashMap<String, Schema>> {
+    let schema_list = scan_select(storage, input)?;
+
+    scan_order_by_exprs(storage, schema_list, exprs)
+}
+
+fn scan_values_order_by<T: Store + ?Sized>(
+    storage: &T,
+    ValuesOrderByPlan { exprs, .. }: &ValuesOrderByPlan,
+) -> Result<HashMap<String, Schema>> {
+    scan_order_by_exprs(storage, HashMap::new(), exprs)
+}
+
+fn scan_order_by_exprs<T: Store + ?Sized>(
+    storage: &T,
+    schema_list: HashMap<String, Schema>,
+    exprs: &[OrderByExprPlan],
 ) -> Result<HashMap<String, Schema>> {
     let order_by = exprs
         .iter()
@@ -140,22 +164,7 @@ fn scan_order_by<T: Store + ?Sized>(
         .into_iter()
         .flatten();
 
-    Ok(scan_set_expr(storage, input)?
-        .into_iter()
-        .chain(order_by)
-        .collect())
-}
-
-fn scan_set_expr<T: Store + ?Sized>(
-    storage: &T,
-    body: &SetExprPlan,
-) -> Result<HashMap<String, Schema>> {
-    let schema_list = match body {
-        SetExprPlan::Select(select) => scan_select(storage, select)?,
-        SetExprPlan::Values(_) => HashMap::new(),
-    };
-
-    Ok(schema_list)
+    Ok(schema_list.into_iter().chain(order_by).collect())
 }
 
 fn scan_select<T: Store + ?Sized>(

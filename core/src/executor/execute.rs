@@ -15,8 +15,9 @@ use {
         ast::{BinaryOperator, DataType, Dictionary, Literal, Variable},
         data::{Key, Row, SCHEMALESS_DOC_COLUMN, Schema, Value},
         plan::{
-            ExprPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan, SetExprPlan,
-            StatementPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan,
+            ExprPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectionPlan,
+            QueryPlan, SelectItemPlan, SelectPlan, StatementPlan, TableAliasPlan, TableFactorPlan,
+            TableWithJoinsPlan,
         },
         result::{Error, Result},
         store::{GStore, GStoreMut},
@@ -38,6 +39,29 @@ pub enum ExecuteError {
 
     #[error("expected Map value in _doc column")]
     ExpectedMapValueInDocColumn,
+}
+
+fn is_schemaless_map(query: &QueryPlan) -> bool {
+    let select_is_schemaless =
+        |select: &SelectPlan| matches!(select.projection, ProjectionPlan::SchemalessMap);
+    let offset_is_schemaless = |offset: &OffsetPlan| match &offset.input {
+        OffsetInputPlan::Select(select) => select_is_schemaless(select),
+        OffsetInputPlan::Values(_) | OffsetInputPlan::ValuesOrderBy(_) => false,
+        OffsetInputPlan::SelectOrderBy(order_by) => select_is_schemaless(&order_by.input),
+    };
+
+    match query {
+        QueryPlan::Select(select) => select_is_schemaless(select),
+        QueryPlan::Values(_) | QueryPlan::ValuesOrderBy(_) => false,
+        QueryPlan::SelectOrderBy(order_by) => select_is_schemaless(&order_by.input),
+        QueryPlan::Offset(offset) => offset_is_schemaless(offset),
+        QueryPlan::Limit(LimitPlan { input, .. }) => match input {
+            LimitInputPlan::Select(select) => select_is_schemaless(select),
+            LimitInputPlan::Values(_) | LimitInputPlan::ValuesOrderBy(_) => false,
+            LimitInputPlan::SelectOrderBy(order_by) => select_is_schemaless(&order_by.input),
+            LimitInputPlan::Offset(offset) => offset_is_schemaless(offset),
+        },
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -248,10 +272,7 @@ fn execute_inner<T: GStore + GStoreMut>(
         StatementPlan::Query(query) => {
             let (labels, rows) = select_with_labels(storage, query, None)?;
 
-            let is_schemaless_map = matches!(query.body(), SetExprPlan::Select(select)
-                if matches!(select.projection, ProjectionPlan::SchemalessMap));
-
-            if is_schemaless_map {
+            if is_schemaless_map(query) {
                 rows.map(|row| {
                     let mut values = row?.into_values().into_iter();
                     match (values.next(), values.next()) {
@@ -281,7 +302,7 @@ fn execute_inner<T: GStore + GStoreMut>(
             Ok(Payload::ShowColumns(output))
         }
         StatementPlan::ShowIndexes(table_name) => {
-            let query = QueryPlan::Body(SetExprPlan::Select(Box::new(SelectPlan {
+            let query = QueryPlan::Select(Box::new(SelectPlan {
                 distinct: false,
                 projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
                 from: TableWithJoinsPlan {
@@ -304,7 +325,7 @@ fn execute_inner<T: GStore + GStoreMut>(
                 group_by: Vec::new(),
                 having: None,
                 aggregate_slots: None,
-            })));
+            }));
 
             let (labels, rows) = select_with_labels(storage, &query, None)?;
             let rows = rows
@@ -319,7 +340,7 @@ fn execute_inner<T: GStore + GStoreMut>(
         }
         StatementPlan::ShowVariable(variable) => match variable {
             Variable::Tables => {
-                let query = QueryPlan::Body(SetExprPlan::Select(Box::new(SelectPlan {
+                let query = QueryPlan::Select(Box::new(SelectPlan {
                     distinct: false,
                     projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
                         expr: ExprPlan::Identifier("TABLE_NAME".to_owned()),
@@ -339,7 +360,7 @@ fn execute_inner<T: GStore + GStoreMut>(
                     group_by: Vec::new(),
                     having: None,
                     aggregate_slots: None,
-                })));
+                }));
 
                 let table_names = select(storage, &query, None)?
                     .map(|row| Ok::<_, Error>(row?.into_values()))

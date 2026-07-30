@@ -5,8 +5,9 @@ use {
         data::{Key, Row, SCHEMALESS_DOC_COLUMN, Value},
         executor::{evaluate::evaluate, select::select},
         plan::{
-            ExprPlan, IndexItemPlan, JoinPlan, ProjectionPlan, SelectItemPlan, SetExprPlan,
-            TableAliasPlan, TableFactorPlan, TableWithJoinsPlan, ValuesPlan,
+            ExprPlan, IndexItemPlan, JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan,
+            OffsetPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan, TableAliasPlan,
+            TableFactorPlan, TableWithJoinsPlan, ValuesPlan,
         },
         result::Result,
         store::GStore,
@@ -18,6 +19,37 @@ use {
 
 pub type KeyedRows<'a> = Box<dyn Iterator<Item = Result<(Key, Row)>> + 'a>;
 pub type RelationRows<'a> = Box<dyn Iterator<Item = Result<Row>> + 'a>;
+
+enum DerivedSource<'a> {
+    Select(&'a SelectPlan),
+    Values(&'a ValuesPlan),
+}
+
+fn derived_offset_source(offset: &OffsetPlan) -> DerivedSource<'_> {
+    match &offset.input {
+        OffsetInputPlan::Select(select) => DerivedSource::Select(select),
+        OffsetInputPlan::Values(values) => DerivedSource::Values(values),
+        OffsetInputPlan::SelectOrderBy(order_by) => DerivedSource::Select(&order_by.input),
+        OffsetInputPlan::ValuesOrderBy(order_by) => DerivedSource::Values(&order_by.input),
+    }
+}
+
+fn derived_source(query: &QueryPlan) -> DerivedSource<'_> {
+    match query {
+        QueryPlan::Select(select) => DerivedSource::Select(select),
+        QueryPlan::Values(values) => DerivedSource::Values(values),
+        QueryPlan::SelectOrderBy(order_by) => DerivedSource::Select(&order_by.input),
+        QueryPlan::ValuesOrderBy(order_by) => DerivedSource::Values(&order_by.input),
+        QueryPlan::Offset(offset) => derived_offset_source(offset),
+        QueryPlan::Limit(LimitPlan { input, .. }) => match input {
+            LimitInputPlan::Select(select) => DerivedSource::Select(select),
+            LimitInputPlan::Values(values) => DerivedSource::Values(values),
+            LimitInputPlan::SelectOrderBy(order_by) => DerivedSource::Select(&order_by.input),
+            LimitInputPlan::ValuesOrderBy(order_by) => DerivedSource::Values(&order_by.input),
+            LimitInputPlan::Offset(offset) => derived_offset_source(offset),
+        },
+    }
+}
 
 #[derive(ThisError, Serialize, Debug, PartialEq, Eq)]
 pub enum FetchError {
@@ -401,8 +433,8 @@ where
                     columns: alias_columns,
                     name,
                 },
-        } => match subquery.body() {
-            SetExprPlan::Select(statement) => {
+        } => match derived_source(subquery) {
+            DerivedSource::Select(statement) => {
                 let crate::plan::SelectPlan {
                     from:
                         TableWithJoinsPlan {
@@ -410,7 +442,7 @@ where
                         },
                     projection,
                     ..
-                } = statement.as_ref();
+                } = statement;
 
                 let labels = fetch_labels(storage, relation, joins, projection)?;
                 if alias_columns.is_empty() {
@@ -430,7 +462,7 @@ where
                         .collect())
                 }
             }
-            SetExprPlan::Values(ValuesPlan(values_list)) => {
+            DerivedSource::Values(ValuesPlan(values_list)) => {
                 let total_len = values_list[0].len();
                 let alias_len = alias_columns.len();
                 if alias_len > total_len {

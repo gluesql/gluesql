@@ -4,8 +4,8 @@ use {
         data::{SCHEMALESS_DOC_COLUMN, Schema},
         plan::{
             ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, LimitInputPlan,
-            LimitPlan, OffsetInputPlan, OffsetPlan, OrderByPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, SelectPlan, SetExprPlan, TableFactorPlan, TableWithJoinsPlan,
+            LimitPlan, OffsetInputPlan, OffsetPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
+            SelectOrderByPlan, SelectPlan, TableFactorPlan, TableWithJoinsPlan, ValuesOrderByPlan,
             expr::visit_mut_expr,
         },
     },
@@ -26,19 +26,29 @@ pub(super) fn transform_query<S: BuildHasher>(
     query: &mut QueryPlan,
 ) {
     match query {
-        QueryPlan::Body(body) => {
-            transform_set_expr(schema_map, body);
+        QueryPlan::Select(select) => {
+            transform_select(schema_map, select);
         }
-        QueryPlan::OrderBy(order_by) => {
-            transform_order_by(schema_map, order_by);
+        QueryPlan::Values(_) => {}
+        QueryPlan::SelectOrderBy(order_by) => {
+            transform_select_order_by(schema_map, order_by);
+        }
+        QueryPlan::ValuesOrderBy(order_by) => {
+            transform_values_order_by(schema_map, order_by);
         }
         QueryPlan::Offset(offset) => {
             transform_offset(schema_map, offset);
         }
         QueryPlan::Limit(LimitPlan { input, count }) => {
             let state = match input {
-                LimitInputPlan::Body(body) => transform_set_expr(schema_map, body),
-                LimitInputPlan::OrderBy(order_by) => transform_order_by(schema_map, order_by),
+                LimitInputPlan::Select(select) => transform_select(schema_map, select),
+                LimitInputPlan::Values(_) => empty_rewrite_state(),
+                LimitInputPlan::SelectOrderBy(order_by) => {
+                    transform_select_order_by(schema_map, order_by)
+                }
+                LimitInputPlan::ValuesOrderBy(order_by) => {
+                    transform_values_order_by(schema_map, order_by)
+                }
                 LimitInputPlan::Offset(offset) => transform_offset(schema_map, offset),
             };
             transform_query_expr(schema_map, count, &state);
@@ -51,19 +61,21 @@ fn transform_offset<S: BuildHasher>(
     OffsetPlan { input, count }: &mut OffsetPlan,
 ) -> QueryRewriteState {
     let state = match input {
-        OffsetInputPlan::Body(body) => transform_set_expr(schema_map, body),
-        OffsetInputPlan::OrderBy(order_by) => transform_order_by(schema_map, order_by),
+        OffsetInputPlan::Select(select) => transform_select(schema_map, select),
+        OffsetInputPlan::Values(_) => empty_rewrite_state(),
+        OffsetInputPlan::SelectOrderBy(order_by) => transform_select_order_by(schema_map, order_by),
+        OffsetInputPlan::ValuesOrderBy(order_by) => transform_values_order_by(schema_map, order_by),
     };
     transform_query_expr(schema_map, count, &state);
 
     state
 }
 
-fn transform_order_by<S: BuildHasher>(
+fn transform_select_order_by<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
-    OrderByPlan { input, exprs }: &mut OrderByPlan,
+    SelectOrderByPlan { input, exprs }: &mut SelectOrderByPlan,
 ) -> QueryRewriteState {
-    let state = transform_set_expr(schema_map, input);
+    let state = transform_select(schema_map, input);
     for order_by in exprs {
         transform_query_expr(schema_map, &mut order_by.expr, &state);
     }
@@ -71,30 +83,41 @@ fn transform_order_by<S: BuildHasher>(
     state
 }
 
-fn transform_set_expr<S: BuildHasher>(
+fn transform_values_order_by<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
-    body_plan: &mut SetExprPlan,
+    ValuesOrderByPlan { exprs, .. }: &mut ValuesOrderByPlan,
 ) -> QueryRewriteState {
-    match body_plan {
-        SetExprPlan::Select(select) => {
-            let rewrite_unqualified_identifiers = matches!(
-                &select.from.relation,
-                TableFactorPlan::Table { name, .. } if is_schemaless_table(schema_map, name)
-            );
-            let schemaless_aliases = collect_schemaless_aliases(schema_map, &select.from);
-            let state = QueryRewriteState {
-                rewrite_unqualified_identifiers,
-                schemaless_aliases,
-            };
-
-            rewrite_select(schema_map, select, &state);
-            state
-        }
-        SetExprPlan::Values(_) => QueryRewriteState {
-            rewrite_unqualified_identifiers: false,
-            schemaless_aliases: HashSet::new(),
-        },
+    let state = empty_rewrite_state();
+    for order_by in exprs {
+        transform_query_expr(schema_map, &mut order_by.expr, &state);
     }
+
+    state
+}
+
+fn empty_rewrite_state() -> QueryRewriteState {
+    QueryRewriteState {
+        rewrite_unqualified_identifiers: false,
+        schemaless_aliases: HashSet::new(),
+    }
+}
+
+fn transform_select<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    select: &mut SelectPlan,
+) -> QueryRewriteState {
+    let rewrite_unqualified_identifiers = matches!(
+        &select.from.relation,
+        TableFactorPlan::Table { name, .. } if is_schemaless_table(schema_map, name)
+    );
+    let schemaless_aliases = collect_schemaless_aliases(schema_map, &select.from);
+    let state = QueryRewriteState {
+        rewrite_unqualified_identifiers,
+        schemaless_aliases,
+    };
+
+    rewrite_select(schema_map, select, &state);
+    state
 }
 
 fn collect_schemaless_aliases(

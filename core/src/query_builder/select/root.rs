@@ -10,8 +10,8 @@ use {
         },
         query_builder::{
             ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode, OffsetNode,
-            OrderByExprList, OrderByNode, ProjectNode, QueryBuilderError, QueryNode,
-            SelectItemList, TableFactorNode, table_factor::TableType,
+            OrderByExprList, ProjectNode, QueryBuilderError, QueryNode, SelectItemList,
+            SelectOrderByNode, TableFactorNode, table_factor::TableType,
         },
         result::Result,
         translate::alias_or_name,
@@ -65,8 +65,11 @@ impl<'a> SelectNode<'a> {
         ProjectNode::new(self, select_items)
     }
 
-    pub fn order_by<T: Into<OrderByExprList<'a>>>(self, order_by_exprs: T) -> OrderByNode<'a> {
-        OrderByNode::new(self, order_by_exprs)
+    pub fn order_by<T: Into<OrderByExprList<'a>>>(
+        self,
+        order_by_exprs: T,
+    ) -> SelectOrderByNode<'a> {
+        SelectOrderByNode::new(self, order_by_exprs)
     }
 
     pub fn join(self, table_name: &str) -> JoinNode<'a> {

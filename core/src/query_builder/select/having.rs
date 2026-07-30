@@ -4,8 +4,8 @@ use {
         ast::Select,
         plan::SelectPlan,
         query_builder::{
-            ExprNode, GroupByNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode,
-            ProjectNode, QueryNode, SelectItemList, TableFactorNode,
+            ExprNode, GroupByNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryNode,
+            SelectItemList, SelectOrderByNode, TableFactorNode,
         },
         result::Result,
     },
@@ -64,8 +64,8 @@ impl<'a> HavingNode<'a> {
         ProjectNode::new(self, select_items)
     }
 
-    pub fn order_by<T: Into<OrderByExprList<'a>>>(self, expr_list: T) -> OrderByNode<'a> {
-        OrderByNode::new(self, expr_list)
+    pub fn order_by<T: Into<OrderByExprList<'a>>>(self, expr_list: T) -> SelectOrderByNode<'a> {
+        SelectOrderByNode::new(self, expr_list)
     }
 
     pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {

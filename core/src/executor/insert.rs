@@ -6,8 +6,11 @@ use {
     crate::{
         ast::{ColumnDef, ColumnUniqueOption, ForeignKey},
         data::{Key, Row, SCHEMALESS_DOC_COLUMN, Schema, Value, value::BTreeMapJsonExt},
-        executor::{evaluate::evaluate_stateless, limit},
-        plan::{ExprPlan, QueryPlan, SetExprPlan, ValuesPlan, plan_scalar_expr},
+        executor::evaluate::evaluate_stateless,
+        plan::{
+            ExprPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, QueryPlan,
+            ValuesPlan, plan_scalar_expr,
+        },
         result::{Error, Result},
         store::{GStore, GStoreMut},
     },
@@ -15,6 +18,72 @@ use {
     std::{collections::BTreeMap, fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
 };
+
+fn offset_values_plan(offset: &OffsetPlan) -> Option<&ValuesPlan> {
+    match &offset.input {
+        OffsetInputPlan::Select(_) | OffsetInputPlan::SelectOrderBy(_) => None,
+        OffsetInputPlan::Values(values) => Some(values),
+        OffsetInputPlan::ValuesOrderBy(values) => Some(&values.input),
+    }
+}
+
+fn values_plan(query: &QueryPlan) -> Option<&ValuesPlan> {
+    match query {
+        QueryPlan::Select(_) | QueryPlan::SelectOrderBy(_) => None,
+        QueryPlan::Values(values) => Some(values),
+        QueryPlan::ValuesOrderBy(values) => Some(&values.input),
+        QueryPlan::Offset(offset) => offset_values_plan(offset),
+        QueryPlan::Limit(LimitPlan { input, .. }) => match input {
+            LimitInputPlan::Select(_) | LimitInputPlan::SelectOrderBy(_) => None,
+            LimitInputPlan::Values(values) => Some(values),
+            LimitInputPlan::ValuesOrderBy(values) => Some(&values.input),
+            LimitInputPlan::Offset(offset) => offset_values_plan(offset),
+        },
+    }
+}
+
+fn apply_values_limit_offset<'a, T>(
+    query: &QueryPlan,
+    rows: T,
+) -> Result<Box<dyn Iterator<Item = Result<Row>> + 'a>>
+where
+    T: Iterator<Item = Result<Row>> + 'a,
+{
+    match query {
+        QueryPlan::Select(_)
+        | QueryPlan::Values(_)
+        | QueryPlan::SelectOrderBy(_)
+        | QueryPlan::ValuesOrderBy(_) => Ok(Box::new(rows)),
+        QueryPlan::Offset(plan) => {
+            let count = evaluate_count(&plan.count)?;
+
+            Ok(Box::new(rows.skip(count)))
+        }
+        QueryPlan::Limit(plan) => {
+            let rows: Box<dyn Iterator<Item = Result<Row>> + 'a> = match &plan.input {
+                LimitInputPlan::Select(_)
+                | LimitInputPlan::Values(_)
+                | LimitInputPlan::SelectOrderBy(_)
+                | LimitInputPlan::ValuesOrderBy(_) => Box::new(rows),
+                LimitInputPlan::Offset(offset) => {
+                    let count = evaluate_count(&offset.count)?;
+
+                    Box::new(rows.skip(count))
+                }
+            };
+            let count = evaluate_count(&plan.count)?;
+
+            Ok(Box::new(rows.take(count)))
+        }
+    }
+}
+
+fn evaluate_count(expr: &ExprPlan) -> Result<usize> {
+    let evaluated = evaluate_stateless(None, expr)?;
+    let size: usize = Value::try_from(evaluated)?.try_into()?;
+
+    Ok(size)
+}
 
 #[derive(ThisError, Serialize, Debug, PartialEq, Eq)]
 pub enum InsertError {
@@ -114,8 +183,8 @@ fn fetch_vec_rows<T: GStore>(
     let column_defs = Rc::from(column_defs);
     let column_validation = ColumnValidation::All(&column_defs);
 
-    let rows_iter: Box<dyn Iterator<Item = Result<Vec<Value>>> + '_> = match source.body() {
-        SetExprPlan::Values(ValuesPlan(values_list)) => {
+    let rows_iter: Box<dyn Iterator<Item = Result<Vec<Value>>> + '_> =
+        if let Some(ValuesPlan(values_list)) = values_plan(source) {
             let column_defaults: Rc<[Option<ExprPlan>]> = Rc::from(
                 column_defs
                     .iter()
@@ -134,12 +203,11 @@ fn fetch_vec_rows<T: GStore>(
                     values: fill_values(&column_defs, &column_defaults, columns, values)?,
                 })
             });
-            let rows = limit::apply(source, rows)?;
+            let rows = apply_values_limit_offset(source, rows)?;
             let rows = rows.map(|row| Ok::<_, Error>(row?.into_values()));
 
             Box::new(rows) as Box<dyn Iterator<Item = Result<Vec<Value>>> + '_>
-        }
-        SetExprPlan::Select(_) => {
+        } else {
             let rows = select(storage, source, None)?.map(|row| {
                 let values = row?.into_values();
 
@@ -161,8 +229,7 @@ fn fetch_vec_rows<T: GStore>(
             });
 
             Box::new(rows) as Box<dyn Iterator<Item = Result<Vec<Value>>> + '_>
-        }
-    };
+        };
     let rows = rows_iter.collect::<Result<Vec<Vec<Value>>>>()?;
 
     validate_unique(
@@ -247,8 +314,8 @@ fn validate_foreign_key<T: GStore>(
 fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &QueryPlan) -> Result<Vec<Vec<Value>>> {
     let doc_column: Rc<[String]> = Rc::from(vec![SCHEMALESS_DOC_COLUMN.to_owned()]);
 
-    let rows_iter: Box<dyn Iterator<Item = Result<Vec<Value>>> + '_> = match source.body() {
-        SetExprPlan::Values(ValuesPlan(values_list)) => {
+    let rows_iter: Box<dyn Iterator<Item = Result<Vec<Value>>> + '_> =
+        if let Some(ValuesPlan(values_list)) = values_plan(source) {
             let rows = values_list.iter().map({
                 let doc_column = Rc::clone(&doc_column);
                 move |values| {
@@ -274,12 +341,11 @@ fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &QueryPlan) -> Result<V
                     })
                 }
             });
-            let rows = limit::apply(source, rows)?;
+            let rows = apply_values_limit_offset(source, rows)?;
             let rows = rows.map(|row| row.map(Row::into_values));
 
             Box::new(rows) as Box<dyn Iterator<Item = Result<Vec<Value>>> + '_>
-        }
-        SetExprPlan::Select(_) => {
+        } else {
             let rows = select(storage, source, None)?.map(|row| {
                 let values = row?.into_values();
 
@@ -302,8 +368,7 @@ fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &QueryPlan) -> Result<V
             });
 
             Box::new(rows) as Box<dyn Iterator<Item = Result<Vec<Value>>> + '_>
-        }
-    };
+        };
     let rows = rows_iter.collect::<Result<Vec<Vec<Value>>>>()?;
 
     Ok(rows)

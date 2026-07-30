@@ -12,7 +12,10 @@ use {
     crate::{
         data::{CustomFunction, Interval, Row, Value},
         mock::MockStorage,
-        plan::{ExprPlan, FunctionPlan, ProjectionPlan, SetExprPlan, plan_scalar_expr},
+        plan::{
+            ExprPlan, FunctionPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
+            ProjectionPlan, QueryPlan, SelectPlan, plan_scalar_expr,
+        },
         result::{Error, Result},
         store::GStore,
     },
@@ -21,6 +24,29 @@ use {
 };
 
 pub use {error::EvaluateError, evaluated::Evaluated};
+
+fn offset_select_plan(offset: &OffsetPlan) -> Option<&SelectPlan> {
+    match &offset.input {
+        OffsetInputPlan::Select(select) => Some(select.as_ref()),
+        OffsetInputPlan::Values(_) | OffsetInputPlan::ValuesOrderBy(_) => None,
+        OffsetInputPlan::SelectOrderBy(order_by) => Some(order_by.input.as_ref()),
+    }
+}
+
+fn select_plan(query: &QueryPlan) -> Option<&SelectPlan> {
+    match query {
+        QueryPlan::Select(select) => Some(select),
+        QueryPlan::Values(_) | QueryPlan::ValuesOrderBy(_) => None,
+        QueryPlan::SelectOrderBy(order_by) => Some(&order_by.input),
+        QueryPlan::Offset(offset) => offset_select_plan(offset),
+        QueryPlan::Limit(LimitPlan { input, .. }) => match input {
+            LimitInputPlan::Select(select) => Some(select),
+            LimitInputPlan::Values(_) | LimitInputPlan::ValuesOrderBy(_) => None,
+            LimitInputPlan::SelectOrderBy(order_by) => Some(&order_by.input),
+            LimitInputPlan::Offset(offset) => offset_select_plan(offset),
+        },
+    }
+}
 
 pub fn evaluate<'a, 'b, T>(
     storage: &'a T,
@@ -89,7 +115,7 @@ where
         }
         ExprPlan::Subquery(query) => {
             let storage = storage.ok_or(EvaluateError::SubqueryNotAllowedInStatelessExpr)?;
-            if let SetExprPlan::Select(select) = query.body()
+            if let Some(select) = select_plan(query)
                 && matches!(select.projection, ProjectionPlan::SchemalessMap)
             {
                 return Err(EvaluateError::SchemalessProjectionForSubQuery.into());
@@ -169,7 +195,7 @@ where
             negated,
         } => {
             let storage = storage.ok_or(EvaluateError::InSubqueryNotAllowedInStatelessExpr)?;
-            if let SetExprPlan::Select(select) = subquery.body()
+            if let Some(select) = select_plan(subquery)
                 && matches!(select.projection, ProjectionPlan::SchemalessMap)
             {
                 return Err(EvaluateError::SchemalessProjectionForInSubQuery.into());

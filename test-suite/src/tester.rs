@@ -1,7 +1,10 @@
 use {
     gluesql_core::{
         ast::*,
-        plan::{IndexItemPlan, QueryPlan, SetExprPlan, StatementPlan},
+        plan::{
+            IndexItemPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, QueryPlan,
+            SelectPlan, StatementPlan,
+        },
         prelude::{Glue, Payload, Result},
         store::{GStore, GStoreMut, Planner},
     },
@@ -44,14 +47,7 @@ fn find_indexes(statement: &StatementPlan) -> Vec<&IndexItemPlan> {
         }
     }
 
-    fn find_query_indexes(query: &QueryPlan) -> Vec<&IndexItemPlan> {
-        let select = match query.body() {
-            SetExprPlan::Select(select) => select,
-            SetExprPlan::Values(_) => {
-                return vec![];
-            }
-        };
-
+    fn find_select_indexes(select: &SelectPlan) -> Vec<&IndexItemPlan> {
         let selection_indexes = select
             .selection
             .as_ref()
@@ -66,6 +62,29 @@ fn find_indexes(statement: &StatementPlan) -> Vec<&IndexItemPlan> {
         };
 
         [selection_indexes, table_indexes].concat()
+    }
+
+    fn find_offset_indexes(offset: &OffsetPlan) -> Vec<&IndexItemPlan> {
+        match &offset.input {
+            OffsetInputPlan::Select(select) => find_select_indexes(select),
+            OffsetInputPlan::Values(_) | OffsetInputPlan::ValuesOrderBy(_) => Vec::new(),
+            OffsetInputPlan::SelectOrderBy(order_by) => find_select_indexes(&order_by.input),
+        }
+    }
+
+    fn find_query_indexes(query: &QueryPlan) -> Vec<&IndexItemPlan> {
+        match query {
+            QueryPlan::Select(select) => find_select_indexes(select),
+            QueryPlan::Values(_) | QueryPlan::ValuesOrderBy(_) => Vec::new(),
+            QueryPlan::SelectOrderBy(order_by) => find_select_indexes(&order_by.input),
+            QueryPlan::Offset(offset) => find_offset_indexes(offset),
+            QueryPlan::Limit(LimitPlan { input, .. }) => match input {
+                LimitInputPlan::Select(select) => find_select_indexes(select),
+                LimitInputPlan::Values(_) | LimitInputPlan::ValuesOrderBy(_) => Vec::new(),
+                LimitInputPlan::SelectOrderBy(order_by) => find_select_indexes(&order_by.input),
+                LimitInputPlan::Offset(offset) => find_offset_indexes(offset),
+            },
+        }
     }
 
     match statement {

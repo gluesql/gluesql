@@ -1,15 +1,15 @@
 use {
     super::{
         ExprList, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
-        LimitNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
-        TableFactorNode,
+        LimitNode, OffsetLimitNode, OffsetNode, ProjectNode, SelectNode, SelectOrderByNode,
+        TableFactorNode, ValuesOrderByNode,
         select::{BuildQuery, BuildQueryPlan, ValuesNode},
         table_factor::TableType,
     },
     crate::{
         ast::{Query, SetExpr, Values},
         parse_sql::parse_query,
-        plan::{QueryPlan, SetExprPlan, ValuesPlan},
+        plan::{QueryPlan, ValuesPlan},
         result::Result,
         translate::{NO_PARAMS, translate_query},
     },
@@ -31,7 +31,8 @@ pub enum QueryNode<'a> {
     OffsetLimitNode(OffsetLimitNode<'a>),
     FilterNode(FilterNode<'a>),
     ProjectNode(ProjectNode<'a>),
-    OrderByNode(OrderByNode<'a>),
+    SelectOrderByNode(SelectOrderByNode<'a>),
+    ValuesOrderByNode(ValuesOrderByNode<'a>),
 }
 
 impl<'a> QueryNode<'a> {
@@ -77,7 +78,8 @@ impl<'a> QueryNode<'a> {
             QueryNode::OffsetNode(node) => node.build_query(),
             QueryNode::OffsetLimitNode(node) => node.build_query(),
             QueryNode::ProjectNode(node) => node.build_query(),
-            QueryNode::OrderByNode(node) => node.build_query(),
+            QueryNode::SelectOrderByNode(node) => node.build_query(),
+            QueryNode::ValuesOrderByNode(node) => node.build_query(),
         }
     }
 
@@ -91,7 +93,7 @@ impl<'a> QueryNode<'a> {
                     .map(ExprList::build_exprs_plan)
                     .collect::<Result<Vec<_>>>()?;
 
-                Ok(QueryPlan::Body(SetExprPlan::Values(ValuesPlan(values))))
+                Ok(QueryPlan::Values(ValuesPlan(values)))
             }
             QueryNode::SelectNode(node) => node.build_query_plan(),
             QueryNode::ValuesNode(node) => node.build_query_plan(),
@@ -105,7 +107,8 @@ impl<'a> QueryNode<'a> {
             QueryNode::OffsetNode(node) => node.build_query_plan(),
             QueryNode::OffsetLimitNode(node) => node.build_query_plan(),
             QueryNode::ProjectNode(node) => node.build_query_plan(),
-            QueryNode::OrderByNode(node) => node.build_query_plan(),
+            QueryNode::SelectOrderByNode(node) => node.build_query_plan(),
+            QueryNode::ValuesOrderByNode(node) => node.build_query_plan(),
         }
     }
 }
@@ -142,7 +145,8 @@ impl_from_select_nodes!(LimitNode);
 impl_from_select_nodes!(OffsetNode);
 impl_from_select_nodes!(OffsetLimitNode);
 impl_from_select_nodes!(ProjectNode);
-impl_from_select_nodes!(OrderByNode);
+impl_from_select_nodes!(SelectOrderByNode);
+impl_from_select_nodes!(ValuesOrderByNode);
 
 #[cfg(test)]
 mod test {
@@ -151,12 +155,12 @@ mod test {
         crate::{
             plan::{
                 JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, LimitInputPlan,
-                LimitPlan, OffsetInputPlan, OffsetPlan, OrderByPlan, ProjectionPlan, QueryPlan,
-                SelectPlan, SetExprPlan, TableFactorPlan, TableWithJoinsPlan,
+                LimitPlan, OffsetInputPlan, OffsetPlan, ProjectionPlan, QueryPlan, SelectPlan,
+                TableFactorPlan, TableWithJoinsPlan,
             },
             query_builder::{
                 SelectItemList, col, glue_indexes, glue_objects, glue_table_columns, glue_tables,
-                series, table, test_query,
+                series, table, test_query, values,
             },
         },
         pretty_assertions::assert_eq,
@@ -222,7 +226,7 @@ mod test {
                 aggregate_slots: None,
             };
 
-            QueryPlan::Body(SetExprPlan::Select(Box::new(select)))
+            QueryPlan::Select(Box::new(select))
         };
         assert_eq!(actual.build_query_plan().unwrap(), expected);
 
@@ -299,12 +303,12 @@ mod test {
         let body = QueryNode::from(table("Foo").select())
             .build_query_plan()
             .unwrap();
-        assert!(matches!(body, QueryPlan::Body(_)));
+        assert!(matches!(body, QueryPlan::Select(_)));
 
         let order_by = QueryNode::from(table("Foo").select().order_by("id"))
             .build_query_plan()
             .unwrap();
-        assert!(matches!(order_by, QueryPlan::OrderBy(_)));
+        assert!(matches!(order_by, QueryPlan::SelectOrderBy(_)));
 
         let offset = QueryNode::from(table("Foo").select().offset(2))
             .build_query_plan()
@@ -312,7 +316,7 @@ mod test {
         assert!(matches!(
             offset,
             QueryPlan::Offset(OffsetPlan {
-                input: OffsetInputPlan::Body(_),
+                input: OffsetInputPlan::Select(_),
                 ..
             })
         ));
@@ -323,7 +327,7 @@ mod test {
         assert!(matches!(
             order_by_offset,
             QueryPlan::Offset(OffsetPlan {
-                input: OffsetInputPlan::OrderBy(OrderByPlan { .. }),
+                input: OffsetInputPlan::SelectOrderBy(_),
                 ..
             })
         ));
@@ -334,7 +338,7 @@ mod test {
         assert!(matches!(
             limit,
             QueryPlan::Limit(LimitPlan {
-                input: LimitInputPlan::Body(_),
+                input: LimitInputPlan::Select(_),
                 ..
             })
         ));
@@ -345,7 +349,7 @@ mod test {
         assert!(matches!(
             order_by_limit,
             QueryPlan::Limit(LimitPlan {
-                input: LimitInputPlan::OrderBy(OrderByPlan { .. }),
+                input: LimitInputPlan::SelectOrderBy(_),
                 ..
             })
         ));
@@ -357,7 +361,7 @@ mod test {
             offset_limit,
             QueryPlan::Limit(LimitPlan {
                 input: LimitInputPlan::Offset(OffsetPlan {
-                    input: OffsetInputPlan::Body(_),
+                    input: OffsetInputPlan::Select(_),
                     ..
                 }),
                 ..
@@ -372,7 +376,93 @@ mod test {
             order_by_offset_limit,
             QueryPlan::Limit(LimitPlan {
                 input: LimitInputPlan::Offset(OffsetPlan {
-                    input: OffsetInputPlan::OrderBy(OrderByPlan { .. }),
+                    input: OffsetInputPlan::SelectOrderBy(_),
+                    ..
+                }),
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn query_builder_preserves_values_terminal_stage_relations() {
+        let values_plan = QueryNode::ValuesNode(values(vec!["1"]))
+            .build_query_plan()
+            .unwrap();
+        assert!(matches!(values_plan, QueryPlan::Values(_)));
+
+        let order_by = QueryNode::from(values(vec!["1"]).order_by("column1"))
+            .build_query_plan()
+            .unwrap();
+        assert!(matches!(order_by, QueryPlan::ValuesOrderBy(_)));
+
+        let offset = QueryNode::from(values(vec!["1"]).offset(2))
+            .build_query_plan()
+            .unwrap();
+        assert!(matches!(
+            offset,
+            QueryPlan::Offset(OffsetPlan {
+                input: OffsetInputPlan::Values(_),
+                ..
+            })
+        ));
+
+        let order_by_offset = QueryNode::from(values(vec!["1"]).order_by("column1").offset(2))
+            .build_query_plan()
+            .unwrap();
+        assert!(matches!(
+            order_by_offset,
+            QueryPlan::Offset(OffsetPlan {
+                input: OffsetInputPlan::ValuesOrderBy(_),
+                ..
+            })
+        ));
+
+        let limit = QueryNode::from(values(vec!["1"]).limit(3))
+            .build_query_plan()
+            .unwrap();
+        assert!(matches!(
+            limit,
+            QueryPlan::Limit(LimitPlan {
+                input: LimitInputPlan::Values(_),
+                ..
+            })
+        ));
+
+        let order_by_limit = QueryNode::from(values(vec!["1"]).order_by("column1").limit(3))
+            .build_query_plan()
+            .unwrap();
+        assert!(matches!(
+            order_by_limit,
+            QueryPlan::Limit(LimitPlan {
+                input: LimitInputPlan::ValuesOrderBy(_),
+                ..
+            })
+        ));
+
+        let offset_limit = QueryNode::from(values(vec!["1"]).offset(2).limit(3))
+            .build_query_plan()
+            .unwrap();
+        assert!(matches!(
+            offset_limit,
+            QueryPlan::Limit(LimitPlan {
+                input: LimitInputPlan::Offset(OffsetPlan {
+                    input: OffsetInputPlan::Values(_),
+                    ..
+                }),
+                ..
+            })
+        ));
+
+        let order_by_offset_limit =
+            QueryNode::from(values(vec!["1"]).order_by("column1").offset(2).limit(3))
+                .build_query_plan()
+                .unwrap();
+        assert!(matches!(
+            order_by_offset_limit,
+            QueryPlan::Limit(LimitPlan {
+                input: LimitInputPlan::Offset(OffsetPlan {
+                    input: OffsetInputPlan::ValuesOrderBy(_),
                     ..
                 }),
                 ..

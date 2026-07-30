@@ -2,7 +2,8 @@ use {
     super::ExprNode,
     crate::query_builder::{
         FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode, LimitNode,
-        OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, QueryNode, SelectNode,
+        OffsetLimitNode, OffsetNode, ProjectNode, QueryNode, SelectNode, SelectOrderByNode,
+        ValuesOrderByNode,
     },
 };
 
@@ -52,7 +53,8 @@ impl_from_select_nodes!(LimitNode<'a>);
 impl_from_select_nodes!(OffsetNode<'a>);
 impl_from_select_nodes!(OffsetLimitNode<'a>);
 impl_from_select_nodes!(ProjectNode<'a>);
-impl_from_select_nodes!(OrderByNode<'a>);
+impl_from_select_nodes!(SelectOrderByNode<'a>);
+impl_from_select_nodes!(ValuesOrderByNode<'a>);
 
 impl<'a> ExprNode<'a> {
     #[must_use]
@@ -79,10 +81,9 @@ mod test {
     use crate::{
         plan::{
             ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan,
-            ProjectionPlan, QueryPlan, SelectPlan, SetExprPlan, TableFactorPlan,
-            TableWithJoinsPlan,
+            ProjectionPlan, QueryPlan, SelectPlan, TableFactorPlan, TableWithJoinsPlan,
         },
-        query_builder::{QueryNode, SelectItemList, col, table, test_expr, text},
+        query_builder::{QueryNode, SelectItemList, col, table, test_expr, text, values},
     };
 
     #[test]
@@ -173,7 +174,7 @@ mod test {
                 aggregate_slots: None,
             };
 
-            let query = QueryPlan::Body(SetExprPlan::Select(Box::new(select)));
+            let query = QueryPlan::Select(Box::new(select));
 
             ExprPlan::InSubquery {
                 expr: Box::new(ExprPlan::Identifier("id".to_owned())),
@@ -236,9 +237,21 @@ mod test {
         let expected = "name IN (SELECT name FROM Item)";
         test_expr(actual, expected);
 
-        // from OrderByNode
+        // from SelectOrderByNode
         let actual = col("id").in_list(table("Item").select().order_by("score ASC"));
         let expected = "id IN (SELECT * FROM Item ORDER BY score ASC)";
         test_expr(actual, expected);
+
+        let actual = col("id")
+            .in_list(values(vec!["1", "2"]).order_by("column1 DESC"))
+            .build_expr_plan()
+            .unwrap();
+        assert!(matches!(
+            actual,
+            ExprPlan::InSubquery {
+                subquery,
+                ..
+            } if matches!(*subquery, QueryPlan::ValuesOrderBy(_))
+        ));
     }
 }

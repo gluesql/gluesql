@@ -3,8 +3,9 @@ use {
     crate::{
         data::Schema,
         plan::{
-            ExprPlan, JoinPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SetExprPlan,
-            StatementPlan, TableFactorPlan, TableWithJoinsPlan,
+            ExprPlan, JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
+            ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan, StatementPlan, TableFactorPlan,
+            TableWithJoinsPlan,
         },
         result::Result,
     },
@@ -22,7 +23,7 @@ pub fn validate(schema_map: &SchemaMap, statement: &StatementPlan) -> Result<()>
     };
 
     if let Some(query) = query {
-        let SetExprPlan::Select(select) = query.body() else {
+        let Some(select) = query_select(query) else {
             return Ok(());
         };
         let ProjectionPlan::SelectItems(projection) = &select.projection else {
@@ -114,26 +115,44 @@ fn contextualize_query<'a>(
     schema_map: &'a SchemaMap,
     query: &'a QueryPlan,
 ) -> Option<Rc<Context<'a>>> {
-    contextualize_query_body(schema_map, query.body())
+    query_select(query).and_then(|select| contextualize_select(schema_map, select))
 }
 
-fn contextualize_query_body<'a>(
-    schema_map: &'a SchemaMap,
-    body: &'a SetExprPlan,
-) -> Option<Rc<Context<'a>>> {
-    match body {
-        SetExprPlan::Select(select) => {
-            let TableWithJoinsPlan { relation, joins } = &select.from;
-            let by_table = contextualize_table_factor(schema_map, relation);
-            let by_joins = joins
-                .iter()
-                .map(|JoinPlan { relation, .. }| contextualize_table_factor(schema_map, relation))
-                .fold(None, Context::concat);
-
-            Context::concat(by_table, by_joins)
-        }
-        SetExprPlan::Values(_) => None,
+fn offset_select(offset: &OffsetPlan) -> Option<&SelectPlan> {
+    match &offset.input {
+        OffsetInputPlan::Select(select) => Some(select.as_ref()),
+        OffsetInputPlan::Values(_) | OffsetInputPlan::ValuesOrderBy(_) => None,
+        OffsetInputPlan::SelectOrderBy(order_by) => Some(order_by.input.as_ref()),
     }
+}
+
+fn query_select(query: &QueryPlan) -> Option<&SelectPlan> {
+    match query {
+        QueryPlan::Select(select) => Some(select),
+        QueryPlan::Values(_) | QueryPlan::ValuesOrderBy(_) => None,
+        QueryPlan::SelectOrderBy(order_by) => Some(&order_by.input),
+        QueryPlan::Offset(offset) => offset_select(offset),
+        QueryPlan::Limit(LimitPlan { input, .. }) => match input {
+            LimitInputPlan::Select(select) => Some(select),
+            LimitInputPlan::Values(_) | LimitInputPlan::ValuesOrderBy(_) => None,
+            LimitInputPlan::SelectOrderBy(order_by) => Some(&order_by.input),
+            LimitInputPlan::Offset(offset) => offset_select(offset),
+        },
+    }
+}
+
+fn contextualize_select<'a>(
+    schema_map: &'a SchemaMap,
+    select: &'a SelectPlan,
+) -> Option<Rc<Context<'a>>> {
+    let TableWithJoinsPlan { relation, joins } = &select.from;
+    let by_table = contextualize_table_factor(schema_map, relation);
+    let by_joins = joins
+        .iter()
+        .map(|JoinPlan { relation, .. }| contextualize_table_factor(schema_map, relation))
+        .fold(None, Context::concat);
+
+    Context::concat(by_table, by_joins)
 }
 
 fn contextualize_table_factor<'a>(

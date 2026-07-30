@@ -1,13 +1,15 @@
 mod limit;
 mod offset;
-mod order_by;
-mod set_expr;
+mod order_by_expr;
+mod select;
+mod values;
 
 pub use {
     limit::{LimitInputPlan, LimitPlan},
     offset::{OffsetInputPlan, OffsetPlan},
-    order_by::{OrderByExprPlan, OrderByPlan},
-    set_expr::{SelectPlan, SetExprPlan, ValuesPlan},
+    order_by_expr::OrderByExprPlan,
+    select::{SelectOrderByPlan, SelectPlan},
+    values::{ValuesOrderByPlan, ValuesPlan},
 };
 
 use {
@@ -17,8 +19,10 @@ use {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum QueryPlan {
-    Body(SetExprPlan),
-    OrderBy(OrderByPlan),
+    Select(Box<SelectPlan>),
+    Values(ValuesPlan),
+    SelectOrderBy(SelectOrderByPlan),
+    ValuesOrderBy(ValuesOrderByPlan),
     Offset(OffsetPlan),
     Limit(LimitPlan),
 }
@@ -32,84 +36,127 @@ impl From<ast::Query> for QueryPlan {
             offset,
         } = query;
 
-        let body = body.into();
         let order_by = order_by.into_iter().map(Into::into).collect::<Vec<_>>();
 
-        match (order_by.is_empty(), offset, limit) {
-            (true, None, None) => Self::Body(body),
-            (false, None, None) => Self::OrderBy(OrderByPlan {
-                input: body,
-                exprs: order_by,
-            }),
-            (true, Some(offset), None) => Self::Offset(OffsetPlan {
-                input: OffsetInputPlan::Body(body),
-                count: offset.into(),
-            }),
-            (false, Some(offset), None) => Self::Offset(OffsetPlan {
-                input: OffsetInputPlan::OrderBy(OrderByPlan {
-                    input: body,
-                    exprs: order_by,
-                }),
-                count: offset.into(),
-            }),
-            (true, None, Some(limit)) => Self::Limit(LimitPlan {
-                input: LimitInputPlan::Body(body),
-                count: limit.into(),
-            }),
-            (false, None, Some(limit)) => Self::Limit(LimitPlan {
-                input: LimitInputPlan::OrderBy(OrderByPlan {
-                    input: body,
-                    exprs: order_by,
-                }),
-                count: limit.into(),
-            }),
-            (true, Some(offset), Some(limit)) => {
-                let offset = OffsetPlan {
-                    input: OffsetInputPlan::Body(body),
-                    count: offset.into(),
-                };
+        match body {
+            ast::SetExpr::Select(select) => {
+                let input = Box::new((*select).into());
 
-                Self::Limit(LimitPlan {
-                    input: LimitInputPlan::Offset(offset),
-                    count: limit.into(),
-                })
+                match (order_by.is_empty(), offset, limit) {
+                    (true, None, None) => Self::Select(input),
+                    (false, None, None) => Self::SelectOrderBy(SelectOrderByPlan {
+                        input,
+                        exprs: order_by,
+                    }),
+                    (true, Some(offset), None) => Self::Offset(OffsetPlan {
+                        input: OffsetInputPlan::Select(input),
+                        count: offset.into(),
+                    }),
+                    (false, Some(offset), None) => Self::Offset(OffsetPlan {
+                        input: OffsetInputPlan::SelectOrderBy(SelectOrderByPlan {
+                            input,
+                            exprs: order_by,
+                        }),
+                        count: offset.into(),
+                    }),
+                    (true, None, Some(limit)) => Self::Limit(LimitPlan {
+                        input: LimitInputPlan::Select(input),
+                        count: limit.into(),
+                    }),
+                    (false, None, Some(limit)) => Self::Limit(LimitPlan {
+                        input: LimitInputPlan::SelectOrderBy(SelectOrderByPlan {
+                            input,
+                            exprs: order_by,
+                        }),
+                        count: limit.into(),
+                    }),
+                    (true, Some(offset), Some(limit)) => {
+                        let offset = OffsetPlan {
+                            input: OffsetInputPlan::Select(input),
+                            count: offset.into(),
+                        };
+
+                        Self::Limit(LimitPlan {
+                            input: LimitInputPlan::Offset(offset),
+                            count: limit.into(),
+                        })
+                    }
+                    (false, Some(offset), Some(limit)) => {
+                        let order_by = SelectOrderByPlan {
+                            input,
+                            exprs: order_by,
+                        };
+                        let offset = OffsetPlan {
+                            input: OffsetInputPlan::SelectOrderBy(order_by),
+                            count: offset.into(),
+                        };
+
+                        Self::Limit(LimitPlan {
+                            input: LimitInputPlan::Offset(offset),
+                            count: limit.into(),
+                        })
+                    }
+                }
             }
-            (false, Some(offset), Some(limit)) => {
-                let order_by = OrderByPlan {
-                    input: body,
-                    exprs: order_by,
-                };
-                let offset = OffsetPlan {
-                    input: OffsetInputPlan::OrderBy(order_by),
-                    count: offset.into(),
-                };
+            ast::SetExpr::Values(values) => {
+                let input = values.into();
 
-                Self::Limit(LimitPlan {
-                    input: LimitInputPlan::Offset(offset),
-                    count: limit.into(),
-                })
+                match (order_by.is_empty(), offset, limit) {
+                    (true, None, None) => Self::Values(input),
+                    (false, None, None) => Self::ValuesOrderBy(ValuesOrderByPlan {
+                        input,
+                        exprs: order_by,
+                    }),
+                    (true, Some(offset), None) => Self::Offset(OffsetPlan {
+                        input: OffsetInputPlan::Values(input),
+                        count: offset.into(),
+                    }),
+                    (false, Some(offset), None) => Self::Offset(OffsetPlan {
+                        input: OffsetInputPlan::ValuesOrderBy(ValuesOrderByPlan {
+                            input,
+                            exprs: order_by,
+                        }),
+                        count: offset.into(),
+                    }),
+                    (true, None, Some(limit)) => Self::Limit(LimitPlan {
+                        input: LimitInputPlan::Values(input),
+                        count: limit.into(),
+                    }),
+                    (false, None, Some(limit)) => Self::Limit(LimitPlan {
+                        input: LimitInputPlan::ValuesOrderBy(ValuesOrderByPlan {
+                            input,
+                            exprs: order_by,
+                        }),
+                        count: limit.into(),
+                    }),
+                    (true, Some(offset), Some(limit)) => {
+                        let offset = OffsetPlan {
+                            input: OffsetInputPlan::Values(input),
+                            count: offset.into(),
+                        };
+
+                        Self::Limit(LimitPlan {
+                            input: LimitInputPlan::Offset(offset),
+                            count: limit.into(),
+                        })
+                    }
+                    (false, Some(offset), Some(limit)) => {
+                        let order_by = ValuesOrderByPlan {
+                            input,
+                            exprs: order_by,
+                        };
+                        let offset = OffsetPlan {
+                            input: OffsetInputPlan::ValuesOrderBy(order_by),
+                            count: offset.into(),
+                        };
+
+                        Self::Limit(LimitPlan {
+                            input: LimitInputPlan::Offset(offset),
+                            count: limit.into(),
+                        })
+                    }
+                }
             }
-        }
-    }
-}
-
-impl QueryPlan {
-    pub fn body(&self) -> &SetExprPlan {
-        match self {
-            Self::Body(body) => body,
-            Self::OrderBy(OrderByPlan { input, .. }) => input,
-            Self::Offset(OffsetPlan { input, .. }) => match input {
-                OffsetInputPlan::Body(body) => body,
-                OffsetInputPlan::OrderBy(OrderByPlan { input, .. }) => input,
-            },
-            Self::Limit(LimitPlan { input, .. }) => match input {
-                LimitInputPlan::Body(body) => body,
-                LimitInputPlan::OrderBy(OrderByPlan { input, .. }) => input,
-                LimitInputPlan::Offset(OffsetPlan { input, .. }) => match input {
-                    OffsetInputPlan::Body(body) => body,
-                    OffsetInputPlan::OrderBy(OrderByPlan { input, .. }) => input,
-                },
-            },
         }
     }
 }
@@ -117,14 +164,11 @@ impl QueryPlan {
 #[cfg(test)]
 mod tests {
     use {
-        super::{
-            LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, OrderByPlan, QueryPlan,
-            SetExprPlan,
-        },
+        super::{LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, QueryPlan},
         crate::{
             ast::Literal,
             parse_sql::parse,
-            plan::{ExprPlan, StatementPlan},
+            plan::{ExprPlan, SelectOrderByPlan, StatementPlan, ValuesOrderByPlan},
             translate::translate,
         },
     };
@@ -140,32 +184,37 @@ mod tests {
     fn query_plan_wraps_only_present_terminal_stages() {
         assert!(matches!(
             statement_plan("SELECT * FROM Item"),
-            StatementPlan::Query(QueryPlan::Body(_))
+            StatementPlan::Query(QueryPlan::Select(_))
         ));
         assert!(matches!(
             statement_plan("SELECT * FROM Item ORDER BY id"),
-            StatementPlan::Query(QueryPlan::OrderBy(_))
+            StatementPlan::Query(QueryPlan::SelectOrderBy(_))
         ));
         assert!(matches!(
             statement_plan("SELECT * FROM Item LIMIT 3"),
-            StatementPlan::Query(QueryPlan::Limit(LimitPlan { input, .. }))
-                if matches!(input, LimitInputPlan::Body(_))
+            StatementPlan::Query(QueryPlan::Limit(LimitPlan {
+                input: LimitInputPlan::Select(_),
+                ..
+            }))
         ));
         assert!(matches!(
             statement_plan("SELECT * FROM Item OFFSET 2"),
-            StatementPlan::Query(QueryPlan::Offset(_))
+            StatementPlan::Query(QueryPlan::Offset(OffsetPlan {
+                input: OffsetInputPlan::Select(_),
+                ..
+            }))
         ));
         assert!(matches!(
             statement_plan("SELECT * FROM Item ORDER BY id OFFSET 2"),
             StatementPlan::Query(QueryPlan::Offset(OffsetPlan {
-                input: OffsetInputPlan::OrderBy(_),
+                input: OffsetInputPlan::SelectOrderBy(_),
                 ..
             }))
         ));
         assert!(matches!(
             statement_plan("SELECT * FROM Item ORDER BY id LIMIT 3"),
             StatementPlan::Query(QueryPlan::Limit(LimitPlan {
-                input: LimitInputPlan::OrderBy(_),
+                input: LimitInputPlan::SelectOrderBy(_),
                 ..
             }))
         ));
@@ -175,7 +224,7 @@ mod tests {
                 count: ExprPlan::Literal(Literal::Number(limit)),
                 input: LimitInputPlan::Offset(OffsetPlan {
                     count: ExprPlan::Literal(Literal::Number(offset)),
-                    input: OffsetInputPlan::Body(SetExprPlan::Select(_)),
+                    input: OffsetInputPlan::Select(_),
                 }),
             })) if limit == 3 && offset == 2
         ));
@@ -183,18 +232,71 @@ mod tests {
             statement_plan("SELECT * FROM Item ORDER BY id LIMIT 3 OFFSET 2"),
             StatementPlan::Query(QueryPlan::Limit(LimitPlan {
                 input: LimitInputPlan::Offset(OffsetPlan {
-                    input: OffsetInputPlan::OrderBy(OrderByPlan {
-                        input: SetExprPlan::Select(_),
-                        ..
-                    }),
+                    input: OffsetInputPlan::SelectOrderBy(SelectOrderByPlan { .. }),
+                    ..
+                }),
+                ..
+            }))
+        ));
+    }
+
+    #[test]
+    fn query_plan_preserves_values_terminal_stage_relations() {
+        assert!(matches!(
+            statement_plan("VALUES (1)"),
+            StatementPlan::Query(QueryPlan::Values(_))
+        ));
+        assert!(matches!(
+            statement_plan("VALUES (1) ORDER BY column1"),
+            StatementPlan::Query(QueryPlan::ValuesOrderBy(_))
+        ));
+        assert!(matches!(
+            statement_plan("VALUES (1) OFFSET 2"),
+            StatementPlan::Query(QueryPlan::Offset(OffsetPlan {
+                input: OffsetInputPlan::Values(_),
+                ..
+            }))
+        ));
+        assert!(matches!(
+            statement_plan("VALUES (1) ORDER BY column1 OFFSET 2"),
+            StatementPlan::Query(QueryPlan::Offset(OffsetPlan {
+                input: OffsetInputPlan::ValuesOrderBy(_),
+                ..
+            }))
+        ));
+        assert!(matches!(
+            statement_plan("VALUES (1) LIMIT 3"),
+            StatementPlan::Query(QueryPlan::Limit(LimitPlan {
+                input: LimitInputPlan::Values(_),
+                ..
+            }))
+        ));
+        assert!(matches!(
+            statement_plan("VALUES (1) ORDER BY column1 LIMIT 3"),
+            StatementPlan::Query(QueryPlan::Limit(LimitPlan {
+                input: LimitInputPlan::ValuesOrderBy(_),
+                ..
+            }))
+        ));
+        assert!(matches!(
+            statement_plan("VALUES (1) LIMIT 3 OFFSET 2"),
+            StatementPlan::Query(QueryPlan::Limit(LimitPlan {
+                input: LimitInputPlan::Offset(OffsetPlan {
+                    input: OffsetInputPlan::Values(_),
                     ..
                 }),
                 ..
             }))
         ));
         assert!(matches!(
-            statement_plan("SELECT * FROM Item ORDER BY id OFFSET 2"),
-            StatementPlan::Query(query) if matches!(query.body(), SetExprPlan::Select(_))
+            statement_plan("VALUES (1) ORDER BY column1 LIMIT 3 OFFSET 2"),
+            StatementPlan::Query(QueryPlan::Limit(LimitPlan {
+                input: LimitInputPlan::Offset(OffsetPlan {
+                    input: OffsetInputPlan::ValuesOrderBy(ValuesOrderByPlan { .. }),
+                    ..
+                }),
+                ..
+            }))
         ));
     }
 }

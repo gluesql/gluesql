@@ -8,8 +8,8 @@ use {
         },
         query_builder::{
             ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinConstraintNode,
-            LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
-            SelectItemList, SelectNode, TableFactorNode,
+            LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryNode, SelectItemList,
+            SelectNode, SelectOrderByNode, TableFactorNode,
             select::{BuildSelect, BuildSelectPlan},
         },
         result::Result,
@@ -176,8 +176,11 @@ impl<'a> JoinNode<'a> {
         FilterNode::new(self, expr)
     }
 
-    pub fn order_by<T: Into<OrderByExprList<'a>>>(self, order_by_exprs: T) -> OrderByNode<'a> {
-        OrderByNode::new(self, order_by_exprs)
+    pub fn order_by<T: Into<OrderByExprList<'a>>>(
+        self,
+        order_by_exprs: T,
+    ) -> SelectOrderByNode<'a> {
+        SelectOrderByNode::new(self, order_by_exprs)
     }
 
     pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
@@ -595,7 +598,7 @@ mod tests {
         use crate::{
             plan::{
                 JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
-                QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableAliasPlan, TableFactorPlan,
+                QueryPlan, SelectPlan, StatementPlan, TableAliasPlan, TableFactorPlan,
                 TableWithJoinsPlan,
             },
             query_builder::{SelectItemList, col},
@@ -634,9 +637,7 @@ mod tests {
                 aggregate_slots: None,
             };
 
-            Ok(StatementPlan::Query(QueryPlan::Body(SetExprPlan::Select(
-                Box::new(select),
-            ))))
+            Ok(StatementPlan::Query(QueryPlan::Select(Box::new(select))))
         };
 
         let actual = table("Player")

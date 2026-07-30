@@ -1,10 +1,10 @@
 use crate::{
     ast::{Query, SetExpr, Values},
-    plan::{SetExprPlan, ValuesPlan},
+    plan::{QueryPlan, ValuesPlan},
     query_builder::{
-        ExprList, ExprNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, QueryNode,
-        TableFactorNode,
-        select::{BuildQuery, BuildSetExprPlan},
+        ExprList, ExprNode, LimitNode, OffsetNode, OrderByExprList, QueryNode, TableFactorNode,
+        ValuesOrderByNode,
+        select::{BuildQuery, BuildQueryPlan},
     },
     result::Result,
 };
@@ -15,8 +15,11 @@ pub struct ValuesNode<'a> {
 }
 
 impl<'a> ValuesNode<'a> {
-    pub fn order_by<T: Into<OrderByExprList<'a>>>(self, order_by_exprs: T) -> OrderByNode<'a> {
-        OrderByNode::new(self, order_by_exprs)
+    pub fn order_by<T: Into<OrderByExprList<'a>>>(
+        self,
+        order_by_exprs: T,
+    ) -> ValuesOrderByNode<'a> {
+        ValuesOrderByNode::new(self, order_by_exprs)
     }
 
     pub fn offset<T: Into<ExprNode<'a>>>(self, expr: T) -> OffsetNode<'a> {
@@ -32,15 +35,21 @@ impl<'a> ValuesNode<'a> {
     }
 }
 
-impl BuildSetExprPlan for ValuesNode<'_> {
-    fn build_set_expr_plan(self) -> Result<SetExprPlan> {
+impl ValuesNode<'_> {
+    pub(super) fn build_values_plan(self) -> Result<ValuesPlan> {
         let values = self
             .values
             .into_iter()
             .map(ExprList::build_exprs_plan)
             .collect::<Result<Vec<_>>>()?;
 
-        Ok(SetExprPlan::Values(ValuesPlan(values)))
+        Ok(ValuesPlan(values))
+    }
+}
+
+impl BuildQueryPlan for ValuesNode<'_> {
+    fn build_query_plan(self) -> Result<QueryPlan> {
+        self.build_values_plan().map(QueryPlan::Values)
     }
 }
 
@@ -93,8 +102,20 @@ mod tests {
         let expected = "VALUES(1, 'a'), (2, 'b') offset 1";
         test_query_builder(actual, expected);
 
+        let actual = values(vec!["1, 'a'", "2, 'b'"])
+            .order_by("column1")
+            .offset(1);
+        let expected = "VALUES(1, 'a'), (2, 'b') ORDER BY column1 OFFSET 1";
+        test_query_builder(actual, expected);
+
         let actual = values(vec!["1, 'a'", "2, 'b'"]).limit(1);
         let expected = "VALUES(1, 'a'), (2, 'b') limit 1";
+        test_query_builder(actual, expected);
+
+        let actual = values(vec!["1, 'a'", "2, 'b'"])
+            .order_by("column1")
+            .limit(1);
+        let expected = "VALUES(1, 'a'), (2, 'b') ORDER BY column1 LIMIT 1";
         test_query_builder(actual, expected);
 
         let actual = values(vec!["1, 'a'", "2, 'b'"]).offset(1).limit(1);
@@ -103,6 +124,13 @@ mod tests {
 
         let actual = values(vec!["1, 'a'", "2, 'b'"]).alias_as("Sub").select();
         let expected = "SELECT * FROM (VALUES(1, 'a'), (2, 'b')) AS Sub";
+        test_query_builder(actual, expected);
+
+        let actual = values(vec!["1, 'a'", "2, 'b'"])
+            .order_by("column1")
+            .alias_as("Sub")
+            .select();
+        let expected = "SELECT * FROM (VALUES(1, 'a'), (2, 'b') ORDER BY column1) AS Sub";
         test_query_builder(actual, expected);
     }
 }

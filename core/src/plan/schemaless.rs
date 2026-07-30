@@ -163,7 +163,7 @@ mod tests {
         crate::{
             mock::{MockStorage, run},
             parse_sql::parse,
-            plan::{ProjectionPlan, QueryPlan, SetExprPlan, StatementPlan, fetch_schema_map},
+            plan::{ProjectionPlan, QueryPlan, StatementPlan, fetch_schema_map},
             translate::translate,
         },
     };
@@ -188,11 +188,9 @@ mod tests {
             let expected_parsed = parse(expected).expect(expected).into_iter().next().unwrap();
             let mut expected_stmt = StatementPlan::from(translate(&expected_parsed).unwrap());
             if let (
-                StatementPlan::Query(QueryPlan::Body(actual_body)),
-                StatementPlan::Query(QueryPlan::Body(expected_body)),
+                StatementPlan::Query(QueryPlan::Select(actual_select)),
+                StatementPlan::Query(QueryPlan::Select(expected_select)),
             ) = (&result, &mut expected_stmt)
-                && let (SetExprPlan::Select(actual_select), SetExprPlan::Select(expected_select)) =
-                    (actual_body, expected_body)
             {
                 expected_select.projection = actual_select.projection.clone();
             }
@@ -474,11 +472,8 @@ mod tests {
             let schema_map = fetch_schema_map(&storage, &statement).unwrap();
             let planned = plan_schemaless(&schema_map, statement).unwrap();
 
-            let StatementPlan::Query(QueryPlan::Body(body)) = planned else {
+            let StatementPlan::Query(QueryPlan::Select(select)) = planned else {
                 panic!("expected query statement");
-            };
-            let SetExprPlan::Select(select) = &body else {
-                panic!("expected select query");
             };
             assert_eq!(
                 matches!(select.projection, ProjectionPlan::SchemalessMap),

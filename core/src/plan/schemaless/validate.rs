@@ -4,8 +4,9 @@ use {
         data::Schema,
         plan::{
             ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, LimitInputPlan,
-            LimitPlan, OffsetInputPlan, OffsetPlan, OrderByPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
+            LimitPlan, OffsetInputPlan, OffsetPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
+            SelectOrderByPlan, SelectPlan, StatementPlan, TableFactorPlan, ValuesOrderByPlan,
+            ValuesPlan,
         },
         result::Result,
     },
@@ -67,13 +68,21 @@ fn validate_query(
     query: &QueryPlan,
 ) -> ValidateResult {
     match query {
-        QueryPlan::Body(body) => validate_set_expr(schema_map, body),
-        QueryPlan::OrderBy(order_by) => validate_order_by(schema_map, order_by),
+        QueryPlan::Select(select) => validate_select(schema_map, select),
+        QueryPlan::Values(values) => validate_values(schema_map, values),
+        QueryPlan::SelectOrderBy(order_by) => validate_select_order_by(schema_map, order_by),
+        QueryPlan::ValuesOrderBy(order_by) => validate_values_order_by(schema_map, order_by),
         QueryPlan::Offset(offset) => validate_offset(schema_map, offset),
         QueryPlan::Limit(LimitPlan { input, count }) => {
             match input {
-                LimitInputPlan::Body(body) => validate_set_expr(schema_map, body)?,
-                LimitInputPlan::OrderBy(order_by) => validate_order_by(schema_map, order_by)?,
+                LimitInputPlan::Select(select) => validate_select(schema_map, select)?,
+                LimitInputPlan::Values(values) => validate_values(schema_map, values)?,
+                LimitInputPlan::SelectOrderBy(order_by) => {
+                    validate_select_order_by(schema_map, order_by)?;
+                }
+                LimitInputPlan::ValuesOrderBy(order_by) => {
+                    validate_values_order_by(schema_map, order_by)?;
+                }
                 LimitInputPlan::Offset(offset) => validate_offset(schema_map, offset)?,
             }
 
@@ -87,18 +96,24 @@ fn validate_offset(
     OffsetPlan { input, count }: &OffsetPlan,
 ) -> ValidateResult {
     match input {
-        OffsetInputPlan::Body(body) => validate_set_expr(schema_map, body)?,
-        OffsetInputPlan::OrderBy(order_by) => validate_order_by(schema_map, order_by)?,
+        OffsetInputPlan::Select(select) => validate_select(schema_map, select)?,
+        OffsetInputPlan::Values(values) => validate_values(schema_map, values)?,
+        OffsetInputPlan::SelectOrderBy(order_by) => {
+            validate_select_order_by(schema_map, order_by)?;
+        }
+        OffsetInputPlan::ValuesOrderBy(order_by) => {
+            validate_values_order_by(schema_map, order_by)?;
+        }
     }
 
     validate_expr(schema_map, count)
 }
 
-fn validate_order_by(
+fn validate_select_order_by(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    OrderByPlan { input, exprs }: &OrderByPlan,
+    SelectOrderByPlan { input, exprs }: &SelectOrderByPlan,
 ) -> ValidateResult {
-    validate_set_expr(schema_map, input)?;
+    validate_select(schema_map, input)?;
     for order_by in exprs {
         validate_expr(schema_map, &order_by.expr)?;
     }
@@ -106,18 +121,25 @@ fn validate_order_by(
     Ok(())
 }
 
-fn validate_set_expr(
+fn validate_values_order_by(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    body: &SetExprPlan,
+    ValuesOrderByPlan { input, exprs }: &ValuesOrderByPlan,
 ) -> ValidateResult {
-    match body {
-        SetExprPlan::Select(select) => validate_select(schema_map, select)?,
-        SetExprPlan::Values(values) => {
-            for row in &values.0 {
-                for expr in row {
-                    validate_expr(schema_map, expr)?;
-                }
-            }
+    validate_values(schema_map, input)?;
+    for order_by in exprs {
+        validate_expr(schema_map, &order_by.expr)?;
+    }
+
+    Ok(())
+}
+
+fn validate_values(
+    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    values: &ValuesPlan,
+) -> ValidateResult {
+    for row in &values.0 {
+        for expr in row {
+            validate_expr(schema_map, expr)?;
         }
     }
 
@@ -258,8 +280,7 @@ mod tests {
             mock::{MockStorage, run},
             parse_sql::parse,
             plan::{
-                ExprPlan, JoinExecutorPlan, PlanError, QueryPlan, SetExprPlan, StatementPlan,
-                fetch_schema_map,
+                ExprPlan, JoinExecutorPlan, PlanError, QueryPlan, StatementPlan, fetch_schema_map,
             },
             translate::translate,
         },
@@ -462,8 +483,7 @@ mod tests {
         let schema_map = fetch_schema_map(&storage, &statement).unwrap();
 
         let mut applied = false;
-        if let StatementPlan::Query(QueryPlan::Body(body)) = &mut statement
-            && let SetExprPlan::Select(select) = body
+        if let StatementPlan::Query(QueryPlan::Select(select)) = &mut statement
             && let Some(join) = select.from.joins.first_mut()
         {
             join.join_executor = JoinExecutorPlan::Hash {
@@ -487,8 +507,7 @@ mod tests {
         let schema_map = fetch_schema_map(&storage, &statement).unwrap();
 
         let mut applied = false;
-        if let StatementPlan::Query(QueryPlan::Body(body)) = &mut statement
-            && let SetExprPlan::Select(select) = body
+        if let StatementPlan::Query(QueryPlan::Select(select)) = &mut statement
             && let Some(join) = select.from.joins.first_mut()
         {
             join.join_executor = JoinExecutorPlan::Hash {

@@ -1,5 +1,5 @@
 use {
-    super::{OrderByPlan, SetExprPlan},
+    super::{SelectOrderByPlan, SelectPlan, ValuesOrderByPlan, ValuesPlan},
     crate::plan::ExprPlan,
     serde::{Deserialize, Serialize},
 };
@@ -12,8 +12,10 @@ pub struct OffsetPlan {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum OffsetInputPlan {
-    Body(SetExprPlan),
-    OrderBy(OrderByPlan),
+    Select(Box<SelectPlan>),
+    Values(ValuesPlan),
+    SelectOrderBy(SelectOrderByPlan),
+    ValuesOrderBy(ValuesOrderByPlan),
 }
 
 #[cfg(test)]
@@ -22,44 +24,27 @@ mod tests {
         super::{OffsetInputPlan, OffsetPlan},
         crate::{
             ast::Literal,
-            plan::{ExprPlan, OrderByPlan, SetExprPlan, ValuesPlan},
+            plan::{ExprPlan, ValuesPlan},
         },
     };
-
-    fn body() -> SetExprPlan {
-        SetExprPlan::Values(ValuesPlan(Vec::new()))
-    }
 
     fn count(value: i64) -> ExprPlan {
         ExprPlan::Literal(Literal::Number(value.into()))
     }
 
     #[test]
-    fn offset_accepts_body_input() {
+    fn offset_accepts_values_input() {
         let plan = OffsetPlan {
-            input: OffsetInputPlan::Body(body()),
+            input: OffsetInputPlan::Values(ValuesPlan(Vec::new())),
             count: count(2),
         };
 
         assert!(matches!(
             plan,
             OffsetPlan {
-                input: OffsetInputPlan::Body(_),
+                input: OffsetInputPlan::Values(_),
                 count: actual,
             } if actual == count(2)
         ));
-    }
-
-    #[test]
-    fn offset_accepts_order_by_input() {
-        let plan = OffsetPlan {
-            input: OffsetInputPlan::OrderBy(OrderByPlan {
-                input: body(),
-                exprs: Vec::new(),
-            }),
-            count: count(2),
-        };
-
-        assert!(matches!(plan.input, OffsetInputPlan::OrderBy(_)));
     }
 }

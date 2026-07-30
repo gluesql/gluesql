@@ -6,8 +6,8 @@ use {
         data::Schema,
         plan::{
             ExprPlan, IndexItemPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
-            OrderByPlan, QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
-            TableWithJoinsPlan, expr::evaluable::check_expr as check_evaluable,
+            QueryPlan, SelectPlan, StatementPlan, TableFactorPlan, TableWithJoinsPlan,
+            expr::evaluable::check_expr as check_evaluable,
         },
     },
     std::{collections::HashMap, hash::BuildHasher, rc::Rc},
@@ -37,53 +37,55 @@ struct PrimaryKeyPlanner<'a, S> {
 
 impl<'a, S: BuildHasher> Planner<'a> for PrimaryKeyPlanner<'a, S> {
     fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
-        let plan_body = |body| match body {
-            SetExprPlan::Select(select) => {
-                let select = self.select(outer_context, *select);
-
-                SetExprPlan::Select(Box::new(select))
-            }
-            SetExprPlan::Values(values) => SetExprPlan::Values(values),
+        let plan_select = |select: Box<SelectPlan>| {
+            Box::new(self.select(outer_context.as_ref().map(Rc::clone), *select))
         };
-
         match query {
-            QueryPlan::Body(body) => QueryPlan::Body(plan_body(body)),
-            QueryPlan::OrderBy(OrderByPlan { input, exprs }) => QueryPlan::OrderBy(OrderByPlan {
-                input: plan_body(input),
-                exprs,
-            }),
+            QueryPlan::Select(select) => QueryPlan::Select(plan_select(select)),
+            QueryPlan::Values(values) => QueryPlan::Values(values),
+            QueryPlan::SelectOrderBy(mut order_by) => {
+                order_by.input = plan_select(order_by.input);
+                QueryPlan::SelectOrderBy(order_by)
+            }
+            QueryPlan::ValuesOrderBy(order_by) => QueryPlan::ValuesOrderBy(order_by),
             QueryPlan::Offset(OffsetPlan { input, count }) => QueryPlan::Offset(OffsetPlan {
                 input: match input {
-                    OffsetInputPlan::Body(body) => OffsetInputPlan::Body(plan_body(body)),
-                    OffsetInputPlan::OrderBy(OrderByPlan { input, exprs }) => {
-                        OffsetInputPlan::OrderBy(OrderByPlan {
-                            input: plan_body(input),
-                            exprs,
-                        })
+                    OffsetInputPlan::Select(select) => OffsetInputPlan::Select(plan_select(select)),
+                    OffsetInputPlan::Values(values) => OffsetInputPlan::Values(values),
+                    OffsetInputPlan::SelectOrderBy(mut order_by) => {
+                        order_by.input = plan_select(order_by.input);
+                        OffsetInputPlan::SelectOrderBy(order_by)
+                    }
+                    OffsetInputPlan::ValuesOrderBy(order_by) => {
+                        OffsetInputPlan::ValuesOrderBy(order_by)
                     }
                 },
                 count,
             }),
             QueryPlan::Limit(LimitPlan { input, count }) => {
                 let input = match input {
-                    LimitInputPlan::Body(body) => LimitInputPlan::Body(plan_body(body)),
-                    LimitInputPlan::OrderBy(OrderByPlan { input, exprs }) => {
-                        LimitInputPlan::OrderBy(OrderByPlan {
-                            input: plan_body(input),
-                            exprs,
-                        })
+                    LimitInputPlan::Select(select) => LimitInputPlan::Select(plan_select(select)),
+                    LimitInputPlan::Values(values) => LimitInputPlan::Values(values),
+                    LimitInputPlan::SelectOrderBy(mut order_by) => {
+                        order_by.input = plan_select(order_by.input);
+                        LimitInputPlan::SelectOrderBy(order_by)
+                    }
+                    LimitInputPlan::ValuesOrderBy(order_by) => {
+                        LimitInputPlan::ValuesOrderBy(order_by)
                     }
                     LimitInputPlan::Offset(OffsetPlan { input, count }) => {
                         LimitInputPlan::Offset(OffsetPlan {
                             input: match input {
-                                OffsetInputPlan::Body(body) => {
-                                    OffsetInputPlan::Body(plan_body(body))
+                                OffsetInputPlan::Select(select) => {
+                                    OffsetInputPlan::Select(plan_select(select))
                                 }
-                                OffsetInputPlan::OrderBy(OrderByPlan { input, exprs }) => {
-                                    OffsetInputPlan::OrderBy(OrderByPlan {
-                                        input: plan_body(input),
-                                        exprs,
-                                    })
+                                OffsetInputPlan::Values(values) => OffsetInputPlan::Values(values),
+                                OffsetInputPlan::SelectOrderBy(mut order_by) => {
+                                    order_by.input = plan_select(order_by.input);
+                                    OffsetInputPlan::SelectOrderBy(order_by)
+                                }
+                                OffsetInputPlan::ValuesOrderBy(order_by) => {
+                                    OffsetInputPlan::ValuesOrderBy(order_by)
                                 }
                             },
                             count,
@@ -279,8 +281,8 @@ mod tests {
             mock::{MockStorage, run},
             parse_sql::{parse, parse_expr},
             plan::{
-                ExprPlan, IndexItemPlan, QueryPlan, SelectPlan, SetExprPlan, StatementPlan,
-                TableAliasPlan, TableFactorPlan, fetch_schema_map,
+                ExprPlan, IndexItemPlan, QueryPlan, SelectPlan, StatementPlan, TableAliasPlan,
+                TableFactorPlan, fetch_schema_map,
             },
             query_builder::{Build, col, primary_key, table},
             translate::{NO_PARAMS, translate, translate_expr},
@@ -294,7 +296,7 @@ mod tests {
 
     fn try_select(statement: StatementPlan) -> Option<Box<SelectPlan>> {
         match statement {
-            StatementPlan::Query(QueryPlan::Body(SetExprPlan::Select(select))) => Some(select),
+            StatementPlan::Query(QueryPlan::Select(select)) => Some(select),
             _ => None,
         }
     }
@@ -455,7 +457,7 @@ mod tests {
         assert!(
             matches!(
                 actual,
-                StatementPlan::Query(QueryPlan::Body(SetExprPlan::Select(select_plan)))
+                StatementPlan::Query(QueryPlan::Select(select_plan))
                     if select_plan.from.relation == expected_relation
                     && select_plan.selection.is_none()
             ),

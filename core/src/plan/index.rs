@@ -5,7 +5,7 @@ use {
         data::{Schema, SchemaIndex, SchemaIndexOrd, Value},
         plan::{
             ExprPlan, IndexItemPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
-            OrderByExprPlan, OrderByPlan, QueryPlan, SelectPlan, SetExprPlan, StatementPlan,
+            OrderByExprPlan, QueryPlan, SelectOrderByPlan, SelectPlan, StatementPlan,
             TableFactorPlan,
             expr::{deterministic::is_deterministic, nullability::may_return_null},
             plan_scalar_expr,
@@ -36,41 +36,40 @@ struct IndexPlanner<'a, S> {
 
 impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
     fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
-        let plan_body = |body, order_by| {
-            let (body, order_by) = match body {
-                SetExprPlan::Select(select) => {
-                    let (select, order_by) = self.select(outer_context.as_ref(), *select, order_by);
+        let plan_select = |input: Box<SelectPlan>, order_by| {
+            let (input, order_by) = self.select(outer_context.as_ref(), *input, order_by);
 
-                    (SetExprPlan::Select(Box::new(select)), order_by)
-                }
-                SetExprPlan::Values(values) => (SetExprPlan::Values(values), order_by),
-            };
-
-            (body, order_by)
+            (Box::new(input), order_by)
         };
 
         match query {
-            QueryPlan::Body(body) => QueryPlan::Body(plan_body(body, Vec::new()).0),
-            QueryPlan::OrderBy(OrderByPlan { input, exprs }) => {
-                let (input, exprs) = plan_body(input, exprs);
+            QueryPlan::Select(input) => QueryPlan::Select(plan_select(input, Vec::new()).0),
+            QueryPlan::Values(values) => QueryPlan::Values(values),
+            QueryPlan::SelectOrderBy(SelectOrderByPlan { input, exprs }) => {
+                let (input, exprs) = plan_select(input, exprs);
                 if exprs.is_empty() {
-                    QueryPlan::Body(input)
+                    QueryPlan::Select(input)
                 } else {
-                    QueryPlan::OrderBy(OrderByPlan { input, exprs })
+                    QueryPlan::SelectOrderBy(SelectOrderByPlan { input, exprs })
                 }
             }
+            QueryPlan::ValuesOrderBy(values) => QueryPlan::ValuesOrderBy(values),
             QueryPlan::Offset(OffsetPlan { input, count }) => {
                 let input = match input {
-                    OffsetInputPlan::Body(body) => {
-                        OffsetInputPlan::Body(plan_body(body, Vec::new()).0)
+                    OffsetInputPlan::Select(input) => {
+                        OffsetInputPlan::Select(plan_select(input, Vec::new()).0)
                     }
-                    OffsetInputPlan::OrderBy(OrderByPlan { input, exprs }) => {
-                        let (input, exprs) = plan_body(input, exprs);
+                    OffsetInputPlan::Values(values) => OffsetInputPlan::Values(values),
+                    OffsetInputPlan::SelectOrderBy(SelectOrderByPlan { input, exprs }) => {
+                        let (input, exprs) = plan_select(input, exprs);
                         if exprs.is_empty() {
-                            OffsetInputPlan::Body(input)
+                            OffsetInputPlan::Select(input)
                         } else {
-                            OffsetInputPlan::OrderBy(OrderByPlan { input, exprs })
+                            OffsetInputPlan::SelectOrderBy(SelectOrderByPlan { input, exprs })
                         }
+                    }
+                    OffsetInputPlan::ValuesOrderBy(values) => {
+                        OffsetInputPlan::ValuesOrderBy(values)
                     }
                 };
 
@@ -78,29 +77,38 @@ impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
             }
             QueryPlan::Limit(LimitPlan { input, count }) => {
                 let input = match input {
-                    LimitInputPlan::Body(body) => {
-                        LimitInputPlan::Body(plan_body(body, Vec::new()).0)
+                    LimitInputPlan::Select(input) => {
+                        LimitInputPlan::Select(plan_select(input, Vec::new()).0)
                     }
-                    LimitInputPlan::OrderBy(OrderByPlan { input, exprs }) => {
-                        let (input, exprs) = plan_body(input, exprs);
+                    LimitInputPlan::Values(values) => LimitInputPlan::Values(values),
+                    LimitInputPlan::SelectOrderBy(SelectOrderByPlan { input, exprs }) => {
+                        let (input, exprs) = plan_select(input, exprs);
                         if exprs.is_empty() {
-                            LimitInputPlan::Body(input)
+                            LimitInputPlan::Select(input)
                         } else {
-                            LimitInputPlan::OrderBy(OrderByPlan { input, exprs })
+                            LimitInputPlan::SelectOrderBy(SelectOrderByPlan { input, exprs })
                         }
                     }
+                    LimitInputPlan::ValuesOrderBy(values) => LimitInputPlan::ValuesOrderBy(values),
                     LimitInputPlan::Offset(OffsetPlan { input, count }) => {
                         let input = match input {
-                            OffsetInputPlan::Body(body) => {
-                                OffsetInputPlan::Body(plan_body(body, Vec::new()).0)
+                            OffsetInputPlan::Select(input) => {
+                                OffsetInputPlan::Select(plan_select(input, Vec::new()).0)
                             }
-                            OffsetInputPlan::OrderBy(OrderByPlan { input, exprs }) => {
-                                let (input, exprs) = plan_body(input, exprs);
+                            OffsetInputPlan::Values(values) => OffsetInputPlan::Values(values),
+                            OffsetInputPlan::SelectOrderBy(SelectOrderByPlan { input, exprs }) => {
+                                let (input, exprs) = plan_select(input, exprs);
                                 if exprs.is_empty() {
-                                    OffsetInputPlan::Body(input)
+                                    OffsetInputPlan::Select(input)
                                 } else {
-                                    OffsetInputPlan::OrderBy(OrderByPlan { input, exprs })
+                                    OffsetInputPlan::SelectOrderBy(SelectOrderByPlan {
+                                        input,
+                                        exprs,
+                                    })
                                 }
+                            }
+                            OffsetInputPlan::ValuesOrderBy(values) => {
+                                OffsetInputPlan::ValuesOrderBy(values)
                             }
                         };
                         LimitInputPlan::Offset(OffsetPlan { input, count })
@@ -605,14 +613,14 @@ CREATE INDEX idx_name ON Test (name);
         let root_preserved = plan_index(&storage, "SELECT * FROM Test ORDER BY id + name");
         assert!(matches!(
             root_preserved,
-            Ok(StatementPlan::Query(QueryPlan::OrderBy(_)))
+            Ok(StatementPlan::Query(QueryPlan::SelectOrderBy(_)))
         ));
 
         let offset_body = plan_index(&storage, "SELECT * FROM Test OFFSET 1");
         assert!(matches!(
             offset_body,
             Ok(StatementPlan::Query(QueryPlan::Offset(OffsetPlan {
-                input: OffsetInputPlan::Body(_),
+                input: OffsetInputPlan::Select(_),
                 ..
             })))
         ));
@@ -621,7 +629,7 @@ CREATE INDEX idx_name ON Test (name);
         assert!(matches!(
             offset_consumed,
             Ok(StatementPlan::Query(QueryPlan::Offset(OffsetPlan {
-                input: OffsetInputPlan::Body(_),
+                input: OffsetInputPlan::Select(_),
                 ..
             })))
         ));
@@ -631,7 +639,7 @@ CREATE INDEX idx_name ON Test (name);
         assert!(matches!(
             offset_preserved,
             Ok(StatementPlan::Query(QueryPlan::Offset(OffsetPlan {
-                input: OffsetInputPlan::OrderBy(_),
+                input: OffsetInputPlan::SelectOrderBy(_),
                 ..
             })))
         ));
@@ -640,7 +648,7 @@ CREATE INDEX idx_name ON Test (name);
         assert!(matches!(
             limit_body,
             Ok(StatementPlan::Query(QueryPlan::Limit(LimitPlan {
-                input: LimitInputPlan::Body(_),
+                input: LimitInputPlan::Select(_),
                 ..
             })))
         ));
@@ -649,7 +657,7 @@ CREATE INDEX idx_name ON Test (name);
         assert!(matches!(
             limit_consumed,
             Ok(StatementPlan::Query(QueryPlan::Limit(LimitPlan {
-                input: LimitInputPlan::Body(_),
+                input: LimitInputPlan::Select(_),
                 ..
             })))
         ));
@@ -658,7 +666,7 @@ CREATE INDEX idx_name ON Test (name);
         assert!(matches!(
             limit_preserved,
             Ok(StatementPlan::Query(QueryPlan::Limit(LimitPlan {
-                input: LimitInputPlan::OrderBy(_),
+                input: LimitInputPlan::SelectOrderBy(_),
                 ..
             })))
         ));
@@ -668,7 +676,7 @@ CREATE INDEX idx_name ON Test (name);
             offset_limit_body,
             Ok(StatementPlan::Query(QueryPlan::Limit(LimitPlan {
                 input: LimitInputPlan::Offset(OffsetPlan {
-                    input: OffsetInputPlan::Body(_),
+                    input: OffsetInputPlan::Select(_),
                     ..
                 }),
                 ..
@@ -683,7 +691,7 @@ CREATE INDEX idx_name ON Test (name);
             consumed,
             Ok(StatementPlan::Query(QueryPlan::Limit(LimitPlan {
                 input: LimitInputPlan::Offset(OffsetPlan {
-                    input: OffsetInputPlan::Body(_),
+                    input: OffsetInputPlan::Select(_),
                     ..
                 }),
                 ..
@@ -698,7 +706,7 @@ CREATE INDEX idx_name ON Test (name);
             preserved,
             Ok(StatementPlan::Query(QueryPlan::Limit(LimitPlan {
                 input: LimitInputPlan::Offset(OffsetPlan {
-                    input: OffsetInputPlan::OrderBy(_),
+                    input: OffsetInputPlan::SelectOrderBy(_),
                     ..
                 }),
                 ..

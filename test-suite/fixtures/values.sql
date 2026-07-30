@@ -23,6 +23,13 @@ VALUES (1, 'a'), (2, 'b') ORDER BY column1 DESC
 -- | 2            | "b"          |
 -- | 1            | "a"          |
 
+VALUES (1, 'a'), (3, 'c'), (2, 'b') ORDER BY column1 DESC LIMIT 2
+-- @expect:
+-- | column1: I64 | column2: Str |
+-- | ------------ | ------------ |
+-- | 3            | "c"          |
+-- | 2            | "b"          |
+
 VALUES (1, 'a'), (3, 'c'), (2, 'b') ORDER BY column1 DESC LIMIT 1 OFFSET 1
 -- @expect:
 -- | column1: I64 | column2: Str |
@@ -120,6 +127,15 @@ SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS Derived
 -- | ------------ | ------------ |
 -- | 1            | "a"          |
 -- | 2            | "b"          |
+
+-- @name: terminal pipeline composes in a derived VALUES query
+SELECT *
+FROM (VALUES (1), (4), (3), (2) ORDER BY column1 DESC LIMIT 2 OFFSET 1) AS Derived
+-- @expect:
+-- | column1: I64 |
+-- | ------------ |
+-- | 3            |
+-- | 2            |
 
 SELECT column1 AS id, column2 AS name FROM (VALUES (1, 'a'), (2, 'b')) AS Derived
 -- @expect:

@@ -8,8 +8,8 @@ use {
             select::{select, select_with_labels},
         },
         plan::{
-            ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan, SetExprPlan, TableFactorPlan,
-            ValuesPlan,
+            LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectionPlan, QueryPlan,
+            SelectItemPlan, SelectPlan, TableFactorPlan, ValuesPlan,
         },
         prelude::{DataType, Value},
         result::Result,
@@ -18,6 +18,37 @@ use {
     serde::Serialize,
     std::fmt,
 };
+
+enum CreateTableSource<'a> {
+    Select(&'a SelectPlan),
+    Values(&'a ValuesPlan),
+}
+
+fn create_table_offset_source(offset: &OffsetPlan) -> CreateTableSource<'_> {
+    match &offset.input {
+        OffsetInputPlan::Select(select) => CreateTableSource::Select(select),
+        OffsetInputPlan::Values(values) => CreateTableSource::Values(values),
+        OffsetInputPlan::SelectOrderBy(order_by) => CreateTableSource::Select(&order_by.input),
+        OffsetInputPlan::ValuesOrderBy(order_by) => CreateTableSource::Values(&order_by.input),
+    }
+}
+
+fn create_table_source(query: &QueryPlan) -> CreateTableSource<'_> {
+    match query {
+        QueryPlan::Select(select) => CreateTableSource::Select(select),
+        QueryPlan::Values(values) => CreateTableSource::Values(values),
+        QueryPlan::SelectOrderBy(order_by) => CreateTableSource::Select(&order_by.input),
+        QueryPlan::ValuesOrderBy(order_by) => CreateTableSource::Values(&order_by.input),
+        QueryPlan::Offset(offset) => create_table_offset_source(offset),
+        QueryPlan::Limit(LimitPlan { input, .. }) => match input {
+            LimitInputPlan::Select(select) => CreateTableSource::Select(select),
+            LimitInputPlan::Values(values) => CreateTableSource::Values(values),
+            LimitInputPlan::SelectOrderBy(order_by) => CreateTableSource::Select(&order_by.input),
+            LimitInputPlan::ValuesOrderBy(order_by) => CreateTableSource::Values(&order_by.input),
+            LimitInputPlan::Offset(offset) => create_table_offset_source(offset),
+        },
+    }
+}
 
 pub struct CreateTableOptions<'a> {
     pub target_table_name: &'a str,
@@ -43,8 +74,8 @@ pub fn create_table<T: GStore + GStoreMut>(
 ) -> Result<()> {
     let mut selected_source_rows = None;
     let target_columns_defs = match source.as_deref() {
-        Some(query) => match query.body() {
-            SetExprPlan::Select(select_query) => match &select_query.from.relation {
+        Some(query) => match create_table_source(query) {
+            CreateTableSource::Select(select_query) => match &select_query.from.relation {
                 TableFactorPlan::Table { name, .. } if can_copy_source_schema(select_query) => {
                     let schema = storage.fetch_schema(name)?;
                     let Schema {
@@ -78,7 +109,7 @@ pub fn create_table<T: GStore + GStoreMut>(
                     Some(column_defs)
                 }
             },
-            SetExprPlan::Values(ValuesPlan(values_list)) => {
+            CreateTableSource::Values(ValuesPlan(values_list)) => {
                 let first_len = values_list[0].len();
                 let mut column_types = vec![None; first_len];
 

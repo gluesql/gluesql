@@ -1,8 +1,8 @@
 use {
-    super::{BuildQuery, BuildQueryPlan, BuildSetExprPlan, ValuesNode},
+    super::{BuildQuery, BuildQueryPlan, BuildSelectPlan, ValuesNode},
     crate::{
         ast::Query,
-        plan::{OrderByPlan, QueryPlan, SetExprPlan},
+        plan::{OrderByExprPlan, QueryPlan, SelectOrderByPlan, ValuesOrderByPlan},
         query_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
             JoinNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryNode, SelectNode,
@@ -13,7 +13,7 @@ use {
 };
 
 #[derive(Clone, Debug)]
-pub(super) enum PrevNode<'a> {
+pub(super) enum SelectPrevNode<'a> {
     Select(SelectNode<'a>),
     Having(HavingNode<'a>),
     GroupBy(GroupByNode<'a>),
@@ -22,26 +22,48 @@ pub(super) enum PrevNode<'a> {
     JoinConstraint(JoinConstraintNode<'a>),
     HashJoin(Box<HashJoinNode<'a>>),
     ProjectNode(Box<ProjectNode<'a>>),
-    Values(ValuesNode<'a>),
 }
 
-impl BuildSetExprPlan for PrevNode<'_> {
-    fn build_set_expr_plan(self) -> Result<SetExprPlan> {
+impl SelectPrevNode<'_> {
+    fn build_select_order_by_plan(self, exprs: Vec<OrderByExprPlan>) -> Result<SelectOrderByPlan> {
         match self {
-            Self::Select(node) => node.build_set_expr_plan(),
-            Self::Having(node) => node.build_set_expr_plan(),
-            Self::GroupBy(node) => node.build_set_expr_plan(),
-            Self::Filter(node) => node.build_set_expr_plan(),
-            Self::JoinNode(node) => node.build_set_expr_plan(),
-            Self::JoinConstraint(node) => node.build_set_expr_plan(),
-            Self::HashJoin(node) => node.build_set_expr_plan(),
-            Self::ProjectNode(node) => node.build_set_expr_plan(),
-            Self::Values(node) => node.build_set_expr_plan(),
+            Self::Select(node) => node
+                .build_select_plan()
+                .map(Box::new)
+                .map(|input| SelectOrderByPlan { input, exprs }),
+            Self::Having(node) => node
+                .build_select_plan()
+                .map(Box::new)
+                .map(|input| SelectOrderByPlan { input, exprs }),
+            Self::GroupBy(node) => node
+                .build_select_plan()
+                .map(Box::new)
+                .map(|input| SelectOrderByPlan { input, exprs }),
+            Self::Filter(node) => node
+                .build_select_plan()
+                .map(Box::new)
+                .map(|input| SelectOrderByPlan { input, exprs }),
+            Self::JoinNode(node) => node
+                .build_select_plan()
+                .map(Box::new)
+                .map(|input| SelectOrderByPlan { input, exprs }),
+            Self::JoinConstraint(node) => node
+                .build_select_plan()
+                .map(Box::new)
+                .map(|input| SelectOrderByPlan { input, exprs }),
+            Self::HashJoin(node) => node
+                .build_select_plan()
+                .map(Box::new)
+                .map(|input| SelectOrderByPlan { input, exprs }),
+            Self::ProjectNode(node) => node
+                .build_select_plan()
+                .map(Box::new)
+                .map(|input| SelectOrderByPlan { input, exprs }),
         }
     }
 }
 
-impl BuildQuery for PrevNode<'_> {
+impl BuildQuery for SelectPrevNode<'_> {
     fn build_query(self) -> Result<Query> {
         match self {
             Self::Select(node) => node.build_query(),
@@ -52,73 +74,66 @@ impl BuildQuery for PrevNode<'_> {
             Self::JoinConstraint(node) => node.build_query(),
             Self::HashJoin(node) => node.build_query(),
             Self::ProjectNode(node) => node.build_query(),
-            Self::Values(node) => node.build_query(),
         }
     }
 }
 
-impl<'a> From<SelectNode<'a>> for PrevNode<'a> {
+impl<'a> From<SelectNode<'a>> for SelectPrevNode<'a> {
     fn from(node: SelectNode<'a>) -> Self {
-        PrevNode::Select(node)
+        Self::Select(node)
     }
 }
 
-impl<'a> From<HavingNode<'a>> for PrevNode<'a> {
+impl<'a> From<HavingNode<'a>> for SelectPrevNode<'a> {
     fn from(node: HavingNode<'a>) -> Self {
-        PrevNode::Having(node)
+        Self::Having(node)
     }
 }
 
-impl<'a> From<GroupByNode<'a>> for PrevNode<'a> {
+impl<'a> From<GroupByNode<'a>> for SelectPrevNode<'a> {
     fn from(node: GroupByNode<'a>) -> Self {
-        PrevNode::GroupBy(node)
+        Self::GroupBy(node)
     }
 }
 
-impl<'a> From<FilterNode<'a>> for PrevNode<'a> {
+impl<'a> From<FilterNode<'a>> for SelectPrevNode<'a> {
     fn from(node: FilterNode<'a>) -> Self {
-        PrevNode::Filter(node)
+        Self::Filter(node)
     }
 }
 
-impl<'a> From<JoinNode<'a>> for PrevNode<'a> {
+impl<'a> From<JoinNode<'a>> for SelectPrevNode<'a> {
     fn from(node: JoinNode<'a>) -> Self {
-        PrevNode::JoinNode(node)
+        Self::JoinNode(node)
     }
 }
 
-impl<'a> From<JoinConstraintNode<'a>> for PrevNode<'a> {
+impl<'a> From<JoinConstraintNode<'a>> for SelectPrevNode<'a> {
     fn from(node: JoinConstraintNode<'a>) -> Self {
-        PrevNode::JoinConstraint(node)
+        Self::JoinConstraint(node)
     }
 }
 
-impl<'a> From<HashJoinNode<'a>> for PrevNode<'a> {
+impl<'a> From<HashJoinNode<'a>> for SelectPrevNode<'a> {
     fn from(node: HashJoinNode<'a>) -> Self {
-        PrevNode::HashJoin(Box::new(node))
+        Self::HashJoin(Box::new(node))
     }
 }
 
-impl<'a> From<ProjectNode<'a>> for PrevNode<'a> {
+impl<'a> From<ProjectNode<'a>> for SelectPrevNode<'a> {
     fn from(node: ProjectNode<'a>) -> Self {
-        PrevNode::ProjectNode(Box::new(node))
-    }
-}
-
-impl<'a> From<ValuesNode<'a>> for PrevNode<'a> {
-    fn from(node: ValuesNode<'a>) -> Self {
-        PrevNode::Values(node)
+        Self::ProjectNode(Box::new(node))
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct OrderByNode<'a> {
-    prev_node: PrevNode<'a>,
+pub struct SelectOrderByNode<'a> {
+    prev_node: SelectPrevNode<'a>,
     expr_list: OrderByExprList<'a>,
 }
 
-impl<'a> OrderByNode<'a> {
-    pub(super) fn new<N: Into<PrevNode<'a>>, T: Into<OrderByExprList<'a>>>(
+impl<'a> SelectOrderByNode<'a> {
+    pub(super) fn new<N: Into<SelectPrevNode<'a>>, T: Into<OrderByExprList<'a>>>(
         prev_node: N,
         expr_list: T,
     ) -> Self {
@@ -137,26 +152,81 @@ impl<'a> OrderByNode<'a> {
     }
 
     pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
-        QueryNode::OrderByNode(self).alias_as(table_alias)
+        QueryNode::SelectOrderByNode(self).alias_as(table_alias)
     }
 }
 
-impl OrderByNode<'_> {
-    pub(super) fn build_order_by_plan(self) -> Result<OrderByPlan> {
-        let input = self.prev_node.build_set_expr_plan()?;
+impl SelectOrderByNode<'_> {
+    pub(super) fn build_select_order_by_plan(self) -> Result<SelectOrderByPlan> {
         let exprs = self.expr_list.build_order_by_exprs_plan()?;
 
-        Ok(OrderByPlan { input, exprs })
+        self.prev_node.build_select_order_by_plan(exprs)
     }
 }
 
-impl BuildQueryPlan for OrderByNode<'_> {
+impl BuildQueryPlan for SelectOrderByNode<'_> {
     fn build_query_plan(self) -> Result<QueryPlan> {
-        self.build_order_by_plan().map(QueryPlan::OrderBy)
+        self.build_select_order_by_plan()
+            .map(QueryPlan::SelectOrderBy)
     }
 }
 
-impl BuildQuery for OrderByNode<'_> {
+impl BuildQuery for SelectOrderByNode<'_> {
+    fn build_query(self) -> Result<Query> {
+        let mut node_data = self.prev_node.build_query()?;
+        node_data.order_by = self.expr_list.build_order_by_exprs()?;
+
+        Ok(node_data)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ValuesOrderByNode<'a> {
+    prev_node: ValuesNode<'a>,
+    expr_list: OrderByExprList<'a>,
+}
+
+impl<'a> ValuesOrderByNode<'a> {
+    pub(super) fn new<T: Into<OrderByExprList<'a>>>(
+        prev_node: ValuesNode<'a>,
+        expr_list: T,
+    ) -> Self {
+        Self {
+            prev_node,
+            expr_list: expr_list.into(),
+        }
+    }
+
+    pub fn offset<T: Into<ExprNode<'a>>>(self, expr: T) -> OffsetNode<'a> {
+        OffsetNode::new(self, expr)
+    }
+
+    pub fn limit<T: Into<ExprNode<'a>>>(self, expr: T) -> LimitNode<'a> {
+        LimitNode::new(self, expr)
+    }
+
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
+        QueryNode::ValuesOrderByNode(self).alias_as(table_alias)
+    }
+}
+
+impl ValuesOrderByNode<'_> {
+    pub(super) fn build_values_order_by_plan(self) -> Result<ValuesOrderByPlan> {
+        let input = self.prev_node.build_values_plan()?;
+        let exprs = self.expr_list.build_order_by_exprs_plan()?;
+
+        Ok(ValuesOrderByPlan { input, exprs })
+    }
+}
+
+impl BuildQueryPlan for ValuesOrderByNode<'_> {
+    fn build_query_plan(self) -> Result<QueryPlan> {
+        self.build_values_order_by_plan()
+            .map(QueryPlan::ValuesOrderBy)
+    }
+}
+
+impl BuildQuery for ValuesOrderByNode<'_> {
     fn build_query(self) -> Result<Query> {
         let mut node_data = self.prev_node.build_query()?;
         node_data.order_by = self.expr_list.build_order_by_exprs()?;
@@ -170,8 +240,8 @@ mod tests {
     use {
         crate::{
             plan::{
-                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, OrderByPlan,
-                ProjectionPlan, QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
+                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
+                QueryPlan, SelectOrderByPlan, SelectPlan, StatementPlan, TableFactorPlan,
                 TableWithJoinsPlan,
             },
             query_builder::{
@@ -334,12 +404,14 @@ mod tests {
                 aggregate_slots: None,
             };
 
-            Ok(StatementPlan::Query(QueryPlan::OrderBy(OrderByPlan {
-                input: SetExprPlan::Select(Box::new(select)),
-                exprs: OrderByExprList::from("Player.score DESC")
-                    .build_order_by_exprs_plan()
-                    .unwrap(),
-            })))
+            Ok(StatementPlan::Query(QueryPlan::SelectOrderBy(
+                SelectOrderByPlan {
+                    input: Box::new(select),
+                    exprs: OrderByExprList::from("Player.score DESC")
+                        .build_order_by_exprs_plan()
+                        .unwrap(),
+                },
+            )))
         };
         assert_eq!(actual, expected);
 

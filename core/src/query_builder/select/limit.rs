@@ -1,11 +1,12 @@
 use {
-    super::{BuildQuery, BuildQueryPlan, BuildSetExprPlan, values::ValuesNode},
+    super::{BuildQuery, BuildQueryPlan, BuildSelectPlan, values::ValuesNode},
     crate::{
         ast::Query,
         plan::{LimitInputPlan, LimitPlan, QueryPlan},
         query_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
-            JoinNode, OrderByNode, ProjectNode, QueryNode, SelectNode, TableFactorNode,
+            JoinNode, ProjectNode, QueryNode, SelectNode, SelectOrderByNode, TableFactorNode,
+            ValuesOrderByNode,
         },
         result::Result,
     },
@@ -21,23 +22,53 @@ pub(super) enum PrevNode<'a> {
     JoinConstraint(Box<JoinConstraintNode<'a>>),
     HashJoin(HashJoinNode<'a>),
     Filter(FilterNode<'a>),
-    OrderBy(OrderByNode<'a>),
+    SelectOrderBy(SelectOrderByNode<'a>),
+    ValuesOrderBy(ValuesOrderByNode<'a>),
     ProjectNode(Box<ProjectNode<'a>>),
 }
 
 impl PrevNode<'_> {
     fn build_limit_input_plan(self) -> Result<LimitInputPlan> {
         match self {
-            Self::Select(node) => node.build_set_expr_plan().map(LimitInputPlan::Body),
-            Self::Values(node) => node.build_set_expr_plan().map(LimitInputPlan::Body),
-            Self::GroupBy(node) => node.build_set_expr_plan().map(LimitInputPlan::Body),
-            Self::Having(node) => node.build_set_expr_plan().map(LimitInputPlan::Body),
-            Self::Join(node) => node.build_set_expr_plan().map(LimitInputPlan::Body),
-            Self::JoinConstraint(node) => node.build_set_expr_plan().map(LimitInputPlan::Body),
-            Self::HashJoin(node) => node.build_set_expr_plan().map(LimitInputPlan::Body),
-            Self::Filter(node) => node.build_set_expr_plan().map(LimitInputPlan::Body),
-            Self::OrderBy(node) => node.build_order_by_plan().map(LimitInputPlan::OrderBy),
-            Self::ProjectNode(node) => node.build_set_expr_plan().map(LimitInputPlan::Body),
+            Self::Select(node) => node
+                .build_select_plan()
+                .map(Box::new)
+                .map(LimitInputPlan::Select),
+            Self::Values(node) => node.build_values_plan().map(LimitInputPlan::Values),
+            Self::GroupBy(node) => node
+                .build_select_plan()
+                .map(Box::new)
+                .map(LimitInputPlan::Select),
+            Self::Having(node) => node
+                .build_select_plan()
+                .map(Box::new)
+                .map(LimitInputPlan::Select),
+            Self::Join(node) => node
+                .build_select_plan()
+                .map(Box::new)
+                .map(LimitInputPlan::Select),
+            Self::JoinConstraint(node) => node
+                .build_select_plan()
+                .map(Box::new)
+                .map(LimitInputPlan::Select),
+            Self::HashJoin(node) => node
+                .build_select_plan()
+                .map(Box::new)
+                .map(LimitInputPlan::Select),
+            Self::Filter(node) => node
+                .build_select_plan()
+                .map(Box::new)
+                .map(LimitInputPlan::Select),
+            Self::SelectOrderBy(node) => node
+                .build_select_order_by_plan()
+                .map(LimitInputPlan::SelectOrderBy),
+            Self::ValuesOrderBy(node) => node
+                .build_values_order_by_plan()
+                .map(LimitInputPlan::ValuesOrderBy),
+            Self::ProjectNode(node) => node
+                .build_select_plan()
+                .map(Box::new)
+                .map(LimitInputPlan::Select),
         }
     }
 }
@@ -53,7 +84,8 @@ impl BuildQuery for PrevNode<'_> {
             Self::JoinConstraint(node) => node.build_query(),
             Self::HashJoin(node) => node.build_query(),
             Self::Filter(node) => node.build_query(),
-            Self::OrderBy(node) => node.build_query(),
+            Self::SelectOrderBy(node) => node.build_query(),
+            Self::ValuesOrderBy(node) => node.build_query(),
             Self::ProjectNode(node) => node.build_query(),
         }
     }
@@ -107,9 +139,15 @@ impl<'a> From<FilterNode<'a>> for PrevNode<'a> {
     }
 }
 
-impl<'a> From<OrderByNode<'a>> for PrevNode<'a> {
-    fn from(node: OrderByNode<'a>) -> Self {
-        PrevNode::OrderBy(node)
+impl<'a> From<SelectOrderByNode<'a>> for PrevNode<'a> {
+    fn from(node: SelectOrderByNode<'a>) -> Self {
+        Self::SelectOrderBy(node)
+    }
+}
+
+impl<'a> From<ValuesOrderByNode<'a>> for PrevNode<'a> {
+    fn from(node: ValuesOrderByNode<'a>) -> Self {
+        Self::ValuesOrderBy(node)
     }
 }
 
@@ -162,8 +200,8 @@ mod tests {
         crate::{
             plan::{
                 JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, LimitInputPlan,
-                LimitPlan, ProjectionPlan, QueryPlan, SelectPlan, SetExprPlan, StatementPlan,
-                TableFactorPlan, TableWithJoinsPlan,
+                LimitPlan, ProjectionPlan, QueryPlan, SelectPlan, StatementPlan, TableFactorPlan,
+                TableWithJoinsPlan,
             },
             query_builder::{Build, SelectItemList, col, num, table, test_query_builder},
         },
@@ -290,7 +328,7 @@ mod tests {
             };
 
             let limit = LimitPlan {
-                input: LimitInputPlan::Body(SetExprPlan::Select(Box::new(select))),
+                input: LimitInputPlan::Select(Box::new(select)),
                 count: num(100).build_expr_plan().unwrap(),
             };
 

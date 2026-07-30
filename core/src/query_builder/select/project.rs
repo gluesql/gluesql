@@ -5,8 +5,8 @@ use {
         plan::{ProjectionPlan, SelectPlan},
         query_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
-            JoinNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, QueryNode,
-            SelectItemList, SelectNode, TableFactorNode,
+            JoinNode, LimitNode, OffsetNode, OrderByExprList, QueryNode, SelectItemList,
+            SelectNode, SelectOrderByNode, TableFactorNode,
         },
         result::Result,
     },
@@ -121,8 +121,11 @@ impl<'a> ProjectNode<'a> {
         QueryNode::ProjectNode(self).alias_as(table_alias)
     }
 
-    pub fn order_by<T: Into<OrderByExprList<'a>>>(self, order_by_exprs: T) -> OrderByNode<'a> {
-        OrderByNode::new(self, order_by_exprs)
+    pub fn order_by<T: Into<OrderByExprList<'a>>>(
+        self,
+        order_by_exprs: T,
+    ) -> SelectOrderByNode<'a> {
+        SelectOrderByNode::new(self, order_by_exprs)
     }
 
     pub fn offset<T: Into<ExprNode<'a>>>(self, expr: T) -> OffsetNode<'a> {
@@ -174,8 +177,7 @@ mod tests {
         crate::{
             plan::{
                 JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
-                QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
-                TableWithJoinsPlan,
+                QueryPlan, SelectPlan, StatementPlan, TableFactorPlan, TableWithJoinsPlan,
             },
             query_builder::{Build, SelectItemList, col, table, test_query_builder},
         },
@@ -297,9 +299,7 @@ mod tests {
                 aggregate_slots: None,
             };
 
-            Ok(StatementPlan::Query(QueryPlan::Body(SetExprPlan::Select(
-                Box::new(select),
-            ))))
+            Ok(StatementPlan::Query(QueryPlan::Select(Box::new(select))))
         };
         assert_eq!(actual, expected);
 
