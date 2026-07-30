@@ -116,3 +116,66 @@ fn values_from_round_trip_with_memory_storage() {
 
     assert_eq!(fetched, users);
 }
+
+#[derive(ToGlueRow)]
+struct GenericRecord<'a, T>
+where
+    T: Clone + gluesql_core::translate::IntoParamLiteral,
+{
+    name: &'a str,
+    value: T,
+}
+
+#[test]
+fn to_glue_row_supports_generics_and_lifetimes() {
+    let rec = GenericRecord {
+        name: "test",
+        value: 42_i64,
+    };
+    assert_eq!(GenericRecord::<i64>::glue_columns(), &["name", "value"]);
+    let exprs = rec
+        .to_glue_row()
+        .into_iter()
+        .map(ParamLiteral::into_expr)
+        .collect::<Vec<_>>();
+    assert_eq!(
+        exprs,
+        vec![
+            Expr::Value(Value::Str("test".to_owned())),
+            Expr::Value(Value::I64(42)),
+        ]
+    );
+}
+
+#[derive(ToGlueRow)]
+struct ConstGenericRecord<T, const N: usize>
+where
+    T: Clone + gluesql_core::translate::IntoParamLiteral,
+{
+    tag: String,
+    payload: T,
+}
+
+#[test]
+fn to_glue_row_supports_const_generics() {
+    let rec = ConstGenericRecord::<i64, 10> {
+        tag: "const_tag".to_owned(),
+        payload: 99_i64,
+    };
+    assert_eq!(
+        ConstGenericRecord::<i64, 10>::glue_columns(),
+        &["tag", "payload"]
+    );
+    let exprs = rec
+        .to_glue_row()
+        .into_iter()
+        .map(ParamLiteral::into_expr)
+        .collect::<Vec<_>>();
+    assert_eq!(
+        exprs,
+        vec![
+            Expr::Value(Value::Str("const_tag".to_owned())),
+            Expr::Value(Value::I64(99)),
+        ]
+    );
+}
