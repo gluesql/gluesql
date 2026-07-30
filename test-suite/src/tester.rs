@@ -2,8 +2,8 @@ use {
     gluesql_core::{
         ast::*,
         plan::{
-            IndexItemPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, QueryPlan,
-            SelectPlan, StatementPlan,
+            DistinctInputPlan, DistinctPlan, IndexItemPlan, LimitInputPlan, LimitPlan,
+            OffsetInputPlan, OffsetPlan, QueryPlan, SelectPlan, StatementPlan,
         },
         prelude::{Glue, Payload, Result},
         store::{GStore, GStoreMut, Planner},
@@ -69,6 +69,14 @@ fn find_indexes(statement: &StatementPlan) -> Vec<&IndexItemPlan> {
             OffsetInputPlan::Select(select) => find_select_indexes(select),
             OffsetInputPlan::Values(_) | OffsetInputPlan::ValuesOrderBy(_) => Vec::new(),
             OffsetInputPlan::SelectOrderBy(order_by) => find_select_indexes(&order_by.input),
+            OffsetInputPlan::Distinct(distinct) => find_distinct_indexes(distinct),
+        }
+    }
+
+    fn find_distinct_indexes(distinct: &DistinctPlan) -> Vec<&IndexItemPlan> {
+        match &distinct.input {
+            DistinctInputPlan::Select(select) => find_select_indexes(select),
+            DistinctInputPlan::SelectOrderBy(order_by) => find_select_indexes(&order_by.input),
         }
     }
 
@@ -77,11 +85,13 @@ fn find_indexes(statement: &StatementPlan) -> Vec<&IndexItemPlan> {
             QueryPlan::Select(select) => find_select_indexes(select),
             QueryPlan::Values(_) | QueryPlan::ValuesOrderBy(_) => Vec::new(),
             QueryPlan::SelectOrderBy(order_by) => find_select_indexes(&order_by.input),
+            QueryPlan::Distinct(distinct) => find_distinct_indexes(distinct),
             QueryPlan::Offset(offset) => find_offset_indexes(offset),
             QueryPlan::Limit(LimitPlan { input, .. }) => match input {
                 LimitInputPlan::Select(select) => find_select_indexes(select),
                 LimitInputPlan::Values(_) | LimitInputPlan::ValuesOrderBy(_) => Vec::new(),
                 LimitInputPlan::SelectOrderBy(order_by) => find_select_indexes(&order_by.input),
+                LimitInputPlan::Distinct(distinct) => find_distinct_indexes(distinct),
                 LimitInputPlan::Offset(offset) => find_offset_indexes(offset),
             },
         }

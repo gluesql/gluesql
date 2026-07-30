@@ -1,3 +1,4 @@
+mod distinct_node;
 mod error;
 mod limit_node;
 mod offset_node;
@@ -38,6 +39,7 @@ where
             select_order_by_node::execute(storage, order_by, filter_context)
         }
         QueryPlan::ValuesOrderBy(order_by) => values_order_by_node::execute(order_by),
+        QueryPlan::Distinct(distinct) => distinct_node::execute(storage, distinct, filter_context),
         QueryPlan::Offset(offset) => offset_node::execute(storage, offset, filter_context),
         QueryPlan::Limit(limit) => limit_node::execute(storage, limit, filter_context),
     }

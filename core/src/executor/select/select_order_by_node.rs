@@ -36,11 +36,10 @@ where
         labels,
         rows,
         table_alias,
-        distinct,
     } = select_node::project(storage, input, filter_context)?;
     let rows = sort(storage, sort_context.as_ref(), rows, table_alias, exprs)?;
 
-    select_node::finish(labels, rows, distinct)
+    Ok(LabeledRows { labels, rows })
 }
 
 fn sort<'a, T>(

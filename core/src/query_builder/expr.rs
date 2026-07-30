@@ -698,6 +698,16 @@ mod tests {
         let expected = "(SELECT * FROM Foo WHERE id IS NOT NULL)";
         test_expr(actual, expected);
 
+        let actual = subquery(
+            table("Foo")
+                .select()
+                .project("id")
+                .order_by("id")
+                .distinct(),
+        );
+        let expected = "(SELECT DISTINCT id FROM Foo ORDER BY id)";
+        test_expr(actual, expected);
+
         let actual = null();
         let expected = "NULL";
         test_expr(actual, expected);

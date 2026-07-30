@@ -1,10 +1,10 @@
 use {
     crate::{
         plan::{
-            ExprPlan, JoinConstraintPlan, JoinOperatorPlan, JoinPlan, LimitInputPlan, LimitPlan,
-            OffsetInputPlan, OffsetPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
-            SelectOrderByPlan, SelectPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan,
-            ValuesOrderByPlan, ValuesPlan,
+            DistinctInputPlan, DistinctPlan, ExprPlan, JoinConstraintPlan, JoinOperatorPlan,
+            JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectionPlan,
+            QueryPlan, SelectItemPlan, SelectOrderByPlan, SelectPlan, TableAliasPlan,
+            TableFactorPlan, TableWithJoinsPlan, ValuesOrderByPlan, ValuesPlan,
         },
         plan::{context::Context, expr::PlanExpr},
     },
@@ -46,6 +46,7 @@ fn check_query(context: Option<&Rc<Context<'_>>>, query: &QueryPlan) -> bool {
         QueryPlan::Values(values) => check_values(context, values),
         QueryPlan::SelectOrderBy(order_by) => check_select_order_by(context, order_by),
         QueryPlan::ValuesOrderBy(order_by) => check_values_order_by(context, order_by),
+        QueryPlan::Distinct(distinct) => check_distinct(context, distinct),
         QueryPlan::Offset(offset) => check_offset(context, offset),
         QueryPlan::Limit(LimitPlan { input, count }) => {
             let input = match input {
@@ -53,6 +54,7 @@ fn check_query(context: Option<&Rc<Context<'_>>>, query: &QueryPlan) -> bool {
                 LimitInputPlan::Values(values) => check_values(context, values),
                 LimitInputPlan::SelectOrderBy(order_by) => check_select_order_by(context, order_by),
                 LimitInputPlan::ValuesOrderBy(order_by) => check_values_order_by(context, order_by),
+                LimitInputPlan::Distinct(distinct) => check_distinct(context, distinct),
                 LimitInputPlan::Offset(offset) => check_offset(context, offset),
             };
 
@@ -67,9 +69,17 @@ fn check_offset(context: Option<&Rc<Context<'_>>>, plan: &OffsetPlan) -> bool {
         OffsetInputPlan::Values(values) => check_values(context, values),
         OffsetInputPlan::SelectOrderBy(order_by) => check_select_order_by(context, order_by),
         OffsetInputPlan::ValuesOrderBy(order_by) => check_values_order_by(context, order_by),
+        OffsetInputPlan::Distinct(distinct) => check_distinct(context, distinct),
     };
 
     input && check_expr(context.map(Rc::clone), &plan.count)
+}
+
+fn check_distinct(context: Option<&Rc<Context<'_>>>, plan: &DistinctPlan) -> bool {
+    match &plan.input {
+        DistinctInputPlan::Select(select) => check_select(context, select),
+        DistinctInputPlan::SelectOrderBy(order_by) => check_select_order_by(context, order_by),
+    }
 }
 
 fn check_select_order_by(
@@ -100,7 +110,6 @@ fn check_values(context: Option<&Rc<Context<'_>>>, ValuesPlan(rows): &ValuesPlan
 
 fn check_select(context: Option<&Rc<Context<'_>>>, select: &SelectPlan) -> bool {
     let SelectPlan {
-        distinct: _,
         projection,
         from,
         selection,

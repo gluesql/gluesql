@@ -3,10 +3,10 @@ use {
         ast::Literal,
         data::{SCHEMALESS_DOC_COLUMN, Schema},
         plan::{
-            ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, LimitInputPlan,
-            LimitPlan, OffsetInputPlan, OffsetPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
-            SelectOrderByPlan, SelectPlan, TableFactorPlan, TableWithJoinsPlan, ValuesOrderByPlan,
-            expr::visit_mut_expr,
+            DistinctInputPlan, DistinctPlan, ExprPlan, JoinConstraintPlan, JoinExecutorPlan,
+            JoinOperatorPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
+            ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SelectPlan,
+            TableFactorPlan, TableWithJoinsPlan, ValuesOrderByPlan, expr::visit_mut_expr,
         },
     },
     std::{
@@ -36,6 +36,9 @@ pub(super) fn transform_query<S: BuildHasher>(
         QueryPlan::ValuesOrderBy(order_by) => {
             transform_values_order_by(schema_map, order_by);
         }
+        QueryPlan::Distinct(distinct) => {
+            transform_distinct(schema_map, distinct);
+        }
         QueryPlan::Offset(offset) => {
             transform_offset(schema_map, offset);
         }
@@ -49,6 +52,7 @@ pub(super) fn transform_query<S: BuildHasher>(
                 LimitInputPlan::ValuesOrderBy(order_by) => {
                     transform_values_order_by(schema_map, order_by)
                 }
+                LimitInputPlan::Distinct(distinct) => transform_distinct(schema_map, distinct),
                 LimitInputPlan::Offset(offset) => transform_offset(schema_map, offset),
             };
             transform_query_expr(schema_map, count, &state);
@@ -65,10 +69,23 @@ fn transform_offset<S: BuildHasher>(
         OffsetInputPlan::Values(_) => empty_rewrite_state(),
         OffsetInputPlan::SelectOrderBy(order_by) => transform_select_order_by(schema_map, order_by),
         OffsetInputPlan::ValuesOrderBy(order_by) => transform_values_order_by(schema_map, order_by),
+        OffsetInputPlan::Distinct(distinct) => transform_distinct(schema_map, distinct),
     };
     transform_query_expr(schema_map, count, &state);
 
     state
+}
+
+fn transform_distinct<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    DistinctPlan { input }: &mut DistinctPlan,
+) -> QueryRewriteState {
+    match input {
+        DistinctInputPlan::Select(select) => transform_select(schema_map, select),
+        DistinctInputPlan::SelectOrderBy(order_by) => {
+            transform_select_order_by(schema_map, order_by)
+        }
+    }
 }
 
 fn transform_select_order_by<S: BuildHasher>(

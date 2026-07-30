@@ -13,8 +13,8 @@ use {
         data::{CustomFunction, Interval, Row, Value},
         mock::MockStorage,
         plan::{
-            ExprPlan, FunctionPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
-            ProjectionPlan, QueryPlan, SelectPlan, plan_scalar_expr,
+            DistinctInputPlan, DistinctPlan, ExprPlan, FunctionPlan, LimitInputPlan, LimitPlan,
+            OffsetInputPlan, OffsetPlan, ProjectionPlan, QueryPlan, SelectPlan, plan_scalar_expr,
         },
         result::{Error, Result},
         store::GStore,
@@ -24,29 +24,6 @@ use {
 };
 
 pub use {error::EvaluateError, evaluated::Evaluated};
-
-fn offset_select_plan(offset: &OffsetPlan) -> Option<&SelectPlan> {
-    match &offset.input {
-        OffsetInputPlan::Select(select) => Some(select.as_ref()),
-        OffsetInputPlan::Values(_) | OffsetInputPlan::ValuesOrderBy(_) => None,
-        OffsetInputPlan::SelectOrderBy(order_by) => Some(order_by.input.as_ref()),
-    }
-}
-
-fn select_plan(query: &QueryPlan) -> Option<&SelectPlan> {
-    match query {
-        QueryPlan::Select(select) => Some(select),
-        QueryPlan::Values(_) | QueryPlan::ValuesOrderBy(_) => None,
-        QueryPlan::SelectOrderBy(order_by) => Some(&order_by.input),
-        QueryPlan::Offset(offset) => offset_select_plan(offset),
-        QueryPlan::Limit(LimitPlan { input, .. }) => match input {
-            LimitInputPlan::Select(select) => Some(select),
-            LimitInputPlan::Values(_) | LimitInputPlan::ValuesOrderBy(_) => None,
-            LimitInputPlan::SelectOrderBy(order_by) => Some(&order_by.input),
-            LimitInputPlan::Offset(offset) => offset_select_plan(offset),
-        },
-    }
-}
 
 pub fn evaluate<'a, 'b, T>(
     storage: &'a T,
@@ -69,6 +46,39 @@ pub fn evaluate_stateless<'a, 'b: 'a>(
     let storage: Option<&MockStorage> = None;
 
     evaluate_inner(storage, context.as_ref(), None, expr)
+}
+
+fn select_plan(query: &QueryPlan) -> Option<&SelectPlan> {
+    match query {
+        QueryPlan::Select(select) => Some(select),
+        QueryPlan::Values(_) | QueryPlan::ValuesOrderBy(_) => None,
+        QueryPlan::SelectOrderBy(order_by) => Some(&order_by.input),
+        QueryPlan::Distinct(distinct) => Some(distinct_select_plan(distinct)),
+        QueryPlan::Offset(offset) => offset_select_plan(offset),
+        QueryPlan::Limit(LimitPlan { input, .. }) => match input {
+            LimitInputPlan::Select(select) => Some(select),
+            LimitInputPlan::Values(_) | LimitInputPlan::ValuesOrderBy(_) => None,
+            LimitInputPlan::SelectOrderBy(order_by) => Some(&order_by.input),
+            LimitInputPlan::Distinct(distinct) => Some(distinct_select_plan(distinct)),
+            LimitInputPlan::Offset(offset) => offset_select_plan(offset),
+        },
+    }
+}
+
+fn offset_select_plan(offset: &OffsetPlan) -> Option<&SelectPlan> {
+    match &offset.input {
+        OffsetInputPlan::Select(select) => Some(select.as_ref()),
+        OffsetInputPlan::Values(_) | OffsetInputPlan::ValuesOrderBy(_) => None,
+        OffsetInputPlan::SelectOrderBy(order_by) => Some(order_by.input.as_ref()),
+        OffsetInputPlan::Distinct(distinct) => Some(distinct_select_plan(distinct)),
+    }
+}
+
+fn distinct_select_plan(distinct: &DistinctPlan) -> &SelectPlan {
+    match &distinct.input {
+        DistinctInputPlan::Select(select) => select,
+        DistinctInputPlan::SelectOrderBy(order_by) => &order_by.input,
+    }
 }
 
 fn evaluate_inner<'a, 'b, T>(

@@ -4,9 +4,10 @@ use {
         ast::BinaryOperator,
         data::Schema,
         plan::{
-            ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan,
-            LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, QueryPlan, SelectPlan,
-            StatementPlan, TableWithJoinsPlan, expr::evaluable::check_expr as check_evaluable,
+            DistinctInputPlan, DistinctPlan, ExprPlan, JoinConstraintPlan, JoinExecutorPlan,
+            JoinOperatorPlan, JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
+            QueryPlan, SelectPlan, StatementPlan, TableWithJoinsPlan,
+            expr::evaluable::check_expr as check_evaluable,
         },
     },
     std::{collections::HashMap, hash::BuildHasher, rc::Rc},
@@ -37,6 +38,15 @@ impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
         let plan_select = |select: Box<SelectPlan>| {
             Box::new(self.select(outer_context.as_ref().map(Rc::clone), *select))
         };
+        let plan_distinct = |DistinctPlan { input }| DistinctPlan {
+            input: match input {
+                DistinctInputPlan::Select(select) => DistinctInputPlan::Select(plan_select(select)),
+                DistinctInputPlan::SelectOrderBy(mut order_by) => {
+                    order_by.input = plan_select(order_by.input);
+                    DistinctInputPlan::SelectOrderBy(order_by)
+                }
+            },
+        };
         match query {
             QueryPlan::Select(select) => QueryPlan::Select(plan_select(select)),
             QueryPlan::Values(values) => QueryPlan::Values(values),
@@ -45,6 +55,7 @@ impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
                 QueryPlan::SelectOrderBy(order_by)
             }
             QueryPlan::ValuesOrderBy(order_by) => QueryPlan::ValuesOrderBy(order_by),
+            QueryPlan::Distinct(distinct) => QueryPlan::Distinct(plan_distinct(distinct)),
             QueryPlan::Offset(OffsetPlan { input, count }) => QueryPlan::Offset(OffsetPlan {
                 input: match input {
                     OffsetInputPlan::Select(select) => OffsetInputPlan::Select(plan_select(select)),
@@ -55,6 +66,9 @@ impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
                     }
                     OffsetInputPlan::ValuesOrderBy(order_by) => {
                         OffsetInputPlan::ValuesOrderBy(order_by)
+                    }
+                    OffsetInputPlan::Distinct(distinct) => {
+                        OffsetInputPlan::Distinct(plan_distinct(distinct))
                     }
                 },
                 count,
@@ -70,6 +84,9 @@ impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
                     LimitInputPlan::ValuesOrderBy(order_by) => {
                         LimitInputPlan::ValuesOrderBy(order_by)
                     }
+                    LimitInputPlan::Distinct(distinct) => {
+                        LimitInputPlan::Distinct(plan_distinct(distinct))
+                    }
                     LimitInputPlan::Offset(OffsetPlan { input, count }) => {
                         LimitInputPlan::Offset(OffsetPlan {
                             input: match input {
@@ -83,6 +100,9 @@ impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
                                 }
                                 OffsetInputPlan::ValuesOrderBy(order_by) => {
                                     OffsetInputPlan::ValuesOrderBy(order_by)
+                                }
+                                OffsetInputPlan::Distinct(distinct) => {
+                                    OffsetInputPlan::Distinct(plan_distinct(distinct))
                                 }
                             },
                             count,
@@ -103,7 +123,6 @@ impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
 impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
     fn select(&self, outer_context: Option<Rc<Context<'a>>>, select: SelectPlan) -> SelectPlan {
         let SelectPlan {
-            distinct,
             projection,
             from,
             selection,
@@ -116,7 +135,6 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
         let selection = selection.map(|expr| self.subquery_expr(outer_context, expr));
 
         SelectPlan {
-            distinct,
             projection,
             from,
             selection,

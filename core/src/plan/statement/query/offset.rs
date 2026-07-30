@@ -1,5 +1,5 @@
 use {
-    super::{SelectOrderByPlan, SelectPlan, ValuesOrderByPlan, ValuesPlan},
+    super::{DistinctPlan, SelectOrderByPlan, SelectPlan, ValuesOrderByPlan, ValuesPlan},
     crate::plan::ExprPlan,
     serde::{Deserialize, Serialize},
 };
@@ -16,6 +16,7 @@ pub enum OffsetInputPlan {
     Values(ValuesPlan),
     SelectOrderBy(SelectOrderByPlan),
     ValuesOrderBy(ValuesOrderByPlan),
+    Distinct(DistinctPlan),
 }
 
 #[cfg(test)]

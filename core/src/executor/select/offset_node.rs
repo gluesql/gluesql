@@ -1,5 +1,8 @@
 use {
-    super::{LabeledRows, select_node, select_order_by_node, values_node, values_order_by_node},
+    super::{
+        LabeledRows, distinct_node, select_node, select_order_by_node, values_node,
+        values_order_by_node,
+    },
     crate::{
         data::Value,
         executor::{context::RowContext, evaluate::evaluate_stateless},
@@ -25,6 +28,9 @@ where
             select_order_by_node::execute(storage, order_by, filter_context)
         }
         OffsetInputPlan::ValuesOrderBy(order_by) => values_order_by_node::execute(order_by),
+        OffsetInputPlan::Distinct(distinct) => {
+            distinct_node::execute(storage, distinct, filter_context)
+        }
     }?;
     let count = evaluate_count(&plan.count)?;
 

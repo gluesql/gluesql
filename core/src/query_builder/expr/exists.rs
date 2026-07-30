@@ -49,6 +49,16 @@ mod test {
         let expected = "NOT EXISTS (SELECT * FROM FOO WHERE id > 2)";
         test_expr(actual, expected);
 
+        let actual = exists(
+            table("FOO")
+                .select()
+                .project("id")
+                .order_by("id")
+                .distinct(),
+        );
+        let expected = "EXISTS (SELECT DISTINCT id FROM FOO ORDER BY id)";
+        test_expr(actual, expected);
+
         let actual = exists("SELECT * FROM FOO");
         let expected = "EXISTS (SELECT * FROM FOO)";
         test_expr(actual, expected);

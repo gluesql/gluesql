@@ -3,10 +3,10 @@ use {
     crate::{
         data::Schema,
         plan::{
-            ExprPlan, JoinConstraintPlan, JoinOperatorPlan, JoinPlan, LimitInputPlan, LimitPlan,
-            OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, SelectOrderByPlan, SelectPlan, StatementPlan, TableFactorPlan,
-            TableWithJoinsPlan, ValuesOrderByPlan,
+            DistinctInputPlan, DistinctPlan, ExprPlan, JoinConstraintPlan, JoinOperatorPlan,
+            JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan,
+            ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SelectPlan,
+            StatementPlan, TableFactorPlan, TableWithJoinsPlan, ValuesOrderByPlan,
         },
         result::Result,
         store::Store,
@@ -101,6 +101,7 @@ fn scan_query<T: Store + ?Sized>(
         QueryPlan::Values(_) => Ok(HashMap::new()),
         QueryPlan::SelectOrderBy(order_by) => scan_select_order_by(storage, order_by),
         QueryPlan::ValuesOrderBy(order_by) => scan_values_order_by(storage, order_by),
+        QueryPlan::Distinct(distinct) => scan_distinct(storage, distinct),
         QueryPlan::Offset(offset) => scan_offset(storage, offset),
         QueryPlan::Limit(LimitPlan { input, count }) => {
             let schema_list = match input {
@@ -108,6 +109,7 @@ fn scan_query<T: Store + ?Sized>(
                 LimitInputPlan::Values(_) => HashMap::new(),
                 LimitInputPlan::SelectOrderBy(order_by) => scan_select_order_by(storage, order_by)?,
                 LimitInputPlan::ValuesOrderBy(order_by) => scan_values_order_by(storage, order_by)?,
+                LimitInputPlan::Distinct(distinct) => scan_distinct(storage, distinct)?,
                 LimitInputPlan::Offset(offset) => scan_offset(storage, offset)?,
             };
 
@@ -128,12 +130,23 @@ fn scan_offset<T: Store + ?Sized>(
         OffsetInputPlan::Values(_) => HashMap::new(),
         OffsetInputPlan::SelectOrderBy(order_by) => scan_select_order_by(storage, order_by)?,
         OffsetInputPlan::ValuesOrderBy(order_by) => scan_values_order_by(storage, order_by)?,
+        OffsetInputPlan::Distinct(distinct) => scan_distinct(storage, distinct)?,
     };
 
     Ok(schema_list
         .into_iter()
         .chain(scan_expr(storage, count)?)
         .collect())
+}
+
+fn scan_distinct<T: Store + ?Sized>(
+    storage: &T,
+    DistinctPlan { input }: &DistinctPlan,
+) -> Result<HashMap<String, Schema>> {
+    match input {
+        DistinctInputPlan::Select(select) => scan_select(storage, select),
+        DistinctInputPlan::SelectOrderBy(order_by) => scan_select_order_by(storage, order_by),
+    }
 }
 
 fn scan_select_order_by<T: Store + ?Sized>(
@@ -172,7 +185,6 @@ fn scan_select<T: Store + ?Sized>(
     select: &SelectPlan,
 ) -> Result<HashMap<String, Schema>> {
     let SelectPlan {
-        distinct: _,
         projection,
         from,
         selection,

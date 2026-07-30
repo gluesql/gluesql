@@ -1,5 +1,7 @@
 use {
-    super::{OffsetPlan, SelectOrderByPlan, SelectPlan, ValuesOrderByPlan, ValuesPlan},
+    super::{
+        DistinctPlan, OffsetPlan, SelectOrderByPlan, SelectPlan, ValuesOrderByPlan, ValuesPlan,
+    },
     crate::plan::ExprPlan,
     serde::{Deserialize, Serialize},
 };
@@ -16,6 +18,7 @@ pub enum LimitInputPlan {
     Values(ValuesPlan),
     SelectOrderBy(SelectOrderByPlan),
     ValuesOrderBy(ValuesOrderByPlan),
+    Distinct(DistinctPlan),
     Offset(OffsetPlan),
 }
 

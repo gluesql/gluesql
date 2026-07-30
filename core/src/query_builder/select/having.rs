@@ -1,5 +1,5 @@
 use {
-    super::{BuildSelect, BuildSelectPlan},
+    super::{BuildSelect, BuildSelectPlan, DistinctNode},
     crate::{
         ast::Select,
         plan::SelectPlan,
@@ -66,6 +66,10 @@ impl<'a> HavingNode<'a> {
 
     pub fn order_by<T: Into<OrderByExprList<'a>>>(self, expr_list: T) -> SelectOrderByNode<'a> {
         SelectOrderByNode::new(self, expr_list)
+    }
+
+    pub fn distinct(self) -> DistinctNode<'a> {
+        DistinctNode::new(self)
     }
 
     pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {

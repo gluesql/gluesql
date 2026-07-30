@@ -1,9 +1,9 @@
 use {
     super::ExprNode,
     crate::query_builder::{
-        FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode, LimitNode,
-        OffsetLimitNode, OffsetNode, ProjectNode, QueryNode, SelectNode, SelectOrderByNode,
-        ValuesOrderByNode,
+        DistinctNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
+        JoinNode, LimitNode, OffsetLimitNode, OffsetNode, ProjectNode, QueryNode, SelectNode,
+        SelectOrderByNode, ValuesOrderByNode,
     },
 };
 
@@ -55,6 +55,7 @@ impl_from_select_nodes!(OffsetLimitNode<'a>);
 impl_from_select_nodes!(ProjectNode<'a>);
 impl_from_select_nodes!(SelectOrderByNode<'a>);
 impl_from_select_nodes!(ValuesOrderByNode<'a>);
+impl_from_select_nodes!(DistinctNode<'a>);
 
 impl<'a> ExprNode<'a> {
     #[must_use]
@@ -124,6 +125,11 @@ mod test {
         let expected = "id IN (SELECT * FROM FOO)";
         test_expr(actual, expected);
 
+        // from DistinctNode
+        let actual = col("id").in_list(table("FOO").select().project("id").distinct());
+        let expected = "id IN (SELECT DISTINCT id FROM FOO)";
+        test_expr(actual, expected);
+
         // from JoinNode
         let actual = col("id").in_list(table("Bar").select().join("Foo"));
         let expected = "id IN (SELECT * FROM Bar JOIN Foo)";
@@ -156,7 +162,6 @@ mod test {
                 },
             };
             let select = SelectPlan {
-                distinct: false,
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),

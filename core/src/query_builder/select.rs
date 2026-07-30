@@ -1,3 +1,4 @@
+mod distinct;
 mod filter;
 mod group_by;
 mod having;
@@ -19,6 +20,7 @@ use {
     },
 };
 pub use {
+    distinct::DistinctNode,
     filter::FilterNode,
     group_by::GroupByNode,
     having::HavingNode,

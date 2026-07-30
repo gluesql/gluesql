@@ -1,5 +1,5 @@
 use {
-    super::{BuildSelect, BuildSelectPlan, join::JoinOperatorType},
+    super::{BuildSelect, BuildSelectPlan, DistinctNode, join::JoinOperatorType},
     crate::{
         ast::{
             Expr, Literal, Projection, Select, SelectItem, TableAlias, TableFactor, TableWithJoins,
@@ -28,21 +28,15 @@ fn build_alias_or_name_plan(alias: Option<TableAliasPlan>, name: String) -> Tabl
 #[derive(Clone, Debug)]
 pub struct SelectNode<'a> {
     table_node: TableFactorNode<'a>,
-    distinct: bool,
 }
 
 impl<'a> SelectNode<'a> {
     pub(in crate::query_builder) fn new(table_node: TableFactorNode<'a>) -> Self {
-        Self {
-            table_node,
-            distinct: false,
-        }
+        Self { table_node }
     }
 
-    #[must_use]
-    pub fn distinct(mut self) -> Self {
-        self.distinct = true;
-        self
+    pub fn distinct(self) -> DistinctNode<'a> {
+        DistinctNode::new(self)
     }
 
     pub fn filter<T: Into<ExprNode<'a>>>(self, expr: T) -> FilterNode<'a> {
@@ -144,7 +138,6 @@ impl BuildSelectPlan for SelectNode<'_> {
         };
 
         Ok(SelectPlan {
-            distinct: self.distinct,
             projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
             from,
             selection: None,
@@ -194,7 +187,7 @@ impl BuildSelect for SelectNode<'_> {
         };
 
         Ok(Select {
-            distinct: self.distinct,
+            distinct: false,
             projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
             from,
             selection: None,
@@ -206,7 +199,6 @@ impl BuildSelect for SelectNode<'_> {
 
 pub fn select<'a>() -> SelectNode<'a> {
     SelectNode {
-        distinct: false,
         table_node: TableFactorNode {
             table_name: "Series".to_owned(),
             table_type: TableType::Series(Expr::Literal(Literal::Number(1.into())).into()),
@@ -256,7 +248,7 @@ mod tests {
         test_query_builder(actual, expected);
 
         // select distinct with project
-        let actual = table("Item").select().distinct().project("name");
+        let actual = table("Item").select().project("name").distinct();
         let expected = "SELECT DISTINCT name FROM Item";
         test_query_builder(actual, expected);
     }

@@ -21,7 +21,9 @@ use {
 
 fn offset_values_plan(offset: &OffsetPlan) -> Option<&ValuesPlan> {
     match &offset.input {
-        OffsetInputPlan::Select(_) | OffsetInputPlan::SelectOrderBy(_) => None,
+        OffsetInputPlan::Select(_)
+        | OffsetInputPlan::SelectOrderBy(_)
+        | OffsetInputPlan::Distinct(_) => None,
         OffsetInputPlan::Values(values) => Some(values),
         OffsetInputPlan::ValuesOrderBy(values) => Some(&values.input),
     }
@@ -29,12 +31,14 @@ fn offset_values_plan(offset: &OffsetPlan) -> Option<&ValuesPlan> {
 
 fn values_plan(query: &QueryPlan) -> Option<&ValuesPlan> {
     match query {
-        QueryPlan::Select(_) | QueryPlan::SelectOrderBy(_) => None,
+        QueryPlan::Select(_) | QueryPlan::SelectOrderBy(_) | QueryPlan::Distinct(_) => None,
         QueryPlan::Values(values) => Some(values),
         QueryPlan::ValuesOrderBy(values) => Some(&values.input),
         QueryPlan::Offset(offset) => offset_values_plan(offset),
         QueryPlan::Limit(LimitPlan { input, .. }) => match input {
-            LimitInputPlan::Select(_) | LimitInputPlan::SelectOrderBy(_) => None,
+            LimitInputPlan::Select(_)
+            | LimitInputPlan::SelectOrderBy(_)
+            | LimitInputPlan::Distinct(_) => None,
             LimitInputPlan::Values(values) => Some(values),
             LimitInputPlan::ValuesOrderBy(values) => Some(&values.input),
             LimitInputPlan::Offset(offset) => offset_values_plan(offset),
@@ -53,7 +57,8 @@ where
         QueryPlan::Select(_)
         | QueryPlan::Values(_)
         | QueryPlan::SelectOrderBy(_)
-        | QueryPlan::ValuesOrderBy(_) => Ok(Box::new(rows)),
+        | QueryPlan::ValuesOrderBy(_)
+        | QueryPlan::Distinct(_) => Ok(Box::new(rows)),
         QueryPlan::Offset(plan) => {
             let count = evaluate_count(&plan.count)?;
 
@@ -64,7 +69,8 @@ where
                 LimitInputPlan::Select(_)
                 | LimitInputPlan::Values(_)
                 | LimitInputPlan::SelectOrderBy(_)
-                | LimitInputPlan::ValuesOrderBy(_) => Box::new(rows),
+                | LimitInputPlan::ValuesOrderBy(_)
+                | LimitInputPlan::Distinct(_) => Box::new(rows),
                 LimitInputPlan::Offset(offset) => {
                     let count = evaluate_count(&offset.count)?;
 

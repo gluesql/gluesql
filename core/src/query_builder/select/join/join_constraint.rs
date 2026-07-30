@@ -4,9 +4,9 @@ use {
         ast::{Expr, Select},
         plan::{JoinConstraintPlan, SelectPlan},
         query_builder::{
-            ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinNode, LimitNode,
-            OffsetNode, OrderByExprList, ProjectNode, QueryBuilderError, QueryNode, SelectItemList,
-            SelectOrderByNode, TableFactorNode,
+            DistinctNode, ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinNode,
+            LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryBuilderError, QueryNode,
+            SelectItemList, SelectOrderByNode, TableFactorNode,
             select::{BuildSelect, BuildSelectPlan},
         },
         result::Result,
@@ -117,6 +117,10 @@ impl<'a> JoinConstraintNode<'a> {
         SelectOrderByNode::new(self, order_by_exprs)
     }
 
+    pub fn distinct(self) -> DistinctNode<'a> {
+        DistinctNode::new(self)
+    }
+
     pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
         QueryNode::JoinConstraintNode(self).alias_as(table_alias)
     }
@@ -206,7 +210,6 @@ mod tests {
                 },
             };
             let select = SelectPlan {
-                distinct: false,
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),

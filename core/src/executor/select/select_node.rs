@@ -1,5 +1,5 @@
 use {
-    super::{LabeledRows, SelectIter, project::Project},
+    super::{LabeledRows, project::Project},
     crate::{
         data::Row,
         executor::{
@@ -13,7 +13,7 @@ use {
         result::Result,
         store::GStore,
     },
-    std::{borrow::Cow, collections::HashSet, rc::Rc},
+    std::{borrow::Cow, rc::Rc},
 };
 
 type ProjectedRow<'a> = (Option<Rc<AggregateValues>>, Option<Rc<RowContext<'a>>>, Row);
@@ -23,7 +23,6 @@ pub(super) struct ProjectedRows<'a> {
     pub(super) labels: Vec<String>,
     pub(super) rows: ProjectedIter<'a>,
     pub(super) table_alias: &'a str,
-    pub(super) distinct: bool,
 }
 
 pub(super) fn execute<'a, T>(
@@ -34,15 +33,13 @@ pub(super) fn execute<'a, T>(
 where
     T: GStore,
 {
-    let ProjectedRows {
-        labels,
-        rows,
-        distinct,
-        ..
-    } = project(storage, plan, filter_context)?;
+    let ProjectedRows { labels, rows, .. } = project(storage, plan, filter_context)?;
     let rows = rows.map(|row| row.map(|(.., row)| row));
 
-    finish(labels, Box::new(rows), distinct)
+    Ok(LabeledRows {
+        labels,
+        rows: Box::new(rows),
+    })
 }
 
 pub(super) fn project<'a, T>(
@@ -54,7 +51,6 @@ where
     T: GStore,
 {
     let SelectPlan {
-        distinct,
         from: table_with_joins,
         selection: where_clause,
         projection,
@@ -120,31 +116,5 @@ where
         labels,
         rows: Box::new(rows),
         table_alias: relation.alias_name(),
-        distinct: *distinct,
     })
-}
-
-pub(super) fn finish<'a>(
-    labels: Vec<String>,
-    rows: SelectIter<'a>,
-    distinct: bool,
-) -> Result<LabeledRows<'a>> {
-    let rows = if distinct {
-        let rows = rows.collect::<Result<Vec<_>>>()?;
-        let rows = apply_distinct(rows);
-
-        Box::new(rows.into_iter().map(Ok)) as SelectIter<'a>
-    } else {
-        rows
-    };
-
-    Ok(LabeledRows { labels, rows })
-}
-
-fn apply_distinct(rows: Vec<Row>) -> Vec<Row> {
-    let mut seen = HashSet::new();
-
-    rows.into_iter()
-        .filter(|row| seen.insert(row.values.clone()))
-        .collect()
 }

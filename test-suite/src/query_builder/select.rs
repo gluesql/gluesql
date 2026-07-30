@@ -165,9 +165,9 @@ test_case!(select, {
     // distinct
     let actual = table("Item")
         .select()
-        .distinct()
         .project("category_id")
         .order_by("category_id")
+        .distinct()
         .execute(glue);
     let expected = Ok(select!(
         category_id
@@ -181,9 +181,9 @@ test_case!(select, {
     // distinct with multiple columns
     let actual = table("Item")
         .select()
-        .distinct()
         .project("category_id, price")
         .order_by("category_id, price")
+        .distinct()
         .execute(glue);
     let expected = Ok(select!(
         category_id | price
@@ -197,7 +197,7 @@ test_case!(select, {
     assert_eq!(actual, expected, "distinct with multiple columns");
 
     // distinct * (all columns)
-    let actual = table("Item").select().distinct().project("*").execute(glue);
+    let actual = table("Item").select().project("*").distinct().execute(glue);
     let expected = Ok(select!(
         id | category_id | name | price
         I64 | I64 | Str | I64;

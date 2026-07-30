@@ -4,9 +4,9 @@ use {
         ast::Select,
         plan::{JoinConstraintPlan, JoinExecutorPlan, JoinPlan, SelectPlan},
         query_builder::{
-            ExprList, ExprNode, FilterNode, GroupByNode, JoinConstraintNode, JoinNode, LimitNode,
-            OffsetNode, OrderByExprList, ProjectNode, QueryBuilderError, QueryNode, SelectItemList,
-            SelectOrderByNode, TableFactorNode,
+            DistinctNode, ExprList, ExprNode, FilterNode, GroupByNode, JoinConstraintNode,
+            JoinNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryBuilderError,
+            QueryNode, SelectItemList, SelectOrderByNode, TableFactorNode,
             select::{BuildSelect, BuildSelectPlan},
         },
         result::Result,
@@ -104,6 +104,10 @@ impl<'a> HashJoinNode<'a> {
         SelectOrderByNode::new(self, order_by_exprs)
     }
 
+    pub fn distinct(self) -> DistinctNode<'a> {
+        DistinctNode::new(self)
+    }
+
     pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
         QueryNode::HashJoinNode(self).alias_as(table_alias)
     }
@@ -192,7 +196,6 @@ mod tests {
                 },
             };
             let select = SelectPlan {
-                distinct: false,
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),
@@ -240,7 +243,6 @@ mod tests {
                 },
             };
             let select = SelectPlan {
-                distinct: false,
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),
@@ -287,7 +289,6 @@ mod tests {
             };
 
             let subquery = SelectPlan {
-                distinct: false,
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),
@@ -306,7 +307,6 @@ mod tests {
             };
 
             let select = SelectPlan {
-                distinct: false,
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),

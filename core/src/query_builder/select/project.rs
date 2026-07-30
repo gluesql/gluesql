@@ -1,5 +1,5 @@
 use {
-    super::{BuildSelect, BuildSelectPlan},
+    super::{BuildSelect, BuildSelectPlan, DistinctNode},
     crate::{
         ast::{Projection, Select},
         plan::{ProjectionPlan, SelectPlan},
@@ -134,6 +134,10 @@ impl<'a> ProjectNode<'a> {
 
     pub fn limit<T: Into<ExprNode<'a>>>(self, expr: T) -> LimitNode<'a> {
         LimitNode::new(self, expr)
+    }
+
+    pub fn distinct(self) -> DistinctNode<'a> {
+        DistinctNode::new(self)
     }
 }
 
@@ -279,7 +283,6 @@ mod tests {
                 },
             };
             let select = SelectPlan {
-                distinct: false,
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("Player.name, PlayerItem.name")
                         .build_select_items_plan()

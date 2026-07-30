@@ -3,9 +3,9 @@ use {
     crate::{
         data::Schema,
         plan::{
-            ExprPlan, JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
-            ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan, StatementPlan, TableFactorPlan,
-            TableWithJoinsPlan,
+            DistinctInputPlan, DistinctPlan, ExprPlan, JoinPlan, LimitInputPlan, LimitPlan,
+            OffsetInputPlan, OffsetPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan,
+            StatementPlan, TableFactorPlan, TableWithJoinsPlan,
         },
         result::Result,
     },
@@ -123,6 +123,14 @@ fn offset_select(offset: &OffsetPlan) -> Option<&SelectPlan> {
         OffsetInputPlan::Select(select) => Some(select.as_ref()),
         OffsetInputPlan::Values(_) | OffsetInputPlan::ValuesOrderBy(_) => None,
         OffsetInputPlan::SelectOrderBy(order_by) => Some(order_by.input.as_ref()),
+        OffsetInputPlan::Distinct(distinct) => Some(distinct_select(distinct)),
+    }
+}
+
+fn distinct_select(distinct: &DistinctPlan) -> &SelectPlan {
+    match &distinct.input {
+        DistinctInputPlan::Select(select) => select,
+        DistinctInputPlan::SelectOrderBy(order_by) => &order_by.input,
     }
 }
 
@@ -131,11 +139,13 @@ fn query_select(query: &QueryPlan) -> Option<&SelectPlan> {
         QueryPlan::Select(select) => Some(select),
         QueryPlan::Values(_) | QueryPlan::ValuesOrderBy(_) => None,
         QueryPlan::SelectOrderBy(order_by) => Some(&order_by.input),
+        QueryPlan::Distinct(distinct) => Some(distinct_select(distinct)),
         QueryPlan::Offset(offset) => offset_select(offset),
         QueryPlan::Limit(LimitPlan { input, .. }) => match input {
             LimitInputPlan::Select(select) => Some(select),
             LimitInputPlan::Values(_) | LimitInputPlan::ValuesOrderBy(_) => None,
             LimitInputPlan::SelectOrderBy(order_by) => Some(&order_by.input),
+            LimitInputPlan::Distinct(distinct) => Some(distinct_select(distinct)),
             LimitInputPlan::Offset(offset) => offset_select(offset),
         },
     }

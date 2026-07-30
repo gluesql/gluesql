@@ -15,9 +15,9 @@ use {
         ast::{BinaryOperator, DataType, Dictionary, Literal, Variable},
         data::{Key, Row, SCHEMALESS_DOC_COLUMN, Schema, Value},
         plan::{
-            ExprPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectionPlan,
-            QueryPlan, SelectItemPlan, SelectPlan, StatementPlan, TableAliasPlan, TableFactorPlan,
-            TableWithJoinsPlan,
+            DistinctInputPlan, DistinctPlan, ExprPlan, LimitInputPlan, LimitPlan, OffsetInputPlan,
+            OffsetPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan, StatementPlan,
+            TableAliasPlan, TableFactorPlan, TableWithJoinsPlan,
         },
         result::{Error, Result},
         store::{GStore, GStoreMut},
@@ -44,21 +44,28 @@ pub enum ExecuteError {
 fn is_schemaless_map(query: &QueryPlan) -> bool {
     let select_is_schemaless =
         |select: &SelectPlan| matches!(select.projection, ProjectionPlan::SchemalessMap);
+    let distinct_is_schemaless = |distinct: &DistinctPlan| match &distinct.input {
+        DistinctInputPlan::Select(select) => select_is_schemaless(select),
+        DistinctInputPlan::SelectOrderBy(order_by) => select_is_schemaless(&order_by.input),
+    };
     let offset_is_schemaless = |offset: &OffsetPlan| match &offset.input {
         OffsetInputPlan::Select(select) => select_is_schemaless(select),
         OffsetInputPlan::Values(_) | OffsetInputPlan::ValuesOrderBy(_) => false,
         OffsetInputPlan::SelectOrderBy(order_by) => select_is_schemaless(&order_by.input),
+        OffsetInputPlan::Distinct(distinct) => distinct_is_schemaless(distinct),
     };
 
     match query {
         QueryPlan::Select(select) => select_is_schemaless(select),
         QueryPlan::Values(_) | QueryPlan::ValuesOrderBy(_) => false,
         QueryPlan::SelectOrderBy(order_by) => select_is_schemaless(&order_by.input),
+        QueryPlan::Distinct(distinct) => distinct_is_schemaless(distinct),
         QueryPlan::Offset(offset) => offset_is_schemaless(offset),
         QueryPlan::Limit(LimitPlan { input, .. }) => match input {
             LimitInputPlan::Select(select) => select_is_schemaless(select),
             LimitInputPlan::Values(_) | LimitInputPlan::ValuesOrderBy(_) => false,
             LimitInputPlan::SelectOrderBy(order_by) => select_is_schemaless(&order_by.input),
+            LimitInputPlan::Distinct(distinct) => distinct_is_schemaless(distinct),
             LimitInputPlan::Offset(offset) => offset_is_schemaless(offset),
         },
     }
@@ -303,7 +310,6 @@ fn execute_inner<T: GStore + GStoreMut>(
         }
         StatementPlan::ShowIndexes(table_name) => {
             let query = QueryPlan::Select(Box::new(SelectPlan {
-                distinct: false,
                 projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
                 from: TableWithJoinsPlan {
                     relation: TableFactorPlan::Dictionary {
@@ -341,7 +347,6 @@ fn execute_inner<T: GStore + GStoreMut>(
         StatementPlan::ShowVariable(variable) => match variable {
             Variable::Tables => {
                 let query = QueryPlan::Select(Box::new(SelectPlan {
-                    distinct: false,
                     projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
                         expr: ExprPlan::Identifier("TABLE_NAME".to_owned()),
                         label: "TABLE_NAME".to_owned(),

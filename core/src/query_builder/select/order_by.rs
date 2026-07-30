@@ -1,7 +1,7 @@
 use {
-    super::{BuildQuery, BuildQueryPlan, BuildSelectPlan, ValuesNode},
+    super::{BuildQuery, BuildQueryPlan, BuildSelect, BuildSelectPlan, DistinctNode, ValuesNode},
     crate::{
-        ast::Query,
+        ast::{OrderByExpr, Query, SetExpr},
         plan::{OrderByExprPlan, QueryPlan, SelectOrderByPlan, ValuesOrderByPlan},
         query_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
@@ -26,55 +26,21 @@ pub(super) enum SelectPrevNode<'a> {
 
 impl SelectPrevNode<'_> {
     fn build_select_order_by_plan(self, exprs: Vec<OrderByExprPlan>) -> Result<SelectOrderByPlan> {
-        match self {
-            Self::Select(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(|input| SelectOrderByPlan { input, exprs }),
-            Self::Having(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(|input| SelectOrderByPlan { input, exprs }),
-            Self::GroupBy(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(|input| SelectOrderByPlan { input, exprs }),
-            Self::Filter(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(|input| SelectOrderByPlan { input, exprs }),
-            Self::JoinNode(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(|input| SelectOrderByPlan { input, exprs }),
-            Self::JoinConstraint(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(|input| SelectOrderByPlan { input, exprs }),
-            Self::HashJoin(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(|input| SelectOrderByPlan { input, exprs }),
-            Self::ProjectNode(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(|input| SelectOrderByPlan { input, exprs }),
-        }
-    }
-}
+        let input = match self {
+            Self::Select(node) => node.build_select_plan(),
+            Self::Having(node) => node.build_select_plan(),
+            Self::GroupBy(node) => node.build_select_plan(),
+            Self::Filter(node) => node.build_select_plan(),
+            Self::JoinNode(node) => node.build_select_plan(),
+            Self::JoinConstraint(node) => node.build_select_plan(),
+            Self::HashJoin(node) => node.build_select_plan(),
+            Self::ProjectNode(node) => node.build_select_plan(),
+        }?;
 
-impl BuildQuery for SelectPrevNode<'_> {
-    fn build_query(self) -> Result<Query> {
-        match self {
-            Self::Select(node) => node.build_query(),
-            Self::Having(node) => node.build_query(),
-            Self::GroupBy(node) => node.build_query(),
-            Self::Filter(node) => node.build_query(),
-            Self::JoinNode(node) => node.build_query(),
-            Self::JoinConstraint(node) => node.build_query(),
-            Self::HashJoin(node) => node.build_query(),
-            Self::ProjectNode(node) => node.build_query(),
-        }
+        Ok(SelectOrderByPlan {
+            input: Box::new(input),
+            exprs,
+        })
     }
 }
 
@@ -151,6 +117,10 @@ impl<'a> SelectOrderByNode<'a> {
         LimitNode::new(self, expr)
     }
 
+    pub fn distinct(self) -> DistinctNode<'a> {
+        DistinctNode::new(self)
+    }
+
     pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
         QueryNode::SelectOrderByNode(self).alias_as(table_alias)
     }
@@ -161,6 +131,22 @@ impl SelectOrderByNode<'_> {
         let exprs = self.expr_list.build_order_by_exprs_plan()?;
 
         self.prev_node.build_select_order_by_plan(exprs)
+    }
+
+    pub(super) fn build_select_order_by(self) -> Result<(crate::ast::Select, Vec<OrderByExpr>)> {
+        let select = match self.prev_node {
+            SelectPrevNode::Select(node) => node.build_select(),
+            SelectPrevNode::Having(node) => node.build_select(),
+            SelectPrevNode::GroupBy(node) => node.build_select(),
+            SelectPrevNode::Filter(node) => node.build_select(),
+            SelectPrevNode::JoinNode(node) => node.build_select(),
+            SelectPrevNode::JoinConstraint(node) => node.build_select(),
+            SelectPrevNode::HashJoin(node) => node.build_select(),
+            SelectPrevNode::ProjectNode(node) => node.build_select(),
+        }?;
+        let exprs = self.expr_list.build_order_by_exprs()?;
+
+        Ok((select, exprs))
     }
 }
 
@@ -173,10 +159,14 @@ impl BuildQueryPlan for SelectOrderByNode<'_> {
 
 impl BuildQuery for SelectOrderByNode<'_> {
     fn build_query(self) -> Result<Query> {
-        let mut node_data = self.prev_node.build_query()?;
-        node_data.order_by = self.expr_list.build_order_by_exprs()?;
+        let (select, order_by) = self.build_select_order_by()?;
 
-        Ok(node_data)
+        Ok(Query {
+            body: SetExpr::Select(Box::new(select)),
+            order_by,
+            limit: None,
+            offset: None,
+        })
     }
 }
 
@@ -386,7 +376,6 @@ mod tests {
                 },
             };
             let select = SelectPlan {
-                distinct: false,
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),

@@ -1,9 +1,10 @@
 use {
     crate::plan::{
-        AggregateFunctionPlan, ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan,
-        JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan,
-        ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SelectPlan, StatementPlan,
-        TableFactorPlan, TableWithJoinsPlan, ValuesOrderByPlan, ValuesPlan, expr::visit_mut_expr,
+        AggregateFunctionPlan, DistinctInputPlan, DistinctPlan, ExprPlan, JoinConstraintPlan,
+        JoinExecutorPlan, JoinOperatorPlan, JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan,
+        OffsetPlan, OrderByExprPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan,
+        SelectPlan, StatementPlan, TableFactorPlan, TableWithJoinsPlan, ValuesOrderByPlan,
+        ValuesPlan, expr::visit_mut_expr,
     },
     std::collections::HashMap,
 };
@@ -97,6 +98,7 @@ fn plan_query(query: &mut QueryPlan) {
         QueryPlan::Values(values) => plan_values(values),
         QueryPlan::SelectOrderBy(order_by) => plan_select_order_by(order_by),
         QueryPlan::ValuesOrderBy(order_by) => plan_values_order_by(order_by),
+        QueryPlan::Distinct(distinct) => plan_distinct(distinct),
         QueryPlan::Offset(offset) => plan_offset(offset),
         QueryPlan::Limit(LimitPlan { input, count }) => {
             match input {
@@ -104,6 +106,7 @@ fn plan_query(query: &mut QueryPlan) {
                 LimitInputPlan::Values(values) => plan_values(values),
                 LimitInputPlan::SelectOrderBy(order_by) => plan_select_order_by(order_by),
                 LimitInputPlan::ValuesOrderBy(order_by) => plan_values_order_by(order_by),
+                LimitInputPlan::Distinct(distinct) => plan_distinct(distinct),
                 LimitInputPlan::Offset(offset) => plan_offset(offset),
             }
 
@@ -118,8 +121,16 @@ fn plan_offset(OffsetPlan { input, count }: &mut OffsetPlan) {
         OffsetInputPlan::Values(values) => plan_values(values),
         OffsetInputPlan::SelectOrderBy(order_by) => plan_select_order_by(order_by),
         OffsetInputPlan::ValuesOrderBy(order_by) => plan_values_order_by(order_by),
+        OffsetInputPlan::Distinct(distinct) => plan_distinct(distinct),
     }
     plan_expr(count);
+}
+
+fn plan_distinct(DistinctPlan { input }: &mut DistinctPlan) {
+    match input {
+        DistinctInputPlan::Select(select) => plan_select_query(select, &mut []),
+        DistinctInputPlan::SelectOrderBy(order_by) => plan_select_order_by(order_by),
+    }
 }
 
 fn plan_select_order_by(SelectOrderByPlan { input, exprs }: &mut SelectOrderByPlan) {
@@ -277,10 +288,10 @@ mod tests {
             ast::{Dictionary, Literal},
             parse_sql::parse,
             plan::{
-                ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan,
-                LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan,
-                ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SelectPlan,
-                StatementPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan,
+                DistinctInputPlan, DistinctPlan, ExprPlan, JoinConstraintPlan, JoinExecutorPlan,
+                JoinOperatorPlan, JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
+                OrderByExprPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan,
+                SelectPlan, StatementPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan,
                 expr::{try_visit_expr, visit_mut_expr},
             },
             translate::translate,
@@ -315,7 +326,15 @@ mod tests {
         match &offset.input {
             OffsetInputPlan::Select(select) => Some(select),
             OffsetInputPlan::SelectOrderBy(SelectOrderByPlan { input, .. }) => Some(input),
+            OffsetInputPlan::Distinct(distinct) => Some(distinct_select(distinct)),
             OffsetInputPlan::Values(_) | OffsetInputPlan::ValuesOrderBy(_) => None,
+        }
+    }
+
+    fn distinct_select(distinct: &DistinctPlan) -> &SelectPlan {
+        match &distinct.input {
+            DistinctInputPlan::Select(select) => select,
+            DistinctInputPlan::SelectOrderBy(SelectOrderByPlan { input, .. }) => input,
         }
     }
 
@@ -323,10 +342,12 @@ mod tests {
         match query {
             QueryPlan::Select(select) => Some(select),
             QueryPlan::SelectOrderBy(SelectOrderByPlan { input, .. }) => Some(input),
+            QueryPlan::Distinct(distinct) => Some(distinct_select(distinct)),
             QueryPlan::Offset(offset) => offset_select(offset),
             QueryPlan::Limit(LimitPlan { input, .. }) => match input {
                 LimitInputPlan::Select(select) => Some(select),
                 LimitInputPlan::SelectOrderBy(SelectOrderByPlan { input, .. }) => Some(input),
+                LimitInputPlan::Distinct(distinct) => Some(distinct_select(distinct)),
                 LimitInputPlan::Offset(offset) => offset_select(offset),
                 LimitInputPlan::Values(_) | LimitInputPlan::ValuesOrderBy(_) => None,
             },
@@ -431,6 +452,42 @@ mod tests {
         ));
 
         assert_eq!(found_slots, vec![Some(0), Some(0), Some(0)]);
+    }
+
+    #[test]
+    fn plans_select_distinct_separately_from_aggregate_distinct() {
+        let statement = parse_and_plan(
+            "
+            SELECT DISTINCT COUNT(DISTINCT id)
+            FROM Item
+            ORDER BY COUNT(DISTINCT id)
+        ",
+        );
+        let StatementPlan::Query(QueryPlan::Distinct(DistinctPlan {
+            input: DistinctInputPlan::SelectOrderBy(order_by),
+        })) = &statement
+        else {
+            panic!("expected distinct over select order by");
+        };
+        let slots = order_by
+            .input
+            .aggregate_slots
+            .as_ref()
+            .expect("aggregate slots should be planned");
+
+        assert_eq!(slots.len(), 1);
+        assert!(slots[0].distinct);
+        assert_eq!(slots[0].slot, Some(0));
+
+        let mut order_by_slot = None;
+        try_visit_expr(&order_by.exprs[0].expr, &mut |expr| {
+            if let ExprPlan::Aggregate(aggregate) = expr {
+                order_by_slot = aggregate.slot;
+            }
+            Ok(())
+        })
+        .expect("order by traversal");
+        assert_eq!(order_by_slot, Some(0));
     }
 
     #[test]
@@ -680,7 +737,6 @@ mod tests {
     #[test]
     fn keeps_schemaless_projection_unplanned() {
         let query = QueryPlan::Select(Box::new(SelectPlan {
-            distinct: false,
             projection: ProjectionPlan::SchemalessMap,
             from: TableWithJoinsPlan {
                 relation: TableFactorPlan::Dictionary {
@@ -705,7 +761,6 @@ mod tests {
     fn plans_table_factor_join_and_hash_executor_exprs() {
         let query = QueryPlan::SelectOrderBy(SelectOrderByPlan {
             input: Box::new(SelectPlan {
-                distinct: false,
                 projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
                 from: TableWithJoinsPlan {
                     relation: TableFactorPlan::Derived {

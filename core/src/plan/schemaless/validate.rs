@@ -3,10 +3,10 @@ use {
     crate::{
         data::Schema,
         plan::{
-            ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, LimitInputPlan,
-            LimitPlan, OffsetInputPlan, OffsetPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
-            SelectOrderByPlan, SelectPlan, StatementPlan, TableFactorPlan, ValuesOrderByPlan,
-            ValuesPlan,
+            DistinctInputPlan, DistinctPlan, ExprPlan, JoinConstraintPlan, JoinExecutorPlan,
+            JoinOperatorPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
+            ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SelectPlan,
+            StatementPlan, TableFactorPlan, ValuesOrderByPlan, ValuesPlan,
         },
         result::Result,
     },
@@ -72,6 +72,7 @@ fn validate_query(
         QueryPlan::Values(values) => validate_values(schema_map, values),
         QueryPlan::SelectOrderBy(order_by) => validate_select_order_by(schema_map, order_by),
         QueryPlan::ValuesOrderBy(order_by) => validate_values_order_by(schema_map, order_by),
+        QueryPlan::Distinct(distinct) => validate_distinct(schema_map, distinct),
         QueryPlan::Offset(offset) => validate_offset(schema_map, offset),
         QueryPlan::Limit(LimitPlan { input, count }) => {
             match input {
@@ -83,6 +84,7 @@ fn validate_query(
                 LimitInputPlan::ValuesOrderBy(order_by) => {
                     validate_values_order_by(schema_map, order_by)?;
                 }
+                LimitInputPlan::Distinct(distinct) => validate_distinct(schema_map, distinct)?,
                 LimitInputPlan::Offset(offset) => validate_offset(schema_map, offset)?,
             }
 
@@ -104,9 +106,22 @@ fn validate_offset(
         OffsetInputPlan::ValuesOrderBy(order_by) => {
             validate_values_order_by(schema_map, order_by)?;
         }
+        OffsetInputPlan::Distinct(distinct) => validate_distinct(schema_map, distinct)?,
     }
 
     validate_expr(schema_map, count)
+}
+
+fn validate_distinct(
+    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    DistinctPlan { input }: &DistinctPlan,
+) -> ValidateResult {
+    match input {
+        DistinctInputPlan::Select(select) => validate_select(schema_map, select),
+        DistinctInputPlan::SelectOrderBy(order_by) => {
+            validate_select_order_by(schema_map, order_by)
+        }
+    }
 }
 
 fn validate_select_order_by(

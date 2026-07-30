@@ -1,5 +1,5 @@
 use {
-    super::{BuildQuery, BuildQueryPlan, BuildSelectPlan, ValuesNode},
+    super::{BuildQuery, BuildQueryPlan, BuildSelectPlan, DistinctNode, ValuesNode},
     crate::{
         ast::Query,
         plan::{OffsetInputPlan, OffsetPlan, QueryPlan},
@@ -24,6 +24,7 @@ pub(super) enum PrevNode<'a> {
     Filter(FilterNode<'a>),
     SelectOrderBy(SelectOrderByNode<'a>),
     ValuesOrderBy(ValuesOrderByNode<'a>),
+    Distinct(DistinctNode<'a>),
     ProjectNode(Box<ProjectNode<'a>>),
 }
 
@@ -65,6 +66,7 @@ impl PrevNode<'_> {
             Self::ValuesOrderBy(node) => node
                 .build_values_order_by_plan()
                 .map(OffsetInputPlan::ValuesOrderBy),
+            Self::Distinct(node) => node.build_distinct_plan().map(OffsetInputPlan::Distinct),
             Self::ProjectNode(node) => node
                 .build_select_plan()
                 .map(Box::new)
@@ -86,6 +88,7 @@ impl BuildQuery for PrevNode<'_> {
             Self::Filter(node) => node.build_query(),
             Self::SelectOrderBy(node) => node.build_query(),
             Self::ValuesOrderBy(node) => node.build_query(),
+            Self::Distinct(node) => node.build_query(),
             Self::ProjectNode(node) => node.build_query(),
         }
     }
@@ -148,6 +151,12 @@ impl<'a> From<SelectOrderByNode<'a>> for PrevNode<'a> {
 impl<'a> From<ValuesOrderByNode<'a>> for PrevNode<'a> {
     fn from(node: ValuesOrderByNode<'a>) -> Self {
         Self::ValuesOrderBy(node)
+    }
+}
+
+impl<'a> From<DistinctNode<'a>> for PrevNode<'a> {
+    fn from(node: DistinctNode<'a>) -> Self {
+        Self::Distinct(node)
     }
 }
 
@@ -306,7 +315,6 @@ mod tests {
                 },
             };
             let select = SelectPlan {
-                distinct: false,
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),

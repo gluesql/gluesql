@@ -1,5 +1,5 @@
 use {
-    super::{BuildSelect, BuildSelectPlan},
+    super::{BuildSelect, BuildSelectPlan, DistinctNode},
     crate::{
         ast::Select,
         plan::SelectPlan,
@@ -112,6 +112,10 @@ impl<'a> GroupByNode<'a> {
         SelectOrderByNode::new(self, expr_list)
     }
 
+    pub fn distinct(self) -> DistinctNode<'a> {
+        DistinctNode::new(self)
+    }
+
     pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
         QueryNode::GroupByNode(self).alias_as(table_alias)
     }
@@ -218,7 +222,6 @@ mod tests {
                 },
             };
             let select = SelectPlan {
-                distinct: false,
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),

@@ -1,8 +1,8 @@
 use {
     super::{
-        ExprList, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
-        LimitNode, OffsetLimitNode, OffsetNode, ProjectNode, SelectNode, SelectOrderByNode,
-        TableFactorNode, ValuesOrderByNode,
+        DistinctNode, ExprList, FilterNode, GroupByNode, HashJoinNode, HavingNode,
+        JoinConstraintNode, JoinNode, LimitNode, OffsetLimitNode, OffsetNode, ProjectNode,
+        SelectNode, SelectOrderByNode, TableFactorNode, ValuesOrderByNode,
         select::{BuildQuery, BuildQueryPlan, ValuesNode},
         table_factor::TableType,
     },
@@ -33,6 +33,7 @@ pub enum QueryNode<'a> {
     ProjectNode(ProjectNode<'a>),
     SelectOrderByNode(SelectOrderByNode<'a>),
     ValuesOrderByNode(ValuesOrderByNode<'a>),
+    DistinctNode(DistinctNode<'a>),
 }
 
 impl<'a> QueryNode<'a> {
@@ -80,6 +81,7 @@ impl<'a> QueryNode<'a> {
             QueryNode::ProjectNode(node) => node.build_query(),
             QueryNode::SelectOrderByNode(node) => node.build_query(),
             QueryNode::ValuesOrderByNode(node) => node.build_query(),
+            QueryNode::DistinctNode(node) => node.build_query(),
         }
     }
 
@@ -109,6 +111,7 @@ impl<'a> QueryNode<'a> {
             QueryNode::ProjectNode(node) => node.build_query_plan(),
             QueryNode::SelectOrderByNode(node) => node.build_query_plan(),
             QueryNode::ValuesOrderByNode(node) => node.build_query_plan(),
+            QueryNode::DistinctNode(node) => node.build_query_plan(),
         }
     }
 }
@@ -147,6 +150,7 @@ impl_from_select_nodes!(OffsetLimitNode);
 impl_from_select_nodes!(ProjectNode);
 impl_from_select_nodes!(SelectOrderByNode);
 impl_from_select_nodes!(ValuesOrderByNode);
+impl_from_select_nodes!(DistinctNode);
 
 #[cfg(test)]
 mod test {
@@ -154,13 +158,12 @@ mod test {
         super::QueryNode,
         crate::{
             plan::{
-                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, LimitInputPlan,
-                LimitPlan, OffsetInputPlan, OffsetPlan, ProjectionPlan, QueryPlan, SelectPlan,
-                TableFactorPlan, TableWithJoinsPlan,
+                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
+                QueryPlan, SelectPlan, TableFactorPlan, TableWithJoinsPlan,
             },
             query_builder::{
                 SelectItemList, col, glue_indexes, glue_objects, glue_table_columns, glue_tables,
-                series, table, test_query, values,
+                series, table, test_query, test_query_builder, values,
             },
         },
         pretty_assertions::assert_eq,
@@ -208,7 +211,6 @@ mod test {
                 },
             };
             let select = SelectPlan {
-                distinct: false,
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),
@@ -273,6 +275,15 @@ mod test {
         let expected = "SELECT * FROM Foo ORDER BY score DESC";
         test_query(actual, expected);
 
+        let actual = table("Foo")
+            .select()
+            .project("id")
+            .order_by("id")
+            .distinct()
+            .into();
+        let expected = "SELECT DISTINCT id FROM Foo ORDER BY id";
+        test_query(actual, expected);
+
         let actual = glue_objects().select().into();
         let expected = "SELECT * FROM GLUE_OBJECTS";
         test_query(actual, expected);
@@ -299,174 +310,91 @@ mod test {
     }
 
     #[test]
+    fn select_distinct_builds_after_order_by() {
+        let actual = table("Item").select().distinct();
+        test_query_builder(actual, "SELECT DISTINCT * FROM Item");
+
+        let actual = table("Item").select().order_by("id").distinct();
+        test_query_builder(actual, "SELECT DISTINCT * FROM Item ORDER BY id");
+
+        let actual = table("Item").select().distinct().offset(2);
+        test_query_builder(actual, "SELECT DISTINCT * FROM Item OFFSET 2");
+
+        let actual = table("Item").select().order_by("id").distinct().offset(2);
+        test_query_builder(actual, "SELECT DISTINCT * FROM Item ORDER BY id OFFSET 2");
+
+        let actual = table("Item").select().distinct().limit(3);
+        test_query_builder(actual, "SELECT DISTINCT * FROM Item LIMIT 3");
+
+        let actual = table("Item").select().order_by("id").distinct().limit(3);
+        test_query_builder(actual, "SELECT DISTINCT * FROM Item ORDER BY id LIMIT 3");
+
+        let actual = table("Item").select().distinct().offset(2).limit(3);
+        test_query_builder(actual, "SELECT DISTINCT * FROM Item OFFSET 2 LIMIT 3");
+
+        let actual = table("Item")
+            .select()
+            .order_by("id")
+            .distinct()
+            .offset(2)
+            .limit(3);
+        test_query_builder(
+            actual,
+            "SELECT DISTINCT * FROM Item ORDER BY id OFFSET 2 LIMIT 3",
+        );
+    }
+
+    #[test]
     fn query_builder_builds_only_valid_terminal_stage_relations() {
-        let body = QueryNode::from(table("Foo").select())
-            .build_query_plan()
-            .unwrap();
-        assert!(matches!(body, QueryPlan::Select(_)));
+        let actual = table("Foo").select();
+        test_query_builder(actual, "SELECT * FROM Foo");
 
-        let order_by = QueryNode::from(table("Foo").select().order_by("id"))
-            .build_query_plan()
-            .unwrap();
-        assert!(matches!(order_by, QueryPlan::SelectOrderBy(_)));
+        let actual = table("Foo").select().order_by("id");
+        test_query_builder(actual, "SELECT * FROM Foo ORDER BY id");
 
-        let offset = QueryNode::from(table("Foo").select().offset(2))
-            .build_query_plan()
-            .unwrap();
-        assert!(matches!(
-            offset,
-            QueryPlan::Offset(OffsetPlan {
-                input: OffsetInputPlan::Select(_),
-                ..
-            })
-        ));
+        let actual = table("Foo").select().offset(2);
+        test_query_builder(actual, "SELECT * FROM Foo OFFSET 2");
 
-        let order_by_offset = QueryNode::from(table("Foo").select().order_by("id").offset(2))
-            .build_query_plan()
-            .unwrap();
-        assert!(matches!(
-            order_by_offset,
-            QueryPlan::Offset(OffsetPlan {
-                input: OffsetInputPlan::SelectOrderBy(_),
-                ..
-            })
-        ));
+        let actual = table("Foo").select().order_by("id").offset(2);
+        test_query_builder(actual, "SELECT * FROM Foo ORDER BY id OFFSET 2");
 
-        let limit = QueryNode::from(table("Foo").select().limit(3))
-            .build_query_plan()
-            .unwrap();
-        assert!(matches!(
-            limit,
-            QueryPlan::Limit(LimitPlan {
-                input: LimitInputPlan::Select(_),
-                ..
-            })
-        ));
+        let actual = table("Foo").select().limit(3);
+        test_query_builder(actual, "SELECT * FROM Foo LIMIT 3");
 
-        let order_by_limit = QueryNode::from(table("Foo").select().order_by("id").limit(3))
-            .build_query_plan()
-            .unwrap();
-        assert!(matches!(
-            order_by_limit,
-            QueryPlan::Limit(LimitPlan {
-                input: LimitInputPlan::SelectOrderBy(_),
-                ..
-            })
-        ));
+        let actual = table("Foo").select().order_by("id").limit(3);
+        test_query_builder(actual, "SELECT * FROM Foo ORDER BY id LIMIT 3");
 
-        let offset_limit = QueryNode::from(table("Foo").select().offset(2).limit(3))
-            .build_query_plan()
-            .unwrap();
-        assert!(matches!(
-            offset_limit,
-            QueryPlan::Limit(LimitPlan {
-                input: LimitInputPlan::Offset(OffsetPlan {
-                    input: OffsetInputPlan::Select(_),
-                    ..
-                }),
-                ..
-            })
-        ));
+        let actual = table("Foo").select().offset(2).limit(3);
+        test_query_builder(actual, "SELECT * FROM Foo OFFSET 2 LIMIT 3");
 
-        let order_by_offset_limit =
-            QueryNode::from(table("Foo").select().order_by("id").offset(2).limit(3))
-                .build_query_plan()
-                .unwrap();
-        assert!(matches!(
-            order_by_offset_limit,
-            QueryPlan::Limit(LimitPlan {
-                input: LimitInputPlan::Offset(OffsetPlan {
-                    input: OffsetInputPlan::SelectOrderBy(_),
-                    ..
-                }),
-                ..
-            })
-        ));
+        let actual = table("Foo").select().order_by("id").offset(2).limit(3);
+        test_query_builder(actual, "SELECT * FROM Foo ORDER BY id OFFSET 2 LIMIT 3");
     }
 
     #[test]
     fn query_builder_preserves_values_terminal_stage_relations() {
-        let values_plan = QueryNode::ValuesNode(values(vec!["1"]))
-            .build_query_plan()
-            .unwrap();
-        assert!(matches!(values_plan, QueryPlan::Values(_)));
+        let actual = values(vec!["1"]);
+        test_query_builder(actual, "VALUES (1)");
 
-        let order_by = QueryNode::from(values(vec!["1"]).order_by("column1"))
-            .build_query_plan()
-            .unwrap();
-        assert!(matches!(order_by, QueryPlan::ValuesOrderBy(_)));
+        let actual = values(vec!["1"]).order_by("column1");
+        test_query_builder(actual, "VALUES (1) ORDER BY column1");
 
-        let offset = QueryNode::from(values(vec!["1"]).offset(2))
-            .build_query_plan()
-            .unwrap();
-        assert!(matches!(
-            offset,
-            QueryPlan::Offset(OffsetPlan {
-                input: OffsetInputPlan::Values(_),
-                ..
-            })
-        ));
+        let actual = values(vec!["1"]).offset(2);
+        test_query_builder(actual, "VALUES (1) OFFSET 2");
 
-        let order_by_offset = QueryNode::from(values(vec!["1"]).order_by("column1").offset(2))
-            .build_query_plan()
-            .unwrap();
-        assert!(matches!(
-            order_by_offset,
-            QueryPlan::Offset(OffsetPlan {
-                input: OffsetInputPlan::ValuesOrderBy(_),
-                ..
-            })
-        ));
+        let actual = values(vec!["1"]).order_by("column1").offset(2);
+        test_query_builder(actual, "VALUES (1) ORDER BY column1 OFFSET 2");
 
-        let limit = QueryNode::from(values(vec!["1"]).limit(3))
-            .build_query_plan()
-            .unwrap();
-        assert!(matches!(
-            limit,
-            QueryPlan::Limit(LimitPlan {
-                input: LimitInputPlan::Values(_),
-                ..
-            })
-        ));
+        let actual = values(vec!["1"]).limit(3);
+        test_query_builder(actual, "VALUES (1) LIMIT 3");
 
-        let order_by_limit = QueryNode::from(values(vec!["1"]).order_by("column1").limit(3))
-            .build_query_plan()
-            .unwrap();
-        assert!(matches!(
-            order_by_limit,
-            QueryPlan::Limit(LimitPlan {
-                input: LimitInputPlan::ValuesOrderBy(_),
-                ..
-            })
-        ));
+        let actual = values(vec!["1"]).order_by("column1").limit(3);
+        test_query_builder(actual, "VALUES (1) ORDER BY column1 LIMIT 3");
 
-        let offset_limit = QueryNode::from(values(vec!["1"]).offset(2).limit(3))
-            .build_query_plan()
-            .unwrap();
-        assert!(matches!(
-            offset_limit,
-            QueryPlan::Limit(LimitPlan {
-                input: LimitInputPlan::Offset(OffsetPlan {
-                    input: OffsetInputPlan::Values(_),
-                    ..
-                }),
-                ..
-            })
-        ));
+        let actual = values(vec!["1"]).offset(2).limit(3);
+        test_query_builder(actual, "VALUES (1) OFFSET 2 LIMIT 3");
 
-        let order_by_offset_limit =
-            QueryNode::from(values(vec!["1"]).order_by("column1").offset(2).limit(3))
-                .build_query_plan()
-                .unwrap();
-        assert!(matches!(
-            order_by_offset_limit,
-            QueryPlan::Limit(LimitPlan {
-                input: LimitInputPlan::Offset(OffsetPlan {
-                    input: OffsetInputPlan::ValuesOrderBy(_),
-                    ..
-                }),
-                ..
-            })
-        ));
+        let actual = values(vec!["1"]).order_by("column1").offset(2).limit(3);
+        test_query_builder(actual, "VALUES (1) ORDER BY column1 OFFSET 2 LIMIT 3");
     }
 }

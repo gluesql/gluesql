@@ -8,8 +8,9 @@ use {
             select::{select, select_with_labels},
         },
         plan::{
-            LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, SelectPlan, TableFactorPlan, ValuesPlan,
+            DistinctInputPlan, DistinctPlan, LimitInputPlan, LimitPlan, OffsetInputPlan,
+            OffsetPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan, TableFactorPlan,
+            ValuesPlan,
         },
         prelude::{DataType, Value},
         result::Result,
@@ -24,12 +25,20 @@ enum CreateTableSource<'a> {
     Values(&'a ValuesPlan),
 }
 
+fn create_table_distinct_source(distinct: &DistinctPlan) -> CreateTableSource<'_> {
+    match &distinct.input {
+        DistinctInputPlan::Select(select) => CreateTableSource::Select(select),
+        DistinctInputPlan::SelectOrderBy(order_by) => CreateTableSource::Select(&order_by.input),
+    }
+}
+
 fn create_table_offset_source(offset: &OffsetPlan) -> CreateTableSource<'_> {
     match &offset.input {
         OffsetInputPlan::Select(select) => CreateTableSource::Select(select),
         OffsetInputPlan::Values(values) => CreateTableSource::Values(values),
         OffsetInputPlan::SelectOrderBy(order_by) => CreateTableSource::Select(&order_by.input),
         OffsetInputPlan::ValuesOrderBy(order_by) => CreateTableSource::Values(&order_by.input),
+        OffsetInputPlan::Distinct(distinct) => create_table_distinct_source(distinct),
     }
 }
 
@@ -39,12 +48,14 @@ fn create_table_source(query: &QueryPlan) -> CreateTableSource<'_> {
         QueryPlan::Values(values) => CreateTableSource::Values(values),
         QueryPlan::SelectOrderBy(order_by) => CreateTableSource::Select(&order_by.input),
         QueryPlan::ValuesOrderBy(order_by) => CreateTableSource::Values(&order_by.input),
+        QueryPlan::Distinct(distinct) => create_table_distinct_source(distinct),
         QueryPlan::Offset(offset) => create_table_offset_source(offset),
         QueryPlan::Limit(LimitPlan { input, .. }) => match input {
             LimitInputPlan::Select(select) => CreateTableSource::Select(select),
             LimitInputPlan::Values(values) => CreateTableSource::Values(values),
             LimitInputPlan::SelectOrderBy(order_by) => CreateTableSource::Select(&order_by.input),
             LimitInputPlan::ValuesOrderBy(order_by) => CreateTableSource::Values(&order_by.input),
+            LimitInputPlan::Distinct(distinct) => create_table_distinct_source(distinct),
             LimitInputPlan::Offset(offset) => create_table_offset_source(offset),
         },
     }

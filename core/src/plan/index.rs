@@ -4,9 +4,9 @@ use {
         ast::{BinaryOperator, IndexOperator},
         data::{Schema, SchemaIndex, SchemaIndexOrd, Value},
         plan::{
-            ExprPlan, IndexItemPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
-            OrderByExprPlan, QueryPlan, SelectOrderByPlan, SelectPlan, StatementPlan,
-            TableFactorPlan,
+            DistinctInputPlan, DistinctPlan, ExprPlan, IndexItemPlan, LimitInputPlan, LimitPlan,
+            OffsetInputPlan, OffsetPlan, OrderByExprPlan, QueryPlan, SelectOrderByPlan, SelectPlan,
+            StatementPlan, TableFactorPlan,
             expr::{deterministic::is_deterministic, nullability::may_return_null},
             plan_scalar_expr,
         },
@@ -41,6 +41,23 @@ impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
 
             (Box::new(input), order_by)
         };
+        let plan_distinct = |DistinctPlan { input }| {
+            let input = match input {
+                DistinctInputPlan::Select(input) => {
+                    DistinctInputPlan::Select(plan_select(input, Vec::new()).0)
+                }
+                DistinctInputPlan::SelectOrderBy(SelectOrderByPlan { input, exprs }) => {
+                    let (input, exprs) = plan_select(input, exprs);
+                    if exprs.is_empty() {
+                        DistinctInputPlan::Select(input)
+                    } else {
+                        DistinctInputPlan::SelectOrderBy(SelectOrderByPlan { input, exprs })
+                    }
+                }
+            };
+
+            DistinctPlan { input }
+        };
 
         match query {
             QueryPlan::Select(input) => QueryPlan::Select(plan_select(input, Vec::new()).0),
@@ -54,6 +71,7 @@ impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
                 }
             }
             QueryPlan::ValuesOrderBy(values) => QueryPlan::ValuesOrderBy(values),
+            QueryPlan::Distinct(distinct) => QueryPlan::Distinct(plan_distinct(distinct)),
             QueryPlan::Offset(OffsetPlan { input, count }) => {
                 let input = match input {
                     OffsetInputPlan::Select(input) => {
@@ -70,6 +88,9 @@ impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
                     }
                     OffsetInputPlan::ValuesOrderBy(values) => {
                         OffsetInputPlan::ValuesOrderBy(values)
+                    }
+                    OffsetInputPlan::Distinct(distinct) => {
+                        OffsetInputPlan::Distinct(plan_distinct(distinct))
                     }
                 };
 
@@ -90,6 +111,9 @@ impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
                         }
                     }
                     LimitInputPlan::ValuesOrderBy(values) => LimitInputPlan::ValuesOrderBy(values),
+                    LimitInputPlan::Distinct(distinct) => {
+                        LimitInputPlan::Distinct(plan_distinct(distinct))
+                    }
                     LimitInputPlan::Offset(OffsetPlan { input, count }) => {
                         let input = match input {
                             OffsetInputPlan::Select(input) => {
@@ -109,6 +133,9 @@ impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
                             }
                             OffsetInputPlan::ValuesOrderBy(values) => {
                                 OffsetInputPlan::ValuesOrderBy(values)
+                            }
+                            OffsetInputPlan::Distinct(distinct) => {
+                                OffsetInputPlan::Distinct(plan_distinct(distinct))
                             }
                         };
                         LimitInputPlan::Offset(OffsetPlan { input, count })
@@ -133,7 +160,6 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
         mut order_by: Vec<OrderByExprPlan>,
     ) -> (SelectPlan, Vec<OrderByExprPlan>) {
         let SelectPlan {
-            distinct,
             projection,
             mut from,
             selection,
@@ -157,7 +183,6 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
             order_by.pop();
 
             let select = SelectPlan {
-                distinct,
                 projection,
                 from,
                 selection,
@@ -198,7 +223,6 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
         });
 
         let select = SelectPlan {
-            distinct,
             projection,
             from,
             selection,
@@ -506,8 +530,8 @@ mod tests {
             mock::{MockStorage, run},
             parse_sql::parse,
             plan::{
-                LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, QueryPlan, StatementPlan,
-                fetch_schema_map,
+                DistinctInputPlan, DistinctPlan, LimitInputPlan, LimitPlan, OffsetInputPlan,
+                OffsetPlan, QueryPlan, StatementPlan, fetch_schema_map,
             },
             query_builder::{
                 Build, col, exists, nested, non_clustered, null, num, primary_key, table, text,
@@ -614,6 +638,23 @@ CREATE INDEX idx_name ON Test (name);
         assert!(matches!(
             root_preserved,
             Ok(StatementPlan::Query(QueryPlan::SelectOrderBy(_)))
+        ));
+
+        let distinct_consumed = plan_index(&storage, "SELECT DISTINCT * FROM Test ORDER BY name");
+        assert!(matches!(
+            distinct_consumed,
+            Ok(StatementPlan::Query(QueryPlan::Distinct(DistinctPlan {
+                input: DistinctInputPlan::Select(_),
+            })))
+        ));
+
+        let distinct_preserved =
+            plan_index(&storage, "SELECT DISTINCT * FROM Test ORDER BY id + name");
+        assert!(matches!(
+            distinct_preserved,
+            Ok(StatementPlan::Query(QueryPlan::Distinct(DistinctPlan {
+                input: DistinctInputPlan::SelectOrderBy(_),
+            })))
         ));
 
         let offset_body = plan_index(&storage, "SELECT * FROM Test OFFSET 1");
