@@ -171,7 +171,6 @@ mod test {
                     },
                     joins: vec![join],
                 },
-                selection: None,
             };
             let query = QueryPlan::Project(ProjectPlan {
                 input: ProjectInputPlan::Select(Box::new(select)),

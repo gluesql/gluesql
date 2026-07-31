@@ -16,8 +16,8 @@ use {
     crate::{
         ast::{Query, Select, SetExpr},
         plan::{
-            AggregationPlan, HavingPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, SelectPlan, StatementPlan,
+            AggregationInputPlan, AggregationPlan, FilterPlan, HavingPlan, ProjectInputPlan,
+            ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan, StatementPlan,
         },
         result::Result,
     },
@@ -39,6 +39,14 @@ pub use {
 
 pub(super) trait BuildSelectPlan {
     fn build_select_plan(self) -> Result<SelectPlan>;
+}
+
+pub(super) trait BuildFilterPlan {
+    fn build_filter_plan(self) -> Result<FilterPlan>;
+}
+
+pub(super) trait BuildAggregationInputPlan {
+    fn build_aggregation_input_plan(self) -> Result<AggregationInputPlan>;
 }
 
 pub(super) trait BuildAggregationPlan {
@@ -74,6 +82,14 @@ impl<T: BuildSelectPlan> BuildProjectInputPlan for T {
         self.build_select_plan()
             .map(Box::new)
             .map(ProjectInputPlan::Select)
+    }
+}
+
+impl<T: BuildSelectPlan> BuildAggregationInputPlan for T {
+    fn build_aggregation_input_plan(self) -> Result<AggregationInputPlan> {
+        self.build_select_plan()
+            .map(Box::new)
+            .map(AggregationInputPlan::Select)
     }
 }
 

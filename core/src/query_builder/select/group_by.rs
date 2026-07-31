@@ -1,10 +1,11 @@
 use {
     super::{
-        BuildAggregationPlan, BuildProjectInputPlan, BuildSelect, BuildSelectPlan, DistinctNode,
+        BuildAggregationInputPlan, BuildAggregationPlan, BuildProjectInputPlan, BuildSelect,
+        DistinctNode,
     },
     crate::{
         ast::Select,
-        plan::{AggregationPlan, ProjectInputPlan, SelectPlan},
+        plan::{AggregationPlan, ProjectInputPlan},
         query_builder::{
             ExprList, ExprNode, FilterNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
             LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryNode, SelectItemList,
@@ -23,14 +24,14 @@ pub(super) enum PrevNode<'a> {
     Filter(FilterNode<'a>),
 }
 
-impl BuildSelectPlan for PrevNode<'_> {
-    fn build_select_plan(self) -> Result<SelectPlan> {
+impl BuildAggregationInputPlan for PrevNode<'_> {
+    fn build_aggregation_input_plan(self) -> Result<crate::plan::AggregationInputPlan> {
         match self {
-            Self::Select(node) => node.build_select_plan(),
-            Self::Join(node) => node.build_select_plan(),
-            Self::JoinConstraint(node) => node.build_select_plan(),
-            Self::HashJoin(node) => node.build_select_plan(),
-            Self::Filter(node) => node.build_select_plan(),
+            Self::Select(node) => node.build_aggregation_input_plan(),
+            Self::Join(node) => node.build_aggregation_input_plan(),
+            Self::JoinConstraint(node) => node.build_aggregation_input_plan(),
+            Self::HashJoin(node) => node.build_aggregation_input_plan(),
+            Self::Filter(node) => node.build_aggregation_input_plan(),
         }
     }
 }
@@ -126,7 +127,7 @@ impl<'a> GroupByNode<'a> {
 impl BuildAggregationPlan for GroupByNode<'_> {
     fn build_aggregation_plan(self) -> Result<AggregationPlan> {
         Ok(AggregationPlan {
-            input: Box::new(self.prev_node.build_select_plan()?),
+            input: self.prev_node.build_aggregation_input_plan()?,
             group_by: self.expr_list.build_exprs_plan()?,
             aggregate_slots: Vec::new(),
         })
@@ -154,9 +155,9 @@ mod tests {
     use {
         crate::{
             plan::{
-                AggregationPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan,
-                ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectPlan,
-                StatementPlan, TableFactorPlan, TableWithJoinsPlan,
+                AggregationInputPlan, AggregationPlan, JoinConstraintPlan, JoinExecutorPlan,
+                JoinOperatorPlan, JoinPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan,
+                QueryPlan, SelectPlan, StatementPlan, TableFactorPlan, TableWithJoinsPlan,
             },
             query_builder::{Build, SelectItemList, col, table, test_query_builder},
         },
@@ -241,11 +242,10 @@ mod tests {
                     },
                     joins: vec![join],
                 },
-                selection: None,
             };
             let project = ProjectPlan {
                 input: ProjectInputPlan::Aggregation(AggregationPlan {
-                    input: Box::new(select),
+                    input: AggregationInputPlan::Select(Box::new(select)),
                     group_by: vec![col("PlayerItem.category").build_expr_plan().unwrap()],
                     aggregate_slots: Vec::new(),
                 }),

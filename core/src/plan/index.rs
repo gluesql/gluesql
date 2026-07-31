@@ -4,9 +4,10 @@ use {
         ast::{BinaryOperator, IndexOperator},
         data::{Schema, SchemaIndex, SchemaIndexOrd, Value},
         plan::{
-            DistinctInputPlan, DistinctPlan, ExprPlan, IndexItemPlan, LimitInputPlan, LimitPlan,
-            OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan, ProjectPlan, QueryPlan,
-            SelectOrderByPlan, SelectPlan, StatementPlan, TableFactorPlan,
+            AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterPlan,
+            IndexItemPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan,
+            ProjectInputPlan, ProjectPlan, QueryPlan, SelectOrderByPlan, SelectPlan, StatementPlan,
+            TableFactorPlan,
             expr::{deterministic::is_deterministic, nullability::may_return_null},
             plan_scalar_expr,
         },
@@ -36,29 +37,8 @@ struct IndexPlanner<'a, S> {
 
 impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
     fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
-        let plan_project = |mut input: ProjectPlan, order_by| {
-            let (project_input, order_by) = match input.input {
-                ProjectInputPlan::Select(select) => {
-                    let (select, order_by) = self.select(outer_context.as_ref(), *select, order_by);
-                    (ProjectInputPlan::Select(Box::new(select)), order_by)
-                }
-                ProjectInputPlan::Aggregation(mut aggregation) => {
-                    let (select, order_by) =
-                        self.select(outer_context.as_ref(), *aggregation.input, order_by);
-                    aggregation.input = Box::new(select);
-                    (ProjectInputPlan::Aggregation(aggregation), order_by)
-                }
-                ProjectInputPlan::Having(mut having) => {
-                    let (select, order_by) =
-                        self.select(outer_context.as_ref(), *having.input.input, order_by);
-                    having.input.input = Box::new(select);
-                    (ProjectInputPlan::Having(having), order_by)
-                }
-            };
-            input.input = project_input;
-
-            (input, order_by)
-        };
+        let plan_project =
+            |input: ProjectPlan, order_by| self.project(outer_context.as_ref(), input, order_by);
         let plan_distinct = |DistinctPlan { input }| {
             let input = match input {
                 DistinctInputPlan::Project(input) => {
@@ -171,16 +151,83 @@ impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
 }
 
 impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
+    fn project(
+        &self,
+        outer_context: Option<&Rc<Context<'a>>>,
+        mut project: ProjectPlan,
+        order_by: Vec<OrderByExprPlan>,
+    ) -> (ProjectPlan, Vec<OrderByExprPlan>) {
+        let (input, order_by) = match project.input {
+            ProjectInputPlan::Select(select) => {
+                let (select, _, order_by) = self.select(outer_context, *select, None, order_by);
+                (ProjectInputPlan::Select(Box::new(select)), order_by)
+            }
+            ProjectInputPlan::Filter(FilterPlan { input, expr }) => {
+                let (select, expr, order_by) =
+                    self.select(outer_context, *input, Some(expr), order_by);
+                let input = match expr {
+                    Some(expr) => ProjectInputPlan::Filter(FilterPlan {
+                        input: Box::new(select),
+                        expr,
+                    }),
+                    None => ProjectInputPlan::Select(Box::new(select)),
+                };
+
+                (input, order_by)
+            }
+            ProjectInputPlan::Aggregation(mut aggregation) => {
+                let (input, order_by) =
+                    self.aggregation_input(outer_context, aggregation.input, order_by);
+                aggregation.input = input;
+                (ProjectInputPlan::Aggregation(aggregation), order_by)
+            }
+            ProjectInputPlan::Having(mut having) => {
+                let (input, order_by) =
+                    self.aggregation_input(outer_context, having.input.input, order_by);
+                having.input.input = input;
+                (ProjectInputPlan::Having(having), order_by)
+            }
+        };
+        project.input = input;
+
+        (project, order_by)
+    }
+
+    fn aggregation_input(
+        &self,
+        outer_context: Option<&Rc<Context<'a>>>,
+        input: AggregationInputPlan,
+        order_by: Vec<OrderByExprPlan>,
+    ) -> (AggregationInputPlan, Vec<OrderByExprPlan>) {
+        match input {
+            AggregationInputPlan::Select(select) => {
+                let (select, _, order_by) = self.select(outer_context, *select, None, order_by);
+                (AggregationInputPlan::Select(Box::new(select)), order_by)
+            }
+            AggregationInputPlan::Filter(FilterPlan { input, expr }) => {
+                let (select, expr, order_by) =
+                    self.select(outer_context, *input, Some(expr), order_by);
+                let input = match expr {
+                    Some(expr) => AggregationInputPlan::Filter(FilterPlan {
+                        input: Box::new(select),
+                        expr,
+                    }),
+                    None => AggregationInputPlan::Select(Box::new(select)),
+                };
+
+                (input, order_by)
+            }
+        }
+    }
+
     fn select(
         &self,
         outer_context: Option<&Rc<Context<'a>>>,
         select: SelectPlan,
+        filter_expr: Option<ExprPlan>,
         mut order_by: Vec<OrderByExprPlan>,
-    ) -> (SelectPlan, Vec<OrderByExprPlan>) {
-        let SelectPlan {
-            mut from,
-            selection,
-        } = select;
+    ) -> (SelectPlan, Option<ExprPlan>, Vec<OrderByExprPlan>) {
+        let SelectPlan { mut from } = select;
 
         let indexes = self.indexes(&from.relation);
 
@@ -196,12 +243,10 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
             });
             order_by.pop();
 
-            let select = SelectPlan { from, selection };
-
-            return (select, order_by);
+            return (SelectPlan { from }, filter_expr, order_by);
         }
 
-        let selection = selection.and_then(|expr| {
+        let filter_expr = filter_expr.and_then(|expr| {
             if let (Some(indexes), TableFactorPlan::Table { index: None, .. }) =
                 (indexes.as_ref(), &from.relation)
             {
@@ -210,7 +255,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                         index_name,
                         index_op,
                         index_value_expr,
-                        selection,
+                        residual,
                     } => {
                         if let TableFactorPlan::Table { index, .. } = &mut from.relation {
                             *index = Some(IndexItemPlan::NonClustered {
@@ -220,7 +265,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                             });
                         }
 
-                        selection
+                        residual
                     }
                     Planned::Expr(expr) => Some(expr),
                 }
@@ -229,18 +274,16 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
             }
         });
 
-        let select = SelectPlan { from, selection };
-
-        (select, order_by)
+        (SelectPlan { from }, filter_expr, order_by)
     }
 
     fn plan_index_expr(
         &self,
         outer_context: Option<Rc<Context<'a>>>,
         indexes: &Indexes<'a>,
-        selection: ExprPlan,
+        expr: ExprPlan,
     ) -> Planned {
-        match selection {
+        match expr {
             ExprPlan::Nested(expr) => self.plan_index_expr(outer_context, indexes, *expr),
             ExprPlan::IsNull(expr) => self.search_is_null(outer_context, indexes, true, *expr),
             ExprPlan::IsNotNull(expr) => self.search_is_null(outer_context, indexes, false, *expr),
@@ -286,9 +329,9 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                         index_name,
                         index_op,
                         index_value_expr,
-                        selection,
+                        residual,
                     } => {
-                        let selection = match selection {
+                        let residual = match residual {
                             Some(expr) => ExprPlan::BinaryOp {
                                 left: Box::new(expr),
                                 op: BinaryOperator::And,
@@ -301,7 +344,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                             index_name,
                             index_op,
                             index_value_expr,
-                            selection: Some(selection),
+                            residual: Some(residual),
                         };
                     }
                 };
@@ -316,9 +359,9 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                         index_name,
                         index_op,
                         index_value_expr,
-                        selection,
+                        residual,
                     } => {
-                        let selection = match selection {
+                        let residual = match residual {
                             Some(expr) => ExprPlan::BinaryOp {
                                 left: Box::new(left),
                                 op: BinaryOperator::And,
@@ -331,7 +374,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                             index_name,
                             index_op,
                             index_value_expr,
-                            selection: Some(selection),
+                            residual: Some(residual),
                         }
                     }
                 }
@@ -397,7 +440,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                 index_name,
                 index_op,
                 index_value_expr: ExprPlan::Value(Value::Null),
-                selection: None,
+                residual: None,
             };
         }
 
@@ -429,7 +472,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                 index_name,
                 index_op,
                 index_value_expr: value_expr,
-                selection: None,
+                residual: None,
             };
         }
 
@@ -443,7 +486,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                 index_name,
                 index_op: index_op.reverse(),
                 index_value_expr: value_expr,
-                selection: None,
+                residual: None,
             };
         }
 
@@ -517,7 +560,7 @@ enum Planned {
         index_name: String,
         index_op: IndexOperator,
         index_value_expr: ExprPlan,
-        selection: Option<ExprPlan>,
+        residual: Option<ExprPlan>,
     },
     Expr(ExprPlan),
 }
@@ -628,6 +671,48 @@ CREATE INDEX idx_name ON Test (name);
             actual, expected,
             "skips index for non constant expression:\n{sql}"
         );
+
+        let sql = "SELECT * FROM Test WHERE id = 1 AND name = 'Alice'";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_id".to_owned()).eq(num(1)))
+            .select()
+            .filter("name = 'Alice'")
+            .build();
+        assert_eq!(actual, expected, "keeps residual filter:\n{sql}");
+
+        let sql = "SELECT * FROM Test WHERE id = 1 ORDER BY name";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_name".to_owned()))
+            .select()
+            .filter("id = 1")
+            .build();
+        assert_eq!(
+            actual, expected,
+            "keeps filter when order by owns the access path:\n{sql}"
+        );
+
+        let sql = "SELECT id FROM Test WHERE id = 1 GROUP BY id";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_id".to_owned()).eq(num(1)))
+            .select()
+            .group_by("id")
+            .project("id")
+            .build();
+        assert_eq!(actual, expected, "preserves aggregation wrapper:\n{sql}");
+
+        let sql = "SELECT id FROM Test WHERE id = 1 GROUP BY id HAVING TRUE";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_id".to_owned()).eq(num(1)))
+            .select()
+            .group_by("id")
+            .having("TRUE")
+            .project("id")
+            .build();
+        assert_eq!(actual, expected, "preserves having wrapper:\n{sql}");
     }
 
     #[test]
@@ -789,7 +874,7 @@ CREATE INDEX idx_name ON Test (name);
 
         // Simulate the statement produced by the primary key planner, which runs
         // before the index planner: the table already carries an access path
-        // (here a `PrimaryKey`) while the leftover selection still references an
+        // (here a `PrimaryKey`) while the residual filter still references an
         // indexed column (`name`). The index planner must leave the existing
         // access path untouched instead of overwriting it with `idx_name`,
         // otherwise the primary key predicate would be silently dropped.

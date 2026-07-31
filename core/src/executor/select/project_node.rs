@@ -1,5 +1,5 @@
 use {
-    super::{aggregation_node, having_node, select_node},
+    super::{aggregation_node, filter_node, having_node, select_node},
     crate::{
         data::{Row, SCHEMALESS_DOC_COLUMN, Value},
         executor::{
@@ -8,8 +8,8 @@ use {
             fetch::fetch_labels,
         },
         plan::{
-            ProjectInputPlan, ProjectPlan, ProjectionPlan, SelectItemPlan, SelectPlan,
-            TableWithJoinsPlan,
+            AggregationInputPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, SelectItemPlan,
+            SelectPlan, TableWithJoinsPlan,
         },
         result::Result,
         store::GStore,
@@ -48,19 +48,38 @@ where
 
             (select, Box::new(rows))
         }
+        ProjectInputPlan::Filter(filter) => {
+            let rows =
+                filter_node::execute(storage, filter, filter_context.as_ref())?.map(|context| {
+                    context.map(|context| AggregateContext {
+                        aggregated: None,
+                        next: Some(context),
+                    })
+                });
+
+            (&filter.input, Box::new(rows))
+        }
         ProjectInputPlan::Aggregation(aggregation) => {
             let rows = aggregation_node::execute(storage, aggregation, filter_context.as_ref())?
                 .into_iter()
                 .map(Ok);
+            let select = match &aggregation.input {
+                AggregationInputPlan::Select(select) => select.as_ref(),
+                AggregationInputPlan::Filter(filter) => filter.input.as_ref(),
+            };
 
-            (&aggregation.input, Box::new(rows))
+            (select, Box::new(rows))
         }
         ProjectInputPlan::Having(having) => {
             let rows = having_node::execute(storage, having, filter_context.as_ref())?
                 .into_iter()
                 .map(Ok);
+            let select = match &having.input.input {
+                AggregationInputPlan::Select(select) => select.as_ref(),
+                AggregationInputPlan::Filter(filter) => filter.input.as_ref(),
+            };
 
-            (&having.input.input, Box::new(rows))
+            (select, Box::new(rows))
         }
     };
     let TableWithJoinsPlan { relation, joins } = &select.from;

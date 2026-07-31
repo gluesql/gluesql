@@ -1,5 +1,5 @@
 use {
-    super::{AggregationPlan, HavingPlan, SelectPlan},
+    super::{AggregationPlan, FilterPlan, HavingPlan, SelectPlan},
     crate::plan::ProjectionPlan,
     serde::{Deserialize, Serialize},
 };
@@ -7,6 +7,7 @@ use {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ProjectInputPlan {
     Select(Box<SelectPlan>),
+    Filter(FilterPlan),
     Aggregation(AggregationPlan),
     Having(HavingPlan),
 }
@@ -24,8 +25,8 @@ mod tests {
         crate::{
             data::Value,
             plan::{
-                AggregationPlan, ExprPlan, HavingPlan, ProjectionPlan, SelectItemPlan, SelectPlan,
-                TableFactorPlan, TableWithJoinsPlan,
+                AggregationInputPlan, AggregationPlan, ExprPlan, FilterPlan, HavingPlan,
+                ProjectionPlan, SelectItemPlan, SelectPlan, TableFactorPlan, TableWithJoinsPlan,
             },
         },
         pretty_assertions::assert_eq,
@@ -41,13 +42,12 @@ mod tests {
                 },
                 joins: Vec::new(),
             },
-            selection: None,
         }
     }
 
     fn aggregation_plan() -> AggregationPlan {
         AggregationPlan {
-            input: Box::new(select_plan()),
+            input: AggregationInputPlan::Select(Box::new(select_plan())),
             group_by: vec![ExprPlan::Identifier("category".to_owned())],
             aggregate_slots: Vec::new(),
         }
@@ -58,6 +58,10 @@ mod tests {
         let projection = ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]);
         let inputs = [
             ProjectInputPlan::Select(Box::new(select_plan())),
+            ProjectInputPlan::Filter(FilterPlan {
+                input: Box::new(select_plan()),
+                expr: ExprPlan::Value(Value::Bool(true)),
+            }),
             ProjectInputPlan::Aggregation(aggregation_plan()),
             ProjectInputPlan::Having(HavingPlan {
                 input: aggregation_plan(),

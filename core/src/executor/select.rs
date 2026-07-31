@@ -1,6 +1,7 @@
 mod aggregation_node;
 mod distinct_node;
 mod error;
+mod filter_node;
 mod having_node;
 mod limit_node;
 mod offset_node;

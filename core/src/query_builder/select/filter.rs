@@ -1,8 +1,11 @@
 use {
-    super::{BuildSelect, BuildSelectPlan, DistinctNode},
+    super::{
+        BuildAggregationInputPlan, BuildFilterPlan, BuildProjectInputPlan, BuildSelect,
+        BuildSelectPlan, DistinctNode,
+    },
     crate::{
         ast::Select,
-        plan::SelectPlan,
+        plan::{AggregationInputPlan, FilterPlan, ProjectInputPlan, SelectPlan},
         query_builder::{
             ExprList, ExprNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
             JoinNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryNode,
@@ -122,12 +125,24 @@ impl<'a> FilterNode<'a> {
     }
 }
 
-impl BuildSelectPlan for FilterNode<'_> {
-    fn build_select_plan(self) -> Result<SelectPlan> {
-        let mut select = self.prev_node.build_select_plan()?;
-        select.selection = Some(self.filter_expr.build_expr_plan()?);
+impl BuildFilterPlan for FilterNode<'_> {
+    fn build_filter_plan(self) -> Result<FilterPlan> {
+        Ok(FilterPlan {
+            input: Box::new(self.prev_node.build_select_plan()?),
+            expr: self.filter_expr.build_expr_plan()?,
+        })
+    }
+}
 
-        Ok(select)
+impl BuildAggregationInputPlan for FilterNode<'_> {
+    fn build_aggregation_input_plan(self) -> Result<AggregationInputPlan> {
+        self.build_filter_plan().map(AggregationInputPlan::Filter)
+    }
+}
+
+impl BuildProjectInputPlan for FilterNode<'_> {
+    fn build_project_input_plan(self) -> Result<ProjectInputPlan> {
+        self.build_filter_plan().map(ProjectInputPlan::Filter)
     }
 }
 
@@ -146,9 +161,9 @@ mod tests {
         crate::{
             ast::{BinaryOperator, Expr},
             plan::{
-                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectInputPlan,
-                ProjectPlan, ProjectionPlan, QueryPlan, SelectPlan, StatementPlan, TableFactorPlan,
-                TableWithJoinsPlan,
+                FilterPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan,
+                ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectPlan,
+                StatementPlan, TableFactorPlan, TableWithJoinsPlan,
             },
             query_builder::{Build, SelectItemList, col, expr, table, test_query_builder},
         },
@@ -245,10 +260,12 @@ mod tests {
                     },
                     joins: vec![join],
                 },
-                selection: Some(expr("PlayerItem.amount > 10").build_expr_plan().unwrap()),
             };
             let project = ProjectPlan {
-                input: ProjectInputPlan::Select(Box::new(select)),
+                input: ProjectInputPlan::Filter(FilterPlan {
+                    input: Box::new(select),
+                    expr: expr("PlayerItem.amount > 10").build_expr_plan().unwrap(),
+                }),
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),

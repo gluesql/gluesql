@@ -125,7 +125,7 @@ impl BuildSelectPlan for SelectNode<'_> {
                 size: args.build_expr_plan()?,
             },
             TableType::Derived { subquery, alias } => TableFactorPlan::Derived {
-                subquery: subquery.build_query_plan()?,
+                subquery: Box::new(subquery.build_query_plan()?),
                 alias: TableAliasPlan {
                     name: alias,
                     columns: Vec::new(),
@@ -138,10 +138,7 @@ impl BuildSelectPlan for SelectNode<'_> {
             joins: Vec::new(),
         };
 
-        Ok(SelectPlan {
-            from,
-            selection: None,
-        })
+        Ok(SelectPlan { from })
     }
 }
 

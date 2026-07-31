@@ -15,9 +15,10 @@ use {
         ast::{BinaryOperator, DataType, Dictionary, Literal, Variable},
         data::{Key, Row, SCHEMALESS_DOC_COLUMN, Schema, Value},
         plan::{
-            DistinctInputPlan, DistinctPlan, ExprPlan, LimitInputPlan, LimitPlan, OffsetInputPlan,
-            OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
-            SelectPlan, StatementPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan,
+            DistinctInputPlan, DistinctPlan, ExprPlan, FilterPlan, LimitInputPlan, LimitPlan,
+            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
+            SelectItemPlan, SelectPlan, StatementPlan, TableAliasPlan, TableFactorPlan,
+            TableWithJoinsPlan,
         },
         result::{Error, Result},
         store::{GStore, GStoreMut},
@@ -311,25 +312,27 @@ fn execute_inner<T: GStore + GStoreMut>(
         StatementPlan::ShowIndexes(table_name) => {
             let query = QueryPlan::Project(ProjectPlan {
                 projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
-                input: ProjectInputPlan::Select(Box::new(SelectPlan {
-                    from: TableWithJoinsPlan {
-                        relation: TableFactorPlan::Dictionary {
-                            dict: Dictionary::GlueIndexes,
-                            alias: TableAliasPlan {
-                                name: "GLUE_INDEXES".to_owned(),
-                                columns: Vec::new(),
+                input: ProjectInputPlan::Filter(FilterPlan {
+                    input: Box::new(SelectPlan {
+                        from: TableWithJoinsPlan {
+                            relation: TableFactorPlan::Dictionary {
+                                dict: Dictionary::GlueIndexes,
+                                alias: TableAliasPlan {
+                                    name: "GLUE_INDEXES".to_owned(),
+                                    columns: Vec::new(),
+                                },
                             },
+                            joins: Vec::new(),
                         },
-                        joins: Vec::new(),
-                    },
-                    selection: Some(ExprPlan::BinaryOp {
+                    }),
+                    expr: ExprPlan::BinaryOp {
                         left: Box::new(ExprPlan::Identifier("TABLE_NAME".to_owned())),
                         op: BinaryOperator::Eq,
                         right: Box::new(ExprPlan::Literal(Literal::QuotedString(
                             table_name.to_owned(),
                         ))),
-                    }),
-                })),
+                    },
+                }),
             });
 
             let (labels, rows) = select_with_labels(storage, &query, None)?;
@@ -361,7 +364,6 @@ fn execute_inner<T: GStore + GStoreMut>(
                             },
                             joins: Vec::new(),
                         },
-                        selection: None,
                     })),
                 });
 

@@ -635,7 +635,6 @@ mod tests {
                     },
                     joins: vec![join, other_join],
                 },
-                selection: None,
             };
             let project = ProjectPlan {
                 input: ProjectInputPlan::Select(Box::new(select)),

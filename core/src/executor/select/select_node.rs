@@ -1,6 +1,6 @@
 use {
     crate::{
-        executor::{context::RowContext, fetch::fetch_relation_rows, filter::Filter, join::Join},
+        executor::{context::RowContext, fetch::fetch_relation_rows, join::Join},
         plan::{SelectPlan, TableWithJoinsPlan},
         result::Result,
         store::GStore,
@@ -20,7 +20,6 @@ where
 {
     let SelectPlan {
         from: table_with_joins,
-        selection: where_clause,
     } = plan;
 
     let TableWithJoinsPlan { relation, joins } = table_with_joins;
@@ -32,24 +31,5 @@ where
     });
 
     let join = Join::new(storage, joins, filter_context.cloned());
-    let filter = Rc::new(Filter::new(
-        storage,
-        where_clause.as_ref(),
-        filter_context.cloned(),
-    ));
-    let rows = join.apply(Box::new(rows))?;
-    let rows = rows.filter_map(move |project_context| {
-        let project_context = match project_context {
-            Ok(project_context) => project_context,
-            Err(error) => return Some(Err(error)),
-        };
-
-        match filter.check(Rc::clone(&project_context)) {
-            Ok(true) => Some(Ok(project_context)),
-            Ok(false) => None,
-            Err(error) => Some(Err(error)),
-        }
-    });
-
-    Ok(Box::new(rows))
+    join.apply(Box::new(rows))
 }

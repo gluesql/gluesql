@@ -5,10 +5,10 @@ use {
         ast::BinaryOperator,
         data::Schema,
         plan::{
-            DistinctInputPlan, DistinctPlan, ExprPlan, IndexItemPlan, LimitInputPlan, LimitPlan,
-            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SelectPlan,
-            StatementPlan, TableFactorPlan, TableWithJoinsPlan,
-            expr::evaluable::check_expr as check_evaluable,
+            AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterPlan,
+            IndexItemPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
+            ProjectInputPlan, ProjectPlan, QueryPlan, SelectPlan, StatementPlan, TableFactorPlan,
+            TableWithJoinsPlan, expr::evaluable::check_expr as check_evaluable,
         },
     },
     std::{collections::HashMap, hash::BuildHasher, rc::Rc},
@@ -38,23 +38,8 @@ struct PrimaryKeyPlanner<'a, S> {
 
 impl<'a, S: BuildHasher> Planner<'a> for PrimaryKeyPlanner<'a, S> {
     fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
-        let plan_select = |select: Box<SelectPlan>| {
-            Box::new(self.select(outer_context.as_ref().map(Rc::clone), *select))
-        };
-        let plan_project = |mut project: ProjectPlan| {
-            project.input = match project.input {
-                ProjectInputPlan::Select(select) => ProjectInputPlan::Select(plan_select(select)),
-                ProjectInputPlan::Aggregation(mut aggregation) => {
-                    aggregation.input = plan_select(aggregation.input);
-                    ProjectInputPlan::Aggregation(aggregation)
-                }
-                ProjectInputPlan::Having(mut having) => {
-                    having.input.input = plan_select(having.input.input);
-                    ProjectInputPlan::Having(having)
-                }
-            };
-            project
-        };
+        let plan_project =
+            |project: ProjectPlan| self.project(outer_context.as_ref().map(Rc::clone), project);
         let plan_distinct = |DistinctPlan { input }| DistinctPlan {
             input: match input {
                 DistinctInputPlan::Project(project) => {
@@ -152,10 +137,66 @@ enum PrimaryKey {
 }
 
 impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
-    fn select(&self, outer_context: Option<Rc<Context<'a>>>, select: SelectPlan) -> SelectPlan {
-        let first_relation_context = self.update_context(None, &select.from.relation);
-        let lookup_candidate = PrimaryKeyLookupCandidate::new(self.schema_map, &select.from);
-        let current_context = select
+    fn project(
+        &self,
+        outer_context: Option<Rc<Context<'a>>>,
+        mut project: ProjectPlan,
+    ) -> ProjectPlan {
+        project.input = match project.input {
+            ProjectInputPlan::Select(select) => ProjectInputPlan::Select(select),
+            ProjectInputPlan::Filter(filter) => {
+                let (select, expr) = self.filter(outer_context.as_ref().map(Rc::clone), filter);
+                match expr {
+                    Some(expr) => ProjectInputPlan::Filter(FilterPlan {
+                        input: select,
+                        expr,
+                    }),
+                    None => ProjectInputPlan::Select(select),
+                }
+            }
+            ProjectInputPlan::Aggregation(mut aggregation) => {
+                aggregation.input = self
+                    .aggregation_input(outer_context.as_ref().map(Rc::clone), aggregation.input);
+                ProjectInputPlan::Aggregation(aggregation)
+            }
+            ProjectInputPlan::Having(mut having) => {
+                having.input.input = self.aggregation_input(outer_context, having.input.input);
+                ProjectInputPlan::Having(having)
+            }
+        };
+
+        project
+    }
+
+    fn aggregation_input(
+        &self,
+        outer_context: Option<Rc<Context<'a>>>,
+        input: AggregationInputPlan,
+    ) -> AggregationInputPlan {
+        match input {
+            AggregationInputPlan::Select(select) => AggregationInputPlan::Select(select),
+            AggregationInputPlan::Filter(filter) => {
+                let (select, expr) = self.filter(outer_context, filter);
+                match expr {
+                    Some(expr) => AggregationInputPlan::Filter(FilterPlan {
+                        input: select,
+                        expr,
+                    }),
+                    None => AggregationInputPlan::Select(select),
+                }
+            }
+        }
+    }
+
+    fn filter(
+        &self,
+        outer_context: Option<Rc<Context<'a>>>,
+        filter: FilterPlan,
+    ) -> (Box<SelectPlan>, Option<ExprPlan>) {
+        let FilterPlan { mut input, expr } = filter;
+        let first_relation_context = self.update_context(None, &input.from.relation);
+        let lookup_candidate = PrimaryKeyLookupCandidate::new(self.schema_map, &input.from);
+        let current_context = input
             .from
             .joins
             .iter()
@@ -163,39 +204,30 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                 self.update_context(context, &join.relation)
             });
 
-        let (index, selection) = select
-            .selection
-            .map(|expr| {
-                self.expr(
-                    outer_context,
-                    current_context,
-                    lookup_candidate.as_ref(),
-                    expr,
-                )
-            })
-            .map_or((None, None), |primary_key| match primary_key {
-                PrimaryKey::Found { index_item, expr } => (Some(index_item), expr),
-                PrimaryKey::NotFound(expr) => (None, Some(expr)),
-            });
+        let (index, expr) = match self.expr(
+            outer_context,
+            current_context,
+            lookup_candidate.as_ref(),
+            expr,
+        ) {
+            PrimaryKey::Found { index_item, expr } => (Some(index_item), expr),
+            PrimaryKey::NotFound(expr) => (None, Some(expr)),
+        };
 
         if let TableFactorPlan::Table {
             name,
             alias,
             index: None,
-        } = select.from.relation
+        } = input.from.relation
         {
             let from = TableWithJoinsPlan {
                 relation: TableFactorPlan::Table { name, alias, index },
-                ..select.from
+                ..input.from
             };
-
-            SelectPlan { from, selection }
-        } else {
-            SelectPlan {
-                selection,
-                ..select
-            }
+            input.from = from;
         }
+
+        (input, expr)
     }
 
     fn expr(
@@ -332,11 +364,12 @@ mod tests {
 
     fn try_select(statement: StatementPlan) -> Option<Box<SelectPlan>> {
         match statement {
-            StatementPlan::Query(QueryPlan::Project(project)) => Some(match project.input {
-                ProjectInputPlan::Select(select) => select,
-                ProjectInputPlan::Aggregation(aggregation) => aggregation.input,
-                ProjectInputPlan::Having(having) => having.input.input,
-            }),
+            StatementPlan::Query(QueryPlan::Project(project)) => match project.input {
+                ProjectInputPlan::Select(select) => Some(select),
+                ProjectInputPlan::Filter(_)
+                | ProjectInputPlan::Aggregation(_)
+                | ProjectInputPlan::Having(_) => None,
+            },
             _ => None,
         }
     }
@@ -525,7 +558,6 @@ mod tests {
                         &project_plan.input,
                         ProjectInputPlan::Select(select)
                             if select.from.relation == expected_relation
-                                && select.selection.is_none()
                     )
             ),
             "aliased primary key should be installed and removed from selection:\n{sql}"
@@ -647,10 +679,6 @@ mod tests {
             Some(&expected_index),
             "left outer join should install a lookup on the first relation:\n{sql}"
         );
-        assert!(
-            select.selection.is_none(),
-            "left outer join should remove the optimized selection:\n{sql}"
-        );
     }
 
     #[test]
@@ -679,10 +707,6 @@ mod tests {
         assert!(
             matches!(index, Some(IndexItemPlan::PrimaryKey(_))),
             "effective primary key alias should install a lookup:\n{sql}"
-        );
-        assert!(
-            select.selection.is_none(),
-            "effective primary key alias should remove the selection:\n{sql}"
         );
 
         let sql = "

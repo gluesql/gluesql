@@ -181,8 +181,8 @@ mod tests {
             data::Schema,
             parse_sql::parse,
             plan::{
-                ExprPlan, IndexItemPlan, ProjectInputPlan, QueryPlan, StatementPlan,
-                TableFactorPlan, TableWithJoinsPlan,
+                AggregationInputPlan, ExprPlan, IndexItemPlan, ProjectInputPlan, QueryPlan,
+                StatementPlan, TableFactorPlan, TableWithJoinsPlan,
             },
             translate::translate,
         },
@@ -205,8 +205,15 @@ mod tests {
         match statement {
             StatementPlan::Query(QueryPlan::Project(project)) => Some(match project.input {
                 ProjectInputPlan::Select(select) => select.from,
-                ProjectInputPlan::Aggregation(aggregation) => aggregation.input.from,
-                ProjectInputPlan::Having(having) => having.input.input.from,
+                ProjectInputPlan::Filter(filter) => filter.input.from,
+                ProjectInputPlan::Aggregation(aggregation) => match aggregation.input {
+                    AggregationInputPlan::Select(select) => select.from,
+                    AggregationInputPlan::Filter(filter) => filter.input.from,
+                },
+                ProjectInputPlan::Having(having) => match having.input.input {
+                    AggregationInputPlan::Select(select) => select.from,
+                    AggregationInputPlan::Filter(filter) => filter.input.from,
+                },
             }),
             _ => None,
         }

@@ -3,11 +3,11 @@ use {
         ast::Literal,
         data::{SCHEMALESS_DOC_COLUMN, Schema},
         plan::{
-            DistinctInputPlan, DistinctPlan, ExprPlan, JoinConstraintPlan, JoinExecutorPlan,
-            JoinOperatorPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
-            ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
-            SelectOrderByPlan, SelectPlan, TableFactorPlan, TableWithJoinsPlan, ValuesOrderByPlan,
-            expr::visit_mut_expr,
+            AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterPlan,
+            JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, LimitInputPlan, LimitPlan,
+            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
+            SelectItemPlan, SelectOrderByPlan, SelectPlan, TableFactorPlan, TableWithJoinsPlan,
+            ValuesOrderByPlan, expr::visit_mut_expr,
         },
     },
     std::{
@@ -127,15 +127,16 @@ fn transform_project<S: BuildHasher>(
     let ProjectPlan { input, projection } = project;
     let state = match input {
         ProjectInputPlan::Select(select) => transform_select(schema_map, select),
+        ProjectInputPlan::Filter(filter) => transform_filter(schema_map, filter),
         ProjectInputPlan::Aggregation(aggregation) => {
-            let state = transform_select(schema_map, &mut aggregation.input);
+            let state = transform_aggregation_input(schema_map, &mut aggregation.input);
             for group_by in &mut aggregation.group_by {
                 transform_query_expr(schema_map, group_by, &state);
             }
             state
         }
         ProjectInputPlan::Having(having) => {
-            let state = transform_select(schema_map, &mut having.input.input);
+            let state = transform_aggregation_input(schema_map, &mut having.input.input);
             for group_by in &mut having.input.group_by {
                 transform_query_expr(schema_map, group_by, &state);
             }
@@ -145,12 +146,39 @@ fn transform_project<S: BuildHasher>(
     };
     let select = match &*input {
         ProjectInputPlan::Select(select) => select.as_ref(),
-        ProjectInputPlan::Aggregation(aggregation) => aggregation.input.as_ref(),
-        ProjectInputPlan::Having(having) => having.input.input.as_ref(),
+        ProjectInputPlan::Filter(filter) => filter.input.as_ref(),
+        ProjectInputPlan::Aggregation(aggregation) => match &aggregation.input {
+            AggregationInputPlan::Select(select) => select.as_ref(),
+            AggregationInputPlan::Filter(filter) => filter.input.as_ref(),
+        },
+        ProjectInputPlan::Having(having) => match &having.input.input {
+            AggregationInputPlan::Select(select) => select.as_ref(),
+            AggregationInputPlan::Filter(filter) => filter.input.as_ref(),
+        },
     };
     rewrite_projection(schema_map, projection, select, &state);
 
     state
+}
+
+fn transform_filter<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    FilterPlan { input, expr }: &mut FilterPlan,
+) -> QueryRewriteState {
+    let state = transform_select(schema_map, input);
+    transform_query_expr(schema_map, expr, &state);
+
+    state
+}
+
+fn transform_aggregation_input<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    input: &mut AggregationInputPlan,
+) -> QueryRewriteState {
+    match input {
+        AggregationInputPlan::Select(select) => transform_select(schema_map, select),
+        AggregationInputPlan::Filter(filter) => transform_filter(schema_map, filter),
+    }
 }
 
 fn transform_select<S: BuildHasher>(
@@ -228,10 +256,6 @@ fn rewrite_select(
             }
             JoinExecutorPlan::NestedLoop => {}
         }
-    }
-
-    if let Some(selection) = select.selection.as_mut() {
-        transform_query_expr(schema_map, selection, state);
     }
 }
 

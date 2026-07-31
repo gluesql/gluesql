@@ -2,14 +2,14 @@ mod state;
 
 use {
     self::state::State,
-    super::select_node,
+    super::{filter_node, select_node},
     crate::{
         data::Value,
         executor::{
             context::{AggregateContext, RowContext},
             evaluate::evaluate,
         },
-        plan::AggregationPlan,
+        plan::{AggregationInputPlan, AggregationPlan},
         result::Result,
         store::GStore,
     },
@@ -31,7 +31,14 @@ where
         group_by,
         aggregate_slots,
     } = plan;
-    let rows = select_node::execute(storage, input, filter_context)?;
+    let rows = match input {
+        AggregationInputPlan::Select(select) => {
+            select_node::execute(storage, select, filter_context)?
+        }
+        AggregationInputPlan::Filter(filter) => {
+            filter_node::execute(storage, filter, filter_context)?
+        }
+    };
     let mut state = State::new(storage, aggregate_slots.len(), group_by.is_empty());
 
     for context in rows {

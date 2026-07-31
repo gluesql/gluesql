@@ -1,7 +1,7 @@
 use {
     super::{
-        BuildAggregationPlan, BuildHavingPlan, BuildProjectInputPlan, BuildSelect, BuildSelectPlan,
-        DistinctNode,
+        BuildAggregationInputPlan, BuildAggregationPlan, BuildHavingPlan, BuildProjectInputPlan,
+        BuildSelect, DistinctNode,
     },
     crate::{
         ast::Select,
@@ -28,15 +28,15 @@ pub(super) enum PrevNode<'a> {
 impl PrevNode<'_> {
     fn build_aggregation_plan(self) -> Result<AggregationPlan> {
         match self {
-            Self::Select(node) => node.build_select_plan(),
-            Self::Join(node) => node.build_select_plan(),
-            Self::JoinConstraint(node) => node.build_select_plan(),
-            Self::HashJoin(node) => node.build_select_plan(),
-            Self::Filter(node) => node.build_select_plan(),
+            Self::Select(node) => node.build_aggregation_input_plan(),
+            Self::Join(node) => node.build_aggregation_input_plan(),
+            Self::JoinConstraint(node) => node.build_aggregation_input_plan(),
+            Self::HashJoin(node) => node.build_aggregation_input_plan(),
+            Self::Filter(node) => node.build_aggregation_input_plan(),
             Self::GroupBy(node) => return node.build_aggregation_plan(),
         }
         .map(|input| AggregationPlan {
-            input: Box::new(input),
+            input,
             group_by: Vec::new(),
             aggregate_slots: Vec::new(),
         })
@@ -161,10 +161,10 @@ mod tests {
         crate::{
             data::Value,
             plan::{
-                AggregationPlan, ExprPlan, HavingPlan, JoinConstraintPlan, JoinExecutorPlan,
-                JoinOperatorPlan, JoinPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan,
-                QueryPlan, SelectItemPlan, SelectPlan, StatementPlan, TableFactorPlan,
-                TableWithJoinsPlan,
+                AggregationInputPlan, AggregationPlan, ExprPlan, HavingPlan, JoinConstraintPlan,
+                JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectInputPlan, ProjectPlan,
+                ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan, StatementPlan,
+                TableFactorPlan, TableWithJoinsPlan,
             },
             query_builder::{
                 Build, QueryBuilderError, select::BuildQuery, table, test_query_builder,
@@ -220,7 +220,7 @@ mod tests {
         let expected = Ok(StatementPlan::Query(QueryPlan::Project(ProjectPlan {
             input: ProjectInputPlan::Having(HavingPlan {
                 input: AggregationPlan {
-                    input: Box::new(SelectPlan {
+                    input: AggregationInputPlan::Select(Box::new(SelectPlan {
                         from: TableWithJoinsPlan {
                             relation: TableFactorPlan::Table {
                                 name: "Foo".to_owned(),
@@ -247,8 +247,7 @@ mod tests {
                                 },
                             }],
                         },
-                        selection: None,
-                    }),
+                    })),
                     group_by: Vec::new(),
                     aggregate_slots: Vec::new(),
                 },

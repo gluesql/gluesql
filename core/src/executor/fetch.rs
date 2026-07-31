@@ -5,10 +5,10 @@ use {
         data::{Key, Row, SCHEMALESS_DOC_COLUMN, Value},
         executor::{evaluate::evaluate, select::select},
         plan::{
-            DistinctInputPlan, DistinctPlan, ExprPlan, IndexItemPlan, JoinPlan, LimitInputPlan,
-            LimitPlan, OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan,
-            QueryPlan, SelectItemPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan,
-            ValuesPlan,
+            AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, IndexItemPlan,
+            JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectInputPlan,
+            ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, TableAliasPlan,
+            TableFactorPlan, TableWithJoinsPlan, ValuesPlan,
         },
         result::Result,
         store::GStore,
@@ -448,8 +448,15 @@ where
             DerivedSource::Project(ProjectPlan { input, projection }) => {
                 let statement = match input {
                     ProjectInputPlan::Select(select) => select.as_ref(),
-                    ProjectInputPlan::Aggregation(aggregation) => aggregation.input.as_ref(),
-                    ProjectInputPlan::Having(having) => having.input.input.as_ref(),
+                    ProjectInputPlan::Filter(filter) => filter.input.as_ref(),
+                    ProjectInputPlan::Aggregation(aggregation) => match &aggregation.input {
+                        AggregationInputPlan::Select(select) => select.as_ref(),
+                        AggregationInputPlan::Filter(filter) => filter.input.as_ref(),
+                    },
+                    ProjectInputPlan::Having(having) => match &having.input.input {
+                        AggregationInputPlan::Select(select) => select.as_ref(),
+                        AggregationInputPlan::Filter(filter) => filter.input.as_ref(),
+                    },
                 };
                 let crate::plan::SelectPlan {
                     from:

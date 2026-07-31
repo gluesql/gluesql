@@ -35,7 +35,6 @@ mod tests {
                     },
                     joins: Vec::new(),
                 },
-                selection: None,
             })),
             projection: ProjectionPlan::SelectItems(Vec::new()),
         }

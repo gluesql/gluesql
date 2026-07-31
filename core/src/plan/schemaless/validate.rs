@@ -3,11 +3,11 @@ use {
     crate::{
         data::Schema,
         plan::{
-            DistinctInputPlan, DistinctPlan, ExprPlan, JoinConstraintPlan, JoinExecutorPlan,
-            JoinOperatorPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
-            ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
-            SelectOrderByPlan, SelectPlan, StatementPlan, TableFactorPlan, ValuesOrderByPlan,
-            ValuesPlan,
+            AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterPlan,
+            JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, LimitInputPlan, LimitPlan,
+            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
+            SelectItemPlan, SelectOrderByPlan, SelectPlan, StatementPlan, TableFactorPlan,
+            ValuesOrderByPlan, ValuesPlan,
         },
         result::Result,
     },
@@ -193,11 +193,25 @@ fn validate_select(
         }
     }
 
-    if let Some(selection) = &select.selection {
-        validate_expr(schema_map, selection)?;
-    }
-
     Ok(())
+}
+
+fn validate_filter(
+    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    FilterPlan { input, expr }: &FilterPlan,
+) -> ValidateResult {
+    validate_select(schema_map, input)?;
+    validate_expr(schema_map, expr)
+}
+
+fn validate_aggregation_input(
+    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    input: &AggregationInputPlan,
+) -> ValidateResult {
+    match input {
+        AggregationInputPlan::Select(select) => validate_select(schema_map, select),
+        AggregationInputPlan::Filter(filter) => validate_filter(schema_map, filter),
+    }
 }
 
 fn validate_project(
@@ -207,14 +221,15 @@ fn validate_project(
     validate_mixed_join_wildcard_projection(schema_map, project)?;
     match &project.input {
         ProjectInputPlan::Select(select) => validate_select(schema_map, select)?,
+        ProjectInputPlan::Filter(filter) => validate_filter(schema_map, filter)?,
         ProjectInputPlan::Aggregation(aggregation) => {
-            validate_select(schema_map, &aggregation.input)?;
+            validate_aggregation_input(schema_map, &aggregation.input)?;
             for group_by in &aggregation.group_by {
                 validate_expr(schema_map, group_by)?;
             }
         }
         ProjectInputPlan::Having(having) => {
-            validate_select(schema_map, &having.input.input)?;
+            validate_aggregation_input(schema_map, &having.input.input)?;
             for group_by in &having.input.group_by {
                 validate_expr(schema_map, group_by)?;
             }
@@ -261,8 +276,15 @@ fn validate_mixed_join_wildcard_projection(
 ) -> ValidateResult {
     let select = match &project.input {
         ProjectInputPlan::Select(select) => select.as_ref(),
-        ProjectInputPlan::Aggregation(aggregation) => aggregation.input.as_ref(),
-        ProjectInputPlan::Having(having) => having.input.input.as_ref(),
+        ProjectInputPlan::Filter(filter) => filter.input.as_ref(),
+        ProjectInputPlan::Aggregation(aggregation) => match &aggregation.input {
+            AggregationInputPlan::Select(select) => select.as_ref(),
+            AggregationInputPlan::Filter(filter) => filter.input.as_ref(),
+        },
+        ProjectInputPlan::Having(having) => match &having.input.input {
+            AggregationInputPlan::Select(select) => select.as_ref(),
+            AggregationInputPlan::Filter(filter) => filter.input.as_ref(),
+        },
     };
     if select.from.joins.is_empty()
         || !matches!(

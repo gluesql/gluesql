@@ -1,10 +1,11 @@
 use {
     crate::{
         plan::{
-            DistinctInputPlan, DistinctPlan, ExprPlan, JoinConstraintPlan, JoinOperatorPlan,
-            JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectInputPlan,
-            ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SelectPlan,
-            TableAliasPlan, TableFactorPlan, TableWithJoinsPlan, ValuesOrderByPlan, ValuesPlan,
+            AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterPlan,
+            JoinConstraintPlan, JoinOperatorPlan, JoinPlan, LimitInputPlan, LimitPlan,
+            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
+            SelectItemPlan, SelectOrderByPlan, SelectPlan, TableAliasPlan, TableFactorPlan,
+            TableWithJoinsPlan, ValuesOrderByPlan, ValuesPlan,
         },
         plan::{context::Context, expr::PlanExpr},
     },
@@ -109,7 +110,7 @@ fn check_values(context: Option<&Rc<Context<'_>>>, ValuesPlan(rows): &ValuesPlan
 }
 
 fn check_select(context: Option<&Rc<Context<'_>>>, select: &SelectPlan) -> bool {
-    let SelectPlan { from, selection } = select;
+    let SelectPlan { from } = select;
 
     let TableWithJoinsPlan { relation, joins } = from;
 
@@ -140,23 +141,36 @@ fn check_select(context: Option<&Rc<Context<'_>>>, select: &SelectPlan) -> bool 
         return false;
     }
 
-    selection
-        .iter()
-        .all(|expr| check_expr(context.map(Rc::clone), expr))
+    true
+}
+
+fn check_filter(context: Option<&Rc<Context<'_>>>, filter: &FilterPlan) -> bool {
+    check_select(context, &filter.input) && check_expr(context.map(Rc::clone), &filter.expr)
+}
+
+fn check_aggregation_input(
+    context: Option<&Rc<Context<'_>>>,
+    input: &AggregationInputPlan,
+) -> bool {
+    match input {
+        AggregationInputPlan::Select(select) => check_select(context, select),
+        AggregationInputPlan::Filter(filter) => check_filter(context, filter),
+    }
 }
 
 fn check_project(context: Option<&Rc<Context<'_>>>, project: &ProjectPlan) -> bool {
     let input = match &project.input {
         ProjectInputPlan::Select(select) => check_select(context, select),
+        ProjectInputPlan::Filter(filter) => check_filter(context, filter),
         ProjectInputPlan::Aggregation(aggregation) => {
-            check_select(context, &aggregation.input)
+            check_aggregation_input(context, &aggregation.input)
                 && aggregation
                     .group_by
                     .iter()
                     .all(|expr| check_expr(context.map(Rc::clone), expr))
         }
         ProjectInputPlan::Having(having) => {
-            check_select(context, &having.input.input)
+            check_aggregation_input(context, &having.input.input)
                 && having
                     .input
                     .group_by

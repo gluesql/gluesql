@@ -28,7 +28,7 @@ pub enum TableFactorPlan {
         index: Option<IndexItemPlan>,
     },
     Derived {
-        subquery: QueryPlan,
+        subquery: Box<QueryPlan>,
         alias: TableAliasPlan,
     },
     Series {
@@ -100,7 +100,7 @@ impl From<ast::TableFactor> for TableFactorPlan {
                 index: None,
             },
             ast::TableFactor::Derived { subquery, alias } => Self::Derived {
-                subquery: subquery.into(),
+                subquery: Box::new(subquery.into()),
                 alias: alias.into(),
             },
             ast::TableFactor::Series { alias, size } => Self::Series {

@@ -208,7 +208,6 @@ mod tests {
                     },
                     joins: vec![join],
                 },
-                selection: None,
             };
             let project = ProjectPlan {
                 input: ProjectInputPlan::Select(Box::new(select)),
@@ -255,7 +254,6 @@ mod tests {
                     },
                     joins: vec![join],
                 },
-                selection: None,
             };
             let project = ProjectPlan {
                 input: ProjectInputPlan::Select(Box::new(select)),
@@ -301,7 +299,6 @@ mod tests {
                     },
                     joins: vec![join],
                 },
-                selection: None,
             };
             let subquery = ProjectPlan {
                 input: ProjectInputPlan::Select(Box::new(subquery)),
@@ -313,7 +310,7 @@ mod tests {
             let select = SelectPlan {
                 from: TableWithJoinsPlan {
                     relation: TableFactorPlan::Derived {
-                        subquery: QueryPlan::Project(subquery),
+                        subquery: Box::new(QueryPlan::Project(subquery)),
                         alias: TableAliasPlan {
                             name: "Sub".to_owned(),
                             columns: Vec::new(),
@@ -321,7 +318,6 @@ mod tests {
                     },
                     joins: Vec::new(),
                 },
-                selection: None,
             };
             let project = ProjectPlan {
                 input: ProjectInputPlan::Select(Box::new(select)),

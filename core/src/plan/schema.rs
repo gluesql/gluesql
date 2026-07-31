@@ -3,11 +3,11 @@ use {
     crate::{
         data::Schema,
         plan::{
-            DistinctInputPlan, DistinctPlan, ExprPlan, JoinConstraintPlan, JoinOperatorPlan,
-            JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan,
-            ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
-            SelectOrderByPlan, SelectPlan, StatementPlan, TableFactorPlan, TableWithJoinsPlan,
-            ValuesOrderByPlan,
+            AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterPlan,
+            JoinConstraintPlan, JoinOperatorPlan, JoinPlan, LimitInputPlan, LimitPlan,
+            OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan, ProjectPlan,
+            ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SelectPlan,
+            StatementPlan, TableFactorPlan, TableWithJoinsPlan, ValuesOrderByPlan,
         },
         result::Result,
         store::Store,
@@ -185,18 +185,29 @@ fn scan_select<T: Store + ?Sized>(
     storage: &T,
     select: &SelectPlan,
 ) -> Result<HashMap<String, Schema>> {
-    let SelectPlan { from, selection } = select;
+    let SelectPlan { from } = select;
 
-    let from = scan_table_with_joins(storage, from)?;
+    scan_table_with_joins(storage, from)
+}
 
-    Ok(selection
-        .iter()
-        .map(|expr| scan_expr(storage, expr))
-        .collect::<Result<Vec<HashMap<String, Schema>>>>()?
-        .into_iter()
-        .flatten()
-        .chain(from)
-        .collect())
+fn scan_filter<T: Store + ?Sized>(
+    storage: &T,
+    FilterPlan { input, expr }: &FilterPlan,
+) -> Result<HashMap<String, Schema>> {
+    let input = scan_select(storage, input)?;
+    let expr = scan_expr(storage, expr)?;
+
+    Ok(input.into_iter().chain(expr).collect())
+}
+
+fn scan_aggregation_input<T: Store + ?Sized>(
+    storage: &T,
+    input: &AggregationInputPlan,
+) -> Result<HashMap<String, Schema>> {
+    match input {
+        AggregationInputPlan::Select(select) => scan_select(storage, select),
+        AggregationInputPlan::Filter(filter) => scan_filter(storage, filter),
+    }
 }
 
 fn scan_project<T: Store + ?Sized>(
@@ -205,8 +216,9 @@ fn scan_project<T: Store + ?Sized>(
 ) -> Result<HashMap<String, Schema>> {
     let schema_list = match input {
         ProjectInputPlan::Select(select) => scan_select(storage, select)?,
+        ProjectInputPlan::Filter(filter) => scan_filter(storage, filter)?,
         ProjectInputPlan::Aggregation(aggregation) => {
-            let schema_list = scan_select(storage, &aggregation.input)?;
+            let schema_list = scan_aggregation_input(storage, &aggregation.input)?;
             let group_by = aggregation
                 .group_by
                 .iter()
@@ -218,7 +230,7 @@ fn scan_project<T: Store + ?Sized>(
             schema_list.into_iter().chain(group_by).collect()
         }
         ProjectInputPlan::Having(having) => {
-            let schema_list = scan_select(storage, &having.input.input)?;
+            let schema_list = scan_aggregation_input(storage, &having.input.input)?;
             let aggregation = having
                 .input
                 .group_by

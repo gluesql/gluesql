@@ -4,10 +4,11 @@ use {
         ast::BinaryOperator,
         data::Schema,
         plan::{
-            DistinctInputPlan, DistinctPlan, ExprPlan, JoinConstraintPlan, JoinExecutorPlan,
-            JoinOperatorPlan, JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
-            ProjectInputPlan, ProjectPlan, QueryPlan, SelectPlan, StatementPlan,
-            TableWithJoinsPlan, expr::evaluable::check_expr as check_evaluable,
+            AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterPlan,
+            JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, LimitInputPlan,
+            LimitPlan, OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan,
+            SelectPlan, StatementPlan, TableWithJoinsPlan,
+            expr::evaluable::check_expr as check_evaluable,
         },
     },
     std::{collections::HashMap, hash::BuildHasher, rc::Rc},
@@ -35,23 +36,8 @@ struct JoinPlanner<'a, S> {
 
 impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
     fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
-        let plan_select = |select: Box<SelectPlan>| {
-            Box::new(self.select(outer_context.as_ref().map(Rc::clone), *select))
-        };
-        let plan_project = |mut project: ProjectPlan| {
-            project.input = match project.input {
-                ProjectInputPlan::Select(select) => ProjectInputPlan::Select(plan_select(select)),
-                ProjectInputPlan::Aggregation(mut aggregation) => {
-                    aggregation.input = plan_select(aggregation.input);
-                    ProjectInputPlan::Aggregation(aggregation)
-                }
-                ProjectInputPlan::Having(mut having) => {
-                    having.input.input = plan_select(having.input.input);
-                    ProjectInputPlan::Having(having)
-                }
-            };
-            project
-        };
+        let plan_project =
+            |project: ProjectPlan| self.project(outer_context.as_ref().map(Rc::clone), project);
         let plan_distinct = |DistinctPlan { input }| DistinctPlan {
             input: match input {
                 DistinctInputPlan::Project(project) => {
@@ -141,13 +127,65 @@ impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
 }
 
 impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
+    fn project(
+        &self,
+        outer_context: Option<Rc<Context<'a>>>,
+        mut project: ProjectPlan,
+    ) -> ProjectPlan {
+        project.input = match project.input {
+            ProjectInputPlan::Select(select) => ProjectInputPlan::Select(Box::new(
+                self.select(outer_context.as_ref().map(Rc::clone), *select),
+            )),
+            ProjectInputPlan::Filter(filter) => {
+                ProjectInputPlan::Filter(self.filter(outer_context.as_ref().map(Rc::clone), filter))
+            }
+            ProjectInputPlan::Aggregation(mut aggregation) => {
+                aggregation.input = self
+                    .aggregation_input(outer_context.as_ref().map(Rc::clone), aggregation.input);
+                ProjectInputPlan::Aggregation(aggregation)
+            }
+            ProjectInputPlan::Having(mut having) => {
+                having.input.input = self.aggregation_input(outer_context, having.input.input);
+                ProjectInputPlan::Having(having)
+            }
+        };
+
+        project
+    }
+
+    fn aggregation_input(
+        &self,
+        outer_context: Option<Rc<Context<'a>>>,
+        input: AggregationInputPlan,
+    ) -> AggregationInputPlan {
+        match input {
+            AggregationInputPlan::Select(select) => {
+                AggregationInputPlan::Select(Box::new(self.select(outer_context, *select)))
+            }
+            AggregationInputPlan::Filter(filter) => {
+                AggregationInputPlan::Filter(self.filter(outer_context, filter))
+            }
+        }
+    }
+
     fn select(&self, outer_context: Option<Rc<Context<'a>>>, select: SelectPlan) -> SelectPlan {
-        let SelectPlan { from, selection } = select;
+        let SelectPlan { from } = select;
 
-        let (outer_context, from) = self.table_with_joins(outer_context, from);
-        let selection = selection.map(|expr| self.subquery_expr(outer_context, expr));
+        let (_, from) = self.table_with_joins(outer_context, from);
 
-        SelectPlan { from, selection }
+        SelectPlan { from }
+    }
+
+    fn filter(&self, outer_context: Option<Rc<Context<'a>>>, filter: FilterPlan) -> FilterPlan {
+        let FilterPlan { input, expr } = filter;
+        let SelectPlan { from } = *input;
+        let (context, from) = self.table_with_joins(outer_context, from);
+        let expr = self.subquery_expr(context, expr);
+
+        FilterPlan {
+            input: Box::new(SelectPlan { from }),
+            expr,
+        }
     }
 
     fn table_with_joins(

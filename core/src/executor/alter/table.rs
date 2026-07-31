@@ -8,9 +8,9 @@ use {
             select::{select, select_with_labels},
         },
         plan::{
-            DistinctInputPlan, DistinctPlan, LimitInputPlan, LimitPlan, OffsetInputPlan,
-            OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
-            TableFactorPlan, ValuesPlan,
+            AggregationInputPlan, DistinctInputPlan, DistinctPlan, LimitInputPlan, LimitPlan,
+            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
+            SelectItemPlan, TableFactorPlan, ValuesPlan,
         },
         prelude::{DataType, Value},
         result::Result,
@@ -89,8 +89,15 @@ pub fn create_table<T: GStore + GStoreMut>(
             CreateTableSource::Project(project) => {
                 let select = match &project.input {
                     ProjectInputPlan::Select(select) => select.as_ref(),
-                    ProjectInputPlan::Aggregation(aggregation) => aggregation.input.as_ref(),
-                    ProjectInputPlan::Having(having) => having.input.input.as_ref(),
+                    ProjectInputPlan::Filter(filter) => filter.input.as_ref(),
+                    ProjectInputPlan::Aggregation(aggregation) => match &aggregation.input {
+                        AggregationInputPlan::Select(select) => select.as_ref(),
+                        AggregationInputPlan::Filter(filter) => filter.input.as_ref(),
+                    },
+                    ProjectInputPlan::Having(having) => match &having.input.input {
+                        AggregationInputPlan::Select(select) => select.as_ref(),
+                        AggregationInputPlan::Filter(filter) => filter.input.as_ref(),
+                    },
                 };
 
                 match &select.from.relation {
@@ -271,8 +278,10 @@ pub fn create_table<T: GStore + GStoreMut>(
 }
 
 fn can_copy_source_schema(project: &ProjectPlan) -> bool {
-    let ProjectInputPlan::Select(select) = &project.input else {
-        return false;
+    let select = match &project.input {
+        ProjectInputPlan::Select(select) => select.as_ref(),
+        ProjectInputPlan::Filter(filter) => filter.input.as_ref(),
+        ProjectInputPlan::Aggregation(_) | ProjectInputPlan::Having(_) => return false,
     };
     if !select.from.joins.is_empty() {
         return false;

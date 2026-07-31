@@ -2,9 +2,9 @@ use {
     gluesql_core::{
         ast::*,
         plan::{
-            DistinctInputPlan, DistinctPlan, IndexItemPlan, LimitInputPlan, LimitPlan,
-            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SelectPlan,
-            StatementPlan,
+            AggregationInputPlan, DistinctInputPlan, DistinctPlan, FilterPlan, IndexItemPlan,
+            LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan,
+            QueryPlan, SelectPlan, StatementPlan,
         },
         prelude::{Glue, Payload, Result},
         store::{GStore, GStoreMut, Planner},
@@ -49,20 +49,27 @@ fn find_indexes(statement: &StatementPlan) -> Vec<&IndexItemPlan> {
     }
 
     fn find_select_indexes(select: &SelectPlan) -> Vec<&IndexItemPlan> {
-        let selection_indexes = select
-            .selection
-            .as_ref()
-            .map(find_expr_indexes)
-            .unwrap_or_default();
-
-        let table_indexes = match &select.from.relation {
+        match &select.from.relation {
             gluesql_core::plan::TableFactorPlan::Table {
                 index: Some(index), ..
             } => vec![index],
             _ => vec![],
-        };
+        }
+    }
 
-        [selection_indexes, table_indexes].concat()
+    fn find_filter_indexes(filter: &FilterPlan) -> Vec<&IndexItemPlan> {
+        [
+            find_select_indexes(&filter.input),
+            find_expr_indexes(&filter.expr),
+        ]
+        .concat()
+    }
+
+    fn find_aggregation_input_indexes(input: &AggregationInputPlan) -> Vec<&IndexItemPlan> {
+        match input {
+            AggregationInputPlan::Select(select) => find_select_indexes(select),
+            AggregationInputPlan::Filter(filter) => find_filter_indexes(filter),
+        }
     }
 
     fn find_offset_indexes(offset: &OffsetPlan) -> Vec<&IndexItemPlan> {
@@ -75,13 +82,14 @@ fn find_indexes(statement: &StatementPlan) -> Vec<&IndexItemPlan> {
     }
 
     fn find_project_indexes(project: &ProjectPlan) -> Vec<&IndexItemPlan> {
-        let select = match &project.input {
-            ProjectInputPlan::Select(select) => select.as_ref(),
-            ProjectInputPlan::Aggregation(aggregation) => aggregation.input.as_ref(),
-            ProjectInputPlan::Having(having) => having.input.input.as_ref(),
-        };
-
-        find_select_indexes(select)
+        match &project.input {
+            ProjectInputPlan::Select(select) => find_select_indexes(select),
+            ProjectInputPlan::Filter(filter) => find_filter_indexes(filter),
+            ProjectInputPlan::Aggregation(aggregation) => {
+                find_aggregation_input_indexes(&aggregation.input)
+            }
+            ProjectInputPlan::Having(having) => find_aggregation_input_indexes(&having.input.input),
+        }
     }
 
     fn find_distinct_indexes(distinct: &DistinctPlan) -> Vec<&IndexItemPlan> {
