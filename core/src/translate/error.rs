@@ -17,7 +17,7 @@ pub enum CreateTableOption {
 
     /// `CREATE TABLE ... CLONE <table>`
     #[strum(to_string = "CLONE clause")]
-    Clone,
+    CloneTable,
 }
 
 /// `INSERT` clauses that `GlueSQL` does not support yet.

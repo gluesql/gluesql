@@ -209,7 +209,7 @@ pub fn translate_with_params(
             } else if like.is_some() {
                 Some(CreateTableOption::Like)
             } else if clone.is_some() {
-                Some(CreateTableOption::Clone)
+                Some(CreateTableOption::CloneTable)
             } else {
                 None
             };
@@ -686,7 +686,7 @@ mod tests {
             ),
             (
                 "CREATE TABLE Foo CLONE Bar",
-                TranslateError::UnsupportedCreateTableOption(CreateTableOption::Clone),
+                TranslateError::UnsupportedCreateTableOption(CreateTableOption::CloneTable),
             ),
         ];
 
