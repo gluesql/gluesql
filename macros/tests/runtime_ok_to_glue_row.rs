@@ -1,5 +1,10 @@
 use {
-    gluesql_core::{ast::Expr, data::Value, row_conversion::ToGlueRow, translate::ParamLiteral},
+    gluesql_core::{
+        ast::Expr,
+        data::Value,
+        row_conversion::ToGlueRow,
+        translate::{ParamLiteral, ToParamLiteral},
+    },
     gluesql_macros::{FromGlueRow, ToGlueRow},
 };
 
@@ -118,21 +123,29 @@ fn values_from_round_trip_with_memory_storage() {
 }
 
 #[derive(ToGlueRow)]
-struct GenericRecord<'a, T>
-where
-    T: Clone + gluesql_core::translate::IntoParamLiteral,
-{
+struct GenericRecord<'a, T> {
     name: &'a str,
-    value: T,
+    value: Option<T>,
+}
+
+struct NonCloneParam(i64);
+
+impl ToParamLiteral for NonCloneParam {
+    fn to_param_literal(&self) -> ParamLiteral {
+        self.0.to_param_literal()
+    }
 }
 
 #[test]
 fn to_glue_row_supports_generics_and_lifetimes() {
     let rec = GenericRecord {
         name: "test",
-        value: 42_i64,
+        value: Some(NonCloneParam(42)),
     };
-    assert_eq!(GenericRecord::<i64>::glue_columns(), &["name", "value"]);
+    assert_eq!(
+        GenericRecord::<NonCloneParam>::glue_columns(),
+        &["name", "value"]
+    );
     let exprs = rec
         .to_glue_row()
         .into_iter()
@@ -148,10 +161,7 @@ fn to_glue_row_supports_generics_and_lifetimes() {
 }
 
 #[derive(ToGlueRow)]
-struct ConstGenericRecord<T, const N: usize>
-where
-    T: Clone + gluesql_core::translate::IntoParamLiteral,
-{
+struct ConstGenericRecord<T, const N: usize> {
     tag: String,
     payload: T,
 }
