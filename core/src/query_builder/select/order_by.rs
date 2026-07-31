@@ -1,5 +1,5 @@
 use {
-    super::{BuildQuery, BuildQueryPlan, BuildSelect, BuildSelectPlan, DistinctNode, ValuesNode},
+    super::{BuildProjectPlan, BuildQuery, BuildQueryPlan, BuildSelect, DistinctNode, ValuesNode},
     crate::{
         ast::{OrderByExpr, Query, SetExpr},
         plan::{OrderByExprPlan, QueryPlan, SelectOrderByPlan, ValuesOrderByPlan},
@@ -27,20 +27,17 @@ pub(super) enum SelectPrevNode<'a> {
 impl SelectPrevNode<'_> {
     fn build_select_order_by_plan(self, exprs: Vec<OrderByExprPlan>) -> Result<SelectOrderByPlan> {
         let input = match self {
-            Self::Select(node) => node.build_select_plan(),
-            Self::Having(node) => node.build_select_plan(),
-            Self::GroupBy(node) => node.build_select_plan(),
-            Self::Filter(node) => node.build_select_plan(),
-            Self::JoinNode(node) => node.build_select_plan(),
-            Self::JoinConstraint(node) => node.build_select_plan(),
-            Self::HashJoin(node) => node.build_select_plan(),
-            Self::ProjectNode(node) => node.build_select_plan(),
+            Self::Select(node) => node.build_project_plan(),
+            Self::Having(node) => node.build_project_plan(),
+            Self::GroupBy(node) => node.build_project_plan(),
+            Self::Filter(node) => node.build_project_plan(),
+            Self::JoinNode(node) => node.build_project_plan(),
+            Self::JoinConstraint(node) => node.build_project_plan(),
+            Self::HashJoin(node) => node.build_project_plan(),
+            Self::ProjectNode(node) => node.build_project_plan(),
         }?;
 
-        Ok(SelectOrderByPlan {
-            input: Box::new(input),
-            exprs,
-        })
+        Ok(SelectOrderByPlan { input, exprs })
     }
 }
 
@@ -230,9 +227,9 @@ mod tests {
     use {
         crate::{
             plan::{
-                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
-                QueryPlan, SelectOrderByPlan, SelectPlan, StatementPlan, TableFactorPlan,
-                TableWithJoinsPlan,
+                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectPlan,
+                ProjectionPlan, QueryPlan, SelectOrderByPlan, SelectPlan, StatementPlan,
+                TableFactorPlan, TableWithJoinsPlan,
             },
             query_builder::{
                 Build, ExprNode, OrderByExprList, SelectItemList, col, table, test_query_builder,
@@ -376,9 +373,6 @@ mod tests {
                 },
             };
             let select = SelectPlan {
-                projection: ProjectionPlan::SelectItems(
-                    SelectItemList::from("*").build_select_items_plan().unwrap(),
-                ),
                 from: TableWithJoinsPlan {
                     relation: TableFactorPlan::Table {
                         name: "Player".to_owned(),
@@ -392,10 +386,16 @@ mod tests {
                 having: None,
                 aggregate_slots: None,
             };
+            let project = ProjectPlan {
+                input: Box::new(select),
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+            };
 
             Ok(StatementPlan::Query(QueryPlan::SelectOrderBy(
                 SelectOrderByPlan {
-                    input: Box::new(select),
+                    input: project,
                     exprs: OrderByExprList::from("Player.score DESC")
                         .build_order_by_exprs_plan()
                         .unwrap(),

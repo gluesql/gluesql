@@ -5,7 +5,7 @@ use {
         plan::{
             DistinctInputPlan, DistinctPlan, ExprPlan, JoinConstraintPlan, JoinOperatorPlan,
             JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan,
-            ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SelectPlan,
+            ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SelectPlan,
             StatementPlan, TableFactorPlan, TableWithJoinsPlan, ValuesOrderByPlan,
         },
         result::Result,
@@ -97,7 +97,7 @@ fn scan_query<T: Store + ?Sized>(
     query: &QueryPlan,
 ) -> Result<HashMap<String, Schema>> {
     match query {
-        QueryPlan::Select(select) => scan_select(storage, select),
+        QueryPlan::Project(project) => scan_project(storage, project),
         QueryPlan::Values(_) => Ok(HashMap::new()),
         QueryPlan::SelectOrderBy(order_by) => scan_select_order_by(storage, order_by),
         QueryPlan::ValuesOrderBy(order_by) => scan_values_order_by(storage, order_by),
@@ -105,7 +105,7 @@ fn scan_query<T: Store + ?Sized>(
         QueryPlan::Offset(offset) => scan_offset(storage, offset),
         QueryPlan::Limit(LimitPlan { input, count }) => {
             let schema_list = match input {
-                LimitInputPlan::Select(select) => scan_select(storage, select)?,
+                LimitInputPlan::Project(project) => scan_project(storage, project)?,
                 LimitInputPlan::Values(_) => HashMap::new(),
                 LimitInputPlan::SelectOrderBy(order_by) => scan_select_order_by(storage, order_by)?,
                 LimitInputPlan::ValuesOrderBy(order_by) => scan_values_order_by(storage, order_by)?,
@@ -126,7 +126,7 @@ fn scan_offset<T: Store + ?Sized>(
     OffsetPlan { input, count }: &OffsetPlan,
 ) -> Result<HashMap<String, Schema>> {
     let schema_list = match input {
-        OffsetInputPlan::Select(select) => scan_select(storage, select)?,
+        OffsetInputPlan::Project(project) => scan_project(storage, project)?,
         OffsetInputPlan::Values(_) => HashMap::new(),
         OffsetInputPlan::SelectOrderBy(order_by) => scan_select_order_by(storage, order_by)?,
         OffsetInputPlan::ValuesOrderBy(order_by) => scan_values_order_by(storage, order_by)?,
@@ -144,7 +144,7 @@ fn scan_distinct<T: Store + ?Sized>(
     DistinctPlan { input }: &DistinctPlan,
 ) -> Result<HashMap<String, Schema>> {
     match input {
-        DistinctInputPlan::Select(select) => scan_select(storage, select),
+        DistinctInputPlan::Project(project) => scan_project(storage, project),
         DistinctInputPlan::SelectOrderBy(order_by) => scan_select_order_by(storage, order_by),
     }
 }
@@ -153,7 +153,7 @@ fn scan_select_order_by<T: Store + ?Sized>(
     storage: &T,
     SelectOrderByPlan { input, exprs }: &SelectOrderByPlan,
 ) -> Result<HashMap<String, Schema>> {
-    let schema_list = scan_select(storage, input)?;
+    let schema_list = scan_project(storage, input)?;
 
     scan_order_by_exprs(storage, schema_list, exprs)
 }
@@ -185,7 +185,6 @@ fn scan_select<T: Store + ?Sized>(
     select: &SelectPlan,
 ) -> Result<HashMap<String, Schema>> {
     let SelectPlan {
-        projection,
         from,
         selection,
         group_by,
@@ -193,6 +192,24 @@ fn scan_select<T: Store + ?Sized>(
         ..
     } = select;
 
+    let from = scan_table_with_joins(storage, from)?;
+
+    let exprs = selection.iter().chain(group_by.iter()).chain(having.iter());
+
+    Ok(exprs
+        .map(|expr| scan_expr(storage, expr))
+        .collect::<Result<Vec<HashMap<String, Schema>>>>()?
+        .into_iter()
+        .flatten()
+        .chain(from)
+        .collect())
+}
+
+fn scan_project<T: Store + ?Sized>(
+    storage: &T,
+    ProjectPlan { input, projection }: &ProjectPlan,
+) -> Result<HashMap<String, Schema>> {
+    let schema_list = scan_select(storage, input)?;
     let projection_items = match projection {
         ProjectionPlan::SelectItems(items) => items.as_slice(),
         ProjectionPlan::SchemalessMap => &[],
@@ -208,18 +225,7 @@ fn scan_select<T: Store + ?Sized>(
         .into_iter()
         .flatten();
 
-    let from = scan_table_with_joins(storage, from)?;
-
-    let exprs = selection.iter().chain(group_by.iter()).chain(having.iter());
-
-    Ok(exprs
-        .map(|expr| scan_expr(storage, expr))
-        .collect::<Result<Vec<HashMap<String, Schema>>>>()?
-        .into_iter()
-        .flatten()
-        .chain(projection)
-        .chain(from)
-        .collect())
+    Ok(schema_list.into_iter().chain(projection).collect())
 }
 
 fn scan_table_with_joins<T: Store + ?Sized>(

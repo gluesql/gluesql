@@ -3,7 +3,7 @@ mod error;
 mod limit_node;
 mod offset_node;
 mod order_by;
-mod project;
+mod project_node;
 mod select_node;
 mod select_order_by_node;
 mod values_node;
@@ -33,7 +33,16 @@ where
     T: GStore,
 {
     match query {
-        QueryPlan::Select(select) => select_node::execute(storage, select, filter_context),
+        QueryPlan::Project(project) => {
+            let project_node::ProjectedRows { labels, rows, .. } =
+                project_node::execute(storage, project, filter_context)?;
+            let rows = rows.map(|row| row.map(|(.., row)| row));
+
+            Ok(LabeledRows {
+                labels,
+                rows: Box::new(rows),
+            })
+        }
         QueryPlan::Values(values) => values_node::execute(values),
         QueryPlan::SelectOrderBy(order_by) => {
             select_order_by_node::execute(storage, order_by, filter_context)

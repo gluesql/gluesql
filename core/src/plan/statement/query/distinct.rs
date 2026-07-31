@@ -1,5 +1,5 @@
 use {
-    super::{SelectOrderByPlan, SelectPlan},
+    super::{ProjectPlan, SelectOrderByPlan},
     serde::{Deserialize, Serialize},
 };
 
@@ -10,7 +10,7 @@ pub struct DistinctPlan {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DistinctInputPlan {
-    Select(Box<SelectPlan>),
+    Project(ProjectPlan),
     SelectOrderBy(SelectOrderByPlan),
 }
 
@@ -19,38 +19,41 @@ mod tests {
     use {
         super::{DistinctInputPlan, DistinctPlan},
         crate::plan::{
-            ProjectionPlan, SelectOrderByPlan, SelectPlan, TableFactorPlan, TableWithJoinsPlan,
+            ProjectPlan, ProjectionPlan, SelectOrderByPlan, SelectPlan, TableFactorPlan,
+            TableWithJoinsPlan,
         },
     };
 
-    fn select_plan() -> Box<SelectPlan> {
-        Box::new(SelectPlan {
-            projection: ProjectionPlan::SelectItems(Vec::new()),
-            from: TableWithJoinsPlan {
-                relation: TableFactorPlan::Table {
-                    name: "Item".to_owned(),
-                    alias: None,
-                    index: None,
+    fn project_plan() -> ProjectPlan {
+        ProjectPlan {
+            input: Box::new(SelectPlan {
+                from: TableWithJoinsPlan {
+                    relation: TableFactorPlan::Table {
+                        name: "Item".to_owned(),
+                        alias: None,
+                        index: None,
+                    },
+                    joins: Vec::new(),
                 },
-                joins: Vec::new(),
-            },
-            selection: None,
-            group_by: Vec::new(),
-            having: None,
-            aggregate_slots: None,
-        })
+                selection: None,
+                group_by: Vec::new(),
+                having: None,
+                aggregate_slots: None,
+            }),
+            projection: ProjectionPlan::SelectItems(Vec::new()),
+        }
     }
 
     #[test]
-    fn distinct_accepts_select_and_select_order_by_inputs() {
+    fn distinct_accepts_project_and_select_order_by_inputs() {
         let distinct = DistinctPlan {
-            input: DistinctInputPlan::Select(select_plan()),
+            input: DistinctInputPlan::Project(project_plan()),
         };
-        assert!(matches!(distinct.input, DistinctInputPlan::Select(_)));
+        assert!(matches!(distinct.input, DistinctInputPlan::Project(_)));
 
         let order_by = DistinctPlan {
             input: DistinctInputPlan::SelectOrderBy(SelectOrderByPlan {
-                input: select_plan(),
+                input: project_plan(),
                 exprs: Vec::new(),
             }),
         };

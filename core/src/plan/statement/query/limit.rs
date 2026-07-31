@@ -1,6 +1,6 @@
 use {
     super::{
-        DistinctPlan, OffsetPlan, SelectOrderByPlan, SelectPlan, ValuesOrderByPlan, ValuesPlan,
+        DistinctPlan, OffsetPlan, ProjectPlan, SelectOrderByPlan, ValuesOrderByPlan, ValuesPlan,
     },
     crate::plan::ExprPlan,
     serde::{Deserialize, Serialize},
@@ -14,7 +14,7 @@ pub struct LimitPlan {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LimitInputPlan {
-    Select(Box<SelectPlan>),
+    Project(ProjectPlan),
     Values(ValuesPlan),
     SelectOrderBy(SelectOrderByPlan),
     ValuesOrderBy(ValuesOrderByPlan),

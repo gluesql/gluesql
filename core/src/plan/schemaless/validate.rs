@@ -4,7 +4,7 @@ use {
         data::Schema,
         plan::{
             DistinctInputPlan, DistinctPlan, ExprPlan, JoinConstraintPlan, JoinExecutorPlan,
-            JoinOperatorPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
+            JoinOperatorPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectPlan,
             ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SelectPlan,
             StatementPlan, TableFactorPlan, ValuesOrderByPlan, ValuesPlan,
         },
@@ -68,7 +68,7 @@ fn validate_query(
     query: &QueryPlan,
 ) -> ValidateResult {
     match query {
-        QueryPlan::Select(select) => validate_select(schema_map, select),
+        QueryPlan::Project(project) => validate_project(schema_map, project),
         QueryPlan::Values(values) => validate_values(schema_map, values),
         QueryPlan::SelectOrderBy(order_by) => validate_select_order_by(schema_map, order_by),
         QueryPlan::ValuesOrderBy(order_by) => validate_values_order_by(schema_map, order_by),
@@ -76,7 +76,7 @@ fn validate_query(
         QueryPlan::Offset(offset) => validate_offset(schema_map, offset),
         QueryPlan::Limit(LimitPlan { input, count }) => {
             match input {
-                LimitInputPlan::Select(select) => validate_select(schema_map, select)?,
+                LimitInputPlan::Project(project) => validate_project(schema_map, project)?,
                 LimitInputPlan::Values(values) => validate_values(schema_map, values)?,
                 LimitInputPlan::SelectOrderBy(order_by) => {
                     validate_select_order_by(schema_map, order_by)?;
@@ -98,7 +98,7 @@ fn validate_offset(
     OffsetPlan { input, count }: &OffsetPlan,
 ) -> ValidateResult {
     match input {
-        OffsetInputPlan::Select(select) => validate_select(schema_map, select)?,
+        OffsetInputPlan::Project(project) => validate_project(schema_map, project)?,
         OffsetInputPlan::Values(values) => validate_values(schema_map, values)?,
         OffsetInputPlan::SelectOrderBy(order_by) => {
             validate_select_order_by(schema_map, order_by)?;
@@ -117,7 +117,7 @@ fn validate_distinct(
     DistinctPlan { input }: &DistinctPlan,
 ) -> ValidateResult {
     match input {
-        DistinctInputPlan::Select(select) => validate_select(schema_map, select),
+        DistinctInputPlan::Project(project) => validate_project(schema_map, project),
         DistinctInputPlan::SelectOrderBy(order_by) => {
             validate_select_order_by(schema_map, order_by)
         }
@@ -128,7 +128,7 @@ fn validate_select_order_by(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
     SelectOrderByPlan { input, exprs }: &SelectOrderByPlan,
 ) -> ValidateResult {
-    validate_select(schema_map, input)?;
+    validate_project(schema_map, input)?;
     for order_by in exprs {
         validate_expr(schema_map, &order_by.expr)?;
     }
@@ -165,7 +165,6 @@ fn validate_select(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
     select: &SelectPlan,
 ) -> ValidateResult {
-    validate_mixed_join_wildcard_projection(schema_map, select)?;
     validate_table_factor(schema_map, &select.from.relation)?;
 
     for join in &select.from.joins {
@@ -193,14 +192,6 @@ fn validate_select(
         }
     }
 
-    if let ProjectionPlan::SelectItems(projection) = &select.projection {
-        for projection in projection {
-            if let SelectItemPlan::Expr { expr, .. } = projection {
-                validate_expr(schema_map, expr)?;
-            }
-        }
-    }
-
     if let Some(selection) = &select.selection {
         validate_expr(schema_map, selection)?;
     }
@@ -211,6 +202,24 @@ fn validate_select(
 
     if let Some(having) = &select.having {
         validate_expr(schema_map, having)?;
+    }
+
+    Ok(())
+}
+
+fn validate_project(
+    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    project: &ProjectPlan,
+) -> ValidateResult {
+    validate_mixed_join_wildcard_projection(schema_map, project)?;
+    validate_select(schema_map, &project.input)?;
+
+    if let ProjectionPlan::SelectItems(projection) = &project.projection {
+        for projection in projection {
+            if let SelectItemPlan::Expr { expr, .. } = projection {
+                validate_expr(schema_map, expr)?;
+            }
+        }
     }
 
     Ok(())
@@ -240,11 +249,12 @@ fn validate_expr(
 
 fn validate_mixed_join_wildcard_projection(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    select: &SelectPlan,
+    project: &ProjectPlan,
 ) -> ValidateResult {
+    let select = &project.input;
     if select.from.joins.is_empty()
         || !matches!(
-            &select.projection,
+            &project.projection,
             ProjectionPlan::SelectItems(projection)
                 if projection
                     .iter()
@@ -498,8 +508,8 @@ mod tests {
         let schema_map = fetch_schema_map(&storage, &statement).unwrap();
 
         let mut applied = false;
-        if let StatementPlan::Query(QueryPlan::Select(select)) = &mut statement
-            && let Some(join) = select.from.joins.first_mut()
+        if let StatementPlan::Query(QueryPlan::Project(project)) = &mut statement
+            && let Some(join) = project.input.from.joins.first_mut()
         {
             join.join_executor = JoinExecutorPlan::Hash {
                 key_expr: ExprPlan::Identifier("id".to_owned()),
@@ -522,8 +532,8 @@ mod tests {
         let schema_map = fetch_schema_map(&storage, &statement).unwrap();
 
         let mut applied = false;
-        if let StatementPlan::Query(QueryPlan::Select(select)) = &mut statement
-            && let Some(join) = select.from.joins.first_mut()
+        if let StatementPlan::Query(QueryPlan::Project(project)) = &mut statement
+            && let Some(join) = project.input.from.joins.first_mut()
         {
             join.join_executor = JoinExecutorPlan::Hash {
                 key_expr: ExprPlan::Identifier("id".to_owned()),

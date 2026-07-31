@@ -160,9 +160,9 @@ mod tests {
     use {
         crate::{
             plan::{
-                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
-                QueryPlan, SelectPlan, StatementPlan, TableAliasPlan, TableFactorPlan,
-                TableWithJoinsPlan,
+                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectPlan,
+                ProjectionPlan, QueryPlan, SelectPlan, StatementPlan, TableAliasPlan,
+                TableFactorPlan, TableWithJoinsPlan,
             },
             query_builder::{
                 Build, QueryBuilderError, SelectItemList, col, expr,
@@ -196,9 +196,6 @@ mod tests {
                 },
             };
             let select = SelectPlan {
-                projection: ProjectionPlan::SelectItems(
-                    SelectItemList::from("*").build_select_items_plan().unwrap(),
-                ),
                 from: TableWithJoinsPlan {
                     relation: TableFactorPlan::Table {
                         name: "Player".to_owned(),
@@ -212,8 +209,14 @@ mod tests {
                 having: None,
                 aggregate_slots: None,
             };
+            let project = ProjectPlan {
+                input: Box::new(select),
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+            };
 
-            Ok(StatementPlan::Query(QueryPlan::Select(Box::new(select))))
+            Ok(StatementPlan::Query(QueryPlan::Project(project)))
         };
         assert_eq!(actual, expected, "without filter");
 
@@ -243,9 +246,6 @@ mod tests {
                 },
             };
             let select = SelectPlan {
-                projection: ProjectionPlan::SelectItems(
-                    SelectItemList::from("*").build_select_items_plan().unwrap(),
-                ),
                 from: TableWithJoinsPlan {
                     relation: TableFactorPlan::Table {
                         name: "Player".to_owned(),
@@ -259,8 +259,14 @@ mod tests {
                 having: None,
                 aggregate_slots: None,
             };
+            let project = ProjectPlan {
+                input: Box::new(select),
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+            };
 
-            Ok(StatementPlan::Query(QueryPlan::Select(Box::new(select))))
+            Ok(StatementPlan::Query(QueryPlan::Project(project)))
         };
         assert_eq!(actual, expected, "with filter");
 
@@ -289,9 +295,6 @@ mod tests {
             };
 
             let subquery = SelectPlan {
-                projection: ProjectionPlan::SelectItems(
-                    SelectItemList::from("*").build_select_items_plan().unwrap(),
-                ),
                 from: TableWithJoinsPlan {
                     relation: TableFactorPlan::Table {
                         name: "Foo".to_owned(),
@@ -305,14 +308,17 @@ mod tests {
                 having: None,
                 aggregate_slots: None,
             };
-
-            let select = SelectPlan {
+            let subquery = ProjectPlan {
+                input: Box::new(subquery),
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),
+            };
+
+            let select = SelectPlan {
                 from: TableWithJoinsPlan {
                     relation: TableFactorPlan::Derived {
-                        subquery: QueryPlan::Select(Box::new(subquery)),
+                        subquery: QueryPlan::Project(subquery),
                         alias: TableAliasPlan {
                             name: "Sub".to_owned(),
                             columns: Vec::new(),
@@ -325,8 +331,14 @@ mod tests {
                 having: None,
                 aggregate_slots: None,
             };
+            let project = ProjectPlan {
+                input: Box::new(select),
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+            };
 
-            Ok(StatementPlan::Query(QueryPlan::Select(Box::new(select))))
+            Ok(StatementPlan::Query(QueryPlan::Project(project)))
         };
         assert_eq!(actual, expected);
     }

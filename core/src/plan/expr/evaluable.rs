@@ -2,9 +2,9 @@ use {
     crate::{
         plan::{
             DistinctInputPlan, DistinctPlan, ExprPlan, JoinConstraintPlan, JoinOperatorPlan,
-            JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectionPlan,
-            QueryPlan, SelectItemPlan, SelectOrderByPlan, SelectPlan, TableAliasPlan,
-            TableFactorPlan, TableWithJoinsPlan, ValuesOrderByPlan, ValuesPlan,
+            JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectPlan,
+            ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SelectPlan,
+            TableAliasPlan, TableFactorPlan, TableWithJoinsPlan, ValuesOrderByPlan, ValuesPlan,
         },
         plan::{context::Context, expr::PlanExpr},
     },
@@ -42,7 +42,7 @@ pub fn check_expr(context: Option<Rc<Context<'_>>>, expr: &ExprPlan) -> bool {
 
 fn check_query(context: Option<&Rc<Context<'_>>>, query: &QueryPlan) -> bool {
     match query {
-        QueryPlan::Select(select) => check_select(context, select),
+        QueryPlan::Project(project) => check_project(context, project),
         QueryPlan::Values(values) => check_values(context, values),
         QueryPlan::SelectOrderBy(order_by) => check_select_order_by(context, order_by),
         QueryPlan::ValuesOrderBy(order_by) => check_values_order_by(context, order_by),
@@ -50,7 +50,7 @@ fn check_query(context: Option<&Rc<Context<'_>>>, query: &QueryPlan) -> bool {
         QueryPlan::Offset(offset) => check_offset(context, offset),
         QueryPlan::Limit(LimitPlan { input, count }) => {
             let input = match input {
-                LimitInputPlan::Select(select) => check_select(context, select),
+                LimitInputPlan::Project(project) => check_project(context, project),
                 LimitInputPlan::Values(values) => check_values(context, values),
                 LimitInputPlan::SelectOrderBy(order_by) => check_select_order_by(context, order_by),
                 LimitInputPlan::ValuesOrderBy(order_by) => check_values_order_by(context, order_by),
@@ -65,7 +65,7 @@ fn check_query(context: Option<&Rc<Context<'_>>>, query: &QueryPlan) -> bool {
 
 fn check_offset(context: Option<&Rc<Context<'_>>>, plan: &OffsetPlan) -> bool {
     let input = match &plan.input {
-        OffsetInputPlan::Select(select) => check_select(context, select),
+        OffsetInputPlan::Project(project) => check_project(context, project),
         OffsetInputPlan::Values(values) => check_values(context, values),
         OffsetInputPlan::SelectOrderBy(order_by) => check_select_order_by(context, order_by),
         OffsetInputPlan::ValuesOrderBy(order_by) => check_values_order_by(context, order_by),
@@ -77,7 +77,7 @@ fn check_offset(context: Option<&Rc<Context<'_>>>, plan: &OffsetPlan) -> bool {
 
 fn check_distinct(context: Option<&Rc<Context<'_>>>, plan: &DistinctPlan) -> bool {
     match &plan.input {
-        DistinctInputPlan::Select(select) => check_select(context, select),
+        DistinctInputPlan::Project(project) => check_project(context, project),
         DistinctInputPlan::SelectOrderBy(order_by) => check_select_order_by(context, order_by),
     }
 }
@@ -86,7 +86,7 @@ fn check_select_order_by(
     context: Option<&Rc<Context<'_>>>,
     SelectOrderByPlan { input, exprs }: &SelectOrderByPlan,
 ) -> bool {
-    check_select(context, input)
+    check_project(context, input)
         && exprs
             .iter()
             .all(|order_by| check_expr(context.map(Rc::clone), &order_by.expr))
@@ -110,25 +110,12 @@ fn check_values(context: Option<&Rc<Context<'_>>>, ValuesPlan(rows): &ValuesPlan
 
 fn check_select(context: Option<&Rc<Context<'_>>>, select: &SelectPlan) -> bool {
     let SelectPlan {
-        projection,
         from,
         selection,
         group_by,
         having,
         ..
     } = select;
-
-    let projection_ok = match projection {
-        ProjectionPlan::SelectItems(items) => items.iter().all(|select_item| match select_item {
-            SelectItemPlan::Expr { expr, .. } => check_expr(context.map(Rc::clone), expr),
-            SelectItemPlan::QualifiedWildcard(_) | SelectItemPlan::Wildcard => true,
-        }),
-        ProjectionPlan::SchemalessMap => true,
-    };
-
-    if !projection_ok {
-        return false;
-    }
 
     let TableWithJoinsPlan { relation, joins } = from;
 
@@ -164,6 +151,20 @@ fn check_select(context: Option<&Rc<Context<'_>>>, select: &SelectPlan) -> bool 
         .chain(group_by.iter())
         .chain(having.iter())
         .all(|expr| check_expr(context.map(Rc::clone), expr))
+}
+
+fn check_project(context: Option<&Rc<Context<'_>>>, project: &ProjectPlan) -> bool {
+    if !check_select(context, &project.input) {
+        return false;
+    }
+
+    match &project.projection {
+        ProjectionPlan::SelectItems(items) => items.iter().all(|select_item| match select_item {
+            SelectItemPlan::Expr { expr, .. } => check_expr(context.map(Rc::clone), expr),
+            SelectItemPlan::QualifiedWildcard(_) | SelectItemPlan::Wildcard => true,
+        }),
+        ProjectionPlan::SchemalessMap => true,
+    }
 }
 
 fn check_table_factor(context: Option<&Rc<Context<'_>>>, table_factor: &TableFactorPlan) -> bool {

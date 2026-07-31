@@ -2,9 +2,9 @@ use {
     crate::plan::{
         AggregateFunctionPlan, DistinctInputPlan, DistinctPlan, ExprPlan, JoinConstraintPlan,
         JoinExecutorPlan, JoinOperatorPlan, JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan,
-        OffsetPlan, OrderByExprPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan,
-        SelectPlan, StatementPlan, TableFactorPlan, TableWithJoinsPlan, ValuesOrderByPlan,
-        ValuesPlan, expr::visit_mut_expr,
+        OffsetPlan, OrderByExprPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
+        SelectOrderByPlan, SelectPlan, StatementPlan, TableFactorPlan, TableWithJoinsPlan,
+        ValuesOrderByPlan, ValuesPlan, expr::visit_mut_expr,
     },
     std::collections::HashMap,
 };
@@ -94,7 +94,7 @@ pub fn plan(statement: StatementPlan) -> StatementPlan {
 
 fn plan_query(query: &mut QueryPlan) {
     match query {
-        QueryPlan::Select(select) => plan_select_query(select, &mut []),
+        QueryPlan::Project(project) => plan_project_query(project, &mut []),
         QueryPlan::Values(values) => plan_values(values),
         QueryPlan::SelectOrderBy(order_by) => plan_select_order_by(order_by),
         QueryPlan::ValuesOrderBy(order_by) => plan_values_order_by(order_by),
@@ -102,7 +102,7 @@ fn plan_query(query: &mut QueryPlan) {
         QueryPlan::Offset(offset) => plan_offset(offset),
         QueryPlan::Limit(LimitPlan { input, count }) => {
             match input {
-                LimitInputPlan::Select(select) => plan_select_query(select, &mut []),
+                LimitInputPlan::Project(project) => plan_project_query(project, &mut []),
                 LimitInputPlan::Values(values) => plan_values(values),
                 LimitInputPlan::SelectOrderBy(order_by) => plan_select_order_by(order_by),
                 LimitInputPlan::ValuesOrderBy(order_by) => plan_values_order_by(order_by),
@@ -117,7 +117,7 @@ fn plan_query(query: &mut QueryPlan) {
 
 fn plan_offset(OffsetPlan { input, count }: &mut OffsetPlan) {
     match input {
-        OffsetInputPlan::Select(select) => plan_select_query(select, &mut []),
+        OffsetInputPlan::Project(project) => plan_project_query(project, &mut []),
         OffsetInputPlan::Values(values) => plan_values(values),
         OffsetInputPlan::SelectOrderBy(order_by) => plan_select_order_by(order_by),
         OffsetInputPlan::ValuesOrderBy(order_by) => plan_values_order_by(order_by),
@@ -128,13 +128,13 @@ fn plan_offset(OffsetPlan { input, count }: &mut OffsetPlan) {
 
 fn plan_distinct(DistinctPlan { input }: &mut DistinctPlan) {
     match input {
-        DistinctInputPlan::Select(select) => plan_select_query(select, &mut []),
+        DistinctInputPlan::Project(project) => plan_project_query(project, &mut []),
         DistinctInputPlan::SelectOrderBy(order_by) => plan_select_order_by(order_by),
     }
 }
 
 fn plan_select_order_by(SelectOrderByPlan { input, exprs }: &mut SelectOrderByPlan) {
-    plan_select_query(input, exprs);
+    plan_project_query(input, exprs);
 }
 
 fn plan_values_order_by(ValuesOrderByPlan { input, exprs }: &mut ValuesOrderByPlan) {
@@ -144,12 +144,13 @@ fn plan_values_order_by(ValuesOrderByPlan { input, exprs }: &mut ValuesOrderByPl
     }
 }
 
-fn plan_select_query(select: &mut SelectPlan, order_by: &mut [OrderByExprPlan]) {
-    plan_select(select);
+fn plan_project_query(project: &mut ProjectPlan, order_by: &mut [OrderByExprPlan]) {
+    plan_select(&mut project.input);
+    plan_projection(&mut project.projection);
     for order_by in order_by.iter_mut() {
         plan_expr(&mut order_by.expr);
     }
-    bind_select(select, order_by);
+    bind_select(&mut project.input, &mut project.projection, order_by);
 }
 
 fn plan_values(ValuesPlan(exprs_list): &mut ValuesPlan) {
@@ -163,17 +164,6 @@ fn plan_values(ValuesPlan(exprs_list): &mut ValuesPlan) {
 fn plan_select(select: &mut SelectPlan) {
     plan_table_with_joins(&mut select.from);
 
-    match &mut select.projection {
-        ProjectionPlan::SelectItems(items) => {
-            for item in items {
-                if let SelectItemPlan::Expr { expr, .. } = item {
-                    plan_expr(expr);
-                }
-            }
-        }
-        ProjectionPlan::SchemalessMap => {}
-    }
-
     if let Some(selection) = select.selection.as_mut() {
         plan_expr(selection);
     }
@@ -184,6 +174,19 @@ fn plan_select(select: &mut SelectPlan) {
 
     if let Some(having) = select.having.as_mut() {
         plan_expr(having);
+    }
+}
+
+fn plan_projection(projection: &mut ProjectionPlan) {
+    match projection {
+        ProjectionPlan::SelectItems(items) => {
+            for item in items {
+                if let SelectItemPlan::Expr { expr, .. } = item {
+                    plan_expr(expr);
+                }
+            }
+        }
+        ProjectionPlan::SchemalessMap => {}
     }
 }
 
@@ -237,7 +240,11 @@ fn plan_expr(expr: &mut ExprPlan) {
     });
 }
 
-fn bind_select(select: &mut SelectPlan, order_by: &mut [OrderByExprPlan]) {
+fn bind_select(
+    select: &mut SelectPlan,
+    projection: &mut ProjectionPlan,
+    order_by: &mut [OrderByExprPlan],
+) {
     let mut slots = HashMap::new();
     let mut aggregates = Vec::new();
     let mut bind = |expr: &mut ExprPlan| {
@@ -261,7 +268,7 @@ fn bind_select(select: &mut SelectPlan, order_by: &mut [OrderByExprPlan]) {
         });
     };
 
-    if let ProjectionPlan::SelectItems(items) = &mut select.projection {
+    if let ProjectionPlan::SelectItems(items) = projection {
         for item in items {
             if let SelectItemPlan::Expr { expr, .. } = item {
                 bind(expr);
@@ -290,8 +297,9 @@ mod tests {
             plan::{
                 DistinctInputPlan, DistinctPlan, ExprPlan, JoinConstraintPlan, JoinExecutorPlan,
                 JoinOperatorPlan, JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
-                OrderByExprPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan,
-                SelectPlan, StatementPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan,
+                OrderByExprPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
+                SelectOrderByPlan, SelectPlan, StatementPlan, TableAliasPlan, TableFactorPlan,
+                TableWithJoinsPlan,
                 expr::{try_visit_expr, visit_mut_expr},
             },
             translate::translate,
@@ -322,37 +330,48 @@ mod tests {
         select_query(query).expect("expected select")
     }
 
-    fn offset_select(offset: &OffsetPlan) -> Option<&SelectPlan> {
+    fn project(statement: &StatementPlan) -> &ProjectPlan {
+        let StatementPlan::Query(query) = statement else {
+            panic!("expected query");
+        };
+        project_query(query).expect("expected project")
+    }
+
+    fn offset_project(offset: &OffsetPlan) -> Option<&ProjectPlan> {
         match &offset.input {
-            OffsetInputPlan::Select(select) => Some(select),
+            OffsetInputPlan::Project(project) => Some(project),
             OffsetInputPlan::SelectOrderBy(SelectOrderByPlan { input, .. }) => Some(input),
-            OffsetInputPlan::Distinct(distinct) => Some(distinct_select(distinct)),
+            OffsetInputPlan::Distinct(distinct) => Some(distinct_project(distinct)),
             OffsetInputPlan::Values(_) | OffsetInputPlan::ValuesOrderBy(_) => None,
         }
     }
 
-    fn distinct_select(distinct: &DistinctPlan) -> &SelectPlan {
+    fn distinct_project(distinct: &DistinctPlan) -> &ProjectPlan {
         match &distinct.input {
-            DistinctInputPlan::Select(select) => select,
+            DistinctInputPlan::Project(project) => project,
             DistinctInputPlan::SelectOrderBy(SelectOrderByPlan { input, .. }) => input,
         }
     }
 
-    fn select_query(query: &QueryPlan) -> Option<&SelectPlan> {
+    fn project_query(query: &QueryPlan) -> Option<&ProjectPlan> {
         match query {
-            QueryPlan::Select(select) => Some(select),
+            QueryPlan::Project(project) => Some(project),
             QueryPlan::SelectOrderBy(SelectOrderByPlan { input, .. }) => Some(input),
-            QueryPlan::Distinct(distinct) => Some(distinct_select(distinct)),
-            QueryPlan::Offset(offset) => offset_select(offset),
+            QueryPlan::Distinct(distinct) => Some(distinct_project(distinct)),
+            QueryPlan::Offset(offset) => offset_project(offset),
             QueryPlan::Limit(LimitPlan { input, .. }) => match input {
-                LimitInputPlan::Select(select) => Some(select),
+                LimitInputPlan::Project(project) => Some(project),
                 LimitInputPlan::SelectOrderBy(SelectOrderByPlan { input, .. }) => Some(input),
-                LimitInputPlan::Distinct(distinct) => Some(distinct_select(distinct)),
-                LimitInputPlan::Offset(offset) => offset_select(offset),
+                LimitInputPlan::Distinct(distinct) => Some(distinct_project(distinct)),
+                LimitInputPlan::Offset(offset) => offset_project(offset),
                 LimitInputPlan::Values(_) | LimitInputPlan::ValuesOrderBy(_) => None,
             },
             QueryPlan::Values(_) | QueryPlan::ValuesOrderBy(_) => None,
         }
+    }
+
+    fn select_query(query: &QueryPlan) -> Option<&SelectPlan> {
+        project_query(query).map(|project| project.input.as_ref())
     }
 
     fn assert_planned_query(query: &QueryPlan) {
@@ -409,7 +428,7 @@ mod tests {
         assert_eq!(slots.len(), 1);
         assert_eq!(slots[0].slot, Some(0));
 
-        let ProjectionPlan::SelectItems(items) = &select.projection else {
+        let ProjectionPlan::SelectItems(items) = &project(&statement).projection else {
             panic!("expected select items");
         };
         let SelectItemPlan::Expr { expr, .. } = &items[0] else {
@@ -471,6 +490,7 @@ mod tests {
         };
         let slots = order_by
             .input
+            .input
             .aggregate_slots
             .as_ref()
             .expect("aggregate slots should be planned");
@@ -493,8 +513,8 @@ mod tests {
     #[test]
     fn ignores_stale_slot_when_binding_same_aggregate() {
         let mut query = parse_query("SELECT COUNT(*) FROM Item HAVING COUNT(*) > 0");
-        let mut select = select_query(&query).expect("expected select").clone();
-        let ProjectionPlan::SelectItems(items) = &mut select.projection else {
+        let mut project = project_query(&query).expect("expected project").clone();
+        let ProjectionPlan::SelectItems(items) = &mut project.projection else {
             panic!("expected select items");
         };
         let SelectItemPlan::Expr { expr, .. } = &mut items[0] else {
@@ -506,7 +526,7 @@ mod tests {
                 aggregate.slot = Some(99);
             }
         });
-        query = QueryPlan::Select(Box::new(select));
+        query = QueryPlan::Project(project);
 
         let StatementPlan::Query(query) = plan(StatementPlan::Query(query)) else {
             panic!("expected query");
@@ -520,7 +540,9 @@ mod tests {
         assert_eq!(slots.len(), 1);
         assert_eq!(slots[0].slot, Some(0));
 
-        let ProjectionPlan::SelectItems(items) = &select.projection else {
+        let ProjectionPlan::SelectItems(items) =
+            &project_query(&query).expect("expected project").projection
+        else {
             panic!("expected select items");
         };
         let SelectItemPlan::Expr { expr, .. } = &items[0] else {
@@ -657,12 +679,12 @@ mod tests {
     fn plans_values_limit_and_offset_subqueries() {
         let body_query = parse_query("SELECT id FROM Item");
         let body = match body_query {
-            QueryPlan::Select(body) => Some(body),
+            QueryPlan::Project(body) => Some(body),
             _ => None,
         }
         .expect("expected select");
         let offset = OffsetPlan {
-            input: OffsetInputPlan::Select(body),
+            input: OffsetInputPlan::Project(body),
             count: subquery_expr(),
         };
         let query = QueryPlan::Limit(LimitPlan {
@@ -736,20 +758,22 @@ mod tests {
 
     #[test]
     fn keeps_schemaless_projection_unplanned() {
-        let query = QueryPlan::Select(Box::new(SelectPlan {
+        let query = QueryPlan::Project(ProjectPlan {
             projection: ProjectionPlan::SchemalessMap,
-            from: TableWithJoinsPlan {
-                relation: TableFactorPlan::Dictionary {
-                    dict: Dictionary::GlueTables,
-                    alias: alias("GLUE_TABLES"),
+            input: Box::new(SelectPlan {
+                from: TableWithJoinsPlan {
+                    relation: TableFactorPlan::Dictionary {
+                        dict: Dictionary::GlueTables,
+                        alias: alias("GLUE_TABLES"),
+                    },
+                    joins: Vec::new(),
                 },
-                joins: Vec::new(),
-            },
-            selection: None,
-            group_by: Vec::new(),
-            having: None,
-            aggregate_slots: None,
-        }));
+                selection: None,
+                group_by: Vec::new(),
+                having: None,
+                aggregate_slots: None,
+            }),
+        });
 
         let StatementPlan::Query(query) = plan(StatementPlan::Query(query)) else {
             panic!("expected query");
@@ -760,56 +784,60 @@ mod tests {
     #[test]
     fn plans_table_factor_join_and_hash_executor_exprs() {
         let query = QueryPlan::SelectOrderBy(SelectOrderByPlan {
-            input: Box::new(SelectPlan {
+            input: ProjectPlan {
                 projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
-                from: TableWithJoinsPlan {
-                    relation: TableFactorPlan::Derived {
-                        subquery: count_query(),
-                        alias: alias("derived"),
+                input: Box::new(SelectPlan {
+                    from: TableWithJoinsPlan {
+                        relation: TableFactorPlan::Derived {
+                            subquery: count_query(),
+                            alias: alias("derived"),
+                        },
+                        joins: vec![
+                            JoinPlan {
+                                relation: TableFactorPlan::Series {
+                                    alias: alias("series"),
+                                    size: subquery_expr(),
+                                },
+                                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::On(
+                                    subquery_expr(),
+                                )),
+                                join_executor: JoinExecutorPlan::Hash {
+                                    key_expr: subquery_expr(),
+                                    value_expr: subquery_expr(),
+                                    where_clause: Some(subquery_expr()),
+                                },
+                            },
+                            JoinPlan {
+                                relation: TableFactorPlan::Table {
+                                    name: "Target".to_owned(),
+                                    alias: None,
+                                    index: None,
+                                },
+                                join_operator: JoinOperatorPlan::LeftOuter(
+                                    JoinConstraintPlan::None,
+                                ),
+                                join_executor: JoinExecutorPlan::Hash {
+                                    key_expr: subquery_expr(),
+                                    value_expr: subquery_expr(),
+                                    where_clause: None,
+                                },
+                            },
+                            JoinPlan {
+                                relation: TableFactorPlan::Dictionary {
+                                    dict: Dictionary::GlueIndexes,
+                                    alias: alias("GLUE_INDEXES"),
+                                },
+                                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
+                                join_executor: JoinExecutorPlan::NestedLoop,
+                            },
+                        ],
                     },
-                    joins: vec![
-                        JoinPlan {
-                            relation: TableFactorPlan::Series {
-                                alias: alias("series"),
-                                size: subquery_expr(),
-                            },
-                            join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::On(
-                                subquery_expr(),
-                            )),
-                            join_executor: JoinExecutorPlan::Hash {
-                                key_expr: subquery_expr(),
-                                value_expr: subquery_expr(),
-                                where_clause: Some(subquery_expr()),
-                            },
-                        },
-                        JoinPlan {
-                            relation: TableFactorPlan::Table {
-                                name: "Target".to_owned(),
-                                alias: None,
-                                index: None,
-                            },
-                            join_operator: JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None),
-                            join_executor: JoinExecutorPlan::Hash {
-                                key_expr: subquery_expr(),
-                                value_expr: subquery_expr(),
-                                where_clause: None,
-                            },
-                        },
-                        JoinPlan {
-                            relation: TableFactorPlan::Dictionary {
-                                dict: Dictionary::GlueIndexes,
-                                alias: alias("GLUE_INDEXES"),
-                            },
-                            join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
-                            join_executor: JoinExecutorPlan::NestedLoop,
-                        },
-                    ],
-                },
-                selection: None,
-                group_by: Vec::new(),
-                having: None,
-                aggregate_slots: None,
-            }),
+                    selection: None,
+                    group_by: Vec::new(),
+                    having: None,
+                    aggregate_slots: None,
+                }),
+            },
             exprs: vec![OrderByExprPlan {
                 expr: ExprPlan::Literal(Literal::Number(1.into())),
                 asc: None,

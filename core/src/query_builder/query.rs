@@ -158,8 +158,8 @@ mod test {
         super::QueryNode,
         crate::{
             plan::{
-                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
-                QueryPlan, SelectPlan, TableFactorPlan, TableWithJoinsPlan,
+                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectPlan,
+                ProjectionPlan, QueryPlan, SelectPlan, TableFactorPlan, TableWithJoinsPlan,
             },
             query_builder::{
                 SelectItemList, col, glue_indexes, glue_objects, glue_table_columns, glue_tables,
@@ -211,9 +211,6 @@ mod test {
                 },
             };
             let select = SelectPlan {
-                projection: ProjectionPlan::SelectItems(
-                    SelectItemList::from("*").build_select_items_plan().unwrap(),
-                ),
                 from: TableWithJoinsPlan {
                     relation: TableFactorPlan::Table {
                         name: "Player".to_owned(),
@@ -227,8 +224,14 @@ mod test {
                 having: None,
                 aggregate_slots: None,
             };
+            let project = ProjectPlan {
+                input: Box::new(select),
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+            };
 
-            QueryPlan::Select(Box::new(select))
+            QueryPlan::Project(project)
         };
         assert_eq!(actual.build_query_plan().unwrap(), expected);
 

@@ -1,11 +1,11 @@
 use {
-    crate::plan::{AggregatePlan, ExprPlan, OrderByExprPlan, ProjectionPlan, TableWithJoinsPlan},
+    super::ProjectPlan,
+    crate::plan::{AggregatePlan, ExprPlan, OrderByExprPlan, TableWithJoinsPlan},
     serde::{Deserialize, Serialize},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct SelectPlan {
-    pub projection: ProjectionPlan,
     pub from: TableWithJoinsPlan,
     pub selection: Option<ExprPlan>,
     pub group_by: Vec<ExprPlan>,
@@ -15,6 +15,6 @@ pub struct SelectPlan {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct SelectOrderByPlan {
-    pub input: Box<SelectPlan>,
+    pub input: ProjectPlan,
     pub exprs: Vec<OrderByExprPlan>,
 }

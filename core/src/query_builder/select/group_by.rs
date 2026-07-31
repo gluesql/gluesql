@@ -144,8 +144,9 @@ mod tests {
     use {
         crate::{
             plan::{
-                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
-                QueryPlan, SelectPlan, StatementPlan, TableFactorPlan, TableWithJoinsPlan,
+                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectPlan,
+                ProjectionPlan, QueryPlan, SelectPlan, StatementPlan, TableFactorPlan,
+                TableWithJoinsPlan,
             },
             query_builder::{Build, SelectItemList, col, table, test_query_builder},
         },
@@ -222,9 +223,6 @@ mod tests {
                 },
             };
             let select = SelectPlan {
-                projection: ProjectionPlan::SelectItems(
-                    SelectItemList::from("*").build_select_items_plan().unwrap(),
-                ),
                 from: TableWithJoinsPlan {
                     relation: TableFactorPlan::Table {
                         name: "Player".to_owned(),
@@ -238,8 +236,14 @@ mod tests {
                 having: None,
                 aggregate_slots: None,
             };
+            let project = ProjectPlan {
+                input: Box::new(select),
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+            };
 
-            Ok(StatementPlan::Query(QueryPlan::Select(Box::new(select))))
+            Ok(StatementPlan::Query(QueryPlan::Project(project)))
         };
         assert_eq!(actual, expected);
 

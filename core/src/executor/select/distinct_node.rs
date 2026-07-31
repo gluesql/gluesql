@@ -1,5 +1,5 @@
 use {
-    super::{LabeledRows, SelectIter, select_node, select_order_by_node},
+    super::{LabeledRows, SelectIter, project_node, select_order_by_node},
     crate::{
         executor::context::RowContext,
         plan::{DistinctInputPlan, DistinctPlan},
@@ -18,7 +18,16 @@ where
     T: GStore,
 {
     let LabeledRows { labels, rows } = match &plan.input {
-        DistinctInputPlan::Select(select) => select_node::execute(storage, select, filter_context),
+        DistinctInputPlan::Project(project) => {
+            let project_node::ProjectedRows { labels, rows, .. } =
+                project_node::execute(storage, project, filter_context)?;
+            let rows = rows.map(|row| row.map(|(.., row)| row));
+
+            Ok(LabeledRows {
+                labels,
+                rows: Box::new(rows),
+            })
+        }
         DistinctInputPlan::SelectOrderBy(order_by) => {
             select_order_by_node::execute(storage, order_by, filter_context)
         }

@@ -203,7 +203,7 @@ mod tests {
         let parsed = parse(sql).unwrap().into_iter().next().unwrap();
         let statement = StatementPlan::from(translate(&parsed).unwrap());
         match statement {
-            StatementPlan::Query(QueryPlan::Select(select)) => Some(select.from),
+            StatementPlan::Query(QueryPlan::Project(project)) => Some(project.input.from),
             _ => None,
         }
     }

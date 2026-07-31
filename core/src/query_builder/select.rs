@@ -15,7 +15,7 @@ use {
     super::Build,
     crate::{
         ast::{Query, Select, SetExpr},
-        plan::{QueryPlan, SelectPlan, StatementPlan},
+        plan::{ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan, StatementPlan},
         result::Result,
     },
 };
@@ -38,6 +38,10 @@ pub(super) trait BuildSelectPlan {
     fn build_select_plan(self) -> Result<SelectPlan>;
 }
 
+pub(super) trait BuildProjectPlan {
+    fn build_project_plan(self) -> Result<ProjectPlan>;
+}
+
 pub(super) trait BuildSelect {
     fn build_select(self) -> Result<Select>;
 }
@@ -50,11 +54,18 @@ pub(super) trait BuildQuery {
     fn build_query(self) -> Result<Query>;
 }
 
-impl<T: BuildSelectPlan> BuildQueryPlan for T {
+impl<T: BuildSelectPlan> BuildProjectPlan for T {
+    fn build_project_plan(self) -> Result<ProjectPlan> {
+        self.build_select_plan().map(|input| ProjectPlan {
+            input: Box::new(input),
+            projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
+        })
+    }
+}
+
+impl<T: BuildProjectPlan> BuildQueryPlan for T {
     fn build_query_plan(self) -> Result<QueryPlan> {
-        self.build_select_plan()
-            .map(Box::new)
-            .map(QueryPlan::Select)
+        self.build_project_plan().map(QueryPlan::Project)
     }
 }
 

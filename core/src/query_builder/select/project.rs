@@ -1,8 +1,8 @@
 use {
-    super::{BuildSelect, BuildSelectPlan, DistinctNode},
+    super::{BuildProjectPlan, BuildSelect, BuildSelectPlan, DistinctNode},
     crate::{
         ast::{Projection, Select},
-        plan::{ProjectionPlan, SelectPlan},
+        plan::{ProjectPlan, ProjectionPlan, SelectPlan},
         query_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
             JoinNode, LimitNode, OffsetNode, OrderByExprList, QueryNode, SelectItemList,
@@ -141,10 +141,10 @@ impl<'a> ProjectNode<'a> {
     }
 }
 
-impl BuildSelectPlan for ProjectNode<'_> {
-    fn build_select_plan(self) -> Result<SelectPlan> {
-        let mut query = self.prev_node.build_select_plan()?;
-        query.projection = ProjectionPlan::SelectItems(
+impl BuildProjectPlan for ProjectNode<'_> {
+    fn build_project_plan(self) -> Result<ProjectPlan> {
+        let input = self.prev_node.build_select_plan()?;
+        let projection = ProjectionPlan::SelectItems(
             self.select_items_list
                 .into_iter()
                 .map(SelectItemList::build_select_items_plan)
@@ -154,7 +154,10 @@ impl BuildSelectPlan for ProjectNode<'_> {
                 .collect::<Vec<_>>(),
         );
 
-        Ok(query)
+        Ok(ProjectPlan {
+            input: Box::new(input),
+            projection,
+        })
     }
 }
 
@@ -180,8 +183,9 @@ mod tests {
     use {
         crate::{
             plan::{
-                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
-                QueryPlan, SelectPlan, StatementPlan, TableFactorPlan, TableWithJoinsPlan,
+                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectPlan,
+                ProjectionPlan, QueryPlan, SelectPlan, StatementPlan, TableFactorPlan,
+                TableWithJoinsPlan,
             },
             query_builder::{Build, SelectItemList, col, table, test_query_builder},
         },
@@ -261,6 +265,25 @@ mod tests {
         "#;
         test_query_builder(actual, expected);
 
+        // filter node -> project node -> build
+        let actual = table("Item").select().filter("price > 10").project("name");
+        let expected = "SELECT name FROM Item WHERE price > 10";
+        test_query_builder(actual, expected);
+
+        // join node -> project node -> build
+        let actual = table("Item").select().join("Category").project("Item.name");
+        let expected = "SELECT Item.name FROM Item JOIN Category";
+        test_query_builder(actual, expected);
+
+        // join constraint node -> project node -> build
+        let actual = table("Item")
+            .select()
+            .join("Category")
+            .on("Item.category_id = Category.id")
+            .project("Item.name");
+        let expected = "SELECT Item.name FROM Item JOIN Category ON Item.category_id = Category.id";
+        test_query_builder(actual, expected);
+
         // hash join node -> project node -> build
         let actual = table("Player")
             .select()
@@ -283,11 +306,6 @@ mod tests {
                 },
             };
             let select = SelectPlan {
-                projection: ProjectionPlan::SelectItems(
-                    SelectItemList::from("Player.name, PlayerItem.name")
-                        .build_select_items_plan()
-                        .unwrap(),
-                ),
                 from: TableWithJoinsPlan {
                     relation: TableFactorPlan::Table {
                         name: "Player".to_owned(),
@@ -301,8 +319,16 @@ mod tests {
                 having: None,
                 aggregate_slots: None,
             };
+            let project = ProjectPlan {
+                input: Box::new(select),
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("Player.name, PlayerItem.name")
+                        .build_select_items_plan()
+                        .unwrap(),
+                ),
+            };
 
-            Ok(StatementPlan::Query(QueryPlan::Select(Box::new(select))))
+            Ok(StatementPlan::Query(QueryPlan::Project(project)))
         };
         assert_eq!(actual, expected);
 

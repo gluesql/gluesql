@@ -82,7 +82,8 @@ mod test {
     use crate::{
         plan::{
             ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan,
-            ProjectionPlan, QueryPlan, SelectPlan, TableFactorPlan, TableWithJoinsPlan,
+            ProjectPlan, ProjectionPlan, QueryPlan, SelectPlan, TableFactorPlan,
+            TableWithJoinsPlan,
         },
         query_builder::{QueryNode, SelectItemList, col, table, test_expr, text, values},
     };
@@ -162,9 +163,6 @@ mod test {
                 },
             };
             let select = SelectPlan {
-                projection: ProjectionPlan::SelectItems(
-                    SelectItemList::from("*").build_select_items_plan().unwrap(),
-                ),
                 from: TableWithJoinsPlan {
                     relation: TableFactorPlan::Table {
                         name: "Player".to_owned(),
@@ -178,8 +176,12 @@ mod test {
                 having: None,
                 aggregate_slots: None,
             };
-
-            let query = QueryPlan::Select(Box::new(select));
+            let query = QueryPlan::Project(ProjectPlan {
+                input: Box::new(select),
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+            });
 
             ExprPlan::InSubquery {
                 expr: Box::new(ExprPlan::Identifier("id".to_owned())),

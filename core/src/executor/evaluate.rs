@@ -14,7 +14,7 @@ use {
         mock::MockStorage,
         plan::{
             DistinctInputPlan, DistinctPlan, ExprPlan, FunctionPlan, LimitInputPlan, LimitPlan,
-            OffsetInputPlan, OffsetPlan, ProjectionPlan, QueryPlan, SelectPlan, plan_scalar_expr,
+            OffsetInputPlan, OffsetPlan, ProjectPlan, ProjectionPlan, QueryPlan, plan_scalar_expr,
         },
         result::{Error, Result},
         store::GStore,
@@ -48,35 +48,35 @@ pub fn evaluate_stateless<'a, 'b: 'a>(
     evaluate_inner(storage, context.as_ref(), None, expr)
 }
 
-fn select_plan(query: &QueryPlan) -> Option<&SelectPlan> {
+fn project_plan(query: &QueryPlan) -> Option<&ProjectPlan> {
     match query {
-        QueryPlan::Select(select) => Some(select),
+        QueryPlan::Project(project) => Some(project),
         QueryPlan::Values(_) | QueryPlan::ValuesOrderBy(_) => None,
         QueryPlan::SelectOrderBy(order_by) => Some(&order_by.input),
-        QueryPlan::Distinct(distinct) => Some(distinct_select_plan(distinct)),
-        QueryPlan::Offset(offset) => offset_select_plan(offset),
+        QueryPlan::Distinct(distinct) => Some(distinct_project_plan(distinct)),
+        QueryPlan::Offset(offset) => offset_project_plan(offset),
         QueryPlan::Limit(LimitPlan { input, .. }) => match input {
-            LimitInputPlan::Select(select) => Some(select),
+            LimitInputPlan::Project(project) => Some(project),
             LimitInputPlan::Values(_) | LimitInputPlan::ValuesOrderBy(_) => None,
             LimitInputPlan::SelectOrderBy(order_by) => Some(&order_by.input),
-            LimitInputPlan::Distinct(distinct) => Some(distinct_select_plan(distinct)),
-            LimitInputPlan::Offset(offset) => offset_select_plan(offset),
+            LimitInputPlan::Distinct(distinct) => Some(distinct_project_plan(distinct)),
+            LimitInputPlan::Offset(offset) => offset_project_plan(offset),
         },
     }
 }
 
-fn offset_select_plan(offset: &OffsetPlan) -> Option<&SelectPlan> {
+fn offset_project_plan(offset: &OffsetPlan) -> Option<&ProjectPlan> {
     match &offset.input {
-        OffsetInputPlan::Select(select) => Some(select.as_ref()),
+        OffsetInputPlan::Project(project) => Some(project),
         OffsetInputPlan::Values(_) | OffsetInputPlan::ValuesOrderBy(_) => None,
-        OffsetInputPlan::SelectOrderBy(order_by) => Some(order_by.input.as_ref()),
-        OffsetInputPlan::Distinct(distinct) => Some(distinct_select_plan(distinct)),
+        OffsetInputPlan::SelectOrderBy(order_by) => Some(&order_by.input),
+        OffsetInputPlan::Distinct(distinct) => Some(distinct_project_plan(distinct)),
     }
 }
 
-fn distinct_select_plan(distinct: &DistinctPlan) -> &SelectPlan {
+fn distinct_project_plan(distinct: &DistinctPlan) -> &ProjectPlan {
     match &distinct.input {
-        DistinctInputPlan::Select(select) => select,
+        DistinctInputPlan::Project(project) => project,
         DistinctInputPlan::SelectOrderBy(order_by) => &order_by.input,
     }
 }
@@ -125,8 +125,8 @@ where
         }
         ExprPlan::Subquery(query) => {
             let storage = storage.ok_or(EvaluateError::SubqueryNotAllowedInStatelessExpr)?;
-            if let Some(select) = select_plan(query)
-                && matches!(select.projection, ProjectionPlan::SchemalessMap)
+            if let Some(project) = project_plan(query)
+                && matches!(project.projection, ProjectionPlan::SchemalessMap)
             {
                 return Err(EvaluateError::SchemalessProjectionForSubQuery.into());
             }
@@ -205,8 +205,8 @@ where
             negated,
         } => {
             let storage = storage.ok_or(EvaluateError::InSubqueryNotAllowedInStatelessExpr)?;
-            if let Some(select) = select_plan(subquery)
-                && matches!(select.projection, ProjectionPlan::SchemalessMap)
+            if let Some(project) = project_plan(subquery)
+                && matches!(project.projection, ProjectionPlan::SchemalessMap)
             {
                 return Err(EvaluateError::SchemalessProjectionForInSubQuery.into());
             }

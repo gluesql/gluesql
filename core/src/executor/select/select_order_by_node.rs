@@ -5,7 +5,7 @@ use {
     super::{
         LabeledRows, SelectIter,
         order_by::sort_by,
-        select_node::{self, ProjectedRows},
+        project_node::{self, ProjectedRows},
     },
     crate::{
         ast::{Literal, UnaryOperator},
@@ -36,7 +36,7 @@ where
         labels,
         rows,
         table_alias,
-    } = select_node::project(storage, input, filter_context)?;
+    } = project_node::execute(storage, input, filter_context)?;
     let rows = sort(storage, sort_context.as_ref(), rows, table_alias, exprs)?;
 
     Ok(LabeledRows { labels, rows })

@@ -1,5 +1,5 @@
 use {
-    super::{BuildQuery, BuildQueryPlan, BuildSelectPlan, DistinctNode, values::ValuesNode},
+    super::{BuildProjectPlan, BuildQuery, BuildQueryPlan, DistinctNode, values::ValuesNode},
     crate::{
         ast::Query,
         plan::{LimitInputPlan, LimitPlan, QueryPlan},
@@ -31,35 +31,14 @@ pub(super) enum PrevNode<'a> {
 impl PrevNode<'_> {
     fn build_limit_input_plan(self) -> Result<LimitInputPlan> {
         match self {
-            Self::Select(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(LimitInputPlan::Select),
+            Self::Select(node) => node.build_project_plan().map(LimitInputPlan::Project),
             Self::Values(node) => node.build_values_plan().map(LimitInputPlan::Values),
-            Self::GroupBy(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(LimitInputPlan::Select),
-            Self::Having(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(LimitInputPlan::Select),
-            Self::Join(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(LimitInputPlan::Select),
-            Self::JoinConstraint(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(LimitInputPlan::Select),
-            Self::HashJoin(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(LimitInputPlan::Select),
-            Self::Filter(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(LimitInputPlan::Select),
+            Self::GroupBy(node) => node.build_project_plan().map(LimitInputPlan::Project),
+            Self::Having(node) => node.build_project_plan().map(LimitInputPlan::Project),
+            Self::Join(node) => node.build_project_plan().map(LimitInputPlan::Project),
+            Self::JoinConstraint(node) => node.build_project_plan().map(LimitInputPlan::Project),
+            Self::HashJoin(node) => node.build_project_plan().map(LimitInputPlan::Project),
+            Self::Filter(node) => node.build_project_plan().map(LimitInputPlan::Project),
             Self::SelectOrderBy(node) => node
                 .build_select_order_by_plan()
                 .map(LimitInputPlan::SelectOrderBy),
@@ -67,10 +46,7 @@ impl PrevNode<'_> {
                 .build_values_order_by_plan()
                 .map(LimitInputPlan::ValuesOrderBy),
             Self::Distinct(node) => node.build_distinct_plan().map(LimitInputPlan::Distinct),
-            Self::ProjectNode(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(LimitInputPlan::Select),
+            Self::ProjectNode(node) => node.build_project_plan().map(LimitInputPlan::Project),
         }
     }
 }
@@ -209,8 +185,8 @@ mod tests {
         crate::{
             plan::{
                 JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, LimitInputPlan,
-                LimitPlan, ProjectionPlan, QueryPlan, SelectPlan, StatementPlan, TableFactorPlan,
-                TableWithJoinsPlan,
+                LimitPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectPlan, StatementPlan,
+                TableFactorPlan, TableWithJoinsPlan,
             },
             query_builder::{Build, SelectItemList, col, num, table, test_query_builder},
         },
@@ -318,9 +294,6 @@ mod tests {
                 },
             };
             let select = SelectPlan {
-                projection: ProjectionPlan::SelectItems(
-                    SelectItemList::from("*").build_select_items_plan().unwrap(),
-                ),
                 from: TableWithJoinsPlan {
                     relation: TableFactorPlan::Table {
                         name: "Player".to_owned(),
@@ -334,9 +307,15 @@ mod tests {
                 having: None,
                 aggregate_slots: None,
             };
+            let project = ProjectPlan {
+                input: Box::new(select),
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+            };
 
             let limit = LimitPlan {
-                input: LimitInputPlan::Select(Box::new(select)),
+                input: LimitInputPlan::Project(project),
                 count: num(100).build_expr_plan().unwrap(),
             };
 

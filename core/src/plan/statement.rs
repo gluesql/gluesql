@@ -12,7 +12,8 @@ pub use {
     projection::{ProjectionPlan, SelectItemPlan},
     query::{
         DistinctInputPlan, DistinctPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
-        OrderByExprPlan, QueryPlan, SelectOrderByPlan, SelectPlan, ValuesOrderByPlan, ValuesPlan,
+        OrderByExprPlan, ProjectPlan, QueryPlan, SelectOrderByPlan, SelectPlan, ValuesOrderByPlan,
+        ValuesPlan,
     },
     table_factor::{IndexItemPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan},
 };

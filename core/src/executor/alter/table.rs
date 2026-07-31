@@ -9,7 +9,7 @@ use {
         },
         plan::{
             DistinctInputPlan, DistinctPlan, LimitInputPlan, LimitPlan, OffsetInputPlan,
-            OffsetPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan, TableFactorPlan,
+            OffsetPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, TableFactorPlan,
             ValuesPlan,
         },
         prelude::{DataType, Value},
@@ -21,22 +21,22 @@ use {
 };
 
 enum CreateTableSource<'a> {
-    Select(&'a SelectPlan),
+    Project(&'a ProjectPlan),
     Values(&'a ValuesPlan),
 }
 
 fn create_table_distinct_source(distinct: &DistinctPlan) -> CreateTableSource<'_> {
     match &distinct.input {
-        DistinctInputPlan::Select(select) => CreateTableSource::Select(select),
-        DistinctInputPlan::SelectOrderBy(order_by) => CreateTableSource::Select(&order_by.input),
+        DistinctInputPlan::Project(project) => CreateTableSource::Project(project),
+        DistinctInputPlan::SelectOrderBy(order_by) => CreateTableSource::Project(&order_by.input),
     }
 }
 
 fn create_table_offset_source(offset: &OffsetPlan) -> CreateTableSource<'_> {
     match &offset.input {
-        OffsetInputPlan::Select(select) => CreateTableSource::Select(select),
+        OffsetInputPlan::Project(project) => CreateTableSource::Project(project),
         OffsetInputPlan::Values(values) => CreateTableSource::Values(values),
-        OffsetInputPlan::SelectOrderBy(order_by) => CreateTableSource::Select(&order_by.input),
+        OffsetInputPlan::SelectOrderBy(order_by) => CreateTableSource::Project(&order_by.input),
         OffsetInputPlan::ValuesOrderBy(order_by) => CreateTableSource::Values(&order_by.input),
         OffsetInputPlan::Distinct(distinct) => create_table_distinct_source(distinct),
     }
@@ -44,16 +44,16 @@ fn create_table_offset_source(offset: &OffsetPlan) -> CreateTableSource<'_> {
 
 fn create_table_source(query: &QueryPlan) -> CreateTableSource<'_> {
     match query {
-        QueryPlan::Select(select) => CreateTableSource::Select(select),
+        QueryPlan::Project(project) => CreateTableSource::Project(project),
         QueryPlan::Values(values) => CreateTableSource::Values(values),
-        QueryPlan::SelectOrderBy(order_by) => CreateTableSource::Select(&order_by.input),
+        QueryPlan::SelectOrderBy(order_by) => CreateTableSource::Project(&order_by.input),
         QueryPlan::ValuesOrderBy(order_by) => CreateTableSource::Values(&order_by.input),
         QueryPlan::Distinct(distinct) => create_table_distinct_source(distinct),
         QueryPlan::Offset(offset) => create_table_offset_source(offset),
         QueryPlan::Limit(LimitPlan { input, .. }) => match input {
-            LimitInputPlan::Select(select) => CreateTableSource::Select(select),
+            LimitInputPlan::Project(project) => CreateTableSource::Project(project),
             LimitInputPlan::Values(values) => CreateTableSource::Values(values),
-            LimitInputPlan::SelectOrderBy(order_by) => CreateTableSource::Select(&order_by.input),
+            LimitInputPlan::SelectOrderBy(order_by) => CreateTableSource::Project(&order_by.input),
             LimitInputPlan::ValuesOrderBy(order_by) => CreateTableSource::Values(&order_by.input),
             LimitInputPlan::Distinct(distinct) => create_table_distinct_source(distinct),
             LimitInputPlan::Offset(offset) => create_table_offset_source(offset),
@@ -86,8 +86,8 @@ pub fn create_table<T: GStore + GStoreMut>(
     let mut selected_source_rows = None;
     let target_columns_defs = match source.as_deref() {
         Some(query) => match create_table_source(query) {
-            CreateTableSource::Select(select_query) => match &select_query.from.relation {
-                TableFactorPlan::Table { name, .. } if can_copy_source_schema(select_query) => {
+            CreateTableSource::Project(project) => match &project.input.from.relation {
+                TableFactorPlan::Table { name, .. } if can_copy_source_schema(project) => {
                     let schema = storage.fetch_schema(name)?;
                     let Schema {
                         column_defs: source_column_defs,
@@ -97,7 +97,7 @@ pub fn create_table<T: GStore + GStoreMut>(
 
                     source_column_defs
                 }
-                TableFactorPlan::Series { .. } if can_copy_source_schema(select_query) => {
+                TableFactorPlan::Series { .. } if can_copy_source_schema(project) => {
                     let column_def = ColumnDef {
                         name: "N".into(),
                         data_type: DataType::Int,
@@ -262,12 +262,13 @@ pub fn create_table<T: GStore + GStoreMut>(
     }
 }
 
-fn can_copy_source_schema(select: &SelectPlan) -> bool {
+fn can_copy_source_schema(project: &ProjectPlan) -> bool {
+    let select = &project.input;
     if !select.from.joins.is_empty() {
         return false;
     }
 
-    match &select.projection {
+    match &project.projection {
         ProjectionPlan::SchemalessMap => true,
         ProjectionPlan::SelectItems(items) => items.iter().all(|item| {
             matches!(

@@ -16,8 +16,8 @@ use {
         data::{Key, Row, SCHEMALESS_DOC_COLUMN, Schema, Value},
         plan::{
             DistinctInputPlan, DistinctPlan, ExprPlan, LimitInputPlan, LimitPlan, OffsetInputPlan,
-            OffsetPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan, StatementPlan,
-            TableAliasPlan, TableFactorPlan, TableWithJoinsPlan,
+            OffsetPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan,
+            StatementPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan,
         },
         result::{Error, Result},
         store::{GStore, GStoreMut},
@@ -42,29 +42,29 @@ pub enum ExecuteError {
 }
 
 fn is_schemaless_map(query: &QueryPlan) -> bool {
-    let select_is_schemaless =
-        |select: &SelectPlan| matches!(select.projection, ProjectionPlan::SchemalessMap);
+    let project_is_schemaless =
+        |project: &ProjectPlan| matches!(project.projection, ProjectionPlan::SchemalessMap);
     let distinct_is_schemaless = |distinct: &DistinctPlan| match &distinct.input {
-        DistinctInputPlan::Select(select) => select_is_schemaless(select),
-        DistinctInputPlan::SelectOrderBy(order_by) => select_is_schemaless(&order_by.input),
+        DistinctInputPlan::Project(project) => project_is_schemaless(project),
+        DistinctInputPlan::SelectOrderBy(order_by) => project_is_schemaless(&order_by.input),
     };
     let offset_is_schemaless = |offset: &OffsetPlan| match &offset.input {
-        OffsetInputPlan::Select(select) => select_is_schemaless(select),
+        OffsetInputPlan::Project(project) => project_is_schemaless(project),
         OffsetInputPlan::Values(_) | OffsetInputPlan::ValuesOrderBy(_) => false,
-        OffsetInputPlan::SelectOrderBy(order_by) => select_is_schemaless(&order_by.input),
+        OffsetInputPlan::SelectOrderBy(order_by) => project_is_schemaless(&order_by.input),
         OffsetInputPlan::Distinct(distinct) => distinct_is_schemaless(distinct),
     };
 
     match query {
-        QueryPlan::Select(select) => select_is_schemaless(select),
+        QueryPlan::Project(project) => project_is_schemaless(project),
         QueryPlan::Values(_) | QueryPlan::ValuesOrderBy(_) => false,
-        QueryPlan::SelectOrderBy(order_by) => select_is_schemaless(&order_by.input),
+        QueryPlan::SelectOrderBy(order_by) => project_is_schemaless(&order_by.input),
         QueryPlan::Distinct(distinct) => distinct_is_schemaless(distinct),
         QueryPlan::Offset(offset) => offset_is_schemaless(offset),
         QueryPlan::Limit(LimitPlan { input, .. }) => match input {
-            LimitInputPlan::Select(select) => select_is_schemaless(select),
+            LimitInputPlan::Project(project) => project_is_schemaless(project),
             LimitInputPlan::Values(_) | LimitInputPlan::ValuesOrderBy(_) => false,
-            LimitInputPlan::SelectOrderBy(order_by) => select_is_schemaless(&order_by.input),
+            LimitInputPlan::SelectOrderBy(order_by) => project_is_schemaless(&order_by.input),
             LimitInputPlan::Distinct(distinct) => distinct_is_schemaless(distinct),
             LimitInputPlan::Offset(offset) => offset_is_schemaless(offset),
         },
@@ -309,29 +309,31 @@ fn execute_inner<T: GStore + GStoreMut>(
             Ok(Payload::ShowColumns(output))
         }
         StatementPlan::ShowIndexes(table_name) => {
-            let query = QueryPlan::Select(Box::new(SelectPlan {
+            let query = QueryPlan::Project(ProjectPlan {
                 projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
-                from: TableWithJoinsPlan {
-                    relation: TableFactorPlan::Dictionary {
-                        dict: Dictionary::GlueIndexes,
-                        alias: TableAliasPlan {
-                            name: "GLUE_INDEXES".to_owned(),
-                            columns: Vec::new(),
+                input: Box::new(SelectPlan {
+                    from: TableWithJoinsPlan {
+                        relation: TableFactorPlan::Dictionary {
+                            dict: Dictionary::GlueIndexes,
+                            alias: TableAliasPlan {
+                                name: "GLUE_INDEXES".to_owned(),
+                                columns: Vec::new(),
+                            },
                         },
+                        joins: Vec::new(),
                     },
-                    joins: Vec::new(),
-                },
-                selection: Some(ExprPlan::BinaryOp {
-                    left: Box::new(ExprPlan::Identifier("TABLE_NAME".to_owned())),
-                    op: BinaryOperator::Eq,
-                    right: Box::new(ExprPlan::Literal(Literal::QuotedString(
-                        table_name.to_owned(),
-                    ))),
+                    selection: Some(ExprPlan::BinaryOp {
+                        left: Box::new(ExprPlan::Identifier("TABLE_NAME".to_owned())),
+                        op: BinaryOperator::Eq,
+                        right: Box::new(ExprPlan::Literal(Literal::QuotedString(
+                            table_name.to_owned(),
+                        ))),
+                    }),
+                    group_by: Vec::new(),
+                    having: None,
+                    aggregate_slots: None,
                 }),
-                group_by: Vec::new(),
-                having: None,
-                aggregate_slots: None,
-            }));
+            });
 
             let (labels, rows) = select_with_labels(storage, &query, None)?;
             let rows = rows
@@ -346,26 +348,28 @@ fn execute_inner<T: GStore + GStoreMut>(
         }
         StatementPlan::ShowVariable(variable) => match variable {
             Variable::Tables => {
-                let query = QueryPlan::Select(Box::new(SelectPlan {
+                let query = QueryPlan::Project(ProjectPlan {
                     projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
                         expr: ExprPlan::Identifier("TABLE_NAME".to_owned()),
                         label: "TABLE_NAME".to_owned(),
                     }]),
-                    from: TableWithJoinsPlan {
-                        relation: TableFactorPlan::Dictionary {
-                            dict: Dictionary::GlueTables,
-                            alias: TableAliasPlan {
-                                name: "GLUE_TABLES".to_owned(),
-                                columns: Vec::new(),
+                    input: Box::new(SelectPlan {
+                        from: TableWithJoinsPlan {
+                            relation: TableFactorPlan::Dictionary {
+                                dict: Dictionary::GlueTables,
+                                alias: TableAliasPlan {
+                                    name: "GLUE_TABLES".to_owned(),
+                                    columns: Vec::new(),
+                                },
                             },
+                            joins: Vec::new(),
                         },
-                        joins: Vec::new(),
-                    },
-                    selection: None,
-                    group_by: Vec::new(),
-                    having: None,
-                    aggregate_slots: None,
-                }));
+                        selection: None,
+                        group_by: Vec::new(),
+                        having: None,
+                        aggregate_slots: None,
+                    }),
+                });
 
                 let table_names = select(storage, &query, None)?
                     .map(|row| Ok::<_, Error>(row?.into_values()))

@@ -188,11 +188,11 @@ mod tests {
             let expected_parsed = parse(expected).expect(expected).into_iter().next().unwrap();
             let mut expected_stmt = StatementPlan::from(translate(&expected_parsed).unwrap());
             if let (
-                StatementPlan::Query(QueryPlan::Select(actual_select)),
-                StatementPlan::Query(QueryPlan::Select(expected_select)),
+                StatementPlan::Query(QueryPlan::Project(actual_project)),
+                StatementPlan::Query(QueryPlan::Project(expected_project)),
             ) = (&result, &mut expected_stmt)
             {
-                expected_select.projection = actual_select.projection.clone();
+                expected_project.projection = actual_project.projection.clone();
             }
 
             assert_eq!(
@@ -472,11 +472,11 @@ mod tests {
             let schema_map = fetch_schema_map(&storage, &statement).unwrap();
             let planned = plan_schemaless(&schema_map, statement).unwrap();
 
-            let StatementPlan::Query(QueryPlan::Select(select)) = planned else {
+            let StatementPlan::Query(QueryPlan::Project(project)) = planned else {
                 panic!("expected query statement");
             };
             assert_eq!(
-                matches!(select.projection, ProjectionPlan::SchemalessMap),
+                matches!(project.projection, ProjectionPlan::SchemalessMap),
                 expected_schemaless_map,
                 "{sql}"
             );

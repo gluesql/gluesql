@@ -6,7 +6,7 @@ use {
         plan::{
             DistinctInputPlan, DistinctPlan, ExprPlan, JoinConstraintPlan, JoinExecutorPlan,
             JoinOperatorPlan, JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
-            QueryPlan, SelectPlan, StatementPlan, TableWithJoinsPlan,
+            ProjectPlan, QueryPlan, SelectPlan, StatementPlan, TableWithJoinsPlan,
             expr::evaluable::check_expr as check_evaluable,
         },
     },
@@ -38,30 +38,38 @@ impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
         let plan_select = |select: Box<SelectPlan>| {
             Box::new(self.select(outer_context.as_ref().map(Rc::clone), *select))
         };
+        let plan_project = |mut project: ProjectPlan| {
+            project.input = plan_select(project.input);
+            project
+        };
         let plan_distinct = |DistinctPlan { input }| DistinctPlan {
             input: match input {
-                DistinctInputPlan::Select(select) => DistinctInputPlan::Select(plan_select(select)),
+                DistinctInputPlan::Project(project) => {
+                    DistinctInputPlan::Project(plan_project(project))
+                }
                 DistinctInputPlan::SelectOrderBy(mut order_by) => {
-                    order_by.input = plan_select(order_by.input);
+                    order_by.input = plan_project(order_by.input);
                     DistinctInputPlan::SelectOrderBy(order_by)
                 }
             },
         };
         match query {
-            QueryPlan::Select(select) => QueryPlan::Select(plan_select(select)),
+            QueryPlan::Project(project) => QueryPlan::Project(plan_project(project)),
             QueryPlan::Values(values) => QueryPlan::Values(values),
             QueryPlan::SelectOrderBy(mut order_by) => {
-                order_by.input = plan_select(order_by.input);
+                order_by.input = plan_project(order_by.input);
                 QueryPlan::SelectOrderBy(order_by)
             }
             QueryPlan::ValuesOrderBy(order_by) => QueryPlan::ValuesOrderBy(order_by),
             QueryPlan::Distinct(distinct) => QueryPlan::Distinct(plan_distinct(distinct)),
             QueryPlan::Offset(OffsetPlan { input, count }) => QueryPlan::Offset(OffsetPlan {
                 input: match input {
-                    OffsetInputPlan::Select(select) => OffsetInputPlan::Select(plan_select(select)),
+                    OffsetInputPlan::Project(project) => {
+                        OffsetInputPlan::Project(plan_project(project))
+                    }
                     OffsetInputPlan::Values(values) => OffsetInputPlan::Values(values),
                     OffsetInputPlan::SelectOrderBy(mut order_by) => {
-                        order_by.input = plan_select(order_by.input);
+                        order_by.input = plan_project(order_by.input);
                         OffsetInputPlan::SelectOrderBy(order_by)
                     }
                     OffsetInputPlan::ValuesOrderBy(order_by) => {
@@ -75,10 +83,12 @@ impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
             }),
             QueryPlan::Limit(LimitPlan { input, count }) => {
                 let input = match input {
-                    LimitInputPlan::Select(select) => LimitInputPlan::Select(plan_select(select)),
+                    LimitInputPlan::Project(project) => {
+                        LimitInputPlan::Project(plan_project(project))
+                    }
                     LimitInputPlan::Values(values) => LimitInputPlan::Values(values),
                     LimitInputPlan::SelectOrderBy(mut order_by) => {
-                        order_by.input = plan_select(order_by.input);
+                        order_by.input = plan_project(order_by.input);
                         LimitInputPlan::SelectOrderBy(order_by)
                     }
                     LimitInputPlan::ValuesOrderBy(order_by) => {
@@ -90,12 +100,12 @@ impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
                     LimitInputPlan::Offset(OffsetPlan { input, count }) => {
                         LimitInputPlan::Offset(OffsetPlan {
                             input: match input {
-                                OffsetInputPlan::Select(select) => {
-                                    OffsetInputPlan::Select(plan_select(select))
+                                OffsetInputPlan::Project(project) => {
+                                    OffsetInputPlan::Project(plan_project(project))
                                 }
                                 OffsetInputPlan::Values(values) => OffsetInputPlan::Values(values),
                                 OffsetInputPlan::SelectOrderBy(mut order_by) => {
-                                    order_by.input = plan_select(order_by.input);
+                                    order_by.input = plan_project(order_by.input);
                                     OffsetInputPlan::SelectOrderBy(order_by)
                                 }
                                 OffsetInputPlan::ValuesOrderBy(order_by) => {
@@ -123,7 +133,6 @@ impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
 impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
     fn select(&self, outer_context: Option<Rc<Context<'a>>>, select: SelectPlan) -> SelectPlan {
         let SelectPlan {
-            projection,
             from,
             selection,
             group_by,
@@ -135,7 +144,6 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
         let selection = selection.map(|expr| self.subquery_expr(outer_context, expr));
 
         SelectPlan {
-            projection,
             from,
             selection,
             group_by,

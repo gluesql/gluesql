@@ -4,10 +4,7 @@ use {
         ast::{
             Expr, Literal, Projection, Select, SelectItem, TableAlias, TableFactor, TableWithJoins,
         },
-        plan::{
-            ProjectionPlan, SelectItemPlan, SelectPlan, TableAliasPlan, TableFactorPlan,
-            TableWithJoinsPlan,
-        },
+        plan::{SelectPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan},
         query_builder::{
             ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode, OffsetNode,
             OrderByExprList, ProjectNode, QueryBuilderError, QueryNode, SelectItemList,
@@ -138,7 +135,6 @@ impl BuildSelectPlan for SelectNode<'_> {
         };
 
         Ok(SelectPlan {
-            projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
             from,
             selection: None,
             group_by: Vec::new(),

@@ -5,8 +5,8 @@ use {
         data::{Schema, SchemaIndex, SchemaIndexOrd, Value},
         plan::{
             DistinctInputPlan, DistinctPlan, ExprPlan, IndexItemPlan, LimitInputPlan, LimitPlan,
-            OffsetInputPlan, OffsetPlan, OrderByExprPlan, QueryPlan, SelectOrderByPlan, SelectPlan,
-            StatementPlan, TableFactorPlan,
+            OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectPlan, QueryPlan,
+            SelectOrderByPlan, SelectPlan, StatementPlan, TableFactorPlan,
             expr::{deterministic::is_deterministic, nullability::may_return_null},
             plan_scalar_expr,
         },
@@ -36,20 +36,21 @@ struct IndexPlanner<'a, S> {
 
 impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
     fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
-        let plan_select = |input: Box<SelectPlan>, order_by| {
-            let (input, order_by) = self.select(outer_context.as_ref(), *input, order_by);
+        let plan_project = |mut input: ProjectPlan, order_by| {
+            let (select, order_by) = self.select(outer_context.as_ref(), *input.input, order_by);
+            input.input = Box::new(select);
 
-            (Box::new(input), order_by)
+            (input, order_by)
         };
         let plan_distinct = |DistinctPlan { input }| {
             let input = match input {
-                DistinctInputPlan::Select(input) => {
-                    DistinctInputPlan::Select(plan_select(input, Vec::new()).0)
+                DistinctInputPlan::Project(input) => {
+                    DistinctInputPlan::Project(plan_project(input, Vec::new()).0)
                 }
                 DistinctInputPlan::SelectOrderBy(SelectOrderByPlan { input, exprs }) => {
-                    let (input, exprs) = plan_select(input, exprs);
+                    let (input, exprs) = plan_project(input, exprs);
                     if exprs.is_empty() {
-                        DistinctInputPlan::Select(input)
+                        DistinctInputPlan::Project(input)
                     } else {
                         DistinctInputPlan::SelectOrderBy(SelectOrderByPlan { input, exprs })
                     }
@@ -60,12 +61,12 @@ impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
         };
 
         match query {
-            QueryPlan::Select(input) => QueryPlan::Select(plan_select(input, Vec::new()).0),
+            QueryPlan::Project(input) => QueryPlan::Project(plan_project(input, Vec::new()).0),
             QueryPlan::Values(values) => QueryPlan::Values(values),
             QueryPlan::SelectOrderBy(SelectOrderByPlan { input, exprs }) => {
-                let (input, exprs) = plan_select(input, exprs);
+                let (input, exprs) = plan_project(input, exprs);
                 if exprs.is_empty() {
-                    QueryPlan::Select(input)
+                    QueryPlan::Project(input)
                 } else {
                     QueryPlan::SelectOrderBy(SelectOrderByPlan { input, exprs })
                 }
@@ -74,14 +75,14 @@ impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
             QueryPlan::Distinct(distinct) => QueryPlan::Distinct(plan_distinct(distinct)),
             QueryPlan::Offset(OffsetPlan { input, count }) => {
                 let input = match input {
-                    OffsetInputPlan::Select(input) => {
-                        OffsetInputPlan::Select(plan_select(input, Vec::new()).0)
+                    OffsetInputPlan::Project(input) => {
+                        OffsetInputPlan::Project(plan_project(input, Vec::new()).0)
                     }
                     OffsetInputPlan::Values(values) => OffsetInputPlan::Values(values),
                     OffsetInputPlan::SelectOrderBy(SelectOrderByPlan { input, exprs }) => {
-                        let (input, exprs) = plan_select(input, exprs);
+                        let (input, exprs) = plan_project(input, exprs);
                         if exprs.is_empty() {
-                            OffsetInputPlan::Select(input)
+                            OffsetInputPlan::Project(input)
                         } else {
                             OffsetInputPlan::SelectOrderBy(SelectOrderByPlan { input, exprs })
                         }
@@ -98,14 +99,14 @@ impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
             }
             QueryPlan::Limit(LimitPlan { input, count }) => {
                 let input = match input {
-                    LimitInputPlan::Select(input) => {
-                        LimitInputPlan::Select(plan_select(input, Vec::new()).0)
+                    LimitInputPlan::Project(input) => {
+                        LimitInputPlan::Project(plan_project(input, Vec::new()).0)
                     }
                     LimitInputPlan::Values(values) => LimitInputPlan::Values(values),
                     LimitInputPlan::SelectOrderBy(SelectOrderByPlan { input, exprs }) => {
-                        let (input, exprs) = plan_select(input, exprs);
+                        let (input, exprs) = plan_project(input, exprs);
                         if exprs.is_empty() {
-                            LimitInputPlan::Select(input)
+                            LimitInputPlan::Project(input)
                         } else {
                             LimitInputPlan::SelectOrderBy(SelectOrderByPlan { input, exprs })
                         }
@@ -116,14 +117,14 @@ impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
                     }
                     LimitInputPlan::Offset(OffsetPlan { input, count }) => {
                         let input = match input {
-                            OffsetInputPlan::Select(input) => {
-                                OffsetInputPlan::Select(plan_select(input, Vec::new()).0)
+                            OffsetInputPlan::Project(input) => {
+                                OffsetInputPlan::Project(plan_project(input, Vec::new()).0)
                             }
                             OffsetInputPlan::Values(values) => OffsetInputPlan::Values(values),
                             OffsetInputPlan::SelectOrderBy(SelectOrderByPlan { input, exprs }) => {
-                                let (input, exprs) = plan_select(input, exprs);
+                                let (input, exprs) = plan_project(input, exprs);
                                 if exprs.is_empty() {
-                                    OffsetInputPlan::Select(input)
+                                    OffsetInputPlan::Project(input)
                                 } else {
                                     OffsetInputPlan::SelectOrderBy(SelectOrderByPlan {
                                         input,
@@ -160,7 +161,6 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
         mut order_by: Vec<OrderByExprPlan>,
     ) -> (SelectPlan, Vec<OrderByExprPlan>) {
         let SelectPlan {
-            projection,
             mut from,
             selection,
             group_by,
@@ -183,7 +183,6 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
             order_by.pop();
 
             let select = SelectPlan {
-                projection,
                 from,
                 selection,
                 group_by,
@@ -223,7 +222,6 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
         });
 
         let select = SelectPlan {
-            projection,
             from,
             selection,
             group_by,
@@ -644,7 +642,7 @@ CREATE INDEX idx_name ON Test (name);
         assert!(matches!(
             distinct_consumed,
             Ok(StatementPlan::Query(QueryPlan::Distinct(DistinctPlan {
-                input: DistinctInputPlan::Select(_),
+                input: DistinctInputPlan::Project(_),
             })))
         ));
 
@@ -661,7 +659,7 @@ CREATE INDEX idx_name ON Test (name);
         assert!(matches!(
             offset_body,
             Ok(StatementPlan::Query(QueryPlan::Offset(OffsetPlan {
-                input: OffsetInputPlan::Select(_),
+                input: OffsetInputPlan::Project(_),
                 ..
             })))
         ));
@@ -670,7 +668,7 @@ CREATE INDEX idx_name ON Test (name);
         assert!(matches!(
             offset_consumed,
             Ok(StatementPlan::Query(QueryPlan::Offset(OffsetPlan {
-                input: OffsetInputPlan::Select(_),
+                input: OffsetInputPlan::Project(_),
                 ..
             })))
         ));
@@ -689,7 +687,7 @@ CREATE INDEX idx_name ON Test (name);
         assert!(matches!(
             limit_body,
             Ok(StatementPlan::Query(QueryPlan::Limit(LimitPlan {
-                input: LimitInputPlan::Select(_),
+                input: LimitInputPlan::Project(_),
                 ..
             })))
         ));
@@ -698,7 +696,7 @@ CREATE INDEX idx_name ON Test (name);
         assert!(matches!(
             limit_consumed,
             Ok(StatementPlan::Query(QueryPlan::Limit(LimitPlan {
-                input: LimitInputPlan::Select(_),
+                input: LimitInputPlan::Project(_),
                 ..
             })))
         ));
@@ -717,7 +715,7 @@ CREATE INDEX idx_name ON Test (name);
             offset_limit_body,
             Ok(StatementPlan::Query(QueryPlan::Limit(LimitPlan {
                 input: LimitInputPlan::Offset(OffsetPlan {
-                    input: OffsetInputPlan::Select(_),
+                    input: OffsetInputPlan::Project(_),
                     ..
                 }),
                 ..
@@ -732,7 +730,7 @@ CREATE INDEX idx_name ON Test (name);
             consumed,
             Ok(StatementPlan::Query(QueryPlan::Limit(LimitPlan {
                 input: LimitInputPlan::Offset(OffsetPlan {
-                    input: OffsetInputPlan::Select(_),
+                    input: OffsetInputPlan::Project(_),
                     ..
                 }),
                 ..

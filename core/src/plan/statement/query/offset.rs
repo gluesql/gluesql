@@ -1,5 +1,5 @@
 use {
-    super::{DistinctPlan, SelectOrderByPlan, SelectPlan, ValuesOrderByPlan, ValuesPlan},
+    super::{DistinctPlan, ProjectPlan, SelectOrderByPlan, ValuesOrderByPlan, ValuesPlan},
     crate::plan::ExprPlan,
     serde::{Deserialize, Serialize},
 };
@@ -12,7 +12,7 @@ pub struct OffsetPlan {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum OffsetInputPlan {
-    Select(Box<SelectPlan>),
+    Project(ProjectPlan),
     Values(ValuesPlan),
     SelectOrderBy(SelectOrderByPlan),
     ValuesOrderBy(ValuesOrderByPlan),

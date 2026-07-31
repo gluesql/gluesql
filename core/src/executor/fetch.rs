@@ -6,8 +6,8 @@ use {
         executor::{evaluate::evaluate, select::select},
         plan::{
             DistinctInputPlan, DistinctPlan, ExprPlan, IndexItemPlan, JoinPlan, LimitInputPlan,
-            LimitPlan, OffsetInputPlan, OffsetPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
-            SelectPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan, ValuesPlan,
+            LimitPlan, OffsetInputPlan, OffsetPlan, ProjectPlan, ProjectionPlan, QueryPlan,
+            SelectItemPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan, ValuesPlan,
         },
         result::Result,
         store::GStore,
@@ -21,22 +21,22 @@ pub type KeyedRows<'a> = Box<dyn Iterator<Item = Result<(Key, Row)>> + 'a>;
 pub type RelationRows<'a> = Box<dyn Iterator<Item = Result<Row>> + 'a>;
 
 enum DerivedSource<'a> {
-    Select(&'a SelectPlan),
+    Project(&'a ProjectPlan),
     Values(&'a ValuesPlan),
 }
 
 fn derived_distinct_source(distinct: &DistinctPlan) -> DerivedSource<'_> {
     match &distinct.input {
-        DistinctInputPlan::Select(select) => DerivedSource::Select(select),
-        DistinctInputPlan::SelectOrderBy(order_by) => DerivedSource::Select(&order_by.input),
+        DistinctInputPlan::Project(project) => DerivedSource::Project(project),
+        DistinctInputPlan::SelectOrderBy(order_by) => DerivedSource::Project(&order_by.input),
     }
 }
 
 fn derived_offset_source(offset: &OffsetPlan) -> DerivedSource<'_> {
     match &offset.input {
-        OffsetInputPlan::Select(select) => DerivedSource::Select(select),
+        OffsetInputPlan::Project(project) => DerivedSource::Project(project),
         OffsetInputPlan::Values(values) => DerivedSource::Values(values),
-        OffsetInputPlan::SelectOrderBy(order_by) => DerivedSource::Select(&order_by.input),
+        OffsetInputPlan::SelectOrderBy(order_by) => DerivedSource::Project(&order_by.input),
         OffsetInputPlan::ValuesOrderBy(order_by) => DerivedSource::Values(&order_by.input),
         OffsetInputPlan::Distinct(distinct) => derived_distinct_source(distinct),
     }
@@ -44,16 +44,16 @@ fn derived_offset_source(offset: &OffsetPlan) -> DerivedSource<'_> {
 
 fn derived_source(query: &QueryPlan) -> DerivedSource<'_> {
     match query {
-        QueryPlan::Select(select) => DerivedSource::Select(select),
+        QueryPlan::Project(project) => DerivedSource::Project(project),
         QueryPlan::Values(values) => DerivedSource::Values(values),
-        QueryPlan::SelectOrderBy(order_by) => DerivedSource::Select(&order_by.input),
+        QueryPlan::SelectOrderBy(order_by) => DerivedSource::Project(&order_by.input),
         QueryPlan::ValuesOrderBy(order_by) => DerivedSource::Values(&order_by.input),
         QueryPlan::Distinct(distinct) => derived_distinct_source(distinct),
         QueryPlan::Offset(offset) => derived_offset_source(offset),
         QueryPlan::Limit(LimitPlan { input, .. }) => match input {
-            LimitInputPlan::Select(select) => DerivedSource::Select(select),
+            LimitInputPlan::Project(project) => DerivedSource::Project(project),
             LimitInputPlan::Values(values) => DerivedSource::Values(values),
-            LimitInputPlan::SelectOrderBy(order_by) => DerivedSource::Select(&order_by.input),
+            LimitInputPlan::SelectOrderBy(order_by) => DerivedSource::Project(&order_by.input),
             LimitInputPlan::ValuesOrderBy(order_by) => DerivedSource::Values(&order_by.input),
             LimitInputPlan::Distinct(distinct) => derived_distinct_source(distinct),
             LimitInputPlan::Offset(offset) => derived_offset_source(offset),
@@ -444,15 +444,17 @@ where
                     name,
                 },
         } => match derived_source(subquery) {
-            DerivedSource::Select(statement) => {
+            DerivedSource::Project(ProjectPlan {
+                input: statement,
+                projection,
+            }) => {
                 let crate::plan::SelectPlan {
                     from:
                         TableWithJoinsPlan {
                             relation, joins, ..
                         },
-                    projection,
                     ..
-                } = statement;
+                } = &**statement;
 
                 let labels = fetch_labels(storage, relation, joins, projection)?;
                 if alias_columns.is_empty() {

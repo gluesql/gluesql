@@ -1,5 +1,5 @@
 use {
-    super::{BuildQuery, BuildQueryPlan, BuildSelect, BuildSelectPlan},
+    super::{BuildProjectPlan, BuildQuery, BuildQueryPlan, BuildSelect},
     crate::{
         ast::{OrderByExpr, Query, SetExpr},
         plan::{DistinctInputPlan, DistinctPlan, QueryPlan},
@@ -28,38 +28,14 @@ pub(super) enum PrevNode<'a> {
 impl PrevNode<'_> {
     fn build_distinct_input_plan(self) -> Result<DistinctInputPlan> {
         match self {
-            Self::Select(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(DistinctInputPlan::Select),
-            Self::Having(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(DistinctInputPlan::Select),
-            Self::GroupBy(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(DistinctInputPlan::Select),
-            Self::Filter(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(DistinctInputPlan::Select),
-            Self::Join(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(DistinctInputPlan::Select),
-            Self::JoinConstraint(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(DistinctInputPlan::Select),
-            Self::HashJoin(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(DistinctInputPlan::Select),
-            Self::Project(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(DistinctInputPlan::Select),
+            Self::Select(node) => node.build_project_plan().map(DistinctInputPlan::Project),
+            Self::Having(node) => node.build_project_plan().map(DistinctInputPlan::Project),
+            Self::GroupBy(node) => node.build_project_plan().map(DistinctInputPlan::Project),
+            Self::Filter(node) => node.build_project_plan().map(DistinctInputPlan::Project),
+            Self::Join(node) => node.build_project_plan().map(DistinctInputPlan::Project),
+            Self::JoinConstraint(node) => node.build_project_plan().map(DistinctInputPlan::Project),
+            Self::HashJoin(node) => node.build_project_plan().map(DistinctInputPlan::Project),
+            Self::Project(node) => node.build_project_plan().map(DistinctInputPlan::Project),
             Self::SelectOrderBy(node) => node
                 .build_select_order_by_plan()
                 .map(DistinctInputPlan::SelectOrderBy),
@@ -169,8 +145,8 @@ mod tests {
     use crate::{
         plan::{
             DistinctInputPlan, DistinctPlan, JoinConstraintPlan, JoinExecutorPlan,
-            JoinOperatorPlan, JoinPlan, ProjectionPlan, QueryPlan, SelectPlan, StatementPlan,
-            TableFactorPlan, TableWithJoinsPlan,
+            JoinOperatorPlan, JoinPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectPlan,
+            StatementPlan, TableFactorPlan, TableWithJoinsPlan,
         },
         query_builder::{
             Build, QueryBuilderError, SelectItemList, col, select::BuildQuery, table,
@@ -278,9 +254,6 @@ mod tests {
                 },
             };
             let select = SelectPlan {
-                projection: ProjectionPlan::SelectItems(
-                    SelectItemList::from("*").build_select_items_plan().unwrap(),
-                ),
                 from: TableWithJoinsPlan {
                     relation: TableFactorPlan::Table {
                         name: "Item".to_owned(),
@@ -294,9 +267,15 @@ mod tests {
                 having: None,
                 aggregate_slots: None,
             };
+            let project = ProjectPlan {
+                input: Box::new(select),
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+            };
 
             Ok(StatementPlan::Query(QueryPlan::Distinct(DistinctPlan {
-                input: DistinctInputPlan::Select(Box::new(select)),
+                input: DistinctInputPlan::Project(project),
             })))
         };
         assert_eq!(actual, expected);

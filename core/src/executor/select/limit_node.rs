@@ -1,6 +1,6 @@
 use {
     super::{
-        LabeledRows, distinct_node, offset_node, select_node, select_order_by_node, values_node,
+        LabeledRows, distinct_node, offset_node, project_node, select_order_by_node, values_node,
         values_order_by_node,
     },
     crate::{
@@ -22,7 +22,16 @@ where
     T: GStore,
 {
     let LabeledRows { labels, rows } = match &plan.input {
-        LimitInputPlan::Select(select) => select_node::execute(storage, select, filter_context),
+        LimitInputPlan::Project(project) => {
+            let project_node::ProjectedRows { labels, rows, .. } =
+                project_node::execute(storage, project, filter_context)?;
+            let rows = rows.map(|row| row.map(|(.., row)| row));
+
+            Ok(LabeledRows {
+                labels,
+                rows: Box::new(rows),
+            })
+        }
         LimitInputPlan::Values(values) => values_node::execute(values),
         LimitInputPlan::SelectOrderBy(order_by) => {
             select_order_by_node::execute(storage, order_by, filter_context)

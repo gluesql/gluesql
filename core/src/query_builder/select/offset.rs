@@ -1,5 +1,5 @@
 use {
-    super::{BuildQuery, BuildQueryPlan, BuildSelectPlan, DistinctNode, ValuesNode},
+    super::{BuildProjectPlan, BuildQuery, BuildQueryPlan, DistinctNode, ValuesNode},
     crate::{
         ast::Query,
         plan::{OffsetInputPlan, OffsetPlan, QueryPlan},
@@ -31,35 +31,14 @@ pub(super) enum PrevNode<'a> {
 impl PrevNode<'_> {
     fn build_offset_input_plan(self) -> Result<OffsetInputPlan> {
         match self {
-            Self::Select(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(OffsetInputPlan::Select),
+            Self::Select(node) => node.build_project_plan().map(OffsetInputPlan::Project),
             Self::Values(node) => node.build_values_plan().map(OffsetInputPlan::Values),
-            Self::GroupBy(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(OffsetInputPlan::Select),
-            Self::Having(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(OffsetInputPlan::Select),
-            Self::Join(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(OffsetInputPlan::Select),
-            Self::JoinConstraint(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(OffsetInputPlan::Select),
-            Self::HashJoin(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(OffsetInputPlan::Select),
-            Self::Filter(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(OffsetInputPlan::Select),
+            Self::GroupBy(node) => node.build_project_plan().map(OffsetInputPlan::Project),
+            Self::Having(node) => node.build_project_plan().map(OffsetInputPlan::Project),
+            Self::Join(node) => node.build_project_plan().map(OffsetInputPlan::Project),
+            Self::JoinConstraint(node) => node.build_project_plan().map(OffsetInputPlan::Project),
+            Self::HashJoin(node) => node.build_project_plan().map(OffsetInputPlan::Project),
+            Self::Filter(node) => node.build_project_plan().map(OffsetInputPlan::Project),
             Self::SelectOrderBy(node) => node
                 .build_select_order_by_plan()
                 .map(OffsetInputPlan::SelectOrderBy),
@@ -67,10 +46,7 @@ impl PrevNode<'_> {
                 .build_values_order_by_plan()
                 .map(OffsetInputPlan::ValuesOrderBy),
             Self::Distinct(node) => node.build_distinct_plan().map(OffsetInputPlan::Distinct),
-            Self::ProjectNode(node) => node
-                .build_select_plan()
-                .map(Box::new)
-                .map(OffsetInputPlan::Select),
+            Self::ProjectNode(node) => node.build_project_plan().map(OffsetInputPlan::Project),
         }
     }
 }
@@ -217,8 +193,8 @@ mod tests {
         crate::{
             plan::{
                 JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, OffsetInputPlan,
-                OffsetPlan, ProjectionPlan, QueryPlan, SelectPlan, StatementPlan, TableFactorPlan,
-                TableWithJoinsPlan,
+                OffsetPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectPlan, StatementPlan,
+                TableFactorPlan, TableWithJoinsPlan,
             },
             query_builder::{Build, SelectItemList, col, num, table, test_query_builder},
         },
@@ -315,9 +291,6 @@ mod tests {
                 },
             };
             let select = SelectPlan {
-                projection: ProjectionPlan::SelectItems(
-                    SelectItemList::from("*").build_select_items_plan().unwrap(),
-                ),
                 from: TableWithJoinsPlan {
                     relation: TableFactorPlan::Table {
                         name: "Player".to_owned(),
@@ -331,9 +304,15 @@ mod tests {
                 having: None,
                 aggregate_slots: None,
             };
+            let project = ProjectPlan {
+                input: Box::new(select),
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+            };
 
             let offset = OffsetPlan {
-                input: OffsetInputPlan::Select(Box::new(select)),
+                input: OffsetInputPlan::Project(project),
                 count: num(100).build_expr_plan().unwrap(),
             };
 

@@ -4,7 +4,7 @@ use {
         data::{SCHEMALESS_DOC_COLUMN, Schema},
         plan::{
             DistinctInputPlan, DistinctPlan, ExprPlan, JoinConstraintPlan, JoinExecutorPlan,
-            JoinOperatorPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
+            JoinOperatorPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectPlan,
             ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SelectPlan,
             TableFactorPlan, TableWithJoinsPlan, ValuesOrderByPlan, expr::visit_mut_expr,
         },
@@ -26,8 +26,8 @@ pub(super) fn transform_query<S: BuildHasher>(
     query: &mut QueryPlan,
 ) {
     match query {
-        QueryPlan::Select(select) => {
-            transform_select(schema_map, select);
+        QueryPlan::Project(project) => {
+            transform_project(schema_map, project);
         }
         QueryPlan::Values(_) => {}
         QueryPlan::SelectOrderBy(order_by) => {
@@ -44,7 +44,7 @@ pub(super) fn transform_query<S: BuildHasher>(
         }
         QueryPlan::Limit(LimitPlan { input, count }) => {
             let state = match input {
-                LimitInputPlan::Select(select) => transform_select(schema_map, select),
+                LimitInputPlan::Project(project) => transform_project(schema_map, project),
                 LimitInputPlan::Values(_) => empty_rewrite_state(),
                 LimitInputPlan::SelectOrderBy(order_by) => {
                     transform_select_order_by(schema_map, order_by)
@@ -65,7 +65,7 @@ fn transform_offset<S: BuildHasher>(
     OffsetPlan { input, count }: &mut OffsetPlan,
 ) -> QueryRewriteState {
     let state = match input {
-        OffsetInputPlan::Select(select) => transform_select(schema_map, select),
+        OffsetInputPlan::Project(project) => transform_project(schema_map, project),
         OffsetInputPlan::Values(_) => empty_rewrite_state(),
         OffsetInputPlan::SelectOrderBy(order_by) => transform_select_order_by(schema_map, order_by),
         OffsetInputPlan::ValuesOrderBy(order_by) => transform_values_order_by(schema_map, order_by),
@@ -81,7 +81,7 @@ fn transform_distinct<S: BuildHasher>(
     DistinctPlan { input }: &mut DistinctPlan,
 ) -> QueryRewriteState {
     match input {
-        DistinctInputPlan::Select(select) => transform_select(schema_map, select),
+        DistinctInputPlan::Project(project) => transform_project(schema_map, project),
         DistinctInputPlan::SelectOrderBy(order_by) => {
             transform_select_order_by(schema_map, order_by)
         }
@@ -92,7 +92,7 @@ fn transform_select_order_by<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
     SelectOrderByPlan { input, exprs }: &mut SelectOrderByPlan,
 ) -> QueryRewriteState {
-    let state = transform_select(schema_map, input);
+    let state = transform_project(schema_map, input);
     for order_by in exprs {
         transform_query_expr(schema_map, &mut order_by.expr, &state);
     }
@@ -117,6 +117,16 @@ fn empty_rewrite_state() -> QueryRewriteState {
         rewrite_unqualified_identifiers: false,
         schemaless_aliases: HashSet::new(),
     }
+}
+
+fn transform_project<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    project: &mut ProjectPlan,
+) -> QueryRewriteState {
+    let state = transform_select(schema_map, &mut project.input);
+    rewrite_projection(schema_map, &mut project.projection, &project.input, &state);
+
+    state
 }
 
 fn transform_select<S: BuildHasher>(
@@ -163,42 +173,6 @@ fn rewrite_select(
     select: &mut SelectPlan,
     state: &QueryRewriteState,
 ) {
-    let root_wildcard_maps_to_doc =
-        state.rewrite_unqualified_identifiers && select.from.joins.is_empty();
-    let use_schemaless_map_projection = match &select.projection {
-        ProjectionPlan::SelectItems(projection) if root_wildcard_maps_to_doc => {
-            match projection.as_slice() {
-                [SelectItemPlan::Wildcard] => true,
-                [SelectItemPlan::QualifiedWildcard(alias)] => matches!(
-                    &select.from.relation,
-                    TableFactorPlan::Table {
-                        name,
-                        alias: table_alias,
-                        ..
-                    } if alias == name
-                        || table_alias
-                            .as_ref()
-                            .is_some_and(|table_alias| table_alias.name == *alias)
-                ),
-                _ => false,
-            }
-        }
-        _ => false,
-    };
-
-    if use_schemaless_map_projection {
-        select.projection = ProjectionPlan::SchemalessMap;
-    }
-
-    // Pass 1: rewrite identifier-based expressions.
-    if let ProjectionPlan::SelectItems(projection) = &mut select.projection {
-        for projection in projection {
-            if let SelectItemPlan::Expr { expr, .. } = projection {
-                transform_query_expr(schema_map, expr, state);
-            }
-        }
-    }
-
     for relation in once(&mut select.from.relation)
         .chain(select.from.joins.iter_mut().map(|join| &mut join.relation))
     {
@@ -243,12 +217,52 @@ fn rewrite_select(
     if let Some(having) = select.having.as_mut() {
         transform_query_expr(schema_map, having, state);
     }
+}
 
-    // Pass 2: rewrite wildcard projections.
-    if let ProjectionPlan::SelectItems(projection) = &mut select.projection {
-        for projection in projection {
+fn rewrite_projection(
+    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    projection: &mut ProjectionPlan,
+    select: &SelectPlan,
+    state: &QueryRewriteState,
+) {
+    let root_wildcard_maps_to_doc =
+        state.rewrite_unqualified_identifiers && select.from.joins.is_empty();
+    let use_schemaless_map_projection = match &projection {
+        ProjectionPlan::SelectItems(projection) if root_wildcard_maps_to_doc => {
+            match projection.as_slice() {
+                [SelectItemPlan::Wildcard] => true,
+                [SelectItemPlan::QualifiedWildcard(alias)] => matches!(
+                    &select.from.relation,
+                    TableFactorPlan::Table {
+                        name,
+                        alias: table_alias,
+                        ..
+                    } if alias == name
+                        || table_alias
+                            .as_ref()
+                            .is_some_and(|table_alias| table_alias.name == *alias)
+                ),
+                _ => false,
+            }
+        }
+        _ => false,
+    };
+
+    if use_schemaless_map_projection {
+        *projection = ProjectionPlan::SchemalessMap;
+    }
+
+    // Pass 1: rewrite identifier-based expressions.
+    if let ProjectionPlan::SelectItems(items) = projection {
+        for item in items.iter_mut() {
+            if let SelectItemPlan::Expr { expr, .. } = item {
+                transform_query_expr(schema_map, expr, state);
+            }
+        }
+        // Pass 2: rewrite wildcard projections.
+        for item in items {
             transform_wildcard_projection(
-                projection,
+                item,
                 root_wildcard_maps_to_doc,
                 &state.schemaless_aliases,
             );

@@ -21,7 +21,7 @@ use {
 
 fn offset_values_plan(offset: &OffsetPlan) -> Option<&ValuesPlan> {
     match &offset.input {
-        OffsetInputPlan::Select(_)
+        OffsetInputPlan::Project(_)
         | OffsetInputPlan::SelectOrderBy(_)
         | OffsetInputPlan::Distinct(_) => None,
         OffsetInputPlan::Values(values) => Some(values),
@@ -31,12 +31,12 @@ fn offset_values_plan(offset: &OffsetPlan) -> Option<&ValuesPlan> {
 
 fn values_plan(query: &QueryPlan) -> Option<&ValuesPlan> {
     match query {
-        QueryPlan::Select(_) | QueryPlan::SelectOrderBy(_) | QueryPlan::Distinct(_) => None,
+        QueryPlan::Project(_) | QueryPlan::SelectOrderBy(_) | QueryPlan::Distinct(_) => None,
         QueryPlan::Values(values) => Some(values),
         QueryPlan::ValuesOrderBy(values) => Some(&values.input),
         QueryPlan::Offset(offset) => offset_values_plan(offset),
         QueryPlan::Limit(LimitPlan { input, .. }) => match input {
-            LimitInputPlan::Select(_)
+            LimitInputPlan::Project(_)
             | LimitInputPlan::SelectOrderBy(_)
             | LimitInputPlan::Distinct(_) => None,
             LimitInputPlan::Values(values) => Some(values),
@@ -54,7 +54,7 @@ where
     T: Iterator<Item = Result<Row>> + 'a,
 {
     match query {
-        QueryPlan::Select(_)
+        QueryPlan::Project(_)
         | QueryPlan::Values(_)
         | QueryPlan::SelectOrderBy(_)
         | QueryPlan::ValuesOrderBy(_)
@@ -66,7 +66,7 @@ where
         }
         QueryPlan::Limit(plan) => {
             let rows: Box<dyn Iterator<Item = Result<Row>> + 'a> = match &plan.input {
-                LimitInputPlan::Select(_)
+                LimitInputPlan::Project(_)
                 | LimitInputPlan::Values(_)
                 | LimitInputPlan::SelectOrderBy(_)
                 | LimitInputPlan::ValuesOrderBy(_)
