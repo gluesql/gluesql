@@ -1,113 +1,116 @@
 use {serde::Serialize, std::fmt::Debug, strum_macros::Display, thiserror::Error};
 
-#[derive(Display, Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[derive(Display, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CreateTableOption {
     #[strum(to_string = "TEMPORARY clause")]
-    #[serde(rename = "TEMPORARY clause")]
     Temporary,
 
     #[strum(to_string = "LIKE clause")]
-    #[serde(rename = "LIKE clause")]
     Like,
 
     #[strum(to_string = "CLONE clause")]
-    #[serde(rename = "CLONE clause")]
     Clone,
 }
 
-#[derive(Display, Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[derive(Display, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InsertOption {
     #[strum(to_string = "RETURNING clause")]
-    #[serde(rename = "RETURNING clause")]
     Returning,
 
     #[strum(to_string = "ON CONFLICT clause")]
-    #[serde(rename = "ON CONFLICT clause")]
     OnConflict,
 
     #[strum(to_string = "table alias")]
-    #[serde(rename = "table alias")]
     TableAlias,
 
     #[strum(to_string = "PARTITION clause")]
-    #[serde(rename = "PARTITION clause")]
     Partition,
 
     #[strum(to_string = "OVERWRITE clause")]
-    #[serde(rename = "OVERWRITE clause")]
     Overwrite,
 
     #[strum(to_string = "TABLE keyword")]
-    #[serde(rename = "TABLE keyword")]
     TableKeyword,
 }
 
-#[derive(Display, Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[derive(Display, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UpdateOption {
     #[strum(to_string = "FROM clause")]
-    #[serde(rename = "FROM clause")]
     From,
 
     #[strum(to_string = "RETURNING clause")]
-    #[serde(rename = "RETURNING clause")]
     Returning,
 }
 
-#[derive(Display, Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[derive(Display, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DeleteOption {
     #[strum(to_string = "USING clause")]
-    #[serde(rename = "USING clause")]
     Using,
 
     #[strum(to_string = "RETURNING clause")]
-    #[serde(rename = "RETURNING clause")]
     Returning,
 
     #[strum(to_string = "ORDER BY clause")]
-    #[serde(rename = "ORDER BY clause")]
     OrderBy,
 
     #[strum(to_string = "LIMIT clause")]
-    #[serde(rename = "LIMIT clause")]
     Limit,
 }
 
-#[derive(Display, Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[derive(Display, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum QueryOption {
     #[strum(to_string = "WITH clause")]
-    #[serde(rename = "WITH clause")]
     With,
 
     #[strum(to_string = "FETCH clause")]
-    #[serde(rename = "FETCH clause")]
     Fetch,
 
     #[strum(to_string = "LOCK clause")]
-    #[serde(rename = "LOCK clause")]
     Lock,
 }
 
-#[derive(Display, Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[derive(Display, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SelectOption {
     #[strum(to_string = "INTO clause")]
-    #[serde(rename = "INTO clause")]
     Into,
 
     #[strum(to_string = "WINDOW clause")]
-    #[serde(rename = "WINDOW clause")]
     Window,
 }
 
-#[derive(Display, Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[derive(Display, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum JoinConstraintReason {
     #[strum(to_string = "USING")]
-    #[serde(rename = "USING")]
     Using,
 
     #[strum(to_string = "NATURAL")]
-    #[serde(rename = "NATURAL")]
     Natural,
 }
+
+/// Serializes a `strum::Display`-backed enum as its display string, keeping
+/// JSON output identical to the pre-refactor `&'static str`/`String` fields
+/// without duplicating each variant's text in a second `#[serde(rename)]`.
+macro_rules! serialize_via_display {
+    ($($ty:ty),+ $(,)?) => {
+        $(
+            impl Serialize for $ty {
+                fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+                    serializer.collect_str(self)
+                }
+            }
+        )+
+    };
+}
+
+serialize_via_display!(
+    CreateTableOption,
+    InsertOption,
+    UpdateOption,
+    DeleteOption,
+    QueryOption,
+    SelectOption,
+    JoinConstraintReason,
+);
 
 #[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum TranslateError {
