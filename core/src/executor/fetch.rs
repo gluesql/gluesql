@@ -99,7 +99,7 @@ pub fn fetch_relation_rows<'a, T: GStore>(
                 }) => {
                     let cmp_value = match cmp_expr {
                         Some((op, expr)) => {
-                            let evaluated = evaluate(storage, None, None, expr)?;
+                            let evaluated = evaluate(storage, None, None, None, expr)?;
 
                             Some((op, evaluated.try_into()?))
                         }
@@ -120,7 +120,7 @@ pub fn fetch_relation_rows<'a, T: GStore>(
                 Some(IndexItemPlan::PrimaryKey(expr)) => {
                     let schema = storage.fetch_schema(name)?.ok_or(FetchError::Unreachable)?;
 
-                    let evaluated = evaluate(storage, filter_context, None, expr)?;
+                    let evaluated = evaluate(storage, filter_context, None, None, expr)?;
 
                     let column_def = schema
                         .column_defs

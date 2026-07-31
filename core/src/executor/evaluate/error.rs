@@ -1,7 +1,7 @@
 use {
     crate::{
         ast::{BinaryOperator, DataType, ToSql},
-        plan::AggregatePlan,
+        plan::{AggregatePlan, WindowPlan},
     },
     serde::Serialize,
     std::fmt::Debug,
@@ -111,6 +111,12 @@ pub enum EvaluateError {
 
     #[error("filter context is required for aggregate function: {0:?}")]
     FilterContextRequiredForAggregate(Box<AggregatePlan>),
+
+    #[error("window slot value missing: {0:?}")]
+    WindowSlotValueMissing(Box<WindowPlan>),
+
+    #[error("window expression requires planner binding: {0:?}")]
+    UnplannedWindow(Box<WindowPlan>),
 
     #[error("incompatible bit operation between {0} and {1}")]
     IncompatibleBitOperation(String, String),

@@ -6,7 +6,7 @@ mod function;
 use {
     self::function::BreakCase,
     super::{
-        context::{AggregateValues, RowContext},
+        context::{AggregateValues, RowContext, WindowValues},
         select::{select, select_with_labels},
     },
     crate::{
@@ -26,13 +26,14 @@ pub fn evaluate<'a, 'b, T>(
     storage: &'a T,
     context: Option<&Rc<RowContext<'b>>>,
     aggregated: Option<&Rc<AggregateValues>>,
+    windowed: Option<&Rc<WindowValues>>,
     expr: &'a ExprPlan,
 ) -> Result<Evaluated<'a>>
 where
     'b: 'a,
     T: GStore,
 {
-    evaluate_inner(Some(storage), context, aggregated, expr)
+    evaluate_inner(Some(storage), context, aggregated, windowed, expr)
 }
 
 pub fn evaluate_stateless<'a, 'b: 'a>(
@@ -42,20 +43,21 @@ pub fn evaluate_stateless<'a, 'b: 'a>(
     let context = context.map(Rc::new);
     let storage: Option<&MockStorage> = None;
 
-    evaluate_inner(storage, context.as_ref(), None, expr)
+    evaluate_inner(storage, context.as_ref(), None, None, expr)
 }
 
 fn evaluate_inner<'a, 'b, T>(
     storage: Option<&'a T>,
     context: Option<&Rc<RowContext<'b>>>,
     aggregated: Option<&Rc<AggregateValues>>,
+    windowed: Option<&Rc<WindowValues>>,
     expr: &'a ExprPlan,
 ) -> Result<Evaluated<'a>>
 where
     'b: 'a,
     T: GStore,
 {
-    let eval = |expr| evaluate_inner(storage, context, aggregated, expr);
+    let eval = |expr| evaluate_inner(storage, context, aggregated, windowed, expr);
 
     match expr {
         ExprPlan::Literal(literal) => Ok(expr::literal(literal)),
@@ -141,7 +143,17 @@ where
             }
             None => Err(EvaluateError::AggregateSlotValueMissing(aggr.clone()).into()),
         },
-        ExprPlan::Function(func) => evaluate_function(storage, context, aggregated, func),
+        ExprPlan::Window(window) => match windowed
+            .as_ref()
+            .and_then(|windowed| window.slot.and_then(|slot| windowed.get(slot)))
+        {
+            Some(value) => Ok(Evaluated::Value(Cow::Owned(value.clone()))),
+            None if window.slot.is_none() => {
+                Err(EvaluateError::UnplannedWindow(window.clone()).into())
+            }
+            None => Err(EvaluateError::WindowSlotValueMissing(window.clone()).into()),
+        },
+        ExprPlan::Function(func) => evaluate_function(storage, context, aggregated, windowed, func),
         ExprPlan::InList {
             expr,
             list,
@@ -317,11 +329,12 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
     storage: Option<&'a T>,
     context: Option<&Rc<RowContext<'b>>>,
     aggregated: Option<&Rc<AggregateValues>>,
+    windowed: Option<&Rc<WindowValues>>,
     func: &'a FunctionPlan,
 ) -> Result<Evaluated<'a>> {
     use function as f;
 
-    let eval = |expr| evaluate_inner(storage, context, aggregated, expr);
+    let eval = |expr| evaluate_inner(storage, context, aggregated, windowed, expr);
 
     let name = func.to_string();
 
@@ -369,7 +382,7 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
                     })?;
                     let default = plan_scalar_expr(default.clone());
 
-                    evaluate_inner(storage, context, aggregated, &default)?
+                    evaluate_inner(storage, context, aggregated, windowed, &default)?
                         .try_into_value(&arg.data_type, true)
                 }?;
 
@@ -385,7 +398,7 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
             let context = Some(Rc::new(context));
 
             let body = plan_scalar_expr(body.clone());
-            let evaluated = evaluate_inner(storage, context.as_ref(), None, &body)?;
+            let evaluated = evaluate_inner(storage, context.as_ref(), None, None, &body)?;
             let value = evaluated.try_into()?;
 
             return Ok(Evaluated::Value(Cow::Owned(value)));
@@ -795,7 +808,7 @@ mod tests {
         let storage = MockStorage::default();
         let aggregated = Rc::new(AggregateValues::new(Vec::new()));
 
-        let result = evaluate(&storage, None, Some(&aggregated), &expr);
+        let result = evaluate(&storage, None, Some(&aggregated), None, &expr);
 
         assert_eq!(
             result,

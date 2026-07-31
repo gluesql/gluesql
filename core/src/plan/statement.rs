@@ -7,7 +7,10 @@ mod table_factor;
 
 pub use {
     ddl::AlterTableOperationPlan,
-    expr::{AggregateFunctionPlan, AggregatePlan, CountArgExprPlan, ExprPlan, FunctionPlan},
+    expr::{
+        AggregateFunctionPlan, AggregatePlan, CountArgExprPlan, ExprPlan, FunctionPlan,
+        WindowFunctionPlan, WindowPlan, WindowSpecPlan,
+    },
     join::{JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan},
     projection::{ProjectionPlan, SelectItemPlan},
     query::{OrderByExprPlan, QueryPlan, SelectPlan, SetExprPlan, ValuesPlan},

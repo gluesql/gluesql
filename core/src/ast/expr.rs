@@ -1,7 +1,7 @@
 use {
     super::{
         Aggregate, BinaryOperator, DataType, DateTimeField, Function, Literal, Query, ToSql,
-        ToSqlUnquoted, UnaryOperator,
+        ToSqlUnquoted, UnaryOperator, WindowFunction, WindowSpec,
     },
     crate::data::Value,
     serde::{Deserialize, Serialize},
@@ -83,6 +83,13 @@ pub enum Expr {
     Array {
         elem: Vec<Expr>,
     },
+    Window(Box<Window>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Window {
+    pub func: WindowFunction,
+    pub over: WindowSpec,
 }
 
 impl ToSql for Expr {
@@ -274,6 +281,10 @@ impl Expr {
                     Some(last_field) => format!("INTERVAL {expr} {leading_field} TO {last_field}"),
                     None => format!("INTERVAL {expr} {leading_field}"),
                 }
+            }
+            Expr::Window(window) => {
+                let Window { func, over } = window.as_ref();
+                format!("{} OVER ({})", func.to_sql(), over.to_sql())
             }
         }
     }

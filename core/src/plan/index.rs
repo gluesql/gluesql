@@ -79,6 +79,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
             group_by,
             having,
             aggregate_slots,
+            window_slots,
         } = select;
 
         let indexes = self.indexes(&from.relation);
@@ -103,6 +104,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                 group_by,
                 having,
                 aggregate_slots,
+                window_slots,
             };
 
             return (select, order_by);
@@ -144,6 +146,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
             group_by,
             having,
             aggregate_slots,
+            window_slots,
         };
 
         (select, order_by)

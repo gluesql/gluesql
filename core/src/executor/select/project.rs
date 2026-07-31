@@ -2,7 +2,7 @@ use {
     crate::{
         data::{Row, SCHEMALESS_DOC_COLUMN, Value},
         executor::{
-            context::{AggregateValues, RowContext},
+            context::{AggregateValues, RowContext, WindowValues},
             evaluate::evaluate,
         },
         plan::{ProjectionPlan, SelectItemPlan},
@@ -34,6 +34,7 @@ impl<'a, T: GStore> Project<'a, T> {
     pub fn apply(
         &self,
         aggregated: Option<&Rc<AggregateValues>>,
+        windowed: Option<&Rc<WindowValues>>,
         labels: &Rc<[String]>,
         context: Option<&Rc<RowContext<'a>>>,
     ) -> Result<Row> {
@@ -65,9 +66,14 @@ impl<'a, T: GStore> Project<'a, T> {
                             );
                         }
                         SelectItemPlan::Expr { expr, label } => {
-                            let value: Value =
-                                evaluate(self.storage, filter_context.as_ref(), aggregated, expr)?
-                                    .try_into()?;
+                            let value: Value = evaluate(
+                                self.storage,
+                                filter_context.as_ref(),
+                                aggregated,
+                                windowed,
+                                expr,
+                            )?
+                            .try_into()?;
 
                             entries.push((label, value));
                         }

@@ -1,5 +1,5 @@
 use {
-    super::QueryPlan,
+    super::{OrderByExprPlan, QueryPlan},
     crate::{
         ast::{
             self, BinaryOperator, DataType, DateTimeField, Literal, TrimWhereField, UnaryOperator,
@@ -85,6 +85,38 @@ pub enum ExprPlan {
     Array {
         elem: Vec<ExprPlan>,
     },
+    Window(Box<WindowPlan>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct WindowPlan {
+    pub func: WindowFunctionPlan,
+    pub over: WindowSpecPlan,
+    pub slot: Option<usize>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum WindowFunctionPlan {
+    RowNumber,
+    Rank,
+    DenseRank,
+    Lag {
+        expr: ExprPlan,
+        offset: ExprPlan,
+        default: Option<ExprPlan>,
+    },
+    Lead {
+        expr: ExprPlan,
+        offset: ExprPlan,
+        default: Option<ExprPlan>,
+    },
+    Aggregate(AggregatePlan),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct WindowSpecPlan {
+    pub partition_by: Vec<ExprPlan>,
+    pub order_by: Vec<OrderByExprPlan>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display)]
@@ -431,6 +463,62 @@ impl From<ast::Expr> for ExprPlan {
             ast::Expr::Array { elem } => Self::Array {
                 elem: elem.into_iter().map(Into::into).collect(),
             },
+            ast::Expr::Window(window) => Self::Window(Box::new((*window).into())),
+        }
+    }
+}
+
+impl From<ast::Window> for WindowPlan {
+    fn from(window: ast::Window) -> Self {
+        let ast::Window { func, over } = window;
+
+        Self {
+            func: func.into(),
+            over: over.into(),
+            slot: None,
+        }
+    }
+}
+
+impl From<ast::WindowFunction> for WindowFunctionPlan {
+    fn from(func: ast::WindowFunction) -> Self {
+        match func {
+            ast::WindowFunction::RowNumber => Self::RowNumber,
+            ast::WindowFunction::Rank => Self::Rank,
+            ast::WindowFunction::DenseRank => Self::DenseRank,
+            ast::WindowFunction::Lag {
+                expr,
+                offset,
+                default,
+            } => Self::Lag {
+                expr: expr.into(),
+                offset: offset.into(),
+                default: default.map(Into::into),
+            },
+            ast::WindowFunction::Lead {
+                expr,
+                offset,
+                default,
+            } => Self::Lead {
+                expr: expr.into(),
+                offset: offset.into(),
+                default: default.map(Into::into),
+            },
+            ast::WindowFunction::Aggregate(aggregate) => Self::Aggregate(aggregate.into()),
+        }
+    }
+}
+
+impl From<ast::WindowSpec> for WindowSpecPlan {
+    fn from(spec: ast::WindowSpec) -> Self {
+        let ast::WindowSpec {
+            partition_by,
+            order_by,
+        } = spec;
+
+        Self {
+            partition_by: partition_by.into_iter().map(Into::into).collect(),
+            order_by: order_by.into_iter().map(Into::into).collect(),
         }
     }
 }

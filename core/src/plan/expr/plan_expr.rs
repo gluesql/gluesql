@@ -2,7 +2,7 @@ mod aggregate;
 mod function;
 
 use {
-    crate::plan::{ExprPlan, QueryPlan},
+    crate::plan::{ExprPlan, QueryPlan, WindowFunctionPlan, WindowPlan},
     std::iter::once,
 };
 
@@ -87,8 +87,39 @@ impl<'a> From<&'a ExprPlan> for PlanExpr<'a> {
                 subquery: query,
                 ..
             } => PlanExpr::QueryAndExpr { expr, query },
+            ExprPlan::Window(window) => PlanExpr::MultiExprs(window_as_exprs(window)),
         }
     }
+}
+
+fn window_as_exprs(window: &WindowPlan) -> Vec<&ExprPlan> {
+    let WindowPlan { func, over, .. } = window;
+
+    let mut exprs: Vec<&ExprPlan> = over.partition_by.iter().collect();
+    exprs.extend(over.order_by.iter().map(|order_by| &order_by.expr));
+
+    match func {
+        WindowFunctionPlan::RowNumber
+        | WindowFunctionPlan::Rank
+        | WindowFunctionPlan::DenseRank => {}
+        WindowFunctionPlan::Lag {
+            expr,
+            offset,
+            default,
+        }
+        | WindowFunctionPlan::Lead {
+            expr,
+            offset,
+            default,
+        } => {
+            exprs.push(expr);
+            exprs.push(offset);
+            exprs.extend(default.iter());
+        }
+        WindowFunctionPlan::Aggregate(aggregate) => exprs.extend(aggregate.as_expr()),
+    }
+
+    exprs
 }
 #[cfg(test)]
 mod tests {

@@ -21,6 +21,7 @@ nav = [
         "sql-syntax/statements/querying/join.md",
         "sql-syntax/statements/querying/limit.md",
         "sql-syntax/statements/querying/aggregation.md",
+        "sql-syntax/statements/querying/window-functions.md",
         "sql-syntax/statements/querying/schemaless.md",
       ]},
       {"Data definition" = [

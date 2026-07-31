@@ -1,10 +1,12 @@
 mod aggregate;
 mod function;
+mod window;
 
 use {
     crate::plan::{ExprPlan, PlanError},
     aggregate::{try_visit_aggregate, visit_mut_aggregate},
     function::{try_visit_function, visit_mut_function},
+    window::{try_visit_window, visit_mut_window},
 };
 
 macro_rules! apply_mut {
@@ -20,7 +22,7 @@ macro_rules! apply_try {
 }
 
 macro_rules! visit_expr_children {
-    ($expr:expr, $visit_expr:ident, $visit_function:ident, $visit_aggregate:ident, $f:expr, $apply:ident) => {
+    ($expr:expr, $visit_expr:ident, $visit_function:ident, $visit_aggregate:ident, $visit_window:ident, $f:expr, $apply:ident) => {
         match $expr {
             ExprPlan::Identifier(_)
             | ExprPlan::CompoundIdentifier { .. }
@@ -64,6 +66,9 @@ macro_rules! visit_expr_children {
             ExprPlan::Aggregate(aggr) => {
                 $apply!($visit_aggregate(aggr, $f));
             }
+            ExprPlan::Window(window) => {
+                $apply!($visit_window(window, $f));
+            }
             ExprPlan::Case {
                 operand,
                 when_then,
@@ -104,6 +109,7 @@ where
         visit_mut_expr,
         visit_mut_function,
         visit_mut_aggregate,
+        visit_mut_window,
         f,
         apply_mut
     );
@@ -120,6 +126,7 @@ where
         try_visit_expr,
         try_visit_function,
         try_visit_aggregate,
+        try_visit_window,
         f,
         apply_try
     );
