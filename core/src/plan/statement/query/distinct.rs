@@ -19,23 +19,17 @@ mod tests {
     use {
         super::{DistinctInputPlan, DistinctPlan},
         crate::plan::{
-            ProjectInputPlan, ProjectPlan, ProjectionPlan, SelectOrderByPlan, SelectPlan,
-            TableFactorPlan, TableWithJoinsPlan,
+            ProjectInputPlan, ProjectPlan, ProjectionPlan, SelectOrderByPlan, TableFactorPlan,
         },
     };
 
     fn project_plan() -> ProjectPlan {
         ProjectPlan {
-            input: ProjectInputPlan::Select(Box::new(SelectPlan {
-                from: TableWithJoinsPlan {
-                    relation: TableFactorPlan::Table {
-                        name: "Item".to_owned(),
-                        alias: None,
-                        index: None,
-                    },
-                    joins: Vec::new(),
-                },
-            })),
+            input: ProjectInputPlan::Relation(TableFactorPlan::Table {
+                name: "Item".to_owned(),
+                alias: None,
+                index: None,
+            }),
             projection: ProjectionPlan::SelectItems(Vec::new()),
         }
     }

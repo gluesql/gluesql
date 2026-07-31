@@ -2,12 +2,12 @@ use {
     super::JoinOperatorType,
     crate::{
         ast::Select,
-        plan::{JoinConstraintPlan, JoinExecutorPlan, JoinPlan, SelectPlan},
+        plan::{JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinPlan},
         query_builder::{
             DistinctNode, ExprList, ExprNode, FilterNode, GroupByNode, HavingNode,
             JoinConstraintNode, JoinNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode,
             QueryBuilderError, QueryNode, SelectItemList, SelectOrderByNode, TableFactorNode,
-            select::{BuildSelect, BuildSelectPlan},
+            select::{BuildJoinInputPlan, BuildJoinPlan, BuildSelect},
         },
         result::Result,
     },
@@ -116,28 +116,35 @@ impl<'a> HashJoinNode<'a> {
         QueryNode::HashJoinNode(self).alias_as(table_alias)
     }
 
-    pub(super) fn build_select_plan_with_constraint(
+    pub(super) fn build_join_plan_with_constraint(
         self,
         constraint: JoinConstraintPlan,
-    ) -> Result<SelectPlan> {
-        let (mut select, relation, join_operator) = self
+    ) -> Result<JoinPlan> {
+        let (input, relation, join_operator) = self
             .join_node
             .build_join_plan_parts_with_constraint(constraint)?;
         let join_executor = build_join_executor(self.key_expr, self.value_expr, self.filter_expr)?;
 
-        select.from.joins.push(JoinPlan {
+        Ok(JoinPlan {
+            input,
             relation,
             join_operator,
             join_executor,
-        });
-
-        Ok(select)
+        })
     }
 }
 
-impl BuildSelectPlan for HashJoinNode<'_> {
-    fn build_select_plan(self) -> Result<SelectPlan> {
-        self.build_select_plan_with_constraint(JoinConstraintPlan::None)
+impl BuildJoinPlan for HashJoinNode<'_> {
+    fn build_join_plan(self) -> Result<JoinPlan> {
+        self.build_join_plan_with_constraint(JoinConstraintPlan::None)
+    }
+}
+
+impl BuildJoinInputPlan for HashJoinNode<'_> {
+    fn build_join_input_plan(self) -> Result<JoinInputPlan> {
+        self.build_join_plan()
+            .map(Box::new)
+            .map(JoinInputPlan::Join)
     }
 }
 
@@ -164,9 +171,9 @@ mod tests {
     use {
         crate::{
             plan::{
-                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectInputPlan,
-                ProjectPlan, ProjectionPlan, QueryPlan, SelectPlan, StatementPlan, TableAliasPlan,
-                TableFactorPlan, TableWithJoinsPlan,
+                JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan, JoinPlan,
+                ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, StatementPlan,
+                TableAliasPlan, TableFactorPlan,
             },
             query_builder::{
                 Build, QueryBuilderError, SelectItemList, col, expr,
@@ -187,6 +194,11 @@ mod tests {
             .build();
         let expected = {
             let join = JoinPlan {
+                input: JoinInputPlan::Relation(TableFactorPlan::Table {
+                    name: "Player".to_owned(),
+                    alias: None,
+                    index: None,
+                }),
                 relation: TableFactorPlan::Table {
                     name: "PlayerItem".to_owned(),
                     alias: None,
@@ -199,18 +211,8 @@ mod tests {
                     where_clause: None,
                 },
             };
-            let select = SelectPlan {
-                from: TableWithJoinsPlan {
-                    relation: TableFactorPlan::Table {
-                        name: "Player".to_owned(),
-                        alias: None,
-                        index: None,
-                    },
-                    joins: vec![join],
-                },
-            };
             let project = ProjectPlan {
-                input: ProjectInputPlan::Select(Box::new(select)),
+                input: ProjectInputPlan::Join(Box::new(join)),
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),
@@ -229,6 +231,11 @@ mod tests {
             .build();
         let expected = {
             let join = JoinPlan {
+                input: JoinInputPlan::Relation(TableFactorPlan::Table {
+                    name: "Player".to_owned(),
+                    alias: None,
+                    index: None,
+                }),
                 relation: TableFactorPlan::Table {
                     name: "PlayerItem".to_owned(),
                     alias: None,
@@ -245,18 +252,8 @@ mod tests {
                     ),
                 },
             };
-            let select = SelectPlan {
-                from: TableWithJoinsPlan {
-                    relation: TableFactorPlan::Table {
-                        name: "Player".to_owned(),
-                        alias: None,
-                        index: None,
-                    },
-                    joins: vec![join],
-                },
-            };
             let project = ProjectPlan {
-                input: ProjectInputPlan::Select(Box::new(select)),
+                input: ProjectInputPlan::Join(Box::new(join)),
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),
@@ -277,6 +274,11 @@ mod tests {
 
         let expected = {
             let join = JoinPlan {
+                input: JoinInputPlan::Relation(TableFactorPlan::Table {
+                    name: "Foo".to_owned(),
+                    alias: None,
+                    index: None,
+                }),
                 relation: TableFactorPlan::Table {
                     name: "Bar".to_owned(),
                     alias: None,
@@ -290,37 +292,21 @@ mod tests {
                 },
             };
 
-            let subquery = SelectPlan {
-                from: TableWithJoinsPlan {
-                    relation: TableFactorPlan::Table {
-                        name: "Foo".to_owned(),
-                        alias: None,
-                        index: None,
-                    },
-                    joins: vec![join],
-                },
-            };
             let subquery = ProjectPlan {
-                input: ProjectInputPlan::Select(Box::new(subquery)),
+                input: ProjectInputPlan::Join(Box::new(join)),
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),
             };
 
-            let select = SelectPlan {
-                from: TableWithJoinsPlan {
-                    relation: TableFactorPlan::Derived {
-                        subquery: Box::new(QueryPlan::Project(subquery)),
-                        alias: TableAliasPlan {
-                            name: "Sub".to_owned(),
-                            columns: Vec::new(),
-                        },
-                    },
-                    joins: Vec::new(),
-                },
-            };
             let project = ProjectPlan {
-                input: ProjectInputPlan::Select(Box::new(select)),
+                input: ProjectInputPlan::Relation(TableFactorPlan::Derived {
+                    subquery: Box::new(QueryPlan::Project(subquery)),
+                    alias: TableAliasPlan {
+                        name: "Sub".to_owned(),
+                        columns: Vec::new(),
+                    },
+                }),
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),
@@ -328,6 +314,59 @@ mod tests {
 
             Ok(StatementPlan::Query(QueryPlan::Project(project)))
         };
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn hash_join_preserves_previous_join_stage() {
+        let actual = table("Player")
+            .select()
+            .join("Team")
+            .on("Player.team_id = Team.id")
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .build();
+        let expected = {
+            let previous_join = JoinPlan {
+                input: JoinInputPlan::Relation(TableFactorPlan::Table {
+                    name: "Player".to_owned(),
+                    alias: None,
+                    index: None,
+                }),
+                relation: TableFactorPlan::Table {
+                    name: "Team".to_owned(),
+                    alias: None,
+                    index: None,
+                },
+                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::On(
+                    expr("Player.team_id = Team.id").build_expr_plan().unwrap(),
+                )),
+                join_executor: JoinExecutorPlan::NestedLoop,
+            };
+            let join = JoinPlan {
+                input: JoinInputPlan::Join(Box::new(previous_join)),
+                relation: TableFactorPlan::Table {
+                    name: "PlayerItem".to_owned(),
+                    alias: None,
+                    index: None,
+                },
+                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
+                join_executor: JoinExecutorPlan::Hash {
+                    key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),
+                    value_expr: col("Player.id").build_expr_plan().unwrap(),
+                    where_clause: None,
+                },
+            };
+            let project = ProjectPlan {
+                input: ProjectInputPlan::Join(Box::new(join)),
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+            };
+
+            Ok(StatementPlan::Query(QueryPlan::Project(project)))
+        };
+
         assert_eq!(actual, expected);
     }
 

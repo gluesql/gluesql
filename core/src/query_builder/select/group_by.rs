@@ -156,8 +156,8 @@ mod tests {
         crate::{
             plan::{
                 AggregationInputPlan, AggregationPlan, JoinConstraintPlan, JoinExecutorPlan,
-                JoinOperatorPlan, JoinPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan,
-                QueryPlan, SelectPlan, StatementPlan, TableFactorPlan, TableWithJoinsPlan,
+                JoinInputPlan, JoinOperatorPlan, JoinPlan, ProjectInputPlan, ProjectPlan,
+                ProjectionPlan, QueryPlan, StatementPlan, TableFactorPlan,
             },
             query_builder::{Build, SelectItemList, col, table, test_query_builder},
         },
@@ -221,6 +221,11 @@ mod tests {
             .build();
         let expected = {
             let join = JoinPlan {
+                input: JoinInputPlan::Relation(TableFactorPlan::Table {
+                    name: "Player".to_owned(),
+                    alias: None,
+                    index: None,
+                }),
                 relation: TableFactorPlan::Table {
                     name: "PlayerItem".to_owned(),
                     alias: None,
@@ -233,19 +238,9 @@ mod tests {
                     where_clause: None,
                 },
             };
-            let select = SelectPlan {
-                from: TableWithJoinsPlan {
-                    relation: TableFactorPlan::Table {
-                        name: "Player".to_owned(),
-                        alias: None,
-                        index: None,
-                    },
-                    joins: vec![join],
-                },
-            };
             let project = ProjectPlan {
                 input: ProjectInputPlan::Aggregation(AggregationPlan {
-                    input: AggregationInputPlan::Select(Box::new(select)),
+                    input: AggregationInputPlan::Join(Box::new(join)),
                     group_by: vec![col("PlayerItem.category").build_expr_plan().unwrap()],
                     aggregate_slots: Vec::new(),
                 }),

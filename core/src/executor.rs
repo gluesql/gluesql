@@ -6,7 +6,6 @@ mod execute;
 mod fetch;
 mod filter;
 mod insert;
-mod join;
 mod select;
 mod update;
 mod validate;

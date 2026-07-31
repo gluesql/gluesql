@@ -2,9 +2,9 @@ use {
     gluesql_core::{
         ast::*,
         plan::{
-            AggregationInputPlan, DistinctInputPlan, DistinctPlan, FilterPlan, IndexItemPlan,
-            LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan,
-            QueryPlan, SelectPlan, StatementPlan,
+            AggregationInputPlan, DistinctInputPlan, DistinctPlan, FilterInputPlan, FilterPlan,
+            IndexItemPlan, JoinInputPlan, JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan,
+            OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan, StatementPlan, TableFactorPlan,
         },
         prelude::{Glue, Payload, Result},
         store::{GStore, GStoreMut, Planner},
@@ -48,18 +48,28 @@ fn find_indexes(statement: &StatementPlan) -> Vec<&IndexItemPlan> {
         }
     }
 
-    fn find_select_indexes(select: &SelectPlan) -> Vec<&IndexItemPlan> {
-        match &select.from.relation {
-            gluesql_core::plan::TableFactorPlan::Table {
+    fn find_relation_indexes(relation: &TableFactorPlan) -> Vec<&IndexItemPlan> {
+        match relation {
+            TableFactorPlan::Table {
                 index: Some(index), ..
             } => vec![index],
             _ => vec![],
         }
     }
 
+    fn find_join_indexes(join: &JoinPlan) -> Vec<&IndexItemPlan> {
+        match &join.input {
+            JoinInputPlan::Relation(relation) => find_relation_indexes(relation),
+            JoinInputPlan::Join(join) => find_join_indexes(join),
+        }
+    }
+
     fn find_filter_indexes(filter: &FilterPlan) -> Vec<&IndexItemPlan> {
         [
-            find_select_indexes(&filter.input),
+            match &filter.input {
+                FilterInputPlan::Relation(relation) => find_relation_indexes(relation),
+                FilterInputPlan::Join(join) => find_join_indexes(join),
+            },
             find_expr_indexes(&filter.expr),
         ]
         .concat()
@@ -67,7 +77,8 @@ fn find_indexes(statement: &StatementPlan) -> Vec<&IndexItemPlan> {
 
     fn find_aggregation_input_indexes(input: &AggregationInputPlan) -> Vec<&IndexItemPlan> {
         match input {
-            AggregationInputPlan::Select(select) => find_select_indexes(select),
+            AggregationInputPlan::Relation(relation) => find_relation_indexes(relation),
+            AggregationInputPlan::Join(join) => find_join_indexes(join),
             AggregationInputPlan::Filter(filter) => find_filter_indexes(filter),
         }
     }
@@ -83,7 +94,8 @@ fn find_indexes(statement: &StatementPlan) -> Vec<&IndexItemPlan> {
 
     fn find_project_indexes(project: &ProjectPlan) -> Vec<&IndexItemPlan> {
         match &project.input {
-            ProjectInputPlan::Select(select) => find_select_indexes(select),
+            ProjectInputPlan::Relation(relation) => find_relation_indexes(relation),
+            ProjectInputPlan::Join(join) => find_join_indexes(join),
             ProjectInputPlan::Filter(filter) => find_filter_indexes(filter),
             ProjectInputPlan::Aggregation(aggregation) => {
                 find_aggregation_input_indexes(&aggregation.input)

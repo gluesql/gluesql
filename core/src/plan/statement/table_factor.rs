@@ -1,14 +1,8 @@
 use {
-    super::{ExprPlan, JoinPlan, QueryPlan},
+    super::{ExprPlan, QueryPlan},
     crate::ast,
     serde::{Deserialize, Serialize},
 };
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct TableWithJoinsPlan {
-    pub relation: TableFactorPlan,
-    pub joins: Vec<JoinPlan>,
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum IndexItemPlan {
@@ -76,17 +70,6 @@ impl TableFactorPlan {
         match self {
             Self::Table { index, .. } => index.as_ref(),
             Self::Derived { .. } | Self::Series { .. } | Self::Dictionary { .. } => None,
-        }
-    }
-}
-
-impl From<ast::TableWithJoins> for TableWithJoinsPlan {
-    fn from(table_with_joins: ast::TableWithJoins) -> Self {
-        let ast::TableWithJoins { relation, joins } = table_with_joins;
-
-        Self {
-            relation: relation.into(),
-            joins: joins.into_iter().map(Into::into).collect(),
         }
     }
 }

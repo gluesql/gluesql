@@ -6,24 +6,27 @@ mod limit;
 mod offset;
 mod order_by_expr;
 mod project;
-mod select;
+mod select_order_by;
 mod values;
 
 pub use {
     aggregation::{AggregationInputPlan, AggregationPlan},
     distinct::{DistinctInputPlan, DistinctPlan},
-    filter::FilterPlan,
+    filter::{FilterInputPlan, FilterPlan},
     having::HavingPlan,
     limit::{LimitInputPlan, LimitPlan},
     offset::{OffsetInputPlan, OffsetPlan},
     order_by_expr::OrderByExprPlan,
     project::{ProjectInputPlan, ProjectPlan},
-    select::{SelectOrderByPlan, SelectPlan},
+    select_order_by::SelectOrderByPlan,
     values::{ValuesOrderByPlan, ValuesPlan},
 };
 
 use {
-    crate::ast,
+    crate::{
+        ast,
+        plan::{JoinExecutorPlan, JoinInputPlan, JoinPlan},
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -59,13 +62,39 @@ impl From<ast::Query> for QueryPlan {
                     group_by,
                     having,
                 } = *select;
-                let select = Box::new(SelectPlan { from: from.into() });
+                let ast::TableWithJoins { relation, joins } = from;
+                let source = joins.into_iter().fold(
+                    JoinInputPlan::Relation(relation.into()),
+                    |input, join| {
+                        let ast::Join {
+                            relation,
+                            join_operator,
+                        } = join;
+
+                        JoinInputPlan::Join(Box::new(JoinPlan {
+                            input,
+                            relation: relation.into(),
+                            join_operator: join_operator.into(),
+                            join_executor: JoinExecutorPlan::NestedLoop,
+                        }))
+                    },
+                );
                 let input = match selection {
                     Some(expr) => AggregationInputPlan::Filter(FilterPlan {
-                        input: select,
+                        input: match source {
+                            JoinInputPlan::Relation(relation) => {
+                                FilterInputPlan::Relation(relation)
+                            }
+                            JoinInputPlan::Join(join) => FilterInputPlan::Join(join),
+                        },
                         expr: expr.into(),
                     }),
-                    None => AggregationInputPlan::Select(select),
+                    None => match source {
+                        JoinInputPlan::Relation(relation) => {
+                            AggregationInputPlan::Relation(relation)
+                        }
+                        JoinInputPlan::Join(join) => AggregationInputPlan::Join(join),
+                    },
                 };
                 let group_by = group_by.into_iter().map(Into::into).collect::<Vec<_>>();
                 let input = match having {
@@ -78,7 +107,10 @@ impl From<ast::Query> for QueryPlan {
                         expr: having.into(),
                     }),
                     None if group_by.is_empty() => match input {
-                        AggregationInputPlan::Select(select) => ProjectInputPlan::Select(select),
+                        AggregationInputPlan::Relation(relation) => {
+                            ProjectInputPlan::Relation(relation)
+                        }
+                        AggregationInputPlan::Join(join) => ProjectInputPlan::Join(join),
                         AggregationInputPlan::Filter(filter) => ProjectInputPlan::Filter(filter),
                     },
                     None => ProjectInputPlan::Aggregation(AggregationPlan {
@@ -290,12 +322,13 @@ mod tests {
             ProjectPlan, QueryPlan,
         },
         crate::{
-            ast::Literal,
+            ast::{BinaryOperator, Literal},
             data::Value,
             parse_sql::parse,
             plan::{
-                ExprPlan, ProjectionPlan, SelectItemPlan, SelectOrderByPlan, SelectPlan,
-                StatementPlan, TableFactorPlan, TableWithJoinsPlan, ValuesOrderByPlan,
+                ExprPlan, FilterInputPlan, JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan,
+                JoinOperatorPlan, JoinPlan, ProjectionPlan, SelectItemPlan, SelectOrderByPlan,
+                StatementPlan, TableFactorPlan, ValuesOrderByPlan,
             },
             translate::translate,
         },
@@ -309,22 +342,17 @@ mod tests {
             .unwrap()
     }
 
-    fn select_plan() -> Box<SelectPlan> {
-        Box::new(SelectPlan {
-            from: TableWithJoinsPlan {
-                relation: TableFactorPlan::Table {
-                    name: "Item".to_owned(),
-                    alias: None,
-                    index: None,
-                },
-                joins: Vec::new(),
-            },
-        })
+    fn relation_plan() -> TableFactorPlan {
+        TableFactorPlan::Table {
+            name: "Item".to_owned(),
+            alias: None,
+            index: None,
+        }
     }
 
     fn filter_plan() -> FilterPlan {
         FilterPlan {
-            input: select_plan(),
+            input: FilterInputPlan::Relation(relation_plan()),
             expr: ExprPlan::Identifier("active".to_owned()),
         }
     }
@@ -340,7 +368,7 @@ mod tests {
     fn query_plan_preserves_typed_select_aggregation_having_relations() {
         assert_eq!(
             statement_plan("SELECT * FROM Item"),
-            project_statement(ProjectInputPlan::Select(select_plan()))
+            project_statement(ProjectInputPlan::Relation(relation_plan()))
         );
         assert_eq!(
             statement_plan("SELECT * FROM Item WHERE active"),
@@ -349,7 +377,7 @@ mod tests {
         assert_eq!(
             statement_plan("SELECT * FROM Item GROUP BY category"),
             project_statement(ProjectInputPlan::Aggregation(AggregationPlan {
-                input: AggregationInputPlan::Select(select_plan()),
+                input: AggregationInputPlan::Relation(relation_plan()),
                 group_by: vec![ExprPlan::Identifier("category".to_owned())],
                 aggregate_slots: Vec::new(),
             }))
@@ -366,7 +394,7 @@ mod tests {
             statement_plan("SELECT * FROM Item GROUP BY category HAVING TRUE"),
             project_statement(ProjectInputPlan::Having(HavingPlan {
                 input: AggregationPlan {
-                    input: AggregationInputPlan::Select(select_plan()),
+                    input: AggregationInputPlan::Relation(relation_plan()),
                     group_by: vec![ExprPlan::Identifier("category".to_owned())],
                     aggregate_slots: Vec::new(),
                 },
@@ -388,7 +416,7 @@ mod tests {
             statement_plan("SELECT * FROM Item HAVING TRUE"),
             project_statement(ProjectInputPlan::Having(HavingPlan {
                 input: AggregationPlan {
-                    input: AggregationInputPlan::Select(select_plan()),
+                    input: AggregationInputPlan::Relation(relation_plan()),
                     group_by: Vec::new(),
                     aggregate_slots: Vec::new(),
                 },
@@ -434,6 +462,47 @@ mod tests {
             input: LimitInputPlan::Offset(offset),
             count: ExprPlan::Literal(Literal::Number(3.into())),
         }));
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn query_plan_builds_left_deep_join_pipeline() {
+        let actual = statement_plan("SELECT * FROM A JOIN B ON A.id = B.a_id LEFT JOIN C");
+        let first_join = JoinPlan {
+            input: JoinInputPlan::Relation(TableFactorPlan::Table {
+                name: "A".to_owned(),
+                alias: None,
+                index: None,
+            }),
+            relation: TableFactorPlan::Table {
+                name: "B".to_owned(),
+                alias: None,
+                index: None,
+            },
+            join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::On(ExprPlan::BinaryOp {
+                left: Box::new(ExprPlan::CompoundIdentifier {
+                    alias: "A".to_owned(),
+                    ident: "id".to_owned(),
+                }),
+                op: BinaryOperator::Eq,
+                right: Box::new(ExprPlan::CompoundIdentifier {
+                    alias: "B".to_owned(),
+                    ident: "a_id".to_owned(),
+                }),
+            })),
+            join_executor: JoinExecutorPlan::NestedLoop,
+        };
+        let expected = project_statement(ProjectInputPlan::Join(Box::new(JoinPlan {
+            input: JoinInputPlan::Join(Box::new(first_join)),
+            relation: TableFactorPlan::Table {
+                name: "C".to_owned(),
+                alias: None,
+                index: None,
+            },
+            join_operator: JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None),
+            join_executor: JoinExecutorPlan::NestedLoop,
+        })));
 
         assert_eq!(actual, expected);
     }

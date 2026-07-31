@@ -10,15 +10,15 @@ pub use {
     expr::{
         AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan, FunctionExprPlan,
     },
-    join::{JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan},
+    join::{JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan, JoinPlan},
     projection::{ProjectionPlan, SelectItemPlan},
     query::{
-        AggregationInputPlan, AggregationPlan, DistinctInputPlan, DistinctPlan, FilterPlan,
-        HavingPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan,
-        ProjectInputPlan, ProjectPlan, QueryPlan, SelectOrderByPlan, SelectPlan, ValuesOrderByPlan,
-        ValuesPlan,
+        AggregationInputPlan, AggregationPlan, DistinctInputPlan, DistinctPlan, FilterInputPlan,
+        FilterPlan, HavingPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
+        OrderByExprPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SelectOrderByPlan,
+        ValuesOrderByPlan, ValuesPlan,
     },
-    table_factor::{IndexItemPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan},
+    table_factor::{IndexItemPlan, TableAliasPlan, TableFactorPlan},
 };
 
 use {

@@ -1,12 +1,13 @@
 use {
-    super::{AggregationPlan, FilterPlan, HavingPlan, SelectPlan},
-    crate::plan::ProjectionPlan,
+    super::{AggregationPlan, FilterPlan, HavingPlan},
+    crate::plan::{JoinPlan, ProjectionPlan, TableFactorPlan},
     serde::{Deserialize, Serialize},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ProjectInputPlan {
-    Select(Box<SelectPlan>),
+    Relation(TableFactorPlan),
+    Join(Box<JoinPlan>),
     Filter(FilterPlan),
     Aggregation(AggregationPlan),
     Having(HavingPlan),
@@ -25,58 +26,70 @@ mod tests {
         crate::{
             data::Value,
             plan::{
-                AggregationInputPlan, AggregationPlan, ExprPlan, FilterPlan, HavingPlan,
-                ProjectionPlan, SelectItemPlan, SelectPlan, TableFactorPlan, TableWithJoinsPlan,
+                AggregationInputPlan, AggregationPlan, ExprPlan, FilterInputPlan, FilterPlan,
+                HavingPlan, JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan,
+                JoinPlan, ProjectionPlan, TableFactorPlan,
             },
         },
         pretty_assertions::assert_eq,
     };
 
-    fn select_plan() -> SelectPlan {
-        SelectPlan {
-            from: TableWithJoinsPlan {
-                relation: TableFactorPlan::Table {
-                    name: "Item".to_owned(),
-                    alias: None,
-                    index: None,
-                },
-                joins: Vec::new(),
-            },
-        }
-    }
-
-    fn aggregation_plan() -> AggregationPlan {
-        AggregationPlan {
-            input: AggregationInputPlan::Select(Box::new(select_plan())),
-            group_by: vec![ExprPlan::Identifier("category".to_owned())],
-            aggregate_slots: Vec::new(),
+    fn table(name: &str) -> TableFactorPlan {
+        TableFactorPlan::Table {
+            name: name.to_owned(),
+            alias: None,
+            index: None,
         }
     }
 
     #[test]
-    fn project_accepts_select_aggregation_and_having_inputs() {
-        let projection = ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]);
-        let inputs = [
-            ProjectInputPlan::Select(Box::new(select_plan())),
-            ProjectInputPlan::Filter(FilterPlan {
-                input: Box::new(select_plan()),
-                expr: ExprPlan::Value(Value::Bool(true)),
-            }),
-            ProjectInputPlan::Aggregation(aggregation_plan()),
-            ProjectInputPlan::Having(HavingPlan {
-                input: aggregation_plan(),
-                expr: ExprPlan::Value(Value::Bool(true)),
-            }),
-        ];
+    fn project_accepts_each_typed_source_input() {
+        let join = JoinPlan {
+            input: JoinInputPlan::Relation(table("A")),
+            relation: table("B"),
+            join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
+            join_executor: JoinExecutorPlan::NestedLoop,
+        };
+        let filter = FilterPlan {
+            input: FilterInputPlan::Join(Box::new(join.clone())),
+            expr: ExprPlan::Value(Value::Bool(true)),
+        };
+        let aggregation = AggregationPlan {
+            input: AggregationInputPlan::Filter(filter.clone()),
+            group_by: Vec::new(),
+            aggregate_slots: Vec::new(),
+        };
+        let having_plan = HavingPlan {
+            input: aggregation.clone(),
+            expr: ExprPlan::Value(Value::Bool(true)),
+        };
+        let projection = ProjectionPlan::SelectItems(Vec::new());
 
-        for input in inputs {
-            let project = ProjectPlan {
-                input: input.clone(),
-                projection: projection.clone(),
-            };
+        let relation = ProjectPlan {
+            input: ProjectInputPlan::Relation(table("A")),
+            projection: projection.clone(),
+        };
+        let joined = ProjectPlan {
+            input: ProjectInputPlan::Join(Box::new(join.clone())),
+            projection: projection.clone(),
+        };
+        let filtered = ProjectPlan {
+            input: ProjectInputPlan::Filter(filter.clone()),
+            projection: projection.clone(),
+        };
+        let aggregated = ProjectPlan {
+            input: ProjectInputPlan::Aggregation(aggregation.clone()),
+            projection: projection.clone(),
+        };
+        let having = ProjectPlan {
+            input: ProjectInputPlan::Having(having_plan.clone()),
+            projection,
+        };
 
-            assert_eq!(project.input, input);
-            assert_eq!(project.projection, projection);
-        }
+        assert_eq!(relation.input, ProjectInputPlan::Relation(table("A")));
+        assert_eq!(joined.input, ProjectInputPlan::Join(Box::new(join)));
+        assert_eq!(filtered.input, ProjectInputPlan::Filter(filter));
+        assert_eq!(aggregated.input, ProjectInputPlan::Aggregation(aggregation));
+        assert_eq!(having.input, ProjectInputPlan::Having(having_plan));
     }
 }

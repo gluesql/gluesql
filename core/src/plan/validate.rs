@@ -3,10 +3,10 @@ use {
     crate::{
         data::Schema,
         plan::{
-            AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, JoinPlan,
-            LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan,
-            ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan, StatementPlan, TableFactorPlan,
-            TableWithJoinsPlan,
+            AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
+            JoinInputPlan, JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
+            ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
+            StatementPlan, TableFactorPlan,
         },
         result::Result,
     },
@@ -116,22 +116,7 @@ fn contextualize_query<'a>(
     schema_map: &'a SchemaMap,
     query: &'a QueryPlan,
 ) -> Option<Rc<Context<'a>>> {
-    query_project(query).and_then(|project| {
-        let select = match &project.input {
-            ProjectInputPlan::Select(select) => select.as_ref(),
-            ProjectInputPlan::Filter(filter) => filter.input.as_ref(),
-            ProjectInputPlan::Aggregation(aggregation) => match &aggregation.input {
-                AggregationInputPlan::Select(select) => select.as_ref(),
-                AggregationInputPlan::Filter(filter) => filter.input.as_ref(),
-            },
-            ProjectInputPlan::Having(having) => match &having.input.input {
-                AggregationInputPlan::Select(select) => select.as_ref(),
-                AggregationInputPlan::Filter(filter) => filter.input.as_ref(),
-            },
-        };
-
-        contextualize_select(schema_map, select)
-    })
+    query_project(query).and_then(|project| contextualize_project_input(schema_map, &project.input))
 }
 
 fn offset_project(offset: &OffsetPlan) -> Option<&ProjectPlan> {
@@ -167,18 +152,59 @@ fn query_project(query: &QueryPlan) -> Option<&ProjectPlan> {
     }
 }
 
-fn contextualize_select<'a>(
+fn contextualize_project_input<'a>(
     schema_map: &'a SchemaMap,
-    select: &'a SelectPlan,
+    input: &'a ProjectInputPlan,
 ) -> Option<Rc<Context<'a>>> {
-    let TableWithJoinsPlan { relation, joins } = &select.from;
-    let by_table = contextualize_table_factor(schema_map, relation);
-    let by_joins = joins
-        .iter()
-        .map(|JoinPlan { relation, .. }| contextualize_table_factor(schema_map, relation))
-        .fold(None, Context::concat);
+    match input {
+        ProjectInputPlan::Relation(relation) => contextualize_table_factor(schema_map, relation),
+        ProjectInputPlan::Join(join) => contextualize_join(schema_map, join),
+        ProjectInputPlan::Filter(filter) => contextualize_filter_input(schema_map, &filter.input),
+        ProjectInputPlan::Aggregation(aggregation) => {
+            contextualize_aggregation_input(schema_map, &aggregation.input)
+        }
+        ProjectInputPlan::Having(having) => {
+            contextualize_aggregation_input(schema_map, &having.input.input)
+        }
+    }
+}
 
-    Context::concat(by_table, by_joins)
+fn contextualize_aggregation_input<'a>(
+    schema_map: &'a SchemaMap,
+    input: &'a AggregationInputPlan,
+) -> Option<Rc<Context<'a>>> {
+    match input {
+        AggregationInputPlan::Relation(relation) => {
+            contextualize_table_factor(schema_map, relation)
+        }
+        AggregationInputPlan::Join(join) => contextualize_join(schema_map, join),
+        AggregationInputPlan::Filter(filter) => {
+            contextualize_filter_input(schema_map, &filter.input)
+        }
+    }
+}
+
+fn contextualize_filter_input<'a>(
+    schema_map: &'a SchemaMap,
+    input: &'a FilterInputPlan,
+) -> Option<Rc<Context<'a>>> {
+    match input {
+        FilterInputPlan::Relation(relation) => contextualize_table_factor(schema_map, relation),
+        FilterInputPlan::Join(join) => contextualize_join(schema_map, join),
+    }
+}
+
+fn contextualize_join<'a>(
+    schema_map: &'a SchemaMap,
+    join: &'a JoinPlan,
+) -> Option<Rc<Context<'a>>> {
+    let input = match &join.input {
+        JoinInputPlan::Relation(relation) => contextualize_table_factor(schema_map, relation),
+        JoinInputPlan::Join(join) => contextualize_join(schema_map, join),
+    };
+    let relation = contextualize_table_factor(schema_map, &join.relation);
+
+    Context::concat(input, relation)
 }
 
 fn contextualize_table_factor<'a>(

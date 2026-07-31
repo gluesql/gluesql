@@ -1,11 +1,16 @@
 use {
-    super::fetch::{fetch_relation_columns, fetch_relation_rows},
+    super::{SelectedRows, table_factor_node},
     crate::{
         data::{Key, Row, Value},
-        executor::{context::RowContext, evaluate::evaluate, filter::check_expr},
+        executor::{
+            context::RowContext,
+            evaluate::evaluate,
+            fetch::{fetch_relation_columns, fetch_relation_rows},
+            filter::check_expr,
+        },
         plan::{
-            ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan,
-            TableFactorPlan,
+            ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan,
+            JoinPlan, TableFactorPlan,
         },
         result::Result,
         store::GStore,
@@ -14,24 +19,16 @@ use {
     std::{borrow::Cow, collections::HashMap, rc::Rc},
 };
 
-pub struct Join<'a, T: GStore> {
-    storage: &'a T,
-    join_clauses: &'a [JoinPlan],
-    filter_context: Option<Rc<RowContext<'a>>>,
-}
-
 type JoinItem<'a> = Rc<RowContext<'a>>;
-type Joined<'a> = Box<dyn Iterator<Item = Result<JoinItem<'a>>> + 'a>;
-type JoinInput<'a> = Box<dyn Iterator<Item = Result<RowContext<'a>>> + 'a>;
 
 struct LeftOuter<'a> {
-    rows: Joined<'a>,
+    rows: SelectedRows<'a>,
     init: Option<JoinItem<'a>>,
     matched: bool,
 }
 
 impl<'a> LeftOuter<'a> {
-    fn new(rows: Joined<'a>, init: JoinItem<'a>) -> Self {
+    fn new(rows: SelectedRows<'a>, init: JoinItem<'a>) -> Self {
         Self {
             rows,
             init: Some(init),
@@ -55,45 +52,30 @@ impl<'a> Iterator for LeftOuter<'a> {
     }
 }
 
-impl<'a, T: GStore> Join<'a, T> {
-    pub fn new(
-        storage: &'a T,
-        join_clauses: &'a [JoinPlan],
-        filter_context: Option<Rc<RowContext<'a>>>,
-    ) -> Self {
-        Self {
-            storage,
-            join_clauses,
-            filter_context,
-        }
-    }
+pub(super) fn execute<'a, T: GStore>(
+    storage: &'a T,
+    plan: &'a JoinPlan,
+    filter_context: Option<&Rc<RowContext<'a>>>,
+) -> Result<SelectedRows<'a>> {
+    let rows = match &plan.input {
+        JoinInputPlan::Relation(relation) => table_factor_node::execute(storage, relation)?,
+        JoinInputPlan::Join(join) => execute(storage, join, filter_context)?,
+    };
 
-    pub fn apply(self, rows: JoinInput<'a>) -> Result<Joined<'a>> {
-        let mut rows: Joined = Box::new(rows.map(|row| row.map(Rc::new)));
-
-        for join_clause in self.join_clauses {
-            rows = join(
-                self.storage,
-                self.filter_context.as_ref().map(Rc::clone),
-                join_clause,
-                rows,
-            )?;
-        }
-
-        Ok(rows)
-    }
+    join(storage, filter_context.cloned(), plan, rows)
 }
 
 fn join<'a, T: GStore>(
     storage: &'a T,
     filter_context: Option<Rc<RowContext<'a>>>,
     join_plan: &'a JoinPlan,
-    left_rows: Joined<'a>,
-) -> Result<Joined<'a>> {
+    left_rows: SelectedRows<'a>,
+) -> Result<SelectedRows<'a>> {
     let JoinPlan {
         relation,
         join_operator,
         join_executor,
+        ..
     } = join_plan;
 
     let table_alias = relation.alias_name();
@@ -115,7 +97,7 @@ fn join<'a, T: GStore>(
     let rows = left_rows.flat_map(move |project_context| {
         let project_context = match project_context {
             Ok(project_context) => project_context,
-            Err(error) => return Box::new(std::iter::once(Err(error))) as Joined<'a>,
+            Err(error) => return Box::new(std::iter::once(Err(error))) as SelectedRows<'a>,
         };
 
         let init_context = {
@@ -141,12 +123,14 @@ fn join<'a, T: GStore>(
         };
         let row_filter_context = Some(row_filter_context);
 
-        let rows: Joined<'a> = match &join_executor {
+        let rows: SelectedRows<'a> = match &join_executor {
             JoinExecutor::NestedLoop => {
                 let rows = match fetch_relation_rows(storage, relation, row_filter_context.as_ref())
                 {
                     Ok(rows) => rows,
-                    Err(error) => return Box::new(std::iter::once(Err(error))) as Joined<'a>,
+                    Err(error) => {
+                        return Box::new(std::iter::once(Err(error))) as SelectedRows<'a>;
+                    }
                 };
                 Box::new(rows.filter_map(move |row| {
                     let row = match row {
@@ -177,7 +161,9 @@ fn join<'a, T: GStore>(
                         Key::try_from(evaluated).map(|hash_key| rows_map.get(&hash_key))
                     }) {
                     Ok(rows) => rows,
-                    Err(error) => return Box::new(std::iter::once(Err(error))) as Joined<'a>,
+                    Err(error) => {
+                        return Box::new(std::iter::once(Err(error))) as SelectedRows<'a>;
+                    }
                 };
 
                 match rows {

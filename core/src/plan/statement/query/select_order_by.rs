@@ -1,13 +1,8 @@
 use {
     super::ProjectPlan,
-    crate::plan::{OrderByExprPlan, TableWithJoinsPlan},
+    crate::plan::OrderByExprPlan,
     serde::{Deserialize, Serialize},
 };
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct SelectPlan {
-    pub from: TableWithJoinsPlan,
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct SelectOrderByPlan {

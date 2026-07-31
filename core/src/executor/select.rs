@@ -3,12 +3,13 @@ mod distinct_node;
 mod error;
 mod filter_node;
 mod having_node;
+mod join_node;
 mod limit_node;
 mod offset_node;
 mod order_by;
 mod project_node;
-mod select_node;
 mod select_order_by_node;
+mod table_factor_node;
 mod values_node;
 mod values_order_by_node;
 
@@ -21,6 +22,7 @@ use {
 pub use {error::SelectError, select_order_by_node::SortError};
 
 pub type SelectIter<'a> = Box<dyn Iterator<Item = Result<Row>> + 'a>;
+type SelectedRows<'a> = Box<dyn Iterator<Item = Result<Rc<RowContext<'a>>>> + 'a>;
 
 struct LabeledRows<'a> {
     labels: Vec<String>,

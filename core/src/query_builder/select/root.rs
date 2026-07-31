@@ -1,10 +1,12 @@
 use {
-    super::{BuildSelect, BuildSelectPlan, DistinctNode, join::JoinOperatorType},
+    super::{
+        BuildJoinInputPlan, BuildSelect, BuildTableFactorPlan, DistinctNode, join::JoinOperatorType,
+    },
     crate::{
         ast::{
             Expr, Literal, Projection, Select, SelectItem, TableAlias, TableFactor, TableWithJoins,
         },
-        plan::{SelectPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan},
+        plan::{JoinInputPlan, TableAliasPlan, TableFactorPlan},
         query_builder::{
             ExprList, ExprNode, FilterNode, GroupByNode, HavingNode, JoinNode, LimitNode,
             OffsetNode, OrderByExprList, ProjectNode, QueryBuilderError, QueryNode, SelectItemList,
@@ -98,8 +100,8 @@ impl<'a> SelectNode<'a> {
     }
 }
 
-impl BuildSelectPlan for SelectNode<'_> {
-    fn build_select_plan(self) -> Result<SelectPlan> {
+impl BuildTableFactorPlan for SelectNode<'_> {
+    fn build_table_factor_plan(self) -> Result<TableFactorPlan> {
         let alias = self.table_node.table_alias.map(|name| TableAliasPlan {
             name,
             columns: Vec::new(),
@@ -133,12 +135,13 @@ impl BuildSelectPlan for SelectNode<'_> {
             },
         };
 
-        let from = TableWithJoinsPlan {
-            relation,
-            joins: Vec::new(),
-        };
+        Ok(relation)
+    }
+}
 
-        Ok(SelectPlan { from })
+impl BuildJoinInputPlan for SelectNode<'_> {
+    fn build_join_input_plan(self) -> Result<JoinInputPlan> {
+        self.build_table_factor_plan().map(JoinInputPlan::Relation)
     }
 }
 

@@ -4,10 +4,10 @@ use {
         ast::{BinaryOperator, IndexOperator},
         data::{Schema, SchemaIndex, SchemaIndexOrd, Value},
         plan::{
-            AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterPlan,
-            IndexItemPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan,
-            ProjectInputPlan, ProjectPlan, QueryPlan, SelectOrderByPlan, SelectPlan, StatementPlan,
-            TableFactorPlan,
+            AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
+            FilterPlan, IndexItemPlan, JoinInputPlan, JoinPlan, LimitInputPlan, LimitPlan,
+            OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan, ProjectPlan, QueryPlan,
+            SelectOrderByPlan, StatementPlan, TableFactorPlan,
             expr::{deterministic::is_deterministic, nullability::may_return_null},
             plan_scalar_expr,
         },
@@ -158,19 +158,39 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
         order_by: Vec<OrderByExprPlan>,
     ) -> (ProjectPlan, Vec<OrderByExprPlan>) {
         let (input, order_by) = match project.input {
-            ProjectInputPlan::Select(select) => {
-                let (select, _, order_by) = self.select(outer_context, *select, None, order_by);
-                (ProjectInputPlan::Select(Box::new(select)), order_by)
+            ProjectInputPlan::Relation(relation) => {
+                let source = FilterInputPlan::Relation(relation);
+                let (source, _, order_by) = self.source(outer_context, source, None, order_by);
+                let input = match source {
+                    FilterInputPlan::Relation(relation) => ProjectInputPlan::Relation(relation),
+                    FilterInputPlan::Join(join) => ProjectInputPlan::Join(join),
+                };
+                (input, order_by)
             }
-            ProjectInputPlan::Filter(FilterPlan { input, expr }) => {
-                let (select, expr, order_by) =
-                    self.select(outer_context, *input, Some(expr), order_by);
+            ProjectInputPlan::Join(join) => {
+                let source = FilterInputPlan::Join(join);
+                let (source, _, order_by) = self.source(outer_context, source, None, order_by);
+                let input = match source {
+                    FilterInputPlan::Relation(relation) => ProjectInputPlan::Relation(relation),
+                    FilterInputPlan::Join(join) => ProjectInputPlan::Join(join),
+                };
+                (input, order_by)
+            }
+            ProjectInputPlan::Filter(FilterPlan {
+                input: source,
+                expr,
+            }) => {
+                let (source, expr, order_by) =
+                    self.source(outer_context, source, Some(expr), order_by);
                 let input = match expr {
                     Some(expr) => ProjectInputPlan::Filter(FilterPlan {
-                        input: Box::new(select),
+                        input: source,
                         expr,
                     }),
-                    None => ProjectInputPlan::Select(Box::new(select)),
+                    None => match source {
+                        FilterInputPlan::Relation(relation) => ProjectInputPlan::Relation(relation),
+                        FilterInputPlan::Join(join) => ProjectInputPlan::Join(join),
+                    },
                 };
 
                 (input, order_by)
@@ -200,19 +220,41 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
         order_by: Vec<OrderByExprPlan>,
     ) -> (AggregationInputPlan, Vec<OrderByExprPlan>) {
         match input {
-            AggregationInputPlan::Select(select) => {
-                let (select, _, order_by) = self.select(outer_context, *select, None, order_by);
-                (AggregationInputPlan::Select(Box::new(select)), order_by)
+            AggregationInputPlan::Relation(relation) => {
+                let source = FilterInputPlan::Relation(relation);
+                let (source, _, order_by) = self.source(outer_context, source, None, order_by);
+                let input = match source {
+                    FilterInputPlan::Relation(relation) => AggregationInputPlan::Relation(relation),
+                    FilterInputPlan::Join(join) => AggregationInputPlan::Join(join),
+                };
+                (input, order_by)
             }
-            AggregationInputPlan::Filter(FilterPlan { input, expr }) => {
-                let (select, expr, order_by) =
-                    self.select(outer_context, *input, Some(expr), order_by);
+            AggregationInputPlan::Join(join) => {
+                let source = FilterInputPlan::Join(join);
+                let (source, _, order_by) = self.source(outer_context, source, None, order_by);
+                let input = match source {
+                    FilterInputPlan::Relation(relation) => AggregationInputPlan::Relation(relation),
+                    FilterInputPlan::Join(join) => AggregationInputPlan::Join(join),
+                };
+                (input, order_by)
+            }
+            AggregationInputPlan::Filter(FilterPlan {
+                input: source,
+                expr,
+            }) => {
+                let (source, expr, order_by) =
+                    self.source(outer_context, source, Some(expr), order_by);
                 let input = match expr {
                     Some(expr) => AggregationInputPlan::Filter(FilterPlan {
-                        input: Box::new(select),
+                        input: source,
                         expr,
                     }),
-                    None => AggregationInputPlan::Select(Box::new(select)),
+                    None => match source {
+                        FilterInputPlan::Relation(relation) => {
+                            AggregationInputPlan::Relation(relation)
+                        }
+                        FilterInputPlan::Join(join) => AggregationInputPlan::Join(join),
+                    },
                 };
 
                 (input, order_by)
@@ -220,19 +262,17 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
         }
     }
 
-    fn select(
+    fn source(
         &self,
         outer_context: Option<&Rc<Context<'a>>>,
-        select: SelectPlan,
+        mut input: FilterInputPlan,
         filter_expr: Option<ExprPlan>,
         mut order_by: Vec<OrderByExprPlan>,
-    ) -> (SelectPlan, Option<ExprPlan>, Vec<OrderByExprPlan>) {
-        let SelectPlan { mut from } = select;
-
-        let indexes = self.indexes(&from.relation);
+    ) -> (FilterInputPlan, Option<ExprPlan>, Vec<OrderByExprPlan>) {
+        let indexes = self.indexes(Self::base_relation(&input));
 
         if let (Some(indexes), Some(order_expr)) = (indexes.as_ref(), order_by.last())
-            && let TableFactorPlan::Table { index, .. } = &mut from.relation
+            && let TableFactorPlan::Table { index, .. } = Self::base_relation_mut(&mut input)
             && index.is_none()
             && let Some(index_name) = indexes.find_ordered(order_expr)
         {
@@ -243,12 +283,12 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
             });
             order_by.pop();
 
-            return (SelectPlan { from }, filter_expr, order_by);
+            return (input, filter_expr, order_by);
         }
 
         let filter_expr = filter_expr.and_then(|expr| {
             if let (Some(indexes), TableFactorPlan::Table { index: None, .. }) =
-                (indexes.as_ref(), &from.relation)
+                (indexes.as_ref(), Self::base_relation(&input))
             {
                 match self.plan_index_expr(outer_context.map(Rc::clone), indexes, expr) {
                     Planned::IndexedExpr {
@@ -257,7 +297,9 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                         index_value_expr,
                         residual,
                     } => {
-                        if let TableFactorPlan::Table { index, .. } = &mut from.relation {
+                        if let TableFactorPlan::Table { index, .. } =
+                            Self::base_relation_mut(&mut input)
+                        {
                             *index = Some(IndexItemPlan::NonClustered {
                                 name: index_name,
                                 asc: None,
@@ -274,7 +316,35 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
             }
         });
 
-        (SelectPlan { from }, filter_expr, order_by)
+        (input, filter_expr, order_by)
+    }
+
+    fn base_relation(input: &FilterInputPlan) -> &TableFactorPlan {
+        match input {
+            FilterInputPlan::Relation(relation) => relation,
+            FilterInputPlan::Join(join) => Self::join_base_relation(join),
+        }
+    }
+
+    fn join_base_relation(join: &JoinPlan) -> &TableFactorPlan {
+        match &join.input {
+            JoinInputPlan::Relation(relation) => relation,
+            JoinInputPlan::Join(join) => Self::join_base_relation(join),
+        }
+    }
+
+    fn base_relation_mut(input: &mut FilterInputPlan) -> &mut TableFactorPlan {
+        match input {
+            FilterInputPlan::Relation(relation) => relation,
+            FilterInputPlan::Join(join) => Self::join_base_relation_mut(join),
+        }
+    }
+
+    fn join_base_relation_mut(join: &mut JoinPlan) -> &mut TableFactorPlan {
+        match &mut join.input {
+            JoinInputPlan::Relation(relation) => relation,
+            JoinInputPlan::Join(join) => Self::join_base_relation_mut(join),
+        }
     }
 
     fn plan_index_expr(

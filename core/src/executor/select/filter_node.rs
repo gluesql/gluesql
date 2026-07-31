@@ -1,8 +1,8 @@
 use {
-    super::select_node::{self, SelectedRows},
+    super::{SelectedRows, join_node, table_factor_node},
     crate::{
         executor::{context::RowContext, filter::check_expr},
-        plan::FilterPlan,
+        plan::{FilterInputPlan, FilterPlan},
         result::Result,
         store::GStore,
     },
@@ -18,7 +18,10 @@ where
     T: GStore,
 {
     let FilterPlan { input, expr } = plan;
-    let rows = select_node::execute(storage, input, filter_context)?;
+    let rows = match input {
+        FilterInputPlan::Relation(relation) => table_factor_node::execute(storage, relation)?,
+        FilterInputPlan::Join(join) => join_node::execute(storage, join, filter_context)?,
+    };
     let filter_context = filter_context.cloned();
     let rows = rows.filter_map(move |context| {
         let context = match context {

@@ -3,14 +3,14 @@ use {
     crate::{
         ast::{Expr, Join, Select, TableAlias, TableFactor},
         plan::{
-            JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, SelectPlan,
-            TableAliasPlan, TableFactorPlan,
+            JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, TableAliasPlan,
+            TableFactorPlan,
         },
         query_builder::{
             DistinctNode, ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode,
             JoinConstraintNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryNode,
             SelectItemList, SelectNode, SelectOrderByNode, TableFactorNode,
-            select::{BuildSelect, BuildSelectPlan},
+            select::{BuildJoinInputPlan, BuildJoinPlan, BuildSelect},
         },
         result::Result,
     },
@@ -24,13 +24,13 @@ pub(in crate::query_builder::select) enum PrevNode<'a> {
     HashJoin(Box<HashJoinNode<'a>>),
 }
 
-impl BuildSelectPlan for PrevNode<'_> {
-    fn build_select_plan(self) -> Result<SelectPlan> {
+impl BuildJoinInputPlan for PrevNode<'_> {
+    fn build_join_input_plan(self) -> Result<crate::plan::JoinInputPlan> {
         match self {
-            Self::Select(node) => node.build_select_plan(),
-            Self::Join(node) => node.build_select_plan(),
-            Self::JoinConstraint(node) => node.build_select_plan(),
-            Self::HashJoin(node) => node.build_select_plan(),
+            Self::Select(node) => node.build_join_input_plan(),
+            Self::Join(node) => node.build_join_input_plan(),
+            Self::JoinConstraint(node) => node.build_join_input_plan(),
+            Self::HashJoin(node) => node.build_join_input_plan(),
         }
     }
 }
@@ -195,20 +195,19 @@ impl<'a> JoinNode<'a> {
         QueryNode::JoinNode(self).alias_as(table_alias)
     }
 
-    pub(super) fn build_select_plan_with_constraint(
+    pub(super) fn build_join_plan_with_constraint(
         self,
         constraint: JoinConstraintPlan,
-    ) -> Result<SelectPlan> {
+    ) -> Result<JoinPlan> {
         let relation = self.build_table_factor_plan();
-        let mut select = self.prev_node.build_select_plan()?;
+        let input = self.prev_node.build_join_input_plan()?;
 
-        select.from.joins.push(JoinPlan {
+        Ok(JoinPlan {
+            input,
             relation,
             join_operator: join_operator_plan_with_constraint(self.join_operator_type, constraint),
             join_executor: JoinExecutorPlan::NestedLoop,
-        });
-
-        Ok(select)
+        })
     }
 
     pub(super) fn build_select_with_constraint(self, constraint: Expr) -> Result<Select> {
@@ -226,30 +225,41 @@ impl<'a> JoinNode<'a> {
     pub(super) fn build_join_plan_parts_with_constraint(
         self,
         constraint: JoinConstraintPlan,
-    ) -> Result<(SelectPlan, TableFactorPlan, JoinOperatorPlan)> {
+    ) -> Result<(
+        crate::plan::JoinInputPlan,
+        TableFactorPlan,
+        JoinOperatorPlan,
+    )> {
         let relation = self.build_table_factor_plan();
-        let select = self.prev_node.build_select_plan()?;
+        let input = self.prev_node.build_join_input_plan()?;
         let join_operator = join_operator_plan_with_constraint(self.join_operator_type, constraint);
 
-        Ok((select, relation, join_operator))
+        Ok((input, relation, join_operator))
     }
 }
 
-impl BuildSelectPlan for JoinNode<'_> {
-    fn build_select_plan(self) -> Result<SelectPlan> {
+impl BuildJoinPlan for JoinNode<'_> {
+    fn build_join_plan(self) -> Result<JoinPlan> {
         let relation = self.build_table_factor_plan();
-        let mut select = self.prev_node.build_select_plan()?;
+        let input = self.prev_node.build_join_input_plan()?;
 
-        select.from.joins.push(JoinPlan {
+        Ok(JoinPlan {
+            input,
             relation,
             join_operator: join_operator_plan_with_constraint(
                 self.join_operator_type,
                 JoinConstraintPlan::None,
             ),
             join_executor: JoinExecutorPlan::NestedLoop,
-        });
+        })
+    }
+}
 
-        Ok(select)
+impl BuildJoinInputPlan for JoinNode<'_> {
+    fn build_join_input_plan(self) -> Result<crate::plan::JoinInputPlan> {
+        self.build_join_plan()
+            .map(Box::new)
+            .map(crate::plan::JoinInputPlan::Join)
     }
 }
 
@@ -605,15 +615,26 @@ mod tests {
     fn hash_join() {
         use crate::{
             plan::{
-                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectInputPlan,
-                ProjectPlan, ProjectionPlan, QueryPlan, SelectPlan, StatementPlan, TableAliasPlan,
-                TableFactorPlan, TableWithJoinsPlan,
+                JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan, JoinPlan,
+                ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, StatementPlan,
+                TableAliasPlan, TableFactorPlan,
             },
             query_builder::{SelectItemList, col},
         };
 
-        let gen_expected = |other_join| {
-            let join = JoinPlan {
+        let actual = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .join("OtherItem")
+            .build();
+        let expected = {
+            let first_join = JoinPlan {
+                input: JoinInputPlan::Relation(TableFactorPlan::Table {
+                    name: "Player".to_owned(),
+                    alias: None,
+                    index: None,
+                }),
                 relation: TableFactorPlan::Table {
                     name: "PlayerItem".to_owned(),
                     alias: None,
@@ -626,34 +647,8 @@ mod tests {
                     where_clause: None,
                 },
             };
-            let select = SelectPlan {
-                from: TableWithJoinsPlan {
-                    relation: TableFactorPlan::Table {
-                        name: "Player".to_owned(),
-                        alias: None,
-                        index: None,
-                    },
-                    joins: vec![join, other_join],
-                },
-            };
-            let project = ProjectPlan {
-                input: ProjectInputPlan::Select(Box::new(select)),
-                projection: ProjectionPlan::SelectItems(
-                    SelectItemList::from("*").build_select_items_plan().unwrap(),
-                ),
-            };
-
-            Ok(StatementPlan::Query(QueryPlan::Project(project)))
-        };
-
-        let actual = table("Player")
-            .select()
-            .join("PlayerItem")
-            .hash_executor("PlayerItem.user_id", "Player.id")
-            .join("OtherItem")
-            .build();
-        let expected = {
-            let other_join = JoinPlan {
+            let join = JoinPlan {
+                input: JoinInputPlan::Join(Box::new(first_join)),
                 relation: TableFactorPlan::Table {
                     name: "OtherItem".to_owned(),
                     alias: None,
@@ -662,8 +657,14 @@ mod tests {
                 join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
                 join_executor: JoinExecutorPlan::NestedLoop,
             };
+            let project = ProjectPlan {
+                input: ProjectInputPlan::Join(Box::new(join)),
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+            };
 
-            gen_expected(other_join)
+            Ok(StatementPlan::Query(QueryPlan::Project(project)))
         };
         assert_eq!(actual, expected, "inner join");
 
@@ -674,7 +675,26 @@ mod tests {
             .join_as("OtherItem", "Ot")
             .build();
         let expected = {
-            let other_join = JoinPlan {
+            let first_join = JoinPlan {
+                input: JoinInputPlan::Relation(TableFactorPlan::Table {
+                    name: "Player".to_owned(),
+                    alias: None,
+                    index: None,
+                }),
+                relation: TableFactorPlan::Table {
+                    name: "PlayerItem".to_owned(),
+                    alias: None,
+                    index: None,
+                },
+                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
+                join_executor: JoinExecutorPlan::Hash {
+                    key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),
+                    value_expr: col("Player.id").build_expr_plan().unwrap(),
+                    where_clause: None,
+                },
+            };
+            let join = JoinPlan {
+                input: JoinInputPlan::Join(Box::new(first_join)),
                 relation: TableFactorPlan::Table {
                     name: "OtherItem".to_owned(),
                     alias: Some(TableAliasPlan {
@@ -686,8 +706,14 @@ mod tests {
                 join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
                 join_executor: JoinExecutorPlan::NestedLoop,
             };
+            let project = ProjectPlan {
+                input: ProjectInputPlan::Join(Box::new(join)),
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+            };
 
-            gen_expected(other_join)
+            Ok(StatementPlan::Query(QueryPlan::Project(project)))
         };
         assert_eq!(actual, expected, "inner join with alias");
 
@@ -698,7 +724,26 @@ mod tests {
             .left_join("OtherItem")
             .build();
         let expected = {
-            let other_join = JoinPlan {
+            let first_join = JoinPlan {
+                input: JoinInputPlan::Relation(TableFactorPlan::Table {
+                    name: "Player".to_owned(),
+                    alias: None,
+                    index: None,
+                }),
+                relation: TableFactorPlan::Table {
+                    name: "PlayerItem".to_owned(),
+                    alias: None,
+                    index: None,
+                },
+                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
+                join_executor: JoinExecutorPlan::Hash {
+                    key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),
+                    value_expr: col("Player.id").build_expr_plan().unwrap(),
+                    where_clause: None,
+                },
+            };
+            let join = JoinPlan {
+                input: JoinInputPlan::Join(Box::new(first_join)),
                 relation: TableFactorPlan::Table {
                     name: "OtherItem".to_owned(),
                     alias: None,
@@ -707,8 +752,14 @@ mod tests {
                 join_operator: JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None),
                 join_executor: JoinExecutorPlan::NestedLoop,
             };
+            let project = ProjectPlan {
+                input: ProjectInputPlan::Join(Box::new(join)),
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+            };
 
-            gen_expected(other_join)
+            Ok(StatementPlan::Query(QueryPlan::Project(project)))
         };
         assert_eq!(actual, expected, "left join");
 
@@ -719,7 +770,26 @@ mod tests {
             .left_join_as("OtherItem", "Ot")
             .build();
         let expected = {
-            let other_join = JoinPlan {
+            let first_join = JoinPlan {
+                input: JoinInputPlan::Relation(TableFactorPlan::Table {
+                    name: "Player".to_owned(),
+                    alias: None,
+                    index: None,
+                }),
+                relation: TableFactorPlan::Table {
+                    name: "PlayerItem".to_owned(),
+                    alias: None,
+                    index: None,
+                },
+                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
+                join_executor: JoinExecutorPlan::Hash {
+                    key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),
+                    value_expr: col("Player.id").build_expr_plan().unwrap(),
+                    where_clause: None,
+                },
+            };
+            let join = JoinPlan {
+                input: JoinInputPlan::Join(Box::new(first_join)),
                 relation: TableFactorPlan::Table {
                     name: "OtherItem".to_owned(),
                     alias: Some(TableAliasPlan {
@@ -731,8 +801,14 @@ mod tests {
                 join_operator: JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None),
                 join_executor: JoinExecutorPlan::NestedLoop,
             };
+            let project = ProjectPlan {
+                input: ProjectInputPlan::Join(Box::new(join)),
+                projection: ProjectionPlan::SelectItems(
+                    SelectItemList::from("*").build_select_items_plan().unwrap(),
+                ),
+            };
 
-            gen_expected(other_join)
+            Ok(StatementPlan::Query(QueryPlan::Project(project)))
         };
         assert_eq!(actual, expected, "left join with alias");
 

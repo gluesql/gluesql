@@ -1,11 +1,11 @@
 use {
     super::{
-        BuildAggregationInputPlan, BuildFilterPlan, BuildProjectInputPlan, BuildSelect,
-        BuildSelectPlan, DistinctNode,
+        BuildAggregationInputPlan, BuildFilterInputPlan, BuildFilterPlan, BuildProjectInputPlan,
+        BuildSelect, DistinctNode,
     },
     crate::{
         ast::Select,
-        plan::{AggregationInputPlan, FilterPlan, ProjectInputPlan, SelectPlan},
+        plan::{AggregationInputPlan, FilterPlan, ProjectInputPlan},
         query_builder::{
             ExprList, ExprNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
             JoinNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryNode,
@@ -23,13 +23,13 @@ pub(super) enum PrevNode<'a> {
     HashJoin(Box<HashJoinNode<'a>>),
 }
 
-impl BuildSelectPlan for PrevNode<'_> {
-    fn build_select_plan(self) -> Result<SelectPlan> {
+impl BuildFilterInputPlan for PrevNode<'_> {
+    fn build_filter_input_plan(self) -> Result<crate::plan::FilterInputPlan> {
         match self {
-            Self::Select(node) => node.build_select_plan(),
-            Self::Join(node) => node.build_select_plan(),
-            Self::JoinConstraint(node) => node.build_select_plan(),
-            Self::HashJoin(node) => node.build_select_plan(),
+            Self::Select(node) => node.build_filter_input_plan(),
+            Self::Join(node) => node.build_filter_input_plan(),
+            Self::JoinConstraint(node) => node.build_filter_input_plan(),
+            Self::HashJoin(node) => node.build_filter_input_plan(),
         }
     }
 }
@@ -68,6 +68,7 @@ impl<'a> From<SelectNode<'a>> for PrevNode<'a> {
         PrevNode::Select(node)
     }
 }
+
 #[derive(Clone, Debug)]
 pub struct FilterNode<'a> {
     prev_node: PrevNode<'a>,
@@ -128,7 +129,7 @@ impl<'a> FilterNode<'a> {
 impl BuildFilterPlan for FilterNode<'_> {
     fn build_filter_plan(self) -> Result<FilterPlan> {
         Ok(FilterPlan {
-            input: Box::new(self.prev_node.build_select_plan()?),
+            input: self.prev_node.build_filter_input_plan()?,
             expr: self.filter_expr.build_expr_plan()?,
         })
     }
@@ -161,9 +162,9 @@ mod tests {
         crate::{
             ast::{BinaryOperator, Expr},
             plan::{
-                FilterPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan,
-                ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectPlan,
-                StatementPlan, TableFactorPlan, TableWithJoinsPlan,
+                FilterInputPlan, FilterPlan, JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan,
+                JoinOperatorPlan, JoinPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan,
+                QueryPlan, StatementPlan, TableFactorPlan,
             },
             query_builder::{Build, SelectItemList, col, expr, table, test_query_builder},
         },
@@ -239,6 +240,11 @@ mod tests {
             .build();
         let expected = {
             let join = JoinPlan {
+                input: JoinInputPlan::Relation(TableFactorPlan::Table {
+                    name: "Player".to_owned(),
+                    alias: None,
+                    index: None,
+                }),
                 relation: TableFactorPlan::Table {
                     name: "PlayerItem".to_owned(),
                     alias: None,
@@ -251,19 +257,9 @@ mod tests {
                     where_clause: None,
                 },
             };
-            let select = SelectPlan {
-                from: TableWithJoinsPlan {
-                    relation: TableFactorPlan::Table {
-                        name: "Player".to_owned(),
-                        alias: None,
-                        index: None,
-                    },
-                    joins: vec![join],
-                },
-            };
             let project = ProjectPlan {
                 input: ProjectInputPlan::Filter(FilterPlan {
-                    input: Box::new(select),
+                    input: FilterInputPlan::Join(Box::new(join)),
                     expr: expr("PlayerItem.amount > 10").build_expr_plan().unwrap(),
                 }),
                 projection: ProjectionPlan::SelectItems(

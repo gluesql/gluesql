@@ -16,10 +16,7 @@ mod tests {
         super::HavingPlan,
         crate::{
             data::Value,
-            plan::{
-                AggregationInputPlan, AggregationPlan, ExprPlan, SelectPlan, TableFactorPlan,
-                TableWithJoinsPlan,
-            },
+            plan::{AggregationInputPlan, AggregationPlan, ExprPlan, TableFactorPlan},
         },
         pretty_assertions::assert_eq,
     };
@@ -27,16 +24,11 @@ mod tests {
     #[test]
     fn having_accepts_aggregation_input() {
         let input = AggregationPlan {
-            input: AggregationInputPlan::Select(Box::new(SelectPlan {
-                from: TableWithJoinsPlan {
-                    relation: TableFactorPlan::Table {
-                        name: "Item".to_owned(),
-                        alias: None,
-                        index: None,
-                    },
-                    joins: Vec::new(),
-                },
-            })),
+            input: AggregationInputPlan::Relation(TableFactorPlan::Table {
+                name: "Item".to_owned(),
+                alias: None,
+                index: None,
+            }),
             group_by: Vec::new(),
             aggregate_slots: Vec::new(),
         };

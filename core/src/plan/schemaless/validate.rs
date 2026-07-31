@@ -3,15 +3,15 @@ use {
     crate::{
         data::Schema,
         plan::{
-            AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterPlan,
-            JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, LimitInputPlan, LimitPlan,
-            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, SelectOrderByPlan, SelectPlan, StatementPlan, TableFactorPlan,
-            ValuesOrderByPlan, ValuesPlan,
+            AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
+            FilterPlan, JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan,
+            JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectInputPlan,
+            ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan,
+            StatementPlan, TableFactorPlan, ValuesOrderByPlan, ValuesPlan,
         },
         result::Result,
     },
-    std::{collections::HashMap, hash::BuildHasher, iter::once},
+    std::{collections::HashMap, hash::BuildHasher},
 };
 
 type ValidateResult = std::result::Result<(), PlanError>;
@@ -162,34 +162,35 @@ fn validate_values(
     Ok(())
 }
 
-fn validate_select(
+fn validate_join(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    select: &SelectPlan,
+    join: &JoinPlan,
 ) -> ValidateResult {
-    validate_table_factor(schema_map, &select.from.relation)?;
+    match &join.input {
+        JoinInputPlan::Relation(relation) => validate_table_factor(schema_map, relation)?,
+        JoinInputPlan::Join(join) => validate_join(schema_map, join)?,
+    }
+    validate_table_factor(schema_map, &join.relation)?;
 
-    for join in &select.from.joins {
-        validate_table_factor(schema_map, &join.relation)?;
-
-        match &join.join_operator {
-            JoinOperatorPlan::Inner(JoinConstraintPlan::On(expr))
-            | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::On(expr)) => {
-                validate_expr(schema_map, expr)?;
-            }
-            _ => {}
+    match &join.join_operator {
+        JoinOperatorPlan::Inner(JoinConstraintPlan::On(expr))
+        | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::On(expr)) => {
+            validate_expr(schema_map, expr)?;
         }
+        JoinOperatorPlan::Inner(JoinConstraintPlan::None)
+        | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None) => {}
+    }
 
-        if let JoinExecutorPlan::Hash {
-            key_expr,
-            value_expr,
-            where_clause,
-        } = &join.join_executor
-        {
-            validate_expr(schema_map, key_expr)?;
-            validate_expr(schema_map, value_expr)?;
-            if let Some(expr) = where_clause {
-                validate_expr(schema_map, expr)?;
-            }
+    if let JoinExecutorPlan::Hash {
+        key_expr,
+        value_expr,
+        where_clause,
+    } = &join.join_executor
+    {
+        validate_expr(schema_map, key_expr)?;
+        validate_expr(schema_map, value_expr)?;
+        if let Some(expr) = where_clause {
+            validate_expr(schema_map, expr)?;
         }
     }
 
@@ -200,7 +201,10 @@ fn validate_filter(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
     FilterPlan { input, expr }: &FilterPlan,
 ) -> ValidateResult {
-    validate_select(schema_map, input)?;
+    match input {
+        FilterInputPlan::Relation(relation) => validate_table_factor(schema_map, relation)?,
+        FilterInputPlan::Join(join) => validate_join(schema_map, join)?,
+    }
     validate_expr(schema_map, expr)
 }
 
@@ -209,7 +213,8 @@ fn validate_aggregation_input(
     input: &AggregationInputPlan,
 ) -> ValidateResult {
     match input {
-        AggregationInputPlan::Select(select) => validate_select(schema_map, select),
+        AggregationInputPlan::Relation(relation) => validate_table_factor(schema_map, relation),
+        AggregationInputPlan::Join(join) => validate_join(schema_map, join),
         AggregationInputPlan::Filter(filter) => validate_filter(schema_map, filter),
     }
 }
@@ -220,7 +225,8 @@ fn validate_project(
 ) -> ValidateResult {
     validate_mixed_join_wildcard_projection(schema_map, project)?;
     match &project.input {
-        ProjectInputPlan::Select(select) => validate_select(schema_map, select)?,
+        ProjectInputPlan::Relation(relation) => validate_table_factor(schema_map, relation)?,
+        ProjectInputPlan::Join(join) => validate_join(schema_map, join)?,
         ProjectInputPlan::Filter(filter) => validate_filter(schema_map, filter)?,
         ProjectInputPlan::Aggregation(aggregation) => {
             validate_aggregation_input(schema_map, &aggregation.input)?;
@@ -274,38 +280,31 @@ fn validate_mixed_join_wildcard_projection(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
     project: &ProjectPlan,
 ) -> ValidateResult {
-    let select = match &project.input {
-        ProjectInputPlan::Select(select) => select.as_ref(),
-        ProjectInputPlan::Filter(filter) => filter.input.as_ref(),
-        ProjectInputPlan::Aggregation(aggregation) => match &aggregation.input {
-            AggregationInputPlan::Select(select) => select.as_ref(),
-            AggregationInputPlan::Filter(filter) => filter.input.as_ref(),
-        },
-        ProjectInputPlan::Having(having) => match &having.input.input {
-            AggregationInputPlan::Select(select) => select.as_ref(),
-            AggregationInputPlan::Filter(filter) => filter.input.as_ref(),
-        },
+    let join = match &project.input {
+        ProjectInputPlan::Relation(_) => None,
+        ProjectInputPlan::Join(join) => Some(join.as_ref()),
+        ProjectInputPlan::Filter(filter) => filter_join(&filter.input),
+        ProjectInputPlan::Aggregation(aggregation) => aggregation_join(&aggregation.input),
+        ProjectInputPlan::Having(having) => aggregation_join(&having.input.input),
     };
-    if select.from.joins.is_empty()
-        || !matches!(
-            &project.projection,
-            ProjectionPlan::SelectItems(projection)
-                if projection
-                    .iter()
-                    .any(|item| matches!(item, SelectItemPlan::Wildcard))
-        )
-    {
+    let Some(join) = join else {
+        return Ok(());
+    };
+    if !matches!(
+        &project.projection,
+        ProjectionPlan::SelectItems(projection)
+            if projection
+                .iter()
+                .any(|item| matches!(item, SelectItemPlan::Wildcard))
+    ) {
         return Ok(());
     }
 
     let mut has_schemaless = false;
     let mut has_schemaful = false;
-
-    for relation in
-        once(&select.from.relation).chain(select.from.joins.iter().map(|join| &join.relation))
-    {
+    visit_join_relations(join, &mut |relation| {
         let TableFactorPlan::Table { name, .. } = relation else {
-            continue;
+            return;
         };
 
         if is_schemaless_table(schema_map, name) {
@@ -313,13 +312,36 @@ fn validate_mixed_join_wildcard_projection(
         } else {
             has_schemaful = true;
         }
-    }
+    });
 
     if has_schemaless && has_schemaful {
         return Err(PlanError::SchemalessMixedJoinWildcardProjection);
     }
 
     Ok(())
+}
+
+fn aggregation_join(input: &AggregationInputPlan) -> Option<&JoinPlan> {
+    match input {
+        AggregationInputPlan::Relation(_) => None,
+        AggregationInputPlan::Join(join) => Some(join.as_ref()),
+        AggregationInputPlan::Filter(filter) => filter_join(&filter.input),
+    }
+}
+
+fn filter_join(input: &FilterInputPlan) -> Option<&JoinPlan> {
+    match input {
+        FilterInputPlan::Relation(_) => None,
+        FilterInputPlan::Join(join) => Some(join.as_ref()),
+    }
+}
+
+fn visit_join_relations(join: &JoinPlan, visit: &mut impl FnMut(&TableFactorPlan)) {
+    match &join.input {
+        JoinInputPlan::Relation(relation) => visit(relation),
+        JoinInputPlan::Join(join) => visit_join_relations(join, visit),
+    }
+    visit(&join.relation);
 }
 
 fn is_schemaless_table(
@@ -544,8 +566,7 @@ mod tests {
 
         let mut applied = false;
         if let StatementPlan::Query(QueryPlan::Project(project)) = &mut statement
-            && let ProjectInputPlan::Select(select) = &mut project.input
-            && let Some(join) = select.from.joins.first_mut()
+            && let ProjectInputPlan::Join(join) = &mut project.input
         {
             join.join_executor = JoinExecutorPlan::Hash {
                 key_expr: ExprPlan::Identifier("id".to_owned()),
@@ -569,8 +590,7 @@ mod tests {
 
         let mut applied = false;
         if let StatementPlan::Query(QueryPlan::Project(project)) = &mut statement
-            && let ProjectInputPlan::Select(select) = &mut project.input
-            && let Some(join) = select.from.joins.first_mut()
+            && let ProjectInputPlan::Join(join) = &mut project.input
         {
             join.join_executor = JoinExecutorPlan::Hash {
                 key_expr: ExprPlan::Identifier("id".to_owned()),

@@ -16,8 +16,9 @@ use {
     crate::{
         ast::{Query, Select, SetExpr},
         plan::{
-            AggregationInputPlan, AggregationPlan, FilterPlan, HavingPlan, ProjectInputPlan,
-            ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan, StatementPlan,
+            AggregationInputPlan, AggregationPlan, FilterInputPlan, FilterPlan, HavingPlan,
+            JoinInputPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
+            SelectItemPlan, StatementPlan, TableFactorPlan,
         },
         result::Result,
     },
@@ -37,8 +38,20 @@ pub use {
     values::{ValuesNode, values},
 };
 
-pub(super) trait BuildSelectPlan {
-    fn build_select_plan(self) -> Result<SelectPlan>;
+pub(super) trait BuildTableFactorPlan {
+    fn build_table_factor_plan(self) -> Result<TableFactorPlan>;
+}
+
+pub(super) trait BuildJoinInputPlan {
+    fn build_join_input_plan(self) -> Result<JoinInputPlan>;
+}
+
+pub(super) trait BuildJoinPlan {
+    fn build_join_plan(self) -> Result<crate::plan::JoinPlan>;
+}
+
+pub(super) trait BuildFilterInputPlan {
+    fn build_filter_input_plan(self) -> Result<FilterInputPlan>;
 }
 
 pub(super) trait BuildFilterPlan {
@@ -77,19 +90,30 @@ pub(super) trait BuildQuery {
     fn build_query(self) -> Result<Query>;
 }
 
-impl<T: BuildSelectPlan> BuildProjectInputPlan for T {
-    fn build_project_input_plan(self) -> Result<ProjectInputPlan> {
-        self.build_select_plan()
-            .map(Box::new)
-            .map(ProjectInputPlan::Select)
+impl<T: BuildJoinInputPlan> BuildFilterInputPlan for T {
+    fn build_filter_input_plan(self) -> Result<FilterInputPlan> {
+        self.build_join_input_plan().map(|input| match input {
+            JoinInputPlan::Relation(relation) => FilterInputPlan::Relation(relation),
+            JoinInputPlan::Join(join) => FilterInputPlan::Join(join),
+        })
     }
 }
 
-impl<T: BuildSelectPlan> BuildAggregationInputPlan for T {
+impl<T: BuildJoinInputPlan> BuildProjectInputPlan for T {
+    fn build_project_input_plan(self) -> Result<ProjectInputPlan> {
+        self.build_join_input_plan().map(|input| match input {
+            JoinInputPlan::Relation(relation) => ProjectInputPlan::Relation(relation),
+            JoinInputPlan::Join(join) => ProjectInputPlan::Join(join),
+        })
+    }
+}
+
+impl<T: BuildJoinInputPlan> BuildAggregationInputPlan for T {
     fn build_aggregation_input_plan(self) -> Result<AggregationInputPlan> {
-        self.build_select_plan()
-            .map(Box::new)
-            .map(AggregationInputPlan::Select)
+        self.build_join_input_plan().map(|input| match input {
+            JoinInputPlan::Relation(relation) => AggregationInputPlan::Relation(relation),
+            JoinInputPlan::Join(join) => AggregationInputPlan::Join(join),
+        })
     }
 }
 

@@ -1,15 +1,15 @@
 use {
-    super::{aggregation_node, filter_node, having_node, select_node},
+    super::{aggregation_node, filter_node, having_node, join_node, table_factor_node},
     crate::{
         data::{Row, SCHEMALESS_DOC_COLUMN, Value},
         executor::{
             context::{AggregateContext, AggregateValues, RowContext},
             evaluate::evaluate,
-            fetch::fetch_labels,
+            fetch::fetch_project_labels,
         },
         plan::{
-            AggregationInputPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, SelectItemPlan,
-            SelectPlan, TableWithJoinsPlan,
+            AggregationInputPlan, FilterInputPlan, JoinInputPlan, JoinPlan, ProjectInputPlan,
+            ProjectPlan, ProjectionPlan, SelectItemPlan,
         },
         result::Result,
         store::GStore,
@@ -36,17 +36,26 @@ where
     T: GStore,
 {
     let ProjectPlan { input, projection } = plan;
-    let (select, rows): (&SelectPlan, ProjectInputIter<'a>) = match input {
-        ProjectInputPlan::Select(select) => {
-            let rows =
-                select_node::execute(storage, select, filter_context.as_ref())?.map(|context| {
-                    context.map(|context| AggregateContext {
-                        aggregated: None,
-                        next: Some(context),
-                    })
-                });
+    let rows: ProjectInputIter<'a> = match input {
+        ProjectInputPlan::Relation(relation) => {
+            let rows = table_factor_node::execute(storage, relation)?.map(|context| {
+                context.map(|context| AggregateContext {
+                    aggregated: None,
+                    next: Some(context),
+                })
+            });
 
-            (select, Box::new(rows))
+            Box::new(rows)
+        }
+        ProjectInputPlan::Join(join) => {
+            let rows = join_node::execute(storage, join, filter_context.as_ref())?.map(|context| {
+                context.map(|context| AggregateContext {
+                    aggregated: None,
+                    next: Some(context),
+                })
+            });
+
+            Box::new(rows)
         }
         ProjectInputPlan::Filter(filter) => {
             let rows =
@@ -57,33 +66,24 @@ where
                     })
                 });
 
-            (&filter.input, Box::new(rows))
+            Box::new(rows)
         }
         ProjectInputPlan::Aggregation(aggregation) => {
             let rows = aggregation_node::execute(storage, aggregation, filter_context.as_ref())?
                 .into_iter()
                 .map(Ok);
-            let select = match &aggregation.input {
-                AggregationInputPlan::Select(select) => select.as_ref(),
-                AggregationInputPlan::Filter(filter) => filter.input.as_ref(),
-            };
 
-            (select, Box::new(rows))
+            Box::new(rows)
         }
         ProjectInputPlan::Having(having) => {
             let rows = having_node::execute(storage, having, filter_context.as_ref())?
                 .into_iter()
                 .map(Ok);
-            let select = match &having.input.input {
-                AggregationInputPlan::Select(select) => select.as_ref(),
-                AggregationInputPlan::Filter(filter) => filter.input.as_ref(),
-            };
 
-            (select, Box::new(rows))
+            Box::new(rows)
         }
     };
-    let TableWithJoinsPlan { relation, joins } = &select.from;
-    let labels = fetch_labels(storage, relation, joins, projection)?;
+    let labels = fetch_project_labels(storage, input, projection)?;
     let labels = Rc::from(labels);
     let project_labels = Rc::clone(&labels);
     let rows = rows.map(move |aggregate_context| {
@@ -150,6 +150,40 @@ where
     Ok(ProjectedRows {
         labels,
         rows: Box::new(rows),
-        table_alias: relation.alias_name(),
+        table_alias: project_table_alias(input),
     })
+}
+
+fn project_table_alias(input: &ProjectInputPlan) -> &str {
+    match input {
+        ProjectInputPlan::Relation(relation) => relation.alias_name(),
+        ProjectInputPlan::Join(join) => join_table_alias(join),
+        ProjectInputPlan::Filter(filter) => match &filter.input {
+            FilterInputPlan::Relation(relation) => relation.alias_name(),
+            FilterInputPlan::Join(join) => join_table_alias(join),
+        },
+        ProjectInputPlan::Aggregation(aggregation) => match &aggregation.input {
+            AggregationInputPlan::Relation(relation) => relation.alias_name(),
+            AggregationInputPlan::Join(join) => join_table_alias(join),
+            AggregationInputPlan::Filter(filter) => match &filter.input {
+                FilterInputPlan::Relation(relation) => relation.alias_name(),
+                FilterInputPlan::Join(join) => join_table_alias(join),
+            },
+        },
+        ProjectInputPlan::Having(having) => match &having.input.input {
+            AggregationInputPlan::Relation(relation) => relation.alias_name(),
+            AggregationInputPlan::Join(join) => join_table_alias(join),
+            AggregationInputPlan::Filter(filter) => match &filter.input {
+                FilterInputPlan::Relation(relation) => relation.alias_name(),
+                FilterInputPlan::Join(join) => join_table_alias(join),
+            },
+        },
+    }
+}
+
+fn join_table_alias(join: &JoinPlan) -> &str {
+    match &join.input {
+        JoinInputPlan::Relation(relation) => relation.alias_name(),
+        JoinInputPlan::Join(join) => join_table_alias(join),
+    }
 }

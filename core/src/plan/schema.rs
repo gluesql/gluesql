@@ -3,11 +3,11 @@ use {
     crate::{
         data::Schema,
         plan::{
-            AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterPlan,
-            JoinConstraintPlan, JoinOperatorPlan, JoinPlan, LimitInputPlan, LimitPlan,
-            OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan, ProjectPlan,
-            ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SelectPlan,
-            StatementPlan, TableFactorPlan, TableWithJoinsPlan, ValuesOrderByPlan,
+            AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
+            FilterPlan, JoinConstraintPlan, JoinInputPlan, JoinOperatorPlan, JoinPlan,
+            LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan,
+            ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
+            SelectOrderByPlan, StatementPlan, TableFactorPlan, ValuesOrderByPlan,
         },
         result::Result,
         store::Store,
@@ -181,20 +181,14 @@ fn scan_order_by_exprs<T: Store + ?Sized>(
     Ok(schema_list.into_iter().chain(order_by).collect())
 }
 
-fn scan_select<T: Store + ?Sized>(
-    storage: &T,
-    select: &SelectPlan,
-) -> Result<HashMap<String, Schema>> {
-    let SelectPlan { from } = select;
-
-    scan_table_with_joins(storage, from)
-}
-
 fn scan_filter<T: Store + ?Sized>(
     storage: &T,
     FilterPlan { input, expr }: &FilterPlan,
 ) -> Result<HashMap<String, Schema>> {
-    let input = scan_select(storage, input)?;
+    let input = match input {
+        FilterInputPlan::Relation(relation) => scan_table_factor(storage, relation)?,
+        FilterInputPlan::Join(join) => scan_join(storage, join)?,
+    };
     let expr = scan_expr(storage, expr)?;
 
     Ok(input.into_iter().chain(expr).collect())
@@ -205,7 +199,8 @@ fn scan_aggregation_input<T: Store + ?Sized>(
     input: &AggregationInputPlan,
 ) -> Result<HashMap<String, Schema>> {
     match input {
-        AggregationInputPlan::Select(select) => scan_select(storage, select),
+        AggregationInputPlan::Relation(relation) => scan_table_factor(storage, relation),
+        AggregationInputPlan::Join(join) => scan_join(storage, join),
         AggregationInputPlan::Filter(filter) => scan_filter(storage, filter),
     }
 }
@@ -215,7 +210,8 @@ fn scan_project<T: Store + ?Sized>(
     ProjectPlan { input, projection }: &ProjectPlan,
 ) -> Result<HashMap<String, Schema>> {
     let schema_list = match input {
-        ProjectInputPlan::Select(select) => scan_select(storage, select)?,
+        ProjectInputPlan::Relation(relation) => scan_table_factor(storage, relation)?,
+        ProjectInputPlan::Join(join) => scan_join(storage, join)?,
         ProjectInputPlan::Filter(filter) => scan_filter(storage, filter)?,
         ProjectInputPlan::Aggregation(aggregation) => {
             let schema_list = scan_aggregation_input(storage, &aggregation.input)?;
@@ -262,42 +258,30 @@ fn scan_project<T: Store + ?Sized>(
     Ok(schema_list.into_iter().chain(projection).collect())
 }
 
-fn scan_table_with_joins<T: Store + ?Sized>(
-    storage: &T,
-    table_with_joins: &TableWithJoinsPlan,
-) -> Result<HashMap<String, Schema>> {
-    let TableWithJoinsPlan { relation, joins } = table_with_joins;
-    let schema_list = scan_table_factor(storage, relation)?;
-
-    Ok(joins
-        .iter()
-        .map(|join| scan_join(storage, join))
-        .collect::<Result<Vec<HashMap<String, Schema>>>>()?
-        .into_iter()
-        .flatten()
-        .chain(schema_list)
-        .collect())
-}
-
 fn scan_join<T: Store + ?Sized>(storage: &T, join: &JoinPlan) -> Result<HashMap<String, Schema>> {
     let JoinPlan {
+        input,
         relation,
         join_operator,
         ..
     } = join;
 
-    let schema_list = scan_table_factor(storage, relation)?;
-    let schema_list = match join_operator {
+    let input = match input {
+        JoinInputPlan::Relation(relation) => scan_table_factor(storage, relation)?,
+        JoinInputPlan::Join(join) => scan_join(storage, join)?,
+    };
+    let relation = scan_table_factor(storage, relation)?;
+    let current = match join_operator {
         JoinOperatorPlan::Inner(JoinConstraintPlan::On(expr))
         | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::On(expr)) => scan_expr(storage, expr)?
             .into_iter()
-            .chain(schema_list)
+            .chain(relation)
             .collect(),
         JoinOperatorPlan::Inner(JoinConstraintPlan::None)
-        | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None) => schema_list,
+        | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None) => relation,
     };
 
-    Ok(schema_list)
+    Ok(input.into_iter().chain(current).collect())
 }
 
 fn scan_table_factor<T>(

@@ -8,7 +8,7 @@ use {
             select::{select, select_with_labels},
         },
         plan::{
-            AggregationInputPlan, DistinctInputPlan, DistinctPlan, LimitInputPlan, LimitPlan,
+            DistinctInputPlan, DistinctPlan, FilterInputPlan, LimitInputPlan, LimitPlan,
             OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
             SelectItemPlan, TableFactorPlan, ValuesPlan,
         },
@@ -86,55 +86,40 @@ pub fn create_table<T: GStore + GStoreMut>(
     let mut selected_source_rows = None;
     let target_columns_defs = match source.as_deref() {
         Some(query) => match create_table_source(query) {
-            CreateTableSource::Project(project) => {
-                let select = match &project.input {
-                    ProjectInputPlan::Select(select) => select.as_ref(),
-                    ProjectInputPlan::Filter(filter) => filter.input.as_ref(),
-                    ProjectInputPlan::Aggregation(aggregation) => match &aggregation.input {
-                        AggregationInputPlan::Select(select) => select.as_ref(),
-                        AggregationInputPlan::Filter(filter) => filter.input.as_ref(),
-                    },
-                    ProjectInputPlan::Having(having) => match &having.input.input {
-                        AggregationInputPlan::Select(select) => select.as_ref(),
-                        AggregationInputPlan::Filter(filter) => filter.input.as_ref(),
-                    },
-                };
+            CreateTableSource::Project(project) => match copy_source_schema_relation(project) {
+                Some(TableFactorPlan::Table { name, .. }) => {
+                    let schema = storage.fetch_schema(name)?;
+                    let Schema {
+                        column_defs: source_column_defs,
+                        ..
+                    } = schema
+                        .ok_or_else(|| AlterError::CtasSourceTableNotFound(name.to_owned()))?;
 
-                match &select.from.relation {
-                    TableFactorPlan::Table { name, .. } if can_copy_source_schema(project) => {
-                        let schema = storage.fetch_schema(name)?;
-                        let Schema {
-                            column_defs: source_column_defs,
-                            ..
-                        } = schema
-                            .ok_or_else(|| AlterError::CtasSourceTableNotFound(name.to_owned()))?;
-
-                        source_column_defs
-                    }
-                    TableFactorPlan::Series { .. } if can_copy_source_schema(project) => {
-                        let column_def = ColumnDef {
-                            name: "N".into(),
-                            data_type: DataType::Int,
-                            nullable: false,
-                            default: None,
-                            unique: None,
-                            comment: None,
-                        };
-
-                        Some(vec![column_def])
-                    }
-                    _ => {
-                        let (labels, rows) = select_with_labels(storage, query, None)?;
-                        let rows = rows
-                            .map(|row| row.map(Row::into_values))
-                            .collect::<Result<Vec<_>>>()?;
-                        let column_defs = column_defs_from_rows(labels, &rows);
-                        selected_source_rows = Some(rows);
-
-                        Some(column_defs)
-                    }
+                    source_column_defs
                 }
-            }
+                Some(TableFactorPlan::Series { .. }) => {
+                    let column_def = ColumnDef {
+                        name: "N".into(),
+                        data_type: DataType::Int,
+                        nullable: false,
+                        default: None,
+                        unique: None,
+                        comment: None,
+                    };
+
+                    Some(vec![column_def])
+                }
+                _ => {
+                    let (labels, rows) = select_with_labels(storage, query, None)?;
+                    let rows = rows
+                        .map(|row| row.map(Row::into_values))
+                        .collect::<Result<Vec<_>>>()?;
+                    let column_defs = column_defs_from_rows(labels, &rows);
+                    selected_source_rows = Some(rows);
+
+                    Some(column_defs)
+                }
+            },
             CreateTableSource::Values(ValuesPlan(values_list)) => {
                 let first_len = values_list[0].len();
                 let mut column_types = vec![None; first_len];
@@ -278,16 +263,14 @@ pub fn create_table<T: GStore + GStoreMut>(
 }
 
 fn can_copy_source_schema(project: &ProjectPlan) -> bool {
-    let select = match &project.input {
-        ProjectInputPlan::Select(select) => select.as_ref(),
-        ProjectInputPlan::Filter(filter) => filter.input.as_ref(),
-        ProjectInputPlan::Aggregation(_) | ProjectInputPlan::Having(_) => return false,
-    };
-    if !select.from.joins.is_empty() {
-        return false;
-    }
-
-    match &project.projection {
+    matches!(
+        project.input,
+        ProjectInputPlan::Relation(_)
+            | ProjectInputPlan::Filter(crate::plan::FilterPlan {
+                input: FilterInputPlan::Relation(_),
+                ..
+            })
+    ) && match &project.projection {
         ProjectionPlan::SchemalessMap => true,
         ProjectionPlan::SelectItems(items) => items.iter().all(|item| {
             matches!(
@@ -295,6 +278,23 @@ fn can_copy_source_schema(project: &ProjectPlan) -> bool {
                 SelectItemPlan::Wildcard | SelectItemPlan::QualifiedWildcard(_)
             )
         }),
+    }
+}
+
+fn copy_source_schema_relation(project: &ProjectPlan) -> Option<&TableFactorPlan> {
+    if !can_copy_source_schema(project) {
+        return None;
+    }
+
+    match &project.input {
+        ProjectInputPlan::Relation(relation) => Some(relation),
+        ProjectInputPlan::Filter(filter) => match &filter.input {
+            FilterInputPlan::Relation(relation) => Some(relation),
+            FilterInputPlan::Join(_) => None,
+        },
+        ProjectInputPlan::Join(_)
+        | ProjectInputPlan::Aggregation(_)
+        | ProjectInputPlan::Having(_) => None,
     }
 }
 

@@ -2,7 +2,7 @@ mod state;
 
 use {
     self::state::State,
-    super::{filter_node, select_node},
+    super::{filter_node, join_node, table_factor_node},
     crate::{
         data::Value,
         executor::{
@@ -32,9 +32,8 @@ where
         aggregate_slots,
     } = plan;
     let rows = match input {
-        AggregationInputPlan::Select(select) => {
-            select_node::execute(storage, select, filter_context)?
-        }
+        AggregationInputPlan::Relation(relation) => table_factor_node::execute(storage, relation)?,
+        AggregationInputPlan::Join(join) => join_node::execute(storage, join, filter_context)?,
         AggregationInputPlan::Filter(filter) => {
             filter_node::execute(storage, filter, filter_context)?
         }

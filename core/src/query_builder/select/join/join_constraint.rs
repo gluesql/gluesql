@@ -2,12 +2,12 @@ use {
     super::JoinOperatorType,
     crate::{
         ast::{Expr, Select},
-        plan::{JoinConstraintPlan, SelectPlan},
+        plan::{JoinConstraintPlan, JoinInputPlan, JoinPlan},
         query_builder::{
             DistinctNode, ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode,
             JoinNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryBuilderError,
             QueryNode, SelectItemList, SelectOrderByNode, TableFactorNode,
-            select::{BuildSelect, BuildSelectPlan},
+            select::{BuildJoinInputPlan, BuildJoinPlan, BuildSelect},
         },
         result::Result,
     },
@@ -20,13 +20,10 @@ pub(super) enum PrevNode<'a> {
 }
 
 impl PrevNode<'_> {
-    fn build_select_plan_with_constraint(
-        self,
-        constraint: JoinConstraintPlan,
-    ) -> Result<SelectPlan> {
+    fn build_join_plan_with_constraint(self, constraint: JoinConstraintPlan) -> Result<JoinPlan> {
         match self {
-            PrevNode::Join(node) => node.build_select_plan_with_constraint(constraint),
-            PrevNode::HashJoin(node) => node.build_select_plan_with_constraint(constraint),
+            PrevNode::Join(node) => node.build_join_plan_with_constraint(constraint),
+            PrevNode::HashJoin(node) => node.build_join_plan_with_constraint(constraint),
         }
     }
 
@@ -130,11 +127,19 @@ impl<'a> JoinConstraintNode<'a> {
     }
 }
 
-impl BuildSelectPlan for JoinConstraintNode<'_> {
-    fn build_select_plan(self) -> Result<SelectPlan> {
+impl BuildJoinPlan for JoinConstraintNode<'_> {
+    fn build_join_plan(self) -> Result<JoinPlan> {
         let constraint = JoinConstraintPlan::On(self.expr.build_expr_plan()?);
 
-        self.prev_node.build_select_plan_with_constraint(constraint)
+        self.prev_node.build_join_plan_with_constraint(constraint)
+    }
+}
+
+impl BuildJoinInputPlan for JoinConstraintNode<'_> {
+    fn build_join_input_plan(self) -> Result<JoinInputPlan> {
+        self.build_join_plan()
+            .map(Box::new)
+            .map(JoinInputPlan::Join)
     }
 }
 
@@ -151,9 +156,9 @@ mod tests {
     use {
         crate::{
             plan::{
-                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectInputPlan,
-                ProjectPlan, ProjectionPlan, QueryPlan, SelectPlan, StatementPlan, TableFactorPlan,
-                TableWithJoinsPlan,
+                JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan, JoinPlan,
+                ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, StatementPlan,
+                TableFactorPlan,
             },
             query_builder::{Build, SelectItemList, col, table, test_query_builder},
         },
@@ -197,6 +202,11 @@ mod tests {
             .build();
         let expected = {
             let join = JoinPlan {
+                input: JoinInputPlan::Relation(TableFactorPlan::Table {
+                    name: "Player".to_owned(),
+                    alias: None,
+                    index: None,
+                }),
                 relation: TableFactorPlan::Table {
                     name: "PlayerItem".to_owned(),
                     alias: None,
@@ -214,18 +224,8 @@ mod tests {
                     where_clause: None,
                 },
             };
-            let select = SelectPlan {
-                from: TableWithJoinsPlan {
-                    relation: TableFactorPlan::Table {
-                        name: "Player".to_owned(),
-                        alias: None,
-                        index: None,
-                    },
-                    joins: vec![join],
-                },
-            };
             let project = ProjectPlan {
-                input: ProjectInputPlan::Select(Box::new(select)),
+                input: ProjectInputPlan::Join(Box::new(join)),
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),

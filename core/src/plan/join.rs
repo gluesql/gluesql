@@ -4,11 +4,10 @@ use {
         ast::BinaryOperator,
         data::Schema,
         plan::{
-            AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterPlan,
-            JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, LimitInputPlan,
-            LimitPlan, OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan,
-            SelectPlan, StatementPlan, TableWithJoinsPlan,
-            expr::evaluable::check_expr as check_evaluable,
+            AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
+            FilterPlan, JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan,
+            JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectInputPlan,
+            ProjectPlan, QueryPlan, StatementPlan, expr::evaluable::check_expr as check_evaluable,
         },
     },
     std::{collections::HashMap, hash::BuildHasher, rc::Rc},
@@ -133,9 +132,11 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
         mut project: ProjectPlan,
     ) -> ProjectPlan {
         project.input = match project.input {
-            ProjectInputPlan::Select(select) => ProjectInputPlan::Select(Box::new(
-                self.select(outer_context.as_ref().map(Rc::clone), *select),
-            )),
+            ProjectInputPlan::Relation(relation) => ProjectInputPlan::Relation(relation),
+            ProjectInputPlan::Join(join) => {
+                let (_, join) = self.join(outer_context.as_ref(), *join);
+                ProjectInputPlan::Join(Box::new(join))
+            }
             ProjectInputPlan::Filter(filter) => {
                 ProjectInputPlan::Filter(self.filter(outer_context.as_ref().map(Rc::clone), filter))
             }
@@ -159,8 +160,10 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
         input: AggregationInputPlan,
     ) -> AggregationInputPlan {
         match input {
-            AggregationInputPlan::Select(select) => {
-                AggregationInputPlan::Select(Box::new(self.select(outer_context, *select)))
+            AggregationInputPlan::Relation(relation) => AggregationInputPlan::Relation(relation),
+            AggregationInputPlan::Join(join) => {
+                let (_, join) = self.join(outer_context.as_ref(), *join);
+                AggregationInputPlan::Join(Box::new(join))
             }
             AggregationInputPlan::Filter(filter) => {
                 AggregationInputPlan::Filter(self.filter(outer_context, filter))
@@ -168,52 +171,52 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
         }
     }
 
-    fn select(&self, outer_context: Option<Rc<Context<'a>>>, select: SelectPlan) -> SelectPlan {
-        let SelectPlan { from } = select;
-
-        let (_, from) = self.table_with_joins(outer_context, from);
-
-        SelectPlan { from }
-    }
-
     fn filter(&self, outer_context: Option<Rc<Context<'a>>>, filter: FilterPlan) -> FilterPlan {
         let FilterPlan { input, expr } = filter;
-        let SelectPlan { from } = *input;
-        let (context, from) = self.table_with_joins(outer_context, from);
+        let (context, input) = self.filter_input(outer_context.as_ref(), input);
+        let context = Context::concat(context, outer_context);
         let expr = self.subquery_expr(context, expr);
 
-        FilterPlan {
-            input: Box::new(SelectPlan { from }),
-            expr,
+        FilterPlan { input, expr }
+    }
+
+    fn filter_input(
+        &self,
+        outer_context: Option<&Rc<Context<'a>>>,
+        input: FilterInputPlan,
+    ) -> (Option<Rc<Context<'a>>>, FilterInputPlan) {
+        match input {
+            FilterInputPlan::Relation(relation) => {
+                let context = self.update_context(None, &relation);
+                (context, FilterInputPlan::Relation(relation))
+            }
+            FilterInputPlan::Join(join) => {
+                let (context, join) = self.join(outer_context, *join);
+                (context, FilterInputPlan::Join(Box::new(join)))
+            }
         }
     }
 
-    fn table_with_joins(
+    fn join_input(
         &self,
-        outer_context: Option<Rc<Context<'a>>>,
-        table_with_joins: TableWithJoinsPlan,
-    ) -> (Option<Rc<Context<'a>>>, TableWithJoinsPlan) {
-        let TableWithJoinsPlan { relation, joins } = table_with_joins;
-        let init_context = self.update_context(None, &relation);
-        let mut context = init_context;
-        let mut joined = Vec::with_capacity(joins.len());
-
-        for join in joins {
-            let (next_context, join) = self.join(outer_context.as_ref(), context, join);
-            context = next_context;
-            joined.push(join);
+        outer_context: Option<&Rc<Context<'a>>>,
+        input: JoinInputPlan,
+    ) -> (Option<Rc<Context<'a>>>, JoinInputPlan) {
+        match input {
+            JoinInputPlan::Relation(relation) => {
+                let context = self.update_context(None, &relation);
+                (context, JoinInputPlan::Relation(relation))
+            }
+            JoinInputPlan::Join(join) => {
+                let (context, join) = self.join(outer_context, *join);
+                (context, JoinInputPlan::Join(Box::new(join)))
+            }
         }
-
-        let joins = joined;
-        let context = Context::concat(context, outer_context);
-
-        (context, TableWithJoinsPlan { relation, joins })
     }
 
     fn join(
         &self,
         outer_context: Option<&Rc<Context<'a>>>,
-        inner_context: Option<Rc<Context<'a>>>,
         join: JoinPlan,
     ) -> (Option<Rc<Context<'a>>>, JoinPlan) {
         enum JoinOp {
@@ -222,14 +225,17 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
         }
 
         let JoinPlan {
+            input,
             relation,
             join_operator,
             join_executor,
         } = join;
+        let (inner_context, input) = self.join_input(outer_context, input);
 
         if matches!(join_executor, JoinExecutorPlan::Hash { .. }) {
             let context = self.update_context(inner_context, &relation);
             let join = JoinPlan {
+                input,
                 relation,
                 join_operator,
                 join_executor,
@@ -245,6 +251,7 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
             | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None) => {
                 let context = self.update_context(inner_context, &relation);
                 let join = JoinPlan {
+                    input,
                     relation,
                     join_operator,
                     join_executor,
@@ -269,6 +276,7 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
 
         let context = self.update_context(inner_context, &relation);
         let join = JoinPlan {
+            input,
             relation,
             join_operator,
             join_executor,
@@ -497,6 +505,10 @@ mod tests {
                 item_id INTEGER,
                 amount INTEGER
             );
+            CREATE TABLE Item (
+                id INTEGER,
+                name TEXT
+            );
         ");
 
         let sql = "SELECT * FROM Player;";
@@ -577,6 +589,25 @@ mod tests {
             actual,
             expected,
             "redundant plan does not change the plan result:\n{sql}"
+        );
+
+        let sql = "
+            SELECT *
+            FROM Player
+            JOIN PlayerItem ON PlayerItem.user_id = Player.id
+            JOIN Item ON Item.id = PlayerItem.item_id
+        ";
+        let actual = plan_join(&storage, sql);
+        let expected = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .join("Item")
+            .hash_executor("Item.id", "PlayerItem.item_id");
+        test!(
+            actual,
+            expected,
+            "later join uses accumulated left context:\n{sql}"
         );
 
         let sql = "

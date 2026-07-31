@@ -1,11 +1,11 @@
 use {
     crate::{
         plan::{
-            AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterPlan,
-            JoinConstraintPlan, JoinOperatorPlan, JoinPlan, LimitInputPlan, LimitPlan,
-            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, SelectOrderByPlan, SelectPlan, TableAliasPlan, TableFactorPlan,
-            TableWithJoinsPlan, ValuesOrderByPlan, ValuesPlan,
+            AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
+            FilterPlan, JoinConstraintPlan, JoinInputPlan, JoinOperatorPlan, JoinPlan,
+            LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan,
+            ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, TableAliasPlan,
+            TableFactorPlan, ValuesOrderByPlan, ValuesPlan,
         },
         plan::{context::Context, expr::PlanExpr},
     },
@@ -109,43 +109,32 @@ fn check_values(context: Option<&Rc<Context<'_>>>, ValuesPlan(rows): &ValuesPlan
         .all(|expr| check_expr(context.map(Rc::clone), expr))
 }
 
-fn check_select(context: Option<&Rc<Context<'_>>>, select: &SelectPlan) -> bool {
-    let SelectPlan { from } = select;
-
-    let TableWithJoinsPlan { relation, joins } = from;
-
-    if !check_table_factor(context, relation) {
+fn check_join(context: Option<&Rc<Context<'_>>>, join: &JoinPlan) -> bool {
+    let input = match &join.input {
+        JoinInputPlan::Relation(relation) => check_table_factor(context, relation),
+        JoinInputPlan::Join(join) => check_join(context, join),
+    };
+    if !input || !check_table_factor(context, &join.relation) {
         return false;
     }
 
-    if !joins.iter().all(|join| {
-        let JoinPlan {
-            relation,
-            join_operator,
-            ..
-        } = join;
-
-        if !check_table_factor(context, relation) {
-            return false;
+    match &join.join_operator {
+        JoinOperatorPlan::Inner(JoinConstraintPlan::On(expr))
+        | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::On(expr)) => {
+            check_expr(context.map(Rc::clone), expr)
         }
-
-        match join_operator {
-            JoinOperatorPlan::Inner(JoinConstraintPlan::On(expr))
-            | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::On(expr)) => {
-                check_expr(context.map(Rc::clone), expr)
-            }
-            JoinOperatorPlan::Inner(JoinConstraintPlan::None)
-            | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None) => true,
-        }
-    }) {
-        return false;
+        JoinOperatorPlan::Inner(JoinConstraintPlan::None)
+        | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None) => true,
     }
-
-    true
 }
 
 fn check_filter(context: Option<&Rc<Context<'_>>>, filter: &FilterPlan) -> bool {
-    check_select(context, &filter.input) && check_expr(context.map(Rc::clone), &filter.expr)
+    let input = match &filter.input {
+        FilterInputPlan::Relation(relation) => check_table_factor(context, relation),
+        FilterInputPlan::Join(join) => check_join(context, join),
+    };
+
+    input && check_expr(context.map(Rc::clone), &filter.expr)
 }
 
 fn check_aggregation_input(
@@ -153,14 +142,16 @@ fn check_aggregation_input(
     input: &AggregationInputPlan,
 ) -> bool {
     match input {
-        AggregationInputPlan::Select(select) => check_select(context, select),
+        AggregationInputPlan::Relation(relation) => check_table_factor(context, relation),
+        AggregationInputPlan::Join(join) => check_join(context, join),
         AggregationInputPlan::Filter(filter) => check_filter(context, filter),
     }
 }
 
 fn check_project(context: Option<&Rc<Context<'_>>>, project: &ProjectPlan) -> bool {
     let input = match &project.input {
-        ProjectInputPlan::Select(select) => check_select(context, select),
+        ProjectInputPlan::Relation(relation) => check_table_factor(context, relation),
+        ProjectInputPlan::Join(join) => check_join(context, join),
         ProjectInputPlan::Filter(filter) => check_filter(context, filter),
         ProjectInputPlan::Aggregation(aggregation) => {
             check_aggregation_input(context, &aggregation.input)

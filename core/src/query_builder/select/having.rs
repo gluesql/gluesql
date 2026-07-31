@@ -162,9 +162,9 @@ mod tests {
             data::Value,
             plan::{
                 AggregationInputPlan, AggregationPlan, ExprPlan, HavingPlan, JoinConstraintPlan,
-                JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectInputPlan, ProjectPlan,
-                ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan, StatementPlan,
-                TableFactorPlan, TableWithJoinsPlan,
+                JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan, JoinPlan, ProjectInputPlan,
+                ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, StatementPlan,
+                TableFactorPlan,
             },
             query_builder::{
                 Build, QueryBuilderError, select::BuildQuery, table, test_query_builder,
@@ -220,32 +220,28 @@ mod tests {
         let expected = Ok(StatementPlan::Query(QueryPlan::Project(ProjectPlan {
             input: ProjectInputPlan::Having(HavingPlan {
                 input: AggregationPlan {
-                    input: AggregationInputPlan::Select(Box::new(SelectPlan {
-                        from: TableWithJoinsPlan {
-                            relation: TableFactorPlan::Table {
-                                name: "Foo".to_owned(),
-                                alias: None,
-                                index: None,
+                    input: AggregationInputPlan::Join(Box::new(JoinPlan {
+                        input: JoinInputPlan::Relation(TableFactorPlan::Table {
+                            name: "Foo".to_owned(),
+                            alias: None,
+                            index: None,
+                        }),
+                        relation: TableFactorPlan::Table {
+                            name: "Bar".to_owned(),
+                            alias: None,
+                            index: None,
+                        },
+                        join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
+                        join_executor: JoinExecutorPlan::Hash {
+                            key_expr: ExprPlan::CompoundIdentifier {
+                                alias: "Foo".to_owned(),
+                                ident: "id".to_owned(),
                             },
-                            joins: vec![JoinPlan {
-                                relation: TableFactorPlan::Table {
-                                    name: "Bar".to_owned(),
-                                    alias: None,
-                                    index: None,
-                                },
-                                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
-                                join_executor: JoinExecutorPlan::Hash {
-                                    key_expr: ExprPlan::CompoundIdentifier {
-                                        alias: "Foo".to_owned(),
-                                        ident: "id".to_owned(),
-                                    },
-                                    value_expr: ExprPlan::CompoundIdentifier {
-                                        alias: "Bar".to_owned(),
-                                        ident: "id".to_owned(),
-                                    },
-                                    where_clause: None,
-                                },
-                            }],
+                            value_expr: ExprPlan::CompoundIdentifier {
+                                alias: "Bar".to_owned(),
+                                ident: "id".to_owned(),
+                            },
+                            where_clause: None,
                         },
                     })),
                     group_by: Vec::new(),
