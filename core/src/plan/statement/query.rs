@@ -2,11 +2,13 @@ mod aggregation;
 mod distinct;
 mod filter;
 mod having;
+mod join;
 mod limit;
 mod offset;
 mod order_by_expr;
 mod project;
 mod select_order_by;
+mod source;
 mod values;
 
 pub use {
@@ -14,22 +16,25 @@ pub use {
     distinct::{DistinctInputPlan, DistinctPlan},
     filter::{FilterInputPlan, FilterPlan},
     having::HavingPlan,
+    join::{
+        HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan, JoinConditionInputPlan,
+        JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan, NestedLoopJoinInputPlan,
+        NestedLoopJoinPlan,
+    },
     limit::{LimitInputPlan, LimitPlan},
     offset::{OffsetInputPlan, OffsetPlan},
     order_by_expr::OrderByExprPlan,
     project::{ProjectInputPlan, ProjectPlan},
     select_order_by::SelectOrderByPlan,
+    source::{
+        DerivedSourcePlan, DictionarySourcePlan, IndexPredicatePlan, SeriesSourcePlan, SourcePlan,
+        TableAccessPlan, TableAliasPlan, TableSourcePlan,
+    },
     values::{ValuesOrderByPlan, ValuesPlan},
 };
 
 use {
-    crate::{
-        ast,
-        plan::{
-            InnerJoinInputPlan, InnerJoinPlan, JoinConditionInputPlan, JoinConditionPlan,
-            LeftOuterJoinInputPlan, LeftOuterJoinPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
-        },
-    },
+    crate::ast,
     serde::{Deserialize, Serialize},
 };
 

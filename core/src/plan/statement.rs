@@ -1,30 +1,23 @@
 mod ddl;
 mod expr;
-mod join;
 mod projection;
 mod query;
-mod source;
 
 pub use {
     ddl::AlterTableOperationPlan,
     expr::{
         AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan, FunctionExprPlan,
     },
-    join::{
-        HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan, JoinConditionInputPlan,
-        JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan, NestedLoopJoinInputPlan,
-        NestedLoopJoinPlan,
-    },
     projection::{ProjectionPlan, SelectItemPlan},
     query::{
-        AggregationInputPlan, AggregationPlan, DistinctInputPlan, DistinctPlan, FilterInputPlan,
-        FilterPlan, HavingPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
-        OrderByExprPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SelectOrderByPlan,
+        AggregationInputPlan, AggregationPlan, DerivedSourcePlan, DictionarySourcePlan,
+        DistinctInputPlan, DistinctPlan, FilterInputPlan, FilterPlan, HashJoinInputPlan,
+        HashJoinPlan, HavingPlan, IndexPredicatePlan, InnerJoinInputPlan, InnerJoinPlan,
+        JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
+        LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan, OffsetInputPlan,
+        OffsetPlan, OrderByExprPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SelectOrderByPlan,
+        SeriesSourcePlan, SourcePlan, TableAccessPlan, TableAliasPlan, TableSourcePlan,
         ValuesOrderByPlan, ValuesPlan,
-    },
-    source::{
-        DerivedSourcePlan, DictionarySourcePlan, IndexPredicatePlan, SeriesSourcePlan, SourcePlan,
-        TableAccessPlan, TableAliasPlan, TableSourcePlan,
     },
 };
 
