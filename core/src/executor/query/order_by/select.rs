@@ -3,9 +3,11 @@ mod error;
 pub use error::SortError;
 use {
     super::{
-        LabeledRows, QueryIter,
-        order_by::sort_by,
-        project_node::{self, ProjectedRows},
+        super::{
+            LabeledRows, QueryIter,
+            project::{self, ProjectedRows},
+        },
+        sort_by,
     },
     crate::{
         ast::{Literal, UnaryOperator},
@@ -22,7 +24,7 @@ use {
     std::{borrow::Cow, rc::Rc},
 };
 
-pub(super) fn execute<'a, T>(
+pub(crate) fn execute<'a, T>(
     storage: &'a T,
     plan: &'a SelectOrderByPlan,
     filter_context: Option<Rc<RowContext<'a>>>,
@@ -36,7 +38,7 @@ where
         labels,
         rows,
         table_alias,
-    } = project_node::execute(storage, input, filter_context)?;
+    } = project::execute(storage, input, filter_context)?;
     let rows = sort(storage, sort_context.as_ref(), rows, table_alias, exprs)?;
 
     Ok(LabeledRows { labels, rows })

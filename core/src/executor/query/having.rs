@@ -1,5 +1,5 @@
 use {
-    super::aggregation_node::{self, AggregatedRows},
+    super::aggregation::{self, AggregatedRows},
     crate::{
         executor::{
             context::{AggregateContext, RowContext},
@@ -21,8 +21,7 @@ where
     T: GStore,
 {
     let HavingPlan { input, expr } = plan;
-    let AggregatedRows { sources, rows } =
-        aggregation_node::execute(storage, input, filter_context)?;
+    let AggregatedRows { sources, rows } = aggregation::execute(storage, input, filter_context)?;
     let mut filtered = Vec::new();
 
     for aggregate_context in rows {

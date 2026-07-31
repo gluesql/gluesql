@@ -3,8 +3,9 @@ mod state;
 use {
     self::state::State,
     super::{
-        SelectedRows, SelectedSources, filter_node, inner_join_node, left_outer_join_node,
-        source_node,
+        SelectedRows, SelectedSources, filter,
+        join::{inner, left_outer},
+        source,
     },
     crate::{
         data::Value,
@@ -38,18 +39,14 @@ where
         aggregate_slots,
     } = plan;
     let SelectedRows { sources, rows } = match input {
-        AggregationInputPlan::Source(source) => source_node::execute(storage, source)?
+        AggregationInputPlan::Source(source) => source::execute(storage, source)?
             .rows(None)?
             .into_selected(None),
-        AggregationInputPlan::InnerJoin(join) => {
-            inner_join_node::execute(storage, join, filter_context)?
-        }
+        AggregationInputPlan::InnerJoin(join) => inner::execute(storage, join, filter_context)?,
         AggregationInputPlan::LeftOuterJoin(join) => {
-            left_outer_join_node::execute(storage, join, filter_context)?
+            left_outer::execute(storage, join, filter_context)?
         }
-        AggregationInputPlan::Filter(filter) => {
-            filter_node::execute(storage, filter, filter_context)?
-        }
+        AggregationInputPlan::Filter(filter) => filter::execute(storage, filter, filter_context)?,
     };
     let mut state = State::new(storage, aggregate_slots.len(), group_by.is_empty());
 

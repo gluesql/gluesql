@@ -1,8 +1,6 @@
 use {
-    super::{
-        JoinCandidateGroup, JoinCandidates, SelectedRows, SourceColumns, inner_join_node,
-        left_outer_join_node, source_node,
-    },
+    super::super::{SelectedRows, SourceColumns, source},
+    super::{JoinCandidateGroup, JoinCandidates, inner, left_outer},
     crate::{
         data::Row,
         executor::context::RowContext,
@@ -20,17 +18,15 @@ pub(super) fn execute<'a, T: GStore>(
 ) -> Result<JoinCandidates<'a>> {
     let NestedLoopJoinPlan { input, right } = plan;
     let SelectedRows { mut sources, rows } = match input {
-        NestedLoopJoinInputPlan::Source(source) => source_node::execute(storage, source)?
+        NestedLoopJoinInputPlan::Source(source_plan) => source::execute(storage, source_plan)?
             .rows(None)?
             .into_selected(None),
-        NestedLoopJoinInputPlan::InnerJoin(join) => {
-            inner_join_node::execute(storage, join, filter_context)?
-        }
+        NestedLoopJoinInputPlan::InnerJoin(join) => inner::execute(storage, join, filter_context)?,
         NestedLoopJoinInputPlan::LeftOuterJoin(join) => {
-            left_outer_join_node::execute(storage, join, filter_context)?
+            left_outer::execute(storage, join, filter_context)?
         }
     };
-    let right = source_node::execute(storage, right)?;
+    let right = source::execute(storage, right)?;
     let output = SourceColumns {
         alias: right.output.alias,
         names: Rc::clone(&right.output.names),

@@ -1,3 +1,8 @@
+pub(super) mod select;
+pub(super) mod values;
+
+pub use select::SortError;
+
 use {crate::data::Key, std::cmp::Ordering};
 
 pub(super) fn sort_by(keys_a: &[(Key, Option<bool>)], keys_b: &[(Key, Option<bool>)]) -> Ordering {

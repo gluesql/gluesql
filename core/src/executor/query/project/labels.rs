@@ -1,5 +1,5 @@
 use {
-    super::SelectedSources,
+    super::super::SelectedSources,
     crate::{
         data::SCHEMALESS_DOC_COLUMN,
         executor::fetch::FetchError,

@@ -1,5 +1,5 @@
 use {
-    super::{JoinCandidates, hash_join_node, nested_loop_join_node},
+    super::{JoinCandidates, hash, nested_loop},
     crate::{
         executor::{context::RowContext, filter::check_expr},
         plan::{JoinConditionInputPlan, JoinConditionPlan},
@@ -21,11 +21,9 @@ pub(super) fn execute<'a, T: GStore>(
         groups,
     } = match input {
         JoinConditionInputPlan::NestedLoop(join) => {
-            nested_loop_join_node::execute(storage, join, filter_context)?
+            nested_loop::execute(storage, join, filter_context)?
         }
-        JoinConditionInputPlan::Hash(join) => {
-            hash_join_node::execute(storage, join, filter_context)?
-        }
+        JoinConditionInputPlan::Hash(join) => hash::execute(storage, join, filter_context)?,
     };
     let filter_context = filter_context.map(Rc::clone);
     let groups = groups.map(move |group| {

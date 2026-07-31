@@ -1,5 +1,9 @@
 use {
-    super::{SelectedRows, inner_join_node, left_outer_join_node, source_node},
+    super::{
+        SelectedRows,
+        join::{inner, left_outer},
+        source,
+    },
     crate::{
         executor::{context::RowContext, filter::check_expr},
         plan::{FilterInputPlan, FilterPlan},
@@ -19,15 +23,11 @@ where
 {
     let FilterPlan { input, expr } = plan;
     let SelectedRows { sources, rows } = match input {
-        FilterInputPlan::Source(source) => source_node::execute(storage, source)?
+        FilterInputPlan::Source(source) => source::execute(storage, source)?
             .rows(None)?
             .into_selected(None),
-        FilterInputPlan::InnerJoin(join) => {
-            inner_join_node::execute(storage, join, filter_context)?
-        }
-        FilterInputPlan::LeftOuterJoin(join) => {
-            left_outer_join_node::execute(storage, join, filter_context)?
-        }
+        FilterInputPlan::InnerJoin(join) => inner::execute(storage, join, filter_context)?,
+        FilterInputPlan::LeftOuterJoin(join) => left_outer::execute(storage, join, filter_context)?,
     };
     let filter_context = filter_context.map(Rc::clone);
     let rows = rows.filter_map(move |context| {

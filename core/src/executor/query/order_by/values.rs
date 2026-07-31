@@ -1,8 +1,10 @@
 use {
     super::{
-        LabeledRows,
-        order_by::sort_by,
-        values_node::{self, MaterializedRows},
+        super::{
+            LabeledRows,
+            values::{self, MaterializedRows},
+        },
+        sort_by,
     },
     crate::{
         data::{Key, Row, Value},
@@ -12,10 +14,10 @@ use {
     },
 };
 
-pub(super) fn execute<'a>(
+pub(crate) fn execute<'a>(
     ValuesOrderByPlan { input, exprs }: &ValuesOrderByPlan,
 ) -> Result<LabeledRows<'a>> {
-    let MaterializedRows { labels, rows } = values_node::materialize(input)?;
+    let MaterializedRows { labels, rows } = values::materialize(input)?;
     let rows = sort(rows, exprs)?;
 
     Ok(LabeledRows {

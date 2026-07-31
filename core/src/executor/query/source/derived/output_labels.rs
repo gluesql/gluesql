@@ -1,5 +1,5 @@
 use crate::{
-    executor::query::{SelectedSources, projection_labels, values_node},
+    executor::query::{SelectedSources, project, source, values},
     plan::{
         AggregationInputPlan, DistinctInputPlan, DistinctPlan, FilterInputPlan, FilterPlan,
         HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan, JoinConditionInputPlan,
@@ -14,9 +14,9 @@ use crate::{
 pub(super) fn query<'a, T: GStore>(storage: &'a T, query: &'a QueryPlan) -> Result<Vec<String>> {
     match query {
         QueryPlan::Project(project) => project_plan(storage, project),
-        QueryPlan::Values(values) => Ok(values_node::labels(values)),
+        QueryPlan::Values(values_plan) => Ok(values::labels(values_plan)),
         QueryPlan::SelectOrderBy(order_by) => project_plan(storage, &order_by.input),
-        QueryPlan::ValuesOrderBy(order_by) => Ok(values_node::labels(&order_by.input)),
+        QueryPlan::ValuesOrderBy(order_by) => Ok(values::labels(&order_by.input)),
         QueryPlan::Distinct(plan) => distinct(storage, plan),
         QueryPlan::Offset(plan) => offset(storage, plan),
         QueryPlan::Limit(plan) => limit(storage, plan),
@@ -26,7 +26,7 @@ pub(super) fn query<'a, T: GStore>(storage: &'a T, query: &'a QueryPlan) -> Resu
 fn project_plan<'a, T: GStore>(storage: &'a T, plan: &'a ProjectPlan) -> Result<Vec<String>> {
     let sources = project_sources(storage, &plan.input)?;
 
-    projection_labels::resolve(&sources, &plan.projection)
+    project::resolve_labels(&sources, &plan.projection)
 }
 
 fn distinct<'a, T: GStore>(storage: &'a T, plan: &'a DistinctPlan) -> Result<Vec<String>> {
@@ -39,9 +39,9 @@ fn distinct<'a, T: GStore>(storage: &'a T, plan: &'a DistinctPlan) -> Result<Vec
 fn offset<'a, T: GStore>(storage: &'a T, plan: &'a OffsetPlan) -> Result<Vec<String>> {
     match &plan.input {
         OffsetInputPlan::Project(project) => project_plan(storage, project),
-        OffsetInputPlan::Values(values) => Ok(values_node::labels(values)),
+        OffsetInputPlan::Values(values_plan) => Ok(values::labels(values_plan)),
         OffsetInputPlan::SelectOrderBy(order_by) => project_plan(storage, &order_by.input),
-        OffsetInputPlan::ValuesOrderBy(order_by) => Ok(values_node::labels(&order_by.input)),
+        OffsetInputPlan::ValuesOrderBy(order_by) => Ok(values::labels(&order_by.input)),
         OffsetInputPlan::Distinct(distinct_plan) => distinct(storage, distinct_plan),
     }
 }
@@ -49,9 +49,9 @@ fn offset<'a, T: GStore>(storage: &'a T, plan: &'a OffsetPlan) -> Result<Vec<Str
 fn limit<'a, T: GStore>(storage: &'a T, plan: &'a LimitPlan) -> Result<Vec<String>> {
     match &plan.input {
         LimitInputPlan::Project(project) => project_plan(storage, project),
-        LimitInputPlan::Values(values) => Ok(values_node::labels(values)),
+        LimitInputPlan::Values(values_plan) => Ok(values::labels(values_plan)),
         LimitInputPlan::SelectOrderBy(order_by) => project_plan(storage, &order_by.input),
-        LimitInputPlan::ValuesOrderBy(order_by) => Ok(values_node::labels(&order_by.input)),
+        LimitInputPlan::ValuesOrderBy(order_by) => Ok(values::labels(&order_by.input)),
         LimitInputPlan::Distinct(distinct_plan) => distinct(storage, distinct_plan),
         LimitInputPlan::Offset(offset_plan) => offset(storage, offset_plan),
     }
@@ -137,7 +137,7 @@ fn nested_loop_sources<'a, T: GStore>(
         NestedLoopJoinInputPlan::InnerJoin(join) => inner_join_sources(storage, join)?,
         NestedLoopJoinInputPlan::LeftOuterJoin(join) => left_outer_join_sources(storage, join)?,
     };
-    let right = super::super::execute(storage, &join.right)?;
+    let right = source::execute(storage, &join.right)?;
     sources.joined.push(right.output);
 
     Ok(sources)
@@ -152,7 +152,7 @@ fn hash_sources<'a, T: GStore>(
         HashJoinInputPlan::InnerJoin(join) => inner_join_sources(storage, join)?,
         HashJoinInputPlan::LeftOuterJoin(join) => left_outer_join_sources(storage, join)?,
     };
-    let right = super::super::execute(storage, &join.right)?;
+    let right = source::execute(storage, &join.right)?;
     sources.joined.push(right.output);
 
     Ok(sources)
@@ -162,7 +162,7 @@ fn source_columns<'a, T: GStore>(
     storage: &'a T,
     source: &'a crate::plan::SourcePlan,
 ) -> Result<SelectedSources<'a>> {
-    let source = super::super::execute(storage, source)?.output;
+    let source = source::execute(storage, source)?.output;
 
     Ok(SelectedSources {
         base: source,

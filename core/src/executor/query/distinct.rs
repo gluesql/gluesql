@@ -1,5 +1,5 @@
 use {
-    super::{LabeledRows, QueryIter, project_node, select_order_by_node},
+    super::{LabeledRows, QueryIter, order_by, project},
     crate::{
         executor::context::RowContext,
         plan::{DistinctInputPlan, DistinctPlan},
@@ -19,8 +19,8 @@ where
 {
     let LabeledRows { labels, rows } = match &plan.input {
         DistinctInputPlan::Project(project) => {
-            let project_node::ProjectedRows { labels, rows, .. } =
-                project_node::execute(storage, project, filter_context)?;
+            let project::ProjectedRows { labels, rows, .. } =
+                project::execute(storage, project, filter_context)?;
             let rows = rows.map(|row| row.map(|(.., row)| row));
 
             Ok(LabeledRows {
@@ -29,7 +29,7 @@ where
             })
         }
         DistinctInputPlan::SelectOrderBy(order_by) => {
-            select_order_by_node::execute(storage, order_by, filter_context)
+            order_by::select::execute(storage, order_by, filter_context)
         }
     }?;
     let rows = rows.collect::<Result<Vec<_>>>()?;

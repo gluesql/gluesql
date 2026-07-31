@@ -1,8 +1,6 @@
 use {
-    super::{
-        JoinCandidates, SelectedIter, SelectedRows, hash_join_node, join_condition_node,
-        nested_loop_join_node,
-    },
+    super::super::{SelectedIter, SelectedRows},
+    super::{JoinCandidates, condition, hash, nested_loop},
     crate::{
         data::{Row, Value},
         executor::context::RowContext,
@@ -13,7 +11,7 @@ use {
     std::{borrow::Cow, rc::Rc},
 };
 
-pub(super) fn execute<'a, T: GStore>(
+pub(crate) fn execute<'a, T: GStore>(
     storage: &'a T,
     plan: &'a LeftOuterJoinPlan,
     filter_context: Option<&Rc<RowContext<'a>>>,
@@ -24,13 +22,11 @@ pub(super) fn execute<'a, T: GStore>(
         groups,
     } = match &plan.input {
         LeftOuterJoinInputPlan::NestedLoop(join) => {
-            nested_loop_join_node::execute(storage, join, filter_context)?
+            nested_loop::execute(storage, join, filter_context)?
         }
-        LeftOuterJoinInputPlan::Hash(join) => {
-            hash_join_node::execute(storage, join, filter_context)?
-        }
+        LeftOuterJoinInputPlan::Hash(join) => hash::execute(storage, join, filter_context)?,
         LeftOuterJoinInputPlan::Condition(condition) => {
-            join_condition_node::execute(storage, condition, filter_context)?
+            condition::execute(storage, condition, filter_context)?
         }
     };
     let rows = groups.flat_map(move |group| {

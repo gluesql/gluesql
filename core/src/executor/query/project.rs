@@ -1,9 +1,12 @@
+mod labels;
+
 use {
     super::{
         SelectedRows, SelectedSources,
-        aggregation_node::{self, AggregatedRows},
-        filter_node, having_node, inner_join_node, left_outer_join_node, projection_labels,
-        source_node,
+        aggregation::{self, AggregatedRows},
+        filter, having,
+        join::{inner, left_outer},
+        source,
     },
     crate::{
         data::{Row, SCHEMALESS_DOC_COLUMN, Value},
@@ -39,7 +42,7 @@ where
     let ProjectPlan { input, projection } = plan;
     let (sources, rows): (SelectedSources<'a>, ProjectInputIter<'a>) = match input {
         ProjectInputPlan::Source(source) => {
-            let SelectedRows { sources, rows } = source_node::execute(storage, source)?
+            let SelectedRows { sources, rows } = source::execute(storage, source)?
                 .rows(None)?
                 .into_selected(None);
             let rows = rows.map(|context| {
@@ -53,7 +56,7 @@ where
         }
         ProjectInputPlan::InnerJoin(join) => {
             let SelectedRows { sources, rows } =
-                inner_join_node::execute(storage, join, filter_context.as_ref())?;
+                inner::execute(storage, join, filter_context.as_ref())?;
             let rows = rows.map(|context| {
                 context.map(|context| AggregateContext {
                     aggregated: None,
@@ -65,7 +68,7 @@ where
         }
         ProjectInputPlan::LeftOuterJoin(join) => {
             let SelectedRows { sources, rows } =
-                left_outer_join_node::execute(storage, join, filter_context.as_ref())?;
+                left_outer::execute(storage, join, filter_context.as_ref())?;
             let rows = rows.map(|context| {
                 context.map(|context| AggregateContext {
                     aggregated: None,
@@ -77,7 +80,7 @@ where
         }
         ProjectInputPlan::Filter(filter) => {
             let SelectedRows { sources, rows } =
-                filter_node::execute(storage, filter, filter_context.as_ref())?;
+                filter::execute(storage, filter, filter_context.as_ref())?;
             let rows = rows.map(|context| {
                 context.map(|context| AggregateContext {
                     aggregated: None,
@@ -89,20 +92,20 @@ where
         }
         ProjectInputPlan::Aggregation(aggregation) => {
             let AggregatedRows { sources, rows } =
-                aggregation_node::execute(storage, aggregation, filter_context.as_ref())?;
+                aggregation::execute(storage, aggregation, filter_context.as_ref())?;
             let rows = rows.into_iter().map(Ok);
 
             (sources, Box::new(rows))
         }
         ProjectInputPlan::Having(having) => {
             let AggregatedRows { sources, rows } =
-                having_node::execute(storage, having, filter_context.as_ref())?;
+                having::execute(storage, having, filter_context.as_ref())?;
             let rows = rows.into_iter().map(Ok);
 
             (sources, Box::new(rows))
         }
     };
-    let labels = projection_labels::resolve(&sources, projection)?;
+    let labels = resolve_labels(&sources, projection)?;
     let table_alias = sources.base.alias;
     let labels = Rc::from(labels);
     let project_labels = Rc::clone(&labels);
@@ -172,4 +175,11 @@ where
         rows: Box::new(rows),
         table_alias,
     })
+}
+
+pub(super) fn resolve_labels(
+    sources: &SelectedSources<'_>,
+    projection: &ProjectionPlan,
+) -> Result<Vec<String>> {
+    labels::resolve(sources, projection)
 }

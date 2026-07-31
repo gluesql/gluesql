@@ -1,8 +1,5 @@
 use {
-    super::{
-        LabeledRows, distinct_node, project_node, select_order_by_node, values_node,
-        values_order_by_node,
-    },
+    super::{LabeledRows, distinct, order_by, project, values},
     crate::{
         data::Value,
         executor::{context::RowContext, evaluate::evaluate_stateless},
@@ -23,8 +20,8 @@ where
 {
     let LabeledRows { labels, rows } = match &plan.input {
         OffsetInputPlan::Project(project) => {
-            let project_node::ProjectedRows { labels, rows, .. } =
-                project_node::execute(storage, project, filter_context)?;
+            let project::ProjectedRows { labels, rows, .. } =
+                project::execute(storage, project, filter_context)?;
             let rows = rows.map(|row| row.map(|(.., row)| row));
 
             Ok(LabeledRows {
@@ -32,14 +29,12 @@ where
                 rows: Box::new(rows),
             })
         }
-        OffsetInputPlan::Values(values) => values_node::execute(values),
+        OffsetInputPlan::Values(values_plan) => values::execute(values_plan),
         OffsetInputPlan::SelectOrderBy(order_by) => {
-            select_order_by_node::execute(storage, order_by, filter_context)
+            order_by::select::execute(storage, order_by, filter_context)
         }
-        OffsetInputPlan::ValuesOrderBy(order_by) => values_order_by_node::execute(order_by),
-        OffsetInputPlan::Distinct(distinct) => {
-            distinct_node::execute(storage, distinct, filter_context)
-        }
+        OffsetInputPlan::ValuesOrderBy(order_by) => order_by::values::execute(order_by),
+        OffsetInputPlan::Distinct(distinct) => distinct::execute(storage, distinct, filter_context),
     }?;
     let count = evaluate_count(&plan.count)?;
 

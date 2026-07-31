@@ -1,8 +1,6 @@
 use {
-    super::{
-        JoinCandidateGroup, JoinCandidates, SelectedRows, SourceColumns, inner_join_node,
-        left_outer_join_node, source_node,
-    },
+    super::super::{SelectedRows, SourceColumns, source},
+    super::{JoinCandidateGroup, JoinCandidates, inner, left_outer},
     crate::{
         data::{Key, Row},
         executor::{context::RowContext, evaluate::evaluate, filter::check_expr},
@@ -27,17 +25,15 @@ pub(super) fn execute<'a, T: GStore>(
         right_filter,
     } = plan;
     let SelectedRows { mut sources, rows } = match input {
-        HashJoinInputPlan::Source(source) => source_node::execute(storage, source)?
+        HashJoinInputPlan::Source(source_plan) => source::execute(storage, source_plan)?
             .rows(None)?
             .into_selected(None),
-        HashJoinInputPlan::InnerJoin(join) => {
-            inner_join_node::execute(storage, join, filter_context)?
-        }
+        HashJoinInputPlan::InnerJoin(join) => inner::execute(storage, join, filter_context)?,
         HashJoinInputPlan::LeftOuterJoin(join) => {
-            left_outer_join_node::execute(storage, join, filter_context)?
+            left_outer::execute(storage, join, filter_context)?
         }
     };
-    let right = source_node::execute(storage, right)?;
+    let right = source::execute(storage, right)?;
     let (rows_map, right_source) = build_rows(
         storage,
         right,
@@ -80,7 +76,7 @@ pub(super) fn execute<'a, T: GStore>(
 
 fn build_rows<'a, T: GStore>(
     storage: &'a T,
-    source: source_node::PreparedSource<'a>,
+    source: source::PreparedSource<'a>,
     filter_context: Option<&Rc<RowContext<'a>>>,
     right_key: &'a crate::plan::ExprPlan,
     right_filter: Option<&'a crate::plan::ExprPlan>,

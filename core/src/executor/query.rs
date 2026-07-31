@@ -1,22 +1,15 @@
-mod aggregation_node;
-mod distinct_node;
+mod aggregation;
+mod distinct;
 mod error;
-mod filter_node;
-mod hash_join_node;
-mod having_node;
-mod inner_join_node;
-mod join_condition_node;
-mod left_outer_join_node;
-mod limit_node;
-mod nested_loop_join_node;
-mod offset_node;
+mod filter;
+mod having;
+mod join;
+mod limit;
+mod offset;
 mod order_by;
-mod project_node;
-mod projection_labels;
-mod select_order_by_node;
-mod source_node;
-mod values_node;
-mod values_order_by_node;
+mod project;
+mod source;
+mod values;
 
 use {
     crate::{
@@ -24,7 +17,7 @@ use {
     },
     std::rc::Rc,
 };
-pub use {error::SelectError, select_order_by_node::SortError};
+pub use {error::SelectError, order_by::SortError};
 
 pub type QueryIter<'a> = Box<dyn Iterator<Item = Result<Row>> + 'a>;
 type SelectedIter<'a> = Box<dyn Iterator<Item = Result<Rc<RowContext<'a>>>> + 'a>;
@@ -42,19 +35,6 @@ struct SelectedSources<'a> {
 struct SelectedRows<'a> {
     sources: SelectedSources<'a>,
     rows: SelectedIter<'a>,
-}
-
-struct JoinCandidateGroup<'a> {
-    left: Rc<RowContext<'a>>,
-    rows: SelectedIter<'a>,
-}
-
-type JoinCandidateGroupIter<'a> = Box<dyn Iterator<Item = Result<JoinCandidateGroup<'a>>> + 'a>;
-
-struct JoinCandidates<'a> {
-    sources: SelectedSources<'a>,
-    right: SourceColumns<'a>,
-    groups: JoinCandidateGroupIter<'a>,
 }
 
 struct LabeledRows<'a> {
@@ -94,8 +74,8 @@ where
 {
     match query {
         QueryPlan::Project(project) => {
-            let project_node::ProjectedRows { labels, rows, .. } =
-                project_node::execute(storage, project, filter_context)?;
+            let project::ProjectedRows { labels, rows, .. } =
+                project::execute(storage, project, filter_context)?;
             let rows = rows.map(|row| row.map(|(.., row)| row));
 
             Ok(LabeledRows {
@@ -103,13 +83,13 @@ where
                 rows: Box::new(rows),
             })
         }
-        QueryPlan::Values(values) => values_node::execute(values),
+        QueryPlan::Values(values) => values::execute(values),
         QueryPlan::SelectOrderBy(order_by) => {
-            select_order_by_node::execute(storage, order_by, filter_context)
+            order_by::select::execute(storage, order_by, filter_context)
         }
-        QueryPlan::ValuesOrderBy(order_by) => values_order_by_node::execute(order_by),
-        QueryPlan::Distinct(distinct) => distinct_node::execute(storage, distinct, filter_context),
-        QueryPlan::Offset(offset) => offset_node::execute(storage, offset, filter_context),
-        QueryPlan::Limit(limit) => limit_node::execute(storage, limit, filter_context),
+        QueryPlan::ValuesOrderBy(order_by) => order_by::values::execute(order_by),
+        QueryPlan::Distinct(distinct) => distinct::execute(storage, distinct, filter_context),
+        QueryPlan::Offset(offset) => offset::execute(storage, offset, filter_context),
+        QueryPlan::Limit(limit) => limit::execute(storage, limit, filter_context),
     }
 }
