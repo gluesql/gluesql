@@ -17,6 +17,15 @@ struct Item {
     in_stock: Option<bool>,
 }
 
+#[derive(ToGlueRow)]
+struct Empty {}
+
+#[test]
+fn to_glue_row_supports_empty_structs() {
+    assert!(Empty::glue_columns().is_empty());
+    assert!(Empty {}.to_glue_row().is_empty());
+}
+
 #[test]
 fn glue_columns_honors_rename() {
     assert_eq!(

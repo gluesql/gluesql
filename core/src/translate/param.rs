@@ -315,6 +315,30 @@ mod tests {
     }
 
     #[test]
+    fn converts_borrowed_literals() {
+        let bytes = vec![0x12_u8, 0xAB];
+        let expr = bytes.to_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::Bytea(bytes)));
+
+        let bytes = [0xCD_u8, 0xEF];
+        let slice = bytes.as_slice();
+        let expr = slice.to_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::Bytea(bytes.to_vec())));
+
+        let signed = 42_isize;
+        let expr = signed.to_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::I64(42)));
+
+        let unsigned = 42_usize;
+        let expr = unsigned.to_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::U64(42)));
+
+        let uuid = Uuid::parse_str("123e4567-e89b-12d3-a456-426614174000").unwrap();
+        let expr = uuid.to_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::Uuid(uuid.as_u128())));
+    }
+
+    #[test]
     fn converts_scalars_and_structs() {
         let expr = 1.25_f64.into_param_literal().into_expr();
         assert_eq!(expr, Expr::Value(Value::F64(1.25)));
