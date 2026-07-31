@@ -1,6 +1,6 @@
 use crate::{
     data::Value,
-    plan::{ExprPlan, FunctionPlan},
+    plan::{ExprPlan, FunctionExprPlan},
 };
 
 pub fn may_return_null(expr: &ExprPlan) -> bool {
@@ -54,8 +54,8 @@ pub fn may_return_null(expr: &ExprPlan) -> bool {
     }
 }
 
-fn function_may_return_null(function: &FunctionPlan) -> bool {
-    use FunctionPlan::*;
+fn function_may_return_null(function: &FunctionExprPlan) -> bool {
+    use FunctionExprPlan::*;
 
     match function {
         Coalesce(exprs) => exprs.iter().all(may_return_null),

@@ -1,6 +1,6 @@
-use crate::plan::{AggregateFunctionPlan, AggregatePlan, CountArgExprPlan, ExprPlan};
+use crate::plan::{AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan};
 
-impl AggregatePlan {
+impl AggregateExprPlan {
     pub fn as_expr(&self) -> Option<&ExprPlan> {
         match &self.func {
             AggregateFunctionPlan::Count(CountArgExprPlan::Wildcard) => None,
@@ -19,11 +19,11 @@ impl AggregatePlan {
 mod tests {
     use crate::{
         parse_sql::parse_expr,
-        plan::{AggregatePlan, ExprPlan},
+        plan::{AggregateExprPlan, ExprPlan},
         translate::{NO_PARAMS, translate_expr},
     };
 
-    fn parse(sql: &str) -> AggregatePlan {
+    fn parse(sql: &str) -> AggregateExprPlan {
         let parsed = parse_expr(sql).unwrap();
         let expr = ExprPlan::from(translate_expr(&parsed, NO_PARAMS).unwrap());
 

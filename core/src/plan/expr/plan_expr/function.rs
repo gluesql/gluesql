@@ -1,9 +1,9 @@
 use {
-    crate::plan::{ExprPlan, FunctionPlan},
+    crate::plan::{ExprPlan, FunctionExprPlan},
     std::iter::{empty, once},
 };
 
-impl FunctionPlan {
+impl FunctionExprPlan {
     pub fn as_exprs(&self) -> impl Iterator<Item = &ExprPlan> {
         #[derive(iter_enum::Iterator)]
         enum Exprs<I0, I1, I2, I3, I4, I5, I6> {
@@ -18,12 +18,12 @@ impl FunctionPlan {
 
         match self {
             Self::Now()
-            | FunctionPlan::Pi()
-            | FunctionPlan::GenerateUuid()
+            | FunctionExprPlan::Pi()
+            | FunctionExprPlan::GenerateUuid()
             | Self::Rand(None)
-            | FunctionPlan::CurrentDate()
-            | FunctionPlan::CurrentTime()
-            | FunctionPlan::CurrentTimestamp() => Exprs::Empty(empty()),
+            | FunctionExprPlan::CurrentDate()
+            | FunctionExprPlan::CurrentTime()
+            | FunctionExprPlan::CurrentTimestamp() => Exprs::Empty(empty()),
             Self::Lower(expr)
             | Self::Length(expr)
             | Self::Initcap(expr)

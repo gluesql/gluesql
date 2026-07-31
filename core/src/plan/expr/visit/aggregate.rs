@@ -1,6 +1,8 @@
 use {
     super::{try_visit_expr, visit_mut_expr},
-    crate::plan::{AggregateFunctionPlan, AggregatePlan, CountArgExprPlan, ExprPlan, PlanError},
+    crate::plan::{
+        AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan, PlanError,
+    },
 };
 
 macro_rules! apply_mut {
@@ -35,14 +37,14 @@ macro_rules! visit_aggregate_children {
     };
 }
 
-pub fn visit_mut_aggregate<F>(aggr: &mut AggregatePlan, f: &mut F)
+pub fn visit_mut_aggregate<F>(aggr: &mut AggregateExprPlan, f: &mut F)
 where
     F: FnMut(&mut ExprPlan),
 {
     visit_aggregate_children!(&mut aggr.func, visit_mut_expr, f, apply_mut);
 }
 
-pub fn try_visit_aggregate<F>(aggr: &AggregatePlan, f: &mut F) -> Result<(), PlanError>
+pub fn try_visit_aggregate<F>(aggr: &AggregateExprPlan, f: &mut F) -> Result<(), PlanError>
 where
     F: FnMut(&ExprPlan) -> Result<(), PlanError>,
 {

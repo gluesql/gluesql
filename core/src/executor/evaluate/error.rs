@@ -1,7 +1,7 @@
 use {
     crate::{
         ast::{BinaryOperator, DataType, ToSql},
-        plan::AggregatePlan,
+        plan::AggregateExprPlan,
     },
     serde::Serialize,
     std::fmt::Debug,
@@ -104,13 +104,13 @@ pub enum EvaluateError {
     CompoundIdentifierRequiresRowContext { alias: String, ident: String },
 
     #[error("aggregate slot value missing: {0:?}")]
-    AggregateSlotValueMissing(Box<AggregatePlan>),
+    AggregateSlotValueMissing(Box<AggregateExprPlan>),
 
     #[error("aggregate expression requires planner binding: {0:?}")]
-    UnplannedAggregate(Box<AggregatePlan>),
+    UnplannedAggregate(Box<AggregateExprPlan>),
 
     #[error("filter context is required for aggregate function: {0:?}")]
-    FilterContextRequiredForAggregate(Box<AggregatePlan>),
+    FilterContextRequiredForAggregate(Box<AggregateExprPlan>),
 
     #[error("incompatible bit operation between {0} and {1}")]
     IncompatibleBitOperation(String, String),

@@ -1,6 +1,6 @@
 use {
     super::{try_visit_expr, visit_mut_expr},
-    crate::plan::{ExprPlan, FunctionPlan, PlanError},
+    crate::plan::{ExprPlan, FunctionExprPlan, PlanError},
 };
 
 macro_rules! apply_mut {
@@ -18,94 +18,95 @@ macro_rules! apply_try {
 macro_rules! visit_function_children {
     ($func:expr, $visit_expr:ident, $f:expr, $apply:ident) => {
         match $func {
-            FunctionPlan::Abs(expr)
-            | FunctionPlan::Lower(expr)
-            | FunctionPlan::Initcap(expr)
-            | FunctionPlan::Upper(expr)
-            | FunctionPlan::Asin(expr)
-            | FunctionPlan::Acos(expr)
-            | FunctionPlan::Atan(expr)
-            | FunctionPlan::Ceil(expr)
-            | FunctionPlan::Round(expr)
-            | FunctionPlan::Trunc(expr)
-            | FunctionPlan::Floor(expr)
-            | FunctionPlan::Exp(expr)
-            | FunctionPlan::Ln(expr)
-            | FunctionPlan::Log2(expr)
-            | FunctionPlan::Log10(expr)
-            | FunctionPlan::Sin(expr)
-            | FunctionPlan::Cos(expr)
-            | FunctionPlan::Tan(expr)
-            | FunctionPlan::Sqrt(expr)
-            | FunctionPlan::Radians(expr)
-            | FunctionPlan::Degrees(expr)
-            | FunctionPlan::LastDay(expr)
-            | FunctionPlan::Reverse(expr)
-            | FunctionPlan::Sign(expr)
-            | FunctionPlan::Ascii(expr)
-            | FunctionPlan::Chr(expr)
-            | FunctionPlan::Md5(expr)
-            | FunctionPlan::Hex(expr)
-            | FunctionPlan::IsEmpty(expr)
-            | FunctionPlan::Length(expr)
-            | FunctionPlan::Entries(expr)
-            | FunctionPlan::Keys(expr)
-            | FunctionPlan::Values(expr)
-            | FunctionPlan::Dedup(expr)
-            | FunctionPlan::GetX(expr)
-            | FunctionPlan::GetY(expr) => $apply!($visit_expr(expr, $f)),
-            FunctionPlan::AddMonth { expr, size }
-            | FunctionPlan::Left { expr, size }
-            | FunctionPlan::Right { expr, size }
-            | FunctionPlan::Repeat { expr, num: size }
-            | FunctionPlan::Skip { expr, size }
-            | FunctionPlan::Take { expr, size } => {
+            FunctionExprPlan::Abs(expr)
+            | FunctionExprPlan::Lower(expr)
+            | FunctionExprPlan::Initcap(expr)
+            | FunctionExprPlan::Upper(expr)
+            | FunctionExprPlan::Asin(expr)
+            | FunctionExprPlan::Acos(expr)
+            | FunctionExprPlan::Atan(expr)
+            | FunctionExprPlan::Ceil(expr)
+            | FunctionExprPlan::Round(expr)
+            | FunctionExprPlan::Trunc(expr)
+            | FunctionExprPlan::Floor(expr)
+            | FunctionExprPlan::Exp(expr)
+            | FunctionExprPlan::Ln(expr)
+            | FunctionExprPlan::Log2(expr)
+            | FunctionExprPlan::Log10(expr)
+            | FunctionExprPlan::Sin(expr)
+            | FunctionExprPlan::Cos(expr)
+            | FunctionExprPlan::Tan(expr)
+            | FunctionExprPlan::Sqrt(expr)
+            | FunctionExprPlan::Radians(expr)
+            | FunctionExprPlan::Degrees(expr)
+            | FunctionExprPlan::LastDay(expr)
+            | FunctionExprPlan::Reverse(expr)
+            | FunctionExprPlan::Sign(expr)
+            | FunctionExprPlan::Ascii(expr)
+            | FunctionExprPlan::Chr(expr)
+            | FunctionExprPlan::Md5(expr)
+            | FunctionExprPlan::Hex(expr)
+            | FunctionExprPlan::IsEmpty(expr)
+            | FunctionExprPlan::Length(expr)
+            | FunctionExprPlan::Entries(expr)
+            | FunctionExprPlan::Keys(expr)
+            | FunctionExprPlan::Values(expr)
+            | FunctionExprPlan::Dedup(expr)
+            | FunctionExprPlan::GetX(expr)
+            | FunctionExprPlan::GetY(expr) => $apply!($visit_expr(expr, $f)),
+            FunctionExprPlan::AddMonth { expr, size }
+            | FunctionExprPlan::Left { expr, size }
+            | FunctionExprPlan::Right { expr, size }
+            | FunctionExprPlan::Repeat { expr, num: size }
+            | FunctionExprPlan::Skip { expr, size }
+            | FunctionExprPlan::Take { expr, size } => {
                 $apply!($visit_expr(expr, $f));
                 $apply!($visit_expr(size, $f));
             }
-            FunctionPlan::Lpad { expr, size, fill } | FunctionPlan::Rpad { expr, size, fill } => {
+            FunctionExprPlan::Lpad { expr, size, fill }
+            | FunctionExprPlan::Rpad { expr, size, fill } => {
                 $apply!($visit_expr(expr, $f));
                 $apply!($visit_expr(size, $f));
                 if let Some(e) = fill {
                     $apply!($visit_expr(e, $f));
                 }
             }
-            FunctionPlan::Replace { expr, old, new } => {
+            FunctionExprPlan::Replace { expr, old, new } => {
                 $apply!($visit_expr(expr, $f));
                 $apply!($visit_expr(old, $f));
                 $apply!($visit_expr(new, $f));
             }
-            FunctionPlan::Cast { expr, .. } | FunctionPlan::Extract { expr, .. } => {
+            FunctionExprPlan::Cast { expr, .. } | FunctionExprPlan::Extract { expr, .. } => {
                 $apply!($visit_expr(expr, $f));
             }
-            FunctionPlan::Coalesce(exprs)
-            | FunctionPlan::Concat(exprs)
-            | FunctionPlan::Greatest(exprs)
-            | FunctionPlan::Custom { exprs, .. } => {
+            FunctionExprPlan::Coalesce(exprs)
+            | FunctionExprPlan::Concat(exprs)
+            | FunctionExprPlan::Greatest(exprs)
+            | FunctionExprPlan::Custom { exprs, .. } => {
                 for e in exprs {
                     $apply!($visit_expr(e, $f));
                 }
             }
-            FunctionPlan::ConcatWs { separator, exprs } => {
+            FunctionExprPlan::ConcatWs { separator, exprs } => {
                 $apply!($visit_expr(separator, $f));
                 for e in exprs {
                     $apply!($visit_expr(e, $f));
                 }
             }
-            FunctionPlan::IfNull { expr, then } => {
+            FunctionExprPlan::IfNull { expr, then } => {
                 $apply!($visit_expr(expr, $f));
                 $apply!($visit_expr(then, $f));
             }
-            FunctionPlan::NullIf { expr1, expr2 } => {
+            FunctionExprPlan::NullIf { expr1, expr2 } => {
                 $apply!($visit_expr(expr1, $f));
                 $apply!($visit_expr(expr2, $f));
             }
-            FunctionPlan::Rand(expr) => {
+            FunctionExprPlan::Rand(expr) => {
                 if let Some(e) = expr {
                     $apply!($visit_expr(e, $f));
                 }
             }
-            FunctionPlan::Trim {
+            FunctionExprPlan::Trim {
                 expr, filter_chars, ..
             } => {
                 $apply!($visit_expr(expr, $f));
@@ -113,54 +114,55 @@ macro_rules! visit_function_children {
                     $apply!($visit_expr(e, $f));
                 }
             }
-            FunctionPlan::Log { antilog, base } => {
+            FunctionExprPlan::Log { antilog, base } => {
                 $apply!($visit_expr(antilog, $f));
                 $apply!($visit_expr(base, $f));
             }
-            FunctionPlan::Div { dividend, divisor } | FunctionPlan::Mod { dividend, divisor } => {
+            FunctionExprPlan::Div { dividend, divisor }
+            | FunctionExprPlan::Mod { dividend, divisor } => {
                 $apply!($visit_expr(dividend, $f));
                 $apply!($visit_expr(divisor, $f));
             }
-            FunctionPlan::Gcd { left, right } | FunctionPlan::Lcm { left, right } => {
+            FunctionExprPlan::Gcd { left, right } | FunctionExprPlan::Lcm { left, right } => {
                 $apply!($visit_expr(left, $f));
                 $apply!($visit_expr(right, $f));
             }
-            FunctionPlan::Power { expr, power } => {
+            FunctionExprPlan::Power { expr, power } => {
                 $apply!($visit_expr(expr, $f));
                 $apply!($visit_expr(power, $f));
             }
-            FunctionPlan::Ltrim { expr, chars } | FunctionPlan::Rtrim { expr, chars } => {
+            FunctionExprPlan::Ltrim { expr, chars } | FunctionExprPlan::Rtrim { expr, chars } => {
                 $apply!($visit_expr(expr, $f));
                 if let Some(e) = chars {
                     $apply!($visit_expr(e, $f));
                 }
             }
-            FunctionPlan::Substr { expr, start, count } => {
+            FunctionExprPlan::Substr { expr, start, count } => {
                 $apply!($visit_expr(expr, $f));
                 $apply!($visit_expr(start, $f));
                 if let Some(e) = count {
                     $apply!($visit_expr(e, $f));
                 }
             }
-            FunctionPlan::Unwrap { expr, selector } => {
+            FunctionExprPlan::Unwrap { expr, selector } => {
                 $apply!($visit_expr(expr, $f));
                 $apply!($visit_expr(selector, $f));
             }
-            FunctionPlan::Format { expr, format }
-            | FunctionPlan::ToDate { expr, format }
-            | FunctionPlan::ToTimestamp { expr, format }
-            | FunctionPlan::ToTime { expr, format } => {
+            FunctionExprPlan::Format { expr, format }
+            | FunctionExprPlan::ToDate { expr, format }
+            | FunctionExprPlan::ToTimestamp { expr, format }
+            | FunctionExprPlan::ToTime { expr, format } => {
                 $apply!($visit_expr(expr, $f));
                 $apply!($visit_expr(format, $f));
             }
-            FunctionPlan::Position {
+            FunctionExprPlan::Position {
                 from_expr,
                 sub_expr,
             } => {
                 $apply!($visit_expr(from_expr, $f));
                 $apply!($visit_expr(sub_expr, $f));
             }
-            FunctionPlan::FindIdx {
+            FunctionExprPlan::FindIdx {
                 from_expr,
                 sub_expr,
                 start,
@@ -171,17 +173,18 @@ macro_rules! visit_function_children {
                     $apply!($visit_expr(e, $f));
                 }
             }
-            FunctionPlan::Append { expr, value } | FunctionPlan::Prepend { expr, value } => {
+            FunctionExprPlan::Append { expr, value }
+            | FunctionExprPlan::Prepend { expr, value } => {
                 $apply!($visit_expr(expr, $f));
                 $apply!($visit_expr(value, $f));
             }
-            FunctionPlan::Sort { expr, order } => {
+            FunctionExprPlan::Sort { expr, order } => {
                 $apply!($visit_expr(expr, $f));
                 if let Some(e) = order {
                     $apply!($visit_expr(e, $f));
                 }
             }
-            FunctionPlan::Slice {
+            FunctionExprPlan::Slice {
                 expr,
                 start,
                 length,
@@ -190,18 +193,18 @@ macro_rules! visit_function_children {
                 $apply!($visit_expr(start, $f));
                 $apply!($visit_expr(length, $f));
             }
-            FunctionPlan::Point { x, y } => {
+            FunctionExprPlan::Point { x, y } => {
                 $apply!($visit_expr(x, $f));
                 $apply!($visit_expr(y, $f));
             }
-            FunctionPlan::CalcDistance {
+            FunctionExprPlan::CalcDistance {
                 geometry1,
                 geometry2,
             } => {
                 $apply!($visit_expr(geometry1, $f));
                 $apply!($visit_expr(geometry2, $f));
             }
-            FunctionPlan::Splice {
+            FunctionExprPlan::Splice {
                 list_data,
                 begin_index,
                 end_index,
@@ -214,24 +217,24 @@ macro_rules! visit_function_children {
                     $apply!($visit_expr(e, $f));
                 }
             }
-            FunctionPlan::Now()
-            | FunctionPlan::CurrentDate()
-            | FunctionPlan::CurrentTime()
-            | FunctionPlan::CurrentTimestamp()
-            | FunctionPlan::Pi()
-            | FunctionPlan::GenerateUuid() => {}
+            FunctionExprPlan::Now()
+            | FunctionExprPlan::CurrentDate()
+            | FunctionExprPlan::CurrentTime()
+            | FunctionExprPlan::CurrentTimestamp()
+            | FunctionExprPlan::Pi()
+            | FunctionExprPlan::GenerateUuid() => {}
         }
     };
 }
 
-pub fn visit_mut_function<F>(func: &mut FunctionPlan, f: &mut F)
+pub fn visit_mut_function<F>(func: &mut FunctionExprPlan, f: &mut F)
 where
     F: FnMut(&mut ExprPlan),
 {
     visit_function_children!(func, visit_mut_expr, f, apply_mut);
 }
 
-pub fn try_visit_function<F>(func: &FunctionPlan, f: &mut F) -> Result<(), PlanError>
+pub fn try_visit_function<F>(func: &FunctionExprPlan, f: &mut F) -> Result<(), PlanError>
 where
     F: FnMut(&ExprPlan) -> Result<(), PlanError>,
 {

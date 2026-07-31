@@ -248,11 +248,11 @@ impl ExprNode<'_> {
                 .map(Box::new)
                 .map(ExprPlan::Nested),
             ExprNode::Function(func_expr) => (*func_expr)
-                .build_function_plan()
+                .build_function_expr_plan()
                 .map(Box::new)
                 .map(ExprPlan::Function),
             ExprNode::Aggregate(aggr_expr) => (*aggr_expr)
-                .build_aggregate_plan()
+                .build_aggregate_expr_plan()
                 .map(Box::new)
                 .map(ExprPlan::Aggregate),
             ExprNode::Exists { subquery, negated } => (*subquery)

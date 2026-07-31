@@ -3,7 +3,7 @@ use {
     crate::{
         ast::ColumnDef,
         data::Schema,
-        plan::{ExprPlan, FunctionPlan, QueryPlan, TableAliasPlan, TableFactorPlan},
+        plan::{ExprPlan, FunctionExprPlan, QueryPlan, TableAliasPlan, TableFactorPlan},
     },
     std::rc::Rc,
 };
@@ -173,14 +173,14 @@ pub trait Planner<'a> {
                 last_field,
             },
             ExprPlan::Function(func) => match *func {
-                FunctionPlan::Cast { expr, data_type } => {
-                    ExprPlan::Function(Box::new(FunctionPlan::Cast {
+                FunctionExprPlan::Cast { expr, data_type } => {
+                    ExprPlan::Function(Box::new(FunctionExprPlan::Cast {
                         expr: self.subquery_expr(outer_context, expr),
                         data_type,
                     }))
                 }
-                FunctionPlan::Extract { field, expr } => {
-                    ExprPlan::Function(Box::new(FunctionPlan::Extract {
+                FunctionExprPlan::Extract { field, expr } => {
+                    ExprPlan::Function(Box::new(FunctionExprPlan::Extract {
                         field,
                         expr: self.subquery_expr(outer_context, expr),
                     }))

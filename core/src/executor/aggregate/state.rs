@@ -6,7 +6,7 @@ use {
             context::{AggregateContext, AggregateValues, RowContext},
             evaluate::{EvaluateError, evaluate},
         },
-        plan::{AggregateFunctionPlan, AggregatePlan, CountArgExprPlan},
+        plan::{AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan},
         result::Result,
         store::GStore,
     },
@@ -70,7 +70,7 @@ impl AggrValue {
         }
     }
 
-    fn new(aggregate: &AggregatePlan, value: &Value) -> Result<Self> {
+    fn new(aggregate: &AggregateExprPlan, value: &Value) -> Result<Self> {
         let value = value.clone();
 
         Ok(match &aggregate.func {
@@ -368,7 +368,7 @@ impl<'a, T: GStore> State<'a, T> {
         group_index: usize,
         filter_context: Option<&Rc<RowContext<'a>>>,
         slot: usize,
-        aggregate: &AggregatePlan,
+        aggregate: &AggregateExprPlan,
     ) -> Result<()> {
         let value = match &aggregate.func {
             AggregateFunctionPlan::Count(CountArgExprPlan::Wildcard) => {
@@ -412,7 +412,10 @@ impl<'a, T: GStore> State<'a, T> {
         Ok(())
     }
 
-    pub fn export(self, aggregate_slots: &[AggregatePlan]) -> Result<Vec<AggregateContext<'a>>> {
+    pub fn export(
+        self,
+        aggregate_slots: &[AggregateExprPlan],
+    ) -> Result<Vec<AggregateContext<'a>>> {
         let groups = self.groups;
 
         groups
@@ -443,7 +446,7 @@ impl<'a, T: GStore> State<'a, T> {
     }
 }
 
-fn empty_value(aggregate: &AggregatePlan) -> Value {
+fn empty_value(aggregate: &AggregateExprPlan) -> Value {
     match &aggregate.func {
         AggregateFunctionPlan::Count(_) => Value::I64(0),
         AggregateFunctionPlan::Sum(_)

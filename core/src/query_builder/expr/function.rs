@@ -1,6 +1,6 @@
 use crate::{
     ast::{DateTimeField, Function},
-    plan::FunctionPlan,
+    plan::FunctionExprPlan,
     query_builder::{DataTypeNode, ExprList, ExprNode},
     result::Result,
 };
@@ -408,174 +408,200 @@ impl FunctionNode<'_> {
 }
 
 impl FunctionNode<'_> {
-    pub(super) fn build_function_plan(self) -> Result<FunctionPlan> {
+    pub(super) fn build_function_expr_plan(self) -> Result<FunctionExprPlan> {
         let func_node = self;
         match func_node {
-            FunctionNode::Abs(expr_node) => expr_node.build_expr_plan().map(FunctionPlan::Abs),
-            FunctionNode::Upper(expr_node) => expr_node.build_expr_plan().map(FunctionPlan::Upper),
-            FunctionNode::Lower(expr_node) => expr_node.build_expr_plan().map(FunctionPlan::Lower),
+            FunctionNode::Abs(expr_node) => expr_node.build_expr_plan().map(FunctionExprPlan::Abs),
+            FunctionNode::Upper(expr_node) => {
+                expr_node.build_expr_plan().map(FunctionExprPlan::Upper)
+            }
+            FunctionNode::Lower(expr_node) => {
+                expr_node.build_expr_plan().map(FunctionExprPlan::Lower)
+            }
             FunctionNode::Initcap(expr_node) => {
-                expr_node.build_expr_plan().map(FunctionPlan::Initcap)
+                expr_node.build_expr_plan().map(FunctionExprPlan::Initcap)
             }
             FunctionNode::IfNull { expr, then } => {
                 let expr = expr.build_expr_plan()?;
                 let then = then.build_expr_plan()?;
-                Ok(FunctionPlan::IfNull { expr, then })
+                Ok(FunctionExprPlan::IfNull { expr, then })
             }
             FunctionNode::NullIf { expr1, expr2 } => {
                 let expr1 = expr1.build_expr_plan()?;
                 let expr2 = expr2.build_expr_plan()?;
-                Ok(FunctionPlan::NullIf { expr1, expr2 })
+                Ok(FunctionExprPlan::NullIf { expr1, expr2 })
             }
-            FunctionNode::Ceil(expr_node) => expr_node.build_expr_plan().map(FunctionPlan::Ceil),
-            FunctionNode::Rand(expr_node) => Ok(FunctionPlan::Rand(
+            FunctionNode::Ceil(expr_node) => {
+                expr_node.build_expr_plan().map(FunctionExprPlan::Ceil)
+            }
+            FunctionNode::Rand(expr_node) => Ok(FunctionExprPlan::Rand(
                 expr_node.map(ExprNode::build_expr_plan).transpose()?,
             )),
-            FunctionNode::Round(expr_node) => expr_node.build_expr_plan().map(FunctionPlan::Round),
-            FunctionNode::Trunc(expr_node) => expr_node.build_expr_plan().map(FunctionPlan::Trunc),
-            FunctionNode::Floor(expr_node) => expr_node.build_expr_plan().map(FunctionPlan::Floor),
-            FunctionNode::Asin(expr_node) => expr_node.build_expr_plan().map(FunctionPlan::Asin),
-            FunctionNode::Acos(expr_node) => expr_node.build_expr_plan().map(FunctionPlan::Acos),
-            FunctionNode::Atan(expr_node) => expr_node.build_expr_plan().map(FunctionPlan::Atan),
-            FunctionNode::Sin(expr_node) => expr_node.build_expr_plan().map(FunctionPlan::Sin),
-            FunctionNode::Cos(expr_node) => expr_node.build_expr_plan().map(FunctionPlan::Cos),
-            FunctionNode::Tan(expr_node) => expr_node.build_expr_plan().map(FunctionPlan::Tan),
-            FunctionNode::Pi => Ok(FunctionPlan::Pi()),
-            FunctionNode::Now => Ok(FunctionPlan::Now()),
-            FunctionNode::CurrentDate => Ok(FunctionPlan::CurrentDate()),
-            FunctionNode::CurrentTime => Ok(FunctionPlan::CurrentTime()),
-            FunctionNode::CurrentTimestamp => Ok(FunctionPlan::CurrentTimestamp()),
+            FunctionNode::Round(expr_node) => {
+                expr_node.build_expr_plan().map(FunctionExprPlan::Round)
+            }
+            FunctionNode::Trunc(expr_node) => {
+                expr_node.build_expr_plan().map(FunctionExprPlan::Trunc)
+            }
+            FunctionNode::Floor(expr_node) => {
+                expr_node.build_expr_plan().map(FunctionExprPlan::Floor)
+            }
+            FunctionNode::Asin(expr_node) => {
+                expr_node.build_expr_plan().map(FunctionExprPlan::Asin)
+            }
+            FunctionNode::Acos(expr_node) => {
+                expr_node.build_expr_plan().map(FunctionExprPlan::Acos)
+            }
+            FunctionNode::Atan(expr_node) => {
+                expr_node.build_expr_plan().map(FunctionExprPlan::Atan)
+            }
+            FunctionNode::Sin(expr_node) => expr_node.build_expr_plan().map(FunctionExprPlan::Sin),
+            FunctionNode::Cos(expr_node) => expr_node.build_expr_plan().map(FunctionExprPlan::Cos),
+            FunctionNode::Tan(expr_node) => expr_node.build_expr_plan().map(FunctionExprPlan::Tan),
+            FunctionNode::Pi => Ok(FunctionExprPlan::Pi()),
+            FunctionNode::Now => Ok(FunctionExprPlan::Now()),
+            FunctionNode::CurrentDate => Ok(FunctionExprPlan::CurrentDate()),
+            FunctionNode::CurrentTime => Ok(FunctionExprPlan::CurrentTime()),
+            FunctionNode::CurrentTimestamp => Ok(FunctionExprPlan::CurrentTimestamp()),
             FunctionNode::Left { expr, size } => {
                 let expr = expr.build_expr_plan()?;
                 let size = size.build_expr_plan()?;
-                Ok(FunctionPlan::Left { expr, size })
+                Ok(FunctionExprPlan::Left { expr, size })
             }
             FunctionNode::Log { antilog, base } => {
                 let antilog = antilog.build_expr_plan()?;
                 let base = base.build_expr_plan()?;
-                Ok(FunctionPlan::Log { antilog, base })
+                Ok(FunctionExprPlan::Log { antilog, base })
             }
-            FunctionNode::Log2(expr_node) => expr_node.build_expr_plan().map(FunctionPlan::Log2),
-            FunctionNode::Log10(expr_node) => expr_node.build_expr_plan().map(FunctionPlan::Log10),
-            FunctionNode::Ln(expr_node) => expr_node.build_expr_plan().map(FunctionPlan::Ln),
+            FunctionNode::Log2(expr_node) => {
+                expr_node.build_expr_plan().map(FunctionExprPlan::Log2)
+            }
+            FunctionNode::Log10(expr_node) => {
+                expr_node.build_expr_plan().map(FunctionExprPlan::Log10)
+            }
+            FunctionNode::Ln(expr_node) => expr_node.build_expr_plan().map(FunctionExprPlan::Ln),
             FunctionNode::Right { expr, size } => {
                 let expr = expr.build_expr_plan()?;
                 let size = size.build_expr_plan()?;
-                Ok(FunctionPlan::Right { expr, size })
+                Ok(FunctionExprPlan::Right { expr, size })
             }
             FunctionNode::Reverse(expr_node) => {
-                expr_node.build_expr_plan().map(FunctionPlan::Reverse)
+                expr_node.build_expr_plan().map(FunctionExprPlan::Reverse)
             }
-            FunctionNode::Sign(expr_node) => expr_node.build_expr_plan().map(FunctionPlan::Sign),
+            FunctionNode::Sign(expr_node) => {
+                expr_node.build_expr_plan().map(FunctionExprPlan::Sign)
+            }
             FunctionNode::Power { expr, power } => {
                 let expr = expr.build_expr_plan()?;
                 let power = power.build_expr_plan()?;
-                Ok(FunctionPlan::Power { expr, power })
+                Ok(FunctionExprPlan::Power { expr, power })
             }
-            FunctionNode::Sqrt(expr_node) => expr_node.build_expr_plan().map(FunctionPlan::Sqrt),
+            FunctionNode::Sqrt(expr_node) => {
+                expr_node.build_expr_plan().map(FunctionExprPlan::Sqrt)
+            }
             FunctionNode::Skip { expr, size } => {
                 let expr = expr.build_expr_plan()?;
                 let size = size.build_expr_plan()?;
-                Ok(FunctionPlan::Skip { expr, size })
+                Ok(FunctionExprPlan::Skip { expr, size })
             }
             FunctionNode::Gcd { left, right } => {
                 let left = left.build_expr_plan()?;
                 let right = right.build_expr_plan()?;
-                Ok(FunctionPlan::Gcd { left, right })
+                Ok(FunctionExprPlan::Gcd { left, right })
             }
             FunctionNode::Lcm { left, right } => {
                 let left = left.build_expr_plan()?;
                 let right = right.build_expr_plan()?;
-                Ok(FunctionPlan::Lcm { left, right })
+                Ok(FunctionExprPlan::Lcm { left, right })
             }
-            FunctionNode::GenerateUuid => Ok(FunctionPlan::GenerateUuid()),
+            FunctionNode::GenerateUuid => Ok(FunctionExprPlan::GenerateUuid()),
             FunctionNode::Repeat { expr, num } => {
                 let expr = expr.build_expr_plan()?;
                 let num = num.build_expr_plan()?;
-                Ok(FunctionPlan::Repeat { expr, num })
+                Ok(FunctionExprPlan::Repeat { expr, num })
             }
             FunctionNode::Replace { expr, old, new } => {
                 let expr = expr.build_expr_plan()?;
                 let old = old.build_expr_plan()?;
                 let new = new.build_expr_plan()?;
-                Ok(FunctionPlan::Replace { expr, old, new })
+                Ok(FunctionExprPlan::Replace { expr, old, new })
             }
             FunctionNode::Lpad { expr, size, fill } => {
                 let fill = fill.map(ExprNode::build_expr_plan).transpose()?;
                 let expr = expr.build_expr_plan()?;
                 let size = size.build_expr_plan()?;
-                Ok(FunctionPlan::Lpad { expr, size, fill })
+                Ok(FunctionExprPlan::Lpad { expr, size, fill })
             }
             FunctionNode::Rpad { expr, size, fill } => {
                 let fill = fill.map(ExprNode::build_expr_plan).transpose()?;
                 let expr = expr.build_expr_plan()?;
                 let size = size.build_expr_plan()?;
-                Ok(FunctionPlan::Rpad { expr, size, fill })
+                Ok(FunctionExprPlan::Rpad { expr, size, fill })
             }
             FunctionNode::Coalesce(expr_list) => {
-                expr_list.build_exprs_plan().map(FunctionPlan::Coalesce)
+                expr_list.build_exprs_plan().map(FunctionExprPlan::Coalesce)
             }
             FunctionNode::Concat(expr_list) => {
-                expr_list.build_exprs_plan().map(FunctionPlan::Concat)
+                expr_list.build_exprs_plan().map(FunctionExprPlan::Concat)
             }
             FunctionNode::ConcatWs { separator, exprs } => {
                 let separator = separator.build_expr_plan()?;
                 let exprs = exprs.build_exprs_plan()?;
-                Ok(FunctionPlan::ConcatWs { separator, exprs })
+                Ok(FunctionExprPlan::ConcatWs { separator, exprs })
             }
             FunctionNode::Take { expr, size } => {
                 let expr = expr.build_expr_plan()?;
                 let size = size.build_expr_plan()?;
-                Ok(FunctionPlan::Take { expr, size })
+                Ok(FunctionExprPlan::Take { expr, size })
             }
-            FunctionNode::Degrees(expr) => expr.build_expr_plan().map(FunctionPlan::Degrees),
-            FunctionNode::Radians(expr) => expr.build_expr_plan().map(FunctionPlan::Radians),
-            FunctionNode::Exp(expr) => expr.build_expr_plan().map(FunctionPlan::Exp),
+            FunctionNode::Degrees(expr) => expr.build_expr_plan().map(FunctionExprPlan::Degrees),
+            FunctionNode::Radians(expr) => expr.build_expr_plan().map(FunctionExprPlan::Radians),
+            FunctionNode::Exp(expr) => expr.build_expr_plan().map(FunctionExprPlan::Exp),
             FunctionNode::Substr { expr, start, count } => {
                 let count = count.map(ExprNode::build_expr_plan).transpose()?;
                 let expr = expr.build_expr_plan()?;
                 let start = start.build_expr_plan()?;
-                Ok(FunctionPlan::Substr { expr, start, count })
+                Ok(FunctionExprPlan::Substr { expr, start, count })
             }
             FunctionNode::Ltrim { expr, chars } => {
                 let chars = chars.map(ExprNode::build_expr_plan).transpose()?;
                 let expr = expr.build_expr_plan()?;
-                Ok(FunctionPlan::Ltrim { expr, chars })
+                Ok(FunctionExprPlan::Ltrim { expr, chars })
             }
             FunctionNode::Rtrim { expr, chars } => {
                 let chars = chars.map(ExprNode::build_expr_plan).transpose()?;
                 let expr = expr.build_expr_plan()?;
-                Ok(FunctionPlan::Rtrim { expr, chars })
+                Ok(FunctionExprPlan::Rtrim { expr, chars })
             }
             FunctionNode::Div { dividend, divisor } => {
                 let dividend = dividend.build_expr_plan()?;
                 let divisor = divisor.build_expr_plan()?;
-                Ok(FunctionPlan::Div { dividend, divisor })
+                Ok(FunctionExprPlan::Div { dividend, divisor })
             }
             FunctionNode::Mod { dividend, divisor } => {
                 let dividend = dividend.build_expr_plan()?;
                 let divisor = divisor.build_expr_plan()?;
-                Ok(FunctionPlan::Mod { dividend, divisor })
+                Ok(FunctionExprPlan::Mod { dividend, divisor })
             }
             FunctionNode::Format { expr, format } => {
                 let expr = expr.build_expr_plan()?;
                 let format = format.build_expr_plan()?;
-                Ok(FunctionPlan::Format { expr, format })
+                Ok(FunctionExprPlan::Format { expr, format })
             }
             FunctionNode::ToDate { expr, format } => {
                 let expr = expr.build_expr_plan()?;
                 let format = format.build_expr_plan()?;
-                Ok(FunctionPlan::ToDate { expr, format })
+                Ok(FunctionExprPlan::ToDate { expr, format })
             }
             FunctionNode::ToTimestamp { expr, format } => {
                 let expr = expr.build_expr_plan()?;
                 let format = format.build_expr_plan()?;
-                Ok(FunctionPlan::ToTimestamp { expr, format })
+                Ok(FunctionExprPlan::ToTimestamp { expr, format })
             }
             FunctionNode::ToTime { expr, format } => {
                 let expr = expr.build_expr_plan()?;
                 let format = format.build_expr_plan()?;
-                Ok(FunctionPlan::ToTime { expr, format })
+                Ok(FunctionExprPlan::ToTime { expr, format })
             }
             FunctionNode::Position {
                 from_expr,
@@ -583,7 +609,7 @@ impl FunctionNode<'_> {
             } => {
                 let from_expr = from_expr.build_expr_plan()?;
                 let sub_expr = sub_expr.build_expr_plan()?;
-                Ok(FunctionPlan::Position {
+                Ok(FunctionExprPlan::Position {
                     from_expr,
                     sub_expr,
                 })
@@ -596,7 +622,7 @@ impl FunctionNode<'_> {
                 let from_expr = from_expr.build_expr_plan()?;
                 let sub_expr = sub_expr.build_expr_plan()?;
                 let start = start.map(ExprNode::build_expr_plan).transpose()?;
-                Ok(FunctionPlan::FindIdx {
+                Ok(FunctionExprPlan::FindIdx {
                     from_expr,
                     sub_expr,
                     start,
@@ -605,25 +631,25 @@ impl FunctionNode<'_> {
             FunctionNode::Cast { expr, data_type } => {
                 let expr = expr.build_expr_plan()?;
                 let data_type = data_type.try_into()?;
-                Ok(FunctionPlan::Cast { expr, data_type })
+                Ok(FunctionExprPlan::Cast { expr, data_type })
             }
             FunctionNode::Extract { field, expr } => {
                 let expr = expr.build_expr_plan()?;
-                Ok(FunctionPlan::Extract { field, expr })
+                Ok(FunctionExprPlan::Extract { field, expr })
             }
-            FunctionNode::Ascii(expr) => expr.build_expr_plan().map(FunctionPlan::Ascii),
-            FunctionNode::Chr(expr) => expr.build_expr_plan().map(FunctionPlan::Chr),
-            FunctionNode::Md5(expr) => expr.build_expr_plan().map(FunctionPlan::Md5),
-            FunctionNode::Hex(expr) => expr.build_expr_plan().map(FunctionPlan::Hex),
+            FunctionNode::Ascii(expr) => expr.build_expr_plan().map(FunctionExprPlan::Ascii),
+            FunctionNode::Chr(expr) => expr.build_expr_plan().map(FunctionExprPlan::Chr),
+            FunctionNode::Md5(expr) => expr.build_expr_plan().map(FunctionExprPlan::Md5),
+            FunctionNode::Hex(expr) => expr.build_expr_plan().map(FunctionExprPlan::Hex),
             FunctionNode::Point { x, y } => {
                 let x = x.build_expr_plan()?;
                 let y = y.build_expr_plan()?;
-                Ok(FunctionPlan::Point { x, y })
+                Ok(FunctionExprPlan::Point { x, y })
             }
-            FunctionNode::GetX(expr) => expr.build_expr_plan().map(FunctionPlan::GetX),
-            FunctionNode::GetY(expr) => expr.build_expr_plan().map(FunctionPlan::GetY),
+            FunctionNode::GetX(expr) => expr.build_expr_plan().map(FunctionExprPlan::GetX),
+            FunctionNode::GetY(expr) => expr.build_expr_plan().map(FunctionExprPlan::GetY),
             FunctionNode::Greatest(expr_list) => {
-                expr_list.build_exprs_plan().map(FunctionPlan::Greatest)
+                expr_list.build_exprs_plan().map(FunctionExprPlan::Greatest)
             }
             FunctionNode::CalcDistance {
                 geometry1,
@@ -631,17 +657,17 @@ impl FunctionNode<'_> {
             } => {
                 let geometry1 = geometry1.build_expr_plan()?;
                 let geometry2 = geometry2.build_expr_plan()?;
-                Ok(FunctionPlan::CalcDistance {
+                Ok(FunctionExprPlan::CalcDistance {
                     geometry1,
                     geometry2,
                 })
             }
-            FunctionNode::Length(expr) => expr.build_expr_plan().map(FunctionPlan::Length),
-            FunctionNode::IsEmpty(expr) => expr.build_expr_plan().map(FunctionPlan::IsEmpty),
-            FunctionNode::LastDay(expr) => expr.build_expr_plan().map(FunctionPlan::LastDay),
-            FunctionNode::Entries(expr) => expr.build_expr_plan().map(FunctionPlan::Entries),
-            FunctionNode::Keys(expr) => expr.build_expr_plan().map(FunctionPlan::Keys),
-            FunctionNode::Values(expr) => expr.build_expr_plan().map(FunctionPlan::Values),
+            FunctionNode::Length(expr) => expr.build_expr_plan().map(FunctionExprPlan::Length),
+            FunctionNode::IsEmpty(expr) => expr.build_expr_plan().map(FunctionExprPlan::IsEmpty),
+            FunctionNode::LastDay(expr) => expr.build_expr_plan().map(FunctionExprPlan::LastDay),
+            FunctionNode::Entries(expr) => expr.build_expr_plan().map(FunctionExprPlan::Entries),
+            FunctionNode::Keys(expr) => expr.build_expr_plan().map(FunctionExprPlan::Keys),
+            FunctionNode::Values(expr) => expr.build_expr_plan().map(FunctionExprPlan::Values),
         }
     }
 }

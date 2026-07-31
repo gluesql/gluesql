@@ -1,4 +1,4 @@
-use crate::plan::{ExprPlan, FunctionPlan};
+use crate::plan::{ExprPlan, FunctionExprPlan};
 
 pub fn is_deterministic(expr: &ExprPlan) -> bool {
     match expr {
@@ -50,8 +50,8 @@ pub fn is_deterministic(expr: &ExprPlan) -> bool {
     }
 }
 
-fn is_function_deterministic(function: &FunctionPlan) -> bool {
-    use FunctionPlan::*;
+fn is_function_deterministic(function: &FunctionExprPlan) -> bool {
+    use FunctionExprPlan::*;
 
     match function {
         Now()

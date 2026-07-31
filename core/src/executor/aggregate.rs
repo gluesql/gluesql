@@ -9,7 +9,7 @@ use {
     },
     crate::{
         data::Value,
-        plan::{AggregatePlan, ExprPlan},
+        plan::{AggregateExprPlan, ExprPlan},
         result::Result,
         store::GStore,
     },
@@ -20,7 +20,7 @@ pub type AggregateIter<'a> = Box<dyn Iterator<Item = Result<AggregateContext<'a>
 
 pub fn apply<'a, T: GStore>(
     storage: &'a T,
-    aggregate_slots: Option<&'a [AggregatePlan]>,
+    aggregate_slots: Option<&'a [AggregateExprPlan]>,
     group_by: &'a [ExprPlan],
     having: Option<&'a ExprPlan>,
     filter_context: Option<&Rc<RowContext<'a>>>,

@@ -1,6 +1,6 @@
 use {
     super::ProjectPlan,
-    crate::plan::{AggregatePlan, ExprPlan, OrderByExprPlan, TableWithJoinsPlan},
+    crate::plan::{AggregateExprPlan, ExprPlan, OrderByExprPlan, TableWithJoinsPlan},
     serde::{Deserialize, Serialize},
 };
 
@@ -10,7 +10,7 @@ pub struct SelectPlan {
     pub selection: Option<ExprPlan>,
     pub group_by: Vec<ExprPlan>,
     pub having: Option<ExprPlan>,
-    pub aggregate_slots: Option<Vec<AggregatePlan>>,
+    pub aggregate_slots: Option<Vec<AggregateExprPlan>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
