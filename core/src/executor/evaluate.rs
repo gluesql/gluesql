@@ -7,7 +7,7 @@ use {
     self::function::BreakCase,
     super::{
         context::{AggregateValues, RowContext},
-        select::{select, select_with_labels},
+        query,
     },
     crate::{
         data::{CustomFunction, Interval, Row, Value},
@@ -131,7 +131,7 @@ where
                 return Err(EvaluateError::SchemalessProjectionForSubQuery.into());
             }
 
-            let evaluations = select(storage, query, context.cloned())?
+            let evaluations = query::execute(storage, query, context.cloned())?
                 .map(|row| {
                     let values = row?.into_values();
                     if values.len() > 1 {
@@ -211,7 +211,7 @@ where
                 return Err(EvaluateError::SchemalessProjectionForInSubQuery.into());
             }
             let target = eval(target_expr)?;
-            let (labels, rows) = select_with_labels(storage, subquery, context.cloned())?;
+            let (labels, rows) = query::execute_with_labels(storage, subquery, context.cloned())?;
 
             if labels.len() > 1 {
                 return Err(EvaluateError::InSubqueryMustReturnOneColumn.into());
@@ -281,7 +281,7 @@ where
         ExprPlan::Exists { subquery, negated } => {
             let storage = storage.ok_or(EvaluateError::ExistsSubqueryNotAllowedInStatelessExpr)?;
 
-            let exists = select(storage, subquery, context.cloned())?
+            let exists = query::execute(storage, subquery, context.cloned())?
                 .next()
                 .transpose()?
                 .is_some();

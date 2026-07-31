@@ -1,6 +1,6 @@
 use {
     super::{
-        select::select,
+        query,
         validate::{ColumnValidation, validate_unique},
     },
     crate::{
@@ -214,7 +214,7 @@ fn fetch_vec_rows<T: GStore>(
 
             Box::new(rows) as Box<dyn Iterator<Item = Result<Vec<Value>>> + '_>
         } else {
-            let rows = select(storage, source, None)?.map(|row| {
+            let rows = query::execute(storage, source, None)?.map(|row| {
                 let values = row?.into_values();
 
                 column_defs
@@ -352,7 +352,7 @@ fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &QueryPlan) -> Result<V
 
             Box::new(rows) as Box<dyn Iterator<Item = Result<Vec<Value>>> + '_>
         } else {
-            let rows = select(storage, source, None)?.map(|row| {
+            let rows = query::execute(storage, source, None)?.map(|row| {
                 let values = row?.into_values();
 
                 if values.len() > 1 {

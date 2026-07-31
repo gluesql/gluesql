@@ -6,6 +6,7 @@ mod execute;
 mod fetch;
 mod filter;
 mod insert;
+mod query;
 mod select;
 mod update;
 mod validate;
@@ -18,7 +19,7 @@ pub use {
     execute::{ExecuteError, Payload, PayloadVariable, execute},
     fetch::FetchError,
     insert::InsertError,
-    select::{SelectError, SortError},
+    query::{SelectError, SortError},
     update::UpdateError,
     validate::ValidateError,
 };

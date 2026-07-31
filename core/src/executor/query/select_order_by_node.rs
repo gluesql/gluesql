@@ -3,7 +3,7 @@ mod error;
 pub use error::SortError;
 use {
     super::{
-        LabeledRows, SelectIter,
+        LabeledRows, QueryIter,
         order_by::sort_by,
         project_node::{self, ProjectedRows},
     },
@@ -49,7 +49,7 @@ fn sort<'a, T>(
     + 'a,
     table_alias: &'a str,
     order_by: &'a [OrderByExprPlan],
-) -> Result<SelectIter<'a>>
+) -> Result<QueryIter<'a>>
 where
     T: GStore,
 {

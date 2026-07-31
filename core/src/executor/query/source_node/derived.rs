@@ -4,7 +4,7 @@ use {
     super::{super::SourceColumns, PreparedSource, SourceRows},
     crate::{
         data::Row,
-        executor::{context::RowContext, fetch::FetchError, select::select},
+        executor::{context::RowContext, fetch::FetchError, query},
         plan::DerivedSourcePlan,
         result::Result,
         store::GStore,
@@ -62,7 +62,7 @@ fn rows<'a, T: GStore>(
     evaluation_context: Option<&Rc<RowContext<'a>>>,
 ) -> Result<SourceRows<'a>> {
     let columns = Rc::clone(&source.names);
-    let rows = select(storage, &derived.query, evaluation_context.map(Rc::clone))?.map({
+    let rows = query::execute(storage, &derived.query, evaluation_context.map(Rc::clone))?.map({
         let columns = Rc::clone(&columns);
 
         move |row| {

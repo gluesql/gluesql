@@ -1,115 +1,65 @@
-mod aggregation_node;
-mod distinct_node;
-mod error;
-mod filter_node;
-mod hash_join_node;
-mod having_node;
-mod inner_join_node;
-mod join_condition_node;
-mod left_outer_join_node;
-mod limit_node;
-mod nested_loop_join_node;
-mod offset_node;
-mod order_by;
-mod project_node;
-mod projection_labels;
-mod select_order_by_node;
-mod source_node;
-mod values_node;
-mod values_order_by_node;
-
 use {
-    crate::{
-        data::Row, executor::context::RowContext, plan::QueryPlan, result::Result, store::GStore,
+    super::{
+        execute::{ExecuteError, Payload},
+        query,
     },
-    std::rc::Rc,
+    crate::{
+        data::Value,
+        plan::{
+            DistinctInputPlan, DistinctPlan, LimitInputPlan, LimitPlan, OffsetInputPlan,
+            OffsetPlan, ProjectPlan, ProjectionPlan, QueryPlan,
+        },
+        result::Result,
+        store::GStore,
+    },
 };
-pub use {error::SelectError, select_order_by_node::SortError};
 
-pub type SelectIter<'a> = Box<dyn Iterator<Item = Result<Row>> + 'a>;
-type SelectedIter<'a> = Box<dyn Iterator<Item = Result<Rc<RowContext<'a>>>> + 'a>;
+pub(super) fn execute<T: GStore>(storage: &T, query: &QueryPlan) -> Result<Payload> {
+    let (labels, rows) = query::execute_with_labels(storage, query, None)?;
 
-struct SourceColumns<'a> {
-    alias: &'a str,
-    names: Rc<[String]>,
+    if is_schemaless_map(query) {
+        rows.map(|row| {
+            let mut values = row?.into_values().into_iter();
+            match (values.next(), values.next()) {
+                (Some(Value::Map(map)), None) => Ok(map),
+                _ => Err(ExecuteError::ExpectedMapValueInDocColumn.into()),
+            }
+        })
+        .collect::<Result<Vec<_>>>()
+        .map(Payload::SelectMap)
+    } else {
+        rows.map(|row| Ok(row?.into_values()))
+            .collect::<Result<Vec<_>>>()
+            .map(|rows| Payload::Select { labels, rows })
+    }
 }
 
-struct SelectedSources<'a> {
-    base: SourceColumns<'a>,
-    joined: Vec<SourceColumns<'a>>,
-}
+fn is_schemaless_map(query: &QueryPlan) -> bool {
+    let project_is_schemaless =
+        |project: &ProjectPlan| matches!(project.projection, ProjectionPlan::SchemalessMap);
+    let distinct_is_schemaless = |distinct: &DistinctPlan| match &distinct.input {
+        DistinctInputPlan::Project(project) => project_is_schemaless(project),
+        DistinctInputPlan::SelectOrderBy(order_by) => project_is_schemaless(&order_by.input),
+    };
+    let offset_is_schemaless = |offset: &OffsetPlan| match &offset.input {
+        OffsetInputPlan::Project(project) => project_is_schemaless(project),
+        OffsetInputPlan::Values(_) | OffsetInputPlan::ValuesOrderBy(_) => false,
+        OffsetInputPlan::SelectOrderBy(order_by) => project_is_schemaless(&order_by.input),
+        OffsetInputPlan::Distinct(distinct) => distinct_is_schemaless(distinct),
+    };
 
-struct SelectedRows<'a> {
-    sources: SelectedSources<'a>,
-    rows: SelectedIter<'a>,
-}
-
-struct JoinCandidateGroup<'a> {
-    left: Rc<RowContext<'a>>,
-    rows: SelectedIter<'a>,
-}
-
-type JoinCandidateGroupIter<'a> = Box<dyn Iterator<Item = Result<JoinCandidateGroup<'a>>> + 'a>;
-
-struct JoinCandidates<'a> {
-    sources: SelectedSources<'a>,
-    right: SourceColumns<'a>,
-    groups: JoinCandidateGroupIter<'a>,
-}
-
-struct LabeledRows<'a> {
-    labels: Vec<String>,
-    rows: SelectIter<'a>,
-}
-
-pub fn select_with_labels<'a, T>(
-    storage: &'a T,
-    query: &'a QueryPlan,
-    filter_context: Option<Rc<RowContext<'a>>>,
-) -> Result<(Vec<String>, SelectIter<'a>)>
-where
-    T: GStore,
-{
-    execute(storage, query, filter_context).map(|LabeledRows { labels, rows }| (labels, rows))
-}
-
-pub fn select<'a, T>(
-    storage: &'a T,
-    query: &'a QueryPlan,
-    filter_context: Option<Rc<RowContext<'a>>>,
-) -> Result<SelectIter<'a>>
-where
-    T: GStore,
-{
-    execute(storage, query, filter_context).map(|LabeledRows { rows, .. }| rows)
-}
-
-fn execute<'a, T>(
-    storage: &'a T,
-    query: &'a QueryPlan,
-    filter_context: Option<Rc<RowContext<'a>>>,
-) -> Result<LabeledRows<'a>>
-where
-    T: GStore,
-{
     match query {
-        QueryPlan::Project(project) => {
-            let project_node::ProjectedRows { labels, rows, .. } =
-                project_node::execute(storage, project, filter_context)?;
-            let rows = rows.map(|row| row.map(|(.., row)| row));
-
-            Ok(LabeledRows {
-                labels,
-                rows: Box::new(rows),
-            })
-        }
-        QueryPlan::Values(values) => values_node::execute(values),
-        QueryPlan::SelectOrderBy(order_by) => {
-            select_order_by_node::execute(storage, order_by, filter_context)
-        }
-        QueryPlan::ValuesOrderBy(order_by) => values_order_by_node::execute(order_by),
-        QueryPlan::Distinct(distinct) => distinct_node::execute(storage, distinct, filter_context),
-        QueryPlan::Offset(offset) => offset_node::execute(storage, offset, filter_context),
-        QueryPlan::Limit(limit) => limit_node::execute(storage, limit, filter_context),
+        QueryPlan::Project(project) => project_is_schemaless(project),
+        QueryPlan::Values(_) | QueryPlan::ValuesOrderBy(_) => false,
+        QueryPlan::SelectOrderBy(order_by) => project_is_schemaless(&order_by.input),
+        QueryPlan::Distinct(distinct) => distinct_is_schemaless(distinct),
+        QueryPlan::Offset(offset) => offset_is_schemaless(offset),
+        QueryPlan::Limit(LimitPlan { input, .. }) => match input {
+            LimitInputPlan::Project(project) => project_is_schemaless(project),
+            LimitInputPlan::Values(_) | LimitInputPlan::ValuesOrderBy(_) => false,
+            LimitInputPlan::SelectOrderBy(order_by) => project_is_schemaless(&order_by.input),
+            LimitInputPlan::Distinct(distinct) => distinct_is_schemaless(distinct),
+            LimitInputPlan::Offset(offset) => offset_is_schemaless(offset),
+        },
     }
 }

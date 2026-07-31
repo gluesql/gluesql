@@ -1,5 +1,5 @@
 use crate::{
-    executor::select::{SelectedSources, projection_labels, values_node},
+    executor::query::{SelectedSources, projection_labels, values_node},
     plan::{
         AggregationInputPlan, DistinctInputPlan, DistinctPlan, FilterInputPlan, FilterPlan,
         HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan, JoinConditionInputPlan,

@@ -3,10 +3,7 @@ use {
     crate::{
         ast::{ColumnDef, ColumnUniqueOption, ForeignKey, ToSql},
         data::{Row, Schema},
-        executor::{
-            evaluate_stateless,
-            select::{select, select_with_labels},
-        },
+        executor::{evaluate_stateless, query},
         plan::{
             DistinctInputPlan, DistinctPlan, FilterInputPlan, LimitInputPlan, LimitPlan,
             OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
@@ -110,7 +107,7 @@ pub fn create_table<T: GStore + GStoreMut>(
                     Some(vec![column_def])
                 }
                 _ => {
-                    let (labels, rows) = select_with_labels(storage, query, None)?;
+                    let (labels, rows) = query::execute_with_labels(storage, query, None)?;
                     let rows = rows
                         .map(|row| row.map(Row::into_values))
                         .collect::<Result<Vec<_>>>()?;
@@ -251,7 +248,7 @@ pub fn create_table<T: GStore + GStoreMut>(
         Some(query) => {
             let rows = match selected_source_rows {
                 Some(rows) => rows,
-                None => select(storage, query, None)?
+                None => query::execute(storage, query, None)?
                     .map(|row| row.map(Row::into_values))
                     .collect::<Result<Vec<_>>>()?,
             };

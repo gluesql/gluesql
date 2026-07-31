@@ -1,5 +1,5 @@
 use {
-    super::{LabeledRows, SelectIter, project_node, select_order_by_node},
+    super::{LabeledRows, QueryIter, project_node, select_order_by_node},
     crate::{
         executor::context::RowContext,
         plan::{DistinctInputPlan, DistinctPlan},
@@ -41,6 +41,6 @@ where
 
     Ok(LabeledRows {
         labels,
-        rows: Box::new(rows) as SelectIter<'a>,
+        rows: Box::new(rows) as QueryIter<'a>,
     })
 }
