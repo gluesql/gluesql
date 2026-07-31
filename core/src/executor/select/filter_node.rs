@@ -18,10 +18,10 @@ where
     T: GStore,
 {
     let FilterPlan { input, expr } = plan;
-    let rows = match input {
-        FilterInputPlan::Source(source) => {
-            source_node::execute(storage, source, None)?.into_selected(None)
-        }
+    let SelectedRows { sources, rows } = match input {
+        FilterInputPlan::Source(source) => source_node::execute(storage, source)?
+            .rows(None)?
+            .into_selected(None),
         FilterInputPlan::Join(join) => join_node::execute(storage, join, filter_context)?,
     };
     let filter_context = filter_context.cloned();
@@ -45,5 +45,8 @@ where
         }
     });
 
-    Ok(Box::new(rows))
+    Ok(SelectedRows {
+        sources,
+        rows: Box::new(rows),
+    })
 }

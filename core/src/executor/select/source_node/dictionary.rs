@@ -1,8 +1,9 @@
 use {
-    super::SourceRows,
+    super::{super::SourceColumns, PreparedSource, SourceRows},
     crate::{
         ast::{ColumnDef, ColumnUniqueOption, Dictionary, ToSql, ToSqlUnquoted},
         data::{Row, Value},
+        executor::context::RowContext,
         plan::DictionarySourcePlan,
         result::Result,
         store::GStore,
@@ -13,8 +14,49 @@ use {
 pub(super) fn execute<'a, T: GStore>(
     storage: &'a T,
     dictionary: &'a DictionarySourcePlan,
+) -> PreparedSource<'a> {
+    let names = match dictionary.dictionary {
+        Dictionary::GlueObjects => vec![
+            "OBJECT_NAME".to_owned(),
+            "OBJECT_TYPE".to_owned(),
+            "CREATED".to_owned(),
+        ],
+        Dictionary::GlueTables => vec!["TABLE_NAME".to_owned(), "COMMENT".to_owned()],
+        Dictionary::GlueTableColumns => vec![
+            "TABLE_NAME".to_owned(),
+            "COLUMN_NAME".to_owned(),
+            "COLUMN_ID".to_owned(),
+            "NULLABLE".to_owned(),
+            "KEY".to_owned(),
+            "DEFAULT".to_owned(),
+            "COMMENT".to_owned(),
+        ],
+        Dictionary::GlueIndexes => vec![
+            "TABLE_NAME".to_owned(),
+            "INDEX_NAME".to_owned(),
+            "ORDER".to_owned(),
+            "EXPRESSION".to_owned(),
+            "UNIQUENESS".to_owned(),
+        ],
+    };
+
+    let output = SourceColumns {
+        alias: &dictionary.alias.name,
+        names: Rc::from(names),
+    };
+    let source = output.clone();
+    let rows =
+        Box::new(move |_: Option<Rc<RowContext<'a>>>| rows(storage, dictionary, source.clone()));
+
+    PreparedSource { output, rows }
+}
+
+fn rows<'a, T: GStore>(
+    storage: &'a T,
+    dictionary: &'a DictionarySourcePlan,
+    source: SourceColumns<'a>,
 ) -> Result<SourceRows<'a>> {
-    let columns = columns(dictionary);
+    let columns = Rc::clone(&source.names);
     let rows = match &dictionary.dictionary {
         Dictionary::GlueObjects => {
             let schemas = storage.fetch_all_schemas()?;
@@ -170,36 +212,5 @@ pub(super) fn execute<'a, T: GStore>(
         }
     };
 
-    Ok(SourceRows {
-        alias: &dictionary.alias.name,
-        columns,
-        rows,
-    })
-}
-
-pub(super) fn columns(dictionary: &DictionarySourcePlan) -> Rc<[String]> {
-    Rc::from(match dictionary.dictionary {
-        Dictionary::GlueObjects => vec![
-            "OBJECT_NAME".to_owned(),
-            "OBJECT_TYPE".to_owned(),
-            "CREATED".to_owned(),
-        ],
-        Dictionary::GlueTables => vec!["TABLE_NAME".to_owned(), "COMMENT".to_owned()],
-        Dictionary::GlueTableColumns => vec![
-            "TABLE_NAME".to_owned(),
-            "COLUMN_NAME".to_owned(),
-            "COLUMN_ID".to_owned(),
-            "NULLABLE".to_owned(),
-            "KEY".to_owned(),
-            "DEFAULT".to_owned(),
-            "COMMENT".to_owned(),
-        ],
-        Dictionary::GlueIndexes => vec![
-            "TABLE_NAME".to_owned(),
-            "INDEX_NAME".to_owned(),
-            "ORDER".to_owned(),
-            "EXPRESSION".to_owned(),
-            "UNIQUENESS".to_owned(),
-        ],
-    })
+    Ok(SourceRows { source, rows })
 }

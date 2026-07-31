@@ -26,6 +26,19 @@ SELECT * FROM InnerTable
 -- | 2       | "SQL"     |
 -- | 3       | "SQL"     |
 
+SELECT * FROM InnerTable WHERE FALSE
+-- @expect:
+-- | id  | name |
+-- | --- | ---- |
+
+SELECT *
+FROM (
+    SELECT * FROM InnerTable WHERE FALSE
+) AS EmptyInlineView(id_alias, name_alias)
+-- @expect:
+-- | id_alias | name_alias |
+-- | -------- | ---------- |
+
 SELECT *
 FROM (
     SELECT COUNT(*) AS cnt FROM InnerTable
@@ -83,6 +96,17 @@ JOIN (
 -- | ------- | --------- | ------- | --------- |
 -- | 1       | "WORKS!"  | 1       | "GLUE"    |
 -- | 2       | "EXTRA"   | 2       | "SQL"     |
+
+SELECT *
+FROM OuterTable
+LEFT JOIN (
+    SELECT * FROM InnerTable WHERE FALSE
+) AS EmptyInlineView ON TRUE
+WHERE OuterTable.id = 1
+-- @expect:
+-- | id: I64 | name: Str | id   | name |
+-- | ------- | --------- | ---- | ---- |
+-- | 1       | "WORKS!"  | NULL | NULL |
 
 SELECT *
 FROM OuterTable JOIN (

@@ -49,6 +49,25 @@ SELECT * FROM Item JOIN Player
 SELECT * FROM Item LEFT JOIN Player ON Player.id = Item.player_id;
 -- @expect: count 15
 
+SELECT i.*, p.*
+FROM Item i
+LEFT JOIN Player p ON 1 = 2
+WHERE i.id = 101;
+-- @expect:
+-- | id: I64 | quantity: I64 | player_id: I64 | id   | name |
+-- | ------- | ------------- | -------------- | ---- | ---- |
+-- | 101     | 1             | 1              | NULL | NULL |
+
+SELECT *
+FROM Item
+LEFT JOIN Player ON Player.id = Item.player_id
+LEFT JOIN Player p1 ON p1.id = Item.player_id
+WHERE Item.id = 101;
+-- @expect:
+-- | id: I64 | quantity: I64 | player_id: I64 | id: I64 | name: Str | id: I64 | name: Str |
+-- | ------- | ------------- | -------------- | ------- | --------- | ------- | --------- |
+-- | 101     | 1             | 1              | 1       | "Taehoon" | 1       | "Taehoon" |
+
 SELECT * FROM Item LEFT JOIN Player ON Player.id = Item.player_id WHERE quantity = 1;
 -- @expect: count 5
 

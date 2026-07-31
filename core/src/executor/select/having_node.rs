@@ -21,7 +21,8 @@ where
     T: GStore,
 {
     let HavingPlan { input, expr } = plan;
-    let rows = aggregation_node::execute(storage, input, filter_context)?;
+    let AggregatedRows { sources, rows } =
+        aggregation_node::execute(storage, input, filter_context)?;
     let mut filtered = Vec::new();
 
     for aggregate_context in rows {
@@ -41,5 +42,8 @@ where
         }
     }
 
-    Ok(filtered)
+    Ok(AggregatedRows {
+        sources,
+        rows: filtered,
+    })
 }

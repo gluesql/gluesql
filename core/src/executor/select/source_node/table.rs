@@ -1,5 +1,5 @@
 use {
-    super::SourceRows,
+    super::{super::SourceColumns, PreparedSource, SourceRows},
     crate::{
         data::{Key, Row},
         executor::{
@@ -17,9 +17,48 @@ use {
 pub(super) fn execute<'a, T: GStore>(
     storage: &'a T,
     table: &'a TableSourcePlan,
+) -> Result<PreparedSource<'a>> {
+    let names = fetch_columns(storage, &table.name)?;
+    let names = match &table.alias {
+        None => names,
+        Some(alias) if alias.columns.len() > names.len() => {
+            return Err(FetchError::TooManyColumnAliases(
+                table.name.clone(),
+                names.len(),
+                alias.columns.len(),
+            )
+            .into());
+        }
+        Some(alias) => alias
+            .columns
+            .iter()
+            .cloned()
+            .chain(names[alias.columns.len()..].iter().cloned())
+            .collect(),
+    };
+
+    let output = SourceColumns {
+        alias: table
+            .alias
+            .as_ref()
+            .map_or(table.name.as_str(), |alias| alias.name.as_str()),
+        names: Rc::from(names),
+    };
+    let source = output.clone();
+    let rows = Box::new(move |evaluation_context: Option<Rc<RowContext<'a>>>| {
+        rows(storage, table, source.clone(), evaluation_context.as_ref())
+    });
+
+    Ok(PreparedSource { output, rows })
+}
+
+fn rows<'a, T: GStore>(
+    storage: &'a T,
+    table: &'a TableSourcePlan,
+    source: SourceColumns<'a>,
     evaluation_context: Option<&Rc<RowContext<'a>>>,
 ) -> Result<SourceRows<'a>> {
-    let columns = columns(storage, table)?;
+    let columns = Rc::clone(&source.names);
     let rows = match &table.access {
         TableAccessPlan::FullScan => {
             let rows = storage.scan_data(&table.name)?.map({
@@ -92,35 +131,5 @@ pub(super) fn execute<'a, T: GStore>(
         }
     };
 
-    Ok(SourceRows {
-        alias: table
-            .alias
-            .as_ref()
-            .map_or(table.name.as_str(), |alias| alias.name.as_str()),
-        columns,
-        rows,
-    })
-}
-
-pub(super) fn columns<T: GStore>(storage: &T, table: &TableSourcePlan) -> Result<Rc<[String]>> {
-    let columns = fetch_columns(storage, &table.name)?;
-    let columns = match &table.alias {
-        None => columns,
-        Some(alias) if alias.columns.len() > columns.len() => {
-            return Err(FetchError::TooManyColumnAliases(
-                table.name.clone(),
-                columns.len(),
-                alias.columns.len(),
-            )
-            .into());
-        }
-        Some(alias) => alias
-            .columns
-            .iter()
-            .cloned()
-            .chain(columns[alias.columns.len()..].iter().cloned())
-            .collect(),
-    };
-
-    Ok(Rc::from(columns))
+    Ok(SourceRows { source, rows })
 }

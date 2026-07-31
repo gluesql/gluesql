@@ -2,7 +2,7 @@ mod state;
 
 use {
     self::state::State,
-    super::{filter_node, join_node, source_node},
+    super::{SelectedRows, SelectedSources, filter_node, join_node, source_node},
     crate::{
         data::Value,
         executor::{
@@ -16,7 +16,10 @@ use {
     std::rc::Rc,
 };
 
-pub(super) type AggregatedRows<'a> = Vec<AggregateContext<'a>>;
+pub(super) struct AggregatedRows<'a> {
+    pub(super) sources: SelectedSources<'a>,
+    pub(super) rows: Vec<AggregateContext<'a>>,
+}
 
 pub(super) fn execute<'a, T>(
     storage: &'a T,
@@ -31,10 +34,10 @@ where
         group_by,
         aggregate_slots,
     } = plan;
-    let rows = match input {
-        AggregationInputPlan::Source(source) => {
-            source_node::execute(storage, source, None)?.into_selected(None)
-        }
+    let SelectedRows { sources, rows } = match input {
+        AggregationInputPlan::Source(source) => source_node::execute(storage, source)?
+            .rows(None)?
+            .into_selected(None),
         AggregationInputPlan::Join(join) => join_node::execute(storage, join, filter_context)?,
         AggregationInputPlan::Filter(filter) => {
             filter_node::execute(storage, filter, filter_context)?
@@ -62,5 +65,7 @@ where
         }
     }
 
-    state.export(aggregate_slots)
+    let rows = state.export(aggregate_slots)?;
+
+    Ok(AggregatedRows { sources, rows })
 }

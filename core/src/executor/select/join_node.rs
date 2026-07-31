@@ -1,11 +1,11 @@
 use {
-    super::{SelectedRows, source_node},
+    super::{SelectedIter, SelectedRows, source_node},
     crate::{
         data::{Key, Row, Value},
         executor::{context::RowContext, evaluate::evaluate, filter::check_expr},
         plan::{
             ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan,
-            JoinPlan, SourcePlan,
+            JoinPlan,
         },
         result::Result,
         store::GStore,
@@ -15,17 +15,15 @@ use {
 };
 
 type JoinItem<'a> = Rc<RowContext<'a>>;
-type JoinedColumns<'a> = Vec<(&'a str, Rc<[String]>)>;
-type JoinColumns<'a> = (&'a str, Rc<[String]>, JoinedColumns<'a>);
 
 struct LeftOuter<'a> {
-    rows: SelectedRows<'a>,
+    rows: SelectedIter<'a>,
     init: Option<JoinItem<'a>>,
     matched: bool,
 }
 
 impl<'a> LeftOuter<'a> {
-    fn new(rows: SelectedRows<'a>, init: JoinItem<'a>) -> Self {
+    fn new(rows: SelectedIter<'a>, init: JoinItem<'a>) -> Self {
         Self {
             rows,
             init: Some(init),
@@ -55,9 +53,9 @@ pub(super) fn execute<'a, T: GStore>(
     filter_context: Option<&Rc<RowContext<'a>>>,
 ) -> Result<SelectedRows<'a>> {
     let rows = match &plan.input {
-        JoinInputPlan::Source(source) => {
-            source_node::execute(storage, source, None)?.into_selected(None)
-        }
+        JoinInputPlan::Source(source) => source_node::execute(storage, source)?
+            .rows(None)?
+            .into_selected(None),
         JoinInputPlan::Join(join) => execute(storage, join, filter_context)?,
     };
 
@@ -76,9 +74,16 @@ fn join<'a, T: GStore>(
         join_executor,
         ..
     } = join_plan;
+    let SelectedRows {
+        mut sources,
+        rows: left_rows,
+    } = left_rows;
+    let right = source_node::execute(storage, right)?;
+    let right_source = right.output.clone();
+    sources.joined.push(right_source.clone());
 
-    let table_alias = right.alias_name();
-    let join_executor = JoinExecutor::new(storage, right, filter_context.as_ref(), join_executor)?;
+    let table_alias = right_source.alias;
+    let join_executor = JoinExecutor::new(storage, &right, filter_context.as_ref(), join_executor)?;
 
     let (join_operator, where_clause) = match join_operator {
         JoinOperatorPlan::Inner(JoinConstraintPlan::None) => (JoinOperator::Inner, None),
@@ -91,11 +96,11 @@ fn join<'a, T: GStore>(
         }
     };
 
-    let columns = source_node::columns(storage, right)?;
+    let columns = right_source.names;
     let rows = left_rows.flat_map(move |project_context| {
         let project_context = match project_context {
             Ok(project_context) => project_context,
-            Err(error) => return Box::new(std::iter::once(Err(error))) as SelectedRows<'a>,
+            Err(error) => return Box::new(std::iter::once(Err(error))) as SelectedIter<'a>,
         };
 
         let init_context = {
@@ -121,12 +126,12 @@ fn join<'a, T: GStore>(
         };
         let row_filter_context = Some(row_filter_context);
 
-        let rows: SelectedRows<'a> = match &join_executor {
+        let rows: SelectedIter<'a> = match &join_executor {
             JoinExecutor::NestedLoop => {
-                let rows = match source_node::execute(storage, right, row_filter_context.as_ref()) {
+                let rows = match right.rows(row_filter_context.clone()) {
                     Ok(source) => source.rows,
                     Err(error) => {
-                        return Box::new(std::iter::once(Err(error))) as SelectedRows<'a>;
+                        return Box::new(std::iter::once(Err(error))) as SelectedIter<'a>;
                     }
                 };
                 Box::new(rows.filter_map(move |row| {
@@ -159,7 +164,7 @@ fn join<'a, T: GStore>(
                     }) {
                     Ok(rows) => rows,
                     Err(error) => {
-                        return Box::new(std::iter::once(Err(error))) as SelectedRows<'a>;
+                        return Box::new(std::iter::once(Err(error))) as SelectedIter<'a>;
                     }
                 };
 
@@ -194,7 +199,10 @@ fn join<'a, T: GStore>(
         }
     });
 
-    Ok(Box::new(rows))
+    Ok(SelectedRows {
+        sources,
+        rows: Box::new(rows),
+    })
 }
 
 #[derive(Copy, Clone)]
@@ -214,7 +222,7 @@ enum JoinExecutor<'a> {
 impl<'a> JoinExecutor<'a> {
     fn new<T: GStore>(
         storage: &'a T,
-        source: &'a SourcePlan,
+        source: &source_node::PreparedSource<'a>,
         filter_context: Option<&Rc<RowContext<'a>>>,
         join_executor: &'a JoinExecutorPlan,
     ) -> Result<JoinExecutor<'a>> {
@@ -228,11 +236,11 @@ impl<'a> JoinExecutor<'a> {
         };
 
         let mut rows = Vec::new();
-        let source_rows = source_node::execute(storage, source, filter_context)?;
+        let source_rows = source.rows(filter_context.cloned())?;
         for row in source_rows.rows {
             let row = row?;
             let filter_context = Rc::new(RowContext::new(
-                source.alias_name(),
+                source.output.alias,
                 Cow::Borrowed(&row),
                 filter_context.cloned(),
             ));
@@ -259,23 +267,6 @@ impl<'a> JoinExecutor<'a> {
             value_expr,
         })
     }
-}
-
-pub(super) fn columns<'a, T: GStore>(storage: &T, join: &'a JoinPlan) -> Result<JoinColumns<'a>> {
-    let (alias, columns, mut joined) = match &join.input {
-        JoinInputPlan::Source(source) => (
-            source.alias_name(),
-            source_node::columns(storage, source)?,
-            Vec::new(),
-        ),
-        JoinInputPlan::Join(join) => columns(storage, join)?,
-    };
-    joined.push((
-        join.right.alias_name(),
-        source_node::columns(storage, &join.right)?,
-    ));
-
-    Ok((alias, columns, joined))
 }
 
 fn check_where_clause<'a, T: GStore>(

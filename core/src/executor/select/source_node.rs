@@ -4,16 +4,20 @@ mod series;
 mod table;
 
 use {
-    super::SelectedRows,
+    super::{SelectedRows, SelectedSources, SourceColumns},
     crate::{
         data::Row, executor::context::RowContext, plan::SourcePlan, result::Result, store::GStore,
     },
     std::{borrow::Cow, rc::Rc},
 };
 
+pub(super) struct PreparedSource<'a> {
+    pub(super) output: SourceColumns<'a>,
+    rows: Box<dyn Fn(Option<Rc<RowContext<'a>>>) -> Result<SourceRows<'a>> + 'a>,
+}
+
 pub(super) struct SourceRows<'a> {
-    pub(super) alias: &'a str,
-    pub(super) columns: Rc<[String]>,
+    source: SourceColumns<'a>,
     pub(super) rows: Box<dyn Iterator<Item = Result<Row>> + 'a>,
 }
 
@@ -22,14 +26,11 @@ impl<'a> SourceRows<'a> {
         self,
         next_context: Option<Rc<RowContext<'a>>>,
     ) -> SelectedRows<'a> {
-        let Self {
-            alias,
-            columns,
-            rows,
-        } = self;
+        let Self { source, rows } = self;
+        let SourceColumns { alias, names } = source.clone();
         let rows = rows.map(move |row| {
             row.map(|mut row| {
-                row.columns = Rc::clone(&columns);
+                row.columns = Rc::clone(&names);
                 Rc::new(RowContext::new(
                     alias,
                     Cow::Owned(row),
@@ -38,28 +39,33 @@ impl<'a> SourceRows<'a> {
             })
         });
 
-        Box::new(rows)
+        SelectedRows {
+            sources: SelectedSources {
+                base: source,
+                joined: Vec::new(),
+            },
+            rows: Box::new(rows),
+        }
+    }
+}
+
+impl<'a> PreparedSource<'a> {
+    pub(super) fn rows(
+        &self,
+        evaluation_context: Option<Rc<RowContext<'a>>>,
+    ) -> Result<SourceRows<'a>> {
+        (self.rows)(evaluation_context)
     }
 }
 
 pub(super) fn execute<'a, T: GStore>(
     storage: &'a T,
     source: &'a SourcePlan,
-    evaluation_context: Option<&Rc<RowContext<'a>>>,
-) -> Result<SourceRows<'a>> {
+) -> Result<PreparedSource<'a>> {
     match source {
-        SourcePlan::Table(table) => table::execute(storage, table, evaluation_context),
-        SourcePlan::Derived(derived) => derived::execute(storage, derived, evaluation_context),
-        SourcePlan::Series(series) => series::execute(series),
-        SourcePlan::Dictionary(dictionary) => dictionary::execute(storage, dictionary),
-    }
-}
-
-pub(super) fn columns<T: GStore>(storage: &T, source: &SourcePlan) -> Result<Rc<[String]>> {
-    match source {
-        SourcePlan::Table(table) => table::columns(storage, table),
-        SourcePlan::Derived(derived) => derived::columns(storage, derived),
-        SourcePlan::Series(series) => Ok(series::columns(series)),
-        SourcePlan::Dictionary(dictionary) => Ok(dictionary::columns(dictionary)),
+        SourcePlan::Table(table) => table::execute(storage, table),
+        SourcePlan::Derived(derived) => derived::execute(storage, derived),
+        SourcePlan::Series(series) => Ok(series::execute(series)),
+        SourcePlan::Dictionary(dictionary) => Ok(dictionary::execute(storage, dictionary)),
     }
 }

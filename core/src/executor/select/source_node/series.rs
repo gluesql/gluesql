@@ -1,16 +1,27 @@
 use {
-    super::SourceRows,
+    super::{super::SourceColumns, PreparedSource, SourceRows},
     crate::{
         data::{Row, Value},
-        executor::{evaluate::evaluate_stateless, fetch::FetchError},
+        executor::{context::RowContext, evaluate::evaluate_stateless, fetch::FetchError},
         plan::SeriesSourcePlan,
         result::Result,
     },
     std::rc::Rc,
 };
 
-pub(super) fn execute(series: &SeriesSourcePlan) -> Result<SourceRows<'_>> {
-    let columns = columns(series);
+pub(super) fn execute<'a>(series: &'a SeriesSourcePlan) -> PreparedSource<'a> {
+    let output = SourceColumns {
+        alias: &series.alias.name,
+        names: Rc::from(vec!["N".to_owned()]),
+    };
+    let source = output.clone();
+    let rows = Box::new(move |_: Option<Rc<RowContext<'a>>>| rows(series, source.clone()));
+
+    PreparedSource { output, rows }
+}
+
+fn rows<'a>(series: &'a SeriesSourcePlan, source: SourceColumns<'a>) -> Result<SourceRows<'a>> {
+    let columns = Rc::clone(&source.names);
     let value: Value = evaluate_stateless(None, &series.size)?.try_into()?;
     let size: i64 = value.try_into()?;
     if size < 0 {
@@ -28,12 +39,7 @@ pub(super) fn execute(series: &SeriesSourcePlan) -> Result<SourceRows<'_>> {
     });
 
     Ok(SourceRows {
-        alias: &series.alias.name,
-        columns,
+        source,
         rows: Box::new(rows),
     })
-}
-
-pub(super) fn columns(_series: &SeriesSourcePlan) -> Rc<[String]> {
-    Rc::from(vec!["N".to_owned()])
 }
