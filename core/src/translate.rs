@@ -11,7 +11,10 @@ mod query;
 pub use self::{
     data_type::translate_data_type,
     ddl::translate_column_def,
-    error::TranslateError,
+    error::{
+        CreateTableOption, DeleteOption, InsertOption, JoinConstraintReason, QueryOption,
+        SelectOption, TranslateError, UpdateOption,
+    },
     expr::{translate_expr, translate_order_by_expr},
     param::{IntoParamLiteral, ParamLiteral, ToParamLiteral},
     query::{alias_or_name, translate_query, translate_select_item},
@@ -74,17 +77,17 @@ pub fn translate_with_params(
             ..
         }) => {
             let violation = if returning.is_some() {
-                Some("RETURNING clause")
+                Some(InsertOption::Returning)
             } else if on.is_some() {
-                Some("ON CONFLICT clause")
+                Some(InsertOption::OnConflict)
             } else if table_alias.is_some() {
-                Some("table alias")
+                Some(InsertOption::TableAlias)
             } else if partitioned.is_some() {
-                Some("PARTITION clause")
+                Some(InsertOption::Partition)
             } else if *overwrite {
-                Some("OVERWRITE clause")
+                Some(InsertOption::Overwrite)
             } else if *table {
-                Some("TABLE keyword")
+                Some(InsertOption::TableKeyword)
             } else {
                 None
             };
@@ -120,9 +123,9 @@ pub fn translate_with_params(
             ..
         } => {
             let violation = if from.is_some() {
-                Some("FROM clause")
+                Some(UpdateOption::From)
             } else if returning.is_some() {
-                Some("RETURNING clause")
+                Some(UpdateOption::Returning)
             } else {
                 None
             };
@@ -153,13 +156,13 @@ pub fn translate_with_params(
             ..
         }) => {
             let violation = if using.is_some() {
-                Some("USING clause")
+                Some(DeleteOption::Using)
             } else if returning.is_some() {
-                Some("RETURNING clause")
+                Some(DeleteOption::Returning)
             } else if !order_by.is_empty() {
-                Some("ORDER BY clause")
+                Some(DeleteOption::OrderBy)
             } else if limit.is_some() {
-                Some("LIMIT clause")
+                Some(DeleteOption::Limit)
             } else {
                 None
             };
@@ -202,11 +205,11 @@ pub fn translate_with_params(
             ..
         }) => {
             let violation = if *temporary {
-                Some("TEMPORARY clause")
+                Some(CreateTableOption::Temporary)
             } else if like.is_some() {
-                Some("LIKE clause")
+                Some(CreateTableOption::Like)
             } else if clone.is_some() {
-                Some("CLONE clause")
+                Some(CreateTableOption::CloneTable)
             } else {
                 None
             };
@@ -597,27 +600,27 @@ mod tests {
         let cases = [
             (
                 "INSERT INTO Foo VALUES (1) RETURNING *",
-                TranslateError::UnsupportedInsertOption("RETURNING clause"),
+                TranslateError::UnsupportedInsertOption(InsertOption::Returning),
             ),
             (
                 "INSERT INTO Foo VALUES (1) ON CONFLICT DO NOTHING",
-                TranslateError::UnsupportedInsertOption("ON CONFLICT clause"),
+                TranslateError::UnsupportedInsertOption(InsertOption::OnConflict),
             ),
             (
                 "INSERT INTO Foo AS f VALUES (1)",
-                TranslateError::UnsupportedInsertOption("table alias"),
+                TranslateError::UnsupportedInsertOption(InsertOption::TableAlias),
             ),
             (
                 "INSERT INTO Foo PARTITION (bar = 1) VALUES (1)",
-                TranslateError::UnsupportedInsertOption("PARTITION clause"),
+                TranslateError::UnsupportedInsertOption(InsertOption::Partition),
             ),
             (
                 "INSERT OVERWRITE TABLE Foo VALUES (1)",
-                TranslateError::UnsupportedInsertOption("OVERWRITE clause"),
+                TranslateError::UnsupportedInsertOption(InsertOption::Overwrite),
             ),
             (
                 "INSERT TABLE Foo VALUES (1)",
-                TranslateError::UnsupportedInsertOption("TABLE keyword"),
+                TranslateError::UnsupportedInsertOption(InsertOption::TableKeyword),
             ),
         ];
 
@@ -631,11 +634,11 @@ mod tests {
         let cases = [
             (
                 "UPDATE Foo SET id = 1 FROM Bar",
-                TranslateError::UnsupportedUpdateOption("FROM clause"),
+                TranslateError::UnsupportedUpdateOption(UpdateOption::From),
             ),
             (
                 "UPDATE Foo SET id = 1 WHERE id = 1 RETURNING *",
-                TranslateError::UnsupportedUpdateOption("RETURNING clause"),
+                TranslateError::UnsupportedUpdateOption(UpdateOption::Returning),
             ),
         ];
 
@@ -649,19 +652,19 @@ mod tests {
         let cases = [
             (
                 "DELETE FROM Foo USING Bar",
-                TranslateError::UnsupportedDeleteOption("USING clause"),
+                TranslateError::UnsupportedDeleteOption(DeleteOption::Using),
             ),
             (
                 "DELETE FROM Foo WHERE id = 1 RETURNING *",
-                TranslateError::UnsupportedDeleteOption("RETURNING clause"),
+                TranslateError::UnsupportedDeleteOption(DeleteOption::Returning),
             ),
             (
                 "DELETE FROM Foo WHERE id = 1 ORDER BY id",
-                TranslateError::UnsupportedDeleteOption("ORDER BY clause"),
+                TranslateError::UnsupportedDeleteOption(DeleteOption::OrderBy),
             ),
             (
                 "DELETE FROM Foo WHERE id = 1 LIMIT 1",
-                TranslateError::UnsupportedDeleteOption("LIMIT clause"),
+                TranslateError::UnsupportedDeleteOption(DeleteOption::Limit),
             ),
         ];
 
@@ -675,15 +678,15 @@ mod tests {
         let cases = [
             (
                 "CREATE TEMPORARY TABLE Foo (id INTEGER)",
-                TranslateError::UnsupportedCreateTableOption("TEMPORARY clause"),
+                TranslateError::UnsupportedCreateTableOption(CreateTableOption::Temporary),
             ),
             (
                 "CREATE TABLE Foo LIKE Bar",
-                TranslateError::UnsupportedCreateTableOption("LIKE clause"),
+                TranslateError::UnsupportedCreateTableOption(CreateTableOption::Like),
             ),
             (
                 "CREATE TABLE Foo CLONE Bar",
-                TranslateError::UnsupportedCreateTableOption("CLONE clause"),
+                TranslateError::UnsupportedCreateTableOption(CreateTableOption::CloneTable),
             ),
         ];
 
