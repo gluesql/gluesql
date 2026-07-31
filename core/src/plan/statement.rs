@@ -3,7 +3,7 @@ mod expr;
 mod join;
 mod projection;
 mod query;
-mod table_factor;
+mod source;
 
 pub use {
     ddl::AlterTableOperationPlan,
@@ -18,7 +18,10 @@ pub use {
         OrderByExprPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SelectOrderByPlan,
         ValuesOrderByPlan, ValuesPlan,
     },
-    table_factor::{IndexItemPlan, TableAliasPlan, TableFactorPlan},
+    source::{
+        DerivedSourcePlan, DictionarySourcePlan, IndexPredicatePlan, SeriesSourcePlan, SourcePlan,
+        TableAccessPlan, TableAliasPlan, TableSourcePlan,
+    },
 };
 
 use {

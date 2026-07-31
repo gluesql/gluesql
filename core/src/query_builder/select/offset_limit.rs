@@ -3,7 +3,7 @@ use {
     crate::{
         ast::Query,
         plan::{LimitInputPlan, LimitPlan, OffsetPlan, QueryPlan},
-        query_builder::{ExprNode, OffsetNode, QueryNode, TableFactorNode},
+        query_builder::{ExprNode, OffsetNode, QueryNode, SourceNode},
         result::Result,
     },
 };
@@ -49,7 +49,7 @@ impl<'a> OffsetLimitNode<'a> {
         }
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
+    pub fn alias_as(self, table_alias: &'a str) -> SourceNode<'a> {
         QueryNode::OffsetLimitNode(self).alias_as(table_alias)
     }
 }

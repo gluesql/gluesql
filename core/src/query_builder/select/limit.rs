@@ -5,7 +5,7 @@ use {
         plan::{LimitInputPlan, LimitPlan, QueryPlan},
         query_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
-            JoinNode, ProjectNode, QueryNode, SelectNode, SelectOrderByNode, TableFactorNode,
+            JoinNode, ProjectNode, QueryNode, SelectNode, SelectOrderByNode, SourceNode,
             ValuesOrderByNode,
         },
         result::Result,
@@ -156,7 +156,7 @@ impl<'a> LimitNode<'a> {
         }
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
+    pub fn alias_as(self, table_alias: &'a str) -> SourceNode<'a> {
         QueryNode::LimitNode(self).alias_as(table_alias)
     }
 }
@@ -186,7 +186,7 @@ mod tests {
             plan::{
                 JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan, JoinPlan,
                 LimitInputPlan, LimitPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan,
-                QueryPlan, StatementPlan, TableFactorPlan,
+                QueryPlan, SourcePlan, StatementPlan, TableAccessPlan, TableSourcePlan,
             },
             query_builder::{Build, SelectItemList, col, num, table, test_query_builder},
         },
@@ -281,16 +281,16 @@ mod tests {
             .build();
         let expected = {
             let join = JoinPlan {
-                input: JoinInputPlan::Relation(TableFactorPlan::Table {
+                input: JoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: None,
-                }),
-                relation: TableFactorPlan::Table {
+                    access: TableAccessPlan::FullScan,
+                })),
+                right: SourcePlan::Table(TableSourcePlan {
                     name: "PlayerItem".to_owned(),
                     alias: None,
-                    index: None,
-                },
+                    access: TableAccessPlan::FullScan,
+                }),
                 join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
                 join_executor: JoinExecutorPlan::Hash {
                     key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),

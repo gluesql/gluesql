@@ -7,7 +7,7 @@ use {
             FilterPlan, JoinConstraintPlan, JoinInputPlan, JoinOperatorPlan, JoinPlan,
             LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan,
             ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
-            SelectOrderByPlan, StatementPlan, TableFactorPlan, ValuesOrderByPlan,
+            SelectOrderByPlan, SourcePlan, StatementPlan, ValuesOrderByPlan,
         },
         result::Result,
         store::Store,
@@ -186,7 +186,7 @@ fn scan_filter<T: Store + ?Sized>(
     FilterPlan { input, expr }: &FilterPlan,
 ) -> Result<HashMap<String, Schema>> {
     let input = match input {
-        FilterInputPlan::Relation(relation) => scan_table_factor(storage, relation)?,
+        FilterInputPlan::Source(relation) => scan_source(storage, relation)?,
         FilterInputPlan::Join(join) => scan_join(storage, join)?,
     };
     let expr = scan_expr(storage, expr)?;
@@ -199,7 +199,7 @@ fn scan_aggregation_input<T: Store + ?Sized>(
     input: &AggregationInputPlan,
 ) -> Result<HashMap<String, Schema>> {
     match input {
-        AggregationInputPlan::Relation(relation) => scan_table_factor(storage, relation),
+        AggregationInputPlan::Source(relation) => scan_source(storage, relation),
         AggregationInputPlan::Join(join) => scan_join(storage, join),
         AggregationInputPlan::Filter(filter) => scan_filter(storage, filter),
     }
@@ -210,7 +210,7 @@ fn scan_project<T: Store + ?Sized>(
     ProjectPlan { input, projection }: &ProjectPlan,
 ) -> Result<HashMap<String, Schema>> {
     let schema_list = match input {
-        ProjectInputPlan::Relation(relation) => scan_table_factor(storage, relation)?,
+        ProjectInputPlan::Source(relation) => scan_source(storage, relation)?,
         ProjectInputPlan::Join(join) => scan_join(storage, join)?,
         ProjectInputPlan::Filter(filter) => scan_filter(storage, filter)?,
         ProjectInputPlan::Aggregation(aggregation) => {
@@ -261,47 +261,43 @@ fn scan_project<T: Store + ?Sized>(
 fn scan_join<T: Store + ?Sized>(storage: &T, join: &JoinPlan) -> Result<HashMap<String, Schema>> {
     let JoinPlan {
         input,
-        relation,
+        right,
         join_operator,
         ..
     } = join;
 
     let input = match input {
-        JoinInputPlan::Relation(relation) => scan_table_factor(storage, relation)?,
+        JoinInputPlan::Source(relation) => scan_source(storage, relation)?,
         JoinInputPlan::Join(join) => scan_join(storage, join)?,
     };
-    let relation = scan_table_factor(storage, relation)?;
+    let right = scan_source(storage, right)?;
     let current = match join_operator {
         JoinOperatorPlan::Inner(JoinConstraintPlan::On(expr))
-        | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::On(expr)) => scan_expr(storage, expr)?
-            .into_iter()
-            .chain(relation)
-            .collect(),
+        | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::On(expr)) => {
+            scan_expr(storage, expr)?.into_iter().chain(right).collect()
+        }
         JoinOperatorPlan::Inner(JoinConstraintPlan::None)
-        | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None) => relation,
+        | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None) => right,
     };
 
     Ok(input.into_iter().chain(current).collect())
 }
 
-fn scan_table_factor<T>(
-    storage: &T,
-    table_factor: &TableFactorPlan,
-) -> Result<HashMap<String, Schema>>
+fn scan_source<T>(storage: &T, source: &SourcePlan) -> Result<HashMap<String, Schema>>
 where
     T: Store + ?Sized,
 {
-    match table_factor {
-        TableFactorPlan::Table { name, .. } => {
-            let schema = storage.fetch_schema(name)?;
+    match source {
+        SourcePlan::Table(table) => {
+            let schema = storage.fetch_schema(&table.name)?;
             let schema_list: HashMap<String, Schema> = schema.map_or_else(HashMap::new, |schema| {
-                HashMap::from([(name.to_owned(), schema)])
+                HashMap::from([(table.name.clone(), schema)])
             });
 
             Ok(schema_list)
         }
-        TableFactorPlan::Derived { subquery, .. } => scan_query(storage, subquery),
-        TableFactorPlan::Series { .. } | TableFactorPlan::Dictionary { .. } => Ok(HashMap::new()),
+        SourcePlan::Derived(derived) => scan_query(storage, &derived.query),
+        SourcePlan::Series(_) | SourcePlan::Dictionary(_) => Ok(HashMap::new()),
     }
 }
 

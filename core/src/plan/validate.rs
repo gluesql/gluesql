@@ -5,8 +5,8 @@ use {
         plan::{
             AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
             JoinInputPlan, JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
-            ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
-            StatementPlan, TableFactorPlan,
+            ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SourcePlan,
+            StatementPlan,
         },
         result::Result,
     },
@@ -157,7 +157,7 @@ fn contextualize_project_input<'a>(
     input: &'a ProjectInputPlan,
 ) -> Option<Rc<Context<'a>>> {
     match input {
-        ProjectInputPlan::Relation(relation) => contextualize_table_factor(schema_map, relation),
+        ProjectInputPlan::Source(relation) => contextualize_source(schema_map, relation),
         ProjectInputPlan::Join(join) => contextualize_join(schema_map, join),
         ProjectInputPlan::Filter(filter) => contextualize_filter_input(schema_map, &filter.input),
         ProjectInputPlan::Aggregation(aggregation) => {
@@ -174,9 +174,7 @@ fn contextualize_aggregation_input<'a>(
     input: &'a AggregationInputPlan,
 ) -> Option<Rc<Context<'a>>> {
     match input {
-        AggregationInputPlan::Relation(relation) => {
-            contextualize_table_factor(schema_map, relation)
-        }
+        AggregationInputPlan::Source(relation) => contextualize_source(schema_map, relation),
         AggregationInputPlan::Join(join) => contextualize_join(schema_map, join),
         AggregationInputPlan::Filter(filter) => {
             contextualize_filter_input(schema_map, &filter.input)
@@ -189,7 +187,7 @@ fn contextualize_filter_input<'a>(
     input: &'a FilterInputPlan,
 ) -> Option<Rc<Context<'a>>> {
     match input {
-        FilterInputPlan::Relation(relation) => contextualize_table_factor(schema_map, relation),
+        FilterInputPlan::Source(relation) => contextualize_source(schema_map, relation),
         FilterInputPlan::Join(join) => contextualize_join(schema_map, join),
     }
 }
@@ -199,25 +197,25 @@ fn contextualize_join<'a>(
     join: &'a JoinPlan,
 ) -> Option<Rc<Context<'a>>> {
     let input = match &join.input {
-        JoinInputPlan::Relation(relation) => contextualize_table_factor(schema_map, relation),
+        JoinInputPlan::Source(relation) => contextualize_source(schema_map, relation),
         JoinInputPlan::Join(join) => contextualize_join(schema_map, join),
     };
-    let relation = contextualize_table_factor(schema_map, &join.relation);
+    let right = contextualize_source(schema_map, &join.right);
 
-    Context::concat(input, relation)
+    Context::concat(input, right)
 }
 
-fn contextualize_table_factor<'a>(
+fn contextualize_source<'a>(
     schema_map: &'a SchemaMap,
-    table_factor: &'a TableFactorPlan,
+    source: &'a SourcePlan,
 ) -> Option<Rc<Context<'a>>> {
-    match table_factor {
-        TableFactorPlan::Table { name, .. } => {
-            let schema = schema_map.get(name);
+    match source {
+        SourcePlan::Table(table) => {
+            let schema = schema_map.get(&table.name);
             schema.map(|schema| Rc::from(Context::new(get_labels(schema), None)))
         }
-        TableFactorPlan::Derived { subquery, .. } => contextualize_query(schema_map, subquery),
-        TableFactorPlan::Series { .. } | TableFactorPlan::Dictionary { .. } => None,
+        SourcePlan::Derived(derived) => contextualize_query(schema_map, &derived.query),
+        SourcePlan::Series(_) | SourcePlan::Dictionary(_) => None,
     }
 }
 

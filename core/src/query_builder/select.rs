@@ -18,7 +18,7 @@ use {
         plan::{
             AggregationInputPlan, AggregationPlan, FilterInputPlan, FilterPlan, HavingPlan,
             JoinInputPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, StatementPlan, TableFactorPlan,
+            SelectItemPlan, SourcePlan, StatementPlan,
         },
         result::Result,
     },
@@ -38,8 +38,8 @@ pub use {
     values::{ValuesNode, values},
 };
 
-pub(super) trait BuildTableFactorPlan {
-    fn build_table_factor_plan(self) -> Result<TableFactorPlan>;
+pub(super) trait BuildSourcePlan {
+    fn build_source_plan(self) -> Result<SourcePlan>;
 }
 
 pub(super) trait BuildJoinInputPlan {
@@ -93,7 +93,7 @@ pub(super) trait BuildQuery {
 impl<T: BuildJoinInputPlan> BuildFilterInputPlan for T {
     fn build_filter_input_plan(self) -> Result<FilterInputPlan> {
         self.build_join_input_plan().map(|input| match input {
-            JoinInputPlan::Relation(relation) => FilterInputPlan::Relation(relation),
+            JoinInputPlan::Source(relation) => FilterInputPlan::Source(relation),
             JoinInputPlan::Join(join) => FilterInputPlan::Join(join),
         })
     }
@@ -102,7 +102,7 @@ impl<T: BuildJoinInputPlan> BuildFilterInputPlan for T {
 impl<T: BuildJoinInputPlan> BuildProjectInputPlan for T {
     fn build_project_input_plan(self) -> Result<ProjectInputPlan> {
         self.build_join_input_plan().map(|input| match input {
-            JoinInputPlan::Relation(relation) => ProjectInputPlan::Relation(relation),
+            JoinInputPlan::Source(relation) => ProjectInputPlan::Source(relation),
             JoinInputPlan::Join(join) => ProjectInputPlan::Join(join),
         })
     }
@@ -111,7 +111,7 @@ impl<T: BuildJoinInputPlan> BuildProjectInputPlan for T {
 impl<T: BuildJoinInputPlan> BuildAggregationInputPlan for T {
     fn build_aggregation_input_plan(self) -> Result<AggregationInputPlan> {
         self.build_join_input_plan().map(|input| match input {
-            JoinInputPlan::Relation(relation) => AggregationInputPlan::Relation(relation),
+            JoinInputPlan::Source(relation) => AggregationInputPlan::Source(relation),
             JoinInputPlan::Join(join) => AggregationInputPlan::Join(join),
         })
     }

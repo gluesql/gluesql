@@ -1,19 +1,19 @@
 use {
-    super::{ExprPlan, TableFactorPlan},
+    super::{ExprPlan, SourcePlan},
     crate::ast,
     serde::{Deserialize, Serialize},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum JoinInputPlan {
-    Relation(TableFactorPlan),
+    Source(SourcePlan),
     Join(Box<JoinPlan>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct JoinPlan {
     pub input: JoinInputPlan,
-    pub relation: TableFactorPlan,
+    pub right: SourcePlan,
     pub join_operator: JoinOperatorPlan,
     pub join_executor: JoinExecutorPlan,
 }
@@ -62,39 +62,39 @@ impl From<ast::JoinConstraint> for JoinConstraintPlan {
 mod tests {
     use {
         super::{JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan, JoinPlan},
-        crate::plan::TableFactorPlan,
+        crate::plan::{SourcePlan, TableAccessPlan, TableSourcePlan},
         pretty_assertions::assert_eq,
     };
 
-    fn table(name: &str) -> TableFactorPlan {
-        TableFactorPlan::Table {
+    fn table(name: &str) -> SourcePlan {
+        SourcePlan::Table(TableSourcePlan {
             name: name.to_owned(),
             alias: None,
-            index: None,
-        }
+            access: TableAccessPlan::FullScan,
+        })
     }
 
     #[test]
     fn join_accepts_relation_and_previous_join_inputs() {
         let first = JoinPlan {
-            input: JoinInputPlan::Relation(table("A")),
-            relation: table("B"),
+            input: JoinInputPlan::Source(table("A")),
+            right: table("B"),
             join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
             join_executor: JoinExecutorPlan::NestedLoop,
         };
         let second = JoinPlan {
             input: JoinInputPlan::Join(Box::new(first.clone())),
-            relation: table("C"),
+            right: table("C"),
             join_operator: JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None),
             join_executor: JoinExecutorPlan::NestedLoop,
         };
 
-        assert_eq!(first.input, JoinInputPlan::Relation(table("A")));
+        assert_eq!(first.input, JoinInputPlan::Source(table("A")));
         assert_eq!(
             second.input,
             JoinInputPlan::Join(Box::new(JoinPlan {
-                input: JoinInputPlan::Relation(table("A")),
-                relation: table("B"),
+                input: JoinInputPlan::Source(table("A")),
+                right: table("B"),
                 join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
                 join_executor: JoinExecutorPlan::NestedLoop,
             }))

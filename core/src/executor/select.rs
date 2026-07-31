@@ -9,13 +9,20 @@ mod offset_node;
 mod order_by;
 mod project_node;
 mod select_order_by_node;
-mod table_factor_node;
+mod source_node;
 mod values_node;
 mod values_order_by_node;
 
 use {
     crate::{
-        data::Row, executor::context::RowContext, plan::QueryPlan, result::Result, store::GStore,
+        data::Row,
+        executor::context::RowContext,
+        plan::{
+            DistinctInputPlan, DistinctPlan, LimitInputPlan, LimitPlan, OffsetInputPlan,
+            OffsetPlan, QueryPlan,
+        },
+        result::Result,
+        store::GStore,
     },
     std::rc::Rc,
 };
@@ -27,6 +34,48 @@ type SelectedRows<'a> = Box<dyn Iterator<Item = Result<Rc<RowContext<'a>>>> + 'a
 struct LabeledRows<'a> {
     labels: Vec<String>,
     rows: SelectIter<'a>,
+}
+
+fn labels<T: GStore>(storage: &T, query: &QueryPlan) -> Result<Vec<String>> {
+    match query {
+        QueryPlan::Project(project) => project_node::labels(storage, project),
+        QueryPlan::Values(values) => Ok(values_node::labels(values)),
+        QueryPlan::SelectOrderBy(order_by) => project_node::labels(storage, &order_by.input),
+        QueryPlan::ValuesOrderBy(order_by) => Ok(values_node::labels(&order_by.input)),
+        QueryPlan::Distinct(distinct) => distinct_labels(storage, distinct),
+        QueryPlan::Offset(offset) => offset_labels(storage, offset),
+        QueryPlan::Limit(limit) => limit_labels(storage, limit),
+    }
+}
+
+fn distinct_labels<T: GStore>(storage: &T, distinct: &DistinctPlan) -> Result<Vec<String>> {
+    match &distinct.input {
+        DistinctInputPlan::Project(project) => project_node::labels(storage, project),
+        DistinctInputPlan::SelectOrderBy(order_by) => {
+            project_node::labels(storage, &order_by.input)
+        }
+    }
+}
+
+fn offset_labels<T: GStore>(storage: &T, offset: &OffsetPlan) -> Result<Vec<String>> {
+    match &offset.input {
+        OffsetInputPlan::Project(project) => project_node::labels(storage, project),
+        OffsetInputPlan::Values(values) => Ok(values_node::labels(values)),
+        OffsetInputPlan::SelectOrderBy(order_by) => project_node::labels(storage, &order_by.input),
+        OffsetInputPlan::ValuesOrderBy(order_by) => Ok(values_node::labels(&order_by.input)),
+        OffsetInputPlan::Distinct(distinct) => distinct_labels(storage, distinct),
+    }
+}
+
+fn limit_labels<T: GStore>(storage: &T, limit: &LimitPlan) -> Result<Vec<String>> {
+    match &limit.input {
+        LimitInputPlan::Project(project) => project_node::labels(storage, project),
+        LimitInputPlan::Values(values) => Ok(values_node::labels(values)),
+        LimitInputPlan::SelectOrderBy(order_by) => project_node::labels(storage, &order_by.input),
+        LimitInputPlan::ValuesOrderBy(order_by) => Ok(values_node::labels(&order_by.input)),
+        LimitInputPlan::Distinct(distinct) => distinct_labels(storage, distinct),
+        LimitInputPlan::Offset(offset) => offset_labels(storage, offset),
+    }
 }
 
 fn execute<'a, T>(

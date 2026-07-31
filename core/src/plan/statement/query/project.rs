@@ -1,12 +1,12 @@
 use {
     super::{AggregationPlan, FilterPlan, HavingPlan},
-    crate::plan::{JoinPlan, ProjectionPlan, TableFactorPlan},
+    crate::plan::{JoinPlan, ProjectionPlan, SourcePlan},
     serde::{Deserialize, Serialize},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ProjectInputPlan {
-    Relation(TableFactorPlan),
+    Source(SourcePlan),
     Join(Box<JoinPlan>),
     Filter(FilterPlan),
     Aggregation(AggregationPlan),
@@ -28,25 +28,25 @@ mod tests {
             plan::{
                 AggregationInputPlan, AggregationPlan, ExprPlan, FilterInputPlan, FilterPlan,
                 HavingPlan, JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan,
-                JoinPlan, ProjectionPlan, TableFactorPlan,
+                JoinPlan, ProjectionPlan, SourcePlan, TableAccessPlan, TableSourcePlan,
             },
         },
         pretty_assertions::assert_eq,
     };
 
-    fn table(name: &str) -> TableFactorPlan {
-        TableFactorPlan::Table {
+    fn table(name: &str) -> SourcePlan {
+        SourcePlan::Table(TableSourcePlan {
             name: name.to_owned(),
             alias: None,
-            index: None,
-        }
+            access: TableAccessPlan::FullScan,
+        })
     }
 
     #[test]
     fn project_accepts_each_typed_source_input() {
         let join = JoinPlan {
-            input: JoinInputPlan::Relation(table("A")),
-            relation: table("B"),
+            input: JoinInputPlan::Source(table("A")),
+            right: table("B"),
             join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
             join_executor: JoinExecutorPlan::NestedLoop,
         };
@@ -66,7 +66,7 @@ mod tests {
         let projection = ProjectionPlan::SelectItems(Vec::new());
 
         let relation = ProjectPlan {
-            input: ProjectInputPlan::Relation(table("A")),
+            input: ProjectInputPlan::Source(table("A")),
             projection: projection.clone(),
         };
         let joined = ProjectPlan {
@@ -86,7 +86,7 @@ mod tests {
             projection,
         };
 
-        assert_eq!(relation.input, ProjectInputPlan::Relation(table("A")));
+        assert_eq!(relation.input, ProjectInputPlan::Source(table("A")));
         assert_eq!(joined.input, ProjectInputPlan::Join(Box::new(join)));
         assert_eq!(filtered.input, ProjectInputPlan::Filter(filter));
         assert_eq!(aggregated.input, ProjectInputPlan::Aggregation(aggregation));

@@ -3,13 +3,13 @@ use {
     crate::{
         ast::{Expr, Join, Select, TableAlias, TableFactor},
         plan::{
-            JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, TableAliasPlan,
-            TableFactorPlan,
+            JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, SourcePlan,
+            TableAccessPlan, TableAliasPlan, TableSourcePlan,
         },
         query_builder::{
             DistinctNode, ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode,
             JoinConstraintNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryNode,
-            SelectItemList, SelectNode, SelectOrderByNode, TableFactorNode,
+            SelectItemList, SelectNode, SelectOrderByNode, SourceNode,
             select::{BuildJoinInputPlan, BuildJoinPlan, BuildSelect},
         },
         result::Result,
@@ -93,15 +93,15 @@ impl<'a> JoinNode<'a> {
         }
     }
 
-    fn build_table_factor_plan(&self) -> TableFactorPlan {
-        TableFactorPlan::Table {
+    fn build_source_plan(&self) -> SourcePlan {
+        SourcePlan::Table(TableSourcePlan {
             name: self.relation_name.clone(),
             alias: self.relation_alias.as_ref().map(|name| TableAliasPlan {
                 name: name.clone(),
                 columns: vec![],
             }),
-            index: None,
-        }
+            access: TableAccessPlan::FullScan,
+        })
     }
 
     fn build_table_factor(&self) -> TableFactor {
@@ -191,7 +191,7 @@ impl<'a> JoinNode<'a> {
         DistinctNode::new(self)
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
+    pub fn alias_as(self, table_alias: &'a str) -> SourceNode<'a> {
         QueryNode::JoinNode(self).alias_as(table_alias)
     }
 
@@ -199,12 +199,12 @@ impl<'a> JoinNode<'a> {
         self,
         constraint: JoinConstraintPlan,
     ) -> Result<JoinPlan> {
-        let relation = self.build_table_factor_plan();
+        let right = self.build_source_plan();
         let input = self.prev_node.build_join_input_plan()?;
 
         Ok(JoinPlan {
             input,
-            relation,
+            right,
             join_operator: join_operator_plan_with_constraint(self.join_operator_type, constraint),
             join_executor: JoinExecutorPlan::NestedLoop,
         })
@@ -225,27 +225,23 @@ impl<'a> JoinNode<'a> {
     pub(super) fn build_join_plan_parts_with_constraint(
         self,
         constraint: JoinConstraintPlan,
-    ) -> Result<(
-        crate::plan::JoinInputPlan,
-        TableFactorPlan,
-        JoinOperatorPlan,
-    )> {
-        let relation = self.build_table_factor_plan();
+    ) -> Result<(crate::plan::JoinInputPlan, SourcePlan, JoinOperatorPlan)> {
+        let right = self.build_source_plan();
         let input = self.prev_node.build_join_input_plan()?;
         let join_operator = join_operator_plan_with_constraint(self.join_operator_type, constraint);
 
-        Ok((input, relation, join_operator))
+        Ok((input, right, join_operator))
     }
 }
 
 impl BuildJoinPlan for JoinNode<'_> {
     fn build_join_plan(self) -> Result<JoinPlan> {
-        let relation = self.build_table_factor_plan();
+        let right = self.build_source_plan();
         let input = self.prev_node.build_join_input_plan()?;
 
         Ok(JoinPlan {
             input,
-            relation,
+            right,
             join_operator: join_operator_plan_with_constraint(
                 self.join_operator_type,
                 JoinConstraintPlan::None,
@@ -616,8 +612,8 @@ mod tests {
         use crate::{
             plan::{
                 JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan, JoinPlan,
-                ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, StatementPlan,
-                TableAliasPlan, TableFactorPlan,
+                ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SourcePlan,
+                StatementPlan, TableAccessPlan, TableAliasPlan, TableSourcePlan,
             },
             query_builder::{SelectItemList, col},
         };
@@ -630,16 +626,16 @@ mod tests {
             .build();
         let expected = {
             let first_join = JoinPlan {
-                input: JoinInputPlan::Relation(TableFactorPlan::Table {
+                input: JoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: None,
-                }),
-                relation: TableFactorPlan::Table {
+                    access: TableAccessPlan::FullScan,
+                })),
+                right: SourcePlan::Table(TableSourcePlan {
                     name: "PlayerItem".to_owned(),
                     alias: None,
-                    index: None,
-                },
+                    access: TableAccessPlan::FullScan,
+                }),
                 join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
                 join_executor: JoinExecutorPlan::Hash {
                     key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),
@@ -649,11 +645,11 @@ mod tests {
             };
             let join = JoinPlan {
                 input: JoinInputPlan::Join(Box::new(first_join)),
-                relation: TableFactorPlan::Table {
+                right: SourcePlan::Table(TableSourcePlan {
                     name: "OtherItem".to_owned(),
                     alias: None,
-                    index: None,
-                },
+                    access: TableAccessPlan::FullScan,
+                }),
                 join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
                 join_executor: JoinExecutorPlan::NestedLoop,
             };
@@ -676,16 +672,16 @@ mod tests {
             .build();
         let expected = {
             let first_join = JoinPlan {
-                input: JoinInputPlan::Relation(TableFactorPlan::Table {
+                input: JoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: None,
-                }),
-                relation: TableFactorPlan::Table {
+                    access: TableAccessPlan::FullScan,
+                })),
+                right: SourcePlan::Table(TableSourcePlan {
                     name: "PlayerItem".to_owned(),
                     alias: None,
-                    index: None,
-                },
+                    access: TableAccessPlan::FullScan,
+                }),
                 join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
                 join_executor: JoinExecutorPlan::Hash {
                     key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),
@@ -695,14 +691,14 @@ mod tests {
             };
             let join = JoinPlan {
                 input: JoinInputPlan::Join(Box::new(first_join)),
-                relation: TableFactorPlan::Table {
+                right: SourcePlan::Table(TableSourcePlan {
                     name: "OtherItem".to_owned(),
                     alias: Some(TableAliasPlan {
                         name: "Ot".to_owned(),
                         columns: Vec::new(),
                     }),
-                    index: None,
-                },
+                    access: TableAccessPlan::FullScan,
+                }),
                 join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
                 join_executor: JoinExecutorPlan::NestedLoop,
             };
@@ -725,16 +721,16 @@ mod tests {
             .build();
         let expected = {
             let first_join = JoinPlan {
-                input: JoinInputPlan::Relation(TableFactorPlan::Table {
+                input: JoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: None,
-                }),
-                relation: TableFactorPlan::Table {
+                    access: TableAccessPlan::FullScan,
+                })),
+                right: SourcePlan::Table(TableSourcePlan {
                     name: "PlayerItem".to_owned(),
                     alias: None,
-                    index: None,
-                },
+                    access: TableAccessPlan::FullScan,
+                }),
                 join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
                 join_executor: JoinExecutorPlan::Hash {
                     key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),
@@ -744,11 +740,11 @@ mod tests {
             };
             let join = JoinPlan {
                 input: JoinInputPlan::Join(Box::new(first_join)),
-                relation: TableFactorPlan::Table {
+                right: SourcePlan::Table(TableSourcePlan {
                     name: "OtherItem".to_owned(),
                     alias: None,
-                    index: None,
-                },
+                    access: TableAccessPlan::FullScan,
+                }),
                 join_operator: JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None),
                 join_executor: JoinExecutorPlan::NestedLoop,
             };
@@ -771,16 +767,16 @@ mod tests {
             .build();
         let expected = {
             let first_join = JoinPlan {
-                input: JoinInputPlan::Relation(TableFactorPlan::Table {
+                input: JoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: None,
-                }),
-                relation: TableFactorPlan::Table {
+                    access: TableAccessPlan::FullScan,
+                })),
+                right: SourcePlan::Table(TableSourcePlan {
                     name: "PlayerItem".to_owned(),
                     alias: None,
-                    index: None,
-                },
+                    access: TableAccessPlan::FullScan,
+                }),
                 join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
                 join_executor: JoinExecutorPlan::Hash {
                     key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),
@@ -790,14 +786,14 @@ mod tests {
             };
             let join = JoinPlan {
                 input: JoinInputPlan::Join(Box::new(first_join)),
-                relation: TableFactorPlan::Table {
+                right: SourcePlan::Table(TableSourcePlan {
                     name: "OtherItem".to_owned(),
                     alias: Some(TableAliasPlan {
                         name: "Ot".to_owned(),
                         columns: Vec::new(),
                     }),
-                    index: None,
-                },
+                    access: TableAccessPlan::FullScan,
+                }),
                 join_operator: JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None),
                 join_executor: JoinExecutorPlan::NestedLoop,
             };

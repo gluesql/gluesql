@@ -5,7 +5,7 @@ use {
         ast::{DataType, IndexOperator},
         data::{Interval, Point},
         executor::Payload,
-        plan::IndexItemPlan,
+        plan::{IndexPredicatePlan, TableAccessPlan},
         prelude::Value,
         store::{GStore, GStoreMut, Planner},
     },
@@ -53,7 +53,7 @@ struct SerdeExpectation {
 struct FixtureStep {
     name: Option<String>,
     sql: String,
-    indexes: Option<Vec<IndexItemPlan>>,
+    indexes: Option<Vec<TableAccessPlan>>,
     expectation: Expectation,
     line: usize,
 }
@@ -257,7 +257,7 @@ fn assert_float(actual: f64, expected: f64, tolerance: f64, context: &str) {
 
 fn assert_indexes_with_context(
     statement: &gluesql_core::plan::StatementPlan,
-    indexes: Vec<IndexItemPlan>,
+    indexes: Vec<TableAccessPlan>,
     context: &str,
 ) {
     std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
@@ -472,7 +472,7 @@ fn assert_follows_sql(lines: &[&str], expectation: &str, line: usize) {
     );
 }
 
-fn parse_index(value: &str) -> IndexItemPlan {
+fn parse_index(value: &str) -> TableAccessPlan {
     let mut parts = value.splitn(2, char::is_whitespace);
     let name = parts.next().expect("index expectation requires a name");
     let detail = parts
@@ -480,7 +480,7 @@ fn parse_index(value: &str) -> IndexItemPlan {
         .map(str::trim)
         .filter(|value| !value.is_empty());
 
-    let (asc, cmp_expr) = match detail {
+    let (asc, predicate) = match detail {
         None => (None, None),
         Some("ASC") => (Some(true), None),
         Some("DESC") => (Some(false), None),
@@ -504,14 +504,20 @@ fn parse_index(value: &str) -> IndexItemPlan {
             let expression = gluesql_core::translate::translate_expr(&expression, &[])
                 .expect("index comparison expression must translate");
 
-            (None, Some((operator, expression.into())))
+            (
+                None,
+                Some(IndexPredicatePlan {
+                    operator,
+                    expr: expression.into(),
+                }),
+            )
         }
     };
 
-    IndexItemPlan::NonClustered {
+    TableAccessPlan::Index {
         name: name.to_owned(),
         asc,
-        cmp_expr,
+        predicate,
     }
 }
 

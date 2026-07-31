@@ -1,11 +1,11 @@
 use {
-    crate::plan::{ExprPlan, JoinPlan, TableFactorPlan},
+    crate::plan::{ExprPlan, JoinPlan, SourcePlan},
     serde::{Deserialize, Serialize},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum FilterInputPlan {
-    Relation(TableFactorPlan),
+    Source(SourcePlan),
     Join(Box<JoinPlan>),
 }
 
@@ -23,43 +23,43 @@ mod tests {
             data::Value,
             plan::{
                 ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan,
-                JoinPlan, TableFactorPlan,
+                JoinPlan, SourcePlan, TableAccessPlan, TableSourcePlan,
             },
         },
         pretty_assertions::assert_eq,
     };
 
-    fn table(name: &str) -> TableFactorPlan {
-        TableFactorPlan::Table {
+    fn table(name: &str) -> SourcePlan {
+        SourcePlan::Table(TableSourcePlan {
             name: name.to_owned(),
             alias: None,
-            index: None,
-        }
+            access: TableAccessPlan::FullScan,
+        })
     }
 
     #[test]
     fn filter_accepts_relation_and_join_inputs() {
         let expr = ExprPlan::Value(Value::Bool(true));
         let relation = FilterPlan {
-            input: FilterInputPlan::Relation(table("A")),
+            input: FilterInputPlan::Source(table("A")),
             expr: expr.clone(),
         };
         let join = FilterPlan {
             input: FilterInputPlan::Join(Box::new(JoinPlan {
-                input: JoinInputPlan::Relation(table("A")),
-                relation: table("B"),
+                input: JoinInputPlan::Source(table("A")),
+                right: table("B"),
                 join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
                 join_executor: JoinExecutorPlan::NestedLoop,
             })),
             expr,
         };
 
-        assert_eq!(relation.input, FilterInputPlan::Relation(table("A")));
+        assert_eq!(relation.input, FilterInputPlan::Source(table("A")));
         assert_eq!(
             join.input,
             FilterInputPlan::Join(Box::new(JoinPlan {
-                input: JoinInputPlan::Relation(table("A")),
-                relation: table("B"),
+                input: JoinInputPlan::Source(table("A")),
+                right: table("B"),
                 join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
                 join_executor: JoinExecutorPlan::NestedLoop,
             }))

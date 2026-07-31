@@ -6,7 +6,7 @@ use {
         query_builder::{
             DistinctNode, ExprList, ExprNode, FilterNode, GroupByNode, HavingNode,
             JoinConstraintNode, JoinNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode,
-            QueryBuilderError, QueryNode, SelectItemList, SelectOrderByNode, TableFactorNode,
+            QueryBuilderError, QueryNode, SelectItemList, SelectOrderByNode, SourceNode,
             select::{BuildJoinInputPlan, BuildJoinPlan, BuildSelect},
         },
         result::Result,
@@ -112,7 +112,7 @@ impl<'a> HashJoinNode<'a> {
         DistinctNode::new(self)
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
+    pub fn alias_as(self, table_alias: &'a str) -> SourceNode<'a> {
         QueryNode::HashJoinNode(self).alias_as(table_alias)
     }
 
@@ -120,14 +120,14 @@ impl<'a> HashJoinNode<'a> {
         self,
         constraint: JoinConstraintPlan,
     ) -> Result<JoinPlan> {
-        let (input, relation, join_operator) = self
+        let (input, right, join_operator) = self
             .join_node
             .build_join_plan_parts_with_constraint(constraint)?;
         let join_executor = build_join_executor(self.key_expr, self.value_expr, self.filter_expr)?;
 
         Ok(JoinPlan {
             input,
-            relation,
+            right,
             join_operator,
             join_executor,
         })
@@ -171,9 +171,10 @@ mod tests {
     use {
         crate::{
             plan::{
-                JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan, JoinPlan,
-                ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, StatementPlan,
-                TableAliasPlan, TableFactorPlan,
+                DerivedSourcePlan, JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan,
+                JoinOperatorPlan, JoinPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan,
+                QueryPlan, SourcePlan, StatementPlan, TableAccessPlan, TableAliasPlan,
+                TableSourcePlan,
             },
             query_builder::{
                 Build, QueryBuilderError, SelectItemList, col, expr,
@@ -194,16 +195,16 @@ mod tests {
             .build();
         let expected = {
             let join = JoinPlan {
-                input: JoinInputPlan::Relation(TableFactorPlan::Table {
+                input: JoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: None,
-                }),
-                relation: TableFactorPlan::Table {
+                    access: TableAccessPlan::FullScan,
+                })),
+                right: SourcePlan::Table(TableSourcePlan {
                     name: "PlayerItem".to_owned(),
                     alias: None,
-                    index: None,
-                },
+                    access: TableAccessPlan::FullScan,
+                }),
                 join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
                 join_executor: JoinExecutorPlan::Hash {
                     key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),
@@ -231,16 +232,16 @@ mod tests {
             .build();
         let expected = {
             let join = JoinPlan {
-                input: JoinInputPlan::Relation(TableFactorPlan::Table {
+                input: JoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: None,
-                }),
-                relation: TableFactorPlan::Table {
+                    access: TableAccessPlan::FullScan,
+                })),
+                right: SourcePlan::Table(TableSourcePlan {
                     name: "PlayerItem".to_owned(),
                     alias: None,
-                    index: None,
-                },
+                    access: TableAccessPlan::FullScan,
+                }),
                 join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
                 join_executor: JoinExecutorPlan::Hash {
                     key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),
@@ -274,16 +275,16 @@ mod tests {
 
         let expected = {
             let join = JoinPlan {
-                input: JoinInputPlan::Relation(TableFactorPlan::Table {
+                input: JoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                     name: "Foo".to_owned(),
                     alias: None,
-                    index: None,
-                }),
-                relation: TableFactorPlan::Table {
+                    access: TableAccessPlan::FullScan,
+                })),
+                right: SourcePlan::Table(TableSourcePlan {
                     name: "Bar".to_owned(),
                     alias: None,
-                    index: None,
-                },
+                    access: TableAccessPlan::FullScan,
+                }),
                 join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
                 join_executor: JoinExecutorPlan::Hash {
                     key_expr: col("Foo.id").build_expr_plan().unwrap(),
@@ -300,13 +301,13 @@ mod tests {
             };
 
             let project = ProjectPlan {
-                input: ProjectInputPlan::Relation(TableFactorPlan::Derived {
-                    subquery: Box::new(QueryPlan::Project(subquery)),
+                input: ProjectInputPlan::Source(SourcePlan::Derived(DerivedSourcePlan {
+                    query: Box::new(QueryPlan::Project(subquery)),
                     alias: TableAliasPlan {
                         name: "Sub".to_owned(),
                         columns: Vec::new(),
                     },
-                }),
+                })),
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),
@@ -328,16 +329,16 @@ mod tests {
             .build();
         let expected = {
             let previous_join = JoinPlan {
-                input: JoinInputPlan::Relation(TableFactorPlan::Table {
+                input: JoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: None,
-                }),
-                relation: TableFactorPlan::Table {
+                    access: TableAccessPlan::FullScan,
+                })),
+                right: SourcePlan::Table(TableSourcePlan {
                     name: "Team".to_owned(),
                     alias: None,
-                    index: None,
-                },
+                    access: TableAccessPlan::FullScan,
+                }),
                 join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::On(
                     expr("Player.team_id = Team.id").build_expr_plan().unwrap(),
                 )),
@@ -345,11 +346,11 @@ mod tests {
             };
             let join = JoinPlan {
                 input: JoinInputPlan::Join(Box::new(previous_join)),
-                relation: TableFactorPlan::Table {
+                right: SourcePlan::Table(TableSourcePlan {
                     name: "PlayerItem".to_owned(),
                     alias: None,
-                    index: None,
-                },
+                    access: TableAccessPlan::FullScan,
+                }),
                 join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
                 join_executor: JoinExecutorPlan::Hash {
                     key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),

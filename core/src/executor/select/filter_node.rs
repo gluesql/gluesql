@@ -1,5 +1,5 @@
 use {
-    super::{SelectedRows, join_node, table_factor_node},
+    super::{SelectedRows, join_node, source_node},
     crate::{
         executor::{context::RowContext, filter::check_expr},
         plan::{FilterInputPlan, FilterPlan},
@@ -19,7 +19,9 @@ where
 {
     let FilterPlan { input, expr } = plan;
     let rows = match input {
-        FilterInputPlan::Relation(relation) => table_factor_node::execute(storage, relation)?,
+        FilterInputPlan::Source(source) => {
+            source_node::execute(storage, source, None)?.into_selected(None)
+        }
         FilterInputPlan::Join(join) => join_node::execute(storage, join, filter_context)?,
     };
     let filter_context = filter_context.cloned();

@@ -6,7 +6,7 @@ use {
         query_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
             JoinNode, LimitNode, OffsetNode, ProjectNode, QueryNode, SelectNode, SelectOrderByNode,
-            TableFactorNode,
+            SourceNode,
         },
         result::Result,
     },
@@ -109,7 +109,7 @@ impl<'a> DistinctNode<'a> {
         LimitNode::new(self, expr)
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
+    pub fn alias_as(self, table_alias: &'a str) -> SourceNode<'a> {
         QueryNode::DistinctNode(self).alias_as(table_alias)
     }
 
@@ -146,7 +146,7 @@ mod tests {
         plan::{
             DistinctInputPlan, DistinctPlan, JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan,
             JoinOperatorPlan, JoinPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
-            StatementPlan, TableFactorPlan,
+            SourcePlan, StatementPlan, TableAccessPlan, TableSourcePlan,
         },
         query_builder::{
             Build, QueryBuilderError, SelectItemList, col, select::BuildQuery, table,
@@ -241,16 +241,16 @@ mod tests {
         let actual = node.build();
         let expected = {
             let join = JoinPlan {
-                input: JoinInputPlan::Relation(TableFactorPlan::Table {
+                input: JoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                     name: "Item".to_owned(),
                     alias: None,
-                    index: None,
-                }),
-                relation: TableFactorPlan::Table {
+                    access: TableAccessPlan::FullScan,
+                })),
+                right: SourcePlan::Table(TableSourcePlan {
                     name: "Category".to_owned(),
                     alias: None,
-                    index: None,
-                },
+                    access: TableAccessPlan::FullScan,
+                }),
                 join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
                 join_executor: JoinExecutorPlan::Hash {
                     key_expr: col("Item.category_id").build_expr_plan().unwrap(),

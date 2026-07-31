@@ -3,8 +3,8 @@ use {
         ast::*,
         plan::{
             AggregationInputPlan, DistinctInputPlan, DistinctPlan, FilterInputPlan, FilterPlan,
-            IndexItemPlan, JoinInputPlan, JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan,
-            OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan, StatementPlan, TableFactorPlan,
+            JoinInputPlan, JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
+            ProjectInputPlan, ProjectPlan, QueryPlan, SourcePlan, StatementPlan, TableAccessPlan,
         },
         prelude::{Glue, Payload, Result},
         store::{GStore, GStoreMut, Planner},
@@ -14,7 +14,7 @@ use {
 
 pub mod macros;
 
-pub fn test_indexes(statement: &StatementPlan, indexes: Option<Vec<IndexItemPlan>>) {
+pub fn test_indexes(statement: &StatementPlan, indexes: Option<Vec<TableAccessPlan>>) {
     if let Some(expected) = indexes {
         let found = find_indexes(statement);
 
@@ -34,8 +34,8 @@ pub fn test_indexes(statement: &StatementPlan, indexes: Option<Vec<IndexItemPlan
     }
 }
 
-fn find_indexes(statement: &StatementPlan) -> Vec<&IndexItemPlan> {
-    fn find_expr_indexes(expr: &gluesql_core::plan::ExprPlan) -> Vec<&IndexItemPlan> {
+fn find_indexes(statement: &StatementPlan) -> Vec<&TableAccessPlan> {
+    fn find_expr_indexes(expr: &gluesql_core::plan::ExprPlan) -> Vec<&TableAccessPlan> {
         match expr {
             gluesql_core::plan::ExprPlan::Subquery(query)
             | gluesql_core::plan::ExprPlan::Exists {
@@ -48,26 +48,29 @@ fn find_indexes(statement: &StatementPlan) -> Vec<&IndexItemPlan> {
         }
     }
 
-    fn find_relation_indexes(relation: &TableFactorPlan) -> Vec<&IndexItemPlan> {
-        match relation {
-            TableFactorPlan::Table {
-                index: Some(index), ..
-            } => vec![index],
-            _ => vec![],
+    fn find_source_indexes(source: &SourcePlan) -> Vec<&TableAccessPlan> {
+        match source {
+            SourcePlan::Table(table) if table.access != TableAccessPlan::FullScan => {
+                vec![&table.access]
+            }
+            SourcePlan::Table(_)
+            | SourcePlan::Derived(_)
+            | SourcePlan::Series(_)
+            | SourcePlan::Dictionary(_) => Vec::new(),
         }
     }
 
-    fn find_join_indexes(join: &JoinPlan) -> Vec<&IndexItemPlan> {
+    fn find_join_indexes(join: &JoinPlan) -> Vec<&TableAccessPlan> {
         match &join.input {
-            JoinInputPlan::Relation(relation) => find_relation_indexes(relation),
+            JoinInputPlan::Source(source) => find_source_indexes(source),
             JoinInputPlan::Join(join) => find_join_indexes(join),
         }
     }
 
-    fn find_filter_indexes(filter: &FilterPlan) -> Vec<&IndexItemPlan> {
+    fn find_filter_indexes(filter: &FilterPlan) -> Vec<&TableAccessPlan> {
         [
             match &filter.input {
-                FilterInputPlan::Relation(relation) => find_relation_indexes(relation),
+                FilterInputPlan::Source(source) => find_source_indexes(source),
                 FilterInputPlan::Join(join) => find_join_indexes(join),
             },
             find_expr_indexes(&filter.expr),
@@ -75,15 +78,15 @@ fn find_indexes(statement: &StatementPlan) -> Vec<&IndexItemPlan> {
         .concat()
     }
 
-    fn find_aggregation_input_indexes(input: &AggregationInputPlan) -> Vec<&IndexItemPlan> {
+    fn find_aggregation_input_indexes(input: &AggregationInputPlan) -> Vec<&TableAccessPlan> {
         match input {
-            AggregationInputPlan::Relation(relation) => find_relation_indexes(relation),
+            AggregationInputPlan::Source(source) => find_source_indexes(source),
             AggregationInputPlan::Join(join) => find_join_indexes(join),
             AggregationInputPlan::Filter(filter) => find_filter_indexes(filter),
         }
     }
 
-    fn find_offset_indexes(offset: &OffsetPlan) -> Vec<&IndexItemPlan> {
+    fn find_offset_indexes(offset: &OffsetPlan) -> Vec<&TableAccessPlan> {
         match &offset.input {
             OffsetInputPlan::Project(project) => find_project_indexes(project),
             OffsetInputPlan::Values(_) | OffsetInputPlan::ValuesOrderBy(_) => Vec::new(),
@@ -92,9 +95,9 @@ fn find_indexes(statement: &StatementPlan) -> Vec<&IndexItemPlan> {
         }
     }
 
-    fn find_project_indexes(project: &ProjectPlan) -> Vec<&IndexItemPlan> {
+    fn find_project_indexes(project: &ProjectPlan) -> Vec<&TableAccessPlan> {
         match &project.input {
-            ProjectInputPlan::Relation(relation) => find_relation_indexes(relation),
+            ProjectInputPlan::Source(source) => find_source_indexes(source),
             ProjectInputPlan::Join(join) => find_join_indexes(join),
             ProjectInputPlan::Filter(filter) => find_filter_indexes(filter),
             ProjectInputPlan::Aggregation(aggregation) => {
@@ -104,14 +107,14 @@ fn find_indexes(statement: &StatementPlan) -> Vec<&IndexItemPlan> {
         }
     }
 
-    fn find_distinct_indexes(distinct: &DistinctPlan) -> Vec<&IndexItemPlan> {
+    fn find_distinct_indexes(distinct: &DistinctPlan) -> Vec<&TableAccessPlan> {
         match &distinct.input {
             DistinctInputPlan::Project(project) => find_project_indexes(project),
             DistinctInputPlan::SelectOrderBy(order_by) => find_project_indexes(&order_by.input),
         }
     }
 
-    fn find_query_indexes(query: &QueryPlan) -> Vec<&IndexItemPlan> {
+    fn find_query_indexes(query: &QueryPlan) -> Vec<&TableAccessPlan> {
         match query {
             QueryPlan::Project(project) => find_project_indexes(project),
             QueryPlan::Values(_) | QueryPlan::ValuesOrderBy(_) => Vec::new(),

@@ -4,8 +4,8 @@ use {
             AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
             FilterPlan, JoinConstraintPlan, JoinInputPlan, JoinOperatorPlan, JoinPlan,
             LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan,
-            ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, TableAliasPlan,
-            TableFactorPlan, ValuesOrderByPlan, ValuesPlan,
+            ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SourcePlan,
+            TableAliasPlan, ValuesOrderByPlan, ValuesPlan,
         },
         plan::{context::Context, expr::PlanExpr},
     },
@@ -111,10 +111,10 @@ fn check_values(context: Option<&Rc<Context<'_>>>, ValuesPlan(rows): &ValuesPlan
 
 fn check_join(context: Option<&Rc<Context<'_>>>, join: &JoinPlan) -> bool {
     let input = match &join.input {
-        JoinInputPlan::Relation(relation) => check_table_factor(context, relation),
+        JoinInputPlan::Source(relation) => check_source(context, relation),
         JoinInputPlan::Join(join) => check_join(context, join),
     };
-    if !input || !check_table_factor(context, &join.relation) {
+    if !input || !check_source(context, &join.right) {
         return false;
     }
 
@@ -130,7 +130,7 @@ fn check_join(context: Option<&Rc<Context<'_>>>, join: &JoinPlan) -> bool {
 
 fn check_filter(context: Option<&Rc<Context<'_>>>, filter: &FilterPlan) -> bool {
     let input = match &filter.input {
-        FilterInputPlan::Relation(relation) => check_table_factor(context, relation),
+        FilterInputPlan::Source(relation) => check_source(context, relation),
         FilterInputPlan::Join(join) => check_join(context, join),
     };
 
@@ -142,7 +142,7 @@ fn check_aggregation_input(
     input: &AggregationInputPlan,
 ) -> bool {
     match input {
-        AggregationInputPlan::Relation(relation) => check_table_factor(context, relation),
+        AggregationInputPlan::Source(relation) => check_source(context, relation),
         AggregationInputPlan::Join(join) => check_join(context, join),
         AggregationInputPlan::Filter(filter) => check_filter(context, filter),
     }
@@ -150,7 +150,7 @@ fn check_aggregation_input(
 
 fn check_project(context: Option<&Rc<Context<'_>>>, project: &ProjectPlan) -> bool {
     let input = match &project.input {
-        ProjectInputPlan::Relation(relation) => check_table_factor(context, relation),
+        ProjectInputPlan::Source(relation) => check_source(context, relation),
         ProjectInputPlan::Join(join) => check_join(context, join),
         ProjectInputPlan::Filter(filter) => check_filter(context, filter),
         ProjectInputPlan::Aggregation(aggregation) => {
@@ -183,24 +183,25 @@ fn check_project(context: Option<&Rc<Context<'_>>>, project: &ProjectPlan) -> bo
     }
 }
 
-fn check_table_factor(context: Option<&Rc<Context<'_>>>, table_factor: &TableFactorPlan) -> bool {
+fn check_source(context: Option<&Rc<Context<'_>>>, source: &SourcePlan) -> bool {
     let contains_alias = |alias: &str| context.is_some_and(|context| context.contains_alias(alias));
 
-    match table_factor {
-        TableFactorPlan::Table { name, alias, .. } => {
-            let alias = alias
+    match source {
+        SourcePlan::Table(table) => {
+            let alias = table
+                .alias
                 .as_ref()
-                .map_or_else(|| name, |TableAliasPlan { name, .. }| name);
+                .map_or_else(|| &table.name, |TableAliasPlan { name, .. }| name);
 
             contains_alias(alias)
         }
-        TableFactorPlan::Derived { subquery, alias } => {
-            contains_alias(&alias.name) && check_query(context, subquery)
+        SourcePlan::Derived(derived) => {
+            contains_alias(&derived.alias.name) && check_query(context, &derived.query)
         }
-        TableFactorPlan::Series { alias, size } => {
-            contains_alias(&alias.name) && check_expr(context.map(Rc::clone), size)
+        SourcePlan::Series(series) => {
+            contains_alias(&series.alias.name) && check_expr(context.map(Rc::clone), &series.size)
         }
-        TableFactorPlan::Dictionary { alias, .. } => contains_alias(&alias.name),
+        SourcePlan::Dictionary(dictionary) => contains_alias(&dictionary.alias.name),
     }
 }
 

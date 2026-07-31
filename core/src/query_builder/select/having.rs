@@ -9,7 +9,7 @@ use {
         query_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinConstraintNode, JoinNode,
             LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryNode, SelectItemList,
-            SelectNode, SelectOrderByNode, TableFactorNode,
+            SelectNode, SelectOrderByNode, SourceNode,
         },
         result::Result,
     },
@@ -126,7 +126,7 @@ impl<'a> HavingNode<'a> {
         DistinctNode::new(self)
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
+    pub fn alias_as(self, table_alias: &'a str) -> SourceNode<'a> {
         QueryNode::HavingNode(self).alias_as(table_alias)
     }
 }
@@ -163,8 +163,8 @@ mod tests {
             plan::{
                 AggregationInputPlan, AggregationPlan, ExprPlan, HavingPlan, JoinConstraintPlan,
                 JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan, JoinPlan, ProjectInputPlan,
-                ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, StatementPlan,
-                TableFactorPlan,
+                ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SourcePlan, StatementPlan,
+                TableAccessPlan, TableSourcePlan,
             },
             query_builder::{
                 Build, QueryBuilderError, select::BuildQuery, table, test_query_builder,
@@ -221,16 +221,16 @@ mod tests {
             input: ProjectInputPlan::Having(HavingPlan {
                 input: AggregationPlan {
                     input: AggregationInputPlan::Join(Box::new(JoinPlan {
-                        input: JoinInputPlan::Relation(TableFactorPlan::Table {
+                        input: JoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                             name: "Foo".to_owned(),
                             alias: None,
-                            index: None,
-                        }),
-                        relation: TableFactorPlan::Table {
+                            access: TableAccessPlan::FullScan,
+                        })),
+                        right: SourcePlan::Table(TableSourcePlan {
                             name: "Bar".to_owned(),
                             alias: None,
-                            index: None,
-                        },
+                            access: TableAccessPlan::FullScan,
+                        }),
                         join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
                         join_executor: JoinExecutorPlan::Hash {
                             key_expr: ExprPlan::CompoundIdentifier {

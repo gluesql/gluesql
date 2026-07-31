@@ -2,9 +2,8 @@ use {
     super::{
         DistinctNode, ExprList, FilterNode, GroupByNode, HashJoinNode, HavingNode,
         JoinConstraintNode, JoinNode, LimitNode, OffsetLimitNode, OffsetNode, ProjectNode,
-        SelectNode, SelectOrderByNode, TableFactorNode, ValuesOrderByNode,
+        SelectNode, SelectOrderByNode, SourceNode, ValuesOrderByNode,
         select::{BuildQuery, BuildQueryPlan, ValuesNode},
-        table_factor::TableType,
     },
     crate::{
         ast::{Query, SetExpr, Values},
@@ -37,15 +36,10 @@ pub enum QueryNode<'a> {
 }
 
 impl<'a> QueryNode<'a> {
-    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
-        TableFactorNode {
-            table_name: table_alias.to_owned(),
-            table_type: TableType::Derived {
-                subquery: Box::new(self),
-                alias: table_alias.to_owned(),
-            },
-            table_alias: None,
-            index: None,
+    pub fn alias_as(self, table_alias: &'a str) -> SourceNode<'a> {
+        SourceNode::Derived {
+            query: Box::new(self),
+            alias: table_alias.to_owned(),
         }
     }
 
@@ -159,7 +153,8 @@ mod test {
         crate::{
             plan::{
                 JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan, JoinPlan,
-                ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, TableFactorPlan,
+                ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SourcePlan,
+                TableAccessPlan, TableSourcePlan,
             },
             query_builder::{
                 SelectItemList, col, glue_indexes, glue_objects, glue_table_columns, glue_tables,
@@ -198,16 +193,16 @@ mod test {
             .into();
         let expected = {
             let join = JoinPlan {
-                input: JoinInputPlan::Relation(TableFactorPlan::Table {
+                input: JoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: None,
-                }),
-                relation: TableFactorPlan::Table {
+                    access: TableAccessPlan::FullScan,
+                })),
+                right: SourcePlan::Table(TableSourcePlan {
                     name: "PlayerItem".to_owned(),
                     alias: None,
-                    index: None,
-                },
+                    access: TableAccessPlan::FullScan,
+                }),
                 join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
                 join_executor: JoinExecutorPlan::Hash {
                     key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),

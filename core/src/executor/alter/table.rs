@@ -10,7 +10,7 @@ use {
         plan::{
             DistinctInputPlan, DistinctPlan, FilterInputPlan, LimitInputPlan, LimitPlan,
             OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, TableFactorPlan, ValuesPlan,
+            SelectItemPlan, SourcePlan, ValuesPlan,
         },
         prelude::{DataType, Value},
         result::Result,
@@ -86,18 +86,18 @@ pub fn create_table<T: GStore + GStoreMut>(
     let mut selected_source_rows = None;
     let target_columns_defs = match source.as_deref() {
         Some(query) => match create_table_source(query) {
-            CreateTableSource::Project(project) => match copy_source_schema_relation(project) {
-                Some(TableFactorPlan::Table { name, .. }) => {
-                    let schema = storage.fetch_schema(name)?;
+            CreateTableSource::Project(project) => match source_for_schema_copy(project) {
+                Some(SourcePlan::Table(table)) => {
+                    let schema = storage.fetch_schema(&table.name)?;
                     let Schema {
                         column_defs: source_column_defs,
                         ..
                     } = schema
-                        .ok_or_else(|| AlterError::CtasSourceTableNotFound(name.to_owned()))?;
+                        .ok_or_else(|| AlterError::CtasSourceTableNotFound(table.name.clone()))?;
 
                     source_column_defs
                 }
-                Some(TableFactorPlan::Series { .. }) => {
+                Some(SourcePlan::Series(_)) => {
                     let column_def = ColumnDef {
                         name: "N".into(),
                         data_type: DataType::Int,
@@ -265,9 +265,9 @@ pub fn create_table<T: GStore + GStoreMut>(
 fn can_copy_source_schema(project: &ProjectPlan) -> bool {
     matches!(
         project.input,
-        ProjectInputPlan::Relation(_)
+        ProjectInputPlan::Source(_)
             | ProjectInputPlan::Filter(crate::plan::FilterPlan {
-                input: FilterInputPlan::Relation(_),
+                input: FilterInputPlan::Source(_),
                 ..
             })
     ) && match &project.projection {
@@ -281,15 +281,15 @@ fn can_copy_source_schema(project: &ProjectPlan) -> bool {
     }
 }
 
-fn copy_source_schema_relation(project: &ProjectPlan) -> Option<&TableFactorPlan> {
+fn source_for_schema_copy(project: &ProjectPlan) -> Option<&SourcePlan> {
     if !can_copy_source_schema(project) {
         return None;
     }
 
     match &project.input {
-        ProjectInputPlan::Relation(relation) => Some(relation),
+        ProjectInputPlan::Source(relation) => Some(relation),
         ProjectInputPlan::Filter(filter) => match &filter.input {
-            FilterInputPlan::Relation(relation) => Some(relation),
+            FilterInputPlan::Source(relation) => Some(relation),
             FilterInputPlan::Join(_) => None,
         },
         ProjectInputPlan::Join(_)

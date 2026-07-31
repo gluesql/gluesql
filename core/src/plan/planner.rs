@@ -3,7 +3,7 @@ use {
     crate::{
         ast::ColumnDef,
         data::Schema,
-        plan::{ExprPlan, FunctionExprPlan, QueryPlan, TableAliasPlan, TableFactorPlan},
+        plan::{ExprPlan, FunctionExprPlan, QueryPlan, SourcePlan, TableAliasPlan},
     },
     std::rc::Rc,
 };
@@ -199,19 +199,20 @@ pub trait Planner<'a> {
     fn update_context(
         &self,
         next: Option<Rc<Context<'a>>>,
-        table_factor: &TableFactorPlan,
+        source: &SourcePlan,
     ) -> Option<Rc<Context<'a>>> {
-        let (name, alias) = match table_factor {
-            TableFactorPlan::Table { name, alias, .. } => {
-                let alias = alias
+        let (name, alias) = match source {
+            SourcePlan::Table(table) => {
+                let alias = table
+                    .alias
                     .as_ref()
                     .map(|TableAliasPlan { name, .. }| name.clone());
 
-                (name, alias)
+                (&table.name, alias)
             }
-            TableFactorPlan::Derived { .. }
-            | TableFactorPlan::Series { .. }
-            | TableFactorPlan::Dictionary { .. } => return next,
+            SourcePlan::Derived(_) | SourcePlan::Series(_) | SourcePlan::Dictionary(_) => {
+                return next;
+            }
         };
 
         let Some(Schema { column_defs, .. }) = self.get_schema(name) else {

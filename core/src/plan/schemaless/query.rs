@@ -6,8 +6,8 @@ use {
             AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
             FilterPlan, JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan,
             JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectInputPlan,
-            ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan,
-            TableFactorPlan, ValuesOrderByPlan, expr::visit_mut_expr,
+            ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SourcePlan,
+            ValuesOrderByPlan, expr::visit_mut_expr,
         },
     },
     std::{
@@ -125,7 +125,7 @@ fn transform_project<S: BuildHasher>(
 ) -> QueryRewriteState {
     let ProjectPlan { input, projection } = project;
     let state = match input {
-        ProjectInputPlan::Relation(relation) => transform_relation(schema_map, relation),
+        ProjectInputPlan::Source(relation) => transform_source(schema_map, relation),
         ProjectInputPlan::Join(join) => transform_join(schema_map, join),
         ProjectInputPlan::Filter(filter) => transform_filter(schema_map, filter),
         ProjectInputPlan::Aggregation(aggregation) => {
@@ -144,8 +144,8 @@ fn transform_project<S: BuildHasher>(
             state
         }
     };
-    let (base_relation, has_join) = project_source(input);
-    rewrite_projection(schema_map, projection, base_relation, has_join, &state);
+    let (base_source, has_join) = project_source(input);
+    rewrite_projection(schema_map, projection, base_source, has_join, &state);
 
     state
 }
@@ -155,7 +155,7 @@ fn transform_filter<S: BuildHasher>(
     FilterPlan { input, expr }: &mut FilterPlan,
 ) -> QueryRewriteState {
     let state = match input {
-        FilterInputPlan::Relation(relation) => transform_relation(schema_map, relation),
+        FilterInputPlan::Source(relation) => transform_source(schema_map, relation),
         FilterInputPlan::Join(join) => transform_join(schema_map, join),
     };
     transform_query_expr(schema_map, expr, &state);
@@ -168,19 +168,19 @@ fn transform_aggregation_input<S: BuildHasher>(
     input: &mut AggregationInputPlan,
 ) -> QueryRewriteState {
     match input {
-        AggregationInputPlan::Relation(relation) => transform_relation(schema_map, relation),
+        AggregationInputPlan::Source(relation) => transform_source(schema_map, relation),
         AggregationInputPlan::Join(join) => transform_join(schema_map, join),
         AggregationInputPlan::Filter(filter) => transform_filter(schema_map, filter),
     }
 }
 
-fn transform_relation<S: BuildHasher>(
+fn transform_source<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
-    relation: &mut TableFactorPlan,
+    relation: &mut SourcePlan,
 ) -> QueryRewriteState {
     let rewrite_unqualified_identifiers = matches!(
         relation,
-        TableFactorPlan::Table { name, .. } if is_schemaless_table(schema_map, name)
+        SourcePlan::Table(table) if is_schemaless_table(schema_map, &table.name)
     );
     let mut schemaless_aliases = HashSet::new();
     collect_schemaless_alias(schema_map, relation, &mut schemaless_aliases);
@@ -189,7 +189,7 @@ fn transform_relation<S: BuildHasher>(
         schemaless_aliases,
     };
 
-    rewrite_table_factor(schema_map, relation);
+    rewrite_source(schema_map, relation);
     state
 }
 
@@ -198,8 +198,8 @@ fn transform_join<S: BuildHasher>(
     join: &mut JoinPlan,
 ) -> QueryRewriteState {
     let rewrite_unqualified_identifiers = matches!(
-        join_base_relation(join),
-        TableFactorPlan::Table { name, .. } if is_schemaless_table(schema_map, name)
+        join_base_source(join),
+        SourcePlan::Table(table) if is_schemaless_table(schema_map, &table.name)
     );
     let mut schemaless_aliases = HashSet::new();
     collect_join_schemaless_aliases(schema_map, join, &mut schemaless_aliases);
@@ -214,14 +214,14 @@ fn transform_join<S: BuildHasher>(
 
 fn collect_schemaless_alias(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    relation: &TableFactorPlan,
+    relation: &SourcePlan,
     aliases: &mut HashSet<String>,
 ) {
-    if let TableFactorPlan::Table { name, alias, .. } = relation
-        && is_schemaless_table(schema_map, name)
+    if let SourcePlan::Table(table) = relation
+        && is_schemaless_table(schema_map, &table.name)
     {
-        aliases.insert(name.clone());
-        if let Some(alias) = alias {
+        aliases.insert(table.name.clone());
+        if let Some(alias) = &table.alias {
             aliases.insert(alias.name.clone());
         }
     }
@@ -233,20 +233,20 @@ fn collect_join_schemaless_aliases(
     aliases: &mut HashSet<String>,
 ) {
     match &join.input {
-        JoinInputPlan::Relation(relation) => {
+        JoinInputPlan::Source(relation) => {
             collect_schemaless_alias(schema_map, relation, aliases);
         }
         JoinInputPlan::Join(join) => collect_join_schemaless_aliases(schema_map, join, aliases),
     }
-    collect_schemaless_alias(schema_map, &join.relation, aliases);
+    collect_schemaless_alias(schema_map, &join.right, aliases);
 }
 
-fn rewrite_table_factor(
+fn rewrite_source(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    relation: &mut TableFactorPlan,
+    relation: &mut SourcePlan,
 ) {
-    if let TableFactorPlan::Derived { subquery, .. } = relation {
-        transform_query(schema_map, subquery);
+    if let SourcePlan::Derived(derived) = relation {
+        transform_query(schema_map, &mut derived.query);
     }
 }
 
@@ -256,10 +256,10 @@ fn rewrite_join(
     state: &QueryRewriteState,
 ) {
     match &mut join.input {
-        JoinInputPlan::Relation(relation) => rewrite_table_factor(schema_map, relation),
+        JoinInputPlan::Source(relation) => rewrite_source(schema_map, relation),
         JoinInputPlan::Join(join) => rewrite_join(schema_map, join, state),
     }
-    rewrite_table_factor(schema_map, &mut join.relation);
+    rewrite_source(schema_map, &mut join.right);
 
     match &mut join.join_operator {
         JoinOperatorPlan::Inner(JoinConstraintPlan::On(expr))
@@ -289,7 +289,7 @@ fn rewrite_join(
 fn rewrite_projection(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
     projection: &mut ProjectionPlan,
-    base_relation: &TableFactorPlan,
+    base_source: &SourcePlan,
     has_join: bool,
     state: &QueryRewriteState,
 ) {
@@ -299,13 +299,11 @@ fn rewrite_projection(
             match projection.as_slice() {
                 [SelectItemPlan::Wildcard] => true,
                 [SelectItemPlan::QualifiedWildcard(alias)] => matches!(
-                    base_relation,
-                    TableFactorPlan::Table {
-                        name,
-                        alias: table_alias,
-                        ..
-                    } if alias == name
-                        || table_alias
+                    base_source,
+                    SourcePlan::Table(table)
+                    if alias == &table.name
+                        || table
+                            .alias
                             .as_ref()
                             .is_some_and(|table_alias| table_alias.name == *alias)
                 ),
@@ -337,35 +335,35 @@ fn rewrite_projection(
     }
 }
 
-fn project_source(input: &ProjectInputPlan) -> (&TableFactorPlan, bool) {
+fn project_source(input: &ProjectInputPlan) -> (&SourcePlan, bool) {
     match input {
-        ProjectInputPlan::Relation(relation) => (relation, false),
-        ProjectInputPlan::Join(join) => (join_base_relation(join), true),
+        ProjectInputPlan::Source(relation) => (relation, false),
+        ProjectInputPlan::Join(join) => (join_base_source(join), true),
         ProjectInputPlan::Filter(filter) => filter_source(&filter.input),
         ProjectInputPlan::Aggregation(aggregation) => aggregation_source(&aggregation.input),
         ProjectInputPlan::Having(having) => aggregation_source(&having.input.input),
     }
 }
 
-fn aggregation_source(input: &AggregationInputPlan) -> (&TableFactorPlan, bool) {
+fn aggregation_source(input: &AggregationInputPlan) -> (&SourcePlan, bool) {
     match input {
-        AggregationInputPlan::Relation(relation) => (relation, false),
-        AggregationInputPlan::Join(join) => (join_base_relation(join), true),
+        AggregationInputPlan::Source(relation) => (relation, false),
+        AggregationInputPlan::Join(join) => (join_base_source(join), true),
         AggregationInputPlan::Filter(filter) => filter_source(&filter.input),
     }
 }
 
-fn filter_source(input: &FilterInputPlan) -> (&TableFactorPlan, bool) {
+fn filter_source(input: &FilterInputPlan) -> (&SourcePlan, bool) {
     match input {
-        FilterInputPlan::Relation(relation) => (relation, false),
-        FilterInputPlan::Join(join) => (join_base_relation(join), true),
+        FilterInputPlan::Source(relation) => (relation, false),
+        FilterInputPlan::Join(join) => (join_base_source(join), true),
     }
 }
 
-fn join_base_relation(join: &JoinPlan) -> &TableFactorPlan {
+fn join_base_source(join: &JoinPlan) -> &SourcePlan {
     match &join.input {
-        JoinInputPlan::Relation(relation) => relation,
-        JoinInputPlan::Join(join) => join_base_relation(join),
+        JoinInputPlan::Source(relation) => relation,
+        JoinInputPlan::Join(join) => join_base_source(join),
     }
 }
 

@@ -1,12 +1,12 @@
 use {
     super::FilterPlan,
-    crate::plan::{AggregateExprPlan, ExprPlan, JoinPlan, TableFactorPlan},
+    crate::plan::{AggregateExprPlan, ExprPlan, JoinPlan, SourcePlan},
     serde::{Deserialize, Serialize},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AggregationInputPlan {
-    Relation(TableFactorPlan),
+    Source(SourcePlan),
     Join(Box<JoinPlan>),
     Filter(FilterPlan),
 }
@@ -26,25 +26,26 @@ mod tests {
             data::Value,
             plan::{
                 ExprPlan, FilterInputPlan, FilterPlan, JoinConstraintPlan, JoinExecutorPlan,
-                JoinInputPlan, JoinOperatorPlan, JoinPlan, TableFactorPlan,
+                JoinInputPlan, JoinOperatorPlan, JoinPlan, SourcePlan, TableAccessPlan,
+                TableSourcePlan,
             },
         },
         pretty_assertions::assert_eq,
     };
 
-    fn table(name: &str) -> TableFactorPlan {
-        TableFactorPlan::Table {
+    fn table(name: &str) -> SourcePlan {
+        SourcePlan::Table(TableSourcePlan {
             name: name.to_owned(),
             alias: None,
-            index: None,
-        }
+            access: TableAccessPlan::FullScan,
+        })
     }
 
     #[test]
     fn aggregation_accepts_relation_join_and_filter_inputs() {
         let join = JoinPlan {
-            input: JoinInputPlan::Relation(table("A")),
-            relation: table("B"),
+            input: JoinInputPlan::Source(table("A")),
+            right: table("B"),
             join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
             join_executor: JoinExecutorPlan::NestedLoop,
         };
@@ -53,7 +54,7 @@ mod tests {
             expr: ExprPlan::Value(Value::Bool(true)),
         };
         let relation = AggregationPlan {
-            input: AggregationInputPlan::Relation(table("A")),
+            input: AggregationInputPlan::Source(table("A")),
             group_by: Vec::new(),
             aggregate_slots: Vec::new(),
         };
@@ -68,7 +69,7 @@ mod tests {
             aggregate_slots: Vec::new(),
         };
 
-        assert_eq!(relation.input, AggregationInputPlan::Relation(table("A")));
+        assert_eq!(relation.input, AggregationInputPlan::Source(table("A")));
         assert_eq!(joined.input, AggregationInputPlan::Join(Box::new(join)));
         assert_eq!(filtered.input, AggregationInputPlan::Filter(filter));
     }

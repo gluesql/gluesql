@@ -6,8 +6,8 @@ use {
             AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
             FilterPlan, JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan,
             JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectInputPlan,
-            ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan,
-            StatementPlan, TableFactorPlan, ValuesOrderByPlan, ValuesPlan,
+            ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SourcePlan,
+            StatementPlan, ValuesOrderByPlan, ValuesPlan,
         },
         result::Result,
     },
@@ -167,10 +167,10 @@ fn validate_join(
     join: &JoinPlan,
 ) -> ValidateResult {
     match &join.input {
-        JoinInputPlan::Relation(relation) => validate_table_factor(schema_map, relation)?,
+        JoinInputPlan::Source(relation) => validate_source(schema_map, relation)?,
         JoinInputPlan::Join(join) => validate_join(schema_map, join)?,
     }
-    validate_table_factor(schema_map, &join.relation)?;
+    validate_source(schema_map, &join.right)?;
 
     match &join.join_operator {
         JoinOperatorPlan::Inner(JoinConstraintPlan::On(expr))
@@ -202,7 +202,7 @@ fn validate_filter(
     FilterPlan { input, expr }: &FilterPlan,
 ) -> ValidateResult {
     match input {
-        FilterInputPlan::Relation(relation) => validate_table_factor(schema_map, relation)?,
+        FilterInputPlan::Source(relation) => validate_source(schema_map, relation)?,
         FilterInputPlan::Join(join) => validate_join(schema_map, join)?,
     }
     validate_expr(schema_map, expr)
@@ -213,7 +213,7 @@ fn validate_aggregation_input(
     input: &AggregationInputPlan,
 ) -> ValidateResult {
     match input {
-        AggregationInputPlan::Relation(relation) => validate_table_factor(schema_map, relation),
+        AggregationInputPlan::Source(relation) => validate_source(schema_map, relation),
         AggregationInputPlan::Join(join) => validate_join(schema_map, join),
         AggregationInputPlan::Filter(filter) => validate_filter(schema_map, filter),
     }
@@ -225,7 +225,7 @@ fn validate_project(
 ) -> ValidateResult {
     validate_mixed_join_wildcard_projection(schema_map, project)?;
     match &project.input {
-        ProjectInputPlan::Relation(relation) => validate_table_factor(schema_map, relation)?,
+        ProjectInputPlan::Source(relation) => validate_source(schema_map, relation)?,
         ProjectInputPlan::Join(join) => validate_join(schema_map, join)?,
         ProjectInputPlan::Filter(filter) => validate_filter(schema_map, filter)?,
         ProjectInputPlan::Aggregation(aggregation) => {
@@ -254,12 +254,12 @@ fn validate_project(
     Ok(())
 }
 
-fn validate_table_factor(
+fn validate_source(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    table_factor: &TableFactorPlan,
+    source: &SourcePlan,
 ) -> ValidateResult {
-    match table_factor {
-        TableFactorPlan::Derived { subquery, .. } => validate_query(schema_map, subquery),
+    match source {
+        SourcePlan::Derived(derived) => validate_query(schema_map, &derived.query),
         _ => Ok(()),
     }
 }
@@ -281,7 +281,7 @@ fn validate_mixed_join_wildcard_projection(
     project: &ProjectPlan,
 ) -> ValidateResult {
     let join = match &project.input {
-        ProjectInputPlan::Relation(_) => None,
+        ProjectInputPlan::Source(_) => None,
         ProjectInputPlan::Join(join) => Some(join.as_ref()),
         ProjectInputPlan::Filter(filter) => filter_join(&filter.input),
         ProjectInputPlan::Aggregation(aggregation) => aggregation_join(&aggregation.input),
@@ -302,12 +302,12 @@ fn validate_mixed_join_wildcard_projection(
 
     let mut has_schemaless = false;
     let mut has_schemaful = false;
-    visit_join_relations(join, &mut |relation| {
-        let TableFactorPlan::Table { name, .. } = relation else {
+    visit_join_sources(join, &mut |source| {
+        let SourcePlan::Table(table) = source else {
             return;
         };
 
-        if is_schemaless_table(schema_map, name) {
+        if is_schemaless_table(schema_map, &table.name) {
             has_schemaless = true;
         } else {
             has_schemaful = true;
@@ -323,7 +323,7 @@ fn validate_mixed_join_wildcard_projection(
 
 fn aggregation_join(input: &AggregationInputPlan) -> Option<&JoinPlan> {
     match input {
-        AggregationInputPlan::Relation(_) => None,
+        AggregationInputPlan::Source(_) => None,
         AggregationInputPlan::Join(join) => Some(join.as_ref()),
         AggregationInputPlan::Filter(filter) => filter_join(&filter.input),
     }
@@ -331,17 +331,17 @@ fn aggregation_join(input: &AggregationInputPlan) -> Option<&JoinPlan> {
 
 fn filter_join(input: &FilterInputPlan) -> Option<&JoinPlan> {
     match input {
-        FilterInputPlan::Relation(_) => None,
+        FilterInputPlan::Source(_) => None,
         FilterInputPlan::Join(join) => Some(join.as_ref()),
     }
 }
 
-fn visit_join_relations(join: &JoinPlan, visit: &mut impl FnMut(&TableFactorPlan)) {
+fn visit_join_sources(join: &JoinPlan, visit: &mut impl FnMut(&SourcePlan)) {
     match &join.input {
-        JoinInputPlan::Relation(relation) => visit(relation),
-        JoinInputPlan::Join(join) => visit_join_relations(join, visit),
+        JoinInputPlan::Source(relation) => visit(relation),
+        JoinInputPlan::Join(join) => visit_join_sources(join, visit),
     }
-    visit(&join.relation);
+    visit(&join.right);
 }
 
 fn is_schemaless_table(

@@ -6,9 +6,9 @@ use {
         data::Schema,
         plan::{
             AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
-            FilterPlan, IndexItemPlan, JoinInputPlan, JoinPlan, LimitInputPlan, LimitPlan,
-            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan, StatementPlan,
-            TableFactorPlan, expr::evaluable::check_expr as check_evaluable,
+            FilterPlan, JoinInputPlan, JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan,
+            OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SourcePlan, StatementPlan,
+            TableAccessPlan, expr::evaluable::check_expr as check_evaluable,
         },
     },
     std::{collections::HashMap, hash::BuildHasher, rc::Rc},
@@ -130,7 +130,7 @@ impl<'a, S: BuildHasher> Planner<'a> for PrimaryKeyPlanner<'a, S> {
 
 enum PrimaryKey {
     Found {
-        index_item: IndexItemPlan,
+        access: TableAccessPlan,
         expr: Option<ExprPlan>,
     },
     NotFound(ExprPlan),
@@ -143,14 +143,14 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
         mut project: ProjectPlan,
     ) -> ProjectPlan {
         project.input = match project.input {
-            ProjectInputPlan::Relation(relation) => ProjectInputPlan::Relation(relation),
+            ProjectInputPlan::Source(relation) => ProjectInputPlan::Source(relation),
             ProjectInputPlan::Join(join) => ProjectInputPlan::Join(join),
             ProjectInputPlan::Filter(filter) => {
                 let (input, expr) = self.filter(outer_context.as_ref().map(Rc::clone), filter);
                 match expr {
                     Some(expr) => ProjectInputPlan::Filter(FilterPlan { input, expr }),
                     None => match input {
-                        FilterInputPlan::Relation(relation) => ProjectInputPlan::Relation(relation),
+                        FilterInputPlan::Source(relation) => ProjectInputPlan::Source(relation),
                         FilterInputPlan::Join(join) => ProjectInputPlan::Join(join),
                     },
                 }
@@ -175,16 +175,14 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
         input: AggregationInputPlan,
     ) -> AggregationInputPlan {
         match input {
-            AggregationInputPlan::Relation(relation) => AggregationInputPlan::Relation(relation),
+            AggregationInputPlan::Source(relation) => AggregationInputPlan::Source(relation),
             AggregationInputPlan::Join(join) => AggregationInputPlan::Join(join),
             AggregationInputPlan::Filter(filter) => {
                 let (input, expr) = self.filter(outer_context, filter);
                 match expr {
                     Some(expr) => AggregationInputPlan::Filter(FilterPlan { input, expr }),
                     None => match input {
-                        FilterInputPlan::Relation(relation) => {
-                            AggregationInputPlan::Relation(relation)
-                        }
+                        FilterInputPlan::Source(relation) => AggregationInputPlan::Source(relation),
                         FilterInputPlan::Join(join) => AggregationInputPlan::Join(join),
                     },
                 }
@@ -201,22 +199,21 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
         let current_context = self.input_context(&input);
         let lookup_candidate = PrimaryKeyLookupCandidate::new(self.schema_map, &input);
 
-        let (index, expr) = match self.expr(
+        let (access, expr) = match self.expr(
             outer_context,
             current_context,
             lookup_candidate.as_ref(),
             expr,
         ) {
-            PrimaryKey::Found { index_item, expr } => (Some(index_item), expr),
+            PrimaryKey::Found { access, expr } => (Some(access), expr),
             PrimaryKey::NotFound(expr) => (None, Some(expr)),
         };
 
-        if let TableFactorPlan::Table {
-            index: target @ None,
-            ..
-        } = Self::base_relation_mut(&mut input)
+        if let SourcePlan::Table(table) = Self::base_source_mut(&mut input)
+            && table.access == TableAccessPlan::FullScan
+            && let Some(access) = access
         {
-            *target = index;
+            table.access = access;
         }
 
         (input, expr)
@@ -224,31 +221,31 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
 
     fn input_context(&self, input: &FilterInputPlan) -> Option<Rc<Context<'a>>> {
         match input {
-            FilterInputPlan::Relation(relation) => self.update_context(None, relation),
+            FilterInputPlan::Source(relation) => self.update_context(None, relation),
             FilterInputPlan::Join(join) => self.join_context(join),
         }
     }
 
     fn join_context(&self, join: &JoinPlan) -> Option<Rc<Context<'a>>> {
         let context = match &join.input {
-            JoinInputPlan::Relation(relation) => self.update_context(None, relation),
+            JoinInputPlan::Source(relation) => self.update_context(None, relation),
             JoinInputPlan::Join(join) => self.join_context(join),
         };
 
-        self.update_context(context, &join.relation)
+        self.update_context(context, &join.right)
     }
 
-    fn base_relation_mut(input: &mut FilterInputPlan) -> &mut TableFactorPlan {
+    fn base_source_mut(input: &mut FilterInputPlan) -> &mut SourcePlan {
         match input {
-            FilterInputPlan::Relation(relation) => relation,
-            FilterInputPlan::Join(join) => Self::join_base_relation_mut(join),
+            FilterInputPlan::Source(relation) => relation,
+            FilterInputPlan::Join(join) => Self::join_base_source_mut(join),
         }
     }
 
-    fn join_base_relation_mut(join: &mut JoinPlan) -> &mut TableFactorPlan {
+    fn join_base_source_mut(join: &mut JoinPlan) -> &mut SourcePlan {
         match &mut join.input {
-            JoinInputPlan::Relation(relation) => relation,
-            JoinInputPlan::Join(join) => Self::join_base_relation_mut(join),
+            JoinInputPlan::Source(relation) => relation,
+            JoinInputPlan::Join(join) => Self::join_base_source_mut(join),
         }
     }
 
@@ -272,12 +269,9 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
             } if lookup_candidate.is_some_and(|candidate| candidate.contains(key.as_ref()))
                 && check_evaluable(None, &value) =>
             {
-                let index_item = IndexItemPlan::PrimaryKey(*value);
+                let access = TableAccessPlan::PrimaryKey { expr: *value };
 
-                PrimaryKey::Found {
-                    index_item,
-                    expr: None,
-                }
+                PrimaryKey::Found { access, expr: None }
             }
             ExprPlan::BinaryOp {
                 left,
@@ -292,7 +286,7 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                 );
 
                 let left = match primary_key {
-                    PrimaryKey::Found { index_item, expr } => {
+                    PrimaryKey::Found { access, expr } => {
                         let expr = match expr {
                             Some(left) => ExprPlan::BinaryOp {
                                 left: Box::new(left),
@@ -303,7 +297,7 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                         };
 
                         return PrimaryKey::Found {
-                            index_item,
+                            access,
                             expr: Some(expr),
                         };
                     }
@@ -311,7 +305,7 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                 };
 
                 match self.expr(outer_context, current_context, lookup_candidate, *right) {
-                    PrimaryKey::Found { index_item, expr } => {
+                    PrimaryKey::Found { access, expr } => {
                         let expr = match expr {
                             Some(right) => ExprPlan::BinaryOp {
                                 left: Box::new(left),
@@ -322,7 +316,7 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                         };
 
                         PrimaryKey::Found {
-                            index_item,
+                            access,
                             expr: Some(expr),
                         }
                     }
@@ -339,10 +333,10 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
             }
             ExprPlan::Nested(expr) => {
                 match self.expr(outer_context, current_context, lookup_candidate, *expr) {
-                    PrimaryKey::Found { index_item, expr } => {
+                    PrimaryKey::Found { access, expr } => {
                         let expr = expr.map(Box::new).map(ExprPlan::Nested);
 
-                        PrimaryKey::Found { index_item, expr }
+                        PrimaryKey::Found { access, expr }
                     }
                     PrimaryKey::NotFound(expr) => {
                         PrimaryKey::NotFound(ExprPlan::Nested(Box::new(expr)))
@@ -371,8 +365,8 @@ mod tests {
             mock::{MockStorage, run},
             parse_sql::{parse, parse_expr},
             plan::{
-                ExprPlan, IndexItemPlan, JoinInputPlan, JoinPlan, ProjectInputPlan, QueryPlan,
-                StatementPlan, TableAliasPlan, TableFactorPlan, fetch_schema_map,
+                ExprPlan, JoinInputPlan, JoinPlan, ProjectInputPlan, QueryPlan, SourcePlan,
+                StatementPlan, TableAccessPlan, TableAliasPlan, TableSourcePlan, fetch_schema_map,
             },
             query_builder::{Build, col, primary_key, table},
             translate::{NO_PARAMS, translate, translate_expr},
@@ -384,11 +378,11 @@ mod tests {
         StatementPlan::from(translate(&parsed).unwrap())
     }
 
-    fn try_relation(statement: StatementPlan) -> Option<TableFactorPlan> {
+    fn try_source(statement: StatementPlan) -> Option<SourcePlan> {
         match statement {
             StatementPlan::Query(QueryPlan::Project(project)) => match project.input {
-                ProjectInputPlan::Relation(relation) => Some(relation),
-                ProjectInputPlan::Join(join) => Some(join_base_relation(*join)),
+                ProjectInputPlan::Source(relation) => Some(relation),
+                ProjectInputPlan::Join(join) => Some(join_base_source(*join)),
                 ProjectInputPlan::Filter(_)
                 | ProjectInputPlan::Aggregation(_)
                 | ProjectInputPlan::Having(_) => None,
@@ -397,10 +391,10 @@ mod tests {
         }
     }
 
-    fn join_base_relation(join: JoinPlan) -> TableFactorPlan {
+    fn join_base_source(join: JoinPlan) -> SourcePlan {
         match join.input {
-            JoinInputPlan::Relation(relation) => relation,
-            JoinInputPlan::Join(join) => join_base_relation(*join),
+            JoinInputPlan::Source(relation) => relation,
+            JoinInputPlan::Join(join) => join_base_source(*join),
         }
     }
 
@@ -570,17 +564,17 @@ mod tests {
 
         let sql = "SELECT * FROM Player p JOIN Badge b WHERE p.id = 1";
         let actual = plan(&storage, sql);
-        let expected_relation = TableFactorPlan::Table {
+        let expected_relation = SourcePlan::Table(TableSourcePlan {
             name: "Player".to_owned(),
             alias: Some(TableAliasPlan {
                 name: "p".to_owned(),
                 columns: Vec::new(),
             }),
-            index: Some(IndexItemPlan::PrimaryKey(ExprPlan::Literal(
-                Literal::Number(1.into()),
-            ))),
-        };
-        let actual_relation = try_relation(actual).expect("expected relation");
+            access: TableAccessPlan::PrimaryKey {
+                expr: ExprPlan::Literal(Literal::Number(1.into())),
+            },
+        });
+        let actual_relation = try_source(actual).expect("expected relation");
         assert!(
             actual_relation == expected_relation,
             "aliased primary key should be installed and removed from selection:\n{sql}"
@@ -693,15 +687,19 @@ mod tests {
         ";
 
         let actual = plan(&storage, sql);
-        let relation = try_relation(actual).expect("expected relation");
-        let expected_index =
-            IndexItemPlan::PrimaryKey(ExprPlan::Literal(Literal::Number(1.into())));
+        let relation = try_source(actual).expect("expected relation");
+        let expected = SourcePlan::Table(TableSourcePlan {
+            name: "Tasks".to_owned(),
+            alias: Some(TableAliasPlan {
+                name: "t".to_owned(),
+                columns: Vec::new(),
+            }),
+            access: TableAccessPlan::PrimaryKey {
+                expr: ExprPlan::Literal(Literal::Number(1.into())),
+            },
+        });
 
-        assert_eq!(
-            relation.index(),
-            Some(&expected_index),
-            "left outer join should install a lookup on the first relation:\n{sql}"
-        );
+        assert_eq!(relation, expected, "{sql}");
     }
 
     #[test]
@@ -724,13 +722,19 @@ mod tests {
             WHERE t.id = 1;
         ";
         let actual = plan(&storage, sql);
-        let relation = try_relation(actual).expect("expected relation");
-        let index = relation.index();
+        let relation = try_source(actual).expect("expected relation");
+        let expected = SourcePlan::Table(TableSourcePlan {
+            name: "Tasks".to_owned(),
+            alias: Some(TableAliasPlan {
+                name: "t".to_owned(),
+                columns: vec!["id".to_owned(), "project_id".to_owned(), "done".to_owned()],
+            }),
+            access: TableAccessPlan::PrimaryKey {
+                expr: ExprPlan::Literal(Literal::Number(1.into())),
+            },
+        });
 
-        assert!(
-            matches!(index, Some(IndexItemPlan::PrimaryKey(_))),
-            "effective primary key alias should install a lookup:\n{sql}"
-        );
+        assert_eq!(relation, expected, "{sql}");
 
         let sql = "
             SELECT t.id
@@ -770,7 +774,7 @@ mod tests {
 
     #[test]
     fn rejects_non_select_test_plan() {
-        assert!(try_relation(statement("VALUES (1)")).is_none());
+        assert!(try_source(statement("VALUES (1)")).is_none());
     }
 
     #[test]

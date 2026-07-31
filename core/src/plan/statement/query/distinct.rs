@@ -19,17 +19,18 @@ mod tests {
     use {
         super::{DistinctInputPlan, DistinctPlan},
         crate::plan::{
-            ProjectInputPlan, ProjectPlan, ProjectionPlan, SelectOrderByPlan, TableFactorPlan,
+            ProjectInputPlan, ProjectPlan, ProjectionPlan, SelectOrderByPlan, SourcePlan,
+            TableAccessPlan, TableSourcePlan,
         },
     };
 
     fn project_plan() -> ProjectPlan {
         ProjectPlan {
-            input: ProjectInputPlan::Relation(TableFactorPlan::Table {
+            input: ProjectInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                 name: "Item".to_owned(),
                 alias: None,
-                index: None,
-            }),
+                access: TableAccessPlan::FullScan,
+            })),
             projection: ProjectionPlan::SelectItems(Vec::new()),
         }
     }

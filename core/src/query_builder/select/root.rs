@@ -1,37 +1,33 @@
 use {
     super::{
-        BuildJoinInputPlan, BuildSelect, BuildTableFactorPlan, DistinctNode, join::JoinOperatorType,
+        BuildJoinInputPlan, BuildSelect, BuildSourcePlan, DistinctNode, join::JoinOperatorType,
     },
     crate::{
         ast::{
             Expr, Literal, Projection, Select, SelectItem, TableAlias, TableFactor, TableWithJoins,
         },
-        plan::{JoinInputPlan, TableAliasPlan, TableFactorPlan},
+        plan::{
+            DerivedSourcePlan, DictionarySourcePlan, JoinInputPlan, SeriesSourcePlan, SourcePlan,
+            TableAliasPlan, TableSourcePlan,
+        },
         query_builder::{
             ExprList, ExprNode, FilterNode, GroupByNode, HavingNode, JoinNode, LimitNode,
             OffsetNode, OrderByExprList, ProjectNode, QueryBuilderError, QueryNode, SelectItemList,
-            SelectOrderByNode, TableFactorNode, table_factor::TableType,
+            SelectOrderByNode, SourceNode,
         },
         result::Result,
         translate::alias_or_name,
     },
 };
 
-fn build_alias_or_name_plan(alias: Option<TableAliasPlan>, name: String) -> TableAliasPlan {
-    alias.unwrap_or(TableAliasPlan {
-        name,
-        columns: Vec::new(),
-    })
-}
-
 #[derive(Clone, Debug)]
 pub struct SelectNode<'a> {
-    table_node: TableFactorNode<'a>,
+    source_node: SourceNode<'a>,
 }
 
 impl<'a> SelectNode<'a> {
-    pub(in crate::query_builder) fn new(table_node: TableFactorNode<'a>) -> Self {
-        Self { table_node }
+    pub(in crate::query_builder) fn new(source_node: SourceNode<'a>) -> Self {
+        Self { source_node }
     }
 
     pub fn distinct(self) -> DistinctNode<'a> {
@@ -95,82 +91,86 @@ impl<'a> SelectNode<'a> {
         )
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
+    pub fn alias_as(self, table_alias: &'a str) -> SourceNode<'a> {
         QueryNode::SelectNode(self).alias_as(table_alias)
     }
 }
 
-impl BuildTableFactorPlan for SelectNode<'_> {
-    fn build_table_factor_plan(self) -> Result<TableFactorPlan> {
-        let alias = self.table_node.table_alias.map(|name| TableAliasPlan {
-            name,
-            columns: Vec::new(),
-        });
-
-        let index = match self.table_node.index {
-            Some(index) => Some(index.build_index_item_plan()?),
-            None => None,
-        };
-
-        let relation = match self.table_node.table_type {
-            TableType::Table => TableFactorPlan::Table {
-                name: self.table_node.table_name,
+impl BuildSourcePlan for SelectNode<'_> {
+    fn build_source_plan(self) -> Result<SourcePlan> {
+        match self.source_node {
+            SourceNode::Table {
+                name,
                 alias,
-                index,
-            },
-            TableType::Dictionary(dict) => TableFactorPlan::Dictionary {
-                dict,
-                alias: build_alias_or_name_plan(alias, self.table_node.table_name),
-            },
-            TableType::Series(args) => TableFactorPlan::Series {
-                alias: build_alias_or_name_plan(alias, self.table_node.table_name),
-                size: args.build_expr_plan()?,
-            },
-            TableType::Derived { subquery, alias } => TableFactorPlan::Derived {
-                subquery: Box::new(subquery.build_query_plan()?),
+                access,
+            } => Ok(SourcePlan::Table(TableSourcePlan {
+                name,
+                alias: alias.map(|name| TableAliasPlan {
+                    name,
+                    columns: Vec::new(),
+                }),
+                access: access.build_table_access_plan()?,
+            })),
+            SourceNode::Dictionary { dictionary, alias } => {
+                Ok(SourcePlan::Dictionary(DictionarySourcePlan {
+                    dictionary,
+                    alias: TableAliasPlan {
+                        name: alias,
+                        columns: Vec::new(),
+                    },
+                }))
+            }
+            SourceNode::Series { size, alias } => Ok(SourcePlan::Series(SeriesSourcePlan {
                 alias: TableAliasPlan {
                     name: alias,
                     columns: Vec::new(),
                 },
-            },
-        };
-
-        Ok(relation)
+                size: size.build_expr_plan()?,
+            })),
+            SourceNode::Derived { query, alias } => Ok(SourcePlan::Derived(DerivedSourcePlan {
+                query: Box::new(query.build_query_plan()?),
+                alias: TableAliasPlan {
+                    name: alias,
+                    columns: Vec::new(),
+                },
+            })),
+        }
     }
 }
 
 impl BuildJoinInputPlan for SelectNode<'_> {
     fn build_join_input_plan(self) -> Result<JoinInputPlan> {
-        self.build_table_factor_plan().map(JoinInputPlan::Relation)
+        self.build_source_plan().map(JoinInputPlan::Source)
     }
 }
 
 impl BuildSelect for SelectNode<'_> {
     fn build_select(self) -> Result<Select> {
-        let alias = self.table_node.table_alias.map(|name| TableAlias {
-            name,
-            columns: Vec::new(),
-        });
-
-        if self.table_node.index.is_some() {
-            return Err(QueryBuilderError::IndexByRequiresPlan.into());
-        }
-
-        let relation = match self.table_node.table_type {
-            TableType::Table => TableFactor::Table {
-                name: self.table_node.table_name,
+        let relation = match self.source_node {
+            SourceNode::Table {
+                name,
                 alias,
+                access: crate::query_builder::TableAccessNode::FullScan,
+            } => TableFactor::Table {
+                name,
+                alias: alias.map(|name| TableAlias {
+                    name,
+                    columns: Vec::new(),
+                }),
             },
-            TableType::Dictionary(dict) => TableFactor::Dictionary {
-                dict,
-                alias: alias_or_name(alias, self.table_node.table_name),
+            SourceNode::Table { .. } => {
+                return Err(QueryBuilderError::IndexByRequiresPlan.into());
+            }
+            SourceNode::Dictionary { dictionary, alias } => TableFactor::Dictionary {
+                dict: dictionary,
+                alias: alias_or_name(None, alias),
             },
-            TableType::Series(args) => TableFactor::Series {
-                alias: alias_or_name(alias, self.table_node.table_name),
-                size: args.build_expr()?,
+            SourceNode::Series { size, alias } => TableFactor::Series {
+                alias: alias_or_name(None, alias),
+                size: size.build_expr()?,
             },
-            TableType::Derived { subquery, alias } => TableFactor::Derived {
-                subquery: subquery.build_query()?,
+            SourceNode::Derived { query, alias } => TableFactor::Derived {
+                subquery: query.build_query()?,
                 alias: TableAlias {
                     name: alias,
                     columns: Vec::new(),
@@ -196,11 +196,9 @@ impl BuildSelect for SelectNode<'_> {
 
 pub fn select<'a>() -> SelectNode<'a> {
     SelectNode {
-        table_node: TableFactorNode {
-            table_name: "Series".to_owned(),
-            table_type: TableType::Series(Expr::Literal(Literal::Number(1.into())).into()),
-            table_alias: None,
-            index: None,
+        source_node: SourceNode::Series {
+            size: Expr::Literal(Literal::Number(1.into())).into(),
+            alias: "Series".to_owned(),
         },
     }
 }

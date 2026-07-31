@@ -6,7 +6,7 @@ use {
         query_builder::{
             DistinctNode, ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode,
             JoinNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryBuilderError,
-            QueryNode, SelectItemList, SelectOrderByNode, TableFactorNode,
+            QueryNode, SelectItemList, SelectOrderByNode, SourceNode,
             select::{BuildJoinInputPlan, BuildJoinPlan, BuildSelect},
         },
         result::Result,
@@ -122,7 +122,7 @@ impl<'a> JoinConstraintNode<'a> {
         DistinctNode::new(self)
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
+    pub fn alias_as(self, table_alias: &'a str) -> SourceNode<'a> {
         QueryNode::JoinConstraintNode(self).alias_as(table_alias)
     }
 }
@@ -157,8 +157,8 @@ mod tests {
         crate::{
             plan::{
                 JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan, JoinPlan,
-                ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, StatementPlan,
-                TableFactorPlan,
+                ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SourcePlan,
+                StatementPlan, TableAccessPlan, TableSourcePlan,
             },
             query_builder::{Build, SelectItemList, col, table, test_query_builder},
         },
@@ -202,16 +202,16 @@ mod tests {
             .build();
         let expected = {
             let join = JoinPlan {
-                input: JoinInputPlan::Relation(TableFactorPlan::Table {
+                input: JoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: None,
-                }),
-                relation: TableFactorPlan::Table {
+                    access: TableAccessPlan::FullScan,
+                })),
+                right: SourcePlan::Table(TableSourcePlan {
                     name: "PlayerItem".to_owned(),
                     alias: None,
-                    index: None,
-                },
+                    access: TableAccessPlan::FullScan,
+                }),
                 join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::On(
                     col("PlayerItem.flag")
                         .is_not_null()

@@ -132,7 +132,7 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
         mut project: ProjectPlan,
     ) -> ProjectPlan {
         project.input = match project.input {
-            ProjectInputPlan::Relation(relation) => ProjectInputPlan::Relation(relation),
+            ProjectInputPlan::Source(relation) => ProjectInputPlan::Source(relation),
             ProjectInputPlan::Join(join) => {
                 let (_, join) = self.join(outer_context.as_ref(), *join);
                 ProjectInputPlan::Join(Box::new(join))
@@ -160,7 +160,7 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
         input: AggregationInputPlan,
     ) -> AggregationInputPlan {
         match input {
-            AggregationInputPlan::Relation(relation) => AggregationInputPlan::Relation(relation),
+            AggregationInputPlan::Source(relation) => AggregationInputPlan::Source(relation),
             AggregationInputPlan::Join(join) => {
                 let (_, join) = self.join(outer_context.as_ref(), *join);
                 AggregationInputPlan::Join(Box::new(join))
@@ -186,9 +186,9 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
         input: FilterInputPlan,
     ) -> (Option<Rc<Context<'a>>>, FilterInputPlan) {
         match input {
-            FilterInputPlan::Relation(relation) => {
+            FilterInputPlan::Source(relation) => {
                 let context = self.update_context(None, &relation);
-                (context, FilterInputPlan::Relation(relation))
+                (context, FilterInputPlan::Source(relation))
             }
             FilterInputPlan::Join(join) => {
                 let (context, join) = self.join(outer_context, *join);
@@ -203,9 +203,9 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
         input: JoinInputPlan,
     ) -> (Option<Rc<Context<'a>>>, JoinInputPlan) {
         match input {
-            JoinInputPlan::Relation(relation) => {
+            JoinInputPlan::Source(relation) => {
                 let context = self.update_context(None, &relation);
-                (context, JoinInputPlan::Relation(relation))
+                (context, JoinInputPlan::Source(relation))
             }
             JoinInputPlan::Join(join) => {
                 let (context, join) = self.join(outer_context, *join);
@@ -226,17 +226,17 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
 
         let JoinPlan {
             input,
-            relation,
+            right,
             join_operator,
             join_executor,
         } = join;
         let (inner_context, input) = self.join_input(outer_context, input);
 
         if matches!(join_executor, JoinExecutorPlan::Hash { .. }) {
-            let context = self.update_context(inner_context, &relation);
+            let context = self.update_context(inner_context, &right);
             let join = JoinPlan {
                 input,
-                relation,
+                right,
                 join_operator,
                 join_executor,
             };
@@ -249,10 +249,10 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
             JoinOperatorPlan::LeftOuter(JoinConstraintPlan::On(expr)) => (JoinOp::LeftOuter, expr),
             JoinOperatorPlan::Inner(JoinConstraintPlan::None)
             | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None) => {
-                let context = self.update_context(inner_context, &relation);
+                let context = self.update_context(inner_context, &right);
                 let join = JoinPlan {
                     input,
-                    relation,
+                    right,
                     join_operator,
                     join_executor,
                 };
@@ -261,7 +261,7 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
             }
         };
 
-        let current_context = self.update_context(None, &relation);
+        let current_context = self.update_context(None, &right);
         let (join_executor, join_constraint) = self.plan_join_condition(
             outer_context,
             inner_context.as_ref(),
@@ -274,10 +274,10 @@ impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
             JoinOp::LeftOuter => JoinOperatorPlan::LeftOuter(join_constraint),
         };
 
-        let context = self.update_context(inner_context, &relation);
+        let context = self.update_context(inner_context, &right);
         let join = JoinPlan {
             input,
-            relation,
+            right,
             join_operator,
             join_executor,
         };

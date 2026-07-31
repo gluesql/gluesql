@@ -3,8 +3,8 @@ use {
         ast::{ColumnDef, ColumnUniqueOption},
         data::Schema,
         plan::{
-            ExprPlan, FilterInputPlan, JoinInputPlan, JoinOperatorPlan, JoinPlan, TableAliasPlan,
-            TableFactorPlan,
+            ExprPlan, FilterInputPlan, JoinInputPlan, JoinOperatorPlan, JoinPlan, SourcePlan,
+            TableAccessPlan, TableAliasPlan,
         },
     },
     std::{collections::HashMap, hash::BuildHasher},
@@ -20,7 +20,7 @@ impl PrimaryKeyLookupCandidate {
         schema_map: &HashMap<String, Schema, S>,
         input: &FilterInputPlan,
     ) -> Option<Self> {
-        let target = PrimaryKeyLookupTarget::new(schema_map, base_relation(input))?;
+        let target = PrimaryKeyLookupTarget::new(schema_map, base_source(input))?;
         let mut joined_relations = Vec::new();
         if let FilterInputPlan::Join(join) = input {
             collect_joined_relations(schema_map, join, &mut joined_relations);
@@ -53,17 +53,17 @@ impl PrimaryKeyLookupCandidate {
     }
 }
 
-fn base_relation(input: &FilterInputPlan) -> &TableFactorPlan {
+fn base_source(input: &FilterInputPlan) -> &SourcePlan {
     match input {
-        FilterInputPlan::Relation(relation) => relation,
-        FilterInputPlan::Join(join) => join_base_relation(join),
+        FilterInputPlan::Source(relation) => relation,
+        FilterInputPlan::Join(join) => join_base_source(join),
     }
 }
 
-fn join_base_relation(join: &JoinPlan) -> &TableFactorPlan {
+fn join_base_source(join: &JoinPlan) -> &SourcePlan {
     match &join.input {
-        JoinInputPlan::Relation(relation) => relation,
-        JoinInputPlan::Join(join) => join_base_relation(join),
+        JoinInputPlan::Source(relation) => relation,
+        JoinInputPlan::Join(join) => join_base_source(join),
     }
 }
 
@@ -76,7 +76,7 @@ fn collect_joined_relations<S: BuildHasher>(
         collect_joined_relations(schema_map, input, joined_relations);
     }
     validate_join_operator(&join.join_operator);
-    joined_relations.push(JoinedRelation::new(schema_map, &join.relation));
+    joined_relations.push(JoinedRelation::new(schema_map, &join.right));
 }
 
 fn validate_join_operator(join_operator: &JoinOperatorPlan) {
@@ -94,21 +94,19 @@ struct PrimaryKeyLookupTarget {
 impl PrimaryKeyLookupTarget {
     fn new<S: BuildHasher>(
         schema_map: &HashMap<String, Schema, S>,
-        relation: &TableFactorPlan,
+        relation: &SourcePlan,
     ) -> Option<Self> {
-        let TableFactorPlan::Table {
-            name,
-            alias,
-            index: None,
-        } = relation
-        else {
+        let SourcePlan::Table(table) = relation else {
             return None;
         };
-        let column_defs = schema_map.get(name)?.column_defs.as_ref()?;
+        if table.access != TableAccessPlan::FullScan {
+            return None;
+        }
+        let column_defs = schema_map.get(&table.name)?.column_defs.as_ref()?;
         let primary_key_index = column_defs.iter().position(|ColumnDef { unique, .. }| {
             unique == &Some(ColumnUniqueOption { is_primary: true })
         })?;
-        let columns = effective_columns(column_defs, alias.as_ref())?;
+        let columns = effective_columns(column_defs, table.alias.as_ref())?;
         let primary_key_column = columns.get(primary_key_index)?;
         if columns
             .iter()
@@ -135,19 +133,16 @@ struct JoinedRelation {
 }
 
 impl JoinedRelation {
-    fn new<S: BuildHasher>(
-        schema_map: &HashMap<String, Schema, S>,
-        relation: &TableFactorPlan,
-    ) -> Self {
+    fn new<S: BuildHasher>(schema_map: &HashMap<String, Schema, S>, relation: &SourcePlan) -> Self {
         let columns = match relation {
-            TableFactorPlan::Table { name, alias, .. } => schema_map
-                .get(name)
+            SourcePlan::Table(table) => schema_map
+                .get(&table.name)
                 .and_then(|schema| schema.column_defs.as_deref())
-                .and_then(|column_defs| effective_columns(column_defs, alias.as_ref()))
+                .and_then(|column_defs| effective_columns(column_defs, table.alias.as_ref()))
                 .map_or(RelationColumns::Unknown, RelationColumns::Known),
-            TableFactorPlan::Derived { .. }
-            | TableFactorPlan::Series { .. }
-            | TableFactorPlan::Dictionary { .. } => RelationColumns::Unknown,
+            SourcePlan::Derived(_) | SourcePlan::Series(_) | SourcePlan::Dictionary(_) => {
+                RelationColumns::Unknown
+            }
         };
 
         Self {
@@ -205,8 +200,8 @@ mod tests {
             data::Schema,
             parse_sql::parse,
             plan::{
-                AggregationInputPlan, ExprPlan, FilterInputPlan, IndexItemPlan, ProjectInputPlan,
-                QueryPlan, StatementPlan, TableFactorPlan,
+                AggregationInputPlan, ExprPlan, FilterInputPlan, ProjectInputPlan, QueryPlan,
+                SourcePlan, StatementPlan, TableAccessPlan, TableSourcePlan,
             },
             translate::translate,
         },
@@ -228,16 +223,16 @@ mod tests {
         let statement = StatementPlan::from(translate(&parsed).unwrap());
         match statement {
             StatementPlan::Query(QueryPlan::Project(project)) => Some(match project.input {
-                ProjectInputPlan::Relation(relation) => FilterInputPlan::Relation(relation),
+                ProjectInputPlan::Source(relation) => FilterInputPlan::Source(relation),
                 ProjectInputPlan::Join(join) => FilterInputPlan::Join(join),
                 ProjectInputPlan::Filter(filter) => filter.input,
                 ProjectInputPlan::Aggregation(aggregation) => match aggregation.input {
-                    AggregationInputPlan::Relation(relation) => FilterInputPlan::Relation(relation),
+                    AggregationInputPlan::Source(relation) => FilterInputPlan::Source(relation),
                     AggregationInputPlan::Join(join) => FilterInputPlan::Join(join),
                     AggregationInputPlan::Filter(filter) => filter.input,
                 },
                 ProjectInputPlan::Having(having) => match having.input.input {
-                    AggregationInputPlan::Relation(relation) => FilterInputPlan::Relation(relation),
+                    AggregationInputPlan::Source(relation) => FilterInputPlan::Source(relation),
                     AggregationInputPlan::Join(join) => FilterInputPlan::Join(join),
                     AggregationInputPlan::Filter(filter) => filter.input,
                 },
@@ -304,13 +299,13 @@ mod tests {
         let from = parse_from("SELECT * FROM Logs");
         assert!(PrimaryKeyLookupCandidate::new(&schema_map, &from).is_none());
 
-        let from = FilterInputPlan::Relation(TableFactorPlan::Table {
+        let from = FilterInputPlan::Source(SourcePlan::Table(TableSourcePlan {
             name: "Tasks".to_owned(),
             alias: None,
-            index: Some(IndexItemPlan::PrimaryKey(ExprPlan::Literal(
-                Literal::Number(1.into()),
-            ))),
-        });
+            access: TableAccessPlan::PrimaryKey {
+                expr: ExprPlan::Value(crate::data::Value::I64(1)),
+            },
+        }));
 
         assert!(PrimaryKeyLookupCandidate::new(&schema_map, &from).is_none());
     }

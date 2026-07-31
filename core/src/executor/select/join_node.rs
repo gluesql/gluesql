@@ -1,16 +1,11 @@
 use {
-    super::{SelectedRows, table_factor_node},
+    super::{SelectedRows, source_node},
     crate::{
         data::{Key, Row, Value},
-        executor::{
-            context::RowContext,
-            evaluate::evaluate,
-            fetch::{fetch_relation_columns, fetch_relation_rows},
-            filter::check_expr,
-        },
+        executor::{context::RowContext, evaluate::evaluate, filter::check_expr},
         plan::{
             ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan,
-            JoinPlan, TableFactorPlan,
+            JoinPlan, SourcePlan,
         },
         result::Result,
         store::GStore,
@@ -20,6 +15,8 @@ use {
 };
 
 type JoinItem<'a> = Rc<RowContext<'a>>;
+type JoinedColumns<'a> = Vec<(&'a str, Rc<[String]>)>;
+type JoinColumns<'a> = (&'a str, Rc<[String]>, JoinedColumns<'a>);
 
 struct LeftOuter<'a> {
     rows: SelectedRows<'a>,
@@ -58,7 +55,9 @@ pub(super) fn execute<'a, T: GStore>(
     filter_context: Option<&Rc<RowContext<'a>>>,
 ) -> Result<SelectedRows<'a>> {
     let rows = match &plan.input {
-        JoinInputPlan::Relation(relation) => table_factor_node::execute(storage, relation)?,
+        JoinInputPlan::Source(source) => {
+            source_node::execute(storage, source, None)?.into_selected(None)
+        }
         JoinInputPlan::Join(join) => execute(storage, join, filter_context)?,
     };
 
@@ -72,15 +71,14 @@ fn join<'a, T: GStore>(
     left_rows: SelectedRows<'a>,
 ) -> Result<SelectedRows<'a>> {
     let JoinPlan {
-        relation,
+        right,
         join_operator,
         join_executor,
         ..
     } = join_plan;
 
-    let table_alias = relation.alias_name();
-    let join_executor =
-        JoinExecutor::new(storage, relation, filter_context.as_ref(), join_executor)?;
+    let table_alias = right.alias_name();
+    let join_executor = JoinExecutor::new(storage, right, filter_context.as_ref(), join_executor)?;
 
     let (join_operator, where_clause) = match join_operator {
         JoinOperatorPlan::Inner(JoinConstraintPlan::None) => (JoinOperator::Inner, None),
@@ -93,7 +91,7 @@ fn join<'a, T: GStore>(
         }
     };
 
-    let columns: Rc<[String]> = Rc::from(fetch_relation_columns(storage, relation)?);
+    let columns = source_node::columns(storage, right)?;
     let rows = left_rows.flat_map(move |project_context| {
         let project_context = match project_context {
             Ok(project_context) => project_context,
@@ -125,9 +123,8 @@ fn join<'a, T: GStore>(
 
         let rows: SelectedRows<'a> = match &join_executor {
             JoinExecutor::NestedLoop => {
-                let rows = match fetch_relation_rows(storage, relation, row_filter_context.as_ref())
-                {
-                    Ok(rows) => rows,
+                let rows = match source_node::execute(storage, right, row_filter_context.as_ref()) {
+                    Ok(source) => source.rows,
                     Err(error) => {
                         return Box::new(std::iter::once(Err(error))) as SelectedRows<'a>;
                     }
@@ -217,7 +214,7 @@ enum JoinExecutor<'a> {
 impl<'a> JoinExecutor<'a> {
     fn new<T: GStore>(
         storage: &'a T,
-        relation: &TableFactorPlan,
+        source: &'a SourcePlan,
         filter_context: Option<&Rc<RowContext<'a>>>,
         join_executor: &'a JoinExecutorPlan,
     ) -> Result<JoinExecutor<'a>> {
@@ -231,10 +228,11 @@ impl<'a> JoinExecutor<'a> {
         };
 
         let mut rows = Vec::new();
-        for row in fetch_relation_rows(storage, relation, filter_context)? {
+        let source_rows = source_node::execute(storage, source, filter_context)?;
+        for row in source_rows.rows {
             let row = row?;
             let filter_context = Rc::new(RowContext::new(
-                relation.alias_name(),
+                source.alias_name(),
                 Cow::Borrowed(&row),
                 filter_context.cloned(),
             ));
@@ -261,6 +259,23 @@ impl<'a> JoinExecutor<'a> {
             value_expr,
         })
     }
+}
+
+pub(super) fn columns<'a, T: GStore>(storage: &T, join: &'a JoinPlan) -> Result<JoinColumns<'a>> {
+    let (alias, columns, mut joined) = match &join.input {
+        JoinInputPlan::Source(source) => (
+            source.alias_name(),
+            source_node::columns(storage, source)?,
+            Vec::new(),
+        ),
+        JoinInputPlan::Join(join) => columns(storage, join)?,
+    };
+    joined.push((
+        join.right.alias_name(),
+        source_node::columns(storage, &join.right)?,
+    ));
+
+    Ok((alias, columns, joined))
 }
 
 fn check_where_clause<'a, T: GStore>(

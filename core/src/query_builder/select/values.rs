@@ -2,7 +2,7 @@ use crate::{
     ast::{Query, SetExpr, Values},
     plan::{QueryPlan, ValuesPlan},
     query_builder::{
-        ExprList, ExprNode, LimitNode, OffsetNode, OrderByExprList, QueryNode, TableFactorNode,
+        ExprList, ExprNode, LimitNode, OffsetNode, OrderByExprList, QueryNode, SourceNode,
         ValuesOrderByNode,
         select::{BuildQuery, BuildQueryPlan},
     },
@@ -30,7 +30,7 @@ impl<'a> ValuesNode<'a> {
         LimitNode::new(self, expr)
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
+    pub fn alias_as(self, table_alias: &'a str) -> SourceNode<'a> {
         QueryNode::ValuesNode(self).alias_as(table_alias)
     }
 }

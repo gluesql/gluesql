@@ -1,11 +1,11 @@
 use {
-    super::{aggregation_node, filter_node, having_node, join_node, table_factor_node},
+    super::{aggregation_node, filter_node, having_node, join_node, source_node},
     crate::{
         data::{Row, SCHEMALESS_DOC_COLUMN, Value},
         executor::{
             context::{AggregateContext, AggregateValues, RowContext},
             evaluate::evaluate,
-            fetch::fetch_project_labels,
+            fetch::FetchError,
         },
         plan::{
             AggregationInputPlan, FilterInputPlan, JoinInputPlan, JoinPlan, ProjectInputPlan,
@@ -37,13 +37,15 @@ where
 {
     let ProjectPlan { input, projection } = plan;
     let rows: ProjectInputIter<'a> = match input {
-        ProjectInputPlan::Relation(relation) => {
-            let rows = table_factor_node::execute(storage, relation)?.map(|context| {
-                context.map(|context| AggregateContext {
-                    aggregated: None,
-                    next: Some(context),
-                })
-            });
+        ProjectInputPlan::Source(source) => {
+            let rows = source_node::execute(storage, source, None)?
+                .into_selected(None)
+                .map(|context| {
+                    context.map(|context| AggregateContext {
+                        aggregated: None,
+                        next: Some(context),
+                    })
+                });
 
             Box::new(rows)
         }
@@ -83,7 +85,7 @@ where
             Box::new(rows)
         }
     };
-    let labels = fetch_project_labels(storage, input, projection)?;
+    let labels = labels(storage, plan)?;
     let labels = Rc::from(labels);
     let project_labels = Rc::clone(&labels);
     let rows = rows.map(move |aggregate_context| {
@@ -154,27 +156,122 @@ where
     })
 }
 
+pub(super) fn labels<T: GStore>(storage: &T, plan: &ProjectPlan) -> Result<Vec<String>> {
+    let ProjectPlan { input, projection } = plan;
+
+    match input {
+        ProjectInputPlan::Source(source) => {
+            let columns = source_node::columns(storage, source)?;
+            projection_labels(source.alias_name(), &columns, &[], projection)
+        }
+        ProjectInputPlan::Join(join) => {
+            let (alias, columns, joined) = join_node::columns(storage, join)?;
+            projection_labels(alias, &columns, &joined, projection)
+        }
+        ProjectInputPlan::Filter(filter) => match &filter.input {
+            FilterInputPlan::Source(source) => {
+                let columns = source_node::columns(storage, source)?;
+                projection_labels(source.alias_name(), &columns, &[], projection)
+            }
+            FilterInputPlan::Join(join) => {
+                let (alias, columns, joined) = join_node::columns(storage, join)?;
+                projection_labels(alias, &columns, &joined, projection)
+            }
+        },
+        ProjectInputPlan::Aggregation(aggregation) => {
+            aggregation_labels(storage, &aggregation.input, projection)
+        }
+        ProjectInputPlan::Having(having) => {
+            aggregation_labels(storage, &having.input.input, projection)
+        }
+    }
+}
+
+fn aggregation_labels<T: GStore>(
+    storage: &T,
+    input: &AggregationInputPlan,
+    projection: &ProjectionPlan,
+) -> Result<Vec<String>> {
+    match input {
+        AggregationInputPlan::Source(source) => {
+            let columns = source_node::columns(storage, source)?;
+            projection_labels(source.alias_name(), &columns, &[], projection)
+        }
+        AggregationInputPlan::Join(join) => {
+            let (alias, columns, joined) = join_node::columns(storage, join)?;
+            projection_labels(alias, &columns, &joined, projection)
+        }
+        AggregationInputPlan::Filter(filter) => match &filter.input {
+            FilterInputPlan::Source(source) => {
+                let columns = source_node::columns(storage, source)?;
+                projection_labels(source.alias_name(), &columns, &[], projection)
+            }
+            FilterInputPlan::Join(join) => {
+                let (alias, columns, joined) = join_node::columns(storage, join)?;
+                projection_labels(alias, &columns, &joined, projection)
+            }
+        },
+    }
+}
+
+fn projection_labels(
+    source_alias: &str,
+    source_columns: &[String],
+    joined: &[(&str, Rc<[String]>)],
+    projection: &ProjectionPlan,
+) -> Result<Vec<String>> {
+    match projection {
+        ProjectionPlan::SchemalessMap => Ok(vec![SCHEMALESS_DOC_COLUMN.to_owned()]),
+        ProjectionPlan::SelectItems(items) => items
+            .iter()
+            .flat_map(|item| match item {
+                SelectItemPlan::Wildcard => source_columns
+                    .iter()
+                    .cloned()
+                    .chain(
+                        joined
+                            .iter()
+                            .flat_map(|(_, columns)| columns.iter().cloned()),
+                    )
+                    .map(Ok)
+                    .collect(),
+                SelectItemPlan::QualifiedWildcard(target) if target == source_alias => {
+                    source_columns.iter().cloned().map(Ok).collect()
+                }
+                SelectItemPlan::QualifiedWildcard(target) => joined
+                    .iter()
+                    .find(|(alias, _)| alias == target)
+                    .map_or_else(
+                        || vec![Err(FetchError::TableAliasNotFound(target.to_owned()).into())],
+                        |(_, columns)| columns.iter().cloned().map(Ok).collect(),
+                    ),
+                SelectItemPlan::Expr { label, .. } => vec![Ok(label.clone())],
+            })
+            .collect(),
+    }
+}
+
 fn project_table_alias(input: &ProjectInputPlan) -> &str {
     match input {
-        ProjectInputPlan::Relation(relation) => relation.alias_name(),
+        ProjectInputPlan::Source(relation) => relation.alias_name(),
         ProjectInputPlan::Join(join) => join_table_alias(join),
         ProjectInputPlan::Filter(filter) => match &filter.input {
-            FilterInputPlan::Relation(relation) => relation.alias_name(),
+            FilterInputPlan::Source(relation) => relation.alias_name(),
             FilterInputPlan::Join(join) => join_table_alias(join),
         },
         ProjectInputPlan::Aggregation(aggregation) => match &aggregation.input {
-            AggregationInputPlan::Relation(relation) => relation.alias_name(),
+            AggregationInputPlan::Source(relation) => relation.alias_name(),
             AggregationInputPlan::Join(join) => join_table_alias(join),
             AggregationInputPlan::Filter(filter) => match &filter.input {
-                FilterInputPlan::Relation(relation) => relation.alias_name(),
+                FilterInputPlan::Source(relation) => relation.alias_name(),
                 FilterInputPlan::Join(join) => join_table_alias(join),
             },
         },
         ProjectInputPlan::Having(having) => match &having.input.input {
-            AggregationInputPlan::Relation(relation) => relation.alias_name(),
+            AggregationInputPlan::Source(relation) => relation.alias_name(),
             AggregationInputPlan::Join(join) => join_table_alias(join),
             AggregationInputPlan::Filter(filter) => match &filter.input {
-                FilterInputPlan::Relation(relation) => relation.alias_name(),
+                FilterInputPlan::Source(relation) => relation.alias_name(),
                 FilterInputPlan::Join(join) => join_table_alias(join),
             },
         },
@@ -183,7 +280,7 @@ fn project_table_alias(input: &ProjectInputPlan) -> &str {
 
 fn join_table_alias(join: &JoinPlan) -> &str {
     match &join.input {
-        JoinInputPlan::Relation(relation) => relation.alias_name(),
+        JoinInputPlan::Source(relation) => relation.alias_name(),
         JoinInputPlan::Join(join) => join_table_alias(join),
     }
 }

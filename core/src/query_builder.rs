@@ -13,7 +13,6 @@ mod expr;
 mod expr_list;
 mod expr_with_alias;
 mod index;
-mod index_item;
 mod insert;
 mod order_by_expr;
 mod order_by_expr_list;
@@ -22,7 +21,8 @@ mod select;
 mod select_item;
 mod select_item_list;
 mod show_columns;
-mod table_factor;
+mod source;
+mod table_access;
 mod table_name;
 mod transaction;
 mod update;
@@ -60,9 +60,6 @@ pub use {
     expr_list::ExprList,
     expr_with_alias::ExprWithAliasNode,
     index::{CreateIndexNode, DropIndexNode},
-    index_item::{
-        CmpExprNode, IndexItemNode, NonClusteredNode, PrimaryKeyNode, non_clustered, primary_key,
-    },
     insert::InsertNode,
     order_by_expr::OrderByExprNode,
     order_by_expr_list::OrderByExprList,
@@ -75,8 +72,10 @@ pub use {
     select_item::SelectItemNode,
     select_item_list::SelectItemList,
     show_columns::ShowColumnsNode,
-    table_factor::{
-        TableFactorNode, glue_indexes, glue_objects, glue_table_columns, glue_tables, series,
+    source::{SourceNode, glue_indexes, glue_objects, glue_table_columns, glue_tables, series},
+    table_access::{
+        IndexPredicateNode, NonClusteredNode, PrimaryKeyNode, TableAccessNode, non_clustered,
+        primary_key,
     },
     table_name::table,
     update::UpdateNode,
