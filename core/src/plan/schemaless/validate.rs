@@ -4,10 +4,12 @@ use {
         data::Schema,
         plan::{
             AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
-            FilterPlan, JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan,
-            JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectInputPlan,
-            ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SourcePlan,
-            StatementPlan, ValuesOrderByPlan, ValuesPlan,
+            FilterPlan, HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan,
+            JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
+            LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
+            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
+            SelectItemPlan, SelectOrderByPlan, SourcePlan, StatementPlan, ValuesOrderByPlan,
+            ValuesPlan,
         },
         result::Result,
     },
@@ -162,63 +164,6 @@ fn validate_values(
     Ok(())
 }
 
-fn validate_join(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    join: &JoinPlan,
-) -> ValidateResult {
-    match &join.input {
-        JoinInputPlan::Source(relation) => validate_source(schema_map, relation)?,
-        JoinInputPlan::Join(join) => validate_join(schema_map, join)?,
-    }
-    validate_source(schema_map, &join.right)?;
-
-    match &join.join_operator {
-        JoinOperatorPlan::Inner(JoinConstraintPlan::On(expr))
-        | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::On(expr)) => {
-            validate_expr(schema_map, expr)?;
-        }
-        JoinOperatorPlan::Inner(JoinConstraintPlan::None)
-        | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None) => {}
-    }
-
-    if let JoinExecutorPlan::Hash {
-        key_expr,
-        value_expr,
-        where_clause,
-    } = &join.join_executor
-    {
-        validate_expr(schema_map, key_expr)?;
-        validate_expr(schema_map, value_expr)?;
-        if let Some(expr) = where_clause {
-            validate_expr(schema_map, expr)?;
-        }
-    }
-
-    Ok(())
-}
-
-fn validate_filter(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    FilterPlan { input, expr }: &FilterPlan,
-) -> ValidateResult {
-    match input {
-        FilterInputPlan::Source(relation) => validate_source(schema_map, relation)?,
-        FilterInputPlan::Join(join) => validate_join(schema_map, join)?,
-    }
-    validate_expr(schema_map, expr)
-}
-
-fn validate_aggregation_input(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    input: &AggregationInputPlan,
-) -> ValidateResult {
-    match input {
-        AggregationInputPlan::Source(relation) => validate_source(schema_map, relation),
-        AggregationInputPlan::Join(join) => validate_join(schema_map, join),
-        AggregationInputPlan::Filter(filter) => validate_filter(schema_map, filter),
-    }
-}
-
 fn validate_project(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
     project: &ProjectPlan,
@@ -226,7 +171,8 @@ fn validate_project(
     validate_mixed_join_wildcard_projection(schema_map, project)?;
     match &project.input {
         ProjectInputPlan::Source(relation) => validate_source(schema_map, relation)?,
-        ProjectInputPlan::Join(join) => validate_join(schema_map, join)?,
+        ProjectInputPlan::InnerJoin(join) => validate_inner_join(schema_map, join)?,
+        ProjectInputPlan::LeftOuterJoin(join) => validate_left_outer_join(schema_map, join)?,
         ProjectInputPlan::Filter(filter) => validate_filter(schema_map, filter)?,
         ProjectInputPlan::Aggregation(aggregation) => {
             validate_aggregation_input(schema_map, &aggregation.input)?;
@@ -249,6 +195,98 @@ fn validate_project(
                 validate_expr(schema_map, expr)?;
             }
         }
+    }
+
+    Ok(())
+}
+
+fn validate_filter(
+    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    FilterPlan { input, expr }: &FilterPlan,
+) -> ValidateResult {
+    match input {
+        FilterInputPlan::Source(relation) => validate_source(schema_map, relation)?,
+        FilterInputPlan::InnerJoin(join) => validate_inner_join(schema_map, join)?,
+        FilterInputPlan::LeftOuterJoin(join) => validate_left_outer_join(schema_map, join)?,
+    }
+    validate_expr(schema_map, expr)
+}
+
+fn validate_aggregation_input(
+    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    input: &AggregationInputPlan,
+) -> ValidateResult {
+    match input {
+        AggregationInputPlan::Source(relation) => validate_source(schema_map, relation),
+        AggregationInputPlan::InnerJoin(join) => validate_inner_join(schema_map, join),
+        AggregationInputPlan::LeftOuterJoin(join) => validate_left_outer_join(schema_map, join),
+        AggregationInputPlan::Filter(filter) => validate_filter(schema_map, filter),
+    }
+}
+
+fn validate_inner_join(
+    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    join: &InnerJoinPlan,
+) -> ValidateResult {
+    match &join.input {
+        InnerJoinInputPlan::NestedLoop(join) => validate_nested_loop(schema_map, join),
+        InnerJoinInputPlan::Hash(join) => validate_hash(schema_map, join),
+        InnerJoinInputPlan::Condition(condition) => validate_condition(schema_map, condition),
+    }
+}
+
+fn validate_left_outer_join(
+    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    join: &LeftOuterJoinPlan,
+) -> ValidateResult {
+    match &join.input {
+        LeftOuterJoinInputPlan::NestedLoop(join) => validate_nested_loop(schema_map, join),
+        LeftOuterJoinInputPlan::Hash(join) => validate_hash(schema_map, join),
+        LeftOuterJoinInputPlan::Condition(condition) => validate_condition(schema_map, condition),
+    }
+}
+
+fn validate_condition(
+    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    condition: &JoinConditionPlan,
+) -> ValidateResult {
+    match &condition.input {
+        JoinConditionInputPlan::NestedLoop(join) => validate_nested_loop(schema_map, join)?,
+        JoinConditionInputPlan::Hash(join) => validate_hash(schema_map, join)?,
+    }
+    validate_expr(schema_map, &condition.expr)
+}
+
+fn validate_nested_loop(
+    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    join: &NestedLoopJoinPlan,
+) -> ValidateResult {
+    match &join.input {
+        NestedLoopJoinInputPlan::Source(source) => validate_source(schema_map, source)?,
+        NestedLoopJoinInputPlan::InnerJoin(join) => validate_inner_join(schema_map, join)?,
+        NestedLoopJoinInputPlan::LeftOuterJoin(join) => {
+            validate_left_outer_join(schema_map, join)?;
+        }
+    }
+    validate_source(schema_map, &join.right)
+}
+
+fn validate_hash(
+    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    join: &HashJoinPlan,
+) -> ValidateResult {
+    match &join.input {
+        HashJoinInputPlan::Source(source) => validate_source(schema_map, source)?,
+        HashJoinInputPlan::InnerJoin(join) => validate_inner_join(schema_map, join)?,
+        HashJoinInputPlan::LeftOuterJoin(join) => {
+            validate_left_outer_join(schema_map, join)?;
+        }
+    }
+    validate_source(schema_map, &join.right)?;
+    validate_expr(schema_map, &join.input_key)?;
+    validate_expr(schema_map, &join.right_key)?;
+    if let Some(expr) = &join.right_filter {
+        validate_expr(schema_map, expr)?;
     }
 
     Ok(())
@@ -280,16 +318,6 @@ fn validate_mixed_join_wildcard_projection(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
     project: &ProjectPlan,
 ) -> ValidateResult {
-    let join = match &project.input {
-        ProjectInputPlan::Source(_) => None,
-        ProjectInputPlan::Join(join) => Some(join.as_ref()),
-        ProjectInputPlan::Filter(filter) => filter_join(&filter.input),
-        ProjectInputPlan::Aggregation(aggregation) => aggregation_join(&aggregation.input),
-        ProjectInputPlan::Having(having) => aggregation_join(&having.input.input),
-    };
-    let Some(join) = join else {
-        return Ok(());
-    };
     if !matches!(
         &project.projection,
         ProjectionPlan::SelectItems(projection)
@@ -302,7 +330,7 @@ fn validate_mixed_join_wildcard_projection(
 
     let mut has_schemaless = false;
     let mut has_schemaful = false;
-    visit_join_sources(join, &mut |source| {
+    let has_join = visit_project_join_sources(&project.input, &mut |source| {
         let SourcePlan::Table(table) = source else {
             return;
         };
@@ -313,6 +341,9 @@ fn validate_mixed_join_wildcard_projection(
             has_schemaful = true;
         }
     });
+    if !has_join {
+        return Ok(());
+    }
 
     if has_schemaless && has_schemaful {
         return Err(PlanError::SchemalessMixedJoinWildcardProjection);
@@ -321,25 +352,101 @@ fn validate_mixed_join_wildcard_projection(
     Ok(())
 }
 
-fn aggregation_join(input: &AggregationInputPlan) -> Option<&JoinPlan> {
+fn visit_project_join_sources(
+    input: &ProjectInputPlan,
+    visit: &mut impl FnMut(&SourcePlan),
+) -> bool {
     match input {
-        AggregationInputPlan::Source(_) => None,
-        AggregationInputPlan::Join(join) => Some(join.as_ref()),
-        AggregationInputPlan::Filter(filter) => filter_join(&filter.input),
+        ProjectInputPlan::Source(_) => false,
+        ProjectInputPlan::InnerJoin(join) => {
+            visit_inner_join_sources(join, visit);
+            true
+        }
+        ProjectInputPlan::LeftOuterJoin(join) => {
+            visit_left_outer_join_sources(join, visit);
+            true
+        }
+        ProjectInputPlan::Filter(filter) => visit_filter_join_sources(&filter.input, visit),
+        ProjectInputPlan::Aggregation(aggregation) => {
+            visit_aggregation_join_sources(&aggregation.input, visit)
+        }
+        ProjectInputPlan::Having(having) => {
+            visit_aggregation_join_sources(&having.input.input, visit)
+        }
     }
 }
 
-fn filter_join(input: &FilterInputPlan) -> Option<&JoinPlan> {
+fn visit_aggregation_join_sources(
+    input: &AggregationInputPlan,
+    visit: &mut impl FnMut(&SourcePlan),
+) -> bool {
     match input {
-        FilterInputPlan::Source(_) => None,
-        FilterInputPlan::Join(join) => Some(join.as_ref()),
+        AggregationInputPlan::Source(_) => false,
+        AggregationInputPlan::InnerJoin(join) => {
+            visit_inner_join_sources(join, visit);
+            true
+        }
+        AggregationInputPlan::LeftOuterJoin(join) => {
+            visit_left_outer_join_sources(join, visit);
+            true
+        }
+        AggregationInputPlan::Filter(filter) => visit_filter_join_sources(&filter.input, visit),
     }
 }
 
-fn visit_join_sources(join: &JoinPlan, visit: &mut impl FnMut(&SourcePlan)) {
+fn visit_filter_join_sources(input: &FilterInputPlan, visit: &mut impl FnMut(&SourcePlan)) -> bool {
+    match input {
+        FilterInputPlan::Source(_) => false,
+        FilterInputPlan::InnerJoin(join) => {
+            visit_inner_join_sources(join, visit);
+            true
+        }
+        FilterInputPlan::LeftOuterJoin(join) => {
+            visit_left_outer_join_sources(join, visit);
+            true
+        }
+    }
+}
+
+fn visit_inner_join_sources(join: &InnerJoinPlan, visit: &mut impl FnMut(&SourcePlan)) {
     match &join.input {
-        JoinInputPlan::Source(relation) => visit(relation),
-        JoinInputPlan::Join(join) => visit_join_sources(join, visit),
+        InnerJoinInputPlan::NestedLoop(join) => visit_nested_loop_sources(join, visit),
+        InnerJoinInputPlan::Hash(join) => visit_hash_sources(join, visit),
+        InnerJoinInputPlan::Condition(condition) => visit_condition_sources(condition, visit),
+    }
+}
+
+fn visit_left_outer_join_sources(join: &LeftOuterJoinPlan, visit: &mut impl FnMut(&SourcePlan)) {
+    match &join.input {
+        LeftOuterJoinInputPlan::NestedLoop(join) => visit_nested_loop_sources(join, visit),
+        LeftOuterJoinInputPlan::Hash(join) => visit_hash_sources(join, visit),
+        LeftOuterJoinInputPlan::Condition(condition) => visit_condition_sources(condition, visit),
+    }
+}
+
+fn visit_condition_sources(condition: &JoinConditionPlan, visit: &mut impl FnMut(&SourcePlan)) {
+    match &condition.input {
+        JoinConditionInputPlan::NestedLoop(join) => visit_nested_loop_sources(join, visit),
+        JoinConditionInputPlan::Hash(join) => visit_hash_sources(join, visit),
+    }
+}
+
+fn visit_nested_loop_sources(join: &NestedLoopJoinPlan, visit: &mut impl FnMut(&SourcePlan)) {
+    match &join.input {
+        NestedLoopJoinInputPlan::Source(source) => visit(source),
+        NestedLoopJoinInputPlan::InnerJoin(join) => visit_inner_join_sources(join, visit),
+        NestedLoopJoinInputPlan::LeftOuterJoin(join) => {
+            visit_left_outer_join_sources(join, visit);
+        }
+    }
+    visit(&join.right);
+}
+
+fn visit_hash_sources(join: &HashJoinPlan, visit: &mut impl FnMut(&SourcePlan)) {
+    match &join.input {
+        HashJoinInputPlan::Source(source) => visit(source),
+        HashJoinInputPlan::InnerJoin(join) => visit_inner_join_sources(join, visit),
+        HashJoinInputPlan::LeftOuterJoin(join) => visit_left_outer_join_sources(join, visit),
     }
     visit(&join.right);
 }
@@ -360,10 +467,8 @@ mod tests {
         crate::{
             mock::{MockStorage, run},
             parse_sql::parse,
-            plan::{
-                ExprPlan, JoinExecutorPlan, PlanError, ProjectInputPlan, QueryPlan, StatementPlan,
-                fetch_schema_map,
-            },
+            plan::{PlanError, StatementPlan, fetch_schema_map},
+            query_builder::{Build, table},
             translate::translate,
         },
     };
@@ -559,23 +664,15 @@ mod tests {
     #[test]
     fn validates_hash_join_executor_path() {
         let storage = setup_storage();
-        let sql = "SELECT Item.id FROM Player JOIN Item ON Player.id = Item.id";
-        let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
-        let mut statement = StatementPlan::from(translate(&parsed).unwrap());
+        let statement = table("Player")
+            .select()
+            .join("Item")
+            .hash_executor("Item.id", "Player.id")
+            .hash_filter("Item.id > 0")
+            .project("Item.id")
+            .build()
+            .unwrap();
         let schema_map = fetch_schema_map(&storage, &statement).unwrap();
-
-        let mut applied = false;
-        if let StatementPlan::Query(QueryPlan::Project(project)) = &mut statement
-            && let ProjectInputPlan::Join(join) = &mut project.input
-        {
-            join.join_executor = JoinExecutorPlan::Hash {
-                key_expr: ExprPlan::Identifier("id".to_owned()),
-                value_expr: ExprPlan::Identifier("id".to_owned()),
-                where_clause: Some(ExprPlan::Identifier("id".to_owned())),
-            };
-            applied = true;
-        }
-        assert!(applied, "failed to inject hash join executor");
 
         assert!(plan_schemaless(&schema_map, statement).is_ok());
     }
@@ -583,23 +680,15 @@ mod tests {
     #[test]
     fn validates_hash_join_executor_without_where_clause() {
         let storage = setup_storage();
-        let sql = "SELECT Item.id FROM Player JOIN Item ON Player.id = Item.id";
-        let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
-        let mut statement = StatementPlan::from(translate(&parsed).unwrap());
+        let statement = table("Player")
+            .select()
+            .join("Item")
+            .hash_executor("Item.id", "Player.id")
+            .project("Item.id")
+            .build()
+            .unwrap();
         let schema_map = fetch_schema_map(&storage, &statement).unwrap();
 
-        let mut applied = false;
-        if let StatementPlan::Query(QueryPlan::Project(project)) = &mut statement
-            && let ProjectInputPlan::Join(join) = &mut project.input
-        {
-            join.join_executor = JoinExecutorPlan::Hash {
-                key_expr: ExprPlan::Identifier("id".to_owned()),
-                value_expr: ExprPlan::Identifier("id".to_owned()),
-                where_clause: None,
-            };
-            applied = true;
-        }
-        assert!(applied, "failed to inject hash join executor");
         assert!(plan_schemaless(&schema_map, statement).is_ok());
     }
 

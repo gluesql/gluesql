@@ -2,12 +2,14 @@ mod derived;
 mod dictionary;
 mod series;
 mod table;
+mod table_access;
 
 pub use {
     derived::DerivedSourcePlan,
     dictionary::DictionarySourcePlan,
     series::SeriesSourcePlan,
-    table::{IndexPredicatePlan, TableAccessPlan, TableSourcePlan},
+    table::TableSourcePlan,
+    table_access::{IndexPredicatePlan, TableAccessPlan},
 };
 
 use {

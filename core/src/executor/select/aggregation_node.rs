@@ -2,7 +2,10 @@ mod state;
 
 use {
     self::state::State,
-    super::{SelectedRows, SelectedSources, filter_node, join_node, source_node},
+    super::{
+        SelectedRows, SelectedSources, filter_node, inner_join_node, left_outer_join_node,
+        source_node,
+    },
     crate::{
         data::Value,
         executor::{
@@ -38,7 +41,12 @@ where
         AggregationInputPlan::Source(source) => source_node::execute(storage, source)?
             .rows(None)?
             .into_selected(None),
-        AggregationInputPlan::Join(join) => join_node::execute(storage, join, filter_context)?,
+        AggregationInputPlan::InnerJoin(join) => {
+            inner_join_node::execute(storage, join, filter_context)?
+        }
+        AggregationInputPlan::LeftOuterJoin(join) => {
+            left_outer_join_node::execute(storage, join, filter_context)?
+        }
         AggregationInputPlan::Filter(filter) => {
             filter_node::execute(storage, filter, filter_context)?
         }

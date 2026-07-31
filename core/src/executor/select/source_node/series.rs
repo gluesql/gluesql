@@ -14,8 +14,19 @@ pub(super) fn execute<'a>(series: &'a SeriesSourcePlan) -> PreparedSource<'a> {
         alias: &series.alias.name,
         names: Rc::from(vec!["N".to_owned()]),
     };
-    let source = output.clone();
-    let rows = Box::new(move |_: Option<Rc<RowContext<'a>>>| rows(series, source.clone()));
+    let source = SourceColumns {
+        alias: output.alias,
+        names: Rc::clone(&output.names),
+    };
+    let rows = Box::new(move |_: Option<Rc<RowContext<'a>>>| {
+        rows(
+            series,
+            SourceColumns {
+                alias: source.alias,
+                names: Rc::clone(&source.names),
+            },
+        )
+    });
 
     PreparedSource { output, rows }
 }

@@ -7,9 +7,10 @@ use {
         ast::Select,
         plan::{AggregationPlan, HavingPlan, ProjectInputPlan},
         query_builder::{
-            ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinConstraintNode, JoinNode,
-            LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryNode, SelectItemList,
-            SelectNode, SelectOrderByNode, SourceNode,
+            ExprNode, FilterNode, GroupByNode, InnerHashJoinNode, InnerJoinConditionNode,
+            InnerNestedLoopJoinNode, LeftOuterHashJoinNode, LeftOuterJoinConditionNode,
+            LeftOuterNestedLoopJoinNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode,
+            QueryNode, SelectItemList, SelectNode, SelectOrderByNode, SourceNode,
         },
         result::Result,
     },
@@ -18,9 +19,12 @@ use {
 #[derive(Clone, Debug)]
 pub(super) enum PrevNode<'a> {
     Select(SelectNode<'a>),
-    Join(Box<JoinNode<'a>>),
-    JoinConstraint(Box<JoinConstraintNode<'a>>),
-    HashJoin(Box<HashJoinNode<'a>>),
+    InnerNestedLoop(Box<InnerNestedLoopJoinNode<'a>>),
+    LeftOuterNestedLoop(Box<LeftOuterNestedLoopJoinNode<'a>>),
+    InnerHash(Box<InnerHashJoinNode<'a>>),
+    LeftOuterHash(Box<LeftOuterHashJoinNode<'a>>),
+    InnerCondition(Box<InnerJoinConditionNode<'a>>),
+    LeftOuterCondition(Box<LeftOuterJoinConditionNode<'a>>),
     Filter(FilterNode<'a>),
     GroupBy(GroupByNode<'a>),
 }
@@ -29,9 +33,12 @@ impl PrevNode<'_> {
     fn build_aggregation_plan(self) -> Result<AggregationPlan> {
         match self {
             Self::Select(node) => node.build_aggregation_input_plan(),
-            Self::Join(node) => node.build_aggregation_input_plan(),
-            Self::JoinConstraint(node) => node.build_aggregation_input_plan(),
-            Self::HashJoin(node) => node.build_aggregation_input_plan(),
+            Self::InnerNestedLoop(node) => node.build_aggregation_input_plan(),
+            Self::LeftOuterNestedLoop(node) => node.build_aggregation_input_plan(),
+            Self::InnerHash(node) => node.build_aggregation_input_plan(),
+            Self::LeftOuterHash(node) => node.build_aggregation_input_plan(),
+            Self::InnerCondition(node) => node.build_aggregation_input_plan(),
+            Self::LeftOuterCondition(node) => node.build_aggregation_input_plan(),
             Self::Filter(node) => node.build_aggregation_input_plan(),
             Self::GroupBy(node) => return node.build_aggregation_plan(),
         }
@@ -47,9 +54,12 @@ impl BuildSelect for PrevNode<'_> {
     fn build_select(self) -> Result<Select> {
         match self {
             Self::Select(node) => node.build_select(),
-            Self::Join(node) => node.build_select(),
-            Self::JoinConstraint(node) => node.build_select(),
-            Self::HashJoin(node) => node.build_select(),
+            Self::InnerNestedLoop(node) => node.build_select(),
+            Self::LeftOuterNestedLoop(node) => node.build_select(),
+            Self::InnerHash(node) => node.build_select(),
+            Self::LeftOuterHash(node) => node.build_select(),
+            Self::InnerCondition(node) => node.build_select(),
+            Self::LeftOuterCondition(node) => node.build_select(),
             Self::Filter(node) => node.build_select(),
             Self::GroupBy(node) => node.build_select(),
         }
@@ -62,21 +72,39 @@ impl<'a> From<SelectNode<'a>> for PrevNode<'a> {
     }
 }
 
-impl<'a> From<JoinNode<'a>> for PrevNode<'a> {
-    fn from(node: JoinNode<'a>) -> Self {
-        Self::Join(Box::new(node))
+impl<'a> From<InnerNestedLoopJoinNode<'a>> for PrevNode<'a> {
+    fn from(node: InnerNestedLoopJoinNode<'a>) -> Self {
+        Self::InnerNestedLoop(Box::new(node))
     }
 }
 
-impl<'a> From<JoinConstraintNode<'a>> for PrevNode<'a> {
-    fn from(node: JoinConstraintNode<'a>) -> Self {
-        Self::JoinConstraint(Box::new(node))
+impl<'a> From<LeftOuterNestedLoopJoinNode<'a>> for PrevNode<'a> {
+    fn from(node: LeftOuterNestedLoopJoinNode<'a>) -> Self {
+        Self::LeftOuterNestedLoop(Box::new(node))
     }
 }
 
-impl<'a> From<HashJoinNode<'a>> for PrevNode<'a> {
-    fn from(node: HashJoinNode<'a>) -> Self {
-        Self::HashJoin(Box::new(node))
+impl<'a> From<InnerHashJoinNode<'a>> for PrevNode<'a> {
+    fn from(node: InnerHashJoinNode<'a>) -> Self {
+        Self::InnerHash(Box::new(node))
+    }
+}
+
+impl<'a> From<LeftOuterHashJoinNode<'a>> for PrevNode<'a> {
+    fn from(node: LeftOuterHashJoinNode<'a>) -> Self {
+        Self::LeftOuterHash(Box::new(node))
+    }
+}
+
+impl<'a> From<InnerJoinConditionNode<'a>> for PrevNode<'a> {
+    fn from(node: InnerJoinConditionNode<'a>) -> Self {
+        Self::InnerCondition(Box::new(node))
+    }
+}
+
+impl<'a> From<LeftOuterJoinConditionNode<'a>> for PrevNode<'a> {
+    fn from(node: LeftOuterJoinConditionNode<'a>) -> Self {
+        Self::LeftOuterCondition(Box::new(node))
     }
 }
 
@@ -161,9 +189,9 @@ mod tests {
         crate::{
             data::Value,
             plan::{
-                AggregationInputPlan, AggregationPlan, ExprPlan, HavingPlan, JoinConstraintPlan,
-                JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan, JoinPlan, ProjectInputPlan,
-                ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SourcePlan, StatementPlan,
+                AggregationInputPlan, AggregationPlan, ExprPlan, HashJoinInputPlan, HashJoinPlan,
+                HavingPlan, InnerJoinInputPlan, InnerJoinPlan, ProjectInputPlan, ProjectPlan,
+                ProjectionPlan, QueryPlan, SelectItemPlan, SourcePlan, StatementPlan,
                 TableAccessPlan, TableSourcePlan,
             },
             query_builder::{
@@ -220,29 +248,28 @@ mod tests {
         let expected = Ok(StatementPlan::Query(QueryPlan::Project(ProjectPlan {
             input: ProjectInputPlan::Having(HavingPlan {
                 input: AggregationPlan {
-                    input: AggregationInputPlan::Join(Box::new(JoinPlan {
-                        input: JoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
-                            name: "Foo".to_owned(),
-                            alias: None,
-                            access: TableAccessPlan::FullScan,
-                        })),
-                        right: SourcePlan::Table(TableSourcePlan {
-                            name: "Bar".to_owned(),
-                            alias: None,
-                            access: TableAccessPlan::FullScan,
-                        }),
-                        join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
-                        join_executor: JoinExecutorPlan::Hash {
-                            key_expr: ExprPlan::CompoundIdentifier {
-                                alias: "Foo".to_owned(),
-                                ident: "id".to_owned(),
-                            },
-                            value_expr: ExprPlan::CompoundIdentifier {
+                    input: AggregationInputPlan::InnerJoin(Box::new(InnerJoinPlan {
+                        input: InnerJoinInputPlan::Hash(HashJoinPlan {
+                            input: HashJoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
+                                name: "Foo".to_owned(),
+                                alias: None,
+                                access: TableAccessPlan::FullScan,
+                            })),
+                            right: SourcePlan::Table(TableSourcePlan {
+                                name: "Bar".to_owned(),
+                                alias: None,
+                                access: TableAccessPlan::FullScan,
+                            }),
+                            input_key: ExprPlan::CompoundIdentifier {
                                 alias: "Bar".to_owned(),
                                 ident: "id".to_owned(),
                             },
-                            where_clause: None,
-                        },
+                            right_key: ExprPlan::CompoundIdentifier {
+                                alias: "Foo".to_owned(),
+                                ident: "id".to_owned(),
+                            },
+                            right_filter: None,
+                        }),
                     })),
                     group_by: Vec::new(),
                     aggregate_slots: Vec::new(),

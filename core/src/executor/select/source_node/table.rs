@@ -44,9 +44,20 @@ pub(super) fn execute<'a, T: GStore>(
             .map_or(table.name.as_str(), |alias| alias.name.as_str()),
         names: Rc::from(names),
     };
-    let source = output.clone();
+    let source = SourceColumns {
+        alias: output.alias,
+        names: Rc::clone(&output.names),
+    };
     let rows = Box::new(move |evaluation_context: Option<Rc<RowContext<'a>>>| {
-        rows(storage, table, source.clone(), evaluation_context.as_ref())
+        rows(
+            storage,
+            table,
+            SourceColumns {
+                alias: source.alias,
+                names: Rc::clone(&source.names),
+            },
+            evaluation_context.as_ref(),
+        )
     });
 
     Ok(PreparedSource { output, rows })

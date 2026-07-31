@@ -44,9 +44,20 @@ pub(super) fn execute<'a, T: GStore>(
         alias: &dictionary.alias.name,
         names: Rc::from(names),
     };
-    let source = output.clone();
-    let rows =
-        Box::new(move |_: Option<Rc<RowContext<'a>>>| rows(storage, dictionary, source.clone()));
+    let source = SourceColumns {
+        alias: output.alias,
+        names: Rc::clone(&output.names),
+    };
+    let rows = Box::new(move |_: Option<Rc<RowContext<'a>>>| {
+        rows(
+            storage,
+            dictionary,
+            SourceColumns {
+                alias: source.alias,
+                names: Rc::clone(&source.names),
+            },
+        )
+    });
 
     PreparedSource { output, rows }
 }

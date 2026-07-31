@@ -4,9 +4,10 @@ use {
         ast::Query,
         plan::{OffsetInputPlan, OffsetPlan, QueryPlan},
         query_builder::{
-            ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
-            JoinNode, OffsetLimitNode, ProjectNode, QueryNode, SelectNode, SelectOrderByNode,
-            SourceNode, ValuesOrderByNode,
+            ExprNode, FilterNode, GroupByNode, HavingNode, InnerHashJoinNode,
+            InnerJoinConditionNode, InnerNestedLoopJoinNode, LeftOuterHashJoinNode,
+            LeftOuterJoinConditionNode, LeftOuterNestedLoopJoinNode, OffsetLimitNode, ProjectNode,
+            QueryNode, SelectNode, SelectOrderByNode, SourceNode, ValuesOrderByNode,
         },
         result::Result,
     },
@@ -18,9 +19,12 @@ pub(super) enum PrevNode<'a> {
     Values(ValuesNode<'a>),
     GroupBy(GroupByNode<'a>),
     Having(HavingNode<'a>),
-    Join(Box<JoinNode<'a>>),
-    JoinConstraint(Box<JoinConstraintNode<'a>>),
-    HashJoin(HashJoinNode<'a>),
+    InnerNestedLoop(Box<InnerNestedLoopJoinNode<'a>>),
+    LeftOuterNestedLoop(Box<LeftOuterNestedLoopJoinNode<'a>>),
+    InnerHash(Box<InnerHashJoinNode<'a>>),
+    LeftOuterHash(Box<LeftOuterHashJoinNode<'a>>),
+    InnerCondition(Box<InnerJoinConditionNode<'a>>),
+    LeftOuterCondition(Box<LeftOuterJoinConditionNode<'a>>),
     Filter(FilterNode<'a>),
     SelectOrderBy(SelectOrderByNode<'a>),
     ValuesOrderBy(ValuesOrderByNode<'a>),
@@ -35,9 +39,16 @@ impl PrevNode<'_> {
             Self::Values(node) => node.build_values_plan().map(OffsetInputPlan::Values),
             Self::GroupBy(node) => node.build_project_plan().map(OffsetInputPlan::Project),
             Self::Having(node) => node.build_project_plan().map(OffsetInputPlan::Project),
-            Self::Join(node) => node.build_project_plan().map(OffsetInputPlan::Project),
-            Self::JoinConstraint(node) => node.build_project_plan().map(OffsetInputPlan::Project),
-            Self::HashJoin(node) => node.build_project_plan().map(OffsetInputPlan::Project),
+            Self::InnerNestedLoop(node) => node.build_project_plan().map(OffsetInputPlan::Project),
+            Self::LeftOuterNestedLoop(node) => {
+                node.build_project_plan().map(OffsetInputPlan::Project)
+            }
+            Self::InnerHash(node) => node.build_project_plan().map(OffsetInputPlan::Project),
+            Self::LeftOuterHash(node) => node.build_project_plan().map(OffsetInputPlan::Project),
+            Self::InnerCondition(node) => node.build_project_plan().map(OffsetInputPlan::Project),
+            Self::LeftOuterCondition(node) => {
+                node.build_project_plan().map(OffsetInputPlan::Project)
+            }
             Self::Filter(node) => node.build_project_plan().map(OffsetInputPlan::Project),
             Self::SelectOrderBy(node) => node
                 .build_select_order_by_plan()
@@ -58,9 +69,12 @@ impl BuildQuery for PrevNode<'_> {
             Self::Values(node) => node.build_query(),
             Self::GroupBy(node) => node.build_query(),
             Self::Having(node) => node.build_query(),
-            Self::Join(node) => node.build_query(),
-            Self::JoinConstraint(node) => node.build_query(),
-            Self::HashJoin(node) => node.build_query(),
+            Self::InnerNestedLoop(node) => node.build_query(),
+            Self::LeftOuterNestedLoop(node) => node.build_query(),
+            Self::InnerHash(node) => node.build_query(),
+            Self::LeftOuterHash(node) => node.build_query(),
+            Self::InnerCondition(node) => node.build_query(),
+            Self::LeftOuterCondition(node) => node.build_query(),
             Self::Filter(node) => node.build_query(),
             Self::SelectOrderBy(node) => node.build_query(),
             Self::ValuesOrderBy(node) => node.build_query(),
@@ -94,21 +108,39 @@ impl<'a> From<HavingNode<'a>> for PrevNode<'a> {
     }
 }
 
-impl<'a> From<JoinConstraintNode<'a>> for PrevNode<'a> {
-    fn from(node: JoinConstraintNode<'a>) -> Self {
-        PrevNode::JoinConstraint(Box::new(node))
+impl<'a> From<InnerNestedLoopJoinNode<'a>> for PrevNode<'a> {
+    fn from(node: InnerNestedLoopJoinNode<'a>) -> Self {
+        Self::InnerNestedLoop(Box::new(node))
     }
 }
 
-impl<'a> From<JoinNode<'a>> for PrevNode<'a> {
-    fn from(node: JoinNode<'a>) -> Self {
-        PrevNode::Join(Box::new(node))
+impl<'a> From<LeftOuterNestedLoopJoinNode<'a>> for PrevNode<'a> {
+    fn from(node: LeftOuterNestedLoopJoinNode<'a>) -> Self {
+        Self::LeftOuterNestedLoop(Box::new(node))
     }
 }
 
-impl<'a> From<HashJoinNode<'a>> for PrevNode<'a> {
-    fn from(node: HashJoinNode<'a>) -> Self {
-        PrevNode::HashJoin(node)
+impl<'a> From<InnerHashJoinNode<'a>> for PrevNode<'a> {
+    fn from(node: InnerHashJoinNode<'a>) -> Self {
+        Self::InnerHash(Box::new(node))
+    }
+}
+
+impl<'a> From<LeftOuterHashJoinNode<'a>> for PrevNode<'a> {
+    fn from(node: LeftOuterHashJoinNode<'a>) -> Self {
+        Self::LeftOuterHash(Box::new(node))
+    }
+}
+
+impl<'a> From<InnerJoinConditionNode<'a>> for PrevNode<'a> {
+    fn from(node: InnerJoinConditionNode<'a>) -> Self {
+        Self::InnerCondition(Box::new(node))
+    }
+}
+
+impl<'a> From<LeftOuterJoinConditionNode<'a>> for PrevNode<'a> {
+    fn from(node: LeftOuterJoinConditionNode<'a>) -> Self {
+        Self::LeftOuterCondition(Box::new(node))
     }
 }
 
@@ -192,7 +224,7 @@ mod tests {
     use {
         crate::{
             plan::{
-                JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan, JoinPlan,
+                HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan,
                 OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan,
                 QueryPlan, SourcePlan, StatementPlan, TableAccessPlan, TableSourcePlan,
             },
@@ -222,17 +254,17 @@ mod tests {
         let expected = "SELECT * FROM Foo GROUP BY id HAVING id > 10 OFFSET 10";
         test_query_builder(actual, expected);
 
-        // join node -> offset node -> build
+        // inner nested loop join node -> offset node -> build
         let actual = table("Foo").select().join("Bar").offset(10);
         let expected = "SELECT * FROM Foo JOIN Bar OFFSET 10";
         test_query_builder(actual, expected);
 
-        // join node -> offset node -> build
+        // inner nested loop join node -> offset node -> build
         let actual = table("Foo").select().join_as("Bar", "B").offset(10);
         let expected = "SELECT * FROM Foo JOIN Bar AS B OFFSET 10";
         test_query_builder(actual, expected);
 
-        // join node -> offset node -> build
+        // left outer join condition node -> offset node -> build
         let actual = table("Foo")
             .select()
             .left_join("Bar")
@@ -241,7 +273,7 @@ mod tests {
         let expected = "SELECT * FROM Foo LEFT JOIN Bar ON Foo.id = Bar.id OFFSET 10";
         test_query_builder(actual, expected);
 
-        // join node -> offset node -> build
+        // left outer join condition node -> offset node -> build
         let actual = table("Foo")
             .select()
             .left_join_as("Bar", "B")
@@ -250,7 +282,7 @@ mod tests {
         let expected = "SELECT * FROM Foo LEFT JOIN Bar AS B ON Foo.id = B.id OFFSET 10";
         test_query_builder(actual, expected);
 
-        // join constraint node -> offset node -> build
+        // inner join condition node -> offset node -> build
         let actual = table("Foo")
             .select()
             .join("Bar")
@@ -269,7 +301,7 @@ mod tests {
         let expected = "SELECT * FROM Item OFFSET 10";
         test_query_builder(actual, expected);
 
-        // hash join node -> offset node -> build
+        // inner hash join node -> offset node -> build
         let actual = table("Player")
             .select()
             .join("PlayerItem")
@@ -277,26 +309,25 @@ mod tests {
             .offset(100)
             .build();
         let expected = {
-            let join = JoinPlan {
-                input: JoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
-                    name: "Player".to_owned(),
-                    alias: None,
-                    access: TableAccessPlan::FullScan,
-                })),
-                right: SourcePlan::Table(TableSourcePlan {
-                    name: "PlayerItem".to_owned(),
-                    alias: None,
-                    access: TableAccessPlan::FullScan,
+            let join = InnerJoinPlan {
+                input: InnerJoinInputPlan::Hash(HashJoinPlan {
+                    input: HashJoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
+                        name: "Player".to_owned(),
+                        alias: None,
+                        access: TableAccessPlan::FullScan,
+                    })),
+                    right: SourcePlan::Table(TableSourcePlan {
+                        name: "PlayerItem".to_owned(),
+                        alias: None,
+                        access: TableAccessPlan::FullScan,
+                    }),
+                    input_key: col("Player.id").build_expr_plan().unwrap(),
+                    right_key: col("PlayerItem.user_id").build_expr_plan().unwrap(),
+                    right_filter: None,
                 }),
-                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
-                join_executor: JoinExecutorPlan::Hash {
-                    key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),
-                    value_expr: col("Player.id").build_expr_plan().unwrap(),
-                    where_clause: None,
-                },
             };
             let project = ProjectPlan {
-                input: ProjectInputPlan::Join(Box::new(join)),
+                input: ProjectInputPlan::InnerJoin(Box::new(join)),
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),

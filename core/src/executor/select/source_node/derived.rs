@@ -36,12 +36,18 @@ pub(super) fn execute<'a, T: GStore>(
         alias: &derived.alias.name,
         names: Rc::from(names),
     };
-    let source = output.clone();
+    let source = SourceColumns {
+        alias: output.alias,
+        names: Rc::clone(&output.names),
+    };
     let rows = Box::new(move |evaluation_context: Option<Rc<RowContext<'a>>>| {
         rows(
             storage,
             derived,
-            source.clone(),
+            SourceColumns {
+                alias: source.alias,
+                names: Rc::clone(&source.names),
+            },
             evaluation_context.as_ref(),
         )
     });
@@ -56,7 +62,7 @@ fn rows<'a, T: GStore>(
     evaluation_context: Option<&Rc<RowContext<'a>>>,
 ) -> Result<SourceRows<'a>> {
     let columns = Rc::clone(&source.names);
-    let rows = select(storage, &derived.query, evaluation_context.cloned())?.map({
+    let rows = select(storage, &derived.query, evaluation_context.map(Rc::clone))?.map({
         let columns = Rc::clone(&columns);
 
         move |row| {

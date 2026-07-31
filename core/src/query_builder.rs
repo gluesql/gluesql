@@ -65,9 +65,10 @@ pub use {
     order_by_expr_list::OrderByExprList,
     query::QueryNode,
     select::{
-        DistinctNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
-        JoinNode, LimitNode, OffsetLimitNode, OffsetNode, ProjectNode, SelectNode,
-        SelectOrderByNode, ValuesOrderByNode, select, values,
+        DistinctNode, FilterNode, GroupByNode, HavingNode, InnerHashJoinNode,
+        InnerJoinConditionNode, InnerNestedLoopJoinNode, LeftOuterHashJoinNode,
+        LeftOuterJoinConditionNode, LeftOuterNestedLoopJoinNode, LimitNode, OffsetLimitNode,
+        OffsetNode, ProjectNode, SelectNode, SelectOrderByNode, ValuesOrderByNode, select, values,
     },
     select_item::SelectItemNode,
     select_item_list::SelectItemList,

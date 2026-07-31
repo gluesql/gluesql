@@ -10,7 +10,11 @@ pub use {
     expr::{
         AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan, FunctionExprPlan,
     },
-    join::{JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan, JoinPlan},
+    join::{
+        HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan, JoinConditionInputPlan,
+        JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan, NestedLoopJoinInputPlan,
+        NestedLoopJoinPlan,
+    },
     projection::{ProjectionPlan, SelectItemPlan},
     query::{
         AggregationInputPlan, AggregationPlan, DistinctInputPlan, DistinctPlan, FilterInputPlan,

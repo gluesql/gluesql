@@ -1,8 +1,9 @@
 use {
     super::{
-        DistinctNode, ExprList, FilterNode, GroupByNode, HashJoinNode, HavingNode,
-        JoinConstraintNode, JoinNode, LimitNode, OffsetLimitNode, OffsetNode, ProjectNode,
-        SelectNode, SelectOrderByNode, SourceNode, ValuesOrderByNode,
+        DistinctNode, ExprList, FilterNode, GroupByNode, HavingNode, InnerHashJoinNode,
+        InnerJoinConditionNode, InnerNestedLoopJoinNode, LeftOuterHashJoinNode,
+        LeftOuterJoinConditionNode, LeftOuterNestedLoopJoinNode, LimitNode, OffsetLimitNode,
+        OffsetNode, ProjectNode, SelectNode, SelectOrderByNode, SourceNode, ValuesOrderByNode,
         select::{BuildQuery, BuildQueryPlan, ValuesNode},
     },
     crate::{
@@ -20,9 +21,12 @@ pub enum QueryNode<'a> {
     Values(Vec<ExprList<'a>>),
     SelectNode(SelectNode<'a>),
     ValuesNode(ValuesNode<'a>),
-    JoinNode(JoinNode<'a>),
-    JoinConstraintNode(JoinConstraintNode<'a>),
-    HashJoinNode(HashJoinNode<'a>),
+    InnerNestedLoopJoinNode(InnerNestedLoopJoinNode<'a>),
+    LeftOuterNestedLoopJoinNode(LeftOuterNestedLoopJoinNode<'a>),
+    InnerHashJoinNode(InnerHashJoinNode<'a>),
+    LeftOuterHashJoinNode(LeftOuterHashJoinNode<'a>),
+    InnerJoinConditionNode(InnerJoinConditionNode<'a>),
+    LeftOuterJoinConditionNode(LeftOuterJoinConditionNode<'a>),
     GroupByNode(GroupByNode<'a>),
     HavingNode(HavingNode<'a>),
     LimitNode(LimitNode<'a>),
@@ -63,9 +67,12 @@ impl<'a> QueryNode<'a> {
             }
             QueryNode::SelectNode(node) => node.build_query(),
             QueryNode::ValuesNode(node) => node.build_query(),
-            QueryNode::JoinNode(node) => node.build_query(),
-            QueryNode::JoinConstraintNode(node) => node.build_query(),
-            QueryNode::HashJoinNode(node) => node.build_query(),
+            QueryNode::InnerNestedLoopJoinNode(node) => node.build_query(),
+            QueryNode::LeftOuterNestedLoopJoinNode(node) => node.build_query(),
+            QueryNode::InnerHashJoinNode(node) => node.build_query(),
+            QueryNode::LeftOuterHashJoinNode(node) => node.build_query(),
+            QueryNode::InnerJoinConditionNode(node) => node.build_query(),
+            QueryNode::LeftOuterJoinConditionNode(node) => node.build_query(),
             QueryNode::GroupByNode(node) => node.build_query(),
             QueryNode::HavingNode(node) => node.build_query(),
             QueryNode::FilterNode(node) => node.build_query(),
@@ -93,9 +100,12 @@ impl<'a> QueryNode<'a> {
             }
             QueryNode::SelectNode(node) => node.build_query_plan(),
             QueryNode::ValuesNode(node) => node.build_query_plan(),
-            QueryNode::JoinNode(node) => node.build_query_plan(),
-            QueryNode::JoinConstraintNode(node) => node.build_query_plan(),
-            QueryNode::HashJoinNode(node) => node.build_query_plan(),
+            QueryNode::InnerNestedLoopJoinNode(node) => node.build_query_plan(),
+            QueryNode::LeftOuterNestedLoopJoinNode(node) => node.build_query_plan(),
+            QueryNode::InnerHashJoinNode(node) => node.build_query_plan(),
+            QueryNode::LeftOuterHashJoinNode(node) => node.build_query_plan(),
+            QueryNode::InnerJoinConditionNode(node) => node.build_query_plan(),
+            QueryNode::LeftOuterJoinConditionNode(node) => node.build_query_plan(),
             QueryNode::GroupByNode(node) => node.build_query_plan(),
             QueryNode::HavingNode(node) => node.build_query_plan(),
             QueryNode::FilterNode(node) => node.build_query_plan(),
@@ -132,9 +142,12 @@ macro_rules! impl_from_select_nodes {
     };
 }
 
-impl_from_select_nodes!(JoinNode);
-impl_from_select_nodes!(JoinConstraintNode);
-impl_from_select_nodes!(HashJoinNode);
+impl_from_select_nodes!(InnerNestedLoopJoinNode);
+impl_from_select_nodes!(LeftOuterNestedLoopJoinNode);
+impl_from_select_nodes!(InnerHashJoinNode);
+impl_from_select_nodes!(LeftOuterHashJoinNode);
+impl_from_select_nodes!(InnerJoinConditionNode);
+impl_from_select_nodes!(LeftOuterJoinConditionNode);
 impl_from_select_nodes!(GroupByNode);
 impl_from_select_nodes!(HavingNode);
 impl_from_select_nodes!(FilterNode);
@@ -152,7 +165,7 @@ mod test {
         super::QueryNode,
         crate::{
             plan::{
-                JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan, JoinPlan,
+                HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan,
                 ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SourcePlan,
                 TableAccessPlan, TableSourcePlan,
             },
@@ -186,32 +199,34 @@ mod test {
         let expected = "SELECT * FROM Bar JOIN Foo ON Foo.id = Bar.foo_id";
         test_query(actual, expected);
 
-        let actual: QueryNode = table("Player")
-            .select()
-            .join("PlayerItem")
-            .hash_executor("PlayerItem.user_id", "Player.id")
-            .into();
+        let actual = QueryNode::from(
+            table("Player")
+                .select()
+                .join("PlayerItem")
+                .hash_executor("PlayerItem.user_id", "Player.id"),
+        )
+        .build_query_plan()
+        .unwrap();
         let expected = {
-            let join = JoinPlan {
-                input: JoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
-                    name: "Player".to_owned(),
-                    alias: None,
-                    access: TableAccessPlan::FullScan,
-                })),
-                right: SourcePlan::Table(TableSourcePlan {
-                    name: "PlayerItem".to_owned(),
-                    alias: None,
-                    access: TableAccessPlan::FullScan,
+            let join = InnerJoinPlan {
+                input: InnerJoinInputPlan::Hash(HashJoinPlan {
+                    input: HashJoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
+                        name: "Player".to_owned(),
+                        alias: None,
+                        access: TableAccessPlan::FullScan,
+                    })),
+                    right: SourcePlan::Table(TableSourcePlan {
+                        name: "PlayerItem".to_owned(),
+                        alias: None,
+                        access: TableAccessPlan::FullScan,
+                    }),
+                    input_key: col("Player.id").build_expr_plan().unwrap(),
+                    right_key: col("PlayerItem.user_id").build_expr_plan().unwrap(),
+                    right_filter: None,
                 }),
-                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
-                join_executor: JoinExecutorPlan::Hash {
-                    key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),
-                    value_expr: col("Player.id").build_expr_plan().unwrap(),
-                    where_clause: None,
-                },
             };
             let project = ProjectPlan {
-                input: ProjectInputPlan::Join(Box::new(join)),
+                input: ProjectInputPlan::InnerJoin(Box::new(join)),
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),
@@ -219,7 +234,7 @@ mod test {
 
             QueryPlan::Project(project)
         };
-        assert_eq!(actual.build_query_plan().unwrap(), expected);
+        assert_eq!(actual, expected);
 
         let actual = table("FOO").select().group_by("id").into();
         let expected = "SELECT * FROM FOO GROUP BY id";

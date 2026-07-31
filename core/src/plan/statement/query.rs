@@ -25,7 +25,10 @@ pub use {
 use {
     crate::{
         ast,
-        plan::{JoinExecutorPlan, JoinInputPlan, JoinPlan},
+        plan::{
+            InnerJoinInputPlan, InnerJoinPlan, JoinConditionInputPlan, JoinConditionPlan,
+            LeftOuterJoinInputPlan, LeftOuterJoinPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
+        },
     },
     serde::{Deserialize, Serialize},
 };
@@ -64,32 +67,80 @@ impl From<ast::Query> for QueryPlan {
                 } = *select;
                 let ast::TableWithJoins { relation, joins } = from;
                 let source = joins.into_iter().fold(
-                    JoinInputPlan::Source(relation.into()),
+                    NestedLoopJoinInputPlan::Source(relation.into()),
                     |input, join| {
                         let ast::Join {
                             relation,
                             join_operator,
                         } = join;
-
-                        JoinInputPlan::Join(Box::new(JoinPlan {
+                        let nested_loop = NestedLoopJoinPlan {
                             input,
                             right: relation.into(),
-                            join_operator: join_operator.into(),
-                            join_executor: JoinExecutorPlan::NestedLoop,
-                        }))
+                        };
+
+                        match join_operator {
+                            ast::JoinOperator::Inner(ast::JoinConstraint::None) => {
+                                NestedLoopJoinInputPlan::InnerJoin(Box::new(InnerJoinPlan {
+                                    input: InnerJoinInputPlan::NestedLoop(nested_loop),
+                                }))
+                            }
+                            ast::JoinOperator::Inner(ast::JoinConstraint::On(expr)) => {
+                                NestedLoopJoinInputPlan::InnerJoin(Box::new(InnerJoinPlan {
+                                    input: InnerJoinInputPlan::Condition(JoinConditionPlan {
+                                        input: JoinConditionInputPlan::NestedLoop(nested_loop),
+                                        expr: expr.into(),
+                                    }),
+                                }))
+                            }
+                            ast::JoinOperator::LeftOuter(ast::JoinConstraint::None) => {
+                                NestedLoopJoinInputPlan::LeftOuterJoin(Box::new(
+                                    LeftOuterJoinPlan {
+                                        input: LeftOuterJoinInputPlan::NestedLoop(nested_loop),
+                                    },
+                                ))
+                            }
+                            ast::JoinOperator::LeftOuter(ast::JoinConstraint::On(expr)) => {
+                                NestedLoopJoinInputPlan::LeftOuterJoin(Box::new(
+                                    LeftOuterJoinPlan {
+                                        input: LeftOuterJoinInputPlan::Condition(
+                                            JoinConditionPlan {
+                                                input: JoinConditionInputPlan::NestedLoop(
+                                                    nested_loop,
+                                                ),
+                                                expr: expr.into(),
+                                            },
+                                        ),
+                                    },
+                                ))
+                            }
+                        }
                     },
                 );
                 let input = match selection {
                     Some(expr) => AggregationInputPlan::Filter(FilterPlan {
                         input: match source {
-                            JoinInputPlan::Source(source) => FilterInputPlan::Source(source),
-                            JoinInputPlan::Join(join) => FilterInputPlan::Join(join),
+                            NestedLoopJoinInputPlan::Source(source) => {
+                                FilterInputPlan::Source(source)
+                            }
+                            NestedLoopJoinInputPlan::InnerJoin(join) => {
+                                FilterInputPlan::InnerJoin(join)
+                            }
+                            NestedLoopJoinInputPlan::LeftOuterJoin(join) => {
+                                FilterInputPlan::LeftOuterJoin(join)
+                            }
                         },
                         expr: expr.into(),
                     }),
                     None => match source {
-                        JoinInputPlan::Source(source) => AggregationInputPlan::Source(source),
-                        JoinInputPlan::Join(join) => AggregationInputPlan::Join(join),
+                        NestedLoopJoinInputPlan::Source(source) => {
+                            AggregationInputPlan::Source(source)
+                        }
+                        NestedLoopJoinInputPlan::InnerJoin(join) => {
+                            AggregationInputPlan::InnerJoin(join)
+                        }
+                        NestedLoopJoinInputPlan::LeftOuterJoin(join) => {
+                            AggregationInputPlan::LeftOuterJoin(join)
+                        }
                     },
                 };
                 let group_by = group_by.into_iter().map(Into::into).collect::<Vec<_>>();
@@ -104,7 +155,10 @@ impl From<ast::Query> for QueryPlan {
                     }),
                     None if group_by.is_empty() => match input {
                         AggregationInputPlan::Source(source) => ProjectInputPlan::Source(source),
-                        AggregationInputPlan::Join(join) => ProjectInputPlan::Join(join),
+                        AggregationInputPlan::InnerJoin(join) => ProjectInputPlan::InnerJoin(join),
+                        AggregationInputPlan::LeftOuterJoin(join) => {
+                            ProjectInputPlan::LeftOuterJoin(join)
+                        }
                         AggregationInputPlan::Filter(filter) => ProjectInputPlan::Filter(filter),
                     },
                     None => ProjectInputPlan::Aggregation(AggregationPlan {
@@ -320,9 +374,11 @@ mod tests {
             data::Value,
             parse_sql::parse,
             plan::{
-                ExprPlan, FilterInputPlan, JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan,
-                JoinOperatorPlan, JoinPlan, ProjectionPlan, SelectItemPlan, SelectOrderByPlan,
-                SourcePlan, StatementPlan, TableAccessPlan, TableSourcePlan, ValuesOrderByPlan,
+                ExprPlan, FilterInputPlan, InnerJoinInputPlan, InnerJoinPlan,
+                JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan,
+                LeftOuterJoinPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan, ProjectionPlan,
+                SelectItemPlan, SelectOrderByPlan, SourcePlan, StatementPlan, TableAccessPlan,
+                TableSourcePlan, ValuesOrderByPlan,
             },
             translate::translate,
         },
@@ -463,40 +519,45 @@ mod tests {
     #[test]
     fn query_plan_builds_left_deep_join_pipeline() {
         let actual = statement_plan("SELECT * FROM A JOIN B ON A.id = B.a_id LEFT JOIN C");
-        let first_join = JoinPlan {
-            input: JoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
-                name: "A".to_owned(),
-                alias: None,
-                access: TableAccessPlan::FullScan,
-            })),
-            right: SourcePlan::Table(TableSourcePlan {
-                name: "B".to_owned(),
-                alias: None,
-                access: TableAccessPlan::FullScan,
+        let first_join = InnerJoinPlan {
+            input: InnerJoinInputPlan::Condition(JoinConditionPlan {
+                input: JoinConditionInputPlan::NestedLoop(NestedLoopJoinPlan {
+                    input: NestedLoopJoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
+                        name: "A".to_owned(),
+                        alias: None,
+                        access: TableAccessPlan::FullScan,
+                    })),
+                    right: SourcePlan::Table(TableSourcePlan {
+                        name: "B".to_owned(),
+                        alias: None,
+                        access: TableAccessPlan::FullScan,
+                    }),
+                }),
+                expr: ExprPlan::BinaryOp {
+                    left: Box::new(ExprPlan::CompoundIdentifier {
+                        alias: "A".to_owned(),
+                        ident: "id".to_owned(),
+                    }),
+                    op: BinaryOperator::Eq,
+                    right: Box::new(ExprPlan::CompoundIdentifier {
+                        alias: "B".to_owned(),
+                        ident: "a_id".to_owned(),
+                    }),
+                },
             }),
-            join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::On(ExprPlan::BinaryOp {
-                left: Box::new(ExprPlan::CompoundIdentifier {
-                    alias: "A".to_owned(),
-                    ident: "id".to_owned(),
-                }),
-                op: BinaryOperator::Eq,
-                right: Box::new(ExprPlan::CompoundIdentifier {
-                    alias: "B".to_owned(),
-                    ident: "a_id".to_owned(),
-                }),
-            })),
-            join_executor: JoinExecutorPlan::NestedLoop,
         };
-        let expected = project_statement(ProjectInputPlan::Join(Box::new(JoinPlan {
-            input: JoinInputPlan::Join(Box::new(first_join)),
-            right: SourcePlan::Table(TableSourcePlan {
-                name: "C".to_owned(),
-                alias: None,
-                access: TableAccessPlan::FullScan,
-            }),
-            join_operator: JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None),
-            join_executor: JoinExecutorPlan::NestedLoop,
-        })));
+        let expected = project_statement(ProjectInputPlan::LeftOuterJoin(Box::new(
+            LeftOuterJoinPlan {
+                input: LeftOuterJoinInputPlan::NestedLoop(NestedLoopJoinPlan {
+                    input: NestedLoopJoinInputPlan::InnerJoin(Box::new(first_join)),
+                    right: SourcePlan::Table(TableSourcePlan {
+                        name: "C".to_owned(),
+                        alias: None,
+                        access: TableAccessPlan::FullScan,
+                    }),
+                }),
+            },
+        )));
 
         assert_eq!(actual, expected);
     }

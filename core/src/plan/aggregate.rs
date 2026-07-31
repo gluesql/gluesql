@@ -1,20 +1,16 @@
 use {
     crate::plan::{
         AggregateFunctionPlan, AggregationInputPlan, AggregationPlan, DistinctInputPlan,
-        DistinctPlan, ExprPlan, FilterInputPlan, FilterPlan, JoinConstraintPlan, JoinExecutorPlan,
-        JoinInputPlan, JoinOperatorPlan, JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan,
-        OffsetPlan, OrderByExprPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
-        SelectItemPlan, SelectOrderByPlan, SourcePlan, StatementPlan, ValuesOrderByPlan,
-        ValuesPlan, expr::visit_mut_expr,
+        DistinctPlan, ExprPlan, FilterInputPlan, FilterPlan, HashJoinInputPlan, HashJoinPlan,
+        InnerJoinInputPlan, InnerJoinPlan, JoinConditionInputPlan, JoinConditionPlan,
+        LeftOuterJoinInputPlan, LeftOuterJoinPlan, LimitInputPlan, LimitPlan,
+        NestedLoopJoinInputPlan, NestedLoopJoinPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan,
+        ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
+        SelectOrderByPlan, SourcePlan, StatementPlan, ValuesOrderByPlan, ValuesPlan,
+        expr::visit_mut_expr,
     },
     std::collections::HashMap,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct AggregateKey {
-    func: AggregateFunctionPlan,
-    distinct: bool,
-}
 
 pub fn plan(statement: StatementPlan) -> StatementPlan {
     match statement {
@@ -157,7 +153,8 @@ fn plan_project_query(project: &mut ProjectPlan, order_by: &mut [OrderByExprPlan
 fn plan_project_input(input: &mut ProjectInputPlan) {
     match input {
         ProjectInputPlan::Source(relation) => plan_source(relation),
-        ProjectInputPlan::Join(join) => plan_join(join),
+        ProjectInputPlan::InnerJoin(join) => plan_inner_join(join),
+        ProjectInputPlan::LeftOuterJoin(join) => plan_left_outer_join(join),
         ProjectInputPlan::Filter(filter) => plan_filter(filter),
         ProjectInputPlan::Aggregation(aggregation) => {
             plan_aggregation_input(&mut aggregation.input);
@@ -186,7 +183,8 @@ fn plan_values(ValuesPlan(exprs_list): &mut ValuesPlan) {
 fn plan_filter(FilterPlan { input, expr }: &mut FilterPlan) {
     match input {
         FilterInputPlan::Source(relation) => plan_source(relation),
-        FilterInputPlan::Join(join) => plan_join(join),
+        FilterInputPlan::InnerJoin(join) => plan_inner_join(join),
+        FilterInputPlan::LeftOuterJoin(join) => plan_left_outer_join(join),
     }
     plan_expr(expr);
 }
@@ -194,7 +192,8 @@ fn plan_filter(FilterPlan { input, expr }: &mut FilterPlan) {
 fn plan_aggregation_input(input: &mut AggregationInputPlan) {
     match input {
         AggregationInputPlan::Source(relation) => plan_source(relation),
-        AggregationInputPlan::Join(join) => plan_join(join),
+        AggregationInputPlan::InnerJoin(join) => plan_inner_join(join),
+        AggregationInputPlan::LeftOuterJoin(join) => plan_left_outer_join(join),
         AggregationInputPlan::Filter(filter) => plan_filter(filter),
     }
 }
@@ -212,40 +211,59 @@ fn plan_projection(projection: &mut ProjectionPlan) {
     }
 }
 
+fn plan_inner_join(join: &mut InnerJoinPlan) {
+    match &mut join.input {
+        InnerJoinInputPlan::NestedLoop(join) => plan_nested_loop_join(join),
+        InnerJoinInputPlan::Hash(join) => plan_hash_join(join),
+        InnerJoinInputPlan::Condition(condition) => plan_join_condition(condition),
+    }
+}
+
+fn plan_left_outer_join(join: &mut LeftOuterJoinPlan) {
+    match &mut join.input {
+        LeftOuterJoinInputPlan::NestedLoop(join) => plan_nested_loop_join(join),
+        LeftOuterJoinInputPlan::Hash(join) => plan_hash_join(join),
+        LeftOuterJoinInputPlan::Condition(condition) => plan_join_condition(condition),
+    }
+}
+
+fn plan_join_condition(condition: &mut JoinConditionPlan) {
+    match &mut condition.input {
+        JoinConditionInputPlan::NestedLoop(join) => plan_nested_loop_join(join),
+        JoinConditionInputPlan::Hash(join) => plan_hash_join(join),
+    }
+    plan_expr(&mut condition.expr);
+}
+
+fn plan_nested_loop_join(join: &mut NestedLoopJoinPlan) {
+    match &mut join.input {
+        NestedLoopJoinInputPlan::Source(source) => plan_source(source),
+        NestedLoopJoinInputPlan::InnerJoin(join) => plan_inner_join(join),
+        NestedLoopJoinInputPlan::LeftOuterJoin(join) => plan_left_outer_join(join),
+    }
+    plan_source(&mut join.right);
+}
+
+fn plan_hash_join(join: &mut HashJoinPlan) {
+    match &mut join.input {
+        HashJoinInputPlan::Source(source) => plan_source(source),
+        HashJoinInputPlan::InnerJoin(join) => plan_inner_join(join),
+        HashJoinInputPlan::LeftOuterJoin(join) => plan_left_outer_join(join),
+    }
+    plan_source(&mut join.right);
+    plan_expr(&mut join.input_key);
+    plan_expr(&mut join.right_key);
+
+    if let Some(right_filter) = &mut join.right_filter {
+        plan_expr(right_filter);
+    }
+}
+
 fn plan_source(source: &mut SourcePlan) {
     match source {
         SourcePlan::Table(_) | SourcePlan::Dictionary(_) => {}
         SourcePlan::Derived(derived) => plan_query(&mut derived.query),
         SourcePlan::Series(series) => plan_expr(&mut series.size),
-    }
-}
-
-fn plan_join(join: &mut JoinPlan) {
-    match &mut join.input {
-        JoinInputPlan::Source(relation) => plan_source(relation),
-        JoinInputPlan::Join(join) => plan_join(join),
-    }
-    plan_source(&mut join.right);
-
-    match &mut join.join_operator {
-        JoinOperatorPlan::Inner(JoinConstraintPlan::On(expr))
-        | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::On(expr)) => plan_expr(expr),
-        JoinOperatorPlan::Inner(JoinConstraintPlan::None)
-        | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None) => {}
-    }
-
-    if let JoinExecutorPlan::Hash {
-        key_expr,
-        value_expr,
-        where_clause,
-    } = &mut join.join_executor
-    {
-        plan_expr(key_expr);
-        plan_expr(value_expr);
-
-        if let Some(where_clause) = where_clause {
-            plan_expr(where_clause);
-        }
     }
 }
 
@@ -256,6 +274,12 @@ fn plan_expr(expr: &mut ExprPlan) {
         | ExprPlan::InSubquery { subquery, .. } => plan_query(subquery),
         _ => {}
     });
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct AggregateKey {
+    func: AggregateFunctionPlan,
+    distinct: bool,
 }
 
 fn bind_project(
@@ -310,9 +334,16 @@ fn bind_project(
                 aggregate_slots: aggregates,
             });
         }
-        ProjectInputPlan::Join(join) if !aggregates.is_empty() => {
+        ProjectInputPlan::InnerJoin(join) if !aggregates.is_empty() => {
             *input = ProjectInputPlan::Aggregation(AggregationPlan {
-                input: AggregationInputPlan::Join(join.clone()),
+                input: AggregationInputPlan::InnerJoin(join.clone()),
+                group_by: Vec::new(),
+                aggregate_slots: aggregates,
+            });
+        }
+        ProjectInputPlan::LeftOuterJoin(join) if !aggregates.is_empty() => {
+            *input = ProjectInputPlan::Aggregation(AggregationPlan {
+                input: AggregationInputPlan::LeftOuterJoin(join.clone()),
                 group_by: Vec::new(),
                 aggregate_slots: aggregates,
             });
@@ -324,7 +355,10 @@ fn bind_project(
                 aggregate_slots: aggregates,
             });
         }
-        ProjectInputPlan::Source(_) | ProjectInputPlan::Join(_) | ProjectInputPlan::Filter(_) => {}
+        ProjectInputPlan::Source(_)
+        | ProjectInputPlan::InnerJoin(_)
+        | ProjectInputPlan::LeftOuterJoin(_)
+        | ProjectInputPlan::Filter(_) => {}
         ProjectInputPlan::Aggregation(aggregation) => {
             aggregation.aggregate_slots = aggregates;
         }
@@ -343,12 +377,14 @@ mod tests {
             parse_sql::parse,
             plan::{
                 AggregationInputPlan, AggregationPlan, DerivedSourcePlan, DictionarySourcePlan,
-                DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan, FilterPlan, HavingPlan,
-                JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan, JoinPlan,
-                LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan,
-                ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
-                SelectOrderByPlan, SeriesSourcePlan, SourcePlan, StatementPlan, TableAccessPlan,
-                TableAliasPlan, TableSourcePlan,
+                DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan, FilterPlan,
+                HashJoinInputPlan, HashJoinPlan, HavingPlan, InnerJoinInputPlan, InnerJoinPlan,
+                JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan,
+                LeftOuterJoinPlan, LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan,
+                NestedLoopJoinPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan,
+                ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan,
+                SeriesSourcePlan, SourcePlan, StatementPlan, TableAccessPlan, TableAliasPlan,
+                TableSourcePlan,
                 expr::{try_visit_expr, visit_mut_expr},
             },
             translate::translate,
@@ -415,16 +451,19 @@ mod tests {
     fn source_query(query: &QueryPlan) -> Option<&SourcePlan> {
         project_query(query).map(|project| match &project.input {
             ProjectInputPlan::Source(relation) => relation,
-            ProjectInputPlan::Join(join) => join_source(join),
+            ProjectInputPlan::InnerJoin(join) => inner_join_source(join),
+            ProjectInputPlan::LeftOuterJoin(join) => left_outer_join_source(join),
             ProjectInputPlan::Filter(filter) => filter_source(&filter.input),
             ProjectInputPlan::Aggregation(aggregation) => match &aggregation.input {
                 AggregationInputPlan::Source(relation) => relation,
-                AggregationInputPlan::Join(join) => join_source(join),
+                AggregationInputPlan::InnerJoin(join) => inner_join_source(join),
+                AggregationInputPlan::LeftOuterJoin(join) => left_outer_join_source(join),
                 AggregationInputPlan::Filter(filter) => filter_source(&filter.input),
             },
             ProjectInputPlan::Having(having) => match &having.input.input {
                 AggregationInputPlan::Source(relation) => relation,
-                AggregationInputPlan::Join(join) => join_source(join),
+                AggregationInputPlan::InnerJoin(join) => inner_join_source(join),
+                AggregationInputPlan::LeftOuterJoin(join) => left_outer_join_source(join),
                 AggregationInputPlan::Filter(filter) => filter_source(&filter.input),
             },
         })
@@ -433,41 +472,74 @@ mod tests {
     fn filter_source(input: &FilterInputPlan) -> &SourcePlan {
         match input {
             FilterInputPlan::Source(relation) => relation,
-            FilterInputPlan::Join(join) => join_source(join),
+            FilterInputPlan::InnerJoin(join) => inner_join_source(join),
+            FilterInputPlan::LeftOuterJoin(join) => left_outer_join_source(join),
         }
     }
 
-    fn join_source(join: &JoinPlan) -> &SourcePlan {
+    fn inner_join_source(join: &InnerJoinPlan) -> &SourcePlan {
         match &join.input {
-            JoinInputPlan::Source(relation) => relation,
-            JoinInputPlan::Join(join) => join_source(join),
+            InnerJoinInputPlan::NestedLoop(join) => nested_loop_source(join),
+            InnerJoinInputPlan::Hash(join) => hash_source(join),
+            InnerJoinInputPlan::Condition(condition) => condition_source(condition),
         }
     }
 
-    fn join_query(query: &QueryPlan) -> Option<&JoinPlan> {
+    fn left_outer_join_source(join: &LeftOuterJoinPlan) -> &SourcePlan {
+        match &join.input {
+            LeftOuterJoinInputPlan::NestedLoop(join) => nested_loop_source(join),
+            LeftOuterJoinInputPlan::Hash(join) => hash_source(join),
+            LeftOuterJoinInputPlan::Condition(condition) => condition_source(condition),
+        }
+    }
+
+    fn condition_source(condition: &JoinConditionPlan) -> &SourcePlan {
+        match &condition.input {
+            JoinConditionInputPlan::NestedLoop(join) => nested_loop_source(join),
+            JoinConditionInputPlan::Hash(join) => hash_source(join),
+        }
+    }
+
+    fn nested_loop_source(join: &NestedLoopJoinPlan) -> &SourcePlan {
+        match &join.input {
+            NestedLoopJoinInputPlan::Source(source) => source,
+            NestedLoopJoinInputPlan::InnerJoin(join) => inner_join_source(join),
+            NestedLoopJoinInputPlan::LeftOuterJoin(join) => left_outer_join_source(join),
+        }
+    }
+
+    fn hash_source(join: &HashJoinPlan) -> &SourcePlan {
+        match &join.input {
+            HashJoinInputPlan::Source(source) => source,
+            HashJoinInputPlan::InnerJoin(join) => inner_join_source(join),
+            HashJoinInputPlan::LeftOuterJoin(join) => left_outer_join_source(join),
+        }
+    }
+
+    fn inner_join_query(query: &QueryPlan) -> Option<&InnerJoinPlan> {
         project_query(query).and_then(|project| match &project.input {
-            ProjectInputPlan::Join(join) => Some(join.as_ref()),
+            ProjectInputPlan::InnerJoin(join) => Some(join.as_ref()),
             ProjectInputPlan::Filter(filter) => match &filter.input {
-                FilterInputPlan::Join(join) => Some(join.as_ref()),
-                FilterInputPlan::Source(_) => None,
+                FilterInputPlan::InnerJoin(join) => Some(join.as_ref()),
+                FilterInputPlan::Source(_) | FilterInputPlan::LeftOuterJoin(_) => None,
             },
             ProjectInputPlan::Aggregation(aggregation) => match &aggregation.input {
-                AggregationInputPlan::Join(join) => Some(join.as_ref()),
+                AggregationInputPlan::InnerJoin(join) => Some(join.as_ref()),
                 AggregationInputPlan::Filter(filter) => match &filter.input {
-                    FilterInputPlan::Join(join) => Some(join.as_ref()),
-                    FilterInputPlan::Source(_) => None,
+                    FilterInputPlan::InnerJoin(join) => Some(join.as_ref()),
+                    FilterInputPlan::Source(_) | FilterInputPlan::LeftOuterJoin(_) => None,
                 },
-                AggregationInputPlan::Source(_) => None,
+                AggregationInputPlan::Source(_) | AggregationInputPlan::LeftOuterJoin(_) => None,
             },
             ProjectInputPlan::Having(having) => match &having.input.input {
-                AggregationInputPlan::Join(join) => Some(join.as_ref()),
+                AggregationInputPlan::InnerJoin(join) => Some(join.as_ref()),
                 AggregationInputPlan::Filter(filter) => match &filter.input {
-                    FilterInputPlan::Join(join) => Some(join.as_ref()),
-                    FilterInputPlan::Source(_) => None,
+                    FilterInputPlan::InnerJoin(join) => Some(join.as_ref()),
+                    FilterInputPlan::Source(_) | FilterInputPlan::LeftOuterJoin(_) => None,
                 },
-                AggregationInputPlan::Source(_) => None,
+                AggregationInputPlan::Source(_) | AggregationInputPlan::LeftOuterJoin(_) => None,
             },
-            ProjectInputPlan::Source(_) => None,
+            ProjectInputPlan::Source(_) | ProjectInputPlan::LeftOuterJoin(_) => None,
         })
     }
 
@@ -476,13 +548,19 @@ mod tests {
             ProjectInputPlan::Filter(filter) => Some(filter),
             ProjectInputPlan::Aggregation(aggregation) => match &aggregation.input {
                 AggregationInputPlan::Filter(filter) => Some(filter),
-                AggregationInputPlan::Source(_) | AggregationInputPlan::Join(_) => None,
+                AggregationInputPlan::Source(_)
+                | AggregationInputPlan::InnerJoin(_)
+                | AggregationInputPlan::LeftOuterJoin(_) => None,
             },
             ProjectInputPlan::Having(having) => match &having.input.input {
                 AggregationInputPlan::Filter(filter) => Some(filter),
-                AggregationInputPlan::Source(_) | AggregationInputPlan::Join(_) => None,
+                AggregationInputPlan::Source(_)
+                | AggregationInputPlan::InnerJoin(_)
+                | AggregationInputPlan::LeftOuterJoin(_) => None,
             },
-            ProjectInputPlan::Source(_) | ProjectInputPlan::Join(_) => None,
+            ProjectInputPlan::Source(_)
+            | ProjectInputPlan::InnerJoin(_)
+            | ProjectInputPlan::LeftOuterJoin(_) => None,
         })
     }
 
@@ -491,7 +569,8 @@ mod tests {
             ProjectInputPlan::Aggregation(aggregation) => Some(aggregation),
             ProjectInputPlan::Having(having) => Some(&having.input),
             ProjectInputPlan::Source(_)
-            | ProjectInputPlan::Join(_)
+            | ProjectInputPlan::InnerJoin(_)
+            | ProjectInputPlan::LeftOuterJoin(_)
             | ProjectInputPlan::Filter(_) => None,
         })
     }
@@ -500,7 +579,8 @@ mod tests {
         project_query(query).and_then(|project| match &project.input {
             ProjectInputPlan::Having(having) => Some(having),
             ProjectInputPlan::Source(_)
-            | ProjectInputPlan::Join(_)
+            | ProjectInputPlan::InnerJoin(_)
+            | ProjectInputPlan::LeftOuterJoin(_)
             | ProjectInputPlan::Filter(_)
             | ProjectInputPlan::Aggregation(_) => None,
         })
@@ -971,49 +1051,50 @@ mod tests {
 
     #[test]
     fn plans_source_join_and_hash_executor_exprs() {
-        let first_join = JoinPlan {
-            input: JoinInputPlan::Source(SourcePlan::Derived(DerivedSourcePlan {
-                query: Box::new(count_query()),
-                alias: alias("derived"),
-            })),
-            right: SourcePlan::Series(SeriesSourcePlan {
-                alias: alias("series"),
-                size: subquery_expr(),
+        let first_join = InnerJoinPlan {
+            input: InnerJoinInputPlan::Condition(JoinConditionPlan {
+                input: JoinConditionInputPlan::Hash(HashJoinPlan {
+                    input: HashJoinInputPlan::Source(SourcePlan::Derived(DerivedSourcePlan {
+                        query: Box::new(count_query()),
+                        alias: alias("derived"),
+                    })),
+                    right: SourcePlan::Series(SeriesSourcePlan {
+                        alias: alias("series"),
+                        size: subquery_expr(),
+                    }),
+                    input_key: subquery_expr(),
+                    right_key: subquery_expr(),
+                    right_filter: Some(subquery_expr()),
+                }),
+                expr: subquery_expr(),
             }),
-            join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::On(subquery_expr())),
-            join_executor: JoinExecutorPlan::Hash {
-                key_expr: subquery_expr(),
-                value_expr: subquery_expr(),
-                where_clause: Some(subquery_expr()),
-            },
         };
-        let second_join = JoinPlan {
-            input: JoinInputPlan::Join(Box::new(first_join)),
-            right: SourcePlan::Table(TableSourcePlan {
-                name: "Target".to_owned(),
-                alias: None,
-                access: TableAccessPlan::FullScan,
+        let second_join = LeftOuterJoinPlan {
+            input: LeftOuterJoinInputPlan::Hash(HashJoinPlan {
+                input: HashJoinInputPlan::InnerJoin(Box::new(first_join)),
+                right: SourcePlan::Table(TableSourcePlan {
+                    name: "Target".to_owned(),
+                    alias: None,
+                    access: TableAccessPlan::FullScan,
+                }),
+                input_key: subquery_expr(),
+                right_key: subquery_expr(),
+                right_filter: None,
             }),
-            join_operator: JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None),
-            join_executor: JoinExecutorPlan::Hash {
-                key_expr: subquery_expr(),
-                value_expr: subquery_expr(),
-                where_clause: None,
-            },
         };
-        let third_join = JoinPlan {
-            input: JoinInputPlan::Join(Box::new(second_join)),
-            right: SourcePlan::Dictionary(DictionarySourcePlan {
-                dictionary: Dictionary::GlueIndexes,
-                alias: alias("GLUE_INDEXES"),
+        let third_join = InnerJoinPlan {
+            input: InnerJoinInputPlan::NestedLoop(NestedLoopJoinPlan {
+                input: NestedLoopJoinInputPlan::LeftOuterJoin(Box::new(second_join)),
+                right: SourcePlan::Dictionary(DictionarySourcePlan {
+                    dictionary: Dictionary::GlueIndexes,
+                    alias: alias("GLUE_INDEXES"),
+                }),
             }),
-            join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
-            join_executor: JoinExecutorPlan::NestedLoop,
         };
         let query = QueryPlan::SelectOrderBy(SelectOrderByPlan {
             input: ProjectPlan {
                 projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
-                input: ProjectInputPlan::Join(Box::new(third_join)),
+                input: ProjectInputPlan::InnerJoin(Box::new(third_join)),
             },
             exprs: vec![OrderByExprPlan {
                 expr: ExprPlan::Literal(Literal::Number(1.into())),
@@ -1024,20 +1105,31 @@ mod tests {
         let StatementPlan::Query(query) = plan(StatementPlan::Query(query)) else {
             panic!("expected query");
         };
-        let third_join = join_query(&query).expect("expected third join");
-        let JoinInputPlan::Join(second_join) = &third_join.input else {
+        let third_join = inner_join_query(&query).expect("expected third join");
+        let InnerJoinInputPlan::NestedLoop(third_nested_loop) = &third_join.input else {
+            panic!("expected third nested loop");
+        };
+        let NestedLoopJoinInputPlan::LeftOuterJoin(second_join) = &third_nested_loop.input else {
             panic!("expected second join");
         };
-        let JoinInputPlan::Join(first_join) = &second_join.input else {
+        let LeftOuterJoinInputPlan::Hash(second_hash) = &second_join.input else {
+            panic!("expected second hash join");
+        };
+        let HashJoinInputPlan::InnerJoin(first_join) = &second_hash.input else {
             panic!("expected first join");
         };
-
-        let JoinInputPlan::Source(SourcePlan::Derived(derived)) = &first_join.input else {
+        let InnerJoinInputPlan::Condition(first_condition) = &first_join.input else {
+            panic!("expected first condition");
+        };
+        let JoinConditionInputPlan::Hash(first_hash) = &first_condition.input else {
+            panic!("expected first hash join");
+        };
+        let HashJoinInputPlan::Source(SourcePlan::Derived(derived)) = &first_hash.input else {
             panic!("expected derived relation");
         };
         assert_planned_query(derived.query.as_ref());
 
-        let SourcePlan::Series(series) = &first_join.right else {
+        let SourcePlan::Series(series) = &first_hash.right else {
             panic!("expected series relation");
         };
         let ExprPlan::Subquery(series_size) = &series.size else {
@@ -1045,46 +1137,25 @@ mod tests {
         };
         assert_planned_query(series_size);
 
-        let JoinOperatorPlan::Inner(JoinConstraintPlan::On(ExprPlan::Subquery(join_on))) =
-            &first_join.join_operator
-        else {
+        let ExprPlan::Subquery(join_on) = &first_condition.expr else {
             panic!("expected join on subquery");
         };
         assert_planned_query(join_on);
 
-        let JoinExecutorPlan::Hash {
-            key_expr,
-            value_expr,
-            where_clause: Some(where_clause),
-        } = &first_join.join_executor
-        else {
-            panic!("expected hash executor");
+        let Some(right_filter) = &first_hash.right_filter else {
+            panic!("expected hash right filter");
         };
-
-        for expr in [key_expr, value_expr, where_clause] {
+        for expr in [&first_hash.right_key, &first_hash.input_key, right_filter] {
             let ExprPlan::Subquery(query) = expr else {
                 panic!("expected hash executor subquery");
             };
             assert_planned_query(query);
         }
 
-        let JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None) = &second_join.join_operator
-        else {
-            panic!("expected left join without constraint");
-        };
-        let JoinExecutorPlan::Hash {
-            where_clause: None, ..
-        } = &second_join.join_executor
-        else {
-            panic!("expected hash executor without where clause");
-        };
-
-        let JoinOperatorPlan::Inner(JoinConstraintPlan::None) = &third_join.join_operator else {
-            panic!("expected inner join without constraint");
-        };
+        assert_eq!(second_hash.right_filter, None);
         assert!(matches!(
-            third_join.join_executor,
-            JoinExecutorPlan::NestedLoop
+            third_join.input,
+            InnerJoinInputPlan::NestedLoop(_)
         ));
     }
 }

@@ -290,9 +290,10 @@ fn source_for_schema_copy(project: &ProjectPlan) -> Option<&SourcePlan> {
         ProjectInputPlan::Source(relation) => Some(relation),
         ProjectInputPlan::Filter(filter) => match &filter.input {
             FilterInputPlan::Source(relation) => Some(relation),
-            FilterInputPlan::Join(_) => None,
+            FilterInputPlan::InnerJoin(_) | FilterInputPlan::LeftOuterJoin(_) => None,
         },
-        ProjectInputPlan::Join(_)
+        ProjectInputPlan::InnerJoin(_)
+        | ProjectInputPlan::LeftOuterJoin(_)
         | ProjectInputPlan::Aggregation(_)
         | ProjectInputPlan::Having(_) => None,
     }

@@ -17,8 +17,8 @@ use {
         ast::{Query, Select, SetExpr},
         plan::{
             AggregationInputPlan, AggregationPlan, FilterInputPlan, FilterPlan, HavingPlan,
-            JoinInputPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, SourcePlan, StatementPlan,
+            ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SourcePlan,
+            StatementPlan,
         },
         result::Result,
     },
@@ -28,7 +28,10 @@ pub use {
     filter::FilterNode,
     group_by::GroupByNode,
     having::HavingNode,
-    join::{HashJoinNode, JoinConstraintNode, JoinNode},
+    join::{
+        InnerHashJoinNode, InnerJoinConditionNode, InnerNestedLoopJoinNode, LeftOuterHashJoinNode,
+        LeftOuterJoinConditionNode, LeftOuterNestedLoopJoinNode,
+    },
     limit::LimitNode,
     offset::OffsetNode,
     offset_limit::OffsetLimitNode,
@@ -40,14 +43,6 @@ pub use {
 
 pub(super) trait BuildSourcePlan {
     fn build_source_plan(self) -> Result<SourcePlan>;
-}
-
-pub(super) trait BuildJoinInputPlan {
-    fn build_join_input_plan(self) -> Result<JoinInputPlan>;
-}
-
-pub(super) trait BuildJoinPlan {
-    fn build_join_plan(self) -> Result<crate::plan::JoinPlan>;
 }
 
 pub(super) trait BuildFilterInputPlan {
@@ -88,33 +83,6 @@ pub(super) trait BuildQueryPlan {
 
 pub(super) trait BuildQuery {
     fn build_query(self) -> Result<Query>;
-}
-
-impl<T: BuildJoinInputPlan> BuildFilterInputPlan for T {
-    fn build_filter_input_plan(self) -> Result<FilterInputPlan> {
-        self.build_join_input_plan().map(|input| match input {
-            JoinInputPlan::Source(relation) => FilterInputPlan::Source(relation),
-            JoinInputPlan::Join(join) => FilterInputPlan::Join(join),
-        })
-    }
-}
-
-impl<T: BuildJoinInputPlan> BuildProjectInputPlan for T {
-    fn build_project_input_plan(self) -> Result<ProjectInputPlan> {
-        self.build_join_input_plan().map(|input| match input {
-            JoinInputPlan::Source(relation) => ProjectInputPlan::Source(relation),
-            JoinInputPlan::Join(join) => ProjectInputPlan::Join(join),
-        })
-    }
-}
-
-impl<T: BuildJoinInputPlan> BuildAggregationInputPlan for T {
-    fn build_aggregation_input_plan(self) -> Result<AggregationInputPlan> {
-        self.build_join_input_plan().map(|input| match input {
-            JoinInputPlan::Source(relation) => AggregationInputPlan::Source(relation),
-            JoinInputPlan::Join(join) => AggregationInputPlan::Join(join),
-        })
-    }
 }
 
 impl<T: BuildProjectInputPlan> BuildProjectPlan for T {

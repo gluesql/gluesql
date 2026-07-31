@@ -3,7 +3,9 @@ use {
         ast::{ColumnDef, ColumnUniqueOption},
         data::Schema,
         plan::{
-            ExprPlan, FilterInputPlan, JoinInputPlan, JoinOperatorPlan, JoinPlan, SourcePlan,
+            ExprPlan, FilterInputPlan, HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan,
+            InnerJoinPlan, JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan,
+            LeftOuterJoinPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan, SourcePlan,
             TableAccessPlan, TableAliasPlan,
         },
     },
@@ -22,8 +24,14 @@ impl PrimaryKeyLookupCandidate {
     ) -> Option<Self> {
         let target = PrimaryKeyLookupTarget::new(schema_map, base_source(input))?;
         let mut joined_relations = Vec::new();
-        if let FilterInputPlan::Join(join) = input {
-            collect_joined_relations(schema_map, join, &mut joined_relations);
+        match input {
+            FilterInputPlan::InnerJoin(join) => {
+                collect_inner_joined_relations(schema_map, join, &mut joined_relations);
+            }
+            FilterInputPlan::LeftOuterJoin(join) => {
+                collect_left_outer_joined_relations(schema_map, join, &mut joined_relations);
+            }
+            FilterInputPlan::Source(_) => {}
         }
 
         Some(Self {
@@ -56,34 +64,133 @@ impl PrimaryKeyLookupCandidate {
 fn base_source(input: &FilterInputPlan) -> &SourcePlan {
     match input {
         FilterInputPlan::Source(relation) => relation,
-        FilterInputPlan::Join(join) => join_base_source(join),
+        FilterInputPlan::InnerJoin(join) => inner_join_base_source(join),
+        FilterInputPlan::LeftOuterJoin(join) => left_outer_join_base_source(join),
     }
 }
 
-fn join_base_source(join: &JoinPlan) -> &SourcePlan {
+fn inner_join_base_source(join: &InnerJoinPlan) -> &SourcePlan {
     match &join.input {
-        JoinInputPlan::Source(relation) => relation,
-        JoinInputPlan::Join(join) => join_base_source(join),
+        InnerJoinInputPlan::NestedLoop(join) => nested_loop_base_source(join),
+        InnerJoinInputPlan::Hash(join) => hash_base_source(join),
+        InnerJoinInputPlan::Condition(condition) => condition_base_source(condition),
     }
 }
 
-fn collect_joined_relations<S: BuildHasher>(
+fn left_outer_join_base_source(join: &LeftOuterJoinPlan) -> &SourcePlan {
+    match &join.input {
+        LeftOuterJoinInputPlan::NestedLoop(join) => nested_loop_base_source(join),
+        LeftOuterJoinInputPlan::Hash(join) => hash_base_source(join),
+        LeftOuterJoinInputPlan::Condition(condition) => condition_base_source(condition),
+    }
+}
+
+fn condition_base_source(condition: &JoinConditionPlan) -> &SourcePlan {
+    match &condition.input {
+        JoinConditionInputPlan::NestedLoop(join) => nested_loop_base_source(join),
+        JoinConditionInputPlan::Hash(join) => hash_base_source(join),
+    }
+}
+
+fn nested_loop_base_source(join: &NestedLoopJoinPlan) -> &SourcePlan {
+    match &join.input {
+        NestedLoopJoinInputPlan::Source(source) => source,
+        NestedLoopJoinInputPlan::InnerJoin(join) => inner_join_base_source(join),
+        NestedLoopJoinInputPlan::LeftOuterJoin(join) => left_outer_join_base_source(join),
+    }
+}
+
+fn hash_base_source(join: &HashJoinPlan) -> &SourcePlan {
+    match &join.input {
+        HashJoinInputPlan::Source(source) => source,
+        HashJoinInputPlan::InnerJoin(join) => inner_join_base_source(join),
+        HashJoinInputPlan::LeftOuterJoin(join) => left_outer_join_base_source(join),
+    }
+}
+
+fn collect_inner_joined_relations<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
-    join: &JoinPlan,
+    join: &InnerJoinPlan,
     joined_relations: &mut Vec<JoinedRelation>,
 ) {
-    if let JoinInputPlan::Join(input) = &join.input {
-        collect_joined_relations(schema_map, input, joined_relations);
+    match &join.input {
+        InnerJoinInputPlan::NestedLoop(join) => {
+            collect_nested_loop_relations(schema_map, join, joined_relations);
+        }
+        InnerJoinInputPlan::Hash(join) => {
+            collect_hash_relations(schema_map, join, joined_relations);
+        }
+        InnerJoinInputPlan::Condition(condition) => {
+            collect_condition_relations(schema_map, condition, joined_relations);
+        }
     }
-    validate_join_operator(&join.join_operator);
+}
+
+fn collect_left_outer_joined_relations<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    join: &LeftOuterJoinPlan,
+    joined_relations: &mut Vec<JoinedRelation>,
+) {
+    match &join.input {
+        LeftOuterJoinInputPlan::NestedLoop(join) => {
+            collect_nested_loop_relations(schema_map, join, joined_relations);
+        }
+        LeftOuterJoinInputPlan::Hash(join) => {
+            collect_hash_relations(schema_map, join, joined_relations);
+        }
+        LeftOuterJoinInputPlan::Condition(condition) => {
+            collect_condition_relations(schema_map, condition, joined_relations);
+        }
+    }
+}
+
+fn collect_condition_relations<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    condition: &JoinConditionPlan,
+    joined_relations: &mut Vec<JoinedRelation>,
+) {
+    match &condition.input {
+        JoinConditionInputPlan::NestedLoop(join) => {
+            collect_nested_loop_relations(schema_map, join, joined_relations);
+        }
+        JoinConditionInputPlan::Hash(join) => {
+            collect_hash_relations(schema_map, join, joined_relations);
+        }
+    }
+}
+
+fn collect_nested_loop_relations<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    join: &NestedLoopJoinPlan,
+    joined_relations: &mut Vec<JoinedRelation>,
+) {
+    match &join.input {
+        NestedLoopJoinInputPlan::Source(_) => {}
+        NestedLoopJoinInputPlan::InnerJoin(join) => {
+            collect_inner_joined_relations(schema_map, join, joined_relations);
+        }
+        NestedLoopJoinInputPlan::LeftOuterJoin(join) => {
+            collect_left_outer_joined_relations(schema_map, join, joined_relations);
+        }
+    }
     joined_relations.push(JoinedRelation::new(schema_map, &join.right));
 }
 
-fn validate_join_operator(join_operator: &JoinOperatorPlan) {
-    // Keep this exhaustive so new join types require an explicit lookup-safety decision.
-    match join_operator {
-        JoinOperatorPlan::Inner(_) | JoinOperatorPlan::LeftOuter(_) => {}
+fn collect_hash_relations<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    join: &HashJoinPlan,
+    joined_relations: &mut Vec<JoinedRelation>,
+) {
+    match &join.input {
+        HashJoinInputPlan::Source(_) => {}
+        HashJoinInputPlan::InnerJoin(join) => {
+            collect_inner_joined_relations(schema_map, join, joined_relations);
+        }
+        HashJoinInputPlan::LeftOuterJoin(join) => {
+            collect_left_outer_joined_relations(schema_map, join, joined_relations);
+        }
     }
+    joined_relations.push(JoinedRelation::new(schema_map, &join.right));
 }
 
 struct PrimaryKeyLookupTarget {
@@ -224,16 +331,23 @@ mod tests {
         match statement {
             StatementPlan::Query(QueryPlan::Project(project)) => Some(match project.input {
                 ProjectInputPlan::Source(relation) => FilterInputPlan::Source(relation),
-                ProjectInputPlan::Join(join) => FilterInputPlan::Join(join),
+                ProjectInputPlan::InnerJoin(join) => FilterInputPlan::InnerJoin(join),
+                ProjectInputPlan::LeftOuterJoin(join) => FilterInputPlan::LeftOuterJoin(join),
                 ProjectInputPlan::Filter(filter) => filter.input,
                 ProjectInputPlan::Aggregation(aggregation) => match aggregation.input {
                     AggregationInputPlan::Source(relation) => FilterInputPlan::Source(relation),
-                    AggregationInputPlan::Join(join) => FilterInputPlan::Join(join),
+                    AggregationInputPlan::InnerJoin(join) => FilterInputPlan::InnerJoin(join),
+                    AggregationInputPlan::LeftOuterJoin(join) => {
+                        FilterInputPlan::LeftOuterJoin(join)
+                    }
                     AggregationInputPlan::Filter(filter) => filter.input,
                 },
                 ProjectInputPlan::Having(having) => match having.input.input {
                     AggregationInputPlan::Source(relation) => FilterInputPlan::Source(relation),
-                    AggregationInputPlan::Join(join) => FilterInputPlan::Join(join),
+                    AggregationInputPlan::InnerJoin(join) => FilterInputPlan::InnerJoin(join),
+                    AggregationInputPlan::LeftOuterJoin(join) => {
+                        FilterInputPlan::LeftOuterJoin(join)
+                    }
                     AggregationInputPlan::Filter(filter) => filter.input,
                 },
             }),

@@ -4,10 +4,12 @@ use {
         data::Schema,
         plan::{
             AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
-            FilterPlan, JoinConstraintPlan, JoinInputPlan, JoinOperatorPlan, JoinPlan,
-            LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan,
-            ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
-            SelectOrderByPlan, SourcePlan, StatementPlan, ValuesOrderByPlan,
+            FilterPlan, HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan,
+            JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
+            LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
+            OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan, ProjectPlan,
+            ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SourcePlan,
+            StatementPlan, ValuesOrderByPlan,
         },
         result::Result,
         store::Store,
@@ -181,37 +183,14 @@ fn scan_order_by_exprs<T: Store + ?Sized>(
     Ok(schema_list.into_iter().chain(order_by).collect())
 }
 
-fn scan_filter<T: Store + ?Sized>(
-    storage: &T,
-    FilterPlan { input, expr }: &FilterPlan,
-) -> Result<HashMap<String, Schema>> {
-    let input = match input {
-        FilterInputPlan::Source(relation) => scan_source(storage, relation)?,
-        FilterInputPlan::Join(join) => scan_join(storage, join)?,
-    };
-    let expr = scan_expr(storage, expr)?;
-
-    Ok(input.into_iter().chain(expr).collect())
-}
-
-fn scan_aggregation_input<T: Store + ?Sized>(
-    storage: &T,
-    input: &AggregationInputPlan,
-) -> Result<HashMap<String, Schema>> {
-    match input {
-        AggregationInputPlan::Source(relation) => scan_source(storage, relation),
-        AggregationInputPlan::Join(join) => scan_join(storage, join),
-        AggregationInputPlan::Filter(filter) => scan_filter(storage, filter),
-    }
-}
-
 fn scan_project<T: Store + ?Sized>(
     storage: &T,
     ProjectPlan { input, projection }: &ProjectPlan,
 ) -> Result<HashMap<String, Schema>> {
     let schema_list = match input {
         ProjectInputPlan::Source(relation) => scan_source(storage, relation)?,
-        ProjectInputPlan::Join(join) => scan_join(storage, join)?,
+        ProjectInputPlan::InnerJoin(join) => scan_inner_join(storage, join)?,
+        ProjectInputPlan::LeftOuterJoin(join) => scan_left_outer_join(storage, join)?,
         ProjectInputPlan::Filter(filter) => scan_filter(storage, filter)?,
         ProjectInputPlan::Aggregation(aggregation) => {
             let schema_list = scan_aggregation_input(storage, &aggregation.input)?;
@@ -258,29 +237,100 @@ fn scan_project<T: Store + ?Sized>(
     Ok(schema_list.into_iter().chain(projection).collect())
 }
 
-fn scan_join<T: Store + ?Sized>(storage: &T, join: &JoinPlan) -> Result<HashMap<String, Schema>> {
-    let JoinPlan {
-        input,
-        right,
-        join_operator,
-        ..
-    } = join;
-
+fn scan_filter<T: Store + ?Sized>(
+    storage: &T,
+    FilterPlan { input, expr }: &FilterPlan,
+) -> Result<HashMap<String, Schema>> {
     let input = match input {
-        JoinInputPlan::Source(relation) => scan_source(storage, relation)?,
-        JoinInputPlan::Join(join) => scan_join(storage, join)?,
+        FilterInputPlan::Source(relation) => scan_source(storage, relation)?,
+        FilterInputPlan::InnerJoin(join) => scan_inner_join(storage, join)?,
+        FilterInputPlan::LeftOuterJoin(join) => scan_left_outer_join(storage, join)?,
     };
-    let right = scan_source(storage, right)?;
-    let current = match join_operator {
-        JoinOperatorPlan::Inner(JoinConstraintPlan::On(expr))
-        | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::On(expr)) => {
-            scan_expr(storage, expr)?.into_iter().chain(right).collect()
-        }
-        JoinOperatorPlan::Inner(JoinConstraintPlan::None)
-        | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None) => right,
-    };
+    let expr = scan_expr(storage, expr)?;
 
-    Ok(input.into_iter().chain(current).collect())
+    Ok(input.into_iter().chain(expr).collect())
+}
+
+fn scan_aggregation_input<T: Store + ?Sized>(
+    storage: &T,
+    input: &AggregationInputPlan,
+) -> Result<HashMap<String, Schema>> {
+    match input {
+        AggregationInputPlan::Source(relation) => scan_source(storage, relation),
+        AggregationInputPlan::InnerJoin(join) => scan_inner_join(storage, join),
+        AggregationInputPlan::LeftOuterJoin(join) => scan_left_outer_join(storage, join),
+        AggregationInputPlan::Filter(filter) => scan_filter(storage, filter),
+    }
+}
+
+fn scan_inner_join<T: Store + ?Sized>(
+    storage: &T,
+    join: &InnerJoinPlan,
+) -> Result<HashMap<String, Schema>> {
+    match &join.input {
+        InnerJoinInputPlan::NestedLoop(join) => scan_nested_loop(storage, join),
+        InnerJoinInputPlan::Hash(join) => scan_hash(storage, join),
+        InnerJoinInputPlan::Condition(condition) => scan_condition(storage, condition),
+    }
+}
+
+fn scan_left_outer_join<T: Store + ?Sized>(
+    storage: &T,
+    join: &LeftOuterJoinPlan,
+) -> Result<HashMap<String, Schema>> {
+    match &join.input {
+        LeftOuterJoinInputPlan::NestedLoop(join) => scan_nested_loop(storage, join),
+        LeftOuterJoinInputPlan::Hash(join) => scan_hash(storage, join),
+        LeftOuterJoinInputPlan::Condition(condition) => scan_condition(storage, condition),
+    }
+}
+
+fn scan_condition<T: Store + ?Sized>(
+    storage: &T,
+    condition: &JoinConditionPlan,
+) -> Result<HashMap<String, Schema>> {
+    let input = match &condition.input {
+        JoinConditionInputPlan::NestedLoop(join) => scan_nested_loop(storage, join)?,
+        JoinConditionInputPlan::Hash(join) => scan_hash(storage, join)?,
+    };
+    let expr = scan_expr(storage, &condition.expr)?;
+
+    Ok(input.into_iter().chain(expr).collect())
+}
+
+fn scan_nested_loop<T: Store + ?Sized>(
+    storage: &T,
+    join: &NestedLoopJoinPlan,
+) -> Result<HashMap<String, Schema>> {
+    let input = match &join.input {
+        NestedLoopJoinInputPlan::Source(source) => scan_source(storage, source)?,
+        NestedLoopJoinInputPlan::InnerJoin(join) => scan_inner_join(storage, join)?,
+        NestedLoopJoinInputPlan::LeftOuterJoin(join) => scan_left_outer_join(storage, join)?,
+    };
+    let right = scan_source(storage, &join.right)?;
+
+    Ok(input.into_iter().chain(right).collect())
+}
+
+fn scan_hash<T: Store + ?Sized>(
+    storage: &T,
+    join: &HashJoinPlan,
+) -> Result<HashMap<String, Schema>> {
+    let input = match &join.input {
+        HashJoinInputPlan::Source(source) => scan_source(storage, source)?,
+        HashJoinInputPlan::InnerJoin(join) => scan_inner_join(storage, join)?,
+        HashJoinInputPlan::LeftOuterJoin(join) => scan_left_outer_join(storage, join)?,
+    };
+    let expressions = [&join.input_key, &join.right_key]
+        .into_iter()
+        .chain(join.right_filter.iter())
+        .map(|expr| scan_expr(storage, expr))
+        .collect::<Result<Vec<_>>>()?
+        .into_iter()
+        .flatten();
+    let right = scan_source(storage, &join.right)?;
+
+    Ok(input.into_iter().chain(right).chain(expressions).collect())
 }
 
 fn scan_source<T>(storage: &T, source: &SourcePlan) -> Result<HashMap<String, Schema>>

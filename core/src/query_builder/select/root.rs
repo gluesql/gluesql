@@ -1,19 +1,20 @@
 use {
     super::{
-        BuildJoinInputPlan, BuildSelect, BuildSourcePlan, DistinctNode, join::JoinOperatorType,
+        BuildAggregationInputPlan, BuildFilterInputPlan, BuildProjectInputPlan, BuildSelect,
+        BuildSourcePlan, DistinctNode,
     },
     crate::{
         ast::{
             Expr, Literal, Projection, Select, SelectItem, TableAlias, TableFactor, TableWithJoins,
         },
         plan::{
-            DerivedSourcePlan, DictionarySourcePlan, JoinInputPlan, SeriesSourcePlan, SourcePlan,
-            TableAliasPlan, TableSourcePlan,
+            AggregationInputPlan, DerivedSourcePlan, DictionarySourcePlan, FilterInputPlan,
+            ProjectInputPlan, SeriesSourcePlan, SourcePlan, TableAliasPlan, TableSourcePlan,
         },
         query_builder::{
-            ExprList, ExprNode, FilterNode, GroupByNode, HavingNode, JoinNode, LimitNode,
-            OffsetNode, OrderByExprList, ProjectNode, QueryBuilderError, QueryNode, SelectItemList,
-            SelectOrderByNode, SourceNode,
+            ExprList, ExprNode, FilterNode, GroupByNode, HavingNode, InnerNestedLoopJoinNode,
+            LeftOuterNestedLoopJoinNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode,
+            QueryBuilderError, QueryNode, SelectItemList, SelectOrderByNode, SourceNode,
         },
         result::Result,
         translate::alias_or_name,
@@ -65,29 +66,23 @@ impl<'a> SelectNode<'a> {
         SelectOrderByNode::new(self, order_by_exprs)
     }
 
-    pub fn join(self, table_name: &str) -> JoinNode<'a> {
-        JoinNode::new(self, table_name.to_owned(), None, JoinOperatorType::Inner)
+    pub fn join(self, table_name: &str) -> InnerNestedLoopJoinNode<'a> {
+        InnerNestedLoopJoinNode::from_select(self, table_name.to_owned(), None)
     }
 
-    pub fn join_as(self, table_name: &str, alias: &str) -> JoinNode<'a> {
-        JoinNode::new(
+    pub fn join_as(self, table_name: &str, alias: &str) -> InnerNestedLoopJoinNode<'a> {
+        InnerNestedLoopJoinNode::from_select(self, table_name.to_owned(), Some(alias.to_owned()))
+    }
+
+    pub fn left_join(self, table_name: &str) -> LeftOuterNestedLoopJoinNode<'a> {
+        LeftOuterNestedLoopJoinNode::from_select(self, table_name.to_owned(), None)
+    }
+
+    pub fn left_join_as(self, table_name: &str, alias: &str) -> LeftOuterNestedLoopJoinNode<'a> {
+        LeftOuterNestedLoopJoinNode::from_select(
             self,
             table_name.to_owned(),
             Some(alias.to_owned()),
-            JoinOperatorType::Inner,
-        )
-    }
-
-    pub fn left_join(self, table_name: &str) -> JoinNode<'a> {
-        JoinNode::new(self, table_name.to_owned(), None, JoinOperatorType::Left)
-    }
-
-    pub fn left_join_as(self, table_name: &str, alias: &str) -> JoinNode<'a> {
-        JoinNode::new(
-            self,
-            table_name.to_owned(),
-            Some(alias.to_owned()),
-            JoinOperatorType::Left,
         )
     }
 
@@ -138,9 +133,21 @@ impl BuildSourcePlan for SelectNode<'_> {
     }
 }
 
-impl BuildJoinInputPlan for SelectNode<'_> {
-    fn build_join_input_plan(self) -> Result<JoinInputPlan> {
-        self.build_source_plan().map(JoinInputPlan::Source)
+impl BuildFilterInputPlan for SelectNode<'_> {
+    fn build_filter_input_plan(self) -> Result<FilterInputPlan> {
+        self.build_source_plan().map(FilterInputPlan::Source)
+    }
+}
+
+impl BuildAggregationInputPlan for SelectNode<'_> {
+    fn build_aggregation_input_plan(self) -> Result<AggregationInputPlan> {
+        self.build_source_plan().map(AggregationInputPlan::Source)
+    }
+}
+
+impl BuildProjectInputPlan for SelectNode<'_> {
+    fn build_project_input_plan(self) -> Result<ProjectInputPlan> {
+        self.build_source_plan().map(ProjectInputPlan::Source)
     }
 }
 

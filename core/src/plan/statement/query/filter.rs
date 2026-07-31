@@ -1,12 +1,13 @@
 use {
-    crate::plan::{ExprPlan, JoinPlan, SourcePlan},
+    crate::plan::{ExprPlan, InnerJoinPlan, LeftOuterJoinPlan, SourcePlan},
     serde::{Deserialize, Serialize},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum FilterInputPlan {
     Source(SourcePlan),
-    Join(Box<JoinPlan>),
+    InnerJoin(Box<InnerJoinPlan>),
+    LeftOuterJoin(Box<LeftOuterJoinPlan>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -22,8 +23,9 @@ mod tests {
         crate::{
             data::Value,
             plan::{
-                ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinInputPlan, JoinOperatorPlan,
-                JoinPlan, SourcePlan, TableAccessPlan, TableSourcePlan,
+                ExprPlan, InnerJoinInputPlan, InnerJoinPlan, LeftOuterJoinInputPlan,
+                LeftOuterJoinPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan, SourcePlan,
+                TableAccessPlan, TableSourcePlan,
             },
         },
         pretty_assertions::assert_eq,
@@ -44,25 +46,35 @@ mod tests {
             input: FilterInputPlan::Source(table("A")),
             expr: expr.clone(),
         };
-        let join = FilterPlan {
-            input: FilterInputPlan::Join(Box::new(JoinPlan {
-                input: JoinInputPlan::Source(table("A")),
+        let inner_join = InnerJoinPlan {
+            input: InnerJoinInputPlan::NestedLoop(NestedLoopJoinPlan {
+                input: NestedLoopJoinInputPlan::Source(table("A")),
                 right: table("B"),
-                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
-                join_executor: JoinExecutorPlan::NestedLoop,
-            })),
+            }),
+        };
+        let left_outer_join = LeftOuterJoinPlan {
+            input: LeftOuterJoinInputPlan::NestedLoop(NestedLoopJoinPlan {
+                input: NestedLoopJoinInputPlan::Source(table("A")),
+                right: table("B"),
+            }),
+        };
+        let inner = FilterPlan {
+            input: FilterInputPlan::InnerJoin(Box::new(inner_join.clone())),
+            expr: expr.clone(),
+        };
+        let left_outer = FilterPlan {
+            input: FilterInputPlan::LeftOuterJoin(Box::new(left_outer_join.clone())),
             expr,
         };
 
         assert_eq!(relation.input, FilterInputPlan::Source(table("A")));
         assert_eq!(
-            join.input,
-            FilterInputPlan::Join(Box::new(JoinPlan {
-                input: JoinInputPlan::Source(table("A")),
-                right: table("B"),
-                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
-                join_executor: JoinExecutorPlan::NestedLoop,
-            }))
+            inner.input,
+            FilterInputPlan::InnerJoin(Box::new(inner_join))
+        );
+        assert_eq!(
+            left_outer.input,
+            FilterInputPlan::LeftOuterJoin(Box::new(left_outer_join))
         );
     }
 }

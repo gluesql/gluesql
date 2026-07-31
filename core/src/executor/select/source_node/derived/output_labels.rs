@@ -2,8 +2,10 @@ use crate::{
     executor::select::{SelectedSources, projection_labels, values_node},
     plan::{
         AggregationInputPlan, DistinctInputPlan, DistinctPlan, FilterInputPlan, FilterPlan,
-        JoinInputPlan, JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
-        ProjectInputPlan, ProjectPlan, QueryPlan,
+        HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan, JoinConditionInputPlan,
+        JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan, LimitInputPlan, LimitPlan,
+        NestedLoopJoinInputPlan, NestedLoopJoinPlan, OffsetInputPlan, OffsetPlan, ProjectInputPlan,
+        ProjectPlan, QueryPlan,
     },
     result::Result,
     store::GStore,
@@ -61,7 +63,8 @@ fn project_sources<'a, T: GStore>(
 ) -> Result<SelectedSources<'a>> {
     match input {
         ProjectInputPlan::Source(source) => source_columns(storage, source),
-        ProjectInputPlan::Join(join) => join_sources(storage, join),
+        ProjectInputPlan::InnerJoin(join) => inner_join_sources(storage, join),
+        ProjectInputPlan::LeftOuterJoin(join) => left_outer_join_sources(storage, join),
         ProjectInputPlan::Filter(filter) => filter_sources(storage, filter),
         ProjectInputPlan::Aggregation(aggregation) => {
             aggregation_sources(storage, &aggregation.input)
@@ -76,7 +79,8 @@ fn aggregation_sources<'a, T: GStore>(
 ) -> Result<SelectedSources<'a>> {
     match input {
         AggregationInputPlan::Source(source) => source_columns(storage, source),
-        AggregationInputPlan::Join(join) => join_sources(storage, join),
+        AggregationInputPlan::InnerJoin(join) => inner_join_sources(storage, join),
+        AggregationInputPlan::LeftOuterJoin(join) => left_outer_join_sources(storage, join),
         AggregationInputPlan::Filter(filter) => filter_sources(storage, filter),
     }
 }
@@ -87,14 +91,66 @@ fn filter_sources<'a, T: GStore>(
 ) -> Result<SelectedSources<'a>> {
     match &filter.input {
         FilterInputPlan::Source(source) => source_columns(storage, source),
-        FilterInputPlan::Join(join) => join_sources(storage, join),
+        FilterInputPlan::InnerJoin(join) => inner_join_sources(storage, join),
+        FilterInputPlan::LeftOuterJoin(join) => left_outer_join_sources(storage, join),
     }
 }
 
-fn join_sources<'a, T: GStore>(storage: &'a T, join: &'a JoinPlan) -> Result<SelectedSources<'a>> {
+fn inner_join_sources<'a, T: GStore>(
+    storage: &'a T,
+    join: &'a InnerJoinPlan,
+) -> Result<SelectedSources<'a>> {
+    match &join.input {
+        InnerJoinInputPlan::NestedLoop(join) => nested_loop_sources(storage, join),
+        InnerJoinInputPlan::Hash(join) => hash_sources(storage, join),
+        InnerJoinInputPlan::Condition(condition) => condition_sources(storage, condition),
+    }
+}
+
+fn left_outer_join_sources<'a, T: GStore>(
+    storage: &'a T,
+    join: &'a LeftOuterJoinPlan,
+) -> Result<SelectedSources<'a>> {
+    match &join.input {
+        LeftOuterJoinInputPlan::NestedLoop(join) => nested_loop_sources(storage, join),
+        LeftOuterJoinInputPlan::Hash(join) => hash_sources(storage, join),
+        LeftOuterJoinInputPlan::Condition(condition) => condition_sources(storage, condition),
+    }
+}
+
+fn condition_sources<'a, T: GStore>(
+    storage: &'a T,
+    condition: &'a JoinConditionPlan,
+) -> Result<SelectedSources<'a>> {
+    match &condition.input {
+        JoinConditionInputPlan::NestedLoop(join) => nested_loop_sources(storage, join),
+        JoinConditionInputPlan::Hash(join) => hash_sources(storage, join),
+    }
+}
+
+fn nested_loop_sources<'a, T: GStore>(
+    storage: &'a T,
+    join: &'a NestedLoopJoinPlan,
+) -> Result<SelectedSources<'a>> {
     let mut sources = match &join.input {
-        JoinInputPlan::Source(source) => source_columns(storage, source)?,
-        JoinInputPlan::Join(join) => join_sources(storage, join)?,
+        NestedLoopJoinInputPlan::Source(source) => source_columns(storage, source)?,
+        NestedLoopJoinInputPlan::InnerJoin(join) => inner_join_sources(storage, join)?,
+        NestedLoopJoinInputPlan::LeftOuterJoin(join) => left_outer_join_sources(storage, join)?,
+    };
+    let right = super::super::execute(storage, &join.right)?;
+    sources.joined.push(right.output);
+
+    Ok(sources)
+}
+
+fn hash_sources<'a, T: GStore>(
+    storage: &'a T,
+    join: &'a HashJoinPlan,
+) -> Result<SelectedSources<'a>> {
+    let mut sources = match &join.input {
+        HashJoinInputPlan::Source(source) => source_columns(storage, source)?,
+        HashJoinInputPlan::InnerJoin(join) => inner_join_sources(storage, join)?,
+        HashJoinInputPlan::LeftOuterJoin(join) => left_outer_join_sources(storage, join)?,
     };
     let right = super::super::execute(storage, &join.right)?;
     sources.joined.push(right.output);

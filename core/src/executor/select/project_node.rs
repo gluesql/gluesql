@@ -2,7 +2,8 @@ use {
     super::{
         SelectedRows, SelectedSources,
         aggregation_node::{self, AggregatedRows},
-        filter_node, having_node, join_node, projection_labels, source_node,
+        filter_node, having_node, inner_join_node, left_outer_join_node, projection_labels,
+        source_node,
     },
     crate::{
         data::{Row, SCHEMALESS_DOC_COLUMN, Value},
@@ -50,9 +51,21 @@ where
 
             (sources, Box::new(rows))
         }
-        ProjectInputPlan::Join(join) => {
+        ProjectInputPlan::InnerJoin(join) => {
             let SelectedRows { sources, rows } =
-                join_node::execute(storage, join, filter_context.as_ref())?;
+                inner_join_node::execute(storage, join, filter_context.as_ref())?;
+            let rows = rows.map(|context| {
+                context.map(|context| AggregateContext {
+                    aggregated: None,
+                    next: Some(context),
+                })
+            });
+
+            (sources, Box::new(rows))
+        }
+        ProjectInputPlan::LeftOuterJoin(join) => {
+            let SelectedRows { sources, rows } =
+                left_outer_join_node::execute(storage, join, filter_context.as_ref())?;
             let rows = rows.map(|context| {
                 context.map(|context| AggregateContext {
                     aggregated: None,

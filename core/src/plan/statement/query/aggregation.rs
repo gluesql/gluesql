@@ -1,13 +1,14 @@
 use {
     super::FilterPlan,
-    crate::plan::{AggregateExprPlan, ExprPlan, JoinPlan, SourcePlan},
+    crate::plan::{AggregateExprPlan, ExprPlan, InnerJoinPlan, LeftOuterJoinPlan, SourcePlan},
     serde::{Deserialize, Serialize},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AggregationInputPlan {
     Source(SourcePlan),
-    Join(Box<JoinPlan>),
+    InnerJoin(Box<InnerJoinPlan>),
+    LeftOuterJoin(Box<LeftOuterJoinPlan>),
     Filter(FilterPlan),
 }
 
@@ -25,9 +26,9 @@ mod tests {
         crate::{
             data::Value,
             plan::{
-                ExprPlan, FilterInputPlan, FilterPlan, JoinConstraintPlan, JoinExecutorPlan,
-                JoinInputPlan, JoinOperatorPlan, JoinPlan, SourcePlan, TableAccessPlan,
-                TableSourcePlan,
+                ExprPlan, FilterInputPlan, FilterPlan, InnerJoinInputPlan, InnerJoinPlan,
+                LeftOuterJoinInputPlan, LeftOuterJoinPlan, NestedLoopJoinInputPlan,
+                NestedLoopJoinPlan, SourcePlan, TableAccessPlan, TableSourcePlan,
             },
         },
         pretty_assertions::assert_eq,
@@ -43,14 +44,20 @@ mod tests {
 
     #[test]
     fn aggregation_accepts_relation_join_and_filter_inputs() {
-        let join = JoinPlan {
-            input: JoinInputPlan::Source(table("A")),
-            right: table("B"),
-            join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
-            join_executor: JoinExecutorPlan::NestedLoop,
+        let inner_join = InnerJoinPlan {
+            input: InnerJoinInputPlan::NestedLoop(NestedLoopJoinPlan {
+                input: NestedLoopJoinInputPlan::Source(table("A")),
+                right: table("B"),
+            }),
+        };
+        let left_outer_join = LeftOuterJoinPlan {
+            input: LeftOuterJoinInputPlan::NestedLoop(NestedLoopJoinPlan {
+                input: NestedLoopJoinInputPlan::Source(table("A")),
+                right: table("B"),
+            }),
         };
         let filter = FilterPlan {
-            input: FilterInputPlan::Join(Box::new(join.clone())),
+            input: FilterInputPlan::InnerJoin(Box::new(inner_join.clone())),
             expr: ExprPlan::Value(Value::Bool(true)),
         };
         let relation = AggregationPlan {
@@ -58,8 +65,13 @@ mod tests {
             group_by: Vec::new(),
             aggregate_slots: Vec::new(),
         };
-        let joined = AggregationPlan {
-            input: AggregationInputPlan::Join(Box::new(join.clone())),
+        let inner = AggregationPlan {
+            input: AggregationInputPlan::InnerJoin(Box::new(inner_join.clone())),
+            group_by: Vec::new(),
+            aggregate_slots: Vec::new(),
+        };
+        let left_outer = AggregationPlan {
+            input: AggregationInputPlan::LeftOuterJoin(Box::new(left_outer_join.clone())),
             group_by: Vec::new(),
             aggregate_slots: Vec::new(),
         };
@@ -70,7 +82,14 @@ mod tests {
         };
 
         assert_eq!(relation.input, AggregationInputPlan::Source(table("A")));
-        assert_eq!(joined.input, AggregationInputPlan::Join(Box::new(join)));
+        assert_eq!(
+            inner.input,
+            AggregationInputPlan::InnerJoin(Box::new(inner_join))
+        );
+        assert_eq!(
+            left_outer.input,
+            AggregationInputPlan::LeftOuterJoin(Box::new(left_outer_join))
+        );
         assert_eq!(filtered.input, AggregationInputPlan::Filter(filter));
     }
 }

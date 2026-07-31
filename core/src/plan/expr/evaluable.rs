@@ -2,10 +2,12 @@ use {
     crate::{
         plan::{
             AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
-            FilterPlan, JoinConstraintPlan, JoinInputPlan, JoinOperatorPlan, JoinPlan,
-            LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan,
-            ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SourcePlan,
-            TableAliasPlan, ValuesOrderByPlan, ValuesPlan,
+            FilterPlan, HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan,
+            JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
+            LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
+            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
+            SelectItemPlan, SelectOrderByPlan, SourcePlan, TableAliasPlan, ValuesOrderByPlan,
+            ValuesPlan,
         },
         plan::{context::Context, expr::PlanExpr},
     },
@@ -109,49 +111,11 @@ fn check_values(context: Option<&Rc<Context<'_>>>, ValuesPlan(rows): &ValuesPlan
         .all(|expr| check_expr(context.map(Rc::clone), expr))
 }
 
-fn check_join(context: Option<&Rc<Context<'_>>>, join: &JoinPlan) -> bool {
-    let input = match &join.input {
-        JoinInputPlan::Source(relation) => check_source(context, relation),
-        JoinInputPlan::Join(join) => check_join(context, join),
-    };
-    if !input || !check_source(context, &join.right) {
-        return false;
-    }
-
-    match &join.join_operator {
-        JoinOperatorPlan::Inner(JoinConstraintPlan::On(expr))
-        | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::On(expr)) => {
-            check_expr(context.map(Rc::clone), expr)
-        }
-        JoinOperatorPlan::Inner(JoinConstraintPlan::None)
-        | JoinOperatorPlan::LeftOuter(JoinConstraintPlan::None) => true,
-    }
-}
-
-fn check_filter(context: Option<&Rc<Context<'_>>>, filter: &FilterPlan) -> bool {
-    let input = match &filter.input {
-        FilterInputPlan::Source(relation) => check_source(context, relation),
-        FilterInputPlan::Join(join) => check_join(context, join),
-    };
-
-    input && check_expr(context.map(Rc::clone), &filter.expr)
-}
-
-fn check_aggregation_input(
-    context: Option<&Rc<Context<'_>>>,
-    input: &AggregationInputPlan,
-) -> bool {
-    match input {
-        AggregationInputPlan::Source(relation) => check_source(context, relation),
-        AggregationInputPlan::Join(join) => check_join(context, join),
-        AggregationInputPlan::Filter(filter) => check_filter(context, filter),
-    }
-}
-
 fn check_project(context: Option<&Rc<Context<'_>>>, project: &ProjectPlan) -> bool {
     let input = match &project.input {
         ProjectInputPlan::Source(relation) => check_source(context, relation),
-        ProjectInputPlan::Join(join) => check_join(context, join),
+        ProjectInputPlan::InnerJoin(join) => check_inner_join(context, join),
+        ProjectInputPlan::LeftOuterJoin(join) => check_left_outer_join(context, join),
         ProjectInputPlan::Filter(filter) => check_filter(context, filter),
         ProjectInputPlan::Aggregation(aggregation) => {
             check_aggregation_input(context, &aggregation.input)
@@ -181,6 +145,80 @@ fn check_project(context: Option<&Rc<Context<'_>>>, project: &ProjectPlan) -> bo
         }),
         ProjectionPlan::SchemalessMap => true,
     }
+}
+
+fn check_filter(context: Option<&Rc<Context<'_>>>, filter: &FilterPlan) -> bool {
+    let input = match &filter.input {
+        FilterInputPlan::Source(relation) => check_source(context, relation),
+        FilterInputPlan::InnerJoin(join) => check_inner_join(context, join),
+        FilterInputPlan::LeftOuterJoin(join) => check_left_outer_join(context, join),
+    };
+
+    input && check_expr(context.map(Rc::clone), &filter.expr)
+}
+
+fn check_aggregation_input(
+    context: Option<&Rc<Context<'_>>>,
+    input: &AggregationInputPlan,
+) -> bool {
+    match input {
+        AggregationInputPlan::Source(relation) => check_source(context, relation),
+        AggregationInputPlan::InnerJoin(join) => check_inner_join(context, join),
+        AggregationInputPlan::LeftOuterJoin(join) => check_left_outer_join(context, join),
+        AggregationInputPlan::Filter(filter) => check_filter(context, filter),
+    }
+}
+
+fn check_inner_join(context: Option<&Rc<Context<'_>>>, join: &InnerJoinPlan) -> bool {
+    match &join.input {
+        InnerJoinInputPlan::NestedLoop(join) => check_nested_loop(context, join),
+        InnerJoinInputPlan::Hash(join) => check_hash(context, join),
+        InnerJoinInputPlan::Condition(condition) => check_condition(context, condition),
+    }
+}
+
+fn check_left_outer_join(context: Option<&Rc<Context<'_>>>, join: &LeftOuterJoinPlan) -> bool {
+    match &join.input {
+        LeftOuterJoinInputPlan::NestedLoop(join) => check_nested_loop(context, join),
+        LeftOuterJoinInputPlan::Hash(join) => check_hash(context, join),
+        LeftOuterJoinInputPlan::Condition(condition) => check_condition(context, condition),
+    }
+}
+
+fn check_condition(context: Option<&Rc<Context<'_>>>, condition: &JoinConditionPlan) -> bool {
+    let input = match &condition.input {
+        JoinConditionInputPlan::NestedLoop(join) => check_nested_loop(context, join),
+        JoinConditionInputPlan::Hash(join) => check_hash(context, join),
+    };
+
+    input && check_expr(context.map(Rc::clone), &condition.expr)
+}
+
+fn check_nested_loop(context: Option<&Rc<Context<'_>>>, join: &NestedLoopJoinPlan) -> bool {
+    let input = match &join.input {
+        NestedLoopJoinInputPlan::Source(source) => check_source(context, source),
+        NestedLoopJoinInputPlan::InnerJoin(join) => check_inner_join(context, join),
+        NestedLoopJoinInputPlan::LeftOuterJoin(join) => check_left_outer_join(context, join),
+    };
+
+    input && check_source(context, &join.right)
+}
+
+fn check_hash(context: Option<&Rc<Context<'_>>>, join: &HashJoinPlan) -> bool {
+    let input = match &join.input {
+        HashJoinInputPlan::Source(source) => check_source(context, source),
+        HashJoinInputPlan::InnerJoin(join) => check_inner_join(context, join),
+        HashJoinInputPlan::LeftOuterJoin(join) => check_left_outer_join(context, join),
+    };
+
+    input
+        && check_source(context, &join.right)
+        && check_expr(context.map(Rc::clone), &join.input_key)
+        && check_expr(context.map(Rc::clone), &join.right_key)
+        && join
+            .right_filter
+            .as_ref()
+            .is_none_or(|expr| check_expr(context.map(Rc::clone), expr))
 }
 
 fn check_source(context: Option<&Rc<Context<'_>>>, source: &SourcePlan) -> bool {

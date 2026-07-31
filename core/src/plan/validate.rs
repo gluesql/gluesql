@@ -4,9 +4,11 @@ use {
         data::Schema,
         plan::{
             AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
-            JoinInputPlan, JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
-            ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SourcePlan,
-            StatementPlan,
+            HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan,
+            JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
+            LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
+            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
+            SelectItemPlan, SourcePlan, StatementPlan,
         },
         result::Result,
     },
@@ -158,7 +160,8 @@ fn contextualize_project_input<'a>(
 ) -> Option<Rc<Context<'a>>> {
     match input {
         ProjectInputPlan::Source(relation) => contextualize_source(schema_map, relation),
-        ProjectInputPlan::Join(join) => contextualize_join(schema_map, join),
+        ProjectInputPlan::InnerJoin(join) => contextualize_inner_join(schema_map, join),
+        ProjectInputPlan::LeftOuterJoin(join) => contextualize_left_outer_join(schema_map, join),
         ProjectInputPlan::Filter(filter) => contextualize_filter_input(schema_map, &filter.input),
         ProjectInputPlan::Aggregation(aggregation) => {
             contextualize_aggregation_input(schema_map, &aggregation.input)
@@ -175,7 +178,10 @@ fn contextualize_aggregation_input<'a>(
 ) -> Option<Rc<Context<'a>>> {
     match input {
         AggregationInputPlan::Source(relation) => contextualize_source(schema_map, relation),
-        AggregationInputPlan::Join(join) => contextualize_join(schema_map, join),
+        AggregationInputPlan::InnerJoin(join) => contextualize_inner_join(schema_map, join),
+        AggregationInputPlan::LeftOuterJoin(join) => {
+            contextualize_left_outer_join(schema_map, join)
+        }
         AggregationInputPlan::Filter(filter) => {
             contextualize_filter_input(schema_map, &filter.input)
         }
@@ -188,17 +194,69 @@ fn contextualize_filter_input<'a>(
 ) -> Option<Rc<Context<'a>>> {
     match input {
         FilterInputPlan::Source(relation) => contextualize_source(schema_map, relation),
-        FilterInputPlan::Join(join) => contextualize_join(schema_map, join),
+        FilterInputPlan::InnerJoin(join) => contextualize_inner_join(schema_map, join),
+        FilterInputPlan::LeftOuterJoin(join) => contextualize_left_outer_join(schema_map, join),
     }
 }
 
-fn contextualize_join<'a>(
+fn contextualize_inner_join<'a>(
     schema_map: &'a SchemaMap,
-    join: &'a JoinPlan,
+    join: &'a InnerJoinPlan,
+) -> Option<Rc<Context<'a>>> {
+    match &join.input {
+        InnerJoinInputPlan::NestedLoop(join) => contextualize_nested_loop(schema_map, join),
+        InnerJoinInputPlan::Hash(join) => contextualize_hash(schema_map, join),
+        InnerJoinInputPlan::Condition(condition) => contextualize_condition(schema_map, condition),
+    }
+}
+
+fn contextualize_left_outer_join<'a>(
+    schema_map: &'a SchemaMap,
+    join: &'a LeftOuterJoinPlan,
+) -> Option<Rc<Context<'a>>> {
+    match &join.input {
+        LeftOuterJoinInputPlan::NestedLoop(join) => contextualize_nested_loop(schema_map, join),
+        LeftOuterJoinInputPlan::Hash(join) => contextualize_hash(schema_map, join),
+        LeftOuterJoinInputPlan::Condition(condition) => {
+            contextualize_condition(schema_map, condition)
+        }
+    }
+}
+
+fn contextualize_condition<'a>(
+    schema_map: &'a SchemaMap,
+    condition: &'a JoinConditionPlan,
+) -> Option<Rc<Context<'a>>> {
+    match &condition.input {
+        JoinConditionInputPlan::NestedLoop(join) => contextualize_nested_loop(schema_map, join),
+        JoinConditionInputPlan::Hash(join) => contextualize_hash(schema_map, join),
+    }
+}
+
+fn contextualize_nested_loop<'a>(
+    schema_map: &'a SchemaMap,
+    join: &'a NestedLoopJoinPlan,
 ) -> Option<Rc<Context<'a>>> {
     let input = match &join.input {
-        JoinInputPlan::Source(relation) => contextualize_source(schema_map, relation),
-        JoinInputPlan::Join(join) => contextualize_join(schema_map, join),
+        NestedLoopJoinInputPlan::Source(source) => contextualize_source(schema_map, source),
+        NestedLoopJoinInputPlan::InnerJoin(join) => contextualize_inner_join(schema_map, join),
+        NestedLoopJoinInputPlan::LeftOuterJoin(join) => {
+            contextualize_left_outer_join(schema_map, join)
+        }
+    };
+    let right = contextualize_source(schema_map, &join.right);
+
+    Context::concat(input, right)
+}
+
+fn contextualize_hash<'a>(
+    schema_map: &'a SchemaMap,
+    join: &'a HashJoinPlan,
+) -> Option<Rc<Context<'a>>> {
+    let input = match &join.input {
+        HashJoinInputPlan::Source(source) => contextualize_source(schema_map, source),
+        HashJoinInputPlan::InnerJoin(join) => contextualize_inner_join(schema_map, join),
+        HashJoinInputPlan::LeftOuterJoin(join) => contextualize_left_outer_join(schema_map, join),
     };
     let right = contextualize_source(schema_map, &join.right);
 
