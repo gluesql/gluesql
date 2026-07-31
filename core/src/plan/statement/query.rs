@@ -1,4 +1,6 @@
+mod aggregation;
 mod distinct;
+mod having;
 mod limit;
 mod offset;
 mod order_by_expr;
@@ -7,11 +9,13 @@ mod select;
 mod values;
 
 pub use {
+    aggregation::AggregationPlan,
     distinct::{DistinctInputPlan, DistinctPlan},
+    having::HavingPlan,
     limit::{LimitInputPlan, LimitPlan},
     offset::{OffsetInputPlan, OffsetPlan},
     order_by_expr::OrderByExprPlan,
-    project::ProjectPlan,
+    project::{ProjectInputPlan, ProjectPlan},
     select::{SelectOrderByPlan, SelectPlan},
     values::{ValuesOrderByPlan, ValuesPlan},
 };
@@ -53,14 +57,29 @@ impl From<ast::Query> for QueryPlan {
                     group_by,
                     having,
                 } = *select;
-                let input = ProjectPlan {
-                    input: Box::new(SelectPlan {
-                        from: from.into(),
-                        selection: selection.map(Into::into),
-                        group_by: group_by.into_iter().map(Into::into).collect(),
-                        having: having.map(Into::into),
-                        aggregate_slots: None,
+                let select = Box::new(SelectPlan {
+                    from: from.into(),
+                    selection: selection.map(Into::into),
+                });
+                let group_by = group_by.into_iter().map(Into::into).collect::<Vec<_>>();
+                let input = match having {
+                    Some(having) => ProjectInputPlan::Having(HavingPlan {
+                        input: AggregationPlan {
+                            input: select,
+                            group_by,
+                            aggregate_slots: Vec::new(),
+                        },
+                        expr: having.into(),
                     }),
+                    None if group_by.is_empty() => ProjectInputPlan::Select(select),
+                    None => ProjectInputPlan::Aggregation(AggregationPlan {
+                        input: select,
+                        group_by,
+                        aggregate_slots: Vec::new(),
+                    }),
+                };
+                let input = ProjectPlan {
+                    input,
                     projection: projection.into(),
                 };
 
@@ -257,15 +276,20 @@ impl From<ast::Query> for QueryPlan {
 mod tests {
     use {
         super::{
-            DistinctInputPlan, DistinctPlan, LimitInputPlan, LimitPlan, OffsetInputPlan,
-            OffsetPlan, QueryPlan,
+            AggregationPlan, DistinctInputPlan, DistinctPlan, HavingPlan, LimitInputPlan,
+            LimitPlan, OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan,
         },
         crate::{
             ast::Literal,
+            data::Value,
             parse_sql::parse,
-            plan::{ExprPlan, SelectOrderByPlan, StatementPlan, ValuesOrderByPlan},
+            plan::{
+                ExprPlan, ProjectionPlan, SelectItemPlan, SelectOrderByPlan, SelectPlan,
+                StatementPlan, TableFactorPlan, TableWithJoinsPlan, ValuesOrderByPlan,
+            },
             translate::translate,
         },
+        pretty_assertions::assert_eq,
     };
 
     fn statement_plan(sql: &str) -> StatementPlan {
@@ -273,6 +297,65 @@ mod tests {
             .and_then(|mut statements| translate(&statements.remove(0)))
             .map(StatementPlan::from)
             .unwrap()
+    }
+
+    fn select_plan() -> Box<SelectPlan> {
+        Box::new(SelectPlan {
+            from: TableWithJoinsPlan {
+                relation: TableFactorPlan::Table {
+                    name: "Item".to_owned(),
+                    alias: None,
+                    index: None,
+                },
+                joins: Vec::new(),
+            },
+            selection: None,
+        })
+    }
+
+    fn project_statement(input: ProjectInputPlan) -> StatementPlan {
+        StatementPlan::Query(QueryPlan::Project(ProjectPlan {
+            input,
+            projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
+        }))
+    }
+
+    #[test]
+    fn query_plan_preserves_typed_select_aggregation_having_relations() {
+        assert_eq!(
+            statement_plan("SELECT * FROM Item"),
+            project_statement(ProjectInputPlan::Select(select_plan()))
+        );
+        assert_eq!(
+            statement_plan("SELECT * FROM Item GROUP BY category"),
+            project_statement(ProjectInputPlan::Aggregation(AggregationPlan {
+                input: select_plan(),
+                group_by: vec![ExprPlan::Identifier("category".to_owned())],
+                aggregate_slots: Vec::new(),
+            }))
+        );
+        assert_eq!(
+            statement_plan("SELECT * FROM Item GROUP BY category HAVING TRUE"),
+            project_statement(ProjectInputPlan::Having(HavingPlan {
+                input: AggregationPlan {
+                    input: select_plan(),
+                    group_by: vec![ExprPlan::Identifier("category".to_owned())],
+                    aggregate_slots: Vec::new(),
+                },
+                expr: ExprPlan::Value(Value::Bool(true)),
+            }))
+        );
+        assert_eq!(
+            statement_plan("SELECT * FROM Item HAVING TRUE"),
+            project_statement(ProjectInputPlan::Having(HavingPlan {
+                input: AggregationPlan {
+                    input: select_plan(),
+                    group_by: Vec::new(),
+                    aggregate_slots: Vec::new(),
+                },
+                expr: ExprPlan::Value(Value::Bool(true)),
+            }))
+        );
     }
 
     #[test]

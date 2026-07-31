@@ -1,8 +1,8 @@
 use {
-    super::{BuildProjectPlan, BuildSelect, BuildSelectPlan, DistinctNode},
+    super::{BuildProjectInputPlan, BuildProjectPlan, BuildSelect, DistinctNode},
     crate::{
         ast::{Projection, Select},
-        plan::{ProjectPlan, ProjectionPlan, SelectPlan},
+        plan::{ProjectInputPlan, ProjectPlan, ProjectionPlan},
         query_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
             JoinNode, LimitNode, OffsetNode, OrderByExprList, QueryNode, SelectItemList,
@@ -23,16 +23,16 @@ pub(super) enum PrevNode<'a> {
     Filter(FilterNode<'a>),
 }
 
-impl BuildSelectPlan for PrevNode<'_> {
-    fn build_select_plan(self) -> Result<SelectPlan> {
+impl BuildProjectInputPlan for PrevNode<'_> {
+    fn build_project_input_plan(self) -> Result<ProjectInputPlan> {
         match self {
-            Self::Select(node) => node.build_select_plan(),
-            Self::GroupBy(node) => node.build_select_plan(),
-            Self::Having(node) => node.build_select_plan(),
-            Self::Join(node) => node.build_select_plan(),
-            Self::JoinConstraint(node) => node.build_select_plan(),
-            Self::HashJoin(node) => node.build_select_plan(),
-            Self::Filter(node) => node.build_select_plan(),
+            Self::Select(node) => node.build_project_input_plan(),
+            Self::GroupBy(node) => node.build_project_input_plan(),
+            Self::Having(node) => node.build_project_input_plan(),
+            Self::Join(node) => node.build_project_input_plan(),
+            Self::JoinConstraint(node) => node.build_project_input_plan(),
+            Self::HashJoin(node) => node.build_project_input_plan(),
+            Self::Filter(node) => node.build_project_input_plan(),
         }
     }
 }
@@ -143,7 +143,7 @@ impl<'a> ProjectNode<'a> {
 
 impl BuildProjectPlan for ProjectNode<'_> {
     fn build_project_plan(self) -> Result<ProjectPlan> {
-        let input = self.prev_node.build_select_plan()?;
+        let input = self.prev_node.build_project_input_plan()?;
         let projection = ProjectionPlan::SelectItems(
             self.select_items_list
                 .into_iter()
@@ -154,10 +154,7 @@ impl BuildProjectPlan for ProjectNode<'_> {
                 .collect::<Vec<_>>(),
         );
 
-        Ok(ProjectPlan {
-            input: Box::new(input),
-            projection,
-        })
+        Ok(ProjectPlan { input, projection })
     }
 }
 
@@ -183,8 +180,8 @@ mod tests {
     use {
         crate::{
             plan::{
-                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectPlan,
-                ProjectionPlan, QueryPlan, SelectPlan, StatementPlan, TableFactorPlan,
+                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectInputPlan,
+                ProjectPlan, ProjectionPlan, QueryPlan, SelectPlan, StatementPlan, TableFactorPlan,
                 TableWithJoinsPlan,
             },
             query_builder::{Build, SelectItemList, col, table, test_query_builder},
@@ -315,12 +312,9 @@ mod tests {
                     joins: vec![join],
                 },
                 selection: None,
-                group_by: Vec::new(),
-                having: None,
-                aggregate_slots: None,
             };
             let project = ProjectPlan {
-                input: Box::new(select),
+                input: ProjectInputPlan::Select(Box::new(select)),
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("Player.name, PlayerItem.name")
                         .build_select_items_plan()

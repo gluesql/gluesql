@@ -13,9 +13,9 @@ pub use {
     join::{JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan},
     projection::{ProjectionPlan, SelectItemPlan},
     query::{
-        DistinctInputPlan, DistinctPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
-        OrderByExprPlan, ProjectPlan, QueryPlan, SelectOrderByPlan, SelectPlan, ValuesOrderByPlan,
-        ValuesPlan,
+        AggregationPlan, DistinctInputPlan, DistinctPlan, HavingPlan, LimitInputPlan, LimitPlan,
+        OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan, ProjectPlan, QueryPlan,
+        SelectOrderByPlan, SelectPlan, ValuesOrderByPlan, ValuesPlan,
     },
     table_factor::{IndexItemPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan},
 };

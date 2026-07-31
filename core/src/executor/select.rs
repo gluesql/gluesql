@@ -1,5 +1,7 @@
+mod aggregation_node;
 mod distinct_node;
 mod error;
+mod having_node;
 mod limit_node;
 mod offset_node;
 mod order_by;

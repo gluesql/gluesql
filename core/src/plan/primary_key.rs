@@ -6,8 +6,9 @@ use {
         data::Schema,
         plan::{
             DistinctInputPlan, DistinctPlan, ExprPlan, IndexItemPlan, LimitInputPlan, LimitPlan,
-            OffsetInputPlan, OffsetPlan, ProjectPlan, QueryPlan, SelectPlan, StatementPlan,
-            TableFactorPlan, TableWithJoinsPlan, expr::evaluable::check_expr as check_evaluable,
+            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SelectPlan,
+            StatementPlan, TableFactorPlan, TableWithJoinsPlan,
+            expr::evaluable::check_expr as check_evaluable,
         },
     },
     std::{collections::HashMap, hash::BuildHasher, rc::Rc},
@@ -41,7 +42,17 @@ impl<'a, S: BuildHasher> Planner<'a> for PrimaryKeyPlanner<'a, S> {
             Box::new(self.select(outer_context.as_ref().map(Rc::clone), *select))
         };
         let plan_project = |mut project: ProjectPlan| {
-            project.input = plan_select(project.input);
+            project.input = match project.input {
+                ProjectInputPlan::Select(select) => ProjectInputPlan::Select(plan_select(select)),
+                ProjectInputPlan::Aggregation(mut aggregation) => {
+                    aggregation.input = plan_select(aggregation.input);
+                    ProjectInputPlan::Aggregation(aggregation)
+                }
+                ProjectInputPlan::Having(mut having) => {
+                    having.input.input = plan_select(having.input.input);
+                    ProjectInputPlan::Having(having)
+                }
+            };
             project
         };
         let plan_distinct = |DistinctPlan { input }| DistinctPlan {
@@ -178,11 +189,7 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                 ..select.from
             };
 
-            SelectPlan {
-                from,
-                selection,
-                ..select
-            }
+            SelectPlan { from, selection }
         } else {
             SelectPlan {
                 selection,
@@ -310,8 +317,8 @@ mod tests {
             mock::{MockStorage, run},
             parse_sql::{parse, parse_expr},
             plan::{
-                ExprPlan, IndexItemPlan, QueryPlan, SelectPlan, StatementPlan, TableAliasPlan,
-                TableFactorPlan, fetch_schema_map,
+                ExprPlan, IndexItemPlan, ProjectInputPlan, QueryPlan, SelectPlan, StatementPlan,
+                TableAliasPlan, TableFactorPlan, fetch_schema_map,
             },
             query_builder::{Build, col, primary_key, table},
             translate::{NO_PARAMS, translate, translate_expr},
@@ -325,7 +332,11 @@ mod tests {
 
     fn try_select(statement: StatementPlan) -> Option<Box<SelectPlan>> {
         match statement {
-            StatementPlan::Query(QueryPlan::Project(project)) => Some(project.input),
+            StatementPlan::Query(QueryPlan::Project(project)) => Some(match project.input {
+                ProjectInputPlan::Select(select) => select,
+                ProjectInputPlan::Aggregation(aggregation) => aggregation.input,
+                ProjectInputPlan::Having(having) => having.input.input,
+            }),
             _ => None,
         }
     }
@@ -439,6 +450,29 @@ mod tests {
             .build()
             .unwrap();
         assert_eq!(actual, expected, "AND binary op 3:\n{sql}");
+
+        let sql = "SELECT id FROM Player WHERE id = 1 GROUP BY id";
+        let actual = plan(&storage, sql);
+        let expected = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .group_by("id")
+            .project("id")
+            .build()
+            .unwrap();
+        assert_eq!(actual, expected, "preserves aggregation wrapper:\n{sql}");
+
+        let sql = "SELECT id FROM Player WHERE id = 1 GROUP BY id HAVING TRUE";
+        let actual = plan(&storage, sql);
+        let expected = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .group_by("id")
+            .having("TRUE")
+            .project("id")
+            .build()
+            .unwrap();
+        assert_eq!(actual, expected, "preserves having wrapper:\n{sql}");
     }
 
     #[test]
@@ -487,8 +521,12 @@ mod tests {
             matches!(
                 actual,
                 StatementPlan::Query(QueryPlan::Project(project_plan))
-                    if project_plan.input.from.relation == expected_relation
-                    && project_plan.input.selection.is_none()
+                    if matches!(
+                        &project_plan.input,
+                        ProjectInputPlan::Select(select)
+                            if select.from.relation == expected_relation
+                                && select.selection.is_none()
+                    )
             ),
             "aliased primary key should be installed and removed from selection:\n{sql}"
         );

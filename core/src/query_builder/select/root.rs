@@ -6,8 +6,8 @@ use {
         },
         plan::{SelectPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan},
         query_builder::{
-            ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode, OffsetNode,
-            OrderByExprList, ProjectNode, QueryBuilderError, QueryNode, SelectItemList,
+            ExprList, ExprNode, FilterNode, GroupByNode, HavingNode, JoinNode, LimitNode,
+            OffsetNode, OrderByExprList, ProjectNode, QueryBuilderError, QueryNode, SelectItemList,
             SelectOrderByNode, TableFactorNode, table_factor::TableType,
         },
         result::Result,
@@ -42,6 +42,10 @@ impl<'a> SelectNode<'a> {
 
     pub fn group_by<T: Into<ExprList<'a>>>(self, expr_list: T) -> GroupByNode<'a> {
         GroupByNode::new(self, expr_list)
+    }
+
+    pub fn having<T: Into<ExprNode<'a>>>(self, expr: T) -> HavingNode<'a> {
+        HavingNode::new(self, expr)
     }
 
     pub fn offset<T: Into<ExprNode<'a>>>(self, expr: T) -> OffsetNode<'a> {
@@ -137,9 +141,6 @@ impl BuildSelectPlan for SelectNode<'_> {
         Ok(SelectPlan {
             from,
             selection: None,
-            group_by: Vec::new(),
-            having: None,
-            aggregate_slots: None,
         })
     }
 }

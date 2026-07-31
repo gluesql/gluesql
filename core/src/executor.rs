@@ -1,4 +1,3 @@
-mod aggregate;
 mod alter;
 mod context;
 mod delete;

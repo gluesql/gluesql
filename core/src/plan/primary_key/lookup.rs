@@ -181,8 +181,8 @@ mod tests {
             data::Schema,
             parse_sql::parse,
             plan::{
-                ExprPlan, IndexItemPlan, QueryPlan, StatementPlan, TableFactorPlan,
-                TableWithJoinsPlan,
+                ExprPlan, IndexItemPlan, ProjectInputPlan, QueryPlan, StatementPlan,
+                TableFactorPlan, TableWithJoinsPlan,
             },
             translate::translate,
         },
@@ -203,7 +203,11 @@ mod tests {
         let parsed = parse(sql).unwrap().into_iter().next().unwrap();
         let statement = StatementPlan::from(translate(&parsed).unwrap());
         match statement {
-            StatementPlan::Query(QueryPlan::Project(project)) => Some(project.input.from),
+            StatementPlan::Query(QueryPlan::Project(project)) => Some(match project.input {
+                ProjectInputPlan::Select(select) => select.from,
+                ProjectInputPlan::Aggregation(aggregation) => aggregation.input.from,
+                ProjectInputPlan::Having(having) => having.input.input.from,
+            }),
             _ => None,
         }
     }

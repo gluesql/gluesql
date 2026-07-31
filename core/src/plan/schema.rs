@@ -5,8 +5,9 @@ use {
         plan::{
             DistinctInputPlan, DistinctPlan, ExprPlan, JoinConstraintPlan, JoinOperatorPlan,
             JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan,
-            ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SelectPlan,
-            StatementPlan, TableFactorPlan, TableWithJoinsPlan, ValuesOrderByPlan,
+            ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
+            SelectOrderByPlan, SelectPlan, StatementPlan, TableFactorPlan, TableWithJoinsPlan,
+            ValuesOrderByPlan,
         },
         result::Result,
         store::Store,
@@ -184,19 +185,12 @@ fn scan_select<T: Store + ?Sized>(
     storage: &T,
     select: &SelectPlan,
 ) -> Result<HashMap<String, Schema>> {
-    let SelectPlan {
-        from,
-        selection,
-        group_by,
-        having,
-        ..
-    } = select;
+    let SelectPlan { from, selection } = select;
 
     let from = scan_table_with_joins(storage, from)?;
 
-    let exprs = selection.iter().chain(group_by.iter()).chain(having.iter());
-
-    Ok(exprs
+    Ok(selection
+        .iter()
         .map(|expr| scan_expr(storage, expr))
         .collect::<Result<Vec<HashMap<String, Schema>>>>()?
         .into_iter()
@@ -209,7 +203,35 @@ fn scan_project<T: Store + ?Sized>(
     storage: &T,
     ProjectPlan { input, projection }: &ProjectPlan,
 ) -> Result<HashMap<String, Schema>> {
-    let schema_list = scan_select(storage, input)?;
+    let schema_list = match input {
+        ProjectInputPlan::Select(select) => scan_select(storage, select)?,
+        ProjectInputPlan::Aggregation(aggregation) => {
+            let schema_list = scan_select(storage, &aggregation.input)?;
+            let group_by = aggregation
+                .group_by
+                .iter()
+                .map(|expr| scan_expr(storage, expr))
+                .collect::<Result<Vec<_>>>()?
+                .into_iter()
+                .flatten();
+
+            schema_list.into_iter().chain(group_by).collect()
+        }
+        ProjectInputPlan::Having(having) => {
+            let schema_list = scan_select(storage, &having.input.input)?;
+            let aggregation = having
+                .input
+                .group_by
+                .iter()
+                .chain(std::iter::once(&having.expr))
+                .map(|expr| scan_expr(storage, expr))
+                .collect::<Result<Vec<_>>>()?
+                .into_iter()
+                .flatten();
+
+            schema_list.into_iter().chain(aggregation).collect()
+        }
+    };
     let projection_items = match projection {
         ProjectionPlan::SelectItems(items) => items.as_slice(),
         ProjectionPlan::SchemalessMap => &[],

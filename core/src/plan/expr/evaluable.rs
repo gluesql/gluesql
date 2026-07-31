@@ -2,8 +2,8 @@ use {
     crate::{
         plan::{
             DistinctInputPlan, DistinctPlan, ExprPlan, JoinConstraintPlan, JoinOperatorPlan,
-            JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectPlan,
-            ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SelectPlan,
+            JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectInputPlan,
+            ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SelectPlan,
             TableAliasPlan, TableFactorPlan, TableWithJoinsPlan, ValuesOrderByPlan, ValuesPlan,
         },
         plan::{context::Context, expr::PlanExpr},
@@ -109,13 +109,7 @@ fn check_values(context: Option<&Rc<Context<'_>>>, ValuesPlan(rows): &ValuesPlan
 }
 
 fn check_select(context: Option<&Rc<Context<'_>>>, select: &SelectPlan) -> bool {
-    let SelectPlan {
-        from,
-        selection,
-        group_by,
-        having,
-        ..
-    } = select;
+    let SelectPlan { from, selection } = select;
 
     let TableWithJoinsPlan { relation, joins } = from;
 
@@ -148,13 +142,30 @@ fn check_select(context: Option<&Rc<Context<'_>>>, select: &SelectPlan) -> bool 
 
     selection
         .iter()
-        .chain(group_by.iter())
-        .chain(having.iter())
         .all(|expr| check_expr(context.map(Rc::clone), expr))
 }
 
 fn check_project(context: Option<&Rc<Context<'_>>>, project: &ProjectPlan) -> bool {
-    if !check_select(context, &project.input) {
+    let input = match &project.input {
+        ProjectInputPlan::Select(select) => check_select(context, select),
+        ProjectInputPlan::Aggregation(aggregation) => {
+            check_select(context, &aggregation.input)
+                && aggregation
+                    .group_by
+                    .iter()
+                    .all(|expr| check_expr(context.map(Rc::clone), expr))
+        }
+        ProjectInputPlan::Having(having) => {
+            check_select(context, &having.input.input)
+                && having
+                    .input
+                    .group_by
+                    .iter()
+                    .chain(std::iter::once(&having.expr))
+                    .all(|expr| check_expr(context.map(Rc::clone), expr))
+        }
+    };
+    if !input {
         return false;
     }
 

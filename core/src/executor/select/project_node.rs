@@ -1,5 +1,5 @@
 use {
-    super::select_node,
+    super::{aggregation_node, having_node, select_node},
     crate::{
         data::{Row, SCHEMALESS_DOC_COLUMN, Value},
         executor::{
@@ -7,7 +7,10 @@ use {
             evaluate::evaluate,
             fetch::fetch_labels,
         },
-        plan::{ProjectPlan, ProjectionPlan, SelectItemPlan, TableWithJoinsPlan},
+        plan::{
+            ProjectInputPlan, ProjectPlan, ProjectionPlan, SelectItemPlan, SelectPlan,
+            TableWithJoinsPlan,
+        },
         result::Result,
         store::GStore,
     },
@@ -16,6 +19,7 @@ use {
 
 type ProjectedRow<'a> = (Option<Rc<AggregateValues>>, Option<Rc<RowContext<'a>>>, Row);
 type ProjectedIter<'a> = Box<dyn Iterator<Item = Result<ProjectedRow<'a>>> + 'a>;
+type ProjectInputIter<'a> = Box<dyn Iterator<Item = Result<AggregateContext<'a>>> + 'a>;
 
 pub(super) struct ProjectedRows<'a> {
     pub(super) labels: Vec<String>,
@@ -32,8 +36,34 @@ where
     T: GStore,
 {
     let ProjectPlan { input, projection } = plan;
-    let TableWithJoinsPlan { relation, joins } = &input.from;
-    let rows = select_node::execute(storage, input, filter_context.as_ref())?;
+    let (select, rows): (&SelectPlan, ProjectInputIter<'a>) = match input {
+        ProjectInputPlan::Select(select) => {
+            let rows =
+                select_node::execute(storage, select, filter_context.as_ref())?.map(|context| {
+                    context.map(|context| AggregateContext {
+                        aggregated: None,
+                        next: Some(context),
+                    })
+                });
+
+            (select, Box::new(rows))
+        }
+        ProjectInputPlan::Aggregation(aggregation) => {
+            let rows = aggregation_node::execute(storage, aggregation, filter_context.as_ref())?
+                .into_iter()
+                .map(Ok);
+
+            (&aggregation.input, Box::new(rows))
+        }
+        ProjectInputPlan::Having(having) => {
+            let rows = having_node::execute(storage, having, filter_context.as_ref())?
+                .into_iter()
+                .map(Ok);
+
+            (&having.input.input, Box::new(rows))
+        }
+    };
+    let TableWithJoinsPlan { relation, joins } = &select.from;
     let labels = fetch_labels(storage, relation, joins, projection)?;
     let labels = Rc::from(labels);
     let project_labels = Rc::clone(&labels);

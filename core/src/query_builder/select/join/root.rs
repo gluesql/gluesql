@@ -7,7 +7,7 @@ use {
             TableAliasPlan, TableFactorPlan,
         },
         query_builder::{
-            DistinctNode, ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode,
+            DistinctNode, ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode,
             JoinConstraintNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryNode,
             SelectItemList, SelectNode, SelectOrderByNode, TableFactorNode,
             select::{BuildSelect, BuildSelectPlan},
@@ -162,6 +162,10 @@ impl<'a> JoinNode<'a> {
 
     pub fn group_by<T: Into<ExprList<'a>>>(self, expr_list: T) -> GroupByNode<'a> {
         GroupByNode::new(self, expr_list)
+    }
+
+    pub fn having<T: Into<ExprNode<'a>>>(self, expr: T) -> HavingNode<'a> {
+        HavingNode::new(self, expr)
     }
 
     pub fn offset<T: Into<ExprNode<'a>>>(self, expr: T) -> OffsetNode<'a> {
@@ -601,8 +605,8 @@ mod tests {
     fn hash_join() {
         use crate::{
             plan::{
-                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectPlan,
-                ProjectionPlan, QueryPlan, SelectPlan, StatementPlan, TableAliasPlan,
+                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectInputPlan,
+                ProjectPlan, ProjectionPlan, QueryPlan, SelectPlan, StatementPlan, TableAliasPlan,
                 TableFactorPlan, TableWithJoinsPlan,
             },
             query_builder::{SelectItemList, col},
@@ -632,12 +636,9 @@ mod tests {
                     joins: vec![join, other_join],
                 },
                 selection: None,
-                group_by: Vec::new(),
-                having: None,
-                aggregate_slots: None,
             };
             let project = ProjectPlan {
-                input: Box::new(select),
+                input: ProjectInputPlan::Select(Box::new(select)),
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),

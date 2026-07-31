@@ -6,8 +6,9 @@ use {
         executor::{evaluate::evaluate, select::select},
         plan::{
             DistinctInputPlan, DistinctPlan, ExprPlan, IndexItemPlan, JoinPlan, LimitInputPlan,
-            LimitPlan, OffsetInputPlan, OffsetPlan, ProjectPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan, ValuesPlan,
+            LimitPlan, OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan,
+            QueryPlan, SelectItemPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan,
+            ValuesPlan,
         },
         result::Result,
         store::GStore,
@@ -444,17 +445,19 @@ where
                     name,
                 },
         } => match derived_source(subquery) {
-            DerivedSource::Project(ProjectPlan {
-                input: statement,
-                projection,
-            }) => {
+            DerivedSource::Project(ProjectPlan { input, projection }) => {
+                let statement = match input {
+                    ProjectInputPlan::Select(select) => select.as_ref(),
+                    ProjectInputPlan::Aggregation(aggregation) => aggregation.input.as_ref(),
+                    ProjectInputPlan::Having(having) => having.input.input.as_ref(),
+                };
                 let crate::plan::SelectPlan {
                     from:
                         TableWithJoinsPlan {
                             relation, joins, ..
                         },
                     ..
-                } = &**statement;
+                } = statement;
 
                 let labels = fetch_labels(storage, relation, joins, projection)?;
                 if alias_columns.is_empty() {

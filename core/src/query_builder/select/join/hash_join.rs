@@ -4,9 +4,9 @@ use {
         ast::Select,
         plan::{JoinConstraintPlan, JoinExecutorPlan, JoinPlan, SelectPlan},
         query_builder::{
-            DistinctNode, ExprList, ExprNode, FilterNode, GroupByNode, JoinConstraintNode,
-            JoinNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryBuilderError,
-            QueryNode, SelectItemList, SelectOrderByNode, TableFactorNode,
+            DistinctNode, ExprList, ExprNode, FilterNode, GroupByNode, HavingNode,
+            JoinConstraintNode, JoinNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode,
+            QueryBuilderError, QueryNode, SelectItemList, SelectOrderByNode, TableFactorNode,
             select::{BuildSelect, BuildSelectPlan},
         },
         result::Result,
@@ -85,6 +85,10 @@ impl<'a> HashJoinNode<'a> {
         GroupByNode::new(self, expr_list)
     }
 
+    pub fn having<T: Into<ExprNode<'a>>>(self, expr: T) -> HavingNode<'a> {
+        HavingNode::new(self, expr)
+    }
+
     pub fn offset<T: Into<ExprNode<'a>>>(self, expr: T) -> OffsetNode<'a> {
         OffsetNode::new(self, expr)
     }
@@ -160,8 +164,8 @@ mod tests {
     use {
         crate::{
             plan::{
-                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectPlan,
-                ProjectionPlan, QueryPlan, SelectPlan, StatementPlan, TableAliasPlan,
+                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectInputPlan,
+                ProjectPlan, ProjectionPlan, QueryPlan, SelectPlan, StatementPlan, TableAliasPlan,
                 TableFactorPlan, TableWithJoinsPlan,
             },
             query_builder::{
@@ -205,12 +209,9 @@ mod tests {
                     joins: vec![join],
                 },
                 selection: None,
-                group_by: Vec::new(),
-                having: None,
-                aggregate_slots: None,
             };
             let project = ProjectPlan {
-                input: Box::new(select),
+                input: ProjectInputPlan::Select(Box::new(select)),
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),
@@ -255,12 +256,9 @@ mod tests {
                     joins: vec![join],
                 },
                 selection: None,
-                group_by: Vec::new(),
-                having: None,
-                aggregate_slots: None,
             };
             let project = ProjectPlan {
-                input: Box::new(select),
+                input: ProjectInputPlan::Select(Box::new(select)),
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),
@@ -304,12 +302,9 @@ mod tests {
                     joins: vec![join],
                 },
                 selection: None,
-                group_by: Vec::new(),
-                having: None,
-                aggregate_slots: None,
             };
             let subquery = ProjectPlan {
-                input: Box::new(subquery),
+                input: ProjectInputPlan::Select(Box::new(subquery)),
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),
@@ -327,12 +322,9 @@ mod tests {
                     joins: Vec::new(),
                 },
                 selection: None,
-                group_by: Vec::new(),
-                having: None,
-                aggregate_slots: None,
             };
             let project = ProjectPlan {
-                input: Box::new(select),
+                input: ProjectInputPlan::Select(Box::new(select)),
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),

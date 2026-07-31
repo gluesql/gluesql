@@ -82,7 +82,7 @@ mod test {
     use crate::{
         plan::{
             ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan,
-            ProjectPlan, ProjectionPlan, QueryPlan, SelectPlan, TableFactorPlan,
+            ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectPlan, TableFactorPlan,
             TableWithJoinsPlan,
         },
         query_builder::{QueryNode, SelectItemList, col, table, test_expr, text, values},
@@ -172,12 +172,9 @@ mod test {
                     joins: vec![join],
                 },
                 selection: None,
-                group_by: Vec::new(),
-                having: None,
-                aggregate_slots: None,
             };
             let query = QueryPlan::Project(ProjectPlan {
-                input: Box::new(select),
+                input: ProjectInputPlan::Select(Box::new(select)),
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),

@@ -3,7 +3,8 @@ use {
         ast::*,
         plan::{
             DistinctInputPlan, DistinctPlan, IndexItemPlan, LimitInputPlan, LimitPlan,
-            OffsetInputPlan, OffsetPlan, ProjectPlan, QueryPlan, SelectPlan, StatementPlan,
+            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SelectPlan,
+            StatementPlan,
         },
         prelude::{Glue, Payload, Result},
         store::{GStore, GStoreMut, Planner},
@@ -74,7 +75,13 @@ fn find_indexes(statement: &StatementPlan) -> Vec<&IndexItemPlan> {
     }
 
     fn find_project_indexes(project: &ProjectPlan) -> Vec<&IndexItemPlan> {
-        find_select_indexes(&project.input)
+        let select = match &project.input {
+            ProjectInputPlan::Select(select) => select.as_ref(),
+            ProjectInputPlan::Aggregation(aggregation) => aggregation.input.as_ref(),
+            ProjectInputPlan::Having(having) => having.input.input.as_ref(),
+        };
+
+        find_select_indexes(select)
     }
 
     fn find_distinct_indexes(distinct: &DistinctPlan) -> Vec<&IndexItemPlan> {

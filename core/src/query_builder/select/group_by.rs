@@ -1,8 +1,10 @@
 use {
-    super::{BuildSelect, BuildSelectPlan, DistinctNode},
+    super::{
+        BuildAggregationPlan, BuildProjectInputPlan, BuildSelect, BuildSelectPlan, DistinctNode,
+    },
     crate::{
         ast::Select,
-        plan::SelectPlan,
+        plan::{AggregationPlan, ProjectInputPlan, SelectPlan},
         query_builder::{
             ExprList, ExprNode, FilterNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
             LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryNode, SelectItemList,
@@ -121,12 +123,20 @@ impl<'a> GroupByNode<'a> {
     }
 }
 
-impl BuildSelectPlan for GroupByNode<'_> {
-    fn build_select_plan(self) -> Result<SelectPlan> {
-        let mut select = self.prev_node.build_select_plan()?;
-        select.group_by = self.expr_list.build_exprs_plan()?;
+impl BuildAggregationPlan for GroupByNode<'_> {
+    fn build_aggregation_plan(self) -> Result<AggregationPlan> {
+        Ok(AggregationPlan {
+            input: Box::new(self.prev_node.build_select_plan()?),
+            group_by: self.expr_list.build_exprs_plan()?,
+            aggregate_slots: Vec::new(),
+        })
+    }
+}
 
-        Ok(select)
+impl BuildProjectInputPlan for GroupByNode<'_> {
+    fn build_project_input_plan(self) -> Result<ProjectInputPlan> {
+        self.build_aggregation_plan()
+            .map(ProjectInputPlan::Aggregation)
     }
 }
 
@@ -144,9 +154,9 @@ mod tests {
     use {
         crate::{
             plan::{
-                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectPlan,
-                ProjectionPlan, QueryPlan, SelectPlan, StatementPlan, TableFactorPlan,
-                TableWithJoinsPlan,
+                AggregationPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan,
+                ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectPlan,
+                StatementPlan, TableFactorPlan, TableWithJoinsPlan,
             },
             query_builder::{Build, SelectItemList, col, table, test_query_builder},
         },
@@ -232,12 +242,13 @@ mod tests {
                     joins: vec![join],
                 },
                 selection: None,
-                group_by: vec![col("PlayerItem.category").build_expr_plan().unwrap()],
-                having: None,
-                aggregate_slots: None,
             };
             let project = ProjectPlan {
-                input: Box::new(select),
+                input: ProjectInputPlan::Aggregation(AggregationPlan {
+                    input: Box::new(select),
+                    group_by: vec![col("PlayerItem.category").build_expr_plan().unwrap()],
+                    aggregate_slots: Vec::new(),
+                }),
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),

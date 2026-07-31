@@ -16,8 +16,8 @@ use {
         data::{Key, Row, SCHEMALESS_DOC_COLUMN, Schema, Value},
         plan::{
             DistinctInputPlan, DistinctPlan, ExprPlan, LimitInputPlan, LimitPlan, OffsetInputPlan,
-            OffsetPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan,
-            StatementPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan,
+            OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
+            SelectPlan, StatementPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan,
         },
         result::{Error, Result},
         store::{GStore, GStoreMut},
@@ -311,7 +311,7 @@ fn execute_inner<T: GStore + GStoreMut>(
         StatementPlan::ShowIndexes(table_name) => {
             let query = QueryPlan::Project(ProjectPlan {
                 projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
-                input: Box::new(SelectPlan {
+                input: ProjectInputPlan::Select(Box::new(SelectPlan {
                     from: TableWithJoinsPlan {
                         relation: TableFactorPlan::Dictionary {
                             dict: Dictionary::GlueIndexes,
@@ -329,10 +329,7 @@ fn execute_inner<T: GStore + GStoreMut>(
                             table_name.to_owned(),
                         ))),
                     }),
-                    group_by: Vec::new(),
-                    having: None,
-                    aggregate_slots: None,
-                }),
+                })),
             });
 
             let (labels, rows) = select_with_labels(storage, &query, None)?;
@@ -353,7 +350,7 @@ fn execute_inner<T: GStore + GStoreMut>(
                         expr: ExprPlan::Identifier("TABLE_NAME".to_owned()),
                         label: "TABLE_NAME".to_owned(),
                     }]),
-                    input: Box::new(SelectPlan {
+                    input: ProjectInputPlan::Select(Box::new(SelectPlan {
                         from: TableWithJoinsPlan {
                             relation: TableFactorPlan::Dictionary {
                                 dict: Dictionary::GlueTables,
@@ -365,10 +362,7 @@ fn execute_inner<T: GStore + GStoreMut>(
                             joins: Vec::new(),
                         },
                         selection: None,
-                        group_by: Vec::new(),
-                        having: None,
-                        aggregate_slots: None,
-                    }),
+                    })),
                 });
 
                 let table_names = select(storage, &query, None)?

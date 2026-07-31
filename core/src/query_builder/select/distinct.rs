@@ -145,8 +145,8 @@ mod tests {
     use crate::{
         plan::{
             DistinctInputPlan, DistinctPlan, JoinConstraintPlan, JoinExecutorPlan,
-            JoinOperatorPlan, JoinPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectPlan,
-            StatementPlan, TableFactorPlan, TableWithJoinsPlan,
+            JoinOperatorPlan, JoinPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
+            SelectPlan, StatementPlan, TableFactorPlan, TableWithJoinsPlan,
         },
         query_builder::{
             Build, QueryBuilderError, SelectItemList, col, select::BuildQuery, table,
@@ -263,12 +263,9 @@ mod tests {
                     joins: vec![join],
                 },
                 selection: None,
-                group_by: Vec::new(),
-                having: None,
-                aggregate_slots: None,
             };
             let project = ProjectPlan {
-                input: Box::new(select),
+                input: ProjectInputPlan::Select(Box::new(select)),
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),

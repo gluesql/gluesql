@@ -15,7 +15,10 @@ use {
     super::Build,
     crate::{
         ast::{Query, Select, SetExpr},
-        plan::{ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan, StatementPlan},
+        plan::{
+            AggregationPlan, HavingPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
+            SelectItemPlan, SelectPlan, StatementPlan,
+        },
         result::Result,
     },
 };
@@ -38,6 +41,18 @@ pub(super) trait BuildSelectPlan {
     fn build_select_plan(self) -> Result<SelectPlan>;
 }
 
+pub(super) trait BuildAggregationPlan {
+    fn build_aggregation_plan(self) -> Result<AggregationPlan>;
+}
+
+pub(super) trait BuildHavingPlan {
+    fn build_having_plan(self) -> Result<HavingPlan>;
+}
+
+pub(super) trait BuildProjectInputPlan {
+    fn build_project_input_plan(self) -> Result<ProjectInputPlan>;
+}
+
 pub(super) trait BuildProjectPlan {
     fn build_project_plan(self) -> Result<ProjectPlan>;
 }
@@ -54,10 +69,18 @@ pub(super) trait BuildQuery {
     fn build_query(self) -> Result<Query>;
 }
 
-impl<T: BuildSelectPlan> BuildProjectPlan for T {
+impl<T: BuildSelectPlan> BuildProjectInputPlan for T {
+    fn build_project_input_plan(self) -> Result<ProjectInputPlan> {
+        self.build_select_plan()
+            .map(Box::new)
+            .map(ProjectInputPlan::Select)
+    }
+}
+
+impl<T: BuildProjectInputPlan> BuildProjectPlan for T {
     fn build_project_plan(self) -> Result<ProjectPlan> {
-        self.build_select_plan().map(|input| ProjectPlan {
-            input: Box::new(input),
+        self.build_project_input_plan().map(|input| ProjectPlan {
+            input,
             projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
         })
     }

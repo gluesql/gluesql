@@ -1,11 +1,15 @@
 use {
-    super::{BuildSelect, BuildSelectPlan, DistinctNode},
+    super::{
+        BuildAggregationPlan, BuildHavingPlan, BuildProjectInputPlan, BuildSelect, BuildSelectPlan,
+        DistinctNode,
+    },
     crate::{
         ast::Select,
-        plan::SelectPlan,
+        plan::{AggregationPlan, HavingPlan, ProjectInputPlan},
         query_builder::{
-            ExprNode, GroupByNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryNode,
-            SelectItemList, SelectOrderByNode, TableFactorNode,
+            ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinConstraintNode, JoinNode,
+            LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryNode, SelectItemList,
+            SelectNode, SelectOrderByNode, TableFactorNode,
         },
         result::Result,
     },
@@ -13,28 +17,78 @@ use {
 
 #[derive(Clone, Debug)]
 pub(super) enum PrevNode<'a> {
+    Select(SelectNode<'a>),
+    Join(Box<JoinNode<'a>>),
+    JoinConstraint(Box<JoinConstraintNode<'a>>),
+    HashJoin(Box<HashJoinNode<'a>>),
+    Filter(FilterNode<'a>),
     GroupBy(GroupByNode<'a>),
 }
 
-impl BuildSelectPlan for PrevNode<'_> {
-    fn build_select_plan(self) -> Result<SelectPlan> {
+impl PrevNode<'_> {
+    fn build_aggregation_plan(self) -> Result<AggregationPlan> {
         match self {
-            Self::GroupBy(node) => node.build_select_plan(),
+            Self::Select(node) => node.build_select_plan(),
+            Self::Join(node) => node.build_select_plan(),
+            Self::JoinConstraint(node) => node.build_select_plan(),
+            Self::HashJoin(node) => node.build_select_plan(),
+            Self::Filter(node) => node.build_select_plan(),
+            Self::GroupBy(node) => return node.build_aggregation_plan(),
         }
+        .map(|input| AggregationPlan {
+            input: Box::new(input),
+            group_by: Vec::new(),
+            aggregate_slots: Vec::new(),
+        })
     }
 }
 
 impl BuildSelect for PrevNode<'_> {
     fn build_select(self) -> Result<Select> {
         match self {
+            Self::Select(node) => node.build_select(),
+            Self::Join(node) => node.build_select(),
+            Self::JoinConstraint(node) => node.build_select(),
+            Self::HashJoin(node) => node.build_select(),
+            Self::Filter(node) => node.build_select(),
             Self::GroupBy(node) => node.build_select(),
         }
     }
 }
 
+impl<'a> From<SelectNode<'a>> for PrevNode<'a> {
+    fn from(node: SelectNode<'a>) -> Self {
+        Self::Select(node)
+    }
+}
+
+impl<'a> From<JoinNode<'a>> for PrevNode<'a> {
+    fn from(node: JoinNode<'a>) -> Self {
+        Self::Join(Box::new(node))
+    }
+}
+
+impl<'a> From<JoinConstraintNode<'a>> for PrevNode<'a> {
+    fn from(node: JoinConstraintNode<'a>) -> Self {
+        Self::JoinConstraint(Box::new(node))
+    }
+}
+
+impl<'a> From<HashJoinNode<'a>> for PrevNode<'a> {
+    fn from(node: HashJoinNode<'a>) -> Self {
+        Self::HashJoin(Box::new(node))
+    }
+}
+
+impl<'a> From<FilterNode<'a>> for PrevNode<'a> {
+    fn from(node: FilterNode<'a>) -> Self {
+        Self::Filter(node)
+    }
+}
+
 impl<'a> From<GroupByNode<'a>> for PrevNode<'a> {
     fn from(node: GroupByNode<'a>) -> Self {
-        PrevNode::GroupBy(node)
+        Self::GroupBy(node)
     }
 }
 
@@ -77,12 +131,18 @@ impl<'a> HavingNode<'a> {
     }
 }
 
-impl BuildSelectPlan for HavingNode<'_> {
-    fn build_select_plan(self) -> Result<SelectPlan> {
-        let mut select = self.prev_node.build_select_plan()?;
-        select.having = Some(self.expr.build_expr_plan()?);
+impl BuildHavingPlan for HavingNode<'_> {
+    fn build_having_plan(self) -> Result<HavingPlan> {
+        Ok(HavingPlan {
+            input: self.prev_node.build_aggregation_plan()?,
+            expr: self.expr.build_expr_plan()?,
+        })
+    }
+}
 
-        Ok(select)
+impl BuildProjectInputPlan for HavingNode<'_> {
+    fn build_project_input_plan(self) -> Result<ProjectInputPlan> {
+        self.build_having_plan().map(ProjectInputPlan::Having)
     }
 }
 
@@ -97,7 +157,108 @@ impl BuildSelect for HavingNode<'_> {
 
 #[cfg(test)]
 mod tests {
-    use crate::query_builder::{table, test_query_builder};
+    use {
+        crate::{
+            data::Value,
+            plan::{
+                AggregationPlan, ExprPlan, HavingPlan, JoinConstraintPlan, JoinExecutorPlan,
+                JoinOperatorPlan, JoinPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan,
+                QueryPlan, SelectItemPlan, SelectPlan, StatementPlan, TableFactorPlan,
+                TableWithJoinsPlan,
+            },
+            query_builder::{
+                Build, QueryBuilderError, select::BuildQuery, table, test_query_builder,
+            },
+            result::Error,
+        },
+        pretty_assertions::assert_eq,
+    };
+
+    #[test]
+    fn prev_nodes() {
+        let actual = table("Foo").select().having("TRUE");
+        let expected = "SELECT * FROM Foo HAVING TRUE";
+        test_query_builder(actual, expected);
+
+        let actual = table("Foo").select().join("Bar").having("TRUE");
+        let expected = "SELECT * FROM Foo JOIN Bar HAVING TRUE";
+        test_query_builder(actual, expected);
+
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .on("Foo.id = Bar.id")
+            .having("TRUE");
+        let expected = "SELECT * FROM Foo JOIN Bar ON Foo.id = Bar.id HAVING TRUE";
+        test_query_builder(actual, expected);
+
+        let actual = table("Foo").select().filter("id > 1").having("TRUE");
+        let expected = "SELECT * FROM Foo WHERE id > 1 HAVING TRUE";
+        test_query_builder(actual, expected);
+    }
+
+    #[test]
+    fn plan_only_hash_join() {
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .hash_executor("Foo.id", "Bar.id")
+            .having("TRUE")
+            .build_query()
+            .map(|_| ());
+        let expected = Err(Error::QueryBuilder(
+            QueryBuilderError::HashJoinExecutorRequiresPlan,
+        ));
+        assert_eq!(actual, expected);
+
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .hash_executor("Foo.id", "Bar.id")
+            .having("TRUE")
+            .build();
+        let expected = Ok(StatementPlan::Query(QueryPlan::Project(ProjectPlan {
+            input: ProjectInputPlan::Having(HavingPlan {
+                input: AggregationPlan {
+                    input: Box::new(SelectPlan {
+                        from: TableWithJoinsPlan {
+                            relation: TableFactorPlan::Table {
+                                name: "Foo".to_owned(),
+                                alias: None,
+                                index: None,
+                            },
+                            joins: vec![JoinPlan {
+                                relation: TableFactorPlan::Table {
+                                    name: "Bar".to_owned(),
+                                    alias: None,
+                                    index: None,
+                                },
+                                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
+                                join_executor: JoinExecutorPlan::Hash {
+                                    key_expr: ExprPlan::CompoundIdentifier {
+                                        alias: "Foo".to_owned(),
+                                        ident: "id".to_owned(),
+                                    },
+                                    value_expr: ExprPlan::CompoundIdentifier {
+                                        alias: "Bar".to_owned(),
+                                        ident: "id".to_owned(),
+                                    },
+                                    where_clause: None,
+                                },
+                            }],
+                        },
+                        selection: None,
+                    }),
+                    group_by: Vec::new(),
+                    aggregate_slots: Vec::new(),
+                },
+                expr: ExprPlan::Value(Value::Bool(true)),
+            }),
+            projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
+        })));
+
+        assert_eq!(actual, expected);
+    }
 
     #[test]
     fn having() {

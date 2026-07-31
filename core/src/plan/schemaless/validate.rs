@@ -4,9 +4,10 @@ use {
         data::Schema,
         plan::{
             DistinctInputPlan, DistinctPlan, ExprPlan, JoinConstraintPlan, JoinExecutorPlan,
-            JoinOperatorPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectPlan,
-            ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SelectPlan,
-            StatementPlan, TableFactorPlan, ValuesOrderByPlan, ValuesPlan,
+            JoinOperatorPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
+            ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
+            SelectOrderByPlan, SelectPlan, StatementPlan, TableFactorPlan, ValuesOrderByPlan,
+            ValuesPlan,
         },
         result::Result,
     },
@@ -196,14 +197,6 @@ fn validate_select(
         validate_expr(schema_map, selection)?;
     }
 
-    for group_by in &select.group_by {
-        validate_expr(schema_map, group_by)?;
-    }
-
-    if let Some(having) = &select.having {
-        validate_expr(schema_map, having)?;
-    }
-
     Ok(())
 }
 
@@ -212,7 +205,22 @@ fn validate_project(
     project: &ProjectPlan,
 ) -> ValidateResult {
     validate_mixed_join_wildcard_projection(schema_map, project)?;
-    validate_select(schema_map, &project.input)?;
+    match &project.input {
+        ProjectInputPlan::Select(select) => validate_select(schema_map, select)?,
+        ProjectInputPlan::Aggregation(aggregation) => {
+            validate_select(schema_map, &aggregation.input)?;
+            for group_by in &aggregation.group_by {
+                validate_expr(schema_map, group_by)?;
+            }
+        }
+        ProjectInputPlan::Having(having) => {
+            validate_select(schema_map, &having.input.input)?;
+            for group_by in &having.input.group_by {
+                validate_expr(schema_map, group_by)?;
+            }
+            validate_expr(schema_map, &having.expr)?;
+        }
+    }
 
     if let ProjectionPlan::SelectItems(projection) = &project.projection {
         for projection in projection {
@@ -251,7 +259,11 @@ fn validate_mixed_join_wildcard_projection(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
     project: &ProjectPlan,
 ) -> ValidateResult {
-    let select = &project.input;
+    let select = match &project.input {
+        ProjectInputPlan::Select(select) => select.as_ref(),
+        ProjectInputPlan::Aggregation(aggregation) => aggregation.input.as_ref(),
+        ProjectInputPlan::Having(having) => having.input.input.as_ref(),
+    };
     if select.from.joins.is_empty()
         || !matches!(
             &project.projection,
@@ -305,7 +317,8 @@ mod tests {
             mock::{MockStorage, run},
             parse_sql::parse,
             plan::{
-                ExprPlan, JoinExecutorPlan, PlanError, QueryPlan, StatementPlan, fetch_schema_map,
+                ExprPlan, JoinExecutorPlan, PlanError, ProjectInputPlan, QueryPlan, StatementPlan,
+                fetch_schema_map,
             },
             translate::translate,
         },
@@ -509,7 +522,8 @@ mod tests {
 
         let mut applied = false;
         if let StatementPlan::Query(QueryPlan::Project(project)) = &mut statement
-            && let Some(join) = project.input.from.joins.first_mut()
+            && let ProjectInputPlan::Select(select) = &mut project.input
+            && let Some(join) = select.from.joins.first_mut()
         {
             join.join_executor = JoinExecutorPlan::Hash {
                 key_expr: ExprPlan::Identifier("id".to_owned()),
@@ -533,7 +547,8 @@ mod tests {
 
         let mut applied = false;
         if let StatementPlan::Query(QueryPlan::Project(project)) = &mut statement
-            && let Some(join) = project.input.from.joins.first_mut()
+            && let ProjectInputPlan::Select(select) = &mut project.input
+            && let Some(join) = select.from.joins.first_mut()
         {
             join.join_executor = JoinExecutorPlan::Hash {
                 key_expr: ExprPlan::Identifier("id".to_owned()),

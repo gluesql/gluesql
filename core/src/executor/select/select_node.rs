@@ -1,12 +1,6 @@
 use {
     crate::{
-        executor::{
-            aggregate::{self, AggregateIter},
-            context::RowContext,
-            fetch::fetch_relation_rows,
-            filter::Filter,
-            join::Join,
-        },
+        executor::{context::RowContext, fetch::fetch_relation_rows, filter::Filter, join::Join},
         plan::{SelectPlan, TableWithJoinsPlan},
         result::Result,
         store::GStore,
@@ -14,20 +8,19 @@ use {
     std::{borrow::Cow, rc::Rc},
 };
 
+pub(super) type SelectedRows<'a> = Box<dyn Iterator<Item = Result<Rc<RowContext<'a>>>> + 'a>;
+
 pub(super) fn execute<'a, T>(
     storage: &'a T,
     plan: &'a SelectPlan,
     filter_context: Option<&Rc<RowContext<'a>>>,
-) -> Result<AggregateIter<'a>>
+) -> Result<SelectedRows<'a>>
 where
     T: GStore,
 {
     let SelectPlan {
         from: table_with_joins,
         selection: where_clause,
-        group_by,
-        having,
-        aggregate_slots,
     } = plan;
 
     let TableWithJoinsPlan { relation, joins } = table_with_joins;
@@ -58,12 +51,5 @@ where
         }
     });
 
-    aggregate::apply(
-        storage,
-        aggregate_slots.as_deref(),
-        group_by,
-        having.as_ref(),
-        filter_context,
-        Box::new(rows),
-    )
+    Ok(Box::new(rows))
 }

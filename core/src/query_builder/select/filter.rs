@@ -4,9 +4,9 @@ use {
         ast::Select,
         plan::SelectPlan,
         query_builder::{
-            ExprList, ExprNode, GroupByNode, HashJoinNode, JoinConstraintNode, JoinNode, LimitNode,
-            OffsetNode, OrderByExprList, ProjectNode, QueryNode, SelectItemList, SelectNode,
-            SelectOrderByNode, TableFactorNode,
+            ExprList, ExprNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
+            JoinNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryNode,
+            SelectItemList, SelectNode, SelectOrderByNode, TableFactorNode,
         },
         result::Result,
     },
@@ -102,6 +102,10 @@ impl<'a> FilterNode<'a> {
         GroupByNode::new(self, expr_list)
     }
 
+    pub fn having<T: Into<ExprNode<'a>>>(self, expr: T) -> HavingNode<'a> {
+        HavingNode::new(self, expr)
+    }
+
     pub fn order_by<T: Into<OrderByExprList<'a>>>(
         self,
         order_by_exprs: T,
@@ -142,8 +146,8 @@ mod tests {
         crate::{
             ast::{BinaryOperator, Expr},
             plan::{
-                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectPlan,
-                ProjectionPlan, QueryPlan, SelectPlan, StatementPlan, TableFactorPlan,
+                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectInputPlan,
+                ProjectPlan, ProjectionPlan, QueryPlan, SelectPlan, StatementPlan, TableFactorPlan,
                 TableWithJoinsPlan,
             },
             query_builder::{Build, SelectItemList, col, expr, table, test_query_builder},
@@ -242,12 +246,9 @@ mod tests {
                     joins: vec![join],
                 },
                 selection: Some(expr("PlayerItem.amount > 10").build_expr_plan().unwrap()),
-                group_by: Vec::new(),
-                having: None,
-                aggregate_slots: None,
             };
             let project = ProjectPlan {
-                input: Box::new(select),
+                input: ProjectInputPlan::Select(Box::new(select)),
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),

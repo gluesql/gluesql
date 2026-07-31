@@ -4,8 +4,8 @@ use {
         data::Schema,
         plan::{
             DistinctInputPlan, DistinctPlan, ExprPlan, JoinPlan, LimitInputPlan, LimitPlan,
-            OffsetInputPlan, OffsetPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
-            SelectPlan, StatementPlan, TableFactorPlan, TableWithJoinsPlan,
+            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
+            SelectItemPlan, SelectPlan, StatementPlan, TableFactorPlan, TableWithJoinsPlan,
         },
         result::Result,
     },
@@ -115,7 +115,15 @@ fn contextualize_query<'a>(
     schema_map: &'a SchemaMap,
     query: &'a QueryPlan,
 ) -> Option<Rc<Context<'a>>> {
-    query_project(query).and_then(|project| contextualize_select(schema_map, &project.input))
+    query_project(query).and_then(|project| {
+        let select = match &project.input {
+            ProjectInputPlan::Select(select) => select.as_ref(),
+            ProjectInputPlan::Aggregation(aggregation) => aggregation.input.as_ref(),
+            ProjectInputPlan::Having(having) => having.input.input.as_ref(),
+        };
+
+        contextualize_select(schema_map, select)
+    })
 }
 
 fn offset_project(offset: &OffsetPlan) -> Option<&ProjectPlan> {

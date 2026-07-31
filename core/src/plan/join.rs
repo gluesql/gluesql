@@ -6,8 +6,8 @@ use {
         plan::{
             DistinctInputPlan, DistinctPlan, ExprPlan, JoinConstraintPlan, JoinExecutorPlan,
             JoinOperatorPlan, JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
-            ProjectPlan, QueryPlan, SelectPlan, StatementPlan, TableWithJoinsPlan,
-            expr::evaluable::check_expr as check_evaluable,
+            ProjectInputPlan, ProjectPlan, QueryPlan, SelectPlan, StatementPlan,
+            TableWithJoinsPlan, expr::evaluable::check_expr as check_evaluable,
         },
     },
     std::{collections::HashMap, hash::BuildHasher, rc::Rc},
@@ -39,7 +39,17 @@ impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
             Box::new(self.select(outer_context.as_ref().map(Rc::clone), *select))
         };
         let plan_project = |mut project: ProjectPlan| {
-            project.input = plan_select(project.input);
+            project.input = match project.input {
+                ProjectInputPlan::Select(select) => ProjectInputPlan::Select(plan_select(select)),
+                ProjectInputPlan::Aggregation(mut aggregation) => {
+                    aggregation.input = plan_select(aggregation.input);
+                    ProjectInputPlan::Aggregation(aggregation)
+                }
+                ProjectInputPlan::Having(mut having) => {
+                    having.input.input = plan_select(having.input.input);
+                    ProjectInputPlan::Having(having)
+                }
+            };
             project
         };
         let plan_distinct = |DistinctPlan { input }| DistinctPlan {
@@ -132,24 +142,12 @@ impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
 
 impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
     fn select(&self, outer_context: Option<Rc<Context<'a>>>, select: SelectPlan) -> SelectPlan {
-        let SelectPlan {
-            from,
-            selection,
-            group_by,
-            having,
-            aggregate_slots,
-        } = select;
+        let SelectPlan { from, selection } = select;
 
         let (outer_context, from) = self.table_with_joins(outer_context, from);
         let selection = selection.map(|expr| self.subquery_expr(outer_context, expr));
 
-        SelectPlan {
-            from,
-            selection,
-            group_by,
-            having,
-            aggregate_slots,
-        }
+        SelectPlan { from, selection }
     }
 
     fn table_with_joins(
@@ -542,6 +540,38 @@ mod tests {
             expected,
             "redundant plan does not change the plan result:\n{sql}"
         );
+
+        let sql = "
+            SELECT Player.id
+            FROM Player
+            JOIN PlayerItem ON PlayerItem.user_id = Player.id
+            GROUP BY Player.id
+        ";
+        let actual = plan_join(&storage, sql);
+        let expected = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .group_by("Player.id")
+            .project("Player.id");
+        test!(actual, expected, "preserves aggregation wrapper:\n{sql}");
+
+        let sql = "
+            SELECT Player.id
+            FROM Player
+            JOIN PlayerItem ON PlayerItem.user_id = Player.id
+            GROUP BY Player.id
+            HAVING TRUE
+        ";
+        let actual = plan_join(&storage, sql);
+        let expected = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .group_by("Player.id")
+            .having("TRUE")
+            .project("Player.id");
+        test!(actual, expected, "preserves having wrapper:\n{sql}");
 
         let statement = actual;
         let schema_map = fetch_schema_map(&storage, &statement).unwrap();

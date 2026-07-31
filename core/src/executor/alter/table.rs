@@ -9,8 +9,8 @@ use {
         },
         plan::{
             DistinctInputPlan, DistinctPlan, LimitInputPlan, LimitPlan, OffsetInputPlan,
-            OffsetPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, TableFactorPlan,
-            ValuesPlan,
+            OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
+            TableFactorPlan, ValuesPlan,
         },
         prelude::{DataType, Value},
         result::Result,
@@ -86,40 +86,48 @@ pub fn create_table<T: GStore + GStoreMut>(
     let mut selected_source_rows = None;
     let target_columns_defs = match source.as_deref() {
         Some(query) => match create_table_source(query) {
-            CreateTableSource::Project(project) => match &project.input.from.relation {
-                TableFactorPlan::Table { name, .. } if can_copy_source_schema(project) => {
-                    let schema = storage.fetch_schema(name)?;
-                    let Schema {
-                        column_defs: source_column_defs,
-                        ..
-                    } = schema
-                        .ok_or_else(|| AlterError::CtasSourceTableNotFound(name.to_owned()))?;
+            CreateTableSource::Project(project) => {
+                let select = match &project.input {
+                    ProjectInputPlan::Select(select) => select.as_ref(),
+                    ProjectInputPlan::Aggregation(aggregation) => aggregation.input.as_ref(),
+                    ProjectInputPlan::Having(having) => having.input.input.as_ref(),
+                };
 
-                    source_column_defs
-                }
-                TableFactorPlan::Series { .. } if can_copy_source_schema(project) => {
-                    let column_def = ColumnDef {
-                        name: "N".into(),
-                        data_type: DataType::Int,
-                        nullable: false,
-                        default: None,
-                        unique: None,
-                        comment: None,
-                    };
+                match &select.from.relation {
+                    TableFactorPlan::Table { name, .. } if can_copy_source_schema(project) => {
+                        let schema = storage.fetch_schema(name)?;
+                        let Schema {
+                            column_defs: source_column_defs,
+                            ..
+                        } = schema
+                            .ok_or_else(|| AlterError::CtasSourceTableNotFound(name.to_owned()))?;
 
-                    Some(vec![column_def])
-                }
-                _ => {
-                    let (labels, rows) = select_with_labels(storage, query, None)?;
-                    let rows = rows
-                        .map(|row| row.map(Row::into_values))
-                        .collect::<Result<Vec<_>>>()?;
-                    let column_defs = column_defs_from_rows(labels, &rows);
-                    selected_source_rows = Some(rows);
+                        source_column_defs
+                    }
+                    TableFactorPlan::Series { .. } if can_copy_source_schema(project) => {
+                        let column_def = ColumnDef {
+                            name: "N".into(),
+                            data_type: DataType::Int,
+                            nullable: false,
+                            default: None,
+                            unique: None,
+                            comment: None,
+                        };
 
-                    Some(column_defs)
+                        Some(vec![column_def])
+                    }
+                    _ => {
+                        let (labels, rows) = select_with_labels(storage, query, None)?;
+                        let rows = rows
+                            .map(|row| row.map(Row::into_values))
+                            .collect::<Result<Vec<_>>>()?;
+                        let column_defs = column_defs_from_rows(labels, &rows);
+                        selected_source_rows = Some(rows);
+
+                        Some(column_defs)
+                    }
                 }
-            },
+            }
             CreateTableSource::Values(ValuesPlan(values_list)) => {
                 let first_len = values_list[0].len();
                 let mut column_types = vec![None; first_len];
@@ -263,7 +271,9 @@ pub fn create_table<T: GStore + GStoreMut>(
 }
 
 fn can_copy_source_schema(project: &ProjectPlan) -> bool {
-    let select = &project.input;
+    let ProjectInputPlan::Select(select) = &project.input else {
+        return false;
+    };
     if !select.from.joins.is_empty() {
         return false;
     }

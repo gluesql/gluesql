@@ -4,9 +4,10 @@ use {
         data::{SCHEMALESS_DOC_COLUMN, Schema},
         plan::{
             DistinctInputPlan, DistinctPlan, ExprPlan, JoinConstraintPlan, JoinExecutorPlan,
-            JoinOperatorPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectPlan,
-            ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SelectPlan,
-            TableFactorPlan, TableWithJoinsPlan, ValuesOrderByPlan, expr::visit_mut_expr,
+            JoinOperatorPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
+            ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
+            SelectOrderByPlan, SelectPlan, TableFactorPlan, TableWithJoinsPlan, ValuesOrderByPlan,
+            expr::visit_mut_expr,
         },
     },
     std::{
@@ -123,8 +124,31 @@ fn transform_project<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
     project: &mut ProjectPlan,
 ) -> QueryRewriteState {
-    let state = transform_select(schema_map, &mut project.input);
-    rewrite_projection(schema_map, &mut project.projection, &project.input, &state);
+    let ProjectPlan { input, projection } = project;
+    let state = match input {
+        ProjectInputPlan::Select(select) => transform_select(schema_map, select),
+        ProjectInputPlan::Aggregation(aggregation) => {
+            let state = transform_select(schema_map, &mut aggregation.input);
+            for group_by in &mut aggregation.group_by {
+                transform_query_expr(schema_map, group_by, &state);
+            }
+            state
+        }
+        ProjectInputPlan::Having(having) => {
+            let state = transform_select(schema_map, &mut having.input.input);
+            for group_by in &mut having.input.group_by {
+                transform_query_expr(schema_map, group_by, &state);
+            }
+            transform_query_expr(schema_map, &mut having.expr, &state);
+            state
+        }
+    };
+    let select = match &*input {
+        ProjectInputPlan::Select(select) => select.as_ref(),
+        ProjectInputPlan::Aggregation(aggregation) => aggregation.input.as_ref(),
+        ProjectInputPlan::Having(having) => having.input.input.as_ref(),
+    };
+    rewrite_projection(schema_map, projection, select, &state);
 
     state
 }
@@ -208,14 +232,6 @@ fn rewrite_select(
 
     if let Some(selection) = select.selection.as_mut() {
         transform_query_expr(schema_map, selection, state);
-    }
-
-    for group_by in &mut select.group_by {
-        transform_query_expr(schema_map, group_by, state);
-    }
-
-    if let Some(having) = select.having.as_mut() {
-        transform_query_expr(schema_map, having, state);
     }
 }
 

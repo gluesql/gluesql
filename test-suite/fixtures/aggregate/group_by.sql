@@ -114,3 +114,16 @@ WHERE (id - 100) IN (
 -- | 101     |
 -- | 102     |
 -- | 103     |
+
+-- @name: HAVING preserves correlated outer context
+SELECT id
+FROM Sub
+WHERE EXISTS (
+    SELECT 1
+    FROM Item
+    HAVING COUNT(*) = Sub.id - 99
+)
+-- @expect:
+-- | id: I64 |
+-- | ------- |
+-- | 105     |

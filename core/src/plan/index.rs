@@ -5,7 +5,7 @@ use {
         data::{Schema, SchemaIndex, SchemaIndexOrd, Value},
         plan::{
             DistinctInputPlan, DistinctPlan, ExprPlan, IndexItemPlan, LimitInputPlan, LimitPlan,
-            OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectPlan, QueryPlan,
+            OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan, ProjectPlan, QueryPlan,
             SelectOrderByPlan, SelectPlan, StatementPlan, TableFactorPlan,
             expr::{deterministic::is_deterministic, nullability::may_return_null},
             plan_scalar_expr,
@@ -37,8 +37,25 @@ struct IndexPlanner<'a, S> {
 impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
     fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
         let plan_project = |mut input: ProjectPlan, order_by| {
-            let (select, order_by) = self.select(outer_context.as_ref(), *input.input, order_by);
-            input.input = Box::new(select);
+            let (project_input, order_by) = match input.input {
+                ProjectInputPlan::Select(select) => {
+                    let (select, order_by) = self.select(outer_context.as_ref(), *select, order_by);
+                    (ProjectInputPlan::Select(Box::new(select)), order_by)
+                }
+                ProjectInputPlan::Aggregation(mut aggregation) => {
+                    let (select, order_by) =
+                        self.select(outer_context.as_ref(), *aggregation.input, order_by);
+                    aggregation.input = Box::new(select);
+                    (ProjectInputPlan::Aggregation(aggregation), order_by)
+                }
+                ProjectInputPlan::Having(mut having) => {
+                    let (select, order_by) =
+                        self.select(outer_context.as_ref(), *having.input.input, order_by);
+                    having.input.input = Box::new(select);
+                    (ProjectInputPlan::Having(having), order_by)
+                }
+            };
+            input.input = project_input;
 
             (input, order_by)
         };
@@ -163,9 +180,6 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
         let SelectPlan {
             mut from,
             selection,
-            group_by,
-            having,
-            aggregate_slots,
         } = select;
 
         let indexes = self.indexes(&from.relation);
@@ -182,13 +196,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
             });
             order_by.pop();
 
-            let select = SelectPlan {
-                from,
-                selection,
-                group_by,
-                having,
-                aggregate_slots,
-            };
+            let select = SelectPlan { from, selection };
 
             return (select, order_by);
         }
@@ -221,13 +229,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
             }
         });
 
-        let select = SelectPlan {
-            from,
-            selection,
-            group_by,
-            having,
-            aggregate_slots,
-        };
+        let select = SelectPlan { from, selection };
 
         (select, order_by)
     }
@@ -529,7 +531,7 @@ mod tests {
             parse_sql::parse,
             plan::{
                 DistinctInputPlan, DistinctPlan, LimitInputPlan, LimitPlan, OffsetInputPlan,
-                OffsetPlan, QueryPlan, StatementPlan, fetch_schema_map,
+                OffsetPlan, ProjectInputPlan, QueryPlan, StatementPlan, fetch_schema_map,
             },
             query_builder::{
                 Build, col, exists, nested, non_clustered, null, num, primary_key, table, text,
@@ -750,6 +752,34 @@ CREATE INDEX idx_name ON Test (name);
                 }),
                 ..
             })))
+        ));
+
+        let aggregation_consumed =
+            plan_index(&storage, "SELECT id FROM Test GROUP BY id ORDER BY name");
+        assert!(matches!(
+            aggregation_consumed,
+            Ok(StatementPlan::Query(QueryPlan::Project(project)))
+                if matches!(project.input, ProjectInputPlan::Aggregation(_))
+        ));
+
+        let aggregation_preserved = plan_index(
+            &storage,
+            "SELECT id FROM Test GROUP BY id ORDER BY id + name",
+        );
+        assert!(matches!(
+            aggregation_preserved,
+            Ok(StatementPlan::Query(QueryPlan::SelectOrderBy(order_by)))
+                if matches!(order_by.input.input, ProjectInputPlan::Aggregation(_))
+        ));
+
+        let having_consumed = plan_index(
+            &storage,
+            "SELECT id FROM Test GROUP BY id HAVING TRUE ORDER BY name",
+        );
+        assert!(matches!(
+            having_consumed,
+            Ok(StatementPlan::Query(QueryPlan::Project(project)))
+                if matches!(project.input, ProjectInputPlan::Having(_))
         ));
     }
 

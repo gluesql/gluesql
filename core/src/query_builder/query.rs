@@ -158,8 +158,9 @@ mod test {
         super::QueryNode,
         crate::{
             plan::{
-                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectPlan,
-                ProjectionPlan, QueryPlan, SelectPlan, TableFactorPlan, TableWithJoinsPlan,
+                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectInputPlan,
+                ProjectPlan, ProjectionPlan, QueryPlan, SelectPlan, TableFactorPlan,
+                TableWithJoinsPlan,
             },
             query_builder::{
                 SelectItemList, col, glue_indexes, glue_objects, glue_table_columns, glue_tables,
@@ -220,12 +221,9 @@ mod test {
                     joins: vec![join],
                 },
                 selection: None,
-                group_by: Vec::new(),
-                having: None,
-                aggregate_slots: None,
             };
             let project = ProjectPlan {
-                input: Box::new(select),
+                input: ProjectInputPlan::Select(Box::new(select)),
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),

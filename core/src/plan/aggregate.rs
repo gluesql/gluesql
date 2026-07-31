@@ -1,10 +1,10 @@
 use {
     crate::plan::{
-        AggregateFunctionPlan, DistinctInputPlan, DistinctPlan, ExprPlan, JoinConstraintPlan,
-        JoinExecutorPlan, JoinOperatorPlan, JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan,
-        OffsetPlan, OrderByExprPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
-        SelectOrderByPlan, SelectPlan, StatementPlan, TableFactorPlan, TableWithJoinsPlan,
-        ValuesOrderByPlan, ValuesPlan, expr::visit_mut_expr,
+        AggregateFunctionPlan, AggregationPlan, DistinctInputPlan, DistinctPlan, ExprPlan,
+        JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, LimitInputPlan,
+        LimitPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan, ProjectPlan,
+        ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SelectPlan, StatementPlan,
+        TableFactorPlan, TableWithJoinsPlan, ValuesOrderByPlan, ValuesPlan, expr::visit_mut_expr,
     },
     std::collections::HashMap,
 };
@@ -145,12 +145,31 @@ fn plan_values_order_by(ValuesOrderByPlan { input, exprs }: &mut ValuesOrderByPl
 }
 
 fn plan_project_query(project: &mut ProjectPlan, order_by: &mut [OrderByExprPlan]) {
-    plan_select(&mut project.input);
+    plan_project_input(&mut project.input);
     plan_projection(&mut project.projection);
     for order_by in order_by.iter_mut() {
         plan_expr(&mut order_by.expr);
     }
-    bind_select(&mut project.input, &mut project.projection, order_by);
+    bind_project(&mut project.input, &mut project.projection, order_by);
+}
+
+fn plan_project_input(input: &mut ProjectInputPlan) {
+    match input {
+        ProjectInputPlan::Select(select) => plan_select(select),
+        ProjectInputPlan::Aggregation(aggregation) => {
+            plan_select(&mut aggregation.input);
+            for group_by in &mut aggregation.group_by {
+                plan_expr(group_by);
+            }
+        }
+        ProjectInputPlan::Having(having) => {
+            plan_select(&mut having.input.input);
+            for group_by in &mut having.input.group_by {
+                plan_expr(group_by);
+            }
+            plan_expr(&mut having.expr);
+        }
+    }
 }
 
 fn plan_values(ValuesPlan(exprs_list): &mut ValuesPlan) {
@@ -166,14 +185,6 @@ fn plan_select(select: &mut SelectPlan) {
 
     if let Some(selection) = select.selection.as_mut() {
         plan_expr(selection);
-    }
-
-    for group_by in &mut select.group_by {
-        plan_expr(group_by);
-    }
-
-    if let Some(having) = select.having.as_mut() {
-        plan_expr(having);
     }
 }
 
@@ -240,8 +251,8 @@ fn plan_expr(expr: &mut ExprPlan) {
     });
 }
 
-fn bind_select(
-    select: &mut SelectPlan,
+fn bind_project(
+    input: &mut ProjectInputPlan,
     projection: &mut ProjectionPlan,
     order_by: &mut [OrderByExprPlan],
 ) {
@@ -276,15 +287,30 @@ fn bind_select(
         }
     }
 
-    if let Some(having) = select.having.as_mut() {
-        bind(having);
+    if let ProjectInputPlan::Having(having) = input {
+        bind(&mut having.expr);
     }
 
     for order_by in order_by {
         bind(&mut order_by.expr);
     }
 
-    select.aggregate_slots = (!aggregates.is_empty()).then_some(aggregates);
+    match input {
+        ProjectInputPlan::Select(select) if !aggregates.is_empty() => {
+            *input = ProjectInputPlan::Aggregation(AggregationPlan {
+                input: select.clone(),
+                group_by: Vec::new(),
+                aggregate_slots: aggregates,
+            });
+        }
+        ProjectInputPlan::Select(_) => {}
+        ProjectInputPlan::Aggregation(aggregation) => {
+            aggregation.aggregate_slots = aggregates;
+        }
+        ProjectInputPlan::Having(having) => {
+            having.input.aggregate_slots = aggregates;
+        }
+    }
 }
 
 #[cfg(test)]
@@ -295,11 +321,11 @@ mod tests {
             ast::{Dictionary, Literal},
             parse_sql::parse,
             plan::{
-                DistinctInputPlan, DistinctPlan, ExprPlan, JoinConstraintPlan, JoinExecutorPlan,
-                JoinOperatorPlan, JoinPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
-                OrderByExprPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
-                SelectOrderByPlan, SelectPlan, StatementPlan, TableAliasPlan, TableFactorPlan,
-                TableWithJoinsPlan,
+                AggregationPlan, DistinctInputPlan, DistinctPlan, ExprPlan, HavingPlan,
+                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, LimitInputPlan,
+                LimitPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan,
+                ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan,
+                SelectPlan, StatementPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan,
                 expr::{try_visit_expr, visit_mut_expr},
             },
             translate::translate,
@@ -371,27 +397,41 @@ mod tests {
     }
 
     fn select_query(query: &QueryPlan) -> Option<&SelectPlan> {
-        project_query(query).map(|project| project.input.as_ref())
+        project_query(query).map(|project| match &project.input {
+            ProjectInputPlan::Select(select) => select.as_ref(),
+            ProjectInputPlan::Aggregation(aggregation) => aggregation.input.as_ref(),
+            ProjectInputPlan::Having(having) => having.input.input.as_ref(),
+        })
+    }
+
+    fn aggregation_query(query: &QueryPlan) -> Option<&AggregationPlan> {
+        project_query(query).and_then(|project| match &project.input {
+            ProjectInputPlan::Aggregation(aggregation) => Some(aggregation),
+            ProjectInputPlan::Having(having) => Some(&having.input),
+            ProjectInputPlan::Select(_) => None,
+        })
+    }
+
+    fn having_query(query: &QueryPlan) -> Option<&HavingPlan> {
+        project_query(query).and_then(|project| match &project.input {
+            ProjectInputPlan::Having(having) => Some(having),
+            ProjectInputPlan::Select(_) | ProjectInputPlan::Aggregation(_) => None,
+        })
     }
 
     fn assert_planned_query(query: &QueryPlan) {
         assert_eq!(
-            select_query(query)
-                .expect("expected select")
+            aggregation_query(query)
+                .expect("expected aggregation")
                 .aggregate_slots
-                .as_ref()
-                .map(Vec::len),
-            Some(1)
+                .len(),
+            1
         );
     }
 
     fn assert_unplanned_query(query: &QueryPlan) {
-        assert_eq!(
-            select_query(query)
-                .expect("expected select")
-                .aggregate_slots,
-            None
-        );
+        let project = project_query(query).expect("expected project");
+        assert!(matches!(project.input, ProjectInputPlan::Select(_)));
     }
 
     fn count_query() -> QueryPlan {
@@ -419,12 +459,12 @@ mod tests {
             ORDER BY COUNT(*)
         ",
         );
-        let select = select(&statement);
-
-        let slots = select
-            .aggregate_slots
-            .as_ref()
-            .expect("aggregate slots should be planned");
+        let StatementPlan::Query(query) = &statement else {
+            panic!("expected query");
+        };
+        let aggregation = aggregation_query(query).expect("expected aggregation");
+        let having = having_query(query).expect("expected having");
+        let slots = &aggregation.aggregate_slots;
         assert_eq!(slots.len(), 1);
         assert_eq!(slots[0].slot, Some(0));
 
@@ -444,7 +484,7 @@ mod tests {
             Ok(())
         })
         .expect("projection traversal");
-        try_visit_expr(select.having.as_ref().expect("having"), &mut |expr| {
+        try_visit_expr(&having.expr, &mut |expr| {
             if let ExprPlan::Aggregate(aggregate) = expr {
                 found_slots.push(aggregate.slot);
             }
@@ -453,9 +493,6 @@ mod tests {
         })
         .expect("having traversal");
 
-        let StatementPlan::Query(query) = &statement else {
-            panic!("expected query");
-        };
         assert!(matches!(
             query,
             QueryPlan::SelectOrderBy(SelectOrderByPlan { exprs, .. }) if {
@@ -488,12 +525,10 @@ mod tests {
         else {
             panic!("expected distinct over select order by");
         };
-        let slots = order_by
-            .input
-            .input
-            .aggregate_slots
-            .as_ref()
-            .expect("aggregate slots should be planned");
+        let ProjectInputPlan::Aggregation(aggregation) = &order_by.input.input else {
+            panic!("expected aggregation");
+        };
+        let slots = &aggregation.aggregate_slots;
 
         assert_eq!(slots.len(), 1);
         assert!(slots[0].distinct);
@@ -531,11 +566,9 @@ mod tests {
         let StatementPlan::Query(query) = plan(StatementPlan::Query(query)) else {
             panic!("expected query");
         };
-        let select = select_query(&query).expect("expected select");
-        let slots = select
-            .aggregate_slots
-            .as_ref()
-            .expect("aggregate slots should be planned");
+        let aggregation = aggregation_query(&query).expect("expected aggregation");
+        let having = having_query(&query).expect("expected having");
+        let slots = &aggregation.aggregate_slots;
 
         assert_eq!(slots.len(), 1);
         assert_eq!(slots[0].slot, Some(0));
@@ -557,7 +590,7 @@ mod tests {
             Ok(())
         })
         .expect("projection traversal");
-        try_visit_expr(select.having.as_ref().expect("having"), &mut |expr| {
+        try_visit_expr(&having.expr, &mut |expr| {
             if let ExprPlan::Aggregate(aggregate) = expr {
                 found_slots.push(aggregate.slot);
             }
@@ -576,25 +609,25 @@ mod tests {
             FROM (SELECT COUNT(*) FROM Item) AS sub
         ",
         );
-        let select = select(&statement);
-        assert_eq!(
-            select.aggregate_slots.as_ref().map(Vec::len),
-            Some(1),
-            "outer select slots"
-        );
+        let StatementPlan::Query(query) = &statement else {
+            panic!("expected query");
+        };
+        let select = select_query(query).expect("expected select");
+        let aggregation = aggregation_query(query).expect("expected aggregation");
+        assert_eq!(aggregation.aggregate_slots.len(), 1, "outer select slots");
 
         let TableFactorPlan::Derived { subquery, .. } = &select.from.relation else {
             panic!("expected derived table");
         };
-        let inner = select_query(subquery).expect("expected inner select");
+        let inner_aggregation = aggregation_query(subquery).expect("expected inner aggregation");
 
         assert_eq!(
-            inner.aggregate_slots.as_ref().map(Vec::len),
-            Some(1),
+            inner_aggregation.aggregate_slots.len(),
+            1,
             "inner select slots"
         );
-        assert_eq!(select.aggregate_slots.as_ref().unwrap()[0].slot, Some(0));
-        assert_eq!(inner.aggregate_slots.as_ref().unwrap()[0].slot, Some(0));
+        assert_eq!(aggregation.aggregate_slots[0].slot, Some(0));
+        assert_eq!(inner_aggregation.aggregate_slots[0].slot, Some(0));
     }
 
     #[test]
@@ -742,7 +775,11 @@ mod tests {
         };
         assert_planned_query(subquery);
 
-        let ExprPlan::InSubquery { subquery, .. } = &select.group_by[0] else {
+        let StatementPlan::Query(query) = &statement else {
+            panic!("expected query");
+        };
+        let aggregation = aggregation_query(query).expect("expected aggregation");
+        let ExprPlan::InSubquery { subquery, .. } = &aggregation.group_by[0] else {
             panic!("expected in-subquery group by");
         };
         assert_planned_query(subquery);
@@ -751,16 +788,89 @@ mod tests {
     #[test]
     fn keeps_select_without_aggregates_unplanned() {
         let statement = parse_and_plan("SELECT * FROM Item");
-        let select = select(&statement);
+        let StatementPlan::Query(query) = &statement else {
+            panic!("expected query");
+        };
+        assert_unplanned_query(query);
+    }
 
-        assert_eq!(select.aggregate_slots, None);
+    #[test]
+    fn preserves_explicit_aggregation_and_having_stages_without_slots() {
+        let statement = parse_and_plan("SELECT category FROM Item GROUP BY category");
+        let StatementPlan::Query(query) = &statement else {
+            panic!("expected query");
+        };
+        let aggregation = aggregation_query(query).expect("expected aggregation");
+        assert_eq!(
+            aggregation.group_by,
+            vec![ExprPlan::Identifier("category".to_owned())]
+        );
+        assert_eq!(aggregation.aggregate_slots, Vec::new());
+        assert_eq!(having_query(query), None);
+
+        let statement = parse_and_plan("SELECT 1 FROM Item HAVING TRUE");
+        let StatementPlan::Query(query) = &statement else {
+            panic!("expected query");
+        };
+        let aggregation = aggregation_query(query).expect("expected aggregation");
+        let having = having_query(query).expect("expected having");
+        assert_eq!(aggregation.group_by, Vec::new());
+        assert_eq!(aggregation.aggregate_slots, Vec::new());
+        assert_eq!(having.expr, ExprPlan::Value(crate::data::Value::Bool(true)));
+    }
+
+    #[test]
+    fn promotes_aggregate_only_projection_and_order_by() {
+        let statement = parse_and_plan("SELECT COUNT(*) FROM Item");
+        let StatementPlan::Query(query) = &statement else {
+            panic!("expected query");
+        };
+        assert_eq!(
+            aggregation_query(query)
+                .expect("expected aggregation")
+                .aggregate_slots
+                .len(),
+            1
+        );
+
+        let statement = parse_and_plan("SELECT id FROM Item ORDER BY COUNT(*)");
+        let StatementPlan::Query(query) = &statement else {
+            panic!("expected query");
+        };
+        assert_eq!(
+            aggregation_query(query)
+                .expect("expected aggregation")
+                .aggregate_slots
+                .len(),
+            1
+        );
+    }
+
+    #[test]
+    fn binds_aggregate_used_only_by_having() {
+        let statement = parse_and_plan("SELECT 1 FROM Item HAVING COUNT(*) > 0");
+        let StatementPlan::Query(query) = &statement else {
+            panic!("expected query");
+        };
+        let having = having_query(query).expect("expected having");
+
+        assert_eq!(having.input.aggregate_slots.len(), 1);
+        let mut slots = Vec::new();
+        try_visit_expr(&having.expr, &mut |expr| {
+            if let ExprPlan::Aggregate(aggregate) = expr {
+                slots.push(aggregate.slot);
+            }
+            Ok(())
+        })
+        .expect("having traversal");
+        assert_eq!(slots, vec![Some(0)]);
     }
 
     #[test]
     fn keeps_schemaless_projection_unplanned() {
         let query = QueryPlan::Project(ProjectPlan {
             projection: ProjectionPlan::SchemalessMap,
-            input: Box::new(SelectPlan {
+            input: ProjectInputPlan::Select(Box::new(SelectPlan {
                 from: TableWithJoinsPlan {
                     relation: TableFactorPlan::Dictionary {
                         dict: Dictionary::GlueTables,
@@ -769,10 +879,7 @@ mod tests {
                     joins: Vec::new(),
                 },
                 selection: None,
-                group_by: Vec::new(),
-                having: None,
-                aggregate_slots: None,
-            }),
+            })),
         });
 
         let StatementPlan::Query(query) = plan(StatementPlan::Query(query)) else {
@@ -786,7 +893,7 @@ mod tests {
         let query = QueryPlan::SelectOrderBy(SelectOrderByPlan {
             input: ProjectPlan {
                 projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
-                input: Box::new(SelectPlan {
+                input: ProjectInputPlan::Select(Box::new(SelectPlan {
                     from: TableWithJoinsPlan {
                         relation: TableFactorPlan::Derived {
                             subquery: count_query(),
@@ -833,10 +940,7 @@ mod tests {
                         ],
                     },
                     selection: None,
-                    group_by: Vec::new(),
-                    having: None,
-                    aggregate_slots: None,
-                }),
+                })),
             },
             exprs: vec![OrderByExprPlan {
                 expr: ExprPlan::Literal(Literal::Number(1.into())),
