@@ -17,47 +17,6 @@ use {
     std::fmt,
 };
 
-enum CreateTableSource<'a> {
-    Project(&'a ProjectPlan),
-    Values(&'a ValuesPlan),
-}
-
-fn create_table_distinct_source(distinct: &DistinctPlan) -> CreateTableSource<'_> {
-    match &distinct.input {
-        DistinctInputPlan::Project(project) => CreateTableSource::Project(project),
-        DistinctInputPlan::SelectOrderBy(order_by) => CreateTableSource::Project(&order_by.input),
-    }
-}
-
-fn create_table_offset_source(offset: &OffsetPlan) -> CreateTableSource<'_> {
-    match &offset.input {
-        OffsetInputPlan::Project(project) => CreateTableSource::Project(project),
-        OffsetInputPlan::Values(values) => CreateTableSource::Values(values),
-        OffsetInputPlan::SelectOrderBy(order_by) => CreateTableSource::Project(&order_by.input),
-        OffsetInputPlan::ValuesOrderBy(order_by) => CreateTableSource::Values(&order_by.input),
-        OffsetInputPlan::Distinct(distinct) => create_table_distinct_source(distinct),
-    }
-}
-
-fn create_table_source(query: &QueryPlan) -> CreateTableSource<'_> {
-    match query {
-        QueryPlan::Project(project) => CreateTableSource::Project(project),
-        QueryPlan::Values(values) => CreateTableSource::Values(values),
-        QueryPlan::SelectOrderBy(order_by) => CreateTableSource::Project(&order_by.input),
-        QueryPlan::ValuesOrderBy(order_by) => CreateTableSource::Values(&order_by.input),
-        QueryPlan::Distinct(distinct) => create_table_distinct_source(distinct),
-        QueryPlan::Offset(offset) => create_table_offset_source(offset),
-        QueryPlan::Limit(LimitPlan { input, .. }) => match input {
-            LimitInputPlan::Project(project) => CreateTableSource::Project(project),
-            LimitInputPlan::Values(values) => CreateTableSource::Values(values),
-            LimitInputPlan::SelectOrderBy(order_by) => CreateTableSource::Project(&order_by.input),
-            LimitInputPlan::ValuesOrderBy(order_by) => CreateTableSource::Values(&order_by.input),
-            LimitInputPlan::Distinct(distinct) => create_table_distinct_source(distinct),
-            LimitInputPlan::Offset(offset) => create_table_offset_source(offset),
-        },
-    }
-}
-
 pub struct CreateTableOptions<'a> {
     pub target_table_name: &'a str,
     pub column_defs: Option<&'a [ColumnDef]>,
@@ -66,6 +25,11 @@ pub struct CreateTableOptions<'a> {
     pub engine: &'a Option<String>,
     pub foreign_keys: &'a Vec<ForeignKey>,
     pub comment: &'a Option<String>,
+}
+
+enum CreateTableSource<'a> {
+    Project(&'a ProjectPlan),
+    Values(&'a ValuesPlan),
 }
 
 pub fn create_table<T: GStore + GStoreMut>(
@@ -259,22 +223,39 @@ pub fn create_table<T: GStore + GStoreMut>(
     }
 }
 
-fn can_copy_source_schema(project: &ProjectPlan) -> bool {
-    matches!(
-        project.input,
-        ProjectInputPlan::Source(_)
-            | ProjectInputPlan::Filter(crate::plan::FilterPlan {
-                input: FilterInputPlan::Source(_),
-                ..
-            })
-    ) && match &project.projection {
-        ProjectionPlan::SchemalessMap => true,
-        ProjectionPlan::SelectItems(items) => items.iter().all(|item| {
-            matches!(
-                item,
-                SelectItemPlan::Wildcard | SelectItemPlan::QualifiedWildcard(_)
-            )
-        }),
+fn create_table_source(query: &QueryPlan) -> CreateTableSource<'_> {
+    match query {
+        QueryPlan::Project(project) => CreateTableSource::Project(project),
+        QueryPlan::Values(values) => CreateTableSource::Values(values),
+        QueryPlan::SelectOrderBy(order_by) => CreateTableSource::Project(&order_by.input),
+        QueryPlan::ValuesOrderBy(order_by) => CreateTableSource::Values(&order_by.input),
+        QueryPlan::Distinct(distinct) => create_table_distinct_source(distinct),
+        QueryPlan::Offset(offset) => create_table_offset_source(offset),
+        QueryPlan::Limit(LimitPlan { input, .. }) => match input {
+            LimitInputPlan::Project(project) => CreateTableSource::Project(project),
+            LimitInputPlan::Values(values) => CreateTableSource::Values(values),
+            LimitInputPlan::SelectOrderBy(order_by) => CreateTableSource::Project(&order_by.input),
+            LimitInputPlan::ValuesOrderBy(order_by) => CreateTableSource::Values(&order_by.input),
+            LimitInputPlan::Distinct(distinct) => create_table_distinct_source(distinct),
+            LimitInputPlan::Offset(offset) => create_table_offset_source(offset),
+        },
+    }
+}
+
+fn create_table_offset_source(offset: &OffsetPlan) -> CreateTableSource<'_> {
+    match &offset.input {
+        OffsetInputPlan::Project(project) => CreateTableSource::Project(project),
+        OffsetInputPlan::Values(values) => CreateTableSource::Values(values),
+        OffsetInputPlan::SelectOrderBy(order_by) => CreateTableSource::Project(&order_by.input),
+        OffsetInputPlan::ValuesOrderBy(order_by) => CreateTableSource::Values(&order_by.input),
+        OffsetInputPlan::Distinct(distinct) => create_table_distinct_source(distinct),
+    }
+}
+
+fn create_table_distinct_source(distinct: &DistinctPlan) -> CreateTableSource<'_> {
+    match &distinct.input {
+        DistinctInputPlan::Project(project) => CreateTableSource::Project(project),
+        DistinctInputPlan::SelectOrderBy(order_by) => CreateTableSource::Project(&order_by.input),
     }
 }
 
@@ -293,6 +274,25 @@ fn source_for_schema_copy(project: &ProjectPlan) -> Option<&SourcePlan> {
         | ProjectInputPlan::LeftOuterJoin(_)
         | ProjectInputPlan::Aggregation(_)
         | ProjectInputPlan::Having(_) => None,
+    }
+}
+
+fn can_copy_source_schema(project: &ProjectPlan) -> bool {
+    matches!(
+        project.input,
+        ProjectInputPlan::Source(_)
+            | ProjectInputPlan::Filter(crate::plan::FilterPlan {
+                input: FilterInputPlan::Source(_),
+                ..
+            })
+    ) && match &project.projection {
+        ProjectionPlan::SchemalessMap => true,
+        ProjectionPlan::SelectItems(items) => items.iter().all(|item| {
+            matches!(
+                item,
+                SelectItemPlan::Wildcard | SelectItemPlan::QualifiedWildcard(_)
+            )
+        }),
     }
 }
 

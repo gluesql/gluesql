@@ -19,78 +19,6 @@ use {
     thiserror::Error as ThisError,
 };
 
-fn offset_values_plan(offset: &OffsetPlan) -> Option<&ValuesPlan> {
-    match &offset.input {
-        OffsetInputPlan::Project(_)
-        | OffsetInputPlan::SelectOrderBy(_)
-        | OffsetInputPlan::Distinct(_) => None,
-        OffsetInputPlan::Values(values) => Some(values),
-        OffsetInputPlan::ValuesOrderBy(values) => Some(&values.input),
-    }
-}
-
-fn values_plan(query: &QueryPlan) -> Option<&ValuesPlan> {
-    match query {
-        QueryPlan::Project(_) | QueryPlan::SelectOrderBy(_) | QueryPlan::Distinct(_) => None,
-        QueryPlan::Values(values) => Some(values),
-        QueryPlan::ValuesOrderBy(values) => Some(&values.input),
-        QueryPlan::Offset(offset) => offset_values_plan(offset),
-        QueryPlan::Limit(LimitPlan { input, .. }) => match input {
-            LimitInputPlan::Project(_)
-            | LimitInputPlan::SelectOrderBy(_)
-            | LimitInputPlan::Distinct(_) => None,
-            LimitInputPlan::Values(values) => Some(values),
-            LimitInputPlan::ValuesOrderBy(values) => Some(&values.input),
-            LimitInputPlan::Offset(offset) => offset_values_plan(offset),
-        },
-    }
-}
-
-fn apply_values_limit_offset<'a, T>(
-    query: &QueryPlan,
-    rows: T,
-) -> Result<Box<dyn Iterator<Item = Result<Row>> + 'a>>
-where
-    T: Iterator<Item = Result<Row>> + 'a,
-{
-    match query {
-        QueryPlan::Project(_)
-        | QueryPlan::Values(_)
-        | QueryPlan::SelectOrderBy(_)
-        | QueryPlan::ValuesOrderBy(_)
-        | QueryPlan::Distinct(_) => Ok(Box::new(rows)),
-        QueryPlan::Offset(plan) => {
-            let count = evaluate_count(&plan.count)?;
-
-            Ok(Box::new(rows.skip(count)))
-        }
-        QueryPlan::Limit(plan) => {
-            let rows: Box<dyn Iterator<Item = Result<Row>> + 'a> = match &plan.input {
-                LimitInputPlan::Project(_)
-                | LimitInputPlan::Values(_)
-                | LimitInputPlan::SelectOrderBy(_)
-                | LimitInputPlan::ValuesOrderBy(_)
-                | LimitInputPlan::Distinct(_) => Box::new(rows),
-                LimitInputPlan::Offset(offset) => {
-                    let count = evaluate_count(&offset.count)?;
-
-                    Box::new(rows.skip(count))
-                }
-            };
-            let count = evaluate_count(&plan.count)?;
-
-            Ok(Box::new(rows.take(count)))
-        }
-    }
-}
-
-fn evaluate_count(expr: &ExprPlan) -> Result<usize> {
-    let evaluated = evaluate_stateless(None, expr)?;
-    let size: usize = Value::try_from(evaluated)?.try_into()?;
-
-    Ok(size)
-}
-
 #[derive(ThisError, Serialize, Debug, PartialEq, Eq)]
 pub enum InsertError {
     #[error("table not found: {0}")]
@@ -266,57 +194,6 @@ fn fetch_vec_rows<T: GStore>(
     }
 }
 
-fn validate_foreign_key<T: GStore>(
-    storage: &T,
-    column_defs: &Rc<[ColumnDef]>,
-    foreign_keys: Vec<ForeignKey>,
-    rows: &[Vec<Value>],
-) -> Result<()> {
-    for foreign_key in foreign_keys {
-        let ForeignKey {
-            referencing_column_name,
-            referenced_table_name,
-            referenced_column_name,
-            ..
-        } = &foreign_key;
-
-        let target_index = column_defs
-            .iter()
-            .enumerate()
-            .find(|(_, c)| &c.name == referencing_column_name)
-            .ok_or_else(|| {
-                InsertError::ConflictReferencingColumnName(referencing_column_name.to_owned())
-            })?;
-
-        for row in rows {
-            let value =
-                row.get(target_index.0)
-                    .ok_or(InsertError::ConflictReferencingColumnName(
-                        referencing_column_name.to_owned(),
-                    ))?;
-
-            if value == &Value::Null {
-                continue;
-            }
-
-            let no_referenced = storage
-                .fetch_data(referenced_table_name, &Key::try_from(value)?)?
-                .is_none();
-
-            if no_referenced {
-                return Err(InsertError::CannotFindReferencedValue {
-                    table_name: referenced_table_name.to_owned(),
-                    column_name: referenced_column_name.to_owned(),
-                    referenced_value: String::from(value),
-                }
-                .into());
-            }
-        }
-    }
-
-    Ok(())
-}
-
 fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &QueryPlan) -> Result<Vec<Vec<Value>>> {
     let doc_column: Rc<[String]> = Rc::from(vec![SCHEMALESS_DOC_COLUMN.to_owned()]);
 
@@ -378,6 +255,78 @@ fn fetch_schemaless_rows<T: GStore>(storage: &T, source: &QueryPlan) -> Result<V
     let rows = rows_iter.collect::<Result<Vec<Vec<Value>>>>()?;
 
     Ok(rows)
+}
+
+fn values_plan(query: &QueryPlan) -> Option<&ValuesPlan> {
+    match query {
+        QueryPlan::Project(_) | QueryPlan::SelectOrderBy(_) | QueryPlan::Distinct(_) => None,
+        QueryPlan::Values(values) => Some(values),
+        QueryPlan::ValuesOrderBy(values) => Some(&values.input),
+        QueryPlan::Offset(offset) => offset_values_plan(offset),
+        QueryPlan::Limit(LimitPlan { input, .. }) => match input {
+            LimitInputPlan::Project(_)
+            | LimitInputPlan::SelectOrderBy(_)
+            | LimitInputPlan::Distinct(_) => None,
+            LimitInputPlan::Values(values) => Some(values),
+            LimitInputPlan::ValuesOrderBy(values) => Some(&values.input),
+            LimitInputPlan::Offset(offset) => offset_values_plan(offset),
+        },
+    }
+}
+
+fn offset_values_plan(offset: &OffsetPlan) -> Option<&ValuesPlan> {
+    match &offset.input {
+        OffsetInputPlan::Project(_)
+        | OffsetInputPlan::SelectOrderBy(_)
+        | OffsetInputPlan::Distinct(_) => None,
+        OffsetInputPlan::Values(values) => Some(values),
+        OffsetInputPlan::ValuesOrderBy(values) => Some(&values.input),
+    }
+}
+
+fn apply_values_limit_offset<'a, T>(
+    query: &QueryPlan,
+    rows: T,
+) -> Result<Box<dyn Iterator<Item = Result<Row>> + 'a>>
+where
+    T: Iterator<Item = Result<Row>> + 'a,
+{
+    match query {
+        QueryPlan::Project(_)
+        | QueryPlan::Values(_)
+        | QueryPlan::SelectOrderBy(_)
+        | QueryPlan::ValuesOrderBy(_)
+        | QueryPlan::Distinct(_) => Ok(Box::new(rows)),
+        QueryPlan::Offset(plan) => {
+            let count = evaluate_count(&plan.count)?;
+
+            Ok(Box::new(rows.skip(count)))
+        }
+        QueryPlan::Limit(plan) => {
+            let rows: Box<dyn Iterator<Item = Result<Row>> + 'a> = match &plan.input {
+                LimitInputPlan::Project(_)
+                | LimitInputPlan::Values(_)
+                | LimitInputPlan::SelectOrderBy(_)
+                | LimitInputPlan::ValuesOrderBy(_)
+                | LimitInputPlan::Distinct(_) => Box::new(rows),
+                LimitInputPlan::Offset(offset) => {
+                    let count = evaluate_count(&offset.count)?;
+
+                    Box::new(rows.skip(count))
+                }
+            };
+            let count = evaluate_count(&plan.count)?;
+
+            Ok(Box::new(rows.take(count)))
+        }
+    }
+}
+
+fn evaluate_count(expr: &ExprPlan) -> Result<usize> {
+    let evaluated = evaluate_stateless(None, expr)?;
+    let size: usize = Value::try_from(evaluated)?.try_into()?;
+
+    Ok(size)
 }
 
 fn fill_values(
@@ -446,4 +395,55 @@ fn fill_values(
         .collect::<Result<Vec<Value>>>()?;
 
     Ok(values)
+}
+
+fn validate_foreign_key<T: GStore>(
+    storage: &T,
+    column_defs: &Rc<[ColumnDef]>,
+    foreign_keys: Vec<ForeignKey>,
+    rows: &[Vec<Value>],
+) -> Result<()> {
+    for foreign_key in foreign_keys {
+        let ForeignKey {
+            referencing_column_name,
+            referenced_table_name,
+            referenced_column_name,
+            ..
+        } = &foreign_key;
+
+        let target_index = column_defs
+            .iter()
+            .enumerate()
+            .find(|(_, c)| &c.name == referencing_column_name)
+            .ok_or_else(|| {
+                InsertError::ConflictReferencingColumnName(referencing_column_name.to_owned())
+            })?;
+
+        for row in rows {
+            let value =
+                row.get(target_index.0)
+                    .ok_or(InsertError::ConflictReferencingColumnName(
+                        referencing_column_name.to_owned(),
+                    ))?;
+
+            if value == &Value::Null {
+                continue;
+            }
+
+            let no_referenced = storage
+                .fetch_data(referenced_table_name, &Key::try_from(value)?)?
+                .is_none();
+
+            if no_referenced {
+                return Err(InsertError::CannotFindReferencedValue {
+                    table_name: referenced_table_name.to_owned(),
+                    column_name: referenced_column_name.to_owned(),
+                    referenced_value: String::from(value),
+                }
+                .into());
+            }
+        }
+    }
+
+    Ok(())
 }

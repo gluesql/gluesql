@@ -39,31 +39,13 @@ struct IndexPlanner<'a, S> {
 
 impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
     fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
-        let plan_project =
-            |input: ProjectPlan, order_by| self.project(outer_context.as_ref(), input, order_by);
-        let plan_distinct = |DistinctPlan { input }| {
-            let input = match input {
-                DistinctInputPlan::Project(input) => {
-                    DistinctInputPlan::Project(plan_project(input, Vec::new()).0)
-                }
-                DistinctInputPlan::SelectOrderBy(SelectOrderByPlan { input, exprs }) => {
-                    let (input, exprs) = plan_project(input, exprs);
-                    if exprs.is_empty() {
-                        DistinctInputPlan::Project(input)
-                    } else {
-                        DistinctInputPlan::SelectOrderBy(SelectOrderByPlan { input, exprs })
-                    }
-                }
-            };
-
-            DistinctPlan { input }
-        };
-
         match query {
-            QueryPlan::Project(input) => QueryPlan::Project(plan_project(input, Vec::new()).0),
+            QueryPlan::Project(input) => {
+                QueryPlan::Project(self.project(outer_context.as_ref(), input, Vec::new()).0)
+            }
             QueryPlan::Values(values) => QueryPlan::Values(values),
             QueryPlan::SelectOrderBy(SelectOrderByPlan { input, exprs }) => {
-                let (input, exprs) = plan_project(input, exprs);
+                let (input, exprs) = self.project(outer_context.as_ref(), input, exprs);
                 if exprs.is_empty() {
                     QueryPlan::Project(input)
                 } else {
@@ -71,15 +53,17 @@ impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
                 }
             }
             QueryPlan::ValuesOrderBy(values) => QueryPlan::ValuesOrderBy(values),
-            QueryPlan::Distinct(distinct) => QueryPlan::Distinct(plan_distinct(distinct)),
+            QueryPlan::Distinct(distinct) => {
+                QueryPlan::Distinct(self.distinct(outer_context.as_ref(), distinct))
+            }
             QueryPlan::Offset(OffsetPlan { input, count }) => {
                 let input = match input {
-                    OffsetInputPlan::Project(input) => {
-                        OffsetInputPlan::Project(plan_project(input, Vec::new()).0)
-                    }
+                    OffsetInputPlan::Project(input) => OffsetInputPlan::Project(
+                        self.project(outer_context.as_ref(), input, Vec::new()).0,
+                    ),
                     OffsetInputPlan::Values(values) => OffsetInputPlan::Values(values),
                     OffsetInputPlan::SelectOrderBy(SelectOrderByPlan { input, exprs }) => {
-                        let (input, exprs) = plan_project(input, exprs);
+                        let (input, exprs) = self.project(outer_context.as_ref(), input, exprs);
                         if exprs.is_empty() {
                             OffsetInputPlan::Project(input)
                         } else {
@@ -90,7 +74,7 @@ impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
                         OffsetInputPlan::ValuesOrderBy(values)
                     }
                     OffsetInputPlan::Distinct(distinct) => {
-                        OffsetInputPlan::Distinct(plan_distinct(distinct))
+                        OffsetInputPlan::Distinct(self.distinct(outer_context.as_ref(), distinct))
                     }
                 };
 
@@ -98,12 +82,12 @@ impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
             }
             QueryPlan::Limit(LimitPlan { input, count }) => {
                 let input = match input {
-                    LimitInputPlan::Project(input) => {
-                        LimitInputPlan::Project(plan_project(input, Vec::new()).0)
-                    }
+                    LimitInputPlan::Project(input) => LimitInputPlan::Project(
+                        self.project(outer_context.as_ref(), input, Vec::new()).0,
+                    ),
                     LimitInputPlan::Values(values) => LimitInputPlan::Values(values),
                     LimitInputPlan::SelectOrderBy(SelectOrderByPlan { input, exprs }) => {
-                        let (input, exprs) = plan_project(input, exprs);
+                        let (input, exprs) = self.project(outer_context.as_ref(), input, exprs);
                         if exprs.is_empty() {
                             LimitInputPlan::Project(input)
                         } else {
@@ -112,16 +96,17 @@ impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
                     }
                     LimitInputPlan::ValuesOrderBy(values) => LimitInputPlan::ValuesOrderBy(values),
                     LimitInputPlan::Distinct(distinct) => {
-                        LimitInputPlan::Distinct(plan_distinct(distinct))
+                        LimitInputPlan::Distinct(self.distinct(outer_context.as_ref(), distinct))
                     }
                     LimitInputPlan::Offset(OffsetPlan { input, count }) => {
                         let input = match input {
-                            OffsetInputPlan::Project(input) => {
-                                OffsetInputPlan::Project(plan_project(input, Vec::new()).0)
-                            }
+                            OffsetInputPlan::Project(input) => OffsetInputPlan::Project(
+                                self.project(outer_context.as_ref(), input, Vec::new()).0,
+                            ),
                             OffsetInputPlan::Values(values) => OffsetInputPlan::Values(values),
                             OffsetInputPlan::SelectOrderBy(SelectOrderByPlan { input, exprs }) => {
-                                let (input, exprs) = plan_project(input, exprs);
+                                let (input, exprs) =
+                                    self.project(outer_context.as_ref(), input, exprs);
                                 if exprs.is_empty() {
                                     OffsetInputPlan::Project(input)
                                 } else {
@@ -134,9 +119,9 @@ impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
                             OffsetInputPlan::ValuesOrderBy(values) => {
                                 OffsetInputPlan::ValuesOrderBy(values)
                             }
-                            OffsetInputPlan::Distinct(distinct) => {
-                                OffsetInputPlan::Distinct(plan_distinct(distinct))
-                            }
+                            OffsetInputPlan::Distinct(distinct) => OffsetInputPlan::Distinct(
+                                self.distinct(outer_context.as_ref(), distinct),
+                            ),
                         };
                         LimitInputPlan::Offset(OffsetPlan { input, count })
                     }
@@ -228,6 +213,28 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
         project.input = input;
 
         (project, order_by)
+    }
+
+    fn distinct(
+        &self,
+        outer_context: Option<&Rc<Context<'a>>>,
+        DistinctPlan { input }: DistinctPlan,
+    ) -> DistinctPlan {
+        let input = match input {
+            DistinctInputPlan::Project(input) => {
+                DistinctInputPlan::Project(self.project(outer_context, input, Vec::new()).0)
+            }
+            DistinctInputPlan::SelectOrderBy(SelectOrderByPlan { input, exprs }) => {
+                let (input, exprs) = self.project(outer_context, input, exprs);
+                if exprs.is_empty() {
+                    DistinctInputPlan::Project(input)
+                } else {
+                    DistinctInputPlan::SelectOrderBy(SelectOrderByPlan { input, exprs })
+                }
+            }
+        };
+
+        DistinctPlan { input }
     }
 
     fn aggregation_input(

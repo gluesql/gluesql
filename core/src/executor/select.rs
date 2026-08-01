@@ -35,19 +35,6 @@ pub(super) fn execute<T: GStore>(storage: &T, query: &QueryPlan) -> Result<Paylo
 }
 
 fn is_schemaless_map(query: &QueryPlan) -> bool {
-    let project_is_schemaless =
-        |project: &ProjectPlan| matches!(project.projection, ProjectionPlan::SchemalessMap);
-    let distinct_is_schemaless = |distinct: &DistinctPlan| match &distinct.input {
-        DistinctInputPlan::Project(project) => project_is_schemaless(project),
-        DistinctInputPlan::SelectOrderBy(order_by) => project_is_schemaless(&order_by.input),
-    };
-    let offset_is_schemaless = |offset: &OffsetPlan| match &offset.input {
-        OffsetInputPlan::Project(project) => project_is_schemaless(project),
-        OffsetInputPlan::Values(_) | OffsetInputPlan::ValuesOrderBy(_) => false,
-        OffsetInputPlan::SelectOrderBy(order_by) => project_is_schemaless(&order_by.input),
-        OffsetInputPlan::Distinct(distinct) => distinct_is_schemaless(distinct),
-    };
-
     match query {
         QueryPlan::Project(project) => project_is_schemaless(project),
         QueryPlan::Values(_) | QueryPlan::ValuesOrderBy(_) => false,
@@ -62,4 +49,24 @@ fn is_schemaless_map(query: &QueryPlan) -> bool {
             LimitInputPlan::Offset(offset) => offset_is_schemaless(offset),
         },
     }
+}
+
+fn offset_is_schemaless(offset: &OffsetPlan) -> bool {
+    match &offset.input {
+        OffsetInputPlan::Project(project) => project_is_schemaless(project),
+        OffsetInputPlan::Values(_) | OffsetInputPlan::ValuesOrderBy(_) => false,
+        OffsetInputPlan::SelectOrderBy(order_by) => project_is_schemaless(&order_by.input),
+        OffsetInputPlan::Distinct(distinct) => distinct_is_schemaless(distinct),
+    }
+}
+
+fn distinct_is_schemaless(distinct: &DistinctPlan) -> bool {
+    match &distinct.input {
+        DistinctInputPlan::Project(project) => project_is_schemaless(project),
+        DistinctInputPlan::SelectOrderBy(order_by) => project_is_schemaless(&order_by.input),
+    }
+}
+
+fn project_is_schemaless(project: &ProjectPlan) -> bool {
+    matches!(project.projection, ProjectionPlan::SchemalessMap)
 }

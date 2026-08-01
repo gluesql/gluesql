@@ -23,16 +23,14 @@ pub(super) fn query<'a, T: GStore>(storage: &'a T, query: &'a QueryPlan) -> Resu
     }
 }
 
-fn project_plan<'a, T: GStore>(storage: &'a T, plan: &'a ProjectPlan) -> Result<Vec<String>> {
-    let sources = project_sources(storage, &plan.input)?;
-
-    project::resolve_labels(&sources, &plan.projection)
-}
-
-fn distinct<'a, T: GStore>(storage: &'a T, plan: &'a DistinctPlan) -> Result<Vec<String>> {
+fn limit<'a, T: GStore>(storage: &'a T, plan: &'a LimitPlan) -> Result<Vec<String>> {
     match &plan.input {
-        DistinctInputPlan::Project(project) => project_plan(storage, project),
-        DistinctInputPlan::SelectOrderBy(order_by) => project_plan(storage, &order_by.input),
+        LimitInputPlan::Project(project) => project_plan(storage, project),
+        LimitInputPlan::Values(values_plan) => Ok(values::labels(values_plan)),
+        LimitInputPlan::SelectOrderBy(order_by) => project_plan(storage, &order_by.input),
+        LimitInputPlan::ValuesOrderBy(order_by) => Ok(values::labels(&order_by.input)),
+        LimitInputPlan::Distinct(distinct_plan) => distinct(storage, distinct_plan),
+        LimitInputPlan::Offset(offset_plan) => offset(storage, offset_plan),
     }
 }
 
@@ -46,15 +44,17 @@ fn offset<'a, T: GStore>(storage: &'a T, plan: &'a OffsetPlan) -> Result<Vec<Str
     }
 }
 
-fn limit<'a, T: GStore>(storage: &'a T, plan: &'a LimitPlan) -> Result<Vec<String>> {
+fn distinct<'a, T: GStore>(storage: &'a T, plan: &'a DistinctPlan) -> Result<Vec<String>> {
     match &plan.input {
-        LimitInputPlan::Project(project) => project_plan(storage, project),
-        LimitInputPlan::Values(values_plan) => Ok(values::labels(values_plan)),
-        LimitInputPlan::SelectOrderBy(order_by) => project_plan(storage, &order_by.input),
-        LimitInputPlan::ValuesOrderBy(order_by) => Ok(values::labels(&order_by.input)),
-        LimitInputPlan::Distinct(distinct_plan) => distinct(storage, distinct_plan),
-        LimitInputPlan::Offset(offset_plan) => offset(storage, offset_plan),
+        DistinctInputPlan::Project(project) => project_plan(storage, project),
+        DistinctInputPlan::SelectOrderBy(order_by) => project_plan(storage, &order_by.input),
     }
+}
+
+fn project_plan<'a, T: GStore>(storage: &'a T, plan: &'a ProjectPlan) -> Result<Vec<String>> {
+    let sources = project_sources(storage, &plan.input)?;
+
+    project::resolve_labels(&sources, &plan.projection)
 }
 
 fn project_sources<'a, T: GStore>(

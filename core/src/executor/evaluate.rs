@@ -48,39 +48,6 @@ pub fn evaluate_stateless<'a, 'b: 'a>(
     evaluate_inner(storage, context.as_ref(), None, expr)
 }
 
-fn project_plan(query: &QueryPlan) -> Option<&ProjectPlan> {
-    match query {
-        QueryPlan::Project(project) => Some(project),
-        QueryPlan::Values(_) | QueryPlan::ValuesOrderBy(_) => None,
-        QueryPlan::SelectOrderBy(order_by) => Some(&order_by.input),
-        QueryPlan::Distinct(distinct) => Some(distinct_project_plan(distinct)),
-        QueryPlan::Offset(offset) => offset_project_plan(offset),
-        QueryPlan::Limit(LimitPlan { input, .. }) => match input {
-            LimitInputPlan::Project(project) => Some(project),
-            LimitInputPlan::Values(_) | LimitInputPlan::ValuesOrderBy(_) => None,
-            LimitInputPlan::SelectOrderBy(order_by) => Some(&order_by.input),
-            LimitInputPlan::Distinct(distinct) => Some(distinct_project_plan(distinct)),
-            LimitInputPlan::Offset(offset) => offset_project_plan(offset),
-        },
-    }
-}
-
-fn offset_project_plan(offset: &OffsetPlan) -> Option<&ProjectPlan> {
-    match &offset.input {
-        OffsetInputPlan::Project(project) => Some(project),
-        OffsetInputPlan::Values(_) | OffsetInputPlan::ValuesOrderBy(_) => None,
-        OffsetInputPlan::SelectOrderBy(order_by) => Some(&order_by.input),
-        OffsetInputPlan::Distinct(distinct) => Some(distinct_project_plan(distinct)),
-    }
-}
-
-fn distinct_project_plan(distinct: &DistinctPlan) -> &ProjectPlan {
-    match &distinct.input {
-        DistinctInputPlan::Project(project) => project,
-        DistinctInputPlan::SelectOrderBy(order_by) => &order_by.input,
-    }
-}
-
 fn evaluate_inner<'a, 'b, T>(
     storage: Option<&'a T>,
     context: Option<&Rc<RowContext<'b>>>,
@@ -346,6 +313,39 @@ where
                 .map(Value::Interval)
                 .map(|v| Evaluated::Value(Cow::Owned(v)))
         }
+    }
+}
+
+fn project_plan(query: &QueryPlan) -> Option<&ProjectPlan> {
+    match query {
+        QueryPlan::Project(project) => Some(project),
+        QueryPlan::Values(_) | QueryPlan::ValuesOrderBy(_) => None,
+        QueryPlan::SelectOrderBy(order_by) => Some(&order_by.input),
+        QueryPlan::Distinct(distinct) => Some(distinct_project_plan(distinct)),
+        QueryPlan::Offset(offset) => offset_project_plan(offset),
+        QueryPlan::Limit(LimitPlan { input, .. }) => match input {
+            LimitInputPlan::Project(project) => Some(project),
+            LimitInputPlan::Values(_) | LimitInputPlan::ValuesOrderBy(_) => None,
+            LimitInputPlan::SelectOrderBy(order_by) => Some(&order_by.input),
+            LimitInputPlan::Distinct(distinct) => Some(distinct_project_plan(distinct)),
+            LimitInputPlan::Offset(offset) => offset_project_plan(offset),
+        },
+    }
+}
+
+fn offset_project_plan(offset: &OffsetPlan) -> Option<&ProjectPlan> {
+    match &offset.input {
+        OffsetInputPlan::Project(project) => Some(project),
+        OffsetInputPlan::Values(_) | OffsetInputPlan::ValuesOrderBy(_) => None,
+        OffsetInputPlan::SelectOrderBy(order_by) => Some(&order_by.input),
+        OffsetInputPlan::Distinct(distinct) => Some(distinct_project_plan(distinct)),
+    }
+}
+
+fn distinct_project_plan(distinct: &DistinctPlan) -> &ProjectPlan {
+    match &distinct.input {
+        DistinctInputPlan::Project(project) => project,
+        DistinctInputPlan::SelectOrderBy(order_by) => &order_by.input,
     }
 }
 

@@ -37,43 +37,34 @@ struct JoinPlanner<'a, S> {
 
 impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
     fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
-        let plan_project =
-            |project: ProjectPlan| self.project(outer_context.as_ref().map(Rc::clone), project);
-        let plan_distinct = |DistinctPlan { input }| DistinctPlan {
-            input: match input {
-                DistinctInputPlan::Project(project) => {
-                    DistinctInputPlan::Project(plan_project(project))
-                }
-                DistinctInputPlan::SelectOrderBy(mut order_by) => {
-                    order_by.input = plan_project(order_by.input);
-                    DistinctInputPlan::SelectOrderBy(order_by)
-                }
-            },
-        };
         match query {
-            QueryPlan::Project(project) => QueryPlan::Project(plan_project(project)),
+            QueryPlan::Project(project) => {
+                QueryPlan::Project(self.project(outer_context.as_ref(), project))
+            }
             QueryPlan::Values(values) => QueryPlan::Values(values),
             QueryPlan::SelectOrderBy(mut order_by) => {
-                order_by.input = plan_project(order_by.input);
+                order_by.input = self.project(outer_context.as_ref(), order_by.input);
                 QueryPlan::SelectOrderBy(order_by)
             }
             QueryPlan::ValuesOrderBy(order_by) => QueryPlan::ValuesOrderBy(order_by),
-            QueryPlan::Distinct(distinct) => QueryPlan::Distinct(plan_distinct(distinct)),
+            QueryPlan::Distinct(distinct) => {
+                QueryPlan::Distinct(self.distinct(outer_context.as_ref(), distinct))
+            }
             QueryPlan::Offset(OffsetPlan { input, count }) => QueryPlan::Offset(OffsetPlan {
                 input: match input {
                     OffsetInputPlan::Project(project) => {
-                        OffsetInputPlan::Project(plan_project(project))
+                        OffsetInputPlan::Project(self.project(outer_context.as_ref(), project))
                     }
                     OffsetInputPlan::Values(values) => OffsetInputPlan::Values(values),
                     OffsetInputPlan::SelectOrderBy(mut order_by) => {
-                        order_by.input = plan_project(order_by.input);
+                        order_by.input = self.project(outer_context.as_ref(), order_by.input);
                         OffsetInputPlan::SelectOrderBy(order_by)
                     }
                     OffsetInputPlan::ValuesOrderBy(order_by) => {
                         OffsetInputPlan::ValuesOrderBy(order_by)
                     }
                     OffsetInputPlan::Distinct(distinct) => {
-                        OffsetInputPlan::Distinct(plan_distinct(distinct))
+                        OffsetInputPlan::Distinct(self.distinct(outer_context.as_ref(), distinct))
                     }
                 },
                 count,
@@ -81,36 +72,37 @@ impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
             QueryPlan::Limit(LimitPlan { input, count }) => {
                 let input = match input {
                     LimitInputPlan::Project(project) => {
-                        LimitInputPlan::Project(plan_project(project))
+                        LimitInputPlan::Project(self.project(outer_context.as_ref(), project))
                     }
                     LimitInputPlan::Values(values) => LimitInputPlan::Values(values),
                     LimitInputPlan::SelectOrderBy(mut order_by) => {
-                        order_by.input = plan_project(order_by.input);
+                        order_by.input = self.project(outer_context.as_ref(), order_by.input);
                         LimitInputPlan::SelectOrderBy(order_by)
                     }
                     LimitInputPlan::ValuesOrderBy(order_by) => {
                         LimitInputPlan::ValuesOrderBy(order_by)
                     }
                     LimitInputPlan::Distinct(distinct) => {
-                        LimitInputPlan::Distinct(plan_distinct(distinct))
+                        LimitInputPlan::Distinct(self.distinct(outer_context.as_ref(), distinct))
                     }
                     LimitInputPlan::Offset(OffsetPlan { input, count }) => {
                         LimitInputPlan::Offset(OffsetPlan {
                             input: match input {
-                                OffsetInputPlan::Project(project) => {
-                                    OffsetInputPlan::Project(plan_project(project))
-                                }
+                                OffsetInputPlan::Project(project) => OffsetInputPlan::Project(
+                                    self.project(outer_context.as_ref(), project),
+                                ),
                                 OffsetInputPlan::Values(values) => OffsetInputPlan::Values(values),
                                 OffsetInputPlan::SelectOrderBy(mut order_by) => {
-                                    order_by.input = plan_project(order_by.input);
+                                    order_by.input =
+                                        self.project(outer_context.as_ref(), order_by.input);
                                     OffsetInputPlan::SelectOrderBy(order_by)
                                 }
                                 OffsetInputPlan::ValuesOrderBy(order_by) => {
                                     OffsetInputPlan::ValuesOrderBy(order_by)
                                 }
-                                OffsetInputPlan::Distinct(distinct) => {
-                                    OffsetInputPlan::Distinct(plan_distinct(distinct))
-                                }
+                                OffsetInputPlan::Distinct(distinct) => OffsetInputPlan::Distinct(
+                                    self.distinct(outer_context.as_ref(), distinct),
+                                ),
                             },
                             count,
                         })
@@ -130,34 +122,53 @@ impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
 impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
     fn project(
         &self,
-        outer_context: Option<Rc<Context<'a>>>,
+        outer_context: Option<&Rc<Context<'a>>>,
         mut project: ProjectPlan,
     ) -> ProjectPlan {
         project.input = match project.input {
             ProjectInputPlan::Source(relation) => ProjectInputPlan::Source(relation),
             ProjectInputPlan::InnerJoin(join) => {
-                let (_, join) = self.inner_join(outer_context.as_ref(), *join);
+                let (_, join) = self.inner_join(outer_context, *join);
                 ProjectInputPlan::InnerJoin(Box::new(join))
             }
             ProjectInputPlan::LeftOuterJoin(join) => {
-                let (_, join) = self.left_outer_join(outer_context.as_ref(), *join);
+                let (_, join) = self.left_outer_join(outer_context, *join);
                 ProjectInputPlan::LeftOuterJoin(Box::new(join))
             }
             ProjectInputPlan::Filter(filter) => {
-                ProjectInputPlan::Filter(self.filter(outer_context.as_ref().map(Rc::clone), filter))
+                ProjectInputPlan::Filter(self.filter(outer_context.map(Rc::clone), filter))
             }
             ProjectInputPlan::Aggregation(mut aggregation) => {
-                aggregation.input = self
-                    .aggregation_input(outer_context.as_ref().map(Rc::clone), aggregation.input);
+                aggregation.input =
+                    self.aggregation_input(outer_context.map(Rc::clone), aggregation.input);
                 ProjectInputPlan::Aggregation(aggregation)
             }
             ProjectInputPlan::Having(mut having) => {
-                having.input.input = self.aggregation_input(outer_context, having.input.input);
+                having.input.input =
+                    self.aggregation_input(outer_context.map(Rc::clone), having.input.input);
                 ProjectInputPlan::Having(having)
             }
         };
 
         project
+    }
+
+    fn distinct(
+        &self,
+        outer_context: Option<&Rc<Context<'a>>>,
+        DistinctPlan { input }: DistinctPlan,
+    ) -> DistinctPlan {
+        let input = match input {
+            DistinctInputPlan::Project(project) => {
+                DistinctInputPlan::Project(self.project(outer_context, project))
+            }
+            DistinctInputPlan::SelectOrderBy(mut order_by) => {
+                order_by.input = self.project(outer_context, order_by.input);
+                DistinctInputPlan::SelectOrderBy(order_by)
+            }
+        };
+
+        DistinctPlan { input }
     }
 
     fn aggregation_input(

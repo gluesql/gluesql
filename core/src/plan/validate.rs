@@ -121,22 +121,6 @@ fn contextualize_query<'a>(
     query_project(query).and_then(|project| contextualize_project_input(schema_map, &project.input))
 }
 
-fn offset_project(offset: &OffsetPlan) -> Option<&ProjectPlan> {
-    match &offset.input {
-        OffsetInputPlan::Project(project) => Some(project),
-        OffsetInputPlan::Values(_) | OffsetInputPlan::ValuesOrderBy(_) => None,
-        OffsetInputPlan::SelectOrderBy(order_by) => Some(&order_by.input),
-        OffsetInputPlan::Distinct(distinct) => Some(distinct_project(distinct)),
-    }
-}
-
-fn distinct_project(distinct: &DistinctPlan) -> &ProjectPlan {
-    match &distinct.input {
-        DistinctInputPlan::Project(project) => project,
-        DistinctInputPlan::SelectOrderBy(order_by) => &order_by.input,
-    }
-}
-
 fn query_project(query: &QueryPlan) -> Option<&ProjectPlan> {
     match query {
         QueryPlan::Project(project) => Some(project),
@@ -151,6 +135,22 @@ fn query_project(query: &QueryPlan) -> Option<&ProjectPlan> {
             LimitInputPlan::Distinct(distinct) => Some(distinct_project(distinct)),
             LimitInputPlan::Offset(offset) => offset_project(offset),
         },
+    }
+}
+
+fn offset_project(offset: &OffsetPlan) -> Option<&ProjectPlan> {
+    match &offset.input {
+        OffsetInputPlan::Project(project) => Some(project),
+        OffsetInputPlan::Values(_) | OffsetInputPlan::ValuesOrderBy(_) => None,
+        OffsetInputPlan::SelectOrderBy(order_by) => Some(&order_by.input),
+        OffsetInputPlan::Distinct(distinct) => Some(distinct_project(distinct)),
+    }
+}
+
+fn distinct_project(distinct: &DistinctPlan) -> &ProjectPlan {
+    match &distinct.input {
+        DistinctInputPlan::Project(project) => project,
+        DistinctInputPlan::SelectOrderBy(order_by) => &order_by.input,
     }
 }
 
