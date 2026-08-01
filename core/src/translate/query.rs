@@ -261,10 +261,18 @@ fn translate_table_factor(
             let alias = translate_table_alias(alias.as_ref());
 
             match (object_name.as_str(), args) {
-                ("SERIES", Some(SqlTableFunctionArgs { args, .. })) => Ok(TableFactor::Series {
-                    alias: alias_or_name(alias, object_name),
-                    size: translate_table_args(args)?,
-                }),
+                ("SERIES", Some(SqlTableFunctionArgs { args, .. })) => {
+                    if args.len() > 1 {
+                        return Err(TranslateError::UnsupportedQueryTableFactor(
+                            sql_table_factor.to_string(),
+                        )
+                        .into());
+                    }
+                    Ok(TableFactor::Series {
+                        alias: alias_or_name(alias, object_name),
+                        size: translate_table_args(args)?,
+                    })
+                }
                 ("GLUE_OBJECTS", None) => Ok(TableFactor::Dictionary {
                     dict: Dictionary::GlueObjects,
                     alias: alias_or_name(alias, object_name),
@@ -390,6 +398,10 @@ mod tests {
         assert_query_error(
             "SELECT * FROM Foo(1)",
             TranslateError::UnsupportedQueryTableFactor("Foo(1)".into()),
+        );
+        assert_query_error(
+            "SELECT * FROM SERIES(1, 2)",
+            TranslateError::UnsupportedQueryTableFactor("SERIES(1, 2)".into()),
         );
     }
 
