@@ -97,9 +97,9 @@ fn scan_query<T: Store + ?Sized>(
 ) -> Result<HashMap<String, Schema>> {
     let QueryPlan {
         body,
+        order_by,
         limit,
         offset,
-        ..
     } = query;
 
     let schema_list = match body {
@@ -107,17 +107,26 @@ fn scan_query<T: Store + ?Sized>(
         SetExprPlan::Values(_) => HashMap::new(),
     };
 
+    let order_by = order_by
+        .iter()
+        .map(|order_by| scan_expr(storage, &order_by.expr))
+        .collect::<Result<Vec<HashMap<String, Schema>>>>()?
+        .into_iter()
+        .flatten();
+
     let schema_list = match (limit, offset) {
         (Some(limit), Some(offset)) => schema_list
             .into_iter()
+            .chain(order_by)
             .chain(scan_expr(storage, limit)?)
             .chain(scan_expr(storage, offset)?)
             .collect(),
         (Some(expr), None) | (None, Some(expr)) => schema_list
             .into_iter()
+            .chain(order_by)
             .chain(scan_expr(storage, expr)?)
             .collect(),
-        (None, None) => schema_list,
+        (None, None) => schema_list.into_iter().chain(order_by).collect(),
     };
 
     Ok(schema_list)
@@ -348,6 +357,22 @@ mod tests {
             WHERE
                 EXISTS(SELECT id FROM Foo)
                 AND Bar.id = (SELECT id FROM Bar LIMIT 1);
+        ",
+            &["Bar", "Foo"],
+        );
+        test(
+            "
+            SELECT *
+            FROM Foo
+            ORDER BY (SELECT id FROM Bar LIMIT 1);
+        ",
+            &["Bar", "Foo"],
+        );
+        test(
+            "
+            SELECT *
+            FROM Foo
+            ORDER BY id + 1, (SELECT id FROM Bar LIMIT 1);
         ",
             &["Bar", "Foo"],
         );
