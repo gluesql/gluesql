@@ -2,7 +2,7 @@ mod aggregate;
 mod function;
 
 use {
-    crate::{plan::ExprPlan, planner::PlanError},
+    crate::{plan::ExprPlan, planner::PlannerError},
     aggregate::{try_visit_aggregate, visit_mut_aggregate},
     function::{try_visit_function, visit_mut_function},
 };
@@ -111,9 +111,9 @@ where
     f(expr);
 }
 
-pub fn try_visit_expr<F>(expr: &ExprPlan, f: &mut F) -> Result<(), PlanError>
+pub fn try_visit_expr<F>(expr: &ExprPlan, f: &mut F) -> Result<(), PlannerError>
 where
-    F: FnMut(&ExprPlan) -> Result<(), PlanError>,
+    F: FnMut(&ExprPlan) -> Result<(), PlannerError>,
 {
     visit_expr_children!(
         expr,
@@ -133,7 +133,7 @@ mod tests {
         crate::{
             parse_sql::parse_expr,
             plan::ExprPlan,
-            planner::PlanError,
+            planner::PlannerError,
             translate::{NO_PARAMS, translate_expr},
         },
     };
@@ -195,11 +195,11 @@ mod tests {
         let expr = ExprPlan::from(translate_expr(&parsed, NO_PARAMS).expect("a + b"));
 
         let result = try_visit_expr(&expr, &mut |expr| match expr {
-            ExprPlan::Identifier(ident) if ident == "b" => Err(PlanError::Unreachable),
+            ExprPlan::Identifier(ident) if ident == "b" => Err(PlannerError::Unreachable),
             _ => Ok(()),
         });
 
-        assert_eq!(result, Err(PlanError::Unreachable));
+        assert_eq!(result, Err(PlannerError::Unreachable));
     }
 
     #[test]
@@ -212,7 +212,7 @@ mod tests {
             ExprPlan::Identifier(ident) => {
                 visited.push(ident.clone());
                 if ident == "b" {
-                    Err(PlanError::Unreachable)
+                    Err(PlannerError::Unreachable)
                 } else {
                     Ok(())
                 }
@@ -220,7 +220,7 @@ mod tests {
             _ => Ok(()),
         });
 
-        assert_eq!(result, Err(PlanError::Unreachable));
+        assert_eq!(result, Err(PlannerError::Unreachable));
         assert_eq!(visited, vec!["a".to_owned(), "b".to_owned()]);
     }
 }

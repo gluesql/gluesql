@@ -1,5 +1,5 @@
 use {
-    super::PlanError,
+    super::PlannerError,
     crate::{
         data::Schema,
         plan::{
@@ -95,7 +95,7 @@ impl<'a> Context<'a> {
             };
 
             if left && right {
-                Err(PlanError::ColumnReferenceAmbiguous(column_name.to_owned()).into())
+                Err(PlannerError::ColumnReferenceAmbiguous(column_name.to_owned()).into())
             } else {
                 Ok(left || right)
             }

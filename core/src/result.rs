@@ -6,7 +6,7 @@ pub use crate::{
         AlterError, DeleteError, EvaluateError, ExecuteError, FetchError, InsertError, SelectError,
         SortError, UpdateError, ValidateError,
     },
-    planner::PlanError,
+    planner::PlannerError,
     query_builder::QueryBuilderError,
     row_conversion::RowConversionError,
     store::{AlterTableError, IndexError},
@@ -61,8 +61,8 @@ pub enum Error {
     Interval(#[from] IntervalError),
     #[error("string-ext: {0}")]
     StringExt(#[from] StringExtError),
-    #[error("plan: {0}")]
-    Plan(#[from] PlanError),
+    #[error("planner: {0}")]
+    Planner(#[from] PlannerError),
     #[error("schema-parse: {0}")]
     Schema(#[from] SchemaParseError),
 

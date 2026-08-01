@@ -1,5 +1,5 @@
 use {
-    super::super::{PlanError, expr::try_visit_expr},
+    super::super::{PlannerError, expr::try_visit_expr},
     crate::{
         data::Schema,
         plan::{
@@ -16,7 +16,7 @@ use {
     std::{collections::HashMap, hash::BuildHasher},
 };
 
-type ValidateResult = std::result::Result<(), PlanError>;
+type ValidateResult = std::result::Result<(), PlannerError>;
 
 /// Rejects schemaless-specific unsupported patterns before rewrite.
 pub(super) fn validate_statement<S: BuildHasher>(
@@ -38,7 +38,7 @@ fn validate_statement_inner(
             source,
         } => {
             if !columns.is_empty() && is_schemaless_table(schema_map, table_name) {
-                return Err(PlanError::SchemalessInsertWithExplicitColumns);
+                return Err(PlannerError::SchemalessInsertWithExplicitColumns);
             }
 
             validate_query(schema_map, source)
@@ -346,7 +346,7 @@ fn validate_mixed_join_wildcard_projection(
     }
 
     if has_schemaless && has_schemaful {
-        return Err(PlanError::SchemalessMixedJoinWildcardProjection);
+        return Err(PlannerError::SchemalessMixedJoinWildcardProjection);
     }
 
     Ok(())
@@ -468,7 +468,7 @@ mod tests {
             mock::{MockStorage, run},
             parse_sql::parse,
             plan::StatementPlan,
-            planner::{PlanError, fetch_schema_map},
+            planner::{PlannerError, fetch_schema_map},
             query_builder::{Build, table},
             translate::translate,
         },
@@ -482,14 +482,14 @@ mod tests {
     }
 
     fn assert_mixed_join_wildcard_error(storage: &MockStorage, sql: &str) {
-        assert_plan_error(
+        assert_planner_error(
             storage,
             sql,
-            PlanError::SchemalessMixedJoinWildcardProjection,
+            PlannerError::SchemalessMixedJoinWildcardProjection,
         );
     }
 
-    fn assert_plan_error(storage: &MockStorage, sql: &str, expected: PlanError) {
+    fn assert_planner_error(storage: &MockStorage, sql: &str, expected: PlannerError) {
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
         let statement = StatementPlan::from(translate(&parsed).unwrap());
         let schema_map = fetch_schema_map(storage, &statement).unwrap();
@@ -582,15 +582,15 @@ mod tests {
     fn rejects_schemaless_insert_with_explicit_columns() {
         let storage = setup_storage();
 
-        assert_plan_error(
+        assert_planner_error(
             &storage,
             "INSERT INTO Player (id, name) VALUES (1, 'Alice')",
-            PlanError::SchemalessInsertWithExplicitColumns,
+            PlannerError::SchemalessInsertWithExplicitColumns,
         );
-        assert_plan_error(
+        assert_planner_error(
             &storage,
             "INSERT INTO Player (id) SELECT id FROM Item",
-            PlanError::SchemalessInsertWithExplicitColumns,
+            PlannerError::SchemalessInsertWithExplicitColumns,
         );
     }
 

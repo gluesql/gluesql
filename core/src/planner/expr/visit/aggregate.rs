@@ -2,7 +2,7 @@ use {
     super::{try_visit_expr, visit_mut_expr},
     crate::{
         plan::{AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan},
-        planner::PlanError,
+        planner::PlannerError,
     },
 };
 
@@ -45,9 +45,9 @@ where
     visit_aggregate_children!(&mut aggr.func, visit_mut_expr, f, apply_mut);
 }
 
-pub fn try_visit_aggregate<F>(aggr: &AggregateExprPlan, f: &mut F) -> Result<(), PlanError>
+pub fn try_visit_aggregate<F>(aggr: &AggregateExprPlan, f: &mut F) -> Result<(), PlannerError>
 where
-    F: FnMut(&ExprPlan) -> Result<(), PlanError>,
+    F: FnMut(&ExprPlan) -> Result<(), PlannerError>,
 {
     visit_aggregate_children!(&aggr.func, try_visit_expr, f, apply_try);
     Ok(())
@@ -60,7 +60,7 @@ mod tests {
         crate::{
             parse_sql::parse_expr,
             plan::ExprPlan,
-            planner::PlanError,
+            planner::PlannerError,
             translate::{NO_PARAMS, translate_expr},
         },
     };
@@ -97,10 +97,10 @@ mod tests {
         let expr = ExprPlan::from(translate_expr(&parsed, NO_PARAMS).expect("SUM(x)"));
 
         let result = try_visit_expr(&expr, &mut |expr| match expr {
-            ExprPlan::Identifier(ident) if ident == "x" => Err(PlanError::Unreachable),
+            ExprPlan::Identifier(ident) if ident == "x" => Err(PlannerError::Unreachable),
             _ => Ok(()),
         });
 
-        assert_eq!(result, Err(PlanError::Unreachable));
+        assert_eq!(result, Err(PlannerError::Unreachable));
     }
 }

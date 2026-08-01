@@ -2,7 +2,7 @@ use {
     super::{try_visit_expr, visit_mut_expr},
     crate::{
         plan::{ExprPlan, FunctionExprPlan},
-        planner::PlanError,
+        planner::PlannerError,
     },
 };
 
@@ -237,9 +237,9 @@ where
     visit_function_children!(func, visit_mut_expr, f, apply_mut);
 }
 
-pub fn try_visit_function<F>(func: &FunctionExprPlan, f: &mut F) -> Result<(), PlanError>
+pub fn try_visit_function<F>(func: &FunctionExprPlan, f: &mut F) -> Result<(), PlannerError>
 where
-    F: FnMut(&ExprPlan) -> Result<(), PlanError>,
+    F: FnMut(&ExprPlan) -> Result<(), PlannerError>,
 {
     visit_function_children!(func, try_visit_expr, f, apply_try);
     Ok(())
@@ -252,7 +252,7 @@ mod tests {
         crate::{
             parse_sql::parse_expr,
             plan::ExprPlan,
-            planner::PlanError,
+            planner::PlannerError,
             translate::{NO_PARAMS, translate_expr},
         },
     };
@@ -380,10 +380,10 @@ mod tests {
         let expr = ExprPlan::from(translate_expr(&parsed, NO_PARAMS).expect("CONCAT(a, b)"));
 
         let result = try_visit_expr(&expr, &mut |expr| match expr {
-            ExprPlan::Identifier(ident) if ident == "b" => Err(PlanError::Unreachable),
+            ExprPlan::Identifier(ident) if ident == "b" => Err(PlannerError::Unreachable),
             _ => Ok(()),
         });
 
-        assert_eq!(result, Err(PlanError::Unreachable));
+        assert_eq!(result, Err(PlannerError::Unreachable));
     }
 }
