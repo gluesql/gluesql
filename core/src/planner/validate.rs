@@ -281,7 +281,7 @@ fn contextualize_source<'a>(
 mod tests {
     use crate::{
         mock::run,
-        plan::{fetch_schema_map, validate},
+        planner::{fetch_schema_map, validate},
         prelude::{parse, translate},
     };
 

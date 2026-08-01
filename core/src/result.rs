@@ -6,7 +6,7 @@ pub use crate::{
         AlterError, DeleteError, EvaluateError, ExecuteError, FetchError, InsertError, SelectError,
         SortError, UpdateError, ValidateError,
     },
-    plan::PlanError,
+    planner::PlanError,
     query_builder::QueryBuilderError,
     row_conversion::RowConversionError,
     store::{AlterTableError, IndexError},

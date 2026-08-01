@@ -7,6 +7,7 @@ pub use {
     ddl::AlterTableOperationPlan,
     expr::{
         AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan, FunctionExprPlan,
+        plan_scalar_expr,
     },
     projection::{ProjectionPlan, SelectItemPlan},
     query::{

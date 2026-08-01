@@ -2,7 +2,7 @@ mod aggregate;
 mod function;
 
 use {
-    crate::plan::{ExprPlan, PlanError},
+    crate::{plan::ExprPlan, planner::PlanError},
     aggregate::{try_visit_aggregate, visit_mut_aggregate},
     function::{try_visit_function, visit_mut_function},
 };
@@ -132,7 +132,8 @@ mod tests {
         super::{try_visit_expr, visit_mut_expr},
         crate::{
             parse_sql::parse_expr,
-            plan::{ExprPlan, PlanError},
+            plan::ExprPlan,
+            planner::PlanError,
             translate::{NO_PARAMS, translate_expr},
         },
     };

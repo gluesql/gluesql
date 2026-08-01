@@ -327,6 +327,10 @@ pub enum CountArgExprPlan {
     Expr(ExprPlan),
 }
 
+pub fn plan_scalar_expr(expr: ast::Expr) -> ExprPlan {
+    expr.into()
+}
+
 impl From<ast::Expr> for ExprPlan {
     fn from(expr: ast::Expr) -> Self {
         match expr {

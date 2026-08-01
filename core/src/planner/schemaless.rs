@@ -1,9 +1,10 @@
 use {
     self::{query::transform_query, validate::validate_statement},
+    super::expr::visit_mut_expr,
     crate::{
         ast::Literal,
         data::{SCHEMALESS_DOC_COLUMN, Schema},
-        plan::{ExprPlan, StatementPlan, expr::visit_mut_expr},
+        plan::{ExprPlan, StatementPlan},
         result::Result,
     },
     std::{collections::HashMap, hash::BuildHasher},
@@ -163,7 +164,8 @@ mod tests {
         crate::{
             mock::{MockStorage, run},
             parse_sql::parse,
-            plan::{ProjectionPlan, QueryPlan, StatementPlan, fetch_schema_map},
+            plan::{ProjectionPlan, QueryPlan, StatementPlan},
+            planner::fetch_schema_map,
             translate::translate,
         },
     };

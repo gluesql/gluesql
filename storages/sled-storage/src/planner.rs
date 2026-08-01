@@ -2,9 +2,10 @@ use {
     crate::SledStorage,
     gluesql_core::{
         error::Result,
-        plan::{
-            StatementPlan, fetch_schema_map, plan_aggregate, plan_index, plan_join,
-            plan_primary_key, plan_schemaless, validate,
+        plan::StatementPlan,
+        planner::{
+            fetch_schema_map, plan_aggregate, plan_index, plan_join, plan_primary_key,
+            plan_schemaless, validate,
         },
         store::Planner,
     },

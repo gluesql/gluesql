@@ -1,4 +1,5 @@
 use {
+    super::expr::visit_mut_expr,
     crate::plan::{
         AggregateFunctionPlan, AggregationInputPlan, AggregationPlan, DistinctInputPlan,
         DistinctPlan, ExprPlan, FilterInputPlan, FilterPlan, HashJoinInputPlan, HashJoinPlan,
@@ -7,7 +8,6 @@ use {
         NestedLoopJoinInputPlan, NestedLoopJoinPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan,
         ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
         SelectOrderByPlan, SourcePlan, StatementPlan, ValuesOrderByPlan, ValuesPlan,
-        expr::visit_mut_expr,
     },
     std::collections::HashMap,
 };
@@ -385,8 +385,8 @@ mod tests {
                 ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan,
                 SeriesSourcePlan, SourcePlan, StatementPlan, TableAccessPlan, TableAliasPlan,
                 TableSourcePlan,
-                expr::{try_visit_expr, visit_mut_expr},
             },
+            planner::expr::{try_visit_expr, visit_mut_expr},
             translate::translate,
         },
     };

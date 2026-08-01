@@ -467,7 +467,8 @@ mod tests {
         crate::{
             mock::{MockStorage, run},
             parse_sql::parse,
-            plan::{PlanError, StatementPlan, fetch_schema_map},
+            plan::StatementPlan,
+            planner::{PlanError, fetch_schema_map},
             query_builder::{Build, table},
             translate::translate,
         },

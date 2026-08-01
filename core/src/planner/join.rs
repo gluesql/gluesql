@@ -1,5 +1,5 @@
 use {
-    super::{context::Context, planner::Planner},
+    super::{context::Context, expr::evaluable::check_expr as check_evaluable, query::Planner},
     crate::{
         ast::BinaryOperator,
         data::Schema,
@@ -9,7 +9,6 @@ use {
             JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
             OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan, StatementPlan,
-            expr::evaluable::check_expr as check_evaluable,
         },
     },
     std::{collections::HashMap, hash::BuildHasher, rc::Rc},
@@ -710,7 +709,8 @@ mod tests {
             ast::DateTimeField,
             mock::{MockStorage, run},
             parse_sql::parse,
-            plan::{StatementPlan, fetch_schema_map},
+            plan::StatementPlan,
+            planner::fetch_schema_map,
             query_builder::{Build, QueryNode, col, exists, num, subquery, table},
             translate::translate,
         },

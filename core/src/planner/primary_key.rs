@@ -1,6 +1,6 @@
 use {
     self::lookup::PrimaryKeyLookupCandidate,
-    super::{context::Context, planner::Planner},
+    super::{context::Context, expr::evaluable::check_expr as check_evaluable, query::Planner},
     crate::{
         ast::BinaryOperator,
         data::Schema,
@@ -10,7 +10,7 @@ use {
             JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
             OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SourcePlan,
-            StatementPlan, TableAccessPlan, expr::evaluable::check_expr as check_evaluable,
+            StatementPlan, TableAccessPlan,
         },
     },
     std::{collections::HashMap, hash::BuildHasher, rc::Rc},
@@ -462,8 +462,9 @@ mod tests {
                 JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan,
                 LeftOuterJoinPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan, ProjectInputPlan,
                 QueryPlan, SourcePlan, StatementPlan, TableAccessPlan, TableAliasPlan,
-                TableSourcePlan, fetch_schema_map,
+                TableSourcePlan,
             },
+            planner::fetch_schema_map,
             query_builder::{Build, col, primary_key, table},
             translate::{NO_PARAMS, translate, translate_expr},
         },

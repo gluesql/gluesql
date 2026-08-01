@@ -1,6 +1,9 @@
 use {
     super::{try_visit_expr, visit_mut_expr},
-    crate::plan::{ExprPlan, FunctionExprPlan, PlanError},
+    crate::{
+        plan::{ExprPlan, FunctionExprPlan},
+        planner::PlanError,
+    },
 };
 
 macro_rules! apply_mut {
@@ -244,13 +247,14 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        parse_sql::parse_expr,
-        plan::{
-            ExprPlan, PlanError,
-            expr::{try_visit_expr, visit_mut_expr},
+    use {
+        super::{try_visit_expr, visit_mut_expr},
+        crate::{
+            parse_sql::parse_expr,
+            plan::ExprPlan,
+            planner::PlanError,
+            translate::{NO_PARAMS, translate_expr},
         },
-        translate::{NO_PARAMS, translate_expr},
     };
 
     fn test(input: &str, expected: &str) {

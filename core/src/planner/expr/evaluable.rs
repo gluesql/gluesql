@@ -1,4 +1,5 @@
 use {
+    super::PlanExpr,
     crate::{
         plan::{
             AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
@@ -9,7 +10,7 @@ use {
             SelectItemPlan, SelectOrderByPlan, SourcePlan, TableAliasPlan, ValuesOrderByPlan,
             ValuesPlan,
         },
-        plan::{context::Context, expr::PlanExpr},
+        planner::context::Context,
     },
     std::rc::Rc,
 };
@@ -249,8 +250,8 @@ mod tests {
         super::{check_expr, check_query},
         crate::{
             parse_sql::{parse_expr, parse_query},
-            plan::context::Context,
             plan::{ExprPlan, QueryPlan},
+            planner::context::Context,
             translate::{NO_PARAMS, translate_expr, translate_query},
         },
         std::rc::Rc,

@@ -1,5 +1,9 @@
 use {
-    super::{context::Context, planner::Planner},
+    super::{
+        context::Context,
+        expr::{deterministic::is_deterministic, nullability::may_return_null},
+        query::Planner,
+    },
     crate::{
         ast::{BinaryOperator, IndexOperator},
         data::{Schema, SchemaIndex, SchemaIndexOrd, Value},
@@ -10,7 +14,6 @@ use {
             LeftOuterJoinPlan, LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan,
             NestedLoopJoinPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan,
             ProjectPlan, QueryPlan, SelectOrderByPlan, SourcePlan, StatementPlan, TableAccessPlan,
-            expr::{deterministic::is_deterministic, nullability::may_return_null},
             plan_scalar_expr,
         },
     },
@@ -759,8 +762,9 @@ mod tests {
             parse_sql::parse,
             plan::{
                 DistinctInputPlan, DistinctPlan, LimitInputPlan, LimitPlan, OffsetInputPlan,
-                OffsetPlan, ProjectInputPlan, QueryPlan, StatementPlan, fetch_schema_map,
+                OffsetPlan, ProjectInputPlan, QueryPlan, StatementPlan,
             },
+            planner::fetch_schema_map,
             query_builder::{
                 Build, col, exists, nested, non_clustered, null, num, primary_key, table, text,
             },
