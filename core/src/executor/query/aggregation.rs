@@ -53,20 +53,20 @@ where
     for context in rows {
         let context = context?;
         let row_filter_context = match filter_context {
-            Some(filter_context) => Some(Rc::new(RowContext::concat(
+            Some(filter_context) => Rc::new(RowContext::concat(
                 Rc::clone(&context),
                 Rc::clone(filter_context),
-            ))),
-            None => Some(Rc::clone(&context)),
+            )),
+            None => Rc::clone(&context),
         };
         let group = group_by
             .iter()
-            .map(|expr| evaluate(storage, row_filter_context.as_ref(), None, expr)?.try_into())
+            .map(|expr| evaluate(storage, Some(&row_filter_context), None, expr)?.try_into())
             .collect::<Result<Vec<Value>>>()?;
         let group_index = state.apply(group, Rc::clone(&context));
 
         for (slot, aggregate) in aggregate_slots.iter().enumerate() {
-            state.accumulate(group_index, row_filter_context.as_ref(), slot, aggregate)?;
+            state.accumulate(group_index, &row_filter_context, slot, aggregate)?;
         }
     }
 

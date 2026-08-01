@@ -17,18 +17,6 @@ pub type KeyedRows<'a> = Box<dyn Iterator<Item = Result<(Key, Row)>> + 'a>;
 pub enum FetchError {
     #[error("table not found: {0}")]
     TableNotFound(String),
-
-    #[error("table alias not found: {0}")]
-    TableAliasNotFound(String),
-
-    #[error("SERIES has wrong size: {0}")]
-    SeriesSizeWrong(i64),
-
-    #[error("table '{0}' has {1} columns available but {2} column aliases specified")]
-    TooManyColumnAliases(String, usize, usize),
-
-    #[error("unreachable")]
-    Unreachable,
 }
 
 pub fn fetch<'a, T: GStore>(

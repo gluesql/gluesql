@@ -4,7 +4,7 @@ use {
         data::Value,
         executor::{
             context::{AggregateContext, AggregateValues, RowContext},
-            evaluate::{EvaluateError, evaluate},
+            evaluate::evaluate,
         },
         plan::{AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan},
         result::Result,
@@ -366,19 +366,14 @@ impl<'a, T: GStore> State<'a, T> {
     pub fn accumulate(
         &mut self,
         group_index: usize,
-        filter_context: Option<&Rc<RowContext<'a>>>,
+        filter_context: &Rc<RowContext<'a>>,
         slot: usize,
         aggregate: &AggregateExprPlan,
     ) -> Result<()> {
         let value = match &aggregate.func {
             AggregateFunctionPlan::Count(CountArgExprPlan::Wildcard) => {
                 if aggregate.distinct {
-                    let context = filter_context.as_ref().ok_or_else(|| {
-                        EvaluateError::FilterContextRequiredForAggregate(Box::new(
-                            aggregate.clone(),
-                        ))
-                    })?;
-                    let entries = context.get_all_entries();
+                    let entries = filter_context.get_all_entries();
                     let values: Vec<Value> = entries.into_iter().map(|(_, value)| value).collect();
                     Value::List(values)
                 } else {
@@ -392,7 +387,7 @@ impl<'a, T: GStore> State<'a, T> {
             | AggregateFunctionPlan::Avg(expr)
             | AggregateFunctionPlan::Variance(expr)
             | AggregateFunctionPlan::Stdev(expr) => {
-                evaluate(self.storage, filter_context, None, expr)?.try_into()?
+                evaluate(self.storage, Some(filter_context), None, expr)?.try_into()?
             }
         };
 

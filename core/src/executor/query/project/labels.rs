@@ -1,8 +1,7 @@
 use {
-    super::super::SelectedSources,
+    super::super::{QueryError, SelectedSources},
     crate::{
         data::SCHEMALESS_DOC_COLUMN,
-        executor::fetch::FetchError,
         plan::{ProjectionPlan, SelectItemPlan},
         result::Result,
     },
@@ -38,7 +37,7 @@ pub(super) fn resolve(
                     .iter()
                     .find(|source| source.alias == target)
                     .map_or_else(
-                        || vec![Err(FetchError::TableAliasNotFound(target.to_owned()).into())],
+                        || vec![Err(QueryError::TableAliasNotFound(target.to_owned()).into())],
                         |source| source.names.iter().cloned().map(Ok).collect(),
                     ),
                 SelectItemPlan::Expr { label, .. } => vec![Ok(label.clone())],

@@ -56,10 +56,10 @@ VALUES (1, NULL), (2, NULL)
 -- | 2            | NULL    |
 
 VALUES (1), (2, 'b')
--- @expect: error Select.NumberOfValuesDifferent
+-- @expect: error Query.ValuesLengthMismatch
 
 VALUES (1, 'a'), (2)
--- @expect: error Select.NumberOfValuesDifferent
+-- @expect: error Query.ValuesLengthMismatch
 
 VALUES (1, 'a'), (2, 3)
 -- @expect: error Evaluate.NumberParseFailed

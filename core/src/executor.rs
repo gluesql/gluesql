@@ -19,7 +19,7 @@ pub use {
     execute::{ExecuteError, Payload, PayloadVariable, execute},
     fetch::FetchError,
     insert::InsertError,
-    query::{SelectError, SortError},
+    query::QueryError,
     update::UpdateError,
     validate::ValidateError,
 };

@@ -11,13 +11,13 @@ mod project;
 mod source;
 mod values;
 
+pub use error::QueryError;
 use {
     crate::{
         data::Row, executor::context::RowContext, plan::QueryPlan, result::Result, store::GStore,
     },
     std::rc::Rc,
 };
-pub use {error::SelectError, order_by::SortError};
 
 pub type QueryIter<'a> = Box<dyn Iterator<Item = Result<Row>> + 'a>;
 type SelectedIter<'a> = Box<dyn Iterator<Item = Result<Rc<RowContext<'a>>>> + 'a>;

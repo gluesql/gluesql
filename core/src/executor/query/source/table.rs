@@ -1,12 +1,11 @@
 use {
-    super::{super::SourceColumns, PreparedSource, SourceRows},
+    super::{
+        super::{QueryError, SourceColumns},
+        PreparedSource, SourceRows,
+    },
     crate::{
         data::{Key, Row},
-        executor::{
-            context::RowContext,
-            evaluate::evaluate,
-            fetch::{FetchError, fetch_columns},
-        },
+        executor::{context::RowContext, evaluate::evaluate, fetch::fetch_columns},
         plan::{TableAccessPlan, TableSourcePlan},
         result::Result,
         store::GStore,
@@ -22,7 +21,7 @@ pub(super) fn execute<'a, T: GStore>(
     let names = match &table.alias {
         None => names,
         Some(alias) if alias.columns.len() > names.len() => {
-            return Err(FetchError::TooManyColumnAliases(
+            return Err(QueryError::TooManyColumnAliases(
                 table.name.clone(),
                 names.len(),
                 alias.columns.len(),
@@ -87,9 +86,9 @@ fn rows<'a, T: GStore>(
             Box::new(rows) as Box<dyn Iterator<Item = Result<Row>> + 'a>
         }
         TableAccessPlan::PrimaryKey { expr } => {
-            let schema = storage
-                .fetch_schema(&table.name)?
-                .ok_or(FetchError::Unreachable)?;
+            let schema = storage.fetch_schema(&table.name)?.ok_or_else(|| {
+                QueryError::UnreachableTableSchemaMissingAfterPreparation(table.name.clone())
+            })?;
             let evaluated = evaluate(storage, evaluation_context, None, expr)?;
             let column_def = schema
                 .column_defs
@@ -99,7 +98,7 @@ fn rows<'a, T: GStore>(
                         .iter()
                         .find(|column_def| column_def.unique.is_some_and(|u| u.is_primary))
                 })
-                .ok_or(FetchError::Unreachable)?;
+                .ok_or_else(|| QueryError::PrimaryKeyColumnNotFound(table.name.clone()))?;
             let value = evaluated.try_into_value(&column_def.data_type, column_def.nullable)?;
             let key = Key::try_from(value)?;
 

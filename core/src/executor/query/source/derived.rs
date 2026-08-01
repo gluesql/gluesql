@@ -1,10 +1,13 @@
 mod output_labels;
 
 use {
-    super::{super::SourceColumns, PreparedSource, SourceRows},
+    super::{
+        super::{QueryError, SourceColumns},
+        PreparedSource, SourceRows,
+    },
     crate::{
         data::Row,
-        executor::{context::RowContext, fetch::FetchError, query},
+        executor::{context::RowContext, query},
         plan::DerivedSourcePlan,
         result::Result,
         store::GStore,
@@ -19,7 +22,7 @@ pub(super) fn execute<'a, T: GStore>(
     let labels = output_labels::query(storage, &derived.query)?;
     let alias_columns = &derived.alias.columns;
     if alias_columns.len() > labels.len() {
-        return Err(FetchError::TooManyColumnAliases(
+        return Err(QueryError::TooManyColumnAliases(
             derived.alias.name.clone(),
             labels.len(),
             alias_columns.len(),

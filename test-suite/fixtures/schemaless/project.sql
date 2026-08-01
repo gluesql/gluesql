@@ -59,11 +59,11 @@ SELECT A.*, B.* FROM A JOIN B WHERE A.a_id = B.a_id
 
 -- @name: wildcard join with schemaless root and schemaful join is rejected
 SELECT * FROM A JOIN S WHERE A.a_id = S.a_id
--- @expect: error Plan.SchemalessMixedJoinWildcardProjection
+-- @expect: error Planner.SchemalessMixedJoinWildcardProjection
 
 -- @name: wildcard join with schemaful root and schemaless join is rejected
 SELECT * FROM S JOIN A WHERE S.a_id = A.a_id
--- @expect: error Plan.SchemalessMixedJoinWildcardProjection
+-- @expect: error Planner.SchemalessMixedJoinWildcardProjection
 
 CREATE TABLE C (_doc INTEGER);
 -- @expect: ok

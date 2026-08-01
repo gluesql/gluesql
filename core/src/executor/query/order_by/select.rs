@@ -1,10 +1,7 @@
-mod error;
-
-pub use error::SortError;
 use {
     super::{
         super::{
-            LabeledRows, QueryIter,
+            LabeledRows, QueryError, QueryIter,
             project::{self, ProjectedRows},
         },
         sort_by,
@@ -17,7 +14,7 @@ use {
             evaluate::evaluate,
         },
         plan::{ExprPlan, OrderByExprPlan, SelectOrderByPlan},
-        result::{Error, Result},
+        result::Result,
         store::GStore,
     },
     bigdecimal::ToPrimitive,
@@ -86,13 +83,14 @@ where
                     Some(n) => {
                         let index = n
                             .to_usize()
-                            .ok_or_else(|| -> Error { SortError::Unreachable.into() })?;
-                        let zero_based = index.checked_sub(1).ok_or_else(|| -> Error {
-                            SortError::ColumnIndexOutOfRange(index).into()
-                        })?;
-                        let value = row.values.get(zero_based).ok_or_else(|| -> Error {
-                            SortError::ColumnIndexOutOfRange(index).into()
-                        })?;
+                            .ok_or_else(|| QueryError::OrderByColumnIndexTooLarge(n.to_string()))?;
+                        let zero_based = index
+                            .checked_sub(1)
+                            .ok_or(QueryError::OrderByColumnIndexOutOfRange(index))?;
+                        let value = row
+                            .values
+                            .get(zero_based)
+                            .ok_or(QueryError::OrderByColumnIndexOutOfRange(index))?;
 
                         Ok((SortType::Value(value.clone()), *asc))
                     }

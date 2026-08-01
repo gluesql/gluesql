@@ -1,8 +1,11 @@
 use {
-    super::{super::SourceColumns, PreparedSource, SourceRows},
+    super::{
+        super::{QueryError, SourceColumns},
+        PreparedSource, SourceRows,
+    },
     crate::{
         data::{Row, Value},
-        executor::{context::RowContext, evaluate::evaluate_stateless, fetch::FetchError},
+        executor::{context::RowContext, evaluate::evaluate_stateless},
         plan::SeriesSourcePlan,
         result::Result,
     },
@@ -36,7 +39,7 @@ fn rows<'a>(series: &'a SeriesSourcePlan, source: SourceColumns<'a>) -> Result<S
     let value: Value = evaluate_stateless(None, &series.size)?.try_into()?;
     let size: i64 = value.try_into()?;
     if size < 0 {
-        return Err(FetchError::SeriesSizeWrong(size).into());
+        return Err(QueryError::InvalidSeriesSize(size).into());
     }
     let rows = (1..=size).map({
         let columns = Rc::clone(&columns);

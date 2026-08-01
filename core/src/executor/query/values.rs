@@ -1,5 +1,5 @@
 use {
-    super::{LabeledRows, SelectError},
+    super::{LabeledRows, QueryError},
     crate::{
         data::{Row, Value},
         executor::evaluate::evaluate_stateless,
@@ -33,7 +33,7 @@ pub(super) fn materialize(ValuesPlan(exprs_list): &ValuesPlan) -> Result<Materia
 
     for exprs in exprs_list {
         if exprs.len() != first_len {
-            return Err(SelectError::NumberOfValuesDifferent.into());
+            return Err(QueryError::ValuesLengthMismatch.into());
         }
 
         let mut values = Vec::with_capacity(exprs.len());

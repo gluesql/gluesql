@@ -1,6 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
+        error::QueryError,
         prelude::{Payload, Value::*},
         query_builder::*,
     },
@@ -36,4 +37,21 @@ test_case!(index_by, {
         1     "Drink".to_owned()
     ));
     assert_eq!(actual, expected, "basic select with index by");
+
+    let actual = table("NoPrimaryKey")
+        .create_table()
+        .add_column("id INTEGER")
+        .execute(glue);
+    let expected = Ok(Payload::Create);
+    assert_eq!(actual, expected, "create table without primary key");
+
+    let actual = table("NoPrimaryKey")
+        .index_by(primary_key().eq("1"))
+        .select()
+        .execute(glue);
+    let expected = Err(QueryError::PrimaryKeyColumnNotFound("NoPrimaryKey".to_owned()).into());
+    assert_eq!(
+        actual, expected,
+        "primary key access requires a primary key"
+    );
 });

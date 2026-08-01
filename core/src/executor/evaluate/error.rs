@@ -109,9 +109,6 @@ pub enum EvaluateError {
     #[error("aggregate expression requires planner binding: {0:?}")]
     UnplannedAggregate(Box<AggregateExprPlan>),
 
-    #[error("filter context is required for aggregate function: {0:?}")]
-    FilterContextRequiredForAggregate(Box<AggregateExprPlan>),
-
     #[error("incompatible bit operation between {0} and {1}")]
     IncompatibleBitOperation(String, String),
 

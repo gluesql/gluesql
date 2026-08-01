@@ -197,15 +197,20 @@ SELECT id, num FROM Test ORDER BY -1
 
 -- @name: ORDER BY COLUMN_INDEX should be larger than 0
 SELECT id, num FROM Test ORDER BY 0
--- @expect: error Sort.ColumnIndexOutOfRange
+-- @expect: error Query.OrderByColumnIndexOutOfRange
 -- @json: 0
 
 -- @name: ORDER BY error propagates before OFFSET
 SELECT id, num FROM Test ORDER BY 0 OFFSET 1
--- @expect: error Sort.ColumnIndexOutOfRange
+-- @expect: error Query.OrderByColumnIndexOutOfRange
 -- @json: 0
 
 -- @name: ORDER BY COLUMN_INDEX should be less than the number of columns
 SELECT id, num FROM Test ORDER BY 3
--- @expect: error Sort.ColumnIndexOutOfRange
+-- @expect: error Query.OrderByColumnIndexOutOfRange
 -- @json: 3
+
+-- @name: ORDER BY COLUMN_INDEX should fit the supported index range
+SELECT id, num FROM Test ORDER BY 9999999999999999999999999999999999999999
+-- @expect: error Query.OrderByColumnIndexTooLarge
+-- @json: "9999999999999999999999999999999999999999"

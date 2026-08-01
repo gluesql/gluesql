@@ -3,8 +3,8 @@ use {serde::Serialize, std::fmt::Debug, thiserror::Error as ThisError};
 pub use crate::{
     data::{IntervalError, KeyError, SchemaParseError, StringExtError, TableError, ValueError},
     executor::{
-        AlterError, DeleteError, EvaluateError, ExecuteError, FetchError, InsertError, SelectError,
-        SortError, UpdateError, ValidateError,
+        AlterError, DeleteError, EvaluateError, ExecuteError, FetchError, InsertError, QueryError,
+        UpdateError, ValidateError,
     },
     planner::PlannerError,
     query_builder::QueryBuilderError,
@@ -37,17 +37,15 @@ pub enum Error {
     Alter(Box<AlterError>),
     #[error("fetch: {0}")]
     Fetch(#[from] FetchError),
-    #[error("select: {0}")]
-    Select(#[from] SelectError),
+    #[error("query: {0}")]
+    Query(#[from] QueryError),
     #[error("evaluate: {0}")]
     Evaluate(#[from] EvaluateError),
-    #[error("sort: {0}")]
-    Sort(#[from] SortError),
     #[error("insert: {0}")]
     Insert(#[from] InsertError),
-    #[error("update: {0}")]
-    Delete(#[from] DeleteError),
     #[error("delete: {0}")]
+    Delete(#[from] DeleteError),
+    #[error("update: {0}")]
     Update(#[from] UpdateError),
     #[error("table: {0}")]
     Table(#[from] TableError),
@@ -81,5 +79,25 @@ impl From<AlterError> for Error {
 impl From<ValueError> for Error {
     fn from(e: ValueError) -> Error {
         Error::Value(Box::new(e))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn executor_error_prefixes() {
+        let actual = Error::from(QueryError::ValuesLengthMismatch).to_string();
+        let expected = "query: VALUES lists must all be the same length";
+        assert_eq!(actual, expected);
+
+        let actual = Error::from(DeleteError::ValueNotFound("id".to_owned())).to_string();
+        let expected = "delete: Value not found on column: id";
+        assert_eq!(actual, expected);
+
+        let actual = Error::from(UpdateError::ColumnNotFound("id".to_owned())).to_string();
+        let expected = "update: column not found id";
+        assert_eq!(actual, expected);
     }
 }
