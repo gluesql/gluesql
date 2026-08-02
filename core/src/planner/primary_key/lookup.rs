@@ -163,12 +163,12 @@ mod tests {
         crate::{
             ast::Literal,
             data::{Schema, Value},
-            parse_sql::parse,
+            parse_sql::parse_query,
             plan::{
-                AggregationInputPlan, ExprPlan, FilterInputPlan, ProjectInputPlan, QueryPlan,
-                SourcePlan, StatementPlan, TableAccessPlan, TableSourcePlan,
+                ExprPlan, FilterInputPlan, ProjectInputPlan, QueryPlan, SourcePlan,
+                TableAccessPlan, TableSourcePlan,
             },
-            translate::translate,
+            translate::{NO_PARAMS, translate_query},
         },
         std::collections::HashMap,
     };
@@ -183,38 +183,23 @@ mod tests {
             .collect()
     }
 
-    fn try_parse_from(sql: &str) -> Option<FilterInputPlan> {
-        let parsed = parse(sql).unwrap().into_iter().next().unwrap();
-        let statement = StatementPlan::from(translate(&parsed).unwrap());
-        match statement {
-            StatementPlan::Query(QueryPlan::Project(project)) => Some(match project.input {
-                ProjectInputPlan::Source(relation) => FilterInputPlan::Source(relation),
-                ProjectInputPlan::InnerJoin(join) => FilterInputPlan::InnerJoin(join),
-                ProjectInputPlan::LeftOuterJoin(join) => FilterInputPlan::LeftOuterJoin(join),
-                ProjectInputPlan::Filter(filter) => filter.input,
-                ProjectInputPlan::Aggregation(aggregation) => match aggregation.input {
-                    AggregationInputPlan::Source(relation) => FilterInputPlan::Source(relation),
-                    AggregationInputPlan::InnerJoin(join) => FilterInputPlan::InnerJoin(join),
-                    AggregationInputPlan::LeftOuterJoin(join) => {
-                        FilterInputPlan::LeftOuterJoin(join)
-                    }
-                    AggregationInputPlan::Filter(filter) => filter.input,
-                },
-                ProjectInputPlan::Having(having) => match having.input.input {
-                    AggregationInputPlan::Source(relation) => FilterInputPlan::Source(relation),
-                    AggregationInputPlan::InnerJoin(join) => FilterInputPlan::InnerJoin(join),
-                    AggregationInputPlan::LeftOuterJoin(join) => {
-                        FilterInputPlan::LeftOuterJoin(join)
-                    }
-                    AggregationInputPlan::Filter(filter) => filter.input,
-                },
-            }),
-            _ => None,
-        }
-    }
+    fn parse_source_input(sql: &str) -> FilterInputPlan {
+        let parsed = parse_query(sql).unwrap();
+        let query = translate_query(&parsed, NO_PARAMS)
+            .map(QueryPlan::from)
+            .unwrap();
+        let QueryPlan::Project(project) = query else {
+            panic!("expected project");
+        };
 
-    fn parse_from(sql: &str) -> FilterInputPlan {
-        try_parse_from(sql).expect("expected select plan")
+        match project.input {
+            ProjectInputPlan::Source(source) => FilterInputPlan::Source(source),
+            ProjectInputPlan::InnerJoin(join) => FilterInputPlan::InnerJoin(join),
+            ProjectInputPlan::LeftOuterJoin(join) => FilterInputPlan::LeftOuterJoin(join),
+            ProjectInputPlan::Filter(_)
+            | ProjectInputPlan::Aggregation(_)
+            | ProjectInputPlan::Having(_) => panic!("expected direct source input"),
+        }
     }
 
     fn identifier(column: &str) -> ExprPlan {
@@ -234,7 +219,7 @@ mod tests {
             "CREATE TABLE Tasks (id INTEGER PRIMARY KEY, project_id INTEGER);",
             "CREATE TABLE Projects (project_id INTEGER PRIMARY KEY, name TEXT);",
         ]);
-        let from = parse_from("SELECT * FROM Tasks t JOIN Projects p");
+        let from = parse_source_input("SELECT * FROM Tasks t JOIN Projects p");
         let candidate = PrimaryKeyLookupCandidate::new(&schema_map, &from).unwrap();
 
         assert!(candidate.contains(&identifier("id")));
@@ -249,17 +234,12 @@ mod tests {
             "CREATE TABLE Tasks (id INTEGER PRIMARY KEY, project_id INTEGER);",
             "CREATE TABLE Projects (project_id INTEGER PRIMARY KEY, name TEXT);",
         ]);
-        let from =
-            parse_from("SELECT * FROM Tasks t LEFT JOIN Projects p ON p.project_id = t.project_id");
+        let from = parse_source_input(
+            "SELECT * FROM Tasks t LEFT JOIN Projects p ON p.project_id = t.project_id",
+        );
         let candidate = PrimaryKeyLookupCandidate::new(&schema_map, &from).unwrap();
 
         assert!(candidate.contains(&qualified("t", "id")));
-    }
-
-    #[test]
-    fn rejects_non_select_test_inputs() {
-        assert!(try_parse_from("VALUES (1)").is_none());
-        assert!(try_parse_from("CREATE TABLE Tasks (id INTEGER)").is_none());
     }
 
     #[test]
@@ -268,7 +248,7 @@ mod tests {
             "CREATE TABLE Tasks (id INTEGER PRIMARY KEY);",
             "CREATE TABLE Logs (id INTEGER);",
         ]);
-        let from = parse_from("SELECT * FROM Logs");
+        let from = parse_source_input("SELECT * FROM Logs");
         assert!(PrimaryKeyLookupCandidate::new(&schema_map, &from).is_none());
 
         let from = FilterInputPlan::Source(SourcePlan::Table(TableSourcePlan {
@@ -290,7 +270,7 @@ mod tests {
             "CREATE TABLE Projects (id INTEGER PRIMARY KEY);",
             "CREATE TABLE Schemaless;",
         ]);
-        let from = parse_from("SELECT * FROM Tasks t JOIN Links l JOIN Projects p");
+        let from = parse_source_input("SELECT * FROM Tasks t JOIN Links l JOIN Projects p");
         let candidate = PrimaryKeyLookupCandidate::new(&schema_map, &from).unwrap();
 
         assert!(!candidate.contains(&identifier("id")));
@@ -303,7 +283,7 @@ mod tests {
             "SELECT * FROM Tasks t JOIN SERIES(1) n",
             "SELECT * FROM Tasks t JOIN GLUE_TABLES g",
         ] {
-            let from = parse_from(sql);
+            let from = parse_source_input(sql);
             let candidate = PrimaryKeyLookupCandidate::new(&schema_map, &from).unwrap();
 
             assert!(!candidate.contains(&identifier("id")), "{sql}");
@@ -317,7 +297,7 @@ mod tests {
             "CREATE TABLE Tasks (task_id INTEGER PRIMARY KEY, project_id INTEGER, done BOOLEAN);",
             "CREATE TABLE Projects (id INTEGER PRIMARY KEY, name TEXT);",
         ]);
-        let from = parse_from(
+        let from = parse_source_input(
             "SELECT * FROM Tasks AS t(id, project_id, done) \
              JOIN Projects AS p(task_id, name)",
         );
@@ -336,7 +316,7 @@ mod tests {
             "CREATE TABLE Tasks (task_id INTEGER PRIMARY KEY, project_id INTEGER, done BOOLEAN);",
             "CREATE TABLE Projects (id INTEGER PRIMARY KEY, name TEXT);",
         ]);
-        let from = parse_from(
+        let from = parse_source_input(
             "SELECT * FROM Tasks AS t(id) \
              JOIN Projects AS p(project_id)",
         );
@@ -353,19 +333,19 @@ mod tests {
             "CREATE TABLE Tasks (id INTEGER PRIMARY KEY);",
             "CREATE TABLE Schemaless;",
         ]);
-        let from = parse_from("SELECT * FROM (SELECT * FROM Tasks) AS t");
+        let from = parse_source_input("SELECT * FROM (SELECT * FROM Tasks) AS t");
         assert!(PrimaryKeyLookupCandidate::new(&schema_map, &from).is_none());
 
-        let from = parse_from("SELECT * FROM UnknownRelation");
+        let from = parse_source_input("SELECT * FROM UnknownRelation");
         assert!(PrimaryKeyLookupCandidate::new(&schema_map, &from).is_none());
 
-        let from = parse_from("SELECT * FROM Schemaless");
+        let from = parse_source_input("SELECT * FROM Schemaless");
         assert!(PrimaryKeyLookupCandidate::new(&schema_map, &from).is_none());
 
-        let from = parse_from("SELECT * FROM Tasks AS t(id, extra)");
+        let from = parse_source_input("SELECT * FROM Tasks AS t(id, extra)");
         assert!(PrimaryKeyLookupCandidate::new(&schema_map, &from).is_none());
 
-        let from = parse_from("SELECT * FROM Tasks");
+        let from = parse_source_input("SELECT * FROM Tasks");
         let candidate = PrimaryKeyLookupCandidate::new(&schema_map, &from).unwrap();
         assert!(!candidate.contains(&ExprPlan::Literal(Literal::Number(1.into()))));
     }
@@ -376,7 +356,7 @@ mod tests {
             "CREATE TABLE Tasks (id INTEGER PRIMARY KEY);",
             "CREATE TABLE Projects (id INTEGER PRIMARY KEY);",
         ]);
-        let from = parse_from("SELECT * FROM Tasks t JOIN Projects t");
+        let from = parse_source_input("SELECT * FROM Tasks t JOIN Projects t");
         let candidate = PrimaryKeyLookupCandidate::new(&schema_map, &from).unwrap();
 
         assert!(!candidate.contains(&qualified("t", "id")));
@@ -388,7 +368,7 @@ mod tests {
             "CREATE TABLE Tasks (id INTEGER PRIMARY KEY);",
             "CREATE TABLE Projects (project_id INTEGER PRIMARY KEY);",
         ]);
-        let from = parse_from("SELECT * FROM Tasks t JOIN Projects p(a, b)");
+        let from = parse_source_input("SELECT * FROM Tasks t JOIN Projects p(a, b)");
         let candidate = PrimaryKeyLookupCandidate::new(&schema_map, &from).unwrap();
 
         assert!(!candidate.contains(&identifier("id")));
@@ -399,7 +379,7 @@ mod tests {
     fn rejects_a_primary_key_alias_shadowed_by_an_earlier_column() {
         let schema_map =
             schema_map(&["CREATE TABLE Tasks (project_id INTEGER, task_id INTEGER PRIMARY KEY);"]);
-        let from = parse_from("SELECT * FROM Tasks AS t(id, id)");
+        let from = parse_source_input("SELECT * FROM Tasks AS t(id, id)");
 
         assert!(PrimaryKeyLookupCandidate::new(&schema_map, &from).is_none());
     }

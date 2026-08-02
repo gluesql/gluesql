@@ -371,24 +371,23 @@ fn bind_project(
 #[cfg(test)]
 mod tests {
     use {
-        super::plan,
+        super::{plan, plan_query},
         crate::{
             ast::{Dictionary, Literal},
             data::Value,
-            parse_sql::parse,
+            parse_sql::{parse, parse_query},
             plan::{
                 AggregationInputPlan, AggregationPlan, DerivedSourcePlan, DictionarySourcePlan,
-                DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan, FilterPlan,
-                HashJoinInputPlan, HashJoinPlan, HavingPlan, InnerJoinInputPlan, InnerJoinPlan,
-                JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan,
-                LeftOuterJoinPlan, LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan,
-                NestedLoopJoinPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan,
-                ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan,
-                SeriesSourcePlan, SourcePlan, StatementPlan, TableAccessPlan, TableAliasPlan,
-                TableSourcePlan,
+                DistinctInputPlan, DistinctPlan, ExprPlan, HashJoinInputPlan, HashJoinPlan,
+                HavingPlan, InnerJoinInputPlan, InnerJoinPlan, JoinConditionInputPlan,
+                JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan, LimitInputPlan,
+                LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan, OffsetInputPlan,
+                OffsetPlan, OrderByExprPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan,
+                QueryPlan, SelectItemPlan, SelectOrderByPlan, SeriesSourcePlan, SourcePlan,
+                StatementPlan, TableAccessPlan, TableAliasPlan, TableSourcePlan,
             },
             planner::expr::{try_visit_expr, visit_mut_expr},
-            translate::translate,
+            translate::{NO_PARAMS, translate, translate_query},
         },
     };
 
@@ -399,21 +398,18 @@ mod tests {
         plan(translated)
     }
 
-    fn parse_query(sql: &str) -> QueryPlan {
-        let parsed = parse(sql).expect(sql).into_iter().next().expect(sql);
-        let StatementPlan::Query(query) = StatementPlan::from(translate(&parsed).expect(sql))
-        else {
-            panic!("expected query");
-        };
-
-        query
+    fn parse_query_plan(sql: &str) -> QueryPlan {
+        let parsed = parse_query(sql).expect(sql);
+        translate_query(&parsed, NO_PARAMS)
+            .map(QueryPlan::from)
+            .expect(sql)
     }
 
-    fn project(statement: &StatementPlan) -> &ProjectPlan {
-        let StatementPlan::Query(query) = statement else {
-            panic!("expected query");
-        };
-        query.project().expect("expected project")
+    fn parse_and_plan_query(sql: &str) -> QueryPlan {
+        let mut query = parse_query_plan(sql);
+        plan_query(&mut query);
+
+        query
     }
 
     fn source_query(query: &QueryPlan) -> Option<&SourcePlan> {
@@ -423,48 +419,11 @@ mod tests {
     fn inner_join_query(query: &QueryPlan) -> Option<&InnerJoinPlan> {
         query.project().and_then(|project| match &project.input {
             ProjectInputPlan::InnerJoin(join) => Some(join.as_ref()),
-            ProjectInputPlan::Filter(filter) => match &filter.input {
-                FilterInputPlan::InnerJoin(join) => Some(join.as_ref()),
-                FilterInputPlan::Source(_) | FilterInputPlan::LeftOuterJoin(_) => None,
-            },
-            ProjectInputPlan::Aggregation(aggregation) => match &aggregation.input {
-                AggregationInputPlan::InnerJoin(join) => Some(join.as_ref()),
-                AggregationInputPlan::Filter(filter) => match &filter.input {
-                    FilterInputPlan::InnerJoin(join) => Some(join.as_ref()),
-                    FilterInputPlan::Source(_) | FilterInputPlan::LeftOuterJoin(_) => None,
-                },
-                AggregationInputPlan::Source(_) | AggregationInputPlan::LeftOuterJoin(_) => None,
-            },
-            ProjectInputPlan::Having(having) => match &having.input.input {
-                AggregationInputPlan::InnerJoin(join) => Some(join.as_ref()),
-                AggregationInputPlan::Filter(filter) => match &filter.input {
-                    FilterInputPlan::InnerJoin(join) => Some(join.as_ref()),
-                    FilterInputPlan::Source(_) | FilterInputPlan::LeftOuterJoin(_) => None,
-                },
-                AggregationInputPlan::Source(_) | AggregationInputPlan::LeftOuterJoin(_) => None,
-            },
-            ProjectInputPlan::Source(_) | ProjectInputPlan::LeftOuterJoin(_) => None,
-        })
-    }
-
-    fn filter_query(query: &QueryPlan) -> Option<&FilterPlan> {
-        query.project().and_then(|project| match &project.input {
-            ProjectInputPlan::Filter(filter) => Some(filter),
-            ProjectInputPlan::Aggregation(aggregation) => match &aggregation.input {
-                AggregationInputPlan::Filter(filter) => Some(filter),
-                AggregationInputPlan::Source(_)
-                | AggregationInputPlan::InnerJoin(_)
-                | AggregationInputPlan::LeftOuterJoin(_) => None,
-            },
-            ProjectInputPlan::Having(having) => match &having.input.input {
-                AggregationInputPlan::Filter(filter) => Some(filter),
-                AggregationInputPlan::Source(_)
-                | AggregationInputPlan::InnerJoin(_)
-                | AggregationInputPlan::LeftOuterJoin(_) => None,
-            },
             ProjectInputPlan::Source(_)
-            | ProjectInputPlan::InnerJoin(_)
-            | ProjectInputPlan::LeftOuterJoin(_) => None,
+            | ProjectInputPlan::LeftOuterJoin(_)
+            | ProjectInputPlan::Filter(_)
+            | ProjectInputPlan::Aggregation(_)
+            | ProjectInputPlan::Having(_) => None,
         })
     }
 
@@ -506,7 +465,7 @@ mod tests {
     }
 
     fn count_query() -> QueryPlan {
-        parse_query("SELECT COUNT(*) FROM Item")
+        parse_query_plan("SELECT COUNT(*) FROM Item")
     }
 
     fn subquery_expr() -> ExprPlan {
@@ -522,7 +481,7 @@ mod tests {
 
     #[test]
     fn binds_same_aggregate_to_same_slot() {
-        let statement = parse_and_plan(
+        let query = parse_and_plan_query(
             "
             SELECT COALESCE(COUNT(*), 0)
             FROM Item
@@ -530,16 +489,15 @@ mod tests {
             ORDER BY COUNT(*)
         ",
         );
-        let StatementPlan::Query(query) = &statement else {
-            panic!("expected query");
-        };
-        let aggregation = aggregation_query(query).expect("expected aggregation");
-        let having = having_query(query).expect("expected having");
+        let aggregation = aggregation_query(&query).expect("expected aggregation");
+        let having = having_query(&query).expect("expected having");
         let slots = &aggregation.aggregate_slots;
         assert_eq!(slots.len(), 1);
         assert_eq!(slots[0].slot, Some(0));
 
-        let ProjectionPlan::SelectItems(items) = &project(&statement).projection else {
+        let ProjectionPlan::SelectItems(items) =
+            &query.project().expect("expected project").projection
+        else {
             panic!("expected select items");
         };
         let SelectItemPlan::Expr { expr, .. } = &items[0] else {
@@ -565,7 +523,7 @@ mod tests {
         .expect("having traversal");
 
         assert!(matches!(
-            query,
+            &query,
             QueryPlan::SelectOrderBy(SelectOrderByPlan { exprs, .. }) if {
                 try_visit_expr(&exprs[0].expr, &mut |expr| {
                     if let ExprPlan::Aggregate(aggregate) = expr {
@@ -583,16 +541,16 @@ mod tests {
 
     #[test]
     fn plans_select_distinct_separately_from_aggregate_distinct() {
-        let statement = parse_and_plan(
+        let query = parse_and_plan_query(
             "
             SELECT DISTINCT COUNT(DISTINCT id)
             FROM Item
             ORDER BY COUNT(DISTINCT id)
         ",
         );
-        let StatementPlan::Query(QueryPlan::Distinct(DistinctPlan {
+        let QueryPlan::Distinct(DistinctPlan {
             input: DistinctInputPlan::SelectOrderBy(order_by),
-        })) = &statement
+        }) = &query
         else {
             panic!("expected distinct over select order by");
         };
@@ -618,7 +576,7 @@ mod tests {
 
     #[test]
     fn ignores_stale_slot_when_binding_same_aggregate() {
-        let mut query = parse_query("SELECT COUNT(*) FROM Item HAVING COUNT(*) > 0");
+        let mut query = parse_query_plan("SELECT COUNT(*) FROM Item HAVING COUNT(*) > 0");
         let mut project = query.project().expect("expected project").clone();
         let ProjectionPlan::SelectItems(items) = &mut project.projection else {
             panic!("expected select items");
@@ -633,10 +591,7 @@ mod tests {
             }
         });
         query = QueryPlan::Project(project);
-
-        let StatementPlan::Query(query) = plan(StatementPlan::Query(query)) else {
-            panic!("expected query");
-        };
+        plan_query(&mut query);
         let aggregation = aggregation_query(&query).expect("expected aggregation");
         let having = having_query(&query).expect("expected having");
         let slots = &aggregation.aggregate_slots;
@@ -674,17 +629,14 @@ mod tests {
 
     #[test]
     fn binds_subqueries_per_select() {
-        let statement = parse_and_plan(
+        let query = parse_and_plan_query(
             "
             SELECT COUNT(*)
             FROM (SELECT COUNT(*) FROM Item) AS sub
         ",
         );
-        let StatementPlan::Query(query) = &statement else {
-            panic!("expected query");
-        };
-        let relation = source_query(query).expect("expected relation");
-        let aggregation = aggregation_query(query).expect("expected aggregation");
+        let relation = source_query(&query).expect("expected relation");
+        let aggregation = aggregation_query(&query).expect("expected aggregation");
         assert_eq!(aggregation.aggregate_slots.len(), 1, "outer select slots");
 
         let SourcePlan::Derived(derived) = relation else {
@@ -782,7 +734,7 @@ mod tests {
 
     #[test]
     fn plans_values_limit_and_offset_subqueries() {
-        let body_query = parse_query("SELECT id FROM Item");
+        let body_query = parse_query_plan("SELECT id FROM Item");
         let body = match body_query {
             QueryPlan::Project(body) => Some(body),
             _ => None,
@@ -797,10 +749,8 @@ mod tests {
             count: subquery_expr(),
         });
 
-        let statement = plan(StatementPlan::Query(query));
-        let StatementPlan::Query(query) = statement else {
-            panic!("expected query");
-        };
+        let mut query = query;
+        plan_query(&mut query);
 
         assert!(matches!(
             query,
@@ -817,10 +767,7 @@ mod tests {
             }
         ));
 
-        let statement = parse_and_plan("VALUES ((SELECT COUNT(*) FROM Item))");
-        let StatementPlan::Query(query) = statement else {
-            panic!("expected query");
-        };
+        let query = parse_and_plan_query("VALUES ((SELECT COUNT(*) FROM Item))");
         let QueryPlan::Values(values) = query else {
             panic!("expected values");
         };
@@ -832,7 +779,7 @@ mod tests {
 
     #[test]
     fn plans_selection_group_by_and_in_subquery_exprs() {
-        let statement = parse_and_plan(
+        let query = parse_and_plan_query(
             "
             SELECT id
             FROM Item
@@ -840,16 +787,15 @@ mod tests {
             GROUP BY id IN (SELECT COUNT(*) FROM Source)
         ",
         );
-        let StatementPlan::Query(query) = &statement else {
-            panic!("expected query");
+        let aggregation = aggregation_query(&query).expect("expected aggregation");
+        let AggregationInputPlan::Filter(filter) = &aggregation.input else {
+            panic!("expected filter");
         };
-        let filter = filter_query(query).expect("expected filter");
         let ExprPlan::Exists { subquery, .. } = &filter.expr else {
             panic!("expected exists selection");
         };
         assert_planned_query(subquery);
 
-        let aggregation = aggregation_query(query).expect("expected aggregation");
         let ExprPlan::InSubquery { subquery, .. } = &aggregation.group_by[0] else {
             panic!("expected in-subquery group by");
         };
@@ -858,33 +804,25 @@ mod tests {
 
     #[test]
     fn keeps_select_without_aggregates_unplanned() {
-        let statement = parse_and_plan("SELECT * FROM Item");
-        let StatementPlan::Query(query) = &statement else {
-            panic!("expected query");
-        };
-        assert_unplanned_query(query);
+        let query = parse_and_plan_query("SELECT * FROM Item");
+
+        assert_unplanned_query(&query);
     }
 
     #[test]
     fn preserves_explicit_aggregation_and_having_stages_without_slots() {
-        let statement = parse_and_plan("SELECT category FROM Item GROUP BY category");
-        let StatementPlan::Query(query) = &statement else {
-            panic!("expected query");
-        };
-        let aggregation = aggregation_query(query).expect("expected aggregation");
+        let query = parse_and_plan_query("SELECT category FROM Item GROUP BY category");
+        let aggregation = aggregation_query(&query).expect("expected aggregation");
         assert_eq!(
             aggregation.group_by,
             vec![ExprPlan::Identifier("category".to_owned())]
         );
         assert_eq!(aggregation.aggregate_slots, Vec::new());
-        assert_eq!(having_query(query), None);
+        assert_eq!(having_query(&query), None);
 
-        let statement = parse_and_plan("SELECT 1 FROM Item HAVING TRUE");
-        let StatementPlan::Query(query) = &statement else {
-            panic!("expected query");
-        };
-        let aggregation = aggregation_query(query).expect("expected aggregation");
-        let having = having_query(query).expect("expected having");
+        let query = parse_and_plan_query("SELECT 1 FROM Item HAVING TRUE");
+        let aggregation = aggregation_query(&query).expect("expected aggregation");
+        let having = having_query(&query).expect("expected having");
         assert_eq!(aggregation.group_by, Vec::new());
         assert_eq!(aggregation.aggregate_slots, Vec::new());
         assert_eq!(having.expr, ExprPlan::Value(Value::Bool(true)));
@@ -892,24 +830,18 @@ mod tests {
 
     #[test]
     fn promotes_aggregate_only_projection_and_order_by() {
-        let statement = parse_and_plan("SELECT COUNT(*) FROM Item");
-        let StatementPlan::Query(query) = &statement else {
-            panic!("expected query");
-        };
+        let query = parse_and_plan_query("SELECT COUNT(*) FROM Item");
         assert_eq!(
-            aggregation_query(query)
+            aggregation_query(&query)
                 .expect("expected aggregation")
                 .aggregate_slots
                 .len(),
             1
         );
 
-        let statement = parse_and_plan("SELECT id FROM Item ORDER BY COUNT(*)");
-        let StatementPlan::Query(query) = &statement else {
-            panic!("expected query");
-        };
+        let query = parse_and_plan_query("SELECT id FROM Item ORDER BY COUNT(*)");
         assert_eq!(
-            aggregation_query(query)
+            aggregation_query(&query)
                 .expect("expected aggregation")
                 .aggregate_slots
                 .len(),
@@ -919,11 +851,8 @@ mod tests {
 
     #[test]
     fn binds_aggregate_used_only_by_having() {
-        let statement = parse_and_plan("SELECT 1 FROM Item HAVING COUNT(*) > 0");
-        let StatementPlan::Query(query) = &statement else {
-            panic!("expected query");
-        };
-        let having = having_query(query).expect("expected having");
+        let query = parse_and_plan_query("SELECT 1 FROM Item HAVING COUNT(*) > 0");
+        let having = having_query(&query).expect("expected having");
 
         assert_eq!(having.input.aggregate_slots.len(), 1);
         let mut slots = Vec::new();
@@ -947,9 +876,8 @@ mod tests {
             })),
         });
 
-        let StatementPlan::Query(query) = plan(StatementPlan::Query(query)) else {
-            panic!("expected query");
-        };
+        let mut query = query;
+        plan_query(&mut query);
         assert_unplanned_query(&query);
     }
 
@@ -1006,9 +934,8 @@ mod tests {
             }],
         });
 
-        let StatementPlan::Query(query) = plan(StatementPlan::Query(query)) else {
-            panic!("expected query");
-        };
+        let mut query = query;
+        plan_query(&mut query);
         let third_join = inner_join_query(&query).expect("expected third join");
         let InnerJoinInputPlan::NestedLoop(third_nested_loop) = &third_join.input else {
             panic!("expected third nested loop");
