@@ -421,7 +421,7 @@ mod tests {
         StatementPlan::from(translate(&parsed).unwrap())
     }
 
-    fn try_source(statement: &StatementPlan) -> Option<&SourcePlan> {
+    fn direct_project_base_source(statement: &StatementPlan) -> Option<&SourcePlan> {
         match statement {
             StatementPlan::Query(QueryPlan::Project(project)) => match &project.input {
                 ProjectInputPlan::Source(_)
@@ -611,7 +611,7 @@ mod tests {
                 expr: ExprPlan::Literal(Literal::Number(1.into())),
             },
         });
-        let actual_relation = try_source(&actual).expect("expected relation");
+        let actual_relation = direct_project_base_source(&actual).expect("expected relation");
         assert!(
             actual_relation == &expected_relation,
             "aliased primary key should be installed and removed from selection:\n{sql}"
@@ -724,7 +724,7 @@ mod tests {
         ";
 
         let actual = plan(&storage, sql);
-        let relation = try_source(&actual).expect("expected relation");
+        let relation = direct_project_base_source(&actual).expect("expected relation");
         let expected = SourcePlan::Table(TableSourcePlan {
             name: "Tasks".to_owned(),
             alias: Some(TableAliasPlan {
@@ -759,7 +759,7 @@ mod tests {
             WHERE t.id = 1;
         ";
         let actual = plan(&storage, sql);
-        let relation = try_source(&actual).expect("expected relation");
+        let relation = direct_project_base_source(&actual).expect("expected relation");
         let expected = SourcePlan::Table(TableSourcePlan {
             name: "Tasks".to_owned(),
             alias: Some(TableAliasPlan {
@@ -810,8 +810,8 @@ mod tests {
     }
 
     #[test]
-    fn rejects_non_select_test_plan() {
-        assert!(try_source(&statement("VALUES (1)")).is_none());
+    fn direct_project_base_source_rejects_values() {
+        assert!(direct_project_base_source(&statement("VALUES (1)")).is_none());
     }
 
     #[test]

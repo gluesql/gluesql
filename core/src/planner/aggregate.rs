@@ -413,48 +413,15 @@ mod tests {
         let StatementPlan::Query(query) = statement else {
             panic!("expected query");
         };
-        project_query(query).expect("expected project")
-    }
-
-    fn project_query(query: &QueryPlan) -> Option<&ProjectPlan> {
-        match query {
-            QueryPlan::Project(project) => Some(project),
-            QueryPlan::SelectOrderBy(SelectOrderByPlan { input, .. }) => Some(input),
-            QueryPlan::Distinct(distinct) => Some(distinct_project(distinct)),
-            QueryPlan::Offset(offset) => offset_project(offset),
-            QueryPlan::Limit(LimitPlan { input, .. }) => match input {
-                LimitInputPlan::Project(project) => Some(project),
-                LimitInputPlan::SelectOrderBy(SelectOrderByPlan { input, .. }) => Some(input),
-                LimitInputPlan::Distinct(distinct) => Some(distinct_project(distinct)),
-                LimitInputPlan::Offset(offset) => offset_project(offset),
-                LimitInputPlan::Values(_) | LimitInputPlan::ValuesOrderBy(_) => None,
-            },
-            QueryPlan::Values(_) | QueryPlan::ValuesOrderBy(_) => None,
-        }
-    }
-
-    fn offset_project(offset: &OffsetPlan) -> Option<&ProjectPlan> {
-        match &offset.input {
-            OffsetInputPlan::Project(project) => Some(project),
-            OffsetInputPlan::SelectOrderBy(SelectOrderByPlan { input, .. }) => Some(input),
-            OffsetInputPlan::Distinct(distinct) => Some(distinct_project(distinct)),
-            OffsetInputPlan::Values(_) | OffsetInputPlan::ValuesOrderBy(_) => None,
-        }
-    }
-
-    fn distinct_project(distinct: &DistinctPlan) -> &ProjectPlan {
-        match &distinct.input {
-            DistinctInputPlan::Project(project) => project,
-            DistinctInputPlan::SelectOrderBy(SelectOrderByPlan { input, .. }) => input,
-        }
+        query.project().expect("expected project")
     }
 
     fn source_query(query: &QueryPlan) -> Option<&SourcePlan> {
-        project_query(query).map(|project| project.input.base_source())
+        query.project().map(|project| project.input.base_source())
     }
 
     fn inner_join_query(query: &QueryPlan) -> Option<&InnerJoinPlan> {
-        project_query(query).and_then(|project| match &project.input {
+        query.project().and_then(|project| match &project.input {
             ProjectInputPlan::InnerJoin(join) => Some(join.as_ref()),
             ProjectInputPlan::Filter(filter) => match &filter.input {
                 FilterInputPlan::InnerJoin(join) => Some(join.as_ref()),
@@ -481,7 +448,7 @@ mod tests {
     }
 
     fn filter_query(query: &QueryPlan) -> Option<&FilterPlan> {
-        project_query(query).and_then(|project| match &project.input {
+        query.project().and_then(|project| match &project.input {
             ProjectInputPlan::Filter(filter) => Some(filter),
             ProjectInputPlan::Aggregation(aggregation) => match &aggregation.input {
                 AggregationInputPlan::Filter(filter) => Some(filter),
@@ -502,7 +469,7 @@ mod tests {
     }
 
     fn aggregation_query(query: &QueryPlan) -> Option<&AggregationPlan> {
-        project_query(query).and_then(|project| match &project.input {
+        query.project().and_then(|project| match &project.input {
             ProjectInputPlan::Aggregation(aggregation) => Some(aggregation),
             ProjectInputPlan::Having(having) => Some(&having.input),
             ProjectInputPlan::Source(_)
@@ -513,7 +480,7 @@ mod tests {
     }
 
     fn having_query(query: &QueryPlan) -> Option<&HavingPlan> {
-        project_query(query).and_then(|project| match &project.input {
+        query.project().and_then(|project| match &project.input {
             ProjectInputPlan::Having(having) => Some(having),
             ProjectInputPlan::Source(_)
             | ProjectInputPlan::InnerJoin(_)
@@ -534,7 +501,7 @@ mod tests {
     }
 
     fn assert_unplanned_query(query: &QueryPlan) {
-        let project = project_query(query).expect("expected project");
+        let project = query.project().expect("expected project");
         assert!(matches!(project.input, ProjectInputPlan::Source(_)));
     }
 
@@ -652,7 +619,7 @@ mod tests {
     #[test]
     fn ignores_stale_slot_when_binding_same_aggregate() {
         let mut query = parse_query("SELECT COUNT(*) FROM Item HAVING COUNT(*) > 0");
-        let mut project = project_query(&query).expect("expected project").clone();
+        let mut project = query.project().expect("expected project").clone();
         let ProjectionPlan::SelectItems(items) = &mut project.projection else {
             panic!("expected select items");
         };
@@ -678,7 +645,7 @@ mod tests {
         assert_eq!(slots[0].slot, Some(0));
 
         let ProjectionPlan::SelectItems(items) =
-            &project_query(&query).expect("expected project").projection
+            &query.project().expect("expected project").projection
         else {
             panic!("expected select items");
         };
