@@ -30,6 +30,13 @@ impl JoinConditionPlan {
             JoinConditionInputPlan::Hash(join) => join.base_source_mut(),
         }
     }
+
+    pub(crate) fn joined_sources(&self) -> Vec<&SourcePlan> {
+        match &self.input {
+            JoinConditionInputPlan::NestedLoop(join) => join.joined_sources(),
+            JoinConditionInputPlan::Hash(join) => join.joined_sources(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -84,6 +91,8 @@ mod tests {
         let expected = JoinConditionInputPlan::NestedLoop(nested_loop());
         assert_eq!(actual.input, expected);
         assert_eq!(actual.base_source(), &table("A"));
+        let expected = [table("B")];
+        assert_eq!(actual.joined_sources(), expected.iter().collect::<Vec<_>>());
         *actual.base_source_mut() = table("nested-loop");
         assert_eq!(actual.base_source(), &table("nested-loop"));
 
@@ -94,6 +103,8 @@ mod tests {
         let expected = JoinConditionInputPlan::Hash(hash());
         assert_eq!(actual.input, expected);
         assert_eq!(actual.base_source(), &table("A"));
+        let expected = [table("B")];
+        assert_eq!(actual.joined_sources(), expected.iter().collect::<Vec<_>>());
         *actual.base_source_mut() = table("hash");
         assert_eq!(actual.base_source(), &table("hash"));
     }

@@ -330,7 +330,11 @@ fn validate_mixed_join_wildcard_projection(
 
     let mut has_schemaless = false;
     let mut has_schemaful = false;
-    let has_join = visit_project_join_sources(&project.input, &mut |source| {
+    let joined_sources = project.input.joined_sources();
+    if joined_sources.is_empty() {
+        return Ok(());
+    }
+    let mut classify = |source: &SourcePlan| {
         let SourcePlan::Table(table) = source else {
             return;
         };
@@ -340,9 +344,10 @@ fn validate_mixed_join_wildcard_projection(
         } else {
             has_schemaful = true;
         }
-    });
-    if !has_join {
-        return Ok(());
+    };
+    classify(project.input.base_source());
+    for source in joined_sources {
+        classify(source);
     }
 
     if has_schemaless && has_schemaful {
@@ -350,105 +355,6 @@ fn validate_mixed_join_wildcard_projection(
     }
 
     Ok(())
-}
-
-fn visit_project_join_sources(
-    input: &ProjectInputPlan,
-    visit: &mut impl FnMut(&SourcePlan),
-) -> bool {
-    match input {
-        ProjectInputPlan::Source(_) => false,
-        ProjectInputPlan::InnerJoin(join) => {
-            visit_inner_join_sources(join, visit);
-            true
-        }
-        ProjectInputPlan::LeftOuterJoin(join) => {
-            visit_left_outer_join_sources(join, visit);
-            true
-        }
-        ProjectInputPlan::Filter(filter) => visit_filter_join_sources(&filter.input, visit),
-        ProjectInputPlan::Aggregation(aggregation) => {
-            visit_aggregation_join_sources(&aggregation.input, visit)
-        }
-        ProjectInputPlan::Having(having) => {
-            visit_aggregation_join_sources(&having.input.input, visit)
-        }
-    }
-}
-
-fn visit_aggregation_join_sources(
-    input: &AggregationInputPlan,
-    visit: &mut impl FnMut(&SourcePlan),
-) -> bool {
-    match input {
-        AggregationInputPlan::Source(_) => false,
-        AggregationInputPlan::InnerJoin(join) => {
-            visit_inner_join_sources(join, visit);
-            true
-        }
-        AggregationInputPlan::LeftOuterJoin(join) => {
-            visit_left_outer_join_sources(join, visit);
-            true
-        }
-        AggregationInputPlan::Filter(filter) => visit_filter_join_sources(&filter.input, visit),
-    }
-}
-
-fn visit_filter_join_sources(input: &FilterInputPlan, visit: &mut impl FnMut(&SourcePlan)) -> bool {
-    match input {
-        FilterInputPlan::Source(_) => false,
-        FilterInputPlan::InnerJoin(join) => {
-            visit_inner_join_sources(join, visit);
-            true
-        }
-        FilterInputPlan::LeftOuterJoin(join) => {
-            visit_left_outer_join_sources(join, visit);
-            true
-        }
-    }
-}
-
-fn visit_inner_join_sources(join: &InnerJoinPlan, visit: &mut impl FnMut(&SourcePlan)) {
-    match &join.input {
-        InnerJoinInputPlan::NestedLoop(join) => visit_nested_loop_sources(join, visit),
-        InnerJoinInputPlan::Hash(join) => visit_hash_sources(join, visit),
-        InnerJoinInputPlan::Condition(condition) => visit_condition_sources(condition, visit),
-    }
-}
-
-fn visit_left_outer_join_sources(join: &LeftOuterJoinPlan, visit: &mut impl FnMut(&SourcePlan)) {
-    match &join.input {
-        LeftOuterJoinInputPlan::NestedLoop(join) => visit_nested_loop_sources(join, visit),
-        LeftOuterJoinInputPlan::Hash(join) => visit_hash_sources(join, visit),
-        LeftOuterJoinInputPlan::Condition(condition) => visit_condition_sources(condition, visit),
-    }
-}
-
-fn visit_condition_sources(condition: &JoinConditionPlan, visit: &mut impl FnMut(&SourcePlan)) {
-    match &condition.input {
-        JoinConditionInputPlan::NestedLoop(join) => visit_nested_loop_sources(join, visit),
-        JoinConditionInputPlan::Hash(join) => visit_hash_sources(join, visit),
-    }
-}
-
-fn visit_nested_loop_sources(join: &NestedLoopJoinPlan, visit: &mut impl FnMut(&SourcePlan)) {
-    match &join.input {
-        NestedLoopJoinInputPlan::Source(source) => visit(source),
-        NestedLoopJoinInputPlan::InnerJoin(join) => visit_inner_join_sources(join, visit),
-        NestedLoopJoinInputPlan::LeftOuterJoin(join) => {
-            visit_left_outer_join_sources(join, visit);
-        }
-    }
-    visit(&join.right);
-}
-
-fn visit_hash_sources(join: &HashJoinPlan, visit: &mut impl FnMut(&SourcePlan)) {
-    match &join.input {
-        HashJoinInputPlan::Source(source) => visit(source),
-        HashJoinInputPlan::InnerJoin(join) => visit_inner_join_sources(join, visit),
-        HashJoinInputPlan::LeftOuterJoin(join) => visit_left_outer_join_sources(join, visit),
-    }
-    visit(&join.right);
 }
 
 fn is_schemaless_table(

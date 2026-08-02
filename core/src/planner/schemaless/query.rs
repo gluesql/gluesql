@@ -203,12 +203,16 @@ fn transform_inner_join<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
     join: &mut InnerJoinPlan,
 ) -> QueryRewriteState {
+    let base_source = join.base_source();
     let rewrite_unqualified_identifiers = matches!(
-        join.base_source(),
+        base_source,
         SourcePlan::Table(table) if is_schemaless_table(schema_map, &table.name)
     );
     let mut schemaless_aliases = HashSet::new();
-    collect_inner_join_schemaless_aliases(schema_map, join, &mut schemaless_aliases);
+    collect_schemaless_alias(schema_map, base_source, &mut schemaless_aliases);
+    for source in join.joined_sources() {
+        collect_schemaless_alias(schema_map, source, &mut schemaless_aliases);
+    }
     let state = QueryRewriteState {
         rewrite_unqualified_identifiers,
         schemaless_aliases,
@@ -222,12 +226,16 @@ fn transform_left_outer_join<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
     join: &mut LeftOuterJoinPlan,
 ) -> QueryRewriteState {
+    let base_source = join.base_source();
     let rewrite_unqualified_identifiers = matches!(
-        join.base_source(),
+        base_source,
         SourcePlan::Table(table) if is_schemaless_table(schema_map, &table.name)
     );
     let mut schemaless_aliases = HashSet::new();
-    collect_left_outer_join_schemaless_aliases(schema_map, join, &mut schemaless_aliases);
+    collect_schemaless_alias(schema_map, base_source, &mut schemaless_aliases);
+    for source in join.joined_sources() {
+        collect_schemaless_alias(schema_map, source, &mut schemaless_aliases);
+    }
     let state = QueryRewriteState {
         rewrite_unqualified_identifiers,
         schemaless_aliases,
@@ -235,95 +243,6 @@ fn transform_left_outer_join<S: BuildHasher>(
 
     rewrite_left_outer_join(schema_map, join, &state);
     state
-}
-
-fn collect_inner_join_schemaless_aliases(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    join: &InnerJoinPlan,
-    aliases: &mut HashSet<String>,
-) {
-    match &join.input {
-        InnerJoinInputPlan::NestedLoop(join) => {
-            collect_nested_loop_schemaless_aliases(schema_map, join, aliases);
-        }
-        InnerJoinInputPlan::Hash(join) => {
-            collect_hash_schemaless_aliases(schema_map, join, aliases);
-        }
-        InnerJoinInputPlan::Condition(condition) => {
-            collect_condition_schemaless_aliases(schema_map, condition, aliases);
-        }
-    }
-}
-
-fn collect_left_outer_join_schemaless_aliases(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    join: &LeftOuterJoinPlan,
-    aliases: &mut HashSet<String>,
-) {
-    match &join.input {
-        LeftOuterJoinInputPlan::NestedLoop(join) => {
-            collect_nested_loop_schemaless_aliases(schema_map, join, aliases);
-        }
-        LeftOuterJoinInputPlan::Hash(join) => {
-            collect_hash_schemaless_aliases(schema_map, join, aliases);
-        }
-        LeftOuterJoinInputPlan::Condition(condition) => {
-            collect_condition_schemaless_aliases(schema_map, condition, aliases);
-        }
-    }
-}
-
-fn collect_condition_schemaless_aliases(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    condition: &JoinConditionPlan,
-    aliases: &mut HashSet<String>,
-) {
-    match &condition.input {
-        JoinConditionInputPlan::NestedLoop(join) => {
-            collect_nested_loop_schemaless_aliases(schema_map, join, aliases);
-        }
-        JoinConditionInputPlan::Hash(join) => {
-            collect_hash_schemaless_aliases(schema_map, join, aliases);
-        }
-    }
-}
-
-fn collect_nested_loop_schemaless_aliases(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    join: &NestedLoopJoinPlan,
-    aliases: &mut HashSet<String>,
-) {
-    match &join.input {
-        NestedLoopJoinInputPlan::Source(source) => {
-            collect_schemaless_alias(schema_map, source, aliases);
-        }
-        NestedLoopJoinInputPlan::InnerJoin(join) => {
-            collect_inner_join_schemaless_aliases(schema_map, join, aliases);
-        }
-        NestedLoopJoinInputPlan::LeftOuterJoin(join) => {
-            collect_left_outer_join_schemaless_aliases(schema_map, join, aliases);
-        }
-    }
-    collect_schemaless_alias(schema_map, &join.right, aliases);
-}
-
-fn collect_hash_schemaless_aliases(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    join: &HashJoinPlan,
-    aliases: &mut HashSet<String>,
-) {
-    match &join.input {
-        HashJoinInputPlan::Source(source) => {
-            collect_schemaless_alias(schema_map, source, aliases);
-        }
-        HashJoinInputPlan::InnerJoin(join) => {
-            collect_inner_join_schemaless_aliases(schema_map, join, aliases);
-        }
-        HashJoinInputPlan::LeftOuterJoin(join) => {
-            collect_left_outer_join_schemaless_aliases(schema_map, join, aliases);
-        }
-    }
-    collect_schemaless_alias(schema_map, &join.right, aliases);
 }
 
 fn collect_schemaless_alias(
@@ -475,27 +394,7 @@ fn rewrite_projection(
 }
 
 fn project_source(input: &ProjectInputPlan) -> (&SourcePlan, bool) {
-    let has_join = match input {
-        ProjectInputPlan::Source(_) => false,
-        ProjectInputPlan::InnerJoin(_) | ProjectInputPlan::LeftOuterJoin(_) => true,
-        ProjectInputPlan::Filter(filter) => filter_has_join(&filter.input),
-        ProjectInputPlan::Aggregation(aggregation) => aggregation_has_join(&aggregation.input),
-        ProjectInputPlan::Having(having) => aggregation_has_join(&having.input.input),
-    };
-
-    (input.base_source(), has_join)
-}
-
-fn aggregation_has_join(input: &AggregationInputPlan) -> bool {
-    match input {
-        AggregationInputPlan::Source(_) => false,
-        AggregationInputPlan::InnerJoin(_) | AggregationInputPlan::LeftOuterJoin(_) => true,
-        AggregationInputPlan::Filter(filter) => filter_has_join(&filter.input),
-    }
-}
-
-fn filter_has_join(input: &FilterInputPlan) -> bool {
-    !matches!(input, FilterInputPlan::Source(_))
+    (input.base_source(), !input.joined_sources().is_empty())
 }
 
 fn transform_query_expr(

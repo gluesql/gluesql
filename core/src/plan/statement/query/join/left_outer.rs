@@ -32,6 +32,14 @@ impl LeftOuterJoinPlan {
             LeftOuterJoinInputPlan::Condition(condition) => condition.base_source_mut(),
         }
     }
+
+    pub(crate) fn joined_sources(&self) -> Vec<&SourcePlan> {
+        match &self.input {
+            LeftOuterJoinInputPlan::NestedLoop(join) => join.joined_sources(),
+            LeftOuterJoinInputPlan::Hash(join) => join.joined_sources(),
+            LeftOuterJoinInputPlan::Condition(condition) => condition.joined_sources(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -93,6 +101,8 @@ mod tests {
         let expected = LeftOuterJoinInputPlan::NestedLoop(nested_loop());
         assert_eq!(actual.input, expected);
         assert_eq!(actual.base_source(), &table("A"));
+        let expected = [table("B")];
+        assert_eq!(actual.joined_sources(), expected.iter().collect::<Vec<_>>());
         *actual.base_source_mut() = table("nested-loop");
         assert_eq!(actual.base_source(), &table("nested-loop"));
 
@@ -102,6 +112,8 @@ mod tests {
         let expected = LeftOuterJoinInputPlan::Hash(hash());
         assert_eq!(actual.input, expected);
         assert_eq!(actual.base_source(), &table("A"));
+        let expected = [table("B")];
+        assert_eq!(actual.joined_sources(), expected.iter().collect::<Vec<_>>());
         *actual.base_source_mut() = table("hash");
         assert_eq!(actual.base_source(), &table("hash"));
 
@@ -111,6 +123,8 @@ mod tests {
         let expected = LeftOuterJoinInputPlan::Condition(condition());
         assert_eq!(actual.input, expected);
         assert_eq!(actual.base_source(), &table("A"));
+        let expected = [table("B")];
+        assert_eq!(actual.joined_sources(), expected.iter().collect::<Vec<_>>());
         *actual.base_source_mut() = table("condition");
         assert_eq!(actual.base_source(), &table("condition"));
     }

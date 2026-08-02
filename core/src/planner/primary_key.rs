@@ -6,11 +6,8 @@ use {
         data::Schema,
         plan::{
             AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
-            FilterPlan, HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan,
-            JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
-            LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
-            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SourcePlan,
-            StatementPlan, TableAccessPlan,
+            FilterPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectInputPlan,
+            ProjectPlan, QueryPlan, SourcePlan, StatementPlan, TableAccessPlan,
         },
     },
     std::{collections::HashMap, hash::BuildHasher, rc::Rc},
@@ -241,54 +238,10 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
     }
 
     fn input_context(&self, input: &FilterInputPlan) -> Option<Rc<Context<'a>>> {
-        match input {
-            FilterInputPlan::Source(relation) => self.update_context(None, relation),
-            FilterInputPlan::InnerJoin(join) => self.inner_join_context(join),
-            FilterInputPlan::LeftOuterJoin(join) => self.left_outer_join_context(join),
-        }
-    }
-
-    fn inner_join_context(&self, join: &InnerJoinPlan) -> Option<Rc<Context<'a>>> {
-        match &join.input {
-            InnerJoinInputPlan::NestedLoop(join) => self.nested_loop_context(join),
-            InnerJoinInputPlan::Hash(join) => self.hash_context(join),
-            InnerJoinInputPlan::Condition(condition) => self.condition_context(condition),
-        }
-    }
-
-    fn left_outer_join_context(&self, join: &LeftOuterJoinPlan) -> Option<Rc<Context<'a>>> {
-        match &join.input {
-            LeftOuterJoinInputPlan::NestedLoop(join) => self.nested_loop_context(join),
-            LeftOuterJoinInputPlan::Hash(join) => self.hash_context(join),
-            LeftOuterJoinInputPlan::Condition(condition) => self.condition_context(condition),
-        }
-    }
-
-    fn condition_context(&self, condition: &JoinConditionPlan) -> Option<Rc<Context<'a>>> {
-        match &condition.input {
-            JoinConditionInputPlan::NestedLoop(join) => self.nested_loop_context(join),
-            JoinConditionInputPlan::Hash(join) => self.hash_context(join),
-        }
-    }
-
-    fn nested_loop_context(&self, join: &NestedLoopJoinPlan) -> Option<Rc<Context<'a>>> {
-        let context = match &join.input {
-            NestedLoopJoinInputPlan::Source(source) => self.update_context(None, source),
-            NestedLoopJoinInputPlan::InnerJoin(join) => self.inner_join_context(join),
-            NestedLoopJoinInputPlan::LeftOuterJoin(join) => self.left_outer_join_context(join),
-        };
-
-        self.update_context(context, &join.right)
-    }
-
-    fn hash_context(&self, join: &HashJoinPlan) -> Option<Rc<Context<'a>>> {
-        let context = match &join.input {
-            HashJoinInputPlan::Source(source) => self.update_context(None, source),
-            HashJoinInputPlan::InnerJoin(join) => self.inner_join_context(join),
-            HashJoinInputPlan::LeftOuterJoin(join) => self.left_outer_join_context(join),
-        };
-
-        self.update_context(context, &join.right)
+        input.joined_sources().into_iter().fold(
+            self.update_context(None, input.base_source()),
+            |context, source| self.update_context(context, source),
+        )
     }
 
     fn expr(

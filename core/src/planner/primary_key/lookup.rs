@@ -2,12 +2,7 @@ use {
     crate::{
         ast::{ColumnDef, ColumnUniqueOption},
         data::Schema,
-        plan::{
-            ExprPlan, FilterInputPlan, HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan,
-            InnerJoinPlan, JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan,
-            LeftOuterJoinPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan, SourcePlan,
-            TableAccessPlan, TableAliasPlan,
-        },
+        plan::{ExprPlan, FilterInputPlan, SourcePlan, TableAccessPlan, TableAliasPlan},
     },
     std::{collections::HashMap, hash::BuildHasher},
 };
@@ -23,16 +18,11 @@ impl PrimaryKeyLookupCandidate {
         input: &FilterInputPlan,
     ) -> Option<Self> {
         let target = PrimaryKeyLookupTarget::new(schema_map, input.base_source())?;
-        let mut joined_relations = Vec::new();
-        match input {
-            FilterInputPlan::InnerJoin(join) => {
-                collect_inner_joined_relations(schema_map, join, &mut joined_relations);
-            }
-            FilterInputPlan::LeftOuterJoin(join) => {
-                collect_left_outer_joined_relations(schema_map, join, &mut joined_relations);
-            }
-            FilterInputPlan::Source(_) => {}
-        }
+        let joined_relations = input
+            .joined_sources()
+            .into_iter()
+            .map(|source| JoinedRelation::new(schema_map, source))
+            .collect();
 
         Some(Self {
             target,
@@ -59,91 +49,6 @@ impl PrimaryKeyLookupCandidate {
             _ => false,
         }
     }
-}
-
-fn collect_inner_joined_relations<S: BuildHasher>(
-    schema_map: &HashMap<String, Schema, S>,
-    join: &InnerJoinPlan,
-    joined_relations: &mut Vec<JoinedRelation>,
-) {
-    match &join.input {
-        InnerJoinInputPlan::NestedLoop(join) => {
-            collect_nested_loop_relations(schema_map, join, joined_relations);
-        }
-        InnerJoinInputPlan::Hash(join) => {
-            collect_hash_relations(schema_map, join, joined_relations);
-        }
-        InnerJoinInputPlan::Condition(condition) => {
-            collect_condition_relations(schema_map, condition, joined_relations);
-        }
-    }
-}
-
-fn collect_left_outer_joined_relations<S: BuildHasher>(
-    schema_map: &HashMap<String, Schema, S>,
-    join: &LeftOuterJoinPlan,
-    joined_relations: &mut Vec<JoinedRelation>,
-) {
-    match &join.input {
-        LeftOuterJoinInputPlan::NestedLoop(join) => {
-            collect_nested_loop_relations(schema_map, join, joined_relations);
-        }
-        LeftOuterJoinInputPlan::Hash(join) => {
-            collect_hash_relations(schema_map, join, joined_relations);
-        }
-        LeftOuterJoinInputPlan::Condition(condition) => {
-            collect_condition_relations(schema_map, condition, joined_relations);
-        }
-    }
-}
-
-fn collect_condition_relations<S: BuildHasher>(
-    schema_map: &HashMap<String, Schema, S>,
-    condition: &JoinConditionPlan,
-    joined_relations: &mut Vec<JoinedRelation>,
-) {
-    match &condition.input {
-        JoinConditionInputPlan::NestedLoop(join) => {
-            collect_nested_loop_relations(schema_map, join, joined_relations);
-        }
-        JoinConditionInputPlan::Hash(join) => {
-            collect_hash_relations(schema_map, join, joined_relations);
-        }
-    }
-}
-
-fn collect_nested_loop_relations<S: BuildHasher>(
-    schema_map: &HashMap<String, Schema, S>,
-    join: &NestedLoopJoinPlan,
-    joined_relations: &mut Vec<JoinedRelation>,
-) {
-    match &join.input {
-        NestedLoopJoinInputPlan::Source(_) => {}
-        NestedLoopJoinInputPlan::InnerJoin(join) => {
-            collect_inner_joined_relations(schema_map, join, joined_relations);
-        }
-        NestedLoopJoinInputPlan::LeftOuterJoin(join) => {
-            collect_left_outer_joined_relations(schema_map, join, joined_relations);
-        }
-    }
-    joined_relations.push(JoinedRelation::new(schema_map, &join.right));
-}
-
-fn collect_hash_relations<S: BuildHasher>(
-    schema_map: &HashMap<String, Schema, S>,
-    join: &HashJoinPlan,
-    joined_relations: &mut Vec<JoinedRelation>,
-) {
-    match &join.input {
-        HashJoinInputPlan::Source(_) => {}
-        HashJoinInputPlan::InnerJoin(join) => {
-            collect_inner_joined_relations(schema_map, join, joined_relations);
-        }
-        HashJoinInputPlan::LeftOuterJoin(join) => {
-            collect_left_outer_joined_relations(schema_map, join, joined_relations);
-        }
-    }
-    joined_relations.push(JoinedRelation::new(schema_map, &join.right));
 }
 
 struct PrimaryKeyLookupTarget {

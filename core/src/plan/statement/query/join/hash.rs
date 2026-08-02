@@ -36,6 +36,17 @@ impl HashJoinPlan {
             HashJoinInputPlan::LeftOuterJoin(join) => join.base_source_mut(),
         }
     }
+
+    pub(crate) fn joined_sources(&self) -> Vec<&SourcePlan> {
+        let mut sources = match &self.input {
+            HashJoinInputPlan::Source(_) => Vec::new(),
+            HashJoinInputPlan::InnerJoin(join) => join.joined_sources(),
+            HashJoinInputPlan::LeftOuterJoin(join) => join.joined_sources(),
+        };
+        sources.push(&self.right);
+
+        sources
+    }
 }
 
 #[cfg(test)]
@@ -95,6 +106,8 @@ mod tests {
         let expected = HashJoinInputPlan::Source(table("A"));
         assert_eq!(actual.input, expected);
         assert_eq!(actual.base_source(), &table("A"));
+        let expected = [table("B")];
+        assert_eq!(actual.joined_sources(), expected.iter().collect::<Vec<_>>());
         *actual.base_source_mut() = table("source");
         assert_eq!(actual.base_source(), &table("source"));
 
@@ -108,6 +121,8 @@ mod tests {
         let expected = HashJoinInputPlan::InnerJoin(Box::new(inner_join()));
         assert_eq!(actual.input, expected);
         assert_eq!(actual.base_source(), &table("A"));
+        let expected = [table("B"), table("C")];
+        assert_eq!(actual.joined_sources(), expected.iter().collect::<Vec<_>>());
         *actual.base_source_mut() = table("inner");
         assert_eq!(actual.base_source(), &table("inner"));
 
@@ -121,6 +136,8 @@ mod tests {
         let expected = HashJoinInputPlan::LeftOuterJoin(Box::new(left_outer_join()));
         assert_eq!(actual.input, expected);
         assert_eq!(actual.base_source(), &table("A"));
+        let expected = [table("B"), table("C")];
+        assert_eq!(actual.joined_sources(), expected.iter().collect::<Vec<_>>());
         *actual.base_source_mut() = table("left-outer");
         assert_eq!(actual.base_source(), &table("left-outer"));
     }

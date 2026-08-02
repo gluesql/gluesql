@@ -21,6 +21,15 @@ impl AggregationInputPlan {
             Self::Filter(filter) => filter.input.base_source(),
         }
     }
+
+    pub(crate) fn joined_sources(&self) -> Vec<&SourcePlan> {
+        match self {
+            Self::Source(_) => Vec::new(),
+            Self::InnerJoin(join) => join.joined_sources(),
+            Self::LeftOuterJoin(join) => join.joined_sources(),
+            Self::Filter(filter) => filter.input.joined_sources(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -104,8 +113,24 @@ mod tests {
         assert_eq!(filtered.input, AggregationInputPlan::Filter(filter));
 
         assert_eq!(relation.input.base_source(), &table("A"));
+        assert_eq!(relation.input.joined_sources(), Vec::<&SourcePlan>::new());
         assert_eq!(inner.input.base_source(), &table("A"));
+        let expected = [table("B")];
+        assert_eq!(
+            inner.input.joined_sources(),
+            expected.iter().collect::<Vec<_>>()
+        );
         assert_eq!(left_outer.input.base_source(), &table("A"));
+        let expected = [table("B")];
+        assert_eq!(
+            left_outer.input.joined_sources(),
+            expected.iter().collect::<Vec<_>>()
+        );
         assert_eq!(filtered.input.base_source(), &table("A"));
+        let expected = [table("B")];
+        assert_eq!(
+            filtered.input.joined_sources(),
+            expected.iter().collect::<Vec<_>>()
+        );
     }
 }
