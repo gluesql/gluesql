@@ -5,7 +5,7 @@ use crate::{
         HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan, JoinConditionInputPlan,
         JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan, LimitInputPlan, LimitPlan,
         NestedLoopJoinInputPlan, NestedLoopJoinPlan, OffsetInputPlan, OffsetPlan, ProjectInputPlan,
-        ProjectPlan, QueryPlan,
+        ProjectPlan, QueryPlan, SourcePlan,
     },
     result::Result,
     store::GStore,
@@ -160,7 +160,7 @@ fn hash_sources<'a, T: GStore>(
 
 fn source_columns<'a, T: GStore>(
     storage: &'a T,
-    source: &'a crate::plan::SourcePlan,
+    source: &'a SourcePlan,
 ) -> Result<SelectedSources<'a>> {
     let source = source::execute(storage, source)?.output;
 

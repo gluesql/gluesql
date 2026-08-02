@@ -1,6 +1,6 @@
 use {
     crate::plan::{ExprPlan, FunctionExprPlan},
-    std::iter::{empty, once},
+    std::iter,
 };
 
 impl FunctionExprPlan {
@@ -23,7 +23,7 @@ impl FunctionExprPlan {
             | Self::Rand(None)
             | FunctionExprPlan::CurrentDate()
             | FunctionExprPlan::CurrentTime()
-            | FunctionExprPlan::CurrentTimestamp() => Exprs::Empty(empty()),
+            | FunctionExprPlan::CurrentTimestamp() => Exprs::Empty(iter::empty()),
             Self::Lower(expr)
             | Self::Length(expr)
             | Self::Initcap(expr)
@@ -210,7 +210,7 @@ impl FunctionExprPlan {
             | Self::Concat(exprs)
             | Self::Greatest(exprs) => Exprs::VariableArgs(exprs.iter()),
             Self::ConcatWs { separator, exprs } => {
-                Exprs::VariableArgsWithSingle(once(separator).chain(exprs.iter()))
+                Exprs::VariableArgsWithSingle(iter::once(separator).chain(exprs.iter()))
             }
             Self::Splice {
                 list_data: expr,

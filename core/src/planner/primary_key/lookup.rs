@@ -304,7 +304,7 @@ mod tests {
         super::PrimaryKeyLookupCandidate,
         crate::{
             ast::Literal,
-            data::Schema,
+            data::{Schema, Value},
             parse_sql::parse,
             plan::{
                 AggregationInputPlan, ExprPlan, FilterInputPlan, ProjectInputPlan, QueryPlan,
@@ -417,7 +417,7 @@ mod tests {
             name: "Tasks".to_owned(),
             alias: None,
             access: TableAccessPlan::PrimaryKey {
-                expr: ExprPlan::Value(crate::data::Value::I64(1)),
+                expr: ExprPlan::Value(Value::I64(1)),
             },
         }));
 

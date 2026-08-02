@@ -3,8 +3,8 @@ use {
     crate::{
         ast::Select,
         plan::{
-            AggregationInputPlan, HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan,
-            InnerJoinPlan, ProjectInputPlan,
+            AggregationInputPlan, FilterInputPlan, HashJoinInputPlan, HashJoinPlan,
+            InnerJoinInputPlan, InnerJoinPlan, ProjectInputPlan,
         },
         query_builder::{
             DistinctNode, ExprList, ExprNode, FilterNode, GroupByNode, HavingNode,
@@ -225,10 +225,10 @@ impl<'a> InnerHashJoinNode<'a> {
 }
 
 impl BuildFilterInputPlan for InnerHashJoinNode<'_> {
-    fn build_filter_input_plan(self) -> Result<crate::plan::FilterInputPlan> {
+    fn build_filter_input_plan(self) -> Result<FilterInputPlan> {
         self.build_inner_join_plan()
             .map(Box::new)
-            .map(crate::plan::FilterInputPlan::InnerJoin)
+            .map(FilterInputPlan::InnerJoin)
     }
 }
 
@@ -261,11 +261,11 @@ mod tests {
             plan::{
                 AggregationInputPlan, AggregationPlan, DerivedSourcePlan, DistinctInputPlan,
                 DistinctPlan, FilterInputPlan, FilterPlan, HashJoinInputPlan, HashJoinPlan,
-                HavingPlan, InnerJoinInputPlan, InnerJoinPlan, LimitInputPlan, LimitPlan,
-                NestedLoopJoinInputPlan, NestedLoopJoinPlan, OffsetInputPlan, OffsetPlan,
-                OrderByExprPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
-                SelectItemPlan, SelectOrderByPlan, SourcePlan, StatementPlan, TableAccessPlan,
-                TableAliasPlan, TableSourcePlan,
+                HavingPlan, InnerJoinInputPlan, InnerJoinPlan, LeftOuterJoinInputPlan,
+                LeftOuterJoinPlan, LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan,
+                NestedLoopJoinPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan,
+                ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan,
+                SourcePlan, StatementPlan, TableAccessPlan, TableAliasPlan, TableSourcePlan,
             },
             query_builder::{Build, QueryBuilderError, col, expr, num, select::BuildQuery, table},
             result::Error,
@@ -374,8 +374,8 @@ mod tests {
             .left_join("C")
             .build_left_outer_join_plan()
             .unwrap();
-        let expected = crate::plan::LeftOuterJoinPlan {
-            input: crate::plan::LeftOuterJoinInputPlan::NestedLoop(NestedLoopJoinPlan {
+        let expected = LeftOuterJoinPlan {
+            input: LeftOuterJoinInputPlan::NestedLoop(NestedLoopJoinPlan {
                 input: NestedLoopJoinInputPlan::InnerJoin(Box::new(expected_input.clone())),
                 right: SourcePlan::Table(TableSourcePlan {
                     name: "C".to_owned(),
@@ -393,8 +393,8 @@ mod tests {
             .left_join_as("C", "c")
             .build_left_outer_join_plan()
             .unwrap();
-        let expected = crate::plan::LeftOuterJoinPlan {
-            input: crate::plan::LeftOuterJoinInputPlan::NestedLoop(NestedLoopJoinPlan {
+        let expected = LeftOuterJoinPlan {
+            input: LeftOuterJoinInputPlan::NestedLoop(NestedLoopJoinPlan {
                 input: NestedLoopJoinInputPlan::InnerJoin(Box::new(expected_input)),
                 right: SourcePlan::Table(TableSourcePlan {
                     name: "C".to_owned(),

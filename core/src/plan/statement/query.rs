@@ -371,8 +371,8 @@ mod tests {
     use {
         super::{
             AggregationInputPlan, AggregationPlan, DistinctInputPlan, DistinctPlan, FilterPlan,
-            HavingPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectInputPlan,
-            ProjectPlan, QueryPlan,
+            HavingPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan,
+            ProjectInputPlan, ProjectPlan, QueryPlan,
         },
         crate::{
             ast::{BinaryOperator, Literal},
@@ -501,7 +501,7 @@ mod tests {
         };
         let order_by = SelectOrderByPlan {
             input: project,
-            exprs: vec![super::OrderByExprPlan {
+            exprs: vec![OrderByExprPlan {
                 expr: ExprPlan::Identifier("id".to_owned()),
                 asc: None,
             }],

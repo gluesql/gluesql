@@ -1,7 +1,7 @@
 use {
     super::{BuildProjectPlan, BuildQuery, BuildQueryPlan, BuildSelect},
     crate::{
-        ast::{OrderByExpr, Query, SetExpr},
+        ast::{OrderByExpr, Query, Select, SetExpr},
         plan::{DistinctInputPlan, DistinctPlan, QueryPlan},
         query_builder::{
             ExprNode, FilterNode, GroupByNode, HavingNode, InnerHashJoinNode,
@@ -55,7 +55,7 @@ impl PrevNode<'_> {
         }
     }
 
-    fn build_select(self) -> Result<(crate::ast::Select, Vec<OrderByExpr>)> {
+    fn build_select(self) -> Result<(Select, Vec<OrderByExpr>)> {
         let select = match self {
             Self::Select(node) => node.build_select(),
             Self::Having(node) => node.build_select(),

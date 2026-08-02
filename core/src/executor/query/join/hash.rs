@@ -4,12 +4,12 @@ use {
     crate::{
         data::{Key, Row},
         executor::{context::RowContext, evaluate::evaluate, filter::check_expr},
-        plan::{HashJoinInputPlan, HashJoinPlan},
+        plan::{ExprPlan, HashJoinInputPlan, HashJoinPlan},
         result::Result,
         store::GStore,
     },
     itertools::Itertools,
-    std::{borrow::Cow, collections::HashMap, rc::Rc},
+    std::{borrow::Cow, collections::HashMap, iter, rc::Rc},
 };
 
 pub(super) fn execute<'a, T: GStore>(
@@ -60,8 +60,8 @@ pub(super) fn execute<'a, T: GStore>(
             .and_then(|evaluated| Key::try_from(evaluated).map(|key| rows_map.get(&key).cloned()));
         let rows: Box<dyn Iterator<Item = Result<Row>> + 'a> = match rows {
             Ok(Some(rows)) => Box::new(rows.into_iter().map(Ok)),
-            Ok(None) => Box::new(std::iter::empty()),
-            Err(error) => Box::new(std::iter::once(Err(error))),
+            Ok(None) => Box::new(iter::empty()),
+            Err(error) => Box::new(iter::once(Err(error))),
         };
 
         Ok(candidate_group(left, right_alias, rows))
@@ -78,8 +78,8 @@ fn build_rows<'a, T: GStore>(
     storage: &'a T,
     source: source::PreparedSource<'a>,
     filter_context: Option<&Rc<RowContext<'a>>>,
-    right_key: &'a crate::plan::ExprPlan,
-    right_filter: Option<&'a crate::plan::ExprPlan>,
+    right_key: &'a ExprPlan,
+    right_filter: Option<&'a ExprPlan>,
 ) -> Result<(HashMap<Key, Vec<Row>>, SourceColumns<'a>)> {
     let mut rows = Vec::new();
     for row in source.rows(filter_context.map(Rc::clone))?.rows {

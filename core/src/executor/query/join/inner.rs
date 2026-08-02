@@ -7,7 +7,7 @@ use {
         result::Result,
         store::GStore,
     },
-    std::rc::Rc,
+    std::{iter, rc::Rc},
 };
 
 pub(crate) fn execute<'a, T: GStore>(
@@ -28,7 +28,7 @@ pub(crate) fn execute<'a, T: GStore>(
     };
     let rows = groups.flat_map(|group| match group {
         Ok(group) => group.rows,
-        Err(error) => Box::new(std::iter::once(Err(error))) as SelectedIter<'a>,
+        Err(error) => Box::new(iter::once(Err(error))) as SelectedIter<'a>,
     });
 
     Ok(SelectedRows {

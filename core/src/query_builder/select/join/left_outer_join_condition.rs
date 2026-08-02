@@ -1,8 +1,8 @@
 use crate::{
     ast::Select,
     plan::{
-        AggregationInputPlan, JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan,
-        LeftOuterJoinPlan, ProjectInputPlan,
+        AggregationInputPlan, FilterInputPlan, JoinConditionInputPlan, JoinConditionPlan,
+        LeftOuterJoinInputPlan, LeftOuterJoinPlan, ProjectInputPlan,
     },
     query_builder::{
         DistinctNode, ExprList, ExprNode, FilterNode, GroupByNode, HavingNode,
@@ -124,10 +124,10 @@ impl<'a> LeftOuterJoinConditionNode<'a> {
 }
 
 impl BuildFilterInputPlan for LeftOuterJoinConditionNode<'_> {
-    fn build_filter_input_plan(self) -> Result<crate::plan::FilterInputPlan> {
+    fn build_filter_input_plan(self) -> Result<FilterInputPlan> {
         self.build_left_outer_join_plan()
             .map(Box::new)
-            .map(crate::plan::FilterInputPlan::LeftOuterJoin)
+            .map(FilterInputPlan::LeftOuterJoin)
     }
 }
 

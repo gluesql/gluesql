@@ -716,7 +716,7 @@ mod tests {
         },
     };
 
-    fn plan_join(storage: &MockStorage, sql: &str) -> crate::plan::StatementPlan {
+    fn plan_join(storage: &MockStorage, sql: &str) -> StatementPlan {
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
         let statement = StatementPlan::from(translate(&parsed).unwrap());
         let schema_map = fetch_schema_map(storage, &statement).unwrap();

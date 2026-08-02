@@ -15,6 +15,7 @@ use {
             ExprList, ExprNode, FilterNode, GroupByNode, HavingNode, InnerNestedLoopJoinNode,
             LeftOuterNestedLoopJoinNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode,
             QueryBuilderError, QueryNode, SelectItemList, SelectOrderByNode, SourceNode,
+            TableAccessNode,
         },
         result::Result,
         translate::alias_or_name,
@@ -157,7 +158,7 @@ impl BuildSelect for SelectNode<'_> {
             SourceNode::Table {
                 name,
                 alias,
-                access: crate::query_builder::TableAccessNode::FullScan,
+                access: TableAccessNode::FullScan,
             } => TableFactor::Table {
                 name,
                 alias: alias.map(|name| TableAlias {

@@ -12,7 +12,7 @@ use {
         },
         planner::context::Context,
     },
-    std::rc::Rc,
+    std::{iter, rc::Rc},
 };
 
 pub fn check_expr(context: Option<Rc<Context<'_>>>, expr: &ExprPlan) -> bool {
@@ -131,7 +131,7 @@ fn check_project(context: Option<&Rc<Context<'_>>>, project: &ProjectPlan) -> bo
                     .input
                     .group_by
                     .iter()
-                    .chain(std::iter::once(&having.expr))
+                    .chain(iter::once(&having.expr))
                     .all(|expr| check_expr(context.map(Rc::clone), expr))
         }
     };

@@ -5,7 +5,7 @@ use {
     },
     crate::{
         ast::Select,
-        plan::{AggregationPlan, ProjectInputPlan},
+        plan::{AggregationInputPlan, AggregationPlan, ProjectInputPlan},
         query_builder::{
             ExprList, ExprNode, FilterNode, HavingNode, InnerHashJoinNode, InnerJoinConditionNode,
             InnerNestedLoopJoinNode, LeftOuterHashJoinNode, LeftOuterJoinConditionNode,
@@ -29,7 +29,7 @@ pub(super) enum PrevNode<'a> {
 }
 
 impl BuildAggregationInputPlan for PrevNode<'_> {
-    fn build_aggregation_input_plan(self) -> Result<crate::plan::AggregationInputPlan> {
+    fn build_aggregation_input_plan(self) -> Result<AggregationInputPlan> {
         match self {
             Self::Select(node) => node.build_aggregation_input_plan(),
             Self::InnerNestedLoop(node) => node.build_aggregation_input_plan(),

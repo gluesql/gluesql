@@ -5,9 +5,9 @@ use {
         data::{Row, Schema},
         executor::{evaluate_stateless, query},
         plan::{
-            DistinctInputPlan, DistinctPlan, FilterInputPlan, LimitInputPlan, LimitPlan,
-            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, SourcePlan, ValuesPlan,
+            DistinctInputPlan, DistinctPlan, FilterInputPlan, FilterPlan, LimitInputPlan,
+            LimitPlan, OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan,
+            QueryPlan, SelectItemPlan, SourcePlan, ValuesPlan,
         },
         prelude::{DataType, Value},
         result::Result,
@@ -281,7 +281,7 @@ fn can_copy_source_schema(project: &ProjectPlan) -> bool {
     matches!(
         project.input,
         ProjectInputPlan::Source(_)
-            | ProjectInputPlan::Filter(crate::plan::FilterPlan {
+            | ProjectInputPlan::Filter(FilterPlan {
                 input: FilterInputPlan::Source(_),
                 ..
             })

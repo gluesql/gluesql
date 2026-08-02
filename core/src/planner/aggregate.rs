@@ -374,6 +374,7 @@ mod tests {
         super::plan,
         crate::{
             ast::{Dictionary, Literal},
+            data::Value,
             parse_sql::parse,
             plan::{
                 AggregationInputPlan, AggregationPlan, DerivedSourcePlan, DictionarySourcePlan,
@@ -983,7 +984,7 @@ mod tests {
         let having = having_query(query).expect("expected having");
         assert_eq!(aggregation.group_by, Vec::new());
         assert_eq!(aggregation.aggregate_slots, Vec::new());
-        assert_eq!(having.expr, ExprPlan::Value(crate::data::Value::Bool(true)));
+        assert_eq!(having.expr, ExprPlan::Value(Value::Bool(true)));
     }
 
     #[test]

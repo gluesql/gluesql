@@ -15,6 +15,7 @@ use {
     std::{
         collections::{HashMap, HashSet},
         hash::BuildHasher,
+        mem,
     },
 };
 
@@ -591,7 +592,7 @@ fn transform_wildcard_projection(
         }
         SelectItemPlan::QualifiedWildcard(alias) => {
             if schemaless_aliases.contains(alias) {
-                let alias = std::mem::take(alias);
+                let alias = mem::take(alias);
                 *item = SelectItemPlan::Expr {
                     expr: ExprPlan::CompoundIdentifier {
                         alias,

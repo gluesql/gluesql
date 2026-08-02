@@ -3,7 +3,7 @@ mod function;
 
 use {
     crate::plan::{ExprPlan, QueryPlan},
-    std::iter::once,
+    std::iter,
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -52,7 +52,7 @@ impl<'a> From<&'a ExprPlan> for PlanExpr<'a> {
                 expr, low, high, ..
             } => PlanExpr::ThreeExprs(expr, low, high),
             ExprPlan::InList { expr, list, .. } => {
-                let exprs = list.iter().chain(once(expr.as_ref())).collect();
+                let exprs = list.iter().chain(iter::once(expr.as_ref())).collect();
                 PlanExpr::MultiExprs(exprs)
             }
             ExprPlan::Case {
@@ -71,7 +71,7 @@ impl<'a> From<&'a ExprPlan> for PlanExpr<'a> {
                 PlanExpr::MultiExprs(exprs)
             }
             ExprPlan::ArrayIndex { obj, indexes } => {
-                let exprs = indexes.iter().chain(once(obj.as_ref())).collect();
+                let exprs = indexes.iter().chain(iter::once(obj.as_ref())).collect();
                 PlanExpr::MultiExprs(exprs)
             }
             ExprPlan::Array { elem } => {

@@ -14,7 +14,7 @@ use {
         result::Result,
         store::Store,
     },
-    std::collections::HashMap,
+    std::{collections::HashMap, iter},
 };
 
 pub fn fetch_schema_map<T: Store + ?Sized>(
@@ -210,7 +210,7 @@ fn scan_project<T: Store + ?Sized>(
                 .input
                 .group_by
                 .iter()
-                .chain(std::iter::once(&having.expr))
+                .chain(iter::once(&having.expr))
                 .map(|expr| scan_expr(storage, expr))
                 .collect::<Result<Vec<_>>>()?
                 .into_iter()

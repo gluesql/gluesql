@@ -3,8 +3,8 @@ use {
     crate::{
         ast::{Expr, Join, JoinConstraint, JoinOperator, Select},
         plan::{
-            AggregationInputPlan, InnerJoinInputPlan, InnerJoinPlan, NestedLoopJoinInputPlan,
-            NestedLoopJoinPlan, ProjectInputPlan,
+            AggregationInputPlan, FilterInputPlan, InnerJoinInputPlan, InnerJoinPlan,
+            NestedLoopJoinInputPlan, NestedLoopJoinPlan, ProjectInputPlan,
         },
         query_builder::{
             DistinctNode, ExprList, ExprNode, FilterNode, GroupByNode, HavingNode,
@@ -277,10 +277,10 @@ impl<'a> InnerNestedLoopJoinNode<'a> {
 }
 
 impl BuildFilterInputPlan for InnerNestedLoopJoinNode<'_> {
-    fn build_filter_input_plan(self) -> Result<crate::plan::FilterInputPlan> {
+    fn build_filter_input_plan(self) -> Result<FilterInputPlan> {
         self.build_inner_join_plan()
             .map(Box::new)
-            .map(crate::plan::FilterInputPlan::InnerJoin)
+            .map(FilterInputPlan::InnerJoin)
     }
 }
 

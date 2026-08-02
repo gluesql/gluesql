@@ -8,7 +8,7 @@ use {
         result::Result,
         store::GStore,
     },
-    std::{borrow::Cow, rc::Rc},
+    std::{borrow::Cow, iter, rc::Rc},
 };
 
 pub(crate) fn execute<'a, T: GStore>(
@@ -32,7 +32,7 @@ pub(crate) fn execute<'a, T: GStore>(
     let rows = groups.flat_map(move |group| {
         let group = match group {
             Ok(group) => group,
-            Err(error) => return Box::new(std::iter::once(Err(error))) as SelectedIter<'a>,
+            Err(error) => return Box::new(iter::once(Err(error))) as SelectedIter<'a>,
         };
         let row = Row {
             columns: Rc::clone(&right.names),

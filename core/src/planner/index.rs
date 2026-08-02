@@ -773,7 +773,7 @@ mod tests {
         },
     };
 
-    fn plan_index(storage: &MockStorage, sql: &str) -> Result<crate::plan::StatementPlan> {
+    fn plan_index(storage: &MockStorage, sql: &str) -> Result<StatementPlan> {
         let parsed = parse(sql)?;
         let parsed = parsed
             .into_iter()
