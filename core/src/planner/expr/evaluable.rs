@@ -249,9 +249,11 @@ mod tests {
     use {
         super::{check_expr, check_query},
         crate::{
+            mock::run,
             parse_sql::{parse_expr, parse_query},
-            plan::{ExprPlan, QueryPlan},
-            planner::context::Context,
+            plan::{ExprPlan, QueryPlan, StatementPlan},
+            planner::{context::Context, fetch_schema_map, plan_schemaless},
+            query_builder::{Build, table},
             translate::{NO_PARAMS, translate_expr, translate_query},
         },
         std::rc::Rc,
@@ -283,6 +285,20 @@ mod tests {
         };
 
         assert_eq!(actual, expected, "{sql}");
+    }
+
+    fn check_query_statement(context: Option<&Rc<Context<'_>>>, statement: StatementPlan) -> bool {
+        match statement {
+            StatementPlan::Query(query) => check_query(context, &query),
+            _ => false,
+        }
+    }
+
+    fn test_query_builder(context: Option<&Rc<Context<'_>>>, query: impl Build, expected: bool) {
+        let statement = query.build().unwrap();
+        let actual = check_query_statement(context, statement);
+
+        assert_eq!(actual, expected);
     }
 
     fn test_query(context: Option<&Rc<Context<'_>>>, sql: &str, expected: bool) {
@@ -425,6 +441,8 @@ mod tests {
         test_query!("VALUES (1) LIMIT 1 OFFSET 1", true);
         test_query!("VALUES (1) ORDER BY 1 LIMIT 1 OFFSET 1", true);
         test_query!("SELECT id FROM Foo", true);
+        test_query!("SELECT id FROM Foo WHERE id = 1", true);
+        test_query!("SELECT id FROM Foo WHERE unknown = 1", false);
         test_query!("SELECT id FROM Foo ORDER BY id", true);
         test_query!("SELECT DISTINCT id FROM Foo", true);
         test_query!("SELECT DISTINCT id FROM Foo ORDER BY id", true);
@@ -448,5 +466,116 @@ mod tests {
         );
         test_query!("SELECT Foo.id FROM Foo JOIN Bar GROUP BY Foo.id", true);
         test_query!("SELECT Foo.id FROM Foo LEFT JOIN Bar GROUP BY Foo.id", true);
+        test_query!("SELECT id FROM Foo WHERE id = 1 GROUP BY id", true);
+        test_query!("SELECT id FROM Foo WHERE unknown = 1 GROUP BY id", false);
+
+        let actual = table("Foo").create_table();
+        let expected = false;
+        test_query_builder(context.as_ref(), actual, expected);
+    }
+
+    #[test]
+    fn check_schemaless_projection_evaluability() {
+        let context = context();
+        let storage = run("CREATE TABLE Foo;");
+        let statement = table("Foo").select().build().unwrap();
+        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
+        let planned = plan_schemaless(&schema_map, statement).unwrap();
+        let actual = check_query_statement(context.as_ref(), planned);
+        let expected = true;
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn check_hash_join_evaluability() {
+        let context = context();
+
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .hash_executor("Bar.id", "Foo.id")
+            .hash_filter("Bar.rate > 0")
+            .project("Foo.id");
+        let expected = true;
+        test_query_builder(context.as_ref(), actual, expected);
+
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .hash_executor("Bar.id", "Unknown.id")
+            .hash_filter("Bar.rate > 0")
+            .project("Foo.id");
+        let expected = false;
+        test_query_builder(context.as_ref(), actual, expected);
+
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .hash_executor("Bar.id", "Foo.id")
+            .hash_filter("Unknown.visible")
+            .project("Foo.id");
+        let expected = false;
+        test_query_builder(context.as_ref(), actual, expected);
+    }
+
+    #[test]
+    fn check_logical_join_evaluability() {
+        let context = context();
+
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .hash_executor("Bar.id", "Foo.id")
+            .project("Foo.id");
+        let expected = true;
+        test_query_builder(context.as_ref(), actual, expected);
+
+        let actual = table("Foo")
+            .select()
+            .left_join("Bar")
+            .hash_executor("Bar.id", "Foo.id")
+            .project("Foo.id");
+        let expected = true;
+        test_query_builder(context.as_ref(), actual, expected);
+
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .hash_executor("Bar.id", "Foo.id")
+            .on("Bar.rate > 0")
+            .project("Foo.id");
+        let expected = true;
+        test_query_builder(context.as_ref(), actual, expected);
+    }
+
+    #[test]
+    fn check_recursive_join_input_evaluability() {
+        let context = context();
+
+        let actual = table("Foo")
+            .select()
+            .left_join("Empty")
+            .join("Bar")
+            .project("Foo.id");
+        let expected = true;
+        test_query_builder(context.as_ref(), actual, expected);
+
+        let actual = table("Foo")
+            .select()
+            .join("Empty")
+            .join("Bar")
+            .hash_executor("Bar.id", "Foo.id")
+            .project("Foo.id");
+        let expected = true;
+        test_query_builder(context.as_ref(), actual, expected);
+
+        let actual = table("Foo")
+            .select()
+            .left_join("Empty")
+            .join("Bar")
+            .hash_executor("Bar.id", "Foo.id")
+            .project("Foo.id");
+        let expected = true;
+        test_query_builder(context.as_ref(), actual, expected);
     }
 }
