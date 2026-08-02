@@ -10,6 +10,17 @@ pub struct OffsetPlan {
     pub count: ExprPlan,
 }
 
+impl OffsetPlan {
+    pub(super) fn project(&self) -> Option<&ProjectPlan> {
+        match &self.input {
+            OffsetInputPlan::Project(project) => Some(project),
+            OffsetInputPlan::Values(_) | OffsetInputPlan::ValuesOrderBy(_) => None,
+            OffsetInputPlan::SelectOrderBy(order_by) => Some(&order_by.input),
+            OffsetInputPlan::Distinct(distinct) => Some(distinct.project()),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum OffsetInputPlan {
     Project(ProjectPlan),

@@ -8,6 +8,15 @@ pub struct DistinctPlan {
     pub input: DistinctInputPlan,
 }
 
+impl DistinctPlan {
+    pub(super) fn project(&self) -> &ProjectPlan {
+        match &self.input {
+            DistinctInputPlan::Project(project) => project,
+            DistinctInputPlan::SelectOrderBy(order_by) => &order_by.input,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DistinctInputPlan {
     Project(ProjectPlan),

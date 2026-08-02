@@ -49,6 +49,19 @@ pub enum QueryPlan {
     Limit(LimitPlan),
 }
 
+impl QueryPlan {
+    pub(crate) fn project(&self) -> Option<&ProjectPlan> {
+        match self {
+            Self::Project(project) => Some(project),
+            Self::Values(_) | Self::ValuesOrderBy(_) => None,
+            Self::SelectOrderBy(order_by) => Some(&order_by.input),
+            Self::Distinct(distinct) => Some(distinct.project()),
+            Self::Offset(offset) => offset.project(),
+            Self::Limit(limit) => limit.project(),
+        }
+    }
+}
+
 impl From<ast::Query> for QueryPlan {
     fn from(query: ast::Query) -> Self {
         let ast::Query {
@@ -565,6 +578,56 @@ mod tests {
         )));
 
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn query_plan_finds_project_through_terminal_stages() {
+        let expected = ProjectPlan {
+            input: ProjectInputPlan::Source(relation_plan()),
+            projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
+        };
+
+        for sql in [
+            "SELECT * FROM Item",
+            "SELECT * FROM Item ORDER BY id",
+            "SELECT DISTINCT * FROM Item",
+            "SELECT DISTINCT * FROM Item ORDER BY id",
+            "SELECT * FROM Item OFFSET 2",
+            "SELECT * FROM Item ORDER BY id OFFSET 2",
+            "SELECT DISTINCT * FROM Item OFFSET 2",
+            "SELECT * FROM Item LIMIT 3",
+            "SELECT * FROM Item ORDER BY id LIMIT 3",
+            "SELECT DISTINCT * FROM Item LIMIT 3",
+            "SELECT * FROM Item LIMIT 3 OFFSET 2",
+            "SELECT DISTINCT * FROM Item ORDER BY id LIMIT 3 OFFSET 2",
+        ] {
+            let statement = statement_plan(sql);
+            let actual = match &statement {
+                StatementPlan::Query(query) => query.project(),
+                _ => None,
+            };
+
+            assert_eq!(actual, Some(&expected), "{sql}");
+        }
+
+        for sql in [
+            "VALUES (1)",
+            "VALUES (1) ORDER BY column1",
+            "VALUES (1) OFFSET 2",
+            "VALUES (1) ORDER BY column1 OFFSET 2",
+            "VALUES (1) LIMIT 3",
+            "VALUES (1) ORDER BY column1 LIMIT 3",
+            "VALUES (1) LIMIT 3 OFFSET 2",
+            "VALUES (1) ORDER BY column1 LIMIT 3 OFFSET 2",
+        ] {
+            let statement = statement_plan(sql);
+            let actual = match &statement {
+                StatementPlan::Query(query) => query.project(),
+                _ => None,
+            };
+
+            assert_eq!(actual, None, "{sql}");
+        }
     }
 
     #[test]

@@ -3,12 +3,10 @@ use {
     crate::{
         data::Schema,
         plan::{
-            AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
-            HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan,
-            JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
-            LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
-            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, SourcePlan, StatementPlan,
+            AggregationInputPlan, ExprPlan, FilterInputPlan, HashJoinInputPlan, HashJoinPlan,
+            InnerJoinInputPlan, InnerJoinPlan, JoinConditionInputPlan, JoinConditionPlan,
+            LeftOuterJoinInputPlan, LeftOuterJoinPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
+            ProjectInputPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SourcePlan, StatementPlan,
         },
         result::Result,
     },
@@ -26,7 +24,7 @@ pub fn validate(schema_map: &SchemaMap, statement: &StatementPlan) -> Result<()>
     };
 
     if let Some(query) = query {
-        let Some(project) = query_project(query) else {
+        let Some(project) = query.project() else {
             return Ok(());
         };
         let ProjectionPlan::SelectItems(projection) = &project.projection else {
@@ -118,40 +116,9 @@ fn contextualize_query<'a>(
     schema_map: &'a SchemaMap,
     query: &'a QueryPlan,
 ) -> Option<Rc<Context<'a>>> {
-    query_project(query).and_then(|project| contextualize_project_input(schema_map, &project.input))
-}
-
-fn query_project(query: &QueryPlan) -> Option<&ProjectPlan> {
-    match query {
-        QueryPlan::Project(project) => Some(project),
-        QueryPlan::Values(_) | QueryPlan::ValuesOrderBy(_) => None,
-        QueryPlan::SelectOrderBy(order_by) => Some(&order_by.input),
-        QueryPlan::Distinct(distinct) => Some(distinct_project(distinct)),
-        QueryPlan::Offset(offset) => offset_project(offset),
-        QueryPlan::Limit(LimitPlan { input, .. }) => match input {
-            LimitInputPlan::Project(project) => Some(project),
-            LimitInputPlan::Values(_) | LimitInputPlan::ValuesOrderBy(_) => None,
-            LimitInputPlan::SelectOrderBy(order_by) => Some(&order_by.input),
-            LimitInputPlan::Distinct(distinct) => Some(distinct_project(distinct)),
-            LimitInputPlan::Offset(offset) => offset_project(offset),
-        },
-    }
-}
-
-fn offset_project(offset: &OffsetPlan) -> Option<&ProjectPlan> {
-    match &offset.input {
-        OffsetInputPlan::Project(project) => Some(project),
-        OffsetInputPlan::Values(_) | OffsetInputPlan::ValuesOrderBy(_) => None,
-        OffsetInputPlan::SelectOrderBy(order_by) => Some(&order_by.input),
-        OffsetInputPlan::Distinct(distinct) => Some(distinct_project(distinct)),
-    }
-}
-
-fn distinct_project(distinct: &DistinctPlan) -> &ProjectPlan {
-    match &distinct.input {
-        DistinctInputPlan::Project(project) => project,
-        DistinctInputPlan::SelectOrderBy(order_by) => &order_by.input,
-    }
+    query
+        .project()
+        .and_then(|project| contextualize_project_input(schema_map, &project.input))
 }
 
 fn contextualize_project_input<'a>(

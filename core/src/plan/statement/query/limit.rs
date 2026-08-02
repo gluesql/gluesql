@@ -12,6 +12,18 @@ pub struct LimitPlan {
     pub count: ExprPlan,
 }
 
+impl LimitPlan {
+    pub(super) fn project(&self) -> Option<&ProjectPlan> {
+        match &self.input {
+            LimitInputPlan::Project(project) => Some(project),
+            LimitInputPlan::Values(_) | LimitInputPlan::ValuesOrderBy(_) => None,
+            LimitInputPlan::SelectOrderBy(order_by) => Some(&order_by.input),
+            LimitInputPlan::Distinct(distinct) => Some(distinct.project()),
+            LimitInputPlan::Offset(offset) => offset.project(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LimitInputPlan {
     Project(ProjectPlan),
