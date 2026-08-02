@@ -1,5 +1,6 @@
 use {
     super::{HashJoinPlan, JoinConditionPlan, NestedLoopJoinPlan},
+    crate::plan::SourcePlan,
     serde::{Deserialize, Serialize},
 };
 
@@ -13,6 +14,24 @@ pub enum LeftOuterJoinInputPlan {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct LeftOuterJoinPlan {
     pub input: LeftOuterJoinInputPlan,
+}
+
+impl LeftOuterJoinPlan {
+    pub(crate) fn base_source(&self) -> &SourcePlan {
+        match &self.input {
+            LeftOuterJoinInputPlan::NestedLoop(join) => join.base_source(),
+            LeftOuterJoinInputPlan::Hash(join) => join.base_source(),
+            LeftOuterJoinInputPlan::Condition(condition) => condition.base_source(),
+        }
+    }
+
+    pub(crate) fn base_source_mut(&mut self) -> &mut SourcePlan {
+        match &mut self.input {
+            LeftOuterJoinInputPlan::NestedLoop(join) => join.base_source_mut(),
+            LeftOuterJoinInputPlan::Hash(join) => join.base_source_mut(),
+            LeftOuterJoinInputPlan::Condition(condition) => condition.base_source_mut(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -68,22 +87,31 @@ mod tests {
 
     #[test]
     fn accepts_each_input() {
-        let actual = LeftOuterJoinPlan {
+        let mut actual = LeftOuterJoinPlan {
             input: LeftOuterJoinInputPlan::NestedLoop(nested_loop()),
         };
         let expected = LeftOuterJoinInputPlan::NestedLoop(nested_loop());
         assert_eq!(actual.input, expected);
+        assert_eq!(actual.base_source(), &table("A"));
+        *actual.base_source_mut() = table("nested-loop");
+        assert_eq!(actual.base_source(), &table("nested-loop"));
 
-        let actual = LeftOuterJoinPlan {
+        let mut actual = LeftOuterJoinPlan {
             input: LeftOuterJoinInputPlan::Hash(hash()),
         };
         let expected = LeftOuterJoinInputPlan::Hash(hash());
         assert_eq!(actual.input, expected);
+        assert_eq!(actual.base_source(), &table("A"));
+        *actual.base_source_mut() = table("hash");
+        assert_eq!(actual.base_source(), &table("hash"));
 
-        let actual = LeftOuterJoinPlan {
+        let mut actual = LeftOuterJoinPlan {
             input: LeftOuterJoinInputPlan::Condition(condition()),
         };
         let expected = LeftOuterJoinInputPlan::Condition(condition());
         assert_eq!(actual.input, expected);
+        assert_eq!(actual.base_source(), &table("A"));
+        *actual.base_source_mut() = table("condition");
+        assert_eq!(actual.base_source(), &table("condition"));
     }
 }

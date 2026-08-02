@@ -1,6 +1,6 @@
 use {
     super::{HashJoinPlan, NestedLoopJoinPlan},
-    crate::plan::ExprPlan,
+    crate::plan::{ExprPlan, SourcePlan},
     serde::{Deserialize, Serialize},
 };
 
@@ -14,6 +14,22 @@ pub enum JoinConditionInputPlan {
 pub struct JoinConditionPlan {
     pub input: JoinConditionInputPlan,
     pub expr: ExprPlan,
+}
+
+impl JoinConditionPlan {
+    pub(crate) fn base_source(&self) -> &SourcePlan {
+        match &self.input {
+            JoinConditionInputPlan::NestedLoop(join) => join.base_source(),
+            JoinConditionInputPlan::Hash(join) => join.base_source(),
+        }
+    }
+
+    pub(crate) fn base_source_mut(&mut self) -> &mut SourcePlan {
+        match &mut self.input {
+            JoinConditionInputPlan::NestedLoop(join) => join.base_source_mut(),
+            JoinConditionInputPlan::Hash(join) => join.base_source_mut(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -61,18 +77,24 @@ mod tests {
 
     #[test]
     fn accepts_each_input() {
-        let actual = JoinConditionPlan {
+        let mut actual = JoinConditionPlan {
             input: JoinConditionInputPlan::NestedLoop(nested_loop()),
             expr: expr(),
         };
         let expected = JoinConditionInputPlan::NestedLoop(nested_loop());
         assert_eq!(actual.input, expected);
+        assert_eq!(actual.base_source(), &table("A"));
+        *actual.base_source_mut() = table("nested-loop");
+        assert_eq!(actual.base_source(), &table("nested-loop"));
 
-        let actual = JoinConditionPlan {
+        let mut actual = JoinConditionPlan {
             input: JoinConditionInputPlan::Hash(hash()),
             expr: expr(),
         };
         let expected = JoinConditionInputPlan::Hash(hash());
         assert_eq!(actual.input, expected);
+        assert_eq!(actual.base_source(), &table("A"));
+        *actual.base_source_mut() = table("hash");
+        assert_eq!(actual.base_source(), &table("hash"));
     }
 }

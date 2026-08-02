@@ -204,7 +204,7 @@ fn transform_inner_join<S: BuildHasher>(
     join: &mut InnerJoinPlan,
 ) -> QueryRewriteState {
     let rewrite_unqualified_identifiers = matches!(
-        inner_join_base_source(join),
+        join.base_source(),
         SourcePlan::Table(table) if is_schemaless_table(schema_map, &table.name)
     );
     let mut schemaless_aliases = HashSet::new();
@@ -223,7 +223,7 @@ fn transform_left_outer_join<S: BuildHasher>(
     join: &mut LeftOuterJoinPlan,
 ) -> QueryRewriteState {
     let rewrite_unqualified_identifiers = matches!(
-        left_outer_join_base_source(join),
+        join.base_source(),
         SourcePlan::Table(table) if is_schemaless_table(schema_map, &table.name)
     );
     let mut schemaless_aliases = HashSet::new();
@@ -475,70 +475,27 @@ fn rewrite_projection(
 }
 
 fn project_source(input: &ProjectInputPlan) -> (&SourcePlan, bool) {
+    let has_join = match input {
+        ProjectInputPlan::Source(_) => false,
+        ProjectInputPlan::InnerJoin(_) | ProjectInputPlan::LeftOuterJoin(_) => true,
+        ProjectInputPlan::Filter(filter) => filter_has_join(&filter.input),
+        ProjectInputPlan::Aggregation(aggregation) => aggregation_has_join(&aggregation.input),
+        ProjectInputPlan::Having(having) => aggregation_has_join(&having.input.input),
+    };
+
+    (input.base_source(), has_join)
+}
+
+fn aggregation_has_join(input: &AggregationInputPlan) -> bool {
     match input {
-        ProjectInputPlan::Source(relation) => (relation, false),
-        ProjectInputPlan::InnerJoin(join) => (inner_join_base_source(join), true),
-        ProjectInputPlan::LeftOuterJoin(join) => (left_outer_join_base_source(join), true),
-        ProjectInputPlan::Filter(filter) => filter_source(&filter.input),
-        ProjectInputPlan::Aggregation(aggregation) => aggregation_source(&aggregation.input),
-        ProjectInputPlan::Having(having) => aggregation_source(&having.input.input),
+        AggregationInputPlan::Source(_) => false,
+        AggregationInputPlan::InnerJoin(_) | AggregationInputPlan::LeftOuterJoin(_) => true,
+        AggregationInputPlan::Filter(filter) => filter_has_join(&filter.input),
     }
 }
 
-fn aggregation_source(input: &AggregationInputPlan) -> (&SourcePlan, bool) {
-    match input {
-        AggregationInputPlan::Source(relation) => (relation, false),
-        AggregationInputPlan::InnerJoin(join) => (inner_join_base_source(join), true),
-        AggregationInputPlan::LeftOuterJoin(join) => (left_outer_join_base_source(join), true),
-        AggregationInputPlan::Filter(filter) => filter_source(&filter.input),
-    }
-}
-
-fn filter_source(input: &FilterInputPlan) -> (&SourcePlan, bool) {
-    match input {
-        FilterInputPlan::Source(relation) => (relation, false),
-        FilterInputPlan::InnerJoin(join) => (inner_join_base_source(join), true),
-        FilterInputPlan::LeftOuterJoin(join) => (left_outer_join_base_source(join), true),
-    }
-}
-
-fn inner_join_base_source(join: &InnerJoinPlan) -> &SourcePlan {
-    match &join.input {
-        InnerJoinInputPlan::NestedLoop(join) => nested_loop_base_source(join),
-        InnerJoinInputPlan::Hash(join) => hash_base_source(join),
-        InnerJoinInputPlan::Condition(condition) => condition_base_source(condition),
-    }
-}
-
-fn left_outer_join_base_source(join: &LeftOuterJoinPlan) -> &SourcePlan {
-    match &join.input {
-        LeftOuterJoinInputPlan::NestedLoop(join) => nested_loop_base_source(join),
-        LeftOuterJoinInputPlan::Hash(join) => hash_base_source(join),
-        LeftOuterJoinInputPlan::Condition(condition) => condition_base_source(condition),
-    }
-}
-
-fn condition_base_source(condition: &JoinConditionPlan) -> &SourcePlan {
-    match &condition.input {
-        JoinConditionInputPlan::NestedLoop(join) => nested_loop_base_source(join),
-        JoinConditionInputPlan::Hash(join) => hash_base_source(join),
-    }
-}
-
-fn nested_loop_base_source(join: &NestedLoopJoinPlan) -> &SourcePlan {
-    match &join.input {
-        NestedLoopJoinInputPlan::Source(source) => source,
-        NestedLoopJoinInputPlan::InnerJoin(join) => inner_join_base_source(join),
-        NestedLoopJoinInputPlan::LeftOuterJoin(join) => left_outer_join_base_source(join),
-    }
-}
-
-fn hash_base_source(join: &HashJoinPlan) -> &SourcePlan {
-    match &join.input {
-        HashJoinInputPlan::Source(source) => source,
-        HashJoinInputPlan::InnerJoin(join) => inner_join_base_source(join),
-        HashJoinInputPlan::LeftOuterJoin(join) => left_outer_join_base_source(join),
-    }
+fn filter_has_join(input: &FilterInputPlan) -> bool {
+    !matches!(input, FilterInputPlan::Source(_))
 }
 
 fn transform_query_expr(

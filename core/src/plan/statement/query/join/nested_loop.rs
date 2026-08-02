@@ -17,6 +17,24 @@ pub struct NestedLoopJoinPlan {
     pub right: SourcePlan,
 }
 
+impl NestedLoopJoinPlan {
+    pub(crate) fn base_source(&self) -> &SourcePlan {
+        match &self.input {
+            NestedLoopJoinInputPlan::Source(source) => source,
+            NestedLoopJoinInputPlan::InnerJoin(join) => join.base_source(),
+            NestedLoopJoinInputPlan::LeftOuterJoin(join) => join.base_source(),
+        }
+    }
+
+    pub(crate) fn base_source_mut(&mut self) -> &mut SourcePlan {
+        match &mut self.input {
+            NestedLoopJoinInputPlan::Source(source) => source,
+            NestedLoopJoinInputPlan::InnerJoin(join) => join.base_source_mut(),
+            NestedLoopJoinInputPlan::LeftOuterJoin(join) => join.base_source_mut(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use {
@@ -56,25 +74,34 @@ mod tests {
 
     #[test]
     fn accepts_each_input() {
-        let actual = NestedLoopJoinPlan {
+        let mut actual = NestedLoopJoinPlan {
             input: NestedLoopJoinInputPlan::Source(table("A")),
             right: table("B"),
         };
         let expected = NestedLoopJoinInputPlan::Source(table("A"));
         assert_eq!(actual.input, expected);
+        assert_eq!(actual.base_source(), &table("A"));
+        *actual.base_source_mut() = table("source");
+        assert_eq!(actual.base_source(), &table("source"));
 
-        let actual = NestedLoopJoinPlan {
+        let mut actual = NestedLoopJoinPlan {
             input: NestedLoopJoinInputPlan::InnerJoin(Box::new(inner_join())),
             right: table("C"),
         };
         let expected = NestedLoopJoinInputPlan::InnerJoin(Box::new(inner_join()));
         assert_eq!(actual.input, expected);
+        assert_eq!(actual.base_source(), &table("A"));
+        *actual.base_source_mut() = table("inner");
+        assert_eq!(actual.base_source(), &table("inner"));
 
-        let actual = NestedLoopJoinPlan {
+        let mut actual = NestedLoopJoinPlan {
             input: NestedLoopJoinInputPlan::LeftOuterJoin(Box::new(left_outer_join())),
             right: table("C"),
         };
         let expected = NestedLoopJoinInputPlan::LeftOuterJoin(Box::new(left_outer_join()));
         assert_eq!(actual.input, expected);
+        assert_eq!(actual.base_source(), &table("A"));
+        *actual.base_source_mut() = table("left-outer");
+        assert_eq!(actual.base_source(), &table("left-outer"));
     }
 }

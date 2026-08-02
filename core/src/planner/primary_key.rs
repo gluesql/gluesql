@@ -230,7 +230,7 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
             PrimaryKey::NotFound(expr) => (None, Some(expr)),
         };
 
-        if let SourcePlan::Table(table) = Self::base_source_mut(&mut input)
+        if let SourcePlan::Table(table) = input.base_source_mut()
             && table.access == TableAccessPlan::FullScan
             && let Some(access) = access
         {
@@ -289,57 +289,6 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
         };
 
         self.update_context(context, &join.right)
-    }
-
-    fn base_source_mut(input: &mut FilterInputPlan) -> &mut SourcePlan {
-        match input {
-            FilterInputPlan::Source(relation) => relation,
-            FilterInputPlan::InnerJoin(join) => Self::inner_join_base_source_mut(join),
-            FilterInputPlan::LeftOuterJoin(join) => Self::left_outer_join_base_source_mut(join),
-        }
-    }
-
-    fn inner_join_base_source_mut(join: &mut InnerJoinPlan) -> &mut SourcePlan {
-        match &mut join.input {
-            InnerJoinInputPlan::NestedLoop(join) => Self::nested_loop_base_source_mut(join),
-            InnerJoinInputPlan::Hash(join) => Self::hash_base_source_mut(join),
-            InnerJoinInputPlan::Condition(condition) => Self::condition_base_source_mut(condition),
-        }
-    }
-
-    fn left_outer_join_base_source_mut(join: &mut LeftOuterJoinPlan) -> &mut SourcePlan {
-        match &mut join.input {
-            LeftOuterJoinInputPlan::NestedLoop(join) => Self::nested_loop_base_source_mut(join),
-            LeftOuterJoinInputPlan::Hash(join) => Self::hash_base_source_mut(join),
-            LeftOuterJoinInputPlan::Condition(condition) => {
-                Self::condition_base_source_mut(condition)
-            }
-        }
-    }
-
-    fn condition_base_source_mut(condition: &mut JoinConditionPlan) -> &mut SourcePlan {
-        match &mut condition.input {
-            JoinConditionInputPlan::NestedLoop(join) => Self::nested_loop_base_source_mut(join),
-            JoinConditionInputPlan::Hash(join) => Self::hash_base_source_mut(join),
-        }
-    }
-
-    fn nested_loop_base_source_mut(join: &mut NestedLoopJoinPlan) -> &mut SourcePlan {
-        match &mut join.input {
-            NestedLoopJoinInputPlan::Source(source) => source,
-            NestedLoopJoinInputPlan::InnerJoin(join) => Self::inner_join_base_source_mut(join),
-            NestedLoopJoinInputPlan::LeftOuterJoin(join) => {
-                Self::left_outer_join_base_source_mut(join)
-            }
-        }
-    }
-
-    fn hash_base_source_mut(join: &mut HashJoinPlan) -> &mut SourcePlan {
-        match &mut join.input {
-            HashJoinInputPlan::Source(source) => source,
-            HashJoinInputPlan::InnerJoin(join) => Self::inner_join_base_source_mut(join),
-            HashJoinInputPlan::LeftOuterJoin(join) => Self::left_outer_join_base_source_mut(join),
-        }
     }
 
     fn expr(
@@ -458,11 +407,8 @@ mod tests {
             mock::{MockStorage, run},
             parse_sql::{parse, parse_expr},
             plan::{
-                ExprPlan, HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan,
-                JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan,
-                LeftOuterJoinPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan, ProjectInputPlan,
-                QueryPlan, SourcePlan, StatementPlan, TableAccessPlan, TableAliasPlan,
-                TableSourcePlan,
+                ExprPlan, ProjectInputPlan, QueryPlan, SourcePlan, StatementPlan, TableAccessPlan,
+                TableAliasPlan, TableSourcePlan,
             },
             planner::fetch_schema_map,
             query_builder::{Build, col, primary_key, table},
@@ -475,56 +421,17 @@ mod tests {
         StatementPlan::from(translate(&parsed).unwrap())
     }
 
-    fn try_source(statement: StatementPlan) -> Option<SourcePlan> {
+    fn try_source(statement: &StatementPlan) -> Option<&SourcePlan> {
         match statement {
-            StatementPlan::Query(QueryPlan::Project(project)) => match project.input {
-                ProjectInputPlan::Source(relation) => Some(relation),
-                ProjectInputPlan::InnerJoin(join) => Some(inner_join_base_source(*join)),
-                ProjectInputPlan::LeftOuterJoin(join) => Some(left_outer_join_base_source(*join)),
+            StatementPlan::Query(QueryPlan::Project(project)) => match &project.input {
+                ProjectInputPlan::Source(_)
+                | ProjectInputPlan::InnerJoin(_)
+                | ProjectInputPlan::LeftOuterJoin(_) => Some(project.input.base_source()),
                 ProjectInputPlan::Filter(_)
                 | ProjectInputPlan::Aggregation(_)
                 | ProjectInputPlan::Having(_) => None,
             },
             _ => None,
-        }
-    }
-
-    fn inner_join_base_source(join: InnerJoinPlan) -> SourcePlan {
-        match join.input {
-            InnerJoinInputPlan::NestedLoop(join) => nested_loop_base_source(join),
-            InnerJoinInputPlan::Hash(join) => hash_base_source(join),
-            InnerJoinInputPlan::Condition(condition) => condition_base_source(condition),
-        }
-    }
-
-    fn left_outer_join_base_source(join: LeftOuterJoinPlan) -> SourcePlan {
-        match join.input {
-            LeftOuterJoinInputPlan::NestedLoop(join) => nested_loop_base_source(join),
-            LeftOuterJoinInputPlan::Hash(join) => hash_base_source(join),
-            LeftOuterJoinInputPlan::Condition(condition) => condition_base_source(condition),
-        }
-    }
-
-    fn condition_base_source(condition: JoinConditionPlan) -> SourcePlan {
-        match condition.input {
-            JoinConditionInputPlan::NestedLoop(join) => nested_loop_base_source(join),
-            JoinConditionInputPlan::Hash(join) => hash_base_source(join),
-        }
-    }
-
-    fn nested_loop_base_source(join: NestedLoopJoinPlan) -> SourcePlan {
-        match join.input {
-            NestedLoopJoinInputPlan::Source(source) => source,
-            NestedLoopJoinInputPlan::InnerJoin(join) => inner_join_base_source(*join),
-            NestedLoopJoinInputPlan::LeftOuterJoin(join) => left_outer_join_base_source(*join),
-        }
-    }
-
-    fn hash_base_source(join: HashJoinPlan) -> SourcePlan {
-        match join.input {
-            HashJoinInputPlan::Source(source) => source,
-            HashJoinInputPlan::InnerJoin(join) => inner_join_base_source(*join),
-            HashJoinInputPlan::LeftOuterJoin(join) => left_outer_join_base_source(*join),
         }
     }
 
@@ -704,9 +611,9 @@ mod tests {
                 expr: ExprPlan::Literal(Literal::Number(1.into())),
             },
         });
-        let actual_relation = try_source(actual).expect("expected relation");
+        let actual_relation = try_source(&actual).expect("expected relation");
         assert!(
-            actual_relation == expected_relation,
+            actual_relation == &expected_relation,
             "aliased primary key should be installed and removed from selection:\n{sql}"
         );
 
@@ -817,7 +724,7 @@ mod tests {
         ";
 
         let actual = plan(&storage, sql);
-        let relation = try_source(actual).expect("expected relation");
+        let relation = try_source(&actual).expect("expected relation");
         let expected = SourcePlan::Table(TableSourcePlan {
             name: "Tasks".to_owned(),
             alias: Some(TableAliasPlan {
@@ -829,7 +736,7 @@ mod tests {
             },
         });
 
-        assert_eq!(relation, expected, "{sql}");
+        assert_eq!(relation, &expected, "{sql}");
     }
 
     #[test]
@@ -852,7 +759,7 @@ mod tests {
             WHERE t.id = 1;
         ";
         let actual = plan(&storage, sql);
-        let relation = try_source(actual).expect("expected relation");
+        let relation = try_source(&actual).expect("expected relation");
         let expected = SourcePlan::Table(TableSourcePlan {
             name: "Tasks".to_owned(),
             alias: Some(TableAliasPlan {
@@ -864,7 +771,7 @@ mod tests {
             },
         });
 
-        assert_eq!(relation, expected, "{sql}");
+        assert_eq!(relation, &expected, "{sql}");
 
         let sql = "
             SELECT t.id
@@ -904,7 +811,7 @@ mod tests {
 
     #[test]
     fn rejects_non_select_test_plan() {
-        assert!(try_source(statement("VALUES (1)")).is_none());
+        assert!(try_source(&statement("VALUES (1)")).is_none());
     }
 
     #[test]

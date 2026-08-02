@@ -10,6 +10,24 @@ pub enum FilterInputPlan {
     LeftOuterJoin(Box<LeftOuterJoinPlan>),
 }
 
+impl FilterInputPlan {
+    pub(crate) fn base_source(&self) -> &SourcePlan {
+        match self {
+            Self::Source(source) => source,
+            Self::InnerJoin(join) => join.base_source(),
+            Self::LeftOuterJoin(join) => join.base_source(),
+        }
+    }
+
+    pub(crate) fn base_source_mut(&mut self) -> &mut SourcePlan {
+        match self {
+            Self::Source(source) => source,
+            Self::InnerJoin(join) => join.base_source_mut(),
+            Self::LeftOuterJoin(join) => join.base_source_mut(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct FilterPlan {
     pub input: FilterInputPlan,
@@ -42,7 +60,7 @@ mod tests {
     #[test]
     fn filter_accepts_relation_and_join_inputs() {
         let expr = ExprPlan::Value(Value::Bool(true));
-        let relation = FilterPlan {
+        let mut relation = FilterPlan {
             input: FilterInputPlan::Source(table("A")),
             expr: expr.clone(),
         };
@@ -58,11 +76,11 @@ mod tests {
                 right: table("B"),
             }),
         };
-        let inner = FilterPlan {
+        let mut inner = FilterPlan {
             input: FilterInputPlan::InnerJoin(Box::new(inner_join.clone())),
             expr: expr.clone(),
         };
-        let left_outer = FilterPlan {
+        let mut left_outer = FilterPlan {
             input: FilterInputPlan::LeftOuterJoin(Box::new(left_outer_join.clone())),
             expr,
         };
@@ -76,5 +94,17 @@ mod tests {
             left_outer.input,
             FilterInputPlan::LeftOuterJoin(Box::new(left_outer_join))
         );
+
+        assert_eq!(relation.input.base_source(), &table("A"));
+        *relation.input.base_source_mut() = table("source");
+        assert_eq!(relation.input.base_source(), &table("source"));
+
+        assert_eq!(inner.input.base_source(), &table("A"));
+        *inner.input.base_source_mut() = table("inner");
+        assert_eq!(inner.input.base_source(), &table("inner"));
+
+        assert_eq!(left_outer.input.base_source(), &table("A"));
+        *left_outer.input.base_source_mut() = table("left-outer");
+        assert_eq!(left_outer.input.base_source(), &table("left-outer"));
     }
 }

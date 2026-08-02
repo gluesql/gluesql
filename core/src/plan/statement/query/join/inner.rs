@@ -1,5 +1,6 @@
 use {
     super::{HashJoinPlan, JoinConditionPlan, NestedLoopJoinPlan},
+    crate::plan::SourcePlan,
     serde::{Deserialize, Serialize},
 };
 
@@ -13,6 +14,24 @@ pub enum InnerJoinInputPlan {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct InnerJoinPlan {
     pub input: InnerJoinInputPlan,
+}
+
+impl InnerJoinPlan {
+    pub(crate) fn base_source(&self) -> &SourcePlan {
+        match &self.input {
+            InnerJoinInputPlan::NestedLoop(join) => join.base_source(),
+            InnerJoinInputPlan::Hash(join) => join.base_source(),
+            InnerJoinInputPlan::Condition(condition) => condition.base_source(),
+        }
+    }
+
+    pub(crate) fn base_source_mut(&mut self) -> &mut SourcePlan {
+        match &mut self.input {
+            InnerJoinInputPlan::NestedLoop(join) => join.base_source_mut(),
+            InnerJoinInputPlan::Hash(join) => join.base_source_mut(),
+            InnerJoinInputPlan::Condition(condition) => condition.base_source_mut(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -68,22 +87,31 @@ mod tests {
 
     #[test]
     fn accepts_each_input() {
-        let actual = InnerJoinPlan {
+        let mut actual = InnerJoinPlan {
             input: InnerJoinInputPlan::NestedLoop(nested_loop()),
         };
         let expected = InnerJoinInputPlan::NestedLoop(nested_loop());
         assert_eq!(actual.input, expected);
+        assert_eq!(actual.base_source(), &table("A"));
+        *actual.base_source_mut() = table("nested-loop");
+        assert_eq!(actual.base_source(), &table("nested-loop"));
 
-        let actual = InnerJoinPlan {
+        let mut actual = InnerJoinPlan {
             input: InnerJoinInputPlan::Hash(hash()),
         };
         let expected = InnerJoinInputPlan::Hash(hash());
         assert_eq!(actual.input, expected);
+        assert_eq!(actual.base_source(), &table("A"));
+        *actual.base_source_mut() = table("hash");
+        assert_eq!(actual.base_source(), &table("hash"));
 
-        let actual = InnerJoinPlan {
+        let mut actual = InnerJoinPlan {
             input: InnerJoinInputPlan::Condition(condition()),
         };
         let expected = InnerJoinInputPlan::Condition(condition());
         assert_eq!(actual.input, expected);
+        assert_eq!(actual.base_source(), &table("A"));
+        *actual.base_source_mut() = table("condition");
+        assert_eq!(actual.base_source(), &table("condition"));
     }
 }

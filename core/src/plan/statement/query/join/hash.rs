@@ -20,6 +20,24 @@ pub struct HashJoinPlan {
     pub right_filter: Option<ExprPlan>,
 }
 
+impl HashJoinPlan {
+    pub(crate) fn base_source(&self) -> &SourcePlan {
+        match &self.input {
+            HashJoinInputPlan::Source(source) => source,
+            HashJoinInputPlan::InnerJoin(join) => join.base_source(),
+            HashJoinInputPlan::LeftOuterJoin(join) => join.base_source(),
+        }
+    }
+
+    pub(crate) fn base_source_mut(&mut self) -> &mut SourcePlan {
+        match &mut self.input {
+            HashJoinInputPlan::Source(source) => source,
+            HashJoinInputPlan::InnerJoin(join) => join.base_source_mut(),
+            HashJoinInputPlan::LeftOuterJoin(join) => join.base_source_mut(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use {
@@ -67,7 +85,7 @@ mod tests {
 
     #[test]
     fn accepts_each_input() {
-        let actual = HashJoinPlan {
+        let mut actual = HashJoinPlan {
             input: HashJoinInputPlan::Source(table("A")),
             right: table("B"),
             input_key: expr(),
@@ -76,8 +94,11 @@ mod tests {
         };
         let expected = HashJoinInputPlan::Source(table("A"));
         assert_eq!(actual.input, expected);
+        assert_eq!(actual.base_source(), &table("A"));
+        *actual.base_source_mut() = table("source");
+        assert_eq!(actual.base_source(), &table("source"));
 
-        let actual = HashJoinPlan {
+        let mut actual = HashJoinPlan {
             input: HashJoinInputPlan::InnerJoin(Box::new(inner_join())),
             right: table("C"),
             input_key: expr(),
@@ -86,8 +107,11 @@ mod tests {
         };
         let expected = HashJoinInputPlan::InnerJoin(Box::new(inner_join()));
         assert_eq!(actual.input, expected);
+        assert_eq!(actual.base_source(), &table("A"));
+        *actual.base_source_mut() = table("inner");
+        assert_eq!(actual.base_source(), &table("inner"));
 
-        let actual = HashJoinPlan {
+        let mut actual = HashJoinPlan {
             input: HashJoinInputPlan::LeftOuterJoin(Box::new(left_outer_join())),
             right: table("C"),
             input_key: expr(),
@@ -96,5 +120,8 @@ mod tests {
         };
         let expected = HashJoinInputPlan::LeftOuterJoin(Box::new(left_outer_join()));
         assert_eq!(actual.input, expected);
+        assert_eq!(actual.base_source(), &table("A"));
+        *actual.base_source_mut() = table("left-outer");
+        assert_eq!(actual.base_source(), &table("left-outer"));
     }
 }

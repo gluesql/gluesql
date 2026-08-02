@@ -14,6 +14,19 @@ pub enum ProjectInputPlan {
     Having(HavingPlan),
 }
 
+impl ProjectInputPlan {
+    pub(crate) fn base_source(&self) -> &SourcePlan {
+        match self {
+            Self::Source(source) => source,
+            Self::InnerJoin(join) => join.base_source(),
+            Self::LeftOuterJoin(join) => join.base_source(),
+            Self::Filter(filter) => filter.input.base_source(),
+            Self::Aggregation(aggregation) => aggregation.input.base_source(),
+            Self::Having(having) => having.input.input.base_source(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ProjectPlan {
     pub input: ProjectInputPlan,
@@ -110,5 +123,12 @@ mod tests {
         assert_eq!(filtered.input, ProjectInputPlan::Filter(filter));
         assert_eq!(aggregated.input, ProjectInputPlan::Aggregation(aggregation));
         assert_eq!(having.input, ProjectInputPlan::Having(having_plan));
+
+        assert_eq!(relation.input.base_source(), &table("A"));
+        assert_eq!(inner.input.base_source(), &table("A"));
+        assert_eq!(left_outer.input.base_source(), &table("A"));
+        assert_eq!(filtered.input.base_source(), &table("A"));
+        assert_eq!(aggregated.input.base_source(), &table("A"));
+        assert_eq!(having.input.base_source(), &table("A"));
     }
 }

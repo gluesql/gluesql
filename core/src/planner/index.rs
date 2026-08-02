@@ -9,12 +9,9 @@ use {
         data::{Schema, SchemaIndex, SchemaIndexOrd, Value},
         plan::{
             AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
-            FilterPlan, HashJoinInputPlan, HashJoinPlan, IndexPredicatePlan, InnerJoinInputPlan,
-            InnerJoinPlan, JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan,
-            LeftOuterJoinPlan, LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan,
-            NestedLoopJoinPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan,
-            ProjectPlan, QueryPlan, SelectOrderByPlan, SourcePlan, StatementPlan, TableAccessPlan,
-            plan_scalar_expr,
+            FilterPlan, IndexPredicatePlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
+            OrderByExprPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SelectOrderByPlan,
+            SourcePlan, StatementPlan, TableAccessPlan, plan_scalar_expr,
         },
     },
     std::{collections::HashMap, hash::BuildHasher, rc::Rc},
@@ -315,10 +312,10 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
         filter_expr: Option<ExprPlan>,
         mut order_by: Vec<OrderByExprPlan>,
     ) -> (FilterInputPlan, Option<ExprPlan>, Vec<OrderByExprPlan>) {
-        let indexes = self.indexes(Self::base_source(&input));
+        let indexes = self.indexes(input.base_source());
 
         if let (Some(indexes), Some(order_expr)) = (indexes.as_ref(), order_by.last())
-            && let SourcePlan::Table(table) = Self::base_source_mut(&mut input)
+            && let SourcePlan::Table(table) = input.base_source_mut()
             && table.access == TableAccessPlan::FullScan
             && let Some(index_name) = indexes.find_ordered(order_expr)
         {
@@ -334,7 +331,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
 
         let filter_expr = filter_expr.and_then(|expr| {
             if let (Some(indexes), SourcePlan::Table(table)) =
-                (indexes.as_ref(), Self::base_source(&input))
+                (indexes.as_ref(), input.base_source())
                 && table.access == TableAccessPlan::FullScan
             {
                 match self.plan_index_expr(outer_context.map(Rc::clone), indexes, expr) {
@@ -344,7 +341,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                         index_value_expr,
                         residual,
                     } => {
-                        if let SourcePlan::Table(table) = Self::base_source_mut(&mut input) {
+                        if let SourcePlan::Table(table) = input.base_source_mut() {
                             table.access = TableAccessPlan::Index {
                                 name: index_name,
                                 asc: None,
@@ -365,104 +362,6 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
         });
 
         (input, filter_expr, order_by)
-    }
-
-    fn base_source(input: &FilterInputPlan) -> &SourcePlan {
-        match input {
-            FilterInputPlan::Source(relation) => relation,
-            FilterInputPlan::InnerJoin(join) => Self::inner_join_base_source(join),
-            FilterInputPlan::LeftOuterJoin(join) => Self::left_outer_join_base_source(join),
-        }
-    }
-
-    fn inner_join_base_source(join: &InnerJoinPlan) -> &SourcePlan {
-        match &join.input {
-            InnerJoinInputPlan::NestedLoop(join) => Self::nested_loop_base_source(join),
-            InnerJoinInputPlan::Hash(join) => Self::hash_base_source(join),
-            InnerJoinInputPlan::Condition(condition) => Self::condition_base_source(condition),
-        }
-    }
-
-    fn left_outer_join_base_source(join: &LeftOuterJoinPlan) -> &SourcePlan {
-        match &join.input {
-            LeftOuterJoinInputPlan::NestedLoop(join) => Self::nested_loop_base_source(join),
-            LeftOuterJoinInputPlan::Hash(join) => Self::hash_base_source(join),
-            LeftOuterJoinInputPlan::Condition(condition) => Self::condition_base_source(condition),
-        }
-    }
-
-    fn condition_base_source(condition: &JoinConditionPlan) -> &SourcePlan {
-        match &condition.input {
-            JoinConditionInputPlan::NestedLoop(join) => Self::nested_loop_base_source(join),
-            JoinConditionInputPlan::Hash(join) => Self::hash_base_source(join),
-        }
-    }
-
-    fn nested_loop_base_source(join: &NestedLoopJoinPlan) -> &SourcePlan {
-        match &join.input {
-            NestedLoopJoinInputPlan::Source(source) => source,
-            NestedLoopJoinInputPlan::InnerJoin(join) => Self::inner_join_base_source(join),
-            NestedLoopJoinInputPlan::LeftOuterJoin(join) => Self::left_outer_join_base_source(join),
-        }
-    }
-
-    fn hash_base_source(join: &HashJoinPlan) -> &SourcePlan {
-        match &join.input {
-            HashJoinInputPlan::Source(source) => source,
-            HashJoinInputPlan::InnerJoin(join) => Self::inner_join_base_source(join),
-            HashJoinInputPlan::LeftOuterJoin(join) => Self::left_outer_join_base_source(join),
-        }
-    }
-
-    fn base_source_mut(input: &mut FilterInputPlan) -> &mut SourcePlan {
-        match input {
-            FilterInputPlan::Source(relation) => relation,
-            FilterInputPlan::InnerJoin(join) => Self::inner_join_base_source_mut(join),
-            FilterInputPlan::LeftOuterJoin(join) => Self::left_outer_join_base_source_mut(join),
-        }
-    }
-
-    fn inner_join_base_source_mut(join: &mut InnerJoinPlan) -> &mut SourcePlan {
-        match &mut join.input {
-            InnerJoinInputPlan::NestedLoop(join) => Self::nested_loop_base_source_mut(join),
-            InnerJoinInputPlan::Hash(join) => Self::hash_base_source_mut(join),
-            InnerJoinInputPlan::Condition(condition) => Self::condition_base_source_mut(condition),
-        }
-    }
-
-    fn left_outer_join_base_source_mut(join: &mut LeftOuterJoinPlan) -> &mut SourcePlan {
-        match &mut join.input {
-            LeftOuterJoinInputPlan::NestedLoop(join) => Self::nested_loop_base_source_mut(join),
-            LeftOuterJoinInputPlan::Hash(join) => Self::hash_base_source_mut(join),
-            LeftOuterJoinInputPlan::Condition(condition) => {
-                Self::condition_base_source_mut(condition)
-            }
-        }
-    }
-
-    fn condition_base_source_mut(condition: &mut JoinConditionPlan) -> &mut SourcePlan {
-        match &mut condition.input {
-            JoinConditionInputPlan::NestedLoop(join) => Self::nested_loop_base_source_mut(join),
-            JoinConditionInputPlan::Hash(join) => Self::hash_base_source_mut(join),
-        }
-    }
-
-    fn nested_loop_base_source_mut(join: &mut NestedLoopJoinPlan) -> &mut SourcePlan {
-        match &mut join.input {
-            NestedLoopJoinInputPlan::Source(source) => source,
-            NestedLoopJoinInputPlan::InnerJoin(join) => Self::inner_join_base_source_mut(join),
-            NestedLoopJoinInputPlan::LeftOuterJoin(join) => {
-                Self::left_outer_join_base_source_mut(join)
-            }
-        }
-    }
-
-    fn hash_base_source_mut(join: &mut HashJoinPlan) -> &mut SourcePlan {
-        match &mut join.input {
-            HashJoinInputPlan::Source(source) => source,
-            HashJoinInputPlan::InnerJoin(join) => Self::inner_join_base_source_mut(join),
-            HashJoinInputPlan::LeftOuterJoin(join) => Self::left_outer_join_base_source_mut(join),
-        }
     }
 
     fn plan_index_expr(

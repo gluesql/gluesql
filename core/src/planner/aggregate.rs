@@ -450,71 +450,7 @@ mod tests {
     }
 
     fn source_query(query: &QueryPlan) -> Option<&SourcePlan> {
-        project_query(query).map(|project| match &project.input {
-            ProjectInputPlan::Source(relation) => relation,
-            ProjectInputPlan::InnerJoin(join) => inner_join_source(join),
-            ProjectInputPlan::LeftOuterJoin(join) => left_outer_join_source(join),
-            ProjectInputPlan::Filter(filter) => filter_source(&filter.input),
-            ProjectInputPlan::Aggregation(aggregation) => match &aggregation.input {
-                AggregationInputPlan::Source(relation) => relation,
-                AggregationInputPlan::InnerJoin(join) => inner_join_source(join),
-                AggregationInputPlan::LeftOuterJoin(join) => left_outer_join_source(join),
-                AggregationInputPlan::Filter(filter) => filter_source(&filter.input),
-            },
-            ProjectInputPlan::Having(having) => match &having.input.input {
-                AggregationInputPlan::Source(relation) => relation,
-                AggregationInputPlan::InnerJoin(join) => inner_join_source(join),
-                AggregationInputPlan::LeftOuterJoin(join) => left_outer_join_source(join),
-                AggregationInputPlan::Filter(filter) => filter_source(&filter.input),
-            },
-        })
-    }
-
-    fn filter_source(input: &FilterInputPlan) -> &SourcePlan {
-        match input {
-            FilterInputPlan::Source(relation) => relation,
-            FilterInputPlan::InnerJoin(join) => inner_join_source(join),
-            FilterInputPlan::LeftOuterJoin(join) => left_outer_join_source(join),
-        }
-    }
-
-    fn inner_join_source(join: &InnerJoinPlan) -> &SourcePlan {
-        match &join.input {
-            InnerJoinInputPlan::NestedLoop(join) => nested_loop_source(join),
-            InnerJoinInputPlan::Hash(join) => hash_source(join),
-            InnerJoinInputPlan::Condition(condition) => condition_source(condition),
-        }
-    }
-
-    fn left_outer_join_source(join: &LeftOuterJoinPlan) -> &SourcePlan {
-        match &join.input {
-            LeftOuterJoinInputPlan::NestedLoop(join) => nested_loop_source(join),
-            LeftOuterJoinInputPlan::Hash(join) => hash_source(join),
-            LeftOuterJoinInputPlan::Condition(condition) => condition_source(condition),
-        }
-    }
-
-    fn condition_source(condition: &JoinConditionPlan) -> &SourcePlan {
-        match &condition.input {
-            JoinConditionInputPlan::NestedLoop(join) => nested_loop_source(join),
-            JoinConditionInputPlan::Hash(join) => hash_source(join),
-        }
-    }
-
-    fn nested_loop_source(join: &NestedLoopJoinPlan) -> &SourcePlan {
-        match &join.input {
-            NestedLoopJoinInputPlan::Source(source) => source,
-            NestedLoopJoinInputPlan::InnerJoin(join) => inner_join_source(join),
-            NestedLoopJoinInputPlan::LeftOuterJoin(join) => left_outer_join_source(join),
-        }
-    }
-
-    fn hash_source(join: &HashJoinPlan) -> &SourcePlan {
-        match &join.input {
-            HashJoinInputPlan::Source(source) => source,
-            HashJoinInputPlan::InnerJoin(join) => inner_join_source(join),
-            HashJoinInputPlan::LeftOuterJoin(join) => left_outer_join_source(join),
-        }
+        project_query(query).map(|project| project.input.base_source())
     }
 
     fn inner_join_query(query: &QueryPlan) -> Option<&InnerJoinPlan> {

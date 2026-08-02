@@ -22,7 +22,7 @@ impl PrimaryKeyLookupCandidate {
         schema_map: &HashMap<String, Schema, S>,
         input: &FilterInputPlan,
     ) -> Option<Self> {
-        let target = PrimaryKeyLookupTarget::new(schema_map, base_source(input))?;
+        let target = PrimaryKeyLookupTarget::new(schema_map, input.base_source())?;
         let mut joined_relations = Vec::new();
         match input {
             FilterInputPlan::InnerJoin(join) => {
@@ -58,53 +58,6 @@ impl PrimaryKeyLookupCandidate {
             }
             _ => false,
         }
-    }
-}
-
-fn base_source(input: &FilterInputPlan) -> &SourcePlan {
-    match input {
-        FilterInputPlan::Source(relation) => relation,
-        FilterInputPlan::InnerJoin(join) => inner_join_base_source(join),
-        FilterInputPlan::LeftOuterJoin(join) => left_outer_join_base_source(join),
-    }
-}
-
-fn inner_join_base_source(join: &InnerJoinPlan) -> &SourcePlan {
-    match &join.input {
-        InnerJoinInputPlan::NestedLoop(join) => nested_loop_base_source(join),
-        InnerJoinInputPlan::Hash(join) => hash_base_source(join),
-        InnerJoinInputPlan::Condition(condition) => condition_base_source(condition),
-    }
-}
-
-fn left_outer_join_base_source(join: &LeftOuterJoinPlan) -> &SourcePlan {
-    match &join.input {
-        LeftOuterJoinInputPlan::NestedLoop(join) => nested_loop_base_source(join),
-        LeftOuterJoinInputPlan::Hash(join) => hash_base_source(join),
-        LeftOuterJoinInputPlan::Condition(condition) => condition_base_source(condition),
-    }
-}
-
-fn condition_base_source(condition: &JoinConditionPlan) -> &SourcePlan {
-    match &condition.input {
-        JoinConditionInputPlan::NestedLoop(join) => nested_loop_base_source(join),
-        JoinConditionInputPlan::Hash(join) => hash_base_source(join),
-    }
-}
-
-fn nested_loop_base_source(join: &NestedLoopJoinPlan) -> &SourcePlan {
-    match &join.input {
-        NestedLoopJoinInputPlan::Source(source) => source,
-        NestedLoopJoinInputPlan::InnerJoin(join) => inner_join_base_source(join),
-        NestedLoopJoinInputPlan::LeftOuterJoin(join) => left_outer_join_base_source(join),
-    }
-}
-
-fn hash_base_source(join: &HashJoinPlan) -> &SourcePlan {
-    match &join.input {
-        HashJoinInputPlan::Source(source) => source,
-        HashJoinInputPlan::InnerJoin(join) => inner_join_base_source(join),
-        HashJoinInputPlan::LeftOuterJoin(join) => left_outer_join_base_source(join),
     }
 }
 
