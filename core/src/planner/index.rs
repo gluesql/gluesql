@@ -145,48 +145,29 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
         order_by: Vec<OrderByExprPlan>,
     ) -> (ProjectPlan, Vec<OrderByExprPlan>) {
         let (input, order_by) = match project.input {
-            ProjectInputPlan::Source(relation) => {
-                let source = FilterInputPlan::Source(relation);
-                let (source, _, order_by) = self.source(outer_context, source, None, order_by);
-                let input = match source {
-                    FilterInputPlan::Source(relation) => ProjectInputPlan::Source(relation),
-                    FilterInputPlan::InnerJoin(join) => ProjectInputPlan::InnerJoin(join),
-                    FilterInputPlan::LeftOuterJoin(join) => ProjectInputPlan::LeftOuterJoin(join),
-                };
-                (input, order_by)
+            ProjectInputPlan::Source(mut source) => {
+                let (_, order_by) = self.source(outer_context, &mut source, None, order_by);
+
+                (ProjectInputPlan::Source(source), order_by)
             }
-            ProjectInputPlan::InnerJoin(join) => {
-                let source = FilterInputPlan::InnerJoin(join);
-                let (source, _, order_by) = self.source(outer_context, source, None, order_by);
-                let input = match source {
-                    FilterInputPlan::Source(relation) => ProjectInputPlan::Source(relation),
-                    FilterInputPlan::InnerJoin(join) => ProjectInputPlan::InnerJoin(join),
-                    FilterInputPlan::LeftOuterJoin(join) => ProjectInputPlan::LeftOuterJoin(join),
-                };
-                (input, order_by)
+            ProjectInputPlan::InnerJoin(mut join) => {
+                let (_, order_by) =
+                    self.source(outer_context, join.base_source_mut(), None, order_by);
+
+                (ProjectInputPlan::InnerJoin(join), order_by)
             }
-            ProjectInputPlan::LeftOuterJoin(join) => {
-                let source = FilterInputPlan::LeftOuterJoin(join);
-                let (source, _, order_by) = self.source(outer_context, source, None, order_by);
-                let input = match source {
-                    FilterInputPlan::Source(relation) => ProjectInputPlan::Source(relation),
-                    FilterInputPlan::InnerJoin(join) => ProjectInputPlan::InnerJoin(join),
-                    FilterInputPlan::LeftOuterJoin(join) => ProjectInputPlan::LeftOuterJoin(join),
-                };
-                (input, order_by)
+            ProjectInputPlan::LeftOuterJoin(mut join) => {
+                let (_, order_by) =
+                    self.source(outer_context, join.base_source_mut(), None, order_by);
+
+                (ProjectInputPlan::LeftOuterJoin(join), order_by)
             }
-            ProjectInputPlan::Filter(FilterPlan {
-                input: source,
-                expr,
-            }) => {
-                let (source, expr, order_by) =
-                    self.source(outer_context, source, Some(expr), order_by);
+            ProjectInputPlan::Filter(FilterPlan { mut input, expr }) => {
+                let (expr, order_by) =
+                    self.source(outer_context, input.base_source_mut(), Some(expr), order_by);
                 let input = match expr {
-                    Some(expr) => ProjectInputPlan::Filter(FilterPlan {
-                        input: source,
-                        expr,
-                    }),
-                    None => match source {
+                    Some(expr) => ProjectInputPlan::Filter(FilterPlan { input, expr }),
+                    None => match input {
                         FilterInputPlan::Source(relation) => ProjectInputPlan::Source(relation),
                         FilterInputPlan::InnerJoin(join) => ProjectInputPlan::InnerJoin(join),
                         FilterInputPlan::LeftOuterJoin(join) => {
@@ -244,54 +225,29 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
         order_by: Vec<OrderByExprPlan>,
     ) -> (AggregationInputPlan, Vec<OrderByExprPlan>) {
         match input {
-            AggregationInputPlan::Source(relation) => {
-                let source = FilterInputPlan::Source(relation);
-                let (source, _, order_by) = self.source(outer_context, source, None, order_by);
-                let input = match source {
-                    FilterInputPlan::Source(relation) => AggregationInputPlan::Source(relation),
-                    FilterInputPlan::InnerJoin(join) => AggregationInputPlan::InnerJoin(join),
-                    FilterInputPlan::LeftOuterJoin(join) => {
-                        AggregationInputPlan::LeftOuterJoin(join)
-                    }
-                };
-                (input, order_by)
+            AggregationInputPlan::Source(mut source) => {
+                let (_, order_by) = self.source(outer_context, &mut source, None, order_by);
+
+                (AggregationInputPlan::Source(source), order_by)
             }
-            AggregationInputPlan::InnerJoin(join) => {
-                let source = FilterInputPlan::InnerJoin(join);
-                let (source, _, order_by) = self.source(outer_context, source, None, order_by);
-                let input = match source {
-                    FilterInputPlan::Source(relation) => AggregationInputPlan::Source(relation),
-                    FilterInputPlan::InnerJoin(join) => AggregationInputPlan::InnerJoin(join),
-                    FilterInputPlan::LeftOuterJoin(join) => {
-                        AggregationInputPlan::LeftOuterJoin(join)
-                    }
-                };
-                (input, order_by)
+            AggregationInputPlan::InnerJoin(mut join) => {
+                let (_, order_by) =
+                    self.source(outer_context, join.base_source_mut(), None, order_by);
+
+                (AggregationInputPlan::InnerJoin(join), order_by)
             }
-            AggregationInputPlan::LeftOuterJoin(join) => {
-                let source = FilterInputPlan::LeftOuterJoin(join);
-                let (source, _, order_by) = self.source(outer_context, source, None, order_by);
-                let input = match source {
-                    FilterInputPlan::Source(relation) => AggregationInputPlan::Source(relation),
-                    FilterInputPlan::InnerJoin(join) => AggregationInputPlan::InnerJoin(join),
-                    FilterInputPlan::LeftOuterJoin(join) => {
-                        AggregationInputPlan::LeftOuterJoin(join)
-                    }
-                };
-                (input, order_by)
+            AggregationInputPlan::LeftOuterJoin(mut join) => {
+                let (_, order_by) =
+                    self.source(outer_context, join.base_source_mut(), None, order_by);
+
+                (AggregationInputPlan::LeftOuterJoin(join), order_by)
             }
-            AggregationInputPlan::Filter(FilterPlan {
-                input: source,
-                expr,
-            }) => {
-                let (source, expr, order_by) =
-                    self.source(outer_context, source, Some(expr), order_by);
+            AggregationInputPlan::Filter(FilterPlan { mut input, expr }) => {
+                let (expr, order_by) =
+                    self.source(outer_context, input.base_source_mut(), Some(expr), order_by);
                 let input = match expr {
-                    Some(expr) => AggregationInputPlan::Filter(FilterPlan {
-                        input: source,
-                        expr,
-                    }),
-                    None => match source {
+                    Some(expr) => AggregationInputPlan::Filter(FilterPlan { input, expr }),
+                    None => match input {
                         FilterInputPlan::Source(relation) => AggregationInputPlan::Source(relation),
                         FilterInputPlan::InnerJoin(join) => AggregationInputPlan::InnerJoin(join),
                         FilterInputPlan::LeftOuterJoin(join) => {
@@ -308,14 +264,14 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
     fn source(
         &self,
         outer_context: Option<&Rc<Context<'a>>>,
-        mut input: FilterInputPlan,
+        source: &mut SourcePlan,
         filter_expr: Option<ExprPlan>,
         mut order_by: Vec<OrderByExprPlan>,
-    ) -> (FilterInputPlan, Option<ExprPlan>, Vec<OrderByExprPlan>) {
-        let indexes = self.indexes(input.base_source());
+    ) -> (Option<ExprPlan>, Vec<OrderByExprPlan>) {
+        let indexes = self.indexes(source);
 
         if let (Some(indexes), Some(order_expr)) = (indexes.as_ref(), order_by.last())
-            && let SourcePlan::Table(table) = input.base_source_mut()
+            && let SourcePlan::Table(table) = source
             && table.access == TableAccessPlan::FullScan
             && let Some(index_name) = indexes.find_ordered(order_expr)
         {
@@ -326,12 +282,11 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
             };
             order_by.pop();
 
-            return (input, filter_expr, order_by);
+            return (filter_expr, order_by);
         }
 
         let filter_expr = filter_expr.and_then(|expr| {
-            if let (Some(indexes), SourcePlan::Table(table)) =
-                (indexes.as_ref(), input.base_source())
+            if let (Some(indexes), SourcePlan::Table(table)) = (indexes.as_ref(), &*source)
                 && table.access == TableAccessPlan::FullScan
             {
                 match self.plan_index_expr(outer_context.map(Rc::clone), indexes, expr) {
@@ -341,7 +296,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                         index_value_expr,
                         residual,
                     } => {
-                        if let SourcePlan::Table(table) = input.base_source_mut() {
+                        if let SourcePlan::Table(table) = source {
                             table.access = TableAccessPlan::Index {
                                 name: index_name,
                                 asc: None,
@@ -361,7 +316,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
             }
         });
 
-        (input, filter_expr, order_by)
+        (filter_expr, order_by)
     }
 
     fn plan_index_expr(
@@ -659,13 +614,11 @@ mod tests {
         crate::{
             mock::{MockStorage, run},
             parse_sql::parse,
-            plan::{
-                DistinctInputPlan, DistinctPlan, LimitInputPlan, LimitPlan, OffsetInputPlan,
-                OffsetPlan, ProjectInputPlan, QueryPlan, StatementPlan,
-            },
+            plan::StatementPlan,
             planner::fetch_schema_map,
             query_builder::{
-                Build, col, exists, nested, non_clustered, null, num, primary_key, table, text,
+                Build, TableAccessNode, col, exists, nested, non_clustered, null, num, primary_key,
+                table, text, values,
             },
             result::{Error, Result},
             translate::translate,
@@ -689,11 +642,16 @@ mod tests {
 CREATE TABLE Test (
     id INTEGER,
     flag BOOLEAN,
-    name TEXT
+    name TEXT,
+    asc_name TEXT,
+    desc_name TEXT
 );
 CREATE INDEX idx_id ON Test (id);
 CREATE INDEX idx_flag ON Test (flag);
 CREATE INDEX idx_name ON Test (name);
+CREATE INDEX idx_asc_name ON Test (asc_name ASC);
+CREATE INDEX idx_desc_name ON Test (desc_name DESC);
+CREATE TABLE Other (other_id INTEGER);
 ")
     }
 
@@ -804,156 +762,288 @@ CREATE INDEX idx_name ON Test (name);
     }
 
     #[test]
+    fn index_planning_respects_index_order() {
+        let storage = storage_with_indexes();
+
+        let sql = "SELECT * FROM Test ORDER BY asc_name";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(TableAccessNode::Index {
+                name: "idx_asc_name".to_owned(),
+                asc: None,
+                predicate: None,
+            })
+            .select()
+            .build();
+        assert_eq!(actual, expected, "uses ascending index:\n{sql}");
+
+        let sql = "SELECT * FROM Test ORDER BY desc_name DESC";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(TableAccessNode::Index {
+                name: "idx_desc_name".to_owned(),
+                asc: Some(false),
+                predicate: None,
+            })
+            .select()
+            .build();
+        assert_eq!(actual, expected, "uses descending index:\n{sql}");
+
+        let sql = "SELECT * FROM Test ORDER BY asc_name DESC";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test").select().order_by("asc_name DESC").build();
+        assert_eq!(
+            actual, expected,
+            "keeps mismatched descending order:\n{sql}"
+        );
+
+        let sql = "SELECT * FROM Test ORDER BY desc_name";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test").select().order_by("desc_name").build();
+        assert_eq!(actual, expected, "keeps mismatched ascending order:\n{sql}");
+    }
+
+    #[test]
     fn index_planning_removes_or_keeps_typed_order_by_stage() {
         let storage = storage_with_indexes();
 
-        let root_preserved = plan_index(&storage, "SELECT * FROM Test ORDER BY id + name");
-        assert!(matches!(
-            root_preserved,
-            Ok(StatementPlan::Query(QueryPlan::SelectOrderBy(_)))
-        ));
+        let sql = "SELECT * FROM Test ORDER BY id + name";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test").select().order_by("id + name").build();
+        assert_eq!(actual, expected, "keeps unmatched order by:\n{sql}");
 
-        let distinct_consumed = plan_index(&storage, "SELECT DISTINCT * FROM Test ORDER BY name");
-        assert!(matches!(
-            distinct_consumed,
-            Ok(StatementPlan::Query(QueryPlan::Distinct(DistinctPlan {
-                input: DistinctInputPlan::Project(_),
-            })))
-        ));
-
-        let distinct_preserved =
-            plan_index(&storage, "SELECT DISTINCT * FROM Test ORDER BY id + name");
-        assert!(matches!(
-            distinct_preserved,
-            Ok(StatementPlan::Query(QueryPlan::Distinct(DistinctPlan {
-                input: DistinctInputPlan::SelectOrderBy(_),
-            })))
-        ));
-
-        let offset_body = plan_index(&storage, "SELECT * FROM Test OFFSET 1");
-        assert!(matches!(
-            offset_body,
-            Ok(StatementPlan::Query(QueryPlan::Offset(OffsetPlan {
-                input: OffsetInputPlan::Project(_),
-                ..
-            })))
-        ));
-
-        let offset_consumed = plan_index(&storage, "SELECT * FROM Test ORDER BY name OFFSET 1");
-        assert!(matches!(
-            offset_consumed,
-            Ok(StatementPlan::Query(QueryPlan::Offset(OffsetPlan {
-                input: OffsetInputPlan::Project(_),
-                ..
-            })))
-        ));
-
-        let offset_preserved =
-            plan_index(&storage, "SELECT * FROM Test ORDER BY id + name OFFSET 1");
-        assert!(matches!(
-            offset_preserved,
-            Ok(StatementPlan::Query(QueryPlan::Offset(OffsetPlan {
-                input: OffsetInputPlan::SelectOrderBy(_),
-                ..
-            })))
-        ));
-
-        let limit_body = plan_index(&storage, "SELECT * FROM Test LIMIT 2");
-        assert!(matches!(
-            limit_body,
-            Ok(StatementPlan::Query(QueryPlan::Limit(LimitPlan {
-                input: LimitInputPlan::Project(_),
-                ..
-            })))
-        ));
-
-        let limit_consumed = plan_index(&storage, "SELECT * FROM Test ORDER BY name LIMIT 2");
-        assert!(matches!(
-            limit_consumed,
-            Ok(StatementPlan::Query(QueryPlan::Limit(LimitPlan {
-                input: LimitInputPlan::Project(_),
-                ..
-            })))
-        ));
-
-        let limit_preserved = plan_index(&storage, "SELECT * FROM Test ORDER BY id + name LIMIT 2");
-        assert!(matches!(
-            limit_preserved,
-            Ok(StatementPlan::Query(QueryPlan::Limit(LimitPlan {
-                input: LimitInputPlan::SelectOrderBy(_),
-                ..
-            })))
-        ));
-
-        let offset_limit_body = plan_index(&storage, "SELECT * FROM Test LIMIT 2 OFFSET 1");
-        assert!(matches!(
-            offset_limit_body,
-            Ok(StatementPlan::Query(QueryPlan::Limit(LimitPlan {
-                input: LimitInputPlan::Offset(OffsetPlan {
-                    input: OffsetInputPlan::Project(_),
-                    ..
-                }),
-                ..
-            })))
-        ));
-
-        let consumed = plan_index(
-            &storage,
-            "SELECT * FROM Test ORDER BY name LIMIT 2 OFFSET 1",
+        let sql = "SELECT DISTINCT * FROM Test ORDER BY name";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_name".to_owned()))
+            .select()
+            .distinct()
+            .build();
+        assert_eq!(
+            actual, expected,
+            "removes indexed distinct order by:\n{sql}"
         );
-        assert!(matches!(
-            consumed,
-            Ok(StatementPlan::Query(QueryPlan::Limit(LimitPlan {
-                input: LimitInputPlan::Offset(OffsetPlan {
-                    input: OffsetInputPlan::Project(_),
-                    ..
-                }),
-                ..
-            })))
-        ));
 
-        let preserved = plan_index(
-            &storage,
-            "SELECT * FROM Test ORDER BY id + name LIMIT 2 OFFSET 1",
+        let sql = "SELECT DISTINCT * FROM Test ORDER BY id + name";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .select()
+            .order_by("id + name")
+            .distinct()
+            .build();
+        assert_eq!(actual, expected, "keeps distinct order by:\n{sql}");
+
+        let sql = "SELECT * FROM Test OFFSET 1";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test").select().offset(1).build();
+        assert_eq!(actual, expected, "keeps offset input:\n{sql}");
+
+        let sql = "SELECT * FROM Test ORDER BY name OFFSET 1";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_name".to_owned()))
+            .select()
+            .offset(1)
+            .build();
+        assert_eq!(actual, expected, "removes indexed offset order by:\n{sql}");
+
+        let sql = "SELECT * FROM Test ORDER BY id + name OFFSET 1";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .select()
+            .order_by("id + name")
+            .offset(1)
+            .build();
+        assert_eq!(actual, expected, "keeps offset order by:\n{sql}");
+
+        let sql = "SELECT * FROM Test LIMIT 2";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test").select().limit(2).build();
+        assert_eq!(actual, expected, "keeps limit input:\n{sql}");
+
+        let sql = "SELECT * FROM Test ORDER BY name LIMIT 2";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_name".to_owned()))
+            .select()
+            .limit(2)
+            .build();
+        assert_eq!(actual, expected, "removes indexed limit order by:\n{sql}");
+
+        let sql = "SELECT * FROM Test ORDER BY id + name LIMIT 2";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .select()
+            .order_by("id + name")
+            .limit(2)
+            .build();
+        assert_eq!(actual, expected, "keeps limit order by:\n{sql}");
+
+        let sql = "SELECT * FROM Test LIMIT 2 OFFSET 1";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test").select().offset(1).limit(2).build();
+        assert_eq!(actual, expected, "keeps offset limit input:\n{sql}");
+
+        let sql = "SELECT * FROM Test ORDER BY name LIMIT 2 OFFSET 1";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_name".to_owned()))
+            .select()
+            .offset(1)
+            .limit(2)
+            .build();
+        assert_eq!(
+            actual, expected,
+            "removes indexed terminal order by:\n{sql}"
         );
-        assert!(matches!(
-            preserved,
-            Ok(StatementPlan::Query(QueryPlan::Limit(LimitPlan {
-                input: LimitInputPlan::Offset(OffsetPlan {
-                    input: OffsetInputPlan::SelectOrderBy(_),
-                    ..
-                }),
-                ..
-            })))
-        ));
 
-        let aggregation_consumed =
-            plan_index(&storage, "SELECT id FROM Test GROUP BY id ORDER BY name");
-        assert!(matches!(
-            aggregation_consumed,
-            Ok(StatementPlan::Query(QueryPlan::Project(project)))
-                if matches!(project.input, ProjectInputPlan::Aggregation(_))
-        ));
+        let sql = "SELECT * FROM Test ORDER BY id + name LIMIT 2 OFFSET 1";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .select()
+            .order_by("id + name")
+            .offset(1)
+            .limit(2)
+            .build();
+        assert_eq!(actual, expected, "keeps terminal order by:\n{sql}");
 
-        let aggregation_preserved = plan_index(
-            &storage,
-            "SELECT id FROM Test GROUP BY id ORDER BY id + name",
+        let sql = "SELECT id FROM Test GROUP BY id ORDER BY name";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_name".to_owned()))
+            .select()
+            .group_by("id")
+            .project("id")
+            .build();
+        assert_eq!(actual, expected, "removes aggregate order by:\n{sql}");
+
+        let sql = "SELECT id FROM Test GROUP BY id ORDER BY id + name";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .select()
+            .group_by("id")
+            .project("id")
+            .order_by("id + name")
+            .build();
+        assert_eq!(actual, expected, "keeps aggregate order by:\n{sql}");
+
+        let sql = "SELECT id FROM Test GROUP BY id HAVING TRUE ORDER BY name";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_name".to_owned()))
+            .select()
+            .group_by("id")
+            .having("TRUE")
+            .project("id")
+            .build();
+        assert_eq!(actual, expected, "removes having order by:\n{sql}");
+
+        let sql = "VALUES (1) ORDER BY column1 OFFSET 1";
+        let actual = plan_index(&storage, sql);
+        let expected = values(vec!["1"]).order_by("column1").offset(1).build();
+        assert_eq!(actual, expected, "keeps values order by offset:\n{sql}");
+
+        let sql = "VALUES (1) LIMIT 1 OFFSET 1";
+        let actual = plan_index(&storage, sql);
+        let expected = values(vec!["1"]).offset(1).limit(1).build();
+        assert_eq!(actual, expected, "keeps values offset limit:\n{sql}");
+    }
+
+    #[test]
+    fn index_planning_preserves_join_topology() {
+        let storage = storage_with_indexes();
+
+        let sql = "SELECT Test.id FROM Test JOIN Other ORDER BY name";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_name".to_owned()))
+            .select()
+            .join("Other")
+            .project("Test.id")
+            .build();
+        assert_eq!(actual, expected, "preserves ordered inner join:\n{sql}");
+
+        let sql = "SELECT Test.id FROM Test LEFT JOIN Other ORDER BY name";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_name".to_owned()))
+            .select()
+            .left_join("Other")
+            .project("Test.id")
+            .build();
+        assert_eq!(
+            actual, expected,
+            "preserves ordered left outer join:\n{sql}"
         );
-        assert!(matches!(
-            aggregation_preserved,
-            Ok(StatementPlan::Query(QueryPlan::SelectOrderBy(order_by)))
-                if matches!(order_by.input.input, ProjectInputPlan::Aggregation(_))
-        ));
 
-        let having_consumed = plan_index(
-            &storage,
-            "SELECT id FROM Test GROUP BY id HAVING TRUE ORDER BY name",
+        let sql = "SELECT Test.id FROM Test JOIN Other GROUP BY Test.id ORDER BY name";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_name".to_owned()))
+            .select()
+            .join("Other")
+            .group_by("Test.id")
+            .project("Test.id")
+            .build();
+        assert_eq!(actual, expected, "preserves aggregated inner join:\n{sql}");
+
+        let sql = "SELECT Test.id FROM Test LEFT JOIN Other GROUP BY Test.id ORDER BY name";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_name".to_owned()))
+            .select()
+            .left_join("Other")
+            .group_by("Test.id")
+            .project("Test.id")
+            .build();
+        assert_eq!(
+            actual, expected,
+            "preserves aggregated left outer join:\n{sql}"
         );
-        assert!(matches!(
-            having_consumed,
-            Ok(StatementPlan::Query(QueryPlan::Project(project)))
-                if matches!(project.input, ProjectInputPlan::Having(_))
-        ));
+
+        let sql = "SELECT Test.id FROM Test JOIN Other WHERE id = 1";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_id".to_owned()).eq(num(1)))
+            .select()
+            .join("Other")
+            .project("Test.id")
+            .build();
+        assert_eq!(actual, expected, "preserves inner join:\n{sql}");
+
+        let sql = "SELECT Test.id FROM Test LEFT JOIN Other WHERE id = 1";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_id".to_owned()).eq(num(1)))
+            .select()
+            .left_join("Other")
+            .project("Test.id")
+            .build();
+        assert_eq!(actual, expected, "preserves left outer join:\n{sql}");
+
+        let sql = "SELECT Test.id FROM Test JOIN Other WHERE id = 1 GROUP BY Test.id";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_id".to_owned()).eq(num(1)))
+            .select()
+            .join("Other")
+            .group_by("Test.id")
+            .project("Test.id")
+            .build();
+        assert_eq!(actual, expected, "preserves aggregated inner join:\n{sql}");
+
+        let sql =
+            "SELECT Test.id FROM Test LEFT JOIN Other WHERE id = 1 GROUP BY Test.id HAVING TRUE";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_id".to_owned()).eq(num(1)))
+            .select()
+            .left_join("Other")
+            .group_by("Test.id")
+            .having("TRUE")
+            .project("Test.id")
+            .build();
+        assert_eq!(actual, expected, "preserves having left outer join:\n{sql}");
     }
 
     #[test]
