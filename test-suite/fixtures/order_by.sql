@@ -41,6 +41,16 @@ SELECT id, num, name FROM Test ORDER BY num DESC
 -- | 3       | 4        | "World"    |
 -- | 1       | 2        | "Hello"    |
 
+-- @name: unary plus on a column remains an ORDER BY expression
+SELECT id, num FROM Test ORDER BY +num DESC
+-- @expect:
+-- | id: I64 | num: I64 |
+-- | ------- | -------- |
+-- | 1       | 9        |
+-- | 4       | 7        |
+-- | 3       | 4        |
+-- | 1       | 2        |
+
 SELECT id, num, name FROM Test ORDER BY name
 -- @expect:
 -- | id: I64 | num: I64 | name: Str  |

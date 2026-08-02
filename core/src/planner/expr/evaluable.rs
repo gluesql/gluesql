@@ -257,6 +257,23 @@ mod tests {
         std::rc::Rc,
     };
 
+    fn context() -> Option<Rc<Context<'static>>> {
+        let left_child = Context::new("Empty".to_owned(), Vec::new(), None);
+        let left = Context::new(
+            "Foo".to_owned(),
+            vec!["id", "name"],
+            Some(Rc::new(left_child)),
+        );
+        let right_child = Context::new("Src".to_owned(), Vec::new(), None);
+        let right = Context::new(
+            "Bar".to_owned(),
+            vec!["id", "rate"],
+            Some(Rc::new(right_child)),
+        );
+
+        Context::concat(Some(Rc::new(left)), Some(Rc::new(right)))
+    }
+
     fn test(context: Option<Rc<Context<'_>>>, sql: &str, expected: bool) {
         let parsed = parse_expr(sql).unwrap();
         let expr = translate_expr(&parsed, NO_PARAMS);
@@ -268,24 +285,19 @@ mod tests {
         assert_eq!(actual, expected, "{sql}");
     }
 
-    #[test]
-    fn evaluable() {
-        let context = {
-            let left_child = Context::new("Empty".to_owned(), Vec::new(), None);
-            let left = Context::new(
-                "Foo".to_owned(),
-                vec!["id", "name"],
-                Some(Rc::new(left_child)),
-            );
-            let right_child = Context::new("Src".to_owned(), Vec::new(), None);
-            let right = Context::new(
-                "Bar".to_owned(),
-                vec!["id", "rate"],
-                Some(Rc::new(right_child)),
-            );
+    fn test_query(context: Option<&Rc<Context<'_>>>, sql: &str, expected: bool) {
+        let parsed = parse_query(sql).unwrap();
+        let query = translate_query(&parsed, NO_PARAMS)
+            .map(QueryPlan::from)
+            .unwrap();
+        let actual = check_query(context, &query);
 
-            Context::concat(Some(Rc::new(left)), Some(Rc::new(right)))
-        };
+        assert_eq!(actual, expected, "{sql}");
+    }
+
+    #[test]
+    fn check_expr_evaluability() {
+        let context = context();
 
         macro_rules! test {
             ($sql: literal, $expected: expr) => {
@@ -395,23 +407,46 @@ mod tests {
     }
 
     #[test]
-    fn terminal_query_plan_paths_are_evaluable() {
-        for sql in [
-            "VALUES (1)",
-            "VALUES (1) ORDER BY 1",
-            "VALUES (1) OFFSET 1",
-            "VALUES (1) ORDER BY 1 OFFSET 1",
-            "VALUES (1) LIMIT 1",
-            "VALUES (1) ORDER BY 1 LIMIT 1",
-            "VALUES (1) LIMIT 1 OFFSET 1",
-            "VALUES (1) ORDER BY 1 LIMIT 1 OFFSET 1",
-        ] {
-            let parsed = parse_query(sql).expect(sql);
-            let query = translate_query(&parsed, NO_PARAMS)
-                .map(QueryPlan::from)
-                .expect(sql);
+    fn check_query_evaluability() {
+        let context = context();
 
-            assert!(check_query(None, &query), "{sql}");
+        macro_rules! test_query {
+            ($sql: literal, $expected: expr) => {
+                test_query(context.as_ref(), $sql, $expected);
+            };
         }
+
+        test_query!("VALUES (1)", true);
+        test_query!("VALUES (1) ORDER BY 1", true);
+        test_query!("VALUES (1) OFFSET 1", true);
+        test_query!("VALUES (1) ORDER BY 1 OFFSET 1", true);
+        test_query!("VALUES (1) LIMIT 1", true);
+        test_query!("VALUES (1) ORDER BY 1 LIMIT 1", true);
+        test_query!("VALUES (1) LIMIT 1 OFFSET 1", true);
+        test_query!("VALUES (1) ORDER BY 1 LIMIT 1 OFFSET 1", true);
+        test_query!("SELECT id FROM Foo", true);
+        test_query!("SELECT id FROM Foo ORDER BY id", true);
+        test_query!("SELECT DISTINCT id FROM Foo", true);
+        test_query!("SELECT DISTINCT id FROM Foo ORDER BY id", true);
+        test_query!("SELECT id FROM Foo ORDER BY id OFFSET 1", true);
+        test_query!("SELECT DISTINCT id FROM Foo OFFSET 1", true);
+        test_query!("SELECT id FROM Foo ORDER BY id LIMIT 1", true);
+        test_query!("SELECT DISTINCT id FROM Foo LIMIT 1", true);
+        test_query!("SELECT id FROM Foo LIMIT 1 OFFSET 1", true);
+        test_query!(
+            "SELECT DISTINCT id FROM Foo ORDER BY id LIMIT 1 OFFSET 1",
+            true
+        );
+        test_query!("SELECT Foo.id FROM Foo LEFT JOIN Bar", true);
+        test_query!(
+            "SELECT Foo.id FROM Foo JOIN Bar WHERE Foo.id = Bar.id",
+            true
+        );
+        test_query!(
+            "SELECT Foo.id FROM Foo LEFT JOIN Bar WHERE Foo.id = Bar.id",
+            true
+        );
+        test_query!("SELECT Foo.id FROM Foo JOIN Bar GROUP BY Foo.id", true);
+        test_query!("SELECT Foo.id FROM Foo LEFT JOIN Bar GROUP BY Foo.id", true);
     }
 }

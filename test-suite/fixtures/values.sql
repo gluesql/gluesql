@@ -95,6 +95,19 @@ SELECT * FROM TableFromValues
 -- | 1            | "a"          | true          | NULL         | NULL    |
 -- | 2            | "b"          | false         | 3            | NULL    |
 
+-- @name: CTAS preserves the complete VALUES terminal pipeline
+CREATE TABLE TableFromValuesPipeline AS
+VALUES (3), (1), (2)
+ORDER BY column1 DESC
+LIMIT 1 OFFSET 1
+-- @expect: payload Create
+
+SELECT * FROM TableFromValuesPipeline
+-- @expect:
+-- | column1: I64 |
+-- | ------------ |
+-- | 2            |
+
 SHOW COLUMNS FROM TableFromValues
 -- @expect: payload ShowColumns
 -- @json:

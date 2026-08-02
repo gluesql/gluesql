@@ -211,6 +211,24 @@ mod tests {
         let expected = "SELECT _doc['id'] as id FROM Player ORDER BY _doc['id'] LIMIT 1";
         test(actual, expected, "order by before limit");
 
+        let actual = "SELECT DISTINCT id FROM Player";
+        let expected = "SELECT DISTINCT _doc['id'] as id FROM Player";
+        test(actual, expected, "distinct projection");
+
+        let actual = r"
+            SELECT DISTINCT id
+            FROM Player
+            ORDER BY score
+            LIMIT num OFFSET skip
+        ";
+        let expected = r"
+            SELECT DISTINCT _doc['id'] as id
+            FROM Player
+            ORDER BY _doc['score']
+            LIMIT _doc['num'] OFFSET _doc['skip']
+        ";
+        test(actual, expected, "distinct terminal pipeline");
+
         let actual = "SELECT id FROM Item";
         let expected = "SELECT id FROM Item";
         test(actual, expected, "schemaful root identifier");

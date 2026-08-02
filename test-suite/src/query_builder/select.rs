@@ -1,6 +1,11 @@
 use {
     crate::*,
-    gluesql_core::{executor::Payload, prelude::Value::*, query_builder::*},
+    gluesql_core::{
+        error::{Error, EvaluateError},
+        executor::Payload,
+        prelude::Value::*,
+        query_builder::*,
+    },
 };
 
 test_case!(select, {
@@ -110,6 +115,33 @@ test_case!(select, {
         Str("Drink".to_owned())   Str("Orange juice".to_owned())   I64(60)
     ));
     assert_eq!(actual, expected, "left outer join");
+
+    // explicit hash join skips NULL right keys
+    let actual = table("Item")
+        .select()
+        .left_join("Category")
+        .hash_executor("NULL", "Item.category_id")
+        .filter("Item.id = 100")
+        .project("Item.name AS item")
+        .project("Category.name AS category")
+        .execute(glue);
+    let expected = Ok(select_with_null!(
+        item                        | category;
+        Str("Pineapple".to_owned())   Null
+    ));
+    assert_eq!(actual, expected, "explicit hash join skips NULL right keys");
+
+    // explicit hash join propagates right key errors during preparation
+    let actual = table("Item")
+        .select()
+        .join("Category")
+        .hash_executor("1 / 0", "Item.category_id")
+        .execute(glue);
+    let expected = Err(Error::Evaluate(EvaluateError::DivisorShouldNotBeZero));
+    assert_eq!(
+        actual, expected,
+        "explicit hash join propagates right key errors during preparation"
+    );
 
     // group by - having
     let actual = table("Item")

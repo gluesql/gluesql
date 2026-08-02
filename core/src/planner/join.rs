@@ -724,6 +724,13 @@ mod tests {
         plan(&schema_map, statement)
     }
 
+    fn plan_builder(storage: &MockStorage, builder: impl Build) -> StatementPlan {
+        let statement = builder.build().unwrap();
+        let schema_map = fetch_schema_map(storage, &statement).unwrap();
+
+        plan(&schema_map, statement)
+    }
+
     macro_rules! test {
         ($actual: expr, $expected: expr, $name: literal) => {
             let expected = $expected.build().unwrap();
@@ -896,6 +903,101 @@ mod tests {
             .join("PlayerItem")
             .on("(SELECT * FROM Player u2)");
         test!(actual, expected, "subquery in join_constraint:\n{sql}");
+    }
+
+    #[test]
+    fn explicit_hash_plans_are_preserved() {
+        let storage = run("
+            CREATE TABLE Player (
+                id INTEGER,
+                name TEXT
+            );
+            CREATE TABLE PlayerItem (
+                user_id INTEGER,
+                item_id INTEGER,
+                amount INTEGER
+            );
+            CREATE TABLE Item (
+                id INTEGER,
+                name TEXT
+            );
+        ");
+        let actual = plan_builder(
+            &storage,
+            table("Player")
+                .select()
+                .left_join("PlayerItem")
+                .hash_executor("PlayerItem.user_id", "Player.id"),
+        );
+        let expected = table("Player")
+            .select()
+            .left_join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id");
+        test!(actual, expected, "left outer hash");
+
+        let actual = plan_builder(
+            &storage,
+            table("Player")
+                .select()
+                .join("PlayerItem")
+                .hash_executor("PlayerItem.user_id", "Player.id")
+                .on("Player.name IS NOT NULL"),
+        );
+        let expected = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .on("Player.name IS NOT NULL");
+        test!(actual, expected, "inner hash with condition");
+
+        let actual = plan_builder(
+            &storage,
+            table("Player")
+                .select()
+                .left_join("PlayerItem")
+                .hash_executor("PlayerItem.user_id", "Player.id")
+                .on("Player.name IS NOT NULL"),
+        );
+        let expected = table("Player")
+            .select()
+            .left_join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .on("Player.name IS NOT NULL");
+        test!(actual, expected, "left outer hash with condition");
+
+        let actual = plan_builder(
+            &storage,
+            table("Player")
+                .select()
+                .join("PlayerItem")
+                .hash_executor("PlayerItem.user_id", "Player.id")
+                .join("Item")
+                .hash_executor("Item.id", "PlayerItem.item_id"),
+        );
+        let expected = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .join("Item")
+            .hash_executor("Item.id", "PlayerItem.item_id");
+        test!(actual, expected, "inner hash feeds another hash");
+
+        let actual = plan_builder(
+            &storage,
+            table("Player")
+                .select()
+                .left_join("PlayerItem")
+                .hash_executor("PlayerItem.user_id", "Player.id")
+                .join("Item")
+                .hash_executor("Item.id", "PlayerItem.item_id"),
+        );
+        let expected = table("Player")
+            .select()
+            .left_join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .join("Item")
+            .hash_executor("Item.id", "PlayerItem.item_id");
+        test!(actual, expected, "left outer hash feeds another hash");
     }
 
     #[test]

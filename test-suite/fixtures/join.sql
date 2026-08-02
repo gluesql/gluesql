@@ -58,6 +58,99 @@ WHERE i.id = 101;
 -- | ------- | ------------- | -------------- | ---- | ---- |
 -- | 101     | 1             | 1              | NULL | NULL |
 
+-- @name: NULL condition produces an unmatched LEFT OUTER row
+SELECT i.*, p.*
+FROM Item i
+LEFT JOIN Player p ON NULL
+WHERE i.id = 101;
+-- @expect:
+-- | id: I64 | quantity: I64 | player_id: I64 | id   | name |
+-- | ------- | ------------- | -------------- | ---- | ---- |
+-- | 101     | 1             | 1              | NULL | NULL |
+
+-- @name: NULL condition produces no INNER JOIN row
+SELECT i.id
+FROM Item i
+INNER JOIN Player p ON NULL
+WHERE i.id = 101;
+-- @expect:
+-- | id: I64 |
+-- | ------- |
+
+-- @name: Derived JOIN source propagates row errors
+SELECT i.id
+FROM Item i
+LEFT JOIN (SELECT 1 / 0 AS bad) p ON TRUE
+WHERE i.id = 101;
+-- @expect: error Evaluate.DivisorShouldNotBeZero
+
+-- @name: JOIN key expression propagates evaluation errors
+SELECT i.id
+FROM Item i
+LEFT JOIN Player p ON p.id = i.player_id / 0
+WHERE i.id = 101;
+-- @expect: error Value.DivisorShouldNotBeZero
+
+-- @name: earlier JOIN errors propagate through a later INNER JOIN
+SELECT i.id
+FROM Item i
+JOIN (SELECT 1 / 0 AS bad) p ON TRUE
+JOIN Player p2 ON TRUE
+WHERE i.id = 101;
+-- @expect: error Evaluate.DivisorShouldNotBeZero
+
+-- @name: earlier JOIN errors propagate through a later LEFT OUTER JOIN
+SELECT i.id
+FROM Item i
+JOIN (SELECT 1 / 0 AS bad) p ON TRUE
+LEFT JOIN Player p2 ON TRUE
+WHERE i.id = 101;
+-- @expect: error Evaluate.DivisorShouldNotBeZero
+
+-- @name: NULL equality keys do not match
+SELECT i.id, p.id
+FROM Item i
+LEFT JOIN (VALUES (NULL)) AS p(id) ON p.id = i.player_id
+WHERE i.id = 101;
+-- @expect:
+-- | id: I64 | id   |
+-- | ------- | ---- |
+-- | 101     | NULL |
+
+-- @name: completed INNER JOIN feeds the next JOIN and aggregation
+SELECT COUNT(*) AS count
+FROM Item
+INNER JOIN Player p
+INNER JOIN Player p2;
+-- @expect:
+-- | count: I64 |
+-- | ---------- |
+-- | 375        |
+
+-- @name: completed LEFT OUTER JOIN feeds the next JOIN and aggregation
+SELECT COUNT(*) AS count
+FROM Item
+LEFT JOIN Player p
+LEFT JOIN Player p2;
+-- @expect:
+-- | count: I64 |
+-- | ---------- |
+-- | 375        |
+
+-- @name: explicit GROUP BY runs after LEFT OUTER JOIN
+SELECT p.id, COUNT(*) AS count
+FROM Item i
+LEFT JOIN Player p ON p.id = i.player_id
+GROUP BY p.id
+ORDER BY p.id;
+-- @expect:
+-- | id: I64 | count: I64 |
+-- | ------- | ---------- |
+-- | 1       | 7          |
+-- | 2       | 2          |
+-- | 3       | 4          |
+-- | 5       | 2          |
+
 SELECT *
 FROM Item
 LEFT JOIN Player ON Player.id = Item.player_id

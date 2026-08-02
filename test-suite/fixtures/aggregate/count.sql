@@ -74,6 +74,13 @@ SELECT COUNT(id) FROM EmptyItem;
 -- | -------------- |
 -- | 0              |
 
+-- @name: ORDER BY evaluates against an empty global aggregation
+SELECT COUNT(*) AS count FROM EmptyItem ORDER BY count;
+-- @expect:
+-- | count: I64 |
+-- | ---------- |
+-- | 0          |
+
 -- @name: HAVING without GROUP BY uses global aggregation
 SELECT COUNT(*) FROM Item HAVING COUNT(*) > 0;
 -- @expect:

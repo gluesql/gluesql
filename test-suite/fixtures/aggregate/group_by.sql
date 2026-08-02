@@ -127,3 +127,22 @@ WHERE EXISTS (
 -- | id: I64 |
 -- | ------- |
 -- | 105     |
+
+-- @name: empty global aggregation preserves correlated outer context
+SELECT id
+FROM Sub
+WHERE id = (
+    SELECT Sub.id
+    FROM Item
+    WHERE FALSE
+    HAVING TRUE
+    ORDER BY Sub.id
+)
+-- @expect:
+-- | id: I64 |
+-- | ------- |
+-- | 101     |
+-- | 102     |
+-- | 103     |
+-- | 104     |
+-- | 105     |

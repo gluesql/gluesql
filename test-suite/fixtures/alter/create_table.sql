@@ -110,6 +110,32 @@ SELECT * FROM TargetTableWithOffset
 -- | ------- | -------- | --------- |
 -- | 2       | 2        | "2"       |
 
+-- @name: CTAS preserves an ORDER BY terminal source
+CREATE TABLE TargetTableWithOrder AS
+SELECT * FROM CreateTable2 ORDER BY num DESC
+-- @expect: payload Create
+
+SELECT * FROM TargetTableWithOrder
+-- @expect:
+-- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
+-- | 2       | 2        | "2"       |
+-- | NULL    | 1        | "1"       |
+
+-- @name: CTAS preserves the complete SELECT terminal pipeline
+CREATE TABLE TargetTableWithPipeline AS
+SELECT DISTINCT num
+FROM CreateTable2
+ORDER BY num DESC
+LIMIT 1 OFFSET 1
+-- @expect: payload Create
+
+SELECT * FROM TargetTableWithPipeline
+-- @expect:
+-- | num: I64 |
+-- | -------- |
+-- | 1        |
+
 CREATE TABLE TargetTableWithData AS SELECT * FROM CreateTable2
 -- @expect: error Alter.TableAlreadyExists
 -- @json: "TargetTableWithData"

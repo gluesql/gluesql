@@ -220,6 +220,25 @@ SELECT * FROM (
 -- | 2       | "SQL"     |
 -- | 1       | "GLUE"    |
 
+-- @name: Derived VALUES preserves ORDER BY output labels
+SELECT *
+FROM (VALUES (2), (1) ORDER BY column1) AS OrderedValues
+-- @expect:
+-- | column1: I64 |
+-- | ------------ |
+-- | 1            |
+-- | 2            |
+
+-- @name: Derived DISTINCT preserves projected output labels
+SELECT *
+FROM (SELECT DISTINCT name FROM InnerTable) AS DistinctNames
+ORDER BY name
+-- @expect:
+-- | name: Str |
+-- | --------- |
+-- | "GLUE"    |
+-- | "SQL"     |
+
 SELECT *
 FROM OuterTable, (
     SELECT id
