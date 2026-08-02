@@ -15,7 +15,7 @@ pub enum ProjectInputPlan {
 }
 
 impl ProjectInputPlan {
-    pub(crate) fn base_source(&self) -> &SourcePlan {
+    pub fn base_source(&self) -> &SourcePlan {
         match self {
             Self::Source(source) => source,
             Self::InnerJoin(join) => join.base_source(),

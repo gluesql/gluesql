@@ -50,7 +50,7 @@ pub enum QueryPlan {
 }
 
 impl QueryPlan {
-    pub(crate) fn project(&self) -> Option<&ProjectPlan> {
+    pub fn project(&self) -> Option<&ProjectPlan> {
         match self {
             Self::Project(project) => Some(project),
             Self::Values(_) | Self::ValuesOrderBy(_) => None,

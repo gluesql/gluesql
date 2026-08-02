@@ -2,12 +2,8 @@ use {
     gluesql_core::{
         ast::*,
         plan::{
-            AggregationInputPlan, DistinctInputPlan, DistinctPlan, FilterInputPlan, FilterPlan,
-            HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan,
-            JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
-            LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
-            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SourcePlan,
-            StatementPlan, TableAccessPlan,
+            AggregationInputPlan, AggregationPlan, ExprPlan, HavingPlan, ProjectInputPlan,
+            ProjectPlan, QueryPlan, SourcePlan, StatementPlan, TableAccessPlan,
         },
         prelude::{Glue, Payload, Result},
         store::{GStore, GStoreMut, Planner},
@@ -38,16 +34,16 @@ pub fn test_indexes(statement: &StatementPlan, indexes: Option<Vec<TableAccessPl
 }
 
 fn find_indexes(statement: &StatementPlan) -> Vec<&TableAccessPlan> {
-    fn find_expr_indexes(expr: &gluesql_core::plan::ExprPlan) -> Vec<&TableAccessPlan> {
+    fn find_expr_indexes(expr: &ExprPlan) -> Vec<&TableAccessPlan> {
         match expr {
-            gluesql_core::plan::ExprPlan::Subquery(query)
-            | gluesql_core::plan::ExprPlan::Exists {
+            ExprPlan::Subquery(query)
+            | ExprPlan::Exists {
                 subquery: query, ..
             }
-            | gluesql_core::plan::ExprPlan::InSubquery {
+            | ExprPlan::InSubquery {
                 subquery: query, ..
             } => find_query_indexes(query),
-            _ => vec![],
+            _ => Vec::new(),
         }
     }
 
@@ -61,124 +57,40 @@ fn find_indexes(statement: &StatementPlan) -> Vec<&TableAccessPlan> {
         }
     }
 
-    fn find_inner_join_indexes(join: &InnerJoinPlan) -> Vec<&TableAccessPlan> {
-        match &join.input {
-            InnerJoinInputPlan::NestedLoop(join) => find_nested_loop_indexes(join),
-            InnerJoinInputPlan::Hash(join) => find_hash_indexes(join),
-            InnerJoinInputPlan::Condition(condition) => find_condition_indexes(condition),
-        }
-    }
-
-    fn find_left_outer_join_indexes(join: &LeftOuterJoinPlan) -> Vec<&TableAccessPlan> {
-        match &join.input {
-            LeftOuterJoinInputPlan::NestedLoop(join) => find_nested_loop_indexes(join),
-            LeftOuterJoinInputPlan::Hash(join) => find_hash_indexes(join),
-            LeftOuterJoinInputPlan::Condition(condition) => find_condition_indexes(condition),
-        }
-    }
-
-    fn find_condition_indexes(condition: &JoinConditionPlan) -> Vec<&TableAccessPlan> {
-        let input = match &condition.input {
-            JoinConditionInputPlan::NestedLoop(join) => find_nested_loop_indexes(join),
-            JoinConditionInputPlan::Hash(join) => find_hash_indexes(join),
-        };
-
-        [input, find_expr_indexes(&condition.expr)].concat()
-    }
-
-    fn find_nested_loop_indexes(join: &NestedLoopJoinPlan) -> Vec<&TableAccessPlan> {
-        let input = match &join.input {
-            NestedLoopJoinInputPlan::Source(source) => find_source_indexes(source),
-            NestedLoopJoinInputPlan::InnerJoin(join) => find_inner_join_indexes(join),
-            NestedLoopJoinInputPlan::LeftOuterJoin(join) => find_left_outer_join_indexes(join),
-        };
-
-        [input, find_source_indexes(&join.right)].concat()
-    }
-
-    fn find_hash_indexes(join: &HashJoinPlan) -> Vec<&TableAccessPlan> {
-        let input = match &join.input {
-            HashJoinInputPlan::Source(source) => find_source_indexes(source),
-            HashJoinInputPlan::InnerJoin(join) => find_inner_join_indexes(join),
-            HashJoinInputPlan::LeftOuterJoin(join) => find_left_outer_join_indexes(join),
-        };
-        let expressions = [
-            find_expr_indexes(&join.input_key),
-            find_expr_indexes(&join.right_key),
-            join.right_filter
-                .as_ref()
-                .map_or_else(Vec::new, find_expr_indexes),
-        ]
-        .concat();
-
-        [input, find_source_indexes(&join.right), expressions].concat()
-    }
-
-    fn find_filter_indexes(filter: &FilterPlan) -> Vec<&TableAccessPlan> {
-        [
-            match &filter.input {
-                FilterInputPlan::Source(source) => find_source_indexes(source),
-                FilterInputPlan::InnerJoin(join) => find_inner_join_indexes(join),
-                FilterInputPlan::LeftOuterJoin(join) => find_left_outer_join_indexes(join),
-            },
-            find_expr_indexes(&filter.expr),
-        ]
-        .concat()
-    }
-
-    fn find_aggregation_input_indexes(input: &AggregationInputPlan) -> Vec<&TableAccessPlan> {
-        match input {
-            AggregationInputPlan::Source(source) => find_source_indexes(source),
-            AggregationInputPlan::InnerJoin(join) => find_inner_join_indexes(join),
-            AggregationInputPlan::LeftOuterJoin(join) => find_left_outer_join_indexes(join),
-            AggregationInputPlan::Filter(filter) => find_filter_indexes(filter),
-        }
-    }
-
-    fn find_offset_indexes(offset: &OffsetPlan) -> Vec<&TableAccessPlan> {
-        match &offset.input {
-            OffsetInputPlan::Project(project) => find_project_indexes(project),
-            OffsetInputPlan::Values(_) | OffsetInputPlan::ValuesOrderBy(_) => Vec::new(),
-            OffsetInputPlan::SelectOrderBy(order_by) => find_project_indexes(&order_by.input),
-            OffsetInputPlan::Distinct(distinct) => find_distinct_indexes(distinct),
-        }
-    }
-
     fn find_project_indexes(project: &ProjectPlan) -> Vec<&TableAccessPlan> {
-        match &project.input {
-            ProjectInputPlan::Source(source) => find_source_indexes(source),
-            ProjectInputPlan::InnerJoin(join) => find_inner_join_indexes(join),
-            ProjectInputPlan::LeftOuterJoin(join) => find_left_outer_join_indexes(join),
-            ProjectInputPlan::Filter(filter) => find_filter_indexes(filter),
-            ProjectInputPlan::Aggregation(aggregation) => {
-                find_aggregation_input_indexes(&aggregation.input)
-            }
-            ProjectInputPlan::Having(having) => find_aggregation_input_indexes(&having.input.input),
-        }
-    }
+        let filter = match &project.input {
+            ProjectInputPlan::Filter(filter)
+            | ProjectInputPlan::Aggregation(AggregationPlan {
+                input: AggregationInputPlan::Filter(filter),
+                ..
+            })
+            | ProjectInputPlan::Having(HavingPlan {
+                input:
+                    AggregationPlan {
+                        input: AggregationInputPlan::Filter(filter),
+                        ..
+                    },
+                ..
+            }) => Some(filter),
+            ProjectInputPlan::Source(_)
+            | ProjectInputPlan::InnerJoin(_)
+            | ProjectInputPlan::LeftOuterJoin(_)
+            | ProjectInputPlan::Aggregation(_)
+            | ProjectInputPlan::Having(_) => None,
+        };
+        let filter_indexes = filter
+            .map(|filter| find_expr_indexes(&filter.expr))
+            .unwrap_or_default();
+        let source_indexes = find_source_indexes(project.input.base_source());
 
-    fn find_distinct_indexes(distinct: &DistinctPlan) -> Vec<&TableAccessPlan> {
-        match &distinct.input {
-            DistinctInputPlan::Project(project) => find_project_indexes(project),
-            DistinctInputPlan::SelectOrderBy(order_by) => find_project_indexes(&order_by.input),
-        }
+        [filter_indexes, source_indexes].concat()
     }
 
     fn find_query_indexes(query: &QueryPlan) -> Vec<&TableAccessPlan> {
-        match query {
-            QueryPlan::Project(project) => find_project_indexes(project),
-            QueryPlan::Values(_) | QueryPlan::ValuesOrderBy(_) => Vec::new(),
-            QueryPlan::SelectOrderBy(order_by) => find_project_indexes(&order_by.input),
-            QueryPlan::Distinct(distinct) => find_distinct_indexes(distinct),
-            QueryPlan::Offset(offset) => find_offset_indexes(offset),
-            QueryPlan::Limit(LimitPlan { input, .. }) => match input {
-                LimitInputPlan::Project(project) => find_project_indexes(project),
-                LimitInputPlan::Values(_) | LimitInputPlan::ValuesOrderBy(_) => Vec::new(),
-                LimitInputPlan::SelectOrderBy(order_by) => find_project_indexes(&order_by.input),
-                LimitInputPlan::Distinct(distinct) => find_distinct_indexes(distinct),
-                LimitInputPlan::Offset(offset) => find_offset_indexes(offset),
-            },
-        }
+        query
+            .project()
+            .map(find_project_indexes)
+            .unwrap_or_default()
     }
 
     match statement {
