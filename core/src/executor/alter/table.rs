@@ -5,9 +5,9 @@ use {
         data::{Row, Schema},
         executor::{evaluate_stateless, query},
         plan::{
-            DistinctInputPlan, DistinctPlan, FilterInputPlan, FilterPlan, LimitInputPlan,
-            LimitPlan, OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan,
-            QueryPlan, SelectItemPlan, SourcePlan, ValuesPlan,
+            DistinctInputPlan, DistinctPlan, FilterInputPlan, LimitInputPlan, LimitPlan,
+            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
+            SelectItemPlan, SourcePlan, ValuesPlan,
         },
         prelude::{DataType, Value},
         result::Result,
@@ -260,32 +260,19 @@ fn create_table_distinct_source(distinct: &DistinctPlan) -> CreateTableSource<'_
 }
 
 fn source_for_schema_copy(project: &ProjectPlan) -> Option<&SourcePlan> {
-    if !can_copy_source_schema(project) {
-        return None;
-    }
-
-    match &project.input {
-        ProjectInputPlan::Source(relation) => Some(relation),
+    let source = match &project.input {
+        ProjectInputPlan::Source(relation) => relation,
         ProjectInputPlan::Filter(filter) => match &filter.input {
-            FilterInputPlan::Source(relation) => Some(relation),
-            FilterInputPlan::InnerJoin(_) | FilterInputPlan::LeftOuterJoin(_) => None,
+            FilterInputPlan::Source(relation) => relation,
+            FilterInputPlan::InnerJoin(_) | FilterInputPlan::LeftOuterJoin(_) => return None,
         },
         ProjectInputPlan::InnerJoin(_)
         | ProjectInputPlan::LeftOuterJoin(_)
         | ProjectInputPlan::Aggregation(_)
-        | ProjectInputPlan::Having(_) => None,
-    }
-}
+        | ProjectInputPlan::Having(_) => return None,
+    };
 
-fn can_copy_source_schema(project: &ProjectPlan) -> bool {
-    matches!(
-        project.input,
-        ProjectInputPlan::Source(_)
-            | ProjectInputPlan::Filter(FilterPlan {
-                input: FilterInputPlan::Source(_),
-                ..
-            })
-    ) && match &project.projection {
+    match &project.projection {
         ProjectionPlan::SchemalessMap => true,
         ProjectionPlan::SelectItems(items) => items.iter().all(|item| {
             matches!(
@@ -294,6 +281,7 @@ fn can_copy_source_schema(project: &ProjectPlan) -> bool {
             )
         }),
     }
+    .then_some(source)
 }
 
 fn column_defs_from_rows(labels: Vec<String>, rows: &[Vec<Value>]) -> Vec<ColumnDef> {

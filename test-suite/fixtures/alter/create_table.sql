@@ -79,6 +79,19 @@ CREATE TABLE TargetTableWithData AS SELECT * FROM CreateTable2
 CREATE TABLE TargetTableWithAggregate AS SELECT COUNT(*) FROM CreateTable2
 -- @expect: payload Create
 
+-- @name: CTAS infers schema from a filtered JOIN result
+CREATE TABLE TargetTableWithFilteredJoin AS
+SELECT A.id AS left_id, B.id AS right_id
+FROM CreateTable2 A JOIN CreateTable2 B
+WHERE A.id = B.id
+-- @expect: payload Create
+
+SELECT * FROM TargetTableWithFilteredJoin
+-- @expect:
+-- | left_id: I64 | right_id: I64 |
+-- | ------------ | ------------- |
+-- | 2            | 2             |
+
 SELECT * FROM TargetTableWithData
 -- @expect:
 -- | id: I64 | num: I64 | name: Str |
@@ -121,6 +134,51 @@ SELECT * FROM TargetTableWithOrder
 -- | ------- | -------- | --------- |
 -- | 2       | 2        | "2"       |
 -- | NULL    | 1        | "1"       |
+
+-- @name: CTAS composes ORDER BY with OFFSET
+CREATE TABLE TargetTableWithOrderOffset AS
+SELECT * FROM CreateTable2 ORDER BY num DESC OFFSET 1
+-- @expect: payload Create
+
+SELECT * FROM TargetTableWithOrderOffset
+-- @expect:
+-- | id   | num: I64 | name: Str |
+-- | ---- | -------- | --------- |
+-- | NULL | 1        | "1"       |
+
+-- @name: CTAS composes ORDER BY with LIMIT
+CREATE TABLE TargetTableWithOrderLimit AS
+SELECT * FROM CreateTable2 ORDER BY num DESC LIMIT 1
+-- @expect: payload Create
+
+SELECT * FROM TargetTableWithOrderLimit
+-- @expect:
+-- | id: I64 | num: I64 | name: Str |
+-- | ------- | -------- | --------- |
+-- | 2       | 2        | "2"       |
+
+-- @name: CTAS preserves a DISTINCT terminal source
+CREATE TABLE TargetTableWithDistinct AS
+SELECT DISTINCT num FROM CreateTable2
+-- @expect: payload Create
+
+SELECT * FROM TargetTableWithDistinct ORDER BY num
+-- @expect:
+-- | num: I64 |
+-- | -------- |
+-- | 1        |
+-- | 2        |
+
+-- @name: CTAS composes DISTINCT with LIMIT
+CREATE TABLE TargetTableWithDistinctLimit AS
+SELECT DISTINCT num FROM CreateTable2 WHERE num = 1 LIMIT 1
+-- @expect: payload Create
+
+SELECT * FROM TargetTableWithDistinctLimit
+-- @expect:
+-- | num: I64 |
+-- | -------- |
+-- | 1        |
 
 -- @name: CTAS preserves the complete SELECT terminal pipeline
 CREATE TABLE TargetTableWithPipeline AS

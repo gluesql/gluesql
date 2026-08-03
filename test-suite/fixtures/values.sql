@@ -108,6 +108,60 @@ SELECT * FROM TableFromValuesPipeline
 -- | ------------ |
 -- | 2            |
 
+-- @name: CTAS preserves a VALUES ORDER BY terminal source
+CREATE TABLE TableFromOrderedValues AS
+VALUES (3), (1), (2)
+ORDER BY column1
+-- @expect: payload Create
+
+SELECT * FROM TableFromOrderedValues
+-- @expect:
+-- | column1: I64 |
+-- | ------------ |
+-- | 1            |
+-- | 2            |
+-- | 3            |
+
+-- @name: CTAS preserves a VALUES OFFSET terminal source
+CREATE TABLE TableFromOffsetValues AS
+VALUES (3), (1), (2)
+OFFSET 1
+-- @expect: payload Create
+
+SELECT * FROM TableFromOffsetValues
+-- @expect:
+-- | column1: I64 |
+-- | ------------ |
+-- | 1            |
+-- | 2            |
+
+-- @name: CTAS preserves a VALUES LIMIT terminal source
+CREATE TABLE TableFromLimitedValues AS
+VALUES (3), (1), (2)
+LIMIT 2
+-- @expect: payload Create
+
+SELECT * FROM TableFromLimitedValues
+-- @expect:
+-- | column1: I64 |
+-- | ------------ |
+-- | 3            |
+-- | 1            |
+
+-- @name: CTAS composes VALUES ORDER BY with LIMIT
+CREATE TABLE TableFromOrderedLimitedValues AS
+VALUES (3), (1), (2)
+ORDER BY column1 DESC
+LIMIT 2
+-- @expect: payload Create
+
+SELECT * FROM TableFromOrderedLimitedValues
+-- @expect:
+-- | column1: I64 |
+-- | ------------ |
+-- | 3            |
+-- | 2            |
+
 SHOW COLUMNS FROM TableFromValues
 -- @expect: payload ShowColumns
 -- @json:
