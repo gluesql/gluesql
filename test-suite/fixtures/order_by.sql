@@ -153,6 +153,16 @@ ORDER BY id
 -- | 3       |
 -- | 4       |
 
+-- @name: Derived ORDER BY preserves output labels through LIMIT
+SELECT id, num
+FROM (SELECT id, num FROM Test ORDER BY num DESC LIMIT 2) AS LimitedOrder
+ORDER BY id
+-- @expect:
+-- | id: I64 | num: I64 |
+-- | ------- | -------- |
+-- | 1       | 9        |
+-- | 4       | 7        |
+
 -- @name: DISTINCT remains after ORDER BY
 SELECT DISTINCT id FROM Test ORDER BY num DESC
 -- @expect:

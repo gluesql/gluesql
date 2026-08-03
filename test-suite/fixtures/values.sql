@@ -195,6 +195,28 @@ SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS Derived
 -- | 1            | "a"          |
 -- | 2            | "b"          |
 
+-- @name: Derived VALUES preserves output labels through LIMIT
+SELECT * FROM (VALUES (1), (2) LIMIT 1) AS LimitedValues
+-- @expect:
+-- | column1: I64 |
+-- | ------------ |
+-- | 1            |
+
+-- @name: Derived VALUES preserves output labels through OFFSET
+SELECT * FROM (VALUES (1), (2) OFFSET 1) AS OffsetValues
+-- @expect:
+-- | column1: I64 |
+-- | ------------ |
+-- | 2            |
+
+-- @name: Derived ordered VALUES preserves output labels through LIMIT
+SELECT *
+FROM (VALUES (2), (1) ORDER BY column1 LIMIT 1) AS LimitedOrderedValues
+-- @expect:
+-- | column1: I64 |
+-- | ------------ |
+-- | 1            |
+
 -- @name: terminal pipeline composes in a derived VALUES query
 SELECT *
 FROM (VALUES (1), (4), (3), (2) ORDER BY column1 DESC LIMIT 2 OFFSET 1) AS Derived

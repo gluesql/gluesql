@@ -48,6 +48,19 @@ FROM (
 -- | --------- |
 -- | "Banana"  |
 
+-- @name: Derived DISTINCT preserves output labels through LIMIT
+SELECT *
+FROM (
+    SELECT DISTINCT name
+    FROM Item
+    WHERE name = 'Apple'
+    LIMIT 1
+) AS LimitedDistinctItem
+-- @expect:
+-- | name: Str |
+-- | --------- |
+-- | "Apple"   |
+
 -- @name: SELECT DISTINCT with DISTINCT aggregate
 SELECT DISTINCT COUNT(DISTINCT id) AS count
 FROM Item
