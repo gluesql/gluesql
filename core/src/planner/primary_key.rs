@@ -523,6 +523,232 @@ mod tests {
     }
 
     #[test]
+    fn typed_terminal_inputs() {
+        let storage = run("
+            CREATE TABLE Player (
+                id INTEGER PRIMARY KEY,
+                name TEXT
+            );
+        ");
+
+        macro_rules! test_unchanged {
+            ($sql: literal) => {
+                let actual = plan(&storage, $sql);
+                let expected = statement($sql);
+                assert_eq!(actual, expected);
+            };
+        }
+
+        test_unchanged!("VALUES (1)");
+        test_unchanged!("VALUES (1) ORDER BY column1");
+        test_unchanged!("VALUES (1) OFFSET 2");
+        test_unchanged!("VALUES (1) ORDER BY column1 OFFSET 2");
+        test_unchanged!("VALUES (1) LIMIT 3");
+        test_unchanged!("VALUES (1) ORDER BY column1 LIMIT 3");
+        test_unchanged!("VALUES (1) OFFSET 2 LIMIT 3");
+        test_unchanged!("VALUES (1) ORDER BY column1 OFFSET 2 LIMIT 3");
+
+        let sql = "SELECT DISTINCT * FROM Player WHERE id = 1";
+        let actual = plan(&storage, sql);
+        let expected = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .distinct()
+            .build()
+            .unwrap();
+        assert_eq!(actual, expected, "distinct project:\n{sql}");
+
+        let sql = "SELECT * FROM Player WHERE id = 1 OFFSET 2";
+        let actual = plan(&storage, sql);
+        let expected = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .offset(2)
+            .build()
+            .unwrap();
+        assert_eq!(actual, expected, "offset project:\n{sql}");
+
+        let sql = "SELECT DISTINCT * FROM Player WHERE id = 1 OFFSET 2";
+        let actual = plan(&storage, sql);
+        let expected = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .distinct()
+            .offset(2)
+            .build()
+            .unwrap();
+        assert_eq!(actual, expected, "offset distinct:\n{sql}");
+
+        let sql = "SELECT * FROM Player WHERE id = 1 ORDER BY id LIMIT 3";
+        let actual = plan(&storage, sql);
+        let expected = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .order_by("id")
+            .limit(3)
+            .build()
+            .unwrap();
+        assert_eq!(actual, expected, "limit order by:\n{sql}");
+
+        let sql = "SELECT DISTINCT * FROM Player WHERE id = 1 LIMIT 3";
+        let actual = plan(&storage, sql);
+        let expected = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .distinct()
+            .limit(3)
+            .build()
+            .unwrap();
+        assert_eq!(actual, expected, "limit distinct:\n{sql}");
+
+        let sql = "SELECT * FROM Player WHERE id = 1 OFFSET 2 LIMIT 3";
+        let actual = plan(&storage, sql);
+        let expected = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .offset(2)
+            .limit(3)
+            .build()
+            .unwrap();
+        assert_eq!(actual, expected, "limit offset project:\n{sql}");
+
+        let sql = "SELECT * FROM Player WHERE id = 1 ORDER BY id OFFSET 2 LIMIT 3";
+        let actual = plan(&storage, sql);
+        let expected = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .order_by("id")
+            .offset(2)
+            .limit(3)
+            .build()
+            .unwrap();
+        assert_eq!(actual, expected, "limit offset order by:\n{sql}");
+
+        let sql = "SELECT DISTINCT * FROM Player WHERE id = 1 ORDER BY id OFFSET 2 LIMIT 3";
+        let actual = plan(&storage, sql);
+        let expected = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .order_by("id")
+            .distinct()
+            .offset(2)
+            .limit(3)
+            .build()
+            .unwrap();
+        assert_eq!(actual, expected, "limit offset distinct:\n{sql}");
+    }
+
+    #[test]
+    fn typed_source_inputs() {
+        let storage = run("
+            CREATE TABLE Player (
+                id INTEGER PRIMARY KEY,
+                name TEXT
+            );
+            CREATE TABLE Badge (
+                title TEXT PRIMARY KEY,
+                user_id INTEGER
+            );
+        ");
+
+        let sql = "SELECT * FROM Player JOIN Badge";
+        let actual = plan(&storage, sql);
+        let expected = table("Player").select().join("Badge").build().unwrap();
+        assert_eq!(actual, expected, "inner join project:\n{sql}");
+
+        let sql = "SELECT * FROM Player LEFT JOIN Badge";
+        let actual = plan(&storage, sql);
+        let expected = table("Player").select().left_join("Badge").build().unwrap();
+        assert_eq!(actual, expected, "left outer join project:\n{sql}");
+
+        let sql = "SELECT id FROM Player GROUP BY id";
+        let actual = plan(&storage, sql);
+        let expected = table("Player")
+            .select()
+            .group_by("id")
+            .project("id")
+            .build()
+            .unwrap();
+        assert_eq!(actual, expected, "source aggregation:\n{sql}");
+
+        let sql = "SELECT Player.id FROM Player JOIN Badge GROUP BY Player.id";
+        let actual = plan(&storage, sql);
+        let expected = table("Player")
+            .select()
+            .join("Badge")
+            .group_by("Player.id")
+            .project("Player.id")
+            .build()
+            .unwrap();
+        assert_eq!(actual, expected, "inner join aggregation:\n{sql}");
+
+        let sql = "SELECT Player.id FROM Player LEFT JOIN Badge GROUP BY Player.id";
+        let actual = plan(&storage, sql);
+        let expected = table("Player")
+            .select()
+            .left_join("Badge")
+            .group_by("Player.id")
+            .project("Player.id")
+            .build()
+            .unwrap();
+        assert_eq!(actual, expected, "left outer join aggregation:\n{sql}");
+
+        let sql = "SELECT id FROM Player WHERE name = 'Alice' GROUP BY id";
+        let actual = plan(&storage, sql);
+        let expected = table("Player")
+            .select()
+            .filter("name = 'Alice'")
+            .group_by("id")
+            .project("id")
+            .build()
+            .unwrap();
+        assert_eq!(
+            actual, expected,
+            "aggregation preserves residual filter:\n{sql}"
+        );
+
+        let sql = "
+            SELECT Player.id
+            FROM Player JOIN Badge
+            WHERE Player.id = 1
+            GROUP BY Player.id
+        ";
+        let actual = plan(&storage, sql);
+        let expected = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .join("Badge")
+            .group_by("Player.id")
+            .project("Player.id")
+            .build()
+            .unwrap();
+        assert_eq!(
+            actual, expected,
+            "inner join aggregation consumes filter:\n{sql}"
+        );
+
+        let sql = "
+            SELECT Player.id
+            FROM Player LEFT JOIN Badge
+            WHERE Player.id = 1
+            GROUP BY Player.id
+        ";
+        let actual = plan(&storage, sql);
+        let expected = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .left_join("Badge")
+            .group_by("Player.id")
+            .project("Player.id")
+            .build()
+            .unwrap();
+        assert_eq!(
+            actual, expected,
+            "left outer join aggregation consumes filter:\n{sql}"
+        );
+    }
+
+    #[test]
     fn join_and_nested() {
         let storage = run("
             CREATE TABLE Player (
