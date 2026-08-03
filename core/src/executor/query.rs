@@ -7,11 +7,13 @@ mod join;
 mod limit;
 mod offset;
 mod order_by;
+mod output;
 mod project;
 mod source;
 mod values;
 
 pub use error::QueryError;
+pub(super) use output::{OutputBody, body as output_body};
 use {
     crate::{
         data::Row, executor::context::RowContext, plan::QueryPlan, result::Result, store::GStore,

@@ -3,10 +3,12 @@ use {
     crate::{
         ast::{ColumnDef, ColumnUniqueOption, ForeignKey, ToSql},
         data::{Row, Schema},
-        executor::{evaluate_stateless, query},
+        executor::{
+            evaluate_stateless,
+            query::{self, OutputBody},
+        },
         plan::{
-            DistinctInputPlan, DistinctPlan, FilterInputPlan, LimitInputPlan, LimitPlan,
-            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
+            FilterInputPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
             SelectItemPlan, SourcePlan, ValuesPlan,
         },
         prelude::{DataType, Value},
@@ -27,11 +29,6 @@ pub struct CreateTableOptions<'a> {
     pub comment: &'a Option<String>,
 }
 
-enum CreateTableSource<'a> {
-    Project(&'a ProjectPlan),
-    Values(&'a ValuesPlan),
-}
-
 pub fn create_table<T: GStore + GStoreMut>(
     storage: &mut T,
     CreateTableOptions {
@@ -46,8 +43,8 @@ pub fn create_table<T: GStore + GStoreMut>(
 ) -> Result<()> {
     let mut selected_source_rows = None;
     let target_columns_defs = match source.as_deref() {
-        Some(query) => match create_table_source(query) {
-            CreateTableSource::Project(project) => match source_for_schema_copy(project) {
+        Some(source_query) => match query::output_body(source_query) {
+            OutputBody::Project(project) => match source_for_schema_copy(project) {
                 Some(SourcePlan::Table(table)) => {
                     let schema = storage.fetch_schema(&table.name)?;
                     let Schema {
@@ -71,7 +68,7 @@ pub fn create_table<T: GStore + GStoreMut>(
                     Some(vec![column_def])
                 }
                 _ => {
-                    let (labels, rows) = query::execute_with_labels(storage, query, None)?;
+                    let (labels, rows) = query::execute_with_labels(storage, source_query, None)?;
                     let rows = rows
                         .map(|row| row.map(Row::into_values))
                         .collect::<Result<Vec<_>>>()?;
@@ -81,7 +78,7 @@ pub fn create_table<T: GStore + GStoreMut>(
                     Some(column_defs)
                 }
             },
-            CreateTableSource::Values(ValuesPlan(values_list)) => {
+            OutputBody::Values(ValuesPlan(values_list)) => {
                 let first_len = values_list[0].len();
                 let mut column_types = vec![None; first_len];
 
@@ -220,42 +217,6 @@ pub fn create_table<T: GStore + GStoreMut>(
             storage.append_data(target_table_name, rows)
         }
         None => Ok(()),
-    }
-}
-
-fn create_table_source(query: &QueryPlan) -> CreateTableSource<'_> {
-    match query {
-        QueryPlan::Project(project) => CreateTableSource::Project(project),
-        QueryPlan::Values(values) => CreateTableSource::Values(values),
-        QueryPlan::SelectOrderBy(order_by) => CreateTableSource::Project(&order_by.input),
-        QueryPlan::ValuesOrderBy(order_by) => CreateTableSource::Values(&order_by.input),
-        QueryPlan::Distinct(distinct) => create_table_distinct_source(distinct),
-        QueryPlan::Offset(offset) => create_table_offset_source(offset),
-        QueryPlan::Limit(LimitPlan { input, .. }) => match input {
-            LimitInputPlan::Project(project) => CreateTableSource::Project(project),
-            LimitInputPlan::Values(values) => CreateTableSource::Values(values),
-            LimitInputPlan::SelectOrderBy(order_by) => CreateTableSource::Project(&order_by.input),
-            LimitInputPlan::ValuesOrderBy(order_by) => CreateTableSource::Values(&order_by.input),
-            LimitInputPlan::Distinct(distinct) => create_table_distinct_source(distinct),
-            LimitInputPlan::Offset(offset) => create_table_offset_source(offset),
-        },
-    }
-}
-
-fn create_table_offset_source(offset: &OffsetPlan) -> CreateTableSource<'_> {
-    match &offset.input {
-        OffsetInputPlan::Project(project) => CreateTableSource::Project(project),
-        OffsetInputPlan::Values(values) => CreateTableSource::Values(values),
-        OffsetInputPlan::SelectOrderBy(order_by) => CreateTableSource::Project(&order_by.input),
-        OffsetInputPlan::ValuesOrderBy(order_by) => CreateTableSource::Values(&order_by.input),
-        OffsetInputPlan::Distinct(distinct) => create_table_distinct_source(distinct),
-    }
-}
-
-fn create_table_distinct_source(distinct: &DistinctPlan) -> CreateTableSource<'_> {
-    match &distinct.input {
-        DistinctInputPlan::Project(project) => CreateTableSource::Project(project),
-        DistinctInputPlan::SelectOrderBy(order_by) => CreateTableSource::Project(&order_by.input),
     }
 }
 
