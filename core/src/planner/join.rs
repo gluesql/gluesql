@@ -1292,6 +1292,98 @@ mod tests {
     }
 
     #[test]
+    fn hash_join_boundaries() {
+        let storage = run("
+            CREATE TABLE Player (
+                id INTEGER,
+                name TEXT
+            );
+            CREATE TABLE PlayerItem (
+                user_id INTEGER,
+                item_id INTEGER,
+                amount INTEGER
+            );
+            CREATE TABLE Item (
+                id INTEGER,
+                name TEXT
+            );
+        ");
+
+        let sql = "
+            SELECT *
+            FROM Player
+            LEFT JOIN PlayerItem ON
+                PlayerItem.user_id = Player.id AND
+                PlayerItem.amount > 10
+        ";
+        let actual = plan_join(&storage, sql);
+        let expected = table("Player")
+            .select()
+            .left_join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .hash_filter("PlayerItem.amount > 10");
+        test!(
+            actual,
+            expected,
+            "left outer hash join extracts a following right filter:\n{sql}"
+        );
+
+        let sql = "
+            SELECT *
+            FROM Player
+            LEFT JOIN PlayerItem ON
+                PlayerItem.user_id = Player.id AND
+                Player.name = 'Alice'
+        ";
+        let actual = plan_join(&storage, sql);
+        let expected = table("Player")
+            .select()
+            .left_join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .on("Player.name = 'Alice'");
+        test!(
+            actual,
+            expected,
+            "left outer hash join preserves a residual condition:\n{sql}"
+        );
+
+        let sql = "
+            SELECT *
+            FROM Player
+            JOIN PlayerItem ON Player.id = Player.id
+        ";
+        let actual = plan_join(&storage, sql);
+        let expected = table("Player")
+            .select()
+            .join("PlayerItem")
+            .on("Player.id = Player.id");
+        test!(
+            actual,
+            expected,
+            "same-side equality remains a nested loop condition:\n{sql}"
+        );
+
+        let sql = "
+            SELECT *
+            FROM Player
+            LEFT JOIN PlayerItem ON PlayerItem.user_id = Player.id
+            JOIN Item ON Item.id = PlayerItem.item_id
+        ";
+        let actual = plan_join(&storage, sql);
+        let expected = table("Player")
+            .select()
+            .left_join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .join("Item")
+            .hash_executor("Item.id", "PlayerItem.item_id");
+        test!(
+            actual,
+            expected,
+            "left outer hash join feeds a later planned hash join:\n{sql}"
+        );
+    }
+
+    #[test]
     fn hash_join_in_subquery() {
         let storage = run("
             CREATE TABLE Player (
