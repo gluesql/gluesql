@@ -166,6 +166,8 @@ mod tests {
             parse_sql::parse,
             plan::{ProjectionPlan, QueryPlan, StatementPlan},
             planner::fetch_schema_map,
+            query_builder::{Build, table},
+            result::Result,
             translate::translate,
         },
     };
@@ -176,6 +178,16 @@ mod tests {
             CREATE TABLE Team;
             CREATE TABLE Item (id INTEGER);
         ")
+    }
+
+    fn statement(sql: &str) -> StatementPlan {
+        let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
+        StatementPlan::from(translate(&parsed).unwrap())
+    }
+
+    fn plan(storage: &MockStorage, statement: StatementPlan) -> Result<StatementPlan> {
+        let schema_map = fetch_schema_map(storage, &statement)?;
+        plan_schemaless(&schema_map, statement)
     }
 
     #[test]
@@ -519,6 +531,184 @@ mod tests {
             "SELECT P.*, T.* FROM Player AS P JOIN Team AS T WHERE P.id = T.id",
             false,
         );
+    }
+
+    #[test]
+    fn transforms_typed_terminal_query_inputs() {
+        let storage = setup_schemaless_storage();
+        let schema_map = fetch_schema_map(&storage, &statement("SELECT * FROM Player")).unwrap();
+
+        macro_rules! test_unchanged {
+            ($sql: literal) => {
+                let actual = plan_schemaless(&schema_map, statement($sql));
+                let expected = Ok(statement($sql));
+                assert_eq!(actual, expected);
+            };
+        }
+
+        test_unchanged!("VALUES (1)");
+        test_unchanged!("VALUES (1) ORDER BY column1");
+        test_unchanged!("VALUES (1) OFFSET 2");
+        test_unchanged!("VALUES (1) ORDER BY column1 OFFSET 2");
+        test_unchanged!("VALUES (1) LIMIT 3");
+        test_unchanged!("VALUES (1) ORDER BY column1 LIMIT 3");
+        test_unchanged!("VALUES (1) OFFSET 2 LIMIT 3");
+        test_unchanged!("VALUES (1) ORDER BY column1 OFFSET 2 LIMIT 3");
+
+        let actual = plan(
+            &storage,
+            statement("SELECT DISTINCT id FROM Player LIMIT 1"),
+        );
+        let expected = Ok(statement(
+            "SELECT DISTINCT _doc['id'] AS id FROM Player LIMIT 1",
+        ));
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn transforms_filter_and_aggregation_join_inputs() {
+        let storage = setup_schemaless_storage();
+
+        macro_rules! assert_plan_eq {
+            ($actual: ident, $expected: ident) => {
+                let actual = plan(&storage, statement($actual));
+                let expected = Ok(statement($expected));
+                assert_eq!(actual, expected);
+            };
+        }
+
+        let actual = r"
+            SELECT Player.id
+            FROM Player
+            LEFT JOIN Item
+            WHERE Player.id = Item.id
+        ";
+        let expected = r"
+            SELECT Player._doc['id'] AS id
+            FROM Player
+            LEFT JOIN Item
+            WHERE Player._doc['id'] = Item.id
+        ";
+        assert_plan_eq!(actual, expected);
+
+        let actual = r"
+            SELECT Player.id
+            FROM Player
+            JOIN Item
+            GROUP BY Player.id
+        ";
+        let expected = r"
+            SELECT Player._doc['id'] AS id
+            FROM Player
+            JOIN Item
+            GROUP BY Player._doc['id']
+        ";
+        assert_plan_eq!(actual, expected);
+
+        let actual = r"
+            SELECT Player.id
+            FROM Player
+            LEFT JOIN Item
+            GROUP BY Player.id
+        ";
+        let expected = r"
+            SELECT Player._doc['id'] AS id
+            FROM Player
+            LEFT JOIN Item
+            GROUP BY Player._doc['id']
+        ";
+        assert_plan_eq!(actual, expected);
+    }
+
+    #[test]
+    fn transforms_recursive_join_inputs() {
+        let storage = setup_schemaless_storage();
+
+        macro_rules! assert_plan_eq {
+            ($actual: ident, $expected: ident) => {
+                let actual = plan(&storage, $actual.build().unwrap());
+                let expected = $expected.build();
+                assert_eq!(actual, expected);
+            };
+        }
+
+        let actual = table("Player")
+            .select()
+            .left_join("Item")
+            .hash_executor("Item.id", "Player.id")
+            .project("Player.id");
+        let expected = table("Player")
+            .select()
+            .left_join("Item")
+            .hash_executor("Item.id", "Player._doc['id']")
+            .project("Player._doc['id'] AS id");
+        assert_plan_eq!(actual, expected);
+
+        let actual = table("Player")
+            .select()
+            .join("Item")
+            .hash_executor("Item.id", "Player.id")
+            .on("Player.score > 0")
+            .project("Player.id");
+        let expected = table("Player")
+            .select()
+            .join("Item")
+            .hash_executor("Item.id", "Player._doc['id']")
+            .on("Player._doc['score'] > 0")
+            .project("Player._doc['id'] AS id");
+        assert_plan_eq!(actual, expected);
+
+        let actual = table("Player")
+            .select()
+            .join("Team")
+            .join("Item")
+            .project("Player.id");
+        let expected = table("Player")
+            .select()
+            .join("Team")
+            .join("Item")
+            .project("Player._doc['id'] AS id");
+        assert_plan_eq!(actual, expected);
+
+        let actual = table("Player")
+            .select()
+            .left_join("Team")
+            .join("Item")
+            .project("Player.id");
+        let expected = table("Player")
+            .select()
+            .left_join("Team")
+            .join("Item")
+            .project("Player._doc['id'] AS id");
+        assert_plan_eq!(actual, expected);
+
+        let actual = table("Player")
+            .select()
+            .join("Team")
+            .join("Item")
+            .hash_executor("Item.id", "Player.id")
+            .project("Player.id");
+        let expected = table("Player")
+            .select()
+            .join("Team")
+            .join("Item")
+            .hash_executor("Item.id", "Player._doc['id']")
+            .project("Player._doc['id'] AS id");
+        assert_plan_eq!(actual, expected);
+
+        let actual = table("Player")
+            .select()
+            .left_join("Team")
+            .join("Item")
+            .hash_executor("Item.id", "Player.id")
+            .project("Player.id");
+        let expected = table("Player")
+            .select()
+            .left_join("Team")
+            .join("Item")
+            .hash_executor("Item.id", "Player._doc['id']")
+            .project("Player._doc['id'] AS id");
+        assert_plan_eq!(actual, expected);
     }
 
     #[test]
