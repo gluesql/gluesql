@@ -100,3 +100,20 @@ WHERE flag IS NOT NULL;
 -- | player_id: I64 | player_name: Str | item_cost: I64 |
 -- | -------------- | ---------------- | -------------- |
 -- | 1001           | "Beam"           | 3000           |
+
+CREATE TABLE ItemName AS SELECT name, dex FROM Item
+-- @expect: ok
+
+SELECT name, dex FROM ItemName
+-- @expect:
+-- | name: Str  | dex: I64 |
+-- | ---------- | -------- |
+-- | "Test 001" | 324      |
+
+CREATE TABLE ItemCopy AS SELECT * FROM Item
+-- @expect: ok
+
+SELECT * FROM ItemCopy
+-- @expect: maps
+-- | {"dex":324,"id":101,"name":"Test 001","new_field":"Hello","obj":{"cost":3000},"rare":true} |
+
