@@ -28,6 +28,29 @@ SELECT * FROM Item
 -- | {"dex":324,"id":100,"name":"Test 001","obj":{"cost":3000},"rare":false} |
 -- | {"id":200}                                                              |
 
+-- @name: INSERT SELECT preserves schemaless map rows
+CREATE TABLE MapCopy
+-- @expect: ok
+
+INSERT INTO MapCopy SELECT * FROM Item
+-- @expect: ok
+
+SELECT * FROM MapCopy
+-- @expect: maps
+-- | {"dex":324,"id":100,"name":"Test 001","obj":{"cost":3000},"rare":false} |
+-- | {"id":200}                                                              |
+
+-- @name: INSERT SELECT parses JSON object strings for schemaless rows
+CREATE TABLE StringCopy
+-- @expect: ok
+
+INSERT INTO StringCopy SELECT '{"id":300,"name":"Selected"}'
+-- @expect: ok
+
+SELECT * FROM StringCopy
+-- @expect: maps
+-- | {"id":300,"name":"Selected"} |
+
 DELETE FROM Item WHERE id > 100
 -- @expect: ok
 
