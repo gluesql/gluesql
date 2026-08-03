@@ -164,7 +164,81 @@ SELECT id FROM InsertTest WHERE case_no = 7
 -- @expect:
 -- | id: I64 |
 -- | ------- |
+-- | 2       |
+
+INSERT INTO InsertTest VALUES (8, 2), (8, 1), (8, 3) ORDER BY column2 DESC;
+-- @expect: payload Insert
+-- @json: 3
+
+SELECT id FROM InsertTest WHERE case_no = 8
+-- @expect:
+-- | id: I64 |
+-- | ------- |
+-- | 3       |
+-- | 2       |
 -- | 1       |
+
+INSERT INTO InsertTest VALUES (9, 2), (9, 1), (9, 3) ORDER BY column2 DESC LIMIT 2;
+-- @expect: payload Insert
+-- @json: 2
+
+SELECT id FROM InsertTest WHERE case_no = 9
+-- @expect:
+-- | id: I64 |
+-- | ------- |
+-- | 3       |
+-- | 2       |
+
+INSERT INTO InsertTest VALUES (10, 2), (10, 1), (10, 3) ORDER BY column2 DESC OFFSET 1;
+-- @expect: payload Insert
+-- @json: 2
+
+SELECT id FROM InsertTest WHERE case_no = 10
+-- @expect:
+-- | id: I64 |
+-- | ------- |
+-- | 2       |
+-- | 1       |
+
+INSERT INTO InsertTest (id, case_no) VALUES (3, 11), (1, 11), (2, 11) ORDER BY column1;
+-- @expect: payload Insert
+-- @json: 3
+
+SELECT id FROM InsertTest WHERE case_no = 11
+-- @expect:
+-- | id: I64 |
+-- | ------- |
+-- | 1       |
+-- | 2       |
+-- | 3       |
+
+INSERT INTO InsertTest VALUES (12, 2), (12, 1), (12, 2) ORDER BY column1, column2 DESC;
+-- @expect: payload Insert
+-- @json: 3
+
+SELECT id FROM InsertTest WHERE case_no = 12
+-- @expect:
+-- | id: I64 |
+-- | ------- |
+-- | 2       |
+-- | 2       |
+-- | 1       |
+
+CREATE TABLE InsertDefault (
+    case_no INTEGER DEFAULT 13,
+    id INTEGER
+)
+-- @expect: payload Create
+
+INSERT INTO InsertDefault (id) VALUES (2), (1), (3) ORDER BY column1 LIMIT 1;
+-- @expect: payload Insert
+-- @json: 1
+
+SELECT * FROM InsertDefault
+-- @expect:
+-- | case_no: I64 | id: I64 |
+-- | ------------ | ------- |
+-- | 13           | 1       |
 
 SELECT * FROM MissingTable LIMIT 1;
 -- @expect: error Fetch.TableNotFound

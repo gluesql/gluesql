@@ -51,6 +51,20 @@ SELECT * FROM StringCopy
 -- @expect: maps
 -- | {"id":300,"name":"Selected"} |
 
+-- @name: INSERT VALUES orders schemaless JSON object strings
+CREATE TABLE OrderedInsert
+-- @expect: ok
+
+INSERT INTO OrderedInsert
+VALUES ('{"id":2}'), ('{"id":1}')
+ORDER BY column1
+-- @expect: ok
+
+SELECT * FROM OrderedInsert
+-- @expect: maps
+-- | {"id":1} |
+-- | {"id":2} |
+
 DELETE FROM Item WHERE id > 100
 -- @expect: ok
 
