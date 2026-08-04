@@ -261,26 +261,38 @@ fn translate_table_factor(
             let alias = translate_table_alias(alias.as_ref());
 
             match (object_name.as_str(), args) {
-                ("SERIES", Some(SqlTableFunctionArgs { args, .. })) => Ok(TableFactor::Series {
-                    alias: alias_or_name(alias, object_name),
-                    size: translate_table_args(args)?,
-                }),
-                ("GLUE_OBJECTS", _) => Ok(TableFactor::Dictionary {
+                ("SERIES", Some(SqlTableFunctionArgs { args, .. })) => {
+                    if args.len() > 1 {
+                        return Err(TranslateError::UnsupportedQueryTableFactor(
+                            sql_table_factor.to_string(),
+                        )
+                        .into());
+                    }
+                    Ok(TableFactor::Series {
+                        alias: alias_or_name(alias, object_name),
+                        size: translate_table_args(args)?,
+                    })
+                }
+                ("GLUE_OBJECTS", None) => Ok(TableFactor::Dictionary {
                     dict: Dictionary::GlueObjects,
                     alias: alias_or_name(alias, object_name),
                 }),
-                ("GLUE_TABLES", _) => Ok(TableFactor::Dictionary {
+                ("GLUE_TABLES", None) => Ok(TableFactor::Dictionary {
                     dict: Dictionary::GlueTables,
                     alias: alias_or_name(alias, object_name),
                 }),
-                ("GLUE_INDEXES", _) => Ok(TableFactor::Dictionary {
+                ("GLUE_INDEXES", None) => Ok(TableFactor::Dictionary {
                     dict: Dictionary::GlueIndexes,
                     alias: alias_or_name(alias, object_name),
                 }),
-                ("GLUE_TABLE_COLUMNS", _) => Ok(TableFactor::Dictionary {
+                ("GLUE_TABLE_COLUMNS", None) => Ok(TableFactor::Dictionary {
                     dict: Dictionary::GlueTableColumns,
                     alias: alias_or_name(alias, object_name),
                 }),
+                (_, Some(_)) => Err(TranslateError::UnsupportedQueryTableFactor(
+                    sql_table_factor.to_string(),
+                )
+                .into()),
                 _ => Ok(TableFactor::Table {
                     name: translate_object_name(name)?,
                     alias,
@@ -371,6 +383,26 @@ mod tests {
         let actual = translate_query(&query, NO_PARAMS);
         let expected = Err::<Query, Error>(Error::Translate(expected));
         assert_eq!(actual, expected, "translate_query mismatch for `{sql}`");
+    }
+
+    #[test]
+    fn unsupported_table_function_args_rejected() {
+        assert_query_error(
+            "SELECT * FROM GLUE_TABLES(1)",
+            TranslateError::UnsupportedQueryTableFactor("GLUE_TABLES(1)".into()),
+        );
+        assert_query_error(
+            "SELECT * FROM GLUE_INDEXES(1)",
+            TranslateError::UnsupportedQueryTableFactor("GLUE_INDEXES(1)".into()),
+        );
+        assert_query_error(
+            "SELECT * FROM Foo(1)",
+            TranslateError::UnsupportedQueryTableFactor("Foo(1)".into()),
+        );
+        assert_query_error(
+            "SELECT * FROM SERIES(1, 2)",
+            TranslateError::UnsupportedQueryTableFactor("SERIES(1, 2)".into()),
+        );
     }
 
     #[test]
