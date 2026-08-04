@@ -96,10 +96,7 @@ mod tests {
         let parsed = parse_expr("SUM(x)").expect("SUM(x)");
         let expr = ExprPlan::from(translate_expr(&parsed, NO_PARAMS).expect("SUM(x)"));
 
-        let result = try_visit_expr(&expr, &mut |expr| match expr {
-            ExprPlan::Identifier(ident) if ident == "x" => Err(PlannerError::Unreachable),
-            _ => Ok(()),
-        });
+        let result = try_visit_expr(&expr, &mut |_| Err(PlannerError::Unreachable));
 
         assert_eq!(result, Err(PlannerError::Unreachable));
     }

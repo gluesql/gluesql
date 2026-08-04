@@ -373,29 +373,34 @@ mod tests {
     use {
         super::{plan, plan_query},
         crate::{
-            ast::{Dictionary, Literal},
-            data::Value,
+            ast::{BinaryOperator, Dictionary, Literal},
             parse_sql::{parse, parse_query},
             plan::{
-                AggregationInputPlan, AggregationPlan, DerivedSourcePlan, DictionarySourcePlan,
-                DistinctInputPlan, DistinctPlan, ExprPlan, HashJoinInputPlan, HashJoinPlan,
-                HavingPlan, InnerJoinInputPlan, InnerJoinPlan, JoinConditionInputPlan,
-                JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan, LimitInputPlan,
-                LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan, OffsetInputPlan,
-                OffsetPlan, OrderByExprPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan,
-                QueryPlan, SelectItemPlan, SelectOrderByPlan, SeriesSourcePlan, SourcePlan,
-                StatementPlan, TableAccessPlan, TableAliasPlan, TableSourcePlan,
+                AggregateExprPlan, AggregateFunctionPlan, AggregationInputPlan, AggregationPlan,
+                AssignmentPlan, CountArgExprPlan, DerivedSourcePlan, DictionarySourcePlan,
+                DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan, FilterPlan,
+                FunctionExprPlan, HashJoinInputPlan, HashJoinPlan, HavingPlan, InnerJoinInputPlan,
+                InnerJoinPlan, JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan,
+                LeftOuterJoinPlan, LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan,
+                NestedLoopJoinPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan,
+                ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan,
+                SeriesSourcePlan, SourcePlan, StatementPlan, TableAccessPlan, TableAliasPlan,
+                TableSourcePlan, ValuesPlan,
             },
-            planner::expr::{try_visit_expr, visit_mut_expr},
+            query_builder::{Build, table},
             translate::{NO_PARAMS, translate, translate_query},
         },
+        pretty_assertions::assert_eq,
     };
 
-    fn parse_and_plan(sql: &str) -> StatementPlan {
+    fn statement(sql: &str) -> StatementPlan {
         let parsed = parse(sql).expect(sql).into_iter().next().expect(sql);
-        let translated = StatementPlan::from(translate(&parsed).expect(sql));
 
-        plan(translated)
+        StatementPlan::from(translate(&parsed).expect(sql))
+    }
+
+    fn parse_and_plan(sql: &str) -> StatementPlan {
+        plan(statement(sql))
     }
 
     fn parse_query_plan(sql: &str) -> QueryPlan {
@@ -412,67 +417,53 @@ mod tests {
         query
     }
 
-    fn source_query(query: &QueryPlan) -> Option<&SourcePlan> {
-        query.project().map(|project| project.input.base_source())
+    fn count_wildcard(slot: Option<usize>) -> AggregateExprPlan {
+        AggregateExprPlan {
+            func: AggregateFunctionPlan::Count(CountArgExprPlan::Wildcard),
+            distinct: false,
+            slot,
+        }
     }
 
-    fn inner_join_query(query: &QueryPlan) -> Option<&InnerJoinPlan> {
-        query.project().and_then(|project| match &project.input {
-            ProjectInputPlan::InnerJoin(join) => Some(join.as_ref()),
-            ProjectInputPlan::Source(_)
-            | ProjectInputPlan::LeftOuterJoin(_)
-            | ProjectInputPlan::Filter(_)
-            | ProjectInputPlan::Aggregation(_)
-            | ProjectInputPlan::Having(_) => None,
+    fn count_wildcard_expr(slot: Option<usize>) -> ExprPlan {
+        ExprPlan::Aggregate(Box::new(count_wildcard(slot)))
+    }
+
+    fn count_distinct_id(slot: Option<usize>) -> AggregateExprPlan {
+        AggregateExprPlan {
+            func: AggregateFunctionPlan::Count(CountArgExprPlan::Expr(ExprPlan::Identifier(
+                "id".to_owned(),
+            ))),
+            distinct: true,
+            slot,
+        }
+    }
+
+    fn count_distinct_id_expr(slot: Option<usize>) -> ExprPlan {
+        ExprPlan::Aggregate(Box::new(count_distinct_id(slot)))
+    }
+
+    fn greater_than(left: ExprPlan, right: ExprPlan) -> ExprPlan {
+        ExprPlan::BinaryOp {
+            left: Box::new(left),
+            op: BinaryOperator::Gt,
+            right: Box::new(right),
+        }
+    }
+
+    fn subquery(query: QueryPlan) -> ExprPlan {
+        ExprPlan::Subquery(Box::new(query))
+    }
+
+    fn table_source(name: &str) -> SourcePlan {
+        SourcePlan::Table(TableSourcePlan {
+            name: name.to_owned(),
+            alias: None,
+            access: TableAccessPlan::FullScan,
         })
     }
 
-    fn aggregation_query(query: &QueryPlan) -> Option<&AggregationPlan> {
-        query.project().and_then(|project| match &project.input {
-            ProjectInputPlan::Aggregation(aggregation) => Some(aggregation),
-            ProjectInputPlan::Having(having) => Some(&having.input),
-            ProjectInputPlan::Source(_)
-            | ProjectInputPlan::InnerJoin(_)
-            | ProjectInputPlan::LeftOuterJoin(_)
-            | ProjectInputPlan::Filter(_) => None,
-        })
-    }
-
-    fn having_query(query: &QueryPlan) -> Option<&HavingPlan> {
-        query.project().and_then(|project| match &project.input {
-            ProjectInputPlan::Having(having) => Some(having),
-            ProjectInputPlan::Source(_)
-            | ProjectInputPlan::InnerJoin(_)
-            | ProjectInputPlan::LeftOuterJoin(_)
-            | ProjectInputPlan::Filter(_)
-            | ProjectInputPlan::Aggregation(_) => None,
-        })
-    }
-
-    fn assert_planned_query(query: &QueryPlan) {
-        assert_eq!(
-            aggregation_query(query)
-                .expect("expected aggregation")
-                .aggregate_slots
-                .len(),
-            1
-        );
-    }
-
-    fn assert_unplanned_query(query: &QueryPlan) {
-        let project = query.project().expect("expected project");
-        assert!(matches!(project.input, ProjectInputPlan::Source(_)));
-    }
-
-    fn count_query() -> QueryPlan {
-        parse_query_plan("SELECT COUNT(*) FROM Item")
-    }
-
-    fn subquery_expr() -> ExprPlan {
-        ExprPlan::Subquery(Box::new(count_query()))
-    }
-
-    fn alias(name: &str) -> TableAliasPlan {
+    fn table_alias(name: &str) -> TableAliasPlan {
         TableAliasPlan {
             name: name.to_owned(),
             columns: Vec::new(),
@@ -481,7 +472,7 @@ mod tests {
 
     #[test]
     fn binds_same_aggregate_to_same_slot() {
-        let query = parse_and_plan_query(
+        let actual = parse_and_plan_query(
             "
             SELECT COALESCE(COUNT(*), 0)
             FROM Item
@@ -489,142 +480,101 @@ mod tests {
             ORDER BY COUNT(*)
         ",
         );
-        let aggregation = aggregation_query(&query).expect("expected aggregation");
-        let having = having_query(&query).expect("expected having");
-        let slots = &aggregation.aggregate_slots;
-        assert_eq!(slots.len(), 1);
-        assert_eq!(slots[0].slot, Some(0));
+        let expected = QueryPlan::SelectOrderBy(SelectOrderByPlan {
+            input: ProjectPlan {
+                input: ProjectInputPlan::Having(HavingPlan {
+                    input: AggregationPlan {
+                        input: AggregationInputPlan::Source(table_source("Item")),
+                        group_by: Vec::new(),
+                        aggregate_slots: vec![count_wildcard(Some(0))],
+                    },
+                    expr: greater_than(
+                        count_wildcard_expr(Some(0)),
+                        ExprPlan::Literal(Literal::Number(0.into())),
+                    ),
+                }),
+                projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
+                    expr: ExprPlan::Function(Box::new(FunctionExprPlan::Coalesce(vec![
+                        count_wildcard_expr(Some(0)),
+                        ExprPlan::Literal(Literal::Number(0.into())),
+                    ]))),
+                    label: "COALESCE(COUNT(*), 0)".to_owned(),
+                }]),
+            },
+            exprs: vec![OrderByExprPlan {
+                expr: count_wildcard_expr(Some(0)),
+                asc: None,
+            }],
+        });
 
-        let ProjectionPlan::SelectItems(items) =
-            &query.project().expect("expected project").projection
-        else {
-            panic!("expected select items");
-        };
-        let SelectItemPlan::Expr { expr, .. } = &items[0] else {
-            panic!("expected expression");
-        };
-
-        let mut found_slots = Vec::new();
-        try_visit_expr(expr, &mut |expr| {
-            if let ExprPlan::Aggregate(aggregate) = expr {
-                found_slots.push(aggregate.slot);
-            }
-
-            Ok(())
-        })
-        .expect("projection traversal");
-        try_visit_expr(&having.expr, &mut |expr| {
-            if let ExprPlan::Aggregate(aggregate) = expr {
-                found_slots.push(aggregate.slot);
-            }
-
-            Ok(())
-        })
-        .expect("having traversal");
-
-        assert!(matches!(
-            &query,
-            QueryPlan::SelectOrderBy(SelectOrderByPlan { exprs, .. }) if {
-                try_visit_expr(&exprs[0].expr, &mut |expr| {
-                    if let ExprPlan::Aggregate(aggregate) = expr {
-                        found_slots.push(aggregate.slot);
-                    }
-                    Ok(())
-                })
-                .expect("order by traversal");
-                true
-            }
-        ));
-
-        assert_eq!(found_slots, vec![Some(0), Some(0), Some(0)]);
+        assert_eq!(actual, expected);
     }
 
     #[test]
     fn plans_select_distinct_separately_from_aggregate_distinct() {
-        let query = parse_and_plan_query(
+        let actual = parse_and_plan_query(
             "
             SELECT DISTINCT COUNT(DISTINCT id)
             FROM Item
             ORDER BY COUNT(DISTINCT id)
         ",
         );
-        let QueryPlan::Distinct(DistinctPlan {
-            input: DistinctInputPlan::SelectOrderBy(order_by),
-        }) = &query
-        else {
-            panic!("expected distinct over select order by");
-        };
-        let ProjectInputPlan::Aggregation(aggregation) = &order_by.input.input else {
-            panic!("expected aggregation");
-        };
-        let slots = &aggregation.aggregate_slots;
+        let expected = QueryPlan::Distinct(DistinctPlan {
+            input: DistinctInputPlan::SelectOrderBy(SelectOrderByPlan {
+                input: ProjectPlan {
+                    input: ProjectInputPlan::Aggregation(AggregationPlan {
+                        input: AggregationInputPlan::Source(table_source("Item")),
+                        group_by: Vec::new(),
+                        aggregate_slots: vec![count_distinct_id(Some(0))],
+                    }),
+                    projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
+                        expr: count_distinct_id_expr(Some(0)),
+                        label: "COUNT(DISTINCT id)".to_owned(),
+                    }]),
+                },
+                exprs: vec![OrderByExprPlan {
+                    expr: count_distinct_id_expr(Some(0)),
+                    asc: None,
+                }],
+            }),
+        });
 
-        assert_eq!(slots.len(), 1);
-        assert!(slots[0].distinct);
-        assert_eq!(slots[0].slot, Some(0));
-
-        let mut order_by_slot = None;
-        try_visit_expr(&order_by.exprs[0].expr, &mut |expr| {
-            if let ExprPlan::Aggregate(aggregate) = expr {
-                order_by_slot = aggregate.slot;
-            }
-            Ok(())
-        })
-        .expect("order by traversal");
-        assert_eq!(order_by_slot, Some(0));
+        assert_eq!(actual, expected);
     }
 
     #[test]
     fn ignores_stale_slot_when_binding_same_aggregate() {
-        let mut query = parse_query_plan("SELECT COUNT(*) FROM Item HAVING COUNT(*) > 0");
-        let mut project = query.project().expect("expected project").clone();
-        let ProjectionPlan::SelectItems(items) = &mut project.projection else {
-            panic!("expected select items");
+        let aggregation = AggregationPlan {
+            input: AggregationInputPlan::Source(table_source("Item")),
+            group_by: Vec::new(),
+            aggregate_slots: Vec::new(),
         };
-        let SelectItemPlan::Expr { expr, .. } = &mut items[0] else {
-            panic!("expected expression");
+        let query = |slot: Option<usize>| {
+            QueryPlan::Project(ProjectPlan {
+                input: ProjectInputPlan::Having(HavingPlan {
+                    input: AggregationPlan {
+                        aggregate_slots: slot
+                            .map(|slot| vec![count_wildcard(Some(slot))])
+                            .unwrap_or_default(),
+                        ..aggregation.clone()
+                    },
+                    expr: greater_than(
+                        count_wildcard_expr(slot),
+                        ExprPlan::Literal(Literal::Number(0.into())),
+                    ),
+                }),
+                projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
+                    expr: count_wildcard_expr(slot),
+                    label: "COUNT(*)".to_owned(),
+                }]),
+            })
         };
+        let mut actual = query(Some(99));
 
-        visit_mut_expr(expr, &mut |expr| {
-            if let ExprPlan::Aggregate(aggregate) = expr {
-                aggregate.slot = Some(99);
-            }
-        });
-        query = QueryPlan::Project(project);
-        plan_query(&mut query);
-        let aggregation = aggregation_query(&query).expect("expected aggregation");
-        let having = having_query(&query).expect("expected having");
-        let slots = &aggregation.aggregate_slots;
+        plan_query(&mut actual);
 
-        assert_eq!(slots.len(), 1);
-        assert_eq!(slots[0].slot, Some(0));
-
-        let ProjectionPlan::SelectItems(items) =
-            &query.project().expect("expected project").projection
-        else {
-            panic!("expected select items");
-        };
-        let SelectItemPlan::Expr { expr, .. } = &items[0] else {
-            panic!("expected expression");
-        };
-
-        let mut found_slots = Vec::new();
-        try_visit_expr(expr, &mut |expr| {
-            if let ExprPlan::Aggregate(aggregate) = expr {
-                found_slots.push(aggregate.slot);
-            }
-            Ok(())
-        })
-        .expect("projection traversal");
-        try_visit_expr(&having.expr, &mut |expr| {
-            if let ExprPlan::Aggregate(aggregate) = expr {
-                found_slots.push(aggregate.slot);
-            }
-            Ok(())
-        })
-        .expect("having traversal");
-
-        assert_eq!(found_slots, vec![Some(0), Some(0)]);
+        let expected = query(Some(0));
+        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -635,146 +585,137 @@ mod tests {
             FROM (SELECT COUNT(*) FROM Item) AS sub
         ",
         );
-        let relation = source_query(&query).expect("expected relation");
-        let aggregation = aggregation_query(&query).expect("expected aggregation");
-        assert_eq!(aggregation.aggregate_slots.len(), 1, "outer select slots");
-
-        let SourcePlan::Derived(derived) = relation else {
-            panic!("expected derived table");
-        };
-        let inner_aggregation =
-            aggregation_query(derived.query.as_ref()).expect("expected inner aggregation");
-
-        assert_eq!(
-            inner_aggregation.aggregate_slots.len(),
-            1,
-            "inner select slots"
-        );
-        assert_eq!(aggregation.aggregate_slots[0].slot, Some(0));
-        assert_eq!(inner_aggregation.aggregate_slots[0].slot, Some(0));
+        let actual = query.project().map(|project| &project.input);
+        let expected = ProjectInputPlan::Aggregation(AggregationPlan {
+            input: AggregationInputPlan::Source(SourcePlan::Derived(DerivedSourcePlan {
+                query: Box::new(parse_and_plan_query("SELECT COUNT(*) FROM Item")),
+                alias: table_alias("sub"),
+            })),
+            group_by: Vec::new(),
+            aggregate_slots: vec![count_wildcard(Some(0))],
+        });
+        assert_eq!(actual, Some(&expected));
     }
 
     #[test]
     fn binds_insert_and_create_table_source_queries() {
-        let statement = parse_and_plan("INSERT INTO Target SELECT COUNT(*) FROM Source");
-        let StatementPlan::Insert { source, .. } = statement else {
-            panic!("expected insert");
+        let actual = parse_and_plan("INSERT INTO Target SELECT COUNT(*) FROM Source");
+        let expected = StatementPlan::Insert {
+            table_name: "Target".to_owned(),
+            columns: Vec::new(),
+            source: parse_and_plan_query("SELECT COUNT(*) FROM Source"),
         };
-        assert_planned_query(&source);
+        assert_eq!(actual, expected);
 
-        let statement = parse_and_plan("CREATE TABLE Target AS SELECT COUNT(*) FROM Source");
-        let StatementPlan::CreateTable {
-            source: Some(source),
-            ..
-        } = statement
-        else {
-            panic!("expected create table with source");
+        let actual = parse_and_plan("CREATE TABLE Target AS SELECT COUNT(*) FROM Source");
+        let expected = StatementPlan::CreateTable {
+            if_not_exists: false,
+            name: "Target".to_owned(),
+            columns: None,
+            source: Some(Box::new(parse_and_plan_query(
+                "SELECT COUNT(*) FROM Source",
+            ))),
+            engine: None,
+            foreign_keys: Vec::new(),
+            comment: None,
         };
-        assert_planned_query(&source);
+        assert_eq!(actual, expected);
     }
 
     #[test]
     fn binds_update_and_delete_expr_subqueries() {
-        let statement = parse_and_plan("UPDATE Target SET count = (SELECT COUNT(*) FROM Source)");
-        let StatementPlan::Update { assignments, .. } = statement else {
-            panic!("expected update");
+        let actual = parse_and_plan("UPDATE Target SET count = (SELECT COUNT(*) FROM Source)");
+        let expected = StatementPlan::Update {
+            table_name: "Target".to_owned(),
+            assignments: vec![AssignmentPlan {
+                id: "count".to_owned(),
+                value: ExprPlan::Subquery(Box::new(parse_and_plan_query(
+                    "SELECT COUNT(*) FROM Source",
+                ))),
+            }],
+            selection: None,
         };
-        let ExprPlan::Subquery(source) = &assignments[0].value else {
-            panic!("expected assignment subquery");
-        };
-        assert_planned_query(source);
+        assert_eq!(actual, expected);
 
-        let statement =
+        let actual =
             parse_and_plan("UPDATE Target SET count = 1 WHERE id = (SELECT COUNT(*) FROM Source)");
-        let StatementPlan::Update {
-            selection: Some(ExprPlan::BinaryOp { right, .. }),
-            ..
-        } = statement
-        else {
-            panic!("expected update selection");
+        let expected = StatementPlan::Update {
+            table_name: "Target".to_owned(),
+            assignments: vec![AssignmentPlan {
+                id: "count".to_owned(),
+                value: ExprPlan::Literal(Literal::Number(1.into())),
+            }],
+            selection: Some(ExprPlan::BinaryOp {
+                left: Box::new(ExprPlan::Identifier("id".to_owned())),
+                op: BinaryOperator::Eq,
+                right: Box::new(ExprPlan::Subquery(Box::new(parse_and_plan_query(
+                    "SELECT COUNT(*) FROM Source",
+                )))),
+            }),
         };
-        let ExprPlan::Subquery(source) = right.as_ref() else {
-            panic!("expected selection subquery");
-        };
-        assert_planned_query(source);
+        assert_eq!(actual, expected);
 
-        let statement =
-            parse_and_plan("DELETE FROM Target WHERE id = (SELECT COUNT(*) FROM Source)");
-        let StatementPlan::Delete {
-            selection: Some(ExprPlan::BinaryOp { right, .. }),
-            ..
-        } = statement
-        else {
-            panic!("expected delete selection");
+        let actual = parse_and_plan("DELETE FROM Target WHERE id = (SELECT COUNT(*) FROM Source)");
+        let expected = StatementPlan::Delete {
+            table_name: "Target".to_owned(),
+            selection: Some(ExprPlan::BinaryOp {
+                left: Box::new(ExprPlan::Identifier("id".to_owned())),
+                op: BinaryOperator::Eq,
+                right: Box::new(ExprPlan::Subquery(Box::new(parse_and_plan_query(
+                    "SELECT COUNT(*) FROM Source",
+                )))),
+            }),
         };
-        let ExprPlan::Subquery(source) = right.as_ref() else {
-            panic!("expected delete subquery");
-        };
-        assert_planned_query(source);
+        assert_eq!(actual, expected);
     }
 
     #[test]
     fn keeps_create_table_without_source_unplanned() {
-        let statement = parse_and_plan("CREATE TABLE Target (id INTEGER)");
-        let StatementPlan::CreateTable { source, .. } = statement else {
-            panic!("expected create table");
-        };
+        let actual = parse_and_plan("CREATE TABLE Target (id INTEGER)");
+        let expected = table("Target")
+            .create_table()
+            .add_column("id INTEGER")
+            .build()
+            .unwrap();
 
-        assert!(source.is_none());
+        assert_eq!(actual, expected);
     }
 
     #[test]
     fn keeps_non_query_statements_unchanged() {
-        let statement = StatementPlan::ShowColumns {
-            table_name: "Target".to_owned(),
-        };
+        let actual = parse_and_plan("SHOW COLUMNS FROM Target");
+        let expected = table("Target").show_columns().build().unwrap();
 
-        assert_eq!(plan(statement.clone()), statement);
+        assert_eq!(actual, expected);
     }
 
     #[test]
     fn plans_values_limit_and_offset_subqueries() {
-        let body_query = parse_query_plan("SELECT id FROM Item");
-        let body = match body_query {
-            QueryPlan::Project(body) => Some(body),
-            _ => None,
-        }
-        .expect("expected select");
-        let offset = OffsetPlan {
-            input: OffsetInputPlan::Project(body),
-            count: subquery_expr(),
-        };
-        let query = QueryPlan::Limit(LimitPlan {
-            input: LimitInputPlan::Offset(offset),
-            count: subquery_expr(),
-        });
-
-        let mut query = query;
-        plan_query(&mut query);
-
-        assert!(matches!(
-            query,
+        let project = parse_query_plan("SELECT id FROM Item")
+            .project()
+            .expect("expected project")
+            .clone();
+        let query = |count_query: QueryPlan| {
             QueryPlan::Limit(LimitPlan {
                 input: LimitInputPlan::Offset(OffsetPlan {
-                    count: ExprPlan::Subquery(offset),
-                    ..
+                    input: OffsetInputPlan::Project(project.clone()),
+                    count: subquery(count_query.clone()),
                 }),
-                count: ExprPlan::Subquery(limit),
-            }) if {
-                assert_planned_query(limit.as_ref());
-                assert_planned_query(offset.as_ref());
-                true
-            }
-        ));
+                count: subquery(count_query),
+            })
+        };
+        let mut actual = query(parse_query_plan("SELECT COUNT(*) FROM Item"));
 
-        let query = parse_and_plan_query("VALUES ((SELECT COUNT(*) FROM Item))");
-        let QueryPlan::Values(values) = query else {
-            panic!("expected values");
-        };
-        let ExprPlan::Subquery(value_subquery) = &values.0[0][0] else {
-            panic!("expected value subquery");
-        };
-        assert_planned_query(value_subquery);
+        plan_query(&mut actual);
+
+        let expected = query(parse_and_plan_query("SELECT COUNT(*) FROM Item"));
+        assert_eq!(actual, expected);
+
+        let actual = parse_and_plan_query("VALUES ((SELECT COUNT(*) FROM Item))");
+        let expected = QueryPlan::Values(ValuesPlan(vec![vec![subquery(parse_and_plan_query(
+            "SELECT COUNT(*) FROM Item",
+        ))]]));
+        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -787,206 +728,168 @@ mod tests {
             GROUP BY id IN (SELECT COUNT(*) FROM Source)
         ",
         );
-        let aggregation = aggregation_query(&query).expect("expected aggregation");
-        let AggregationInputPlan::Filter(filter) = &aggregation.input else {
-            panic!("expected filter");
-        };
-        let ExprPlan::Exists { subquery, .. } = &filter.expr else {
-            panic!("expected exists selection");
-        };
-        assert_planned_query(subquery);
+        let actual = query.project().map(|project| &project.input);
+        let expected = ProjectInputPlan::Aggregation(AggregationPlan {
+            input: AggregationInputPlan::Filter(FilterPlan {
+                input: FilterInputPlan::Source(table_source("Item")),
+                expr: ExprPlan::Exists {
+                    subquery: Box::new(parse_and_plan_query("SELECT COUNT(*) FROM Source")),
+                    negated: false,
+                },
+            }),
+            group_by: vec![ExprPlan::InSubquery {
+                expr: Box::new(ExprPlan::Identifier("id".to_owned())),
+                subquery: Box::new(parse_and_plan_query("SELECT COUNT(*) FROM Source")),
+                negated: false,
+            }],
+            aggregate_slots: Vec::new(),
+        });
 
-        let ExprPlan::InSubquery { subquery, .. } = &aggregation.group_by[0] else {
-            panic!("expected in-subquery group by");
-        };
-        assert_planned_query(subquery);
+        assert_eq!(actual, Some(&expected));
     }
 
     #[test]
     fn keeps_select_without_aggregates_unplanned() {
-        let query = parse_and_plan_query("SELECT * FROM Item");
+        let actual = parse_and_plan("SELECT * FROM Item");
+        let expected = table("Item").select().build().unwrap();
 
-        assert_unplanned_query(&query);
+        assert_eq!(actual, expected);
     }
 
     #[test]
     fn preserves_explicit_aggregation_and_having_stages_without_slots() {
-        let query = parse_and_plan_query("SELECT category FROM Item GROUP BY category");
-        let aggregation = aggregation_query(&query).expect("expected aggregation");
-        assert_eq!(
-            aggregation.group_by,
-            vec![ExprPlan::Identifier("category".to_owned())]
-        );
-        assert_eq!(aggregation.aggregate_slots, Vec::new());
-        assert_eq!(having_query(&query), None);
+        let actual = parse_and_plan("SELECT category FROM Item GROUP BY category");
+        let expected = table("Item")
+            .select()
+            .group_by("category")
+            .project("category")
+            .build()
+            .unwrap();
+        assert_eq!(actual, expected);
 
-        let query = parse_and_plan_query("SELECT 1 FROM Item HAVING TRUE");
-        let aggregation = aggregation_query(&query).expect("expected aggregation");
-        let having = having_query(&query).expect("expected having");
-        assert_eq!(aggregation.group_by, Vec::new());
-        assert_eq!(aggregation.aggregate_slots, Vec::new());
-        assert_eq!(having.expr, ExprPlan::Value(Value::Bool(true)));
+        let actual = parse_and_plan("SELECT 1 FROM Item HAVING TRUE");
+        let expected = table("Item")
+            .select()
+            .having("TRUE")
+            .project("1")
+            .build()
+            .unwrap();
+        assert_eq!(actual, expected);
     }
 
     #[test]
     fn promotes_aggregate_only_projection_and_order_by() {
         let query = parse_and_plan_query("SELECT COUNT(*) FROM Item");
-        assert_eq!(
-            aggregation_query(&query)
-                .expect("expected aggregation")
-                .aggregate_slots
-                .len(),
-            1
-        );
+        let actual = query.project().map(|project| &project.input);
+        let expected = ProjectInputPlan::Aggregation(AggregationPlan {
+            input: AggregationInputPlan::Source(table_source("Item")),
+            group_by: Vec::new(),
+            aggregate_slots: vec![count_wildcard(Some(0))],
+        });
+        assert_eq!(actual, Some(&expected));
 
         let query = parse_and_plan_query("SELECT id FROM Item ORDER BY COUNT(*)");
-        assert_eq!(
-            aggregation_query(&query)
-                .expect("expected aggregation")
-                .aggregate_slots
-                .len(),
-            1
-        );
+        let actual = query.project().map(|project| &project.input);
+        let expected = ProjectInputPlan::Aggregation(AggregationPlan {
+            input: AggregationInputPlan::Source(table_source("Item")),
+            group_by: Vec::new(),
+            aggregate_slots: vec![count_wildcard(Some(0))],
+        });
+        assert_eq!(actual, Some(&expected));
     }
 
     #[test]
     fn binds_aggregate_used_only_by_having() {
         let query = parse_and_plan_query("SELECT 1 FROM Item HAVING COUNT(*) > 0");
-        let having = having_query(&query).expect("expected having");
+        let actual = query.project().map(|project| &project.input);
+        let expected = ProjectInputPlan::Having(HavingPlan {
+            input: AggregationPlan {
+                input: AggregationInputPlan::Source(table_source("Item")),
+                group_by: Vec::new(),
+                aggregate_slots: vec![count_wildcard(Some(0))],
+            },
+            expr: greater_than(
+                count_wildcard_expr(Some(0)),
+                ExprPlan::Literal(Literal::Number(0.into())),
+            ),
+        });
 
-        assert_eq!(having.input.aggregate_slots.len(), 1);
-        let mut slots = Vec::new();
-        try_visit_expr(&having.expr, &mut |expr| {
-            if let ExprPlan::Aggregate(aggregate) = expr {
-                slots.push(aggregate.slot);
-            }
-            Ok(())
-        })
-        .expect("having traversal");
-        assert_eq!(slots, vec![Some(0)]);
+        assert_eq!(actual, Some(&expected));
     }
 
     #[test]
     fn keeps_schemaless_projection_unplanned() {
-        let query = QueryPlan::Project(ProjectPlan {
+        let mut actual = QueryPlan::Project(ProjectPlan {
             projection: ProjectionPlan::SchemalessMap,
             input: ProjectInputPlan::Source(SourcePlan::Dictionary(DictionarySourcePlan {
                 dictionary: Dictionary::GlueTables,
-                alias: alias("GLUE_TABLES"),
+                alias: table_alias("GLUE_TABLES"),
             })),
         });
+        let expected = actual.clone();
 
-        let mut query = query;
-        plan_query(&mut query);
-        assert_unplanned_query(&query);
+        plan_query(&mut actual);
+
+        assert_eq!(actual, expected);
     }
 
     #[test]
     fn plans_source_join_and_hash_executor_exprs() {
-        let first_join = InnerJoinPlan {
-            input: InnerJoinInputPlan::Condition(JoinConditionPlan {
-                input: JoinConditionInputPlan::Hash(HashJoinPlan {
-                    input: HashJoinInputPlan::Source(SourcePlan::Derived(DerivedSourcePlan {
-                        query: Box::new(count_query()),
-                        alias: alias("derived"),
-                    })),
-                    right: SourcePlan::Series(SeriesSourcePlan {
-                        alias: alias("series"),
-                        size: subquery_expr(),
+        fn query(nested_query: &QueryPlan) -> QueryPlan {
+            let nested_subquery = || subquery(nested_query.clone());
+            let first_join = InnerJoinPlan {
+                input: InnerJoinInputPlan::Condition(JoinConditionPlan {
+                    input: JoinConditionInputPlan::Hash(HashJoinPlan {
+                        input: HashJoinInputPlan::Source(SourcePlan::Derived(DerivedSourcePlan {
+                            query: Box::new(nested_query.clone()),
+                            alias: table_alias("derived"),
+                        })),
+                        right: SourcePlan::Series(SeriesSourcePlan {
+                            alias: table_alias("series"),
+                            size: nested_subquery(),
+                        }),
+                        input_key: nested_subquery(),
+                        right_key: nested_subquery(),
+                        right_filter: Some(nested_subquery()),
                     }),
-                    input_key: subquery_expr(),
-                    right_key: subquery_expr(),
-                    right_filter: Some(subquery_expr()),
+                    expr: nested_subquery(),
                 }),
-                expr: subquery_expr(),
-            }),
-        };
-        let second_join = LeftOuterJoinPlan {
-            input: LeftOuterJoinInputPlan::Hash(HashJoinPlan {
-                input: HashJoinInputPlan::InnerJoin(Box::new(first_join)),
-                right: SourcePlan::Table(TableSourcePlan {
-                    name: "Target".to_owned(),
-                    alias: None,
-                    access: TableAccessPlan::FullScan,
-                }),
-                input_key: subquery_expr(),
-                right_key: subquery_expr(),
-                right_filter: None,
-            }),
-        };
-        let third_join = InnerJoinPlan {
-            input: InnerJoinInputPlan::NestedLoop(NestedLoopJoinPlan {
-                input: NestedLoopJoinInputPlan::LeftOuterJoin(Box::new(second_join)),
-                right: SourcePlan::Dictionary(DictionarySourcePlan {
-                    dictionary: Dictionary::GlueIndexes,
-                    alias: alias("GLUE_INDEXES"),
-                }),
-            }),
-        };
-        let query = QueryPlan::SelectOrderBy(SelectOrderByPlan {
-            input: ProjectPlan {
-                projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
-                input: ProjectInputPlan::InnerJoin(Box::new(third_join)),
-            },
-            exprs: vec![OrderByExprPlan {
-                expr: ExprPlan::Literal(Literal::Number(1.into())),
-                asc: None,
-            }],
-        });
-
-        let mut query = query;
-        plan_query(&mut query);
-        let third_join = inner_join_query(&query).expect("expected third join");
-        let InnerJoinInputPlan::NestedLoop(third_nested_loop) = &third_join.input else {
-            panic!("expected third nested loop");
-        };
-        let NestedLoopJoinInputPlan::LeftOuterJoin(second_join) = &third_nested_loop.input else {
-            panic!("expected second join");
-        };
-        let LeftOuterJoinInputPlan::Hash(second_hash) = &second_join.input else {
-            panic!("expected second hash join");
-        };
-        let HashJoinInputPlan::InnerJoin(first_join) = &second_hash.input else {
-            panic!("expected first join");
-        };
-        let InnerJoinInputPlan::Condition(first_condition) = &first_join.input else {
-            panic!("expected first condition");
-        };
-        let JoinConditionInputPlan::Hash(first_hash) = &first_condition.input else {
-            panic!("expected first hash join");
-        };
-        let HashJoinInputPlan::Source(SourcePlan::Derived(derived)) = &first_hash.input else {
-            panic!("expected derived relation");
-        };
-        assert_planned_query(derived.query.as_ref());
-
-        let SourcePlan::Series(series) = &first_hash.right else {
-            panic!("expected series relation");
-        };
-        let ExprPlan::Subquery(series_size) = &series.size else {
-            panic!("expected series size subquery");
-        };
-        assert_planned_query(series_size);
-
-        let ExprPlan::Subquery(join_on) = &first_condition.expr else {
-            panic!("expected join on subquery");
-        };
-        assert_planned_query(join_on);
-
-        let Some(right_filter) = &first_hash.right_filter else {
-            panic!("expected hash right filter");
-        };
-        for expr in [&first_hash.right_key, &first_hash.input_key, right_filter] {
-            let ExprPlan::Subquery(query) = expr else {
-                panic!("expected hash executor subquery");
             };
-            assert_planned_query(query);
+            let second_join = LeftOuterJoinPlan {
+                input: LeftOuterJoinInputPlan::Hash(HashJoinPlan {
+                    input: HashJoinInputPlan::InnerJoin(Box::new(first_join)),
+                    right: table_source("Target"),
+                    input_key: nested_subquery(),
+                    right_key: nested_subquery(),
+                    right_filter: None,
+                }),
+            };
+            let third_join = InnerJoinPlan {
+                input: InnerJoinInputPlan::NestedLoop(NestedLoopJoinPlan {
+                    input: NestedLoopJoinInputPlan::LeftOuterJoin(Box::new(second_join)),
+                    right: SourcePlan::Dictionary(DictionarySourcePlan {
+                        dictionary: Dictionary::GlueIndexes,
+                        alias: table_alias("GLUE_INDEXES"),
+                    }),
+                }),
+            };
+
+            QueryPlan::SelectOrderBy(SelectOrderByPlan {
+                input: ProjectPlan {
+                    input: ProjectInputPlan::InnerJoin(Box::new(third_join)),
+                    projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
+                },
+                exprs: vec![OrderByExprPlan {
+                    expr: ExprPlan::Literal(Literal::Number(1.into())),
+                    asc: None,
+                }],
+            })
         }
 
-        assert_eq!(second_hash.right_filter, None);
-        assert!(matches!(
-            third_join.input,
-            InnerJoinInputPlan::NestedLoop(_)
-        ));
+        let mut actual = query(&parse_query_plan("SELECT COUNT(*) FROM Item"));
+        plan_query(&mut actual);
+        let expected = query(&parse_and_plan_query("SELECT COUNT(*) FROM Item"));
+
+        assert_eq!(actual, expected);
     }
 }
