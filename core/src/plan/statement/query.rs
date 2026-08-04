@@ -67,315 +67,198 @@ impl From<ast::Query> for QueryPlan {
         let ast::Query {
             body,
             order_by,
-            limit,
-            offset,
+            limit: limit_expr,
+            offset: offset_expr,
         } = query;
 
         let order_by = order_by.into_iter().map(Into::into).collect::<Vec<_>>();
 
-        match body {
+        let input = match body {
             ast::SetExpr::Select(select) => {
                 let ast::Select {
-                    distinct,
+                    distinct: is_distinct,
                     projection,
                     from,
                     selection,
                     group_by,
                     having,
                 } = *select;
-                let ast::TableWithJoins { relation, joins } = from;
-                let source = joins.into_iter().fold(
-                    NestedLoopJoinInputPlan::Source(relation.into()),
-                    |input, join| {
-                        let ast::Join {
-                            relation,
-                            join_operator,
-                        } = join;
-                        let nested_loop = NestedLoopJoinPlan {
-                            input,
-                            right: relation.into(),
-                        };
-
-                        match join_operator {
-                            ast::JoinOperator::Inner(ast::JoinConstraint::None) => {
-                                NestedLoopJoinInputPlan::InnerJoin(Box::new(InnerJoinPlan {
-                                    input: InnerJoinInputPlan::NestedLoop(nested_loop),
-                                }))
-                            }
-                            ast::JoinOperator::Inner(ast::JoinConstraint::On(expr)) => {
-                                NestedLoopJoinInputPlan::InnerJoin(Box::new(InnerJoinPlan {
-                                    input: InnerJoinInputPlan::Condition(JoinConditionPlan {
-                                        input: JoinConditionInputPlan::NestedLoop(nested_loop),
-                                        expr: expr.into(),
-                                    }),
-                                }))
-                            }
-                            ast::JoinOperator::LeftOuter(ast::JoinConstraint::None) => {
-                                NestedLoopJoinInputPlan::LeftOuterJoin(Box::new(
-                                    LeftOuterJoinPlan {
-                                        input: LeftOuterJoinInputPlan::NestedLoop(nested_loop),
-                                    },
-                                ))
-                            }
-                            ast::JoinOperator::LeftOuter(ast::JoinConstraint::On(expr)) => {
-                                NestedLoopJoinInputPlan::LeftOuterJoin(Box::new(
-                                    LeftOuterJoinPlan {
-                                        input: LeftOuterJoinInputPlan::Condition(
-                                            JoinConditionPlan {
-                                                input: JoinConditionInputPlan::NestedLoop(
-                                                    nested_loop,
-                                                ),
-                                                expr: expr.into(),
-                                            },
-                                        ),
-                                    },
-                                ))
-                            }
-                        }
-                    },
-                );
-                let input = match selection {
-                    Some(expr) => AggregationInputPlan::Filter(FilterPlan {
-                        input: match source {
-                            NestedLoopJoinInputPlan::Source(source) => {
-                                FilterInputPlan::Source(source)
-                            }
-                            NestedLoopJoinInputPlan::InnerJoin(join) => {
-                                FilterInputPlan::InnerJoin(join)
-                            }
-                            NestedLoopJoinInputPlan::LeftOuterJoin(join) => {
-                                FilterInputPlan::LeftOuterJoin(join)
-                            }
-                        },
-                        expr: expr.into(),
-                    }),
-                    None => match source {
-                        NestedLoopJoinInputPlan::Source(source) => {
-                            AggregationInputPlan::Source(source)
-                        }
-                        NestedLoopJoinInputPlan::InnerJoin(join) => {
-                            AggregationInputPlan::InnerJoin(join)
-                        }
-                        NestedLoopJoinInputPlan::LeftOuterJoin(join) => {
-                            AggregationInputPlan::LeftOuterJoin(join)
-                        }
-                    },
-                };
-                let group_by = group_by.into_iter().map(Into::into).collect::<Vec<_>>();
-                let input = match having {
-                    Some(having) => ProjectInputPlan::Having(HavingPlan {
-                        input: AggregationPlan {
-                            input,
-                            group_by,
-                            aggregate_slots: Vec::new(),
-                        },
-                        expr: having.into(),
-                    }),
-                    None if group_by.is_empty() => match input {
-                        AggregationInputPlan::Source(source) => ProjectInputPlan::Source(source),
-                        AggregationInputPlan::InnerJoin(join) => ProjectInputPlan::InnerJoin(join),
-                        AggregationInputPlan::LeftOuterJoin(join) => {
-                            ProjectInputPlan::LeftOuterJoin(join)
-                        }
-                        AggregationInputPlan::Filter(filter) => ProjectInputPlan::Filter(filter),
-                    },
-                    None => ProjectInputPlan::Aggregation(AggregationPlan {
-                        input,
-                        group_by,
-                        aggregate_slots: Vec::new(),
-                    }),
-                };
+                let input = joins(from);
+                let input = filter(input, selection);
+                let input = group_by_having(input, group_by, having);
                 let input = ProjectPlan {
                     input,
                     projection: projection.into(),
                 };
 
-                match (distinct, order_by.is_empty(), offset, limit) {
-                    (false, true, None, None) => Self::Project(input),
-                    (false, false, None, None) => Self::SelectOrderBy(SelectOrderByPlan {
+                let input = if order_by.is_empty() {
+                    DistinctInputPlan::Project(input)
+                } else {
+                    DistinctInputPlan::SelectOrderBy(SelectOrderByPlan {
                         input,
                         exprs: order_by,
-                    }),
-                    (false, true, Some(offset), None) => Self::Offset(OffsetPlan {
-                        input: OffsetInputPlan::Project(input),
-                        count: offset.into(),
-                    }),
-                    (false, false, Some(offset), None) => Self::Offset(OffsetPlan {
-                        input: OffsetInputPlan::SelectOrderBy(SelectOrderByPlan {
-                            input,
-                            exprs: order_by,
-                        }),
-                        count: offset.into(),
-                    }),
-                    (false, true, None, Some(limit)) => Self::Limit(LimitPlan {
-                        input: LimitInputPlan::Project(input),
-                        count: limit.into(),
-                    }),
-                    (false, false, None, Some(limit)) => Self::Limit(LimitPlan {
-                        input: LimitInputPlan::SelectOrderBy(SelectOrderByPlan {
-                            input,
-                            exprs: order_by,
-                        }),
-                        count: limit.into(),
-                    }),
-                    (false, true, Some(offset), Some(limit)) => {
-                        let offset = OffsetPlan {
-                            input: OffsetInputPlan::Project(input),
-                            count: offset.into(),
-                        };
-
-                        Self::Limit(LimitPlan {
-                            input: LimitInputPlan::Offset(offset),
-                            count: limit.into(),
-                        })
-                    }
-                    (false, false, Some(offset), Some(limit)) => {
-                        let order_by = SelectOrderByPlan {
-                            input,
-                            exprs: order_by,
-                        };
-                        let offset = OffsetPlan {
-                            input: OffsetInputPlan::SelectOrderBy(order_by),
-                            count: offset.into(),
-                        };
-
-                        Self::Limit(LimitPlan {
-                            input: LimitInputPlan::Offset(offset),
-                            count: limit.into(),
-                        })
-                    }
-                    (true, true, None, None) => Self::Distinct(DistinctPlan {
-                        input: DistinctInputPlan::Project(input),
-                    }),
-                    (true, false, None, None) => Self::Distinct(DistinctPlan {
-                        input: DistinctInputPlan::SelectOrderBy(SelectOrderByPlan {
-                            input,
-                            exprs: order_by,
-                        }),
-                    }),
-                    (true, true, Some(offset), None) => Self::Offset(OffsetPlan {
-                        input: OffsetInputPlan::Distinct(DistinctPlan {
-                            input: DistinctInputPlan::Project(input),
-                        }),
-                        count: offset.into(),
-                    }),
-                    (true, false, Some(offset), None) => Self::Offset(OffsetPlan {
-                        input: OffsetInputPlan::Distinct(DistinctPlan {
-                            input: DistinctInputPlan::SelectOrderBy(SelectOrderByPlan {
-                                input,
-                                exprs: order_by,
-                            }),
-                        }),
-                        count: offset.into(),
-                    }),
-                    (true, true, None, Some(limit)) => Self::Limit(LimitPlan {
-                        input: LimitInputPlan::Distinct(DistinctPlan {
-                            input: DistinctInputPlan::Project(input),
-                        }),
-                        count: limit.into(),
-                    }),
-                    (true, false, None, Some(limit)) => Self::Limit(LimitPlan {
-                        input: LimitInputPlan::Distinct(DistinctPlan {
-                            input: DistinctInputPlan::SelectOrderBy(SelectOrderByPlan {
-                                input,
-                                exprs: order_by,
-                            }),
-                        }),
-                        count: limit.into(),
-                    }),
-                    (true, true, Some(offset), Some(limit)) => {
-                        let offset = OffsetPlan {
-                            input: OffsetInputPlan::Distinct(DistinctPlan {
-                                input: DistinctInputPlan::Project(input),
-                            }),
-                            count: offset.into(),
-                        };
-
-                        Self::Limit(LimitPlan {
-                            input: LimitInputPlan::Offset(offset),
-                            count: limit.into(),
-                        })
-                    }
-                    (true, false, Some(offset), Some(limit)) => {
-                        let order_by = SelectOrderByPlan {
-                            input,
-                            exprs: order_by,
-                        };
-                        let distinct = DistinctPlan {
-                            input: DistinctInputPlan::SelectOrderBy(order_by),
-                        };
-                        let offset = OffsetPlan {
-                            input: OffsetInputPlan::Distinct(distinct),
-                            count: offset.into(),
-                        };
-
-                        Self::Limit(LimitPlan {
-                            input: LimitInputPlan::Offset(offset),
-                            count: limit.into(),
-                        })
-                    }
-                }
+                    })
+                };
+                distinct(input, is_distinct)
             }
             ast::SetExpr::Values(values) => {
                 let input = values.into();
-
-                match (order_by.is_empty(), offset, limit) {
-                    (true, None, None) => Self::Values(input),
-                    (false, None, None) => Self::ValuesOrderBy(ValuesOrderByPlan {
+                if order_by.is_empty() {
+                    OffsetInputPlan::Values(input)
+                } else {
+                    OffsetInputPlan::ValuesOrderBy(ValuesOrderByPlan {
                         input,
                         exprs: order_by,
-                    }),
-                    (true, Some(offset), None) => Self::Offset(OffsetPlan {
-                        input: OffsetInputPlan::Values(input),
-                        count: offset.into(),
-                    }),
-                    (false, Some(offset), None) => Self::Offset(OffsetPlan {
-                        input: OffsetInputPlan::ValuesOrderBy(ValuesOrderByPlan {
-                            input,
-                            exprs: order_by,
-                        }),
-                        count: offset.into(),
-                    }),
-                    (true, None, Some(limit)) => Self::Limit(LimitPlan {
-                        input: LimitInputPlan::Values(input),
-                        count: limit.into(),
-                    }),
-                    (false, None, Some(limit)) => Self::Limit(LimitPlan {
-                        input: LimitInputPlan::ValuesOrderBy(ValuesOrderByPlan {
-                            input,
-                            exprs: order_by,
-                        }),
-                        count: limit.into(),
-                    }),
-                    (true, Some(offset), Some(limit)) => {
-                        let offset = OffsetPlan {
-                            input: OffsetInputPlan::Values(input),
-                            count: offset.into(),
-                        };
-
-                        Self::Limit(LimitPlan {
-                            input: LimitInputPlan::Offset(offset),
-                            count: limit.into(),
-                        })
-                    }
-                    (false, Some(offset), Some(limit)) => {
-                        let order_by = ValuesOrderByPlan {
-                            input,
-                            exprs: order_by,
-                        };
-                        let offset = OffsetPlan {
-                            input: OffsetInputPlan::ValuesOrderBy(order_by),
-                            count: offset.into(),
-                        };
-
-                        Self::Limit(LimitPlan {
-                            input: LimitInputPlan::Offset(offset),
-                            count: limit.into(),
-                        })
-                    }
+                    })
                 }
             }
+        };
+        let input = offset(input, offset_expr);
+
+        limit(input, limit_expr)
+    }
+}
+
+fn joins(from: ast::TableWithJoins) -> NestedLoopJoinInputPlan {
+    let ast::TableWithJoins { relation, joins } = from;
+
+    joins.into_iter().fold(
+        NestedLoopJoinInputPlan::Source(relation.into()),
+        |input, join| {
+            let ast::Join {
+                relation,
+                join_operator,
+            } = join;
+            let nested_loop = NestedLoopJoinPlan {
+                input,
+                right: relation.into(),
+            };
+
+            match join_operator {
+                ast::JoinOperator::Inner(ast::JoinConstraint::None) => {
+                    NestedLoopJoinInputPlan::InnerJoin(Box::new(InnerJoinPlan {
+                        input: InnerJoinInputPlan::NestedLoop(nested_loop),
+                    }))
+                }
+                ast::JoinOperator::Inner(ast::JoinConstraint::On(expr)) => {
+                    NestedLoopJoinInputPlan::InnerJoin(Box::new(InnerJoinPlan {
+                        input: InnerJoinInputPlan::Condition(JoinConditionPlan {
+                            input: JoinConditionInputPlan::NestedLoop(nested_loop),
+                            expr: expr.into(),
+                        }),
+                    }))
+                }
+                ast::JoinOperator::LeftOuter(ast::JoinConstraint::None) => {
+                    NestedLoopJoinInputPlan::LeftOuterJoin(Box::new(LeftOuterJoinPlan {
+                        input: LeftOuterJoinInputPlan::NestedLoop(nested_loop),
+                    }))
+                }
+                ast::JoinOperator::LeftOuter(ast::JoinConstraint::On(expr)) => {
+                    NestedLoopJoinInputPlan::LeftOuterJoin(Box::new(LeftOuterJoinPlan {
+                        input: LeftOuterJoinInputPlan::Condition(JoinConditionPlan {
+                            input: JoinConditionInputPlan::NestedLoop(nested_loop),
+                            expr: expr.into(),
+                        }),
+                    }))
+                }
+            }
+        },
+    )
+}
+
+fn filter(input: NestedLoopJoinInputPlan, selection: Option<ast::Expr>) -> AggregationInputPlan {
+    match selection {
+        Some(expr) => AggregationInputPlan::Filter(FilterPlan {
+            input: match input {
+                NestedLoopJoinInputPlan::Source(source) => FilterInputPlan::Source(source),
+                NestedLoopJoinInputPlan::InnerJoin(join) => FilterInputPlan::InnerJoin(join),
+                NestedLoopJoinInputPlan::LeftOuterJoin(join) => {
+                    FilterInputPlan::LeftOuterJoin(join)
+                }
+            },
+            expr: expr.into(),
+        }),
+        None => match input {
+            NestedLoopJoinInputPlan::Source(source) => AggregationInputPlan::Source(source),
+            NestedLoopJoinInputPlan::InnerJoin(join) => AggregationInputPlan::InnerJoin(join),
+            NestedLoopJoinInputPlan::LeftOuterJoin(join) => {
+                AggregationInputPlan::LeftOuterJoin(join)
+            }
+        },
+    }
+}
+
+fn group_by_having(
+    input: AggregationInputPlan,
+    group_by: Vec<ast::Expr>,
+    having: Option<ast::Expr>,
+) -> ProjectInputPlan {
+    let group_by = group_by.into_iter().map(Into::into).collect::<Vec<_>>();
+
+    match having {
+        Some(having) => ProjectInputPlan::Having(HavingPlan {
+            input: AggregationPlan {
+                input,
+                group_by,
+                aggregate_slots: Vec::new(),
+            },
+            expr: having.into(),
+        }),
+        None if group_by.is_empty() => match input {
+            AggregationInputPlan::Source(source) => ProjectInputPlan::Source(source),
+            AggregationInputPlan::InnerJoin(join) => ProjectInputPlan::InnerJoin(join),
+            AggregationInputPlan::LeftOuterJoin(join) => ProjectInputPlan::LeftOuterJoin(join),
+            AggregationInputPlan::Filter(filter) => ProjectInputPlan::Filter(filter),
+        },
+        None => ProjectInputPlan::Aggregation(AggregationPlan {
+            input,
+            group_by,
+            aggregate_slots: Vec::new(),
+        }),
+    }
+}
+
+fn distinct(input: DistinctInputPlan, is_distinct: bool) -> OffsetInputPlan {
+    if is_distinct {
+        OffsetInputPlan::Distinct(DistinctPlan { input })
+    } else {
+        match input {
+            DistinctInputPlan::Project(project) => OffsetInputPlan::Project(project),
+            DistinctInputPlan::SelectOrderBy(order_by) => OffsetInputPlan::SelectOrderBy(order_by),
         }
+    }
+}
+
+fn offset(input: OffsetInputPlan, expr: Option<ast::Expr>) -> LimitInputPlan {
+    match expr {
+        Some(expr) => LimitInputPlan::Offset(OffsetPlan {
+            input,
+            count: expr.into(),
+        }),
+        None => match input {
+            OffsetInputPlan::Project(project) => LimitInputPlan::Project(project),
+            OffsetInputPlan::Values(values) => LimitInputPlan::Values(values),
+            OffsetInputPlan::SelectOrderBy(order_by) => LimitInputPlan::SelectOrderBy(order_by),
+            OffsetInputPlan::ValuesOrderBy(order_by) => LimitInputPlan::ValuesOrderBy(order_by),
+            OffsetInputPlan::Distinct(distinct) => LimitInputPlan::Distinct(distinct),
+        },
+    }
+}
+
+fn limit(input: LimitInputPlan, expr: Option<ast::Expr>) -> QueryPlan {
+    match expr {
+        Some(expr) => QueryPlan::Limit(LimitPlan {
+            input,
+            count: expr.into(),
+        }),
+        None => match input {
+            LimitInputPlan::Project(project) => QueryPlan::Project(project),
+            LimitInputPlan::Values(values) => QueryPlan::Values(values),
+            LimitInputPlan::SelectOrderBy(order_by) => QueryPlan::SelectOrderBy(order_by),
+            LimitInputPlan::ValuesOrderBy(order_by) => QueryPlan::ValuesOrderBy(order_by),
+            LimitInputPlan::Distinct(distinct) => QueryPlan::Distinct(distinct),
+            LimitInputPlan::Offset(offset) => QueryPlan::Offset(offset),
+        },
     }
 }
 
