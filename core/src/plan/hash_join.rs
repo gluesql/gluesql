@@ -16,7 +16,7 @@ pub fn plan<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
     statement: StatementPlan,
 ) -> StatementPlan {
-    let planner = JoinPlanner { schema_map };
+    let planner = HashJoinPlanner { schema_map };
 
     match statement {
         StatementPlan::Query(query) => {
@@ -28,11 +28,11 @@ pub fn plan<S: BuildHasher>(
     }
 }
 
-struct JoinPlanner<'a, S> {
+struct HashJoinPlanner<'a, S> {
     schema_map: &'a HashMap<String, Schema, S>,
 }
 
-impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
+impl<'a, S: BuildHasher> Planner<'a> for HashJoinPlanner<'a, S> {
     fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
         let QueryPlan {
             body,
@@ -63,7 +63,7 @@ impl<'a, S: BuildHasher> Planner<'a> for JoinPlanner<'a, S> {
     }
 }
 
-impl<'a, S: BuildHasher> JoinPlanner<'a, S> {
+impl<'a, S: BuildHasher> HashJoinPlanner<'a, S> {
     fn select(&self, outer_context: Option<Rc<Context<'a>>>, select: SelectPlan) -> SelectPlan {
         let SelectPlan {
             distinct,
