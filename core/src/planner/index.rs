@@ -282,6 +282,9 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
             };
             order_by.pop();
 
+            let filter_expr =
+                filter_expr.map(|expr| self.subquery_expr(outer_context.map(Rc::clone), expr));
+
             return (filter_expr, order_by);
         }
 
@@ -373,13 +376,14 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                         index_value_expr,
                         residual,
                     } => {
+                        let right = self.subquery_expr(outer_context, *right);
                         let residual = match residual {
                             Some(expr) => ExprPlan::BinaryOp {
                                 left: Box::new(expr),
                                 op: BinaryOperator::And,
-                                right,
+                                right: Box::new(right),
                             },
-                            None => *right,
+                            None => right,
                         };
 
                         return Planned::IndexedExpr {
@@ -1149,6 +1153,83 @@ WHERE EXISTS (
         assert_eq!(
             actual, expected,
             "uses index for NULL check inside subquery:\n{sql}"
+        );
+
+        let sql = "
+SELECT *
+FROM Test
+WHERE EXISTS (
+    SELECT *
+    FROM Test
+    WHERE flag = TRUE
+)
+ORDER BY name;
+";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_name".to_owned()))
+            .select()
+            .filter(exists(
+                table("Test")
+                    .index_by(non_clustered("idx_flag".to_owned()).eq(true))
+                    .select(),
+            ))
+            .build();
+        assert_eq!(
+            actual, expected,
+            "plans filter subquery when order by owns the outer index:\n{sql}"
+        );
+
+        let sql = "
+SELECT *
+FROM Test
+WHERE id = 1
+  AND EXISTS (
+    SELECT *
+    FROM Test
+    WHERE flag = TRUE
+  );
+";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_id".to_owned()).eq(num(1)))
+            .select()
+            .filter(exists(
+                table("Test")
+                    .index_by(non_clustered("idx_flag".to_owned()).eq(true))
+                    .select(),
+            ))
+            .build();
+        assert_eq!(
+            actual, expected,
+            "plans right conjunct subquery after selecting the outer index:\n{sql}"
+        );
+
+        let sql = "
+SELECT *
+FROM Test
+WHERE (id = 1 AND name IS NOT NULL)
+  AND EXISTS (
+    SELECT *
+    FROM Test
+    WHERE flag = TRUE
+  );
+";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_id".to_owned()).eq(num(1)))
+            .select()
+            .filter(
+                col("name").is_not_null().and(exists(
+                    table("Test")
+                        .index_by(non_clustered("idx_flag".to_owned()).eq(true))
+                        .select(),
+                )),
+            )
+            .build();
+        assert_eq!(
+            actual, expected,
+            "preserves left residual and plans right conjunct subquery:\n{sql}"
         );
     }
 }

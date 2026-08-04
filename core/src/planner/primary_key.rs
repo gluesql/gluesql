@@ -6,8 +6,11 @@ use {
         data::Schema,
         plan::{
             AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
-            FilterPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, ProjectInputPlan,
-            ProjectPlan, QueryPlan, SourcePlan, StatementPlan, TableAccessPlan,
+            FilterPlan, HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan,
+            JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
+            LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
+            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SourcePlan,
+            StatementPlan, TableAccessPlan,
         },
     },
     std::{collections::HashMap, hash::BuildHasher, rc::Rc},
@@ -135,8 +138,12 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
     ) -> ProjectPlan {
         project.input = match project.input {
             ProjectInputPlan::Source(relation) => ProjectInputPlan::Source(relation),
-            ProjectInputPlan::InnerJoin(join) => ProjectInputPlan::InnerJoin(join),
-            ProjectInputPlan::LeftOuterJoin(join) => ProjectInputPlan::LeftOuterJoin(join),
+            ProjectInputPlan::InnerJoin(join) => {
+                ProjectInputPlan::InnerJoin(Box::new(self.inner_join(outer_context, *join)))
+            }
+            ProjectInputPlan::LeftOuterJoin(join) => ProjectInputPlan::LeftOuterJoin(Box::new(
+                self.left_outer_join(outer_context, *join),
+            )),
             ProjectInputPlan::Filter(filter) => {
                 let (input, expr) = self.filter(outer_context.map(Rc::clone), filter);
                 match expr {
@@ -190,8 +197,12 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
     ) -> AggregationInputPlan {
         match input {
             AggregationInputPlan::Source(relation) => AggregationInputPlan::Source(relation),
-            AggregationInputPlan::InnerJoin(join) => AggregationInputPlan::InnerJoin(join),
-            AggregationInputPlan::LeftOuterJoin(join) => AggregationInputPlan::LeftOuterJoin(join),
+            AggregationInputPlan::InnerJoin(join) => AggregationInputPlan::InnerJoin(Box::new(
+                self.inner_join(outer_context.as_ref(), *join),
+            )),
+            AggregationInputPlan::LeftOuterJoin(join) => AggregationInputPlan::LeftOuterJoin(
+                Box::new(self.left_outer_join(outer_context.as_ref(), *join)),
+            ),
             AggregationInputPlan::Filter(filter) => {
                 let (input, expr) = self.filter(outer_context, filter);
                 match expr {
@@ -214,6 +225,15 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
         filter: FilterPlan,
     ) -> (FilterInputPlan, Option<ExprPlan>) {
         let FilterPlan { mut input, expr } = filter;
+        input = match input {
+            FilterInputPlan::Source(source) => FilterInputPlan::Source(source),
+            FilterInputPlan::InnerJoin(join) => {
+                FilterInputPlan::InnerJoin(Box::new(self.inner_join(outer_context.as_ref(), *join)))
+            }
+            FilterInputPlan::LeftOuterJoin(join) => FilterInputPlan::LeftOuterJoin(Box::new(
+                self.left_outer_join(outer_context.as_ref(), *join),
+            )),
+        };
         let current_context = self.input_context(&input);
         let lookup_candidate = PrimaryKeyLookupCandidate::new(self.schema_map, &input);
 
@@ -238,10 +258,153 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
     }
 
     fn input_context(&self, input: &FilterInputPlan) -> Option<Rc<Context<'a>>> {
-        input.joined_sources().into_iter().fold(
-            self.update_context(None, input.base_source()),
-            |context, source| self.update_context(context, source),
-        )
+        self.source_context(input.base_source(), input.joined_sources())
+    }
+
+    fn source_context(
+        &self,
+        base_source: &SourcePlan,
+        joined_sources: Vec<&SourcePlan>,
+    ) -> Option<Rc<Context<'a>>> {
+        joined_sources
+            .into_iter()
+            .fold(self.update_context(None, base_source), |context, source| {
+                self.update_context(context, source)
+            })
+    }
+
+    fn inner_join(
+        &self,
+        outer_context: Option<&Rc<Context<'a>>>,
+        join: InnerJoinPlan,
+    ) -> InnerJoinPlan {
+        let input = match join.input {
+            InnerJoinInputPlan::NestedLoop(join) => {
+                InnerJoinInputPlan::NestedLoop(self.nested_loop(outer_context, join))
+            }
+            InnerJoinInputPlan::Hash(join) => {
+                InnerJoinInputPlan::Hash(self.hash(outer_context, join))
+            }
+            InnerJoinInputPlan::Condition(condition) => {
+                InnerJoinInputPlan::Condition(self.join_condition(outer_context, condition))
+            }
+        };
+
+        InnerJoinPlan { input }
+    }
+
+    fn left_outer_join(
+        &self,
+        outer_context: Option<&Rc<Context<'a>>>,
+        join: LeftOuterJoinPlan,
+    ) -> LeftOuterJoinPlan {
+        let input = match join.input {
+            LeftOuterJoinInputPlan::NestedLoop(join) => {
+                LeftOuterJoinInputPlan::NestedLoop(self.nested_loop(outer_context, join))
+            }
+            LeftOuterJoinInputPlan::Hash(join) => {
+                LeftOuterJoinInputPlan::Hash(self.hash(outer_context, join))
+            }
+            LeftOuterJoinInputPlan::Condition(condition) => {
+                LeftOuterJoinInputPlan::Condition(self.join_condition(outer_context, condition))
+            }
+        };
+
+        LeftOuterJoinPlan { input }
+    }
+
+    fn join_condition(
+        &self,
+        outer_context: Option<&Rc<Context<'a>>>,
+        condition: JoinConditionPlan,
+    ) -> JoinConditionPlan {
+        let JoinConditionPlan { input, expr } = condition;
+        let input = match input {
+            JoinConditionInputPlan::NestedLoop(join) => {
+                JoinConditionInputPlan::NestedLoop(self.nested_loop(outer_context, join))
+            }
+            JoinConditionInputPlan::Hash(join) => {
+                JoinConditionInputPlan::Hash(self.hash(outer_context, join))
+            }
+        };
+        let current_context = match &input {
+            JoinConditionInputPlan::NestedLoop(join) => {
+                self.source_context(join.base_source(), join.joined_sources())
+            }
+            JoinConditionInputPlan::Hash(join) => {
+                self.source_context(join.base_source(), join.joined_sources())
+            }
+        };
+        let expr_context = Context::concat(current_context, outer_context.map(Rc::clone));
+        let expr = self.subquery_expr(expr_context, expr);
+
+        JoinConditionPlan { input, expr }
+    }
+
+    fn nested_loop(
+        &self,
+        outer_context: Option<&Rc<Context<'a>>>,
+        join: NestedLoopJoinPlan,
+    ) -> NestedLoopJoinPlan {
+        let input = match join.input {
+            NestedLoopJoinInputPlan::Source(source) => NestedLoopJoinInputPlan::Source(source),
+            NestedLoopJoinInputPlan::InnerJoin(join) => {
+                NestedLoopJoinInputPlan::InnerJoin(Box::new(self.inner_join(outer_context, *join)))
+            }
+            NestedLoopJoinInputPlan::LeftOuterJoin(join) => NestedLoopJoinInputPlan::LeftOuterJoin(
+                Box::new(self.left_outer_join(outer_context, *join)),
+            ),
+        };
+
+        NestedLoopJoinPlan {
+            input,
+            right: join.right,
+        }
+    }
+
+    fn hash(&self, outer_context: Option<&Rc<Context<'a>>>, join: HashJoinPlan) -> HashJoinPlan {
+        let HashJoinPlan {
+            input,
+            right,
+            input_key,
+            right_key,
+            right_filter,
+        } = join;
+        let input = match input {
+            HashJoinInputPlan::Source(source) => HashJoinInputPlan::Source(source),
+            HashJoinInputPlan::InnerJoin(join) => {
+                HashJoinInputPlan::InnerJoin(Box::new(self.inner_join(outer_context, *join)))
+            }
+            HashJoinInputPlan::LeftOuterJoin(join) => HashJoinInputPlan::LeftOuterJoin(Box::new(
+                self.left_outer_join(outer_context, *join),
+            )),
+        };
+        let input_context = match &input {
+            HashJoinInputPlan::Source(source) => self.update_context(None, source),
+            HashJoinInputPlan::InnerJoin(join) => {
+                self.source_context(join.base_source(), join.joined_sources())
+            }
+            HashJoinInputPlan::LeftOuterJoin(join) => {
+                self.source_context(join.base_source(), join.joined_sources())
+            }
+        };
+        let input_context = Context::concat(input_context, outer_context.map(Rc::clone));
+        let right_context = Context::concat(
+            self.update_context(None, &right),
+            outer_context.map(Rc::clone),
+        );
+        let input_key = self.subquery_expr(input_context, input_key);
+        let right_key = self.subquery_expr(right_context.as_ref().map(Rc::clone), right_key);
+        let right_filter = right_filter
+            .map(|expr| self.subquery_expr(right_context.as_ref().map(Rc::clone), expr));
+
+        HashJoinPlan {
+            input,
+            right,
+            input_key,
+            right_key,
+            right_filter,
+        }
     }
 
     fn expr(
@@ -282,13 +445,15 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
 
                 let left = match primary_key {
                     PrimaryKey::Found { access, expr } => {
+                        let context = Context::concat(current_context, outer_context);
+                        let right = self.subquery_expr(context, *right);
                         let expr = match expr {
                             Some(left) => ExprPlan::BinaryOp {
                                 left: Box::new(left),
                                 op: BinaryOperator::And,
-                                right,
+                                right: Box::new(right),
                             },
-                            None => *right,
+                            None => right,
                         };
 
                         return PrimaryKey::Found {
@@ -364,7 +529,7 @@ mod tests {
                 TableAliasPlan, TableSourcePlan,
             },
             planner::fetch_schema_map,
-            query_builder::{Build, col, primary_key, table},
+            query_builder::{Build, col, exists, primary_key, subquery, table},
             translate::{NO_PARAMS, translate, translate_expr},
         },
     };
@@ -759,6 +924,9 @@ mod tests {
                 title TEXT PRIMARY KEY,
                 user_id INTEGER
             );
+            CREATE TABLE Team (
+                id INTEGER PRIMARY KEY
+            );
         ");
 
         let sql = "SELECT * FROM Player JOIN Badge WHERE Player.id = 1";
@@ -832,6 +1000,245 @@ mod tests {
             .build()
             .unwrap();
         assert_eq!(actual, expected, "nested select:\n{sql}");
+
+        let sql = "
+            SELECT *
+            FROM Player
+            WHERE id = 1
+              AND EXISTS (
+                SELECT * FROM Player WHERE id = 2
+              )
+        ";
+        let actual = plan(&storage, sql);
+        let expected = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .filter(exists(
+                table("Player").index_by(primary_key().eq("2")).select(),
+            ))
+            .build()
+            .unwrap();
+        assert_eq!(
+            actual, expected,
+            "right conjunct plans nested primary key lookup:\n{sql}"
+        );
+
+        let sql = "
+            SELECT *
+            FROM Player
+            WHERE (id = 1 AND name IS NOT NULL)
+              AND EXISTS (
+                SELECT * FROM Player WHERE id = 2
+              )
+        ";
+        let actual = plan(&storage, sql);
+        let expected = table("Player")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .filter(col("name").is_not_null().nested().and(exists(
+                table("Player").index_by(primary_key().eq("2")).select(),
+            )))
+            .build()
+            .unwrap();
+        assert_eq!(
+            actual, expected,
+            "preserves left residual and plans right conjunct subquery:\n{sql}"
+        );
+
+        let sql = "
+            SELECT *
+            FROM Player
+            JOIN Badge ON Badge.user_id = (
+                SELECT id FROM Player WHERE id = 1
+            )
+        ";
+        let actual = plan(&storage, sql);
+        let expected = table("Player")
+            .select()
+            .join("Badge")
+            .on(col("Badge.user_id").eq(subquery(
+                table("Player")
+                    .index_by(primary_key().eq("1"))
+                    .select()
+                    .project("id"),
+            )))
+            .build()
+            .unwrap();
+        assert_eq!(
+            actual, expected,
+            "join condition plans nested primary key lookup:\n{sql}"
+        );
+
+        let sql = "
+            SELECT *
+            FROM Player
+            JOIN Badge
+            JOIN Team ON EXISTS (
+                SELECT * FROM Player WHERE id = 1
+            )
+        ";
+        let actual = plan(&storage, sql);
+        let expected = table("Player")
+            .select()
+            .join("Badge")
+            .join("Team")
+            .on(exists(
+                table("Player").index_by(primary_key().eq("1")).select(),
+            ))
+            .build()
+            .unwrap();
+        assert_eq!(
+            actual, expected,
+            "nested loop plans through inner join input:\n{sql}"
+        );
+
+        let sql = "
+            SELECT *
+            FROM Player
+            LEFT JOIN Badge
+            JOIN Team ON EXISTS (
+                SELECT * FROM Player WHERE id = 1
+            )
+        ";
+        let actual = plan(&storage, sql);
+        let expected = table("Player")
+            .select()
+            .left_join("Badge")
+            .join("Team")
+            .on(exists(
+                table("Player").index_by(primary_key().eq("1")).select(),
+            ))
+            .build()
+            .unwrap();
+        assert_eq!(
+            actual, expected,
+            "nested loop plans through left outer join input:\n{sql}"
+        );
+    }
+
+    #[test]
+    fn hash_join_nested_queries() {
+        let storage = run("
+            CREATE TABLE Player (
+                id INTEGER PRIMARY KEY,
+                name TEXT
+            );
+            CREATE TABLE Badge (
+                title TEXT PRIMARY KEY,
+                user_id INTEGER
+            );
+            CREATE TABLE Team (
+                id INTEGER PRIMARY KEY
+            );
+        ");
+        let statement = table("Player")
+            .select()
+            .join("Badge")
+            .hash_executor(
+                subquery(table("Player").select().filter("id = 1").project("id")),
+                subquery(table("Player").select().filter("id = 2").project("id")),
+            )
+            .hash_filter(exists(table("Player").select().filter("id = 3")))
+            .on(exists(table("Player").select().filter("id = 4")))
+            .build()
+            .unwrap();
+        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
+        let actual = plan_primary_key(&schema_map, statement);
+        let expected = table("Player")
+            .select()
+            .join("Badge")
+            .hash_executor(
+                subquery(
+                    table("Player")
+                        .index_by(primary_key().eq("1"))
+                        .select()
+                        .project("id"),
+                ),
+                subquery(
+                    table("Player")
+                        .index_by(primary_key().eq("2"))
+                        .select()
+                        .project("id"),
+                ),
+            )
+            .hash_filter(exists(
+                table("Player").index_by(primary_key().eq("3")).select(),
+            ))
+            .on(exists(
+                table("Player").index_by(primary_key().eq("4")).select(),
+            ))
+            .build()
+            .unwrap();
+
+        assert_eq!(actual, expected);
+
+        let statement = table("Player")
+            .select()
+            .join("Badge")
+            .join("Team")
+            .hash_executor(
+                subquery(table("Player").select().filter("id = 1").project("id")),
+                subquery(table("Player").select().filter("id = 2").project("id")),
+            )
+            .build()
+            .unwrap();
+        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
+        let actual = plan_primary_key(&schema_map, statement);
+        let expected = table("Player")
+            .select()
+            .join("Badge")
+            .join("Team")
+            .hash_executor(
+                subquery(
+                    table("Player")
+                        .index_by(primary_key().eq("1"))
+                        .select()
+                        .project("id"),
+                ),
+                subquery(
+                    table("Player")
+                        .index_by(primary_key().eq("2"))
+                        .select()
+                        .project("id"),
+                ),
+            )
+            .build()
+            .unwrap();
+        assert_eq!(actual, expected);
+
+        let statement = table("Player")
+            .select()
+            .left_join("Badge")
+            .left_join("Team")
+            .hash_executor(
+                subquery(table("Player").select().filter("id = 1").project("id")),
+                subquery(table("Player").select().filter("id = 2").project("id")),
+            )
+            .build()
+            .unwrap();
+        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
+        let actual = plan_primary_key(&schema_map, statement);
+        let expected = table("Player")
+            .select()
+            .left_join("Badge")
+            .left_join("Team")
+            .hash_executor(
+                subquery(
+                    table("Player")
+                        .index_by(primary_key().eq("1"))
+                        .select()
+                        .project("id"),
+                ),
+                subquery(
+                    table("Player")
+                        .index_by(primary_key().eq("2"))
+                        .select()
+                        .project("id"),
+                ),
+            )
+            .build()
+            .unwrap();
+        assert_eq!(actual, expected);
     }
 
     #[test]
