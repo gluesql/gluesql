@@ -24,7 +24,7 @@ pub(super) fn execute<'a>(plan: &ValuesPlan) -> Result<LabeledRows<'a>> {
 }
 
 pub(super) fn materialize(ValuesPlan(exprs_list): &ValuesPlan) -> Result<MaterializedRows> {
-    let first_len = exprs_list[0].len();
+    let first_len = exprs_list.first().map_or(0, Vec::len);
     let labels = labels_from_len(first_len);
     let columns = Rc::from(labels.clone());
 
@@ -62,7 +62,7 @@ pub(super) fn materialize(ValuesPlan(exprs_list): &ValuesPlan) -> Result<Materia
 }
 
 pub(super) fn labels(ValuesPlan(exprs_list): &ValuesPlan) -> Vec<String> {
-    labels_from_len(exprs_list[0].len())
+    labels_from_len(exprs_list.first().map_or(0, Vec::len))
 }
 
 fn labels_from_len(len: usize) -> Vec<String> {

@@ -1,6 +1,6 @@
 use {
     crate::*,
-    gluesql_core::{prelude::Value::*, query_builder::*},
+    gluesql_core::{executor::Payload, prelude::Value::*, query_builder::*},
 };
 
 test_case!(values, {
@@ -33,6 +33,23 @@ test_case!(values, {
 
     ));
     assert_eq!(actual, expected, "values - row as vec");
+
+    let actual = values(Vec::<&str>::new()).execute(glue);
+    let expected = Ok(Payload::Select {
+        labels: Vec::new(),
+        rows: Vec::new(),
+    });
+    assert_eq!(actual, expected, "values - empty");
+
+    let actual = values(Vec::<&str>::new())
+        .alias_as("Sub")
+        .select()
+        .execute(glue);
+    let expected = Ok(Payload::Select {
+        labels: Vec::new(),
+        rows: Vec::new(),
+    });
+    assert_eq!(actual, expected, "values - empty derived source");
 
     let actual = values(vec!["1, 'Glue'", "2, 'SQL'", "3, 'Rust'"])
         .order_by("column2 desc")
