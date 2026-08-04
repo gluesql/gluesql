@@ -477,6 +477,22 @@ mod tests {
         ",
             &["Bar", "Foo"],
         );
+        test(
+            "
+            SELECT *
+            FROM Foo
+            ORDER BY (SELECT id FROM Bar LIMIT 1);
+        ",
+            &["Bar", "Foo"],
+        );
+        test(
+            "
+            SELECT *
+            FROM Foo
+            ORDER BY id + 1, (SELECT id FROM Bar LIMIT 1);
+        ",
+            &["Bar", "Foo"],
+        );
 
         // PlanExpr::QueryAndExpr
         test(
