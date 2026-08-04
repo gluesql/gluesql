@@ -109,6 +109,19 @@ where
     let table_alias = sources.base.alias;
     let labels = Rc::from(labels);
     let project_labels = Rc::clone(&labels);
+    let has_wildcard = matches!(
+        projection,
+        ProjectionPlan::SelectItems(items)
+            if items.iter().any(|item| matches!(
+                item,
+                SelectItemPlan::Wildcard | SelectItemPlan::QualifiedWildcard(_)
+            ))
+    );
+    let rows = rows.filter_map(move |aggregate_context| match aggregate_context {
+        Ok(AggregateContext { next: None, .. }) if has_wildcard => None,
+        Ok(aggregate_context) => Some(Ok(aggregate_context)),
+        Err(error) => Some(Err(error)),
+    });
     let rows = rows.map(move |aggregate_context| {
         let AggregateContext { aggregated, next } = aggregate_context?;
         let context = match (&next, &filter_context) {
