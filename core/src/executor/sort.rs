@@ -97,7 +97,7 @@ impl<'a, T: GStore> Sort<'a, T> {
                 })
                 .collect::<Result<Vec<_>>>()?;
 
-            let filter_context = match (&next, &self.context) {
+            let input_context = match (&next, &self.context) {
                 (Some(next), Some(context)) => Some(Rc::new(RowContext::concat(
                     Rc::clone(next),
                     Rc::clone(context),
@@ -109,12 +109,19 @@ impl<'a, T: GStore> Sort<'a, T> {
 
             let context = RowContext::new(table_alias, Cow::Borrowed(&row), None);
             let label_context = Rc::new(context);
-            let filter_context = match filter_context {
-                Some(filter_context) => Some(Rc::new(RowContext::concat(
-                    filter_context,
+            let input_first_context = match input_context.as_ref() {
+                Some(input_context) => Some(Rc::new(RowContext::concat(
+                    Rc::clone(input_context),
                     Rc::clone(&label_context),
                 ))),
                 None => Some(Rc::clone(&label_context)),
+            };
+            let output_first_context = match input_context {
+                Some(input_context) => Some(Rc::new(RowContext::concat(
+                    Rc::clone(&label_context),
+                    input_context,
+                ))),
+                None => Some(label_context),
             };
 
             let keys = order_by
@@ -122,13 +129,14 @@ impl<'a, T: GStore> Sort<'a, T> {
                 .map(|(sort_type, asc)| {
                     match sort_type {
                         SortType::Value(value) => Ok(value),
-                        SortType::Expr(expr) => evaluate(
-                            self.storage,
-                            filter_context.as_ref(),
-                            aggregated.as_ref(),
-                            expr,
-                        )?
-                        .try_into(),
+                        SortType::Expr(expr) => {
+                            let context = if matches!(expr, ExprPlan::Identifier(_)) {
+                                output_first_context.as_ref()
+                            } else {
+                                input_first_context.as_ref()
+                            };
+                            evaluate(self.storage, context, aggregated.as_ref(), expr)?.try_into()
+                        }
                     }?
                     .try_into()
                     .map(|key| (key, asc))
@@ -162,4 +170,48 @@ pub fn sort_by(keys_a: &[(Key, Option<bool>)], keys_b: &[(Key, Option<bool>)]) -
     }
 
     Ordering::Equal
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::Sort,
+        crate::{
+            data::{Row, Value},
+            mock::MockStorage,
+            plan::{ExprPlan, OrderByExprPlan},
+            result::Result,
+        },
+        std::rc::Rc,
+    };
+
+    #[test]
+    fn sorts_output_alias_without_input_context() {
+        let storage = MockStorage::default();
+        let order_by = [OrderByExprPlan {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            asc: None,
+        }];
+        let rows = [2, 1].into_iter().map(|value| {
+            Ok((
+                None,
+                None,
+                Row {
+                    columns: Rc::from(["value".to_owned()]),
+                    values: vec![Value::I64(value)],
+                },
+            ))
+        });
+
+        let values = Sort::new(&storage, None, &order_by)
+            .apply(rows, "")
+            .unwrap()
+            .collect::<Result<Vec<_>>>()
+            .unwrap()
+            .into_iter()
+            .flat_map(Row::into_values)
+            .collect::<Vec<_>>();
+
+        assert_eq!(values, vec![Value::I64(1), Value::I64(2)]);
+    }
 }

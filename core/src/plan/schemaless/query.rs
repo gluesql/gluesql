@@ -29,7 +29,7 @@ pub(super) fn transform_query<S: BuildHasher>(
             let rewrite_unqualified_identifiers = matches!(
                 &select.from.relation,
                 TableFactorPlan::Table { name, .. } if is_schemaless_table(schema_map, name)
-            );
+            ) && select.from.joins.is_empty();
             let schemaless_aliases = collect_schemaless_aliases(schema_map, &select.from);
             let state = QueryRewriteState {
                 rewrite_unqualified_identifiers,

@@ -54,3 +54,14 @@ SELECT id FROM Item WHERE id = (SELECT * FROM Item LIMIT 1)
 
 SELECT id FROM Item WHERE id = (SELECT * FROM Item AS I LIMIT 1)
 -- @expect: error Evaluate.SchemalessProjectionForSubQuery
+
+SELECT id FROM Item JOIN Player;
+-- @expect: error Evaluate.IdentifierAmbiguous
+-- @json: "id"
+
+SELECT dex FROM Item JOIN Player;
+-- @expect:
+-- | dex: I64 |
+-- | -------- |
+-- | 324      |
+-- | 324      |

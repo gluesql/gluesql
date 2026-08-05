@@ -4,8 +4,8 @@ use {
         ast::{BinaryOperator, IndexOperator},
         data::{Schema, SchemaIndex, SchemaIndexOrd, Value},
         plan::{
-            ExprPlan, IndexItemPlan, OrderByExprPlan, QueryPlan, SelectPlan, SetExprPlan,
-            StatementPlan, TableFactorPlan,
+            ExprPlan, IndexItemPlan, OrderByExprPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
+            SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
             expr::{deterministic::is_deterministic, nullability::may_return_null},
             plan_scalar_expr,
         },
@@ -86,6 +86,7 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
         if let (Some(indexes), Some(order_expr)) = (indexes.as_ref(), order_by.last())
             && let TableFactorPlan::Table { index, .. } = &mut from.relation
             && index.is_none()
+            && !is_output_alias(&projection, &order_expr.expr)
             && let Some(index_name) = indexes.find_ordered(order_expr)
         {
             *index = Some(IndexItemPlan::NonClustered {
@@ -381,6 +382,29 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
     }
 }
 
+fn is_output_alias(projection: &ProjectionPlan, expr: &ExprPlan) -> bool {
+    let ExprPlan::Identifier(identifier) = expr else {
+        return false;
+    };
+    let ProjectionPlan::SelectItems(items) = projection else {
+        return false;
+    };
+
+    items.iter().any(|item| {
+        matches!(
+            item,
+            SelectItemPlan::Expr {
+                expr: output_expr,
+                label,
+            } if label == identifier
+                && !matches!(
+                    output_expr,
+                    ExprPlan::Identifier(output_identifier) if output_identifier == identifier
+                )
+        )
+    })
+}
+
 struct PlannedSchemaIndex<'a> {
     expr: ExprPlan,
     index: &'a SchemaIndex,
@@ -440,11 +464,12 @@ enum Planned {
 #[cfg(test)]
 mod tests {
     use {
-        super::plan,
+        super::{is_output_alias, plan},
         crate::{
+            ast::Literal,
             mock::{MockStorage, run},
             parse_sql::parse,
-            plan::{StatementPlan, fetch_schema_map},
+            plan::{ExprPlan, ProjectionPlan, SelectItemPlan, StatementPlan, fetch_schema_map},
             query_builder::{
                 Build, col, exists, nested, non_clustered, null, num, primary_key, table, text,
             },
@@ -514,6 +539,15 @@ CREATE INDEX idx_name ON Test (name);
             .build();
         assert_eq!(actual, expected, "applies order by index:\n{sql}");
 
+        let sql = "SELECT id FROM Test ORDER BY id";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_id".to_owned()))
+            .select()
+            .project("id")
+            .build();
+        assert_eq!(actual, expected, "applies order by index:\n{sql}");
+
         let sql = "SELECT * FROM Test WHERE flag IS NULL";
         let actual = plan_index(&storage, sql);
         let expected = table("Test")
@@ -572,6 +606,48 @@ CREATE INDEX idx_name ON Test (name);
             actual, expected,
             "keeps existing access path instead of clobbering it with a secondary index"
         );
+    }
+
+    #[test]
+    fn index_planning_does_not_consume_output_alias_ordering() {
+        let storage = storage_with_indexes();
+        let sql = "SELECT name AS id FROM Test ORDER BY id";
+        let actual = plan_index(&storage, sql);
+        let mut parsed = parse(sql).unwrap();
+        let expected = Ok(StatementPlan::from(translate(&parsed.remove(0)).unwrap()));
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn output_alias_detection_boundaries() {
+        let identifier = ExprPlan::Identifier("id".to_owned());
+        let projection = ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
+            expr: ExprPlan::Identifier("name".to_owned()),
+            label: "name".to_owned(),
+        }]);
+
+        assert!(!is_output_alias(
+            &projection,
+            &ExprPlan::Literal(Literal::QuotedString("id".to_owned()))
+        ));
+        assert!(!is_output_alias(
+            &ProjectionPlan::SchemalessMap,
+            &identifier
+        ));
+        assert!(!is_output_alias(&projection, &identifier));
+
+        let identity_projection = ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
+            expr: identifier.clone(),
+            label: "id".to_owned(),
+        }]);
+        assert!(!is_output_alias(&identity_projection, &identifier));
+
+        let renamed_projection = ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
+            expr: ExprPlan::Identifier("name".to_owned()),
+            label: "id".to_owned(),
+        }]);
+        assert!(is_output_alias(&renamed_projection, &identifier));
     }
 
     #[test]

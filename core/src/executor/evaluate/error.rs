@@ -58,6 +58,9 @@ pub enum EvaluateError {
     #[error("identifier not found: {0}")]
     IdentifierNotFound(String),
 
+    #[error("column reference {0} is ambiguous, please specify the table name")]
+    IdentifierAmbiguous(String),
+
     #[error("identifier not found: {table_alias}.{column_name}")]
     CompoundIdentifierNotFound {
         table_alias: String,

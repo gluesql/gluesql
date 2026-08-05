@@ -6,7 +6,7 @@ mod function;
 use {
     self::function::BreakCase,
     super::{
-        context::{AggregateValues, RowContext},
+        context::{AggregateValues, RowContext, ValueLookup},
         select::{select, select_with_labels},
     },
     crate::{
@@ -65,9 +65,15 @@ where
             let context = context
                 .ok_or_else(|| EvaluateError::IdentifierRequiresRowContext(ident.to_owned()))?;
 
-            match context.get_value(ident) {
-                Some(value) => Ok(Evaluated::Value(Cow::Owned(value.clone()))),
-                None => Err(EvaluateError::IdentifierNotFound(ident.to_owned()).into()),
+            match context.lookup_value(ident) {
+                ValueLookup::Found(value) => Ok(Evaluated::Value(Cow::Owned(value.clone()))),
+                ValueLookup::Unbound => {
+                    Err(EvaluateError::IdentifierNotFound(ident.to_owned()).into())
+                }
+                ValueLookup::Missing => Ok(Evaluated::Value(Cow::Owned(Value::Null))),
+                ValueLookup::Ambiguous => {
+                    Err(EvaluateError::IdentifierAmbiguous(ident.to_owned()).into())
+                }
             }
         }
         ExprPlan::Nested(expr) => eval(expr),
@@ -78,13 +84,16 @@ where
                     ident: ident.to_owned(),
                 })?;
 
-            match context.get_alias_value(alias, ident) {
-                Some(value) => Ok(Evaluated::Value(Cow::Owned(value.clone()))),
-                None => Err(EvaluateError::CompoundIdentifierNotFound {
-                    table_alias: alias.to_owned(),
-                    column_name: ident.to_owned(),
+            match context.lookup_alias_value(alias, ident) {
+                ValueLookup::Found(value) => Ok(Evaluated::Value(Cow::Owned(value.clone()))),
+                ValueLookup::Missing => Ok(Evaluated::Value(Cow::Owned(Value::Null))),
+                ValueLookup::Unbound | ValueLookup::Ambiguous => {
+                    Err(EvaluateError::CompoundIdentifierNotFound {
+                        table_alias: alias.to_owned(),
+                        column_name: ident.to_owned(),
+                    }
+                    .into())
                 }
-                .into()),
             }
         }
         ExprPlan::Subquery(query) => {
@@ -735,18 +744,73 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
 #[cfg(test)]
 mod tests {
     use {
-        super::{EvaluateError, evaluate, evaluate_stateless},
+        super::{EvaluateError, Evaluated, evaluate, evaluate_stateless},
         crate::{
             ast::{Expr, Projection, SelectItem, SetExpr, Statement},
-            executor::context::AggregateValues,
+            data::{Row, SCHEMALESS_DOC_COLUMN, Value},
+            executor::context::{AggregateValues, RowContext},
             mock::MockStorage,
             parse_sql::parse,
             plan::{AggregateFunctionPlan, AggregatePlan, CountArgExprPlan, ExprPlan},
             result::Error,
             translate::translate,
         },
-        std::rc::Rc,
+        std::{borrow::Cow, collections::BTreeMap, rc::Rc},
     };
+
+    #[test]
+    fn missing_qualified_schemaless_key_evaluates_to_null() {
+        let row = Row {
+            columns: vec![SCHEMALESS_DOC_COLUMN.to_owned()].into(),
+            values: vec![Value::Map(BTreeMap::new())],
+        };
+        let context = RowContext::new("Item", Cow::Owned(row), None);
+        let expr = ExprPlan::CompoundIdentifier {
+            alias: "Item".to_owned(),
+            ident: "missing".to_owned(),
+        };
+
+        assert_eq!(
+            evaluate_stateless(Some(context), &expr),
+            Ok(Evaluated::Value(Cow::Owned(Value::Null)))
+        );
+    }
+
+    #[test]
+    fn qualified_identifier_evaluation_boundaries() {
+        let expr = ExprPlan::CompoundIdentifier {
+            alias: "Item".to_owned(),
+            ident: "id".to_owned(),
+        };
+        let row = Row {
+            columns: vec!["id".to_owned()].into(),
+            values: vec![Value::I64(1)],
+        };
+
+        assert_eq!(
+            evaluate_stateless(
+                Some(RowContext::new("Item", Cow::Owned(row.clone()), None)),
+                &expr
+            ),
+            Ok(Evaluated::Value(Cow::Owned(Value::I64(1))))
+        );
+        assert_eq!(
+            evaluate_stateless(None, &expr),
+            Err(Error::from(
+                EvaluateError::CompoundIdentifierRequiresRowContext {
+                    alias: "Item".to_owned(),
+                    ident: "id".to_owned(),
+                }
+            ))
+        );
+        assert_eq!(
+            evaluate_stateless(Some(RowContext::new("Other", Cow::Owned(row), None)), &expr),
+            Err(Error::from(EvaluateError::CompoundIdentifierNotFound {
+                table_alias: "Item".to_owned(),
+                column_name: "id".to_owned(),
+            }))
+        );
+    }
 
     #[test]
     fn aggregate_requires_planner_binding() {
