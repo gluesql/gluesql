@@ -1,8 +1,10 @@
 use {
     super::ExprNode,
     crate::query_builder::{
-        FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode, LimitNode,
-        OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, QueryNode, SelectNode,
+        DistinctNode, FilterNode, GroupByNode, HavingNode, InnerHashJoinNode,
+        InnerJoinConditionNode, InnerNestedLoopJoinNode, LeftOuterHashJoinNode,
+        LeftOuterJoinConditionNode, LeftOuterNestedLoopJoinNode, LimitNode, OffsetLimitNode,
+        OffsetNode, ProjectNode, QueryNode, SelectNode, SelectOrderByNode, ValuesOrderByNode,
     },
 };
 
@@ -42,9 +44,12 @@ macro_rules! impl_from_select_nodes {
 }
 
 impl_from_select_nodes!(SelectNode<'a>);
-impl_from_select_nodes!(JoinNode<'a>);
-impl_from_select_nodes!(JoinConstraintNode<'a>);
-impl_from_select_nodes!(HashJoinNode<'a>);
+impl_from_select_nodes!(InnerNestedLoopJoinNode<'a>);
+impl_from_select_nodes!(LeftOuterNestedLoopJoinNode<'a>);
+impl_from_select_nodes!(InnerHashJoinNode<'a>);
+impl_from_select_nodes!(LeftOuterHashJoinNode<'a>);
+impl_from_select_nodes!(InnerJoinConditionNode<'a>);
+impl_from_select_nodes!(LeftOuterJoinConditionNode<'a>);
 impl_from_select_nodes!(GroupByNode<'a>);
 impl_from_select_nodes!(HavingNode<'a>);
 impl_from_select_nodes!(FilterNode<'a>);
@@ -52,7 +57,9 @@ impl_from_select_nodes!(LimitNode<'a>);
 impl_from_select_nodes!(OffsetNode<'a>);
 impl_from_select_nodes!(OffsetLimitNode<'a>);
 impl_from_select_nodes!(ProjectNode<'a>);
-impl_from_select_nodes!(OrderByNode<'a>);
+impl_from_select_nodes!(SelectOrderByNode<'a>);
+impl_from_select_nodes!(ValuesOrderByNode<'a>);
+impl_from_select_nodes!(DistinctNode<'a>);
 
 impl<'a> ExprNode<'a> {
     #[must_use]
@@ -78,11 +85,11 @@ impl<'a> ExprNode<'a> {
 mod test {
     use crate::{
         plan::{
-            ExprPlan, JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan,
-            ProjectionPlan, QueryPlan, SelectPlan, SetExprPlan, TableFactorPlan,
-            TableWithJoinsPlan,
+            ExprPlan, HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan,
+            ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SourcePlan, TableAccessPlan,
+            TableSourcePlan,
         },
-        query_builder::{QueryNode, SelectItemList, col, table, test_expr, text},
+        query_builder::{QueryNode, SelectItemList, col, table, test_expr, text, values},
     };
 
     #[test]
@@ -123,62 +130,55 @@ mod test {
         let expected = "id IN (SELECT * FROM FOO)";
         test_expr(actual, expected);
 
-        // from JoinNode
+        // from DistinctNode
+        let actual = col("id").in_list(table("FOO").select().project("id").distinct());
+        let expected = "id IN (SELECT DISTINCT id FROM FOO)";
+        test_expr(actual, expected);
+
+        // from InnerNestedLoopJoinNode
         let actual = col("id").in_list(table("Bar").select().join("Foo"));
         let expected = "id IN (SELECT * FROM Bar JOIN Foo)";
         test_expr(actual, expected);
 
-        // from JoinConstraintNode
+        // from InnerJoinConditionNode
         let actual = col("id").in_list(table("Bar").select().join("Foo").on("Foo.id = Bar.foo_id"));
         let expected = "id IN (SELECT * FROM Bar JOIN Foo ON Foo.id = Bar.foo_id)";
         test_expr(actual, expected);
 
-        // from HashJoinNode
-        let actual = col("id").in_list(
-            table("Player")
-                .select()
-                .join("PlayerItem")
-                .hash_executor("PlayerItem.user_id", "Player.id"),
-        );
+        // from InnerHashJoinNode
+        let actual = col("id")
+            .in_list(
+                table("Player")
+                    .select()
+                    .join("PlayerItem")
+                    .hash_executor("PlayerItem.user_id", "Player.id"),
+            )
+            .build_expr_plan()
+            .unwrap();
         let expected = {
-            let join = JoinPlan {
-                relation: TableFactorPlan::Table {
-                    name: "PlayerItem".to_owned(),
-                    alias: None,
-                    index: None,
-                },
-                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
-                join_executor: JoinExecutorPlan::Hash {
-                    key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),
-                    value_expr: col("Player.id").build_expr_plan().unwrap(),
-                    where_clause: None,
-                },
+            let join = InnerJoinPlan {
+                input: InnerJoinInputPlan::Hash(HashJoinPlan {
+                    input: HashJoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
+                        name: "Player".to_owned(),
+                        alias: None,
+                        access: TableAccessPlan::FullScan,
+                    })),
+                    right: SourcePlan::Table(TableSourcePlan {
+                        name: "PlayerItem".to_owned(),
+                        alias: None,
+                        access: TableAccessPlan::FullScan,
+                    }),
+                    input_key: col("Player.id").build_expr_plan().unwrap(),
+                    right_key: col("PlayerItem.user_id").build_expr_plan().unwrap(),
+                    right_filter: None,
+                }),
             };
-            let select = SelectPlan {
-                distinct: false,
+            let query = QueryPlan::Project(ProjectPlan {
+                input: ProjectInputPlan::InnerJoin(Box::new(join)),
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),
-                from: TableWithJoinsPlan {
-                    relation: TableFactorPlan::Table {
-                        name: "Player".to_owned(),
-                        alias: None,
-                        index: None,
-                    },
-                    joins: vec![join],
-                },
-                selection: None,
-                group_by: Vec::new(),
-                having: None,
-                aggregate_slots: None,
-            };
-
-            let query = QueryPlan {
-                body: SetExprPlan::Select(Box::new(select)),
-                order_by: Vec::new(),
-                limit: None,
-                offset: None,
-            };
+            });
 
             ExprPlan::InSubquery {
                 expr: Box::new(ExprPlan::Identifier("id".to_owned())),
@@ -186,7 +186,7 @@ mod test {
                 negated: false,
             }
         };
-        assert_eq!(actual.build_expr_plan().unwrap(), expected);
+        assert_eq!(actual, expected);
 
         // from GroupByNode
         let actual = col("id").not_in_list(
@@ -241,9 +241,21 @@ mod test {
         let expected = "name IN (SELECT name FROM Item)";
         test_expr(actual, expected);
 
-        // from OrderByNode
+        // from SelectOrderByNode
         let actual = col("id").in_list(table("Item").select().order_by("score ASC"));
         let expected = "id IN (SELECT * FROM Item ORDER BY score ASC)";
         test_expr(actual, expected);
+
+        let actual = col("id")
+            .in_list(values(vec!["1", "2"]).order_by("column1 DESC"))
+            .build_expr_plan()
+            .unwrap();
+        assert!(matches!(
+            actual,
+            ExprPlan::InSubquery {
+                subquery,
+                ..
+            } if matches!(*subquery, QueryPlan::ValuesOrderBy(_))
+        ));
     }
 }

@@ -1,9 +1,10 @@
 use {
     super::Store,
     crate::{
-        plan::{
-            StatementPlan, fetch_schema_map, plan_aggregate, plan_hash_join, plan_primary_key,
-            plan_schemaless, validate,
+        plan::StatementPlan,
+        planner::{
+            fetch_schema_map, plan_aggregate, plan_hash_join, plan_primary_key, plan_schemaless,
+            validate,
         },
         result::Result,
     },

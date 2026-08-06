@@ -11,39 +11,39 @@ macro_rules! idx {
         vec![]
     };
     ($name: path, $op: path, $sql_expr: literal) => {
-        vec![gluesql_core::plan::IndexItemPlan::NonClustered {
+        vec![gluesql_core::plan::TableAccessPlan::Index {
             name: stringify_label!($name).to_owned(),
             asc: None,
-            cmp_expr: Some((
-                $op,
-                gluesql_core::translate::translate_expr(
+            predicate: Some(gluesql_core::plan::IndexPredicatePlan {
+                operator: $op,
+                expr: gluesql_core::translate::translate_expr(
                     &gluesql_core::parse_sql::parse_expr($sql_expr).unwrap(),
                     &[],
                 )
                 .unwrap()
                 .into(),
-            )),
+            }),
         }]
     };
     ($name: path) => {
-        vec![gluesql_core::plan::IndexItemPlan::NonClustered {
+        vec![gluesql_core::plan::TableAccessPlan::Index {
             name: stringify_label!($name).to_owned(),
             asc: None,
-            cmp_expr: None,
+            predicate: None,
         }]
     };
     ($name: path, ASC) => {
-        vec![gluesql_core::plan::IndexItemPlan::NonClustered {
+        vec![gluesql_core::plan::TableAccessPlan::Index {
             name: stringify_label!($name).to_owned(),
             asc: Some(true),
-            cmp_expr: None,
+            predicate: None,
         }]
     };
     ($name: path, DESC) => {
-        vec![gluesql_core::plan::IndexItemPlan::NonClustered {
+        vec![gluesql_core::plan::TableAccessPlan::Index {
             name: stringify_label!($name).to_owned(),
             asc: Some(false),
-            cmp_expr: None,
+            predicate: None,
         }]
     };
 }

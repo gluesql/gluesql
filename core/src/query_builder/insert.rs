@@ -134,6 +134,19 @@ mod tests {
             .build();
         let expected = r"INSERT INTO Foo SELECT id, name FROM Bar LIMIT 10";
         test(&actual, expected);
+
+        let actual = table("Foo")
+            .insert()
+            .as_select(
+                table("Bar")
+                    .select()
+                    .project("id")
+                    .order_by("id")
+                    .distinct(),
+            )
+            .build();
+        let expected = r"INSERT INTO Foo SELECT DISTINCT id FROM Bar ORDER BY id";
+        test(&actual, expected);
     }
 
     struct Item {

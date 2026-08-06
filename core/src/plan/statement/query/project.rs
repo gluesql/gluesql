@@ -1,0 +1,171 @@
+use {
+    super::{AggregationPlan, FilterPlan, HavingPlan},
+    crate::plan::{InnerJoinPlan, LeftOuterJoinPlan, ProjectionPlan, SourcePlan},
+    serde::{Deserialize, Serialize},
+};
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ProjectInputPlan {
+    Source(SourcePlan),
+    InnerJoin(Box<InnerJoinPlan>),
+    LeftOuterJoin(Box<LeftOuterJoinPlan>),
+    Filter(FilterPlan),
+    Aggregation(AggregationPlan),
+    Having(HavingPlan),
+}
+
+impl ProjectInputPlan {
+    pub fn base_source(&self) -> &SourcePlan {
+        match self {
+            Self::Source(source) => source,
+            Self::InnerJoin(join) => join.base_source(),
+            Self::LeftOuterJoin(join) => join.base_source(),
+            Self::Filter(filter) => filter.input.base_source(),
+            Self::Aggregation(aggregation) => aggregation.input.base_source(),
+            Self::Having(having) => having.input.input.base_source(),
+        }
+    }
+
+    pub(crate) fn joined_sources(&self) -> Vec<&SourcePlan> {
+        match self {
+            Self::Source(_) => Vec::new(),
+            Self::InnerJoin(join) => join.joined_sources(),
+            Self::LeftOuterJoin(join) => join.joined_sources(),
+            Self::Filter(filter) => filter.input.joined_sources(),
+            Self::Aggregation(aggregation) => aggregation.input.joined_sources(),
+            Self::Having(having) => having.input.input.joined_sources(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct ProjectPlan {
+    pub input: ProjectInputPlan,
+    pub projection: ProjectionPlan,
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::{ProjectInputPlan, ProjectPlan},
+        crate::{
+            data::Value,
+            plan::{
+                AggregationInputPlan, AggregationPlan, ExprPlan, FilterInputPlan, FilterPlan,
+                HavingPlan, InnerJoinInputPlan, InnerJoinPlan, LeftOuterJoinInputPlan,
+                LeftOuterJoinPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan, ProjectionPlan,
+                SourcePlan, TableAccessPlan, TableSourcePlan,
+            },
+        },
+        pretty_assertions::assert_eq,
+    };
+
+    fn table(name: &str) -> SourcePlan {
+        SourcePlan::Table(TableSourcePlan {
+            name: name.to_owned(),
+            alias: None,
+            access: TableAccessPlan::FullScan,
+        })
+    }
+
+    #[test]
+    fn project_accepts_each_typed_source_input() {
+        let inner_join = InnerJoinPlan {
+            input: InnerJoinInputPlan::NestedLoop(NestedLoopJoinPlan {
+                input: NestedLoopJoinInputPlan::Source(table("A")),
+                right: table("B"),
+            }),
+        };
+        let left_outer_join = LeftOuterJoinPlan {
+            input: LeftOuterJoinInputPlan::NestedLoop(NestedLoopJoinPlan {
+                input: NestedLoopJoinInputPlan::Source(table("A")),
+                right: table("B"),
+            }),
+        };
+        let filter = FilterPlan {
+            input: FilterInputPlan::InnerJoin(Box::new(inner_join.clone())),
+            expr: ExprPlan::Value(Value::Bool(true)),
+        };
+        let aggregation = AggregationPlan {
+            input: AggregationInputPlan::Filter(filter.clone()),
+            group_by: Vec::new(),
+            aggregate_slots: Vec::new(),
+        };
+        let having_plan = HavingPlan {
+            input: aggregation.clone(),
+            expr: ExprPlan::Value(Value::Bool(true)),
+        };
+        let projection = ProjectionPlan::SelectItems(Vec::new());
+
+        let relation = ProjectPlan {
+            input: ProjectInputPlan::Source(table("A")),
+            projection: projection.clone(),
+        };
+        let inner = ProjectPlan {
+            input: ProjectInputPlan::InnerJoin(Box::new(inner_join.clone())),
+            projection: projection.clone(),
+        };
+        let left_outer = ProjectPlan {
+            input: ProjectInputPlan::LeftOuterJoin(Box::new(left_outer_join.clone())),
+            projection: projection.clone(),
+        };
+        let filtered = ProjectPlan {
+            input: ProjectInputPlan::Filter(filter.clone()),
+            projection: projection.clone(),
+        };
+        let aggregated = ProjectPlan {
+            input: ProjectInputPlan::Aggregation(aggregation.clone()),
+            projection: projection.clone(),
+        };
+        let having = ProjectPlan {
+            input: ProjectInputPlan::Having(having_plan.clone()),
+            projection,
+        };
+
+        assert_eq!(relation.input, ProjectInputPlan::Source(table("A")));
+        assert_eq!(
+            inner.input,
+            ProjectInputPlan::InnerJoin(Box::new(inner_join))
+        );
+        assert_eq!(
+            left_outer.input,
+            ProjectInputPlan::LeftOuterJoin(Box::new(left_outer_join))
+        );
+        assert_eq!(filtered.input, ProjectInputPlan::Filter(filter));
+        assert_eq!(aggregated.input, ProjectInputPlan::Aggregation(aggregation));
+        assert_eq!(having.input, ProjectInputPlan::Having(having_plan));
+
+        assert_eq!(relation.input.base_source(), &table("A"));
+        assert_eq!(relation.input.joined_sources(), Vec::<&SourcePlan>::new());
+        assert_eq!(inner.input.base_source(), &table("A"));
+        let expected = [table("B")];
+        assert_eq!(
+            inner.input.joined_sources(),
+            expected.iter().collect::<Vec<_>>()
+        );
+        assert_eq!(left_outer.input.base_source(), &table("A"));
+        let expected = [table("B")];
+        assert_eq!(
+            left_outer.input.joined_sources(),
+            expected.iter().collect::<Vec<_>>()
+        );
+        assert_eq!(filtered.input.base_source(), &table("A"));
+        let expected = [table("B")];
+        assert_eq!(
+            filtered.input.joined_sources(),
+            expected.iter().collect::<Vec<_>>()
+        );
+        assert_eq!(aggregated.input.base_source(), &table("A"));
+        let expected = [table("B")];
+        assert_eq!(
+            aggregated.input.joined_sources(),
+            expected.iter().collect::<Vec<_>>()
+        );
+        assert_eq!(having.input.base_source(), &table("A"));
+        let expected = [table("B")];
+        assert_eq!(
+            having.input.joined_sources(),
+            expected.iter().collect::<Vec<_>>()
+        );
+    }
+}

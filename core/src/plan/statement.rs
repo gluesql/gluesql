@@ -1,17 +1,25 @@
 mod ddl;
 mod expr;
-mod join;
 mod projection;
 mod query;
-mod table_factor;
 
 pub use {
     ddl::AlterTableOperationPlan,
-    expr::{AggregateFunctionPlan, AggregatePlan, CountArgExprPlan, ExprPlan, FunctionPlan},
-    join::{JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan},
+    expr::{
+        AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan, FunctionExprPlan,
+        plan_scalar_expr,
+    },
     projection::{ProjectionPlan, SelectItemPlan},
-    query::{OrderByExprPlan, QueryPlan, SelectPlan, SetExprPlan, ValuesPlan},
-    table_factor::{IndexItemPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan},
+    query::{
+        AggregationInputPlan, AggregationPlan, DerivedSourcePlan, DictionarySourcePlan,
+        DistinctInputPlan, DistinctPlan, FilterInputPlan, FilterPlan, HashJoinInputPlan,
+        HashJoinPlan, HavingPlan, IndexPredicatePlan, InnerJoinInputPlan, InnerJoinPlan,
+        JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
+        LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan, OffsetInputPlan,
+        OffsetPlan, OrderByExprPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SelectOrderByPlan,
+        SeriesSourcePlan, SourcePlan, TableAccessPlan, TableAliasPlan, TableSourcePlan,
+        ValuesOrderByPlan, ValuesPlan,
+    },
 };
 
 use {

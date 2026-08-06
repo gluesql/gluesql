@@ -7,7 +7,7 @@ use {
         delete::delete,
         fetch::fetch,
         insert::insert,
-        select::{select, select_with_labels},
+        query, select,
         update::Update,
         validate::{ColumnValidation, validate_unique},
     },
@@ -15,8 +15,9 @@ use {
         ast::{BinaryOperator, DataType, Dictionary, Literal, Variable},
         data::{Key, Row, SCHEMALESS_DOC_COLUMN, Schema, Value},
         plan::{
-            ExprPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan, SetExprPlan,
-            StatementPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan,
+            DictionarySourcePlan, ExprPlan, FilterInputPlan, FilterPlan, ProjectInputPlan,
+            ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SourcePlan, StatementPlan,
+            TableAliasPlan,
         },
         result::{Error, Result},
         store::{GStore, GStoreMut},
@@ -245,31 +246,7 @@ fn execute_inner<T: GStore + GStoreMut>(
         } => delete(storage, table_name, selection.as_ref()),
 
         //- Selection
-        StatementPlan::Query(query) => {
-            let (labels, rows) = select_with_labels(storage, query, None)?;
-
-            let is_schemaless_map = matches!(
-                &query.body,
-                SetExprPlan::Select(select)
-                    if matches!(select.projection, ProjectionPlan::SchemalessMap)
-            );
-
-            if is_schemaless_map {
-                rows.map(|row| {
-                    let mut values = row?.into_values().into_iter();
-                    match (values.next(), values.next()) {
-                        (Some(Value::Map(map)), None) => Ok(map),
-                        _ => Err(ExecuteError::ExpectedMapValueInDocColumn.into()),
-                    }
-                })
-                .collect::<Result<Vec<_>>>()
-                .map(Payload::SelectMap)
-            } else {
-                rows.map(|row| Ok(row?.into_values()))
-                    .collect::<Result<Vec<_>>>()
-                    .map(|rows| Payload::Select { labels, rows })
-            }
-        }
+        StatementPlan::Query(query) => select::execute(storage, query),
         StatementPlan::ShowColumns { table_name } => {
             let Schema { column_defs, .. } = storage
                 .fetch_schema(table_name)?
@@ -284,37 +261,27 @@ fn execute_inner<T: GStore + GStoreMut>(
             Ok(Payload::ShowColumns(output))
         }
         StatementPlan::ShowIndexes(table_name) => {
-            let query = QueryPlan {
-                body: SetExprPlan::Select(Box::new(SelectPlan {
-                    distinct: false,
-                    projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
-                    from: TableWithJoinsPlan {
-                        relation: TableFactorPlan::Dictionary {
-                            dict: Dictionary::GlueIndexes,
-                            alias: TableAliasPlan {
-                                name: "GLUE_INDEXES".to_owned(),
-                                columns: Vec::new(),
-                            },
+            let query = QueryPlan::Project(ProjectPlan {
+                projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
+                input: ProjectInputPlan::Filter(FilterPlan {
+                    input: FilterInputPlan::Source(SourcePlan::Dictionary(DictionarySourcePlan {
+                        dictionary: Dictionary::GlueIndexes,
+                        alias: TableAliasPlan {
+                            name: "GLUE_INDEXES".to_owned(),
+                            columns: Vec::new(),
                         },
-                        joins: Vec::new(),
-                    },
-                    selection: Some(ExprPlan::BinaryOp {
+                    })),
+                    expr: ExprPlan::BinaryOp {
                         left: Box::new(ExprPlan::Identifier("TABLE_NAME".to_owned())),
                         op: BinaryOperator::Eq,
                         right: Box::new(ExprPlan::Literal(Literal::QuotedString(
                             table_name.to_owned(),
                         ))),
-                    }),
-                    group_by: Vec::new(),
-                    having: None,
-                    aggregate_slots: None,
-                })),
-                order_by: Vec::new(),
-                limit: None,
-                offset: None,
-            };
+                    },
+                }),
+            });
 
-            let (labels, rows) = select_with_labels(storage, &query, None)?;
+            let (labels, rows) = query::execute_with_labels(storage, &query, None)?;
             let rows = rows
                 .map(|row| Ok::<_, Error>(row?.into_values()))
                 .collect::<Result<Vec<_>>>()?;
@@ -327,34 +294,21 @@ fn execute_inner<T: GStore + GStoreMut>(
         }
         StatementPlan::ShowVariable(variable) => match variable {
             Variable::Tables => {
-                let query = QueryPlan {
-                    body: SetExprPlan::Select(Box::new(SelectPlan {
-                        distinct: false,
-                        projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
-                            expr: ExprPlan::Identifier("TABLE_NAME".to_owned()),
-                            label: "TABLE_NAME".to_owned(),
-                        }]),
-                        from: TableWithJoinsPlan {
-                            relation: TableFactorPlan::Dictionary {
-                                dict: Dictionary::GlueTables,
-                                alias: TableAliasPlan {
-                                    name: "GLUE_TABLES".to_owned(),
-                                    columns: Vec::new(),
-                                },
-                            },
-                            joins: Vec::new(),
+                let query = QueryPlan::Project(ProjectPlan {
+                    projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
+                        expr: ExprPlan::Identifier("TABLE_NAME".to_owned()),
+                        label: "TABLE_NAME".to_owned(),
+                    }]),
+                    input: ProjectInputPlan::Source(SourcePlan::Dictionary(DictionarySourcePlan {
+                        dictionary: Dictionary::GlueTables,
+                        alias: TableAliasPlan {
+                            name: "GLUE_TABLES".to_owned(),
+                            columns: Vec::new(),
                         },
-                        selection: None,
-                        group_by: Vec::new(),
-                        having: None,
-                        aggregate_slots: None,
                     })),
-                    order_by: Vec::new(),
-                    limit: None,
-                    offset: None,
-                };
+                });
 
-                let table_names = select(storage, &query, None)?
+                let table_names = query::execute(storage, &query, None)?
                     .map(|row| Ok::<_, Error>(row?.into_values()))
                     .collect::<Result<Vec<Vec<Value>>>>()?
                     .iter()

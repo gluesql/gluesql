@@ -3,7 +3,7 @@ use {
     crate::{
         ast::{ColumnDef, OrderByExpr},
         data::Schema,
-        plan::{ExprPlan, FunctionPlan, plan_scalar_expr},
+        plan::{ExprPlan, FunctionExprPlan, plan_scalar_expr},
         result::Result,
         store::{GStore, GStoreMut},
     },
@@ -49,7 +49,7 @@ fn validate_index_expr(columns: &[String], expr: &ExprPlan) -> (bool, bool) {
             (valid_l && valid_r, has_ident_l || has_ident_r)
         }
         ExprPlan::Function(func) => match func.as_ref() {
-            FunctionPlan::Cast { expr, .. } => validate(expr),
+            FunctionExprPlan::Cast { expr, .. } => validate(expr),
             _ => (false, false),
         },
         _ => (false, false),

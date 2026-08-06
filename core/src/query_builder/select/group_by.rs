@@ -1,12 +1,16 @@
 use {
-    super::{BuildSelect, BuildSelectPlan},
+    super::{
+        BuildAggregationInputPlan, BuildAggregationPlan, BuildProjectInputPlan, BuildSelect,
+        DistinctNode,
+    },
     crate::{
         ast::Select,
-        plan::SelectPlan,
+        plan::{AggregationInputPlan, AggregationPlan, ProjectInputPlan},
         query_builder::{
-            ExprList, ExprNode, FilterNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
-            LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
-            SelectItemList, SelectNode, TableFactorNode,
+            ExprList, ExprNode, FilterNode, HavingNode, InnerHashJoinNode, InnerJoinConditionNode,
+            InnerNestedLoopJoinNode, LeftOuterHashJoinNode, LeftOuterJoinConditionNode,
+            LeftOuterNestedLoopJoinNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode,
+            QueryNode, SelectItemList, SelectNode, SelectOrderByNode, SourceNode,
         },
         result::Result,
     },
@@ -15,20 +19,26 @@ use {
 #[derive(Clone, Debug)]
 pub(super) enum PrevNode<'a> {
     Select(SelectNode<'a>),
-    Join(Box<JoinNode<'a>>),
-    JoinConstraint(Box<JoinConstraintNode<'a>>),
-    HashJoin(Box<HashJoinNode<'a>>),
+    InnerNestedLoop(Box<InnerNestedLoopJoinNode<'a>>),
+    LeftOuterNestedLoop(Box<LeftOuterNestedLoopJoinNode<'a>>),
+    InnerHash(Box<InnerHashJoinNode<'a>>),
+    LeftOuterHash(Box<LeftOuterHashJoinNode<'a>>),
+    InnerCondition(Box<InnerJoinConditionNode<'a>>),
+    LeftOuterCondition(Box<LeftOuterJoinConditionNode<'a>>),
     Filter(FilterNode<'a>),
 }
 
-impl BuildSelectPlan for PrevNode<'_> {
-    fn build_select_plan(self) -> Result<SelectPlan> {
+impl BuildAggregationInputPlan for PrevNode<'_> {
+    fn build_aggregation_input_plan(self) -> Result<AggregationInputPlan> {
         match self {
-            Self::Select(node) => node.build_select_plan(),
-            Self::Join(node) => node.build_select_plan(),
-            Self::JoinConstraint(node) => node.build_select_plan(),
-            Self::HashJoin(node) => node.build_select_plan(),
-            Self::Filter(node) => node.build_select_plan(),
+            Self::Select(node) => node.build_aggregation_input_plan(),
+            Self::InnerNestedLoop(node) => node.build_aggregation_input_plan(),
+            Self::LeftOuterNestedLoop(node) => node.build_aggregation_input_plan(),
+            Self::InnerHash(node) => node.build_aggregation_input_plan(),
+            Self::LeftOuterHash(node) => node.build_aggregation_input_plan(),
+            Self::InnerCondition(node) => node.build_aggregation_input_plan(),
+            Self::LeftOuterCondition(node) => node.build_aggregation_input_plan(),
+            Self::Filter(node) => node.build_aggregation_input_plan(),
         }
     }
 }
@@ -37,9 +47,12 @@ impl BuildSelect for PrevNode<'_> {
     fn build_select(self) -> Result<Select> {
         match self {
             Self::Select(node) => node.build_select(),
-            Self::Join(node) => node.build_select(),
-            Self::JoinConstraint(node) => node.build_select(),
-            Self::HashJoin(node) => node.build_select(),
+            Self::InnerNestedLoop(node) => node.build_select(),
+            Self::LeftOuterNestedLoop(node) => node.build_select(),
+            Self::InnerHash(node) => node.build_select(),
+            Self::LeftOuterHash(node) => node.build_select(),
+            Self::InnerCondition(node) => node.build_select(),
+            Self::LeftOuterCondition(node) => node.build_select(),
             Self::Filter(node) => node.build_select(),
         }
     }
@@ -51,21 +64,39 @@ impl<'a> From<SelectNode<'a>> for PrevNode<'a> {
     }
 }
 
-impl<'a> From<JoinNode<'a>> for PrevNode<'a> {
-    fn from(node: JoinNode<'a>) -> Self {
-        PrevNode::Join(Box::new(node))
+impl<'a> From<InnerNestedLoopJoinNode<'a>> for PrevNode<'a> {
+    fn from(node: InnerNestedLoopJoinNode<'a>) -> Self {
+        Self::InnerNestedLoop(Box::new(node))
     }
 }
 
-impl<'a> From<JoinConstraintNode<'a>> for PrevNode<'a> {
-    fn from(node: JoinConstraintNode<'a>) -> Self {
-        PrevNode::JoinConstraint(Box::new(node))
+impl<'a> From<LeftOuterNestedLoopJoinNode<'a>> for PrevNode<'a> {
+    fn from(node: LeftOuterNestedLoopJoinNode<'a>) -> Self {
+        Self::LeftOuterNestedLoop(Box::new(node))
     }
 }
 
-impl<'a> From<HashJoinNode<'a>> for PrevNode<'a> {
-    fn from(node: HashJoinNode<'a>) -> Self {
-        PrevNode::HashJoin(Box::new(node))
+impl<'a> From<InnerHashJoinNode<'a>> for PrevNode<'a> {
+    fn from(node: InnerHashJoinNode<'a>) -> Self {
+        Self::InnerHash(Box::new(node))
+    }
+}
+
+impl<'a> From<LeftOuterHashJoinNode<'a>> for PrevNode<'a> {
+    fn from(node: LeftOuterHashJoinNode<'a>) -> Self {
+        Self::LeftOuterHash(Box::new(node))
+    }
+}
+
+impl<'a> From<InnerJoinConditionNode<'a>> for PrevNode<'a> {
+    fn from(node: InnerJoinConditionNode<'a>) -> Self {
+        Self::InnerCondition(Box::new(node))
+    }
+}
+
+impl<'a> From<LeftOuterJoinConditionNode<'a>> for PrevNode<'a> {
+    fn from(node: LeftOuterJoinConditionNode<'a>) -> Self {
+        Self::LeftOuterCondition(Box::new(node))
     }
 }
 
@@ -108,21 +139,33 @@ impl<'a> GroupByNode<'a> {
         ProjectNode::new(self, select_items)
     }
 
-    pub fn order_by<T: Into<OrderByExprList<'a>>>(self, expr_list: T) -> OrderByNode<'a> {
-        OrderByNode::new(self, expr_list)
+    pub fn order_by<T: Into<OrderByExprList<'a>>>(self, expr_list: T) -> SelectOrderByNode<'a> {
+        SelectOrderByNode::new(self, expr_list)
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
+    pub fn distinct(self) -> DistinctNode<'a> {
+        DistinctNode::new(self)
+    }
+
+    pub fn alias_as(self, table_alias: &'a str) -> SourceNode<'a> {
         QueryNode::GroupByNode(self).alias_as(table_alias)
     }
 }
 
-impl BuildSelectPlan for GroupByNode<'_> {
-    fn build_select_plan(self) -> Result<SelectPlan> {
-        let mut select = self.prev_node.build_select_plan()?;
-        select.group_by = self.expr_list.build_exprs_plan()?;
+impl BuildAggregationPlan for GroupByNode<'_> {
+    fn build_aggregation_plan(self) -> Result<AggregationPlan> {
+        Ok(AggregationPlan {
+            input: self.prev_node.build_aggregation_input_plan()?,
+            group_by: self.expr_list.build_exprs_plan()?,
+            aggregate_slots: Vec::new(),
+        })
+    }
+}
 
-        Ok(select)
+impl BuildProjectInputPlan for GroupByNode<'_> {
+    fn build_project_input_plan(self) -> Result<ProjectInputPlan> {
+        self.build_aggregation_plan()
+            .map(ProjectInputPlan::Aggregation)
     }
 }
 
@@ -140,9 +183,9 @@ mod tests {
     use {
         crate::{
             plan::{
-                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
-                QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
-                TableWithJoinsPlan,
+                AggregationInputPlan, AggregationPlan, HashJoinInputPlan, HashJoinPlan,
+                InnerJoinInputPlan, InnerJoinPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan,
+                QueryPlan, SourcePlan, StatementPlan, TableAccessPlan, TableSourcePlan,
             },
             query_builder::{Build, SelectItemList, col, table, test_query_builder},
         },
@@ -156,27 +199,27 @@ mod tests {
         let expected = "SELECT * FROM Foo GROUP BY a";
         test_query_builder(actual, expected);
 
-        // join node -> group by node -> build
+        // inner nested loop join node -> group by node -> build
         let actual = table("Foo").select().join("Bar").group_by("b");
         let expected = "SELECT * FROM Foo JOIN Bar GROUP BY b";
         test_query_builder(actual, expected);
 
-        // join node -> group by node -> build
+        // inner nested loop join node -> group by node -> build
         let actual = table("Foo").select().join_as("Bar", "B").group_by("b");
         let expected = "SELECT * FROM Foo JOIN Bar AS B GROUP BY b";
         test_query_builder(actual, expected);
 
-        // join node -> group by node -> build
+        // left outer nested loop join node -> group by node -> build
         let actual = table("Foo").select().left_join("Bar").group_by("b");
         let expected = "SELECT * FROM Foo LEFT JOIN Bar GROUP BY b";
         test_query_builder(actual, expected);
 
-        // join node -> group by node -> build
+        // left outer nested loop join node -> group by node -> build
         let actual = table("Foo").select().left_join_as("Bar", "B").group_by("b");
         let expected = "SELECT * FROM Foo LEFT JOIN Bar AS B GROUP BY b";
         test_query_builder(actual, expected);
 
-        // join constraint node -> group by node -> build
+        // inner join condition node -> group by node -> build
         let actual = table("Foo")
             .select()
             .join("Bar")
@@ -197,7 +240,7 @@ mod tests {
             ";
         test_query_builder(actual, expected);
 
-        // hash join node -> group by node -> build
+        // inner hash join node -> group by node -> build
         let actual = table("Player")
             .select()
             .join("PlayerItem")
@@ -205,44 +248,35 @@ mod tests {
             .group_by("PlayerItem.category")
             .build();
         let expected = {
-            let join = JoinPlan {
-                relation: TableFactorPlan::Table {
-                    name: "PlayerItem".to_owned(),
-                    alias: None,
-                    index: None,
-                },
-                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
-                join_executor: JoinExecutorPlan::Hash {
-                    key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),
-                    value_expr: col("Player.id").build_expr_plan().unwrap(),
-                    where_clause: None,
-                },
+            let join = InnerJoinPlan {
+                input: InnerJoinInputPlan::Hash(HashJoinPlan {
+                    input: HashJoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
+                        name: "Player".to_owned(),
+                        alias: None,
+                        access: TableAccessPlan::FullScan,
+                    })),
+                    right: SourcePlan::Table(TableSourcePlan {
+                        name: "PlayerItem".to_owned(),
+                        alias: None,
+                        access: TableAccessPlan::FullScan,
+                    }),
+                    input_key: col("Player.id").build_expr_plan().unwrap(),
+                    right_key: col("PlayerItem.user_id").build_expr_plan().unwrap(),
+                    right_filter: None,
+                }),
             };
-            let select = SelectPlan {
-                distinct: false,
+            let project = ProjectPlan {
+                input: ProjectInputPlan::Aggregation(AggregationPlan {
+                    input: AggregationInputPlan::InnerJoin(Box::new(join)),
+                    group_by: vec![col("PlayerItem.category").build_expr_plan().unwrap()],
+                    aggregate_slots: Vec::new(),
+                }),
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("*").build_select_items_plan().unwrap(),
                 ),
-                from: TableWithJoinsPlan {
-                    relation: TableFactorPlan::Table {
-                        name: "Player".to_owned(),
-                        alias: None,
-                        index: None,
-                    },
-                    joins: vec![join],
-                },
-                selection: None,
-                group_by: vec![col("PlayerItem.category").build_expr_plan().unwrap()],
-                having: None,
-                aggregate_slots: None,
             };
 
-            Ok(StatementPlan::Query(QueryPlan {
-                body: SetExprPlan::Select(Box::new(select)),
-                order_by: Vec::new(),
-                limit: None,
-                offset: None,
-            }))
+            Ok(StatementPlan::Query(QueryPlan::Project(project)))
         };
         assert_eq!(actual, expected);
 

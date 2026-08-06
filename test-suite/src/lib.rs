@@ -162,6 +162,7 @@ macro_rules! generate_store_tests {
         sql_case!(aggregate::avg);
         sql_case!(aggregate::count);
         sql_case!(aggregate::group_by);
+        sql_case!(aggregate::having);
         sql_case!(aggregate::max);
         sql_case!(aggregate::min);
         sql_case!(aggregate::stdev);

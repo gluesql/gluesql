@@ -1,7 +1,7 @@
 use super::{
     AlterTableNode, CreateIndexNode, CreateTableNode, DeleteNode, DropIndexNode, DropTableNode,
-    IndexItemNode, InsertNode, OrderByExprNode, SelectNode, ShowColumnsNode, TableFactorNode,
-    UpdateNode, table_factor::TableType,
+    InsertNode, OrderByExprNode, SelectNode, ShowColumnsNode, SourceNode, TableAccessNode,
+    UpdateNode,
 };
 #[derive(Clone, Debug)]
 pub struct TableNameNode {
@@ -10,14 +10,13 @@ pub struct TableNameNode {
 
 impl<'a> TableNameNode {
     pub fn select(self) -> SelectNode<'a> {
-        let table_factor = TableFactorNode {
-            table_name: self.table_name,
-            table_type: TableType::Table,
-            table_alias: None,
-            index: None,
+        let source = SourceNode::Table {
+            name: self.table_name,
+            alias: None,
+            access: TableAccessNode::FullScan,
         };
 
-        SelectNode::new(table_factor)
+        SelectNode::new(source)
     }
 
     pub fn delete(self) -> DeleteNode<'a> {
@@ -36,12 +35,11 @@ impl<'a> TableNameNode {
         ShowColumnsNode::new(self.table_name)
     }
 
-    pub fn alias_as(self, table_alias: &str) -> TableFactorNode<'a> {
-        TableFactorNode {
-            table_name: self.table_name,
-            table_type: TableType::Table,
-            table_alias: Some(table_alias.to_owned()),
-            index: None,
+    pub fn alias_as(self, table_alias: &str) -> SourceNode<'a> {
+        SourceNode::Table {
+            name: self.table_name,
+            alias: Some(table_alias.to_owned()),
+            access: TableAccessNode::FullScan,
         }
     }
 
@@ -85,12 +83,11 @@ impl<'a> TableNameNode {
         AlterTableNode::new(self.table_name)
     }
 
-    pub fn index_by<T: Into<IndexItemNode<'a>>>(self, index_item: T) -> TableFactorNode<'a> {
-        TableFactorNode {
-            table_name: self.table_name,
-            table_type: TableType::Table,
-            table_alias: None,
-            index: Some(index_item.into()),
+    pub fn index_by<T: Into<TableAccessNode<'a>>>(self, access: T) -> SourceNode<'a> {
+        SourceNode::Table {
+            name: self.table_name,
+            alias: None,
+            access: access.into(),
         }
     }
 }

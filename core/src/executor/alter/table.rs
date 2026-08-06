@@ -5,11 +5,11 @@ use {
         data::{Row, Schema},
         executor::{
             evaluate_stateless,
-            select::{select, select_with_labels},
+            query::{self, OutputBody},
         },
         plan::{
-            ProjectionPlan, QueryPlan, SelectItemPlan, SelectPlan, SetExprPlan, TableFactorPlan,
-            ValuesPlan,
+            FilterInputPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
+            SelectItemPlan, SourcePlan, ValuesPlan,
         },
         prelude::{DataType, Value},
         result::Result,
@@ -43,19 +43,19 @@ pub fn create_table<T: GStore + GStoreMut>(
 ) -> Result<()> {
     let mut selected_source_rows = None;
     let target_columns_defs = match source.as_deref() {
-        Some(query) => match &query.body {
-            SetExprPlan::Select(select_query) => match &select_query.from.relation {
-                TableFactorPlan::Table { name, .. } if can_copy_source_schema(select_query) => {
-                    let schema = storage.fetch_schema(name)?;
+        Some(source_query) => match query::output_body(source_query) {
+            OutputBody::Project(project) => match source_for_schema_copy(project) {
+                Some(SourcePlan::Table(table)) => {
+                    let schema = storage.fetch_schema(&table.name)?;
                     let Schema {
                         column_defs: source_column_defs,
                         ..
                     } = schema
-                        .ok_or_else(|| AlterError::CtasSourceTableNotFound(name.to_owned()))?;
+                        .ok_or_else(|| AlterError::CtasSourceTableNotFound(table.name.clone()))?;
 
                     source_column_defs
                 }
-                TableFactorPlan::Series { .. } if can_copy_source_schema(select_query) => {
+                Some(SourcePlan::Series(_)) => {
                     let column_def = ColumnDef {
                         name: "N".into(),
                         data_type: DataType::Int,
@@ -68,7 +68,7 @@ pub fn create_table<T: GStore + GStoreMut>(
                     Some(vec![column_def])
                 }
                 _ => {
-                    let (labels, rows) = select_with_labels(storage, query, None)?;
+                    let (labels, rows) = query::execute_with_labels(storage, source_query, None)?;
                     let rows = rows
                         .map(|row| row.map(Row::into_values))
                         .collect::<Result<Vec<_>>>()?;
@@ -78,7 +78,7 @@ pub fn create_table<T: GStore + GStoreMut>(
                     Some(column_defs)
                 }
             },
-            SetExprPlan::Values(ValuesPlan(values_list)) => {
+            OutputBody::Values(ValuesPlan(values_list)) => {
                 let first_len = values_list[0].len();
                 let mut column_types = vec![None; first_len];
 
@@ -209,7 +209,7 @@ pub fn create_table<T: GStore + GStoreMut>(
         Some(query) => {
             let rows = match selected_source_rows {
                 Some(rows) => rows,
-                None => select(storage, query, None)?
+                None => query::execute(storage, query, None)?
                     .map(|row| row.map(Row::into_values))
                     .collect::<Result<Vec<_>>>()?,
             };
@@ -220,12 +220,20 @@ pub fn create_table<T: GStore + GStoreMut>(
     }
 }
 
-fn can_copy_source_schema(select: &SelectPlan) -> bool {
-    if !select.from.joins.is_empty() {
-        return false;
-    }
+fn source_for_schema_copy(project: &ProjectPlan) -> Option<&SourcePlan> {
+    let source = match &project.input {
+        ProjectInputPlan::Source(relation) => relation,
+        ProjectInputPlan::Filter(filter) => match &filter.input {
+            FilterInputPlan::Source(relation) => relation,
+            FilterInputPlan::InnerJoin(_) | FilterInputPlan::LeftOuterJoin(_) => return None,
+        },
+        ProjectInputPlan::InnerJoin(_)
+        | ProjectInputPlan::LeftOuterJoin(_)
+        | ProjectInputPlan::Aggregation(_)
+        | ProjectInputPlan::Having(_) => return None,
+    };
 
-    match &select.projection {
+    match &project.projection {
         ProjectionPlan::SchemalessMap => true,
         ProjectionPlan::SelectItems(items) => items.iter().all(|item| {
             matches!(
@@ -234,6 +242,7 @@ fn can_copy_source_schema(select: &SelectPlan) -> bool {
             )
         }),
     }
+    .then_some(source)
 }
 
 fn column_defs_from_rows(labels: Vec<String>, rows: &[Vec<Value>]) -> Vec<ColumnDef> {

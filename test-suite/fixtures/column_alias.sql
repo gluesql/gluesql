@@ -54,7 +54,7 @@ SELECT a FROM User AS Table(a, b)
 -- | 3      |
 
 Select * from User as Table(a, b, c)
--- @expect: error Fetch.TooManyColumnAliases
+-- @expect: error Query.TooManyColumnAliases
 -- @json:
 -- [
 --   "User",
@@ -87,7 +87,7 @@ SELECT * FROM (SELECT * FROM InnerTable) AS InlineView(a)
 -- | 3      | "SQL"     |
 
 SELECT * FROM (SELECT * FROM InnerTable) AS InlineView(a, b, c)
--- @expect: error Fetch.TooManyColumnAliases
+-- @expect: error Query.TooManyColumnAliases
 -- @json:
 -- [
 --   "InlineView",
@@ -117,7 +117,7 @@ SELECT Derived.id, Derived.name FROM (VALUES (1, 'a'), (2, 'b')) AS Derived(id, 
 -- | 2       | "b"       |
 
 SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS Derived(id, name, dummy)
--- @expect: error Fetch.TooManyColumnAliases
+-- @expect: error Query.TooManyColumnAliases
 -- @json:
 -- [
 --   "Derived",

@@ -98,19 +98,19 @@ SELECT * FROM TableA CROSS JOIN TableA as A;
 -- @json: "CrossJoin"
 
 SELECT id FROM Users JOIN Testers ON Users.id = Testers.id;
--- @expect: error Plan.ColumnReferenceAmbiguous
+-- @expect: error Planner.ColumnReferenceAmbiguous
 -- @json: "id"
 
 SELECT id FROM Users A JOIN Users B on A.id = B.id
--- @expect: error Plan.ColumnReferenceAmbiguous
+-- @expect: error Planner.ColumnReferenceAmbiguous
 -- @json: "id"
 
 INSERT INTO Users SELECT id FROM Users A JOIN Users B on A.id = B.id
--- @expect: error Plan.ColumnReferenceAmbiguous
+-- @expect: error Planner.ColumnReferenceAmbiguous
 -- @json: "id"
 
 CREATE TABLE Ids AS SELECT id FROM Users A JOIN Users B on A.id = B.id
--- @expect: error Plan.ColumnReferenceAmbiguous
+-- @expect: error Planner.ColumnReferenceAmbiguous
 -- @json: "id"
 
 CREATE TABLE JoinedUsers AS SELECT * FROM Users JOIN Testers ON Users.id = Testers.id

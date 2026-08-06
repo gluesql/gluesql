@@ -1,6 +1,11 @@
 use {
     crate::*,
-    gluesql_core::{executor::Payload, prelude::Value::*, query_builder::*},
+    gluesql_core::{
+        error::{Error, EvaluateError},
+        executor::Payload,
+        prelude::Value::*,
+        query_builder::*,
+    },
 };
 
 test_case!(select, {
@@ -111,6 +116,33 @@ test_case!(select, {
     ));
     assert_eq!(actual, expected, "left outer join");
 
+    // explicit hash join skips NULL right keys
+    let actual = table("Item")
+        .select()
+        .left_join("Category")
+        .hash_executor("NULL", "Item.category_id")
+        .filter("Item.id = 100")
+        .project("Item.name AS item")
+        .project("Category.name AS category")
+        .execute(glue);
+    let expected = Ok(select_with_null!(
+        item                        | category;
+        Str("Pineapple".to_owned())   Null
+    ));
+    assert_eq!(actual, expected, "explicit hash join skips NULL right keys");
+
+    // explicit hash join propagates right key errors during preparation
+    let actual = table("Item")
+        .select()
+        .join("Category")
+        .hash_executor("1 / 0", "Item.category_id")
+        .execute(glue);
+    let expected = Err(Error::Evaluate(EvaluateError::DivisorShouldNotBeZero));
+    assert_eq!(
+        actual, expected,
+        "explicit hash join propagates right key errors during preparation"
+    );
+
     // group by - having
     let actual = table("Item")
         .select()
@@ -165,9 +197,9 @@ test_case!(select, {
     // distinct
     let actual = table("Item")
         .select()
-        .distinct()
         .project("category_id")
         .order_by("category_id")
+        .distinct()
         .execute(glue);
     let expected = Ok(select!(
         category_id
@@ -181,9 +213,9 @@ test_case!(select, {
     // distinct with multiple columns
     let actual = table("Item")
         .select()
-        .distinct()
         .project("category_id, price")
         .order_by("category_id, price")
+        .distinct()
         .execute(glue);
     let expected = Ok(select!(
         category_id | price
@@ -197,7 +229,7 @@ test_case!(select, {
     assert_eq!(actual, expected, "distinct with multiple columns");
 
     // distinct * (all columns)
-    let actual = table("Item").select().distinct().project("*").execute(glue);
+    let actual = table("Item").select().project("*").distinct().execute(glue);
     let expected = Ok(select!(
         id | category_id | name | price
         I64 | I64 | Str | I64;

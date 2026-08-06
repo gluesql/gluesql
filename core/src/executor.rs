@@ -1,4 +1,3 @@
-mod aggregate;
 mod alter;
 mod context;
 mod delete;
@@ -7,10 +6,8 @@ mod execute;
 mod fetch;
 mod filter;
 mod insert;
-mod join;
-mod limit;
+mod query;
 mod select;
-mod sort;
 mod update;
 mod validate;
 
@@ -22,8 +19,7 @@ pub use {
     execute::{ExecuteError, Payload, PayloadVariable, execute},
     fetch::FetchError,
     insert::InsertError,
-    select::SelectError,
-    sort::SortError,
+    query::QueryError,
     update::UpdateError,
     validate::ValidateError,
 };

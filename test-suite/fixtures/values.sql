@@ -23,6 +23,19 @@ VALUES (1, 'a'), (2, 'b') ORDER BY column1 DESC
 -- | 2            | "b"          |
 -- | 1            | "a"          |
 
+VALUES (1, 'a'), (3, 'c'), (2, 'b') ORDER BY column1 DESC LIMIT 2
+-- @expect:
+-- | column1: I64 | column2: Str |
+-- | ------------ | ------------ |
+-- | 3            | "c"          |
+-- | 2            | "b"          |
+
+VALUES (1, 'a'), (3, 'c'), (2, 'b') ORDER BY column1 DESC LIMIT 1 OFFSET 1
+-- @expect:
+-- | column1: I64 | column2: Str |
+-- | ------------ | ------------ |
+-- | 2            | "b"          |
+
 VALUES (1), (2) limit 1
 -- @expect:
 -- | column1: I64 |
@@ -43,10 +56,10 @@ VALUES (1, NULL), (2, NULL)
 -- | 2            | NULL    |
 
 VALUES (1), (2, 'b')
--- @expect: error Select.NumberOfValuesDifferent
+-- @expect: error Query.ValuesLengthMismatch
 
 VALUES (1, 'a'), (2)
--- @expect: error Select.NumberOfValuesDifferent
+-- @expect: error Query.ValuesLengthMismatch
 
 VALUES (1, 'a'), (2, 3)
 -- @expect: error Evaluate.NumberParseFailed
@@ -82,6 +95,73 @@ SELECT * FROM TableFromValues
 -- | 1            | "a"          | true          | NULL         | NULL    |
 -- | 2            | "b"          | false         | 3            | NULL    |
 
+-- @name: CTAS preserves the complete VALUES terminal pipeline
+CREATE TABLE TableFromValuesPipeline AS
+VALUES (3), (1), (2)
+ORDER BY column1 DESC
+LIMIT 1 OFFSET 1
+-- @expect: payload Create
+
+SELECT * FROM TableFromValuesPipeline
+-- @expect:
+-- | column1: I64 |
+-- | ------------ |
+-- | 2            |
+
+-- @name: CTAS preserves a VALUES ORDER BY terminal source
+CREATE TABLE TableFromOrderedValues AS
+VALUES (3), (1), (2)
+ORDER BY column1
+-- @expect: payload Create
+
+SELECT * FROM TableFromOrderedValues
+-- @expect:
+-- | column1: I64 |
+-- | ------------ |
+-- | 1            |
+-- | 2            |
+-- | 3            |
+
+-- @name: CTAS preserves a VALUES OFFSET terminal source
+CREATE TABLE TableFromOffsetValues AS
+VALUES (3), (1), (2)
+OFFSET 1
+-- @expect: payload Create
+
+SELECT * FROM TableFromOffsetValues
+-- @expect:
+-- | column1: I64 |
+-- | ------------ |
+-- | 1            |
+-- | 2            |
+
+-- @name: CTAS preserves a VALUES LIMIT terminal source
+CREATE TABLE TableFromLimitedValues AS
+VALUES (3), (1), (2)
+LIMIT 2
+-- @expect: payload Create
+
+SELECT * FROM TableFromLimitedValues
+-- @expect:
+-- | column1: I64 |
+-- | ------------ |
+-- | 3            |
+-- | 1            |
+
+-- @name: CTAS composes VALUES ORDER BY with LIMIT
+CREATE TABLE TableFromOrderedLimitedValues AS
+VALUES (3), (1), (2)
+ORDER BY column1 DESC
+LIMIT 2
+-- @expect: payload Create
+
+SELECT * FROM TableFromOrderedLimitedValues
+-- @expect:
+-- | column1: I64 |
+-- | ------------ |
+-- | 3            |
+-- | 2            |
+
 SHOW COLUMNS FROM TableFromValues
 -- @expect: payload ShowColumns
 -- @json:
@@ -114,6 +194,37 @@ SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS Derived
 -- | ------------ | ------------ |
 -- | 1            | "a"          |
 -- | 2            | "b"          |
+
+-- @name: Derived VALUES preserves output labels through LIMIT
+SELECT * FROM (VALUES (1), (2) LIMIT 1) AS LimitedValues
+-- @expect:
+-- | column1: I64 |
+-- | ------------ |
+-- | 1            |
+
+-- @name: Derived VALUES preserves output labels through OFFSET
+SELECT * FROM (VALUES (1), (2) OFFSET 1) AS OffsetValues
+-- @expect:
+-- | column1: I64 |
+-- | ------------ |
+-- | 2            |
+
+-- @name: Derived ordered VALUES preserves output labels through LIMIT
+SELECT *
+FROM (VALUES (2), (1) ORDER BY column1 LIMIT 1) AS LimitedOrderedValues
+-- @expect:
+-- | column1: I64 |
+-- | ------------ |
+-- | 1            |
+
+-- @name: terminal pipeline composes in a derived VALUES query
+SELECT *
+FROM (VALUES (1), (4), (3), (2) ORDER BY column1 DESC LIMIT 2 OFFSET 1) AS Derived
+-- @expect:
+-- | column1: I64 |
+-- | ------------ |
+-- | 3            |
+-- | 2            |
 
 SELECT column1 AS id, column2 AS name FROM (VALUES (1, 'a'), (2, 'b')) AS Derived
 -- @expect:

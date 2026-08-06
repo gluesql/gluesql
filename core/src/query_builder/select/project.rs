@@ -1,12 +1,13 @@
 use {
-    super::{BuildSelect, BuildSelectPlan},
+    super::{BuildProjectInputPlan, BuildProjectPlan, BuildSelect, DistinctNode},
     crate::{
         ast::{Projection, Select},
-        plan::{ProjectionPlan, SelectPlan},
+        plan::{ProjectInputPlan, ProjectPlan, ProjectionPlan},
         query_builder::{
-            ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
-            JoinNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, QueryNode,
-            SelectItemList, SelectNode, TableFactorNode,
+            ExprNode, FilterNode, GroupByNode, HavingNode, InnerHashJoinNode,
+            InnerJoinConditionNode, InnerNestedLoopJoinNode, LeftOuterHashJoinNode,
+            LeftOuterJoinConditionNode, LeftOuterNestedLoopJoinNode, LimitNode, OffsetNode,
+            OrderByExprList, QueryNode, SelectItemList, SelectNode, SelectOrderByNode, SourceNode,
         },
         result::Result,
     },
@@ -17,22 +18,28 @@ pub(super) enum PrevNode<'a> {
     Select(SelectNode<'a>),
     GroupBy(GroupByNode<'a>),
     Having(HavingNode<'a>),
-    Join(Box<JoinNode<'a>>),
-    JoinConstraint(Box<JoinConstraintNode<'a>>),
-    HashJoin(Box<HashJoinNode<'a>>),
+    InnerNestedLoop(Box<InnerNestedLoopJoinNode<'a>>),
+    LeftOuterNestedLoop(Box<LeftOuterNestedLoopJoinNode<'a>>),
+    InnerHash(Box<InnerHashJoinNode<'a>>),
+    LeftOuterHash(Box<LeftOuterHashJoinNode<'a>>),
+    InnerCondition(Box<InnerJoinConditionNode<'a>>),
+    LeftOuterCondition(Box<LeftOuterJoinConditionNode<'a>>),
     Filter(FilterNode<'a>),
 }
 
-impl BuildSelectPlan for PrevNode<'_> {
-    fn build_select_plan(self) -> Result<SelectPlan> {
+impl BuildProjectInputPlan for PrevNode<'_> {
+    fn build_project_input_plan(self) -> Result<ProjectInputPlan> {
         match self {
-            Self::Select(node) => node.build_select_plan(),
-            Self::GroupBy(node) => node.build_select_plan(),
-            Self::Having(node) => node.build_select_plan(),
-            Self::Join(node) => node.build_select_plan(),
-            Self::JoinConstraint(node) => node.build_select_plan(),
-            Self::HashJoin(node) => node.build_select_plan(),
-            Self::Filter(node) => node.build_select_plan(),
+            Self::Select(node) => node.build_project_input_plan(),
+            Self::GroupBy(node) => node.build_project_input_plan(),
+            Self::Having(node) => node.build_project_input_plan(),
+            Self::InnerNestedLoop(node) => node.build_project_input_plan(),
+            Self::LeftOuterNestedLoop(node) => node.build_project_input_plan(),
+            Self::InnerHash(node) => node.build_project_input_plan(),
+            Self::LeftOuterHash(node) => node.build_project_input_plan(),
+            Self::InnerCondition(node) => node.build_project_input_plan(),
+            Self::LeftOuterCondition(node) => node.build_project_input_plan(),
+            Self::Filter(node) => node.build_project_input_plan(),
         }
     }
 }
@@ -43,9 +50,12 @@ impl BuildSelect for PrevNode<'_> {
             Self::Select(node) => node.build_select(),
             Self::GroupBy(node) => node.build_select(),
             Self::Having(node) => node.build_select(),
-            Self::Join(node) => node.build_select(),
-            Self::JoinConstraint(node) => node.build_select(),
-            Self::HashJoin(node) => node.build_select(),
+            Self::InnerNestedLoop(node) => node.build_select(),
+            Self::LeftOuterNestedLoop(node) => node.build_select(),
+            Self::InnerHash(node) => node.build_select(),
+            Self::LeftOuterHash(node) => node.build_select(),
+            Self::InnerCondition(node) => node.build_select(),
+            Self::LeftOuterCondition(node) => node.build_select(),
             Self::Filter(node) => node.build_select(),
         }
     }
@@ -69,21 +79,39 @@ impl<'a> From<HavingNode<'a>> for PrevNode<'a> {
     }
 }
 
-impl<'a> From<JoinNode<'a>> for PrevNode<'a> {
-    fn from(node: JoinNode<'a>) -> Self {
-        PrevNode::Join(Box::new(node))
+impl<'a> From<InnerNestedLoopJoinNode<'a>> for PrevNode<'a> {
+    fn from(node: InnerNestedLoopJoinNode<'a>) -> Self {
+        Self::InnerNestedLoop(Box::new(node))
     }
 }
 
-impl<'a> From<JoinConstraintNode<'a>> for PrevNode<'a> {
-    fn from(node: JoinConstraintNode<'a>) -> Self {
-        PrevNode::JoinConstraint(Box::new(node))
+impl<'a> From<LeftOuterNestedLoopJoinNode<'a>> for PrevNode<'a> {
+    fn from(node: LeftOuterNestedLoopJoinNode<'a>) -> Self {
+        Self::LeftOuterNestedLoop(Box::new(node))
     }
 }
 
-impl<'a> From<HashJoinNode<'a>> for PrevNode<'a> {
-    fn from(node: HashJoinNode<'a>) -> Self {
-        PrevNode::HashJoin(Box::new(node))
+impl<'a> From<InnerHashJoinNode<'a>> for PrevNode<'a> {
+    fn from(node: InnerHashJoinNode<'a>) -> Self {
+        Self::InnerHash(Box::new(node))
+    }
+}
+
+impl<'a> From<LeftOuterHashJoinNode<'a>> for PrevNode<'a> {
+    fn from(node: LeftOuterHashJoinNode<'a>) -> Self {
+        Self::LeftOuterHash(Box::new(node))
+    }
+}
+
+impl<'a> From<InnerJoinConditionNode<'a>> for PrevNode<'a> {
+    fn from(node: InnerJoinConditionNode<'a>) -> Self {
+        Self::InnerCondition(Box::new(node))
+    }
+}
+
+impl<'a> From<LeftOuterJoinConditionNode<'a>> for PrevNode<'a> {
+    fn from(node: LeftOuterJoinConditionNode<'a>) -> Self {
+        Self::LeftOuterCondition(Box::new(node))
     }
 }
 
@@ -117,12 +145,15 @@ impl<'a> ProjectNode<'a> {
         self
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
+    pub fn alias_as(self, table_alias: &'a str) -> SourceNode<'a> {
         QueryNode::ProjectNode(self).alias_as(table_alias)
     }
 
-    pub fn order_by<T: Into<OrderByExprList<'a>>>(self, order_by_exprs: T) -> OrderByNode<'a> {
-        OrderByNode::new(self, order_by_exprs)
+    pub fn order_by<T: Into<OrderByExprList<'a>>>(
+        self,
+        order_by_exprs: T,
+    ) -> SelectOrderByNode<'a> {
+        SelectOrderByNode::new(self, order_by_exprs)
     }
 
     pub fn offset<T: Into<ExprNode<'a>>>(self, expr: T) -> OffsetNode<'a> {
@@ -132,12 +163,16 @@ impl<'a> ProjectNode<'a> {
     pub fn limit<T: Into<ExprNode<'a>>>(self, expr: T) -> LimitNode<'a> {
         LimitNode::new(self, expr)
     }
+
+    pub fn distinct(self) -> DistinctNode<'a> {
+        DistinctNode::new(self)
+    }
 }
 
-impl BuildSelectPlan for ProjectNode<'_> {
-    fn build_select_plan(self) -> Result<SelectPlan> {
-        let mut query = self.prev_node.build_select_plan()?;
-        query.projection = ProjectionPlan::SelectItems(
+impl BuildProjectPlan for ProjectNode<'_> {
+    fn build_project_plan(self) -> Result<ProjectPlan> {
+        let input = self.prev_node.build_project_input_plan()?;
+        let projection = ProjectionPlan::SelectItems(
             self.select_items_list
                 .into_iter()
                 .map(SelectItemList::build_select_items_plan)
@@ -147,7 +182,7 @@ impl BuildSelectPlan for ProjectNode<'_> {
                 .collect::<Vec<_>>(),
         );
 
-        Ok(query)
+        Ok(ProjectPlan { input, projection })
     }
 }
 
@@ -173,9 +208,9 @@ mod tests {
     use {
         crate::{
             plan::{
-                JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan, ProjectionPlan,
-                QueryPlan, SelectPlan, SetExprPlan, StatementPlan, TableFactorPlan,
-                TableWithJoinsPlan,
+                HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan,
+                ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SourcePlan,
+                StatementPlan, TableAccessPlan, TableSourcePlan,
             },
             query_builder::{Build, SelectItemList, col, table, test_query_builder},
         },
@@ -255,7 +290,26 @@ mod tests {
         "#;
         test_query_builder(actual, expected);
 
-        // hash join node -> project node -> build
+        // filter node -> project node -> build
+        let actual = table("Item").select().filter("price > 10").project("name");
+        let expected = "SELECT name FROM Item WHERE price > 10";
+        test_query_builder(actual, expected);
+
+        // inner nested loop join node -> project node -> build
+        let actual = table("Item").select().join("Category").project("Item.name");
+        let expected = "SELECT Item.name FROM Item JOIN Category";
+        test_query_builder(actual, expected);
+
+        // inner join condition node -> project node -> build
+        let actual = table("Item")
+            .select()
+            .join("Category")
+            .on("Item.category_id = Category.id")
+            .project("Item.name");
+        let expected = "SELECT Item.name FROM Item JOIN Category ON Item.category_id = Category.id";
+        test_query_builder(actual, expected);
+
+        // inner hash join node -> project node -> build
         let actual = table("Player")
             .select()
             .join("PlayerItem")
@@ -263,46 +317,33 @@ mod tests {
             .project("Player.name, PlayerItem.name")
             .build();
         let expected = {
-            let join = JoinPlan {
-                relation: TableFactorPlan::Table {
-                    name: "PlayerItem".to_owned(),
-                    alias: None,
-                    index: None,
-                },
-                join_operator: JoinOperatorPlan::Inner(JoinConstraintPlan::None),
-                join_executor: JoinExecutorPlan::Hash {
-                    key_expr: col("PlayerItem.user_id").build_expr_plan().unwrap(),
-                    value_expr: col("Player.id").build_expr_plan().unwrap(),
-                    where_clause: None,
-                },
+            let join = InnerJoinPlan {
+                input: InnerJoinInputPlan::Hash(HashJoinPlan {
+                    input: HashJoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
+                        name: "Player".to_owned(),
+                        alias: None,
+                        access: TableAccessPlan::FullScan,
+                    })),
+                    right: SourcePlan::Table(TableSourcePlan {
+                        name: "PlayerItem".to_owned(),
+                        alias: None,
+                        access: TableAccessPlan::FullScan,
+                    }),
+                    input_key: col("Player.id").build_expr_plan().unwrap(),
+                    right_key: col("PlayerItem.user_id").build_expr_plan().unwrap(),
+                    right_filter: None,
+                }),
             };
-            let select = SelectPlan {
-                distinct: false,
+            let project = ProjectPlan {
+                input: ProjectInputPlan::InnerJoin(Box::new(join)),
                 projection: ProjectionPlan::SelectItems(
                     SelectItemList::from("Player.name, PlayerItem.name")
                         .build_select_items_plan()
                         .unwrap(),
                 ),
-                from: TableWithJoinsPlan {
-                    relation: TableFactorPlan::Table {
-                        name: "Player".to_owned(),
-                        alias: None,
-                        index: None,
-                    },
-                    joins: vec![join],
-                },
-                selection: None,
-                group_by: Vec::new(),
-                having: None,
-                aggregate_slots: None,
             };
 
-            Ok(StatementPlan::Query(QueryPlan {
-                body: SetExprPlan::Select(Box::new(select)),
-                order_by: Vec::new(),
-                limit: None,
-                offset: None,
-            }))
+            Ok(StatementPlan::Query(QueryPlan::Project(project)))
         };
         assert_eq!(actual, expected);
 

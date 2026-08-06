@@ -3,7 +3,7 @@ use {
     crate::{
         ast::{Aggregate, CountArgExpr},
         parse_sql::parse_expr,
-        plan::{AggregateFunctionPlan, AggregatePlan, CountArgExprPlan},
+        plan::{AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan},
         result::Result,
         translate::{NO_PARAMS, translate_expr},
     },
@@ -93,7 +93,7 @@ impl AggregateNode<'_> {
         }
     }
 
-    pub(super) fn build_aggregate_plan(self) -> Result<AggregatePlan> {
+    pub(super) fn build_aggregate_expr_plan(self) -> Result<AggregateExprPlan> {
         let (func, distinct) = match self {
             AggregateNode::Count(count_arg_expr_node, distinct) => count_arg_expr_node
                 .build_count_arg_expr_plan()
@@ -118,7 +118,7 @@ impl AggregateNode<'_> {
                 .map(|expr| (AggregateFunctionPlan::Stdev(expr), distinct)),
         }?;
 
-        Ok(AggregatePlan {
+        Ok(AggregateExprPlan {
             func,
             distinct,
             slot: None,
@@ -389,7 +389,7 @@ mod tests {
     }
 
     #[test]
-    fn aggregate_plan_propagates_expr_error() {
+    fn aggregate_expr_plan_propagates_expr_error() {
         let actual = sum(expr(")")).build_expr_plan();
 
         assert!(matches!(actual, Err(Error::Parser(_))));

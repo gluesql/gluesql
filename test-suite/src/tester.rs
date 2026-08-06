@@ -1,7 +1,10 @@
 use {
     gluesql_core::{
         ast::*,
-        plan::{IndexItemPlan, StatementPlan},
+        plan::{
+            AggregationInputPlan, AggregationPlan, ExprPlan, HavingPlan, ProjectInputPlan,
+            ProjectPlan, QueryPlan, SourcePlan, StatementPlan, TableAccessPlan,
+        },
         prelude::{Glue, Payload, Result},
         store::{GStore, GStoreMut, Planner},
     },
@@ -10,7 +13,7 @@ use {
 
 pub mod macros;
 
-pub fn test_indexes(statement: &StatementPlan, indexes: Option<Vec<IndexItemPlan>>) {
+pub fn test_indexes(statement: &StatementPlan, indexes: Option<Vec<TableAccessPlan>>) {
     if let Some(expected) = indexes {
         let found = find_indexes(statement);
 
@@ -30,42 +33,64 @@ pub fn test_indexes(statement: &StatementPlan, indexes: Option<Vec<IndexItemPlan
     }
 }
 
-fn find_indexes(statement: &StatementPlan) -> Vec<&IndexItemPlan> {
-    fn find_expr_indexes(expr: &gluesql_core::plan::ExprPlan) -> Vec<&IndexItemPlan> {
+fn find_indexes(statement: &StatementPlan) -> Vec<&TableAccessPlan> {
+    fn find_expr_indexes(expr: &ExprPlan) -> Vec<&TableAccessPlan> {
         match expr {
-            gluesql_core::plan::ExprPlan::Subquery(query)
-            | gluesql_core::plan::ExprPlan::Exists {
+            ExprPlan::Subquery(query)
+            | ExprPlan::Exists {
                 subquery: query, ..
             }
-            | gluesql_core::plan::ExprPlan::InSubquery {
+            | ExprPlan::InSubquery {
                 subquery: query, ..
             } => find_query_indexes(query),
-            _ => vec![],
+            _ => Vec::new(),
         }
     }
 
-    fn find_query_indexes(query: &gluesql_core::plan::QueryPlan) -> Vec<&IndexItemPlan> {
-        let select = match &query.body {
-            gluesql_core::plan::SetExprPlan::Select(select) => select,
-            gluesql_core::plan::SetExprPlan::Values(_) => {
-                return vec![];
+    fn find_source_indexes(source: &SourcePlan) -> Vec<&TableAccessPlan> {
+        match source {
+            SourcePlan::Table(table) if table.access != TableAccessPlan::FullScan => {
+                vec![&table.access]
             }
-        };
+            SourcePlan::Derived(derived) => find_query_indexes(&derived.query),
+            SourcePlan::Table(_) | SourcePlan::Series(_) | SourcePlan::Dictionary(_) => Vec::new(),
+        }
+    }
 
-        let selection_indexes = select
-            .selection
-            .as_ref()
-            .map(find_expr_indexes)
+    fn find_project_indexes(project: &ProjectPlan) -> Vec<&TableAccessPlan> {
+        let filter = match &project.input {
+            ProjectInputPlan::Filter(filter)
+            | ProjectInputPlan::Aggregation(AggregationPlan {
+                input: AggregationInputPlan::Filter(filter),
+                ..
+            })
+            | ProjectInputPlan::Having(HavingPlan {
+                input:
+                    AggregationPlan {
+                        input: AggregationInputPlan::Filter(filter),
+                        ..
+                    },
+                ..
+            }) => Some(filter),
+            ProjectInputPlan::Source(_)
+            | ProjectInputPlan::InnerJoin(_)
+            | ProjectInputPlan::LeftOuterJoin(_)
+            | ProjectInputPlan::Aggregation(_)
+            | ProjectInputPlan::Having(_) => None,
+        };
+        let filter_indexes = filter
+            .map(|filter| find_expr_indexes(&filter.expr))
             .unwrap_or_default();
+        let source_indexes = find_source_indexes(project.input.base_source());
 
-        let table_indexes = match &select.from.relation {
-            gluesql_core::plan::TableFactorPlan::Table {
-                index: Some(index), ..
-            } => vec![index],
-            _ => vec![],
-        };
+        [filter_indexes, source_indexes].concat()
+    }
 
-        [selection_indexes, table_indexes].concat()
+    fn find_query_indexes(query: &QueryPlan) -> Vec<&TableAccessPlan> {
+        query
+            .project()
+            .map(find_project_indexes)
+            .unwrap_or_default()
     }
 
     match statement {

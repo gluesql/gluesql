@@ -248,11 +248,11 @@ impl ExprNode<'_> {
                 .map(Box::new)
                 .map(ExprPlan::Nested),
             ExprNode::Function(func_expr) => (*func_expr)
-                .build_function_plan()
+                .build_function_expr_plan()
                 .map(Box::new)
                 .map(ExprPlan::Function),
             ExprNode::Aggregate(aggr_expr) => (*aggr_expr)
-                .build_aggregate_plan()
+                .build_aggregate_expr_plan()
                 .map(Box::new)
                 .map(ExprPlan::Aggregate),
             ExprNode::Exists { subquery, negated } => (*subquery)
@@ -696,6 +696,16 @@ mod tests {
 
         let actual = subquery(table("Foo").select().filter("id IS NOT NULL"));
         let expected = "(SELECT * FROM Foo WHERE id IS NOT NULL)";
+        test_expr(actual, expected);
+
+        let actual = subquery(
+            table("Foo")
+                .select()
+                .project("id")
+                .order_by("id")
+                .distinct(),
+        );
+        let expected = "(SELECT DISTINCT id FROM Foo ORDER BY id)";
         test_expr(actual, expected);
 
         let actual = null();
