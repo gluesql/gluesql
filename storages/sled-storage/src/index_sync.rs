@@ -6,6 +6,7 @@ use {
         executor::RowContext,
         executor::evaluate_stateless,
         plan::{ExprPlan, plan_scalar_expr},
+        planner::plan_scalar_references,
         prelude::Value,
     },
     sled::{
@@ -22,13 +23,13 @@ pub(super) struct PlannedIndex {
 }
 
 impl PlannedIndex {
-    pub(super) fn new(index: SchemaIndex) -> Self {
+    pub(super) fn new(table_name: &str, index: SchemaIndex) -> Self {
         let SchemaIndex { name, expr, .. } = index;
 
-        Self {
-            name,
-            expr: plan_scalar_expr(expr),
-        }
+        let mut expr = plan_scalar_expr(expr);
+        plan_scalar_references(table_name, &mut expr);
+
+        Self { name, expr }
     }
 }
 
@@ -56,7 +57,11 @@ impl<'a> IndexSync<'a> {
                 .collect::<Vec<_>>()
         });
 
-        let indexes = indexes.iter().cloned().map(PlannedIndex::new).collect();
+        let indexes = indexes
+            .iter()
+            .cloned()
+            .map(|index| PlannedIndex::new(table_name, index))
+            .collect();
 
         Self {
             tree,
@@ -90,7 +95,10 @@ impl<'a> IndexSync<'a> {
                 .collect::<Vec<_>>()
         });
 
-        let indexes = indexes.into_iter().map(PlannedIndex::new).collect();
+        let indexes = indexes
+            .into_iter()
+            .map(|index| PlannedIndex::new(table_name, index))
+            .collect();
 
         Ok(Self {
             tree,

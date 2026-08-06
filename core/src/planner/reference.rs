@@ -1,0 +1,874 @@
+use {
+    super::expr::visit_mut_expr,
+    crate::{
+        ast::Dictionary,
+        data::{SCHEMALESS_DOC_COLUMN, Schema},
+        plan::{
+            AggregationInputPlan, DistinctInputPlan, ExprPlan, FilterInputPlan, HashJoinPlan,
+            InnerJoinInputPlan, InnerJoinPlan, JoinConditionInputPlan, LeftOuterJoinInputPlan,
+            LeftOuterJoinPlan, LimitInputPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
+            OffsetInputPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
+            SelectItemPlan, SourcePlan, StatementPlan, ValuesPlan,
+        },
+        result::Result,
+    },
+    std::{collections::HashMap, hash::BuildHasher, rc::Rc},
+};
+
+pub fn plan<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    mut statement: StatementPlan,
+) -> Result<StatementPlan> {
+    match &mut statement {
+        StatementPlan::Query(query) => plan_query(schema_map, query, None),
+        StatementPlan::Insert { source, .. } => plan_query(schema_map, source, None),
+        StatementPlan::CreateTable {
+            source: Some(source),
+            ..
+        } => plan_query(schema_map, source, None),
+        StatementPlan::Update {
+            table_name,
+            assignments,
+            selection,
+        } => {
+            let context = source_context(schema_map, table_name, None);
+            for assignment in assignments {
+                plan_expr(schema_map, &context, &mut assignment.value);
+            }
+            if let Some(selection) = selection {
+                plan_expr(schema_map, &context, selection);
+            }
+        }
+        StatementPlan::Delete {
+            table_name,
+            selection: Some(selection),
+        } => {
+            let context = source_context(schema_map, table_name, None);
+            plan_expr(schema_map, &context, selection);
+        }
+        _ => {}
+    }
+    Ok(statement)
+}
+
+pub fn plan_scalar(alias: &str, expr: &mut ExprPlan) {
+    visit_mut_expr(expr, &mut |expr| {
+        if let ExprPlan::UnplannedReference { qualifier, name } = expr
+            && qualifier
+                .as_deref()
+                .is_none_or(|qualifier| qualifier == alias)
+        {
+            *expr = ExprPlan::ResolvedColumn {
+                alias: alias.to_owned(),
+                column: name.clone(),
+            };
+        }
+    });
+}
+
+fn plan_query<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    query: &mut QueryPlan,
+    outer: Option<Rc<Context>>,
+) {
+    prepare_sources(schema_map, query, outer.as_ref());
+    let context = query_context(schema_map, query, outer);
+    visit_query_exprs(schema_map, query, &context);
+}
+
+fn prepare_sources<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    query: &mut QueryPlan,
+    outer: Option<&Rc<Context>>,
+) {
+    let Some(project) = query.project_mut() else {
+        return;
+    };
+    prepare_input_sources(schema_map, &mut project.input, outer);
+}
+
+fn prepare_input_sources<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    input: &mut ProjectInputPlan,
+    outer: Option<&Rc<Context>>,
+) {
+    match input {
+        ProjectInputPlan::Source(source) => prepare_source(schema_map, source, outer),
+        ProjectInputPlan::InnerJoin(join) => prepare_inner(schema_map, join, outer),
+        ProjectInputPlan::LeftOuterJoin(join) => prepare_left(schema_map, join, outer),
+        ProjectInputPlan::Filter(filter) => prepare_filter(schema_map, &mut filter.input, outer),
+        ProjectInputPlan::Aggregation(aggregation) => {
+            prepare_aggregation(schema_map, &mut aggregation.input, outer);
+        }
+        ProjectInputPlan::Having(having) => {
+            prepare_aggregation(schema_map, &mut having.input.input, outer);
+        }
+    }
+}
+
+fn prepare_source<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    source: &mut SourcePlan,
+    outer: Option<&Rc<Context>>,
+) {
+    if let SourcePlan::Derived(source) = source {
+        plan_query(schema_map, &mut source.query, outer.cloned());
+    }
+}
+
+fn prepare_filter<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    input: &mut FilterInputPlan,
+    outer: Option<&Rc<Context>>,
+) {
+    match input {
+        FilterInputPlan::Source(source) => prepare_source(schema_map, source, outer),
+        FilterInputPlan::InnerJoin(join) => prepare_inner(schema_map, join, outer),
+        FilterInputPlan::LeftOuterJoin(join) => prepare_left(schema_map, join, outer),
+    }
+}
+
+fn prepare_aggregation<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    input: &mut AggregationInputPlan,
+    outer: Option<&Rc<Context>>,
+) {
+    match input {
+        AggregationInputPlan::Source(source) => prepare_source(schema_map, source, outer),
+        AggregationInputPlan::InnerJoin(join) => prepare_inner(schema_map, join, outer),
+        AggregationInputPlan::LeftOuterJoin(join) => prepare_left(schema_map, join, outer),
+        AggregationInputPlan::Filter(filter) => {
+            prepare_filter(schema_map, &mut filter.input, outer);
+        }
+    }
+}
+
+fn prepare_inner<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    join: &mut InnerJoinPlan,
+    outer: Option<&Rc<Context>>,
+) {
+    match &mut join.input {
+        InnerJoinInputPlan::NestedLoop(join) => {
+            prepare_nested(schema_map, join, outer);
+        }
+        InnerJoinInputPlan::Condition(condition) => match &mut condition.input {
+            JoinConditionInputPlan::NestedLoop(join) => prepare_nested(schema_map, join, outer),
+            JoinConditionInputPlan::Hash(_) => {}
+        },
+        InnerJoinInputPlan::Hash(_) => {}
+    }
+}
+
+fn prepare_left<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    join: &mut LeftOuterJoinPlan,
+    outer: Option<&Rc<Context>>,
+) {
+    match &mut join.input {
+        LeftOuterJoinInputPlan::NestedLoop(join) => prepare_nested(schema_map, join, outer),
+        LeftOuterJoinInputPlan::Condition(condition) => match &mut condition.input {
+            JoinConditionInputPlan::NestedLoop(join) => prepare_nested(schema_map, join, outer),
+            JoinConditionInputPlan::Hash(_) => {}
+        },
+        LeftOuterJoinInputPlan::Hash(_) => {}
+    }
+}
+
+fn prepare_nested<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    join: &mut NestedLoopJoinPlan,
+    outer: Option<&Rc<Context>>,
+) {
+    match &mut join.input {
+        NestedLoopJoinInputPlan::Source(source) => prepare_source(schema_map, source, outer),
+        NestedLoopJoinInputPlan::InnerJoin(join) => prepare_inner(schema_map, join, outer),
+        NestedLoopJoinInputPlan::LeftOuterJoin(join) => prepare_left(schema_map, join, outer),
+    }
+    prepare_source(schema_map, &mut join.right, outer);
+}
+
+fn query_context<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    query: &QueryPlan,
+    outer: Option<Rc<Context>>,
+) -> Rc<Context> {
+    let local = match query {
+        QueryPlan::Project(project) => input_context(schema_map, &project.input),
+        QueryPlan::SelectOrderBy(order_by) => input_context(schema_map, &order_by.input.input),
+        QueryPlan::Distinct(distinct) => match &distinct.input {
+            DistinctInputPlan::Project(project) => input_context(schema_map, &project.input),
+            DistinctInputPlan::SelectOrderBy(order_by) => {
+                input_context(schema_map, &order_by.input.input)
+            }
+        },
+        QueryPlan::ValuesOrderBy(order_by) => values_context(&order_by.input),
+        QueryPlan::Values(values) => values_context(values),
+        QueryPlan::Offset(offset) => offset_input_context(schema_map, &offset.input),
+        QueryPlan::Limit(limit) => limit_input_context(schema_map, &limit.input),
+    };
+    match outer {
+        Some(outer) => Rc::new(Context::Scope { local, outer }),
+        None => local,
+    }
+}
+
+fn input_context<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    input: &ProjectInputPlan,
+) -> Rc<Context> {
+    let mut sources = vec![input.base_source()];
+    sources.extend(input.joined_sources());
+    sources
+        .into_iter()
+        .map(|source| source_context(schema_map, source.alias_name(), Some(source)))
+        .reduce(|left, right| Rc::new(Context::Bridge { left, right }))
+        .unwrap_or_else(|| Rc::new(Context::Barrier))
+}
+
+fn source_context<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    name: &str,
+    source: Option<&SourcePlan>,
+) -> Rc<Context> {
+    let Some(source) = source else {
+        return schema_map.get(name).map_or_else(
+            || Rc::new(Context::Barrier),
+            |schema| data_context(name.to_owned(), Some(schema_labels(schema))),
+        );
+    };
+    match source {
+        SourcePlan::Table(table) => schema_map.get(&table.name).map_or_else(
+            || Rc::new(Context::Barrier),
+            |schema| {
+                let mut labels = schema_labels(schema);
+                if let Some(alias) = &table.alias {
+                    labels
+                        .iter_mut()
+                        .zip(&alias.columns)
+                        .for_each(|(label, alias)| {
+                            label.clone_from(alias);
+                        });
+                }
+                data_context(source.alias_name().to_owned(), Some(labels))
+            },
+        ),
+        SourcePlan::Derived(derived) => {
+            let labels = (!derived.alias.columns.is_empty())
+                .then(|| derived.alias.columns.clone())
+                .or_else(|| query_output_labels(schema_map, &derived.query));
+            data_context(derived.alias.name.clone(), labels)
+        }
+        SourcePlan::Series(series) => {
+            data_context(series.alias.name.clone(), Some(vec!["N".to_owned()]))
+        }
+        SourcePlan::Dictionary(dictionary) => data_context(
+            dictionary.alias.name.clone(),
+            Some(dictionary_labels(&dictionary.dictionary)),
+        ),
+    }
+}
+
+fn data_context(alias: String, labels: Option<Vec<String>>) -> Rc<Context> {
+    Rc::new(Context::Data { alias, labels })
+}
+
+fn values_context(values: &ValuesPlan) -> Rc<Context> {
+    data_context(
+        "VALUES".to_owned(),
+        values.0.first().map(|row| {
+            (1..=row.len())
+                .map(|index| format!("column{index}"))
+                .collect()
+        }),
+    )
+}
+
+fn output_context(projection: &ProjectionPlan, source: &Rc<Context>) -> Rc<Context> {
+    Rc::new(Context::Scope {
+        local: data_context("OUTPUT".to_owned(), projection_labels(projection)),
+        outer: Rc::clone(source),
+    })
+}
+
+fn limit_input_context<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    input: &LimitInputPlan,
+) -> Rc<Context> {
+    match input {
+        LimitInputPlan::Project(project) => input_context(schema_map, &project.input),
+        LimitInputPlan::Values(values) => values_context(values),
+        LimitInputPlan::ValuesOrderBy(order_by) => values_context(&order_by.input),
+        LimitInputPlan::SelectOrderBy(order_by) => input_context(schema_map, &order_by.input.input),
+        LimitInputPlan::Distinct(distinct) => distinct_input_context(schema_map, &distinct.input),
+        LimitInputPlan::Offset(offset) => offset_input_context(schema_map, &offset.input),
+    }
+}
+
+fn offset_input_context<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    input: &OffsetInputPlan,
+) -> Rc<Context> {
+    match input {
+        OffsetInputPlan::Project(project) => input_context(schema_map, &project.input),
+        OffsetInputPlan::Values(values) => values_context(values),
+        OffsetInputPlan::ValuesOrderBy(order_by) => values_context(&order_by.input),
+        OffsetInputPlan::SelectOrderBy(order_by) => {
+            input_context(schema_map, &order_by.input.input)
+        }
+        OffsetInputPlan::Distinct(distinct) => distinct_input_context(schema_map, &distinct.input),
+    }
+}
+
+fn distinct_input_context<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    input: &DistinctInputPlan,
+) -> Rc<Context> {
+    match input {
+        DistinctInputPlan::Project(project) => input_context(schema_map, &project.input),
+        DistinctInputPlan::SelectOrderBy(order_by) => {
+            input_context(schema_map, &order_by.input.input)
+        }
+    }
+}
+
+fn schema_labels(schema: &Schema) -> Vec<String> {
+    match schema.column_defs.as_ref() {
+        Some(columns) if !columns.is_empty() => {
+            columns.iter().map(|column| column.name.clone()).collect()
+        }
+        _ => vec![SCHEMALESS_DOC_COLUMN.to_owned()],
+    }
+}
+
+fn projection_labels(projection: &ProjectionPlan) -> Option<Vec<String>> {
+    match projection {
+        ProjectionPlan::SchemalessMap => Some(vec![SCHEMALESS_DOC_COLUMN.to_owned()]),
+        ProjectionPlan::SelectItems(items) => items
+            .iter()
+            .map(|item| match item {
+                SelectItemPlan::Expr { label, .. } => Some(label.clone()),
+                SelectItemPlan::Wildcard | SelectItemPlan::QualifiedWildcard(_) => None,
+            })
+            .collect(),
+    }
+}
+
+fn query_output_labels<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    query: &QueryPlan,
+) -> Option<Vec<String>> {
+    match query {
+        QueryPlan::Values(values) => values.0.first().map(|row| {
+            (1..=row.len())
+                .map(|index| format!("column{index}"))
+                .collect()
+        }),
+        _ => query.project().and_then(|project| {
+            projection_labels(&project.projection)
+                .or_else(|| input_context(schema_map, &project.input).all_labels())
+        }),
+    }
+}
+
+fn dictionary_labels(dictionary: &Dictionary) -> Vec<String> {
+    match dictionary {
+        Dictionary::GlueObjects => vec!["OBJECT_NAME", "OBJECT_TYPE", "CREATED"],
+        Dictionary::GlueTables => vec!["TABLE_NAME", "COMMENT"],
+        Dictionary::GlueTableColumns => vec![
+            "TABLE_NAME",
+            "COLUMN_NAME",
+            "COLUMN_ID",
+            "NULLABLE",
+            "KEY",
+            "DEFAULT",
+            "COMMENT",
+        ],
+        Dictionary::GlueIndexes => vec![
+            "TABLE_NAME",
+            "INDEX_NAME",
+            "ORDER",
+            "EXPRESSION",
+            "UNIQUENESS",
+        ],
+    }
+    .into_iter()
+    .map(str::to_owned)
+    .collect()
+}
+
+fn visit_query_exprs<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    query: &mut QueryPlan,
+    context: &Rc<Context>,
+) {
+    match query {
+        QueryPlan::Project(project) => visit_project_exprs(schema_map, project, context),
+        QueryPlan::Values(values) => values
+            .0
+            .iter_mut()
+            .flatten()
+            .for_each(|expr| plan_expr(schema_map, context, expr)),
+        QueryPlan::SelectOrderBy(order_by) => {
+            visit_project_exprs(schema_map, &mut order_by.input, context);
+            let order_context = output_context(&order_by.input.projection, context);
+            order_by
+                .exprs
+                .iter_mut()
+                .for_each(|expr| plan_expr(schema_map, &order_context, &mut expr.expr));
+        }
+        QueryPlan::ValuesOrderBy(order_by) => {
+            order_by
+                .input
+                .0
+                .iter_mut()
+                .flatten()
+                .for_each(|expr| plan_expr(schema_map, context, expr));
+            let order_context = values_context(&order_by.input);
+            order_by
+                .exprs
+                .iter_mut()
+                .for_each(|expr| plan_expr(schema_map, &order_context, &mut expr.expr));
+        }
+        QueryPlan::Distinct(distinct) => match &mut distinct.input {
+            DistinctInputPlan::Project(project) => {
+                visit_project_exprs(schema_map, project, context);
+            }
+            DistinctInputPlan::SelectOrderBy(order_by) => {
+                visit_project_exprs(schema_map, &mut order_by.input, context);
+                let order_context = output_context(&order_by.input.projection, context);
+                order_by
+                    .exprs
+                    .iter_mut()
+                    .for_each(|expr| plan_expr(schema_map, &order_context, &mut expr.expr));
+            }
+        },
+        QueryPlan::Offset(offset) => {
+            visit_offset_input_exprs(schema_map, &mut offset.input, context);
+            plan_expr(schema_map, context, &mut offset.count);
+        }
+        QueryPlan::Limit(limit) => {
+            visit_query_input_exprs(schema_map, &mut limit.input, context);
+            plan_expr(schema_map, context, &mut limit.count);
+        }
+    }
+}
+
+fn visit_query_input_exprs<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    input: &mut LimitInputPlan,
+    context: &Rc<Context>,
+) {
+    match input {
+        LimitInputPlan::Project(project) => {
+            visit_project_exprs(schema_map, project, context);
+        }
+        LimitInputPlan::Values(values) => values
+            .0
+            .iter_mut()
+            .flatten()
+            .for_each(|expr| plan_expr(schema_map, context, expr)),
+        LimitInputPlan::SelectOrderBy(order_by) => {
+            visit_project_exprs(schema_map, &mut order_by.input, context);
+            let order_context = output_context(&order_by.input.projection, context);
+            order_by
+                .exprs
+                .iter_mut()
+                .for_each(|expr| plan_expr(schema_map, &order_context, &mut expr.expr));
+        }
+        LimitInputPlan::ValuesOrderBy(order_by) => {
+            order_by
+                .input
+                .0
+                .iter_mut()
+                .flatten()
+                .for_each(|expr| plan_expr(schema_map, context, expr));
+            order_by.exprs.iter_mut().for_each(|expr| {
+                plan_expr(schema_map, &values_context(&order_by.input), &mut expr.expr);
+            });
+        }
+        LimitInputPlan::Distinct(distinct) => match &mut distinct.input {
+            DistinctInputPlan::Project(project) => {
+                visit_project_exprs(schema_map, project, context);
+            }
+            DistinctInputPlan::SelectOrderBy(order_by) => {
+                visit_project_exprs(schema_map, &mut order_by.input, context);
+                let order_context = output_context(&order_by.input.projection, context);
+                order_by
+                    .exprs
+                    .iter_mut()
+                    .for_each(|expr| plan_expr(schema_map, &order_context, &mut expr.expr));
+            }
+        },
+        LimitInputPlan::Offset(offset) => {
+            visit_offset_input_exprs(schema_map, &mut offset.input, context);
+            plan_expr(schema_map, context, &mut offset.count);
+        }
+    }
+}
+
+fn visit_offset_input_exprs<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    input: &mut OffsetInputPlan,
+    context: &Rc<Context>,
+) {
+    match input {
+        OffsetInputPlan::Project(project) => {
+            visit_project_exprs(schema_map, project, context);
+        }
+        OffsetInputPlan::SelectOrderBy(order_by) => {
+            visit_project_exprs(schema_map, &mut order_by.input, context);
+            let order_context = output_context(&order_by.input.projection, context);
+            order_by
+                .exprs
+                .iter_mut()
+                .for_each(|expr| plan_expr(schema_map, &order_context, &mut expr.expr));
+        }
+        OffsetInputPlan::Distinct(distinct) => match &mut distinct.input {
+            DistinctInputPlan::Project(project) => {
+                visit_project_exprs(schema_map, project, context);
+            }
+            DistinctInputPlan::SelectOrderBy(order_by) => {
+                visit_project_exprs(schema_map, &mut order_by.input, context);
+                let order_context = output_context(&order_by.input.projection, context);
+                order_by
+                    .exprs
+                    .iter_mut()
+                    .for_each(|expr| plan_expr(schema_map, &order_context, &mut expr.expr));
+            }
+        },
+        OffsetInputPlan::Values(values) => values
+            .0
+            .iter_mut()
+            .flatten()
+            .for_each(|expr| plan_expr(schema_map, context, expr)),
+        OffsetInputPlan::ValuesOrderBy(order_by) => {
+            order_by
+                .input
+                .0
+                .iter_mut()
+                .flatten()
+                .for_each(|expr| plan_expr(schema_map, context, expr));
+            order_by.exprs.iter_mut().for_each(|expr| {
+                plan_expr(schema_map, &values_context(&order_by.input), &mut expr.expr);
+            });
+        }
+    }
+}
+
+fn visit_project_exprs<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    project: &mut ProjectPlan,
+    context: &Rc<Context>,
+) {
+    visit_input_exprs(schema_map, &mut project.input, context);
+    if let ProjectionPlan::SelectItems(items) = &mut project.projection {
+        for item in items {
+            if let SelectItemPlan::Expr { expr, .. } = item {
+                plan_expr(schema_map, context, expr);
+            }
+        }
+    }
+}
+
+fn visit_input_exprs<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    input: &mut ProjectInputPlan,
+    context: &Rc<Context>,
+) {
+    match input {
+        ProjectInputPlan::Source(_) => {}
+        ProjectInputPlan::InnerJoin(join) => visit_inner_exprs(schema_map, join, context),
+        ProjectInputPlan::LeftOuterJoin(join) => visit_left_exprs(schema_map, join, context),
+        ProjectInputPlan::Filter(filter) => {
+            visit_filter_exprs(schema_map, &mut filter.input, context);
+            plan_expr(schema_map, context, &mut filter.expr);
+        }
+        ProjectInputPlan::Aggregation(aggregation) => {
+            visit_aggregation_exprs(schema_map, &mut aggregation.input, context);
+            aggregation
+                .group_by
+                .iter_mut()
+                .for_each(|expr| plan_expr(schema_map, context, expr));
+        }
+        ProjectInputPlan::Having(having) => {
+            visit_aggregation_exprs(schema_map, &mut having.input.input, context);
+            having
+                .input
+                .group_by
+                .iter_mut()
+                .for_each(|expr| plan_expr(schema_map, context, expr));
+            plan_expr(schema_map, context, &mut having.expr);
+        }
+    }
+}
+
+fn visit_filter_exprs<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    input: &mut FilterInputPlan,
+    context: &Rc<Context>,
+) {
+    match input {
+        FilterInputPlan::Source(_) => {}
+        FilterInputPlan::InnerJoin(join) => visit_inner_exprs(schema_map, join, context),
+        FilterInputPlan::LeftOuterJoin(join) => visit_left_exprs(schema_map, join, context),
+    }
+}
+
+fn visit_aggregation_exprs<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    input: &mut AggregationInputPlan,
+    context: &Rc<Context>,
+) {
+    match input {
+        AggregationInputPlan::Source(_) => {}
+        AggregationInputPlan::InnerJoin(join) => visit_inner_exprs(schema_map, join, context),
+        AggregationInputPlan::LeftOuterJoin(join) => visit_left_exprs(schema_map, join, context),
+        AggregationInputPlan::Filter(filter) => {
+            visit_filter_exprs(schema_map, &mut filter.input, context);
+            plan_expr(schema_map, context, &mut filter.expr);
+        }
+    }
+}
+
+fn visit_inner_exprs<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    join: &mut InnerJoinPlan,
+    context: &Rc<Context>,
+) {
+    match &mut join.input {
+        InnerJoinInputPlan::NestedLoop(join) => {
+            visit_nested_exprs(schema_map, join, context);
+        }
+        InnerJoinInputPlan::Condition(condition) => {
+            visit_condition_exprs(schema_map, &mut condition.input, context);
+            plan_expr(schema_map, context, &mut condition.expr);
+        }
+        InnerJoinInputPlan::Hash(join) => {
+            visit_hash_exprs(schema_map, join, context);
+        }
+    }
+}
+
+fn visit_left_exprs<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    join: &mut LeftOuterJoinPlan,
+    context: &Rc<Context>,
+) {
+    match &mut join.input {
+        LeftOuterJoinInputPlan::NestedLoop(join) => {
+            visit_nested_exprs(schema_map, join, context);
+        }
+        LeftOuterJoinInputPlan::Condition(condition) => {
+            visit_condition_exprs(schema_map, &mut condition.input, context);
+            plan_expr(schema_map, context, &mut condition.expr);
+        }
+        LeftOuterJoinInputPlan::Hash(join) => {
+            visit_hash_exprs(schema_map, join, context);
+        }
+    }
+}
+
+fn visit_condition_exprs<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    input: &mut JoinConditionInputPlan,
+    context: &Rc<Context>,
+) {
+    match input {
+        JoinConditionInputPlan::NestedLoop(join) => {
+            visit_nested_exprs(schema_map, join, context);
+        }
+        JoinConditionInputPlan::Hash(join) => {
+            visit_hash_exprs(schema_map, join, context);
+        }
+    }
+}
+
+fn visit_nested_exprs<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    join: &mut NestedLoopJoinPlan,
+    context: &Rc<Context>,
+) {
+    match &mut join.input {
+        NestedLoopJoinInputPlan::Source(_) => {}
+        NestedLoopJoinInputPlan::InnerJoin(join) => {
+            visit_inner_exprs(schema_map, join, context);
+        }
+        NestedLoopJoinInputPlan::LeftOuterJoin(join) => {
+            visit_left_exprs(schema_map, join, context);
+        }
+    }
+}
+
+fn visit_hash_exprs<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    join: &mut HashJoinPlan,
+    context: &Rc<Context>,
+) {
+    plan_expr(schema_map, context, &mut join.input_key);
+    plan_expr(schema_map, context, &mut join.right_key);
+    if let Some(filter) = &mut join.right_filter {
+        plan_expr(schema_map, context, filter);
+    }
+}
+
+fn plan_expr<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    context: &Rc<Context>,
+    expr: &mut ExprPlan,
+) {
+    visit_mut_expr(expr, &mut |expr| {
+        if let ExprPlan::UnplannedReference { qualifier, name } = expr
+            && let Some(alias) = context.resolve(qualifier.as_deref(), name)
+        {
+            *expr = ExprPlan::ResolvedColumn {
+                alias,
+                column: name.clone(),
+            };
+        }
+    });
+    visit_mut_expr(expr, &mut |expr| match expr {
+        ExprPlan::Subquery(query)
+        | ExprPlan::Exists {
+            subquery: query, ..
+        } => {
+            plan_query(schema_map, query, Some(Rc::clone(context)));
+        }
+        ExprPlan::InSubquery { subquery, .. } => {
+            plan_query(schema_map, subquery, Some(Rc::clone(context)));
+        }
+        _ => {}
+    });
+}
+
+enum Context {
+    Data {
+        alias: String,
+        labels: Option<Vec<String>>,
+    },
+    Bridge {
+        left: Rc<Context>,
+        right: Rc<Context>,
+    },
+    Scope {
+        local: Rc<Context>,
+        outer: Rc<Context>,
+    },
+    Barrier,
+}
+
+impl Context {
+    fn all_labels(&self) -> Option<Vec<String>> {
+        match self {
+            Self::Data { labels, .. } => labels.clone(),
+            Self::Bridge { left, right } => Some(
+                left.all_labels()?
+                    .into_iter()
+                    .chain(right.all_labels()?)
+                    .collect(),
+            ),
+            Self::Scope { local, .. } => local.all_labels(),
+            Self::Barrier => None,
+        }
+    }
+
+    fn resolve(&self, qualifier: Option<&str>, name: &str) -> Option<String> {
+        match self {
+            Self::Data { alias, labels } => {
+                if let Some(qualifier) = qualifier {
+                    (qualifier == alias
+                        && labels
+                            .as_ref()
+                            .is_some_and(|labels| labels.iter().any(|label| label == name)))
+                    .then(|| alias.clone())
+                } else {
+                    labels.as_ref().and_then(|labels| {
+                        labels
+                            .iter()
+                            .any(|label| label == name)
+                            .then(|| alias.clone())
+                    })
+                }
+            }
+            Self::Bridge { left, right } => right
+                .resolve(qualifier, name)
+                .or_else(|| left.resolve(qualifier, name)),
+            Self::Scope { local, outer } => local
+                .resolve(qualifier, name)
+                .or_else(|| outer.resolve(qualifier, name)),
+            Self::Barrier => None,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::plan,
+        crate::{
+            mock::run,
+            parse_sql::parse,
+            plan::{ExprPlan, ProjectionPlan, QueryPlan, SelectItemPlan, StatementPlan},
+            planner::fetch_schema_map,
+            translate::translate,
+        },
+    };
+
+    fn planned(sql: &str) -> StatementPlan {
+        let storage = run(
+            "CREATE TABLE Users (id INTEGER, name TEXT); CREATE TABLE Teams (team_id INTEGER, title TEXT); CREATE TABLE Logs;",
+        );
+        let statement = StatementPlan::from(translate(&parse(sql).unwrap().remove(0)).unwrap());
+        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
+        plan(&schema_map, statement).unwrap()
+    }
+
+    fn first_projection_expr(projection: &ProjectionPlan) -> &ExprPlan {
+        let ProjectionPlan::SelectItems(items) = projection else {
+            panic!("expected select items");
+        };
+        let SelectItemPlan::Expr { expr, .. } = &items[0] else {
+            panic!("expected projection expression");
+        };
+        expr
+    }
+
+    #[test]
+    fn resolves_schemaful_references_across_query_stages() {
+        let StatementPlan::Query(QueryPlan::SelectOrderBy(order_by)) =
+            planned("SELECT name FROM Users WHERE id = 1 GROUP BY name ORDER BY name")
+        else {
+            panic!("expected select/order-by plan");
+        };
+        let expr = first_projection_expr(&order_by.input.projection);
+        assert!(
+            matches!(expr, ExprPlan::ResolvedColumn { alias, column } if alias == "Users" && column == "name")
+        );
+
+        let StatementPlan::Query(QueryPlan::Project(project)) =
+            planned("SELECT U.id FROM Users U JOIN Teams T ON U.id = T.team_id")
+        else {
+            panic!("expected project plan");
+        };
+        let expr = first_projection_expr(&project.projection);
+        assert!(
+            matches!(expr, ExprPlan::ResolvedColumn { alias, column } if alias == "U" && column == "id")
+        );
+
+        let StatementPlan::Query(QueryPlan::SelectOrderBy(order_by)) =
+            planned("SELECT column1 FROM (VALUES (1)) AS V ORDER BY column1")
+        else {
+            panic!("expected values order-by plan");
+        };
+        let expr = first_projection_expr(&order_by.input.projection);
+        assert!(
+            matches!(expr, ExprPlan::ResolvedColumn { alias, column } if alias == "V" && column == "column1")
+        );
+    }
+
+    #[test]
+    fn preserves_unknown_references_for_evaluator_error() {
+        let statement = format!("{:?}", planned("SELECT missing FROM Users"));
+        assert!(statement.contains("UnplannedReference"));
+    }
+}

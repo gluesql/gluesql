@@ -19,6 +19,15 @@ impl OffsetPlan {
             OffsetInputPlan::Distinct(distinct) => Some(distinct.project()),
         }
     }
+
+    pub(super) fn project_mut(&mut self) -> Option<&mut ProjectPlan> {
+        match &mut self.input {
+            OffsetInputPlan::Project(project) => Some(project),
+            OffsetInputPlan::SelectOrderBy(order_by) => Some(&mut order_by.input),
+            OffsetInputPlan::Distinct(distinct) => Some(distinct.project_mut()),
+            OffsetInputPlan::Values(_) | OffsetInputPlan::ValuesOrderBy(_) => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

@@ -84,9 +84,7 @@ fn value_eq_with_literal(value: &Value, literal: &Evaluated<'_>) -> Tribool {
             Some(r) => Tribool::from(l == &r),
             None => Tribool::from(false),
         },
-        (Value::Uuid(l), Evaluated::Text(r)) => {
-            Tribool::from(parse_uuid(r).map(|r| l == &r).unwrap_or(false))
-        }
+        (Value::Uuid(l), Evaluated::Text(r)) => Tribool::from(parse_uuid(r).is_ok_and(|r| l == &r)),
         (Value::Inet(l), Evaluated::Text(r)) => match IpAddr::from_str(r) {
             Ok(x) => Tribool::from(l == &x),
             Err(_) => Tribool::from(false),

@@ -528,7 +528,7 @@ mod tests {
                 ExprPlan, ProjectInputPlan, QueryPlan, SourcePlan, StatementPlan, TableAccessPlan,
                 TableAliasPlan, TableSourcePlan,
             },
-            planner::fetch_schema_map,
+            planner::{fetch_schema_map, plan_references},
             query_builder::{Build, col, exists, primary_key, subquery, table},
             translate::{NO_PARAMS, translate, translate_expr},
         },
@@ -556,6 +556,14 @@ mod tests {
     fn plan(storage: &MockStorage, sql: &str) -> StatementPlan {
         let statement = statement(sql);
         let schema_map = fetch_schema_map(storage, &statement).unwrap();
+
+        plan_primary_key(&schema_map, statement)
+    }
+
+    fn plan_full(storage: &MockStorage, sql: &str) -> StatementPlan {
+        let statement = statement(sql);
+        let schema_map = fetch_schema_map(storage, &statement).unwrap();
+        let statement = plan_references(&schema_map, statement).unwrap();
 
         plan_primary_key(&schema_map, statement)
     }
@@ -685,6 +693,19 @@ mod tests {
             .build()
             .unwrap();
         assert_eq!(actual, expected, "preserves having wrapper:\n{sql}");
+    }
+
+    #[test]
+    fn full_planner_uses_primary_key_after_reference_binding() {
+        let storage = run("CREATE TABLE Player (id INTEGER PRIMARY KEY, name TEXT);");
+        let StatementPlan::Query(QueryPlan::Project(project)) =
+            plan_full(&storage, "SELECT * FROM Player WHERE id = 1")
+        else {
+            panic!("expected project plan");
+        };
+        assert!(
+            matches!(project.input.base_source(), SourcePlan::Table(table) if matches!(table.access, TableAccessPlan::PrimaryKey { .. }))
+        );
     }
 
     #[test]

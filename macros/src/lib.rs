@@ -11,10 +11,7 @@ mod from_glue_row;
 mod to_glue_row;
 
 fn resolve_gluesql_crate() -> Result<syn::Path, syn::Error> {
-    if std::env::var("CARGO_PKG_NAME")
-        .map(|name| name == "gluesql")
-        .unwrap_or(false)
-    {
+    if std::env::var("CARGO_PKG_NAME").is_ok_and(|name| name == "gluesql") {
         return Ok(syn::parse_quote!(::gluesql::core));
     }
 

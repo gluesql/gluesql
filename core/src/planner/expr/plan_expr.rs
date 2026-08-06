@@ -9,10 +9,13 @@ use {
 #[derive(Debug, PartialEq, Eq)]
 pub enum PlanExpr<'a> {
     None,
-    Identifier(&'a str),
-    CompoundIdentifier {
+    UnplannedReference {
+        qualifier: Option<&'a str>,
+        name: &'a str,
+    },
+    ResolvedColumn {
         alias: &'a str,
-        ident: &'a str,
+        column: &'a str,
     },
     Expr(&'a ExprPlan),
     TwoExprs(&'a ExprPlan, &'a ExprPlan),
@@ -31,9 +34,12 @@ impl<'a> From<&'a ExprPlan> for PlanExpr<'a> {
             ExprPlan::Literal(_) | ExprPlan::Value(_) | ExprPlan::TypedString { .. } => {
                 PlanExpr::None
             }
-            ExprPlan::Identifier(ident) => PlanExpr::Identifier(ident),
-            ExprPlan::CompoundIdentifier { alias, ident } => {
-                PlanExpr::CompoundIdentifier { alias, ident }
+            ExprPlan::UnplannedReference { qualifier, name } => PlanExpr::UnplannedReference {
+                qualifier: qualifier.as_deref(),
+                name,
+            },
+            ExprPlan::ResolvedColumn { alias, column } => {
+                PlanExpr::ResolvedColumn { alias, column }
             }
             ExprPlan::Nested(expr)
             | ExprPlan::UnaryOp { expr, .. }
@@ -122,15 +128,27 @@ mod tests {
         );
         assert_eq!(PlanExpr::from(&expr("100")), PlanExpr::None);
         assert_eq!(PlanExpr::from(&expr("COUNT(*)")), PlanExpr::None);
-        // PlanExpr::Identifier
+        // PlanExpr::UnplannedReference
         let actual = expr("id");
-        let expected = PlanExpr::Identifier("id");
+        let expected = PlanExpr::UnplannedReference {
+            qualifier: None,
+            name: "id",
+        };
         test!(actual, expected);
-        // PlanExpr::CompoundIdentifier
         let actual = expr("Foo.id");
-        let expected = PlanExpr::CompoundIdentifier {
+        let expected = PlanExpr::UnplannedReference {
+            qualifier: Some("Foo"),
+            name: "id",
+        };
+        test!(actual, expected);
+        // PlanExpr::ResolvedColumn
+        let actual = ExprPlan::ResolvedColumn {
+            alias: "Foo".to_owned(),
+            column: "id".to_owned(),
+        };
+        let expected = PlanExpr::ResolvedColumn {
             alias: "Foo",
-            ident: "id",
+            column: "id",
         };
         test!(actual, expected);
         // PlanExpr::Expr
