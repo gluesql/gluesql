@@ -110,11 +110,14 @@ impl ExprNode<'_> {
                 let idents = value.as_ref().split('.').collect::<Vec<_>>();
 
                 Ok(match idents.as_slice() {
-                    [alias, ident] => ExprPlan::CompoundIdentifier {
-                        alias: (*alias).to_owned(),
-                        ident: (*ident).to_owned(),
+                    [alias, ident] => ExprPlan::UnplannedReference {
+                        qualifier: Some((*alias).to_owned()),
+                        name: (*ident).to_owned(),
                     },
-                    _ => ExprPlan::Identifier(value.into_owned()),
+                    _ => ExprPlan::UnplannedReference {
+                        qualifier: None,
+                        name: value.into_owned(),
+                    },
                 })
             }
             ExprNode::Numeric(node) => node.try_into().map(ExprPlan::Literal),

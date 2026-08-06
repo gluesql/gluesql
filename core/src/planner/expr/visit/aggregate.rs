@@ -70,8 +70,15 @@ mod tests {
         let mut expr = ExprPlan::from(translate_expr(&parsed, NO_PARAMS).expect(input));
 
         visit_mut_expr(&mut expr, &mut |e| {
-            if let ExprPlan::Identifier(ident) = e {
-                *e = ExprPlan::Identifier(format!("_{ident}"));
+            if let ExprPlan::UnplannedReference {
+                qualifier: None,
+                name,
+            } = e
+            {
+                *e = ExprPlan::UnplannedReference {
+                    qualifier: None,
+                    name: format!("_{name}"),
+                };
             }
         });
 

@@ -20,7 +20,7 @@ use {
 };
 
 struct QueryRewriteState {
-    rewrite_unqualified_identifiers: bool,
+    unqualified_schemaless_alias: Option<String>,
     schemaless_aliases: HashSet<String>,
 }
 
@@ -117,7 +117,7 @@ fn transform_values_order_by<S: BuildHasher>(
 
 fn empty_rewrite_state() -> QueryRewriteState {
     QueryRewriteState {
-        rewrite_unqualified_identifiers: false,
+        unqualified_schemaless_alias: None,
         schemaless_aliases: HashSet::new(),
     }
 }
@@ -184,14 +184,11 @@ fn transform_source<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
     relation: &mut SourcePlan,
 ) -> QueryRewriteState {
-    let rewrite_unqualified_identifiers = matches!(
-        relation,
-        SourcePlan::Table(table) if is_schemaless_table(schema_map, &table.name)
-    );
+    let unqualified_schemaless_alias = root_schemaless_alias(schema_map, relation);
     let mut schemaless_aliases = HashSet::new();
     collect_schemaless_alias(schema_map, relation, &mut schemaless_aliases);
     let state = QueryRewriteState {
-        rewrite_unqualified_identifiers,
+        unqualified_schemaless_alias,
         schemaless_aliases,
     };
 
@@ -204,17 +201,19 @@ fn transform_inner_join<S: BuildHasher>(
     join: &mut InnerJoinPlan,
 ) -> QueryRewriteState {
     let base_source = join.base_source();
-    let rewrite_unqualified_identifiers = matches!(
-        base_source,
-        SourcePlan::Table(table) if is_schemaless_table(schema_map, &table.name)
-    );
+    let unqualified_schemaless_alias = join
+        .joined_sources()
+        .into_iter()
+        .rev()
+        .find_map(|source| root_schemaless_alias(schema_map, source))
+        .or_else(|| root_schemaless_alias(schema_map, base_source));
     let mut schemaless_aliases = HashSet::new();
     collect_schemaless_alias(schema_map, base_source, &mut schemaless_aliases);
     for source in join.joined_sources() {
         collect_schemaless_alias(schema_map, source, &mut schemaless_aliases);
     }
     let state = QueryRewriteState {
-        rewrite_unqualified_identifiers,
+        unqualified_schemaless_alias,
         schemaless_aliases,
     };
 
@@ -227,17 +226,19 @@ fn transform_left_outer_join<S: BuildHasher>(
     join: &mut LeftOuterJoinPlan,
 ) -> QueryRewriteState {
     let base_source = join.base_source();
-    let rewrite_unqualified_identifiers = matches!(
-        base_source,
-        SourcePlan::Table(table) if is_schemaless_table(schema_map, &table.name)
-    );
+    let unqualified_schemaless_alias = join
+        .joined_sources()
+        .into_iter()
+        .rev()
+        .find_map(|source| root_schemaless_alias(schema_map, source))
+        .or_else(|| root_schemaless_alias(schema_map, base_source));
     let mut schemaless_aliases = HashSet::new();
     collect_schemaless_alias(schema_map, base_source, &mut schemaless_aliases);
     for source in join.joined_sources() {
         collect_schemaless_alias(schema_map, source, &mut schemaless_aliases);
     }
     let state = QueryRewriteState {
-        rewrite_unqualified_identifiers,
+        unqualified_schemaless_alias,
         schemaless_aliases,
     };
 
@@ -257,6 +258,21 @@ fn collect_schemaless_alias(
         if let Some(alias) = &table.alias {
             aliases.insert(alias.name.clone());
         }
+    }
+}
+
+fn root_schemaless_alias(
+    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    relation: &SourcePlan,
+) -> Option<String> {
+    match relation {
+        SourcePlan::Table(table) if is_schemaless_table(schema_map, &table.name) => Some(
+            table
+                .alias
+                .as_ref()
+                .map_or_else(|| table.name.clone(), |alias| alias.name.clone()),
+        ),
+        _ => None,
     }
 }
 
@@ -351,7 +367,7 @@ fn rewrite_projection(
     has_join: bool,
     state: &QueryRewriteState,
 ) {
-    let root_wildcard_maps_to_doc = state.rewrite_unqualified_identifiers && !has_join;
+    let root_wildcard_maps_to_doc = state.unqualified_schemaless_alias.is_some() && !has_join;
     let use_schemaless_map_projection = match &projection {
         ProjectionPlan::SelectItems(projection) if root_wildcard_maps_to_doc => {
             match projection.as_slice() {
@@ -386,7 +402,11 @@ fn rewrite_projection(
         for item in items {
             transform_wildcard_projection(
                 item,
-                root_wildcard_maps_to_doc,
+                if root_wildcard_maps_to_doc {
+                    state.unqualified_schemaless_alias.as_deref()
+                } else {
+                    None
+                },
                 &state.schemaless_aliases,
             );
         }
@@ -403,20 +423,31 @@ fn transform_query_expr(
     state: &QueryRewriteState,
 ) {
     visit_mut_expr(expr, &mut |e| match e {
-        ExprPlan::Identifier(ident) => {
-            if state.rewrite_unqualified_identifiers {
+        ExprPlan::UnplannedReference {
+            qualifier: None,
+            name: ident,
+        } => {
+            if let Some(alias) = &state.unqualified_schemaless_alias
+                && ident != SCHEMALESS_DOC_COLUMN
+            {
                 *e = ExprPlan::ArrayIndex {
-                    obj: Box::new(ExprPlan::Identifier(SCHEMALESS_DOC_COLUMN.to_owned())),
+                    obj: Box::new(ExprPlan::ResolvedColumn {
+                        alias: alias.clone(),
+                        column: SCHEMALESS_DOC_COLUMN.to_owned(),
+                    }),
                     indexes: vec![ExprPlan::Literal(Literal::QuotedString(ident.to_owned()))],
                 };
             }
         }
-        ExprPlan::CompoundIdentifier { alias, ident } => {
-            if state.schemaless_aliases.contains(alias) {
+        ExprPlan::UnplannedReference {
+            qualifier: Some(alias),
+            name: ident,
+        } => {
+            if state.schemaless_aliases.contains(alias) && ident != SCHEMALESS_DOC_COLUMN {
                 *e = ExprPlan::ArrayIndex {
-                    obj: Box::new(ExprPlan::CompoundIdentifier {
+                    obj: Box::new(ExprPlan::ResolvedColumn {
                         alias: alias.to_owned(),
-                        ident: SCHEMALESS_DOC_COLUMN.to_owned(),
+                        column: SCHEMALESS_DOC_COLUMN.to_owned(),
                     }),
                     indexes: vec![ExprPlan::Literal(Literal::QuotedString(ident.to_owned()))],
                 };
@@ -433,15 +464,18 @@ fn transform_query_expr(
 
 fn transform_wildcard_projection(
     item: &mut SelectItemPlan,
-    root_wildcard_maps_to_doc: bool,
+    root_schemaless_alias: Option<&str>,
     schemaless_aliases: &HashSet<String>,
 ) {
     match item {
         SelectItemPlan::Expr { .. } => {}
         SelectItemPlan::Wildcard => {
-            if root_wildcard_maps_to_doc {
+            if let Some(alias) = root_schemaless_alias {
                 *item = SelectItemPlan::Expr {
-                    expr: ExprPlan::Identifier(SCHEMALESS_DOC_COLUMN.to_owned()),
+                    expr: ExprPlan::ResolvedColumn {
+                        alias: alias.to_owned(),
+                        column: SCHEMALESS_DOC_COLUMN.to_owned(),
+                    },
                     label: SCHEMALESS_DOC_COLUMN.to_owned(),
                 };
             }
@@ -450,9 +484,9 @@ fn transform_wildcard_projection(
             if schemaless_aliases.contains(alias) {
                 let alias = mem::take(alias);
                 *item = SelectItemPlan::Expr {
-                    expr: ExprPlan::CompoundIdentifier {
+                    expr: ExprPlan::ResolvedColumn {
                         alias,
-                        ident: SCHEMALESS_DOC_COLUMN.to_owned(),
+                        column: SCHEMALESS_DOC_COLUMN.to_owned(),
                     },
                     label: SCHEMALESS_DOC_COLUMN.to_owned(),
                 };

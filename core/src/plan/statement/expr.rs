@@ -12,10 +12,13 @@ use {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ExprPlan {
-    Identifier(String),
-    CompoundIdentifier {
+    UnplannedReference {
+        qualifier: Option<String>,
+        name: String,
+    },
+    ResolvedColumn {
         alias: String,
-        ident: String,
+        column: String,
     },
     IsNull(Box<ExprPlan>),
     IsNotNull(Box<ExprPlan>),
@@ -334,10 +337,14 @@ pub fn plan_scalar_expr(expr: ast::Expr) -> ExprPlan {
 impl From<ast::Expr> for ExprPlan {
     fn from(expr: ast::Expr) -> Self {
         match expr {
-            ast::Expr::Identifier(ident) => Self::Identifier(ident),
-            ast::Expr::CompoundIdentifier { alias, ident } => {
-                Self::CompoundIdentifier { alias, ident }
-            }
+            ast::Expr::Identifier(name) => Self::UnplannedReference {
+                qualifier: None,
+                name,
+            },
+            ast::Expr::CompoundIdentifier { alias, ident: name } => Self::UnplannedReference {
+                qualifier: Some(alias),
+                name,
+            },
             ast::Expr::IsNull(expr) => Self::IsNull(Box::new((*expr).into())),
             ast::Expr::IsNotNull(expr) => Self::IsNotNull(Box::new((*expr).into())),
             ast::Expr::InList {

@@ -85,7 +85,7 @@ impl IndexMut for SledStorage {
                 created: Utc::now().naive_utc(),
             };
 
-            let planned_index = PlannedIndex::new(index.clone());
+            let planned_index = PlannedIndex::new(table_name, index.clone());
 
             let indexes = indexes
                 .into_iter()
@@ -172,7 +172,7 @@ impl IndexMut for SledStorage {
                 ));
             };
 
-            let index = PlannedIndex::new(index);
+            let index = PlannedIndex::new(table_name, index);
 
             let schema = Schema {
                 table_name: table_name.to_owned(),

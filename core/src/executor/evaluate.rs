@@ -61,24 +61,35 @@ where
         ExprPlan::Literal(literal) => Ok(expr::literal(literal)),
         ExprPlan::Value(value) => Ok(Evaluated::Value(Cow::Borrowed(value))),
         ExprPlan::TypedString { data_type, value } => expr::typed_string(data_type, value),
-        ExprPlan::Identifier(ident) => {
-            let context = context
-                .ok_or_else(|| EvaluateError::IdentifierRequiresRowContext(ident.to_owned()))?;
-
-            match context.get_value(ident) {
-                Some(value) => Ok(Evaluated::Value(Cow::Owned(value.clone()))),
-                None => Err(EvaluateError::IdentifierNotFound(ident.to_owned()).into()),
+        ExprPlan::UnplannedReference { qualifier, name } => match (context, qualifier) {
+            (None, Some(qualifier)) => Err(EvaluateError::CompoundIdentifierRequiresRowContext {
+                alias: qualifier.clone(),
+                ident: name.clone(),
             }
-        }
+            .into()),
+            (None, None) => Err(EvaluateError::IdentifierRequiresRowContext(name.clone()).into()),
+            (Some(_), Some(qualifier)) => Err(EvaluateError::CompoundIdentifierNotFound {
+                table_alias: qualifier.clone(),
+                column_name: name.clone(),
+            }
+            .into()),
+            (Some(_), None) => Err(EvaluateError::IdentifierNotFound(name.clone()).into()),
+        },
         ExprPlan::Nested(expr) => eval(expr),
-        ExprPlan::CompoundIdentifier { alias, ident } => {
+        ExprPlan::ResolvedColumn {
+            alias,
+            column: ident,
+        } => {
             let context =
                 context.ok_or_else(|| EvaluateError::CompoundIdentifierRequiresRowContext {
                     alias: alias.to_owned(),
                     ident: ident.to_owned(),
                 })?;
 
-            match context.get_alias_value(alias, ident) {
+            match context
+                .get_alias_value(alias, ident)
+                .or_else(|| context.get_value(ident))
+            {
                 Some(value) => Ok(Evaluated::Value(Cow::Owned(value.clone()))),
                 None => Err(EvaluateError::CompoundIdentifierNotFound {
                     table_alias: alias.to_owned(),
@@ -384,7 +395,8 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
             let context = RowContext::new(name, row, None);
             let context = Some(Rc::new(context));
 
-            let body = plan_scalar_expr(body.clone());
+            let mut body = plan_scalar_expr(body.clone());
+            crate::planner::plan_scalar_references(name, &mut body);
             let evaluated = evaluate_inner(storage, context.as_ref(), None, &body)?;
             let value = evaluated.try_into()?;
 

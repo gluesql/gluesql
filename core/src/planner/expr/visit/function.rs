@@ -262,8 +262,15 @@ mod tests {
         let mut expr = ExprPlan::from(translate_expr(&parsed, NO_PARAMS).expect(input));
 
         visit_mut_expr(&mut expr, &mut |e| {
-            if let ExprPlan::Identifier(ident) = e {
-                *e = ExprPlan::Identifier(format!("_{ident}"));
+            if let ExprPlan::UnplannedReference {
+                qualifier: None,
+                name,
+            } = e
+            {
+                *e = ExprPlan::UnplannedReference {
+                    qualifier: None,
+                    name: format!("_{name}"),
+                };
             }
         });
 
@@ -380,7 +387,10 @@ mod tests {
         let expr = ExprPlan::from(translate_expr(&parsed, NO_PARAMS).expect("CONCAT(a, b)"));
 
         let result = try_visit_expr(&expr, &mut |expr| match expr {
-            ExprPlan::Identifier(ident) if ident == "b" => Err(PlannerError::Unreachable),
+            ExprPlan::UnplannedReference {
+                qualifier: None,
+                name: ident,
+            } if ident == "b" => Err(PlannerError::Unreachable),
             _ => Ok(()),
         });
 

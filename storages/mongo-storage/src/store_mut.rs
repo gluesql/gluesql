@@ -195,7 +195,7 @@ impl StoreMut for MongoStorage {
         let data = if let Some(column_defs) = column_defs.as_ref() {
             rows.into_iter()
                 .map(|values| {
-                    column_defs.iter().zip(values.into_iter()).try_fold(
+                    column_defs.iter().zip(values).try_fold(
                         Document::new(),
                         |mut acc, (column_def, value)| {
                             acc.extend(
@@ -239,7 +239,7 @@ impl StoreMut for MongoStorage {
 
         for (key, row) in rows {
             let doc = if let Some(column_defs) = column_defs.as_ref() {
-                column_defs.iter().zip(row.into_iter()).try_fold(
+                column_defs.iter().zip(row).try_fold(
                     doc! {"_id": key.clone().into_bson(primary_key.is_some()).map_storage_err()?},
                     |mut acc, (column_def, value)| {
                         acc.extend(

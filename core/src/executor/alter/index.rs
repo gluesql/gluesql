@@ -4,6 +4,7 @@ use {
         ast::{ColumnDef, OrderByExpr},
         data::Schema,
         plan::{ExprPlan, FunctionExprPlan, plan_scalar_expr},
+        planner::plan_scalar_references,
         result::Result,
         store::{GStore, GStoreMut},
     },
@@ -15,7 +16,8 @@ pub fn create_index<T: GStore + GStoreMut>(
     index_name: &str,
     column: &OrderByExpr,
 ) -> Result<()> {
-    let expr = plan_scalar_expr(column.expr.clone());
+    let mut expr = plan_scalar_expr(column.expr.clone());
+    plan_scalar_references(table_name, &mut expr);
     let Schema { column_defs, .. } = storage
         .fetch_schema(table_name)?
         .ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
@@ -39,7 +41,13 @@ fn validate_index_expr(columns: &[String], expr: &ExprPlan) -> (bool, bool) {
     let validate = |expr| validate_index_expr(columns, expr);
 
     match expr {
-        ExprPlan::Identifier(ident) => (columns.iter().any(|column| column == ident), true),
+        ExprPlan::UnplannedReference {
+            qualifier: None,
+            name: ident,
+        }
+        | ExprPlan::ResolvedColumn { column: ident, .. } => {
+            (columns.iter().any(|column| column == ident), true)
+        }
         ExprPlan::Literal(_) | ExprPlan::TypedString { .. } => (true, false),
         ExprPlan::Nested(expr) | ExprPlan::UnaryOp { expr, .. } => validate(expr),
         ExprPlan::BinaryOp { left, right, .. } => {

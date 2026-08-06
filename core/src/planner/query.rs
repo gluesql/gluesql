@@ -187,8 +187,8 @@ pub trait Planner<'a> {
                 }
                 _ => ExprPlan::Function(func),
             },
-            ExprPlan::Identifier(_)
-            | ExprPlan::CompoundIdentifier { .. }
+            ExprPlan::UnplannedReference { .. }
+            | ExprPlan::ResolvedColumn { .. }
             | ExprPlan::Literal(_)
             | ExprPlan::Value(_)
             | ExprPlan::TypedString { .. }

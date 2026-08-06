@@ -109,6 +109,17 @@ pub enum EvaluateError {
     #[error("aggregate expression requires planner binding: {0:?}")]
     UnplannedAggregate(Box<AggregateExprPlan>),
 
+    #[error(
+        "unplanned reference reached evaluator: {reference}",
+        reference = qualifier
+            .as_ref()
+            .map_or_else(|| name.clone(), |qualifier| format!("{qualifier}.{name}"))
+    )]
+    UnplannedReference {
+        qualifier: Option<String>,
+        name: String,
+    },
+
     #[error("incompatible bit operation between {0} and {1}")]
     IncompatibleBitOperation(String, String),
 

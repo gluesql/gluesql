@@ -6,8 +6,8 @@ use crate::{
 pub fn may_return_null(expr: &ExprPlan) -> bool {
     match expr {
         ExprPlan::Value(Value::Null)
-        | ExprPlan::Identifier(_)
-        | ExprPlan::CompoundIdentifier { .. }
+        | ExprPlan::UnplannedReference { .. }
+        | ExprPlan::ResolvedColumn { .. }
         | ExprPlan::ArrayIndex { .. }
         | ExprPlan::Subquery(_)
         | ExprPlan::Exists { .. }

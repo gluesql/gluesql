@@ -578,7 +578,7 @@ impl<'a> Indexes<'a> {
     fn find(&self, target: &ExprPlan) -> Option<String> {
         self.0
             .iter()
-            .find(|PlannedSchemaIndex { expr, .. }| expr == target)
+            .find(|PlannedSchemaIndex { expr, .. }| equivalent(expr, target))
             .map(|PlannedSchemaIndex { index, .. }| index.name.clone())
     }
 
@@ -586,7 +586,7 @@ impl<'a> Indexes<'a> {
         self.0
             .iter()
             .find(|PlannedSchemaIndex { expr, index }| {
-                if expr != &target.expr {
+                if !equivalent(expr, &target.expr) {
                     return false;
                 }
 
@@ -599,6 +599,22 @@ impl<'a> Indexes<'a> {
             })
             .map(|PlannedSchemaIndex { index, .. }| index.name.clone())
     }
+}
+
+fn equivalent(left: &ExprPlan, right: &ExprPlan) -> bool {
+    fn normalize(mut expr: ExprPlan) -> ExprPlan {
+        crate::planner::expr::visit_mut_expr(&mut expr, &mut |expr| {
+            if let ExprPlan::ResolvedColumn { column, .. } = expr {
+                *expr = ExprPlan::UnplannedReference {
+                    qualifier: None,
+                    name: column.clone(),
+                };
+            }
+        });
+        expr
+    }
+
+    normalize(left.clone()) == normalize(right.clone())
 }
 
 enum Planned {
