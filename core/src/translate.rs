@@ -711,4 +711,71 @@ mod tests {
         let params = [1_i64.into_param_literal()];
         assert_invalid_placeholder(&params, "$foo");
     }
+
+    #[test]
+    fn reject_out_of_range_placeholder_index() {
+        let params = [1_i64.into_param_literal()];
+        let err = bind_placeholder(&params, "$2").unwrap_err();
+        assert_eq!(
+            err,
+            TranslateError::ParameterIndexOutOfRange { index: 2, len: 1 }.into()
+        );
+
+        let parsed = parse("SELECT $2").expect("parse");
+        let actual = translate_with_params(&parsed[0], &params);
+        let expected = Err(TranslateError::ParameterIndexOutOfRange { index: 2, len: 1 }.into());
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn multiple_alter_table_operations_not_supported() {
+        assert_translate_error(
+            "ALTER TABLE Foo DROP COLUMN a, DROP COLUMN b",
+            TranslateError::UnsupportedMultipleAlterTableOperations,
+        );
+    }
+
+    #[test]
+    fn parser_rejects_inputs_guarded_by_defensive_variants() {
+        // Each SQL below is the nearest miss for a defensive TranslateError
+        // branch; sqlparser (0.52, PostgreSqlDialect) rejects it at parse
+        // time, so the branch is unreachable through the public SQL API. If a
+        // sqlparser upgrade makes one of these parse, the guarded branch may
+        // have become reachable and deserves a real translate test instead.
+        let cases = [
+            // TranslateError::UnreachableEmptyAlterTableOperation
+            "ALTER TABLE Foo",
+            // TranslateError::UnreachableEmptyIdent
+            "UPDATE Foo SET = 1",
+            // TranslateError::UnreachableEmptyObject
+            "DROP TABLE",
+            // TranslateError::UnreachableEmptyTable
+            "DELETE FROM",
+            // TranslateError::UnreachableForeignKeyColumns (referencing side)
+            "CREATE TABLE T (a INT, FOREIGN KEY () REFERENCES B (id))",
+            // TranslateError::UnreachableForeignKeyColumns (referenced side)
+            "CREATE TABLE T (a INT, FOREIGN KEY (a) REFERENCES B ())",
+            "CREATE TABLE T (a INT, FOREIGN KEY (a) REFERENCES B)",
+            // TranslateError::UnreachableOmittingFromInDelete
+            "DELETE Foo WHERE id = 1",
+            // TranslateError::UnsupportedTrimChars
+            "SELECT TRIM('x', 'y')",
+        ];
+
+        for sql in cases {
+            assert!(parse(sql).is_err(), "expected parse error: {sql}");
+        }
+    }
+
+    #[test]
+    fn delete_always_carries_from_keyword() {
+        // Positive control for UnreachableOmittingFromInDelete: with
+        // PostgreSqlDialect the parser only emits FromTable::WithFromKeyword.
+        let parsed = parse("DELETE FROM Foo").expect("parse");
+        assert!(matches!(
+            &parsed[0],
+            SqlStatement::Delete(delete)
+                if matches!(delete.from, SqlFromTable::WithFromKeyword(_))
+        ));
+    }
 }
