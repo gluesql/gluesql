@@ -247,3 +247,20 @@ pub enum EvaluateError {
         data_type: DataType,
     },
 }
+
+#[cfg(test)]
+mod tests {
+    use super::EvaluateError;
+
+    #[test]
+    fn formats_unqualified_unplanned_reference() {
+        let error = EvaluateError::UnplannedReference {
+            qualifier: None,
+            name: "missing".to_owned(),
+        };
+        assert_eq!(
+            error.to_string(),
+            "unplanned reference reached evaluator: missing"
+        );
+    }
+}

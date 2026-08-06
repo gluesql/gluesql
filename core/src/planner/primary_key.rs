@@ -698,14 +698,22 @@ mod tests {
     #[test]
     fn full_planner_uses_primary_key_after_reference_binding() {
         let storage = run("CREATE TABLE Player (id INTEGER PRIMARY KEY, name TEXT);");
-        let StatementPlan::Query(QueryPlan::Project(project)) =
-            plan_full(&storage, "SELECT * FROM Player WHERE id = 1")
-        else {
-            panic!("expected project plan");
-        };
-        assert!(
-            matches!(project.input.base_source(), SourcePlan::Table(table) if matches!(table.access, TableAccessPlan::PrimaryKey { .. }))
-        );
+        let statement = plan_full(&storage, "SELECT p.id FROM Player p WHERE p.id = 1");
+        assert!(matches!(
+            &statement,
+            StatementPlan::Query(QueryPlan::Project(project))
+                if matches!(project.input.base_source(), SourcePlan::Table(table) if matches!(table.access, TableAccessPlan::PrimaryKey { .. }))
+        ));
+        if let StatementPlan::Query(QueryPlan::Project(project)) = statement
+            && let ProjectInputPlan::Filter(filter) = &project.input
+        {
+            assert!(matches!(
+                &filter.expr,
+                ExprPlan::BinaryOp { left, right, .. }
+                    if matches!(left.as_ref(), ExprPlan::ResolvedColumn { alias, column } if alias == "p" && column == "id")
+                        && matches!(right.as_ref(), ExprPlan::Literal(_))
+            ));
+        }
     }
 
     #[test]

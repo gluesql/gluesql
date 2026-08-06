@@ -804,11 +804,16 @@ impl Context {
 #[cfg(test)]
 mod tests {
     use {
-        super::plan,
+        super::{Context, plan, prepare_left, visit_hash_exprs, visit_offset_input_exprs},
         crate::{
             mock::run,
             parse_sql::parse,
-            plan::{ExprPlan, ProjectionPlan, QueryPlan, SelectItemPlan, StatementPlan},
+            plan::{
+                DistinctInputPlan, DistinctPlan, ExprPlan, HashJoinInputPlan, HashJoinPlan,
+                JoinConditionInputPlan, JoinConditionPlan, OffsetInputPlan, ProjectInputPlan,
+                ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SourcePlan, StatementPlan,
+                TableAccessPlan, TableSourcePlan,
+            },
             planner::fetch_schema_map,
             translate::translate,
         },
@@ -823,46 +828,104 @@ mod tests {
         plan(&schema_map, statement).unwrap()
     }
 
-    fn first_projection_expr(projection: &ProjectionPlan) -> &ExprPlan {
+    fn first_projection_expr(projection: &ProjectionPlan) -> Option<&ExprPlan> {
         let ProjectionPlan::SelectItems(items) = projection else {
-            panic!("expected select items");
+            return None;
         };
-        let SelectItemPlan::Expr { expr, .. } = &items[0] else {
-            panic!("expected projection expression");
+        let SelectItemPlan::Expr { expr, .. } = items.first()? else {
+            return None;
         };
-        expr
+        Some(expr)
     }
 
     #[test]
     fn resolves_schemaful_references_across_query_stages() {
-        let StatementPlan::Query(QueryPlan::SelectOrderBy(order_by)) =
-            planned("SELECT name FROM Users WHERE id = 1 GROUP BY name ORDER BY name")
-        else {
-            panic!("expected select/order-by plan");
-        };
-        let expr = first_projection_expr(&order_by.input.projection);
-        assert!(
-            matches!(expr, ExprPlan::ResolvedColumn { alias, column } if alias == "Users" && column == "name")
-        );
+        assert!(matches!(
+            planned("SELECT name FROM Users WHERE id = 1 GROUP BY name ORDER BY name"),
+            StatementPlan::Query(QueryPlan::SelectOrderBy(order_by))
+                if matches!(first_projection_expr(&order_by.input.projection), Some(ExprPlan::ResolvedColumn { alias, column }) if alias == "Users" && column == "name")
+        ));
 
-        let StatementPlan::Query(QueryPlan::Project(project)) =
-            planned("SELECT U.id FROM Users U JOIN Teams T ON U.id = T.team_id")
-        else {
-            panic!("expected project plan");
-        };
-        let expr = first_projection_expr(&project.projection);
-        assert!(
-            matches!(expr, ExprPlan::ResolvedColumn { alias, column } if alias == "U" && column == "id")
-        );
+        assert!(matches!(
+            planned("SELECT U.id FROM Users U JOIN Teams T ON U.id = T.team_id"),
+            StatementPlan::Query(QueryPlan::Project(project))
+                if matches!(first_projection_expr(&project.projection), Some(ExprPlan::ResolvedColumn { alias, column }) if alias == "U" && column == "id")
+        ));
 
-        let StatementPlan::Query(QueryPlan::SelectOrderBy(order_by)) =
-            planned("SELECT column1 FROM (VALUES (1)) AS V ORDER BY column1")
-        else {
-            panic!("expected values order-by plan");
+        assert!(matches!(
+            planned("SELECT column1 FROM (VALUES (1)) AS V ORDER BY column1"),
+            StatementPlan::Query(QueryPlan::SelectOrderBy(order_by))
+                if matches!(first_projection_expr(&order_by.input.projection), Some(ExprPlan::ResolvedColumn { alias, column }) if alias == "V" && column == "column1")
+        ));
+    }
+
+    fn table(name: &str) -> SourcePlan {
+        SourcePlan::Table(TableSourcePlan {
+            name: name.to_owned(),
+            alias: None,
+            access: TableAccessPlan::FullScan,
+        })
+    }
+
+    #[test]
+    fn visits_hash_and_distinct_inputs() {
+        let schema_map = std::collections::HashMap::new();
+        let context = std::rc::Rc::new(Context::Data {
+            alias: "Users".to_owned(),
+            labels: Some(vec!["id".to_owned()]),
+        });
+        let mut left = crate::plan::LeftOuterJoinPlan {
+            input: crate::plan::LeftOuterJoinInputPlan::Condition(JoinConditionPlan {
+                input: JoinConditionInputPlan::Hash(HashJoinPlan {
+                    input: HashJoinInputPlan::Source(table("Users")),
+                    right: table("Teams"),
+                    input_key: ExprPlan::UnplannedReference {
+                        qualifier: None,
+                        name: "id".to_owned(),
+                    },
+                    right_key: ExprPlan::Literal(crate::ast::Literal::Number(1.into())),
+                    right_filter: None,
+                }),
+                expr: ExprPlan::Value(crate::data::Value::Bool(true)),
+            }),
         };
-        let expr = first_projection_expr(&order_by.input.projection);
-        assert!(
-            matches!(expr, ExprPlan::ResolvedColumn { alias, column } if alias == "V" && column == "column1")
+        prepare_left(&schema_map, &mut left, None);
+
+        let mut hash = HashJoinPlan {
+            input: HashJoinInputPlan::Source(table("Users")),
+            right: table("Teams"),
+            input_key: ExprPlan::Literal(crate::ast::Literal::Number(1.into())),
+            right_key: ExprPlan::Literal(crate::ast::Literal::Number(1.into())),
+            right_filter: Some(ExprPlan::UnplannedReference {
+                qualifier: None,
+                name: "id".to_owned(),
+            }),
+        };
+        visit_hash_exprs(&schema_map, &mut hash, &context);
+        assert!(matches!(
+            hash.right_filter,
+            Some(ExprPlan::ResolvedColumn { .. })
+        ));
+
+        let mut input = OffsetInputPlan::Distinct(DistinctPlan {
+            input: DistinctInputPlan::Project(ProjectPlan {
+                input: ProjectInputPlan::Source(table("Users")),
+                projection: ProjectionPlan::SelectItems(Vec::new()),
+            }),
+        });
+        visit_offset_input_exprs(&schema_map, &mut input, &context);
+    }
+
+    #[test]
+    fn scope_context_keeps_local_labels() {
+        let local = std::rc::Rc::new(Context::Data {
+            alias: "Users".to_owned(),
+            labels: Some(vec!["id".to_owned()]),
+        });
+        let outer = std::rc::Rc::new(Context::Barrier);
+        assert_eq!(
+            Context::Scope { local, outer }.all_labels(),
+            Some(vec!["id".to_owned()])
         );
     }
 

@@ -63,3 +63,18 @@ fn validate_index_expr(columns: &[String], expr: &ExprPlan) -> (bool, bool) {
         _ => (false, false),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::validate_index_expr;
+    use crate::plan::ExprPlan;
+
+    #[test]
+    fn validates_unqualified_reference() {
+        let expr = ExprPlan::UnplannedReference {
+            qualifier: None,
+            name: "id".to_owned(),
+        };
+        assert_eq!(validate_index_expr(&["id".to_owned()], &expr), (true, true));
+    }
+}
