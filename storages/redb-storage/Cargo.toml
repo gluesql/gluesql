@@ -9,7 +9,7 @@ repository.workspace = true
 documentation.workspace = true
 
 [features]
-tracing = ["dep:tracing"]
+tracing = ["dep:tracing", "gluesql-core/tracing"]
 
 [dependencies]
 gluesql-core.workspace = true
@@ -25,6 +25,14 @@ tracing = { version = "0.1", optional = true, default-features = false, features
 
 [dev-dependencies]
 test-suite.workspace = true
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+[target.'cfg(unix)'.dev-dependencies]
+libc = "0.2"
+
+[[example]]
+name = "resource_benchmark"
+required-features = ["tracing"]
 
 [lints]
 workspace = true
