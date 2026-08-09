@@ -1,0 +1,102 @@
+name: Coverage (Badgers)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+
+env:
+  CARGO_TERM_COLOR: always
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  badgers:
+    # Badgers gates baseline fetch and every publish step to same-repo runs, so fork and
+    # Dependabot pull requests rebuild merge-base coverage yet publish nothing.
+    if: >-
+      github.event_name == 'push' ||
+      (github.actor != 'dependabot[bot]' &&
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: write
+      pages: write
+    # Job level, so the merge-base rerun in a separate worktree sees it too.
+    env:
+      GIT_REMOTE: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+      mongo:
+        image: mongo
+        ports:
+          - 27017:27017
+    steps:
+      # Full history feeds `git merge-base origin/<base> HEAD`; annotations are dropped
+      # unless the analyzed checkout is the pull request head SHA.
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Free disk space (pre-build)
+        continue-on-error: true
+        run: |
+          echo "Freeing disk space..."
+          echo "Disk before:"
+          df -h
+          sudo rm -rf /usr/local/lib/android || true
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /opt/ghc || true
+          if command -v docker >/dev/null 2>&1; then
+            timeout 60 docker image prune -af || true
+          fi
+          echo "Disk after:"
+          df -h
+      - name: Configure git user
+        run: |
+          git config --global user.email "ci@example.com"
+          git config --global user.name "CI"
+      - run: rustup component add llvm-tools-preview
+      - name: Install cargo-llvm-cov (prebuilt)
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov@0.8.7
+      - name: Report coverage with Badgers
+        uses: devgony/badgers@9c59a14c132a54bb46d4a561d0177c2dab9f9afa # v2.3.0
+        with:
+          # `auto` builds the CLI from source unless the action ref is a version tag,
+          # and this pins a commit SHA.
+          cli-version: v2.3.0
+          # Mirrors the legacy Coverage workflow. Badgers reruns this verbatim in a
+          # merge-base worktree it never cleans up, so the trap is what keeps the two
+          # build trees from coexisting and exhausting the runner disk.
+          coverage-command: |
+            trap 'cargo llvm-cov clean --workspace || true' EXIT
+            mkdir -p coverage
+            cargo llvm-cov clean --workspace
+            cargo llvm-cov \
+              --workspace \
+              --all-features \
+              --no-report
+            rm -rf target/llvm-cov-target/debug/incremental || true
+            cargo llvm-cov report \
+              --lcov \
+              --no-default-ignore-filename-regex \
+              --ignore-filename-regex '(^|/)(pkg/rust/examples/.*|cli/src/(cli|helper|lib|main)\.rs)$' \
+              --output-path ./coverage/lcov.info
+          lcov-file: coverage/lcov.info
+          # Pushes to main seed the baselines that spare pull requests a second build.
+          github-storage-repo: ${{ github.repository }}
+          pages: true
+          markdown-summary: true
