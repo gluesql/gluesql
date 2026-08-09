@@ -11,6 +11,7 @@ pub enum RowContext<'a> {
         next: Option<Rc<RowContext<'a>>>,
     },
     RefVecData {
+        table_alias: Option<&'a str>,
         columns: &'a [String],
         values: &'a [Value],
     },
@@ -46,7 +47,9 @@ impl<'a> RowContext<'a> {
             Self::Bridge { left, right } => {
                 left.get_value(target).or_else(|| right.get_value(target))
             }
-            Self::RefVecData { columns, values } => columns
+            Self::RefVecData {
+                columns, values, ..
+            } => columns
                 .iter()
                 .position(|column| column == target)
                 .and_then(|index| values.get(index)),
@@ -75,6 +78,14 @@ impl<'a> RowContext<'a> {
             Self::Bridge { left, right } => left
                 .get_alias_value(target_table_alias, target)
                 .or_else(|| right.get_alias_value(target_table_alias, target)),
+            Self::RefVecData {
+                table_alias: Some(table_alias),
+                columns,
+                values,
+            } if *table_alias == target_table_alias => columns
+                .iter()
+                .position(|column| column == target)
+                .and_then(|index| values.get(index)),
             _ => None,
         }
     }

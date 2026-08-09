@@ -289,6 +289,20 @@ mod tests {
         let expected = "SELECT Item.* FROM Player JOIN Item WHERE Player._doc['id'] = Item.id";
         test(actual, expected, "schemaful qualified wildcard join no-op");
 
+        let actual = r"
+            SELECT Player.id
+            FROM Player
+            JOIN Item ON id = Item.id
+            JOIN Team ON TRUE
+        ";
+        let expected = r"
+            SELECT Player._doc['id'] AS id
+            FROM Player
+            JOIN Item ON Player._doc['id'] = Item.id
+            JOIN Team ON TRUE
+        ";
+        test(actual, expected, "join on uses current schemaless scope");
+
         let actual = "SELECT Player.id FROM Player";
         let expected = "SELECT Player._doc['id'] as id FROM Player";
         test(actual, expected, "compound identifier");

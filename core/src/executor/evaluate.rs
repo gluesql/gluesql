@@ -79,13 +79,7 @@ where
                     ident: ident.to_owned(),
                 })?;
 
-            let value = context.get_alias_value(alias, ident).or_else(|| {
-                matches!(alias.as_str(), "OUTPUT" | "VALUES")
-                    .then(|| context.get_value(ident))
-                    .flatten()
-            });
-
-            match value {
+            match context.get_alias_value(alias, ident) {
                 Some(value) => Ok(Evaluated::Value(Cow::Owned(value.clone()))),
                 None => Err(EvaluateError::CompoundIdentifierNotFound {
                     table_alias: alias.to_owned(),
@@ -858,7 +852,7 @@ mod tests {
             columns: vec!["id".to_owned()].into(),
             values: vec![Value::I64(1)],
         };
-        let context = RowContext::new("Teams", Cow::Borrowed(&row), None);
+        let context = RowContext::new("OUTPUT", Cow::Borrowed(&row), None);
         let expr = ExprPlan::ResolvedColumn {
             alias: "OUTPUT".to_owned(),
             column: "id".to_owned(),
@@ -882,7 +876,8 @@ mod tests {
         };
 
         assert_eq!(
-            evaluate_stateless(Some(row.as_context()), &expr).and_then(Value::try_from),
+            evaluate_stateless(Some(row.as_context_with_alias(Some("VALUES"))), &expr)
+                .and_then(Value::try_from),
             Ok(Value::I64(1))
         );
     }
