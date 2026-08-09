@@ -930,6 +930,28 @@ mod tests {
     }
 
     #[test]
+    fn bridge_and_barrier_contexts_have_no_implicit_columns() {
+        let bridge = Context::Bridge {
+            left: std::rc::Rc::new(Context::Data {
+                alias: "Users".to_owned(),
+                labels: Some(vec!["id".to_owned()]),
+            }),
+            right: std::rc::Rc::new(Context::Data {
+                alias: "Teams".to_owned(),
+                labels: Some(vec!["team_id".to_owned()]),
+            }),
+        };
+
+        assert_eq!(
+            bridge.all_labels(),
+            Some(vec!["id".to_owned(), "team_id".to_owned()])
+        );
+        assert_eq!(bridge.resolve(None, "missing"), None);
+        assert_eq!(Context::Barrier.all_labels(), None);
+        assert_eq!(Context::Barrier.resolve(None, "id"), None);
+    }
+
+    #[test]
     fn preserves_unknown_references_for_evaluator_error() {
         let statement = format!("{:?}", planned("SELECT missing FROM Users"));
         assert!(statement.contains("UnplannedReference"));
