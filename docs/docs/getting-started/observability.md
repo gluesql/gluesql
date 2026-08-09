@@ -265,6 +265,115 @@ Peak RSS is a process-lifetime high-water mark, so run each workload in a separa
 a new database path when comparing results. Use the same build profile and target platform for
 executable-size comparisons. Peak RSS measurement is currently supported on Unix platforms.
 
+### Adding a benchmark for another storage
+
+The Redb example is currently the reference implementation rather than a shared benchmark harness.
+To add the same measurements to another storage crate, use these files as the starting point:
+
+```text
+storages/redb-storage/examples/resource_benchmark.rs
+storages/redb-storage/examples/resource_benchmark/firefox_profile.rs
+storages/redb-storage/examples/resource_benchmark.sql
+storages/redb-storage/Cargo.toml
+```
+
+First add a `tracing` feature to the target storage crate. It must enable the optional `tracing`
+dependency and `gluesql-core/tracing`. Register the example with `required-features = ["tracing"]`
+so its tracing and RSS dependencies are not compiled for normal storage users:
+
+```toml
+[features]
+tracing = ["dep:tracing", "gluesql-core/tracing"]
+
+[dependencies]
+tracing = { version = "0.1", optional = true }
+
+[dev-dependencies]
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+[target.'cfg(unix)'.dev-dependencies]
+libc = "0.2"
+
+[[example]]
+name = "resource_benchmark"
+required-features = ["tracing"]
+```
+
+Copy `resource_benchmark.rs` and adapt only the storage-specific parts:
+
+1. Import and construct the target storage instead of `RedbStorage`.
+2. Change `benchmark.storage` from `"redb"` to a stable storage name.
+3. Adjust the command-line arguments required to create or connect to the storage.
+4. Record the storage size only when it can be measured locally and consistently.
+5. Add a representative SQL file and pass the complete document to `Glue::execute(&sql)`.
+
+Keep the following names and behavior unchanged so profiles remain comparable across storage
+implementations:
+
+```text
+gluesql.benchmark.run
+gluesql.benchmark.memory_sample
+benchmark.name
+benchmark.storage
+process.memory.peak_bytes
+gluesql.database.size_bytes
+process.executable.size_bytes
+GLUESQL_MEMORY_SAMPLE_MS
+```
+
+Use the storage type to decide how `gluesql.database.size_bytes` is populated:
+
+| Storage type | Size measurement |
+| --- | --- |
+| Single local file | Read the database file metadata after the workload finishes |
+| Local directory | Sum only the files owned by that database after pending writes are flushed |
+| In-memory | Leave `gluesql.database.size_bytes` empty |
+| Remote service | Leave the local field empty; report a server-side metric separately if available |
+
+The generic `gluesql.storage.*` spans are available through `gluesql-core/tracing` without adding
+backend-specific instrumentation. Add internal spans such as `gluesql.<storage>.*` only when the
+storage implementation has a concrete diagnostic boundary to expose. Avoid per-row spans; for a
+lazy iterator, use one span covering iterator consumption and record the final row count.
+
+Firefox Profiler support is optional. To include it, copy the `firefox_profile.rs` support module
+without changing its marker and counter names, retain `GLUESQL_FIREFOX_PROFILE_PATH` as the output
+setting, and add these optional dependencies:
+
+```toml
+[features]
+firefox-profile = [
+  "tracing",
+  "dep:fxprof-processed-profile",
+  "dep:serde_json",
+]
+
+[dependencies]
+fxprof-processed-profile = { version = "0.8.1", optional = true }
+serde_json = { version = "1", optional = true }
+```
+
+Validate the new example in both modes:
+
+```sh
+cargo run --release \
+  -p <storage-package> \
+  --example resource_benchmark \
+  --features tracing \
+  -- <storage-arguments> <workload.sql>
+
+GLUESQL_FIREFOX_PROFILE_PATH=/tmp/gluesql-benchmark-profile.json \
+RUST_LOG=gluesql=debug \
+cargo run --release \
+  -p <storage-package> \
+  --example resource_benchmark \
+  --features firefox-profile \
+  -- <storage-arguments> <workload.sql>
+```
+
+Confirm that the formatted trace contains `gluesql.benchmark.run`, the Firefox profile contains
+GlueSQL markers and a `process_rss` counter, and a tracing-disabled build of the storage remains
+unchanged. Run each comparison in a fresh process with an equivalent workload and build profile.
+
 ## OpenTelemetry
 
 OpenTelemetry integration belongs to the host application rather than `gluesql-core`. Add the
