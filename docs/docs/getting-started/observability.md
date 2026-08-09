@@ -194,7 +194,8 @@ cargo run --release \
   -p gluesql-redb-storage \
   --example resource_benchmark \
   --features tracing \
-  -- /tmp/gluesql-benchmark.redb ./workload.sql
+  -- /tmp/gluesql-benchmark.redb \
+  storages/redb-storage/examples/resource_benchmark.sql
 ```
 
 The SQL file is executed once. Its filename without the extension becomes `benchmark.name`. The
@@ -223,7 +224,8 @@ cargo run --release \
   -p gluesql-redb-storage \
   --example resource_benchmark \
   --features tracing \
-  -- /tmp/gluesql-benchmark.redb ./workload.sql
+  -- /tmp/gluesql-benchmark.redb \
+  storages/redb-storage/examples/resource_benchmark.sql
 ```
 
 The example emits tracing data only; it does not select a graphing or storage format. Subscribers
@@ -257,7 +259,8 @@ cargo run --release \
   -p gluesql-redb-storage \
   --example resource_benchmark \
   --features perfetto \
-  -- /tmp/gluesql-benchmark.redb ./workload.sql
+  -- /tmp/gluesql-benchmark.redb \
+  storages/redb-storage/examples/resource_benchmark.sql
 ```
 
 `GLUESQL_PERFETTO_PATH` defaults to `gluesql-benchmark.pftrace`. Open
