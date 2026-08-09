@@ -234,40 +234,32 @@ query spans. At `info` level the sampler is not started, so only the final resou
 recorded. RSS samples include the memory and scheduling overhead of the sampler thread itself.
 Current RSS sampling is supported on macOS and Linux.
 
-### Perfetto trace output
+### Firefox Profiler output
 
-The optional `perfetto` feature adds a Perfetto subscriber to the example. It keeps the formatted
-standard-error output and also writes spans and RSS samples to a `.pftrace` file. Building the
-feature requires the Protocol Buffers compiler (`protoc`). If `protoc` is not available on
-`PATH`, the Perfetto schema dependency fails to build before the example starts:
+The optional `firefox-profile` feature keeps the formatted standard-error output and also writes
+GlueSQL spans, events, and RSS samples directly in the Firefox Profiler processed-profile JSON
+format. It uses a Rust library and does not require `protoc` or a separate trace converter.
 
-```sh
-# macOS
-brew install protobuf
-
-# Debian or Ubuntu
-sudo apt-get install protobuf-compiler
-```
-
-Generate a trace from one workload:
+Generate a profile from one workload:
 
 ```sh
-GLUESQL_PERFETTO_PATH=/tmp/gluesql-benchmark.pftrace \
+GLUESQL_FIREFOX_PROFILE_PATH=/tmp/gluesql-benchmark-profile.json \
 GLUESQL_MEMORY_SAMPLE_MS=10 \
 RUST_LOG=gluesql=debug \
 cargo run --release \
   -p gluesql-redb-storage \
   --example resource_benchmark \
-  --features perfetto \
+  --features firefox-profile \
   -- /tmp/gluesql-benchmark.redb \
   storages/redb-storage/examples/resource_benchmark.sql
 ```
 
-`GLUESQL_PERFETTO_PATH` defaults to `gluesql-benchmark.pftrace`. Open
-[Perfetto UI](https://ui.perfetto.dev), select **Open trace file**, and choose the generated file.
-The `process_rss` counter track displays RSS over time, and the thread tracks display the nested
-GlueSQL spans on the same timeline. The local trace is loaded in the browser; GlueSQL does not
-generate a graph or require a visualization service.
+`GLUESQL_FIREFOX_PROFILE_PATH` defaults to `gluesql-benchmark-profile.json`. Open
+[Firefox Profiler](https://profiler.firefox.com/), select **Load a profile from file**, and choose
+the generated JSON file. Select the `process_rss` counter track to inspect RSS over time. GlueSQL
+spans and events appear as interval and instant markers on the same timeline. The profile remains
+local unless it is explicitly uploaded or shared; GlueSQL does not require a visualization
+service.
 
 Peak RSS is a process-lifetime high-water mark, so run each workload in a separate process and use
 a new database path when comparing results. Use the same build profile and target platform for
