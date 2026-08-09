@@ -4,11 +4,11 @@ use {
         ast::Dictionary,
         data::{SCHEMALESS_DOC_COLUMN, Schema},
         plan::{
-            AggregationInputPlan, DistinctInputPlan, ExprPlan, FilterInputPlan, HashJoinPlan,
-            InnerJoinInputPlan, InnerJoinPlan, JoinConditionInputPlan, LeftOuterJoinInputPlan,
-            LeftOuterJoinPlan, LimitInputPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
-            OffsetInputPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, SourcePlan, StatementPlan, ValuesPlan,
+            AggregationInputPlan, DistinctInputPlan, ExprPlan, FilterInputPlan, HashJoinInputPlan,
+            HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan, JoinConditionInputPlan,
+            LeftOuterJoinInputPlan, LeftOuterJoinPlan, LimitInputPlan, NestedLoopJoinInputPlan,
+            NestedLoopJoinPlan, OffsetInputPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan,
+            QueryPlan, SelectItemPlan, SourcePlan, StatementPlan, ValuesPlan,
         },
         result::Result,
     },
@@ -154,9 +154,9 @@ fn prepare_inner<S: BuildHasher>(
         }
         InnerJoinInputPlan::Condition(condition) => match &mut condition.input {
             JoinConditionInputPlan::NestedLoop(join) => prepare_nested(schema_map, join, outer),
-            JoinConditionInputPlan::Hash(_) => {}
+            JoinConditionInputPlan::Hash(join) => prepare_hash(schema_map, join, outer),
         },
-        InnerJoinInputPlan::Hash(_) => {}
+        InnerJoinInputPlan::Hash(join) => prepare_hash(schema_map, join, outer),
     }
 }
 
@@ -169,9 +169,9 @@ fn prepare_left<S: BuildHasher>(
         LeftOuterJoinInputPlan::NestedLoop(join) => prepare_nested(schema_map, join, outer),
         LeftOuterJoinInputPlan::Condition(condition) => match &mut condition.input {
             JoinConditionInputPlan::NestedLoop(join) => prepare_nested(schema_map, join, outer),
-            JoinConditionInputPlan::Hash(_) => {}
+            JoinConditionInputPlan::Hash(join) => prepare_hash(schema_map, join, outer),
         },
-        LeftOuterJoinInputPlan::Hash(_) => {}
+        LeftOuterJoinInputPlan::Hash(join) => prepare_hash(schema_map, join, outer),
     }
 }
 
@@ -184,6 +184,19 @@ fn prepare_nested<S: BuildHasher>(
         NestedLoopJoinInputPlan::Source(source) => prepare_source(schema_map, source, outer),
         NestedLoopJoinInputPlan::InnerJoin(join) => prepare_inner(schema_map, join, outer),
         NestedLoopJoinInputPlan::LeftOuterJoin(join) => prepare_left(schema_map, join, outer),
+    }
+    prepare_source(schema_map, &mut join.right, outer);
+}
+
+fn prepare_hash<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    join: &mut HashJoinPlan,
+    outer: Option<&Rc<Context>>,
+) {
+    match &mut join.input {
+        HashJoinInputPlan::Source(source) => prepare_source(schema_map, source, outer),
+        HashJoinInputPlan::InnerJoin(join) => prepare_inner(schema_map, join, outer),
+        HashJoinInputPlan::LeftOuterJoin(join) => prepare_left(schema_map, join, outer),
     }
     prepare_source(schema_map, &mut join.right, outer);
 }
@@ -804,15 +817,19 @@ impl Context {
 #[cfg(test)]
 mod tests {
     use {
-        super::{Context, plan, prepare_left, visit_hash_exprs, visit_offset_input_exprs},
+        super::{
+            Context, plan, prepare_hash, prepare_left, visit_hash_exprs, visit_offset_input_exprs,
+        },
         crate::{
             mock::run,
             parse_sql::parse,
             plan::{
-                DistinctInputPlan, DistinctPlan, ExprPlan, HashJoinInputPlan, HashJoinPlan,
-                JoinConditionInputPlan, JoinConditionPlan, OffsetInputPlan, ProjectInputPlan,
+                DerivedSourcePlan, DistinctInputPlan, DistinctPlan, ExprPlan, HashJoinInputPlan,
+                HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan, JoinConditionInputPlan,
+                JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
+                NestedLoopJoinInputPlan, NestedLoopJoinPlan, OffsetInputPlan, ProjectInputPlan,
                 ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SourcePlan, StatementPlan,
-                TableAccessPlan, TableSourcePlan,
+                TableAccessPlan, TableAliasPlan, TableSourcePlan,
             },
             planner::fetch_schema_map,
             translate::translate,
@@ -891,6 +908,30 @@ mod tests {
         };
         prepare_left(&schema_map, &mut left, None);
 
+        for input in [
+            HashJoinInputPlan::InnerJoin(Box::new(InnerJoinPlan {
+                input: InnerJoinInputPlan::NestedLoop(NestedLoopJoinPlan {
+                    input: NestedLoopJoinInputPlan::Source(table("Users")),
+                    right: table("Teams"),
+                }),
+            })),
+            HashJoinInputPlan::LeftOuterJoin(Box::new(LeftOuterJoinPlan {
+                input: LeftOuterJoinInputPlan::NestedLoop(NestedLoopJoinPlan {
+                    input: NestedLoopJoinInputPlan::Source(table("Users")),
+                    right: table("Teams"),
+                }),
+            })),
+        ] {
+            let mut hash = HashJoinPlan {
+                input,
+                right: table("Teams"),
+                input_key: ExprPlan::Literal(crate::ast::Literal::Number(1.into())),
+                right_key: ExprPlan::Literal(crate::ast::Literal::Number(1.into())),
+                right_filter: None,
+            };
+            prepare_hash(&schema_map, &mut hash, None);
+        }
+
         let mut hash = HashJoinPlan {
             input: HashJoinInputPlan::Source(table("Users")),
             right: table("Teams"),
@@ -914,6 +955,59 @@ mod tests {
             }),
         });
         visit_offset_input_exprs(&schema_map, &mut input, &context);
+    }
+
+    #[test]
+    fn plans_derived_sources_in_explicit_hash_joins() {
+        let storage = run("CREATE TABLE Users (id INTEGER); CREATE TABLE Teams (team_id INTEGER);");
+        let StatementPlan::Query(derived_query) = StatementPlan::from(
+            translate(&parse("SELECT id FROM Users").unwrap().remove(0)).unwrap(),
+        ) else {
+            unreachable!()
+        };
+        let statement = StatementPlan::Query(QueryPlan::Project(ProjectPlan {
+            input: ProjectInputPlan::InnerJoin(Box::new(InnerJoinPlan {
+                input: InnerJoinInputPlan::Hash(HashJoinPlan {
+                    input: HashJoinInputPlan::Source(SourcePlan::Derived(DerivedSourcePlan {
+                        query: Box::new(derived_query),
+                        alias: TableAliasPlan {
+                            name: "Derived".to_owned(),
+                            columns: Vec::new(),
+                        },
+                    })),
+                    right: table("Teams"),
+                    input_key: ExprPlan::UnplannedReference {
+                        qualifier: Some("Derived".to_owned()),
+                        name: "id".to_owned(),
+                    },
+                    right_key: ExprPlan::UnplannedReference {
+                        qualifier: Some("Teams".to_owned()),
+                        name: "team_id".to_owned(),
+                    },
+                    right_filter: None,
+                }),
+            })),
+            projection: ProjectionPlan::SelectItems(Vec::new()),
+        }));
+        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
+        let statement = plan(&schema_map, statement).unwrap();
+
+        assert!(matches!(
+            statement,
+            StatementPlan::Query(QueryPlan::Project(ProjectPlan {
+                input: ProjectInputPlan::InnerJoin(join),
+                ..
+            })) if matches!(
+                &join.input,
+                InnerJoinInputPlan::Hash(HashJoinPlan {
+                    input: HashJoinInputPlan::Source(SourcePlan::Derived(derived)),
+                    ..
+                }) if matches!(
+                    first_projection_expr(&derived.query.project().unwrap().projection),
+                    Some(ExprPlan::ResolvedColumn { alias, column }) if alias == "Users" && column == "id"
+                )
+            )
+        ));
     }
 
     #[test]

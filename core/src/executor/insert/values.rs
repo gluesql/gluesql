@@ -57,7 +57,7 @@ fn sort(rows: Vec<Row>, order_by: &[OrderByExprPlan]) -> Result<Vec<Row>> {
         let keys = order_by
             .iter()
             .map(|OrderByExprPlan { expr, asc }| {
-                evaluate_stateless(Some(row.as_context()), expr)
+                evaluate_stateless(Some(row.as_context_with_alias(Some("VALUES"))), expr)
                     .and_then(Value::try_from)
                     .and_then(Key::try_from)
                     .map(|key| (key, *asc))

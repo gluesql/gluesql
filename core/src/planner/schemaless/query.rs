@@ -201,23 +201,10 @@ fn transform_inner_join<S: BuildHasher>(
     join: &mut InnerJoinPlan,
 ) -> QueryRewriteState {
     let base_source = join.base_source();
-    let unqualified_schemaless_alias = join
-        .joined_sources()
-        .into_iter()
-        .rev()
-        .find_map(|source| root_schemaless_alias(schema_map, source))
-        .or_else(|| root_schemaless_alias(schema_map, base_source));
-    let mut schemaless_aliases = HashSet::new();
-    collect_schemaless_alias(schema_map, base_source, &mut schemaless_aliases);
-    for source in join.joined_sources() {
-        collect_schemaless_alias(schema_map, source, &mut schemaless_aliases);
-    }
-    let state = QueryRewriteState {
-        unqualified_schemaless_alias,
-        schemaless_aliases,
-    };
+    let joined_sources = join.joined_sources();
+    let state = join_rewrite_state(schema_map, base_source, &joined_sources);
 
-    rewrite_inner_join(schema_map, join, &state);
+    rewrite_inner_join(schema_map, join);
     state
 }
 
@@ -226,24 +213,32 @@ fn transform_left_outer_join<S: BuildHasher>(
     join: &mut LeftOuterJoinPlan,
 ) -> QueryRewriteState {
     let base_source = join.base_source();
-    let unqualified_schemaless_alias = join
-        .joined_sources()
-        .into_iter()
+    let joined_sources = join.joined_sources();
+    let state = join_rewrite_state(schema_map, base_source, &joined_sources);
+
+    rewrite_left_outer_join(schema_map, join);
+    state
+}
+
+fn join_rewrite_state(
+    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    base_source: &SourcePlan,
+    joined_sources: &[&SourcePlan],
+) -> QueryRewriteState {
+    let unqualified_schemaless_alias = joined_sources
+        .iter()
         .rev()
         .find_map(|source| root_schemaless_alias(schema_map, source))
         .or_else(|| root_schemaless_alias(schema_map, base_source));
     let mut schemaless_aliases = HashSet::new();
     collect_schemaless_alias(schema_map, base_source, &mut schemaless_aliases);
-    for source in join.joined_sources() {
+    for source in joined_sources {
         collect_schemaless_alias(schema_map, source, &mut schemaless_aliases);
     }
-    let state = QueryRewriteState {
+    QueryRewriteState {
         unqualified_schemaless_alias,
         schemaless_aliases,
-    };
-
-    rewrite_left_outer_join(schema_map, join, &state);
-    state
+    }
 }
 
 fn collect_schemaless_alias(
@@ -279,13 +274,12 @@ fn root_schemaless_alias(
 fn rewrite_inner_join(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
     join: &mut InnerJoinPlan,
-    state: &QueryRewriteState,
 ) {
     match &mut join.input {
-        InnerJoinInputPlan::NestedLoop(join) => rewrite_nested_loop(schema_map, join, state),
-        InnerJoinInputPlan::Hash(join) => rewrite_hash(schema_map, join, state),
+        InnerJoinInputPlan::NestedLoop(join) => rewrite_nested_loop(schema_map, join),
+        InnerJoinInputPlan::Hash(join) => rewrite_hash(schema_map, join),
         InnerJoinInputPlan::Condition(condition) => {
-            rewrite_condition(schema_map, condition, state);
+            rewrite_condition(schema_map, condition);
         }
     }
 }
@@ -293,13 +287,12 @@ fn rewrite_inner_join(
 fn rewrite_left_outer_join(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
     join: &mut LeftOuterJoinPlan,
-    state: &QueryRewriteState,
 ) {
     match &mut join.input {
-        LeftOuterJoinInputPlan::NestedLoop(join) => rewrite_nested_loop(schema_map, join, state),
-        LeftOuterJoinInputPlan::Hash(join) => rewrite_hash(schema_map, join, state),
+        LeftOuterJoinInputPlan::NestedLoop(join) => rewrite_nested_loop(schema_map, join),
+        LeftOuterJoinInputPlan::Hash(join) => rewrite_hash(schema_map, join),
         LeftOuterJoinInputPlan::Condition(condition) => {
-            rewrite_condition(schema_map, condition, state);
+            rewrite_condition(schema_map, condition);
         }
     }
 }
@@ -307,47 +300,47 @@ fn rewrite_left_outer_join(
 fn rewrite_condition(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
     condition: &mut JoinConditionPlan,
-    state: &QueryRewriteState,
 ) {
+    let joined_sources = condition.joined_sources();
+    let state = join_rewrite_state(schema_map, condition.base_source(), &joined_sources);
+
     match &mut condition.input {
-        JoinConditionInputPlan::NestedLoop(join) => rewrite_nested_loop(schema_map, join, state),
-        JoinConditionInputPlan::Hash(join) => rewrite_hash(schema_map, join, state),
+        JoinConditionInputPlan::NestedLoop(join) => rewrite_nested_loop(schema_map, join),
+        JoinConditionInputPlan::Hash(join) => rewrite_hash(schema_map, join),
     }
-    transform_query_expr(schema_map, &mut condition.expr, state);
+    transform_query_expr(schema_map, &mut condition.expr, &state);
 }
 
 fn rewrite_nested_loop(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
     join: &mut NestedLoopJoinPlan,
-    state: &QueryRewriteState,
 ) {
     match &mut join.input {
         NestedLoopJoinInputPlan::Source(source) => rewrite_source(schema_map, source),
-        NestedLoopJoinInputPlan::InnerJoin(join) => rewrite_inner_join(schema_map, join, state),
+        NestedLoopJoinInputPlan::InnerJoin(join) => rewrite_inner_join(schema_map, join),
         NestedLoopJoinInputPlan::LeftOuterJoin(join) => {
-            rewrite_left_outer_join(schema_map, join, state);
+            rewrite_left_outer_join(schema_map, join);
         }
     }
     rewrite_source(schema_map, &mut join.right);
 }
 
-fn rewrite_hash(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    join: &mut HashJoinPlan,
-    state: &QueryRewriteState,
-) {
+fn rewrite_hash(schema_map: &HashMap<String, Schema, impl BuildHasher>, join: &mut HashJoinPlan) {
+    let joined_sources = join.joined_sources();
+    let state = join_rewrite_state(schema_map, join.base_source(), &joined_sources);
+
     match &mut join.input {
         HashJoinInputPlan::Source(source) => rewrite_source(schema_map, source),
-        HashJoinInputPlan::InnerJoin(join) => rewrite_inner_join(schema_map, join, state),
+        HashJoinInputPlan::InnerJoin(join) => rewrite_inner_join(schema_map, join),
         HashJoinInputPlan::LeftOuterJoin(join) => {
-            rewrite_left_outer_join(schema_map, join, state);
+            rewrite_left_outer_join(schema_map, join);
         }
     }
     rewrite_source(schema_map, &mut join.right);
-    transform_query_expr(schema_map, &mut join.input_key, state);
-    transform_query_expr(schema_map, &mut join.right_key, state);
+    transform_query_expr(schema_map, &mut join.input_key, &state);
+    transform_query_expr(schema_map, &mut join.right_key, &state);
     if let Some(right_filter) = &mut join.right_filter {
-        transform_query_expr(schema_map, right_filter, state);
+        transform_query_expr(schema_map, right_filter, &state);
     }
 }
 

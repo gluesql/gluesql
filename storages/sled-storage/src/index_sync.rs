@@ -293,6 +293,7 @@ fn evaluate_index_key(
     row: &[Value],
 ) -> ConflictableTransactionResult<Vec<u8>, Error> {
     let context = Some(RowContext::RefVecData {
+        table_alias: Some(table_name),
         columns: columns.unwrap_or(&[]),
         values: row,
     });
