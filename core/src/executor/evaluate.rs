@@ -61,20 +61,13 @@ where
         ExprPlan::Literal(literal) => Ok(expr::literal(literal)),
         ExprPlan::Value(value) => Ok(Evaluated::Value(Cow::Borrowed(value))),
         ExprPlan::TypedString { data_type, value } => expr::typed_string(data_type, value),
-        ExprPlan::UnplannedReference { qualifier, name } => match (context, qualifier) {
-            (None, Some(qualifier)) => Err(EvaluateError::CompoundIdentifierRequiresRowContext {
-                alias: qualifier.clone(),
-                ident: name.clone(),
+        ExprPlan::UnplannedReference { qualifier, name } => {
+            Err(EvaluateError::UnplannedReference {
+                qualifier: qualifier.clone(),
+                name: name.clone(),
             }
-            .into()),
-            (None, None) => Err(EvaluateError::IdentifierRequiresRowContext(name.clone()).into()),
-            (Some(_), Some(qualifier)) => Err(EvaluateError::CompoundIdentifierNotFound {
-                table_alias: qualifier.clone(),
-                column_name: name.clone(),
-            }
-            .into()),
-            (Some(_), None) => Err(EvaluateError::IdentifierNotFound(name.clone()).into()),
-        },
+            .into())
+        }
         ExprPlan::Nested(expr) => eval(expr),
         ExprPlan::ResolvedColumn {
             alias,
@@ -86,10 +79,13 @@ where
                     ident: ident.to_owned(),
                 })?;
 
-            match context
-                .get_alias_value(alias, ident)
-                .or_else(|| context.get_value(ident))
-            {
+            let value = context.get_alias_value(alias, ident).or_else(|| {
+                (alias == "OUTPUT")
+                    .then(|| context.get_value(ident))
+                    .flatten()
+            });
+
+            match value {
                 Some(value) => Ok(Evaluated::Value(Cow::Owned(value.clone()))),
                 None => Err(EvaluateError::CompoundIdentifierNotFound {
                     table_alias: alias.to_owned(),
@@ -751,14 +747,15 @@ mod tests {
         super::{EvaluateError, evaluate, evaluate_stateless},
         crate::{
             ast::{Expr, Projection, SelectItem, SetExpr, Statement},
-            executor::context::AggregateValues,
+            data::{Row, Value},
+            executor::context::{AggregateValues, RowContext},
             mock::MockStorage,
             parse_sql::parse,
             plan::{AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan},
             result::Error,
             translate::translate,
         },
-        std::rc::Rc,
+        std::{borrow::Cow, rc::Rc},
     };
 
     #[test]
@@ -815,6 +812,61 @@ mod tests {
             Err(Error::from(EvaluateError::AggregateSlotValueMissing(
                 Box::new(aggregate)
             )))
+        );
+    }
+
+    #[test]
+    fn unplanned_reference_is_an_evaluator_guard() {
+        let expr = ExprPlan::UnplannedReference {
+            qualifier: Some("Users".to_owned()),
+            name: "id".to_owned(),
+        };
+
+        assert_eq!(
+            evaluate_stateless(None, &expr),
+            Err(Error::from(EvaluateError::UnplannedReference {
+                qualifier: Some("Users".to_owned()),
+                name: "id".to_owned(),
+            }))
+        );
+    }
+
+    #[test]
+    fn resolved_column_does_not_fall_back_to_another_alias() {
+        let row = Row {
+            columns: vec!["id".to_owned()].into(),
+            values: vec![Value::I64(1)],
+        };
+        let context = RowContext::new("Teams", Cow::Borrowed(&row), None);
+        let expr = ExprPlan::ResolvedColumn {
+            alias: "Users".to_owned(),
+            column: "id".to_owned(),
+        };
+
+        assert_eq!(
+            evaluate_stateless(Some(context), &expr),
+            Err(Error::from(EvaluateError::CompoundIdentifierNotFound {
+                table_alias: "Users".to_owned(),
+                column_name: "id".to_owned(),
+            }))
+        );
+    }
+
+    #[test]
+    fn output_resolved_column_reads_the_projection_row() {
+        let row = Row {
+            columns: vec!["id".to_owned()].into(),
+            values: vec![Value::I64(1)],
+        };
+        let context = RowContext::new("Teams", Cow::Borrowed(&row), None);
+        let expr = ExprPlan::ResolvedColumn {
+            alias: "OUTPUT".to_owned(),
+            column: "id".to_owned(),
+        };
+
+        assert_eq!(
+            evaluate_stateless(Some(context), &expr).and_then(Value::try_from),
+            Ok(Value::I64(1))
         );
     }
 }

@@ -560,14 +560,6 @@ mod tests {
         plan_primary_key(&schema_map, statement)
     }
 
-    fn plan_full(storage: &MockStorage, sql: &str) -> StatementPlan {
-        let statement = statement(sql);
-        let schema_map = fetch_schema_map(storage, &statement).unwrap();
-        let statement = plan_references(&schema_map, statement).unwrap();
-
-        plan_primary_key(&schema_map, statement)
-    }
-
     fn select(select: Select) -> StatementPlan {
         StatementPlan::from(Statement::Query(Query {
             body: SetExpr::Select(Box::new(select)),
@@ -698,22 +690,28 @@ mod tests {
     #[test]
     fn full_planner_uses_primary_key_after_reference_binding() {
         let storage = run("CREATE TABLE Player (id INTEGER PRIMARY KEY, name TEXT);");
-        let statement = plan_full(&storage, "SELECT p.id FROM Player p WHERE p.id = 1");
+        let statement = statement("SELECT p.id FROM Player p WHERE p.id = 1");
+        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
+        let references = plan_references(&schema_map, statement).unwrap();
+        let StatementPlan::Query(QueryPlan::Project(project)) = &references else {
+            panic!("expected project query");
+        };
+        let ProjectInputPlan::Filter(filter) = &project.input else {
+            panic!("expected filter before primary-key planning");
+        };
         assert!(matches!(
-            &statement,
-            StatementPlan::Query(QueryPlan::Project(project))
-                if matches!(project.input.base_source(), SourcePlan::Table(table) if matches!(table.access, TableAccessPlan::PrimaryKey { .. }))
+            &filter.expr,
+            ExprPlan::BinaryOp { left, right, .. }
+                if matches!(left.as_ref(), ExprPlan::ResolvedColumn { alias, column } if alias == "p" && column == "id")
+                    && matches!(right.as_ref(), ExprPlan::Literal(_))
         ));
-        if let StatementPlan::Query(QueryPlan::Project(project)) = statement
-            && let ProjectInputPlan::Filter(filter) = &project.input
-        {
-            assert!(matches!(
-                &filter.expr,
-                ExprPlan::BinaryOp { left, right, .. }
-                    if matches!(left.as_ref(), ExprPlan::ResolvedColumn { alias, column } if alias == "p" && column == "id")
-                        && matches!(right.as_ref(), ExprPlan::Literal(_))
-            ));
-        }
+
+        let statement = plan_primary_key(&schema_map, references);
+        assert!(matches!(
+            statement,
+            StatementPlan::Query(QueryPlan::Project(project))
+                if matches!(&project.input, ProjectInputPlan::Source(SourcePlan::Table(table)) if matches!(table.access, TableAccessPlan::PrimaryKey { expr: ExprPlan::Literal(_) }))
+        ));
     }
 
     #[test]
