@@ -180,6 +180,36 @@ iterator is dropped. Its busy duration measures Redb row reads and deserializati
 duration covers time spent by the consumer between reads, and its `row_count` field records the
 number of yielded items.
 
+## Resource benchmark example
+
+RedbStorage provides a single-run example that groups query spans and resource measurements under
+one `gluesql.benchmark.run` span. The example is available only when the `tracing` feature is
+enabled.
+
+Run a SQL workload against a new Redb database path:
+
+```sh
+RUST_LOG=gluesql=trace \
+cargo run --release \
+  -p gluesql-redb-storage \
+  --example resource_benchmark \
+  --features tracing \
+  -- /tmp/gluesql-benchmark.redb ./workload.sql
+```
+
+The SQL file is executed once. Its filename without the extension becomes `benchmark.name`. The
+closing `gluesql.benchmark.run` span includes these fields:
+
+| Field | Meaning |
+| --- | --- |
+| `process.memory.peak_bytes` | Peak resident set size of the benchmark process |
+| `gluesql.database.size_bytes` | Redb database file size after the workload |
+| `process.executable.size_bytes` | Benchmark executable file size |
+
+Peak RSS is a process-lifetime high-water mark, so run each workload in a separate process and use
+a new database path when comparing results. Use the same build profile and target platform for
+executable-size comparisons. Peak RSS measurement is currently supported on Unix platforms.
+
 ## OpenTelemetry
 
 OpenTelemetry integration belongs to the host application rather than `gluesql-core`. Add the
