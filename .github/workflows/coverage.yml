@@ -62,7 +62,7 @@ jobs:
         with:
           tool: cargo-llvm-cov@0.8.7
       - name: Generate coverage and report with Badgers
-        uses: devgony/badgers@53ea250d30875ac6512b4c04efd0808870307d75 # v2.4.0
+        uses: devgony/badgers@v2.4.0
         # Composite actions inherit step env, including in the merge-base rerun, so the
         # token stays out of the environment of every other step.
         env:
