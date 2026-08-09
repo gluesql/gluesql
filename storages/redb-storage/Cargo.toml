@@ -10,10 +10,10 @@ documentation.workspace = true
 
 [features]
 tracing = ["dep:tracing", "gluesql-core/tracing"]
-perfetto = [
+firefox-profile = [
   "tracing",
-  "dep:tracing-perfetto-sdk-layer",
-  "dep:tracing-perfetto-sdk-schema",
+  "dep:fxprof-processed-profile",
+  "dep:serde_json",
 ]
 
 [dependencies]
@@ -27,11 +27,10 @@ tracing = { version = "0.1", optional = true, default-features = false, features
   "attributes",
   "std",
 ] }
-tracing-perfetto-sdk-layer = { version = "0.13.1", optional = true, default-features = false }
-tracing-perfetto-sdk-schema = { version = "0.13.1", optional = true }
+fxprof-processed-profile = { version = "0.8.1", optional = true }
+serde_json = { version = "1", optional = true }
 
 [dev-dependencies]
-prost = "0.14"
 test-suite.workspace = true
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 
