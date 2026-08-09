@@ -232,6 +232,40 @@ query spans. At `info` level the sampler is not started, so only the final resou
 recorded. RSS samples include the memory and scheduling overhead of the sampler thread itself.
 Current RSS sampling is supported on macOS and Linux.
 
+### Perfetto trace output
+
+The optional `perfetto` feature adds a Perfetto subscriber to the example. It keeps the formatted
+standard-error output and also writes spans and RSS samples to a `.pftrace` file. Building the
+feature requires the Protocol Buffers compiler (`protoc`). If `protoc` is not available on
+`PATH`, the Perfetto schema dependency fails to build before the example starts:
+
+```sh
+# macOS
+brew install protobuf
+
+# Debian or Ubuntu
+sudo apt-get install protobuf-compiler
+```
+
+Generate a trace from one workload:
+
+```sh
+GLUESQL_PERFETTO_PATH=/tmp/gluesql-benchmark.pftrace \
+GLUESQL_MEMORY_SAMPLE_MS=10 \
+RUST_LOG=gluesql=debug \
+cargo run --release \
+  -p gluesql-redb-storage \
+  --example resource_benchmark \
+  --features perfetto \
+  -- /tmp/gluesql-benchmark.redb ./workload.sql
+```
+
+`GLUESQL_PERFETTO_PATH` defaults to `gluesql-benchmark.pftrace`. Open
+[Perfetto UI](https://ui.perfetto.dev), select **Open trace file**, and choose the generated file.
+The `process_rss` counter track displays RSS over time, and the thread tracks display the nested
+GlueSQL spans on the same timeline. The local trace is loaded in the browser; GlueSQL does not
+generate a graph or require a visualization service.
+
 Peak RSS is a process-lifetime high-water mark, so run each workload in a separate process and use
 a new database path when comparing results. Use the same build profile and target platform for
 executable-size comparisons. Peak RSS measurement is currently supported on Unix platforms.
