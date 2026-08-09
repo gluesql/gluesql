@@ -345,6 +345,7 @@ pub fn translate_with_params(
         SqlStatement::StartTransaction {
             modes,
             modifier,
+            // `begin` only records the `BEGIN` vs `START TRANSACTION` spelling.
             begin: _,
         } => {
             let violation = if !modes.is_empty() {
@@ -793,7 +794,9 @@ mod tests {
             ("BEGIN", Statement::StartTransaction),
             ("START TRANSACTION", Statement::StartTransaction),
             ("COMMIT", Statement::Commit),
+            ("COMMIT AND NO CHAIN", Statement::Commit),
             ("ROLLBACK", Statement::Rollback),
+            ("ROLLBACK AND NO CHAIN", Statement::Rollback),
         ];
 
         for (sql, expected) in cases {
