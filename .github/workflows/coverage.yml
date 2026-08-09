@@ -19,7 +19,6 @@ permissions:
 jobs:
   coverage:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
     env:
       COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     services:
@@ -32,12 +31,7 @@ jobs:
         ports:
           - 27017:27017
     steps:
-      # Full history feeds `git merge-base origin/<base> HEAD`; annotations are dropped
-      # unless the analyzed checkout is the pull request head SHA.
       - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Free disk space (pre-build)
         continue-on-error: true
         run: |
@@ -61,42 +55,29 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           tool: cargo-llvm-cov@0.8.7
-      - name: Generate coverage and report with Badgers
-        uses: devgony/badgers@v2.4.0
-        # Composite actions inherit step env, including in the merge-base rerun, so the
-        # token stays out of the environment of every other step.
+      - name: Prepare coverage directory
+        run: |
+          mkdir -p coverage
+          cargo llvm-cov clean --workspace
+      - name: Generate coverage data
         env:
           GIT_REMOTE: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
-        with:
-          # Badgers runs this through `bash -c`, which does not inherit the errexit that
-          # GitHub gives a `run:` step, so without `set -e` a failing test suite would be
-          # masked by the succeeding report command. The trap drops the head build tree
-          # before the merge-base rerun, which never reuses it, to halve peak disk.
-          coverage-command: |
-            set -euo pipefail
-            trap 'cargo llvm-cov clean --workspace || true' EXIT
-            mkdir -p coverage
-            cargo llvm-cov clean --workspace
-            cargo llvm-cov \
-              --workspace \
-              --all-features \
-              --no-report
-            rm -rf target/llvm-cov-target/debug/incremental || true
-            cargo llvm-cov report \
-              --lcov \
-              --no-default-ignore-filename-regex \
-              --ignore-filename-regex '(^|/)(pkg/rust/examples/.*|cli/src/(cli|helper|lib|main)\.rs)$' \
-              --output-path ./coverage/lcov.info
-          lcov-file: coverage/lcov.info
-          # Dependabot branches live in this repository, so they clear the same-repo gate
-          # on the storage push, but their token is read-only and that push fails the job.
-          # Disabling storage also removes the baseline, hence skipping the rebuild it
-          # would otherwise force. Comment and annotation failures only warn.
-          # The negated form matters: `cond && '' || x` always yields x, because the empty
-          # string is falsy.
-          github-storage-repo: ${{ github.actor != 'dependabot[bot]' && github.repository || '' }}
-          base-rebuild: ${{ github.actor == 'dependabot[bot]' && 'never' || 'auto' }}
-          markdown-summary: true
+        run: |
+          cargo llvm-cov \
+            --workspace \
+            --all-features \
+            --no-report
+      - name: Free disk space before coverage report
+        run: |
+          echo "Removing incremental build artifacts to free space..."
+          rm -rf target/llvm-cov-target/debug/incremental || true
+      - name: Generate LCOV report
+        run: |
+          cargo llvm-cov report \
+            --lcov \
+            --no-default-ignore-filename-regex \
+            --ignore-filename-regex '(^|/)(pkg/rust/examples/.*|cli/src/(cli|helper|lib|main)\.rs)$' \
+            --output-path ./coverage/lcov.info
       - name: Cleanup coverage build artifacts
         if: always()
         run: |
@@ -114,10 +95,31 @@ jobs:
         uses: coverallsapp/github-action@master
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          # Defaults to GITHUB_SHA, which is the synthetic merge commit, while the
-          # coverage above is now generated from the pull request head.
-          git-commit: ${{ github.event.pull_request.head.sha || github.sha }}
-          git-branch: ${{ github.head_ref || github.ref_name }}
+      # The checkout above is shallow, but Badgers resolves the merge base and diffs
+      # against it, so the base branch has to be reachable.
+      - name: Fetch history for diff coverage
+        run: |
+          if [ -f "$(git rev-parse --git-dir)/shallow" ]; then
+            git fetch --no-tags --prune --unshallow origin '+refs/heads/*:refs/remotes/origin/*'
+          else
+            git fetch --no-tags --prune origin '+refs/heads/*:refs/remotes/origin/*'
+          fi
+      - name: Report diff coverage with Badgers
+        uses: devgony/badgers@v2
+        with:
+          # The steps above already wrote the LCOV file, so this only asserts the ordering
+          # contract: this step has to stay ahead of the compression that removes it.
+          coverage-command: test -f coverage/lcov.info
+          lcov-file: coverage/lcov.info
+          # A merge-base rebuild would rerun that command, which cannot regenerate
+          # coverage, so baselines come from stored snapshots only.
+          base-rebuild: never
+          # Dependabot branches live in this repository, so they clear the same-repo gate
+          # on the storage push, but their token is read-only and that push fails the job.
+          # The negated form matters: `cond && '' || x` always yields x, because the empty
+          # string is falsy.
+          github-storage-repo: ${{ github.actor != 'dependabot[bot]' && github.repository || '' }}
+          markdown-summary: true
       - name: Compress coverage report
         run: |
           xz -T0 -9e -c coverage/lcov.info > coverage/lcov.info.xz
