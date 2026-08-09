@@ -180,6 +180,24 @@ iterator is dropped. Its busy duration measures Redb row reads and deserializati
 duration covers time spent by the consumer between reads, and its `row_count` field records the
 number of yielded items.
 
+When `tracing` is enabled, eager execution boundaries also expose the number of items retained for
+the operation. These fields can be aligned with RSS samples to identify which operation overlaps a
+memory increase:
+
+| Span | Field | Meaning |
+| --- | --- | --- |
+| `gluesql.validate.unique` | `scanned_rows` | Existing rows checked for a unique constraint |
+| `gluesql.query.hash_join.build` | `buffered_rows` | Rows retained on the hash-build side |
+| `gluesql.query.aggregate` | `buffered_groups` | Aggregate groups retained in memory |
+| `gluesql.query.order_by` | `buffered_rows` | Rows collected before sorting |
+| `gluesql.query.distinct` | `buffered_rows` | Rows collected before duplicate filtering |
+| `gluesql.mutation.collect` | `buffered_rows` | UPDATE rows or DELETE keys collected before mutation |
+| `gluesql.insert.collect` | `buffered_rows` | VALUES or query rows collected before insertion |
+| `gluesql.result.materialize` | `buffered_rows` | SELECT rows collected for the returned payload |
+
+The counts describe logical items rather than allocated bytes. Use the RSS counter for process
+memory and these spans to locate the corresponding execution boundary.
+
 ## Resource benchmark example
 
 RedbStorage provides a single-run example that groups query spans and resource measurements under
@@ -243,7 +261,7 @@ format. It uses a Rust library and does not require `protoc` or a separate trace
 Generate a profile from one workload:
 
 ```sh
-GLUESQL_FIREFOX_PROFILE_PATH=/tmp/gluesql-benchmark-profile.json \
+GLUESQL_FIREFOX_PROFILE_PATH=~/gluesql-benchmark-profile.json \
 GLUESQL_MEMORY_SAMPLE_MS=10 \
 RUST_LOG=gluesql=debug \
 cargo run --release \
@@ -361,7 +379,7 @@ cargo run --release \
   --features tracing \
   -- <storage-arguments> <workload.sql>
 
-GLUESQL_FIREFOX_PROFILE_PATH=/tmp/gluesql-benchmark-profile.json \
+GLUESQL_FIREFOX_PROFILE_PATH=~/gluesql-benchmark-profile.json \
 RUST_LOG=gluesql=debug \
 cargo run --release \
   -p <storage-package> \
