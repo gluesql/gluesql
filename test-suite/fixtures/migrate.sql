@@ -20,16 +20,12 @@ INSERT INTO Test (id, num, name) VALUES (1.1, 1, 'good');
 -- }
 
 INSERT INTO Test (id, num, name) VALUES (1, 1, a.b);
--- @expect: error Evaluate.CompoundIdentifierRequiresRowContext
--- @json:
--- {
---   "alias": "a",
---   "ident": "b"
--- }
+-- @expect: error Evaluate.UnplannedReference
+-- @json: {"qualifier": "a", "name": "b"}
 
 INSERT INTO Test (id, num, name) VALUES (1, 1, name);
--- @expect: error Evaluate.IdentifierRequiresRowContext
--- @json: "name"
+-- @expect: error Evaluate.UnplannedReference
+-- @json: {"qualifier": null, "name": "name"}
 
 SELECT * FROM Test WHERE Here.User.id = 1
 -- @expect: error Translate.UnsupportedExpr
@@ -48,8 +44,8 @@ SELECT * FROM Test UNION SELECT * FROM Test;
 -- @json: "SELECT * FROM Test UNION SELECT * FROM Test"
 
 SELECT * FROM Test WHERE noname = 1;
--- @expect: error Evaluate.IdentifierNotFound
--- @json: "noname"
+-- @expect: error Evaluate.UnplannedReference
+-- @json: {"qualifier": null, "name": "noname"}
 
 SELECT * FROM Nothing;
 -- @expect: error Fetch.TableNotFound
