@@ -50,15 +50,77 @@ impl MemorySampler {
     }
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+#[cfg(feature = "perfetto")]
+fn perfetto_trace_config() -> tracing_perfetto_sdk_schema::TraceConfig {
+    use tracing_perfetto_sdk_schema::{DataSourceConfig, trace_config};
+
+    tracing_perfetto_sdk_schema::TraceConfig {
+        buffers: vec![trace_config::BufferConfig {
+            size_kb: Some(1024),
+            ..Default::default()
+        }],
+        data_sources: vec![trace_config::DataSource {
+            config: Some(DataSourceConfig {
+                name: Some("rust_tracing".into()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        }],
+        ..Default::default()
+    }
+}
+
+#[cfg(feature = "perfetto")]
+fn init_tracing()
+-> Result<tracing_perfetto_sdk_layer::NativeLayer<std::sync::Arc<fs::File>>, Box<dyn Error>> {
+    use {
+        tracing_perfetto_sdk_layer::NativeLayer,
+        tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt},
+    };
+
+    let filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("gluesql=info"));
+    let fmt_layer = fmt::layer()
+        .with_span_events(FmtSpan::CLOSE)
+        .with_writer(io::stderr);
+    let path =
+        env::var_os("GLUESQL_PERFETTO_PATH").unwrap_or_else(|| "gluesql-benchmark.pftrace".into());
+    let perfetto_layer = NativeLayer::from_config(
+        perfetto_trace_config(),
+        std::sync::Arc::new(fs::File::create(path)?),
+    )
+    .build()?;
+    let guard = perfetto_layer.clone();
+
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(fmt_layer)
+        .with(perfetto_layer)
+        .try_init()?;
+
+    Ok(guard)
+}
+
+#[cfg(not(feature = "perfetto"))]
+fn init_tracing() -> Result<(), Box<dyn Error>> {
+    use tracing_subscriber::{EnvFilter, util::SubscriberInitExt};
+
     tracing_subscriber::fmt()
         .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("gluesql=info")),
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("gluesql=info")),
         )
         .with_span_events(FmtSpan::CLOSE)
         .with_writer(io::stderr)
-        .init();
+        .try_init()?;
+
+    Ok(())
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    #[cfg(feature = "perfetto")]
+    let perfetto_guard = init_tracing()?;
+    #[cfg(not(feature = "perfetto"))]
+    init_tracing()?;
 
     let mut args = env::args_os().skip(1);
     let database_path = args.next().ok_or("missing DATABASE_PATH")?;
@@ -124,15 +186,31 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     drop(entered);
     drop(span);
+    #[cfg(feature = "perfetto")]
+    perfetto_guard.stop()?;
     Ok(())
 }
 
 fn record_memory_sample(parent: &Span, started_at: Instant) -> io::Result<()> {
+    let elapsed_ms = started_at.elapsed().as_millis() as u64;
+    let rss_bytes = current_rss_bytes()?;
+
+    #[cfg(feature = "perfetto")]
     tracing::debug!(
         target: "gluesql",
         parent: parent,
-        elapsed_ms = started_at.elapsed().as_millis() as u64,
-        rss_bytes = current_rss_bytes()?,
+        elapsed_ms,
+        rss_bytes,
+        counter.process_rss.bytes = rss_bytes,
+        "gluesql.benchmark.memory_sample"
+    );
+
+    #[cfg(not(feature = "perfetto"))]
+    tracing::debug!(
+        target: "gluesql",
+        parent: parent,
+        elapsed_ms,
+        rss_bytes,
         "gluesql.benchmark.memory_sample"
     );
 

@@ -10,6 +10,11 @@ documentation.workspace = true
 
 [features]
 tracing = ["dep:tracing", "gluesql-core/tracing"]
+perfetto = [
+  "tracing",
+  "dep:tracing-perfetto-sdk-layer",
+  "dep:tracing-perfetto-sdk-schema",
+]
 
 [dependencies]
 gluesql-core.workspace = true
@@ -22,6 +27,8 @@ tracing = { version = "0.1", optional = true, default-features = false, features
   "attributes",
   "std",
 ] }
+tracing-perfetto-sdk-layer = { version = "0.13.1", optional = true, default-features = false }
+tracing-perfetto-sdk-schema = { version = "0.13.1", optional = true }
 
 [dev-dependencies]
 test-suite.workspace = true
