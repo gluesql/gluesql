@@ -80,7 +80,7 @@ where
                 })?;
 
             let value = context.get_alias_value(alias, ident).or_else(|| {
-                (alias == "OUTPUT")
+                matches!(alias.as_str(), "OUTPUT" | "VALUES")
                     .then(|| context.get_value(ident))
                     .flatten()
             });
@@ -866,6 +866,23 @@ mod tests {
 
         assert_eq!(
             evaluate_stateless(Some(context), &expr).and_then(Value::try_from),
+            Ok(Value::I64(1))
+        );
+    }
+
+    #[test]
+    fn values_resolved_column_reads_the_values_row() {
+        let row = Row {
+            columns: vec!["column1".to_owned()].into(),
+            values: vec![Value::I64(1)],
+        };
+        let expr = ExprPlan::ResolvedColumn {
+            alias: "VALUES".to_owned(),
+            column: "column1".to_owned(),
+        };
+
+        assert_eq!(
+            evaluate_stateless(Some(row.as_context()), &expr).and_then(Value::try_from),
             Ok(Value::I64(1))
         );
     }
