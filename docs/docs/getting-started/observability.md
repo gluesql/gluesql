@@ -206,6 +206,32 @@ closing `gluesql.benchmark.run` span includes these fields:
 | `gluesql.database.size_bytes` | Redb database file size after the workload |
 | `process.executable.size_bytes` | Benchmark executable file size |
 
+At `debug` or `trace` level, the example also samples current RSS and emits events under the
+benchmark span:
+
+```text
+gluesql.benchmark.memory_sample elapsed_ms=20 rss_bytes=18874368
+```
+
+The default interval is 10 milliseconds. Set `GLUESQL_MEMORY_SAMPLE_MS` to use a different
+positive interval:
+
+```sh
+GLUESQL_MEMORY_SAMPLE_MS=50 \
+RUST_LOG=gluesql=debug \
+cargo run --release \
+  -p gluesql-redb-storage \
+  --example resource_benchmark \
+  --features tracing \
+  -- /tmp/gluesql-benchmark.redb ./workload.sql
+```
+
+The example emits tracing data only; it does not select a graphing or storage format. Subscribers
+can consume `elapsed_ms` and `rss_bytes` to produce a step chart and align it with the existing
+query spans. At `info` level the sampler is not started, so only the final resource fields are
+recorded. RSS samples include the memory and scheduling overhead of the sampler thread itself.
+Current RSS sampling is supported on macOS and Linux.
+
 Peak RSS is a process-lifetime high-water mark, so run each workload in a separate process and use
 a new database path when comparing results. Use the same build profile and target platform for
 executable-size comparisons. Peak RSS measurement is currently supported on Unix platforms.
