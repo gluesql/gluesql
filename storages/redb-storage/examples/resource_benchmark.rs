@@ -210,9 +210,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         let sql = fs::read_to_string(&sql_path)?;
         let storage = RedbStorage::new(&database_path)?;
         let mut glue = Glue::new(storage);
-        for statement in sql.split(';').filter(|sql| !sql.trim().is_empty()) {
-            glue.execute(statement)?;
-        }
+
+        glue.execute(statement)?;
 
         Ok(())
     })();
