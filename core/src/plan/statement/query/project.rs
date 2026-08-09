@@ -1,6 +1,9 @@
 use {
     super::{AggregationPlan, FilterPlan, HavingPlan},
-    crate::plan::{InnerJoinPlan, LeftOuterJoinPlan, ProjectionPlan, SourcePlan},
+    crate::plan::{
+        InnerJoinPlan, LeftOuterJoinPlan, ProjectionPlan, SourcePlan,
+        explain::{Explain, ExplainContext, ExplainNode},
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -42,6 +45,31 @@ impl ProjectInputPlan {
 pub struct ProjectPlan {
     pub input: ProjectInputPlan,
     pub projection: ProjectionPlan,
+}
+
+impl Explain for ProjectPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        ExplainNode::new("project")
+            .with_property("columns", self.projection.explain(context))
+            .with_child(self.input.explain(context))
+    }
+}
+
+impl Explain for ProjectInputPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        match self {
+            Self::Source(source) => source.explain(context),
+            Self::InnerJoin(join) => join.explain(context),
+            Self::LeftOuterJoin(join) => join.explain(context),
+            Self::Filter(filter) => filter.explain(context),
+            Self::Aggregation(aggregation) => aggregation.explain(context),
+            Self::Having(having) => having.explain(context),
+        }
+    }
 }
 
 #[cfg(test)]

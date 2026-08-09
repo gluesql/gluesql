@@ -34,7 +34,10 @@ pub use {
 };
 
 use {
-    crate::ast,
+    crate::{
+        ast,
+        plan::explain::{Explain, ExplainContext, ExplainNode},
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -259,6 +262,22 @@ fn limit(input: LimitInputPlan, expr: Option<ast::Expr>) -> QueryPlan {
             LimitInputPlan::Distinct(distinct) => QueryPlan::Distinct(distinct),
             LimitInputPlan::Offset(offset) => QueryPlan::Offset(offset),
         },
+    }
+}
+
+impl Explain for QueryPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        match self {
+            Self::Project(project) => project.explain(context),
+            Self::Values(values) => values.explain(context),
+            Self::SelectOrderBy(order_by) => order_by.explain(context),
+            Self::ValuesOrderBy(order_by) => order_by.explain(context),
+            Self::Distinct(distinct) => distinct.explain(context),
+            Self::Offset(offset) => offset.explain(context),
+            Self::Limit(limit) => limit.explain(context),
+        }
     }
 }
 

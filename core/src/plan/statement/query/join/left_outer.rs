@@ -1,6 +1,9 @@
 use {
     super::{HashJoinPlan, JoinConditionPlan, NestedLoopJoinPlan},
-    crate::plan::SourcePlan,
+    crate::plan::{
+        SourcePlan,
+        explain::{Explain, ExplainContext, ExplainNode},
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -38,6 +41,26 @@ impl LeftOuterJoinPlan {
             LeftOuterJoinInputPlan::NestedLoop(join) => join.joined_sources(),
             LeftOuterJoinInputPlan::Hash(join) => join.joined_sources(),
             LeftOuterJoinInputPlan::Condition(condition) => condition.joined_sources(),
+        }
+    }
+}
+
+impl Explain for LeftOuterJoinPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        self.input.explain(context).with_annotation("left outer")
+    }
+}
+
+impl Explain for LeftOuterJoinInputPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        match self {
+            Self::NestedLoop(join) => join.explain(context),
+            Self::Hash(join) => join.explain(context),
+            Self::Condition(condition) => condition.explain(context),
         }
     }
 }

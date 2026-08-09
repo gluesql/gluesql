@@ -1,6 +1,9 @@
 use {
     super::FilterPlan,
-    crate::plan::{AggregateExprPlan, ExprPlan, InnerJoinPlan, LeftOuterJoinPlan, SourcePlan},
+    crate::plan::{
+        AggregateExprPlan, ExprPlan, InnerJoinPlan, LeftOuterJoinPlan, SourcePlan,
+        explain::{Explain, ExplainContext, ExplainNode},
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -37,6 +40,37 @@ pub struct AggregationPlan {
     pub input: AggregationInputPlan,
     pub group_by: Vec<ExprPlan>,
     pub aggregate_slots: Vec<AggregateExprPlan>,
+}
+
+impl Explain for AggregationPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        ExplainNode::new("aggregate")
+            .with_optional_property(
+                "group by",
+                (!self.group_by.is_empty()).then(|| self.group_by.as_slice().explain(context)),
+            )
+            .with_optional_property(
+                "aggregates",
+                (!self.aggregate_slots.is_empty())
+                    .then(|| self.aggregate_slots.as_slice().explain(context)),
+            )
+            .with_child(self.input.explain(context))
+    }
+}
+
+impl Explain for AggregationInputPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        match self {
+            Self::Source(source) => source.explain(context),
+            Self::InnerJoin(join) => join.explain(context),
+            Self::LeftOuterJoin(join) => join.explain(context),
+            Self::Filter(filter) => filter.explain(context),
+        }
+    }
 }
 
 #[cfg(test)]

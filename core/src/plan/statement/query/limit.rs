@@ -2,7 +2,10 @@ use {
     super::{
         DistinctPlan, OffsetPlan, ProjectPlan, SelectOrderByPlan, ValuesOrderByPlan, ValuesPlan,
     },
-    crate::plan::ExprPlan,
+    crate::plan::{
+        ExprPlan,
+        explain::{Explain, ExplainContext, ExplainNode},
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -32,6 +35,31 @@ pub enum LimitInputPlan {
     ValuesOrderBy(ValuesOrderByPlan),
     Distinct(DistinctPlan),
     Offset(OffsetPlan),
+}
+
+impl Explain for LimitPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        ExplainNode::new("limit")
+            .with_property("count", self.count.explain(context))
+            .with_child(self.input.explain(context))
+    }
+}
+
+impl Explain for LimitInputPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        match self {
+            Self::Project(project) => project.explain(context),
+            Self::Values(values) => values.explain(context),
+            Self::SelectOrderBy(order_by) => order_by.explain(context),
+            Self::ValuesOrderBy(order_by) => order_by.explain(context),
+            Self::Distinct(distinct) => distinct.explain(context),
+            Self::Offset(offset) => offset.explain(context),
+        }
+    }
 }
 
 #[cfg(test)]

@@ -1,5 +1,8 @@
 use {
-    crate::plan::{ExprPlan, InnerJoinPlan, LeftOuterJoinPlan, SourcePlan},
+    crate::plan::{
+        ExprPlan, InnerJoinPlan, LeftOuterJoinPlan, SourcePlan,
+        explain::{Explain, ExplainContext, ExplainNode},
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -40,6 +43,28 @@ impl FilterInputPlan {
 pub struct FilterPlan {
     pub input: FilterInputPlan,
     pub expr: ExprPlan,
+}
+
+impl Explain for FilterPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        ExplainNode::new("filter")
+            .with_property("expression", self.expr.explain(context))
+            .with_child(self.input.explain(context))
+    }
+}
+
+impl Explain for FilterInputPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        match self {
+            Self::Source(source) => source.explain(context),
+            Self::InnerJoin(join) => join.explain(context),
+            Self::LeftOuterJoin(join) => join.explain(context),
+        }
+    }
 }
 
 #[cfg(test)]

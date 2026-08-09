@@ -1,6 +1,9 @@
 use {
     super::AggregationPlan,
-    crate::plan::ExprPlan,
+    crate::plan::{
+        ExprPlan,
+        explain::{Explain, ExplainContext, ExplainNode},
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -8,6 +11,16 @@ use {
 pub struct HavingPlan {
     pub input: AggregationPlan,
     pub expr: ExprPlan,
+}
+
+impl Explain for HavingPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        ExplainNode::new("having")
+            .with_property("expression", self.expr.explain(context))
+            .with_child(self.input.explain(context))
+    }
 }
 
 #[cfg(test)]

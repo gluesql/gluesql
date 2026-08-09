@@ -13,7 +13,10 @@ pub use {
 };
 
 use {
-    crate::ast,
+    crate::{
+        ast,
+        plan::explain::{Explain, ExplainContext, ExplainNode},
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -84,6 +87,19 @@ impl From<ast::TableAlias> for TableAliasPlan {
         let ast::TableAlias { name, columns } = alias;
 
         Self { name, columns }
+    }
+}
+
+impl Explain for SourcePlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        match self {
+            Self::Table(table) => table.explain(context),
+            Self::Derived(derived) => derived.explain(context),
+            Self::Series(series) => series.explain(context),
+            Self::Dictionary(dictionary) => dictionary.explain(context),
+        }
     }
 }
 

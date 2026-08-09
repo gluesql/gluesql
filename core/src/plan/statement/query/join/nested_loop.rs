@@ -1,6 +1,9 @@
 use {
     super::{InnerJoinPlan, LeftOuterJoinPlan},
-    crate::plan::SourcePlan,
+    crate::plan::{
+        SourcePlan,
+        explain::{Explain, ExplainContext, ExplainNode},
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -46,6 +49,27 @@ impl NestedLoopJoinPlan {
     }
 }
 
+impl Explain for NestedLoopJoinPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        ExplainNode::new("nested-loop join")
+            .with_children([self.input.explain(context), self.right.explain(context)])
+    }
+}
+
+impl Explain for NestedLoopJoinInputPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        match self {
+            Self::Source(source) => source.explain(context),
+            Self::InnerJoin(join) => join.explain(context),
+            Self::LeftOuterJoin(join) => join.explain(context),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use {
@@ -53,6 +77,7 @@ mod tests {
         crate::plan::{
             InnerJoinInputPlan, InnerJoinPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
             SourcePlan, TableAccessPlan, TableSourcePlan,
+            explain::{Explain, ExplainContext, ExplainNode},
         },
         pretty_assertions::assert_eq,
     };
@@ -120,5 +145,25 @@ mod tests {
         assert_eq!(actual.joined_sources(), expected.iter().collect::<Vec<_>>());
         *actual.base_source_mut() = table("left-outer");
         assert_eq!(actual.base_source(), &table("left-outer"));
+    }
+
+    #[test]
+    fn explains_nested_loop_join_node() {
+        let plan = InnerJoinPlan {
+            input: InnerJoinInputPlan::NestedLoop(NestedLoopJoinPlan {
+                input: NestedLoopJoinInputPlan::Source(table("A")),
+                right: table("B"),
+            }),
+        };
+
+        assert_eq!(
+            plan.explain(&mut ExplainContext::default()),
+            ExplainNode::new("nested-loop join")
+                .with_annotation("inner")
+                .with_children([
+                    ExplainNode::new("scan A").with_property("access", "full scan"),
+                    ExplainNode::new("scan B").with_property("access", "full scan"),
+                ])
+        );
     }
 }

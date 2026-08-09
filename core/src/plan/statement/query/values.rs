@@ -1,7 +1,10 @@
 use {
     crate::{
         ast,
-        plan::{ExprPlan, OrderByExprPlan},
+        plan::{
+            ExprPlan, OrderByExprPlan,
+            explain::{Explain, ExplainContext, ExplainNode},
+        },
     },
     serde::{Deserialize, Serialize},
 };
@@ -24,6 +27,36 @@ impl From<ast::Values> for ValuesPlan {
                 .map(|exprs| exprs.into_iter().map(Into::into).collect())
                 .collect(),
         )
+    }
+}
+
+impl Explain for ValuesPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        let columns = self.0.first().map_or(0, Vec::len);
+        let subquery_count = context.subquery_count();
+        let expressions = self
+            .0
+            .iter()
+            .map(|row| format!("({})", row.as_slice().explain(context)))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let has_subqueries = context.subquery_count() > subquery_count;
+
+        ExplainNode::new("values")
+            .with_property("size", format!("{columns} columns, {} rows", self.0.len()))
+            .with_optional_property("expressions", has_subqueries.then_some(expressions))
+    }
+}
+
+impl Explain for ValuesOrderByPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        ExplainNode::new("sort")
+            .with_property("order", self.exprs.as_slice().explain(context))
+            .with_child(self.input.explain(context))
     }
 }
 

@@ -1,5 +1,6 @@
 use {
     super::{ProjectPlan, SelectOrderByPlan},
+    crate::plan::explain::{Explain, ExplainContext, ExplainNode},
     serde::{Deserialize, Serialize},
 };
 
@@ -23,13 +24,32 @@ pub enum DistinctInputPlan {
     SelectOrderBy(SelectOrderByPlan),
 }
 
+impl Explain for DistinctPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        ExplainNode::new("distinct").with_child(self.input.explain(context))
+    }
+}
+
+impl Explain for DistinctInputPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        match self {
+            Self::Project(project) => project.explain(context),
+            Self::SelectOrderBy(order_by) => order_by.explain(context),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use {
         super::{DistinctInputPlan, DistinctPlan},
         crate::plan::{
-            ProjectInputPlan, ProjectPlan, ProjectionPlan, SelectOrderByPlan, SourcePlan,
-            TableAccessPlan, TableSourcePlan,
+            ProjectInputPlan, ProjectPlan, ProjectionPlan, SelectItemPlan, SelectOrderByPlan,
+            SourcePlan, TableAccessPlan, TableSourcePlan,
         },
     };
 
@@ -40,7 +60,7 @@ mod tests {
                 alias: None,
                 access: TableAccessPlan::FullScan,
             })),
-            projection: ProjectionPlan::SelectItems(Vec::new()),
+            projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
         }
     }
 

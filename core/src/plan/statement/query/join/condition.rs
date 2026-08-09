@@ -1,6 +1,9 @@
 use {
     super::{HashJoinPlan, NestedLoopJoinPlan},
-    crate::plan::{ExprPlan, SourcePlan},
+    crate::plan::{
+        ExprPlan, SourcePlan,
+        explain::{Explain, ExplainContext, ExplainNode},
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -39,6 +42,18 @@ impl JoinConditionPlan {
     }
 }
 
+impl Explain for JoinConditionPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        let node = match &self.input {
+            JoinConditionInputPlan::NestedLoop(join) => join.explain(context),
+            JoinConditionInputPlan::Hash(join) => join.explain(context),
+        };
+        node.with_property("condition", self.expr.explain(context))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use {
@@ -46,8 +61,10 @@ mod tests {
         crate::{
             data::Value,
             plan::{
-                ExprPlan, HashJoinInputPlan, HashJoinPlan, NestedLoopJoinInputPlan,
-                NestedLoopJoinPlan, SourcePlan, TableAccessPlan, TableSourcePlan,
+                ExprPlan, HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan,
+                NestedLoopJoinInputPlan, NestedLoopJoinPlan, SourcePlan, TableAccessPlan,
+                TableSourcePlan,
+                explain::{Explain, ExplainContext, ExplainNode},
             },
         },
         pretty_assertions::assert_eq,
@@ -107,5 +124,26 @@ mod tests {
         assert_eq!(actual.joined_sources(), expected.iter().collect::<Vec<_>>());
         *actual.base_source_mut() = table("hash");
         assert_eq!(actual.base_source(), &table("hash"));
+    }
+
+    #[test]
+    fn explains_join_condition_on_its_algorithm_node() {
+        let plan = InnerJoinPlan {
+            input: InnerJoinInputPlan::Condition(JoinConditionPlan {
+                input: JoinConditionInputPlan::NestedLoop(nested_loop()),
+                expr: ExprPlan::Value(Value::Bool(true)),
+            }),
+        };
+
+        assert_eq!(
+            plan.explain(&mut ExplainContext::default()),
+            ExplainNode::new("nested-loop join")
+                .with_annotation("inner")
+                .with_property("condition", "TRUE")
+                .with_children([
+                    ExplainNode::new("scan A").with_property("access", "full scan"),
+                    ExplainNode::new("scan B").with_property("access", "full scan"),
+                ])
+        );
     }
 }

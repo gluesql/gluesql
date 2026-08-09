@@ -1,6 +1,9 @@
 use {
     super::{DistinctPlan, ProjectPlan, SelectOrderByPlan, ValuesOrderByPlan, ValuesPlan},
-    crate::plan::ExprPlan,
+    crate::plan::{
+        ExprPlan,
+        explain::{Explain, ExplainContext, ExplainNode},
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -28,6 +31,30 @@ pub enum OffsetInputPlan {
     SelectOrderBy(SelectOrderByPlan),
     ValuesOrderBy(ValuesOrderByPlan),
     Distinct(DistinctPlan),
+}
+
+impl Explain for OffsetPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        ExplainNode::new("offset")
+            .with_property("count", self.count.explain(context))
+            .with_child(self.input.explain(context))
+    }
+}
+
+impl Explain for OffsetInputPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        match self {
+            Self::Project(project) => project.explain(context),
+            Self::Values(values) => values.explain(context),
+            Self::SelectOrderBy(order_by) => order_by.explain(context),
+            Self::ValuesOrderBy(order_by) => order_by.explain(context),
+            Self::Distinct(distinct) => distinct.explain(context),
+        }
+    }
 }
 
 #[cfg(test)]
