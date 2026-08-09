@@ -17,19 +17,15 @@ concurrency:
 
 jobs:
   badgers:
-    # Badgers gates baseline fetch and every publish step to same-repo runs, so fork and
-    # Dependabot pull requests rebuild merge-base coverage yet publish nothing.
-    if: >-
-      github.event_name == 'push' ||
-      (github.actor != 'dependabot[bot]' &&
-       github.event.pull_request.head.repo.full_name == github.repository)
+    # Dependabot branches live in this repository, so they clear the same-repo gate that
+    # Badgers puts on every publish step, but their token is read-only and the push fails.
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
       contents: write
       pull-requests: write
       checks: write
-      pages: write
     # Job level, so the merge-base rerun in a separate worktree sees it too.
     env:
       GIT_REMOTE: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
@@ -72,15 +68,23 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           tool: cargo-llvm-cov@0.8.7
-      - name: Report coverage with Badgers
-        uses: devgony/badgers@9c59a14c132a54bb46d4a561d0177c2dab9f9afa # v2.3.0
+      # Secrets are withheld from forked pull requests, so this cannot run there. Badgers
+      # then falls back to github-token and skips the deploy, which forks cannot do anyway.
+      - name: Create GitHub App token
+        id: app-token
+        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/create-github-app-token@v1
         with:
-          # `auto` builds the CLI from source unless the action ref is a version tag,
-          # and this pins a commit SHA.
-          cli-version: v2.3.0
-          # Mirrors the legacy Coverage workflow. Badgers reruns this verbatim in a
-          # merge-base worktree it never cleans up, so the trap is what keeps the two
-          # build trees from coexisting and exhausting the runner disk.
+          app-id: ${{ secrets.COVERAGE_APP_ID }}
+          private-key: ${{ secrets.COVERAGE_APP_PRIVATE_KEY }}
+          owner: gluesql
+          repositories: gluesql.github.io
+      - name: Report coverage with Badgers
+        uses: devgony/badgers@53ea250d30875ac6512b4c04efd0808870307d75 # v2.4.0
+        with:
+          # Mirrors the legacy Coverage workflow. Badgers reruns this verbatim at the
+          # merge base, and it never reuses the head build directory, so the trap drops
+          # the head tree before the second build to halve peak disk.
           coverage-command: |
             trap 'cargo llvm-cov clean --workspace || true' EXIT
             mkdir -p coverage
@@ -98,5 +102,12 @@ jobs:
           lcov-file: coverage/lcov.info
           # Pushes to main seed the baselines that spare pull requests a second build.
           github-storage-repo: ${{ github.repository }}
+          # Deploying into the site that already serves gluesql.org keeps Pages disabled
+          # on this repository. The prefix puts Badgers in shared mode, so it appends
+          # commits and leaves the rest of that branch, including CNAME, alone.
           pages: true
+          pages-repo: gluesql/gluesql.github.io
+          pages-prefix: coverage/badgers
+          pages-token: ${{ steps.app-token.outputs.token }}
+          pages-retention: 20
           markdown-summary: true
