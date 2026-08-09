@@ -44,6 +44,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     for statement in sql.split(';').filter(|sql| !sql.trim().is_empty()) {
         glue.execute(statement)?;
     }
+    drop(glue);
 
     span.record("process.memory.peak_bytes", peak_rss_bytes()?);
     span.record(
