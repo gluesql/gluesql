@@ -74,7 +74,12 @@ fn perfetto_trace_config() -> tracing_perfetto_sdk_schema::TraceConfig {
 fn init_tracing()
 -> Result<tracing_perfetto_sdk_layer::NativeLayer<std::sync::Arc<fs::File>>, Box<dyn Error>> {
     use {
+        prost::Message,
+        std::io::Write as _,
         tracing_perfetto_sdk_layer::NativeLayer,
+        tracing_perfetto_sdk_schema::{
+            ClockSnapshot, Trace, TracePacket, clock_snapshot, trace_packet,
+        },
         tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt},
     };
 
@@ -85,11 +90,24 @@ fn init_tracing()
         .with_writer(io::stderr);
     let path =
         env::var_os("GLUESQL_PERFETTO_PATH").unwrap_or_else(|| "gluesql-benchmark.pftrace".into());
-    let perfetto_layer = NativeLayer::from_config(
-        perfetto_trace_config(),
-        std::sync::Arc::new(fs::File::create(path)?),
-    )
-    .build()?;
+    let file = std::sync::Arc::new(fs::File::create(path)?);
+    let (clock_id, clock_timestamp) = trace_clock()?;
+    let clock_snapshot = Trace {
+        packet: vec![TracePacket {
+            data: Some(trace_packet::Data::ClockSnapshot(ClockSnapshot {
+                clocks: vec![clock_snapshot::Clock {
+                    clock_id: Some(clock_id as u32),
+                    timestamp: Some(clock_timestamp),
+                    ..Default::default()
+                }],
+                primary_trace_clock: Some(clock_id as i32),
+            })),
+            ..Default::default()
+        }],
+    }
+    .encode_to_vec();
+    file.as_ref().write_all(&clock_snapshot)?;
+    let perfetto_layer = NativeLayer::from_config(perfetto_trace_config(), file).build()?;
     let guard = perfetto_layer.clone();
 
     tracing_subscriber::registry()
@@ -99,6 +117,35 @@ fn init_tracing()
         .try_init()?;
 
     Ok(guard)
+}
+
+#[cfg(feature = "perfetto")]
+fn trace_clock() -> io::Result<(tracing_perfetto_sdk_schema::BuiltinClock, u64)> {
+    use tracing_perfetto_sdk_schema::BuiltinClock;
+
+    #[cfg(target_os = "linux")]
+    if let Ok(timestamp) = clock_time_ns(libc::CLOCK_BOOTTIME) {
+        return Ok((BuiltinClock::Boottime, timestamp));
+    }
+
+    Ok((
+        BuiltinClock::Monotonic,
+        clock_time_ns(libc::CLOCK_MONOTONIC)?,
+    ))
+}
+
+#[cfg(feature = "perfetto")]
+fn clock_time_ns(clock_id: libc::clockid_t) -> io::Result<u64> {
+    let mut timestamp = std::mem::MaybeUninit::<libc::timespec>::uninit();
+
+    // SAFETY: clock_gettime initializes the provided timespec on success.
+    if unsafe { libc::clock_gettime(clock_id, timestamp.as_mut_ptr()) } != 0 {
+        return Err(io::Error::last_os_error());
+    }
+
+    // SAFETY: clock_gettime succeeded, so timestamp is initialized.
+    let timestamp = unsafe { timestamp.assume_init() };
+    Ok(timestamp.tv_sec as u64 * 1_000_000_000 + timestamp.tv_nsec as u64)
 }
 
 #[cfg(not(feature = "perfetto"))]

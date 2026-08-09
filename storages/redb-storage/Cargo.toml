@@ -31,6 +31,7 @@ tracing-perfetto-sdk-layer = { version = "0.13.1", optional = true, default-feat
 tracing-perfetto-sdk-schema = { version = "0.13.1", optional = true }
 
 [dev-dependencies]
+prost = "0.14"
 test-suite.workspace = true
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 

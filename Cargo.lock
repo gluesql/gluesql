@@ -1717,6 +1717,7 @@ dependencies = [
  "gluesql-core",
  "gluesql-test-suite",
  "libc",
+ "prost",
  "redb",
  "serde",
  "thiserror 2.0.20",
