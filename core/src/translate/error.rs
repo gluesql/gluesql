@@ -92,6 +92,31 @@ pub enum DeleteOption {
     Limit,
 }
 
+/// Transaction statement (`START TRANSACTION`/`COMMIT`/`ROLLBACK`) clauses
+/// that `GlueSQL` does not support yet.
+///
+/// Carried by [`TranslateError::UnsupportedTransactionOption`] so callers can
+/// match exhaustively on every currently-rejected clause instead of
+/// inspecting a free-form string.
+#[derive(Display, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TransactionOption {
+    /// `START TRANSACTION READ ONLY | READ WRITE | ISOLATION LEVEL ...`
+    #[strum(to_string = "transaction mode")]
+    Mode,
+
+    /// `BEGIN DEFERRED | IMMEDIATE | EXCLUSIVE` (`SQLite`)
+    #[strum(to_string = "transaction modifier")]
+    Modifier,
+
+    /// `COMMIT AND CHAIN` / `ROLLBACK AND CHAIN`
+    #[strum(to_string = "AND CHAIN clause")]
+    Chain,
+
+    /// `ROLLBACK TO [SAVEPOINT] <name>`
+    #[strum(to_string = "TO SAVEPOINT clause")]
+    Savepoint,
+}
+
 /// Query-level (`WITH`/`FETCH`/locking) clauses that `GlueSQL` does not
 /// support yet.
 ///
@@ -165,6 +190,7 @@ serialize_via_display!(
     InsertOption,
     UpdateOption,
     DeleteOption,
+    TransactionOption,
     QueryOption,
     SelectOption,
     JoinConstraintReason,
@@ -249,6 +275,9 @@ pub enum TranslateError {
 
     #[error("unsupported DELETE option: {0}")]
     UnsupportedDeleteOption(DeleteOption),
+
+    #[error("unsupported transaction option: {0}")]
+    UnsupportedTransactionOption(TransactionOption),
 
     #[error("unsupported query option: {0}")]
     UnsupportedQueryOption(QueryOption),
