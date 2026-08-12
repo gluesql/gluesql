@@ -993,7 +993,7 @@ SELECT 1;
 EXPLAIN SELECT 1;
 -- @expect: explain
 -- • project
--- └─ • values
+-- └── • values
 
 UPDATE Example SET id = 1;
 -- @expect: payload Update
@@ -1027,7 +1027,7 @@ SELECT ADD_MONTH('invalid', 1);
         assert!(matches!(steps[1].expectation, Expectation::Select(_)));
         assert_eq!(
             steps[2].expectation,
-            Expectation::Explain(vec!["• project".to_owned(), "└─ • values".to_owned()])
+            Expectation::Explain(vec!["• project".to_owned(), "└── • values".to_owned()])
         );
         assert!(matches!(steps[3].expectation, Expectation::Payload(_)));
         assert!(matches!(steps[4].expectation, Expectation::Count(0)));

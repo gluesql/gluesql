@@ -413,12 +413,12 @@ mod tests {
         test!(Payload::Delete(300), "300 rows deleted");
         test!(Payload::Update(123), "123 rows updated");
         test!(
-            Payload::Explain(vec!["• project".to_owned(), "└─ • scan Player".to_owned(),]),
+            Payload::Explain(vec!["• project".to_owned(), "└── • scan Player".to_owned(),]),
             "
-| QUERY PLAN       |
-|------------------|
-| • project        |
-| └─ • scan Player |"
+| QUERY PLAN        |
+|-------------------|
+| • project         |
+| └── • scan Player |"
         );
         test!(
             Payload::ShowVariable(PayloadVariable::Version("11.6.1989".to_owned())),
@@ -606,11 +606,11 @@ mod tests {
         // ".set tabular OFF" should print SELECTED payload without tabular option
         print.set_option(SetOption::Tabular(false));
         test!(
-            Payload::Explain(vec!["• project".to_owned(), "└─ • scan Player".to_owned(),]),
+            Payload::Explain(vec!["• project".to_owned(), "└── • scan Player".to_owned(),]),
             "
 QUERY PLAN
 • project
-└─ • scan Player"
+└── • scan Player"
         );
         test!(
             Payload::Select {

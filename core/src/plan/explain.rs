@@ -170,8 +170,12 @@ fn render_children(node: &ExplainNode, prefix: &str, lines: &mut Vec<String>) {
 }
 
 fn render_child(node: &ExplainNode, prefix: &str, last: bool, lines: &mut Vec<String>) {
-    let branch = if last { "└─ •" } else { "├─ •" };
-    let continuation = if last { "   " } else { "│  " };
+    let branch = if last {
+        "└── •"
+    } else {
+        "├── •"
+    };
+    let continuation = if last { "    " } else { "│   " };
     let child_prefix = format!("{prefix}{continuation}");
 
     lines.push(format!("{prefix}{branch} {}", node.title()));
@@ -247,18 +251,18 @@ mod tests {
     }
 
     #[test]
-    fn renders_compact_cockroach_style_tree() {
+    fn renders_four_column_tree() {
         assert_eq!(
             explain_lines(&TestPlan).join("\n"),
             r"
 • root
 │ root property: 1
 │
-├─ • first
-│    leaf property: 2
+├── • first
+│     leaf property: 2
 │
-└─ • second
-   └─ • nested leaf
+└── • second
+    └── • nested leaf
 "
             .trim()
         );
@@ -288,36 +292,36 @@ LIMIT 10 OFFSET 5
 • limit
 │ count: 10
 │
-└─ • offset
-   │ count: 5
-   │
-   └─ • sort
-      │ order: player_count DESC
-      │
-      └─ • project
-         │ columns: Player.team_id, COUNT(*) AS player_count
-         │
-         └─ • aggregate
-            │ group by: Player.team_id
-            │ aggregates: COUNT(*)
+└── • offset
+    │ count: 5
+    │
+    └── • sort
+        │ order: player_count DESC
+        │
+        └── • project
+            │ columns: Player.team_id, COUNT(*) AS player_count
             │
-            └─ • filter
-               │ expression: Player.active = TRUE
-               │
-               └─ • hash join (left outer)
-                  │ equality: Player.team_id = Team.id
-                  │
-                  ├─ • hash join (inner)
-                  │  │ equality: Player.id = Badge.player_id
-                  │  │
-                  │  ├─ • scan Player
-                  │  │    access: full scan
-                  │  │
-                  │  └─ • scan Badge
-                  │       access: full scan
-                  │
-                  └─ • scan Team
-                       access: full scan
+            └── • aggregate
+                │ group by: Player.team_id
+                │ aggregates: COUNT(*)
+                │
+                └── • filter
+                    │ expression: Player.active = TRUE
+                    │
+                    └── • hash join (left outer)
+                        │ equality: Player.team_id = Team.id
+                        │
+                        ├── • hash join (inner)
+                        │   │ equality: Player.id = Badge.player_id
+                        │   │
+                        │   ├── • scan Player
+                        │   │     access: full scan
+                        │   │
+                        │   └── • scan Badge
+                        │         access: full scan
+                        │
+                        └── • scan Team
+                              access: full scan
 "
         .trim();
         assert_eq!(actual, expected);
@@ -334,9 +338,9 @@ LIMIT 10 OFFSET 5
 • project
 │ columns: name
 │
-└─ • scan Player
-     access: primary key
-     key: 1
+└── • scan Player
+      access: primary key
+      key: 1
 "
             .trim()
         );
@@ -364,50 +368,50 @@ AND EXISTS (
             ),
             r"
 • root
-├─ • project
-│  │ columns: id, @S1 AS badge_count
-│  │
-│  └─ • filter
-│     │ expression: id IN (@S2) AND EXISTS (@S3)
-│     │
-│     └─ • scan Player
-│          access: full scan
-│
-├─ • subquery
-│  │ id: @S1
-│  │ exec mode: one row
-│  │
-│  └─ • project
-│     │ columns: COUNT(*) AS total
-│     │
-│     └─ • aggregate
-│        │ aggregates: COUNT(*)
-│        │
-│        └─ • scan Badge
+├── • project
+│   │ columns: id, @S1 AS badge_count
+│   │
+│   └── • filter
+│       │ expression: id IN (@S2) AND EXISTS (@S3)
+│       │
+│       └── • scan Player
 │             access: full scan
 │
-├─ • subquery
-│  │ id: @S2
-│  │ exec mode: all rows
-│  │
-│  └─ • project
-│     │ columns: player_id
-│     │
-│     └─ • scan Badge
-│          access: full scan
+├── • subquery
+│   │ id: @S1
+│   │ exec mode: one row
+│   │
+│   └── • project
+│       │ columns: COUNT(*) AS total
+│       │
+│       └── • aggregate
+│           │ aggregates: COUNT(*)
+│           │
+│           └── • scan Badge
+│                 access: full scan
 │
-└─ • subquery
-   │ id: @S3
-   │ exec mode: exists
-   │
-   └─ • project
-      │ columns: *
-      │
-      └─ • filter
-         │ expression: Badge.player_id = Player.id
-         │
-         └─ • scan Badge
-              access: full scan
+├── • subquery
+│   │ id: @S2
+│   │ exec mode: all rows
+│   │
+│   └── • project
+│       │ columns: player_id
+│       │
+│       └── • scan Badge
+│             access: full scan
+│
+└── • subquery
+    │ id: @S3
+    │ exec mode: exists
+    │
+    └── • project
+        │ columns: *
+        │
+        └── • filter
+            │ expression: Badge.player_id = Player.id
+            │
+            └── • scan Badge
+                  access: full scan
 "
             .trim()
         );
@@ -429,21 +433,21 @@ ORDER BY total DESC
             ),
             r"
 • distinct
-└─ • sort
-   │ order: total DESC
-   │
-   └─ • project
-      │ columns: category, COUNT(*) AS total
-      │
-      └─ • having
-         │ expression: COUNT(*) > 1
-         │
-         └─ • aggregate
-            │ group by: category
-            │ aggregates: COUNT(*)
+└── • sort
+    │ order: total DESC
+    │
+    └── • project
+        │ columns: category, COUNT(*) AS total
+        │
+        └── • having
+            │ expression: COUNT(*) > 1
             │
-            └─ • scan Item
-                 access: full scan
+            └── • aggregate
+                │ group by: category
+                │ aggregates: COUNT(*)
+                │
+                └── • scan Item
+                      access: full scan
 "
             .trim()
         );
@@ -464,15 +468,15 @@ FROM (SELECT id FROM Player LIMIT 2) AS recent
 • project
 │ columns: recent.id
 │
-└─ • derived recent
-   └─ • limit
-      │ count: 2
-      │
-      └─ • project
-         │ columns: id
-         │
-         └─ • scan Player
-              access: full scan
+└── • derived recent
+    └── • limit
+        │ count: 2
+        │
+        └── • project
+            │ columns: id
+            │
+            └── • scan Player
+                  access: full scan
 "
             .trim()
         );
@@ -494,14 +498,14 @@ LIMIT 1 OFFSET 1
 • limit
 │ count: 1
 │
-└─ • offset
-   │ count: 1
-   │
-   └─ • sort
-      │ order: 1 DESC
-      │
-      └─ • values
-           size: 2 columns, 2 rows
+└── • offset
+    │ count: 1
+    │
+    └── • sort
+        │ order: 1 DESC
+        │
+        └── • values
+              size: 2 columns, 2 rows
 "
             .trim()
         );
@@ -516,22 +520,22 @@ LIMIT 1 OFFSET 1
             ),
             r"
 • root
-├─ • values
-│    size: 1 columns, 1 rows
-│    expressions: (@S1)
+├── • values
+│     size: 1 columns, 1 rows
+│     expressions: (@S1)
 │
-└─ • subquery
-   │ id: @S1
-   │ exec mode: one row
-   │
-   └─ • limit
-      │ count: 1
-      │
-      └─ • project
-         │ columns: id
-         │
-         └─ • scan Player
-              access: full scan
+└── • subquery
+    │ id: @S1
+    │ exec mode: one row
+    │
+    └── • limit
+        │ count: 1
+        │
+        └── • project
+            │ columns: id
+            │
+            └── • scan Player
+                  access: full scan
 "
             .trim()
         );
@@ -545,8 +549,8 @@ LIMIT 1 OFFSET 1
 • project
 │ columns: *
 │
-└─ • series numbers
-     size: 3
+└── • series numbers
+      size: 3
 "
             .trim()
         );
@@ -560,8 +564,8 @@ LIMIT 1 OFFSET 1
 • project
 │ columns: *
 │
-└─ • dictionary GLUE_TABLES
-     source: GLUE_TABLES
+└── • dictionary GLUE_TABLES
+      source: GLUE_TABLES
 "
             .trim()
         );
