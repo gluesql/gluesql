@@ -113,6 +113,28 @@ fn transform_statement<S: BuildHasher>(
                 selection,
             }
         }
+        StatementPlan::CreateTable {
+            if_not_exists,
+            name,
+            columns,
+            mut source,
+            engine,
+            foreign_keys,
+            comment,
+        } => {
+            if let Some(source) = source.as_mut() {
+                transform_query(schema_map, source);
+            }
+            StatementPlan::CreateTable {
+                if_not_exists,
+                name,
+                columns,
+                source,
+                engine,
+                foreign_keys,
+                comment,
+            }
+        }
         _ => statement,
     }
 }
@@ -497,6 +519,19 @@ mod tests {
         let actual = "DELETE FROM Item WHERE Item.id = 1";
         let expected = "DELETE FROM Item WHERE Item.id = 1";
         test(actual, expected, "delete schemaful compound no-op");
+
+        let actual = "CREATE TABLE ItemName AS SELECT name FROM Player";
+        let expected = "CREATE TABLE ItemName AS SELECT _doc['name'] as name FROM Player";
+        test(actual, expected, "create table as select");
+
+        let actual = "CREATE TABLE ItemName AS SELECT id FROM Player WHERE id = 1";
+        let expected =
+            "CREATE TABLE ItemName AS SELECT _doc['id'] as id FROM Player WHERE _doc['id'] = 1";
+        test(actual, expected, "create table as select with filter");
+
+        let actual = "CREATE TABLE ItemId AS SELECT id FROM Item";
+        let expected = "CREATE TABLE ItemId AS SELECT id FROM Item";
+        test(actual, expected, "create table as select schemaful no-op");
     }
 
     #[test]
@@ -507,9 +542,16 @@ mod tests {
             let statement = StatementPlan::from(translate(&parsed).unwrap());
             let schema_map = fetch_schema_map(&storage, &statement).unwrap();
             let planned = plan_schemaless(&schema_map, statement).unwrap();
-
-            let StatementPlan::Query(QueryPlan::Project(project)) = planned else {
-                panic!("expected query statement");
+            let query = match planned {
+                StatementPlan::Query(query) => query,
+                StatementPlan::CreateTable {
+                    source: Some(source),
+                    ..
+                } => *source,
+                _ => panic!("expected query or create table as select"),
+            };
+            let QueryPlan::Project(project) = query else {
+                panic!("expected project query");
             };
             assert_eq!(
                 matches!(project.projection, ProjectionPlan::SchemalessMap),
@@ -535,6 +577,10 @@ mod tests {
             "SELECT P.*, T.* FROM Player AS P JOIN Team AS T WHERE P.id = T.id",
             false,
         );
+
+        test("CREATE TABLE T AS SELECT * FROM Player", true);
+        test("CREATE TABLE T AS SELECT id FROM Player", false);
+        test("CREATE TABLE T AS SELECT * FROM Item", false);
     }
 
     #[test]

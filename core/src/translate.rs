@@ -13,7 +13,7 @@ pub use self::{
     ddl::translate_column_def,
     error::{
         CreateTableOption, DeleteOption, InsertOption, JoinConstraintReason, QueryOption,
-        SelectOption, TranslateError, UpdateOption,
+        SelectOption, TransactionOption, TranslateError, UpdateOption,
     },
     expr::{translate_expr, translate_order_by_expr},
     param::{IntoParamLiteral, ParamLiteral},
@@ -354,9 +354,50 @@ pub fn translate_with_params(
 
             Ok(Statement::DropIndex { name, table_name })
         }
-        SqlStatement::StartTransaction { .. } => Ok(Statement::StartTransaction),
-        SqlStatement::Commit { .. } => Ok(Statement::Commit),
-        SqlStatement::Rollback { .. } => Ok(Statement::Rollback),
+        SqlStatement::StartTransaction {
+            modes,
+            modifier,
+            // `begin` only records the `BEGIN` vs `START TRANSACTION` spelling.
+            begin: _,
+        } => {
+            let violation = if !modes.is_empty() {
+                Some(TransactionOption::Mode)
+            } else if modifier.is_some() {
+                Some(TransactionOption::Modifier)
+            } else {
+                None
+            };
+
+            if let Some(reason) = violation {
+                return Err(TranslateError::UnsupportedTransactionOption(reason).into());
+            }
+
+            Ok(Statement::StartTransaction)
+        }
+        SqlStatement::Commit { chain } => {
+            if *chain {
+                return Err(
+                    TranslateError::UnsupportedTransactionOption(TransactionOption::Chain).into(),
+                );
+            }
+
+            Ok(Statement::Commit)
+        }
+        SqlStatement::Rollback { chain, savepoint } => {
+            let violation = if *chain {
+                Some(TransactionOption::Chain)
+            } else if savepoint.is_some() {
+                Some(TransactionOption::Savepoint)
+            } else {
+                None
+            };
+
+            if let Some(reason) = violation {
+                return Err(TranslateError::UnsupportedTransactionOption(reason).into());
+            }
+
+            Ok(Statement::Rollback)
+        }
         SqlStatement::ShowTables {
             filter: None,
             db_name: None,
@@ -572,7 +613,10 @@ pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Fo
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::parse_sql::parse};
+    use {
+        super::*, crate::parse_sql::parse,
+        sqlparser::ast::TransactionModifier as SqlTransactionModifier,
+    };
 
     fn assert_translate_error(sql: &str, error: TranslateError) {
         let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
@@ -724,6 +768,72 @@ mod tests {
 
         for (sql, err) in cases {
             assert_translate_error(sql, err);
+        }
+    }
+
+    #[test]
+    fn transaction_options_not_supported() {
+        let cases = [
+            (
+                "START TRANSACTION ISOLATION LEVEL SERIALIZABLE",
+                TranslateError::UnsupportedTransactionOption(TransactionOption::Mode),
+            ),
+            (
+                "START TRANSACTION READ ONLY",
+                TranslateError::UnsupportedTransactionOption(TransactionOption::Mode),
+            ),
+            (
+                "COMMIT AND CHAIN",
+                TranslateError::UnsupportedTransactionOption(TransactionOption::Chain),
+            ),
+            (
+                "ROLLBACK AND CHAIN",
+                TranslateError::UnsupportedTransactionOption(TransactionOption::Chain),
+            ),
+            (
+                "ROLLBACK TO SAVEPOINT sp1",
+                TranslateError::UnsupportedTransactionOption(TransactionOption::Savepoint),
+            ),
+            (
+                "ROLLBACK TO sp1",
+                TranslateError::UnsupportedTransactionOption(TransactionOption::Savepoint),
+            ),
+        ];
+
+        for (sql, err) in cases {
+            assert_translate_error(sql, err);
+        }
+    }
+
+    #[test]
+    fn transaction_modifier_not_supported() {
+        // PostgreSqlDialect never parses `BEGIN DEFERRED`, but translate()
+        // accepts any sqlparser AST, so guard direct AST input too.
+        let statement = SqlStatement::StartTransaction {
+            modes: Vec::new(),
+            begin: true,
+            modifier: Some(SqlTransactionModifier::Deferred),
+        };
+        assert_eq!(
+            translate(&statement),
+            Err(TranslateError::UnsupportedTransactionOption(TransactionOption::Modifier).into())
+        );
+    }
+
+    #[test]
+    fn plain_transaction_statements() {
+        let cases = [
+            ("BEGIN", Statement::StartTransaction),
+            ("START TRANSACTION", Statement::StartTransaction),
+            ("COMMIT", Statement::Commit),
+            ("COMMIT AND NO CHAIN", Statement::Commit),
+            ("ROLLBACK", Statement::Rollback),
+            ("ROLLBACK AND NO CHAIN", Statement::Rollback),
+        ];
+
+        for (sql, expected) in cases {
+            let parsed = parse(sql).expect("parse");
+            assert_eq!(translate(&parsed[0]), Ok(expected));
         }
     }
 
