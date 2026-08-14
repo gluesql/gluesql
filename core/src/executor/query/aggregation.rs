@@ -1,3 +1,4 @@
+pub(super) mod accumulator;
 mod state;
 
 use {
