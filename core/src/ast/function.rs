@@ -1,5 +1,5 @@
 use {
-    super::{DataType, DateTimeField, Expr, literal::TrimWhereField},
+    super::{DataType, DateTimeField, Expr, OrderByExpr, literal::TrimWhereField},
     crate::ast::ToSql,
     serde::{Deserialize, Serialize},
     strum_macros::Display,
@@ -601,6 +601,100 @@ impl ToSql for CountArgExpr {
             CountArgExpr::Expr(e) => e.to_sql(),
             CountArgExpr::Wildcard => "*".to_owned(),
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum WindowFunction {
+    RowNumber,
+    Rank,
+    DenseRank,
+    Lag {
+        expr: Expr,
+        offset: Expr,
+        default: Option<Expr>,
+    },
+    Lead {
+        expr: Expr,
+        offset: Expr,
+        default: Option<Expr>,
+    },
+    Aggregate(Aggregate),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct WindowSpec {
+    pub partition_by: Vec<Expr>,
+    pub order_by: Vec<OrderByExpr>,
+}
+
+impl ToSql for WindowFunction {
+    fn to_sql(&self) -> String {
+        match self {
+            WindowFunction::RowNumber => "ROW_NUMBER()".to_owned(),
+            WindowFunction::Rank => "RANK()".to_owned(),
+            WindowFunction::DenseRank => "DENSE_RANK()".to_owned(),
+            WindowFunction::Lag {
+                expr,
+                offset,
+                default,
+            } => window_offset_to_sql("LAG", expr, offset, default.as_ref()),
+            WindowFunction::Lead {
+                expr,
+                offset,
+                default,
+            } => window_offset_to_sql("LEAD", expr, offset, default.as_ref()),
+            WindowFunction::Aggregate(aggregate) => aggregate.to_sql(),
+        }
+    }
+}
+
+fn window_offset_to_sql(name: &str, expr: &Expr, offset: &Expr, default: Option<&Expr>) -> String {
+    match default {
+        Some(default) => format!(
+            "{name}({}, {}, {})",
+            expr.to_sql(),
+            offset.to_sql(),
+            default.to_sql()
+        ),
+        None => format!("{name}({}, {})", expr.to_sql(), offset.to_sql()),
+    }
+}
+
+impl ToSql for WindowSpec {
+    fn to_sql(&self) -> String {
+        let WindowSpec {
+            partition_by,
+            order_by,
+        } = self;
+
+        let partition_by = if partition_by.is_empty() {
+            String::new()
+        } else {
+            let exprs = partition_by
+                .iter()
+                .map(ToSql::to_sql)
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("PARTITION BY {exprs}")
+        };
+
+        let order_by = if order_by.is_empty() {
+            String::new()
+        } else {
+            let exprs = order_by
+                .iter()
+                .map(ToSql::to_sql)
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("ORDER BY {exprs}")
+        };
+
+        [partition_by, order_by]
+            .into_iter()
+            .filter(|part| !part.is_empty())
+            .collect::<Vec<_>>()
+            .join(" ")
     }
 }
 

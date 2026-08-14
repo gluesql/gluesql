@@ -62,7 +62,7 @@ where
         };
         let group = group_by
             .iter()
-            .map(|expr| evaluate(storage, Some(&row_filter_context), None, expr)?.try_into())
+            .map(|expr| evaluate(storage, Some(&row_filter_context), None, None, expr)?.try_into())
             .collect::<Result<Vec<Value>>>()?;
         let group_index = state.apply(group, Rc::clone(&context));
 

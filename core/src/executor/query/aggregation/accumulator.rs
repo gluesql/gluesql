@@ -66,6 +66,16 @@ impl AggrValue {
         }
     }
 
+    /// SQL eliminates NULL before applying a set function, so every aggregate but
+    /// `COUNT` ignores NULL inputs entirely. Callers skip such values instead of feeding
+    /// them to the accumulator, and slots that only see NULL fall back to `empty_value`.
+    pub(in crate::executor::query) fn ignores(
+        aggregate: &AggregateExprPlan,
+        value: &Value,
+    ) -> bool {
+        value.is_null() && !matches!(aggregate.func, AggregateFunctionPlan::Count(_))
+    }
+
     pub(in crate::executor::query) fn new(
         aggregate: &AggregateExprPlan,
         value: &Value,

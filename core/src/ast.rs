@@ -9,8 +9,8 @@ mod query;
 pub use {
     data_type::DataType,
     ddl::*,
-    expr::Expr,
-    function::{Aggregate, AggregateFunction, CountArgExpr, Function},
+    expr::{Expr, Window},
+    function::{Aggregate, AggregateFunction, CountArgExpr, Function, WindowFunction, WindowSpec},
     literal::{DateTimeField, Literal, TrimWhereField},
     operator::*,
     query::*,

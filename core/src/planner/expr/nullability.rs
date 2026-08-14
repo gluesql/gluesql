@@ -12,7 +12,8 @@ pub fn may_return_null(expr: &ExprPlan) -> bool {
         | ExprPlan::Subquery(_)
         | ExprPlan::Exists { .. }
         | ExprPlan::InSubquery { .. }
-        | ExprPlan::Aggregate(_) => true,
+        | ExprPlan::Aggregate(_)
+        | ExprPlan::Window(_) => true,
         ExprPlan::Literal(_)
         | ExprPlan::Value(_)
         | ExprPlan::TypedString { .. }

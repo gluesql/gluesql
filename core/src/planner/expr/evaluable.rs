@@ -8,7 +8,7 @@ use {
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
             OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
             SelectItemPlan, SelectOrderByPlan, SourcePlan, TableAliasPlan, ValuesOrderByPlan,
-            ValuesPlan,
+            ValuesPlan, WindowInputPlan,
         },
         planner::context::Context,
     },
@@ -134,6 +134,7 @@ fn check_project(context: Option<&Rc<Context<'_>>>, project: &ProjectPlan) -> bo
                     .chain(iter::once(&having.expr))
                     .all(|expr| check_expr(context.map(Rc::clone), expr))
         }
+        ProjectInputPlan::Window(window) => check_window_input(context, &window.input),
     };
     if !input {
         return false;
@@ -167,6 +168,15 @@ fn check_aggregation_input(
         AggregationInputPlan::InnerJoin(join) => check_inner_join(context, join),
         AggregationInputPlan::LeftOuterJoin(join) => check_left_outer_join(context, join),
         AggregationInputPlan::Filter(filter) => check_filter(context, filter),
+    }
+}
+
+fn check_window_input(context: Option<&Rc<Context<'_>>>, input: &WindowInputPlan) -> bool {
+    match input {
+        WindowInputPlan::Source(relation) => check_source(context, relation),
+        WindowInputPlan::InnerJoin(join) => check_inner_join(context, join),
+        WindowInputPlan::LeftOuterJoin(join) => check_left_outer_join(context, join),
+        WindowInputPlan::Filter(filter) => check_filter(context, filter),
     }
 }
 

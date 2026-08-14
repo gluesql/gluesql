@@ -13,7 +13,7 @@ pub use self::{
     ddl::translate_column_def,
     error::{
         CreateIndexOption, CreateTableOption, DeleteOption, InsertOption, JoinConstraintReason,
-        QueryOption, SelectOption, TransactionOption, TranslateError, UpdateOption,
+        QueryOption, SelectOption, TransactionOption, TranslateError, UpdateOption, WindowOption,
     },
     expr::{translate_expr, translate_order_by_expr},
     param::{IntoParamLiteral, ParamLiteral, ToParamLiteral},

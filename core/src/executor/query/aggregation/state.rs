@@ -93,14 +93,11 @@ impl<'a, T: GStore> State<'a, T> {
             | AggregateFunctionPlan::Avg(expr)
             | AggregateFunctionPlan::Variance(expr)
             | AggregateFunctionPlan::Stdev(expr) => {
-                evaluate(self.storage, Some(filter_context), None, expr)?.try_into()?
+                evaluate(self.storage, Some(filter_context), None, None, expr)?.try_into()?
             }
         };
 
-        // SQL eliminates NULL before applying a set function, so every aggregate but
-        // COUNT ignores NULL inputs entirely. Groups that see nothing but NULL keep an
-        // empty slot and fall back to `empty_value` on export.
-        if value.is_null() && !matches!(aggregate.func, AggregateFunctionPlan::Count(_)) {
+        if AggrValue::ignores(aggregate, &value) {
             return Ok(());
         }
 

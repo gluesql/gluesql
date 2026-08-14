@@ -82,7 +82,7 @@ impl<'a, T: GStore> Update<'a, T> {
                 id,
                 value: value_expr,
             } = assignment;
-            let evaluated = evaluate(self.storage, context.as_ref(), None, value_expr)?;
+            let evaluated = evaluate(self.storage, context.as_ref(), None, None, value_expr)?;
             let value = match self.column_defs {
                 Some(column_defs) => {
                     let ColumnDef {

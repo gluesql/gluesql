@@ -9,7 +9,7 @@ use {
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
             OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
             SelectItemPlan, SelectOrderByPlan, SourcePlan, StatementPlan, ValuesOrderByPlan,
-            ValuesPlan,
+            ValuesPlan, WindowInputPlan,
         },
         result::Result,
     },
@@ -188,6 +188,7 @@ fn validate_project(
             }
             validate_expr(schema_map, &having.expr)?;
         }
+        ProjectInputPlan::Window(window) => validate_window_input(schema_map, &window.input)?,
     }
 
     if let ProjectionPlan::SelectItems(projection) = &project.projection {
@@ -222,6 +223,18 @@ fn validate_aggregation_input(
         AggregationInputPlan::InnerJoin(join) => validate_inner_join(schema_map, join),
         AggregationInputPlan::LeftOuterJoin(join) => validate_left_outer_join(schema_map, join),
         AggregationInputPlan::Filter(filter) => validate_filter(schema_map, filter),
+    }
+}
+
+fn validate_window_input(
+    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    input: &WindowInputPlan,
+) -> ValidateResult {
+    match input {
+        WindowInputPlan::Source(relation) => validate_source(schema_map, relation),
+        WindowInputPlan::InnerJoin(join) => validate_inner_join(schema_map, join),
+        WindowInputPlan::LeftOuterJoin(join) => validate_left_outer_join(schema_map, join),
+        WindowInputPlan::Filter(filter) => validate_filter(schema_map, filter),
     }
 }
 
