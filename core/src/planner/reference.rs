@@ -997,11 +997,16 @@ mod tests {
     #[test]
     fn plans_derived_sources_in_explicit_hash_joins() {
         let storage = run("CREATE TABLE Users (id INTEGER); CREATE TABLE Teams (team_id INTEGER);");
-        let StatementPlan::Query(derived_query) = StatementPlan::from(
-            translate(&parse("SELECT id FROM Users").unwrap().remove(0)).unwrap(),
-        ) else {
-            unreachable!()
-        };
+        let derived_query = QueryPlan::Project(ProjectPlan {
+            input: ProjectInputPlan::Source(table("Users")),
+            projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
+                expr: ExprPlan::UnplannedReference {
+                    qualifier: None,
+                    name: "id".to_owned(),
+                },
+                label: "id".to_owned(),
+            }]),
+        });
         let statement = StatementPlan::Query(QueryPlan::Project(ProjectPlan {
             input: ProjectInputPlan::InnerJoin(Box::new(InnerJoinPlan {
                 input: InnerJoinInputPlan::Hash(HashJoinPlan {
