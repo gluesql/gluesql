@@ -862,6 +862,13 @@ mod tests {
         plan(&schema_map, statement)
     }
 
+    fn assert_ambiguous_reference(sql: &str) {
+        assert!(matches!(
+            plan_result(sql),
+            Err(crate::result::Error::Planner(PlannerError::ColumnReferenceAmbiguous(name))) if name == "id"
+        ));
+    }
+
     fn first_projection_expr(projection: &ProjectionPlan) -> Option<&ExprPlan> {
         let ProjectionPlan::SelectItems(items) = projection else {
             return None;
@@ -1065,11 +1072,31 @@ mod tests {
 
     #[test]
     fn rejects_ambiguous_join_predicates_during_planning() {
+        assert_ambiguous_reference(
+            "SELECT Users.name FROM Users JOIN Teams ON Users.id = Teams.team_id WHERE id = 1",
+        );
+    }
+
+    #[test]
+    fn rejects_ambiguous_references_in_every_query_stage() {
+        for sql in [
+            "SELECT Users.name FROM Users JOIN Teams ON id = id",
+            "SELECT Users.name FROM Users JOIN Teams ON Users.id = Teams.team_id GROUP BY id",
+            "SELECT Users.name FROM Users JOIN Teams ON Users.id = Teams.team_id GROUP BY Users.name HAVING id = 1",
+            "SELECT Users.name FROM Users JOIN Teams ON Users.id = Teams.team_id ORDER BY id",
+            "SELECT id + 1 FROM Users JOIN Teams ON Users.id = Teams.team_id",
+        ] {
+            assert_ambiguous_reference(sql);
+        }
+    }
+
+    #[test]
+    fn resolves_correlated_references_from_outer_scope() {
         assert!(matches!(
-            plan_result(
-                "SELECT Users.name FROM Users JOIN Teams ON Users.id = Teams.team_id WHERE id = 1",
+            planned(
+                "SELECT U.id FROM Users U WHERE EXISTS (SELECT 1 FROM Teams T WHERE T.team_id = U.id)",
             ),
-            Err(crate::result::Error::Planner(PlannerError::ColumnReferenceAmbiguous(name))) if name == "id"
+            StatementPlan::Query(_)
         ));
     }
 
