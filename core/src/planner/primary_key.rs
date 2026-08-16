@@ -693,17 +693,16 @@ mod tests {
         let statement = statement("SELECT p.id FROM Player p WHERE p.id = 1");
         let schema_map = fetch_schema_map(&storage, &statement).unwrap();
         let references = plan_references(&schema_map, statement).unwrap();
-        let StatementPlan::Query(QueryPlan::Project(project)) = &references else {
-            panic!("expected project query");
-        };
-        let ProjectInputPlan::Filter(filter) = &project.input else {
-            panic!("expected filter before primary-key planning");
-        };
         assert!(matches!(
-            &filter.expr,
-            ExprPlan::BinaryOp { left, right, .. }
-                if matches!(left.as_ref(), ExprPlan::ResolvedColumn { alias, column } if alias == "p" && column == "id")
-                    && matches!(right.as_ref(), ExprPlan::Literal(_))
+            &references,
+            StatementPlan::Query(QueryPlan::Project(project))
+                if matches!(&project.input, ProjectInputPlan::Filter(filter)
+                    if matches!(
+                        &filter.expr,
+                        ExprPlan::BinaryOp { left, right, .. }
+                            if matches!(left.as_ref(), ExprPlan::ResolvedColumn { alias, column } if alias == "p" && column == "id")
+                                && matches!(right.as_ref(), ExprPlan::Literal(_))
+                    ))
         ));
 
         let statement = plan_primary_key(&schema_map, references);

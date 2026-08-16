@@ -126,3 +126,31 @@ impl<'a> RowContext<'a> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::RowContext,
+        crate::data::{Row, Value},
+    };
+
+    #[test]
+    fn ref_vec_context_resolves_matching_alias_only() {
+        let row = Row {
+            columns: vec!["column1".to_owned()].into(),
+            values: vec![Value::I64(1)],
+        };
+        let context = row.as_context_with_alias(Some("VALUES"));
+
+        assert_eq!(context.get_value("column1"), Some(&Value::I64(1)));
+        assert_eq!(
+            context.get_alias_value("VALUES", "column1"),
+            Some(&Value::I64(1))
+        );
+        assert_eq!(context.get_alias_value("VALUES", "missing"), None);
+        assert_eq!(context.get_alias_value("Other", "column1"), None);
+        assert_eq!(row.as_context().get_alias_value("VALUES", "column1"), None);
+
+        assert!(matches!(context, RowContext::RefVecData { .. }));
+    }
+}

@@ -880,6 +880,19 @@ mod tests {
     }
 
     #[test]
+    fn first_projection_expr_ignores_non_expression_items() {
+        assert_eq!(first_projection_expr(&ProjectionPlan::SchemalessMap), None);
+        assert_eq!(
+            first_projection_expr(&ProjectionPlan::SelectItems(Vec::new())),
+            None
+        );
+        assert_eq!(
+            first_projection_expr(&ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard])),
+            None
+        );
+    }
+
+    #[test]
     fn resolves_schemaful_references_across_query_stages() {
         assert!(matches!(
             planned("SELECT name FROM Users WHERE id = 1 GROUP BY name ORDER BY name"),
