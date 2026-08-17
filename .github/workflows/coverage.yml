@@ -11,6 +11,11 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+permissions:
+  contents: write
+  pull-requests: write
+  checks: write
+
 jobs:
   coverage:
     runs-on: ubuntu-latest
@@ -90,6 +95,31 @@ jobs:
         uses: coverallsapp/github-action@master
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+      # The checkout above is shallow, but Badgers resolves the merge base and diffs
+      # against it, so the base branch has to be reachable.
+      - name: Fetch history for diff coverage
+        run: |
+          if [ -f "$(git rev-parse --git-dir)/shallow" ]; then
+            git fetch --no-tags --prune --unshallow origin '+refs/heads/*:refs/remotes/origin/*'
+          else
+            git fetch --no-tags --prune origin '+refs/heads/*:refs/remotes/origin/*'
+          fi
+      - name: Report diff coverage with Badgers
+        uses: devgony/badgers@v2
+        with:
+          # The steps above already wrote the LCOV file, so this only asserts the ordering
+          # contract: this step has to stay ahead of the compression that removes it.
+          coverage-command: test -f coverage/lcov.info
+          lcov-file: coverage/lcov.info
+          # A merge-base rebuild would rerun that command, which cannot regenerate
+          # coverage, so baselines come from stored snapshots only.
+          base-rebuild: never
+          # Dependabot branches live in this repository, so they clear the same-repo gate
+          # on the storage push, but their token is read-only and that push fails the job.
+          # The negated form matters: `cond && '' || x` always yields x, because the empty
+          # string is falsy.
+          github-storage-repo: ${{ github.actor != 'dependabot[bot]' && github.repository || '' }}
+          markdown-summary: true
       - name: Compress coverage report
         run: |
           xz -T0 -9e -c coverage/lcov.info > coverage/lcov.info.xz
