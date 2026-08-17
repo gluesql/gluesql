@@ -110,6 +110,24 @@ pub trait Planner<'a> {
                     pattern,
                 }
             }
+            ExprPlan::Regex {
+                expr,
+                negated,
+                pattern,
+                case_sensitive,
+            } => {
+                let expr =
+                    Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *expr));
+                let pattern =
+                    Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *pattern));
+
+                ExprPlan::Regex {
+                    expr,
+                    negated,
+                    pattern,
+                    case_sensitive,
+                }
+            }
             ExprPlan::BinaryOp { left, op, right } => ExprPlan::BinaryOp {
                 left: Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *left)),
                 op,

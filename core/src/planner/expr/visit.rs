@@ -50,7 +50,9 @@ macro_rules! visit_expr_children {
                 $apply!($visit_expr(low, $f));
                 $apply!($visit_expr(high, $f));
             }
-            ExprPlan::Like { expr, pattern, .. } | ExprPlan::ILike { expr, pattern, .. } => {
+            ExprPlan::Like { expr, pattern, .. }
+            | ExprPlan::ILike { expr, pattern, .. }
+            | ExprPlan::Regex { expr, pattern, .. } => {
                 $apply!($visit_expr(expr, $f));
                 $apply!($visit_expr(pattern, $f));
             }
@@ -165,6 +167,7 @@ mod tests {
         test("id BETWEEN low AND high", "_id BETWEEN _low AND _high");
         test("name LIKE pattern", "_name LIKE _pattern");
         test("name ILIKE pattern", "_name ILIKE _pattern");
+        test("name ~* pattern", "_name ~* _pattern");
         test("a + b", "_a + _b");
         test("-x", "-_x");
         test("(id)", "(_id)");

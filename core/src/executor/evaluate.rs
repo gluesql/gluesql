@@ -242,6 +242,17 @@ where
                 false => evaluated,
             })
         }
+        ExprPlan::Regex {
+            expr,
+            negated,
+            pattern,
+            case_sensitive,
+        } => {
+            let target = eval(expr)?;
+            let pattern = eval(pattern)?;
+
+            target.regex(pattern, *negated, *case_sensitive)
+        }
         ExprPlan::Exists { subquery, negated } => {
             let storage = storage.ok_or(EvaluateError::ExistsSubqueryNotAllowedInStatelessExpr)?;
 

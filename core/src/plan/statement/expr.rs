@@ -45,6 +45,12 @@ pub enum ExprPlan {
         negated: bool,
         pattern: Box<ExprPlan>,
     },
+    Regex {
+        expr: Box<ExprPlan>,
+        negated: bool,
+        pattern: Box<ExprPlan>,
+        case_sensitive: bool,
+    },
     BinaryOp {
         left: Box<ExprPlan>,
         op: BinaryOperator,
@@ -386,6 +392,17 @@ impl From<ast::Expr> for ExprPlan {
                 expr: Box::new((*expr).into()),
                 negated,
                 pattern: Box::new((*pattern).into()),
+            },
+            ast::Expr::Regex {
+                expr,
+                negated,
+                pattern,
+                case_sensitive,
+            } => Self::Regex {
+                expr: Box::new((*expr).into()),
+                negated,
+                pattern: Box::new((*pattern).into()),
+                case_sensitive,
             },
             ast::Expr::BinaryOp { left, op, right } => Self::BinaryOp {
                 left: Box::new((*left).into()),

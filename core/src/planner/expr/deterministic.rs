@@ -24,6 +24,11 @@ pub fn is_deterministic(expr: &ExprPlan) -> bool {
             expr: left,
             pattern: right,
             ..
+        }
+        | ExprPlan::Regex {
+            expr: left,
+            pattern: right,
+            ..
         } => is_deterministic(left) && is_deterministic(right),
         ExprPlan::Between {
             expr, low, high, ..
@@ -229,12 +234,14 @@ mod tests {
         test("1 + (2 * 3)", true);
         test("('A' LIKE 'A%')", true);
         test("('A' ILIKE 'A%')", true);
+        test("('A' ~ 'A')", true);
         test("ARRAY[1, 2, 3]", true);
         test("ARRAY['A', 'B'][1]", true);
         test("CASE 1 WHEN 1 THEN 2 ELSE 3 END", true);
         test("('A' IN ('A', 'B'))", true);
 
         test("id", false);
+        test("id ~ 'A'", false);
         test("Foo.id", false);
         test("NOW()", false);
         test("RAND()", false);

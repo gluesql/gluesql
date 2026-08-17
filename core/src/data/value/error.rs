@@ -79,6 +79,13 @@ pub enum ValueError {
         case_sensitive: bool,
     },
 
+    #[error("operator doesn't exist: {base:?} {operator} {pattern:?}")]
+    RegexOnNonString {
+        base: Value,
+        pattern: Value,
+        operator: String,
+    },
+
     #[error("extract format not matched: {value:?} FROM {field:?})")]
     ExtractFormatNotMatched { value: Value, field: DateTimeField },
 

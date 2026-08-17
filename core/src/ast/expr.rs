@@ -1,7 +1,7 @@
 use {
     super::{
         Aggregate, BinaryOperator, DataType, DateTimeField, Function, Literal, Query, ToSql,
-        ToSqlUnquoted, UnaryOperator,
+        ToSqlUnquoted, UnaryOperator, regex_operator,
     },
     crate::data::Value,
     serde::{Deserialize, Serialize},
@@ -42,6 +42,12 @@ pub enum Expr {
         expr: Box<Expr>,
         negated: bool,
         pattern: Box<Expr>,
+    },
+    Regex {
+        expr: Box<Expr>,
+        negated: bool,
+        pattern: Box<Expr>,
+        case_sensitive: bool,
     },
     BinaryOp {
         left: Box<Expr>,
@@ -182,6 +188,20 @@ impl Expr {
                     false => format!("{expr} ILIKE {pattern}"),
                 }
             }
+            Expr::Regex {
+                expr,
+                negated,
+                pattern,
+                case_sensitive,
+            } => {
+                let op = regex_operator(*negated, *case_sensitive);
+
+                format!(
+                    "{} {op} {}",
+                    expr.to_sql_with(quoted),
+                    pattern.to_sql_with(quoted)
+                )
+            }
             Expr::UnaryOp { op, expr } => match op {
                 UnaryOperator::Factorial => {
                     format!("{}{}", expr.to_sql_with(quoted), op.to_sql())
@@ -308,6 +328,24 @@ mod tests {
             }
             .to_sql()
         );
+
+        for (negated, case_sensitive, expected) in [
+            (false, true, r#""id" ~ 'abc'"#),
+            (false, false, r#""id" ~* 'abc'"#),
+            (true, true, r#""id" !~ 'abc'"#),
+            (true, false, r#""id" !~* 'abc'"#),
+        ] {
+            assert_eq!(
+                Expr::Regex {
+                    expr: Box::new(Expr::Identifier("id".to_owned())),
+                    negated,
+                    pattern: Box::new(Expr::Literal(Literal::QuotedString("abc".to_owned()))),
+                    case_sensitive,
+                }
+                .to_sql(),
+                expected,
+            );
+        }
         assert_eq!(
             r#"-"id""#,
             Expr::UnaryOp {
