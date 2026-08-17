@@ -14,6 +14,11 @@ serde = { version = "1", features = ["derive"] }
 
 [dev-dependencies]
 test-suite.workspace = true
+criterion = "0.3"
+
+[[bench]]
+name = "memory_benchmark"
+harness = false
 
 [lints]
 workspace = true
