@@ -44,3 +44,29 @@ pub fn translate_binary_operator(
         _ => Err(TranslateError::UnsupportedBinaryOperator(sql_binary_operator.to_string()).into()),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        parse_sql::parse_expr,
+        translate::{NO_PARAMS, TranslateError, translate_expr},
+    };
+
+    #[test]
+    fn pg_only_unary_operators_rejected() {
+        // PostgreSqlDialect parses these prefix operators, so the fallback
+        // branch is reachable through plain SQL despite the variant name.
+        let cases = [
+            ("|/ 25", "|/"),
+            ("||/ 27", "||/"),
+            ("!! 5", "!!"),
+            ("@ -5", "@"),
+        ];
+
+        for (sql, op) in cases {
+            let actual = parse_expr(sql).and_then(|parsed| translate_expr(&parsed, NO_PARAMS));
+            let expected = Err(TranslateError::UnreachableUnaryOperator(op.to_owned()).into());
+            assert_eq!(actual, expected, "unary operator `{op}`");
+        }
+    }
+}

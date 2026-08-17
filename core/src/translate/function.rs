@@ -783,4 +783,16 @@ mod tests {
         let expected = Err(TranslateError::SafeCastNotSupported.into());
         assert_eq!(actual, expected);
     }
+
+    #[test]
+    fn subquery_function_arg_rejected() {
+        use crate::translate::NO_PARAMS;
+
+        // sqlparser parses `ARRAY(<query>)` into FunctionArguments::Subquery,
+        // so this branch is reachable through plain SQL despite its name.
+        let actual =
+            parse_expr("ARRAY(SELECT 1)").and_then(|parsed| translate_expr(&parsed, NO_PARAMS));
+        let expected = Err(TranslateError::UnreachableSubqueryFunctionArgNotSupported.into());
+        assert_eq!(actual, expected);
+    }
 }
