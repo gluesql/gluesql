@@ -1,5 +1,4 @@
 use {
-    super::super::expr::visit_mut_expr,
     crate::{
         ast::Literal,
         data::{SCHEMALESS_DOC_COLUMN, Schema},
@@ -9,7 +8,7 @@ use {
             JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
             OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, SelectOrderByPlan, SourcePlan, ValuesOrderByPlan,
+            SelectItemPlan, SelectOrderByPlan, SourcePlan, ValuesOrderByPlan, visit_mut_expr,
         },
     },
     std::{

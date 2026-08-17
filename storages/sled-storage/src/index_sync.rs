@@ -3,8 +3,7 @@ use {
     gluesql_core::{
         data::schema::{Schema, SchemaIndex},
         error::{Error, IndexError, Result},
-        executor::evaluate_stateless,
-        executor::{RowContext, bind_scalar_references},
+        executor::{RowContext, bind_scalar_references, evaluate_stateless},
         plan::{ExprPlan, plan_scalar_expr},
         prelude::Value,
     },

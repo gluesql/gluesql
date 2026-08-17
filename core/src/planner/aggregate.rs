@@ -1,5 +1,4 @@
 use {
-    super::expr::visit_mut_expr,
     crate::plan::{
         AggregateFunctionPlan, AggregationInputPlan, AggregationPlan, DistinctInputPlan,
         DistinctPlan, ExprPlan, FilterInputPlan, FilterPlan, HashJoinInputPlan, HashJoinPlan,
@@ -8,6 +7,7 @@ use {
         NestedLoopJoinInputPlan, NestedLoopJoinPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan,
         ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
         SelectOrderByPlan, SourcePlan, StatementPlan, ValuesOrderByPlan, ValuesPlan,
+        visit_mut_expr,
     },
     std::collections::HashMap,
 };
