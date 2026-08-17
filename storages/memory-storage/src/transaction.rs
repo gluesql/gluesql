@@ -18,10 +18,14 @@ impl Transaction for MemoryStorage {
     }
 
     fn rollback(&mut self) -> Result<()> {
-        Ok(())
+        Err(Error::StorageMsg(
+            "[MemoryStorage] transaction is not supported".to_owned(),
+        ))
     }
 
     fn commit(&mut self) -> Result<()> {
-        Ok(())
+        Err(Error::StorageMsg(
+            "[MemoryStorage] transaction is not supported".to_owned(),
+        ))
     }
 }
