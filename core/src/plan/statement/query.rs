@@ -34,7 +34,10 @@ pub use {
 };
 
 use {
-    crate::ast,
+    crate::{
+        ast,
+        plan::explain::{Explain, ExplainContext, ExplainNode},
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -262,6 +265,22 @@ fn limit(input: LimitInputPlan, expr: Option<ast::Expr>) -> QueryPlan {
     }
 }
 
+impl Explain for QueryPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        match self {
+            Self::Project(project) => project.explain(context),
+            Self::Values(values) => values.explain(context),
+            Self::SelectOrderBy(order_by) => order_by.explain(context),
+            Self::ValuesOrderBy(order_by) => order_by.explain(context),
+            Self::Distinct(distinct) => distinct.explain(context),
+            Self::Offset(offset) => offset.explain(context),
+            Self::Limit(limit) => limit.explain(context),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use {
@@ -279,7 +298,7 @@ mod tests {
                 JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan,
                 LeftOuterJoinPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan, ProjectionPlan,
                 SelectItemPlan, SelectOrderByPlan, SourcePlan, StatementPlan, TableAccessPlan,
-                TableSourcePlan, ValuesOrderByPlan,
+                TableSourcePlan, ValuesOrderByPlan, ValuesPlan, explain::test_explain,
             },
             translate::translate,
         },
@@ -707,5 +726,114 @@ mod tests {
                 ..
             }))
         ));
+    }
+
+    #[test]
+    fn explain() {
+        let actual = QueryPlan::Project(ProjectPlan {
+            input: ProjectInputPlan::Source(relation_plan()),
+            projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
+        });
+        let expected = r"
+• project
+│ columns: *
+│
+└── • scan Item
+      access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = QueryPlan::Values(ValuesPlan(vec![vec![ExprPlan::Literal(Literal::Number(
+            1.into(),
+        ))]]));
+        let expected = r"
+• values
+  size: 1 columns, 1 rows
+";
+        test_explain(&actual, expected);
+
+        let actual = QueryPlan::SelectOrderBy(SelectOrderByPlan {
+            input: ProjectPlan {
+                input: ProjectInputPlan::Source(relation_plan()),
+                projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
+            },
+            exprs: vec![OrderByExprPlan {
+                expr: ExprPlan::Identifier("id".to_owned()),
+                asc: Some(false),
+            }],
+        });
+        let expected = r"
+• sort
+│ order: id DESC
+│
+└── • project
+    │ columns: *
+    │
+    └── • scan Item
+          access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = QueryPlan::ValuesOrderBy(ValuesOrderByPlan {
+            input: ValuesPlan(vec![vec![ExprPlan::Literal(Literal::Number(1.into()))]]),
+            exprs: vec![OrderByExprPlan {
+                expr: ExprPlan::Literal(Literal::Number(1.into())),
+                asc: Some(false),
+            }],
+        });
+        let expected = r"
+• sort
+│ order: 1 DESC
+│
+└── • values
+      size: 1 columns, 1 rows
+";
+        test_explain(&actual, expected);
+
+        let actual = QueryPlan::Distinct(DistinctPlan {
+            input: DistinctInputPlan::Project(ProjectPlan {
+                input: ProjectInputPlan::Source(relation_plan()),
+                projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
+            }),
+        });
+        let expected = r"
+• distinct
+└── • project
+    │ columns: *
+    │
+    └── • scan Item
+          access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = QueryPlan::Offset(OffsetPlan {
+            input: OffsetInputPlan::Values(ValuesPlan(vec![vec![ExprPlan::Literal(
+                Literal::Number(1.into()),
+            )]])),
+            count: ExprPlan::Literal(Literal::Number(2.into())),
+        });
+        let expected = r"
+• offset
+│ count: 2
+│
+└── • values
+      size: 1 columns, 1 rows
+";
+        test_explain(&actual, expected);
+
+        let actual = QueryPlan::Limit(LimitPlan {
+            input: LimitInputPlan::Values(ValuesPlan(vec![vec![ExprPlan::Literal(
+                Literal::Number(1.into()),
+            )]])),
+            count: ExprPlan::Literal(Literal::Number(3.into())),
+        });
+        let expected = r"
+• limit
+│ count: 3
+│
+└── • values
+      size: 1 columns, 1 rows
+";
+        test_explain(&actual, expected);
     }
 }

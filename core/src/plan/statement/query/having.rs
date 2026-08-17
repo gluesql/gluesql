@@ -1,6 +1,9 @@
 use {
     super::AggregationPlan,
-    crate::plan::ExprPlan,
+    crate::plan::{
+        ExprPlan,
+        explain::{Explain, ExplainContext, ExplainNode},
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -8,6 +11,16 @@ use {
 pub struct HavingPlan {
     pub input: AggregationPlan,
     pub expr: ExprPlan,
+}
+
+impl Explain for HavingPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        ExplainNode::new("having")
+            .with_property("expression", self.expr.explain(context))
+            .with_child(self.input.explain(context))
+    }
 }
 
 #[cfg(test)]
@@ -18,7 +31,7 @@ mod tests {
             data::Value,
             plan::{
                 AggregationInputPlan, AggregationPlan, ExprPlan, SourcePlan, TableAccessPlan,
-                TableSourcePlan,
+                TableSourcePlan, explain::test_explain,
             },
         },
         pretty_assertions::assert_eq,
@@ -43,5 +56,32 @@ mod tests {
 
         assert_eq!(having.input, input);
         assert_eq!(having.expr, expr);
+    }
+
+    #[test]
+    fn explain() {
+        let actual = HavingPlan {
+            input: AggregationPlan {
+                input: AggregationInputPlan::Source(SourcePlan::Table(TableSourcePlan {
+                    name: "Item".to_owned(),
+                    alias: None,
+                    access: TableAccessPlan::FullScan,
+                })),
+                group_by: vec![ExprPlan::Identifier("category".to_owned())],
+                aggregate_slots: Vec::new(),
+            },
+            expr: ExprPlan::Identifier("total".to_owned()),
+        };
+        let expected = r"
+• having
+│ expression: total
+│
+└── • aggregate
+    │ group by: category
+    │
+    └── • scan Item
+          access: full scan
+";
+        test_explain(&actual, expected);
     }
 }

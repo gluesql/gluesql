@@ -1,6 +1,9 @@
 use {
     super::FilterPlan,
-    crate::plan::{AggregateExprPlan, ExprPlan, InnerJoinPlan, LeftOuterJoinPlan, SourcePlan},
+    crate::plan::{
+        AggregateExprPlan, ExprPlan, InnerJoinPlan, LeftOuterJoinPlan, SourcePlan,
+        explain::{Explain, ExplainContext, ExplainNode},
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -39,6 +42,37 @@ pub struct AggregationPlan {
     pub aggregate_slots: Vec<AggregateExprPlan>,
 }
 
+impl Explain for AggregationPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        ExplainNode::new("aggregate")
+            .with_optional_property(
+                "group by",
+                (!self.group_by.is_empty()).then(|| self.group_by.as_slice().explain(context)),
+            )
+            .with_optional_property(
+                "aggregates",
+                (!self.aggregate_slots.is_empty())
+                    .then(|| self.aggregate_slots.as_slice().explain(context)),
+            )
+            .with_child(self.input.explain(context))
+    }
+}
+
+impl Explain for AggregationInputPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        match self {
+            Self::Source(source) => source.explain(context),
+            Self::InnerJoin(join) => join.explain(context),
+            Self::LeftOuterJoin(join) => join.explain(context),
+            Self::Filter(filter) => filter.explain(context),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use {
@@ -46,9 +80,11 @@ mod tests {
         crate::{
             data::Value,
             plan::{
-                ExprPlan, FilterInputPlan, FilterPlan, InnerJoinInputPlan, InnerJoinPlan,
+                AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan,
+                FilterInputPlan, FilterPlan, InnerJoinInputPlan, InnerJoinPlan,
                 LeftOuterJoinInputPlan, LeftOuterJoinPlan, NestedLoopJoinInputPlan,
                 NestedLoopJoinPlan, SourcePlan, TableAccessPlan, TableSourcePlan,
+                explain::test_explain,
             },
         },
         pretty_assertions::assert_eq,
@@ -132,5 +168,87 @@ mod tests {
             filtered.input.joined_sources(),
             expected.iter().collect::<Vec<_>>()
         );
+    }
+
+    #[test]
+    fn explain() {
+        let actual = AggregationPlan {
+            input: AggregationInputPlan::Source(table("Player")),
+            group_by: vec![ExprPlan::Identifier("team_id".to_owned())],
+            aggregate_slots: vec![AggregateExprPlan {
+                func: AggregateFunctionPlan::Count(CountArgExprPlan::Wildcard),
+                distinct: false,
+                slot: Some(0),
+            }],
+        };
+        let expected = r"
+• aggregate
+│ group by: team_id
+│ aggregates: COUNT(*)
+│
+└── • scan Player
+      access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = AggregationPlan {
+            input: AggregationInputPlan::InnerJoin(Box::new(InnerJoinPlan {
+                input: InnerJoinInputPlan::NestedLoop(NestedLoopJoinPlan {
+                    input: NestedLoopJoinInputPlan::Source(table("A")),
+                    right: table("B"),
+                }),
+            })),
+            group_by: Vec::new(),
+            aggregate_slots: Vec::new(),
+        };
+        let expected = r"
+• aggregate
+└── • nested-loop join (inner)
+    ├── • scan A
+    │     access: full scan
+    │
+    └── • scan B
+          access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = AggregationPlan {
+            input: AggregationInputPlan::LeftOuterJoin(Box::new(LeftOuterJoinPlan {
+                input: LeftOuterJoinInputPlan::NestedLoop(NestedLoopJoinPlan {
+                    input: NestedLoopJoinInputPlan::Source(table("A")),
+                    right: table("B"),
+                }),
+            })),
+            group_by: Vec::new(),
+            aggregate_slots: Vec::new(),
+        };
+        let expected = r"
+• aggregate
+└── • nested-loop join (left outer)
+    ├── • scan A
+    │     access: full scan
+    │
+    └── • scan B
+          access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = AggregationPlan {
+            input: AggregationInputPlan::Filter(FilterPlan {
+                input: FilterInputPlan::Source(table("Player")),
+                expr: ExprPlan::Identifier("active".to_owned()),
+            }),
+            group_by: Vec::new(),
+            aggregate_slots: Vec::new(),
+        };
+        let expected = r"
+• aggregate
+└── • filter
+    │ expression: active
+    │
+    └── • scan Player
+          access: full scan
+";
+        test_explain(&actual, expected);
     }
 }

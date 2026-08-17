@@ -1,6 +1,9 @@
 use {
     super::{HashJoinPlan, JoinConditionPlan, NestedLoopJoinPlan},
-    crate::plan::SourcePlan,
+    crate::plan::{
+        SourcePlan,
+        explain::{Explain, ExplainContext, ExplainNode},
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -42,6 +45,26 @@ impl InnerJoinPlan {
     }
 }
 
+impl Explain for InnerJoinPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        self.input.explain(context).with_annotation("inner")
+    }
+}
+
+impl Explain for InnerJoinInputPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        match self {
+            Self::NestedLoop(join) => join.explain(context),
+            Self::Hash(join) => join.explain(context),
+            Self::Condition(condition) => condition.explain(context),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use {
@@ -51,7 +74,7 @@ mod tests {
             plan::{
                 ExprPlan, HashJoinInputPlan, HashJoinPlan, JoinConditionInputPlan,
                 JoinConditionPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan, SourcePlan,
-                TableAccessPlan, TableSourcePlan,
+                TableAccessPlan, TableSourcePlan, explain::test_explain,
             },
         },
         pretty_assertions::assert_eq,
@@ -127,5 +150,51 @@ mod tests {
         assert_eq!(actual.joined_sources(), expected.iter().collect::<Vec<_>>());
         *actual.base_source_mut() = table("condition");
         assert_eq!(actual.base_source(), &table("condition"));
+    }
+
+    #[test]
+    fn explain() {
+        let actual = InnerJoinPlan {
+            input: InnerJoinInputPlan::NestedLoop(nested_loop()),
+        };
+        let expected = r"
+• nested-loop join (inner)
+├── • scan A
+│     access: full scan
+│
+└── • scan B
+      access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = InnerJoinPlan {
+            input: InnerJoinInputPlan::Hash(hash()),
+        };
+        let expected = r"
+• hash join (inner)
+│ equality: TRUE = TRUE
+│
+├── • scan A
+│     access: full scan
+│
+└── • scan B
+      access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = InnerJoinPlan {
+            input: InnerJoinInputPlan::Condition(condition()),
+        };
+        let expected = r"
+• nested-loop join (inner)
+│ condition: TRUE
+│
+├── • scan A
+│     access: full scan
+│
+└── • scan B
+      access: full scan
+";
+        test_explain(&actual, expected);
     }
 }

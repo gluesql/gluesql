@@ -1,6 +1,9 @@
 use {
     super::{AggregationPlan, FilterPlan, HavingPlan},
-    crate::plan::{InnerJoinPlan, LeftOuterJoinPlan, ProjectionPlan, SourcePlan},
+    crate::plan::{
+        InnerJoinPlan, LeftOuterJoinPlan, ProjectionPlan, SourcePlan,
+        explain::{Explain, ExplainContext, ExplainNode},
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -44,6 +47,31 @@ pub struct ProjectPlan {
     pub projection: ProjectionPlan,
 }
 
+impl Explain for ProjectPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        ExplainNode::new("project")
+            .with_property("columns", self.projection.explain(context))
+            .with_child(self.input.explain(context))
+    }
+}
+
+impl Explain for ProjectInputPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        match self {
+            Self::Source(source) => source.explain(context),
+            Self::InnerJoin(join) => join.explain(context),
+            Self::LeftOuterJoin(join) => join.explain(context),
+            Self::Filter(filter) => filter.explain(context),
+            Self::Aggregation(aggregation) => aggregation.explain(context),
+            Self::Having(having) => having.explain(context),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use {
@@ -54,7 +82,8 @@ mod tests {
                 AggregationInputPlan, AggregationPlan, ExprPlan, FilterInputPlan, FilterPlan,
                 HavingPlan, InnerJoinInputPlan, InnerJoinPlan, LeftOuterJoinInputPlan,
                 LeftOuterJoinPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan, ProjectionPlan,
-                SourcePlan, TableAccessPlan, TableSourcePlan,
+                SelectItemPlan, SourcePlan, TableAccessPlan, TableSourcePlan,
+                explain::test_explain,
             },
         },
         pretty_assertions::assert_eq,
@@ -167,5 +196,128 @@ mod tests {
             having.input.joined_sources(),
             expected.iter().collect::<Vec<_>>()
         );
+    }
+
+    #[test]
+    fn explain() {
+        let actual = ProjectPlan {
+            input: ProjectInputPlan::Source(table("Player")),
+            projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
+        };
+        let expected = r"
+• project
+│ columns: *
+│
+└── • scan Player
+      access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = ProjectPlan {
+            input: ProjectInputPlan::InnerJoin(Box::new(InnerJoinPlan {
+                input: InnerJoinInputPlan::NestedLoop(NestedLoopJoinPlan {
+                    input: NestedLoopJoinInputPlan::Source(table("A")),
+                    right: table("B"),
+                }),
+            })),
+            projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
+        };
+        let expected = r"
+• project
+│ columns: *
+│
+└── • nested-loop join (inner)
+    ├── • scan A
+    │     access: full scan
+    │
+    └── • scan B
+          access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = ProjectPlan {
+            input: ProjectInputPlan::LeftOuterJoin(Box::new(LeftOuterJoinPlan {
+                input: LeftOuterJoinInputPlan::NestedLoop(NestedLoopJoinPlan {
+                    input: NestedLoopJoinInputPlan::Source(table("A")),
+                    right: table("B"),
+                }),
+            })),
+            projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
+        };
+        let expected = r"
+• project
+│ columns: *
+│
+└── • nested-loop join (left outer)
+    ├── • scan A
+    │     access: full scan
+    │
+    └── • scan B
+          access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = ProjectPlan {
+            input: ProjectInputPlan::Filter(FilterPlan {
+                input: FilterInputPlan::Source(table("Player")),
+                expr: ExprPlan::Identifier("active".to_owned()),
+            }),
+            projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
+        };
+        let expected = r"
+• project
+│ columns: *
+│
+└── • filter
+    │ expression: active
+    │
+    └── • scan Player
+          access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = ProjectPlan {
+            input: ProjectInputPlan::Aggregation(AggregationPlan {
+                input: AggregationInputPlan::Source(table("Player")),
+                group_by: vec![ExprPlan::Identifier("team_id".to_owned())],
+                aggregate_slots: Vec::new(),
+            }),
+            projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
+        };
+        let expected = r"
+• project
+│ columns: *
+│
+└── • aggregate
+    │ group by: team_id
+    │
+    └── • scan Player
+          access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = ProjectPlan {
+            input: ProjectInputPlan::Having(HavingPlan {
+                input: AggregationPlan {
+                    input: AggregationInputPlan::Source(table("Player")),
+                    group_by: Vec::new(),
+                    aggregate_slots: Vec::new(),
+                },
+                expr: ExprPlan::Value(Value::Bool(true)),
+            }),
+            projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
+        };
+        let expected = r"
+• project
+│ columns: *
+│
+└── • having
+    │ expression: TRUE
+    │
+    └── • aggregate
+        └── • scan Player
+              access: full scan
+";
+        test_explain(&actual, expected);
     }
 }

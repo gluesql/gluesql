@@ -30,8 +30,8 @@ use {
         Assignment as SqlAssignment, AssignmentTarget as SqlAssignmentTarget,
         CommentDef as SqlCommentDef, CreateFunctionBody as SqlCreateFunctionBody,
         CreateIndex as SqlCreateIndex, CreateTable as SqlCreateTable, Delete as SqlDelete,
-        FromTable as SqlFromTable, Ident as SqlIdent, Insert as SqlInsert,
-        ObjectName as SqlObjectName, ObjectType as SqlObjectType,
+        DescribeAlias as SqlDescribeAlias, FromTable as SqlFromTable, Ident as SqlIdent,
+        Insert as SqlInsert, ObjectName as SqlObjectName, ObjectType as SqlObjectType,
         ReferentialAction as SqlReferentialAction, Statement as SqlStatement,
         TableConstraint as SqlTableConstraint, TableFactor, TableWithJoins,
     },
@@ -63,6 +63,18 @@ pub fn translate_with_params(
     params: &[ParamLiteral],
 ) -> Result<Statement> {
     match sql_statement {
+        SqlStatement::Explain {
+            describe_alias: SqlDescribeAlias::Explain,
+            analyze: false,
+            verbose: false,
+            query_plan: false,
+            statement,
+            format: None,
+            options: None,
+        } => match statement.as_ref() {
+            SqlStatement::Query(query) => translate_query(query, params).map(Statement::Explain),
+            _ => Err(TranslateError::UnsupportedStatement(sql_statement.to_string()).into()),
+        },
         SqlStatement::Query(query) => translate_query(query, params).map(Statement::Query),
         SqlStatement::Insert(SqlInsert {
             table_name,
@@ -660,6 +672,27 @@ mod tests {
             "INSERT INTO Foo DEFAULT VALUES",
             TranslateError::DefaultValuesOnInsertNotSupported("Foo".to_owned()),
         );
+    }
+
+    #[test]
+    fn explain_query() {
+        let parsed = parse("EXPLAIN SELECT * FROM Foo").unwrap();
+        let actual = translate(&parsed[0]).unwrap();
+        assert!(matches!(actual, Statement::Explain(_)));
+
+        for sql in [
+            "EXPLAIN ANALYZE SELECT * FROM Foo",
+            "EXPLAIN VERBOSE SELECT * FROM Foo",
+            "EXPLAIN QUERY PLAN SELECT * FROM Foo",
+            "EXPLAIN DELETE FROM Foo",
+        ] {
+            assert!(matches!(
+                parse(sql).and_then(|parsed| translate(&parsed[0])),
+                Err(crate::result::Error::Translate(
+                    TranslateError::UnsupportedStatement(_)
+                ))
+            ));
+        }
     }
 
     #[test]

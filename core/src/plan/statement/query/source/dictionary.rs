@@ -1,6 +1,9 @@
 use {
     super::TableAliasPlan,
-    crate::ast,
+    crate::{
+        ast,
+        plan::explain::{Explain, ExplainContext, ExplainNode},
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -8,4 +11,37 @@ use {
 pub struct DictionarySourcePlan {
     pub dictionary: ast::Dictionary,
     pub alias: TableAliasPlan,
+}
+
+impl Explain for DictionarySourcePlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, _context: &mut ExplainContext) -> ExplainNode {
+        ExplainNode::new(format!("dictionary {}", self.alias.name))
+            .with_property("source", &self.dictionary)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::{DictionarySourcePlan, TableAliasPlan},
+        crate::{ast::Dictionary, plan::explain::test_explain},
+    };
+
+    #[test]
+    fn explain() {
+        let actual = DictionarySourcePlan {
+            dictionary: Dictionary::GlueTables,
+            alias: TableAliasPlan {
+                name: "tables".to_owned(),
+                columns: Vec::new(),
+            },
+        };
+        let expected = r"
+• dictionary tables
+  source: GLUE_TABLES
+";
+        test_explain(&actual, expected);
+    }
 }
