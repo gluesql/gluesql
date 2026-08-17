@@ -1,10 +1,9 @@
 use {
     self::{query::transform_query, validate::validate_statement},
-    super::expr::visit_mut_expr,
     crate::{
         ast::Literal,
         data::{SCHEMALESS_DOC_COLUMN, Schema},
-        plan::{ExprPlan, StatementPlan},
+        plan::{ExprPlan, StatementPlan, visit_mut_expr},
         result::Result,
     },
     std::{collections::HashMap, hash::BuildHasher},

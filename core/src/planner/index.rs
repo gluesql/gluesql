@@ -11,7 +11,7 @@ use {
             AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
             FilterPlan, IndexPredicatePlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
             OrderByExprPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SelectOrderByPlan,
-            SourcePlan, StatementPlan, TableAccessPlan, plan_scalar_expr,
+            SourcePlan, StatementPlan, TableAccessPlan, plan_scalar_expr, visit_mut_expr,
         },
     },
     std::{collections::HashMap, hash::BuildHasher, rc::Rc},
@@ -603,7 +603,7 @@ impl<'a> Indexes<'a> {
 
 fn equivalent(left: &ExprPlan, right: &ExprPlan) -> bool {
     fn normalize(mut expr: ExprPlan) -> ExprPlan {
-        crate::planner::expr::visit_mut_expr(&mut expr, &mut |expr| {
+        visit_mut_expr(&mut expr, &mut |expr| {
             if let ExprPlan::ResolvedColumn { column, .. } = expr {
                 *expr = ExprPlan::UnplannedReference {
                     qualifier: None,

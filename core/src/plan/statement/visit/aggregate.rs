@@ -57,7 +57,6 @@ mod tests {
         crate::{
             parse_sql::parse_expr,
             plan::ExprPlan,
-            planner::PlannerError,
             translate::{NO_PARAMS, translate_expr},
         },
     };
@@ -100,8 +99,8 @@ mod tests {
         let parsed = parse_expr("SUM(x)").expect("SUM(x)");
         let expr = ExprPlan::from(translate_expr(&parsed, NO_PARAMS).expect("SUM(x)"));
 
-        let result = try_visit_expr(&expr, &mut |_| Err(PlannerError::Unreachable));
+        let result = try_visit_expr(&expr, &mut |_| Err(()));
 
-        assert_eq!(result, Err(PlannerError::Unreachable));
+        assert_eq!(result, Err(()));
     }
 }

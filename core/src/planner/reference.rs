@@ -1,5 +1,4 @@
 use {
-    super::expr::visit_mut_expr,
     crate::{
         ast::Dictionary,
         data::{SCHEMALESS_DOC_COLUMN, Schema},
@@ -8,7 +7,7 @@ use {
             HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan, JoinConditionInputPlan,
             LeftOuterJoinInputPlan, LeftOuterJoinPlan, LimitInputPlan, NestedLoopJoinInputPlan,
             NestedLoopJoinPlan, OffsetInputPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan,
-            QueryPlan, SelectItemPlan, SourcePlan, StatementPlan, ValuesPlan,
+            QueryPlan, SelectItemPlan, SourcePlan, StatementPlan, ValuesPlan, visit_mut_expr,
         },
         planner::PlannerError,
         result::Result,

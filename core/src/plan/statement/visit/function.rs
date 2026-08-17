@@ -249,7 +249,6 @@ mod tests {
         crate::{
             parse_sql::parse_expr,
             plan::ExprPlan,
-            planner::PlannerError,
             translate::{NO_PARAMS, translate_expr},
         },
     };
@@ -387,10 +386,10 @@ mod tests {
             ExprPlan::UnplannedReference {
                 qualifier: None,
                 name: ident,
-            } if ident == "b" => Err(PlannerError::Unreachable),
+            } if ident == "b" => Err(()),
             _ => Ok(()),
         });
 
-        assert_eq!(result, Err(PlannerError::Unreachable));
+        assert_eq!(result, Err(()));
     }
 }
