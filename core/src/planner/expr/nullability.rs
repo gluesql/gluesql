@@ -31,6 +31,11 @@ pub fn may_return_null(expr: &ExprPlan) -> bool {
             expr: left,
             pattern: right,
             ..
+        }
+        | ExprPlan::Regex {
+            expr: left,
+            pattern: right,
+            ..
         } => may_return_null(left) || may_return_null(right),
         ExprPlan::Between {
             expr, low, high, ..
@@ -234,6 +239,8 @@ mod tests {
         test("1 BETWEEN 0 AND 2", false);
         test("'A' LIKE 'A%'", false);
         test("'A' ILIKE 'A%'", false);
+        test("'A' ~ 'A'", false);
+        test("NULL ~ 'A'", true);
         test("1 IN (1, 2, 3)", false);
         test("('A' IS NULL)", false);
         test("CASE 1 WHEN 1 THEN 2 ELSE 3 END", false);

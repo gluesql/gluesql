@@ -23,6 +23,7 @@ mod concat;
 pub(super) mod convert;
 mod eq;
 mod like;
+mod regex;
 mod unary_op;
 
 #[derive(Clone, Debug, PartialEq)]
