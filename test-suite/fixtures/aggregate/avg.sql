@@ -16,9 +16,9 @@ INSERT INTO Item (id, quantity, age, total) VALUES
 
 SELECT AVG(age) FROM Item
 -- @expect:
--- | AVG(age) |
--- | -------- |
--- | NULL     |
+-- | AVG(age): F64   |
+-- | --------------- |
+-- | 34.666666666667 |
 
 SELECT AVG(id), AVG(quantity) FROM Item
 -- @expect:
@@ -34,6 +34,6 @@ SELECT AVG(DISTINCT id) FROM Item
 
 SELECT AVG(DISTINCT age) FROM Item
 -- @expect:
--- | AVG(DISTINCT age) |
--- | ----------------- |
--- | NULL              |
+-- | AVG(DISTINCT age): F64 |
+-- | ---------------------- |
+-- | 34.666666666667        |

@@ -391,6 +391,13 @@ impl<'a, T: GStore> State<'a, T> {
             }
         };
 
+        // SQL eliminates NULL before applying a set function, so every aggregate but
+        // COUNT ignores NULL inputs entirely. Groups that see nothing but NULL keep an
+        // empty slot and fall back to `empty_value` on export.
+        if value.is_null() && !matches!(aggregate.func, AggregateFunctionPlan::Count(_)) {
+            return Ok(());
+        }
+
         let group = self
             .groups
             .get_mut(group_index)
