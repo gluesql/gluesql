@@ -96,17 +96,6 @@ impl IndexOperator {
     }
 }
 
-/// Renders the `PostgreSQL` regular-expression operator matching the given flags.
-#[must_use]
-pub fn regex_operator(negated: bool, case_sensitive: bool) -> &'static str {
-    match (negated, case_sensitive) {
-        (false, true) => "~",
-        (false, false) => "~*",
-        (true, true) => "!~",
-        (true, false) => "!~*",
-    }
-}
-
 impl From<IndexOperator> for BinaryOperator {
     fn from(index_op: IndexOperator) -> Self {
         match index_op {

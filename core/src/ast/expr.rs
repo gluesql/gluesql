@@ -1,7 +1,7 @@
 use {
     super::{
         Aggregate, BinaryOperator, DataType, DateTimeField, Function, Literal, Query, ToSql,
-        ToSqlUnquoted, UnaryOperator, regex_operator,
+        ToSqlUnquoted, UnaryOperator,
     },
     crate::data::Value,
     serde::{Deserialize, Serialize},
@@ -194,7 +194,12 @@ impl Expr {
                 pattern,
                 case_sensitive,
             } => {
-                let op = regex_operator(*negated, *case_sensitive);
+                let op = match (*negated, *case_sensitive) {
+                    (false, true) => "~",
+                    (false, false) => "~*",
+                    (true, true) => "!~",
+                    (true, false) => "!~*",
+                };
 
                 format!(
                     "{} {op} {}",

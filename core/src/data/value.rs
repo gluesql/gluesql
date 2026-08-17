@@ -1,7 +1,7 @@
 use {
     super::{Interval, Key, StringExt},
     crate::{
-        ast::{DataType, DateTimeField, regex_operator},
+        ast::{DataType, DateTimeField},
         data::{Tribool, point::Point},
         result::Result,
     },
@@ -724,7 +724,13 @@ impl Value {
             _ => Err(ValueError::RegexOnNonString {
                 base: self.clone(),
                 pattern: other.clone(),
-                operator: regex_operator(negated, case_sensitive).to_owned(),
+                operator: match (negated, case_sensitive) {
+                    (false, true) => "~",
+                    (false, false) => "~*",
+                    (true, true) => "!~",
+                    (true, false) => "!~*",
+                }
+                .to_owned(),
             }
             .into()),
         }
