@@ -4,23 +4,19 @@ pub fn explain(query: &QueryPlan) -> Vec<String> {
     explain_lines(query)
 }
 
+fn explain_lines(explainable: &impl Explain<Output = ExplainNode>) -> Vec<String> {
+    let mut context = ExplainContext::default();
+    let root = explainable.explain(&mut context);
+    let root = context.with_subqueries(root);
+    let mut lines = Vec::new();
+    render_root(&root, &mut lines);
+    lines
+}
+
 pub(crate) trait Explain {
     type Output;
 
     fn explain(&self, context: &mut ExplainContext) -> Self::Output;
-}
-
-#[derive(Default)]
-pub(crate) struct ExplainContext {
-    next_subquery_id: usize,
-    subqueries: Vec<ExplainNode>,
-}
-
-#[derive(Clone, Copy)]
-pub(crate) enum ExplainSubqueryMode {
-    OneRow,
-    AllRows,
-    Exists,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -80,6 +76,36 @@ impl ExplainNode {
         self.children.extend(children);
         self
     }
+
+    fn title(&self) -> String {
+        match &self.annotation {
+            Some(annotation) => format!("{} ({annotation})", self.name),
+            None => self.name.clone(),
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(crate) enum ExplainSubqueryMode {
+    OneRow,
+    AllRows,
+    Exists,
+}
+
+impl Display for ExplainSubqueryMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::OneRow => "one row",
+            Self::AllRows => "all rows",
+            Self::Exists => "exists",
+        })
+    }
+}
+
+#[derive(Default)]
+pub(crate) struct ExplainContext {
+    next_subquery_id: usize,
+    subqueries: Vec<ExplainNode>,
 }
 
 impl ExplainContext {
@@ -115,25 +141,6 @@ impl ExplainContext {
 
         ExplainNode::new("root").with_children(std::iter::once(main).chain(self.subqueries))
     }
-}
-
-impl Display for ExplainSubqueryMode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            Self::OneRow => "one row",
-            Self::AllRows => "all rows",
-            Self::Exists => "exists",
-        })
-    }
-}
-
-fn explain_lines(explainable: &impl Explain<Output = ExplainNode>) -> Vec<String> {
-    let mut context = ExplainContext::default();
-    let root = explainable.explain(&mut context);
-    let root = context.with_subqueries(root);
-    let mut lines = Vec::new();
-    render_root(&root, &mut lines);
-    lines
 }
 
 fn render_root(node: &ExplainNode, lines: &mut Vec<String>) {
@@ -198,15 +205,6 @@ fn render_child(node: &ExplainNode, prefix: &str, last: bool, lines: &mut Vec<St
         lines.push(format!("{child_prefix}│"));
     }
     render_children(node, &child_prefix, lines);
-}
-
-impl ExplainNode {
-    fn title(&self) -> String {
-        match &self.annotation {
-            Some(annotation) => format!("{} ({annotation})", self.name),
-            None => self.name.clone(),
-        }
-    }
 }
 
 #[cfg(test)]
@@ -352,77 +350,6 @@ LIMIT 10 OFFSET 5
     }
 
     #[test]
-    fn explains_expression_subqueries_as_referenced_plans() {
-        assert_eq!(
-            explain_sql(
-                r"
-CREATE TABLE Player (id INT);
-CREATE TABLE Badge (player_id INT);
-",
-                r"
-EXPLAIN
-SELECT id, (SELECT COUNT(*) AS total FROM Badge) AS badge_count
-FROM Player
-WHERE id IN (SELECT player_id FROM Badge)
-AND EXISTS (
-    SELECT *
-    FROM Badge
-    WHERE Badge.player_id = Player.id
-)
-",
-            ),
-            r"
-• root
-├── • project
-│   │ columns: id, @S1 AS badge_count
-│   │
-│   └── • filter
-│       │ expression: id IN (@S2) AND EXISTS (@S3)
-│       │
-│       └── • scan Player
-│             access: full scan
-│
-├── • subquery
-│   │ id: @S1
-│   │ exec mode: one row
-│   │
-│   └── • project
-│       │ columns: COUNT(*) AS total
-│       │
-│       └── • aggregate
-│           │ aggregates: COUNT(*)
-│           │
-│           └── • scan Badge
-│                 access: full scan
-│
-├── • subquery
-│   │ id: @S2
-│   │ exec mode: all rows
-│   │
-│   └── • project
-│       │ columns: player_id
-│       │
-│       └── • scan Badge
-│             access: full scan
-│
-└── • subquery
-    │ id: @S3
-    │ exec mode: exists
-    │
-    └── • project
-        │ columns: *
-        │
-        └── • filter
-            │ expression: Badge.player_id = Player.id
-            │
-            └── • scan Badge
-                  access: full scan
-"
-            .trim()
-        );
-    }
-
-    #[test]
     fn explains_distinct_grouping_and_having() {
         assert_eq!(
             explain_sql(
@@ -517,36 +444,6 @@ LIMIT 1 OFFSET 1
     }
 
     #[test]
-    fn explains_subquery_in_values() {
-        assert_eq!(
-            explain_sql(
-                "CREATE TABLE Player (id INT);",
-                "EXPLAIN VALUES ((SELECT id FROM Player LIMIT 1))",
-            ),
-            r"
-• root
-├── • values
-│     size: 1 columns, 1 rows
-│     expressions: (@S1)
-│
-└── • subquery
-    │ id: @S1
-    │ exec mode: one row
-    │
-    └── • limit
-        │ count: 1
-        │
-        └── • project
-            │ columns: id
-            │
-            └── • scan Player
-                  access: full scan
-"
-            .trim()
-        );
-    }
-
-    #[test]
     fn explains_series_source() {
         assert_eq!(
             explain_sql("", "EXPLAIN SELECT * FROM SERIES(3) AS numbers"),
@@ -571,6 +468,107 @@ LIMIT 1 OFFSET 1
 │
 └── • dictionary GLUE_TABLES
       source: GLUE_TABLES
+"
+            .trim()
+        );
+    }
+
+    #[test]
+    fn explains_expression_subqueries_as_referenced_plans() {
+        assert_eq!(
+            explain_sql(
+                r"
+CREATE TABLE Player (id INT);
+CREATE TABLE Badge (player_id INT);
+",
+                r"
+EXPLAIN
+SELECT id, (SELECT COUNT(*) AS total FROM Badge) AS badge_count
+FROM Player
+WHERE id IN (SELECT player_id FROM Badge)
+AND EXISTS (
+    SELECT *
+    FROM Badge
+    WHERE Badge.player_id = Player.id
+)
+",
+            ),
+            r"
+• root
+├── • project
+│   │ columns: id, @S1 AS badge_count
+│   │
+│   └── • filter
+│       │ expression: id IN (@S2) AND EXISTS (@S3)
+│       │
+│       └── • scan Player
+│             access: full scan
+│
+├── • subquery
+│   │ id: @S1
+│   │ exec mode: one row
+│   │
+│   └── • project
+│       │ columns: COUNT(*) AS total
+│       │
+│       └── • aggregate
+│           │ aggregates: COUNT(*)
+│           │
+│           └── • scan Badge
+│                 access: full scan
+│
+├── • subquery
+│   │ id: @S2
+│   │ exec mode: all rows
+│   │
+│   └── • project
+│       │ columns: player_id
+│       │
+│       └── • scan Badge
+│             access: full scan
+│
+└── • subquery
+    │ id: @S3
+    │ exec mode: exists
+    │
+    └── • project
+        │ columns: *
+        │
+        └── • filter
+            │ expression: Badge.player_id = Player.id
+            │
+            └── • scan Badge
+                  access: full scan
+"
+            .trim()
+        );
+    }
+
+    #[test]
+    fn explains_subquery_in_values() {
+        assert_eq!(
+            explain_sql(
+                "CREATE TABLE Player (id INT);",
+                "EXPLAIN VALUES ((SELECT id FROM Player LIMIT 1))",
+            ),
+            r"
+• root
+├── • values
+│     size: 1 columns, 1 rows
+│     expressions: (@S1)
+│
+└── • subquery
+    │ id: @S1
+    │ exec mode: one row
+    │
+    └── • limit
+        │ count: 1
+        │
+        └── • project
+            │ columns: id
+            │
+            └── • scan Player
+                  access: full scan
 "
             .trim()
         );
