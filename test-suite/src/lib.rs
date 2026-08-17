@@ -405,6 +405,7 @@ macro_rules! generate_index_tests {
         sql_case!(index::nested);
         sql_case!(index::null);
         sql_case!(index::expr);
+        sql_case!(index::join);
         sql_case!(index::value);
         sql_case!(index::order_by);
         sql_case!(index::order_by::multi);

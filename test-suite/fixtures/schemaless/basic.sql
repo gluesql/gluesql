@@ -101,6 +101,22 @@ WHERE flag IS NOT NULL;
 -- | -------------- | ---------------- | -------------- |
 -- | 1001           | "Beam"           | 3000           |
 
+-- @name: RIGHT JOIN NULL-extends a schemaless left relation through its _doc column
+SELECT * FROM Player RIGHT JOIN Item ON Player.id = Item.id;
+-- @expect:
+-- | _doc: Map | _doc: Map                                                                                  |
+-- | --------- | ------------------------------------------------------------------------------------------ |
+-- | NULL      | {"dex":324,"id":101,"name":"Test 001","new_field":"Hello","obj":{"cost":3000},"rare":true} |
+
+-- @name: the preserved schemaless right relation still resolves its own columns
+SELECT Item.name AS item_name
+FROM Player
+RIGHT JOIN Item ON Player.id = Item.id;
+-- @expect:
+-- | item_name: Str |
+-- | -------------- |
+-- | "Test 001"     |
+
 CREATE TABLE ItemName AS SELECT name, dex FROM Item
 -- @expect: ok
 

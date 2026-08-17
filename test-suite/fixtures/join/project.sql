@@ -77,6 +77,20 @@ LEFT JOIN Item
 -- | 4       | "Berry"   | 103     | 9             | 4              |
 -- | 5       | "Hwan"    | NULL    | NULL          | NULL           |
 
+SELECT p.id, i.id
+FROM Item i
+RIGHT JOIN Player p
+    ON p.id = i.player_id
+ORDER BY p.id
+-- @expect:
+-- | id: I64 | id: I64 |
+-- | ------- | ------- |
+-- | 1       | 101     |
+-- | 2       | 102     |
+-- | 3       | NULL    |
+-- | 4       | 103     |
+-- | 5       | NULL    |
+
 CREATE TABLE Users (id INTEGER, name TEXT);
 -- @expect: ok
 

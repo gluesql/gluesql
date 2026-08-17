@@ -265,8 +265,154 @@ SELECT * FROM Player p1 LEFT JOIN Player p2 ON 1 = 1
 SELECT * FROM Item INNER JOIN Item i2 ON i2.id IN (101, 103);
 -- @expect: count 30
 
+CREATE TABLE Trade (id INTEGER, item_id INTEGER, buyer_id INTEGER);
+-- @expect: ok
+
+INSERT INTO Trade VALUES (1, 101, 2), (2, 999, 3), (3, 102, 99), (4, 103, 1);
+-- @expect: ok
+
+-- @name: RIGHT JOIN preserves the right relation
+SELECT * FROM Player RIGHT JOIN Item ON Player.id = Item.player_id;
+-- @expect: count 15
+
+-- @name: RIGHT JOIN keeps right rows that match nothing
+SELECT * FROM Item RIGHT JOIN Player ON Player.id = Item.player_id;
+-- @expect: count 16
+
+-- @name: non-equality condition joins through a nested loop
+SELECT * FROM Item RIGHT JOIN Player ON Player.id != Item.player_id;
+-- @expect: count 60
+
+-- @name: an always-false condition leaves every right row unmatched
+SELECT * FROM Item RIGHT JOIN Player ON Item.quantity > 100;
+-- @expect: count 5
+
+-- @name: an empty left source still yields every right row
+SELECT * FROM (SELECT * FROM Player WHERE FALSE) e RIGHT JOIN Item ON e.id = Item.player_id;
+-- @expect: count 15
+
+-- @name: aggregates count an unmatched right row as zero
+SELECT Player.id, COUNT(Item.id) AS cnt
+FROM Item RIGHT JOIN Player ON Player.id = Item.player_id
+GROUP BY Player.id
+ORDER BY Player.id;
+-- @expect:
+-- | id: I64 | cnt: I64 |
+-- | ------- | -------- |
+-- | 1       | 7        |
+-- | 2       | 2        |
+-- | 3       | 4        |
+-- | 4       | 0        |
+-- | 5       | 2        |
+
+-- @name: WHERE filters the preserved relation after the join
+SELECT * FROM Item RIGHT JOIN Player ON Player.id = Item.player_id WHERE Player.id = 1;
+-- @expect: count 7
+
+-- @name: RIGHT JOIN rejects a derived source correlated to the left relation
+SELECT * FROM Player RIGHT JOIN (SELECT * FROM Item WHERE Item.player_id = Player.id) AS i ON true;
+-- @expect: error Evaluate.CompoundIdentifierNotFound
+
+-- @name: an unmatched right row NULL-extends the whole accumulated prefix
+SELECT *
+FROM Player JOIN Item ON Item.player_id = Player.id
+RIGHT JOIN Trade ON Trade.item_id = Item.id
+WHERE Trade.id IN (1, 2)
+ORDER BY Trade.id;
+-- @expect:
+-- | id: I64 | name: Str | id: I64 | quantity: I64 | player_id: I64 | id: I64 | item_id: I64 | buyer_id: I64 |
+-- | ------- | --------- | ------- | ------------- | -------------- | ------- | ------------ | ------------- |
+-- | 1       | "Taehoon" | 101     | 1             | 1              | 1       | 101          | 2             |
+-- | NULL    | NULL      | NULL    | NULL          | NULL           | 2       | 999          | 3             |
+
+-- @name: a NULL-extended row flows into a later JOIN like any other row
+SELECT Trade.id, buyer.id
+FROM Player JOIN Item ON Item.player_id = Player.id
+RIGHT JOIN Trade ON Trade.item_id = Item.id
+JOIN Player buyer ON buyer.id = Trade.buyer_id
+ORDER BY Trade.id;
+-- @expect:
+-- | id: I64 | id: I64 |
+-- | ------- | ------- |
+-- | 1       | 2       |
+-- | 2       | 3       |
+-- | 4       | 1       |
+
+-- @name: chained RIGHT JOINs treat an already NULL-extended row as matched
+SELECT p.id, Item.id, Trade.id
+FROM (SELECT * FROM Player WHERE id <= 2) p
+RIGHT JOIN Item ON Item.player_id = p.id
+RIGHT JOIN Trade ON Trade.item_id = Item.id
+ORDER BY Trade.id;
+-- @expect:
+-- | id: I64 | id: I64 | id: I64 |
+-- | ------- | ------- | ------- |
+-- | 1       | 101     | 1       |
+-- | NULL    | NULL    | 2       |
+-- | 2       | 102     | 3       |
+-- | NULL    | 103     | 4       |
+
+-- @name: a derived source hides a RIGHT JOIN from the outer query
+SELECT d.pid, d.iid
+FROM (
+    SELECT Player.id AS pid, Item.id AS iid
+    FROM (SELECT * FROM Player WHERE id <= 2) Player
+    RIGHT JOIN Item ON Item.player_id = Player.id
+) d
+WHERE d.iid IN (101, 103)
+ORDER BY d.iid;
+-- @expect:
+-- | pid: I64 | iid: I64 |
+-- | -------- | -------- |
+-- | 1        | 101      |
+-- | NULL     | 103      |
+
+-- @name: an expression subquery hides a RIGHT JOIN from the outer query
+SELECT id FROM Player
+WHERE id IN (
+    SELECT Trade.buyer_id
+    FROM Item RIGHT JOIN Trade ON Trade.item_id = Item.id
+    WHERE Item.id IS NULL
+)
+ORDER BY id;
+-- @expect:
+-- | id: I64 |
+-- | ------- |
+-- | 3       |
+
+-- @name: an alias used twice on the left still NULL-extends both relations
+-- The plan lists the left relations as ["a", "a"], so pairing them with the executor's sources by
+-- alias would resolve both to Player and lose Item's columns. Pairing by position keeps them apart:
+-- every row below must carry 2 NULLs for Player and 3 for Item.
+SELECT * FROM Player a JOIN Item a ON TRUE RIGHT JOIN Trade t ON FALSE ORDER BY t.id;
+-- @expect:
+-- | id: I64 | name: Str | id: I64 | quantity: I64 | player_id: I64 | id: I64 | item_id: I64 | buyer_id: I64 |
+-- | ------- | --------- | ------- | ------------- | -------------- | ------- | ------------ | ------------- |
+-- | NULL    | NULL      | NULL    | NULL          | NULL           | 1       | 101          | 2             |
+-- | NULL    | NULL      | NULL    | NULL          | NULL           | 2       | 999          | 3             |
+-- | NULL    | NULL      | NULL    | NULL          | NULL           | 3       | 102          | 99            |
+-- | NULL    | NULL      | NULL    | NULL          | NULL           | 4       | 103          | 1             |
+
+-- @name: a select-item subquery hides a RIGHT JOIN from the outer query
+SELECT
+    Player.id,
+    (
+        SELECT COUNT(*)
+        FROM Item RIGHT JOIN Trade ON Trade.item_id = Item.id
+        WHERE Item.id IS NULL
+    ) AS orphan_trades
+FROM Player
+WHERE Player.id = 1;
+-- @expect:
+-- | id: I64 | orphan_trades: I64 |
+-- | ------- | ------------------ |
+-- | 1       | 1                  |
+
 DELETE FROM Player
 -- @expect: ok
 
 DELETE FROM Item
+-- @expect: ok
+
+DROP TABLE Trade
 -- @expect: ok

@@ -43,6 +43,17 @@ WHERE a.id = a2.id;
 -- | 1       |
 -- | 3       |
 
+-- @name: primary key lookup stays disabled when RIGHT JOIN can null-pad the base source
+SELECT a.id, a2.id
+FROM Allegro a
+RIGHT JOIN Allegro a2 ON a.id = a2.id
+WHERE a.id = 3;
+-- @expect-index: none
+-- @expect:
+-- | id: I64 | id: I64 |
+-- | ------- | ------- |
+-- | 3       | 3       |
+
 SELECT id FROM Allegro WHERE id IN (
     SELECT id FROM Allegro WHERE id = id
 );
