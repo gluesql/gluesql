@@ -3,10 +3,9 @@ use {
     gluesql_core::{
         data::schema::{Schema, SchemaIndex},
         error::{Error, IndexError, Result},
-        executor::RowContext,
         executor::evaluate_stateless,
+        executor::{RowContext, bind_scalar_references},
         plan::{ExprPlan, plan_scalar_expr},
-        planner::plan_scalar_references,
         prelude::Value,
     },
     sled::{
@@ -27,7 +26,7 @@ impl PlannedIndex {
         let SchemaIndex { name, expr, .. } = index;
 
         let mut expr = plan_scalar_expr(expr);
-        plan_scalar_references(table_name, &mut expr);
+        bind_scalar_references(table_name, &mut expr);
 
         Self { name, expr }
     }

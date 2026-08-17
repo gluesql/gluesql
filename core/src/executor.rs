@@ -7,6 +7,7 @@ mod fetch;
 mod filter;
 mod insert;
 mod query;
+mod scalar;
 mod select;
 mod update;
 mod validate;
@@ -20,6 +21,7 @@ pub use {
     fetch::FetchError,
     insert::InsertError,
     query::QueryError,
+    scalar::bind_scalar_references,
     update::UpdateError,
     validate::ValidateError,
 };

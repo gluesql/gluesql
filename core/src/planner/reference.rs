@@ -52,21 +52,6 @@ pub fn plan<S: BuildHasher>(
     Ok(statement)
 }
 
-pub fn plan_scalar(alias: &str, expr: &mut ExprPlan) {
-    visit_mut_expr(expr, &mut |expr| {
-        if let ExprPlan::UnplannedReference { qualifier, name } = expr
-            && qualifier
-                .as_deref()
-                .is_none_or(|qualifier| qualifier == alias)
-        {
-            *expr = ExprPlan::ResolvedColumn {
-                alias: alias.to_owned(),
-                column: name.clone(),
-            };
-        }
-    });
-}
-
 fn plan_query<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
     query: &mut QueryPlan,

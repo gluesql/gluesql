@@ -3,8 +3,8 @@ use {
     crate::{
         ast::{ColumnDef, OrderByExpr},
         data::Schema,
+        executor::bind_scalar_references,
         plan::{ExprPlan, FunctionExprPlan, plan_scalar_expr},
-        planner::plan_scalar_references,
         result::Result,
         store::{GStore, GStoreMut},
     },
@@ -17,7 +17,7 @@ pub fn create_index<T: GStore + GStoreMut>(
     column: &OrderByExpr,
 ) -> Result<()> {
     let mut expr = plan_scalar_expr(column.expr.clone());
-    plan_scalar_references(table_name, &mut expr);
+    bind_scalar_references(table_name, &mut expr);
     let Schema { column_defs, .. } = storage
         .fetch_schema(table_name)?
         .ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
