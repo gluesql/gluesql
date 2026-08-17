@@ -3,6 +3,7 @@ use {
     crate::{
         ast::{ColumnDef, OrderByExpr},
         data::Schema,
+        executor::bind_scalar_references,
         plan::{ExprPlan, FunctionExprPlan, plan_scalar_expr},
         result::Result,
         store::{GStore, GStoreMut},
@@ -15,7 +16,8 @@ pub fn create_index<T: GStore + GStoreMut>(
     index_name: &str,
     column: &OrderByExpr,
 ) -> Result<()> {
-    let expr = plan_scalar_expr(column.expr.clone());
+    let mut expr = plan_scalar_expr(column.expr.clone());
+    bind_scalar_references(table_name, &mut expr);
     let Schema { column_defs, .. } = storage
         .fetch_schema(table_name)?
         .ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
@@ -39,7 +41,13 @@ fn validate_index_expr(columns: &[String], expr: &ExprPlan) -> (bool, bool) {
     let validate = |expr| validate_index_expr(columns, expr);
 
     match expr {
-        ExprPlan::Identifier(ident) => (columns.iter().any(|column| column == ident), true),
+        ExprPlan::UnplannedReference {
+            qualifier: None,
+            name: ident,
+        }
+        | ExprPlan::ResolvedColumn { column: ident, .. } => {
+            (columns.iter().any(|column| column == ident), true)
+        }
         ExprPlan::Literal(_) | ExprPlan::TypedString { .. } => (true, false),
         ExprPlan::Nested(expr) | ExprPlan::UnaryOp { expr, .. } => validate(expr),
         ExprPlan::BinaryOp { left, right, .. } => {
@@ -53,5 +61,20 @@ fn validate_index_expr(columns: &[String], expr: &ExprPlan) -> (bool, bool) {
             _ => (false, false),
         },
         _ => (false, false),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_index_expr;
+    use crate::plan::ExprPlan;
+
+    #[test]
+    fn validates_unqualified_reference() {
+        let expr = ExprPlan::UnplannedReference {
+            qualifier: None,
+            name: "id".to_owned(),
+        };
+        assert_eq!(validate_index_expr(&["id".to_owned()], &expr), (true, true));
     }
 }

@@ -3,8 +3,7 @@ use {
     gluesql_core::{
         data::schema::{Schema, SchemaIndex},
         error::{Error, IndexError, Result},
-        executor::RowContext,
-        executor::evaluate_stateless,
+        executor::{RowContext, bind_scalar_references, evaluate_stateless},
         plan::{ExprPlan, plan_scalar_expr},
         prelude::Value,
     },
@@ -22,13 +21,13 @@ pub(super) struct PlannedIndex {
 }
 
 impl PlannedIndex {
-    pub(super) fn new(index: SchemaIndex) -> Self {
+    pub(super) fn new(table_name: &str, index: SchemaIndex) -> Self {
         let SchemaIndex { name, expr, .. } = index;
 
-        Self {
-            name,
-            expr: plan_scalar_expr(expr),
-        }
+        let mut expr = plan_scalar_expr(expr);
+        bind_scalar_references(table_name, &mut expr);
+
+        Self { name, expr }
     }
 }
 
@@ -56,7 +55,11 @@ impl<'a> IndexSync<'a> {
                 .collect::<Vec<_>>()
         });
 
-        let indexes = indexes.iter().cloned().map(PlannedIndex::new).collect();
+        let indexes = indexes
+            .iter()
+            .cloned()
+            .map(|index| PlannedIndex::new(table_name, index))
+            .collect();
 
         Self {
             tree,
@@ -90,7 +93,10 @@ impl<'a> IndexSync<'a> {
                 .collect::<Vec<_>>()
         });
 
-        let indexes = indexes.into_iter().map(PlannedIndex::new).collect();
+        let indexes = indexes
+            .into_iter()
+            .map(|index| PlannedIndex::new(table_name, index))
+            .collect();
 
         Ok(Self {
             tree,
@@ -285,6 +291,7 @@ fn evaluate_index_key(
     row: &[Value],
 ) -> ConflictableTransactionResult<Vec<u8>, Error> {
     let context = Some(RowContext::RefVecData {
+        table_alias: Some(table_name),
         columns: columns.unwrap_or(&[]),
         values: row,
     });

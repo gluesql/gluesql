@@ -18,12 +18,16 @@ use {
 pub fn check_expr(context: Option<Rc<Context<'_>>>, expr: &ExprPlan) -> bool {
     match expr.into() {
         PlanExpr::None => true,
-        PlanExpr::Identifier(ident) => context.is_some_and(|c| c.contains_column(ident)),
-        PlanExpr::CompoundIdentifier { alias, ident } => {
-            let table_alias = &alias;
-            let column = &ident;
-
-            context.is_some_and(|c| c.contains_aliased_column(table_alias, column))
+        PlanExpr::UnplannedReference {
+            qualifier: None,
+            name,
+        } => context.is_some_and(|c| c.contains_column(name)),
+        PlanExpr::UnplannedReference {
+            qualifier: Some(alias),
+            name,
+        } => context.is_some_and(|c| c.contains_aliased_column(alias, name)),
+        PlanExpr::ResolvedColumn { alias, column } => {
+            context.is_some_and(|c| c.contains_aliased_column(alias, column))
         }
         PlanExpr::Expr(expr) => check_expr(context, expr),
         PlanExpr::TwoExprs(expr, expr2) => {

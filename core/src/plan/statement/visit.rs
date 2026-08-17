@@ -2,7 +2,7 @@ mod aggregate;
 mod function;
 
 use {
-    crate::{plan::ExprPlan, planner::PlannerError},
+    crate::plan::ExprPlan,
     aggregate::{try_visit_aggregate, visit_mut_aggregate},
     function::{try_visit_function, visit_mut_function},
 };
@@ -22,8 +22,8 @@ macro_rules! apply_try {
 macro_rules! visit_expr_children {
     ($expr:expr, $visit_expr:ident, $visit_function:ident, $visit_aggregate:ident, $f:expr, $apply:ident) => {
         match $expr {
-            ExprPlan::Identifier(_)
-            | ExprPlan::CompoundIdentifier { .. }
+            ExprPlan::UnplannedReference { .. }
+            | ExprPlan::ResolvedColumn { .. }
             | ExprPlan::Literal(_)
             | ExprPlan::Value(_)
             | ExprPlan::TypedString { .. }
@@ -111,9 +111,9 @@ where
     f(expr);
 }
 
-pub fn try_visit_expr<F>(expr: &ExprPlan, f: &mut F) -> Result<(), PlannerError>
+pub fn try_visit_expr<F, E>(expr: &ExprPlan, f: &mut F) -> Result<(), E>
 where
-    F: FnMut(&ExprPlan) -> Result<(), PlannerError>,
+    F: FnMut(&ExprPlan) -> Result<(), E>,
 {
     visit_expr_children!(
         expr,
@@ -143,8 +143,15 @@ mod tests {
         let mut expr = ExprPlan::from(translate_expr(&parsed, NO_PARAMS).expect(input));
 
         visit_mut_expr(&mut expr, &mut |e| {
-            if let ExprPlan::Identifier(ident) = e {
-                *e = ExprPlan::Identifier(format!("_{ident}"));
+            if let ExprPlan::UnplannedReference {
+                qualifier: None,
+                name,
+            } = e
+            {
+                *e = ExprPlan::UnplannedReference {
+                    qualifier: None,
+                    name: format!("_{name}"),
+                };
             }
         });
 
@@ -195,7 +202,10 @@ mod tests {
         let expr = ExprPlan::from(translate_expr(&parsed, NO_PARAMS).expect("a + b"));
 
         let result = try_visit_expr(&expr, &mut |expr| match expr {
-            ExprPlan::Identifier(ident) if ident == "b" => Err(PlannerError::Unreachable),
+            ExprPlan::UnplannedReference {
+                qualifier: None,
+                name: ident,
+            } if ident == "b" => Err(PlannerError::Unreachable),
             _ => Ok(()),
         });
 
@@ -209,7 +219,10 @@ mod tests {
         let mut visited = Vec::new();
 
         let result = try_visit_expr(&expr, &mut |expr| match expr {
-            ExprPlan::Identifier(ident) => {
+            ExprPlan::UnplannedReference {
+                qualifier: None,
+                name: ident,
+            } => {
                 visited.push(ident.clone());
                 if ident == "b" {
                     Err(PlannerError::Unreachable)

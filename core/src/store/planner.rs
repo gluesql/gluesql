@@ -3,8 +3,8 @@ use {
     crate::{
         plan::StatementPlan,
         planner::{
-            fetch_schema_map, plan_aggregate, plan_hash_join, plan_primary_key, plan_schemaless,
-            validate,
+            fetch_schema_map, plan_aggregate, plan_hash_join, plan_primary_key, plan_references,
+            plan_schemaless, validate,
         },
         result::Result,
     },
@@ -16,6 +16,7 @@ pub trait Planner: Store {
         validate(&schema_map, &statement)?;
 
         let statement = plan_schemaless(&schema_map, statement)?;
+        let statement = plan_references(&schema_map, statement)?;
         let statement = plan_primary_key(&schema_map, statement);
         let statement = plan_hash_join(&schema_map, statement);
         let statement = plan_aggregate(statement);

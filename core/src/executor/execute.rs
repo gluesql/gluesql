@@ -272,7 +272,10 @@ fn execute_inner<T: GStore + GStoreMut>(
                         },
                     })),
                     expr: ExprPlan::BinaryOp {
-                        left: Box::new(ExprPlan::Identifier("TABLE_NAME".to_owned())),
+                        left: Box::new(ExprPlan::ResolvedColumn {
+                            alias: "GLUE_INDEXES".to_owned(),
+                            column: "TABLE_NAME".to_owned(),
+                        }),
                         op: BinaryOperator::Eq,
                         right: Box::new(ExprPlan::Literal(Literal::QuotedString(
                             table_name.to_owned(),
@@ -296,7 +299,10 @@ fn execute_inner<T: GStore + GStoreMut>(
             Variable::Tables => {
                 let query = QueryPlan::Project(ProjectPlan {
                     projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
-                        expr: ExprPlan::Identifier("TABLE_NAME".to_owned()),
+                        expr: ExprPlan::ResolvedColumn {
+                            alias: "GLUE_TABLES".to_owned(),
+                            column: "TABLE_NAME".to_owned(),
+                        },
                         label: "TABLE_NAME".to_owned(),
                     }]),
                     input: ProjectInputPlan::Source(SourcePlan::Dictionary(DictionarySourcePlan {

@@ -127,8 +127,8 @@ SELECT Whatever.* FROM ProjectUser
 -- @json: "Whatever"
 
 SELECT noname FROM ProjectUser
--- @expect: error Evaluate.IdentifierNotFound
--- @json: "noname"
+-- @expect: error Evaluate.UnplannedReference
+-- @json: {"qualifier": null, "name": "noname"}
 
 SELECT (SELECT id FROM ProjectItem) as id FROM ProjectItem
 -- @expect: error Evaluate.MoreThanOneRowReturned

@@ -1,10 +1,9 @@
 use {
     self::{query::transform_query, validate::validate_statement},
-    super::expr::visit_mut_expr,
     crate::{
         ast::Literal,
         data::{SCHEMALESS_DOC_COLUMN, Schema},
-        plan::{ExprPlan, StatementPlan},
+        plan::{ExprPlan, StatementPlan, visit_mut_expr},
         result::Result,
     },
     std::{collections::HashMap, hash::BuildHasher},
@@ -142,20 +141,16 @@ fn transform_single_table_expr(
     table_is_schemaless: bool,
 ) {
     visit_mut_expr(expr, &mut |e| match e {
-        ExprPlan::Identifier(ident) => {
-            if table_is_schemaless {
+        ExprPlan::UnplannedReference {
+            qualifier,
+            name: ident,
+        } => {
+            let alias = qualifier.as_deref().unwrap_or(table_name);
+            if table_is_schemaless && alias == table_name && ident != SCHEMALESS_DOC_COLUMN {
                 *e = ExprPlan::ArrayIndex {
-                    obj: Box::new(ExprPlan::Identifier(SCHEMALESS_DOC_COLUMN.to_owned())),
-                    indexes: vec![ExprPlan::Literal(Literal::QuotedString(ident.to_owned()))],
-                };
-            }
-        }
-        ExprPlan::CompoundIdentifier { alias, ident } => {
-            if table_is_schemaless && alias == table_name {
-                *e = ExprPlan::ArrayIndex {
-                    obj: Box::new(ExprPlan::CompoundIdentifier {
+                    obj: Box::new(ExprPlan::ResolvedColumn {
                         alias: alias.to_owned(),
-                        ident: SCHEMALESS_DOC_COLUMN.to_owned(),
+                        column: SCHEMALESS_DOC_COLUMN.to_owned(),
                     }),
                     indexes: vec![ExprPlan::Literal(Literal::QuotedString(ident.to_owned()))],
                 };
@@ -187,7 +182,7 @@ mod tests {
             mock::{MockStorage, run},
             parse_sql::parse,
             plan::{ProjectionPlan, QueryPlan, StatementPlan},
-            planner::fetch_schema_map,
+            planner::{fetch_schema_map, reference},
             query_builder::{Build, table},
             result::Result,
             translate::translate,
@@ -209,7 +204,8 @@ mod tests {
 
     fn plan(storage: &MockStorage, statement: StatementPlan) -> Result<StatementPlan> {
         let schema_map = fetch_schema_map(storage, &statement)?;
-        plan_schemaless(&schema_map, statement)
+        let statement = plan_schemaless(&schema_map, statement)?;
+        reference::plan(&schema_map, statement)
     }
 
     #[test]
@@ -219,10 +215,15 @@ mod tests {
             let parsed = parse(actual).expect(actual).into_iter().next().unwrap();
             let statement = StatementPlan::from(translate(&parsed).unwrap());
             let schema_map = fetch_schema_map(&storage, &statement).unwrap();
-            let result = plan_schemaless(&schema_map, statement).unwrap();
+            let result = reference::plan(
+                &schema_map,
+                plan_schemaless(&schema_map, statement).unwrap(),
+            )
+            .unwrap();
 
             let expected_parsed = parse(expected).expect(expected).into_iter().next().unwrap();
             let mut expected_stmt = StatementPlan::from(translate(&expected_parsed).unwrap());
+            expected_stmt = reference::plan(&schema_map, expected_stmt).unwrap();
             if let (
                 StatementPlan::Query(QueryPlan::Project(actual_project)),
                 StatementPlan::Query(QueryPlan::Project(expected_project)),
@@ -308,6 +309,20 @@ mod tests {
         let actual = "SELECT Item.* FROM Player JOIN Item WHERE Player.id = Item.id";
         let expected = "SELECT Item.* FROM Player JOIN Item WHERE Player._doc['id'] = Item.id";
         test(actual, expected, "schemaful qualified wildcard join no-op");
+
+        let actual = r"
+            SELECT Player.id
+            FROM Player
+            JOIN Item ON id = Item.id
+            JOIN Team ON TRUE
+        ";
+        let expected = r"
+            SELECT Player._doc['id'] AS id
+            FROM Player
+            JOIN Item ON Player._doc['id'] = Item.id
+            JOIN Team ON TRUE
+        ";
+        test(actual, expected, "join on uses current schemaless scope");
 
         let actual = "SELECT Player.id FROM Player";
         let expected = "SELECT Player._doc['id'] as id FROM Player";
@@ -605,9 +620,10 @@ mod tests {
             &storage,
             statement("SELECT DISTINCT id FROM Player LIMIT 1"),
         );
-        let expected = Ok(statement(
-            "SELECT DISTINCT _doc['id'] AS id FROM Player LIMIT 1",
-        ));
+        let expected = plan(
+            &storage,
+            statement("SELECT DISTINCT _doc['id'] AS id FROM Player LIMIT 1"),
+        );
         assert_eq!(actual, expected);
     }
 
@@ -618,7 +634,7 @@ mod tests {
         macro_rules! assert_plan_eq {
             ($actual: ident, $expected: ident) => {
                 let actual = plan(&storage, statement($actual));
-                let expected = Ok(statement($expected));
+                let expected = plan(&storage, statement($expected));
                 assert_eq!(actual, expected);
             };
         }
@@ -673,7 +689,9 @@ mod tests {
         macro_rules! assert_plan_eq {
             ($actual: ident, $expected: ident) => {
                 let actual = plan(&storage, $actual.build().unwrap());
-                let expected = $expected.build();
+                let expected = $expected
+                    .build()
+                    .and_then(|statement| plan(&storage, statement));
                 assert_eq!(actual, expected);
             };
         }
