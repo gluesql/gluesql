@@ -9,8 +9,9 @@ use {
             FilterPlan, HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan,
             JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
-            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SourcePlan,
-            StatementPlan, TableAccessPlan,
+            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan,
+            RightOuterJoinInputPlan, RightOuterJoinPlan, SourcePlan, StatementPlan,
+            TableAccessPlan, UnplannedRightOuterJoinInputPlan, UnplannedRightOuterJoinPlan,
         },
     },
     std::{collections::HashMap, hash::BuildHasher, rc::Rc},
@@ -144,6 +145,14 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
             ProjectInputPlan::LeftOuterJoin(join) => ProjectInputPlan::LeftOuterJoin(Box::new(
                 self.left_outer_join(outer_context, *join),
             )),
+            ProjectInputPlan::UnplannedRightOuterJoin(join) => {
+                ProjectInputPlan::UnplannedRightOuterJoin(Box::new(
+                    self.unplanned_right_outer_join(outer_context, *join),
+                ))
+            }
+            ProjectInputPlan::RightOuterJoin(join) => ProjectInputPlan::RightOuterJoin(Box::new(
+                self.right_outer_join(outer_context, *join),
+            )),
             ProjectInputPlan::Filter(filter) => {
                 let (input, expr) = self.filter(outer_context.map(Rc::clone), filter);
                 match expr {
@@ -153,6 +162,12 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                         FilterInputPlan::InnerJoin(join) => ProjectInputPlan::InnerJoin(join),
                         FilterInputPlan::LeftOuterJoin(join) => {
                             ProjectInputPlan::LeftOuterJoin(join)
+                        }
+                        FilterInputPlan::UnplannedRightOuterJoin(join) => {
+                            ProjectInputPlan::UnplannedRightOuterJoin(join)
+                        }
+                        FilterInputPlan::RightOuterJoin(join) => {
+                            ProjectInputPlan::RightOuterJoin(join)
                         }
                     },
                 }
@@ -203,6 +218,14 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
             AggregationInputPlan::LeftOuterJoin(join) => AggregationInputPlan::LeftOuterJoin(
                 Box::new(self.left_outer_join(outer_context.as_ref(), *join)),
             ),
+            AggregationInputPlan::UnplannedRightOuterJoin(join) => {
+                AggregationInputPlan::UnplannedRightOuterJoin(Box::new(
+                    self.unplanned_right_outer_join(outer_context.as_ref(), *join),
+                ))
+            }
+            AggregationInputPlan::RightOuterJoin(join) => AggregationInputPlan::RightOuterJoin(
+                Box::new(self.right_outer_join(outer_context.as_ref(), *join)),
+            ),
             AggregationInputPlan::Filter(filter) => {
                 let (input, expr) = self.filter(outer_context, filter);
                 match expr {
@@ -212,6 +235,12 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                         FilterInputPlan::InnerJoin(join) => AggregationInputPlan::InnerJoin(join),
                         FilterInputPlan::LeftOuterJoin(join) => {
                             AggregationInputPlan::LeftOuterJoin(join)
+                        }
+                        FilterInputPlan::UnplannedRightOuterJoin(join) => {
+                            AggregationInputPlan::UnplannedRightOuterJoin(join)
+                        }
+                        FilterInputPlan::RightOuterJoin(join) => {
+                            AggregationInputPlan::RightOuterJoin(join)
                         }
                     },
                 }
@@ -232,6 +261,14 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
             }
             FilterInputPlan::LeftOuterJoin(join) => FilterInputPlan::LeftOuterJoin(Box::new(
                 self.left_outer_join(outer_context.as_ref(), *join),
+            )),
+            FilterInputPlan::UnplannedRightOuterJoin(join) => {
+                FilterInputPlan::UnplannedRightOuterJoin(Box::new(
+                    self.unplanned_right_outer_join(outer_context.as_ref(), *join),
+                ))
+            }
+            FilterInputPlan::RightOuterJoin(join) => FilterInputPlan::RightOuterJoin(Box::new(
+                self.right_outer_join(outer_context.as_ref(), *join),
             )),
         };
         let current_context = self.input_context(&input);
@@ -313,6 +350,50 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
         LeftOuterJoinPlan { input }
     }
 
+    /// Reachable only when [`crate::planner::plan_right_outer_join`] was skipped; recursing keeps
+    /// nested subqueries planned so the executor is the single place that reports the missing pass.
+    fn unplanned_right_outer_join(
+        &self,
+        outer_context: Option<&Rc<Context<'a>>>,
+        join: UnplannedRightOuterJoinPlan,
+    ) -> UnplannedRightOuterJoinPlan {
+        let input = match join.input {
+            UnplannedRightOuterJoinInputPlan::NestedLoop(join) => {
+                UnplannedRightOuterJoinInputPlan::NestedLoop(self.nested_loop(outer_context, join))
+            }
+            UnplannedRightOuterJoinInputPlan::Condition(condition) => {
+                UnplannedRightOuterJoinInputPlan::Condition(
+                    self.join_condition(outer_context, condition),
+                )
+            }
+        };
+
+        UnplannedRightOuterJoinPlan { input }
+    }
+
+    /// Recurses for nested subqueries only: the base source is already
+    /// [`TableAccessPlan::FullScanRequired`], so no lookup is installed under a RIGHT JOIN.
+    fn right_outer_join(
+        &self,
+        outer_context: Option<&Rc<Context<'a>>>,
+        join: RightOuterJoinPlan,
+    ) -> RightOuterJoinPlan {
+        let RightOuterJoinPlan { input, null_extend } = join;
+        let input = match input {
+            RightOuterJoinInputPlan::NestedLoop(join) => {
+                RightOuterJoinInputPlan::NestedLoop(self.nested_loop(outer_context, join))
+            }
+            RightOuterJoinInputPlan::Hash(join) => {
+                RightOuterJoinInputPlan::Hash(self.hash(outer_context, join))
+            }
+            RightOuterJoinInputPlan::Condition(condition) => {
+                RightOuterJoinInputPlan::Condition(self.join_condition(outer_context, condition))
+            }
+        };
+
+        RightOuterJoinPlan { input, null_extend }
+    }
+
     fn join_condition(
         &self,
         outer_context: Option<&Rc<Context<'a>>>,
@@ -354,6 +435,16 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
             NestedLoopJoinInputPlan::LeftOuterJoin(join) => NestedLoopJoinInputPlan::LeftOuterJoin(
                 Box::new(self.left_outer_join(outer_context, *join)),
             ),
+            NestedLoopJoinInputPlan::UnplannedRightOuterJoin(join) => {
+                NestedLoopJoinInputPlan::UnplannedRightOuterJoin(Box::new(
+                    self.unplanned_right_outer_join(outer_context, *join),
+                ))
+            }
+            NestedLoopJoinInputPlan::RightOuterJoin(join) => {
+                NestedLoopJoinInputPlan::RightOuterJoin(Box::new(
+                    self.right_outer_join(outer_context, *join),
+                ))
+            }
         };
 
         NestedLoopJoinPlan {
@@ -378,6 +469,9 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
             HashJoinInputPlan::LeftOuterJoin(join) => HashJoinInputPlan::LeftOuterJoin(Box::new(
                 self.left_outer_join(outer_context, *join),
             )),
+            HashJoinInputPlan::RightOuterJoin(join) => HashJoinInputPlan::RightOuterJoin(Box::new(
+                self.right_outer_join(outer_context, *join),
+            )),
         };
         let input_context = match &input {
             HashJoinInputPlan::Source(source) => self.update_context(None, source),
@@ -385,6 +479,9 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                 self.source_context(join.base_source(), join.joined_sources())
             }
             HashJoinInputPlan::LeftOuterJoin(join) => {
+                self.source_context(join.base_source(), join.joined_sources())
+            }
+            HashJoinInputPlan::RightOuterJoin(join) => {
                 self.source_context(join.base_source(), join.joined_sources())
             }
         };
@@ -544,7 +641,9 @@ mod tests {
             StatementPlan::Query(QueryPlan::Project(project)) => match &project.input {
                 ProjectInputPlan::Source(_)
                 | ProjectInputPlan::InnerJoin(_)
-                | ProjectInputPlan::LeftOuterJoin(_) => Some(project.input.base_source()),
+                | ProjectInputPlan::LeftOuterJoin(_)
+                | ProjectInputPlan::UnplannedRightOuterJoin(_)
+                | ProjectInputPlan::RightOuterJoin(_) => Some(project.input.base_source()),
                 ProjectInputPlan::Filter(_)
                 | ProjectInputPlan::Aggregation(_)
                 | ProjectInputPlan::Having(_) => None,

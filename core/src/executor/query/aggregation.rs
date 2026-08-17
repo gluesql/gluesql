@@ -4,7 +4,7 @@ use {
     self::state::State,
     super::{
         SelectedRows, SelectedSources, filter,
-        join::{inner, left_outer},
+        join::{inner, left_outer, reject_unplanned_right_outer, right_outer},
         source,
     },
     crate::{
@@ -45,6 +45,10 @@ where
         AggregationInputPlan::InnerJoin(join) => inner::execute(storage, join, filter_context)?,
         AggregationInputPlan::LeftOuterJoin(join) => {
             left_outer::execute(storage, join, filter_context)?
+        }
+        AggregationInputPlan::UnplannedRightOuterJoin(_) => reject_unplanned_right_outer()?,
+        AggregationInputPlan::RightOuterJoin(join) => {
+            right_outer::execute(storage, join, filter_context)?
         }
         AggregationInputPlan::Filter(filter) => filter::execute(storage, filter, filter_context)?,
     };

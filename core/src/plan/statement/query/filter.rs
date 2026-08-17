@@ -1,5 +1,8 @@
 use {
-    crate::plan::{ExprPlan, InnerJoinPlan, LeftOuterJoinPlan, SourcePlan},
+    crate::plan::{
+        ExprPlan, InnerJoinPlan, LeftOuterJoinPlan, RightOuterJoinPlan, SourcePlan,
+        UnplannedRightOuterJoinPlan,
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -8,6 +11,8 @@ pub enum FilterInputPlan {
     Source(SourcePlan),
     InnerJoin(Box<InnerJoinPlan>),
     LeftOuterJoin(Box<LeftOuterJoinPlan>),
+    UnplannedRightOuterJoin(Box<UnplannedRightOuterJoinPlan>),
+    RightOuterJoin(Box<RightOuterJoinPlan>),
 }
 
 impl FilterInputPlan {
@@ -16,6 +21,8 @@ impl FilterInputPlan {
             Self::Source(source) => source,
             Self::InnerJoin(join) => join.base_source(),
             Self::LeftOuterJoin(join) => join.base_source(),
+            Self::UnplannedRightOuterJoin(join) => join.base_source(),
+            Self::RightOuterJoin(join) => join.base_source(),
         }
     }
 
@@ -24,6 +31,8 @@ impl FilterInputPlan {
             Self::Source(source) => source,
             Self::InnerJoin(join) => join.base_source_mut(),
             Self::LeftOuterJoin(join) => join.base_source_mut(),
+            Self::UnplannedRightOuterJoin(join) => join.base_source_mut(),
+            Self::RightOuterJoin(join) => join.base_source_mut(),
         }
     }
 
@@ -32,6 +41,8 @@ impl FilterInputPlan {
             Self::Source(_) => Vec::new(),
             Self::InnerJoin(join) => join.joined_sources(),
             Self::LeftOuterJoin(join) => join.joined_sources(),
+            Self::UnplannedRightOuterJoin(join) => join.joined_sources(),
+            Self::RightOuterJoin(join) => join.joined_sources(),
         }
     }
 }

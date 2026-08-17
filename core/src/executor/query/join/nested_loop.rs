@@ -1,6 +1,9 @@
 use {
     super::super::{SelectedRows, SourceColumns, source},
-    super::{JoinCandidateGroup, JoinCandidates, inner, left_outer},
+    super::{
+        JoinCandidateGroup, JoinCandidates, inner, left_outer, reject_unplanned_right_outer,
+        right_outer,
+    },
     crate::{
         data::Row,
         executor::context::RowContext,
@@ -24,6 +27,10 @@ pub(super) fn execute<'a, T: GStore>(
         NestedLoopJoinInputPlan::InnerJoin(join) => inner::execute(storage, join, filter_context)?,
         NestedLoopJoinInputPlan::LeftOuterJoin(join) => {
             left_outer::execute(storage, join, filter_context)?
+        }
+        NestedLoopJoinInputPlan::UnplannedRightOuterJoin(_) => reject_unplanned_right_outer()?,
+        NestedLoopJoinInputPlan::RightOuterJoin(join) => {
+            right_outer::execute(storage, join, filter_context)?
         }
     };
     let right = source::execute(storage, right)?;

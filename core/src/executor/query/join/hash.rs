@@ -1,6 +1,6 @@
 use {
     super::super::{SelectedRows, SourceColumns, source},
-    super::{JoinCandidateGroup, JoinCandidates, inner, left_outer},
+    super::{JoinCandidateGroup, JoinCandidates, inner, left_outer, right_outer},
     crate::{
         data::{Key, Row},
         executor::{context::RowContext, evaluate::evaluate, filter::check_expr},
@@ -31,6 +31,9 @@ pub(super) fn execute<'a, T: GStore>(
         HashJoinInputPlan::InnerJoin(join) => inner::execute(storage, join, filter_context)?,
         HashJoinInputPlan::LeftOuterJoin(join) => {
             left_outer::execute(storage, join, filter_context)?
+        }
+        HashJoinInputPlan::RightOuterJoin(join) => {
+            right_outer::execute(storage, join, filter_context)?
         }
     };
     let right = source::execute(storage, right)?;

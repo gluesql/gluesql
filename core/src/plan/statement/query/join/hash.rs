@@ -1,14 +1,46 @@
 use {
-    super::{InnerJoinPlan, LeftOuterJoinPlan},
+    super::{InnerJoinPlan, LeftOuterJoinPlan, RightOuterJoinPlan},
     crate::plan::{ExprPlan, SourcePlan},
     serde::{Deserialize, Serialize},
 };
 
+/// No `UnplannedRightOuterJoin` variant: the hash join planner runs after the right outer join
+/// planner, so a hash mechanism can only sit above an already lowered join.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum HashJoinInputPlan {
     Source(SourcePlan),
     InnerJoin(Box<InnerJoinPlan>),
     LeftOuterJoin(Box<LeftOuterJoinPlan>),
+    RightOuterJoin(Box<RightOuterJoinPlan>),
+}
+
+impl HashJoinInputPlan {
+    pub(crate) fn base_source(&self) -> &SourcePlan {
+        match self {
+            Self::Source(source) => source,
+            Self::InnerJoin(join) => join.base_source(),
+            Self::LeftOuterJoin(join) => join.base_source(),
+            Self::RightOuterJoin(join) => join.base_source(),
+        }
+    }
+
+    pub(crate) fn base_source_mut(&mut self) -> &mut SourcePlan {
+        match self {
+            Self::Source(source) => source,
+            Self::InnerJoin(join) => join.base_source_mut(),
+            Self::LeftOuterJoin(join) => join.base_source_mut(),
+            Self::RightOuterJoin(join) => join.base_source_mut(),
+        }
+    }
+
+    pub(crate) fn joined_sources(&self) -> Vec<&SourcePlan> {
+        match self {
+            Self::Source(_) => Vec::new(),
+            Self::InnerJoin(join) => join.joined_sources(),
+            Self::LeftOuterJoin(join) => join.joined_sources(),
+            Self::RightOuterJoin(join) => join.joined_sources(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -22,27 +54,15 @@ pub struct HashJoinPlan {
 
 impl HashJoinPlan {
     pub(crate) fn base_source(&self) -> &SourcePlan {
-        match &self.input {
-            HashJoinInputPlan::Source(source) => source,
-            HashJoinInputPlan::InnerJoin(join) => join.base_source(),
-            HashJoinInputPlan::LeftOuterJoin(join) => join.base_source(),
-        }
+        self.input.base_source()
     }
 
     pub(crate) fn base_source_mut(&mut self) -> &mut SourcePlan {
-        match &mut self.input {
-            HashJoinInputPlan::Source(source) => source,
-            HashJoinInputPlan::InnerJoin(join) => join.base_source_mut(),
-            HashJoinInputPlan::LeftOuterJoin(join) => join.base_source_mut(),
-        }
+        self.input.base_source_mut()
     }
 
     pub(crate) fn joined_sources(&self) -> Vec<&SourcePlan> {
-        let mut sources = match &self.input {
-            HashJoinInputPlan::Source(_) => Vec::new(),
-            HashJoinInputPlan::InnerJoin(join) => join.joined_sources(),
-            HashJoinInputPlan::LeftOuterJoin(join) => join.joined_sources(),
-        };
+        let mut sources = self.input.joined_sources();
         sources.push(&self.right);
 
         sources

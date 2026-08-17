@@ -8,8 +8,9 @@ use {
             JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
             OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, SelectOrderByPlan, SourcePlan, StatementPlan, ValuesOrderByPlan,
-            ValuesPlan,
+            RightOuterJoinInputPlan, RightOuterJoinPlan, SelectItemPlan, SelectOrderByPlan,
+            SourcePlan, StatementPlan, UnplannedRightOuterJoinInputPlan,
+            UnplannedRightOuterJoinPlan, ValuesOrderByPlan, ValuesPlan,
         },
         result::Result,
     },
@@ -173,6 +174,10 @@ fn validate_project(
         ProjectInputPlan::Source(relation) => validate_source(schema_map, relation)?,
         ProjectInputPlan::InnerJoin(join) => validate_inner_join(schema_map, join)?,
         ProjectInputPlan::LeftOuterJoin(join) => validate_left_outer_join(schema_map, join)?,
+        ProjectInputPlan::UnplannedRightOuterJoin(join) => {
+            validate_unplanned_right_outer_join(schema_map, join)?;
+        }
+        ProjectInputPlan::RightOuterJoin(join) => validate_right_outer_join(schema_map, join)?,
         ProjectInputPlan::Filter(filter) => validate_filter(schema_map, filter)?,
         ProjectInputPlan::Aggregation(aggregation) => {
             validate_aggregation_input(schema_map, &aggregation.input)?;
@@ -208,6 +213,10 @@ fn validate_filter(
         FilterInputPlan::Source(relation) => validate_source(schema_map, relation)?,
         FilterInputPlan::InnerJoin(join) => validate_inner_join(schema_map, join)?,
         FilterInputPlan::LeftOuterJoin(join) => validate_left_outer_join(schema_map, join)?,
+        FilterInputPlan::UnplannedRightOuterJoin(join) => {
+            validate_unplanned_right_outer_join(schema_map, join)?;
+        }
+        FilterInputPlan::RightOuterJoin(join) => validate_right_outer_join(schema_map, join)?,
     }
     validate_expr(schema_map, expr)
 }
@@ -220,6 +229,10 @@ fn validate_aggregation_input(
         AggregationInputPlan::Source(relation) => validate_source(schema_map, relation),
         AggregationInputPlan::InnerJoin(join) => validate_inner_join(schema_map, join),
         AggregationInputPlan::LeftOuterJoin(join) => validate_left_outer_join(schema_map, join),
+        AggregationInputPlan::UnplannedRightOuterJoin(join) => {
+            validate_unplanned_right_outer_join(schema_map, join)
+        }
+        AggregationInputPlan::RightOuterJoin(join) => validate_right_outer_join(schema_map, join),
         AggregationInputPlan::Filter(filter) => validate_filter(schema_map, filter),
     }
 }
@@ -246,6 +259,31 @@ fn validate_left_outer_join(
     }
 }
 
+fn validate_unplanned_right_outer_join(
+    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    join: &UnplannedRightOuterJoinPlan,
+) -> ValidateResult {
+    match &join.input {
+        UnplannedRightOuterJoinInputPlan::NestedLoop(join) => {
+            validate_nested_loop(schema_map, join)
+        }
+        UnplannedRightOuterJoinInputPlan::Condition(condition) => {
+            validate_condition(schema_map, condition)
+        }
+    }
+}
+
+fn validate_right_outer_join(
+    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    join: &RightOuterJoinPlan,
+) -> ValidateResult {
+    match &join.input {
+        RightOuterJoinInputPlan::NestedLoop(join) => validate_nested_loop(schema_map, join),
+        RightOuterJoinInputPlan::Hash(join) => validate_hash(schema_map, join),
+        RightOuterJoinInputPlan::Condition(condition) => validate_condition(schema_map, condition),
+    }
+}
+
 fn validate_condition(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
     condition: &JoinConditionPlan,
@@ -267,6 +305,12 @@ fn validate_nested_loop(
         NestedLoopJoinInputPlan::LeftOuterJoin(join) => {
             validate_left_outer_join(schema_map, join)?;
         }
+        NestedLoopJoinInputPlan::UnplannedRightOuterJoin(join) => {
+            validate_unplanned_right_outer_join(schema_map, join)?;
+        }
+        NestedLoopJoinInputPlan::RightOuterJoin(join) => {
+            validate_right_outer_join(schema_map, join)?;
+        }
     }
     validate_source(schema_map, &join.right)
 }
@@ -280,6 +324,9 @@ fn validate_hash(
         HashJoinInputPlan::InnerJoin(join) => validate_inner_join(schema_map, join)?,
         HashJoinInputPlan::LeftOuterJoin(join) => {
             validate_left_outer_join(schema_map, join)?;
+        }
+        HashJoinInputPlan::RightOuterJoin(join) => {
+            validate_right_outer_join(schema_map, join)?;
         }
     }
     validate_source(schema_map, &join.right)?;

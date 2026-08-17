@@ -350,6 +350,9 @@ fn translate_join(params: &[ParamLiteral], sql_join: &SqlJoin) -> Result<Join> {
         SqlJoinOperator::LeftOuter(sql_join_constraint) => {
             translate_constraint(sql_join_constraint).map(JoinOperator::LeftOuter)
         }
+        SqlJoinOperator::RightOuter(sql_join_constraint) => {
+            translate_constraint(sql_join_constraint).map(JoinOperator::RightOuter)
+        }
         _ => Err(TranslateError::UnsupportedJoinOperator(format!("{sql_join_operator:?}")).into()),
     }?;
 

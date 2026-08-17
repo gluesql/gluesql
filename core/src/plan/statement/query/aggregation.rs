@@ -1,6 +1,9 @@
 use {
     super::FilterPlan,
-    crate::plan::{AggregateExprPlan, ExprPlan, InnerJoinPlan, LeftOuterJoinPlan, SourcePlan},
+    crate::plan::{
+        AggregateExprPlan, ExprPlan, InnerJoinPlan, LeftOuterJoinPlan, RightOuterJoinPlan,
+        SourcePlan, UnplannedRightOuterJoinPlan,
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -9,6 +12,8 @@ pub enum AggregationInputPlan {
     Source(SourcePlan),
     InnerJoin(Box<InnerJoinPlan>),
     LeftOuterJoin(Box<LeftOuterJoinPlan>),
+    UnplannedRightOuterJoin(Box<UnplannedRightOuterJoinPlan>),
+    RightOuterJoin(Box<RightOuterJoinPlan>),
     Filter(FilterPlan),
 }
 
@@ -18,6 +23,8 @@ impl AggregationInputPlan {
             Self::Source(source) => source,
             Self::InnerJoin(join) => join.base_source(),
             Self::LeftOuterJoin(join) => join.base_source(),
+            Self::UnplannedRightOuterJoin(join) => join.base_source(),
+            Self::RightOuterJoin(join) => join.base_source(),
             Self::Filter(filter) => filter.input.base_source(),
         }
     }
@@ -27,6 +34,8 @@ impl AggregationInputPlan {
             Self::Source(_) => Vec::new(),
             Self::InnerJoin(join) => join.joined_sources(),
             Self::LeftOuterJoin(join) => join.joined_sources(),
+            Self::UnplannedRightOuterJoin(join) => join.joined_sources(),
+            Self::RightOuterJoin(join) => join.joined_sources(),
             Self::Filter(filter) => filter.input.joined_sources(),
         }
     }

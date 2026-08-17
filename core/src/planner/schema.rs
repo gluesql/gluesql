@@ -8,8 +8,9 @@ use {
             JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
             OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan, ProjectPlan,
-            ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SourcePlan,
-            StatementPlan, ValuesOrderByPlan,
+            ProjectionPlan, QueryPlan, RightOuterJoinInputPlan, RightOuterJoinPlan, SelectItemPlan,
+            SelectOrderByPlan, SourcePlan, StatementPlan, UnplannedRightOuterJoinInputPlan,
+            UnplannedRightOuterJoinPlan, ValuesOrderByPlan,
         },
         result::Result,
         store::Store,
@@ -191,6 +192,10 @@ fn scan_project<T: Store + ?Sized>(
         ProjectInputPlan::Source(relation) => scan_source(storage, relation)?,
         ProjectInputPlan::InnerJoin(join) => scan_inner_join(storage, join)?,
         ProjectInputPlan::LeftOuterJoin(join) => scan_left_outer_join(storage, join)?,
+        ProjectInputPlan::UnplannedRightOuterJoin(join) => {
+            scan_unplanned_right_outer_join(storage, join)?
+        }
+        ProjectInputPlan::RightOuterJoin(join) => scan_right_outer_join(storage, join)?,
         ProjectInputPlan::Filter(filter) => scan_filter(storage, filter)?,
         ProjectInputPlan::Aggregation(aggregation) => {
             let schema_list = scan_aggregation_input(storage, &aggregation.input)?;
@@ -245,6 +250,10 @@ fn scan_filter<T: Store + ?Sized>(
         FilterInputPlan::Source(relation) => scan_source(storage, relation)?,
         FilterInputPlan::InnerJoin(join) => scan_inner_join(storage, join)?,
         FilterInputPlan::LeftOuterJoin(join) => scan_left_outer_join(storage, join)?,
+        FilterInputPlan::UnplannedRightOuterJoin(join) => {
+            scan_unplanned_right_outer_join(storage, join)?
+        }
+        FilterInputPlan::RightOuterJoin(join) => scan_right_outer_join(storage, join)?,
     };
     let expr = scan_expr(storage, expr)?;
 
@@ -259,6 +268,10 @@ fn scan_aggregation_input<T: Store + ?Sized>(
         AggregationInputPlan::Source(relation) => scan_source(storage, relation),
         AggregationInputPlan::InnerJoin(join) => scan_inner_join(storage, join),
         AggregationInputPlan::LeftOuterJoin(join) => scan_left_outer_join(storage, join),
+        AggregationInputPlan::UnplannedRightOuterJoin(join) => {
+            scan_unplanned_right_outer_join(storage, join)
+        }
+        AggregationInputPlan::RightOuterJoin(join) => scan_right_outer_join(storage, join),
         AggregationInputPlan::Filter(filter) => scan_filter(storage, filter),
     }
 }
@@ -285,6 +298,29 @@ fn scan_left_outer_join<T: Store + ?Sized>(
     }
 }
 
+fn scan_unplanned_right_outer_join<T: Store + ?Sized>(
+    storage: &T,
+    join: &UnplannedRightOuterJoinPlan,
+) -> Result<HashMap<String, Schema>> {
+    match &join.input {
+        UnplannedRightOuterJoinInputPlan::NestedLoop(join) => scan_nested_loop(storage, join),
+        UnplannedRightOuterJoinInputPlan::Condition(condition) => {
+            scan_condition(storage, condition)
+        }
+    }
+}
+
+fn scan_right_outer_join<T: Store + ?Sized>(
+    storage: &T,
+    join: &RightOuterJoinPlan,
+) -> Result<HashMap<String, Schema>> {
+    match &join.input {
+        RightOuterJoinInputPlan::NestedLoop(join) => scan_nested_loop(storage, join),
+        RightOuterJoinInputPlan::Hash(join) => scan_hash(storage, join),
+        RightOuterJoinInputPlan::Condition(condition) => scan_condition(storage, condition),
+    }
+}
+
 fn scan_condition<T: Store + ?Sized>(
     storage: &T,
     condition: &JoinConditionPlan,
@@ -306,6 +342,10 @@ fn scan_nested_loop<T: Store + ?Sized>(
         NestedLoopJoinInputPlan::Source(source) => scan_source(storage, source)?,
         NestedLoopJoinInputPlan::InnerJoin(join) => scan_inner_join(storage, join)?,
         NestedLoopJoinInputPlan::LeftOuterJoin(join) => scan_left_outer_join(storage, join)?,
+        NestedLoopJoinInputPlan::UnplannedRightOuterJoin(join) => {
+            scan_unplanned_right_outer_join(storage, join)?
+        }
+        NestedLoopJoinInputPlan::RightOuterJoin(join) => scan_right_outer_join(storage, join)?,
     };
     let right = scan_source(storage, &join.right)?;
 
@@ -320,6 +360,7 @@ fn scan_hash<T: Store + ?Sized>(
         HashJoinInputPlan::Source(source) => scan_source(storage, source)?,
         HashJoinInputPlan::InnerJoin(join) => scan_inner_join(storage, join)?,
         HashJoinInputPlan::LeftOuterJoin(join) => scan_left_outer_join(storage, join)?,
+        HashJoinInputPlan::RightOuterJoin(join) => scan_right_outer_join(storage, join)?,
     };
     let expressions = [&join.input_key, &join.right_key]
         .into_iter()

@@ -8,7 +8,9 @@ use {
             FilterPlan, HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan,
             JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
-            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan, StatementPlan,
+            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan,
+            RightOuterJoinInputPlan, RightOuterJoinPlan, StatementPlan,
+            UnplannedRightOuterJoinInputPlan, UnplannedRightOuterJoinPlan,
         },
     },
     std::{collections::HashMap, hash::BuildHasher, rc::Rc},
@@ -134,6 +136,14 @@ impl<'a, S: BuildHasher> HashJoinPlanner<'a, S> {
                 let (_, join) = self.left_outer_join(outer_context, *join);
                 ProjectInputPlan::LeftOuterJoin(Box::new(join))
             }
+            ProjectInputPlan::UnplannedRightOuterJoin(join) => {
+                let (_, join) = self.unplanned_right_outer_join(outer_context, *join);
+                ProjectInputPlan::UnplannedRightOuterJoin(Box::new(join))
+            }
+            ProjectInputPlan::RightOuterJoin(join) => {
+                let (_, join) = self.right_outer_join(outer_context, *join);
+                ProjectInputPlan::RightOuterJoin(Box::new(join))
+            }
             ProjectInputPlan::Filter(filter) => {
                 ProjectInputPlan::Filter(self.filter(outer_context.map(Rc::clone), filter))
             }
@@ -185,6 +195,14 @@ impl<'a, S: BuildHasher> HashJoinPlanner<'a, S> {
                 let (_, join) = self.left_outer_join(outer_context.as_ref(), *join);
                 AggregationInputPlan::LeftOuterJoin(Box::new(join))
             }
+            AggregationInputPlan::UnplannedRightOuterJoin(join) => {
+                let (_, join) = self.unplanned_right_outer_join(outer_context.as_ref(), *join);
+                AggregationInputPlan::UnplannedRightOuterJoin(Box::new(join))
+            }
+            AggregationInputPlan::RightOuterJoin(join) => {
+                let (_, join) = self.right_outer_join(outer_context.as_ref(), *join);
+                AggregationInputPlan::RightOuterJoin(Box::new(join))
+            }
             AggregationInputPlan::Filter(filter) => {
                 AggregationInputPlan::Filter(self.filter(outer_context, filter))
             }
@@ -217,6 +235,17 @@ impl<'a, S: BuildHasher> HashJoinPlanner<'a, S> {
             FilterInputPlan::LeftOuterJoin(join) => {
                 let (context, join) = self.left_outer_join(outer_context, *join);
                 (context, FilterInputPlan::LeftOuterJoin(Box::new(join)))
+            }
+            FilterInputPlan::UnplannedRightOuterJoin(join) => {
+                let (context, join) = self.unplanned_right_outer_join(outer_context, *join);
+                (
+                    context,
+                    FilterInputPlan::UnplannedRightOuterJoin(Box::new(join)),
+                )
+            }
+            FilterInputPlan::RightOuterJoin(join) => {
+                let (context, join) = self.right_outer_join(outer_context, *join);
+                (context, FilterInputPlan::RightOuterJoin(Box::new(join)))
             }
         }
     }
@@ -265,6 +294,81 @@ impl<'a, S: BuildHasher> HashJoinPlanner<'a, S> {
         (context, LeftOuterJoinPlan { input })
     }
 
+    /// Reachable only when [`crate::planner::plan_right_outer_join`] was skipped; recursing keeps
+    /// the subtree planned so the executor is the single place that reports the missing pass.
+    fn unplanned_right_outer_join(
+        &self,
+        outer_context: Option<&Rc<Context<'a>>>,
+        plan: UnplannedRightOuterJoinPlan,
+    ) -> (Option<Rc<Context<'a>>>, UnplannedRightOuterJoinPlan) {
+        let (context, input) = match plan.input {
+            UnplannedRightOuterJoinInputPlan::NestedLoop(plan) => {
+                let (context, plan) = self.nested_loop(outer_context, plan);
+                (context, UnplannedRightOuterJoinInputPlan::NestedLoop(plan))
+            }
+            UnplannedRightOuterJoinInputPlan::Condition(condition) => {
+                let (context, condition) = self.join_condition(outer_context, condition);
+                (
+                    context,
+                    UnplannedRightOuterJoinInputPlan::Condition(condition),
+                )
+            }
+        };
+
+        (context, UnplannedRightOuterJoinPlan { input })
+    }
+
+    /// Leaves the join's own `ON` condition as a nested loop: promoting a RIGHT JOIN to a hash
+    /// mechanism is a separate change.
+    fn right_outer_join(
+        &self,
+        outer_context: Option<&Rc<Context<'a>>>,
+        plan: RightOuterJoinPlan,
+    ) -> (Option<Rc<Context<'a>>>, RightOuterJoinPlan) {
+        let RightOuterJoinPlan { input, null_extend } = plan;
+        let (context, input) = match input {
+            RightOuterJoinInputPlan::NestedLoop(plan) => {
+                let (context, plan) = self.nested_loop(outer_context, plan);
+                (context, RightOuterJoinInputPlan::NestedLoop(plan))
+            }
+            RightOuterJoinInputPlan::Hash(plan) => {
+                let (context, plan) = self.hash(outer_context, plan);
+                (context, RightOuterJoinInputPlan::Hash(plan))
+            }
+            RightOuterJoinInputPlan::Condition(condition) => {
+                let (context, condition) = self.join_condition(outer_context, condition);
+                (context, RightOuterJoinInputPlan::Condition(condition))
+            }
+        };
+
+        (context, RightOuterJoinPlan { input, null_extend })
+    }
+
+    fn join_condition(
+        &self,
+        outer_context: Option<&Rc<Context<'a>>>,
+        condition: JoinConditionPlan,
+    ) -> (Option<Rc<Context<'a>>>, JoinConditionPlan) {
+        let JoinConditionPlan { input, expr } = condition;
+        let (context, input) = match input {
+            JoinConditionInputPlan::NestedLoop(plan) => {
+                let (context, plan) = self.nested_loop(outer_context, plan);
+                (context, JoinConditionInputPlan::NestedLoop(plan))
+            }
+            JoinConditionInputPlan::Hash(plan) => {
+                let (context, plan) = self.hash(outer_context, plan);
+                (context, JoinConditionInputPlan::Hash(plan))
+            }
+        };
+        let expr_context = Context::concat(
+            context.as_ref().map(Rc::clone),
+            outer_context.map(Rc::clone),
+        );
+        let expr = self.subquery_expr(expr_context, expr);
+
+        (context, JoinConditionPlan { input, expr })
+    }
+
     fn nested_loop(
         &self,
         outer_context: Option<&Rc<Context<'a>>>,
@@ -296,6 +400,20 @@ impl<'a, S: BuildHasher> HashJoinPlanner<'a, S> {
                 (
                     context,
                     NestedLoopJoinInputPlan::LeftOuterJoin(Box::new(join)),
+                )
+            }
+            NestedLoopJoinInputPlan::UnplannedRightOuterJoin(join) => {
+                let (context, join) = self.unplanned_right_outer_join(outer_context, *join);
+                (
+                    context,
+                    NestedLoopJoinInputPlan::UnplannedRightOuterJoin(Box::new(join)),
+                )
+            }
+            NestedLoopJoinInputPlan::RightOuterJoin(join) => {
+                let (context, join) = self.right_outer_join(outer_context, *join);
+                (
+                    context,
+                    NestedLoopJoinInputPlan::RightOuterJoin(Box::new(join)),
                 )
             }
         }
@@ -343,6 +461,10 @@ impl<'a, S: BuildHasher> HashJoinPlanner<'a, S> {
             HashJoinInputPlan::LeftOuterJoin(join) => {
                 let (context, join) = self.left_outer_join(outer_context, *join);
                 (context, HashJoinInputPlan::LeftOuterJoin(Box::new(join)))
+            }
+            HashJoinInputPlan::RightOuterJoin(join) => {
+                let (context, join) = self.right_outer_join(outer_context, *join);
+                (context, HashJoinInputPlan::RightOuterJoin(Box::new(join)))
             }
         }
     }
@@ -444,12 +566,24 @@ impl<'a, S: BuildHasher> HashJoinPlanner<'a, S> {
         let input_key = self.subquery_expr(value_context.as_ref().map(Rc::clone), value_expr);
         let right_filter =
             where_clause.map(|expr| self.subquery_expr(key_context.as_ref().map(Rc::clone), expr));
-        let hash = HashJoinPlan {
-            input: nested_loop_to_hash_input(input),
-            right,
-            input_key,
-            right_key,
-            right_filter,
+        let hash = match nested_loop_to_hash_input(input) {
+            HashJoinInputMatch::Hashable(input) => HashJoinPlan {
+                input,
+                right,
+                input_key,
+                right_key,
+                right_filter,
+            },
+            HashJoinInputMatch::Unhashable(input) => {
+                let expr = self.subquery_expr(value_context, original_expr);
+                let context = self.update_context(input_context, &right);
+                let condition = JoinConditionPlan {
+                    input: JoinConditionInputPlan::NestedLoop(NestedLoopJoinPlan { input, right }),
+                    expr,
+                };
+
+                return (context, InnerJoinInputPlan::Condition(condition));
+            }
         };
         let context = self.update_context(input_context, &hash.right);
 
@@ -564,12 +698,24 @@ impl<'a, S: BuildHasher> HashJoinPlanner<'a, S> {
         let input_key = self.subquery_expr(value_context.as_ref().map(Rc::clone), value_expr);
         let right_filter =
             where_clause.map(|expr| self.subquery_expr(key_context.as_ref().map(Rc::clone), expr));
-        let hash = HashJoinPlan {
-            input: nested_loop_to_hash_input(input),
-            right,
-            input_key,
-            right_key,
-            right_filter,
+        let hash = match nested_loop_to_hash_input(input) {
+            HashJoinInputMatch::Hashable(input) => HashJoinPlan {
+                input,
+                right,
+                input_key,
+                right_key,
+                right_filter,
+            },
+            HashJoinInputMatch::Unhashable(input) => {
+                let expr = self.subquery_expr(value_context, original_expr);
+                let context = self.update_context(input_context, &right);
+                let condition = JoinConditionPlan {
+                    input: JoinConditionInputPlan::NestedLoop(NestedLoopJoinPlan { input, right }),
+                    expr,
+                };
+
+                return (context, LeftOuterJoinInputPlan::Condition(condition));
+            }
         };
         let context = self.update_context(input_context, &hash.right);
 
@@ -693,12 +839,24 @@ fn find_evaluable(
     }
 }
 
-fn nested_loop_to_hash_input(input: NestedLoopJoinInputPlan) -> HashJoinInputPlan {
-    match input {
+enum HashJoinInputMatch {
+    Hashable(HashJoinInputPlan),
+    Unhashable(NestedLoopJoinInputPlan),
+}
+
+/// A hash mechanism cannot carry an unplanned join, so that input is handed back untouched.
+fn nested_loop_to_hash_input(input: NestedLoopJoinInputPlan) -> HashJoinInputMatch {
+    let input = match input {
         NestedLoopJoinInputPlan::Source(source) => HashJoinInputPlan::Source(source),
         NestedLoopJoinInputPlan::InnerJoin(join) => HashJoinInputPlan::InnerJoin(join),
         NestedLoopJoinInputPlan::LeftOuterJoin(join) => HashJoinInputPlan::LeftOuterJoin(join),
-    }
+        NestedLoopJoinInputPlan::RightOuterJoin(join) => HashJoinInputPlan::RightOuterJoin(join),
+        input @ NestedLoopJoinInputPlan::UnplannedRightOuterJoin(_) => {
+            return HashJoinInputMatch::Unhashable(input);
+        }
+    };
+
+    HashJoinInputMatch::Hashable(input)
 }
 
 #[cfg(test)]

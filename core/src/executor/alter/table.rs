@@ -225,10 +225,15 @@ fn source_for_schema_copy(project: &ProjectPlan) -> Option<&SourcePlan> {
         ProjectInputPlan::Source(relation) => relation,
         ProjectInputPlan::Filter(filter) => match &filter.input {
             FilterInputPlan::Source(relation) => relation,
-            FilterInputPlan::InnerJoin(_) | FilterInputPlan::LeftOuterJoin(_) => return None,
+            FilterInputPlan::InnerJoin(_)
+            | FilterInputPlan::LeftOuterJoin(_)
+            | FilterInputPlan::UnplannedRightOuterJoin(_)
+            | FilterInputPlan::RightOuterJoin(_) => return None,
         },
         ProjectInputPlan::InnerJoin(_)
         | ProjectInputPlan::LeftOuterJoin(_)
+        | ProjectInputPlan::UnplannedRightOuterJoin(_)
+        | ProjectInputPlan::RightOuterJoin(_)
         | ProjectInputPlan::Aggregation(_)
         | ProjectInputPlan::Having(_) => return None,
     };

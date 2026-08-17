@@ -196,6 +196,10 @@ mod tests {
             ProjectInputPlan::Source(source) => FilterInputPlan::Source(source),
             ProjectInputPlan::InnerJoin(join) => FilterInputPlan::InnerJoin(join),
             ProjectInputPlan::LeftOuterJoin(join) => FilterInputPlan::LeftOuterJoin(join),
+            ProjectInputPlan::UnplannedRightOuterJoin(join) => {
+                FilterInputPlan::UnplannedRightOuterJoin(join)
+            }
+            ProjectInputPlan::RightOuterJoin(join) => FilterInputPlan::RightOuterJoin(join),
             ProjectInputPlan::Filter(_)
             | ProjectInputPlan::Aggregation(_)
             | ProjectInputPlan::Having(_) => panic!("expected direct source input"),

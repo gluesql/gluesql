@@ -5,7 +5,7 @@ use {
         SelectedRows, SelectedSources,
         aggregation::{self, AggregatedRows},
         filter, having,
-        join::{inner, left_outer},
+        join::{inner, left_outer, reject_unplanned_right_outer, right_outer},
         source,
     },
     crate::{
@@ -69,6 +69,19 @@ where
         ProjectInputPlan::LeftOuterJoin(join) => {
             let SelectedRows { sources, rows } =
                 left_outer::execute(storage, join, filter_context.as_ref())?;
+            let rows = rows.map(|context| {
+                context.map(|context| AggregateContext {
+                    aggregated: None,
+                    next: Some(context),
+                })
+            });
+
+            (sources, Box::new(rows))
+        }
+        ProjectInputPlan::UnplannedRightOuterJoin(_) => return reject_unplanned_right_outer(),
+        ProjectInputPlan::RightOuterJoin(join) => {
+            let SelectedRows { sources, rows } =
+                right_outer::execute(storage, join, filter_context.as_ref())?;
             let rows = rows.map(|context| {
                 context.map(|context| AggregateContext {
                     aggregated: None,

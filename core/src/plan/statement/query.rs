@@ -19,7 +19,8 @@ pub use {
     join::{
         HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan, JoinConditionInputPlan,
         JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan, NestedLoopJoinInputPlan,
-        NestedLoopJoinPlan,
+        NestedLoopJoinPlan, NullExtendPlan, RightOuterJoinInputPlan, RightOuterJoinPlan,
+        UnplannedRightOuterJoinInputPlan, UnplannedRightOuterJoinPlan,
     },
     limit::{LimitInputPlan, LimitPlan},
     offset::{OffsetInputPlan, OffsetPlan},
@@ -161,6 +162,25 @@ fn joins(from: ast::TableWithJoins) -> NestedLoopJoinInputPlan {
                         }),
                     }))
                 }
+                // A RIGHT JOIN starts out unplanned: the right outer join planner decides which
+                // accumulated left relations an unmatched right row must be NULL-extended with.
+                ast::JoinOperator::RightOuter(ast::JoinConstraint::None) => {
+                    NestedLoopJoinInputPlan::UnplannedRightOuterJoin(Box::new(
+                        UnplannedRightOuterJoinPlan {
+                            input: UnplannedRightOuterJoinInputPlan::NestedLoop(nested_loop),
+                        },
+                    ))
+                }
+                ast::JoinOperator::RightOuter(ast::JoinConstraint::On(expr)) => {
+                    NestedLoopJoinInputPlan::UnplannedRightOuterJoin(Box::new(
+                        UnplannedRightOuterJoinPlan {
+                            input: UnplannedRightOuterJoinInputPlan::Condition(JoinConditionPlan {
+                                input: JoinConditionInputPlan::NestedLoop(nested_loop),
+                                expr: expr.into(),
+                            }),
+                        },
+                    ))
+                }
             }
         },
     )
@@ -175,6 +195,12 @@ fn filter(input: NestedLoopJoinInputPlan, selection: Option<ast::Expr>) -> Aggre
                 NestedLoopJoinInputPlan::LeftOuterJoin(join) => {
                     FilterInputPlan::LeftOuterJoin(join)
                 }
+                NestedLoopJoinInputPlan::UnplannedRightOuterJoin(join) => {
+                    FilterInputPlan::UnplannedRightOuterJoin(join)
+                }
+                NestedLoopJoinInputPlan::RightOuterJoin(join) => {
+                    FilterInputPlan::RightOuterJoin(join)
+                }
             },
             expr: expr.into(),
         }),
@@ -183,6 +209,12 @@ fn filter(input: NestedLoopJoinInputPlan, selection: Option<ast::Expr>) -> Aggre
             NestedLoopJoinInputPlan::InnerJoin(join) => AggregationInputPlan::InnerJoin(join),
             NestedLoopJoinInputPlan::LeftOuterJoin(join) => {
                 AggregationInputPlan::LeftOuterJoin(join)
+            }
+            NestedLoopJoinInputPlan::UnplannedRightOuterJoin(join) => {
+                AggregationInputPlan::UnplannedRightOuterJoin(join)
+            }
+            NestedLoopJoinInputPlan::RightOuterJoin(join) => {
+                AggregationInputPlan::RightOuterJoin(join)
             }
         },
     }
@@ -208,6 +240,10 @@ fn group_by_having(
             AggregationInputPlan::Source(source) => ProjectInputPlan::Source(source),
             AggregationInputPlan::InnerJoin(join) => ProjectInputPlan::InnerJoin(join),
             AggregationInputPlan::LeftOuterJoin(join) => ProjectInputPlan::LeftOuterJoin(join),
+            AggregationInputPlan::UnplannedRightOuterJoin(join) => {
+                ProjectInputPlan::UnplannedRightOuterJoin(join)
+            }
+            AggregationInputPlan::RightOuterJoin(join) => ProjectInputPlan::RightOuterJoin(join),
             AggregationInputPlan::Filter(filter) => ProjectInputPlan::Filter(filter),
         },
         None => ProjectInputPlan::Aggregation(AggregationPlan {

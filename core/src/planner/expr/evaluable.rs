@@ -7,8 +7,9 @@ use {
             JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
             OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, SelectOrderByPlan, SourcePlan, TableAliasPlan, ValuesOrderByPlan,
-            ValuesPlan,
+            RightOuterJoinInputPlan, RightOuterJoinPlan, SelectItemPlan, SelectOrderByPlan,
+            SourcePlan, TableAliasPlan, UnplannedRightOuterJoinInputPlan,
+            UnplannedRightOuterJoinPlan, ValuesOrderByPlan, ValuesPlan,
         },
         planner::context::Context,
     },
@@ -117,6 +118,10 @@ fn check_project(context: Option<&Rc<Context<'_>>>, project: &ProjectPlan) -> bo
         ProjectInputPlan::Source(relation) => check_source(context, relation),
         ProjectInputPlan::InnerJoin(join) => check_inner_join(context, join),
         ProjectInputPlan::LeftOuterJoin(join) => check_left_outer_join(context, join),
+        ProjectInputPlan::UnplannedRightOuterJoin(join) => {
+            check_unplanned_right_outer_join(context, join)
+        }
+        ProjectInputPlan::RightOuterJoin(join) => check_right_outer_join(context, join),
         ProjectInputPlan::Filter(filter) => check_filter(context, filter),
         ProjectInputPlan::Aggregation(aggregation) => {
             check_aggregation_input(context, &aggregation.input)
@@ -153,6 +158,10 @@ fn check_filter(context: Option<&Rc<Context<'_>>>, filter: &FilterPlan) -> bool 
         FilterInputPlan::Source(relation) => check_source(context, relation),
         FilterInputPlan::InnerJoin(join) => check_inner_join(context, join),
         FilterInputPlan::LeftOuterJoin(join) => check_left_outer_join(context, join),
+        FilterInputPlan::UnplannedRightOuterJoin(join) => {
+            check_unplanned_right_outer_join(context, join)
+        }
+        FilterInputPlan::RightOuterJoin(join) => check_right_outer_join(context, join),
     };
 
     input && check_expr(context.map(Rc::clone), &filter.expr)
@@ -166,6 +175,10 @@ fn check_aggregation_input(
         AggregationInputPlan::Source(relation) => check_source(context, relation),
         AggregationInputPlan::InnerJoin(join) => check_inner_join(context, join),
         AggregationInputPlan::LeftOuterJoin(join) => check_left_outer_join(context, join),
+        AggregationInputPlan::UnplannedRightOuterJoin(join) => {
+            check_unplanned_right_outer_join(context, join)
+        }
+        AggregationInputPlan::RightOuterJoin(join) => check_right_outer_join(context, join),
         AggregationInputPlan::Filter(filter) => check_filter(context, filter),
     }
 }
@@ -186,6 +199,26 @@ fn check_left_outer_join(context: Option<&Rc<Context<'_>>>, join: &LeftOuterJoin
     }
 }
 
+fn check_unplanned_right_outer_join(
+    context: Option<&Rc<Context<'_>>>,
+    join: &UnplannedRightOuterJoinPlan,
+) -> bool {
+    match &join.input {
+        UnplannedRightOuterJoinInputPlan::NestedLoop(join) => check_nested_loop(context, join),
+        UnplannedRightOuterJoinInputPlan::Condition(condition) => {
+            check_condition(context, condition)
+        }
+    }
+}
+
+fn check_right_outer_join(context: Option<&Rc<Context<'_>>>, join: &RightOuterJoinPlan) -> bool {
+    match &join.input {
+        RightOuterJoinInputPlan::NestedLoop(join) => check_nested_loop(context, join),
+        RightOuterJoinInputPlan::Hash(join) => check_hash(context, join),
+        RightOuterJoinInputPlan::Condition(condition) => check_condition(context, condition),
+    }
+}
+
 fn check_condition(context: Option<&Rc<Context<'_>>>, condition: &JoinConditionPlan) -> bool {
     let input = match &condition.input {
         JoinConditionInputPlan::NestedLoop(join) => check_nested_loop(context, join),
@@ -200,6 +233,10 @@ fn check_nested_loop(context: Option<&Rc<Context<'_>>>, join: &NestedLoopJoinPla
         NestedLoopJoinInputPlan::Source(source) => check_source(context, source),
         NestedLoopJoinInputPlan::InnerJoin(join) => check_inner_join(context, join),
         NestedLoopJoinInputPlan::LeftOuterJoin(join) => check_left_outer_join(context, join),
+        NestedLoopJoinInputPlan::UnplannedRightOuterJoin(join) => {
+            check_unplanned_right_outer_join(context, join)
+        }
+        NestedLoopJoinInputPlan::RightOuterJoin(join) => check_right_outer_join(context, join),
     };
 
     input && check_source(context, &join.right)
@@ -210,6 +247,7 @@ fn check_hash(context: Option<&Rc<Context<'_>>>, join: &HashJoinPlan) -> bool {
         HashJoinInputPlan::Source(source) => check_source(context, source),
         HashJoinInputPlan::InnerJoin(join) => check_inner_join(context, join),
         HashJoinInputPlan::LeftOuterJoin(join) => check_left_outer_join(context, join),
+        HashJoinInputPlan::RightOuterJoin(join) => check_right_outer_join(context, join),
     };
 
     input

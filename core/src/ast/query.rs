@@ -97,6 +97,7 @@ pub struct Join {
 pub enum JoinOperator {
     Inner(JoinConstraint),
     LeftOuter(JoinConstraint),
+    RightOuter(JoinConstraint),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -444,6 +445,7 @@ impl Join {
         let (join_operator, join_constraint) = match join_operator {
             JoinOperator::Inner(join_constraint) => ("INNER JOIN", join_constraint),
             JoinOperator::LeftOuter(join_constraint) => ("LEFT OUTER JOIN", join_constraint),
+            JoinOperator::RightOuter(join_constraint) => ("RIGHT OUTER JOIN", join_constraint),
         };
 
         let join_constraint = if quoted {
@@ -1134,6 +1136,30 @@ mod tests {
         }
         .to_sql();
         assert_eq!(actual, expected);
+
+        let actual = r#"RIGHT OUTER JOIN "PlayerItem""#;
+        let expected = Join {
+            relation: TableFactor::Table {
+                name: "PlayerItem".to_owned(),
+                alias: None,
+            },
+            join_operator: JoinOperator::RightOuter(JoinConstraint::None),
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+
+        let actual = r#"RIGHT OUTER JOIN "PlayerItem" ON "PlayerItem"."user_id" = "Player"."id""#;
+        let expected = Join {
+            relation: TableFactor::Table {
+                name: "PlayerItem".to_owned(),
+                alias: None,
+            },
+            join_operator: JoinOperator::RightOuter(JoinConstraint::On(expr(
+                r#""PlayerItem"."user_id" = "Player"."id""#,
+            ))),
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -1194,6 +1220,30 @@ mod tests {
             },
             join_operator: JoinOperator::LeftOuter(JoinConstraint::On(expr(
                 "PlayerItem.age > Player.age AND PlayerItem.user_id = Player.id AND PlayerItem.amount > 10 AND PlayerItem.amount * 3 <= 2",
+            ))),
+        }
+        .to_sql_unquoted();
+        assert_eq!(actual, expected);
+
+        let actual = "RIGHT OUTER JOIN PlayerItem";
+        let expected = Join {
+            relation: TableFactor::Table {
+                name: "PlayerItem".to_owned(),
+                alias: None,
+            },
+            join_operator: JoinOperator::RightOuter(JoinConstraint::None),
+        }
+        .to_sql_unquoted();
+        assert_eq!(actual, expected);
+
+        let actual = "RIGHT OUTER JOIN PlayerItem ON PlayerItem.user_id = Player.id";
+        let expected = Join {
+            relation: TableFactor::Table {
+                name: "PlayerItem".to_owned(),
+                alias: None,
+            },
+            join_operator: JoinOperator::RightOuter(JoinConstraint::On(expr(
+                "PlayerItem.user_id = Player.id",
             ))),
         }
         .to_sql_unquoted();

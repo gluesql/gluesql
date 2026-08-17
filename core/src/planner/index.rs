@@ -162,6 +162,18 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
 
                 (ProjectInputPlan::LeftOuterJoin(join), order_by)
             }
+            ProjectInputPlan::UnplannedRightOuterJoin(mut join) => {
+                let (_, order_by) =
+                    self.source(outer_context, join.base_source_mut(), None, order_by);
+
+                (ProjectInputPlan::UnplannedRightOuterJoin(join), order_by)
+            }
+            ProjectInputPlan::RightOuterJoin(mut join) => {
+                let (_, order_by) =
+                    self.source(outer_context, join.base_source_mut(), None, order_by);
+
+                (ProjectInputPlan::RightOuterJoin(join), order_by)
+            }
             ProjectInputPlan::Filter(FilterPlan { mut input, expr }) => {
                 let (expr, order_by) =
                     self.source(outer_context, input.base_source_mut(), Some(expr), order_by);
@@ -172,6 +184,12 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                         FilterInputPlan::InnerJoin(join) => ProjectInputPlan::InnerJoin(join),
                         FilterInputPlan::LeftOuterJoin(join) => {
                             ProjectInputPlan::LeftOuterJoin(join)
+                        }
+                        FilterInputPlan::UnplannedRightOuterJoin(join) => {
+                            ProjectInputPlan::UnplannedRightOuterJoin(join)
+                        }
+                        FilterInputPlan::RightOuterJoin(join) => {
+                            ProjectInputPlan::RightOuterJoin(join)
                         }
                     },
                 };
@@ -242,6 +260,21 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
 
                 (AggregationInputPlan::LeftOuterJoin(join), order_by)
             }
+            AggregationInputPlan::UnplannedRightOuterJoin(mut join) => {
+                let (_, order_by) =
+                    self.source(outer_context, join.base_source_mut(), None, order_by);
+
+                (
+                    AggregationInputPlan::UnplannedRightOuterJoin(join),
+                    order_by,
+                )
+            }
+            AggregationInputPlan::RightOuterJoin(mut join) => {
+                let (_, order_by) =
+                    self.source(outer_context, join.base_source_mut(), None, order_by);
+
+                (AggregationInputPlan::RightOuterJoin(join), order_by)
+            }
             AggregationInputPlan::Filter(FilterPlan { mut input, expr }) => {
                 let (expr, order_by) =
                     self.source(outer_context, input.base_source_mut(), Some(expr), order_by);
@@ -252,6 +285,12 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                         FilterInputPlan::InnerJoin(join) => AggregationInputPlan::InnerJoin(join),
                         FilterInputPlan::LeftOuterJoin(join) => {
                             AggregationInputPlan::LeftOuterJoin(join)
+                        }
+                        FilterInputPlan::UnplannedRightOuterJoin(join) => {
+                            AggregationInputPlan::UnplannedRightOuterJoin(join)
+                        }
+                        FilterInputPlan::RightOuterJoin(join) => {
+                            AggregationInputPlan::RightOuterJoin(join)
                         }
                     },
                 };

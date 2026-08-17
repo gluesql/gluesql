@@ -25,4 +25,10 @@ pub enum QueryError {
 
     #[error("unreachable - table schema missing after source preparation: {0}")]
     UnreachableTableSchemaMissingAfterPreparation(String),
+
+    #[error("unreachable - RIGHT JOIN reached execution without being lowered by the planner")]
+    UnreachableUnplannedRightOuterJoin,
+
+    #[error("unreachable - NULL-extended relations do not match the join sources: {0}")]
+    UnreachableNullExtendRelationMismatch(String),
 }

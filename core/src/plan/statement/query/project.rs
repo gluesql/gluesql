@@ -1,6 +1,9 @@
 use {
     super::{AggregationPlan, FilterPlan, HavingPlan},
-    crate::plan::{InnerJoinPlan, LeftOuterJoinPlan, ProjectionPlan, SourcePlan},
+    crate::plan::{
+        InnerJoinPlan, LeftOuterJoinPlan, ProjectionPlan, RightOuterJoinPlan, SourcePlan,
+        UnplannedRightOuterJoinPlan,
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -9,6 +12,8 @@ pub enum ProjectInputPlan {
     Source(SourcePlan),
     InnerJoin(Box<InnerJoinPlan>),
     LeftOuterJoin(Box<LeftOuterJoinPlan>),
+    UnplannedRightOuterJoin(Box<UnplannedRightOuterJoinPlan>),
+    RightOuterJoin(Box<RightOuterJoinPlan>),
     Filter(FilterPlan),
     Aggregation(AggregationPlan),
     Having(HavingPlan),
@@ -20,6 +25,8 @@ impl ProjectInputPlan {
             Self::Source(source) => source,
             Self::InnerJoin(join) => join.base_source(),
             Self::LeftOuterJoin(join) => join.base_source(),
+            Self::UnplannedRightOuterJoin(join) => join.base_source(),
+            Self::RightOuterJoin(join) => join.base_source(),
             Self::Filter(filter) => filter.input.base_source(),
             Self::Aggregation(aggregation) => aggregation.input.base_source(),
             Self::Having(having) => having.input.input.base_source(),
@@ -31,6 +38,8 @@ impl ProjectInputPlan {
             Self::Source(_) => Vec::new(),
             Self::InnerJoin(join) => join.joined_sources(),
             Self::LeftOuterJoin(join) => join.joined_sources(),
+            Self::UnplannedRightOuterJoin(join) => join.joined_sources(),
+            Self::RightOuterJoin(join) => join.joined_sources(),
             Self::Filter(filter) => filter.input.joined_sources(),
             Self::Aggregation(aggregation) => aggregation.input.joined_sources(),
             Self::Having(having) => having.input.input.joined_sources(),

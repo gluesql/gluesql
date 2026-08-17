@@ -6,8 +6,10 @@ use {
         InnerJoinInputPlan, InnerJoinPlan, JoinConditionInputPlan, JoinConditionPlan,
         LeftOuterJoinInputPlan, LeftOuterJoinPlan, LimitInputPlan, LimitPlan,
         NestedLoopJoinInputPlan, NestedLoopJoinPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan,
-        ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
-        SelectOrderByPlan, SourcePlan, StatementPlan, ValuesOrderByPlan, ValuesPlan,
+        ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, RightOuterJoinInputPlan,
+        RightOuterJoinPlan, SelectItemPlan, SelectOrderByPlan, SourcePlan, StatementPlan,
+        UnplannedRightOuterJoinInputPlan, UnplannedRightOuterJoinPlan, ValuesOrderByPlan,
+        ValuesPlan,
     },
     std::collections::HashMap,
 };
@@ -155,6 +157,8 @@ fn plan_project_input(input: &mut ProjectInputPlan) {
         ProjectInputPlan::Source(relation) => plan_source(relation),
         ProjectInputPlan::InnerJoin(join) => plan_inner_join(join),
         ProjectInputPlan::LeftOuterJoin(join) => plan_left_outer_join(join),
+        ProjectInputPlan::UnplannedRightOuterJoin(join) => plan_unplanned_right_outer_join(join),
+        ProjectInputPlan::RightOuterJoin(join) => plan_right_outer_join(join),
         ProjectInputPlan::Filter(filter) => plan_filter(filter),
         ProjectInputPlan::Aggregation(aggregation) => {
             plan_aggregation_input(&mut aggregation.input);
@@ -185,6 +189,8 @@ fn plan_filter(FilterPlan { input, expr }: &mut FilterPlan) {
         FilterInputPlan::Source(relation) => plan_source(relation),
         FilterInputPlan::InnerJoin(join) => plan_inner_join(join),
         FilterInputPlan::LeftOuterJoin(join) => plan_left_outer_join(join),
+        FilterInputPlan::UnplannedRightOuterJoin(join) => plan_unplanned_right_outer_join(join),
+        FilterInputPlan::RightOuterJoin(join) => plan_right_outer_join(join),
     }
     plan_expr(expr);
 }
@@ -194,6 +200,10 @@ fn plan_aggregation_input(input: &mut AggregationInputPlan) {
         AggregationInputPlan::Source(relation) => plan_source(relation),
         AggregationInputPlan::InnerJoin(join) => plan_inner_join(join),
         AggregationInputPlan::LeftOuterJoin(join) => plan_left_outer_join(join),
+        AggregationInputPlan::UnplannedRightOuterJoin(join) => {
+            plan_unplanned_right_outer_join(join);
+        }
+        AggregationInputPlan::RightOuterJoin(join) => plan_right_outer_join(join),
         AggregationInputPlan::Filter(filter) => plan_filter(filter),
     }
 }
@@ -227,6 +237,21 @@ fn plan_left_outer_join(join: &mut LeftOuterJoinPlan) {
     }
 }
 
+fn plan_unplanned_right_outer_join(join: &mut UnplannedRightOuterJoinPlan) {
+    match &mut join.input {
+        UnplannedRightOuterJoinInputPlan::NestedLoop(join) => plan_nested_loop_join(join),
+        UnplannedRightOuterJoinInputPlan::Condition(condition) => plan_join_condition(condition),
+    }
+}
+
+fn plan_right_outer_join(join: &mut RightOuterJoinPlan) {
+    match &mut join.input {
+        RightOuterJoinInputPlan::NestedLoop(join) => plan_nested_loop_join(join),
+        RightOuterJoinInputPlan::Hash(join) => plan_hash_join(join),
+        RightOuterJoinInputPlan::Condition(condition) => plan_join_condition(condition),
+    }
+}
+
 fn plan_join_condition(condition: &mut JoinConditionPlan) {
     match &mut condition.input {
         JoinConditionInputPlan::NestedLoop(join) => plan_nested_loop_join(join),
@@ -240,6 +265,10 @@ fn plan_nested_loop_join(join: &mut NestedLoopJoinPlan) {
         NestedLoopJoinInputPlan::Source(source) => plan_source(source),
         NestedLoopJoinInputPlan::InnerJoin(join) => plan_inner_join(join),
         NestedLoopJoinInputPlan::LeftOuterJoin(join) => plan_left_outer_join(join),
+        NestedLoopJoinInputPlan::UnplannedRightOuterJoin(join) => {
+            plan_unplanned_right_outer_join(join);
+        }
+        NestedLoopJoinInputPlan::RightOuterJoin(join) => plan_right_outer_join(join),
     }
     plan_source(&mut join.right);
 }
@@ -249,6 +278,7 @@ fn plan_hash_join(join: &mut HashJoinPlan) {
         HashJoinInputPlan::Source(source) => plan_source(source),
         HashJoinInputPlan::InnerJoin(join) => plan_inner_join(join),
         HashJoinInputPlan::LeftOuterJoin(join) => plan_left_outer_join(join),
+        HashJoinInputPlan::RightOuterJoin(join) => plan_right_outer_join(join),
     }
     plan_source(&mut join.right);
     plan_expr(&mut join.input_key);
@@ -348,6 +378,20 @@ fn bind_project(
                 aggregate_slots: aggregates,
             });
         }
+        ProjectInputPlan::UnplannedRightOuterJoin(join) if !aggregates.is_empty() => {
+            *input = ProjectInputPlan::Aggregation(AggregationPlan {
+                input: AggregationInputPlan::UnplannedRightOuterJoin(join.clone()),
+                group_by: Vec::new(),
+                aggregate_slots: aggregates,
+            });
+        }
+        ProjectInputPlan::RightOuterJoin(join) if !aggregates.is_empty() => {
+            *input = ProjectInputPlan::Aggregation(AggregationPlan {
+                input: AggregationInputPlan::RightOuterJoin(join.clone()),
+                group_by: Vec::new(),
+                aggregate_slots: aggregates,
+            });
+        }
         ProjectInputPlan::Filter(filter) if !aggregates.is_empty() => {
             *input = ProjectInputPlan::Aggregation(AggregationPlan {
                 input: AggregationInputPlan::Filter(filter.clone()),
@@ -358,6 +402,8 @@ fn bind_project(
         ProjectInputPlan::Source(_)
         | ProjectInputPlan::InnerJoin(_)
         | ProjectInputPlan::LeftOuterJoin(_)
+        | ProjectInputPlan::UnplannedRightOuterJoin(_)
+        | ProjectInputPlan::RightOuterJoin(_)
         | ProjectInputPlan::Filter(_) => {}
         ProjectInputPlan::Aggregation(aggregation) => {
             aggregation.aggregate_slots = aggregates;

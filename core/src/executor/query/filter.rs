@@ -1,7 +1,7 @@
 use {
     super::{
         SelectedRows,
-        join::{inner, left_outer},
+        join::{inner, left_outer, reject_unplanned_right_outer, right_outer},
         source,
     },
     crate::{
@@ -28,6 +28,10 @@ where
             .into_selected(None),
         FilterInputPlan::InnerJoin(join) => inner::execute(storage, join, filter_context)?,
         FilterInputPlan::LeftOuterJoin(join) => left_outer::execute(storage, join, filter_context)?,
+        FilterInputPlan::UnplannedRightOuterJoin(_) => reject_unplanned_right_outer()?,
+        FilterInputPlan::RightOuterJoin(join) => {
+            right_outer::execute(storage, join, filter_context)?
+        }
     };
     let filter_context = filter_context.map(Rc::clone);
     let rows = rows.filter_map(move |context| {

@@ -1,5 +1,5 @@
 use {
-    super::{InnerJoinPlan, LeftOuterJoinPlan},
+    super::{InnerJoinPlan, LeftOuterJoinPlan, RightOuterJoinPlan, UnplannedRightOuterJoinPlan},
     crate::plan::SourcePlan,
     serde::{Deserialize, Serialize},
 };
@@ -9,6 +9,40 @@ pub enum NestedLoopJoinInputPlan {
     Source(SourcePlan),
     InnerJoin(Box<InnerJoinPlan>),
     LeftOuterJoin(Box<LeftOuterJoinPlan>),
+    UnplannedRightOuterJoin(Box<UnplannedRightOuterJoinPlan>),
+    RightOuterJoin(Box<RightOuterJoinPlan>),
+}
+
+impl NestedLoopJoinInputPlan {
+    pub(crate) fn base_source(&self) -> &SourcePlan {
+        match self {
+            Self::Source(source) => source,
+            Self::InnerJoin(join) => join.base_source(),
+            Self::LeftOuterJoin(join) => join.base_source(),
+            Self::UnplannedRightOuterJoin(join) => join.base_source(),
+            Self::RightOuterJoin(join) => join.base_source(),
+        }
+    }
+
+    pub(crate) fn base_source_mut(&mut self) -> &mut SourcePlan {
+        match self {
+            Self::Source(source) => source,
+            Self::InnerJoin(join) => join.base_source_mut(),
+            Self::LeftOuterJoin(join) => join.base_source_mut(),
+            Self::UnplannedRightOuterJoin(join) => join.base_source_mut(),
+            Self::RightOuterJoin(join) => join.base_source_mut(),
+        }
+    }
+
+    pub(crate) fn joined_sources(&self) -> Vec<&SourcePlan> {
+        match self {
+            Self::Source(_) => Vec::new(),
+            Self::InnerJoin(join) => join.joined_sources(),
+            Self::LeftOuterJoin(join) => join.joined_sources(),
+            Self::UnplannedRightOuterJoin(join) => join.joined_sources(),
+            Self::RightOuterJoin(join) => join.joined_sources(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -19,27 +53,15 @@ pub struct NestedLoopJoinPlan {
 
 impl NestedLoopJoinPlan {
     pub(crate) fn base_source(&self) -> &SourcePlan {
-        match &self.input {
-            NestedLoopJoinInputPlan::Source(source) => source,
-            NestedLoopJoinInputPlan::InnerJoin(join) => join.base_source(),
-            NestedLoopJoinInputPlan::LeftOuterJoin(join) => join.base_source(),
-        }
+        self.input.base_source()
     }
 
     pub(crate) fn base_source_mut(&mut self) -> &mut SourcePlan {
-        match &mut self.input {
-            NestedLoopJoinInputPlan::Source(source) => source,
-            NestedLoopJoinInputPlan::InnerJoin(join) => join.base_source_mut(),
-            NestedLoopJoinInputPlan::LeftOuterJoin(join) => join.base_source_mut(),
-        }
+        self.input.base_source_mut()
     }
 
     pub(crate) fn joined_sources(&self) -> Vec<&SourcePlan> {
-        let mut sources = match &self.input {
-            NestedLoopJoinInputPlan::Source(_) => Vec::new(),
-            NestedLoopJoinInputPlan::InnerJoin(join) => join.joined_sources(),
-            NestedLoopJoinInputPlan::LeftOuterJoin(join) => join.joined_sources(),
-        };
+        let mut sources = self.input.joined_sources();
         sources.push(&self.right);
 
         sources

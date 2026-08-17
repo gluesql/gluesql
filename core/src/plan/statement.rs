@@ -15,10 +15,12 @@ pub use {
         DistinctInputPlan, DistinctPlan, FilterInputPlan, FilterPlan, HashJoinInputPlan,
         HashJoinPlan, HavingPlan, IndexPredicatePlan, InnerJoinInputPlan, InnerJoinPlan,
         JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
-        LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan, OffsetInputPlan,
-        OffsetPlan, OrderByExprPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SelectOrderByPlan,
-        SeriesSourcePlan, SourcePlan, TableAccessPlan, TableAliasPlan, TableSourcePlan,
-        ValuesOrderByPlan, ValuesPlan,
+        LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan, NullExtendPlan,
+        OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan, ProjectPlan, QueryPlan,
+        RightOuterJoinInputPlan, RightOuterJoinPlan, SelectOrderByPlan, SeriesSourcePlan,
+        SourcePlan, TableAccessPlan, TableAliasPlan, TableSourcePlan,
+        UnplannedRightOuterJoinInputPlan, UnplannedRightOuterJoinPlan, ValuesOrderByPlan,
+        ValuesPlan,
     },
 };
 
