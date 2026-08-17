@@ -518,7 +518,7 @@ mod tests {
     use {
         super::FunctionExprPlan,
         crate::{
-            ast::{DataType, DateTimeField, Literal},
+            ast::{DataType, DateTimeField, TrimWhereField},
             plan::{
                 ExprPlan,
                 explain::{Explain, ExplainContext},
@@ -526,45 +526,565 @@ mod tests {
         },
     };
 
+    fn test(actual: &FunctionExprPlan, expected: &str) {
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+    }
+
     #[test]
     fn explain() {
+        let actual = FunctionExprPlan::Abs(ExprPlan::Identifier("value".to_owned()));
+        let expected = "ABS(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::AddMonth {
+            expr: ExprPlan::Identifier("date".to_owned()),
+            size: ExprPlan::Identifier("size".to_owned()),
+        };
+        let expected = "ADD_MONTH(date, size)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Lower(ExprPlan::Identifier("value".to_owned()));
+        let expected = "LOWER(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Initcap(ExprPlan::Identifier("value".to_owned()));
+        let expected = "INITCAP(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Upper(ExprPlan::Identifier("value".to_owned()));
+        let expected = "UPPER(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Left {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            size: ExprPlan::Identifier("size".to_owned()),
+        };
+        let expected = "LEFT(value, size)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Right {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            size: ExprPlan::Identifier("size".to_owned()),
+        };
+        let expected = "RIGHT(value, size)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Asin(ExprPlan::Identifier("value".to_owned()));
+        let expected = "ASIN(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Acos(ExprPlan::Identifier("value".to_owned()));
+        let expected = "ACOS(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Atan(ExprPlan::Identifier("value".to_owned()));
+        let expected = "ATAN(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Lpad {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            size: ExprPlan::Identifier("size".to_owned()),
+            fill: None,
+        };
+        let expected = "LPAD(value, size)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Lpad {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            size: ExprPlan::Identifier("size".to_owned()),
+            fill: Some(ExprPlan::Identifier("fill".to_owned())),
+        };
+        let expected = "LPAD(value, size, fill)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Rpad {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            size: ExprPlan::Identifier("size".to_owned()),
+            fill: None,
+        };
+        let expected = "RPAD(value, size)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Rpad {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            size: ExprPlan::Identifier("size".to_owned()),
+            fill: Some(ExprPlan::Identifier("fill".to_owned())),
+        };
+        let expected = "RPAD(value, size, fill)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Replace {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            old: ExprPlan::Identifier("old".to_owned()),
+            new: ExprPlan::Identifier("new".to_owned()),
+        };
+        let expected = "REPLACE(value, old, new)";
+        test(&actual, expected);
+
         let actual = FunctionExprPlan::Cast {
-            expr: ExprPlan::Identifier("id".to_owned()),
+            expr: ExprPlan::Identifier("value".to_owned()),
             data_type: DataType::Text,
         };
-        let expected = "CAST(id AS TEXT)";
-        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+        let expected = "CAST(value AS TEXT)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Ceil(ExprPlan::Identifier("value".to_owned()));
+        let expected = "CEIL(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Coalesce(vec![
+            ExprPlan::Identifier("left".to_owned()),
+            ExprPlan::Identifier("right".to_owned()),
+        ]);
+        let expected = "COALESCE(left, right)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Concat(vec![
+            ExprPlan::Identifier("left".to_owned()),
+            ExprPlan::Identifier("right".to_owned()),
+        ]);
+        let expected = "CONCAT(left, right)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::ConcatWs {
+            separator: ExprPlan::Identifier("separator".to_owned()),
+            exprs: vec![
+                ExprPlan::Identifier("left".to_owned()),
+                ExprPlan::Identifier("right".to_owned()),
+            ],
+        };
+        let expected = "CONCAT_WS(separator, left, right)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Custom {
+            name: "custom_function".to_owned(),
+            exprs: vec![
+                ExprPlan::Identifier("left".to_owned()),
+                ExprPlan::Identifier("right".to_owned()),
+            ],
+        };
+        let expected = "custom_function(left, right)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::IfNull {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            then: ExprPlan::Identifier("fallback".to_owned()),
+        };
+        let expected = "IF_NULL(value, fallback)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::NullIf {
+            expr1: ExprPlan::Identifier("left".to_owned()),
+            expr2: ExprPlan::Identifier("right".to_owned()),
+        };
+        let expected = "NULL_IF(left, right)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Rand(None);
+        let expected = "RAND()";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Rand(Some(ExprPlan::Identifier("seed".to_owned())));
+        let expected = "RAND(seed)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Round(ExprPlan::Identifier("value".to_owned()));
+        let expected = "ROUND(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Trunc(ExprPlan::Identifier("value".to_owned()));
+        let expected = "TRUNC(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Floor(ExprPlan::Identifier("value".to_owned()));
+        let expected = "FLOOR(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Trim {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            filter_chars: None,
+            trim_where_field: None,
+        };
+        let expected = "TRIM(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Trim {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            filter_chars: Some(ExprPlan::Identifier("chars".to_owned())),
+            trim_where_field: Some(TrimWhereField::Leading),
+        };
+        let expected = "TRIM(value, chars)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Exp(ExprPlan::Identifier("value".to_owned()));
+        let expected = "EXP(value)";
+        test(&actual, expected);
 
         let actual = FunctionExprPlan::Extract {
             field: DateTimeField::Year,
             expr: ExprPlan::Identifier("created_at".to_owned()),
         };
         let expected = "EXTRACT(YEAR FROM created_at)";
-        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+        test(&actual, expected);
 
-        let actual = FunctionExprPlan::Custom {
-            name: "score".to_owned(),
-            exprs: vec![
-                ExprPlan::Identifier("id".to_owned()),
-                ExprPlan::Literal(Literal::Number(1.into())),
-            ],
+        let actual = FunctionExprPlan::Ln(ExprPlan::Identifier("value".to_owned()));
+        let expected = "LN(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Log {
+            antilog: ExprPlan::Identifier("antilog".to_owned()),
+            base: ExprPlan::Identifier("base".to_owned()),
         };
-        let expected = "score(id, 1)";
-        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+        let expected = "LOG(antilog, base)";
+        test(&actual, expected);
 
-        let actual = FunctionExprPlan::Abs(ExprPlan::Identifier("score".to_owned()));
-        let expected = "ABS(score)";
-        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+        let actual = FunctionExprPlan::Log2(ExprPlan::Identifier("value".to_owned()));
+        let expected = "LOG2(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Log10(ExprPlan::Identifier("value".to_owned()));
+        let expected = "LOG10(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Div {
+            dividend: ExprPlan::Identifier("dividend".to_owned()),
+            divisor: ExprPlan::Identifier("divisor".to_owned()),
+        };
+        let expected = "DIV(dividend, divisor)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Mod {
+            dividend: ExprPlan::Identifier("dividend".to_owned()),
+            divisor: ExprPlan::Identifier("divisor".to_owned()),
+        };
+        let expected = "MOD(dividend, divisor)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Gcd {
+            left: ExprPlan::Identifier("left".to_owned()),
+            right: ExprPlan::Identifier("right".to_owned()),
+        };
+        let expected = "GCD(left, right)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Lcm {
+            left: ExprPlan::Identifier("left".to_owned()),
+            right: ExprPlan::Identifier("right".to_owned()),
+        };
+        let expected = "LCM(left, right)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Sin(ExprPlan::Identifier("value".to_owned()));
+        let expected = "SIN(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Cos(ExprPlan::Identifier("value".to_owned()));
+        let expected = "COS(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Tan(ExprPlan::Identifier("value".to_owned()));
+        let expected = "TAN(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Sqrt(ExprPlan::Identifier("value".to_owned()));
+        let expected = "SQRT(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Power {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            power: ExprPlan::Identifier("power".to_owned()),
+        };
+        let expected = "POWER(value, power)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Radians(ExprPlan::Identifier("value".to_owned()));
+        let expected = "RADIANS(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Degrees(ExprPlan::Identifier("value".to_owned()));
+        let expected = "DEGREES(value)";
+        test(&actual, expected);
 
         let actual = FunctionExprPlan::Now();
         let expected = "NOW()";
-        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+        test(&actual, expected);
 
-        let actual = FunctionExprPlan::Concat(vec![
-            ExprPlan::Identifier("first_name".to_owned()),
-            ExprPlan::Identifier("last_name".to_owned()),
+        let actual = FunctionExprPlan::CurrentDate();
+        let expected = "CURRENT_DATE()";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::CurrentTime();
+        let expected = "CURRENT_TIME()";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::CurrentTimestamp();
+        let expected = "CURRENT_TIMESTAMP()";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Pi();
+        let expected = "PI()";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::LastDay(ExprPlan::Identifier("date".to_owned()));
+        let expected = "LAST_DAY(date)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Ltrim {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            chars: None,
+        };
+        let expected = "LTRIM(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Ltrim {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            chars: Some(ExprPlan::Identifier("chars".to_owned())),
+        };
+        let expected = "LTRIM(value, chars)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Rtrim {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            chars: None,
+        };
+        let expected = "RTRIM(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Rtrim {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            chars: Some(ExprPlan::Identifier("chars".to_owned())),
+        };
+        let expected = "RTRIM(value, chars)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Reverse(ExprPlan::Identifier("value".to_owned()));
+        let expected = "REVERSE(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Repeat {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            num: ExprPlan::Identifier("count".to_owned()),
+        };
+        let expected = "REPEAT(value, count)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Sign(ExprPlan::Identifier("value".to_owned()));
+        let expected = "SIGN(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Substr {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            start: ExprPlan::Identifier("start".to_owned()),
+            count: None,
+        };
+        let expected = "SUBSTR(value, start)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Substr {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            start: ExprPlan::Identifier("start".to_owned()),
+            count: Some(ExprPlan::Identifier("count".to_owned())),
+        };
+        let expected = "SUBSTR(value, start, count)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Unwrap {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            selector: ExprPlan::Identifier("selector".to_owned()),
+        };
+        let expected = "UNWRAP(value, selector)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::GenerateUuid();
+        let expected = "GENERATE_UUID()";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Greatest(vec![
+            ExprPlan::Identifier("left".to_owned()),
+            ExprPlan::Identifier("right".to_owned()),
         ]);
-        let expected = "CONCAT(first_name, last_name)";
-        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+        let expected = "GREATEST(left, right)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Format {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            format: ExprPlan::Identifier("format".to_owned()),
+        };
+        let expected = "FORMAT(value, format)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::ToDate {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            format: ExprPlan::Identifier("format".to_owned()),
+        };
+        let expected = "TO_DATE(value, format)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::ToTimestamp {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            format: ExprPlan::Identifier("format".to_owned()),
+        };
+        let expected = "TO_TIMESTAMP(value, format)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::ToTime {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            format: ExprPlan::Identifier("format".to_owned()),
+        };
+        let expected = "TO_TIME(value, format)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Position {
+            from_expr: ExprPlan::Identifier("value".to_owned()),
+            sub_expr: ExprPlan::Identifier("substring".to_owned()),
+        };
+        let expected = "POSITION(substring, value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::FindIdx {
+            from_expr: ExprPlan::Identifier("value".to_owned()),
+            sub_expr: ExprPlan::Identifier("substring".to_owned()),
+            start: None,
+        };
+        let expected = "FIND_IDX(value, substring)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::FindIdx {
+            from_expr: ExprPlan::Identifier("value".to_owned()),
+            sub_expr: ExprPlan::Identifier("substring".to_owned()),
+            start: Some(ExprPlan::Identifier("start".to_owned())),
+        };
+        let expected = "FIND_IDX(value, substring, start)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Ascii(ExprPlan::Identifier("value".to_owned()));
+        let expected = "ASCII(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Chr(ExprPlan::Identifier("value".to_owned()));
+        let expected = "CHR(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Md5(ExprPlan::Identifier("value".to_owned()));
+        let expected = "MD5(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Hex(ExprPlan::Identifier("value".to_owned()));
+        let expected = "HEX(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Append {
+            expr: ExprPlan::Identifier("list".to_owned()),
+            value: ExprPlan::Identifier("value".to_owned()),
+        };
+        let expected = "APPEND(list, value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Sort {
+            expr: ExprPlan::Identifier("list".to_owned()),
+            order: None,
+        };
+        let expected = "SORT(list)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Sort {
+            expr: ExprPlan::Identifier("list".to_owned()),
+            order: Some(ExprPlan::Identifier("order".to_owned())),
+        };
+        let expected = "SORT(list, order)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Slice {
+            expr: ExprPlan::Identifier("list".to_owned()),
+            start: ExprPlan::Identifier("start".to_owned()),
+            length: ExprPlan::Identifier("length".to_owned()),
+        };
+        let expected = "SLICE(list, start, length)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Prepend {
+            expr: ExprPlan::Identifier("list".to_owned()),
+            value: ExprPlan::Identifier("value".to_owned()),
+        };
+        let expected = "PREPEND(list, value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Skip {
+            expr: ExprPlan::Identifier("list".to_owned()),
+            size: ExprPlan::Identifier("size".to_owned()),
+        };
+        let expected = "SKIP(list, size)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Take {
+            expr: ExprPlan::Identifier("list".to_owned()),
+            size: ExprPlan::Identifier("size".to_owned()),
+        };
+        let expected = "TAKE(list, size)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::GetX(ExprPlan::Identifier("point".to_owned()));
+        let expected = "GET_X(point)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::GetY(ExprPlan::Identifier("point".to_owned()));
+        let expected = "GET_Y(point)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Point {
+            x: ExprPlan::Identifier("x".to_owned()),
+            y: ExprPlan::Identifier("y".to_owned()),
+        };
+        let expected = "POINT(x, y)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::CalcDistance {
+            geometry1: ExprPlan::Identifier("left".to_owned()),
+            geometry2: ExprPlan::Identifier("right".to_owned()),
+        };
+        let expected = "CALC_DISTANCE(left, right)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::IsEmpty(ExprPlan::Identifier("value".to_owned()));
+        let expected = "IS_EMPTY(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Length(ExprPlan::Identifier("value".to_owned()));
+        let expected = "LENGTH(value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Entries(ExprPlan::Identifier("map".to_owned()));
+        let expected = "ENTRIES(map)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Keys(ExprPlan::Identifier("map".to_owned()));
+        let expected = "KEYS(map)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Values(ExprPlan::Identifier("map".to_owned()));
+        let expected = "VALUES(map)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Splice {
+            list_data: ExprPlan::Identifier("list".to_owned()),
+            begin_index: ExprPlan::Identifier("begin".to_owned()),
+            end_index: ExprPlan::Identifier("end".to_owned()),
+            values: None,
+        };
+        let expected = "SPLICE(list, begin, end)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Splice {
+            list_data: ExprPlan::Identifier("list".to_owned()),
+            begin_index: ExprPlan::Identifier("begin".to_owned()),
+            end_index: ExprPlan::Identifier("end".to_owned()),
+            values: Some(ExprPlan::Identifier("values".to_owned())),
+        };
+        let expected = "SPLICE(list, begin, end, values)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Dedup(ExprPlan::Identifier("list".to_owned()));
+        let expected = "DEDUP(list)";
+        test(&actual, expected);
     }
 }
