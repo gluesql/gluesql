@@ -70,7 +70,7 @@ fn rows<'a, T: GStore>(
 ) -> Result<SourceRows<'a>> {
     let columns = Rc::clone(&source.names);
     let rows = match &table.access {
-        TableAccessPlan::FullScan => {
+        TableAccessPlan::FullScan | TableAccessPlan::FullScanRequired => {
             let rows = storage.scan_data(&table.name)?.map({
                 let columns = Rc::clone(&columns);
 

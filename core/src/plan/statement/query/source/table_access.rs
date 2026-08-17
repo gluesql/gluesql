@@ -10,6 +10,9 @@ use {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TableAccessPlan {
     FullScan,
+    /// A full scan no planner may narrow: a RIGHT JOIN's unmatched pass needs the complete left
+    /// input. Executes exactly like [`Self::FullScan`].
+    FullScanRequired,
     PrimaryKey {
         expr: ExprPlan,
     },
