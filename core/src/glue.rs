@@ -17,6 +17,14 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
         Self { storage }
     }
 
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(name = "gluesql.plan", target = "gluesql", level = "debug", skip_all)
+    )]
+    fn plan_statement(&self, statement: StatementPlan) -> Result<StatementPlan> {
+        self.storage.plan(statement)
+    }
+
     /// Plans all statements in the SQL string using the supplied parameters.
     ///
     /// # Errors
@@ -38,7 +46,7 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
             .into_iter()
             .map(|p| {
                 translate_with_params(&p, &params)
-                    .and_then(|statement| self.storage.plan(statement.into()))
+                    .and_then(|statement| self.plan_statement(statement.into()))
             })
             .collect()
     }
@@ -53,6 +61,15 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
         self.plan_with_params(sql, std::iter::empty::<ParamLiteral>())
     }
 
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            name = "gluesql.execute_statement",
+            target = "gluesql",
+            level = "debug",
+            skip_all
+        )
+    )]
     pub fn execute_stmt(&mut self, statement: &StatementPlan) -> Result<Payload> {
         execute(&mut self.storage, statement)
     }
@@ -63,6 +80,15 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
     ///
     /// Returns an error when parsing fails, planning fails, or executing a statement
     /// against the storage fails.
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            name = "gluesql.execute",
+            target = "gluesql",
+            level = "info",
+            skip_all
+        )
+    )]
     pub fn execute_with_params<Sql, I, P>(&mut self, sql: Sql, params: I) -> Result<Vec<Payload>>
     where
         Sql: AsRef<str>,

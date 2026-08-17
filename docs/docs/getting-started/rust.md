@@ -25,6 +25,7 @@ By default, all available storage features are included with GlueSQL. Here's a l
 - `gluesql-redis-storage` - Storage backed by Redis
 - `gluesql-file-storage` - Storage backed by files on the local filesystem
 - `gluesql-git-storage` - Git-backed storage with version history
+- `tracing` - Optional execution tracing for diagnostics and telemetry
 
 If you don't need all the default storage features, you can disable them and select only the ones you require. To do this, update your `Cargo.toml` file with the following lines:
 

@@ -39,6 +39,16 @@ pub fn delete<T: GStore + GStoreMut>(
         })
         .collect::<Result<Vec<_>>>()?;
 
+    #[cfg(feature = "tracing")]
+    let collect_span = tracing::debug_span!(
+        target: "gluesql",
+        "gluesql.mutation.collect",
+        operation = "delete",
+        buffered_rows = tracing::field::Empty
+    );
+    #[cfg(feature = "tracing")]
+    let collect_entered = collect_span.enter();
+
     let mut keys = Vec::new();
     for item in fetch(storage, table_name, columns, selection)? {
         let (key, row) = item?;
@@ -85,6 +95,12 @@ pub fn delete<T: GStore + GStoreMut>(
         keys.push(key);
     }
     let num_keys = keys.len();
+
+    #[cfg(feature = "tracing")]
+    {
+        collect_span.record("buffered_rows", num_keys);
+        drop(collect_entered);
+    }
 
     storage
         .delete_data(table_name, keys)

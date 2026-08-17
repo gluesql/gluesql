@@ -63,6 +63,75 @@ enum Storage {
     File,
 }
 
+#[cfg(feature = "tracing")]
+struct TracingGuard {
+    #[cfg(feature = "tracing-flame")]
+    _flame: tracing_flame::FlushGuard<std::io::BufWriter<std::fs::File>>,
+    #[cfg(feature = "opentelemetry")]
+    provider: opentelemetry_sdk::trace::SdkTracerProvider,
+}
+
+#[cfg(all(feature = "tracing", feature = "opentelemetry"))]
+impl Drop for TracingGuard {
+    fn drop(&mut self) {
+        if let Err(error) = self.provider.shutdown() {
+            eprintln!("[tracing] failed to shut down OpenTelemetry exporter: {error}");
+        }
+    }
+}
+
+#[cfg(feature = "tracing")]
+fn init_tracing() -> Result<TracingGuard> {
+    use tracing_subscriber::{
+        EnvFilter,
+        fmt::{self, format::FmtSpan},
+        layer::SubscriberExt,
+        util::SubscriberInitExt,
+    };
+
+    let filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("gluesql=info"));
+    let fmt_layer = fmt::layer()
+        .with_span_events(FmtSpan::CLOSE)
+        .with_writer(std::io::stderr);
+
+    #[cfg(feature = "tracing-flame")]
+    let (flame_layer, flame_guard) = {
+        let path =
+            std::env::var_os("GLUESQL_FLAMEGRAPH_PATH").unwrap_or_else(|| "tracing.folded".into());
+        let (layer, guard) = tracing_flame::FlameLayer::with_file(path)?;
+
+        (layer.with_empty_samples(false), guard)
+    };
+
+    #[cfg(feature = "opentelemetry")]
+    let (otel_layer, provider) = {
+        use opentelemetry::trace::TracerProvider as _;
+
+        let exporter = opentelemetry_otlp::SpanExporter::builder().build()?;
+        let provider = opentelemetry_sdk::trace::SdkTracerProvider::builder()
+            .with_batch_exporter(exporter)
+            .build();
+        let tracer = provider.tracer("gluesql-cli");
+
+        (tracing_opentelemetry::layer().with_tracer(tracer), provider)
+    };
+
+    let subscriber = tracing_subscriber::registry().with(filter).with(fmt_layer);
+    #[cfg(feature = "tracing-flame")]
+    let subscriber = subscriber.with(flame_layer);
+    #[cfg(feature = "opentelemetry")]
+    let subscriber = subscriber.with(otel_layer);
+    subscriber.try_init()?;
+
+    Ok(TracingGuard {
+        #[cfg(feature = "tracing-flame")]
+        _flame: flame_guard,
+        #[cfg(feature = "opentelemetry")]
+        provider,
+    })
+}
+
 pub fn run() -> Result<()> {
     fn run<T: GStore + GStoreMut + Planner>(storage: T, input: Option<PathBuf>) {
         let output = std::io::stdout();
@@ -78,6 +147,9 @@ pub fn run() -> Result<()> {
             eprintln!("{e}");
         }
     }
+
+    #[cfg(feature = "tracing")]
+    let _tracing_guard = init_tracing()?;
 
     let Args {
         execute,

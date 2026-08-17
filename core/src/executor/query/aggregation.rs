@@ -25,6 +25,16 @@ pub(super) struct AggregatedRows<'a> {
     pub(super) rows: Vec<AggregateContext<'a>>,
 }
 
+#[cfg_attr(
+    feature = "tracing",
+    tracing::instrument(
+        name = "gluesql.query.aggregate",
+        target = "gluesql",
+        level = "debug",
+        skip_all,
+        fields(buffered_groups = tracing::field::Empty)
+    )
+)]
 pub(super) fn execute<'a, T>(
     storage: &'a T,
     plan: &'a AggregationPlan,
@@ -71,6 +81,9 @@ where
     }
 
     let rows = state.export(aggregate_slots)?;
+
+    #[cfg(feature = "tracing")]
+    tracing::Span::current().record("buffered_groups", rows.len());
 
     Ok(AggregatedRows { sources, rows })
 }
