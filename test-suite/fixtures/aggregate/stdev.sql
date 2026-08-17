@@ -16,9 +16,9 @@ INSERT INTO Item (id, quantity, age, total) VALUES
 
 SELECT STDEV(age) FROM Item
 -- @expect:
--- | STDEV(age) |
--- | ---------- |
--- | NULL       |
+-- | STDEV(age): F64 |
+-- | --------------- |
+-- | 39.262648351271 |
 
 SELECT STDEV(total) FROM Item
 -- @expect:
@@ -34,6 +34,6 @@ SELECT STDEV(DISTINCT id) FROM Item
 
 SELECT STDEV(DISTINCT age) FROM Item
 -- @expect:
--- | STDEV(DISTINCT age) |
--- | ------------------- |
--- | NULL                |
+-- | STDEV(DISTINCT age): F64 |
+-- | ------------------------ |
+-- | 39.262648351271          |

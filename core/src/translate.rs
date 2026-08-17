@@ -12,8 +12,8 @@ pub use self::{
     data_type::translate_data_type,
     ddl::translate_column_def,
     error::{
-        CreateTableOption, DeleteOption, InsertOption, JoinConstraintReason, QueryOption,
-        SelectOption, TransactionOption, TranslateError, UpdateOption,
+        CreateIndexOption, CreateTableOption, DeleteOption, InsertOption, JoinConstraintReason,
+        QueryOption, SelectOption, TransactionOption, TranslateError, UpdateOption,
     },
     expr::{translate_expr, translate_order_by_expr},
     param::{IntoParamLiteral, ParamLiteral},
@@ -309,8 +309,39 @@ pub fn translate_with_params(
             name,
             table_name,
             columns,
-            ..
+            using,
+            unique,
+            concurrently,
+            if_not_exists,
+            include,
+            nulls_distinct,
+            with,
+            predicate,
         }) => {
+            let violation = if *unique {
+                Some(CreateIndexOption::Unique)
+            } else if *concurrently {
+                Some(CreateIndexOption::Concurrently)
+            } else if *if_not_exists {
+                Some(CreateIndexOption::IfNotExists)
+            } else if using.is_some() {
+                Some(CreateIndexOption::Using)
+            } else if !include.is_empty() {
+                Some(CreateIndexOption::Include)
+            } else if nulls_distinct.is_some() {
+                Some(CreateIndexOption::NullsDistinct)
+            } else if !with.is_empty() {
+                Some(CreateIndexOption::With)
+            } else if predicate.is_some() {
+                Some(CreateIndexOption::Where)
+            } else {
+                None
+            };
+
+            if let Some(reason) = violation {
+                return Err(TranslateError::UnsupportedCreateIndexOption(reason).into());
+            }
+
             if columns.len() > 1 {
                 return Err(TranslateError::CompositeIndexNotSupported.into());
             }
@@ -768,6 +799,48 @@ mod tests {
 
         for (sql, err) in cases {
             assert_translate_error(sql, err);
+        }
+    }
+
+    #[test]
+    fn create_index_options_not_supported() {
+        let cases = [
+            (
+                "CREATE UNIQUE INDEX idx ON Foo (id)",
+                CreateIndexOption::Unique,
+            ),
+            (
+                "CREATE INDEX CONCURRENTLY idx ON Foo (id)",
+                CreateIndexOption::Concurrently,
+            ),
+            (
+                "CREATE INDEX IF NOT EXISTS idx ON Foo (id)",
+                CreateIndexOption::IfNotExists,
+            ),
+            (
+                "CREATE INDEX idx ON Foo USING btree (id)",
+                CreateIndexOption::Using,
+            ),
+            (
+                "CREATE INDEX idx ON Foo (id) INCLUDE (name)",
+                CreateIndexOption::Include,
+            ),
+            (
+                "CREATE INDEX idx ON Foo (id) NULLS NOT DISTINCT",
+                CreateIndexOption::NullsDistinct,
+            ),
+            (
+                "CREATE INDEX idx ON Foo (id) WITH (fillfactor = 70)",
+                CreateIndexOption::With,
+            ),
+            (
+                "CREATE INDEX idx ON Foo (id) WHERE id > 0",
+                CreateIndexOption::Where,
+            ),
+        ];
+
+        for (sql, option) in cases {
+            assert_translate_error(sql, TranslateError::UnsupportedCreateIndexOption(option));
         }
     }
 

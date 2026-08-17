@@ -166,6 +166,7 @@ macro_rules! generate_store_tests {
         sql_case!(aggregate::having);
         sql_case!(aggregate::max);
         sql_case!(aggregate::min);
+        sql_case!(aggregate::null);
         sql_case!(aggregate::stdev);
         sql_case!(aggregate::sum);
         sql_case!(aggregate::variance);
