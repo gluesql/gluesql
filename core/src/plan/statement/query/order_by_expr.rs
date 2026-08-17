@@ -63,8 +63,36 @@ mod tests {
         },
     };
 
+    fn test(actual: &OrderByExprPlan, expected: &str) {
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+    }
+
     #[test]
     fn explain() {
+        let actual = OrderByExprPlan {
+            expr: ExprPlan::Identifier("name".to_owned()),
+            asc: Some(true),
+        };
+        let expected = "name ASC";
+        test(&actual, expected);
+
+        let actual = OrderByExprPlan {
+            expr: ExprPlan::Identifier("created_at".to_owned()),
+            asc: Some(false),
+        };
+        let expected = "created_at DESC";
+        test(&actual, expected);
+
+        let actual = OrderByExprPlan {
+            expr: ExprPlan::Identifier("id".to_owned()),
+            asc: None,
+        };
+        let expected = "id";
+        test(&actual, expected);
+    }
+
+    #[test]
+    fn explain_list() {
         let actual = [
             OrderByExprPlan {
                 expr: ExprPlan::Identifier("name".to_owned()),
@@ -74,13 +102,8 @@ mod tests {
                 expr: ExprPlan::Identifier("created_at".to_owned()),
                 asc: Some(false),
             },
-            OrderByExprPlan {
-                expr: ExprPlan::Identifier("id".to_owned()),
-                asc: None,
-            },
         ];
-        let expected = "name ASC, created_at DESC, id";
-
+        let expected = "name ASC, created_at DESC";
         assert_eq!(
             actual.as_slice().explain(&mut ExplainContext::default()),
             expected

@@ -1,5 +1,5 @@
 use {
-    super::{ExprPlan, fmt_expr, fmt_expr_list},
+    super::{ExprPlan, fmt_expr},
     crate::{
         ast::{self, DataType, DateTimeField, TrimWhereField},
         plan::explain::{Explain, ExplainContext},
@@ -477,6 +477,29 @@ impl Explain for FunctionExprPlan {
     fn explain(&self, context: &mut ExplainContext) -> String {
         let mut output = String::new();
         match self {
+            Self::Abs(expr) => fmt_call("ABS", [expr], context, &mut output),
+            Self::AddMonth { expr, size } => {
+                fmt_call("ADD_MONTH", [expr, size], context, &mut output);
+            }
+            Self::Lower(expr) => fmt_call("LOWER", [expr], context, &mut output),
+            Self::Initcap(expr) => fmt_call("INITCAP", [expr], context, &mut output),
+            Self::Upper(expr) => fmt_call("UPPER", [expr], context, &mut output),
+            Self::Left { expr, size } => fmt_call("LEFT", [expr, size], context, &mut output),
+            Self::Right { expr, size } => fmt_call("RIGHT", [expr, size], context, &mut output),
+            Self::Asin(expr) => fmt_call("ASIN", [expr], context, &mut output),
+            Self::Acos(expr) => fmt_call("ACOS", [expr], context, &mut output),
+            Self::Atan(expr) => fmt_call("ATAN", [expr], context, &mut output),
+            Self::Lpad { expr, size, fill } => match fill {
+                Some(fill) => fmt_call("LPAD", [expr, size, fill], context, &mut output),
+                None => fmt_call("LPAD", [expr, size], context, &mut output),
+            },
+            Self::Rpad { expr, size, fill } => match fill {
+                Some(fill) => fmt_call("RPAD", [expr, size, fill], context, &mut output),
+                None => fmt_call("RPAD", [expr, size], context, &mut output),
+            },
+            Self::Replace { expr, old, new } => {
+                fmt_call("REPLACE", [expr, old, new], context, &mut output);
+            }
             Self::Cast { expr, data_type } => {
                 output.push_str("CAST(");
                 fmt_expr(expr, context, &mut output);
@@ -484,6 +507,43 @@ impl Explain for FunctionExprPlan {
                 output.push_str(&data_type.to_string());
                 output.push(')');
             }
+            Self::Ceil(expr) => fmt_call("CEIL", [expr], context, &mut output),
+            Self::Coalesce(exprs) => fmt_call("COALESCE", exprs, context, &mut output),
+            Self::Concat(exprs) => fmt_call("CONCAT", exprs, context, &mut output),
+            Self::ConcatWs { separator, exprs } => fmt_call(
+                "CONCAT_WS",
+                std::iter::once(separator).chain(exprs.iter()),
+                context,
+                &mut output,
+            ),
+            Self::Custom { name, exprs } => {
+                fmt_call(name, exprs, context, &mut output);
+            }
+            Self::IfNull { expr, then } => {
+                fmt_call("IF_NULL", [expr, then], context, &mut output);
+            }
+            Self::NullIf { expr1, expr2 } => {
+                fmt_call("NULL_IF", [expr1, expr2], context, &mut output);
+            }
+            Self::Rand(expr) => match expr {
+                Some(expr) => fmt_call("RAND", [expr], context, &mut output),
+                None => fmt_call("RAND", std::iter::empty(), context, &mut output),
+            },
+            Self::Round(expr) => fmt_call("ROUND", [expr], context, &mut output),
+            Self::Trunc(expr) => fmt_call("TRUNC", [expr], context, &mut output),
+            Self::Floor(expr) => fmt_call("FLOOR", [expr], context, &mut output),
+            Self::Trim {
+                expr,
+                filter_chars,
+                trim_where_field,
+            } => fmt_trim(
+                expr,
+                filter_chars.as_ref(),
+                trim_where_field.as_ref(),
+                context,
+                &mut output,
+            ),
+            Self::Exp(expr) => fmt_call("EXP", [expr], context, &mut output),
             Self::Extract { field, expr } => {
                 output.push_str("EXTRACT(");
                 output.push_str(&field.to_string());
@@ -491,26 +551,199 @@ impl Explain for FunctionExprPlan {
                 fmt_expr(expr, context, &mut output);
                 output.push(')');
             }
-            Self::Custom { name, exprs } => {
-                output.push_str(name);
-                output.push('(');
-                fmt_expr_list(exprs, context, &mut output);
-                output.push(')');
+            Self::Ln(expr) => fmt_call("LN", [expr], context, &mut output),
+            Self::Log { antilog, base } => {
+                fmt_call("LOG", [antilog, base], context, &mut output);
             }
-            _ => {
-                output.push_str(&self.to_string());
-                output.push('(');
-                for (index, expr) in self.as_exprs().enumerate() {
-                    if index > 0 {
-                        output.push_str(", ");
-                    }
-                    fmt_expr(expr, context, &mut output);
-                }
-                output.push(')');
+            Self::Log2(expr) => fmt_call("LOG2", [expr], context, &mut output),
+            Self::Log10(expr) => fmt_call("LOG10", [expr], context, &mut output),
+            Self::Div { dividend, divisor } => {
+                fmt_call("DIV", [dividend, divisor], context, &mut output);
             }
+            Self::Mod { dividend, divisor } => {
+                fmt_call("MOD", [dividend, divisor], context, &mut output);
+            }
+            Self::Gcd { left, right } => fmt_call("GCD", [left, right], context, &mut output),
+            Self::Lcm { left, right } => fmt_call("LCM", [left, right], context, &mut output),
+            Self::Sin(expr) => fmt_call("SIN", [expr], context, &mut output),
+            Self::Cos(expr) => fmt_call("COS", [expr], context, &mut output),
+            Self::Tan(expr) => fmt_call("TAN", [expr], context, &mut output),
+            Self::Sqrt(expr) => fmt_call("SQRT", [expr], context, &mut output),
+            Self::Power { expr, power } => {
+                fmt_call("POWER", [expr, power], context, &mut output);
+            }
+            Self::Radians(expr) => fmt_call("RADIANS", [expr], context, &mut output),
+            Self::Degrees(expr) => fmt_call("DEGREES", [expr], context, &mut output),
+            Self::Now() => fmt_call("NOW", std::iter::empty(), context, &mut output),
+            Self::CurrentDate() => {
+                fmt_call("CURRENT_DATE", std::iter::empty(), context, &mut output);
+            }
+            Self::CurrentTime() => {
+                fmt_call("CURRENT_TIME", std::iter::empty(), context, &mut output);
+            }
+            Self::CurrentTimestamp() => fmt_call(
+                "CURRENT_TIMESTAMP",
+                std::iter::empty(),
+                context,
+                &mut output,
+            ),
+            Self::Pi() => fmt_call("PI", std::iter::empty(), context, &mut output),
+            Self::LastDay(expr) => fmt_call("LAST_DAY", [expr], context, &mut output),
+            Self::Ltrim { expr, chars } => match chars {
+                Some(chars) => fmt_call("LTRIM", [expr, chars], context, &mut output),
+                None => fmt_call("LTRIM", [expr], context, &mut output),
+            },
+            Self::Rtrim { expr, chars } => match chars {
+                Some(chars) => fmt_call("RTRIM", [expr, chars], context, &mut output),
+                None => fmt_call("RTRIM", [expr], context, &mut output),
+            },
+            Self::Reverse(expr) => fmt_call("REVERSE", [expr], context, &mut output),
+            Self::Repeat { expr, num } => {
+                fmt_call("REPEAT", [expr, num], context, &mut output);
+            }
+            Self::Sign(expr) => fmt_call("SIGN", [expr], context, &mut output),
+            Self::Substr { expr, start, count } => match count {
+                Some(count) => fmt_call("SUBSTR", [expr, start, count], context, &mut output),
+                None => fmt_call("SUBSTR", [expr, start], context, &mut output),
+            },
+            Self::Unwrap { expr, selector } => {
+                fmt_call("UNWRAP", [expr, selector], context, &mut output);
+            }
+            Self::GenerateUuid() => {
+                fmt_call("GENERATE_UUID", std::iter::empty(), context, &mut output);
+            }
+            Self::Greatest(exprs) => fmt_call("GREATEST", exprs, context, &mut output),
+            Self::Format { expr, format } => {
+                fmt_call("FORMAT", [expr, format], context, &mut output);
+            }
+            Self::ToDate { expr, format } => {
+                fmt_call("TO_DATE", [expr, format], context, &mut output);
+            }
+            Self::ToTimestamp { expr, format } => {
+                fmt_call("TO_TIMESTAMP", [expr, format], context, &mut output);
+            }
+            Self::ToTime { expr, format } => {
+                fmt_call("TO_TIME", [expr, format], context, &mut output);
+            }
+            Self::Position {
+                from_expr,
+                sub_expr,
+            } => fmt_call("POSITION", [sub_expr, from_expr], context, &mut output),
+            Self::FindIdx {
+                from_expr,
+                sub_expr,
+                start,
+            } => match start {
+                Some(start) => fmt_call(
+                    "FIND_IDX",
+                    [from_expr, sub_expr, start],
+                    context,
+                    &mut output,
+                ),
+                None => fmt_call("FIND_IDX", [from_expr, sub_expr], context, &mut output),
+            },
+            Self::Ascii(expr) => fmt_call("ASCII", [expr], context, &mut output),
+            Self::Chr(expr) => fmt_call("CHR", [expr], context, &mut output),
+            Self::Md5(expr) => fmt_call("MD5", [expr], context, &mut output),
+            Self::Hex(expr) => fmt_call("HEX", [expr], context, &mut output),
+            Self::Append { expr, value } => {
+                fmt_call("APPEND", [expr, value], context, &mut output);
+            }
+            Self::Sort { expr, order } => match order {
+                Some(order) => fmt_call("SORT", [expr, order], context, &mut output),
+                None => fmt_call("SORT", [expr], context, &mut output),
+            },
+            Self::Slice {
+                expr,
+                start,
+                length,
+            } => fmt_call("SLICE", [expr, start, length], context, &mut output),
+            Self::Prepend { expr, value } => {
+                fmt_call("PREPEND", [expr, value], context, &mut output);
+            }
+            Self::Skip { expr, size } => {
+                fmt_call("SKIP", [expr, size], context, &mut output);
+            }
+            Self::Take { expr, size } => {
+                fmt_call("TAKE", [expr, size], context, &mut output);
+            }
+            Self::GetX(expr) => fmt_call("GET_X", [expr], context, &mut output),
+            Self::GetY(expr) => fmt_call("GET_Y", [expr], context, &mut output),
+            Self::Point { x, y } => fmt_call("POINT", [x, y], context, &mut output),
+            Self::CalcDistance {
+                geometry1,
+                geometry2,
+            } => fmt_call(
+                "CALC_DISTANCE",
+                [geometry1, geometry2],
+                context,
+                &mut output,
+            ),
+            Self::IsEmpty(expr) => fmt_call("IS_EMPTY", [expr], context, &mut output),
+            Self::Length(expr) => fmt_call("LENGTH", [expr], context, &mut output),
+            Self::Entries(expr) => fmt_call("ENTRIES", [expr], context, &mut output),
+            Self::Keys(expr) => fmt_call("KEYS", [expr], context, &mut output),
+            Self::Values(expr) => fmt_call("VALUES", [expr], context, &mut output),
+            Self::Splice {
+                list_data,
+                begin_index,
+                end_index,
+                values,
+            } => match values {
+                Some(values) => fmt_call(
+                    "SPLICE",
+                    [list_data, begin_index, end_index, values],
+                    context,
+                    &mut output,
+                ),
+                None => fmt_call(
+                    "SPLICE",
+                    [list_data, begin_index, end_index],
+                    context,
+                    &mut output,
+                ),
+            },
+            Self::Dedup(expr) => fmt_call("DEDUP", [expr], context, &mut output),
         }
         output
     }
+}
+
+fn fmt_call<'a>(
+    name: &str,
+    exprs: impl IntoIterator<Item = &'a ExprPlan>,
+    context: &mut ExplainContext,
+    output: &mut String,
+) {
+    output.push_str(name);
+    output.push('(');
+    for (index, expr) in exprs.into_iter().enumerate() {
+        if index > 0 {
+            output.push_str(", ");
+        }
+        fmt_expr(expr, context, output);
+    }
+    output.push(')');
+}
+
+fn fmt_trim(
+    expr: &ExprPlan,
+    filter_chars: Option<&ExprPlan>,
+    trim_where_field: Option<&TrimWhereField>,
+    context: &mut ExplainContext,
+    output: &mut String,
+) {
+    output.push_str("TRIM(");
+    if let Some(trim_where_field) = trim_where_field {
+        output.push_str(&trim_where_field.to_string());
+        output.push(' ');
+    }
+    if let Some(filter_chars) = filter_chars {
+        fmt_expr(filter_chars, context, output);
+        output.push_str(" FROM ");
+    }
+    fmt_expr(expr, context, output);
+    output.push(')');
 }
 
 #[cfg(test)]
@@ -711,9 +944,41 @@ mod tests {
         let actual = FunctionExprPlan::Trim {
             expr: ExprPlan::Identifier("value".to_owned()),
             filter_chars: Some(ExprPlan::Identifier("chars".to_owned())),
+            trim_where_field: None,
+        };
+        let expected = "TRIM(chars FROM value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Trim {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            filter_chars: Some(ExprPlan::Identifier("chars".to_owned())),
+            trim_where_field: Some(TrimWhereField::Both),
+        };
+        let expected = "TRIM(BOTH chars FROM value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Trim {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            filter_chars: Some(ExprPlan::Identifier("chars".to_owned())),
             trim_where_field: Some(TrimWhereField::Leading),
         };
-        let expected = "TRIM(value, chars)";
+        let expected = "TRIM(LEADING chars FROM value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Trim {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            filter_chars: Some(ExprPlan::Identifier("chars".to_owned())),
+            trim_where_field: Some(TrimWhereField::Trailing),
+        };
+        let expected = "TRIM(TRAILING chars FROM value)";
+        test(&actual, expected);
+
+        let actual = FunctionExprPlan::Trim {
+            expr: ExprPlan::Identifier("value".to_owned()),
+            filter_chars: None,
+            trim_where_field: Some(TrimWhereField::Leading),
+        };
+        let expected = "TRIM(LEADING value)";
         test(&actual, expected);
 
         let actual = FunctionExprPlan::Exp(ExprPlan::Identifier("value".to_owned()));

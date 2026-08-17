@@ -120,54 +120,94 @@ mod tests {
         },
     };
 
+    fn test(actual: &AggregateExprPlan, expected: &str) {
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+    }
+
     #[test]
     fn explain() {
+        let actual = AggregateExprPlan {
+            func: AggregateFunctionPlan::Count(CountArgExprPlan::Wildcard),
+            distinct: false,
+            slot: None,
+        };
+        let expected = "COUNT(*)";
+        test(&actual, expected);
+
+        let actual = AggregateExprPlan {
+            func: AggregateFunctionPlan::Count(CountArgExprPlan::Expr(ExprPlan::Identifier(
+                "id".to_owned(),
+            ))),
+            distinct: true,
+            slot: None,
+        };
+        let expected = "COUNT(DISTINCT id)";
+        test(&actual, expected);
+
+        let actual = AggregateExprPlan {
+            func: AggregateFunctionPlan::Sum(ExprPlan::Identifier("score".to_owned())),
+            distinct: false,
+            slot: None,
+        };
+        let expected = "SUM(score)";
+        test(&actual, expected);
+
+        let actual = AggregateExprPlan {
+            func: AggregateFunctionPlan::Max(ExprPlan::Identifier("score".to_owned())),
+            distinct: false,
+            slot: None,
+        };
+        let expected = "MAX(score)";
+        test(&actual, expected);
+
+        let actual = AggregateExprPlan {
+            func: AggregateFunctionPlan::Min(ExprPlan::Identifier("score".to_owned())),
+            distinct: false,
+            slot: None,
+        };
+        let expected = "MIN(score)";
+        test(&actual, expected);
+
+        let actual = AggregateExprPlan {
+            func: AggregateFunctionPlan::Avg(ExprPlan::Identifier("score".to_owned())),
+            distinct: false,
+            slot: None,
+        };
+        let expected = "AVG(score)";
+        test(&actual, expected);
+
+        let actual = AggregateExprPlan {
+            func: AggregateFunctionPlan::Variance(ExprPlan::Identifier("score".to_owned())),
+            distinct: false,
+            slot: None,
+        };
+        let expected = "VARIANCE(score)";
+        test(&actual, expected);
+
+        let actual = AggregateExprPlan {
+            func: AggregateFunctionPlan::Stdev(ExprPlan::Identifier("score".to_owned())),
+            distinct: false,
+            slot: None,
+        };
+        let expected = "STDEV(score)";
+        test(&actual, expected);
+    }
+
+    #[test]
+    fn explain_list() {
         let actual = [
             AggregateExprPlan {
                 func: AggregateFunctionPlan::Count(CountArgExprPlan::Wildcard),
                 distinct: false,
-                slot: Some(0),
-            },
-            AggregateExprPlan {
-                func: AggregateFunctionPlan::Count(CountArgExprPlan::Expr(ExprPlan::Identifier(
-                    "id".to_owned(),
-                ))),
-                distinct: true,
-                slot: Some(1),
+                slot: None,
             },
             AggregateExprPlan {
                 func: AggregateFunctionPlan::Sum(ExprPlan::Identifier("score".to_owned())),
                 distinct: false,
-                slot: Some(2),
-            },
-            AggregateExprPlan {
-                func: AggregateFunctionPlan::Max(ExprPlan::Identifier("score".to_owned())),
-                distinct: false,
-                slot: Some(3),
-            },
-            AggregateExprPlan {
-                func: AggregateFunctionPlan::Min(ExprPlan::Identifier("score".to_owned())),
-                distinct: false,
-                slot: Some(4),
-            },
-            AggregateExprPlan {
-                func: AggregateFunctionPlan::Avg(ExprPlan::Identifier("score".to_owned())),
-                distinct: false,
-                slot: Some(5),
-            },
-            AggregateExprPlan {
-                func: AggregateFunctionPlan::Variance(ExprPlan::Identifier("score".to_owned())),
-                distinct: false,
-                slot: Some(6),
-            },
-            AggregateExprPlan {
-                func: AggregateFunctionPlan::Stdev(ExprPlan::Identifier("score".to_owned())),
-                distinct: false,
-                slot: Some(7),
+                slot: None,
             },
         ];
-        let expected = "COUNT(*), COUNT(DISTINCT id), SUM(score), MAX(score), MIN(score), AVG(score), VARIANCE(score), STDEV(score)";
-
+        let expected = "COUNT(*), SUM(score)";
         assert_eq!(
             actual.as_slice().explain(&mut ExplainContext::default()),
             expected

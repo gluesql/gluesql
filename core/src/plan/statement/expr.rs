@@ -671,13 +671,15 @@ mod tests {
         };
         let expected = "[1, 2]";
         test(&actual, expected);
+    }
 
+    #[test]
+    fn explain_list() {
         let actual = [
             ExprPlan::Identifier("id".to_owned()),
             ExprPlan::Identifier("name".to_owned()),
         ];
         let expected = "id, name";
-
         assert_eq!(
             actual.as_slice().explain(&mut ExplainContext::default()),
             expected

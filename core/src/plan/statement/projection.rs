@@ -101,37 +101,60 @@ mod tests {
         },
     };
 
+    fn test(actual: &impl Explain<Output = String>, expected: &str) {
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+    }
+
     #[test]
     fn explain() {
-        let actual = ProjectionPlan::SchemalessMap;
-        let expected = "map";
-        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
-
         let actual = ProjectionPlan::SelectItems(vec![
             SelectItemPlan::Wildcard,
             SelectItemPlan::QualifiedWildcard("Player".to_owned()),
-            SelectItemPlan::Expr {
-                expr: ExprPlan::Identifier("team_id".to_owned()),
-                label: "team_id".to_owned(),
-            },
-            SelectItemPlan::Expr {
-                expr: ExprPlan::Identifier("name".to_owned()),
-                label: "player_name".to_owned(),
-            },
-            SelectItemPlan::Expr {
-                expr: ExprPlan::CompoundIdentifier {
-                    alias: "Player".to_owned(),
-                    ident: "id".to_owned(),
-                },
-                label: "id".to_owned(),
-            },
-            SelectItemPlan::Expr {
-                expr: ExprPlan::Literal(Literal::Number(1.into())),
-                label: String::new(),
-            },
         ]);
-        let expected = "*, Player.*, team_id, name AS player_name, Player.id, 1";
+        let expected = "*, Player.*";
+        test(&actual, expected);
 
-        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+        let actual = ProjectionPlan::SchemalessMap;
+        let expected = "map";
+        test(&actual, expected);
+
+        let actual = SelectItemPlan::Expr {
+            expr: ExprPlan::Identifier("team_id".to_owned()),
+            label: "team_id".to_owned(),
+        };
+        let expected = "team_id";
+        test(&actual, expected);
+
+        let actual = SelectItemPlan::Expr {
+            expr: ExprPlan::Identifier("name".to_owned()),
+            label: "player_name".to_owned(),
+        };
+        let expected = "name AS player_name";
+        test(&actual, expected);
+
+        let actual = SelectItemPlan::Expr {
+            expr: ExprPlan::CompoundIdentifier {
+                alias: "Player".to_owned(),
+                ident: "id".to_owned(),
+            },
+            label: "id".to_owned(),
+        };
+        let expected = "Player.id";
+        test(&actual, expected);
+
+        let actual = SelectItemPlan::Expr {
+            expr: ExprPlan::Literal(Literal::Number(1.into())),
+            label: String::new(),
+        };
+        let expected = "1";
+        test(&actual, expected);
+
+        let actual = SelectItemPlan::QualifiedWildcard("Player".to_owned());
+        let expected = "Player.*";
+        test(&actual, expected);
+
+        let actual = SelectItemPlan::Wildcard;
+        let expected = "*";
+        test(&actual, expected);
     }
 }
