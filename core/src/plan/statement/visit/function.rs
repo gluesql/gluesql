@@ -1,9 +1,6 @@
 use {
     super::{try_visit_expr, visit_mut_expr},
-    crate::{
-        plan::{ExprPlan, FunctionExprPlan},
-        planner::PlannerError,
-    },
+    crate::plan::{ExprPlan, FunctionExprPlan},
 };
 
 macro_rules! apply_mut {
@@ -237,9 +234,9 @@ where
     visit_function_children!(func, visit_mut_expr, f, apply_mut);
 }
 
-pub fn try_visit_function<F>(func: &FunctionExprPlan, f: &mut F) -> Result<(), PlannerError>
+pub fn try_visit_function<F, E>(func: &FunctionExprPlan, f: &mut F) -> Result<(), E>
 where
-    F: FnMut(&ExprPlan) -> Result<(), PlannerError>,
+    F: FnMut(&ExprPlan) -> Result<(), E>,
 {
     visit_function_children!(func, try_visit_expr, f, apply_try);
     Ok(())

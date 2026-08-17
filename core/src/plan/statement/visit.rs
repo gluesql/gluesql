@@ -2,7 +2,7 @@ mod aggregate;
 mod function;
 
 use {
-    crate::{plan::ExprPlan, planner::PlannerError},
+    crate::plan::ExprPlan,
     aggregate::{try_visit_aggregate, visit_mut_aggregate},
     function::{try_visit_function, visit_mut_function},
 };
@@ -111,9 +111,9 @@ where
     f(expr);
 }
 
-pub fn try_visit_expr<F>(expr: &ExprPlan, f: &mut F) -> Result<(), PlannerError>
+pub fn try_visit_expr<F, E>(expr: &ExprPlan, f: &mut F) -> Result<(), E>
 where
-    F: FnMut(&ExprPlan) -> Result<(), PlannerError>,
+    F: FnMut(&ExprPlan) -> Result<(), E>,
 {
     visit_expr_children!(
         expr,

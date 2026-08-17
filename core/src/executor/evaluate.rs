@@ -6,6 +6,7 @@ mod function;
 use {
     self::function::BreakCase,
     super::{
+        bind_scalar_references,
         context::{AggregateValues, RowContext},
         query,
     },
@@ -386,7 +387,7 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
             let context = Some(Rc::new(context));
 
             let mut body = plan_scalar_expr(body.clone());
-            crate::planner::plan_scalar_references(name, &mut body);
+            bind_scalar_references(name, &mut body);
             let evaluated = evaluate_inner(storage, context.as_ref(), None, &body)?;
             let value = evaluated.try_into()?;
 

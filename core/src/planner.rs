@@ -12,13 +12,8 @@ mod schemaless;
 mod validate;
 
 pub use {
-    self::validate::validate,
-    aggregate::plan as plan_aggregate,
-    error::*,
-    hash_join::plan as plan_hash_join,
-    index::plan as plan_index,
-    primary_key::plan as plan_primary_key,
-    reference::{plan as plan_references, plan_scalar as plan_scalar_references},
-    schema::fetch_schema_map,
-    schemaless::plan as plan_schemaless,
+    self::validate::validate, aggregate::plan as plan_aggregate, error::*,
+    hash_join::plan as plan_hash_join, index::plan as plan_index,
+    primary_key::plan as plan_primary_key, reference::plan as plan_references,
+    schema::fetch_schema_map, schemaless::plan as plan_schemaless,
 };

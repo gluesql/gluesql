@@ -46,6 +46,12 @@ pub enum AlterError {
     #[error("non-default argument should not follow the default argument")]
     NonDefaultArgumentFollowsDefaultArgument,
 
+    #[error("function body must be a scalar expression")]
+    FunctionBodyMustBeScalar,
+
+    #[error("function argument not found: {0}")]
+    FunctionArgumentNotFound(String),
+
     #[error("foreign table not found: {0}")]
     ReferencedTableNotFound(String),
 
