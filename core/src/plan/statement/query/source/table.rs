@@ -19,8 +19,15 @@ impl Explain for TableSourcePlan {
             || self.name.clone(),
             |alias| format!("{} as {}", self.name, alias.name),
         );
-        self.access
-            .explain(ExplainNode::new(format!("scan {name}")), context)
+        let columns = self
+            .alias
+            .as_ref()
+            .filter(|alias| !alias.columns.is_empty())
+            .map(|alias| alias.columns.join(", "));
+        let node =
+            ExplainNode::new(format!("scan {name}")).with_optional_property("columns", columns);
+
+        self.access.explain(node, context)
     }
 }
 
@@ -49,6 +56,21 @@ mod tests {
         };
         let expected = r"
 • scan Player as p
+  access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = TableSourcePlan {
+            name: "Player".to_owned(),
+            alias: Some(TableAliasPlan {
+                name: "p".to_owned(),
+                columns: vec!["id".to_owned(), "name".to_owned()],
+            }),
+            access: TableAccessPlan::FullScan,
+        };
+        let expected = r"
+• scan Player as p
+  columns: id, name
   access: full scan
 ";
         test_explain(&actual, expected);

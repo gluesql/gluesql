@@ -3,12 +3,9 @@ mod index_predicate;
 pub use index_predicate::IndexPredicatePlan;
 
 use {
-    crate::{
-        ast::IndexOperator,
-        plan::{
-            ExprPlan,
-            explain::{Explain, ExplainContext, ExplainNode},
-        },
+    crate::plan::{
+        ExprPlan,
+        explain::{Explain, ExplainContext, ExplainNode},
     },
     serde::{Deserialize, Serialize},
 };
@@ -45,24 +42,10 @@ impl TableAccessPlan {
                 )
                 .with_optional_property(
                     "predicate",
-                    predicate.as_ref().map(|predicate| {
-                        format!(
-                            "{} {}",
-                            explain_index_operator(&predicate.operator),
-                            predicate.expr.explain(context)
-                        )
-                    }),
+                    predicate
+                        .as_ref()
+                        .map(|predicate| predicate.explain(context)),
                 ),
         }
-    }
-}
-
-fn explain_index_operator(operator: &IndexOperator) -> &'static str {
-    match operator {
-        IndexOperator::Gt => ">",
-        IndexOperator::Lt => "<",
-        IndexOperator::GtEq => ">=",
-        IndexOperator::LtEq => "<=",
-        IndexOperator::Eq => "=",
     }
 }
