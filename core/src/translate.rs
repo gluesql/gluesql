@@ -67,10 +67,10 @@ pub fn translate_with_params(
             describe_alias: SqlDescribeAlias::Explain,
             analyze: false,
             verbose: false,
+            query_plan: false,
             statement,
             format: None,
             options: None,
-            ..
         } => match statement.as_ref() {
             SqlStatement::Query(query) => translate_query(query, params).map(Statement::Explain),
             _ => Err(TranslateError::UnsupportedStatement(sql_statement.to_string()).into()),
@@ -683,6 +683,7 @@ mod tests {
         for sql in [
             "EXPLAIN ANALYZE SELECT * FROM Foo",
             "EXPLAIN VERBOSE SELECT * FROM Foo",
+            "EXPLAIN QUERY PLAN SELECT * FROM Foo",
             "EXPLAIN DELETE FROM Foo",
         ] {
             assert!(matches!(
