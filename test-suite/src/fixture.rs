@@ -105,14 +105,8 @@ where
                 assert_payload(actual, &expected, &context);
             }
             Expectation::Explain(expected) => {
-                let payloads = actual.unwrap_or_else(|error| {
-                    panic!("{context}\nexpected EXPLAIN payload but execution failed: {error:#?}")
-                });
-                let [payload] = payloads.as_slice() else {
-                    panic!("{context}\nexpected one payload, found {}", payloads.len());
-                };
-                let Payload::Explain(actual) = payload else {
-                    panic!("{context}\nexpected EXPLAIN payload, found {payload:?}")
+                let [Payload::Explain(actual)] = actual.as_deref().expect(&context) else {
+                    panic!("{context}\nexpected one EXPLAIN payload");
                 };
                 pretty_assert_eq!(actual, &expected, "{context}\nquery plan mismatch");
             }
