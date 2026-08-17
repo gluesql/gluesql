@@ -29,13 +29,24 @@ pub trait IntoParamLiteral {
     fn into_param_literal(self) -> ParamLiteral;
 }
 
+pub trait ToParamLiteral {
+    /// Converts a borrowed value into an owned [`ParamLiteral`].
+    fn to_param_literal(&self) -> ParamLiteral;
+}
+
 impl IntoParamLiteral for ParamLiteral {
     fn into_param_literal(self) -> ParamLiteral {
         self
     }
 }
 
-macro_rules! impl_into_param_literal {
+impl ToParamLiteral for ParamLiteral {
+    fn to_param_literal(&self) -> ParamLiteral {
+        self.clone()
+    }
+}
+
+macro_rules! impl_param_literal_copy {
     ($($rust_ty:ty => $value_variant:ident),+ $(,)?) => {
         $(
             impl IntoParamLiteral for $rust_ty {
@@ -43,11 +54,17 @@ macro_rules! impl_into_param_literal {
                     ParamLiteral(Value::$value_variant(self))
                 }
             }
+
+            impl ToParamLiteral for $rust_ty {
+                fn to_param_literal(&self) -> ParamLiteral {
+                    ParamLiteral(Value::$value_variant(*self))
+                }
+            }
         )+
     };
 }
 
-impl_into_param_literal!(
+impl_param_literal_copy!(
     bool => Bool,
     i8 => I8,
     i16 => I16,
@@ -62,8 +79,6 @@ impl_into_param_literal!(
     f32 => F32,
     f64 => F64,
     Decimal => Decimal,
-    String => Str,
-    Vec<u8> => Bytea,
     IpAddr => Inet,
     NaiveDate => Date,
     NaiveTime => Time,
@@ -72,10 +87,40 @@ impl_into_param_literal!(
     Interval => Interval,
 );
 
+impl IntoParamLiteral for String {
+    fn into_param_literal(self) -> ParamLiteral {
+        ParamLiteral(Value::Str(self))
+    }
+}
+
+impl ToParamLiteral for String {
+    fn to_param_literal(&self) -> ParamLiteral {
+        ParamLiteral(Value::Str(self.clone()))
+    }
+}
+
+impl IntoParamLiteral for Vec<u8> {
+    fn into_param_literal(self) -> ParamLiteral {
+        ParamLiteral(Value::Bytea(self))
+    }
+}
+
+impl ToParamLiteral for Vec<u8> {
+    fn to_param_literal(&self) -> ParamLiteral {
+        ParamLiteral(Value::Bytea(self.clone()))
+    }
+}
+
 // Types that need conversion
 impl IntoParamLiteral for isize {
     fn into_param_literal(self) -> ParamLiteral {
         ParamLiteral(Value::I64(self as i64))
+    }
+}
+
+impl ToParamLiteral for isize {
+    fn to_param_literal(&self) -> ParamLiteral {
+        ParamLiteral(Value::I64(*self as i64))
     }
 }
 
@@ -85,9 +130,21 @@ impl IntoParamLiteral for usize {
     }
 }
 
+impl ToParamLiteral for usize {
+    fn to_param_literal(&self) -> ParamLiteral {
+        ParamLiteral(Value::U64(*self as u64))
+    }
+}
+
 impl IntoParamLiteral for &str {
     fn into_param_literal(self) -> ParamLiteral {
         ParamLiteral(Value::Str(self.to_owned()))
+    }
+}
+
+impl ToParamLiteral for &str {
+    fn to_param_literal(&self) -> ParamLiteral {
+        ParamLiteral(Value::Str((*self).to_owned()))
     }
 }
 
@@ -97,8 +154,20 @@ impl IntoParamLiteral for &[u8] {
     }
 }
 
+impl ToParamLiteral for &[u8] {
+    fn to_param_literal(&self) -> ParamLiteral {
+        ParamLiteral(Value::Bytea(self.to_vec()))
+    }
+}
+
 impl IntoParamLiteral for Uuid {
     fn into_param_literal(self) -> ParamLiteral {
+        ParamLiteral(Value::Uuid(self.as_u128()))
+    }
+}
+
+impl ToParamLiteral for Uuid {
+    fn to_param_literal(&self) -> ParamLiteral {
         ParamLiteral(Value::Uuid(self.as_u128()))
     }
 }
@@ -110,6 +179,18 @@ where
     fn into_param_literal(self) -> ParamLiteral {
         match self {
             Some(value) => value.into_param_literal(),
+            None => ParamLiteral::null(),
+        }
+    }
+}
+
+impl<T> ToParamLiteral for Option<T>
+where
+    T: ToParamLiteral,
+{
+    fn to_param_literal(&self) -> ParamLiteral {
+        match self {
+            Some(value) => value.to_param_literal(),
             None => ParamLiteral::null(),
         }
     }
@@ -141,8 +222,10 @@ mod tests {
     fn accepts_param_literal() {
         let literal = ParamLiteral::null();
         let converted = literal.clone().into_param_literal();
+        let borrowed = literal.to_param_literal();
         assert!(matches!(literal.into_expr(), Expr::Value(Value::Null)));
         assert!(matches!(converted.into_expr(), Expr::Value(Value::Null)));
+        assert!(matches!(borrowed.into_expr(), Expr::Value(Value::Null)));
     }
 
     #[test]
@@ -212,6 +295,47 @@ mod tests {
 
         let expr = (None::<i32>).into_param_literal().into_expr();
         assert_eq!(expr, Expr::Value(Value::Null));
+    }
+
+    #[test]
+    fn converts_borrowed_non_clone_option() {
+        struct NonClone(i64);
+
+        impl ToParamLiteral for NonClone {
+            fn to_param_literal(&self) -> ParamLiteral {
+                self.0.to_param_literal()
+            }
+        }
+
+        let value = Some(NonClone(7));
+        let expr = value.to_param_literal().into_expr();
+
+        assert_eq!(expr, Expr::Value(Value::I64(7)));
+        assert!(value.is_some());
+    }
+
+    #[test]
+    fn converts_borrowed_literals() {
+        let bytes = vec![0x12_u8, 0xAB];
+        let expr = bytes.to_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::Bytea(bytes)));
+
+        let bytes = [0xCD_u8, 0xEF];
+        let slice = bytes.as_slice();
+        let expr = slice.to_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::Bytea(bytes.to_vec())));
+
+        let signed = 42_isize;
+        let expr = signed.to_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::I64(42)));
+
+        let unsigned = 42_usize;
+        let expr = unsigned.to_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::U64(42)));
+
+        let uuid = Uuid::parse_str("123e4567-e89b-12d3-a456-426614174000").unwrap();
+        let expr = uuid.to_param_literal().into_expr();
+        assert_eq!(expr, Expr::Value(Value::Uuid(uuid.as_u128())));
     }
 
     #[test]
