@@ -210,6 +210,11 @@ impl ExplainNode {
 }
 
 #[cfg(test)]
+pub(crate) fn test_explain(actual: &impl Explain<Output = ExplainNode>, expected: &str) {
+    pretty_assertions::assert_eq!(explain_lines(actual).join("\n"), expected.trim());
+}
+
+#[cfg(test)]
 mod tests {
     use {
         super::{Explain, ExplainContext, ExplainNode, explain_lines},

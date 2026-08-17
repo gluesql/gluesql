@@ -48,8 +48,9 @@ mod tests {
     use {
         super::{DistinctInputPlan, DistinctPlan},
         crate::plan::{
-            ProjectInputPlan, ProjectPlan, ProjectionPlan, SelectItemPlan, SelectOrderByPlan,
-            SourcePlan, TableAccessPlan, TableSourcePlan,
+            ExprPlan, OrderByExprPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan,
+            SelectItemPlan, SelectOrderByPlan, SourcePlan, TableAccessPlan, TableSourcePlan,
+            explain::test_explain,
         },
     };
 
@@ -81,5 +82,43 @@ mod tests {
             order_by.input,
             DistinctInputPlan::SelectOrderBy(_)
         ));
+    }
+
+    #[test]
+    fn explain() {
+        let actual = DistinctPlan {
+            input: DistinctInputPlan::Project(project_plan()),
+        };
+        let expected = r"
+• distinct
+└── • project
+    │ columns: *
+    │
+    └── • scan Item
+          access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = DistinctPlan {
+            input: DistinctInputPlan::SelectOrderBy(SelectOrderByPlan {
+                input: project_plan(),
+                exprs: vec![OrderByExprPlan {
+                    expr: ExprPlan::Identifier("id".to_owned()),
+                    asc: Some(false),
+                }],
+            }),
+        };
+        let expected = r"
+• distinct
+└── • sort
+    │ order: id DESC
+    │
+    └── • project
+        │ columns: *
+        │
+        └── • scan Item
+              access: full scan
+";
+        test_explain(&actual, expected);
     }
 }

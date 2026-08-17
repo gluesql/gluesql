@@ -25,3 +25,35 @@ impl Explain for DerivedSourcePlan {
             .with_child(self.query.explain(context))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::{DerivedSourcePlan, TableAliasPlan},
+        crate::{
+            ast::Literal,
+            plan::{ExprPlan, QueryPlan, ValuesPlan, explain::test_explain},
+        },
+    };
+
+    #[test]
+    fn explain() {
+        let actual = DerivedSourcePlan {
+            query: Box::new(QueryPlan::Values(ValuesPlan(vec![vec![
+                ExprPlan::Literal(Literal::Number(1.into())),
+            ]]))),
+            alias: TableAliasPlan {
+                name: "derived".to_owned(),
+                columns: vec!["value".to_owned()],
+            },
+        };
+        let expected = r"
+• derived derived
+│ columns: value
+│
+└── • values
+      size: 1 columns, 1 rows
+";
+        test_explain(&actual, expected);
+    }
+}

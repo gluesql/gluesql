@@ -32,35 +32,151 @@ mod tests {
             ast::{IndexOperator, Literal},
             plan::{
                 ExprPlan, IndexPredicatePlan, TableAccessPlan, TableAliasPlan,
-                explain::{Explain, ExplainContext, ExplainNode},
+                explain::test_explain,
             },
         },
     };
 
     #[test]
-    fn explains_index_access() {
-        let table = TableSourcePlan {
+    fn explain() {
+        let actual = TableSourcePlan {
             name: "Player".to_owned(),
             alias: Some(TableAliasPlan {
                 name: "p".to_owned(),
                 columns: Vec::new(),
             }),
+            access: TableAccessPlan::FullScan,
+        };
+        let expected = r"
+• scan Player as p
+  access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = TableSourcePlan {
+            name: "Player".to_owned(),
+            alias: None,
+            access: TableAccessPlan::PrimaryKey {
+                expr: ExprPlan::Literal(Literal::Number(1.into())),
+            },
+        };
+        let expected = r"
+• scan Player
+  access: primary key
+  key: 1
+";
+        test_explain(&actual, expected);
+
+        let actual = TableSourcePlan {
+            name: "Player".to_owned(),
+            alias: None,
             access: TableAccessPlan::Index {
-                name: "idx_created_at".to_owned(),
-                asc: Some(false),
+                name: "idx_name".to_owned(),
+                asc: None,
+                predicate: None,
+            },
+        };
+        let expected = r"
+• scan Player
+  access: index idx_name
+";
+        test_explain(&actual, expected);
+
+        let actual = TableSourcePlan {
+            name: "Player".to_owned(),
+            alias: None,
+            access: TableAccessPlan::Index {
+                name: "idx_score".to_owned(),
+                asc: Some(true),
                 predicate: Some(IndexPredicatePlan {
                     operator: IndexOperator::Gt,
                     expr: ExprPlan::Literal(Literal::Number(10.into())),
                 }),
             },
         };
+        let expected = r"
+• scan Player
+  access: index idx_score
+  order: ascending
+  predicate: > 10
+";
+        test_explain(&actual, expected);
 
-        assert_eq!(
-            table.explain(&mut ExplainContext::default()),
-            ExplainNode::new("scan Player as p")
-                .with_property("access", "index idx_created_at")
-                .with_property("order", "descending")
-                .with_property("predicate", "> 10")
-        );
+        let actual = TableSourcePlan {
+            name: "Player".to_owned(),
+            alias: None,
+            access: TableAccessPlan::Index {
+                name: "idx_score".to_owned(),
+                asc: Some(false),
+                predicate: Some(IndexPredicatePlan {
+                    operator: IndexOperator::Lt,
+                    expr: ExprPlan::Literal(Literal::Number(10.into())),
+                }),
+            },
+        };
+        let expected = r"
+• scan Player
+  access: index idx_score
+  order: descending
+  predicate: < 10
+";
+        test_explain(&actual, expected);
+
+        let actual = TableSourcePlan {
+            name: "Player".to_owned(),
+            alias: None,
+            access: TableAccessPlan::Index {
+                name: "idx_score".to_owned(),
+                asc: None,
+                predicate: Some(IndexPredicatePlan {
+                    operator: IndexOperator::GtEq,
+                    expr: ExprPlan::Literal(Literal::Number(10.into())),
+                }),
+            },
+        };
+        let expected = r"
+• scan Player
+  access: index idx_score
+  predicate: >= 10
+";
+        test_explain(&actual, expected);
+
+        let actual = TableSourcePlan {
+            name: "Player".to_owned(),
+            alias: None,
+            access: TableAccessPlan::Index {
+                name: "idx_score".to_owned(),
+                asc: None,
+                predicate: Some(IndexPredicatePlan {
+                    operator: IndexOperator::LtEq,
+                    expr: ExprPlan::Literal(Literal::Number(10.into())),
+                }),
+            },
+        };
+        let expected = r"
+• scan Player
+  access: index idx_score
+  predicate: <= 10
+";
+        test_explain(&actual, expected);
+
+        let actual = TableSourcePlan {
+            name: "Player".to_owned(),
+            alias: None,
+            access: TableAccessPlan::Index {
+                name: "idx_score".to_owned(),
+                asc: None,
+                predicate: Some(IndexPredicatePlan {
+                    operator: IndexOperator::Eq,
+                    expr: ExprPlan::Literal(Literal::Number(10.into())),
+                }),
+            },
+        };
+        let expected = r"
+• scan Player
+  access: index idx_score
+  predicate: = 10
+";
+        test_explain(&actual, expected);
     }
 }

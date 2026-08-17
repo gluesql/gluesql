@@ -518,7 +518,7 @@ mod tests {
     use {
         super::FunctionExprPlan,
         crate::{
-            ast::DataType,
+            ast::{DataType, DateTimeField, Literal},
             plan::{
                 ExprPlan,
                 explain::{Explain, ExplainContext},
@@ -527,15 +527,44 @@ mod tests {
     };
 
     #[test]
-    fn displays_function_for_explain() {
-        let function = FunctionExprPlan::Cast {
+    fn explain() {
+        let actual = FunctionExprPlan::Cast {
             expr: ExprPlan::Identifier("id".to_owned()),
             data_type: DataType::Text,
         };
+        let expected = "CAST(id AS TEXT)";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
 
-        assert_eq!(
-            function.explain(&mut ExplainContext::default()),
-            "CAST(id AS TEXT)"
-        );
+        let actual = FunctionExprPlan::Extract {
+            field: DateTimeField::Year,
+            expr: ExprPlan::Identifier("created_at".to_owned()),
+        };
+        let expected = "EXTRACT(YEAR FROM created_at)";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = FunctionExprPlan::Custom {
+            name: "score".to_owned(),
+            exprs: vec![
+                ExprPlan::Identifier("id".to_owned()),
+                ExprPlan::Literal(Literal::Number(1.into())),
+            ],
+        };
+        let expected = "score(id, 1)";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = FunctionExprPlan::Abs(ExprPlan::Identifier("score".to_owned()));
+        let expected = "ABS(score)";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = FunctionExprPlan::Now();
+        let expected = "NOW()";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = FunctionExprPlan::Concat(vec![
+            ExprPlan::Identifier("first_name".to_owned()),
+            ExprPlan::Identifier("last_name".to_owned()),
+        ]);
+        let expected = "CONCAT(first_name, last_name)";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
     }
 }

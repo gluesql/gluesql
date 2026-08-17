@@ -121,18 +121,56 @@ mod tests {
     };
 
     #[test]
-    fn displays_aggregate_for_explain() {
-        let aggregate = AggregateExprPlan {
-            func: AggregateFunctionPlan::Count(CountArgExprPlan::Expr(ExprPlan::Identifier(
-                "id".to_owned(),
-            ))),
-            distinct: true,
-            slot: Some(0),
-        };
+    fn explain() {
+        let actual = [
+            AggregateExprPlan {
+                func: AggregateFunctionPlan::Count(CountArgExprPlan::Wildcard),
+                distinct: false,
+                slot: Some(0),
+            },
+            AggregateExprPlan {
+                func: AggregateFunctionPlan::Count(CountArgExprPlan::Expr(ExprPlan::Identifier(
+                    "id".to_owned(),
+                ))),
+                distinct: true,
+                slot: Some(1),
+            },
+            AggregateExprPlan {
+                func: AggregateFunctionPlan::Sum(ExprPlan::Identifier("score".to_owned())),
+                distinct: false,
+                slot: Some(2),
+            },
+            AggregateExprPlan {
+                func: AggregateFunctionPlan::Max(ExprPlan::Identifier("score".to_owned())),
+                distinct: false,
+                slot: Some(3),
+            },
+            AggregateExprPlan {
+                func: AggregateFunctionPlan::Min(ExprPlan::Identifier("score".to_owned())),
+                distinct: false,
+                slot: Some(4),
+            },
+            AggregateExprPlan {
+                func: AggregateFunctionPlan::Avg(ExprPlan::Identifier("score".to_owned())),
+                distinct: false,
+                slot: Some(5),
+            },
+            AggregateExprPlan {
+                func: AggregateFunctionPlan::Variance(ExprPlan::Identifier("score".to_owned())),
+                distinct: false,
+                slot: Some(6),
+            },
+            AggregateExprPlan {
+                func: AggregateFunctionPlan::Stdev(ExprPlan::Identifier("score".to_owned())),
+                distinct: false,
+                slot: Some(7),
+            },
+        ];
+        let expected = "COUNT(*), COUNT(DISTINCT id), SUM(score), MAX(score), MIN(score), AVG(score), VARIANCE(score), STDEV(score)";
 
         assert_eq!(
-            aggregate.explain(&mut ExplainContext::default()),
-            "COUNT(DISTINCT id)"
+            actual.as_slice().explain(&mut ExplainContext::default()),
+            expected
         );
     }
 }

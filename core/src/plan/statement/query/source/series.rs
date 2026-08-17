@@ -21,3 +21,30 @@ impl Explain for SeriesSourcePlan {
             .with_property("size", self.size.explain(context))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::{SeriesSourcePlan, TableAliasPlan},
+        crate::{
+            ast::Literal,
+            plan::{ExprPlan, explain::test_explain},
+        },
+    };
+
+    #[test]
+    fn explain() {
+        let actual = SeriesSourcePlan {
+            alias: TableAliasPlan {
+                name: "numbers".to_owned(),
+                columns: vec!["number".to_owned()],
+            },
+            size: ExprPlan::Literal(Literal::Number(3.into())),
+        };
+        let expected = r"
+• series numbers
+  size: 3
+";
+        test_explain(&actual, expected);
+    }
+}

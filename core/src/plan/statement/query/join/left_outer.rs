@@ -74,7 +74,7 @@ mod tests {
             plan::{
                 ExprPlan, HashJoinInputPlan, HashJoinPlan, JoinConditionInputPlan,
                 JoinConditionPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan, SourcePlan,
-                TableAccessPlan, TableSourcePlan,
+                TableAccessPlan, TableSourcePlan, explain::test_explain,
             },
         },
         pretty_assertions::assert_eq,
@@ -150,5 +150,51 @@ mod tests {
         assert_eq!(actual.joined_sources(), expected.iter().collect::<Vec<_>>());
         *actual.base_source_mut() = table("condition");
         assert_eq!(actual.base_source(), &table("condition"));
+    }
+
+    #[test]
+    fn explain() {
+        let actual = LeftOuterJoinPlan {
+            input: LeftOuterJoinInputPlan::NestedLoop(nested_loop()),
+        };
+        let expected = r"
+• nested-loop join (left outer)
+├── • scan A
+│     access: full scan
+│
+└── • scan B
+      access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = LeftOuterJoinPlan {
+            input: LeftOuterJoinInputPlan::Hash(hash()),
+        };
+        let expected = r"
+• hash join (left outer)
+│ equality: TRUE = TRUE
+│
+├── • scan A
+│     access: full scan
+│
+└── • scan B
+      access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = LeftOuterJoinPlan {
+            input: LeftOuterJoinInputPlan::Condition(condition()),
+        };
+        let expected = r"
+• nested-loop join (left outer)
+│ condition: TRUE
+│
+├── • scan A
+│     access: full scan
+│
+└── • scan B
+      access: full scan
+";
+        test_explain(&actual, expected);
     }
 }

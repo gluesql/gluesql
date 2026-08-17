@@ -76,7 +76,7 @@ mod tests {
             plan::{
                 ExprPlan, InnerJoinInputPlan, InnerJoinPlan, LeftOuterJoinInputPlan,
                 LeftOuterJoinPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan, SourcePlan,
-                TableAccessPlan, TableSourcePlan,
+                TableAccessPlan, TableSourcePlan, explain::test_explain,
             },
         },
         pretty_assertions::assert_eq,
@@ -150,5 +150,65 @@ mod tests {
         );
         *left_outer.input.base_source_mut() = table("left-outer");
         assert_eq!(left_outer.input.base_source(), &table("left-outer"));
+    }
+
+    #[test]
+    fn explain() {
+        let actual = FilterPlan {
+            input: FilterInputPlan::Source(table("Player")),
+            expr: ExprPlan::Identifier("active".to_owned()),
+        };
+        let expected = r"
+• filter
+│ expression: active
+│
+└── • scan Player
+      access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = FilterPlan {
+            input: FilterInputPlan::InnerJoin(Box::new(InnerJoinPlan {
+                input: InnerJoinInputPlan::NestedLoop(NestedLoopJoinPlan {
+                    input: NestedLoopJoinInputPlan::Source(table("A")),
+                    right: table("B"),
+                }),
+            })),
+            expr: ExprPlan::Identifier("active".to_owned()),
+        };
+        let expected = r"
+• filter
+│ expression: active
+│
+└── • nested-loop join (inner)
+    ├── • scan A
+    │     access: full scan
+    │
+    └── • scan B
+          access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = FilterPlan {
+            input: FilterInputPlan::LeftOuterJoin(Box::new(LeftOuterJoinPlan {
+                input: LeftOuterJoinInputPlan::NestedLoop(NestedLoopJoinPlan {
+                    input: NestedLoopJoinInputPlan::Source(table("A")),
+                    right: table("B"),
+                }),
+            })),
+            expr: ExprPlan::Identifier("active".to_owned()),
+        };
+        let expected = r"
+• filter
+│ expression: active
+│
+└── • nested-loop join (left outer)
+    ├── • scan A
+    │     access: full scan
+    │
+    └── • scan B
+          access: full scan
+";
+        test_explain(&actual, expected);
     }
 }

@@ -68,7 +68,12 @@ mod tests {
         super::{LimitInputPlan, LimitPlan},
         crate::{
             ast::Literal,
-            plan::{ExprPlan, OffsetInputPlan, OffsetPlan, ValuesPlan},
+            plan::{
+                DistinctInputPlan, DistinctPlan, ExprPlan, OffsetInputPlan, OffsetPlan,
+                OrderByExprPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, SelectItemPlan,
+                SelectOrderByPlan, SourcePlan, TableAccessPlan, TableSourcePlan, ValuesOrderByPlan,
+                ValuesPlan, explain::test_explain,
+            },
         },
     };
 
@@ -84,6 +89,41 @@ mod tests {
 
     fn count(value: i64) -> ExprPlan {
         ExprPlan::Literal(Literal::Number(value.into()))
+    }
+
+    fn project() -> ProjectPlan {
+        ProjectPlan {
+            input: ProjectInputPlan::Source(SourcePlan::Table(TableSourcePlan {
+                name: "Player".to_owned(),
+                alias: None,
+                access: TableAccessPlan::FullScan,
+            })),
+            projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
+        }
+    }
+
+    fn values() -> ValuesPlan {
+        ValuesPlan(vec![vec![count(1)]])
+    }
+
+    fn select_order_by() -> SelectOrderByPlan {
+        SelectOrderByPlan {
+            input: project(),
+            exprs: vec![OrderByExprPlan {
+                expr: ExprPlan::Identifier("id".to_owned()),
+                asc: Some(false),
+            }],
+        }
+    }
+
+    fn values_order_by() -> ValuesOrderByPlan {
+        ValuesOrderByPlan {
+            input: values(),
+            exprs: vec![OrderByExprPlan {
+                expr: count(1),
+                asc: Some(false),
+            }],
+        }
     }
 
     #[test]
@@ -103,5 +143,110 @@ mod tests {
                 count: actual,
             } if actual == count(3)
         ));
+    }
+
+    #[test]
+    fn explain() {
+        let actual = LimitPlan {
+            input: LimitInputPlan::Project(project()),
+            count: count(3),
+        };
+        let expected = r"
+• limit
+│ count: 3
+│
+└── • project
+    │ columns: *
+    │
+    └── • scan Player
+          access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = LimitPlan {
+            input: LimitInputPlan::Values(values()),
+            count: count(3),
+        };
+        let expected = r"
+• limit
+│ count: 3
+│
+└── • values
+      size: 1 columns, 1 rows
+";
+        test_explain(&actual, expected);
+
+        let actual = LimitPlan {
+            input: LimitInputPlan::SelectOrderBy(select_order_by()),
+            count: count(3),
+        };
+        let expected = r"
+• limit
+│ count: 3
+│
+└── • sort
+    │ order: id DESC
+    │
+    └── • project
+        │ columns: *
+        │
+        └── • scan Player
+              access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = LimitPlan {
+            input: LimitInputPlan::ValuesOrderBy(values_order_by()),
+            count: count(3),
+        };
+        let expected = r"
+• limit
+│ count: 3
+│
+└── • sort
+    │ order: 1 DESC
+    │
+    └── • values
+          size: 1 columns, 1 rows
+";
+        test_explain(&actual, expected);
+
+        let actual = LimitPlan {
+            input: LimitInputPlan::Distinct(DistinctPlan {
+                input: DistinctInputPlan::Project(project()),
+            }),
+            count: count(3),
+        };
+        let expected = r"
+• limit
+│ count: 3
+│
+└── • distinct
+    └── • project
+        │ columns: *
+        │
+        └── • scan Player
+              access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = LimitPlan {
+            input: LimitInputPlan::Offset(OffsetPlan {
+                input: OffsetInputPlan::Values(values()),
+                count: count(2),
+            }),
+            count: count(3),
+        };
+        let expected = r"
+• limit
+│ count: 3
+│
+└── • offset
+    │ count: 2
+    │
+    └── • values
+          size: 1 columns, 1 rows
+";
+        test_explain(&actual, expected);
     }
 }

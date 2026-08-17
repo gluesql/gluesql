@@ -66,7 +66,7 @@ mod tests {
         super::{ValuesOrderByPlan, ValuesPlan},
         crate::{
             ast::Literal,
-            plan::{ExprPlan, OrderByExprPlan},
+            plan::{ExprPlan, OrderByExprPlan, QueryPlan, explain::test_explain},
         },
     };
 
@@ -85,5 +85,58 @@ mod tests {
                 && plan.exprs.len() == 1
                 && plan.exprs[0].asc == Some(false)
         );
+    }
+
+    #[test]
+    fn explain() {
+        let actual = ValuesPlan(vec![
+            vec![
+                ExprPlan::Literal(Literal::Number(1.into())),
+                ExprPlan::Literal(Literal::QuotedString("a".to_owned())),
+            ],
+            vec![
+                ExprPlan::Literal(Literal::Number(2.into())),
+                ExprPlan::Literal(Literal::QuotedString("b".to_owned())),
+            ],
+        ]);
+        let expected = r"
+• values
+  size: 2 columns, 2 rows
+";
+        test_explain(&actual, expected);
+
+        let actual = ValuesPlan(vec![vec![ExprPlan::Subquery(Box::new(QueryPlan::Values(
+            ValuesPlan(vec![vec![ExprPlan::Literal(Literal::Number(1.into()))]]),
+        )))]]);
+        let expected = r"
+• root
+├── • values
+│     size: 1 columns, 1 rows
+│     expressions: (@S1)
+│
+└── • subquery
+    │ id: @S1
+    │ exec mode: one row
+    │
+    └── • values
+          size: 1 columns, 1 rows
+";
+        test_explain(&actual, expected);
+
+        let actual = ValuesOrderByPlan {
+            input: ValuesPlan(vec![vec![ExprPlan::Literal(Literal::Number(1.into()))]]),
+            exprs: vec![OrderByExprPlan {
+                expr: ExprPlan::Literal(Literal::Number(1.into())),
+                asc: Some(false),
+            }],
+        };
+        let expected = r"
+• sort
+│ order: 1 DESC
+│
+└── • values
+      size: 1 columns, 1 rows
+";
+        test_explain(&actual, expected);
     }
 }

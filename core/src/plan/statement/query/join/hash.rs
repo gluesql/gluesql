@@ -91,8 +91,7 @@ mod tests {
             plan::{
                 ExprPlan, InnerJoinInputPlan, InnerJoinPlan, LeftOuterJoinInputPlan,
                 LeftOuterJoinPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan, SourcePlan,
-                TableAccessPlan, TableSourcePlan,
-                explain::{Explain, ExplainContext, ExplainNode},
+                TableAccessPlan, TableSourcePlan, explain::test_explain,
             },
         },
         pretty_assertions::assert_eq,
@@ -177,33 +176,77 @@ mod tests {
     }
 
     #[test]
-    fn explains_hash_join_node() {
-        let plan = InnerJoinPlan {
-            input: InnerJoinInputPlan::Hash(HashJoinPlan {
-                input: HashJoinInputPlan::Source(table("A")),
-                right: table("B"),
-                input_key: ExprPlan::CompoundIdentifier {
-                    alias: "A".to_owned(),
-                    ident: "id".to_owned(),
-                },
-                right_key: ExprPlan::CompoundIdentifier {
-                    alias: "B".to_owned(),
-                    ident: "id".to_owned(),
-                },
-                right_filter: Some(ExprPlan::Value(Value::Bool(true))),
-            }),
+    fn explain() {
+        let actual = HashJoinPlan {
+            input: HashJoinInputPlan::Source(table("A")),
+            right: table("B"),
+            input_key: ExprPlan::CompoundIdentifier {
+                alias: "A".to_owned(),
+                ident: "id".to_owned(),
+            },
+            right_key: ExprPlan::CompoundIdentifier {
+                alias: "B".to_owned(),
+                ident: "id".to_owned(),
+            },
+            right_filter: Some(ExprPlan::Value(Value::Bool(true))),
         };
+        let expected = r"
+• hash join
+│ equality: A.id = B.id
+│ right filter: TRUE
+│
+├── • scan A
+│     access: full scan
+│
+└── • scan B
+      access: full scan
+";
+        test_explain(&actual, expected);
 
-        assert_eq!(
-            plan.explain(&mut ExplainContext::default()),
-            ExplainNode::new("hash join")
-                .with_annotation("inner")
-                .with_property("equality", "A.id = B.id")
-                .with_property("right filter", "TRUE")
-                .with_children([
-                    ExplainNode::new("scan A").with_property("access", "full scan"),
-                    ExplainNode::new("scan B").with_property("access", "full scan"),
-                ])
-        );
+        let actual = HashJoinPlan {
+            input: HashJoinInputPlan::InnerJoin(Box::new(inner_join())),
+            right: table("C"),
+            input_key: expr(),
+            right_key: expr(),
+            right_filter: None,
+        };
+        let expected = r"
+• hash join
+│ equality: TRUE = TRUE
+│
+├── • nested-loop join (inner)
+│   ├── • scan A
+│   │     access: full scan
+│   │
+│   └── • scan B
+│         access: full scan
+│
+└── • scan C
+      access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = HashJoinPlan {
+            input: HashJoinInputPlan::LeftOuterJoin(Box::new(left_outer_join())),
+            right: table("C"),
+            input_key: expr(),
+            right_key: expr(),
+            right_filter: None,
+        };
+        let expected = r"
+• hash join
+│ equality: TRUE = TRUE
+│
+├── • nested-loop join (left outer)
+│   ├── • scan A
+│   │     access: full scan
+│   │
+│   └── • scan B
+│         access: full scan
+│
+└── • scan C
+      access: full scan
+";
+        test_explain(&actual, expected);
     }
 }

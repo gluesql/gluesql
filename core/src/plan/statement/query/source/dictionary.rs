@@ -21,3 +21,27 @@ impl Explain for DictionarySourcePlan {
             .with_property("source", &self.dictionary)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::{DictionarySourcePlan, TableAliasPlan},
+        crate::{ast::Dictionary, plan::explain::test_explain},
+    };
+
+    #[test]
+    fn explain() {
+        let actual = DictionarySourcePlan {
+            dictionary: Dictionary::GlueTables,
+            alias: TableAliasPlan {
+                name: "tables".to_owned(),
+                columns: Vec::new(),
+            },
+        };
+        let expected = r"
+• dictionary tables
+  source: GLUE_TABLES
+";
+        test_explain(&actual, expected);
+    }
+}

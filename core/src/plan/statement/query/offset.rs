@@ -63,12 +63,52 @@ mod tests {
         super::{OffsetInputPlan, OffsetPlan},
         crate::{
             ast::Literal,
-            plan::{ExprPlan, ValuesPlan},
+            plan::{
+                DistinctInputPlan, DistinctPlan, ExprPlan, OrderByExprPlan, ProjectInputPlan,
+                ProjectPlan, ProjectionPlan, SelectItemPlan, SelectOrderByPlan, SourcePlan,
+                TableAccessPlan, TableSourcePlan, ValuesOrderByPlan, ValuesPlan,
+                explain::test_explain,
+            },
         },
     };
 
     fn count(value: i64) -> ExprPlan {
         ExprPlan::Literal(Literal::Number(value.into()))
+    }
+
+    fn project() -> ProjectPlan {
+        ProjectPlan {
+            input: ProjectInputPlan::Source(SourcePlan::Table(TableSourcePlan {
+                name: "Player".to_owned(),
+                alias: None,
+                access: TableAccessPlan::FullScan,
+            })),
+            projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
+        }
+    }
+
+    fn values() -> ValuesPlan {
+        ValuesPlan(vec![vec![count(1)]])
+    }
+
+    fn select_order_by() -> SelectOrderByPlan {
+        SelectOrderByPlan {
+            input: project(),
+            exprs: vec![OrderByExprPlan {
+                expr: ExprPlan::Identifier("id".to_owned()),
+                asc: Some(false),
+            }],
+        }
+    }
+
+    fn values_order_by() -> ValuesOrderByPlan {
+        ValuesOrderByPlan {
+            input: values(),
+            exprs: vec![OrderByExprPlan {
+                expr: count(1),
+                asc: Some(false),
+            }],
+        }
     }
 
     #[test]
@@ -85,5 +125,91 @@ mod tests {
                 count: actual,
             } if actual == count(2)
         ));
+    }
+
+    #[test]
+    fn explain() {
+        let actual = OffsetPlan {
+            input: OffsetInputPlan::Project(project()),
+            count: count(2),
+        };
+        let expected = r"
+• offset
+│ count: 2
+│
+└── • project
+    │ columns: *
+    │
+    └── • scan Player
+          access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = OffsetPlan {
+            input: OffsetInputPlan::Values(values()),
+            count: count(2),
+        };
+        let expected = r"
+• offset
+│ count: 2
+│
+└── • values
+      size: 1 columns, 1 rows
+";
+        test_explain(&actual, expected);
+
+        let actual = OffsetPlan {
+            input: OffsetInputPlan::SelectOrderBy(select_order_by()),
+            count: count(2),
+        };
+        let expected = r"
+• offset
+│ count: 2
+│
+└── • sort
+    │ order: id DESC
+    │
+    └── • project
+        │ columns: *
+        │
+        └── • scan Player
+              access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = OffsetPlan {
+            input: OffsetInputPlan::ValuesOrderBy(values_order_by()),
+            count: count(2),
+        };
+        let expected = r"
+• offset
+│ count: 2
+│
+└── • sort
+    │ order: 1 DESC
+    │
+    └── • values
+          size: 1 columns, 1 rows
+";
+        test_explain(&actual, expected);
+
+        let actual = OffsetPlan {
+            input: OffsetInputPlan::Distinct(DistinctPlan {
+                input: DistinctInputPlan::Project(project()),
+            }),
+            count: count(2),
+        };
+        let expected = r"
+• offset
+│ count: 2
+│
+└── • distinct
+    └── • project
+        │ columns: *
+        │
+        └── • scan Player
+              access: full scan
+";
+        test_explain(&actual, expected);
     }
 }

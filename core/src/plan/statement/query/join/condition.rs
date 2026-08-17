@@ -61,10 +61,9 @@ mod tests {
         crate::{
             data::Value,
             plan::{
-                ExprPlan, HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan,
-                NestedLoopJoinInputPlan, NestedLoopJoinPlan, SourcePlan, TableAccessPlan,
-                TableSourcePlan,
-                explain::{Explain, ExplainContext, ExplainNode},
+                ExprPlan, HashJoinInputPlan, HashJoinPlan, NestedLoopJoinInputPlan,
+                NestedLoopJoinPlan, SourcePlan, TableAccessPlan, TableSourcePlan,
+                explain::test_explain,
             },
         },
         pretty_assertions::assert_eq,
@@ -127,23 +126,38 @@ mod tests {
     }
 
     #[test]
-    fn explains_join_condition_on_its_algorithm_node() {
-        let plan = InnerJoinPlan {
-            input: InnerJoinInputPlan::Condition(JoinConditionPlan {
-                input: JoinConditionInputPlan::NestedLoop(nested_loop()),
-                expr: ExprPlan::Value(Value::Bool(true)),
-            }),
+    fn explain() {
+        let actual = JoinConditionPlan {
+            input: JoinConditionInputPlan::NestedLoop(nested_loop()),
+            expr: ExprPlan::Value(Value::Bool(true)),
         };
+        let expected = r"
+• nested-loop join
+│ condition: TRUE
+│
+├── • scan A
+│     access: full scan
+│
+└── • scan B
+      access: full scan
+";
+        test_explain(&actual, expected);
 
-        assert_eq!(
-            plan.explain(&mut ExplainContext::default()),
-            ExplainNode::new("nested-loop join")
-                .with_annotation("inner")
-                .with_property("condition", "TRUE")
-                .with_children([
-                    ExplainNode::new("scan A").with_property("access", "full scan"),
-                    ExplainNode::new("scan B").with_property("access", "full scan"),
-                ])
-        );
+        let actual = JoinConditionPlan {
+            input: JoinConditionInputPlan::Hash(hash()),
+            expr: ExprPlan::Value(Value::Bool(true)),
+        };
+        let expected = r"
+• hash join
+│ equality: TRUE = TRUE
+│ condition: TRUE
+│
+├── • scan A
+│     access: full scan
+│
+└── • scan B
+      access: full scan
+";
+        test_explain(&actual, expected);
     }
 }

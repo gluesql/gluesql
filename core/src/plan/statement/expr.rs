@@ -410,16 +410,129 @@ fn fmt_expr_list(exprs: &[ExprPlan], context: &mut ExplainContext, output: &mut 
 #[cfg(test)]
 mod tests {
     use {
-        super::ExprPlan,
+        super::{
+            AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan, FunctionExprPlan,
+        },
         crate::{
-            ast::{BinaryOperator, Literal, UnaryOperator},
-            plan::explain::{Explain, ExplainContext},
+            ast::{BinaryOperator, DataType, DateTimeField, Literal, UnaryOperator},
+            data::Value,
+            plan::{
+                QueryPlan, ValuesPlan,
+                explain::{Explain, ExplainContext},
+            },
         },
     };
 
     #[test]
-    fn displays_expression_for_explain() {
-        let expression = ExprPlan::BinaryOp {
+    fn explain() {
+        let actual = ExprPlan::Identifier("id".to_owned());
+        let expected = "id";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::CompoundIdentifier {
+            alias: "Player".to_owned(),
+            ident: "id".to_owned(),
+        };
+        let expected = "Player.id";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::IsNull(Box::new(ExprPlan::Identifier("team_id".to_owned())));
+        let expected = "team_id IS NULL";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::IsNotNull(Box::new(ExprPlan::Identifier("team_id".to_owned())));
+        let expected = "team_id IS NOT NULL";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::InList {
+            expr: Box::new(ExprPlan::Identifier("id".to_owned())),
+            list: vec![
+                ExprPlan::Literal(Literal::Number(1.into())),
+                ExprPlan::Literal(Literal::Number(2.into())),
+            ],
+            negated: false,
+        };
+        let expected = "id IN (1, 2)";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::InList {
+            expr: Box::new(ExprPlan::Identifier("id".to_owned())),
+            list: vec![ExprPlan::Literal(Literal::Number(1.into()))],
+            negated: true,
+        };
+        let expected = "id NOT IN (1)";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let subquery = QueryPlan::Values(ValuesPlan(vec![vec![ExprPlan::Literal(
+            Literal::Number(1.into()),
+        )]]));
+        let actual = ExprPlan::InSubquery {
+            expr: Box::new(ExprPlan::Identifier("id".to_owned())),
+            subquery: Box::new(subquery.clone()),
+            negated: false,
+        };
+        let expected = "id IN (@S1)";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::InSubquery {
+            expr: Box::new(ExprPlan::Identifier("id".to_owned())),
+            subquery: Box::new(subquery.clone()),
+            negated: true,
+        };
+        let expected = "id NOT IN (@S1)";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::Between {
+            expr: Box::new(ExprPlan::Identifier("score".to_owned())),
+            negated: false,
+            low: Box::new(ExprPlan::Literal(Literal::Number(1.into()))),
+            high: Box::new(ExprPlan::Literal(Literal::Number(10.into()))),
+        };
+        let expected = "score BETWEEN 1 AND 10";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::Between {
+            expr: Box::new(ExprPlan::Identifier("score".to_owned())),
+            negated: true,
+            low: Box::new(ExprPlan::Literal(Literal::Number(1.into()))),
+            high: Box::new(ExprPlan::Literal(Literal::Number(10.into()))),
+        };
+        let expected = "score NOT BETWEEN 1 AND 10";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::Like {
+            expr: Box::new(ExprPlan::Identifier("name".to_owned())),
+            negated: false,
+            pattern: Box::new(ExprPlan::Literal(Literal::QuotedString("A%".to_owned()))),
+        };
+        let expected = "name LIKE 'A%'";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::Like {
+            expr: Box::new(ExprPlan::Identifier("name".to_owned())),
+            negated: true,
+            pattern: Box::new(ExprPlan::Literal(Literal::QuotedString("A%".to_owned()))),
+        };
+        let expected = "name NOT LIKE 'A%'";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::ILike {
+            expr: Box::new(ExprPlan::Identifier("name".to_owned())),
+            negated: false,
+            pattern: Box::new(ExprPlan::Literal(Literal::QuotedString("a%".to_owned()))),
+        };
+        let expected = "name ILIKE 'a%'";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::ILike {
+            expr: Box::new(ExprPlan::Identifier("name".to_owned())),
+            negated: true,
+            pattern: Box::new(ExprPlan::Literal(Literal::QuotedString("a%".to_owned()))),
+        };
+        let expected = "name NOT ILIKE 'a%'";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::BinaryOp {
             left: Box::new(ExprPlan::CompoundIdentifier {
                 alias: "Player".to_owned(),
                 ident: "id".to_owned(),
@@ -427,20 +540,143 @@ mod tests {
             op: BinaryOperator::Eq,
             right: Box::new(ExprPlan::Literal(Literal::Number(1.into()))),
         };
+        let expected = "Player.id = 1";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
 
-        assert_eq!(
-            expression.explain(&mut ExplainContext::default()),
-            "Player.id = 1"
-        );
-    }
+        let actual = ExprPlan::UnaryOp {
+            op: UnaryOperator::Minus,
+            expr: Box::new(ExprPlan::Literal(Literal::Number(1.into()))),
+        };
+        let expected = "-1";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
 
-    #[test]
-    fn displays_factorial_as_postfix_operator() {
-        let expression = ExprPlan::UnaryOp {
+        let actual = ExprPlan::UnaryOp {
             op: UnaryOperator::Factorial,
             expr: Box::new(ExprPlan::Literal(Literal::Number(5.into()))),
         };
+        let expected = "5!";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
 
-        assert_eq!(expression.explain(&mut ExplainContext::default()), "5!");
+        let actual = ExprPlan::Nested(Box::new(ExprPlan::BinaryOp {
+            left: Box::new(ExprPlan::Identifier("a".to_owned())),
+            op: BinaryOperator::Plus,
+            right: Box::new(ExprPlan::Identifier("b".to_owned())),
+        }));
+        let expected = "(a + b)";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::Literal(Literal::QuotedString("GlueSQL".to_owned()));
+        let expected = "'GlueSQL'";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::Value(Value::Bool(true));
+        let expected = "TRUE";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::TypedString {
+            data_type: DataType::Date,
+            value: "2026-08-17".to_owned(),
+        };
+        let expected = "DATE '2026-08-17'";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::Function(Box::new(FunctionExprPlan::Abs(ExprPlan::Identifier(
+            "score".to_owned(),
+        ))));
+        let expected = "ABS(score)";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::Aggregate(Box::new(AggregateExprPlan {
+            func: AggregateFunctionPlan::Count(CountArgExprPlan::Wildcard),
+            distinct: false,
+            slot: Some(0),
+        }));
+        let expected = "COUNT(*)";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::Exists {
+            subquery: Box::new(subquery.clone()),
+            negated: false,
+        };
+        let expected = "EXISTS (@S1)";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::Exists {
+            subquery: Box::new(subquery.clone()),
+            negated: true,
+        };
+        let expected = "NOT EXISTS (@S1)";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::Subquery(Box::new(subquery));
+        let expected = "@S1";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::Case {
+            operand: Some(Box::new(ExprPlan::Identifier("status".to_owned()))),
+            when_then: vec![(
+                ExprPlan::Literal(Literal::Number(1.into())),
+                ExprPlan::Literal(Literal::QuotedString("active".to_owned())),
+            )],
+            else_result: Some(Box::new(ExprPlan::Literal(Literal::QuotedString(
+                "inactive".to_owned(),
+            )))),
+        };
+        let expected = "CASE status WHEN 1 THEN 'active' ELSE 'inactive' END";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::Case {
+            operand: None,
+            when_then: Vec::new(),
+            else_result: None,
+        };
+        let expected = "CASE END";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::ArrayIndex {
+            obj: Box::new(ExprPlan::Identifier("matrix".to_owned())),
+            indexes: vec![
+                ExprPlan::Literal(Literal::Number(1.into())),
+                ExprPlan::Literal(Literal::Number(2.into())),
+            ],
+        };
+        let expected = "matrix[1][2]";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::Interval {
+            expr: Box::new(ExprPlan::Literal(Literal::QuotedString("1".to_owned()))),
+            leading_field: Some(DateTimeField::Day),
+            last_field: Some(DateTimeField::Hour),
+        };
+        let expected = "INTERVAL '1' DAY TO HOUR";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::Interval {
+            expr: Box::new(ExprPlan::Literal(Literal::QuotedString("1 day".to_owned()))),
+            leading_field: None,
+            last_field: None,
+        };
+        let expected = "INTERVAL '1 day'";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ExprPlan::Array {
+            elem: vec![
+                ExprPlan::Literal(Literal::Number(1.into())),
+                ExprPlan::Literal(Literal::Number(2.into())),
+            ],
+        };
+        let expected = "[1, 2]";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = [
+            ExprPlan::Identifier("id".to_owned()),
+            ExprPlan::Identifier("name".to_owned()),
+        ];
+        let expected = "id, name";
+
+        assert_eq!(
+            actual.as_slice().explain(&mut ExplainContext::default()),
+            expected
+        );
     }
 }

@@ -112,7 +112,7 @@ mod tests {
         },
         crate::{
             ast::{self, Dictionary, Expr, Literal, Query, SetExpr, Values},
-            plan::{ExprPlan, QueryPlan},
+            plan::{ExprPlan, QueryPlan, ValuesPlan, explain::test_explain},
         },
         pretty_assertions::assert_eq,
     };
@@ -184,5 +184,66 @@ mod tests {
             },
         });
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn explain() {
+        let actual = SourcePlan::Table(TableSourcePlan {
+            name: "Item".to_owned(),
+            alias: Some(TableAliasPlan {
+                name: "i".to_owned(),
+                columns: Vec::new(),
+            }),
+            access: TableAccessPlan::FullScan,
+        });
+        let expected = r"
+• scan Item as i
+  access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = SourcePlan::Derived(DerivedSourcePlan {
+            query: Box::new(QueryPlan::Values(ValuesPlan(vec![vec![
+                ExprPlan::Literal(Literal::Number(1.into())),
+            ]]))),
+            alias: TableAliasPlan {
+                name: "derived".to_owned(),
+                columns: vec!["value".to_owned()],
+            },
+        });
+        let expected = r"
+• derived derived
+│ columns: value
+│
+└── • values
+      size: 1 columns, 1 rows
+";
+        test_explain(&actual, expected);
+
+        let actual = SourcePlan::Series(SeriesSourcePlan {
+            alias: TableAliasPlan {
+                name: "numbers".to_owned(),
+                columns: vec!["number".to_owned()],
+            },
+            size: ExprPlan::Literal(Literal::Number(3.into())),
+        });
+        let expected = r"
+• series numbers
+  size: 3
+";
+        test_explain(&actual, expected);
+
+        let actual = SourcePlan::Dictionary(DictionarySourcePlan {
+            dictionary: Dictionary::GlueTables,
+            alias: TableAliasPlan {
+                name: "tables".to_owned(),
+                columns: Vec::new(),
+            },
+        });
+        let expected = r"
+• dictionary tables
+  source: GLUE_TABLES
+";
+        test_explain(&actual, expected);
     }
 }

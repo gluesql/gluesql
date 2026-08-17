@@ -92,15 +92,23 @@ impl From<ast::SelectItem> for SelectItemPlan {
 mod tests {
     use {
         super::{ProjectionPlan, SelectItemPlan},
-        crate::plan::{
-            ExprPlan,
-            explain::{Explain, ExplainContext},
+        crate::{
+            ast::Literal,
+            plan::{
+                ExprPlan,
+                explain::{Explain, ExplainContext},
+            },
         },
     };
 
     #[test]
-    fn displays_projection_for_explain() {
-        let projection = ProjectionPlan::SelectItems(vec![
+    fn explain() {
+        let actual = ProjectionPlan::SchemalessMap;
+        let expected = "map";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = ProjectionPlan::SelectItems(vec![
+            SelectItemPlan::Wildcard,
             SelectItemPlan::QualifiedWildcard("Player".to_owned()),
             SelectItemPlan::Expr {
                 expr: ExprPlan::Identifier("team_id".to_owned()),
@@ -110,11 +118,20 @@ mod tests {
                 expr: ExprPlan::Identifier("name".to_owned()),
                 label: "player_name".to_owned(),
             },
+            SelectItemPlan::Expr {
+                expr: ExprPlan::CompoundIdentifier {
+                    alias: "Player".to_owned(),
+                    ident: "id".to_owned(),
+                },
+                label: "id".to_owned(),
+            },
+            SelectItemPlan::Expr {
+                expr: ExprPlan::Literal(Literal::Number(1.into())),
+                label: String::new(),
+            },
         ]);
+        let expected = "*, Player.*, team_id, name AS player_name, Player.id, 1";
 
-        assert_eq!(
-            projection.explain(&mut ExplainContext::default()),
-            "Player.*, team_id, name AS player_name"
-        );
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
     }
 }
