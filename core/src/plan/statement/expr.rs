@@ -307,6 +307,23 @@ fn fmt_expr(expr: &ExprPlan, context: &mut ExplainContext, output: &mut String) 
             output.push_str(if *negated { " NOT ILIKE " } else { " ILIKE " });
             fmt_expr(pattern, context, output);
         }
+        ExprPlan::Regex {
+            expr,
+            negated,
+            pattern,
+            case_sensitive,
+        } => {
+            fmt_expr(expr, context, output);
+            output.push(' ');
+            output.push_str(match (*negated, *case_sensitive) {
+                (false, true) => "~",
+                (false, false) => "~*",
+                (true, true) => "!~",
+                (true, false) => "!~*",
+            });
+            output.push(' ');
+            fmt_expr(pattern, context, output);
+        }
         ExprPlan::BinaryOp { left, op, right } => {
             fmt_expr(left, context, output);
             output.push(' ');
@@ -551,6 +568,42 @@ mod tests {
             pattern: Box::new(ExprPlan::Literal(Literal::QuotedString("a%".to_owned()))),
         };
         let expected = "name NOT ILIKE 'a%'";
+        test(&actual, expected);
+
+        let actual = ExprPlan::Regex {
+            expr: Box::new(ExprPlan::Identifier("name".to_owned())),
+            negated: false,
+            pattern: Box::new(ExprPlan::Literal(Literal::QuotedString("^A".to_owned()))),
+            case_sensitive: true,
+        };
+        let expected = "name ~ '^A'";
+        test(&actual, expected);
+
+        let actual = ExprPlan::Regex {
+            expr: Box::new(ExprPlan::Identifier("name".to_owned())),
+            negated: false,
+            pattern: Box::new(ExprPlan::Literal(Literal::QuotedString("^a".to_owned()))),
+            case_sensitive: false,
+        };
+        let expected = "name ~* '^a'";
+        test(&actual, expected);
+
+        let actual = ExprPlan::Regex {
+            expr: Box::new(ExprPlan::Identifier("name".to_owned())),
+            negated: true,
+            pattern: Box::new(ExprPlan::Literal(Literal::QuotedString("^A".to_owned()))),
+            case_sensitive: true,
+        };
+        let expected = "name !~ '^A'";
+        test(&actual, expected);
+
+        let actual = ExprPlan::Regex {
+            expr: Box::new(ExprPlan::Identifier("name".to_owned())),
+            negated: true,
+            pattern: Box::new(ExprPlan::Literal(Literal::QuotedString("^a".to_owned()))),
+            case_sensitive: false,
+        };
+        let expected = "name !~* '^a'";
         test(&actual, expected);
 
         let actual = ExprPlan::BinaryOp {

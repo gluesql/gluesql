@@ -377,6 +377,27 @@ LIMIT 10 OFFSET 5
     }
 
     #[test]
+    fn explains_regex_filter() {
+        assert_eq!(
+            explain_sql(
+                "CREATE TABLE Item (name TEXT);",
+                "EXPLAIN SELECT name FROM Item WHERE name ~* '^glue'",
+            ),
+            r"
+• project
+│ columns: name
+│
+└── • filter
+    │ expression: name ~* '^glue'
+    │
+    └── • scan Item
+          access: full scan
+"
+            .trim()
+        );
+    }
+
+    #[test]
     fn explains_distinct_grouping_and_having() {
         assert_eq!(
             explain_sql(
