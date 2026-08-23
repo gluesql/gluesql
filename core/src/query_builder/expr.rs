@@ -5,6 +5,7 @@ mod is_null;
 mod like;
 mod nested;
 mod order_by;
+mod regex;
 mod unary_op;
 
 pub mod aggregate;
@@ -65,6 +66,12 @@ pub enum ExprNode<'a> {
         expr: Box<ExprNode<'a>>,
         negated: bool,
         pattern: Box<ExprNode<'a>>,
+    },
+    Regex {
+        expr: Box<ExprNode<'a>>,
+        negated: bool,
+        pattern: Box<ExprNode<'a>>,
+        case_sensitive: bool,
     },
     BinaryOp {
         left: Box<ExprNode<'a>>,
@@ -170,6 +177,22 @@ impl ExprNode<'_> {
                     expr,
                     negated,
                     pattern,
+                })
+            }
+            ExprNode::Regex {
+                expr,
+                negated,
+                pattern,
+                case_sensitive,
+            } => {
+                let expr = (*expr).build_expr_plan().map(Box::new)?;
+                let pattern = (*pattern).build_expr_plan().map(Box::new)?;
+
+                Ok(ExprPlan::Regex {
+                    expr,
+                    negated,
+                    pattern,
+                    case_sensitive,
                 })
             }
             ExprNode::BinaryOp { left, op, right } => {
@@ -368,6 +391,22 @@ impl ExprNode<'_> {
                     expr,
                     negated,
                     pattern,
+                })
+            }
+            ExprNode::Regex {
+                expr,
+                negated,
+                pattern,
+                case_sensitive,
+            } => {
+                let expr = expr.build_expr().map(Box::new)?;
+                let pattern = pattern.build_expr().map(Box::new)?;
+
+                Ok(Expr::Regex {
+                    expr,
+                    negated,
+                    pattern,
+                    case_sensitive,
                 })
             }
             ExprNode::BinaryOp { left, op, right } => {

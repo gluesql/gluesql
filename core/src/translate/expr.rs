@@ -15,9 +15,9 @@ use {
         result::Result,
     },
     sqlparser::ast::{
-        Array, CeilFloorKind as SqlCeilFloorKind, DateTimeField as SqlDateTimeField,
-        Expr as SqlExpr, Interval as SqlInterval, OrderByExpr as SqlOrderByExpr,
-        Subscript as SqlSubscript, Value as SqlValue,
+        Array, BinaryOperator as SqlBinaryOperator, CeilFloorKind as SqlCeilFloorKind,
+        DateTimeField as SqlDateTimeField, Expr as SqlExpr, Interval as SqlInterval,
+        OrderByExpr as SqlOrderByExpr, Subscript as SqlSubscript, Value as SqlValue,
     },
 };
 
@@ -100,11 +100,28 @@ pub fn translate_expr(sql_expr: &SqlExpr, params: &[ParamLiteral]) -> Result<Exp
             negated: *negated,
             pattern: translate_expr(pattern, params).map(Box::new)?,
         }),
-        SqlExpr::BinaryOp { left, op, right } => Ok(Expr::BinaryOp {
-            left: translate_expr(left, params).map(Box::new)?,
-            op: translate_binary_operator(op)?,
-            right: translate_expr(right, params).map(Box::new)?,
-        }),
+        SqlExpr::BinaryOp { left, op, right } => {
+            let (negated, case_sensitive) = match op {
+                SqlBinaryOperator::PGRegexMatch => (false, true),
+                SqlBinaryOperator::PGRegexIMatch => (false, false),
+                SqlBinaryOperator::PGRegexNotMatch => (true, true),
+                SqlBinaryOperator::PGRegexNotIMatch => (true, false),
+                _ => {
+                    return Ok(Expr::BinaryOp {
+                        left: translate_expr(left, params).map(Box::new)?,
+                        op: translate_binary_operator(op)?,
+                        right: translate_expr(right, params).map(Box::new)?,
+                    });
+                }
+            };
+
+            Ok(Expr::Regex {
+                expr: translate_expr(left, params).map(Box::new)?,
+                negated,
+                pattern: translate_expr(right, params).map(Box::new)?,
+                case_sensitive,
+            })
+        }
         SqlExpr::UnaryOp { op, expr } => Ok(Expr::UnaryOp {
             op: translate_unary_operator(*op)?,
             expr: translate_expr(expr, params).map(Box::new)?,
@@ -252,4 +269,29 @@ pub fn translate_order_by_expr(
         expr: translate_expr(expr, params)?,
         asc: *asc,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::translate_expr,
+        crate::{ast::Expr, parse_sql::parse_expr, translate::NO_PARAMS},
+    };
+
+    #[test]
+    fn regex_operators() {
+        for (sql, negated, case_sensitive) in [
+            ("name ~ 'abc'", false, true),
+            ("name ~* 'abc'", false, false),
+            ("name !~ 'abc'", true, true),
+            ("name !~* 'abc'", true, false),
+        ] {
+            let parsed = parse_expr(sql).expect(sql);
+            assert!(matches!(
+                translate_expr(&parsed, NO_PARAMS).expect(sql),
+                Expr::Regex { negated: actual_negated, case_sensitive: actual_case_sensitive, .. }
+                    if actual_negated == negated && actual_case_sensitive == case_sensitive
+            ));
+        }
+    }
 }

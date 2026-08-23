@@ -90,4 +90,54 @@ test_case!(pattern_matching, {
         rows: vec![],
     });
     assert_eq!(actual, expected, "not_ilike");
+
+    // regex
+    let actual = table("Category")
+        .select()
+        .filter(col("name").regex(text("^M")))
+        .execute(glue);
+    let expected = Ok(select!(
+        id  | name
+        I64 | Str;
+        1     "Meat".to_owned()
+    ));
+    assert_eq!(actual, expected, "regex");
+
+    // iregex
+    let actual = table("Category")
+        .select()
+        .filter(col("name").iregex(text("^m")))
+        .execute(glue);
+    let expected = Ok(select!(
+        id  | name
+        I64 | Str;
+        1     "Meat".to_owned();
+        2     "meat".to_owned()
+    ));
+    assert_eq!(actual, expected, "iregex");
+
+    // not_regex
+    let actual = table("Category")
+        .select()
+        .filter(col("name").not_regex(text("^M")))
+        .execute(glue);
+    let expected = Ok(select!(
+        id  | name
+        I64 | Str;
+        2     "meat".to_owned();
+        3     "Drink".to_owned();
+        4     "drink".to_owned()
+    ));
+    assert_eq!(actual, expected, "not_regex");
+
+    // not_iregex
+    let actual = table("Category")
+        .select()
+        .filter(col("name").not_iregex(text("^m|^d")))
+        .execute(glue);
+    let expected = Ok(Payload::Select {
+        labels: vec!["id".to_owned(), "name".to_owned()],
+        rows: vec![],
+    });
+    assert_eq!(actual, expected, "not_iregex");
 });

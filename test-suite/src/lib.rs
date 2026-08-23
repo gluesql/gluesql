@@ -193,6 +193,7 @@ macro_rules! generate_store_tests {
         sql_case!(default);
         sql_case!(limit);
         sql_case!(like_ilike);
+        sql_case!(regex);
         sql_case!(filter);
         sql_case!(inline_view);
         sql_case!(values);
