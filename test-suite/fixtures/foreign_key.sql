@@ -224,9 +224,9 @@ DROP TABLE ReferencedTableWithPK;
 --         "name": "MyFkConstraint",
 --         "on_delete": "NoAction",
 --         "on_update": "NoAction",
---         "referenced_column_name": "id",
+--         "referenced_column_names": ["id"],
 --         "referenced_table_name": "ReferencedTableWithPK",
---         "referencing_column_name": "referenced_id"
+--         "referencing_column_names": ["referenced_id"]
 --       },
 --       "table_name": "ReferencingTable"
 --     },
@@ -235,9 +235,9 @@ DROP TABLE ReferencedTableWithPK;
 --         "name": "FK_referenced_id_1-ReferencedTableWithPK_id",
 --         "on_delete": "NoAction",
 --         "on_update": "NoAction",
---         "referenced_column_name": "id",
+--         "referenced_column_names": ["id"],
 --         "referenced_table_name": "ReferencedTableWithPK",
---         "referencing_column_name": "referenced_id_1"
+--         "referencing_column_names": ["referenced_id_1"]
 --       },
 --       "table_name": "ReferencingWithTwoFK"
 --     }
@@ -262,3 +262,220 @@ CREATE TABLE SelfReferencingTable (
 DROP TABLE SelfReferencingTable;
 -- @expect: payload DropTable
 -- @json: 1
+
+-- @name: Should create parent table for composite foreign key tests
+CREATE TABLE CompositeParent (
+    id INTEGER PRIMARY KEY,
+    tag TEXT
+);
+-- @expect: payload Create
+
+INSERT INTO CompositeParent VALUES (1, 'alpha'), (2, 'beta');
+-- @expect: payload Insert
+-- @json: 2
+
+-- @name: Composite foreign key should be accepted when a referenced column is the primary key
+CREATE TABLE CompositeChild (
+    id INTEGER,
+    tag TEXT,
+    FOREIGN KEY (id, tag) REFERENCES CompositeParent (id, tag)
+);
+-- @expect: payload Create
+
+-- @name: Composite foreign key should accept a row matching the whole tuple
+INSERT INTO CompositeChild VALUES (1, 'alpha');
+-- @expect: payload Insert
+-- @json: 1
+
+-- @name: Composite foreign key should reject a row whose non-key column does not match
+INSERT INTO CompositeChild VALUES (1, 'beta');
+-- @expect: error Insert.CannotFindReferencedValue
+
+-- @name: Composite foreign key should reject a row whose key column is absent
+INSERT INTO CompositeChild VALUES (9, 'alpha');
+-- @expect: error Insert.CannotFindReferencedValue
+
+-- @name: Composite foreign key should allow NULL in the referencing tuple
+INSERT INTO CompositeChild VALUES (1, NULL);
+-- @expect: payload Insert
+-- @json: 1
+
+-- @name: Composite foreign key should reject an UPDATE breaking the tuple
+UPDATE CompositeChild SET tag = 'beta' WHERE id = 1 AND tag = 'alpha';
+-- @expect: error Update.CannotFindReferencedValue
+
+-- @name: Composite foreign key should allow an UPDATE keeping the tuple valid
+UPDATE CompositeChild SET tag = 'alpha' WHERE id = 1 AND tag = 'alpha';
+-- @expect: payload Update
+-- @json: 1
+
+-- @name: Cannot delete a parent row referenced by a composite foreign key
+DELETE FROM CompositeParent WHERE id = 1;
+-- @expect: error Delete.ReferencingColumnExists
+
+-- @name: Can delete a parent row no composite child references
+DELETE FROM CompositeParent WHERE id = 2;
+-- @expect: payload Delete
+-- @json: 1
+
+-- @name: Composite foreign key column counts must match
+CREATE TABLE MismatchedChild (
+    id INTEGER,
+    tag TEXT,
+    FOREIGN KEY (id, tag) REFERENCES CompositeParent (id)
+);
+-- @expect: error Translate.ForeignKeyColumnCountMismatch
+
+-- @name: Should create a parent with two non primary key columns
+CREATE TABLE TwoPlainColumnsParent (
+    id INTEGER PRIMARY KEY,
+    a TEXT,
+    b TEXT
+);
+-- @expect: payload Create
+
+-- @name: Composite foreign key must include the referenced primary key
+CREATE TABLE NoPkChild (
+    a TEXT,
+    b TEXT,
+    FOREIGN KEY (a, b) REFERENCES TwoPlainColumnsParent (a, b)
+);
+-- @expect: error Alter.ReferencingNonPKColumn
+
+-- @name: Column count is checked before duplicates
+CREATE TABLE CountBeforeDuplicateChild (
+    x INTEGER,
+    y INTEGER,
+    FOREIGN KEY (x, x) REFERENCES CompositeParent (id)
+);
+-- @expect: error Translate.ForeignKeyColumnCountMismatch
+
+-- @name: Referenced column list must not contain duplicates
+CREATE TABLE DuplicateReferencedChild (
+    x INTEGER,
+    y INTEGER,
+    FOREIGN KEY (x, y) REFERENCES CompositeParent (id, id)
+);
+-- @expect: error Translate.DuplicateForeignKeyColumn
+
+-- @name: Referencing column list must not contain duplicates
+CREATE TABLE DuplicateReferencingChild (
+    x INTEGER,
+    tag TEXT,
+    FOREIGN KEY (x, x) REFERENCES CompositeParent (id, tag)
+);
+-- @expect: error Translate.DuplicateForeignKeyColumn
+
+-- @name: Single column foreign key should still be accepted
+CREATE TABLE SingleFkChild (
+    id INTEGER,
+    FOREIGN KEY (id) REFERENCES CompositeParent (id)
+);
+-- @expect: payload Create
+
+-- @name: Composite foreign key should work when the primary key is not the first column
+CREATE TABLE ReversedOrderChild (
+    tag TEXT,
+    id INTEGER,
+    FOREIGN KEY (tag, id) REFERENCES CompositeParent (tag, id)
+);
+-- @expect: payload Create
+
+INSERT INTO ReversedOrderChild VALUES ('alpha', 1);
+-- @expect: payload Insert
+-- @json: 1
+
+-- @name: Reversed order composite foreign key should still reject a broken tuple
+INSERT INTO ReversedOrderChild VALUES ('beta', 1);
+-- @expect: error Insert.CannotFindReferencedValue
+
+-- @name: Composite foreign key should allow referencing columns named differently
+CREATE TABLE RenamedColumnChild (
+    k INTEGER,
+    t TEXT,
+    FOREIGN KEY (k, t) REFERENCES CompositeParent (id, tag)
+);
+-- @expect: payload Create
+
+INSERT INTO RenamedColumnChild VALUES (1, 'alpha');
+-- @expect: payload Insert
+-- @json: 1
+
+-- @name: Composite foreign key should reject a broken tuple across renamed columns
+INSERT INTO RenamedColumnChild VALUES (1, 'beta');
+-- @expect: error Insert.CannotFindReferencedValue
+
+-- @name: Composite foreign key should reject a multi row insert when any row breaks the tuple
+CREATE TABLE MultiRowChild (
+    id INTEGER,
+    tag TEXT,
+    FOREIGN KEY (id, tag) REFERENCES CompositeParent (id, tag)
+);
+-- @expect: payload Create
+
+-- An earlier step deleted parent row 2, so add a second valid parent tuple.
+INSERT INTO CompositeParent VALUES (3, 'gamma');
+-- @expect: payload Insert
+-- @json: 1
+
+INSERT INTO MultiRowChild VALUES (1, 'alpha'), (3, 'gamma');
+-- @expect: payload Insert
+-- @json: 2
+
+INSERT INTO MultiRowChild VALUES (1, 'alpha'), (3, 'alpha');
+-- @expect: error Insert.CannotFindReferencedValue
+
+-- @name: A rejected multi row insert should leave no rows behind
+SELECT id, tag FROM MultiRowChild;
+-- @expect: count 2
+
+-- @name: Should support two composite foreign keys on one table
+CREATE TABLE SecondParent (
+    code TEXT PRIMARY KEY,
+    note TEXT
+);
+-- @expect: payload Create
+
+INSERT INTO SecondParent VALUES ('x', 'n1');
+-- @expect: payload Insert
+-- @json: 1
+
+CREATE TABLE TwoCompositeFkChild (
+    id INTEGER,
+    tag TEXT,
+    code TEXT,
+    note TEXT,
+    FOREIGN KEY (id, tag) REFERENCES CompositeParent (id, tag),
+    FOREIGN KEY (code, note) REFERENCES SecondParent (code, note)
+);
+-- @expect: payload Create
+
+INSERT INTO TwoCompositeFkChild VALUES (1, 'alpha', 'x', 'n1');
+-- @expect: payload Insert
+-- @json: 1
+
+-- @name: The second composite foreign key should be enforced independently
+INSERT INTO TwoCompositeFkChild VALUES (1, 'alpha', 'x', 'wrong');
+-- @expect: error Insert.CannotFindReferencedValue
+
+-- @name: Should support a self referencing composite foreign key
+CREATE TABLE SelfCompositeRef (
+    id INTEGER PRIMARY KEY,
+    tag TEXT,
+    parent_id INTEGER,
+    parent_tag TEXT,
+    FOREIGN KEY (parent_id, parent_tag) REFERENCES SelfCompositeRef (id, tag)
+);
+-- @expect: payload Create
+
+INSERT INTO SelfCompositeRef VALUES (1, 'a', NULL, NULL);
+-- @expect: payload Insert
+-- @json: 1
+
+INSERT INTO SelfCompositeRef VALUES (2, 'b', 1, 'a');
+-- @expect: payload Insert
+-- @json: 1
+
+-- @name: Self referencing composite foreign key should reject a broken tuple
+INSERT INTO SelfCompositeRef VALUES (3, 'c', 1, 'wrong');
+-- @expect: error Insert.CannotFindReferencedValue

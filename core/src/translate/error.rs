@@ -60,6 +60,21 @@ pub enum CreateIndexOption {
     Where,
 }
 
+/// Which side of a `FOREIGN KEY` definition a column list belongs to.
+///
+/// Carried by [`TranslateError::DuplicateForeignKeyColumn`] so the diagnostic
+/// names the offending list instead of leaving the reader to guess.
+#[derive(Display, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ForeignKeyColumnSide {
+    /// The `FOREIGN KEY (...)` list on the referencing table.
+    #[strum(to_string = "referencing")]
+    Referencing,
+
+    /// The `REFERENCES <table> (...)` list on the referenced table.
+    #[strum(to_string = "referenced")]
+    Referenced,
+}
+
 /// `INSERT` clauses that `GlueSQL` does not support yet.
 ///
 /// Carried by [`TranslateError::UnsupportedInsertOption`] so callers can
@@ -228,6 +243,7 @@ macro_rules! serialize_via_display {
 serialize_via_display!(
     CreateIndexOption,
     CreateTableOption,
+    ForeignKeyColumnSide,
     InsertOption,
     UpdateOption,
     DeleteOption,
@@ -247,6 +263,18 @@ pub enum TranslateError {
 
     #[error("unimplemented - composite index is not supported")]
     CompositeIndexNotSupported,
+
+    #[error("duplicate {side} column '{column}' in foreign key")]
+    DuplicateForeignKeyColumn {
+        side: ForeignKeyColumnSide,
+        column: String,
+    },
+
+    #[error("foreign key column count mismatch: {referencing} referencing column(s) but {referenced} referenced column(s)")]
+    ForeignKeyColumnCountMismatch {
+        referencing: usize,
+        referenced: usize,
+    },
 
     #[error("unimplemented - join on update not supported")]
     JoinOnUpdateNotSupported,
