@@ -288,7 +288,7 @@ fn validate_foreign_key<T: GStore>(
                 .collect::<Result<Vec<_>, _>>()?;
 
             // MATCH SIMPLE: a NULL anywhere in the referencing tuple satisfies the constraint.
-            if values.iter().any(|value| *value == &Value::Null) {
+            if values.contains(&&Value::Null) {
                 continue;
             }
 

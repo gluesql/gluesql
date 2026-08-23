@@ -270,7 +270,9 @@ pub enum TranslateError {
         column: String,
     },
 
-    #[error("foreign key column count mismatch: {referencing} referencing column(s) but {referenced} referenced column(s)")]
+    #[error(
+        "foreign key column count mismatch: {referencing} referencing column(s) but {referenced} referenced column(s)"
+    )]
     ForeignKeyColumnCountMismatch {
         referencing: usize,
         referenced: usize,
