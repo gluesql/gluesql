@@ -24,7 +24,7 @@ pub fn alter_table<T: GStore + GStoreMut>(
             let referencing_foreign_key = schema
                 .foreign_keys
                 .into_iter()
-                .find(|foreign_key| column_name == &foreign_key.referencing_column_name);
+                .find(|foreign_key| foreign_key.referencing_column_names.contains(column_name));
 
             if let Some(foreign_key) = referencing_foreign_key {
                 return Err(AlterError::CannotAlterReferencingColumn {
@@ -41,7 +41,7 @@ pub fn alter_table<T: GStore + GStoreMut>(
         let referencing = referencings
             .into_iter()
             .find(|Referencing { foreign_key, .. }| {
-                column_name == &foreign_key.referenced_column_name
+                foreign_key.referenced_column_names.contains(column_name)
             });
 
         if let Some(referencing) = referencing {

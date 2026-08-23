@@ -12,8 +12,9 @@ pub use self::{
     data_type::translate_data_type,
     ddl::translate_column_def,
     error::{
-        CreateIndexOption, CreateTableOption, DeleteOption, InsertOption, JoinConstraintReason,
-        QueryOption, SelectOption, TransactionOption, TranslateError, UpdateOption,
+        CreateIndexOption, CreateTableOption, DeleteOption, ForeignKeyColumnSide, InsertOption,
+        JoinConstraintReason, QueryOption, SelectOption, TransactionOption, TranslateError,
+        UpdateOption,
     },
     expr::{translate_expr, translate_order_by_expr},
     param::{IntoParamLiteral, ParamLiteral},
@@ -581,6 +582,14 @@ pub fn translate_referential_action(
     }
 }
 
+fn first_duplicate(column_names: &[String]) -> Option<String> {
+    column_names
+        .iter()
+        .enumerate()
+        .find(|(index, name)| column_names[..*index].contains(name))
+        .map(|(_, name)| name.clone())
+}
+
 pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<ForeignKey> {
     match table_constraint {
         SqlTableConstraint::ForeignKey {
@@ -592,36 +601,51 @@ pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Fo
             on_update,
             ..
         } => {
-            let referencing_column_name = columns.first().map(|i| i.value.clone()).ok_or(
-                TranslateError::UnreachableForeignKeyColumns(
-                    columns.iter().map(ToString::to_string).collect::<String>(),
-                ),
-            )?;
+            let referencing_column_names = translate_idents(columns);
+            let referenced_column_names = translate_idents(referred_columns);
 
-            let referenced_column_name = referred_columns
-                .first()
-                .ok_or(TranslateError::UnreachableForeignKeyColumns(
-                    columns.iter().map(ToString::to_string).collect::<String>(),
-                ))?
-                .value
-                .clone();
+            if referencing_column_names.is_empty() || referenced_column_names.is_empty() {
+                return Err(TranslateError::UnreachableForeignKeyColumns(
+                    table_constraint.to_string(),
+                )
+                .into());
+            }
+
+            // Most-structural first; existence and uniqueness follow at execution
+            if referencing_column_names.len() != referenced_column_names.len() {
+                return Err(TranslateError::ForeignKeyColumnCountMismatch {
+                    referencing: referencing_column_names.len(),
+                    referenced: referenced_column_names.len(),
+                }
+                .into());
+            }
+
+            // Not left to the uniqueness check, which would blame the wrong thing
+            for (side, column_names) in [
+                (ForeignKeyColumnSide::Referencing, &referencing_column_names),
+                (ForeignKeyColumnSide::Referenced, &referenced_column_names),
+            ] {
+                if let Some(column) = first_duplicate(column_names) {
+                    return Err(TranslateError::DuplicateForeignKeyColumn { side, column }.into());
+                }
+            }
 
             let referenced_table_name = translate_object_name(foreign_table)?;
 
             let name = match name {
                 Some(name) => name.value.clone(),
-                None => {
-                    format!(
-                        "FK_{referencing_column_name}-{referenced_table_name}_{referenced_column_name}"
-                    )
-                }
+                None => format!(
+                    "FK_{}-{referenced_table_name}_{}",
+                    referencing_column_names.join("_"),
+                    referenced_column_names.join("_")
+                ),
             };
 
             Ok(ForeignKey {
                 name,
-                referencing_column_name,
+                referencing_column_names,
                 referenced_table_name,
-                referenced_column_name,
+                referenced_column_names,
                 on_delete: translate_referential_action(on_delete)?,
                 on_update: translate_referential_action(on_update)?,
             })
@@ -768,6 +792,100 @@ mod tests {
         for (sql, err) in cases {
             assert_translate_error(sql, err);
         }
+    }
+
+    #[test]
+    fn foreign_key_columns_must_be_distinct() {
+        let cases = [
+            (
+                "CREATE TABLE Child (a INT, b INT, FOREIGN KEY (a, a) REFERENCES Parent (x, y))",
+                ForeignKeyColumnSide::Referencing,
+                "a",
+            ),
+            (
+                "CREATE TABLE Child (a INT, b INT, FOREIGN KEY (a, b) REFERENCES Parent (x, x))",
+                ForeignKeyColumnSide::Referenced,
+                "x",
+            ),
+        ];
+
+        for (sql, side, column) in cases {
+            assert_translate_error(
+                sql,
+                TranslateError::DuplicateForeignKeyColumn {
+                    side,
+                    column: column.to_owned(),
+                },
+            );
+        }
+    }
+
+    #[test]
+    fn foreign_key_column_count_is_checked_before_duplicates() {
+        assert_translate_error(
+            "CREATE TABLE Child (a INT, b INT, FOREIGN KEY (a, a) REFERENCES Parent (x))",
+            TranslateError::ForeignKeyColumnCountMismatch {
+                referencing: 2,
+                referenced: 1,
+            },
+        );
+    }
+
+    fn translate_foreign_keys(sql: &str) -> Vec<ForeignKey> {
+        let Statement::CreateTable { foreign_keys, .. } =
+            parse(sql).and_then(|parsed| translate(&parsed[0])).unwrap()
+        else {
+            panic!("expected CreateTable");
+        };
+
+        foreign_keys
+    }
+
+    #[test]
+    fn composite_foreign_key_is_translated() {
+        let sql = "CREATE TABLE Child (a INT, b INT, FOREIGN KEY (a, b) REFERENCES Parent (x, y))";
+
+        assert_eq!(
+            translate_foreign_keys(sql),
+            vec![ForeignKey {
+                name: "FK_a_b-Parent_x_y".to_owned(),
+                referencing_column_names: vec!["a".to_owned(), "b".to_owned()],
+                referenced_table_name: "Parent".to_owned(),
+                referenced_column_names: vec!["x".to_owned(), "y".to_owned()],
+                on_delete: ReferentialAction::NoAction,
+                on_update: ReferentialAction::NoAction,
+            }]
+        );
+    }
+
+    #[test]
+    fn single_column_foreign_key_is_preserved() {
+        let sql = "CREATE TABLE Child (a INT, FOREIGN KEY (a) REFERENCES Parent (a))";
+
+        assert_eq!(
+            translate_foreign_keys(sql),
+            vec![ForeignKey {
+                name: "FK_a-Parent_a".to_owned(),
+                referencing_column_names: vec!["a".to_owned()],
+                referenced_table_name: "Parent".to_owned(),
+                referenced_column_names: vec!["a".to_owned()],
+                on_delete: ReferentialAction::NoAction,
+                on_update: ReferentialAction::NoAction,
+            }]
+        );
+    }
+
+    #[test]
+    fn composite_foreign_key_round_trips_through_ddl() {
+        use crate::ast::ToSql;
+
+        let sql = "CREATE TABLE Child (a INT, b INT, FOREIGN KEY (a, b) REFERENCES Parent (x, y))";
+        let [foreign_key] = translate_foreign_keys(sql).try_into().unwrap();
+
+        assert_eq!(
+            foreign_key.to_sql(),
+            r#"CONSTRAINT "FK_a_b-Parent_x_y" FOREIGN KEY ("a", "b") REFERENCES "Parent" ("x", "y") ON DELETE NO ACTION ON UPDATE NO ACTION"#
+        );
     }
 
     #[test]
