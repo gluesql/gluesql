@@ -70,6 +70,16 @@ impl Explain for AggregateExprPlan {
     type Output = String;
 
     fn explain(&self, context: &mut ExplainContext) -> String {
+        if let Some(id) = self.slot.and_then(|slot| context.aggregate_id(slot)) {
+            return id.to_owned();
+        }
+
+        self.render_definition(context)
+    }
+}
+
+impl AggregateExprPlan {
+    fn render_definition(&self, context: &mut ExplainContext) -> String {
         let mut output = String::new();
         let (name, expr) = match &self.func {
             AggregateFunctionPlan::Count(CountArgExprPlan::Wildcard) => ("COUNT", None),
@@ -104,7 +114,11 @@ impl Explain for [AggregateExprPlan] {
             if index > 0 {
                 output.push_str(", ");
             }
-            output.push_str(&aggregate.explain(context));
+            if let Some(id) = context.aggregate_id(index) {
+                output.push_str(id);
+                output.push_str(" = ");
+            }
+            output.push_str(&aggregate.render_definition(context));
         }
         output
     }
@@ -121,11 +135,14 @@ mod tests {
     };
 
     fn test(actual: &AggregateExprPlan, expected: &str) {
-        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+        assert_eq!(
+            actual.render_definition(&mut ExplainContext::default()),
+            expected
+        );
     }
 
     #[test]
-    fn explain() {
+    fn render_definition() {
         let actual = AggregateExprPlan {
             func: AggregateFunctionPlan::Count(CountArgExprPlan::Wildcard),
             distinct: false,
@@ -194,23 +211,43 @@ mod tests {
     }
 
     #[test]
+    fn explain() {
+        let actual = AggregateExprPlan {
+            func: AggregateFunctionPlan::Count(CountArgExprPlan::Wildcard),
+            distinct: false,
+            slot: None,
+        };
+        let expected = "COUNT(*)";
+        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+
+        let actual = AggregateExprPlan {
+            slot: Some(0),
+            ..actual
+        };
+        let mut context = ExplainContext::default();
+        let actual = context.with_aggregate_scope(1, |context| actual.explain(context));
+        let expected = "@A1";
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
     fn explain_list() {
         let actual = [
             AggregateExprPlan {
                 func: AggregateFunctionPlan::Count(CountArgExprPlan::Wildcard),
                 distinct: false,
-                slot: None,
+                slot: Some(0),
             },
             AggregateExprPlan {
                 func: AggregateFunctionPlan::Sum(ExprPlan::Identifier("score".to_owned())),
                 distinct: false,
-                slot: None,
+                slot: Some(1),
             },
         ];
-        let expected = "COUNT(*), SUM(score)";
-        assert_eq!(
-            actual.as_slice().explain(&mut ExplainContext::default()),
-            expected
-        );
+        let mut context = ExplainContext::default();
+        let actual = context
+            .with_aggregate_scope(actual.len(), |context| actual.as_slice().explain(context));
+        let expected = "@A1 = COUNT(*), @A2 = SUM(score)";
+        assert_eq!(actual, expected);
     }
 }

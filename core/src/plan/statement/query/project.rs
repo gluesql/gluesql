@@ -47,6 +47,19 @@ pub struct ProjectPlan {
     pub projection: ProjectionPlan,
 }
 
+impl ProjectPlan {
+    pub(super) fn aggregate_slot_count(&self) -> usize {
+        match &self.input {
+            ProjectInputPlan::Aggregation(aggregation) => aggregation.aggregate_slots.len(),
+            ProjectInputPlan::Having(having) => having.input.aggregate_slots.len(),
+            ProjectInputPlan::Source(_)
+            | ProjectInputPlan::InnerJoin(_)
+            | ProjectInputPlan::LeftOuterJoin(_)
+            | ProjectInputPlan::Filter(_) => 0,
+        }
+    }
+}
+
 impl Explain for ProjectPlan {
     type Output = ExplainNode;
 

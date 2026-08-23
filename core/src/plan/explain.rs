@@ -105,7 +105,9 @@ impl Display for ExplainSubqueryMode {
 #[derive(Default)]
 pub(crate) struct ExplainContext {
     next_subquery_id: usize,
+    next_aggregate_id: usize,
     subqueries: Vec<ExplainNode>,
+    aggregate_scopes: Vec<Vec<String>>,
 }
 
 impl ExplainContext {
@@ -132,6 +134,31 @@ impl ExplainContext {
         );
 
         id
+    }
+
+    pub(crate) fn with_aggregate_scope<T>(
+        &mut self,
+        slot_count: usize,
+        explain: impl FnOnce(&mut Self) -> T,
+    ) -> T {
+        let aggregate_ids = (0..slot_count)
+            .map(|_| {
+                self.next_aggregate_id += 1;
+                format!("@A{}", self.next_aggregate_id)
+            })
+            .collect();
+        self.aggregate_scopes.push(aggregate_ids);
+
+        let output = explain(self);
+        let _ = self.aggregate_scopes.pop();
+        output
+    }
+
+    pub(crate) fn aggregate_id(&self, slot: usize) -> Option<&str> {
+        self.aggregate_scopes
+            .last()
+            .and_then(|aggregate_ids| aggregate_ids.get(slot))
+            .map(String::as_str)
     }
 
     fn with_subqueries(self, main: ExplainNode) -> ExplainNode {
@@ -302,11 +329,11 @@ LIMIT 10 OFFSET 5
         │ order: player_count DESC
         │
         └── • project
-            │ columns: Player.team_id, COUNT(*) AS player_count
+            │ columns: Player.team_id, @A1 AS player_count
             │
             └── • aggregate
                 │ group by: Player.team_id
-                │ aggregates: COUNT(*)
+                │ aggregates: @A1 = COUNT(*)
                 │
                 └── • filter
                     │ expression: Player.active = TRUE
@@ -353,30 +380,30 @@ LIMIT 10 OFFSET 5
     fn explains_distinct_grouping_and_having() {
         assert_eq!(
             explain_sql(
-                "CREATE TABLE Item (category TEXT);",
+                "CREATE TABLE Item (category TEXT, score INT);",
                 r"
 EXPLAIN
-SELECT DISTINCT category, COUNT(*) AS total
+SELECT DISTINCT category, COUNT(*) AS total, SUM(score) AS score_sum
 FROM Item
 GROUP BY category
 HAVING COUNT(*) > 1
-ORDER BY total DESC
+ORDER BY SUM(score) DESC
 ",
             ),
             r"
 • distinct
 └── • sort
-    │ order: total DESC
+    │ order: @A2 DESC
     │
     └── • project
-        │ columns: category, COUNT(*) AS total
+        │ columns: category, @A1 AS total, @A2 AS score_sum
         │
         └── • having
-            │ expression: COUNT(*) > 1
+            │ expression: @A1 > 1
             │
             └── • aggregate
                 │ group by: category
-                │ aggregates: COUNT(*)
+                │ aggregates: @A1 = COUNT(*), @A2 = SUM(score)
                 │
                 └── • scan Item
                       access: full scan
@@ -509,10 +536,10 @@ AND EXISTS (
 │   │ exec mode: one row
 │   │
 │   └── • project
-│       │ columns: COUNT(*) AS total
+│       │ columns: @A1 AS total
 │       │
 │       └── • aggregate
-│           │ aggregates: COUNT(*)
+│           │ aggregates: @A1 = COUNT(*)
 │           │
 │           └── • scan Badge
 │                 access: full scan
@@ -538,6 +565,135 @@ AND EXISTS (
             │ expression: Badge.player_id = Player.id
             │
             └── • scan Badge
+                  access: full scan
+"
+            .trim()
+        );
+    }
+
+    #[test]
+    fn explains_aggregate_subquery_reference() {
+        assert_eq!(
+            explain_sql(
+                "CREATE TABLE T (a INT, b INT);",
+                r"
+EXPLAIN
+SELECT SUM(a + (SELECT b FROM T LIMIT 1))
+FROM T
+",
+            ),
+            r"
+• root
+├── • project
+│   │ columns: @A1 AS SUM(a + (SELECT b FROM T LIMIT 1))
+│   │
+│   └── • aggregate
+│       │ aggregates: @A1 = SUM(a + @S1)
+│       │
+│       └── • scan T
+│             access: full scan
+│
+└── • subquery
+    │ id: @S1
+    │ exec mode: one row
+    │
+    └── • limit
+        │ count: 1
+        │
+        └── • project
+            │ columns: b
+            │
+            └── • scan T
+                  access: full scan
+"
+            .trim()
+        );
+    }
+
+    #[test]
+    fn explains_identical_subquery_references() {
+        assert_eq!(
+            explain_sql(
+                "CREATE TABLE T (a INT, b INT);",
+                r"
+EXPLAIN
+SELECT
+    (SELECT b FROM T LIMIT 1) AS first,
+    (SELECT b FROM T LIMIT 1) AS second
+FROM T
+",
+            ),
+            r"
+• root
+├── • project
+│   │ columns: @S1 AS first, @S2 AS second
+│   │
+│   └── • scan T
+│         access: full scan
+│
+├── • subquery
+│   │ id: @S1
+│   │ exec mode: one row
+│   │
+│   └── • limit
+│       │ count: 1
+│       │
+│       └── • project
+│           │ columns: b
+│           │
+│           └── • scan T
+│                 access: full scan
+│
+└── • subquery
+    │ id: @S2
+    │ exec mode: one row
+    │
+    └── • limit
+        │ count: 1
+        │
+        └── • project
+            │ columns: b
+            │
+            └── • scan T
+                  access: full scan
+"
+            .trim()
+        );
+    }
+
+    #[test]
+    fn explains_nested_aggregate_references() {
+        assert_eq!(
+            explain_sql(
+                "CREATE TABLE T (a INT, b INT);",
+                r"
+EXPLAIN
+SELECT SUM(a + (SELECT SUM(b) FROM T))
+FROM T
+",
+            ),
+            r"
+• root
+├── • project
+│   │ columns: @A1 AS SUM(a + (SELECT SUM(b) FROM T))
+│   │
+│   └── • aggregate
+│       │ aggregates: @A1 = SUM(a + @S1)
+│       │
+│       └── • scan T
+│             access: full scan
+│
+└── • subquery
+    │ id: @S1
+    │ exec mode: one row
+    │
+    └── • project
+        │ columns: @A2 AS SUM(b)
+        │
+        └── • aggregate
+            │ aggregates: @A2 = SUM(b)
+            │
+            └── • scan T
                   access: full scan
 "
             .trim()

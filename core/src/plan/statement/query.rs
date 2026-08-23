@@ -269,7 +269,8 @@ impl Explain for QueryPlan {
     type Output = ExplainNode;
 
     fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
-        match self {
+        let aggregate_slot_count = self.project().map_or(0, ProjectPlan::aggregate_slot_count);
+        context.with_aggregate_scope(aggregate_slot_count, |context| match self {
             Self::Project(project) => project.explain(context),
             Self::Values(values) => values.explain(context),
             Self::SelectOrderBy(order_by) => order_by.explain(context),
@@ -277,7 +278,7 @@ impl Explain for QueryPlan {
             Self::Distinct(distinct) => distinct.explain(context),
             Self::Offset(offset) => offset.explain(context),
             Self::Limit(limit) => limit.explain(context),
-        }
+        })
     }
 }
 

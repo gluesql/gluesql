@@ -49,11 +49,11 @@ LIMIT 10 OFFSET 5;
 --         │ order: player_count DESC
 --         │
 --         └── • project
---             │ columns: Player.team_id, COUNT(*) AS player_count
+--             │ columns: Player.team_id, @A1 AS player_count
 --             │
 --             └── • aggregate
 --                 │ group by: Player.team_id
---                 │ aggregates: COUNT(*)
+--                 │ aggregates: @A1 = COUNT(*)
 --                 │
 --                 └── • filter
 --                     │ expression: Player.active = TRUE
@@ -101,10 +101,10 @@ AND EXISTS (
 -- │   │ exec mode: one row
 -- │   │
 -- │   └── • project
--- │       │ columns: COUNT(*) AS total
+-- │       │ columns: @A1 AS total
 -- │       │
 -- │       └── • aggregate
--- │           │ aggregates: COUNT(*)
+-- │           │ aggregates: @A1 = COUNT(*)
 -- │           │
 -- │           └── • scan Badge
 -- │                 access: full scan
