@@ -520,10 +520,10 @@ impl Explain for FunctionExprPlan {
                 fmt_call(name, exprs, context, &mut output);
             }
             Self::IfNull { expr, then } => {
-                fmt_call("IF_NULL", [expr, then], context, &mut output);
+                fmt_call("IFNULL", [expr, then], context, &mut output);
             }
             Self::NullIf { expr1, expr2 } => {
-                fmt_call("NULL_IF", [expr1, expr2], context, &mut output);
+                fmt_call("NULLIF", [expr1, expr2], context, &mut output);
             }
             Self::Rand(expr) => match expr {
                 Some(expr) => fmt_call("RAND", [expr], context, &mut output),
@@ -903,14 +903,14 @@ mod tests {
             expr: ExprPlan::Identifier("value".to_owned()),
             then: ExprPlan::Identifier("fallback".to_owned()),
         };
-        let expected = "IF_NULL(value, fallback)";
+        let expected = "IFNULL(value, fallback)";
         test(&actual, expected);
 
         let actual = FunctionExprPlan::NullIf {
             expr1: ExprPlan::Identifier("left".to_owned()),
             expr2: ExprPlan::Identifier("right".to_owned()),
         };
-        let expected = "NULL_IF(left, right)";
+        let expected = "NULLIF(left, right)";
         test(&actual, expected);
 
         let actual = FunctionExprPlan::Rand(None);
