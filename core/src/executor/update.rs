@@ -40,7 +40,7 @@ pub enum UpdateError {
 }
 
 /// Built once per statement so the row loop never re-reads a schema
-struct ForeignKeyPlan<'a> {
+struct ResolvedForeignKey<'a> {
     foreign_key: &'a ForeignKey,
     primary_key_position: usize,
     referenced_indexes: Vec<usize>,
@@ -51,7 +51,7 @@ pub struct Update<'a, T: GStore> {
     table_name: &'a str,
     fields: &'a [AssignmentPlan],
     column_defs: Option<&'a [ColumnDef]>,
-    foreign_key_plans: Vec<ForeignKeyPlan<'a>>,
+    foreign_key_checks: Vec<ResolvedForeignKey<'a>>,
 }
 
 impl<'a, T: GStore> Update<'a, T> {
@@ -76,7 +76,7 @@ impl<'a, T: GStore> Update<'a, T> {
             }
         }
 
-        let foreign_key_plans = foreign_keys
+        let foreign_key_checks = foreign_keys
             .iter()
             .filter(|foreign_key| {
                 foreign_key
@@ -123,7 +123,7 @@ impl<'a, T: GStore> Update<'a, T> {
                     })
                     .collect::<Result<Vec<_>>>()?;
 
-                Ok(ForeignKeyPlan {
+                Ok(ResolvedForeignKey {
                     foreign_key,
                     primary_key_position,
                     referenced_indexes,
@@ -136,7 +136,7 @@ impl<'a, T: GStore> Update<'a, T> {
             table_name,
             fields,
             column_defs,
-            foreign_key_plans,
+            foreign_key_checks,
         })
     }
 
@@ -206,12 +206,12 @@ impl<'a, T: GStore> Update<'a, T> {
     }
 
     fn validate_foreign_keys(&self, row: &Row, assigned: &[String]) -> Result<()> {
-        for plan in &self.foreign_key_plans {
-            let ForeignKeyPlan {
+        for check in &self.foreign_key_checks {
+            let ResolvedForeignKey {
                 foreign_key,
                 primary_key_position,
                 referenced_indexes,
-            } = plan;
+            } = check;
             let ForeignKey {
                 referencing_column_names,
                 referenced_table_name,
