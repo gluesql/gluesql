@@ -1,6 +1,5 @@
 [package]
 name = "gluesql-core"
-authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
 version.workspace = true
 edition.workspace = true
 description.workspace = true

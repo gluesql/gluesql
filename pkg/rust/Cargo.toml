@@ -1,6 +1,5 @@
 [package]
 name = "gluesql"
-authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
 default-run = "gluesql"
 version.workspace = true
 edition.workspace = true

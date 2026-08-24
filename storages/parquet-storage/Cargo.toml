@@ -1,6 +1,5 @@
 [package]
 name = "gluesql-parquet-storage"
-authors = ["MeenSeek Kim <meenseek5929@naver.com>"]
 version.workspace = true
 edition.workspace = true
 description.workspace = true
