@@ -1,4 +1,13 @@
+//! Sled-backed persistent storage for `GlueSQL`.
+//!
+//! # Deprecation
+//!
+//! `SledStorage` is deprecated as of v0.20.0 and will be removed in v0.21.0.
+//! Existing deployments can continue using it during the deprecation period, but new
+//! persistent-storage deployments should use `RedbStorage`.
+
 #![deny(clippy::str_to_string)]
+#![allow(deprecated)]
 
 mod alter_table;
 mod error;
@@ -57,6 +66,10 @@ pub enum State {
 }
 
 #[derive(Debug, Clone)]
+#[deprecated(
+    since = "0.20.0",
+    note = "SledStorage will be removed in v0.21.0; use RedbStorage for new persistent-storage deployments"
+)]
 pub struct SledStorage {
     pub tree: Db,
     pub id_offset: u64,

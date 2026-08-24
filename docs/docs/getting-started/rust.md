@@ -13,7 +13,7 @@ gluesql = "0.19.0"
 
 By default, all available storage features are included with GlueSQL. Here's a list of the available features:
 
-- `gluesql_sled_storage` - Storage based on the persistent key-value database called sled
+- `gluesql_sled_storage` - Deprecated Sled-backed storage; use `gluesql-redb-storage` for new persistent-storage deployments. It will be removed in v0.21.0
 - `gluesql-redb-storage` - Storage using the redb embedded database
 - `gluesql_memory_storage` - Simple in-memory storage
 - `gluesql-shared-memory-storage` - A wrapper around memory-storage for easy use in multi-threaded environments

@@ -1,3 +1,6 @@
+#![allow(deprecated)]
+
+// Legacy Sled-specific example retained to demonstrate configuring Sled directly.
 #[cfg(feature = "gluesql_sled_storage")]
 use {
     gluesql::{gluesql_sled_storage::SledStorage, prelude::Glue},

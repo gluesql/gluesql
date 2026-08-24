@@ -1,8 +1,8 @@
 # Sled Storage
 
-SledStorage is currently the representative persistent data storage for GlueSQL. As the name suggests, it's a storage option based on the Sled key-value embedded database built in Rust ([Sled on Github](https://github.com/spacejam/sled)).
+> **Deprecated:** `SledStorage` is deprecated as of v0.20.0 and will be removed in v0.21.0. Existing deployments can continue using it during the deprecation period, but new persistent-storage deployments should use [Redb Storage](redb-storage.md).
 
-SledStorage can only be used in a Rust environment. It is the only storage among those currently supported by GlueSQL that implements all Store traits, from non-clustered indexes to transactions. If you're looking for a basic storage to handle and store data in a Rust environment, SledStorage is an excellent choice.
+SledStorage is based on the Sled key-value embedded database built in Rust ([Sled on GitHub](https://github.com/spacejam/sled)) and can only be used in a Rust environment. This page remains available for existing deployments during the deprecation period.
 
 ## How to use
 You can simply create a SledStorage instance using a path, as shown below:
@@ -62,4 +62,4 @@ storage.set_transaction_timeout(None); // no timeout
 ```
 
 ## Summary
-If you're looking for a storage to handle data for general purposes in a Rust environment, SledStorage would be your go-to choice. It offers all the necessary features of a database system, such as managing non-clustered indexes, handling transactions, and maintaining persistent storage. Additionally, its snapshot-based transaction model ensures consistency and reliability, making it an excellent choice for applications requiring persistent data storage.
+Existing deployments can continue using SledStorage during the v0.20 deprecation period. New persistent-storage deployments should use [Redb Storage](redb-storage.md), and existing users should migrate before SledStorage is removed in v0.21.0.

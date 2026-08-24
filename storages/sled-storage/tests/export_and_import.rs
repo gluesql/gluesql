@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use {
     gluesql_core::prelude::*,
     gluesql_sled_storage::{SledStorage, State},

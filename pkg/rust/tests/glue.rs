@@ -1,4 +1,5 @@
-#![cfg(any(feature = "gluesql_memory_storage", feature = "gluesql_sled_storage"))]
+#![cfg(any(feature = "gluesql_memory_storage", feature = "gluesql-redb-storage"))]
+
 use gluesql::{
     FromGlueRow,
     core::store::{GStore, GStoreMut, Planner},
@@ -59,16 +60,19 @@ fn basic<T: GStore + GStoreMut + Planner>(mut glue: Glue<T>) {
     );
 }
 
-#[cfg(feature = "gluesql_sled_storage")]
+#[cfg(feature = "gluesql-redb-storage")]
 #[test]
-fn sled_basic() {
-    use gluesql_sled_storage::{SledStorage, sled};
+fn redb_basic() {
+    use {
+        gluesql_redb_storage::RedbStorage,
+        std::fs::{create_dir_all, remove_file},
+    };
 
-    let config = sled::Config::default()
-        .path("data/using_config")
-        .temporary(true);
+    let _ = create_dir_all("data");
+    let path = "data/redb_basic";
+    let _ = remove_file(path);
 
-    let storage = SledStorage::try_from(config).unwrap();
+    let storage = RedbStorage::new(path).unwrap();
     let glue = Glue::new(storage);
 
     basic(glue);

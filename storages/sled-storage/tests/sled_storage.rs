@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use {gluesql_core::prelude::Glue, gluesql_sled_storage::SledStorage, test_suite::*};
 
 struct SledTester {

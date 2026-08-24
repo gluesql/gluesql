@@ -1,5 +1,5 @@
 use {
-    crate::Storage,
+    crate::{Storage, warn_sled_storage_deprecated},
     anyhow::{Result, bail},
     gluesql_file_storage::migrate_to_latest as migrate_file_storage_to_latest,
     gluesql_redb_storage::migrate_to_latest as migrate_redb_storage_to_latest,
@@ -23,6 +23,7 @@ pub(super) fn run_upgrade(
 
     match storage {
         Storage::Sled => {
+            warn_sled_storage_deprecated();
             let report = migrate_sled_storage_to_latest(path)?;
             print_upgrade_report(
                 "sled",

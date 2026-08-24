@@ -1412,9 +1412,9 @@ name = "gluesql-composite-storage"
 version = "0.19.0"
 dependencies = [
  "gluesql-core",
+ "gluesql-redb-storage",
  "gluesql-test-suite",
  "gluesql_memory_storage",
- "gluesql_sled_storage",
  "serde",
 ]
 

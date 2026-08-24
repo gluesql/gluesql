@@ -60,6 +60,7 @@ pub mod prelude {
     pub use gluesql_shared_memory_storage::SharedMemoryStorage;
 
     #[cfg(feature = "gluesql_sled_storage")]
+    #[allow(deprecated)]
     pub use gluesql_sled_storage::SledStorage;
 
     #[cfg(feature = "gluesql-redb-storage")]

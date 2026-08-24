@@ -1,9 +1,9 @@
-#[cfg(feature = "gluesql_sled_storage")]
+#[cfg(feature = "gluesql-redb-storage")]
 mod hello_world {
     use {
         gluesql::{
             FromGlueRow,
-            gluesql_sled_storage::SledStorage,
+            gluesql_redb_storage::RedbStorage,
             prelude::{Glue, SelectExt},
         },
         std::fs,
@@ -19,13 +19,15 @@ mod hello_world {
             Initiate a connection
         */
         /*
-            Open a Sled database, this will create one if one does not yet exist
+            Open a Redb database, this will create one if one does not yet exist
         */
-        let sled_dir = "/tmp/gluesql/hello_world";
-        fs::remove_dir_all(sled_dir).unwrap_or(());
-        let storage = SledStorage::new(sled_dir).expect("Something went wrong!");
+        let redb_dir = "/tmp/gluesql";
+        let redb_path = format!("{redb_dir}/hello_world");
+        fs::create_dir_all(redb_dir).unwrap();
+        fs::remove_file(&redb_path).unwrap_or(());
+        let storage = RedbStorage::new(redb_path).expect("Something went wrong!");
         /*
-            Wrap the Sled database with Glue
+            Wrap the Redb database with Glue
         */
         let mut glue = Glue::new(storage);
 
@@ -67,6 +69,6 @@ mod hello_world {
 }
 
 fn main() {
-    #[cfg(feature = "gluesql_sled_storage")]
+    #[cfg(feature = "gluesql-redb-storage")]
     hello_world::run();
 }

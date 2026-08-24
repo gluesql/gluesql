@@ -1,3 +1,6 @@
+#![allow(deprecated)]
+
+// Legacy Sled-specific example retained to demonstrate its clone-based multi-threaded usage.
 #[cfg(feature = "gluesql_sled_storage")]
 mod sled_multi_threaded {
     use {
@@ -5,11 +8,13 @@ mod sled_multi_threaded {
             gluesql_sled_storage::SledStorage,
             prelude::{Glue, Payload, Value},
         },
-        std::thread,
+        std::{fs, thread},
     };
 
     pub fn run() {
-        let storage = SledStorage::new("/tmp/gluesql/hello_world").expect("Something went wrong!");
+        let sled_dir = "/tmp/gluesql/sled_multi_threaded";
+        fs::remove_dir_all(sled_dir).unwrap_or(());
+        let storage = SledStorage::new(sled_dir).expect("Something went wrong!");
         let mut glue = Glue::new(storage.clone());
         let queries = "
             CREATE TABLE IF NOT EXISTS greet (name TEXT);

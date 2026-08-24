@@ -1,4 +1,5 @@
 #![deny(clippy::str_to_string)]
+#![allow(deprecated)]
 
 mod cli;
 mod command;
@@ -24,6 +25,12 @@ use {
     std::{fmt::Debug, fs::File, io::Write, path::PathBuf},
 };
 
+const SLED_STORAGE_DEPRECATION_WARNING: &str = "[warning] sled-storage is deprecated and will be removed in v0.21.0; use redb-storage for new persistent-storage deployments";
+
+fn warn_sled_storage_deprecated() {
+    eprintln!("{SLED_STORAGE_DEPRECATION_WARNING}");
+}
+
 #[derive(Parser, Debug)]
 #[clap(name = "gluesql", about, version)]
 struct Args {
@@ -31,11 +38,12 @@ struct Args {
     #[clap(short, long, value_parser)]
     execute: Option<PathBuf>,
 
-    /// PATH to dump whole database
+    /// PATH to dump a Redb database as SQL
     #[clap(short, long, value_parser)]
     dump: Option<PathBuf>,
 
-    /// Storage type to store data, default is memory
+    /// Storage type to store data; defaults to memory.
+    /// sled is deprecated and will be removed in v0.21.0; use redb for new deployments.
     #[clap(short, long, value_parser)]
     storage: Option<Storage>,
 
@@ -94,6 +102,11 @@ pub fn run() -> Result<()> {
     let path = path.as_deref();
 
     match (path, storage, dump) {
+        (Some(path), None, Some(dump_path)) => {
+            let mut storage = RedbStorage::new(path).expect("failed to load redb-storage");
+
+            dump_database(&mut storage, dump_path)?;
+        }
         (None, None | Some(Storage::Memory), _) => {
             println!("[memory-storage] initialized");
 
@@ -103,6 +116,7 @@ pub fn run() -> Result<()> {
             panic!("failed to load memory-storage: it should be without path");
         }
         (Some(path), Some(Storage::Sled), _) => {
+            warn_sled_storage_deprecated();
             println!("[sled-storage] connected to {}", path.display());
 
             run(
@@ -150,11 +164,6 @@ pub fn run() -> Result<()> {
                 execute,
             );
         }
-        (Some(path), None, Some(dump_path)) => {
-            let mut storage = SledStorage::new(path).expect("failed to load sled-storage");
-
-            dump_database(&mut storage, dump_path)?;
-        }
         (None, Some(_), _) | (Some(_), None, None) => {
             panic!("both path and storage should be specified");
         }
@@ -163,10 +172,19 @@ pub fn run() -> Result<()> {
     Ok(())
 }
 
-pub fn dump_database(storage: &mut SledStorage, dump_path: PathBuf) -> Result<()> {
-    let file = File::create(dump_path)?;
+pub fn dump_database(storage: &mut RedbStorage, dump_path: PathBuf) -> Result<()> {
+    storage.begin(false)?;
+    let dump_result = write_dump(storage, dump_path);
+    let rollback_result = storage.rollback();
 
-    storage.begin(true)?;
+    dump_result?;
+    rollback_result?;
+
+    Ok(())
+}
+
+fn write_dump(storage: &RedbStorage, dump_path: PathBuf) -> Result<()> {
+    let file = File::create(dump_path)?;
     let schemas = storage.fetch_all_schemas()?;
     for schema in schemas {
         writeln!(&file, "{}", schema.to_ddl())?;
