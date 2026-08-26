@@ -62,13 +62,28 @@ where
         ExprPlan::Literal(literal) => Ok(expr::literal(literal)),
         ExprPlan::Value(value) => Ok(Evaluated::Value(Cow::Borrowed(value))),
         ExprPlan::TypedString { data_type, value } => expr::typed_string(data_type, value),
-        ExprPlan::UnplannedReference { qualifier, name } => {
-            Err(EvaluateError::UnplannedReference {
-                qualifier: qualifier.clone(),
-                name: name.clone(),
+        ExprPlan::UnplannedReference {
+            qualifier: Some(alias),
+            name: ident,
+        } => match context {
+            Some(_) => Err(EvaluateError::CompoundIdentifierNotFound {
+                table_alias: alias.to_owned(),
+                column_name: ident.to_owned(),
             }
-            .into())
-        }
+            .into()),
+            None => Err(EvaluateError::CompoundIdentifierRequiresRowContext {
+                alias: alias.to_owned(),
+                ident: ident.to_owned(),
+            }
+            .into()),
+        },
+        ExprPlan::UnplannedReference {
+            qualifier: None,
+            name: ident,
+        } => match context {
+            Some(_) => Err(EvaluateError::IdentifierNotFound(ident.to_owned()).into()),
+            None => Err(EvaluateError::IdentifierRequiresRowContext(ident.to_owned()).into()),
+        },
         ExprPlan::Nested(expr) => eval(expr),
         ExprPlan::ResolvedColumn {
             alias,
@@ -822,7 +837,7 @@ mod tests {
     }
 
     #[test]
-    fn unplanned_reference_is_an_evaluator_guard() {
+    fn unplanned_reference_preserves_legacy_error_contract() {
         let expr = ExprPlan::UnplannedReference {
             qualifier: Some("Users".to_owned()),
             name: "id".to_owned(),
@@ -830,10 +845,37 @@ mod tests {
 
         assert_eq!(
             evaluate_stateless(None, &expr),
-            Err(Error::from(EvaluateError::UnplannedReference {
-                qualifier: Some("Users".to_owned()),
-                name: "id".to_owned(),
-            }))
+            Err(Error::from(
+                EvaluateError::CompoundIdentifierRequiresRowContext {
+                    alias: "Users".to_owned(),
+                    ident: "id".to_owned(),
+                }
+            ))
+        );
+
+        let expr = ExprPlan::UnplannedReference {
+            qualifier: None,
+            name: "id".to_owned(),
+        };
+        assert_eq!(
+            evaluate_stateless(None, &expr),
+            Err(Error::from(EvaluateError::IdentifierRequiresRowContext(
+                "id".to_owned()
+            )))
+        );
+
+        let row = Row {
+            columns: vec!["other".to_owned()].into(),
+            values: vec![Value::I64(1)],
+        };
+        assert_eq!(
+            evaluate_stateless(
+                Some(RowContext::new("Users", Cow::Borrowed(&row), None)),
+                &expr
+            ),
+            Err(Error::from(EvaluateError::IdentifierNotFound(
+                "id".to_owned()
+            )))
         );
     }
 

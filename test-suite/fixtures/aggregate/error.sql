@@ -15,8 +15,8 @@ INSERT INTO Item (id, quantity, age, total) VALUES
 -- @expect: ok
 
 SELECT SUM(num) FROM Item;
--- @expect: error Evaluate.UnplannedReference
--- @json: {"qualifier": null, "name": "num"}
+-- @expect: error Evaluate.IdentifierNotFound
+-- @json: "num"
 
 SELECT COUNT(Foo.*) FROM Item;
 -- @expect: error Translate.QualifiedWildcardInCountNotSupported

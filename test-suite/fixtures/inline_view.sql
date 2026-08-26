@@ -112,8 +112,12 @@ SELECT *
 FROM OuterTable JOIN (
     SELECT name FROM InnerTable
 ) AS InlineView ON OuterTable.id = InlineView.id
--- @expect: error Evaluate.UnplannedReference
--- @json: {"qualifier": "InlineView", "name": "id"}
+-- @expect: error Evaluate.CompoundIdentifierNotFound
+-- @json:
+-- {
+--   "table_alias": "InlineView",
+--   "column_name": "id"
+-- }
 
 SELECT *
 FROM OuterTable

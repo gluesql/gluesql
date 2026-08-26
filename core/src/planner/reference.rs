@@ -9,7 +9,6 @@ use {
             NestedLoopJoinPlan, OffsetInputPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan,
             QueryPlan, SelectItemPlan, SourcePlan, StatementPlan, ValuesPlan, visit_mut_expr,
         },
-        planner::PlannerError,
         result::Result,
     },
     std::{collections::HashMap, hash::BuildHasher, rc::Rc},
@@ -692,26 +691,16 @@ fn plan_expr<S: BuildHasher>(
     context: &Rc<Context>,
     expr: &mut ExprPlan,
 ) -> Result<()> {
-    let mut error = None;
     visit_mut_expr(expr, &mut |expr| {
-        if let ExprPlan::UnplannedReference { qualifier, name } = expr {
-            match context.resolve(qualifier.as_deref(), name) {
-                Resolution::Resolved(alias) => {
-                    *expr = ExprPlan::ResolvedColumn {
-                        alias,
-                        column: name.clone(),
-                    };
-                }
-                Resolution::Ambiguous => {
-                    error = Some(PlannerError::ColumnReferenceAmbiguous(name.clone()));
-                }
-                Resolution::Unresolved => {}
-            }
+        if let ExprPlan::UnplannedReference { qualifier, name } = expr
+            && let Resolution::Resolved(alias) = context.resolve(qualifier.as_deref(), name)
+        {
+            *expr = ExprPlan::ResolvedColumn {
+                alias,
+                column: name.clone(),
+            };
         }
     });
-    if let Some(error) = error {
-        return Err(error.into());
-    }
 
     let mut result = Ok(());
     visit_mut_expr(expr, &mut |expr| match expr {
@@ -749,7 +738,6 @@ enum Context {
 enum Resolution {
     Unresolved,
     Resolved(String),
-    Ambiguous,
 }
 
 impl Context {
@@ -790,20 +778,13 @@ impl Context {
                     })
                 }
             }
-            Self::Bridge { left, right } => match (
-                left.resolve(qualifier, name),
-                right.resolve(qualifier, name),
-            ) {
-                (Resolution::Unresolved, resolution) | (resolution, Resolution::Unresolved) => {
-                    resolution
-                }
-                (Resolution::Resolved(_), Resolution::Resolved(_))
-                | (Resolution::Ambiguous, _)
-                | (_, Resolution::Ambiguous) => Resolution::Ambiguous,
+            Self::Bridge { left, right } => match right.resolve(qualifier, name) {
+                Resolution::Unresolved => left.resolve(qualifier, name),
+                resolution @ Resolution::Resolved(_) => resolution,
             },
             Self::Scope { local, outer } => match local.resolve(qualifier, name) {
                 Resolution::Unresolved => outer.resolve(qualifier, name),
-                resolution => resolution,
+                resolution @ Resolution::Resolved(_) => resolution,
             },
             Self::Barrier => Resolution::Unresolved,
         }
@@ -828,7 +809,7 @@ mod tests {
                 ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SourcePlan, StatementPlan,
                 TableAccessPlan, TableAliasPlan, TableSourcePlan,
             },
-            planner::{PlannerError, fetch_schema_map},
+            planner::fetch_schema_map,
             translate::translate,
         },
     };
@@ -844,13 +825,6 @@ mod tests {
         let statement = StatementPlan::from(translate(&parse(sql).unwrap().remove(0)).unwrap());
         let schema_map = fetch_schema_map(&storage, &statement).unwrap();
         plan(&schema_map, statement)
-    }
-
-    fn assert_ambiguous_reference(sql: &str) {
-        assert!(matches!(
-            plan_result(sql),
-            Err(crate::result::Error::Planner(PlannerError::ColumnReferenceAmbiguous(name))) if name == "id"
-        ));
     }
 
     fn first_projection_expr(projection: &ProjectionPlan) -> Option<&ExprPlan> {
@@ -1050,7 +1024,7 @@ mod tests {
     }
 
     #[test]
-    fn bridge_and_barrier_contexts_have_no_implicit_columns() {
+    fn bridge_context_preserves_right_hand_lookup_precedence() {
         let bridge = Context::Bridge {
             left: std::rc::Rc::new(Context::Data {
                 alias: "Users".to_owned(),
@@ -1067,28 +1041,29 @@ mod tests {
             Some(vec!["id".to_owned(), "id".to_owned(), "team_id".to_owned()])
         );
         assert_eq!(bridge.resolve(None, "missing"), Resolution::Unresolved);
-        assert_eq!(bridge.resolve(None, "id"), Resolution::Ambiguous);
+        assert_eq!(
+            bridge.resolve(None, "id"),
+            Resolution::Resolved("Teams".to_owned())
+        );
         assert_eq!(Context::Barrier.all_labels(), None);
         assert_eq!(Context::Barrier.resolve(None, "id"), Resolution::Unresolved);
     }
 
     #[test]
-    fn rejects_ambiguous_join_predicates_during_planning() {
-        assert_ambiguous_reference(
-            "SELECT Users.name FROM Users JOIN Teams ON Users.id = Teams.team_id WHERE id = 1",
-        );
-    }
-
-    #[test]
-    fn rejects_ambiguous_references_in_every_query_stage() {
+    fn preserves_join_lookup_precedence_in_every_query_stage() {
         for sql in [
+            "SELECT Users.name FROM Users JOIN Teams ON Users.id = Teams.team_id WHERE id = 1",
             "SELECT Users.name FROM Users JOIN Teams ON id = id",
             "SELECT Users.name FROM Users JOIN Teams ON Users.id = Teams.team_id GROUP BY id",
             "SELECT Users.name FROM Users JOIN Teams ON Users.id = Teams.team_id GROUP BY Users.name HAVING id = 1",
             "SELECT Users.name FROM Users JOIN Teams ON Users.id = Teams.team_id ORDER BY id",
             "SELECT id + 1 FROM Users JOIN Teams ON Users.id = Teams.team_id",
         ] {
-            assert_ambiguous_reference(sql);
+            let statement = format!("{:?}", planned(sql));
+            assert!(
+                statement.contains("ResolvedColumn { alias: \"Teams\", column: \"id\" }"),
+                "{sql}: {statement}"
+            );
         }
     }
 
