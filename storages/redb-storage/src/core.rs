@@ -4,8 +4,14 @@ use {
         migration::{ensure_storage_format_version_supported, initialize_storage_format_version},
     },
     bincode::{deserialize, serialize},
-    gluesql_core::data::{Key, Schema, Value},
-    redb::{Builder, Database, ReadableTable, TableDefinition, WriteTransaction},
+    gluesql_core::{
+        data::{Key, Schema, Value},
+        store::{Statistic, TableStatistics},
+    },
+    redb::{
+        Builder, Database, ReadableTable, ReadableTableMetadata, TableDefinition, TableHandle,
+        WriteTransaction,
+    },
     std::path::Path,
     uuid::Uuid,
 };
@@ -22,6 +28,7 @@ pub enum TransactionState {
     Active {
         txn: Box<WriteTransaction>,
         autocommit: bool,
+        has_writes: bool,
     },
 }
 
@@ -77,7 +84,12 @@ impl StorageCore {
 
     fn txn_mut(&mut self) -> Result<&mut WriteTransaction> {
         match &mut self.state {
-            TransactionState::Active { txn, .. } => Ok(txn),
+            TransactionState::Active {
+                txn, has_writes, ..
+            } => {
+                *has_writes = true;
+                Ok(txn)
+            }
             TransactionState::None => Err(StorageError::TransactionNotFound),
         }
     }
@@ -92,6 +104,31 @@ impl StorageCore {
 
 // Store
 impl StorageCore {
+    pub fn fetch_table_statistics(&self, table_name: &str) -> Result<TableStatistics> {
+        let table_def = Self::data_table_def(table_name)?;
+        let row_count = match &self.state {
+            TransactionState::Active {
+                has_writes: false, ..
+            }
+            | TransactionState::None => {
+                let txn = self.db.begin_read()?;
+                txn.open_table(table_def)?.len()?
+            }
+            TransactionState::Active { txn, .. } => {
+                if !txn.list_tables()?.any(|table| table.name() == table_name) {
+                    return Err(redb::TableError::TableDoesNotExist(table_name.to_owned()).into());
+                }
+
+                txn.open_table(table_def)?.len()?
+            }
+        };
+
+        Ok(TableStatistics {
+            row_count: Statistic::Exact(row_count),
+            size_bytes: Statistic::Unknown,
+        })
+    }
+
     pub fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         let txn = self.txn()?;
         let table = txn.open_table(SCHEMA_TABLE)?;
@@ -141,7 +178,9 @@ impl StorageCore {
     }
 
     pub fn scan_data<'a>(&'a self, table_name: &str) -> Result<RedbRowIter<'a>> {
-        if let TransactionState::Active { autocommit, txn } = &self.state
+        if let TransactionState::Active {
+            autocommit, txn, ..
+        } = &self.state
             && !autocommit
         {
             let table_def = Self::data_table_def(table_name)?;
@@ -257,6 +296,7 @@ impl StorageCore {
                 self.state = TransactionState::Active {
                     txn: Box::new(write_txn),
                     autocommit,
+                    has_writes: false,
                 };
 
                 Ok(autocommit)

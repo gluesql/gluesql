@@ -13,7 +13,7 @@ use {
         error::Result,
         store::{
             AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Planner,
-            RowIter, Store, StoreMut, Transaction,
+            RowIter, Statistics, Store, StoreMut, TableStatistics, Transaction,
         },
     },
     redb::Database,
@@ -92,6 +92,13 @@ impl AlterTable for RedbStorage {}
 impl Index for RedbStorage {}
 impl IndexMut for RedbStorage {}
 impl Metadata for RedbStorage {}
+impl Statistics for RedbStorage {
+    fn fetch_table_statistics(&self, table_name: &str) -> Result<TableStatistics> {
+        self.0
+            .fetch_table_statistics(table_name)
+            .map_err(Into::into)
+    }
+}
 impl CustomFunction for RedbStorage {}
 impl CustomFunctionMut for RedbStorage {}
 impl Planner for RedbStorage {}
