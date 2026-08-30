@@ -224,9 +224,11 @@ fn sync_tree(path: &Path) -> Result<()> {
             continue;
         }
 
-        fs::OpenOptions::new()
-            .write(true)
-            .open(&path)
+        if file_type.is_symlink() {
+            continue;
+        }
+
+        fs::File::open(&path)
             .map_storage_err()?
             .sync_all()
             .map_storage_err()?;

@@ -21,9 +21,16 @@ pub(super) fn write(path: &Path, data: &str) -> Result<()> {
     let has_existing_target = path.exists();
 
     let mut file = fs::File::create(&temp_path).map_storage_err()?;
-    file.write_all(data.as_bytes()).map_storage_err()?;
-    file.sync_all().map_storage_err()?;
+    let written = file
+        .write_all(data.as_bytes())
+        .and_then(|()| file.sync_all())
+        .map_storage_err();
     drop(file);
+
+    if let Err(err) = written {
+        let _ = fs::remove_file(&temp_path);
+        return Err(err);
+    }
 
     if has_existing_target && let Err(backup_err) = fs::rename(path, &backup_path).map_storage_err()
     {
