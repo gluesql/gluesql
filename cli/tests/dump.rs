@@ -1,9 +1,11 @@
+#![allow(deprecated)]
+
 use {
     gluesql_cli::dump_database,
     gluesql_core::prelude::Glue,
-    gluesql_redb_storage::RedbStorage,
+    gluesql_sled_storage::{SledStorage, sled},
     std::{
-        fs::{File, create_dir, remove_file},
+        fs::{File, create_dir_all, remove_dir_all, remove_file},
         io::Read,
         path::PathBuf,
     },
@@ -11,12 +13,18 @@ use {
 
 #[test]
 fn dump_and_import() {
+    let reset_path = |path| {
+        let _ = remove_file(path);
+        let _ = remove_dir_all(path);
+    };
+
+    let _ = create_dir_all("tmp");
     let data_path = "tmp/src";
     let dump_path = PathBuf::from("tmp/dump.sql");
 
-    let _ = create_dir("tmp");
-    let _ = remove_file(data_path);
-    let source_storage = RedbStorage::new(data_path).unwrap();
+    reset_path(data_path);
+    let config = sled::Config::default().path(data_path).temporary(true);
+    let source_storage = SledStorage::try_from(config).unwrap();
     let mut source_glue = Glue::new(source_storage);
 
     let sqls = vec![
@@ -59,6 +67,7 @@ fn dump_and_import() {
          '{"a": {"red": "apple", "blue": 1}, "b": 10}',
          '[{ "foo": 100, "bar": [true, 0, [10.5, false] ] }, 10, 20]'
          );"#,
+        "CREATE INDEX Foo_int ON Foo (int);",
         "CREATE TABLE Bar AS SELECT N FROM SERIES(101);",
         "CREATE TABLE Baz;",
         r#"
@@ -76,8 +85,9 @@ fn dump_and_import() {
     dump_database(&mut source_glue.storage, dump_path.clone()).unwrap();
 
     let data_path = "tmp/target";
-    let _ = remove_file(data_path);
-    let target_storage = RedbStorage::new(data_path).unwrap();
+    reset_path(data_path);
+    let config = sled::Config::default().path(data_path).temporary(true);
+    let target_storage = SledStorage::try_from(config).unwrap();
     let mut target_glue = Glue::new(target_storage);
 
     let mut sqls = String::new();

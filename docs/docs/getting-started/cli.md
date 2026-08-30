@@ -230,13 +230,13 @@ If you execute `.help`, you can see various helper command starting with dot(`.`
 
 GlueSQL CLI supports generating SQL scripts for dumping whole schemas and data.
 
-By default, `--dump` opens the source database with Redb Storage. To dump its schema and data to a file named `dump.sql`, use the following command:
+During the v0.20.0 deprecation period, `--dump` continues to open the source database with Sled Storage so existing deployments can export their schema and data before Sled Storage is removed in v0.21.0. To create a file named `dump.sql`, use the following command:
 
 ```
 $ gluesql --path ~/glue_data --dump ./dump.sql
 ```
 
-This will create a SQL script in the current directory that you can use to recreate your database.
+This prints a deprecation warning and creates a SQL script in the current directory that you can use to recreate your database. Complete this export before upgrading to v0.21.0.
 
 If you want to import the database from the `dump.sql` file, you can use the following command:
 

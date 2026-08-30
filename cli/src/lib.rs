@@ -38,7 +38,7 @@ struct Args {
     #[clap(short, long, value_parser)]
     execute: Option<PathBuf>,
 
-    /// PATH to dump a Redb database as SQL
+    /// PATH to dump a Sled database as SQL; deprecated and removed in v0.21.0
     #[clap(short, long, value_parser)]
     dump: Option<PathBuf>,
 
@@ -103,7 +103,8 @@ pub fn run() -> Result<()> {
 
     match (path, storage, dump) {
         (Some(path), None, Some(dump_path)) => {
-            let mut storage = RedbStorage::new(path).expect("failed to load redb-storage");
+            warn_sled_storage_deprecated();
+            let mut storage = SledStorage::new(path).expect("failed to load sled-storage");
 
             dump_database(&mut storage, dump_path)?;
         }
@@ -172,19 +173,10 @@ pub fn run() -> Result<()> {
     Ok(())
 }
 
-pub fn dump_database(storage: &mut RedbStorage, dump_path: PathBuf) -> Result<()> {
-    storage.begin(false)?;
-    let dump_result = write_dump(storage, dump_path);
-    let rollback_result = storage.rollback();
-
-    dump_result?;
-    rollback_result?;
-
-    Ok(())
-}
-
-fn write_dump(storage: &RedbStorage, dump_path: PathBuf) -> Result<()> {
+pub fn dump_database(storage: &mut SledStorage, dump_path: PathBuf) -> Result<()> {
     let file = File::create(dump_path)?;
+
+    storage.begin(true)?;
     let schemas = storage.fetch_all_schemas()?;
     for schema in schemas {
         writeln!(&file, "{}", schema.to_ddl())?;
