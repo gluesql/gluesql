@@ -28,6 +28,17 @@ WHERE id = 1;
 --       access: primary key
 --       key: 1
 
+-- @name: string concatenation retains its SQL operator
+EXPLAIN
+SELECT id || 'x'
+FROM Player;
+-- @expect: explain
+-- • project
+-- │ columns: id || 'x' AS id || 'x'
+-- │
+-- └── • scan Player
+--       access: full scan
+
 -- @name: query clauses form the planned execution pipeline
 EXPLAIN
 SELECT Player.team_id, COUNT(*) AS player_count

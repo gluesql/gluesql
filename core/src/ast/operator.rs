@@ -54,7 +54,8 @@ impl ToSql for BinaryOperator {
             BinaryOperator::Multiply => "*".to_owned(),
             BinaryOperator::Divide => "/".to_owned(),
             BinaryOperator::Modulo => "%".to_owned(),
-            BinaryOperator::Plus | BinaryOperator::StringConcat => "+".to_owned(),
+            BinaryOperator::Plus => "+".to_owned(),
+            BinaryOperator::StringConcat => "||".to_owned(),
             BinaryOperator::Gt => ">".to_owned(),
             BinaryOperator::Lt => "<".to_owned(),
             BinaryOperator::GtEq => ">=".to_owned(),
@@ -167,7 +168,7 @@ mod tests {
         );
 
         assert_eq!(
-            "'Glue' + 'SQL'",
+            "'Glue' || 'SQL'",
             &Expr::BinaryOp {
                 left: Box::new(Expr::Literal(Literal::QuotedString("Glue".to_owned()))),
                 op: BinaryOperator::StringConcat,

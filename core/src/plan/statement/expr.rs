@@ -1,5 +1,7 @@
 mod aggregate;
+mod binary_op;
 mod function;
+mod unary_op;
 
 pub use {
     aggregate::{AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan},
@@ -325,21 +327,9 @@ fn fmt_expr(expr: &ExprPlan, context: &mut ExplainContext, output: &mut String) 
             fmt_expr(pattern, context, output);
         }
         ExprPlan::BinaryOp { left, op, right } => {
-            fmt_expr(left, context, output);
-            output.push(' ');
-            output.push_str(&op.to_sql());
-            output.push(' ');
-            fmt_expr(right, context, output);
+            binary_op::fmt(left, op, right, context, output);
         }
-        ExprPlan::UnaryOp { op, expr } => {
-            if op == &UnaryOperator::Factorial {
-                fmt_expr(expr, context, output);
-                output.push_str(&op.to_sql());
-            } else {
-                output.push_str(&op.to_sql());
-                fmt_expr(expr, context, output);
-            }
-        }
+        ExprPlan::UnaryOp { op, expr } => unary_op::fmt(op, expr, context, output),
         ExprPlan::Nested(expr) => {
             output.push('(');
             fmt_expr(expr, context, output);
@@ -448,7 +438,7 @@ mod tests {
             AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan, FunctionExprPlan,
         },
         crate::{
-            ast::{BinaryOperator, DataType, DateTimeField, Literal, UnaryOperator},
+            ast::{BinaryOperator, DataType, DateTimeField, Literal},
             data::Value,
             plan::{
                 QueryPlan, ValuesPlan,
@@ -604,31 +594,6 @@ mod tests {
             case_sensitive: false,
         };
         let expected = "name !~* '^a'";
-        test(&actual, expected);
-
-        let actual = ExprPlan::BinaryOp {
-            left: Box::new(ExprPlan::CompoundIdentifier {
-                alias: "Player".to_owned(),
-                ident: "id".to_owned(),
-            }),
-            op: BinaryOperator::Eq,
-            right: Box::new(ExprPlan::Literal(Literal::Number(1.into()))),
-        };
-        let expected = "Player.id = 1";
-        test(&actual, expected);
-
-        let actual = ExprPlan::UnaryOp {
-            op: UnaryOperator::Minus,
-            expr: Box::new(ExprPlan::Literal(Literal::Number(1.into()))),
-        };
-        let expected = "-1";
-        test(&actual, expected);
-
-        let actual = ExprPlan::UnaryOp {
-            op: UnaryOperator::Factorial,
-            expr: Box::new(ExprPlan::Literal(Literal::Number(5.into()))),
-        };
-        let expected = "5!";
         test(&actual, expected);
 
         let actual = ExprPlan::Nested(Box::new(ExprPlan::BinaryOp {
