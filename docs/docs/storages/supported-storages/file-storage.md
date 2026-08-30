@@ -67,7 +67,7 @@ datasets or heavy concurrent workloads.
 
 ## Storage format migration
 
-A storage written before the format marker was introduced is storage format v1, and opening one fails with `migration required for table schema '...' (found v1, expected v2)`. Upgrade it once:
+A storage written before the format marker was introduced is storage format v1, and opening one fails with `[FileStorage] migration required for table schema '...' (found v1, expected v2); migrate file-storage data to the latest format before opening`. Upgrade it once:
 
 ```shell
 gluesql --storage file --path ./data --upgrade
@@ -75,7 +75,7 @@ gluesql --storage file --path ./data --upgrade
 
 It reports what it converted:
 
-```
+```text
 [file-storage] upgraded ./data
 [file-storage] migration report: migrated_tables=2, unchanged_tables=0, rewritten_rows=4
 ```
