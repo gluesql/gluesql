@@ -1,9 +1,5 @@
 [package]
 name = "gluesql-shared-memory-storage"
-authors = [
-	"Jiseok CHOI <jiseok.dev@gmail.com>",
-	"Taehoon Moon <taehoon.moon@outlook.com>",
-]
 version.workspace = true
 edition.workspace = true
 description.workspace = true
