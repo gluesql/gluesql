@@ -144,3 +144,45 @@ fn sibling(path: &Path, suffix: &str) -> Result<PathBuf> {
             ))
         })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_path_with_no_file_name_is_resolved_first() {
+        let cwd = std::env::current_dir().expect("current dir");
+        let name = cwd.file_name().and_then(OsStr::to_str).expect("cwd name");
+
+        assert_eq!(
+            sibling(Path::new("."), LOCK_SUFFIX).expect("sibling of ."),
+            cwd.with_file_name(format!("{name}{LOCK_SUFFIX}"))
+        );
+    }
+
+    #[test]
+    fn layout_names_every_combination() {
+        let _ = fs::create_dir_all("tmp");
+        let root = PathBuf::from(format!("tmp/layout-{}", uuid::Uuid::now_v7()));
+        let paths = MigrationPaths::new(&root).expect("paths");
+
+        assert_eq!(paths.layout(), Layout::Unexpected);
+        fs::create_dir_all(&paths.storage).expect("create storage");
+        assert_eq!(paths.layout(), Layout::Settled);
+        fs::create_dir_all(&paths.staging).expect("create staging");
+        assert_eq!(paths.layout(), Layout::StagingBesideStorage);
+        fs::create_dir_all(&paths.backup).expect("create backup");
+        assert_eq!(paths.layout(), Layout::Unexpected);
+        fs::remove_dir_all(&paths.staging).expect("remove staging");
+        assert_eq!(paths.layout(), Layout::BackupBesideStorage);
+        fs::remove_dir_all(&paths.storage).expect("remove storage");
+        assert_eq!(
+            paths.layout(),
+            Layout::StorageRenamedAway {
+                staging_present: false
+            }
+        );
+
+        let _ = fs::remove_dir_all(&paths.backup);
+    }
+}

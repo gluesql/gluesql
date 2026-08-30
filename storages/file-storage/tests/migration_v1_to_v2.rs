@@ -76,9 +76,14 @@ fn snapshot(root: &str) -> BTreeMap<String, String> {
                 .to_string_lossy()
                 .into_owned();
 
-            if entry.file_type().expect("file type").is_dir() {
+            let file_type = entry.file_type().expect("file type");
+            if file_type.is_dir() {
                 files.insert(format!("{relative}/"), String::new());
                 collect(root, &path, files);
+                continue;
+            }
+            if !file_type.is_file() {
+                files.insert(relative, "<not a regular file>".to_owned());
                 continue;
             }
 
@@ -869,6 +874,19 @@ fn foreign_entries_are_copied_verbatim() {
     fs::write(format!("{path}/.git/objects/ab/cdef"), "object payload").expect("write git object");
     fs::write(format!("{path}/notes.txt"), "keep me").expect("write user file");
     fs::write(storage.path("Foo").join("README"), "table note").expect("write table note");
+    // git makes its object files read-only, and repositories carry symlinks.
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::{PermissionsExt, symlink};
+
+        fs::set_permissions(
+            format!("{path}/.git/objects/ab/cdef"),
+            fs::Permissions::from_mode(0o444),
+        )
+        .expect("make the object read only");
+        symlink("objects", format!("{path}/.git/alternates")).expect("create symlink");
+        symlink("/nonexistent", format!("{path}/.git/dangling")).expect("create dangling symlink");
+    }
 
     let report = migrate_to_latest(&path).expect("migrate storage with foreign entries");
     assert_eq!(report.migrated_tables, 1);
@@ -993,6 +1011,23 @@ fn interrupted_write_leftover_is_detected_without_any_v1_table() {
     let before = snapshot(&path);
     let err = migrate_to_latest(&path).expect_err("leftover should be reported");
     assert!(err.to_string().contains("interrupted write"));
+
+    assert_eq!(snapshot(&path), before);
+    assert_no_migration_artifacts(&path);
+
+    cleanup(&path);
+}
+
+#[cfg(unix)]
+#[test]
+fn an_entry_that_is_neither_a_file_nor_a_directory_is_refused() {
+    let path = test_path("socket-entry");
+    let storage = write_v1_foo(&path, false);
+    std::os::unix::net::UnixListener::bind(storage.path("Foo").join("sock")).expect("bind socket");
+
+    let before = snapshot(&path);
+    let err = migrate_to_latest(&path).expect_err("an unsupported entry should fail");
+    assert!(err.to_string().contains("neither a file nor a directory"));
 
     assert_eq!(snapshot(&path), before);
     assert_no_migration_artifacts(&path);
