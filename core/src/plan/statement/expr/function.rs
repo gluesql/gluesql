@@ -628,7 +628,13 @@ impl Explain for FunctionExprPlan {
             Self::Position {
                 from_expr,
                 sub_expr,
-            } => fmt_call("POSITION", [sub_expr, from_expr], context, &mut output),
+            } => {
+                output.push_str("POSITION(");
+                fmt_expr(sub_expr, context, &mut output);
+                output.push_str(" IN ");
+                fmt_expr(from_expr, context, &mut output);
+                output.push(')');
+            }
             Self::FindIdx {
                 from_expr,
                 sub_expr,
@@ -751,16 +757,26 @@ mod tests {
     use {
         super::FunctionExprPlan,
         crate::{
-            ast::{DataType, DateTimeField, TrimWhereField},
+            ast::{DataType, DateTimeField, Expr, TrimWhereField},
+            parse_sql::parse_expr,
             plan::{
                 ExprPlan,
                 explain::{Explain, ExplainContext},
             },
+            translate::{NO_PARAMS, translate_expr},
         },
     };
 
     fn test(actual: &FunctionExprPlan, expected: &str) {
-        assert_eq!(actual.explain(&mut ExplainContext::default()), expected);
+        let explained = actual.explain(&mut ExplainContext::default());
+        assert_eq!(explained, expected);
+
+        let parsed = parse_expr(&explained).expect(&explained);
+        let translated = translate_expr(&parsed, NO_PARAMS).expect(&explained);
+        let Expr::Function(function) = translated else {
+            panic!("expected function expression: {explained}");
+        };
+        assert_eq!(&FunctionExprPlan::from(*function), actual);
     }
 
     #[test]
@@ -890,13 +906,13 @@ mod tests {
         test(&actual, expected);
 
         let actual = FunctionExprPlan::Custom {
-            name: "custom_function".to_owned(),
+            name: "CUSTOM_FUNCTION".to_owned(),
             exprs: vec![
                 ExprPlan::Identifier("left".to_owned()),
                 ExprPlan::Identifier("right".to_owned()),
             ],
         };
-        let expected = "custom_function(left, right)";
+        let expected = "CUSTOM_FUNCTION(left, right)";
         test(&actual, expected);
 
         let actual = FunctionExprPlan::IfNull {
@@ -1201,25 +1217,25 @@ mod tests {
 
         let actual = FunctionExprPlan::Position {
             from_expr: ExprPlan::Identifier("value".to_owned()),
-            sub_expr: ExprPlan::Identifier("substring".to_owned()),
+            sub_expr: ExprPlan::Identifier("needle".to_owned()),
         };
-        let expected = "POSITION(substring, value)";
+        let expected = "POSITION(needle IN value)";
         test(&actual, expected);
 
         let actual = FunctionExprPlan::FindIdx {
             from_expr: ExprPlan::Identifier("value".to_owned()),
-            sub_expr: ExprPlan::Identifier("substring".to_owned()),
+            sub_expr: ExprPlan::Identifier("needle".to_owned()),
             start: None,
         };
-        let expected = "FIND_IDX(value, substring)";
+        let expected = "FIND_IDX(value, needle)";
         test(&actual, expected);
 
         let actual = FunctionExprPlan::FindIdx {
             from_expr: ExprPlan::Identifier("value".to_owned()),
-            sub_expr: ExprPlan::Identifier("substring".to_owned()),
+            sub_expr: ExprPlan::Identifier("needle".to_owned()),
             start: Some(ExprPlan::Identifier("start".to_owned())),
         };
-        let expected = "FIND_IDX(value, substring, start)";
+        let expected = "FIND_IDX(value, needle, start)";
         test(&actual, expected);
 
         let actual = FunctionExprPlan::Ascii(ExprPlan::Identifier("value".to_owned()));
