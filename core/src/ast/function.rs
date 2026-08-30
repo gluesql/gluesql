@@ -49,6 +49,7 @@ pub enum Function {
     Ceil(Expr),
     Coalesce(Vec<Expr>),
     Concat(Vec<Expr>),
+    JsonBuildArray(Vec<Expr>),
     ConcatWs {
         separator: Expr,
         exprs: Vec<Expr>,
@@ -275,6 +276,14 @@ impl ToSql for Function {
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("CONCAT({items})")
+            }
+            Function::JsonBuildArray(items) => {
+                let items = items
+                    .iter()
+                    .map(ToSql::to_sql)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("JSON_BUILD_ARRAY({items})")
             }
             Function::Custom { name, exprs } => {
                 let exprs = exprs
@@ -791,6 +800,16 @@ mod tests {
                 Expr::Identifier("Tic".to_owned()),
                 Expr::Identifier("tac".to_owned()),
                 Expr::Identifier("toe".to_owned())
+            ])))
+            .to_sql()
+        );
+
+        assert_eq!(
+            "JSON_BUILD_ARRAY(1, 'GlueSQL', TRUE)",
+            &Expr::Function(Box::new(Function::JsonBuildArray(vec![
+                Expr::Literal(Literal::Number(BigDecimal::from(1))),
+                Expr::Literal(Literal::QuotedString("GlueSQL".to_owned())),
+                Expr::Value(Value::Bool(true)),
             ])))
             .to_sql()
         );

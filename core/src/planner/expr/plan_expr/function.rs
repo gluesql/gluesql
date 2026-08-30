@@ -208,6 +208,7 @@ impl FunctionExprPlan {
             Self::Custom { name: _, exprs }
             | Self::Coalesce(exprs)
             | Self::Concat(exprs)
+            | Self::JsonBuildArray(exprs)
             | Self::Greatest(exprs) => Exprs::VariableArgs(exprs.iter()),
             Self::ConcatWs { separator, exprs } => {
                 Exprs::VariableArgsWithSingle(iter::once(separator).chain(exprs.iter()))
@@ -363,6 +364,11 @@ mod tests {
         test(r#"CONCAT("abc", "123")"#, &[r#""abc""#, r#""123""#]);
 
         test(r#"CONCAT("a", "b", "c")"#, &[r#""a""#, r#""b""#, r#""c""#]);
+
+        test(
+            r#"JSON_BUILD_ARRAY(1, "a", NULL)"#,
+            &["1", r#""a""#, "NULL"],
+        );
 
         test(
             r#"CUSTOM_FUNC("a", "b", "c")"#,

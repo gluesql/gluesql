@@ -67,7 +67,7 @@ fn function_may_return_null(function: &FunctionExprPlan) -> bool {
         IfNull { expr, then } => may_return_null(expr) && may_return_null(then),
         NullIf { .. } | Custom { .. } => true,
         Now() | CurrentDate() | CurrentTime() | CurrentTimestamp() | Pi() | GenerateUuid()
-        | Rand(_) => false,
+        | Rand(_) | JsonBuildArray(_) => false,
         Cast { expr, .. }
         | Abs(expr)
         | Initcap(expr)

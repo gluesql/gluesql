@@ -84,6 +84,7 @@ macro_rules! visit_function_children {
             }
             FunctionExprPlan::Coalesce(exprs)
             | FunctionExprPlan::Concat(exprs)
+            | FunctionExprPlan::JsonBuildArray(exprs)
             | FunctionExprPlan::Greatest(exprs)
             | FunctionExprPlan::Custom { exprs, .. } => {
                 for e in exprs {

@@ -137,6 +137,7 @@ pub enum FunctionExprPlan {
     Ceil(ExprPlan),
     Coalesce(Vec<ExprPlan>),
     Concat(Vec<ExprPlan>),
+    JsonBuildArray(Vec<ExprPlan>),
     ConcatWs {
         separator: ExprPlan,
         exprs: Vec<ExprPlan>,
@@ -503,6 +504,9 @@ impl From<ast::Function> for FunctionExprPlan {
             }
             ast::Function::Concat(exprs) => {
                 Self::Concat(exprs.into_iter().map(Into::into).collect())
+            }
+            ast::Function::JsonBuildArray(exprs) => {
+                Self::JsonBuildArray(exprs.into_iter().map(Into::into).collect())
             }
             ast::Function::ConcatWs { separator, exprs } => Self::ConcatWs {
                 separator: separator.into(),

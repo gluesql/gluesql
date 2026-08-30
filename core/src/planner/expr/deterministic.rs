@@ -105,7 +105,9 @@ fn is_function_deterministic(function: &FunctionExprPlan) -> bool {
         | Dedup(expr)
         | Extract { expr, .. }
         | Sort { expr, order: None } => is_deterministic(expr),
-        Coalesce(exprs) | Concat(exprs) | Greatest(exprs) => exprs.iter().all(is_deterministic),
+        Coalesce(exprs) | Concat(exprs) | JsonBuildArray(exprs) | Greatest(exprs) => {
+            exprs.iter().all(is_deterministic)
+        }
         ConcatWs { separator, exprs } => {
             is_deterministic(separator) && exprs.iter().all(is_deterministic)
         }

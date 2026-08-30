@@ -279,6 +279,13 @@ pub(crate) fn translate_function(
                 .collect::<Result<Vec<_>>>()?;
             Ok(Expr::Function(Box::new(Function::Concat(exprs))))
         }
+        "JSON_BUILD_ARRAY" => {
+            let exprs = args
+                .into_iter()
+                .map(|expr| translate_expr(expr, params))
+                .collect::<Result<Vec<_>>>()?;
+            Ok(Expr::Function(Box::new(Function::JsonBuildArray(exprs))))
+        }
         "CONCAT_WS" => {
             check_len_min(name, args.len(), 2)?;
             let separator = translate_expr(args[0], params)?;

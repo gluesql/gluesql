@@ -152,6 +152,16 @@ pub fn concat(exprs: Vec<Evaluated<'_>>) -> ControlFlow<Evaluated<'_>> {
     value.continue_or_break(EvaluateError::EmptyArgNotAllowedInConcat.into())
 }
 
+pub fn json_build_array(exprs: Vec<Evaluated<'_>>) -> ControlFlow<Evaluated<'_>> {
+    exprs
+        .into_iter()
+        .map(Value::try_from)
+        .collect::<Result<Vec<_>>>()
+        .into_control_flow()
+        .map_continue(Value::List)
+        .map_continue(|value| Evaluated::Value(Cow::Owned(value)))
+}
+
 pub fn concat_ws<'a>(
     name: &str,
     separator: Evaluated<'a>,

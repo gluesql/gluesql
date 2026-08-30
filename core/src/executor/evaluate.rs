@@ -342,6 +342,10 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
             let exprs = exprs.iter().map(eval).collect::<Result<Vec<_>>>()?;
             f::concat(exprs)
         }
+        FunctionExprPlan::JsonBuildArray(exprs) => {
+            let exprs = exprs.iter().map(eval).collect::<Result<Vec<_>>>()?;
+            f::json_build_array(exprs)
+        }
         FunctionExprPlan::Custom { name, exprs } => {
             let CustomFunction {
                 func_name,

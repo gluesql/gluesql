@@ -211,6 +211,7 @@ macro_rules! generate_store_tests {
         sql_case!(function::cast::value);
         sql_case!(function::coalesce);
         sql_case!(function::concat);
+        sql_case!(function::json_build_array);
         sql_case!(function::concat_ws);
         sql_case!(function::ifnull);
         sql_case!(function::is_empty);
