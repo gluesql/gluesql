@@ -28,50 +28,40 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
         self.storage.plan(statement)
     }
 
-    #[cfg_attr(
-        feature = "tracing",
-        gluesql_macros::observe(
-            name = "gluesql.plan_sql",
-            target = "gluesql",
-            level = "debug",
-            fields(
-                sql = %sql,
-                params = ?params
-            )
-        )
-    )]
-    fn plan_param_literals(
-        &self,
-        sql: &str,
-        params: &[ParamLiteral],
-    ) -> Result<Vec<StatementPlan>> {
-        parse(sql)?
-            .into_iter()
-            .map(|p| {
-                translate_with_params(&p, params)
-                    .and_then(|statement| self.plan_statement(statement.into()))
-            })
-            .collect()
-    }
-
     /// Plans all statements in the SQL string using the supplied parameters.
     ///
     /// # Errors
     ///
     /// Returns an error when parsing the SQL text fails or when building an execution plan for
     /// a statement fails.
+    #[cfg_attr(
+        feature = "tracing",
+        gluesql_macros::observe(
+            name = "gluesql.plan",
+            target = "gluesql",
+            level = "debug",
+            fields(sql = %sql.as_ref()),
+            after_let(params, record(params = ?params))
+        )
+    )]
     pub fn plan_with_params<Sql, I, P>(&mut self, sql: Sql, params: I) -> Result<Vec<StatementPlan>>
     where
         Sql: AsRef<str>,
         I: IntoIterator<Item = P>,
         P: IntoParamLiteral,
     {
+        let parsed = parse(sql)?;
         let params: Vec<ParamLiteral> = params
             .into_iter()
             .map(IntoParamLiteral::into_param_literal)
             .collect();
-
-        self.plan_param_literals(sql.as_ref(), &params)
+        parsed
+            .into_iter()
+            .map(|p| {
+                translate_with_params(&p, &params)
+                    .and_then(|statement| self.storage.plan(statement.into()))
+            })
+            .collect()
     }
 
     /// Plans all statements in the SQL string without parameters.
