@@ -250,6 +250,76 @@ memory and these spans to locate the corresponding execution boundary.
 
 ## Declaring function observations
 
+### Run a complete example
+
+From the root of this GlueSQL checkout, copy and run:
+
+```sh
+cargo run -p gluesql-macros --example observe
+```
+
+This runs `macros/examples/observe.rs`; no database, external collector, or extra installation
+is needed beyond the repository's Rust build prerequisites. The example installs a console
+subscriber at DEBUG level and enables span-close events so that recorded fields are visible.
+It fixes the level in code, so `RUST_LOG` does not change this example's output.
+
+To save its logs in your home directory while leaving the check result on the terminal:
+
+```sh
+cargo run --quiet -p gluesql-macros --example observe 2> "$HOME/gluesql-observe-example.log"
+less "$HOME/gluesql-observe-example.log"
+```
+
+Cargo diagnostics also use stderr and may appear in that file. The program prints
+`All observation example checks passed.` on success. It exercises these three cases:
+
+| Call | Expected observation |
+| --- | --- |
+| `collect(&[1, 2, 3])` | `gluesql.example.collect` closes with `input_rows=3`, `buffered_rows=3`, `scanned_rows=3`, and `returned_rows=3`. |
+| `collect(&[1, -2, 3])` | An error event contains `negative row`; the span closes with `scanned_rows=2` and no recorded `returned_rows` value. |
+| `count_keys(&[1, 2, 3])` | `gluesql.example.collect_keys` closes with `buffered_rows=3`; work after `let num_keys` is outside this span. |
+
+The tracing output is:
+
+```text
+DEBUG gluesql.example.collect{input_rows=3 buffered_rows=3 scanned_rows=3 returned_rows=3}: gluesql: close
+ERROR gluesql.example.collect{input_rows=3 buffered_rows=3 scanned_rows=2}: gluesql: error="negative row"
+DEBUG gluesql.example.collect{input_rows=3 buffered_rows=3 scanned_rows=2}: gluesql: close
+DEBUG gluesql.example.collect_keys{buffered_rows=3}: gluesql: close
+```
+
+For example, the first function is fully defined as follows; its body contains no tracing calls:
+
+```rust
+#[gluesql_macros::observe(
+    name = "gluesql.example.collect",
+    fields(input_rows = input.len()),
+    after_let(rows, record(buffered_rows = rows.len())),
+    count_loop(binding = row, field = scanned_rows),
+    on_ok(rows, record(returned_rows = rows.len())),
+    err(Debug)
+)]
+fn collect(input: &[i32]) -> Result<Vec<i32>, &'static str> {
+    let rows = input.to_vec();
+    for row in &rows {
+        if *row < 0 {
+            return Err("negative row");
+        }
+    }
+    Ok(rows)
+}
+```
+
+`buffered_rows` counts items, not bytes or RSS. The failed call counts the second loop entry
+before returning the error; `on_ok` runs only for the successful call.
+
+This macro-crate example deliberately uses the attribute directly and the crate's existing
+development dependencies, so it needs no `--features tracing` flag. In a consuming crate,
+keep tracing optional using `cfg_attr` and optional dependencies as described below. The
+remaining snippets are integration patterns, not standalone programs.
+
+### Integrate with an existing function
+
 Use `gluesql_macros::observe` to keep instrumentation out of function bodies. The attribute
 supports non-const functions and methods. Synchronous functions support all selectors below;
 async functions support whole-function spans with `name`, `level`, `target`, `fields`, and
