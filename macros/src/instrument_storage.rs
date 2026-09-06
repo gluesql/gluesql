@@ -1,5 +1,5 @@
 use {
-    crate::resolve_gluesql_crate,
+    crate::{observe, resolve_gluesql_crate},
     proc_macro2::TokenStream,
     quote::quote,
     syn::{
@@ -91,19 +91,6 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> Result<TokenStream, syn::
         let fields = (!fields.is_empty()).then(|| quote!(fields(#(#fields),*),));
         let error = (args.capture_full && result_ok_type(&method.sig.output).is_some())
             .then(|| quote!(err(Debug),));
-        let attribute = quote!(
-            #[tracing::instrument(
-                target = "gluesql",
-                name = #span_name,
-                level = "trace",
-                skip_all,
-                #fields
-                #error
-            )]
-        );
-        let mut attribute = syn::Attribute::parse_outer.parse2(attribute)?;
-        method.attrs.append(&mut attribute);
-
         let explicitly_traced = method
             .attrs
             .iter()
@@ -148,6 +135,10 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> Result<TokenStream, syn::
                 })
             });
         }
+        *method = syn::parse2(observe::expand(
+            quote!(target = "gluesql", name = #span_name, level = "trace", #fields #error),
+            quote!(#method),
+        )?)?;
     }
 
     Ok(quote!(#implementation))
@@ -197,7 +188,7 @@ mod tests {
             .expect("timing-only instrumentation should expand")
             .to_string();
 
-        assert!(capture_full.contains("err (Debug)"));
-        assert!(!capture_off.contains("err (Debug)"));
+        assert!(capture_full.contains("tracing :: error !"));
+        assert!(!capture_off.contains("tracing :: error !"));
     }
 }

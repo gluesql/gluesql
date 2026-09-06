@@ -1,6 +1,6 @@
 use {
     gluesql_core::prelude::Glue,
-    gluesql_macros::observe,
+    gluesql_macros::{observe, trace_storage},
     gluesql_memory_storage::MemoryStorage,
     std::{
         collections::BTreeMap,
@@ -45,6 +45,12 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for Capture {
     fn on_record(&self, id: &Id, record: &Record<'_>, ctx: Context<'_, S>) {
         let span = ctx.span(id).unwrap();
         record.record(span.extensions_mut().get_mut::<Values>().unwrap());
+    }
+
+    fn on_event(&self, event: &tracing::Event<'_>, _: Context<'_, S>) {
+        let mut values = Values::default();
+        event.record(&mut values);
+        self.0.lock().unwrap().push(("event".into(), values.0));
     }
 
     fn on_close(&self, id: Id, ctx: Context<'_, S>) {
@@ -268,4 +274,108 @@ fn query_pipeline_preserves_measurement_points() {
         "sql",
         "SELECT DISTINCT category FROM items"
     ));
+}
+
+#[observe(name = "conditional", after_let(rows, all, record(n = rows.len())))]
+fn conditional_bindings() {
+    #[cfg(any())]
+    let rows = [1];
+    #[cfg_attr(all(), cfg(any()))]
+    let rows = [2];
+    #[cfg(test)]
+    let rows = [1, 2, 3];
+    #[cfg(test)]
+    assert_eq!(rows.len(), 3);
+}
+
+#[observe(name = "conditional_loop", count_loop(binding = row, increment = after_let(value), field = n))]
+fn conditional_loop() {
+    #[cfg(any())]
+    for row in [1] {
+        let value = row;
+    }
+}
+
+#[observe(name = "raw", fields(r#type = "initial"), after_let(value, record(r#type = value)))]
+fn raw_field() -> &'static str {
+    let value = "updated";
+    value
+}
+
+#[observe(
+    event("entry", access_path = "full_scan"),
+    after_let(key, event("lookup", access_path = "primary_key"))
+)]
+fn events(fail: bool) -> Result<()> {
+    let key = if fail { Err("bad key") } else { Ok(1) }?;
+    assert_eq!(key, 1);
+    Ok(())
+}
+
+struct ObservedStorage;
+
+#[trace_storage(name = "shared")]
+impl ObservedStorage {
+    fn lookup(&self, key: u8) -> Result<u8> {
+        if key == 0 { Err("missing") } else { Ok(key) }
+    }
+
+    async fn async_lookup(&self, key: u8) -> Result<u8> {
+        self.lookup(key)
+    }
+}
+
+#[test]
+fn conditional_raw_fields_events_and_storage_share_instrumentation() {
+    let capture = Capture::default();
+    tracing::subscriber::with_default(Registry::default().with(capture.clone()), || {
+        conditional_bindings();
+        conditional_loop();
+        assert_eq!(raw_field(), "updated");
+        assert_eq!(events(false), Ok(()));
+        assert_eq!(events(true), Err("bad key"));
+        assert_eq!(ObservedStorage.lookup(0), Err("missing"));
+        assert_eq!(ObservedStorage.lookup(1), Ok(1));
+        let mut future = Box::pin(ObservedStorage.async_lookup(2));
+        let mut context = std::task::Context::from_waker(std::task::Waker::noop());
+        assert_eq!(
+            std::future::Future::poll(future.as_mut(), &mut context),
+            std::task::Poll::Ready(Ok(2))
+        );
+    });
+    let records = capture.0.lock().unwrap();
+    let field_values = |name: &str, field: &str| -> Vec<Option<String>> {
+        records
+            .iter()
+            .filter(|(n, _)| n == name)
+            .map(|(_, fields)| fields.get(field).cloned())
+            .collect()
+    };
+    assert_eq!(field_values("conditional", "n"), vec![Some("3".into())]);
+    assert_eq!(field_values("conditional_loop", "n"), vec![None]);
+    assert_eq!(
+        field_values("raw", "type"),
+        vec![Some("\"updated\"".into())]
+    );
+    assert_eq!(
+        field_values("gluesql.shared.lookup", "key"),
+        vec![Some("0".into()), Some("1".into()), Some("2".into())]
+    );
+    assert_eq!(
+        field_values("gluesql.shared.async_lookup", "key"),
+        vec![Some("2".into())]
+    );
+    let paths: Vec<_> = records
+        .iter()
+        .filter_map(|(_, fields)| fields.get("access_path"))
+        .collect();
+    assert_eq!(
+        paths,
+        vec!["\"full_scan\"", "\"primary_key\"", "\"full_scan\""]
+    );
+    assert!(
+        records
+            .iter()
+            .any(|(_, fields)| fields.get("error") == Some(&"\"missing\"".into()))
+    );
 }

@@ -5,11 +5,7 @@ use {
     },
     crate::{
         data::{Key, Row},
-        executor::{
-            context::RowContext,
-            evaluate::evaluate,
-            fetch::{fetch_columns, trace_access_path},
-        },
+        executor::{context::RowContext, evaluate::evaluate, fetch::fetch_columns},
         plan::{TableAccessPlan, TableSourcePlan},
         result::Result,
         store::GStore,
@@ -66,6 +62,21 @@ pub(super) fn execute<'a, T: GStore>(
     Ok(PreparedSource { output, rows })
 }
 
+#[cfg_attr(
+    feature = "tracing",
+    gluesql_macros::observe(
+        before_let(
+            rows,
+            occurrence = 2,
+            event("selected query access path", access_path = "full_scan")
+        ),
+        after_let(key, event("selected query access path", access_path = "primary_key")),
+        after_let(
+            predicate,
+            event("selected query access path", access_path = "secondary_index")
+        )
+    )
+)]
 fn rows<'a, T: GStore>(
     storage: &'a T,
     table: &'a TableSourcePlan,
@@ -75,7 +86,6 @@ fn rows<'a, T: GStore>(
     let columns = Rc::clone(&source.names);
     let rows = match &table.access {
         TableAccessPlan::FullScan => {
-            trace_access_path("full_scan");
             let rows = storage.scan_data(&table.name)?.map({
                 let columns = Rc::clone(&columns);
 
@@ -107,7 +117,6 @@ fn rows<'a, T: GStore>(
             let value = evaluated.try_into_value(&column_def.data_type, column_def.nullable)?;
             let key = Key::try_from(value)?;
 
-            trace_access_path("primary_key");
             match storage.fetch_data(&table.name, &key)? {
                 Some(values) => Box::new(iter::once(Ok(Row {
                     columns: Rc::clone(&columns),
@@ -129,7 +138,6 @@ fn rows<'a, T: GStore>(
                 }
                 None => None,
             };
-            trace_access_path("secondary_index");
             let rows = storage
                 .scan_indexed_data(&table.name, name, *asc, predicate)?
                 .map({

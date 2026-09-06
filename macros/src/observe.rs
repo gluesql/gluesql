@@ -3,7 +3,9 @@ use {
     quote::{format_ident, quote},
     std::collections::{BTreeMap, BTreeSet},
     syn::{
-        Block, Expr, Ident, ItemFn, LitInt, LitStr, Pat, Stmt, Token, parenthesized,
+        Attribute, Block, Expr, Ident, ItemFn, LitInt, LitStr, Pat, Stmt, Token,
+        ext::IdentExt,
+        parenthesized,
         parse::{Parse, ParseStream},
         parse_quote,
         visit_mut::{self, VisitMut},
@@ -63,6 +65,7 @@ struct Selector {
     occurrence: Option<usize>,
     all: bool,
     is_loop: bool,
+    reject_conditions: bool,
 }
 
 impl Selector {
@@ -72,6 +75,7 @@ impl Selector {
             occurrence: None,
             all: false,
             is_loop,
+            reject_conditions: false,
         }
     }
 
@@ -100,8 +104,15 @@ impl Selector {
             selector: self,
             block_id: 0,
             found: Vec::new(),
+            conditional: false,
         };
         search.visit_block_mut(block);
+        if self.reject_conditions && search.conditional {
+            return Err(syn::Error::new_spanned(
+                &self.binding,
+                "conditional range endpoints are not supported; put cfg on the enclosing block or function",
+            ));
+        }
         let found = search.found;
         if let Some(n) = self.occurrence {
             return found.get(n - 1).copied().map(|v| vec![v]).ok_or_else(|| {
@@ -124,7 +135,31 @@ impl Selector {
 
 struct Hook {
     selector: Selector,
+    after: bool,
     fields: Vec<Field>,
+    event: Option<Event>,
+}
+struct Event {
+    message: LitStr,
+    fields: Vec<Field>,
+}
+
+impl Parse for Event {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let message = input.parse()?;
+        let mut values = Vec::new();
+        while !input.is_empty() {
+            input.parse::<Token![,]>()?;
+            if input.is_empty() {
+                break;
+            }
+            values.push(input.parse()?);
+        }
+        Ok(Self {
+            message,
+            fields: values,
+        })
+    }
 }
 struct Point {
     selector: Selector,
@@ -179,6 +214,8 @@ struct Args {
     end: Option<Point>,
     record: Vec<Field>,
     on_ok: Option<(Ident, Vec<Field>)>,
+    event: Option<Event>,
+    err: bool,
 }
 
 impl Parse for Args {
@@ -188,8 +225,10 @@ impl Parse for Args {
         while !input.is_empty() {
             let key: Ident = input.parse()?;
             let name = key.to_string();
-            if !matches!(name.as_str(), "after_let" | "after_loop" | "count_loop")
-                && !seen.insert(name.clone())
+            if !matches!(
+                name.as_str(),
+                "before_let" | "after_let" | "after_loop" | "count_loop"
+            ) && !seen.insert(name.clone())
             {
                 return Err(syn::Error::new_spanned(key, "duplicate observation option"));
             }
@@ -204,6 +243,20 @@ impl Parse for Args {
                     }
                 }
                 "fields" => args.fields = fields(input)?,
+                "event" => {
+                    let content;
+                    parenthesized!(content in input);
+                    args.event = Some(content.parse()?);
+                }
+                "err" => {
+                    let content;
+                    parenthesized!(content in input);
+                    let format: Ident = content.parse()?;
+                    if format != "Debug" || !content.is_empty() {
+                        return Err(syn::Error::new_spanned(format, "expected err(Debug)"));
+                    }
+                    args.err = true;
+                }
                 "record" => args.record = fields(input)?,
                 "start" | "end" => {
                     input.parse::<Token![=]>()?;
@@ -214,11 +267,12 @@ impl Parse for Args {
                         args.end = Some(value);
                     }
                 }
-                "after_let" | "after_loop" => {
+                "before_let" | "after_let" | "after_loop" => {
                     let content;
                     parenthesized!(content in input);
                     let mut selector = Selector::new(content.parse()?, name == "after_loop");
                     let mut record = None;
+                    let mut event = None;
                     while !content.is_empty() {
                         content.parse::<Token![,]>()?;
                         if content.is_empty() {
@@ -227,14 +281,25 @@ impl Parse for Args {
                         let key: Ident = content.parse()?;
                         if key == "record" && record.is_none() {
                             record = Some(fields(&content)?);
+                        } else if key == "event" && event.is_none() {
+                            let body;
+                            parenthesized!(body in content);
+                            event = Some(body.parse()?);
                         } else {
                             selector.option(&key, &content)?;
                         }
                     }
+                    if record.is_none() && event.is_none() {
+                        return Err(syn::Error::new_spanned(
+                            key,
+                            "missing record(...) or event(...)",
+                        ));
+                    }
                     args.hooks.push(Hook {
                         selector,
-                        fields: record
-                            .ok_or_else(|| syn::Error::new_spanned(key, "missing record(...)"))?,
+                        after: name != "before_let",
+                        fields: record.unwrap_or_default(),
+                        event,
                     });
                 }
                 "on_ok" => {
@@ -355,6 +420,7 @@ struct Search<'a> {
     selector: &'a Selector,
     block_id: usize,
     found: Vec<Location>,
+    conditional: bool,
 }
 
 impl VisitMut for Search<'_> {
@@ -375,6 +441,13 @@ impl VisitMut for Search<'_> {
                 _ => false,
             };
             if matched {
+                if self
+                    .selector
+                    .occurrence
+                    .is_none_or(|n| n == self.found.len() + 1)
+                {
+                    self.conditional |= !conditions(stmt).is_empty();
+                }
                 self.found.push(Location {
                     block: id,
                     statement: i,
@@ -415,40 +488,92 @@ impl VisitMut for Edits {
         let mut stmts = Vec::new();
         for (i, mut stmt) in std::mem::take(&mut block.stmts).into_iter().enumerate() {
             self.visit_stmt_mut(&mut stmt);
+            let conditions = conditions(&stmt);
             let location = Location {
                 block: id,
                 statement: i,
             };
-            stmts.extend(self.before.remove(&location).unwrap_or_default());
+            let conditional = |stmt: Stmt| -> Stmt { parse_quote!(#(#conditions)* #stmt) };
+            stmts.extend(
+                self.before
+                    .remove(&location)
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(conditional),
+            );
             stmts.push(stmt);
-            stmts.extend(self.after.remove(&location).unwrap_or_default());
+            stmts.extend(
+                self.after
+                    .remove(&location)
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(conditional),
+            );
         }
         block.stmts = stmts;
     }
 }
 
+fn conditions(stmt: &Stmt) -> Vec<Attribute> {
+    let attrs = match stmt {
+        Stmt::Local(local) => &local.attrs,
+        Stmt::Expr(Expr::ForLoop(expr), _) => &expr.attrs,
+        _ => return Vec::new(),
+    };
+    attrs
+        .iter()
+        .filter(|attr| attr.path().is_ident("cfg") || attr.path().is_ident("cfg_attr"))
+        .cloned()
+        .collect()
+}
+
 fn record(fields: &[Field], span: &Ident) -> TokenStream {
     let writes = fields.iter().map(|field| {
-        let name = field.name.to_string();
+        let name = field.name.unraw().to_string();
         let value = field.value();
         quote!(#span.record(#name, #value);)
     });
     quote!(if !#span.is_disabled() { #(#writes)* })
 }
 
+fn event(event: &Event, level: &Ident, target: &TokenStream) -> TokenStream {
+    let message = &event.message;
+    let values = event.fields.iter().map(|field| {
+        let name = &field.name;
+        let value = field.value();
+        quote!(#name = #value)
+    });
+    quote!(tracing::event!(target: #target, tracing::Level::#level, #(#values,)* #message);)
+}
+
 pub fn expand(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> {
     let args: Args = syn::parse2(attr)?;
     let mut function: ItemFn = syn::parse2(item)?;
-    if function.sig.asyncness.is_some() || function.sig.constness.is_some() {
+    if function.sig.constness.is_some() {
         return Err(syn::Error::new_spanned(
             &function.sig,
-            "observe currently supports synchronous, non-const functions",
+            "observe does not support const functions",
         ));
     }
-    let name = args
-        .name
-        .as_ref()
-        .ok_or_else(|| syn::Error::new(Span::call_site(), "missing name = \"...\""))?;
+    let has_span = args.name.is_some();
+    if !has_span
+        && (args.event.is_none() && args.hooks.is_empty()
+            || !args.fields.is_empty()
+            || !args.counters.is_empty()
+            || args.start.is_some()
+            || args.end.is_some()
+            || !args.record.is_empty()
+            || args.on_ok.is_some()
+            || args.err
+            || args.hooks.iter().any(|hook| !hook.fields.is_empty()))
+    {
+        return Err(syn::Error::new(
+            Span::call_site(),
+            "name is required for span observations; unnamed observations support only events",
+        ));
+    }
+    let fallback_name = LitStr::new("", Span::call_site());
+    let name = args.name.as_ref().unwrap_or(&fallback_name);
     let level = args
         .level
         .as_ref()
@@ -467,11 +592,41 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> 
         .target
         .as_ref()
         .map_or_else(|| quote!("gluesql"), |v| quote!(#v));
+    if function.sig.asyncness.is_some() {
+        if !has_span
+            || !args.hooks.is_empty()
+            || !args.counters.is_empty()
+            || args.start.is_some()
+            || args.end.is_some()
+            || !args.record.is_empty()
+            || args.on_ok.is_some()
+            || args.event.is_some()
+        {
+            return Err(syn::Error::new_spanned(
+                &function.sig,
+                "async observations support only name, level, target, fields, and err(Debug)",
+            ));
+        }
+        let fields = args.fields.iter().map(|field| {
+            let name = &field.name;
+            let value = field.value();
+            quote!(#name = #value)
+        });
+        let error = args.err.then(|| quote!(err(Debug),));
+        let level = level.to_string().to_lowercase();
+        return Ok(quote! {
+            #[tracing::instrument(name = #name, level = #level, target = #target, skip_all, fields(#(#fields),*), #error)]
+            #function
+        });
+    }
     let span = Ident::new("__gluesql_observe_span", Span::mixed_site());
     let entered = Ident::new("__gluesql_observe_entered", Span::mixed_site());
-    let mut names = BTreeSet::new();
+    let mut names = BTreeMap::new();
     for field in &args.fields {
-        if !names.insert(field.name.to_string()) {
+        if names
+            .insert(field.name.unraw().to_string(), &field.name)
+            .is_some()
+        {
             return Err(syn::Error::new_spanned(
                 &field.name,
                 "duplicate initial field",
@@ -485,20 +640,32 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> 
         .chain(&args.record)
         .chain(args.on_ok.iter().flat_map(|(_, f)| f))
     {
-        names.insert(field.name.to_string());
+        names.insert(field.name.unraw().to_string(), &field.name);
     }
     for counter in &args.counters {
-        names.insert(counter.field.to_string());
+        names.insert(counter.field.unraw().to_string(), &counter.field);
     }
-    let declarations = names.iter().map(|n| {
-        let ident = Ident::new(n, Span::call_site());
-        quote!(#ident = tracing::field::Empty)
+    let declarations = names.iter().map(|(name, ident)| {
+        if let Some(field) = args
+            .fields
+            .iter()
+            .find(|field| field.name.unraw() == name.as_str())
+        {
+            let value = field.value();
+            quote!(#ident = #value)
+        } else {
+            quote!(#ident = tracing::field::Empty)
+        }
     });
-    let initial = record(&args.fields, &span);
-    let start = quote! {
-        let #span = tracing::span!(target: #target, tracing::Level::#level, #name, #(#declarations),*);
-        #initial
-        let #entered = #span.enter();
+    let entry_event = args.event.as_ref().map(|e| event(e, &level, &target));
+    let start = if has_span {
+        quote! {
+            let #span = tracing::span!(target: #target, tracing::Level::#level, #name, #(#declarations),*);
+            let #entered = #span.enter();
+            #entry_event
+        }
+    } else {
+        quote!(#entry_event)
     };
     if args.start.is_some() != args.end.is_some() || (!args.record.is_empty() && args.end.is_none())
     {
@@ -517,8 +684,12 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> 
     }
     let mut edits = Edits::default();
     if let (Some(start_point), Some(end_point)) = (&args.start, &args.end) {
-        let a = start_point.selector.locations(&mut function.block)?[0];
-        let b = end_point.selector.locations(&mut function.block)?[0];
+        let mut start_selector = start_point.selector.clone();
+        start_selector.reject_conditions = true;
+        let mut end_selector = end_point.selector.clone();
+        end_selector.reject_conditions = true;
+        let a = start_selector.locations(&mut function.block)?[0];
+        let b = end_selector.locations(&mut function.block)?[0];
         if a.block != b.block || (a.statement, start_point.after) >= (b.statement, end_point.after)
         {
             return Err(syn::Error::new_spanned(
@@ -536,7 +707,9 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> 
     } else {
         for hook in &args.hooks {
             for location in hook.selector.locations(&mut function.block)? {
-                edits.add(location, true, &record(&hook.fields, &span))?;
+                let writes = (!hook.fields.is_empty()).then(|| record(&hook.fields, &span));
+                let event = hook.event.as_ref().map(|e| event(e, &level, &target));
+                edits.add(location, hook.after, &quote!(#writes #event))?;
             }
         }
     }
@@ -546,7 +719,7 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> 
     }
     if args.start.is_none() {
         let body = &function.block;
-        function.block = if let Some((binding, fields)) = &args.on_ok {
+        function.block = if args.on_ok.is_some() || args.err {
             let output = match &function.sig.output {
                 syn::ReturnType::Type(_, ty) if matches!(ty.as_ref(), syn::Type::Path(p) if p.path.segments.last().is_some_and(|s| s.ident == "Result")) => {
                     ty
@@ -559,11 +732,22 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> 
                 }
             };
             let result = Ident::new("__gluesql_observe_result", Span::mixed_site());
-            let writes = record(fields, &span);
+            let success = args.on_ok.as_ref().map(|(binding, fields)| {
+                let writes = record(fields, &span);
+                quote!(if let ::std::result::Result::Ok(#binding) = &#result { #writes })
+            });
+            let error = args.err.then(|| {
+                quote! {
+                    if let ::std::result::Result::Err(error) = &#result {
+                        tracing::error!(target: #target, error = ?error);
+                    }
+                }
+            });
             Box::new(parse_quote!({
                 #start
                 let #result = (|| -> #output #body)();
-                if let ::std::result::Result::Ok(#binding) = &#result { #writes }
+                #success
+                #error
                 #result
             }))
         } else {
@@ -585,7 +769,7 @@ fn apply_counter(
         &format!("__gluesql_observe_count_{index}"),
         Span::mixed_site(),
     );
-    let field = counter.field.to_string();
+    let field = counter.field.unraw().to_string();
     let mut editor = CounterBody {
         location,
         block_id: 0,
@@ -695,16 +879,39 @@ mod tests {
                 "accepted {attr}"
             );
         }
-        for body in [
-            quote!(
-                async fn example() {}
-            ),
-            quote!(
-                const fn example() {}
-            ),
-        ] {
-            assert!(expand(quote!(name = "x"), body).is_err());
-        }
+        assert!(
+            expand(
+                quote!(name = "x"),
+                quote!(
+                    const fn example() {}
+                )
+            )
+            .is_err()
+        );
+        assert!(
+            expand(
+                quote!(name = "x", start = before_let(a), end = after_let(b)),
+                quote!(
+                    fn f() {
+                        #[cfg(any())]
+                        let a = 1;
+                        let b = 2;
+                    }
+                )
+            )
+            .is_err()
+        );
+        assert!(
+            expand(
+                quote!(name = "x", after_let(rows, record(n = rows.len()))),
+                quote!(
+                    async fn f() {
+                        let rows = [1];
+                    }
+                )
+            )
+            .is_err()
+        );
         assert!(
             expand(
                 quote!(name = "x", on_ok(v, record(n = v))),
