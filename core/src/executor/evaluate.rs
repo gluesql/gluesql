@@ -343,13 +343,12 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
             f::concat(exprs)
         }
         FunctionExprPlan::Custom { name, exprs } => {
-            let custom_function_storage =
-                storage.ok_or(EvaluateError::UnsupportedCustomFunction)?;
             let CustomFunction {
                 func_name,
                 args,
                 body,
-            } = custom_function_storage
+            } = storage
+                .ok_or(EvaluateError::UnsupportedCustomFunction)?
                 .fetch_function(name)?
                 .ok_or_else(|| EvaluateError::UnsupportedFunction(name.clone()))?;
 
