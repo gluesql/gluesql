@@ -74,6 +74,16 @@ pub(super) fn execute<'a, T: GStore>(
     })
 }
 
+#[cfg_attr(
+    feature = "tracing",
+    tracing::instrument(
+        name = "gluesql.query.hash_join.build",
+        target = "gluesql",
+        level = "debug",
+        skip_all,
+        fields(buffered_rows = tracing::field::Empty)
+    )
+)]
 fn build_rows<'a, T: GStore>(
     storage: &'a T,
     source: source::PreparedSource<'a>,
@@ -101,6 +111,9 @@ fn build_rows<'a, T: GStore>(
             rows.push((key, row));
         }
     }
+
+    #[cfg(feature = "tracing")]
+    tracing::Span::current().record("buffered_rows", rows.len());
 
     Ok((rows.into_iter().into_group_map(), source.output))
 }

@@ -16,10 +16,11 @@ syn = { version = "2", features = ["full"] }
 proc-macro-crate = "3"
 
 [dev-dependencies]
-gluesql-core.workspace = true
+gluesql-core = { workspace = true, features = ["tracing"] }
 gluesql_memory_storage.workspace = true
 chrono = "0.4"
 rust_decimal = "1"
+tracing = "0.1"
 trybuild = "1"
 
 [lints]

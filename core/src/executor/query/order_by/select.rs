@@ -41,6 +41,16 @@ where
     Ok(LabeledRows { labels, rows })
 }
 
+#[cfg_attr(
+    feature = "tracing",
+    tracing::instrument(
+        name = "gluesql.query.order_by",
+        target = "gluesql",
+        level = "debug",
+        skip_all,
+        fields(buffered_rows = tracing::field::Empty)
+    )
+)]
 fn sort<'a, T>(
     storage: &'a T,
     context: Option<&Rc<RowContext<'a>>>,
@@ -57,6 +67,9 @@ where
     }
 
     let rows = rows.collect::<Result<Vec<_>>>()?;
+    #[cfg(feature = "tracing")]
+    tracing::Span::current().record("buffered_rows", rows.len());
+
     let mut keyed_rows = Vec::with_capacity(rows.len());
     for (aggregated, next, row) in rows {
         enum SortType<'a> {
