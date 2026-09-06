@@ -248,6 +248,184 @@ memory increase:
 The counts describe logical items rather than allocated bytes. Use the RSS counter for process
 memory and these spans to locate the corresponding execution boundary.
 
+## Declaring function observations
+
+Use `gluesql_macros::observe` to keep instrumentation out of function bodies. The attribute
+supports synchronous, non-const functions and methods. Enable optional `gluesql-macros` and
+`tracing` dependencies through the consuming crate's `tracing` feature, as in the storage setup
+above. Always use `cfg_attr`: without the feature, the original function is compiled without
+generated spans, counters, or field expressions.
+
+```rust
+#[cfg_attr(
+    feature = "tracing",
+    gluesql_macros::observe(name = "gluesql.evaluate", level = "trace")
+)]
+fn evaluate(/* existing arguments */) -> Result<Evaluated<'_>> {
+    // Existing implementation.
+}
+```
+
+`name` is required. `level` defaults to `debug` and accepts `trace`, `debug`, `info`, `warn`, or
+`error`; `target` defaults to `gluesql`. A function observation ends on normal return, early
+return, error propagation with `?`, or unwinding. It measures the function call, not subsequent
+consumption of a returned iterator. Continue using `trace_storage` for lazy storage iterators.
+The attribute does not install a subscriber.
+
+### Initial fields and local values
+
+Use `fields` for values available when the observation starts:
+
+```rust
+#[cfg_attr(
+    feature = "tracing",
+    gluesql_macros::observe(
+        name = "gluesql.storage.lookup",
+        fields(backend = "example", table = table_name, key = ?key)
+    )
+)]
+fn lookup(/* existing arguments */) -> Result<Option<DataRow>> {
+    // Existing implementation.
+}
+```
+
+`?value` records `Debug` formatting and `%value` records `Display` formatting. Expressions are
+borrowed, not consumed, and are evaluated only when the generated span is enabled.
+
+Use `after_let` for values available inside the function. The macro declares the recorded fields
+automatically and inserts the recording immediately after the selected initialization succeeds:
+
+```rust
+#[cfg_attr(
+    feature = "tracing",
+    gluesql_macros::observe(
+        name = "gluesql.query.aggregate",
+        after_let(rows, occurrence = 2, record(buffered_groups = rows.len()))
+    )
+)]
+fn execute(/* existing arguments */) -> Result<AggregatedRows<'_>> {
+    // Existing implementation, including the original `let rows` declarations.
+}
+```
+
+Selectors match bound identifiers, including tuple and struct destructuring. They search the
+function's blocks in source order, counting a declaration before its initializer's nested blocks.
+Parameters, separate item definitions, closure bodies, async blocks, and macro token bodies are
+not searched. A `let` must have an initializer; `if let` and `while let` conditions are not targets.
+
+- Omit `occurrence` when exactly one declaration matches.
+- Use `occurrence = N` to select a declaration, counting from 1.
+- Use `all` to record after every matching declaration, including declarations in separate branches.
+- Repeat `after_let(...)` to select multiple specific declarations or record different fields.
+
+Repeated writes to one span field retain its latest value; they are not time-series samples.
+If initialization returns through `?`, the subsequent record is not reached. If an initializer
+moves a value into an iterator, select an earlier point where the desired buffer still exists.
+
+Use `after_loop(row, record(buffered_rows = rows.len()))` to record after a `for row in ...` loop,
+as in the hash-join build. This selector also accepts `occurrence` or `all`. It records after
+normal completion or a local `break`, but not when the function returns from inside the loop.
+
+### Measuring a partial function interval
+
+Pair `start` and `end` to measure a region without extracting a new function. DELETE uses:
+
+```rust
+#[cfg_attr(
+    feature = "tracing",
+    gluesql_macros::observe(
+        name = "gluesql.mutation.collect",
+        fields(operation = "delete"),
+        start = before_let(keys),
+        end = after_let(num_keys),
+        record(buffered_rows = num_keys)
+    )
+)]
+fn delete(/* existing arguments */) -> Result<Payload> {
+    // Existing setup.
+    let mut keys = Vec::new();
+    // Existing key collection and foreign-key validation.
+    let num_keys = keys.len();
+    // Existing storage mutation.
+}
+```
+
+Both endpoints accept `before_let` or `after_let`, with an optional `occurrence`. They must select
+ordered positions in the same block. The span starts only if execution reaches the start point.
+The top-level `record` runs at the end point, before the span is exited and closed. On earlier
+return or unwinding, the span closes without that final record. The storage mutation stays
+outside the collection span.
+
+Range observations support `fields` and the final `record`; they cannot be combined with
+`after_let`, `after_loop`, `count_loop`, or `on_ok` in the same attribute.
+
+### Counting loop iterations
+
+`count_loop(binding = row, field = scanned_rows)` counts entries into a selected `for row in ...`
+body, including iterations that immediately propagate an error. Add an increment point to count
+only after a particular initialization succeeds:
+
+```rust
+#[cfg_attr(
+    feature = "tracing",
+    gluesql_macros::observe(
+        name = "gluesql.validate.unique",
+        count_loop(
+            binding = row,
+            increment = after_let(values),
+            field = scanned_rows
+        )
+    )
+)]
+fn validate_unique(/* existing arguments */) -> Result<()> {
+    for row in storage.scan_data(table_name)? {
+        let (_, values) = row?;
+        // Existing validation.
+    }
+    Ok(())
+}
+```
+
+Loop selection accepts `occurrence = N` when its binding is ambiguous. The optional increment
+selector is resolved within that loop body and must identify one declaration. The counter is
+recorded when leaving the loop's surrounding execution region, including error return and
+unwinding. Unlike the previous success-only validation record, errors retain the partial scan
+count. A loop that executes zero iterations records zero; an unreached loop records nothing.
+Instrumentation never pulls additional items from the iterator.
+
+### Recording successful return values
+
+`on_ok` binds a reference to the successful `Result` value and records without cloning or
+consuming it:
+
+```rust
+#[cfg_attr(
+    feature = "tracing",
+    gluesql_macros::observe(
+        name = "gluesql.insert.collect",
+        on_ok(rows, record(buffered_rows = rows.len()))
+    )
+)]
+fn fetch_rows(/* existing arguments */) -> Result<Vec<Vec<Value>>> {
+    // Existing implementation.
+}
+```
+
+Explicit successful `return` statements are included. Errors pass through unchanged without the
+success record. The return type must be written as `Result<...>` (optionally qualified); aliases
+with other names and opaque `impl Trait` return types are not supported by this option.
+
+### Validation when changing observed code
+
+Missing or ambiguous targets, invalid occurrence numbers, unsupported options, and invalid
+range boundaries produce macro errors. Rust checks expression types and visibility at each
+injected location. A refactor can change which declaration an occurrence selects even when it
+still compiles, so review the attribute alongside the body and verify the recorded values.
+
+Run checks with `tracing` enabled as well as disabled. Selectors are not checked when `cfg_attr`
+disables the macro. Runtime tests in `macros/tests/runtime_observe.rs` cover control flow, disabled
+field evaluation, and query-pipeline buffer counts.
+
 ## Resource benchmark profiles
 
 A resource benchmark groups one SQL workload, query spans, and resource measurements under a
