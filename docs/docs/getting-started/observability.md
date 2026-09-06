@@ -366,7 +366,8 @@ can leave a span without a matching start or end. Put the condition on their enc
 function instead.
 
 Range observations support `fields` and the final `record`; they cannot be combined with
-`after_let`, `after_loop`, `count_loop`, or `on_ok` in the same attribute.
+`after_let`, `after_loop`, `count_loop`, `on_ok`, or `err(Debug)` in the same attribute. Invalid
+combinations produce a compile error rather than silently omitting error events.
 
 ### Counting loop iterations
 
@@ -422,7 +423,8 @@ fn fetch_rows(/* existing arguments */) -> Result<Vec<Vec<Value>>> {
 
 Explicit successful `return` statements are included. Errors pass through unchanged without the
 success record. The return type must be written as `Result<...>` (optionally qualified); aliases
-with other names and opaque `impl Trait` return types are not supported by this option.
+with other names are not supported. Mutable references and opaque success types such as
+`Result<impl Iterator<Item = Row>, Error>` retain their original return semantics.
 Add `err(Debug)` to emit an error event for a returned `Err`. `trace_storage` uses this same
 function observation generator for method spans, argument fields, and error events; its iterator
 wrapper continues to handle lazy consumption separately.

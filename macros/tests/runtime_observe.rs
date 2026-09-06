@@ -323,6 +323,74 @@ impl ObservedStorage {
     async fn async_lookup(&self, key: u8) -> Result<u8> {
         self.lookup(key)
     }
+
+    fn opaque_rows(&self, fail: bool) -> Result<impl Iterator<Item = u8>> {
+        if fail {
+            return Err("opaque failure");
+        }
+        Ok([1, 2].into_iter())
+    }
+}
+
+struct MutableRows {
+    rows: Vec<u8>,
+}
+
+impl MutableRows {
+    #[observe(name = "mutable_rows", on_ok(rows, record(n = rows.len())))]
+    fn rows_mut(&mut self) -> Result<&mut Vec<u8>> {
+        Ok(&mut self.rows)
+    }
+}
+
+#[observe(name = "opaque_result", after_let(rows, record(n = rows.len())), on_ok(rows, record(returned = rows.len())))]
+fn opaque_result() -> Result<impl ExactSizeIterator<Item = u8>> {
+    let rows = [3, 4];
+    Ok(rows.into_iter())
+}
+
+#[observe(name = "borrow_input", on_ok(value, record(n = input.len(), result = *value)))]
+fn borrow_input(input: Vec<u8>) -> Result<usize> {
+    Ok(input.len())
+}
+
+#[test]
+fn preserves_mutable_and_opaque_return_values() {
+    let capture = Capture::default();
+    tracing::subscriber::with_default(Registry::default().with(capture.clone()), || {
+        let mut storage = MutableRows { rows: vec![1, 2] };
+        storage.rows_mut().unwrap().push(3);
+        assert_eq!(storage.rows, vec![1, 2, 3]);
+        assert_eq!(
+            ObservedStorage
+                .opaque_rows(false)
+                .unwrap()
+                .collect::<Vec<_>>(),
+            vec![1, 2]
+        );
+        assert!(matches!(
+            ObservedStorage.opaque_rows(true),
+            Err("opaque failure")
+        ));
+        assert_eq!(opaque_result().unwrap().collect::<Vec<_>>(), vec![3, 4]);
+        assert_eq!(borrow_input(vec![1, 2, 3]), Ok(3));
+    });
+    let records = capture.0.lock().unwrap();
+    assert!(
+        records
+            .iter()
+            .any(|(name, fields)| name == "mutable_rows"
+                && fields.get("n").is_some_and(|n| n == "2"))
+    );
+    assert!(records.iter().any(|(name, fields)| name == "opaque_result"
+        && fields.get("returned").is_some_and(|n| n == "2")
+        && fields.get("n").is_some_and(|n| n == "2")));
+    assert!(records.iter().any(|(name, fields)| {
+        name == "event"
+            && fields
+                .get("error")
+                .is_some_and(|error| error == "\"opaque failure\"")
+    }));
 }
 
 #[test]
