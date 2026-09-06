@@ -13,6 +13,16 @@ use {
     std::collections::BTreeMap,
 };
 
+#[cfg_attr(
+    feature = "tracing",
+    tracing::instrument(
+        name = "gluesql.insert.collect",
+        target = "gluesql",
+        level = "debug",
+        skip_all,
+        fields(buffered_rows = tracing::field::Empty)
+    )
+)]
 pub(super) fn fetch_rows<T: GStore>(
     storage: &T,
     functions: &[CustomFunctionPlan],
@@ -32,6 +42,9 @@ pub(super) fn fetch_rows<T: GStore>(
         Box::new(rows)
     };
     let rows = rows_iter.collect::<Result<Vec<Vec<Value>>>>()?;
+
+    #[cfg(feature = "tracing")]
+    tracing::Span::current().record("buffered_rows", rows.len());
 
     Ok(rows)
 }

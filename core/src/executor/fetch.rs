@@ -19,6 +19,13 @@ pub enum FetchError {
     TableNotFound(String),
 }
 
+pub(crate) fn trace_access_path(access_path: &'static str) {
+    #[cfg(feature = "tracing")]
+    tracing::debug!(target: "gluesql", access_path, "selected query access path");
+    #[cfg(not(feature = "tracing"))]
+    let _ = access_path;
+}
+
 pub fn fetch<'a, T: GStore>(
     storage: &'a T,
     functions: &'a [CustomFunctionPlan],
@@ -26,6 +33,7 @@ pub fn fetch<'a, T: GStore>(
     columns: Rc<[String]>,
     where_clause: Option<&'a ExprPlan>,
 ) -> Result<KeyedRows<'a>> {
+    trace_access_path("full_scan");
     let rows = storage.scan_data(table_name)?.filter_map(move |row| {
         let (key, values) = match row {
             Ok(row) => row,

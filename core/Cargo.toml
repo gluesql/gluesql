@@ -7,6 +7,9 @@ license.workspace = true
 repository.workspace = true
 documentation.workspace = true
 
+[features]
+tracing = ["dep:tracing", "dep:tracing-subscriber"]
+
 [dependencies]
 regex = "1"
 cfg-if = "1"
@@ -25,6 +28,12 @@ hex = "0.4"
 rand = "0.8"
 ordered-float = { version = "4", features = ["serde"] }
 md-5 = "0.10.5"
+tracing = { version = "0.1", optional = true, default-features = false, features = ["attributes", "std"] }
+tracing-subscriber = { version = "0.3", optional = true, default-features = false, features = [
+  "env-filter",
+  "fmt",
+  "std",
+] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies.uuid]
 version = "1"
