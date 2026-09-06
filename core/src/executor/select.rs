@@ -13,12 +13,12 @@ use {
 
 #[cfg_attr(
     feature = "tracing",
-    tracing::instrument(
+    gluesql_macros::observe(
         name = "gluesql.result.materialize",
         target = "gluesql",
         level = "debug",
-        skip_all,
-        fields(buffered_rows = tracing::field::Empty)
+        after_let(rows, occurrence = 2, record(buffered_rows = rows.len())),
+        after_let(rows, occurrence = 3, record(buffered_rows = rows.len()))
     )
 )]
 pub(super) fn execute<T: GStore>(storage: &T, query: &QueryPlan) -> Result<Payload> {
@@ -34,16 +34,12 @@ pub(super) fn execute<T: GStore>(storage: &T, query: &QueryPlan) -> Result<Paylo
                 }
             })
             .collect::<Result<Vec<_>>>()?;
-        #[cfg(feature = "tracing")]
-        tracing::Span::current().record("buffered_rows", rows.len());
 
         Ok(Payload::SelectMap(rows))
     } else {
         let rows = rows
             .map(|row| Ok(row?.into_values()))
             .collect::<Result<Vec<_>>>()?;
-        #[cfg(feature = "tracing")]
-        tracing::Span::current().record("buffered_rows", rows.len());
 
         Ok(Payload::Select { labels, rows })
     }

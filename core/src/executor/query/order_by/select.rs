@@ -43,12 +43,11 @@ where
 
 #[cfg_attr(
     feature = "tracing",
-    tracing::instrument(
+    gluesql_macros::observe(
         name = "gluesql.query.order_by",
         target = "gluesql",
         level = "debug",
-        skip_all,
-        fields(buffered_rows = tracing::field::Empty)
+        after_let(rows, occurrence = 1, record(buffered_rows = rows.len()))
     )
 )]
 fn sort<'a, T>(
@@ -67,8 +66,6 @@ where
     }
 
     let rows = rows.collect::<Result<Vec<_>>>()?;
-    #[cfg(feature = "tracing")]
-    tracing::Span::current().record("buffered_rows", rows.len());
 
     let mut keyed_rows = Vec::with_capacity(rows.len());
     for (aggregated, next, row) in rows {

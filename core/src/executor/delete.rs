@@ -23,6 +23,16 @@ pub enum DeleteError {
     ValueNotFound(String),
 }
 
+#[cfg_attr(
+    feature = "tracing",
+    gluesql_macros::observe(
+        name = "gluesql.mutation.collect",
+        fields(operation = "delete"),
+        start = before_let(keys),
+        end = after_let(num_keys),
+        record(buffered_rows = num_keys)
+    )
+)]
 pub fn delete<T: GStore + GStoreMut>(
     storage: &mut T,
     table_name: &str,
@@ -38,16 +48,6 @@ pub fn delete<T: GStore + GStoreMut>(
                 .map(|columns| (referencing, columns))
         })
         .collect::<Result<Vec<_>>>()?;
-
-    #[cfg(feature = "tracing")]
-    let collect_span = tracing::debug_span!(
-        target: "gluesql",
-        "gluesql.mutation.collect",
-        operation = "delete",
-        buffered_rows = tracing::field::Empty
-    );
-    #[cfg(feature = "tracing")]
-    let collect_entered = collect_span.enter();
 
     let mut keys = Vec::new();
     for item in fetch(storage, table_name, columns, selection)? {
@@ -95,12 +95,6 @@ pub fn delete<T: GStore + GStoreMut>(
         keys.push(key);
     }
     let num_keys = keys.len();
-
-    #[cfg(feature = "tracing")]
-    {
-        collect_span.record("buffered_rows", num_keys);
-        drop(collect_entered);
-    }
 
     storage
         .delete_data(table_name, keys)

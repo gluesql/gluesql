@@ -11,12 +11,11 @@ use {
 
 #[cfg_attr(
     feature = "tracing",
-    tracing::instrument(
+    gluesql_macros::observe(
         name = "gluesql.query.distinct",
         target = "gluesql",
         level = "debug",
-        skip_all,
-        fields(buffered_rows = tracing::field::Empty)
+        after_let(rows, occurrence = 4, record(buffered_rows = rows.len()))
     )
 )]
 pub(super) fn execute<'a, T>(
@@ -43,8 +42,6 @@ where
         }
     }?;
     let rows = rows.collect::<Result<Vec<_>>>()?;
-    #[cfg(feature = "tracing")]
-    tracing::Span::current().record("buffered_rows", rows.len());
 
     let mut seen = HashSet::new();
     let rows = rows

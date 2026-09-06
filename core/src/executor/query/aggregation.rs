@@ -27,12 +27,11 @@ pub(super) struct AggregatedRows<'a> {
 
 #[cfg_attr(
     feature = "tracing",
-    tracing::instrument(
+    gluesql_macros::observe(
         name = "gluesql.query.aggregate",
         target = "gluesql",
         level = "debug",
-        skip_all,
-        fields(buffered_groups = tracing::field::Empty)
+        after_let(rows, occurrence = 2, record(buffered_groups = rows.len()))
     )
 )]
 pub(super) fn execute<'a, T>(
@@ -81,9 +80,6 @@ where
     }
 
     let rows = state.export(aggregate_slots)?;
-
-    #[cfg(feature = "tracing")]
-    tracing::Span::current().record("buffered_groups", rows.len());
 
     Ok(AggregatedRows { sources, rows })
 }

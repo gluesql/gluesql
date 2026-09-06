@@ -60,12 +60,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
 /// uses syntax `GlueSQL` does not support.
 #[cfg_attr(
     feature = "tracing",
-    tracing::instrument(
-        name = "gluesql.translate",
-        target = "gluesql",
-        level = "debug",
-        skip_all
-    )
+    gluesql_macros::observe(name = "gluesql.translate", target = "gluesql", level = "debug",)
 )]
 pub fn translate_with_params(
     sql_statement: &SqlStatement,

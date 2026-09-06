@@ -16,7 +16,7 @@ const DIALECT: PostgreSqlDialect = PostgreSqlDialect {};
 
 #[cfg_attr(
     feature = "tracing",
-    tracing::instrument(name = "gluesql.parse", target = "gluesql", level = "debug", skip_all)
+    gluesql_macros::observe(name = "gluesql.parse", target = "gluesql", level = "debug")
 )]
 pub fn parse<Sql: AsRef<str>>(sql: Sql) -> Result<Vec<SqlStatement>> {
     Parser::parse_sql(&DIALECT, sql.as_ref()).map_err(|e| Error::Parser(format!("{e:#?}")))

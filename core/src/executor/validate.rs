@@ -78,12 +78,11 @@ impl UniqueConstraint {
 
 #[cfg_attr(
     feature = "tracing",
-    tracing::instrument(
+    gluesql_macros::observe(
         name = "gluesql.validate.unique",
         target = "gluesql",
         level = "debug",
-        skip_all,
-        fields(scanned_rows = tracing::field::Empty)
+        count_loop(binding = row, increment = after_let(values), field = scanned_rows)
     )
 )]
 pub fn validate_unique<'a, T: Store>(
@@ -145,14 +144,8 @@ pub fn validate_unique<'a, T: Store>(
                 return Ok(());
             }
 
-            #[cfg(feature = "tracing")]
-            let mut scanned_rows = 0_usize;
             for row in storage.scan_data(table_name)? {
                 let (_, values) = row?;
-                #[cfg(feature = "tracing")]
-                {
-                    scanned_rows += 1;
-                }
                 for constraint in &unique_constraints {
                     let col_idx = constraint.column_index;
                     let val = values
@@ -162,9 +155,6 @@ pub fn validate_unique<'a, T: Store>(
                     constraint.check(val)?;
                 }
             }
-
-            #[cfg(feature = "tracing")]
-            tracing::Span::current().record("scanned_rows", scanned_rows);
 
             Ok(())
         }

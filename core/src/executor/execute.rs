@@ -132,6 +132,16 @@ pub fn execute<T: GStore + GStoreMut>(
     }
 }
 
+#[cfg_attr(
+    feature = "tracing",
+    gluesql_macros::observe(
+        name = "gluesql.mutation.collect",
+        fields(operation = "update"),
+        start = before_let(rows, occurrence = 1),
+        end = after_let(rows, occurrence = 1),
+        record(buffered_rows = rows.len())
+    )
+)]
 fn execute_inner<T: GStore + GStoreMut>(
     storage: &mut T,
     statement: &StatementPlan,
@@ -214,16 +224,6 @@ fn execute_inner<T: GStore + GStoreMut>(
 
             let foreign_keys = Rc::new(foreign_keys);
 
-            #[cfg(feature = "tracing")]
-            let collect_span = tracing::debug_span!(
-                target: "gluesql",
-                "gluesql.mutation.collect",
-                operation = "update",
-                buffered_rows = tracing::field::Empty
-            );
-            #[cfg(feature = "tracing")]
-            let collect_entered = collect_span.enter();
-
             let rows = fetch(storage, table_name, all_columns, selection.as_ref())?
                 .map(|item| {
                     let (key, row) = item?;
@@ -232,12 +232,6 @@ fn execute_inner<T: GStore + GStoreMut>(
                     Ok((key, row))
                 })
                 .collect::<Result<Vec<(Key, Row)>>>()?;
-
-            #[cfg(feature = "tracing")]
-            {
-                collect_span.record("buffered_rows", rows.len());
-                drop(collect_entered);
-            }
 
             if let Some(column_defs) = column_defs {
                 let column_validation =
