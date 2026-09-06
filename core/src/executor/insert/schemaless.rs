@@ -15,12 +15,11 @@ use {
 
 #[cfg_attr(
     feature = "tracing",
-    tracing::instrument(
+    gluesql_macros::observe(
         name = "gluesql.insert.collect",
         target = "gluesql",
         level = "debug",
-        skip_all,
-        fields(buffered_rows = tracing::field::Empty)
+        on_ok(rows, record(buffered_rows = rows.len()))
     )
 )]
 pub(super) fn fetch_rows<T: GStore>(
@@ -42,9 +41,6 @@ pub(super) fn fetch_rows<T: GStore>(
         Box::new(rows)
     };
     let rows = rows_iter.collect::<Result<Vec<Vec<Value>>>>()?;
-
-    #[cfg(feature = "tracing")]
-    tracing::Span::current().record("buffered_rows", rows.len());
 
     Ok(rows)
 }

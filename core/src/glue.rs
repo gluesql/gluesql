@@ -22,7 +22,7 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
 
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(name = "gluesql.plan", target = "gluesql", level = "debug", skip_all)
+        gluesql_macros::observe(name = "gluesql.plan", target = "gluesql", level = "debug")
     )]
     fn plan_statement(&self, statement: StatementPlan) -> Result<StatementPlan> {
         self.storage.plan(statement)
@@ -30,11 +30,10 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
 
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(
+        gluesql_macros::observe(
             name = "gluesql.plan_sql",
             target = "gluesql",
             level = "debug",
-            skip_all,
             fields(
                 sql = %sql,
                 params = ?params
@@ -87,11 +86,10 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
 
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(
+        gluesql_macros::observe(
             name = "gluesql.execute_statement",
             target = "gluesql",
             level = "debug",
-            skip_all
         )
     )]
     pub fn execute_stmt(&mut self, statement: &StatementPlan) -> Result<Payload> {
@@ -106,15 +104,14 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
     /// against the storage fails.
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(
+        gluesql_macros::observe(
             name = "gluesql.execute",
             target = "gluesql",
             level = "info",
-            skip_all,
             fields(
-                sql = %sql.as_ref(),
-                params = tracing::field::Empty
-            )
+                sql = %sql.as_ref()
+            ),
+            after_let(params, record(params = ?params))
         )
     )]
     pub fn execute_with_params<Sql, I, P>(&mut self, sql: Sql, params: I) -> Result<Vec<Payload>>
@@ -128,8 +125,6 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
             .into_iter()
             .map(IntoParamLiteral::into_param_literal)
             .collect();
-        #[cfg(feature = "tracing")]
-        tracing::Span::current().record("params", tracing::field::debug(&params));
         let mut payloads = Vec::<Payload>::new();
 
         for parsed in parsed {

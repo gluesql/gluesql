@@ -1163,6 +1163,7 @@ dependencies = [
  "bigdecimal",
  "cfg-if",
  "chrono",
+ "gluesql-macros",
  "hex",
  "im",
  "iter-enum",
@@ -1249,6 +1250,7 @@ dependencies = [
  "rust_decimal",
  "syn 2.0.89",
  "tracing",
+ "tracing-subscriber",
  "trybuild",
 ]
 
