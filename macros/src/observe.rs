@@ -675,11 +675,11 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> 
         ));
     }
     if args.start.is_some()
-        && (!args.hooks.is_empty() || !args.counters.is_empty() || args.on_ok.is_some())
+        && (!args.hooks.is_empty() || !args.counters.is_empty() || args.on_ok.is_some() || args.err)
     {
         return Err(syn::Error::new_spanned(
             name,
-            "range observations support fields and record; use a separate observe attribute for other hooks",
+            "range observations do not support hooks, counters, on_ok, or err(Debug); use a separate function observation",
         ));
     }
     let mut edits = Edits::default();
@@ -720,18 +720,22 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> 
     if args.start.is_none() {
         let body = &function.block;
         function.block = if args.on_ok.is_some() || args.err {
-            let output = match &function.sig.output {
+            let mut output = match &function.sig.output {
                 syn::ReturnType::Type(_, ty) if matches!(ty.as_ref(), syn::Type::Path(p) if p.path.segments.last().is_some_and(|s| s.ident == "Result")) => {
-                    ty
+                    ty.clone()
                 }
                 _ => {
                     return Err(syn::Error::new_spanned(
                         &function.sig.output,
-                        "on_ok requires a Result return type",
+                        "on_ok and err(Debug) require a Result return type",
                     ));
                 }
             };
+            InferOpaqueReturn.visit_type_mut(&mut output);
             let result = Ident::new("__gluesql_observe_result", Span::mixed_site());
+            // An explicit FnOnce bound permits mutable-reference returns without
+            // forcing unrelated arguments into a move closure.
+            let call = Ident::new("__gluesql_observe_call_once", Span::mixed_site());
             let success = args.on_ok.as_ref().map(|(binding, fields)| {
                 let writes = record(fields, &span);
                 quote!(if let ::std::result::Result::Ok(#binding) = &#result { #writes })
@@ -745,7 +749,10 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> 
             });
             Box::new(parse_quote!({
                 #start
-                let #result = (|| -> #output #body)();
+                let #result = {
+                    fn #call<R>(body: impl ::std::ops::FnOnce() -> R) -> R { body() }
+                    #call(|| -> #output #body)
+                };
                 #success
                 #error
                 #result
@@ -756,6 +763,18 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> 
         };
     }
     Ok(quote!(#function))
+}
+
+struct InferOpaqueReturn;
+
+impl VisitMut for InferOpaqueReturn {
+    fn visit_type_mut(&mut self, ty: &mut syn::Type) {
+        if matches!(ty, syn::Type::ImplTrait(_)) {
+            *ty = parse_quote!(_);
+        } else {
+            visit_mut::visit_type_mut(self, ty);
+        }
+    }
 }
 
 fn apply_counter(
@@ -873,6 +892,12 @@ mod tests {
             quote!(name = "x", level = "verbose"),
             quote!(name = "x", name = "y"),
             quote!(name = "x", unknown = true),
+            quote!(
+                name = "x",
+                start = before_let(rows, occurrence = 1),
+                end = after_let(rows, occurrence = 1),
+                err(Debug)
+            ),
         ] {
             assert!(
                 expand(attr.clone(), body.clone()).is_err(),
