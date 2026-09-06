@@ -251,7 +251,9 @@ memory and these spans to locate the corresponding execution boundary.
 ## Declaring function observations
 
 Use `gluesql_macros::observe` to keep instrumentation out of function bodies. The attribute
-supports synchronous, non-const functions and methods. Enable optional `gluesql-macros` and
+supports non-const functions and methods. Synchronous functions support all selectors below;
+async functions support whole-function spans with `name`, `level`, `target`, `fields`, and
+`err(Debug)`, entering the span only while their future is polled. Enable optional `gluesql-macros` and
 `tracing` dependencies through the consuming crate's `tracing` feature, as in the storage setup
 above. Always use `cfg_attr`: without the feature, the original function is compiled without
 generated spans, counters, or field expressions.
@@ -266,7 +268,7 @@ fn evaluate(/* existing arguments */) -> Result<Evaluated<'_>> {
 }
 ```
 
-`name` is required. `level` defaults to `debug` and accepts `trace`, `debug`, `info`, `warn`, or
+`name` is required for spans; event-only observations omit it. `level` defaults to `debug` and accepts `trace`, `debug`, `info`, `warn`, or
 `error`; `target` defaults to `gluesql`. A function observation ends on normal return, early
 return, error propagation with `?`, or unwinding. It measures the function call, not subsequent
 consumption of a returned iterator. Continue using `trace_storage` for lazy storage iterators.
@@ -312,6 +314,10 @@ Selectors match bound identifiers, including tuple and struct destructuring. The
 function's blocks in source order, counting a declaration before its initializer's nested blocks.
 Parameters, separate item definitions, closure bodies, async blocks, and macro token bodies are
 not searched. A `let` must have an initializer; `if let` and `while let` conditions are not targets.
+Generated hooks inherit the selected statement's `cfg` and `cfg_attr` attributes. A declaration
+excluded from compilation does not leave a dangling field expression behind. Occurrence numbers
+still count declarations in source order, including conditionally excluded declarations.
+Raw field identifiers such as `r#type` are supported and recorded as `type`.
 
 - Omit `occurrence` when exactly one declaration matches.
 - Use `occurrence = N` to select a declaration, counting from 1.
@@ -355,6 +361,9 @@ ordered positions in the same block. The span starts only if execution reaches t
 The top-level `record` runs at the end point, before the span is exited and closed. On earlier
 return or unwinding, the span closes without that final record. The storage mutation stays
 outside the collection span.
+Endpoints with their own `cfg` or `cfg_attr` are rejected, since separately conditional endpoints
+can leave a span without a matching start or end. Put the condition on their enclosing block or
+function instead.
 
 Range observations support `fields` and the final `record`; they cannot be combined with
 `after_let`, `after_loop`, `count_loop`, or `on_ok` in the same attribute.
@@ -414,6 +423,46 @@ fn fetch_rows(/* existing arguments */) -> Result<Vec<Vec<Value>>> {
 Explicit successful `return` statements are included. Errors pass through unchanged without the
 success record. The return type must be written as `Result<...>` (optionally qualified); aliases
 with other names and opaque `impl Trait` return types are not supported by this option.
+Add `err(Debug)` to emit an error event for a returned `Err`. `trace_storage` uses this same
+function observation generator for method spans, argument fields, and error events; its iterator
+wrapper continues to handle lazy consumption separately.
+
+### Declaring events without a span
+
+Use `event` without `name` when only an event is needed. This preserves the current parent span
+and does not add a new span to the hierarchy:
+
+```rust
+#[cfg_attr(
+    feature = "tracing",
+    gluesql_macros::observe(
+        event("selected query access path", access_path = "full_scan")
+    )
+)]
+fn fetch(/* existing arguments */) -> Result<KeyedRows<'_>> {
+    // Existing implementation.
+}
+```
+
+Events can also be attached to precise statement boundaries:
+
+```rust
+#[cfg_attr(
+    feature = "tracing",
+    gluesql_macros::observe(
+        after_let(key, event("selected query access path", access_path = "primary_key"))
+    )
+)]
+fn rows(/* existing arguments */) -> Result<SourceRows<'_>> {
+    // Existing implementation.
+}
+```
+
+`before_let` emits before initialization; `after_let` emits after successful initialization;
+`after_loop` emits after loop completion. All accept the same occurrence selection rules as
+recording hooks. Entry events and hooks use the attribute's `level` and `target`. Event expressions
+are evaluated only when the event is enabled. Access-path events use these attributes and leave
+the SQL execution bodies free of logging calls.
 
 ### Validation when changing observed code
 
