@@ -211,8 +211,7 @@ fn copy_symlink(source: &Path, _target: &Path) -> Result<()> {
     )))
 }
 
-/// `StoreMut::insert_data` does not fsync and cutover removes the backup, so
-/// the renames must not publish rows that only exist in the page cache.
+/// `StoreMut::insert_data` does not fsync, and cutover removes the backup.
 fn sync_tree(path: &Path) -> Result<()> {
     for entry in fs::read_dir(path).map_storage_err()? {
         let entry = entry.map_storage_err()?;

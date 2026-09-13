@@ -13,8 +13,7 @@ use {
 const TEMP: &str = "tmp";
 const BACKUP: &str = "bak";
 
-/// Atomic for a single file and nothing more, which is why the whole-storage
-/// migration uses a staging directory instead of a sequence of these.
+/// Atomic for one file only; whole-storage migration stages a directory instead.
 pub(super) fn write(path: &Path, data: &str) -> Result<()> {
     let temp_path = suffixed(path, TEMP);
     let backup_path = suffixed(path, BACKUP);
