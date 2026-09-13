@@ -246,7 +246,7 @@ mod tests {
 
         assert_eq!(actual.len(), expected.len(), "{sql}");
 
-        for (expected, actual) in expected.iter().zip(actual) {
+        for (expected, actual) in expected.iter().zip(actual.into_iter()) {
             assert_eq!(actual, &expr(expected), "{sql}");
         }
     }
