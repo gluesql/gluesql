@@ -11,67 +11,36 @@ use {
 
 const NONCE_PREFIX: &str = "owner=";
 const BUILDING: &str = "building";
-const STAGED: &str = "staged";
-const OWNS_STAGING: &str = "owns-staging";
-const OWNS_BACKUP: &str = "owns-backup";
+const READY: &str = "ready";
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(super) enum LockPhase {
     #[default]
     Building,
-    Staged,
+    Ready,
 }
 
-/// Written before the directory it describes is created, so it is always a
-/// superset of what is on disk.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub(super) struct Ownership {
-    pub(super) staging: bool,
-    pub(super) backup: bool,
+pub(super) struct LockRecord {
+    pub(super) phase: LockPhase,
     nonce: u128,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub(super) struct LockState {
-    pub(super) phase: LockPhase,
-    pub(super) owns: Ownership,
-}
-
-impl LockState {
+impl LockRecord {
     fn parse(data: &str) -> Self {
         data.lines()
             .map(str::trim)
-            .fold(Self::default(), |state, line| match line {
-                STAGED => Self {
-                    phase: LockPhase::Staged,
-                    ..state
-                },
-                OWNS_STAGING => Self {
-                    owns: Ownership {
-                        staging: true,
-                        ..state.owns
-                    },
-                    ..state
-                },
-                OWNS_BACKUP => Self {
-                    owns: Ownership {
-                        backup: true,
-                        ..state.owns
-                    },
-                    ..state
+            .fold(Self::default(), |record, line| match line {
+                READY => Self {
+                    phase: LockPhase::Ready,
+                    ..record
                 },
                 line => match line
                     .strip_prefix(NONCE_PREFIX)
                     .map(|nonce| u128::from_str_radix(nonce, 16))
                 {
-                    Some(Ok(nonce)) => Self {
-                        owns: Ownership {
-                            nonce,
-                            ..state.owns
-                        },
-                        ..state
-                    },
-                    _ => state,
+                    Some(Ok(nonce)) => Self { nonce, ..record },
+                    _ => record,
                 },
             })
     }
@@ -79,22 +48,19 @@ impl LockState {
     fn render(self) -> String {
         let phase = match self.phase {
             LockPhase::Building => BUILDING,
-            LockPhase::Staged => STAGED,
+            LockPhase::Ready => READY,
         };
-        let staging = if self.owns.staging { OWNS_STAGING } else { "" };
-        let backup = if self.owns.backup { OWNS_BACKUP } else { "" };
-        let nonce = self.owns.nonce;
+        let nonce = self.nonce;
 
-        format!("{phase}\n{staging}\n{backup}\n{NONCE_PREFIX}{nonce:032x}\n")
+        format!("{phase}\n{NONCE_PREFIX}{nonce:032x}\n")
     }
 }
 
-/// Carries no liveness information: recovery is decided by which directories
-/// exist, never by how old the lock is.
+/// Carries no liveness information: recovery reads the state, never the age.
 #[derive(Debug)]
 pub(super) struct MigrationLock {
     path: PathBuf,
-    state: LockState,
+    record: LockRecord,
     keep_on_drop: bool,
 }
 
@@ -113,35 +79,29 @@ impl MigrationLock {
             })?;
         let lock = Self {
             path: path.to_owned(),
-            state: LockState {
-                owns: Ownership {
-                    nonce: Uuid::now_v7().as_u128(),
-                    ..Ownership::default()
-                },
-                ..LockState::default()
+            record: LockRecord {
+                nonce: Uuid::now_v7().as_u128(),
+                ..LockRecord::default()
             },
             keep_on_drop: false,
         };
-        write_state(file, lock.state)?;
+        write_record(file, lock.record)?;
 
         Ok(lock)
     }
 
-    pub(super) fn peek(path: &Path) -> Result<LockState> {
+    pub(super) fn peek(path: &Path) -> Result<LockRecord> {
         fs::read_to_string(path)
             .map_storage_err()
-            .map(|data| LockState::parse(&data))
+            .map(|data| LockRecord::parse(&data))
     }
 
     pub(super) fn resume(path: &Path) -> Result<Self> {
         let previous = Self::peek(path)?;
         let lock = Self {
             path: path.to_owned(),
-            state: LockState {
-                owns: Ownership {
-                    nonce: Uuid::now_v7().as_u128(),
-                    ..previous.owns
-                },
+            record: LockRecord {
+                nonce: Uuid::now_v7().as_u128(),
                 ..previous
             },
             keep_on_drop: true,
@@ -153,7 +113,7 @@ impl MigrationLock {
 
     pub(super) fn ensure_owned(&self) -> Result<()> {
         let owned = Self::peek(&self.path)
-            .map(|state| state.owns.nonce == self.state.owns.nonce)
+            .map(|record| record.nonce == self.record.nonce)
             .unwrap_or(false);
 
         if owned {
@@ -166,15 +126,9 @@ impl MigrationLock {
         )))
     }
 
-    pub(super) fn record_staging(&mut self) -> Result<()> {
-        self.state.owns.staging = true;
-
-        self.persist()
-    }
-
-    pub(super) fn begin_cutover(&mut self) -> Result<()> {
-        self.state.phase = LockPhase::Staged;
-        self.state.owns.backup = true;
+    /// Must precede the first cutover rename, which makes the storage root vanish.
+    pub(super) fn mark_ready(&mut self) -> Result<()> {
+        self.record.phase = LockPhase::Ready;
         self.keep_on_drop = true;
 
         self.persist()
@@ -202,7 +156,7 @@ impl MigrationLock {
     fn persist(&self) -> Result<()> {
         let file = fs::File::create(&self.path).map_storage_err()?;
 
-        write_state(file, self.state)
+        write_record(file, self.record)
     }
 }
 
@@ -214,15 +168,15 @@ impl Drop for MigrationLock {
     }
 }
 
-fn write_state(mut file: fs::File, state: LockState) -> Result<()> {
-    file.write_all(state.render().as_bytes())
+fn write_record(mut file: fs::File, record: LockRecord) -> Result<()> {
+    file.write_all(record.render().as_bytes())
         .map_storage_err()?;
     file.sync_all().map_storage_err()
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use {super::*, uuid::Uuid};
 
     fn lock_path(name: &str) -> PathBuf {
         let _ = fs::create_dir_all("tmp");
@@ -249,7 +203,7 @@ mod tests {
     }
 
     #[test]
-    fn dropping_a_build_lock_removes_it_but_a_cutover_lock_survives() {
+    fn dropping_a_build_lock_removes_it_but_a_ready_lock_survives() {
         let path = lock_path("drop-behaviour");
         drop(MigrationLock::create(&path).expect("create"));
         assert!(
@@ -258,7 +212,7 @@ mod tests {
         );
 
         let mut lock = MigrationLock::create(&path).expect("create");
-        lock.begin_cutover().expect("begin cutover");
+        lock.mark_ready().expect("mark ready");
         drop(lock);
         assert!(path.exists(), "an unfinished cutover must stay locked");
 
@@ -270,20 +224,20 @@ mod tests {
     }
 
     #[test]
-    fn ownership_and_phase_survive_a_resume() {
-        let path = lock_path("state-roundtrip");
+    fn the_phase_survives_a_resume() {
+        let path = lock_path("phase-roundtrip");
         let mut lock = MigrationLock::create(&path).expect("create");
-        let fresh = MigrationLock::peek(&path).expect("peek");
-        assert_eq!(fresh.phase, LockPhase::Building);
-        assert!(!fresh.owns.staging && !fresh.owns.backup);
+        assert_eq!(
+            MigrationLock::peek(&path).expect("peek").phase,
+            LockPhase::Building
+        );
 
-        lock.record_staging().expect("record staging");
-        lock.begin_cutover().expect("begin cutover");
+        lock.mark_ready().expect("mark ready");
         drop(lock);
-
-        let state = MigrationLock::peek(&path).expect("peek");
-        assert_eq!(state.phase, LockPhase::Staged);
-        assert!(state.owns.staging && state.owns.backup);
+        assert_eq!(
+            MigrationLock::peek(&path).expect("peek").phase,
+            LockPhase::Ready
+        );
 
         MigrationLock::resume(&path)
             .expect("resume")
@@ -292,24 +246,24 @@ mod tests {
     }
 
     #[test]
-    fn an_unreadable_lock_claims_nothing() {
-        let path = lock_path("unreadable-lock");
+    fn a_resume_stops_the_previous_owner() {
+        let path = lock_path("resume-takes-over");
         fs::write(&path, "").expect("write empty lock");
 
+        // An unreadable record parses as Building, which is the safe default.
         assert_eq!(
-            MigrationLock::peek(&path).expect("peek"),
-            LockState::default()
+            MigrationLock::peek(&path).expect("peek").phase,
+            LockPhase::Building
         );
 
         let taken_over = MigrationLock::resume(&path).expect("resume");
-        let stale = MigrationLock::resume(&path).expect("resume again");
+        let latest = MigrationLock::resume(&path).expect("resume again");
         assert!(
             taken_over.ensure_owned().is_err(),
-            "the first owner lost the lock"
+            "the earlier owner must stop acting"
         );
-        assert!(stale.ensure_owned().is_ok());
-        stale.release().expect("release");
+        assert!(latest.ensure_owned().is_ok());
 
-        let _ = fs::remove_file(&path);
+        latest.release().expect("release");
     }
 }

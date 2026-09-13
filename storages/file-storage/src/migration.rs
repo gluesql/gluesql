@@ -55,9 +55,7 @@ impl FileStorage {
 pub fn migrate_to_latest<T: AsRef<Path>>(path: T) -> Result<MigrationReport> {
     let paths = MigrationPaths::new(path.as_ref())?;
 
-    if paths.lock.exists() {
-        recovery::finish_interrupted(&paths)?;
-    }
+    recovery::finish_interrupted(&paths, recovery::inspect(&paths)?)?;
 
     paths.ensure_storage_dir()?;
     staging::reject_interrupted_writes(&paths.storage)?;
@@ -68,10 +66,8 @@ pub fn migrate_to_latest<T: AsRef<Path>>(path: T) -> Result<MigrationReport> {
     }
 
     paths.ensure_renamable_root()?;
-    paths.ensure_siblings_available()?;
 
     let mut lock = MigrationLock::create(&paths.lock)?;
-    lock.record_staging()?;
 
     let rewritten_rows = match staging::build(&paths.storage, &paths.staging, v1_to_v2::decode_row)
     {
@@ -83,7 +79,7 @@ pub fn migrate_to_latest<T: AsRef<Path>>(path: T) -> Result<MigrationReport> {
         }
     };
 
-    lock.begin_cutover()?;
+    lock.mark_ready()?;
     lock.rename(&paths.storage, &paths.backup)?;
     lock.rename(&paths.staging, &paths.storage)?;
 
@@ -159,8 +155,7 @@ mod tests {
     #[test]
     fn an_interrupted_build_is_reported_not_discarded() {
         let paths = v1_storage("real-interrupted-build");
-        let mut lock = MigrationLock::create(&paths.lock).expect("create lock");
-        lock.record_staging().expect("record staging");
+        let lock = MigrationLock::create(&paths.lock).expect("create lock");
         staging::build(&paths.storage, &paths.staging, v1_to_v2::decode_row)
             .expect("build staging");
         mem::forget(lock);
@@ -180,10 +175,9 @@ mod tests {
     fn recovers_from_a_real_interruption_between_the_two_renames() {
         let paths = v1_storage("real-interrupted-cutover");
         let mut lock = MigrationLock::create(&paths.lock).expect("create lock");
-        lock.record_staging().expect("record staging");
         staging::build(&paths.storage, &paths.staging, v1_to_v2::decode_row)
             .expect("build staging");
-        lock.begin_cutover().expect("begin cutover");
+        lock.mark_ready().expect("mark ready");
         fs::rename(&paths.storage, &paths.backup).expect("first cutover rename");
         mem::forget(lock);
 
@@ -201,10 +195,9 @@ mod tests {
     fn recovers_from_a_real_interruption_after_the_second_rename() {
         let paths = v1_storage("real-interrupted-cleanup");
         let mut lock = MigrationLock::create(&paths.lock).expect("create lock");
-        lock.record_staging().expect("record staging");
         staging::build(&paths.storage, &paths.staging, v1_to_v2::decode_row)
             .expect("build staging");
-        lock.begin_cutover().expect("begin cutover");
+        lock.mark_ready().expect("mark ready");
         fs::rename(&paths.storage, &paths.backup).expect("first cutover rename");
         fs::rename(&paths.staging, &paths.storage).expect("second cutover rename");
         mem::forget(lock);
@@ -222,10 +215,9 @@ mod tests {
     fn recovers_from_a_real_interruption_before_the_lock_was_removed() {
         let paths = v1_storage("real-interrupted-lock-cleanup");
         let mut lock = MigrationLock::create(&paths.lock).expect("create lock");
-        lock.record_staging().expect("record staging");
         staging::build(&paths.storage, &paths.staging, v1_to_v2::decode_row)
             .expect("build staging");
-        lock.begin_cutover().expect("begin cutover");
+        lock.mark_ready().expect("mark ready");
         fs::rename(&paths.storage, &paths.backup).expect("first cutover rename");
         fs::rename(&paths.staging, &paths.storage).expect("second cutover rename");
         fs::remove_dir_all(&paths.backup).expect("remove backup");
@@ -249,8 +241,9 @@ mod tests {
         fs::create_dir_all(&paths.backup).expect("create user backup");
         fs::write(paths.backup.join("mine.txt"), "hand made").expect("write user file");
 
+        // A build lock beside a backup is not a state the protocol produces.
         let err = migrate_to_latest(&paths.storage).expect_err("must refuse");
-        assert!(err.to_string().contains("interrupted migration"));
+        assert!(err.to_string().contains("inconsistent"));
         assert_eq!(
             fs::read_to_string(paths.backup.join("mine.txt")).expect("read user file"),
             "hand made"

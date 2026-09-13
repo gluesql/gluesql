@@ -52,17 +52,9 @@ fn cleanup(path: &str) {
     let _ = fs::remove_file(sibling(path, LOCK_SUFFIX));
 }
 
-/// Writes the lock a crashed migration would have left: a phase plus the
-/// sibling directories that migration had claimed.
-fn write_lock(path: &str, phase: &str, owns_staging: bool, owns_backup: bool) {
-    let staging = if owns_staging { "owns-staging" } else { "" };
-    let backup = if owns_backup { "owns-backup" } else { "" };
-
-    fs::write(
-        sibling(path, LOCK_SUFFIX),
-        format!("{phase}\n{staging}\n{backup}\n"),
-    )
-    .expect("write lock");
+/// Writes the lock a crashed migration would have left.
+fn write_lock(path: &str, phase: &str) {
+    fs::write(sibling(path, LOCK_SUFFIX), format!("{phase}\n")).expect("write lock");
 }
 
 fn snapshot(root: &str) -> BTreeMap<String, String> {
@@ -543,7 +535,7 @@ fn unexpected_source_entry_fails_without_deleting_data() {
 fn open_is_rejected_before_creating_canonical_path() {
     let path = test_path("open-rejected-while-locked");
     let _ = fs::create_dir_all("tmp");
-    write_lock(&path, "building", false, false);
+    write_lock(&path, "building");
 
     let err = FileStorage::new(&path).expect_err("locked storage should not open");
     assert!(
@@ -570,7 +562,7 @@ fn a_staging_directory_beside_an_intact_storage_is_never_discarded() {
         "owned by another migration",
     )
     .expect("write staging file");
-    write_lock(&path, "building", true, false);
+    write_lock(&path, "building");
 
     let before = snapshot(&path);
     let err = migrate_to_latest(&path).expect_err("must refuse rather than guess");
@@ -595,7 +587,7 @@ fn removing_the_leftovers_lets_the_migration_run_again() {
 
     let staging = sibling(&path, STAGING_SUFFIX);
     fs::create_dir_all(&staging).expect("create staging");
-    write_lock(&path, "building", true, false);
+    write_lock(&path, "building");
     migrate_to_latest(&path).expect_err("refused while the leftovers are there");
 
     // The documented recovery for that refusal.
@@ -622,7 +614,7 @@ fn interruption_after_first_rename_rolls_forward_completed_staging() {
 
     let backup = sibling(&path, BACKUP_SUFFIX);
     write_v1_foo(&backup, false);
-    write_lock(&path, "staged", true, true);
+    write_lock(&path, "ready");
 
     let report = migrate_to_latest(&path).expect("recover after first rename");
     assert_eq!(report.migrated_tables, 0);
@@ -635,24 +627,21 @@ fn interruption_after_first_rename_rolls_forward_completed_staging() {
 }
 
 #[test]
-fn interruption_after_first_rename_restores_backup_when_staging_is_incomplete() {
-    let path = test_path("restore-backup-incomplete-staging");
+fn interruption_after_first_rename_restores_backup_when_staging_is_gone() {
+    let path = test_path("restore-backup-without-staging");
     let backup = sibling(&path, BACKUP_SUFFIX);
     write_v1_foo(&backup, false);
     let original = snapshot(&backup);
 
-    let staging = sibling(&path, STAGING_SUFFIX);
-    fs::create_dir_all(&staging).expect("create staging");
-    fs::write(format!("{staging}/Foo.sql"), "half written").expect("write partial staging");
-    write_lock(&path, "building", true, true);
+    // The first rename completed, so the backup is authoritative, but the
+    // staging copy is not there to publish.
+    write_lock(&path, "ready");
 
     let report = migrate_to_latest(&path).expect("recover with backup restore");
     assert_eq!(report.migrated_tables, 1);
     assert_eq!(report.rewritten_rows, 1);
     assert_no_migration_artifacts(&path);
 
-    // The restored backup is the original storage, migrated from scratch, so
-    // the half-written staging content must not be visible.
     assert_eq!(original.len(), 3);
     let schema = fs::read_to_string(format!("{path}/Foo.sql")).expect("read schema");
     assert!(schema.starts_with(&format!(
@@ -679,7 +668,7 @@ fn interruption_after_second_rename_removes_backup_and_lock() {
 
     let backup = sibling(&path, BACKUP_SUFFIX);
     write_v1_foo(&backup, false);
-    write_lock(&path, "staged", true, true);
+    write_lock(&path, "ready");
 
     let report = migrate_to_latest(&path).expect("recover after second rename");
     assert_eq!(report.unchanged_tables, 1);
@@ -696,7 +685,7 @@ fn leftover_lock_alone_is_verified_and_removed() {
     migrate_to_latest(&path).expect("prepare migrated storage");
     let migrated = snapshot(&path);
 
-    write_lock(&path, "staged", true, true);
+    write_lock(&path, "ready");
     let err = FileStorage::new(&path).expect_err("locked storage should not open");
     assert!(
         err.to_string()
@@ -725,11 +714,11 @@ fn contradictory_layout_is_rejected_without_deleting_anything() {
     fs::write(format!("{staging}/marker"), "staging").expect("write staging marker");
     fs::create_dir_all(&backup).expect("create backup");
     fs::write(format!("{backup}/marker"), "backup").expect("write backup marker");
-    write_lock(&path, "building", true, true);
+    write_lock(&path, "building");
 
     let before = snapshot(&path);
     let err = migrate_to_latest(&path).expect_err("contradictory layout should fail");
-    assert!(err.to_string().contains("interrupted migration"));
+    assert!(err.to_string().contains("inconsistent"));
 
     assert_eq!(snapshot(&path), before);
     assert!(Path::new(&format!("{staging}/marker")).exists());

@@ -8,7 +8,7 @@ use {
     },
 };
 
-/// Siblings of the storage root: it is absent between the two cutover
+/// Siblings, not children: the storage root is absent between the two cutover
 /// renames, and a sibling keeps every rename on one filesystem.
 const LOCK_SUFFIX: &str = ".migration-lock";
 const STAGING_SUFFIX: &str = ".migrating";
@@ -34,10 +34,6 @@ impl MigrationPaths {
 
     pub(super) fn lock_of(storage: &Path) -> Result<PathBuf> {
         sibling(storage, LOCK_SUFFIX)
-    }
-
-    pub(super) fn layout(&self) -> Layout {
-        Layout::detect(self)
     }
 
     pub(super) fn ensure_storage_dir(&self) -> Result<()> {
@@ -102,31 +98,6 @@ impl MigrationPaths {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Layout {
-    Settled,
-    StagingBesideStorage,
-    BackupBesideStorage,
-    StorageRenamedAway { staging_present: bool },
-    Unexpected,
-}
-
-impl Layout {
-    fn detect(paths: &MigrationPaths) -> Self {
-        match (
-            paths.storage.exists(),
-            paths.backup.exists(),
-            paths.staging.exists(),
-        ) {
-            (true, false, false) => Self::Settled,
-            (true, false, true) => Self::StagingBesideStorage,
-            (true, true, false) => Self::BackupBesideStorage,
-            (false, true, staging_present) => Self::StorageRenamedAway { staging_present },
-            _ => Self::Unexpected,
-        }
-    }
-}
-
 fn sibling(path: &Path, suffix: &str) -> Result<PathBuf> {
     if let Some(name) = path.file_name().and_then(OsStr::to_str) {
         return Ok(path.with_file_name(format!("{name}{suffix}")));
@@ -145,6 +116,22 @@ fn sibling(path: &Path, suffix: &str) -> Result<PathBuf> {
         })
 }
 
+impl MigrationPaths {
+    pub(super) fn inconsistent_state_error(&self) -> Error {
+        Error::StorageMsg(format!(
+            "[FileStorage] the migration state of '{}' is inconsistent: storage exists={}, backup '{}' exists={}, staging '{}' exists={}, lock '{}' exists={}. Nothing was removed and the storage was not modified; resolve it by hand.",
+            self.storage.display(),
+            self.storage.exists(),
+            self.backup.display(),
+            self.backup.exists(),
+            self.staging.display(),
+            self.staging.exists(),
+            self.lock.display(),
+            self.lock.exists(),
+        ))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -158,31 +145,5 @@ mod tests {
             sibling(Path::new("."), LOCK_SUFFIX).expect("sibling of ."),
             cwd.with_file_name(format!("{name}{LOCK_SUFFIX}"))
         );
-    }
-
-    #[test]
-    fn layout_names_every_combination() {
-        let _ = fs::create_dir_all("tmp");
-        let root = PathBuf::from(format!("tmp/layout-{}", uuid::Uuid::now_v7()));
-        let paths = MigrationPaths::new(&root).expect("paths");
-
-        assert_eq!(paths.layout(), Layout::Unexpected);
-        fs::create_dir_all(&paths.storage).expect("create storage");
-        assert_eq!(paths.layout(), Layout::Settled);
-        fs::create_dir_all(&paths.staging).expect("create staging");
-        assert_eq!(paths.layout(), Layout::StagingBesideStorage);
-        fs::create_dir_all(&paths.backup).expect("create backup");
-        assert_eq!(paths.layout(), Layout::Unexpected);
-        fs::remove_dir_all(&paths.staging).expect("remove staging");
-        assert_eq!(paths.layout(), Layout::BackupBesideStorage);
-        fs::remove_dir_all(&paths.storage).expect("remove storage");
-        assert_eq!(
-            paths.layout(),
-            Layout::StorageRenamedAway {
-                staging_present: false
-            }
-        );
-
-        let _ = fs::remove_dir_all(&paths.backup);
     }
 }
