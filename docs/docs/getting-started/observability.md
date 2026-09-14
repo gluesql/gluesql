@@ -106,7 +106,7 @@ Enable GlueSQL instrumentation:
 
 ```toml
 [dependencies]
-gluesql = { version = "0.19", features = ["tracing"] }
+gluesql = { version = "0.20", features = ["tracing"] }
 ```
 
 No initialization call is required. `Glue::new` reads `RUST_LOG` and installs a formatted
@@ -171,7 +171,7 @@ Add the optional macro and tracing dependencies to the storage crate:
 tracing = ["dep:gluesql-macros", "dep:tracing", "gluesql-core/tracing"]
 
 [dependencies]
-gluesql-macros = { version = "0.19", optional = true }
+gluesql-macros = { version = "0.20", optional = true }
 tracing = { version = "0.1", optional = true }
 ```
 
@@ -186,13 +186,13 @@ impl Store for MyStorage {
 
 The default `capture = "full"` records every simple named argument with its `Debug`
 representation, records `row_count` for arguments named `rows` or `keys`, and records `Result`
-errors. Use `capture = "off"` to keep only timing. The generated span name follows
-`gluesql.<storage>.<method>`.
+errors. Use `capture = "off"` to keep timing and iterator counts without argument, row, or error
+values. The generated span name follows `gluesql.<storage>.<method>`.
 
 `scan_data` and `scan_indexed_data` results are wrapped automatically. The wrapper emits each
-yielded row or error as an event and records `row_count`, `error_count`, and `completed` when
-dropped. For an iterator-returning method on any other trait, mark it inside the attributed
-implementation:
+yielded row or error as an event when capture is enabled and records `row_count`, `error_count`,
+and `completed` when dropped. For an iterator-returning method on any other trait, mark it inside
+the attributed implementation:
 
 ```rust
 #[trace_iterator]
@@ -657,7 +657,7 @@ storage users:
 tracing = ["dep:gluesql-macros", "dep:tracing", "gluesql-core/tracing"]
 
 [dependencies]
-gluesql-macros = { version = "0.19", optional = true }
+gluesql-macros = { version = "0.20", optional = true }
 tracing = { version = "0.1", optional = true }
 
 [dev-dependencies]
@@ -887,9 +887,9 @@ Full tracing deliberately records query and storage values that may contain sens
 - `gluesql.execute` records SQL source text, and `gluesql.plan` records the SQL and bound parameters.
 - `trace_storage(capture = "full")` records simple named method arguments, including keys,
   schemas, and rows, together with `Result` errors.
-- `trace_storage` emits an event for every yielded row or error from traced iterators.
+- `trace_storage(capture = "full")` emits an event for every yielded row or error from traced iterators.
 
 Enable tracing only in environments where this data is acceptable. Use `capture = "off"` when a
-storage needs timing without argument and error values, and use an appropriate `RUST_LOG` filter
-to limit event volume. Applications are responsible for redaction, retention, and access-control
-policies in their selected subscriber or exporter.
+storage needs timing and iterator counts without argument, row, or error values, and use an
+appropriate `RUST_LOG` filter to limit event volume. Applications are responsible for redaction,
+retention, and access-control policies in their selected subscriber or exporter.
