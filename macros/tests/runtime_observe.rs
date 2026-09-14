@@ -316,6 +316,10 @@ struct ObservedStorage;
 
 #[trace_storage(name = "shared")]
 impl ObservedStorage {
+    fn scan_data(&self) -> Result<Box<dyn Iterator<Item = Result<u8>>>> {
+        Ok(Box::new([Ok(1), Err("private error")].into_iter()))
+    }
+
     fn lookup(&self, key: u8) -> Result<u8> {
         if key == 0 { Err("missing") } else { Ok(key) }
     }
@@ -329,6 +333,62 @@ impl ObservedStorage {
             return Err("opaque failure");
         }
         Ok([1, 2].into_iter())
+    }
+}
+
+struct TimingOnlyStorage;
+
+#[trace_storage(name = "timing_only", capture = "off")]
+impl TimingOnlyStorage {
+    fn scan_data(&self) -> Result<Box<dyn Iterator<Item = Result<u8>>>> {
+        Ok(Box::new([Ok(1), Err("private error")].into_iter()))
+    }
+
+    #[trace_iterator]
+    fn stream(&self) -> Result<Box<dyn Iterator<Item = Result<u8>>>> {
+        self.scan_data()
+    }
+}
+
+#[test]
+fn iterator_capture_off_preserves_counts_without_value_events() {
+    let capture = Capture::default();
+    tracing::subscriber::with_default(Registry::default().with(capture.clone()), || {
+        assert_eq!(
+            ObservedStorage.scan_data().unwrap().collect::<Vec<_>>(),
+            vec![Ok(1), Err("private error")]
+        );
+    });
+    {
+        let mut records = capture.0.lock().unwrap();
+        assert!(
+            records.iter().any(|(name, fields)| name == "event"
+                && fields.get("row").is_some_and(|value| value == "1"))
+        );
+        assert!(records.iter().any(|(name, fields)| {
+            name == "event"
+                && fields
+                    .get("error")
+                    .is_some_and(|value| value == "\"private error\"")
+        }));
+        records.clear();
+    }
+    tracing::subscriber::with_default(Registry::default().with(capture.clone()), || {
+        assert_eq!(
+            TimingOnlyStorage.stream().unwrap().collect::<Vec<_>>(),
+            vec![Ok(1), Err("private error")]
+        );
+    });
+    let records = capture.0.lock().unwrap();
+    assert!(records.iter().all(|(name, _)| name != "event"));
+    for name in [
+        "gluesql.timing_only.scan_rows",
+        "gluesql.timing_only.stream_rows",
+    ] {
+        let (_, fields) = records.iter().find(|(span, _)| span == name).unwrap();
+        assert_eq!(fields.get("row_count").map(String::as_str), Some("1"));
+        assert_eq!(fields.get("error_count").map(String::as_str), Some("1"));
+        assert_eq!(fields.get("completed").map(String::as_str), Some("true"));
     }
 }
 
