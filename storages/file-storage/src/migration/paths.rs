@@ -24,16 +24,23 @@ pub(super) struct MigrationPaths {
 
 impl MigrationPaths {
     pub(super) fn new(storage: &Path) -> Result<Self> {
+        let root = resolved_root(storage)?;
+        let name = root
+            .file_name()
+            .and_then(OsStr::to_str)
+            .ok_or_else(|| no_file_name_error(storage))?
+            .to_owned();
+
         Ok(Self {
-            storage: storage.to_owned(),
-            lock: sibling(storage, LOCK_SUFFIX)?,
-            staging: sibling(storage, STAGING_SUFFIX)?,
-            backup: sibling(storage, BACKUP_SUFFIX)?,
+            storage: root.with_file_name(&name),
+            lock: root.with_file_name(format!("{name}{LOCK_SUFFIX}")),
+            staging: root.with_file_name(format!("{name}{STAGING_SUFFIX}")),
+            backup: root.with_file_name(format!("{name}{BACKUP_SUFFIX}")),
         })
     }
 
     pub(super) fn lock_of(storage: &Path) -> Result<PathBuf> {
-        sibling(storage, LOCK_SUFFIX)
+        Self::new(storage).map(|paths| paths.lock)
     }
 
     pub(super) fn ensure_storage_dir(&self) -> Result<()> {
@@ -98,22 +105,20 @@ impl MigrationPaths {
     }
 }
 
-fn sibling(path: &Path, suffix: &str) -> Result<PathBuf> {
-    if let Some(name) = path.file_name().and_then(OsStr::to_str) {
-        return Ok(path.with_file_name(format!("{name}{suffix}")));
+/// `.` and `..` carry no name to build siblings from, and a trailing slash makes
+/// `symlink_metadata` follow a symlinked root instead of seeing it.
+fn resolved_root(path: &Path) -> Result<PathBuf> {
+    match path.file_name() {
+        Some(_) => Ok(path.to_owned()),
+        None => fs::canonicalize(path).map_storage_err(),
     }
+}
 
-    let resolved = fs::canonicalize(path).map_storage_err()?;
-    resolved
-        .file_name()
-        .and_then(OsStr::to_str)
-        .map(|name| resolved.with_file_name(format!("{name}{suffix}")))
-        .ok_or_else(|| {
-            Error::StorageMsg(format!(
-                "[FileStorage] storage path '{}' has no file name; migration needs sibling paths",
-                path.display()
-            ))
-        })
+fn no_file_name_error(path: &Path) -> Error {
+    Error::StorageMsg(format!(
+        "[FileStorage] storage path '{}' has no file name; migration needs sibling paths",
+        path.display()
+    ))
 }
 
 impl MigrationPaths {
@@ -140,10 +145,20 @@ mod tests {
     fn a_path_with_no_file_name_is_resolved_first() {
         let cwd = std::env::current_dir().expect("current dir");
         let name = cwd.file_name().and_then(OsStr::to_str).expect("cwd name");
+        let paths = MigrationPaths::new(Path::new(".")).expect("paths of .");
 
+        assert_eq!(paths.storage, cwd, "the root must be renamable");
         assert_eq!(
-            sibling(Path::new("."), LOCK_SUFFIX).expect("sibling of ."),
+            paths.lock,
             cwd.with_file_name(format!("{name}{LOCK_SUFFIX}"))
         );
+    }
+
+    #[test]
+    fn a_trailing_slash_still_leaves_a_symlinked_root_detectable() {
+        let paths = MigrationPaths::new(Path::new("tmp/some-db/")).expect("paths");
+
+        assert_eq!(paths.storage, Path::new("tmp/some-db"));
+        assert_eq!(paths.backup, Path::new("tmp/some-db.backup"));
     }
 }

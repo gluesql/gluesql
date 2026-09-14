@@ -19,10 +19,6 @@ pub(super) enum MigrationState {
 }
 
 pub(super) fn inspect(paths: &MigrationPaths) -> Result<MigrationState> {
-    let storage = paths.storage.exists();
-    let backup = paths.backup.exists();
-    let staging = paths.staging.exists();
-
     if !paths.lock.exists() {
         // Without a lock the sibling paths belong to whoever made them.
         paths.ensure_siblings_available()?;
@@ -30,11 +26,14 @@ pub(super) fn inspect(paths: &MigrationPaths) -> Result<MigrationState> {
         return Ok(MigrationState::Idle);
     }
 
+    // Read first: a stale phase reads earlier than it is, and earlier phases refuse.
+    let phase = MigrationLock::peek(&paths.lock)?.phase;
+
     match (
-        MigrationLock::peek(&paths.lock)?.phase,
-        storage,
-        backup,
-        staging,
+        phase,
+        paths.storage.exists(),
+        paths.backup.exists(),
+        paths.staging.exists(),
     ) {
         (LockPhase::Building, true, false, _) => Ok(MigrationState::Building),
         (LockPhase::Ready, true, false, true) => Ok(MigrationState::ReadyToCutover),
@@ -61,9 +60,8 @@ pub(super) fn finish_interrupted(paths: &MigrationPaths, state: MigrationState) 
         } => {
             let lock = MigrationLock::resume(&paths.lock)?;
             lock.rename(&paths.staging, &paths.storage)?;
-            lock.remove_dir_all(&paths.backup)?;
 
-            lock.release()
+            lock.discard_backup(&paths.backup)
         }
         MigrationState::SourceMoved {
             staging_present: false,
@@ -74,10 +72,7 @@ pub(super) fn finish_interrupted(paths: &MigrationPaths, state: MigrationState) 
             lock.release()
         }
         MigrationState::Published => {
-            let lock = MigrationLock::resume(&paths.lock)?;
-            lock.remove_dir_all(&paths.backup)?;
-
-            lock.release()
+            MigrationLock::resume(&paths.lock)?.discard_backup(&paths.backup)
         }
         MigrationState::CleanupPending => MigrationLock::resume(&paths.lock)?.release(),
     }

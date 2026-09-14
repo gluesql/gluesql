@@ -140,10 +140,19 @@ impl MigrationLock {
         fs::rename(from, to).map_storage_err()
     }
 
-    pub(super) fn remove_dir_all(&self, path: &Path) -> Result<()> {
+    /// The cutover has already published the new storage, so a backup that cannot
+    /// be removed must not keep the lock and shut the caller out of intact data.
+    pub(super) fn discard_backup(self, backup: &Path) -> Result<()> {
         self.ensure_owned()?;
+        let removed = fs::remove_dir_all(backup);
+        self.release()?;
 
-        fs::remove_dir_all(path).map_storage_err()
+        removed.map_err(|err| {
+            Error::StorageMsg(format!(
+                "[FileStorage] the migration finished, but its backup '{}' could not be removed: {err}. The storage is complete and can be opened; remove the backup by hand.",
+                backup.display()
+            ))
+        })
     }
 
     pub(super) fn release(mut self) -> Result<()> {

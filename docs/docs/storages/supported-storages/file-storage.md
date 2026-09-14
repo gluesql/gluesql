@@ -85,7 +85,7 @@ Library users can call `gluesql_file_storage::migrate_to_latest(path)` instead, 
 The migration does not edit the storage in place: it builds a complete copy beside the storage and swaps it in. Three paths appear next to the storage directory while it runs — `./data.migrating/`, `./data.backup/` and `./data.migration-lock` — and all three are gone when it finishes. So:
 
 - It needs free disk space of roughly the size of the storage.
-- Nothing else may be using the storage while it runs. `FileStorage::new` refuses to open the storage while the lock exists.
+- Nothing else may be using the storage while it runs. `FileStorage::new` refuses to open the storage while the lock exists, but that check happens at open time only: a handle opened beforehand keeps writing, and whatever it writes after its table has been copied is discarded with the backup. Close them first.
 - Those three paths must be free. If you keep your own copy of the storage next to it, do not name it `./data.backup/`; the migration refuses to start rather than touch a directory it did not create.
 
 If a run is interrupted, run the same command again. Your data is in either `./data/` or `./data.backup/` the whole time, and an interrupted swap is finished or undone automatically.

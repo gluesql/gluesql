@@ -27,11 +27,11 @@ pub(super) struct SourceRow {
 pub(super) type DecodeRow = fn(&Path) -> Result<SourceRow>;
 
 pub(super) fn build(source: &Path, staging: &Path, decode: DecodeRow) -> Result<usize> {
-    let schema_paths = schema_file::list_paths(source)?;
-    let table_names = schema_paths
+    let schemas = read_schemas(source)?;
+    let table_names = schemas
         .iter()
-        .map(|schema_path| schema_file::table_name(schema_path))
-        .collect::<Result<BTreeSet<_>>>()?;
+        .map(|(table_name, _)| table_name.clone())
+        .collect::<BTreeSet<_>>();
 
     let mut build = Build {
         source,
@@ -41,20 +41,36 @@ pub(super) fn build(source: &Path, staging: &Path, decode: DecodeRow) -> Result<
     };
     let mut rewritten_rows = 0;
 
-    for schema_path in schema_paths {
-        let table_name = schema_file::table_name(&schema_path)?;
-        let schema = schema_file::read(&schema_path)?;
-
-        build
-            .target
-            .insert_schema(&Schema::from_ddl(&schema.ddl)?)?;
-        rewritten_rows += build.copy_table(&table_name)?;
+    for (table_name, schema) in &schemas {
+        build.target.insert_schema(schema)?;
+        rewritten_rows += build.copy_table(table_name)?;
     }
 
     copy_foreign_entries(source, staging, &table_names)?;
     sync_tree(staging)?;
 
     Ok(rewritten_rows)
+}
+
+/// Each schema is staged under the name its DDL declares, not its file name.
+fn read_schemas(source: &Path) -> Result<Vec<(String, Schema)>> {
+    schema_file::list_paths(source)?
+        .into_iter()
+        .map(|schema_path| {
+            let table_name = schema_file::table_name(&schema_path)?;
+            let schema = Schema::from_ddl(&schema_file::read(&schema_path)?.ddl)?;
+
+            if schema.table_name != table_name {
+                return Err(Error::StorageMsg(format!(
+                    "[FileStorage] '{}' declares the table '{}', which its file name does not match; migrating it would overwrite that table and drop this file, so move it out of the storage directory first, no data was modified",
+                    schema_path.display(),
+                    schema.table_name
+                )));
+            }
+
+            Ok((table_name, schema))
+        })
+        .collect()
 }
 
 struct Build<'a> {
@@ -212,6 +228,7 @@ fn copy_symlink(source: &Path, _target: &Path) -> Result<()> {
 }
 
 /// `StoreMut::insert_data` does not fsync, and cutover removes the backup.
+/// Directories are flushed after their entries, so no published row is nameless.
 fn sync_tree(path: &Path) -> Result<()> {
     for entry in fs::read_dir(path).map_storage_err()? {
         let entry = entry.map_storage_err()?;
@@ -233,6 +250,20 @@ fn sync_tree(path: &Path) -> Result<()> {
             .map_storage_err()?;
     }
 
+    sync_dir(path)
+}
+
+#[cfg(unix)]
+fn sync_dir(path: &Path) -> Result<()> {
+    fs::File::open(path)
+        .map_storage_err()?
+        .sync_all()
+        .map_storage_err()
+}
+
+/// Windows cannot open a directory as a file; the ordering is the filesystem's.
+#[cfg(not(unix))]
+fn sync_dir(_path: &Path) -> Result<()> {
     Ok(())
 }
 
@@ -253,7 +284,7 @@ fn reject_leftovers_under(dir: &Path, table_names: &BTreeSet<String>) -> Result<
 
         if atomic_file::is_leftover(&path) {
             return Err(Error::StorageMsg(format!(
-                "[FileStorage] unexpected entry '{}' left by an interrupted write; the file it replaces may be missing, so restore or remove it before migrating, no data was modified",
+                "[FileStorage] unexpected entry '{}' left by an interrupted write; a '.bak-' entry holds the previous contents and may be the only copy of the file it replaces, so restore it under that name before migrating, no data was modified",
                 path.display()
             )));
         }

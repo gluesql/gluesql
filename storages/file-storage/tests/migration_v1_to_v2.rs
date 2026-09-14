@@ -1023,3 +1023,54 @@ fn an_entry_that_is_neither_a_file_nor_a_directory_is_refused() {
 
     cleanup(&path);
 }
+
+#[test]
+fn a_schema_file_naming_another_table_is_refused() {
+    let path = test_path("schema-name-mismatch");
+    write_v1_foo(&path, false);
+    fs::write(
+        format!("{path}/dump.sql"),
+        "CREATE TABLE Foo (totally TEXT, different TEXT);",
+    )
+    .expect("write a hand-placed schema");
+
+    let before = snapshot(&path);
+    let err = migrate_to_latest(&path).expect_err("a mismatched schema should be refused");
+    assert!(
+        err.to_string()
+            .contains("which its file name does not match")
+    );
+
+    assert_eq!(snapshot(&path), before);
+    assert_no_migration_artifacts(&path);
+
+    cleanup(&path);
+}
+
+#[cfg(unix)]
+#[test]
+fn a_backup_that_cannot_be_removed_still_leaves_the_storage_open() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let path = test_path("undeletable-backup");
+    write_v1_foo(&path, false);
+    fs::create_dir_all(format!("{path}/objects")).expect("create directory");
+    fs::write(format!("{path}/objects/blob"), "content").expect("write blob");
+    fs::set_permissions(format!("{path}/objects"), fs::Permissions::from_mode(0o555))
+        .expect("make the directory read-only");
+
+    let err = migrate_to_latest(&path).expect_err("removing the backup should fail");
+    assert!(err.to_string().contains("could not be removed"));
+
+    // The cutover already published the storage, so the lock must not survive it.
+    assert!(!Path::new(&sibling(&path, LOCK_SUFFIX)).exists());
+    assert!(Path::new(&sibling(&path, BACKUP_SUFFIX)).exists());
+    FileStorage::new(&path).expect("the migrated storage must open");
+
+    fs::set_permissions(
+        format!("{}/objects", sibling(&path, BACKUP_SUFFIX)),
+        fs::Permissions::from_mode(0o755),
+    )
+    .expect("restore permissions");
+    cleanup(&path);
+}

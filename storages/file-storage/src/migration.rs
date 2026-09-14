@@ -37,7 +37,7 @@ impl FileStorage {
         }
 
         Err(Error::StorageMsg(format!(
-            "[FileStorage] migration or recovery in progress for '{}'; lock '{}' exists, run migrate_to_latest to finish or recover it before opening",
+            "[FileStorage] migration or recovery in progress for '{}'; lock '{}' exists, run migrate_to_latest to finish or recover it before opening. Do not put anything of your own at the '.migrating' or '.backup' sibling paths; recovery treats them as its own and removes them",
             path.display(),
             lock_path.display(),
         )))
@@ -83,8 +83,7 @@ pub fn migrate_to_latest<T: AsRef<Path>>(path: T) -> Result<MigrationReport> {
     lock.rename(&paths.storage, &paths.backup)?;
     lock.rename(&paths.staging, &paths.storage)?;
 
-    lock.remove_dir_all(&paths.backup)?;
-    lock.release()?;
+    lock.discard_backup(&paths.backup)?;
 
     Ok(summarize(versions, rewritten_rows))
 }
