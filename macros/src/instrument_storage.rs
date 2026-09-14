@@ -102,6 +102,7 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> Result<TokenStream, syn::
             explicitly_traced || matches!(method_name.as_str(), "scan_data" | "scan_indexed_data");
 
         if should_trace_iterator {
+            let capture_full = args.capture_full;
             let ok_type = result_ok_type(&method.sig.output).ok_or_else(|| {
                 syn::Error::new_spanned(
                     &method.sig.output,
@@ -129,6 +130,7 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> Result<TokenStream, syn::
                         #gluesql::__private::TracedResultIterator::new(
                             __gluesql_iterator,
                             __gluesql_span,
+                            #capture_full,
                         ),
                     );
                     __gluesql_iterator

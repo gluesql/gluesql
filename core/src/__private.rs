@@ -25,16 +25,18 @@ pub fn ensure_default_subscriber() {
 pub struct TracedResultIterator<I> {
     inner: I,
     span: Span,
+    capture_full: bool,
     row_count: usize,
     error_count: usize,
     completed: bool,
 }
 
 impl<I> TracedResultIterator<I> {
-    pub fn new(inner: I, span: Span) -> Self {
+    pub fn new(inner: I, span: Span, capture_full: bool) -> Self {
         Self {
             inner,
             span,
+            capture_full,
             row_count: 0,
             error_count: 0,
             completed: false,
@@ -58,11 +60,15 @@ where
             match &item {
                 Some(Ok(row)) => {
                     self.row_count += 1;
-                    trace!(target: "gluesql", row = ?row, "storage iterator yielded a row");
+                    if self.capture_full {
+                        trace!(target: "gluesql", row = ?row, "storage iterator yielded a row");
+                    }
                 }
                 Some(Err(error)) => {
                     self.error_count += 1;
-                    trace!(target: "gluesql", error = ?error, "storage iterator yielded an error");
+                    if self.capture_full {
+                        trace!(target: "gluesql", error = ?error, "storage iterator yielded an error");
+                    }
                 }
                 None => self.completed = true,
             }
