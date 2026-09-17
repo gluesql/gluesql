@@ -162,3 +162,8 @@ UPDATE Pair SET v = 1 FROM Doc;
 -- @name: a joined source table is rejected
 UPDATE Pair SET v = 1 FROM Single JOIN Bonus ON TRUE;
 -- @expect: error Translate.JoinOnUpdateNotSupported
+
+-- @name: a derived table as the FROM source is rejected
+UPDATE Pair SET v = 1 FROM (SELECT x FROM Single) AS sub;
+-- @expect: error Translate.UnsupportedTableFactor
+-- @json: "(SELECT x FROM Single) AS sub"

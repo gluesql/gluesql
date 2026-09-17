@@ -203,6 +203,70 @@ SELECT id, email, hits FROM Login ORDER BY id;
 -- | 1       | "a@x.io"   | 11        |
 -- | 2       | "b@x.io"   | 1         |
 
+CREATE TABLE Member (
+    id INTEGER PRIMARY KEY,
+    handle TEXT UNIQUE,
+    score INTEGER
+);
+-- @expect: ok
+
+INSERT INTO Member VALUES (1, 'alice', 1), (2, 'bob', 2);
+-- @expect: payload Insert
+-- @json: 2
+
+-- @name: DO UPDATE may change a unique column to a value that is not in use
+INSERT INTO Member VALUES (1, 'zed', 0)
+ON CONFLICT (id) DO UPDATE SET handle = excluded.handle;
+-- @expect: payload Insert
+-- @json: 1
+
+SELECT id, handle FROM Member ORDER BY id;
+-- @expect:
+-- | id: I64 | handle: Str |
+-- | ------- | ----------- |
+-- | 1       | "zed"       |
+-- | 2       | "bob"       |
+
+-- @name: the old unique value is freed once it is no longer in use
+INSERT INTO Member VALUES (3, 'alice', 5);
+-- @expect: payload Insert
+-- @json: 1
+
+-- @name: the new unique value is still tracked and guards against duplicates
+INSERT INTO Member VALUES (4, 'zed', 9)
+ON CONFLICT (handle) DO UPDATE SET score = score + excluded.score;
+-- @expect: payload Insert
+-- @json: 1
+
+SELECT id, handle, score FROM Member ORDER BY id;
+-- @expect:
+-- | id: I64 | handle: Str | score: I64 |
+-- | ------- | ----------- | ---------- |
+-- | 1       | "zed"       | 10         |
+-- | 2       | "bob"       | 2          |
+-- | 3       | "alice"     | 5          |
+
+CREATE TABLE Ticket (code TEXT UNIQUE, status TEXT);
+-- @expect: ok
+
+INSERT INTO Ticket VALUES ('t1', 'open'), ('t2', 'open');
+-- @expect: payload Insert
+-- @json: 2
+
+-- @name: DO UPDATE against a table without a primary key updates the matching row and inserts the rest
+INSERT INTO Ticket VALUES ('t1', 'closed'), ('t3', 'open')
+ON CONFLICT (code) DO UPDATE SET status = excluded.status;
+-- @expect: payload Insert
+-- @json: 2
+
+SELECT code, status FROM Ticket ORDER BY code;
+-- @expect:
+-- | code: Str | status: Str |
+-- | --------- | ----------- |
+-- | "t1"      | "closed"    |
+-- | "t2"      | "open"      |
+-- | "t3"      | "open"      |
+
 CREATE TABLE Tag (id INTEGER PRIMARY KEY, label TEXT UNIQUE);
 -- @expect: ok
 
@@ -250,6 +314,16 @@ INSERT INTO Item VALUES (1, 'p', 0) ON CONFLICT (id, name) DO NOTHING;
 INSERT INTO Item VALUES (1, 'p', 0) ON CONFLICT (name) DO NOTHING;
 -- @expect: error Insert.ConflictTargetNotUnique
 -- @json: "name"
+
+-- @name: MySQL's ON DUPLICATE KEY UPDATE is not supported
+INSERT INTO Item VALUES (1, 'p', 0) ON DUPLICATE KEY UPDATE qty = 1;
+-- @expect: error Translate.UnsupportedInsertOption
+-- @json: "ON CONFLICT clause"
+
+-- @name: ON CONFLICT ON CONSTRAINT is not supported
+INSERT INTO Item VALUES (1, 'p', 0) ON CONFLICT ON CONSTRAINT item_pkey DO NOTHING;
+-- @expect: error Translate.UnsupportedInsertOption
+-- @json: "ON CONFLICT clause"
 
 -- @name: DO UPDATE requires a conflict target
 INSERT INTO Item VALUES (1, 'p', 0) ON CONFLICT DO UPDATE SET qty = 1;
