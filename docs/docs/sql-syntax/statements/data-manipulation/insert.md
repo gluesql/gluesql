@@ -80,3 +80,77 @@ If you try to insert a row without specifying a value for a column with the `NOT
 INSERT INTO Test (id, num) VALUES (1, 10);
 -- Error: LackOfRequiredColumn("name")
 ```
+
+## ON CONFLICT
+
+An `INSERT` may end with an `ON CONFLICT` clause that says what to do when a row would
+duplicate a value in a `PRIMARY KEY` or `UNIQUE` column.
+
+```sql
+INSERT INTO table_name (column1, column2, ...)
+VALUES (value1, value2, ...)
+ON CONFLICT [ ( conflict_column ) ] DO NOTHING;
+
+INSERT INTO table_name (column1, column2, ...)
+VALUES (value1, value2, ...)
+ON CONFLICT ( conflict_column ) DO UPDATE SET column1 = expression, ...
+[ WHERE condition ];
+```
+
+The optional conflict target restricts the check to the named column, which must be a
+`PRIMARY KEY` or `UNIQUE` column. `DO NOTHING` without a target checks every such column.
+`DO UPDATE` always requires a target.
+
+### DO NOTHING
+
+Conflicting rows are skipped and the remaining rows are inserted:
+
+```sql
+CREATE TABLE Item (id INTEGER PRIMARY KEY, name TEXT, qty INTEGER);
+INSERT INTO Item VALUES (1, 'pen', 3), (2, 'ink', 5);
+
+INSERT INTO Item VALUES (1, 'dup', 9), (3, 'pad', 7) ON CONFLICT DO NOTHING;
+-- 1 row inserted, the row with id 1 is skipped
+```
+
+### DO UPDATE
+
+The stored row receives the assignments. Their expressions read the stored row's columns
+directly, and the row that failed to insert through the `excluded` alias:
+
+```sql
+INSERT INTO Item VALUES (2, 'ink-v2', 10)
+ON CONFLICT (id) DO UPDATE SET qty = qty + excluded.qty, name = excluded.name;
+```
+
+An optional `WHERE` condition, which may also reference `excluded`, decides whether the
+update happens at all. A row whose condition does not hold is left untouched:
+
+```sql
+INSERT INTO Item VALUES (1, 'pen', 5)
+ON CONFLICT (id) DO UPDATE SET qty = excluded.qty WHERE excluded.qty > qty;
+```
+
+Rows are processed in statement order, so a row inserted earlier in the same statement can
+be the one a later row conflicts with. `NULL` never conflicts with anything. The primary
+key may not be assigned in `DO UPDATE`, an update may not create a duplicate in another
+unique column, and a conflict on a unique column outside the conflict target still fails
+the statement the way a plain `INSERT` does.
+
+`ON CONFLICT` requires a table with a declared schema.
+
+## RETURNING
+
+`INSERT`, `UPDATE` and `DELETE` accept a `RETURNING` clause that takes the same projection
+shapes a `SELECT` does, and turns the statement's result into rows instead of a count:
+
+```sql
+INSERT INTO Item VALUES (4, 'clip', 1) RETURNING *;
+INSERT INTO Item VALUES (5, 'tape', 7) RETURNING id, qty * 2 AS double;
+```
+
+An `INSERT` returns the stored rows in statement order, including rows an `ON CONFLICT`
+update touched with their final values, and excluding the ones it skipped. A statement
+that affects no rows returns an empty result that still carries the labels.
+
+`RETURNING` requires a table with a declared schema.

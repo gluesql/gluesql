@@ -66,9 +66,61 @@ You can update a column based on the result of another query. For example, to up
 UPDATE TableA SET num2 = (SELECT rank FROM TableB WHERE num = TableA.num) WHERE num = (SELECT MIN(num) FROM TableA);
 ```
 
+## Updating from Another Table
+
+An `UPDATE` may name one additional table in a `FROM` clause. The `WHERE` condition decides
+which target and source rows pair up and may reference both sides; a bare column name
+resolves against the target table first and the source table second.
+
+```sql
+UPDATE table_name
+SET column1 = expression, ...
+FROM source_table [ AS alias ]
+WHERE condition;
+```
+
+For example, with a `Restock` table holding `(item_id, amount)` pairs:
+
+```sql
+UPDATE Item SET qty = qty + r.amount FROM Restock AS r WHERE id = r.item_id;
+```
+
+A target row that matches no source row is left untouched, and a target row matching more
+than one source row fails the statement. Without a `WHERE` condition every source row
+matches.
+
+`FROM` requires both tables to have a declared schema.
+
+## RETURNING
+
+`UPDATE` accepts a `RETURNING` clause, which takes the same projection shapes a `SELECT`
+does and returns the updated rows as they look after the update:
+
+```sql
+UPDATE Item SET qty = qty * 10 WHERE id = 1 RETURNING id, qty AS scaled;
+```
+
+With a `FROM` clause the projection may also reference the matched source row's columns.
+A star still expands to the target table's columns only:
+
+```sql
+UPDATE Item SET qty = qty + r.amount FROM Restock AS r WHERE id = r.item_id
+RETURNING id, qty, r.amount AS applied;
+```
+
+An `UPDATE` that matches no row returns an empty result that still carries the labels.
+`RETURNING` requires a table with a declared schema.
+
+:::note
+The SQL parser can read `RETURNING` as an alias for the table right before it, so a
+`RETURNING` clause needs either a `WHERE` clause or an explicit alias ahead of it:
+`UPDATE Item SET qty = 0 FROM Restock AS r RETURNING *`.
+:::
+
 ## Not Supported Features
 
 - Using `JOIN` in an `UPDATE` statement is not supported.
+- More than one table in the `FROM` clause is not supported.
 - Updating a table using compound identifiers (e.g., `ErrTestTable.id = 1`) is not supported.
 - Updating a non-existent table will result in a `TableNotFound` error.
 - Updating a non-existent column will result in a `ColumnNotFound` error.

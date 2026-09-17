@@ -23,6 +23,9 @@ pub enum UpdateError {
     #[error("conflict on schema, row data does not fit to schema")]
     ConflictOnSchema,
 
+    #[error("multiple rows in the FROM table match the same target row")]
+    MultipleSourceRowsForTargetRow,
+
     #[error("conflict on schemaless row, expected first value to be map")]
     ConflictOnNonMapSchemalessRow,
 
@@ -73,7 +76,24 @@ impl<'a, T: GStore> Update<'a, T> {
     }
 
     pub fn apply(&self, row: Row, foreign_keys: &[ForeignKey]) -> Result<Row> {
-        let context = RowContext::new(self.table_name, Cow::Borrowed(&row), None);
+        self.apply_with(row, foreign_keys, None)
+    }
+
+    /// Applies the assignments like [`Update::apply`], additionally exposing
+    /// `extra` as a chained row context under the given alias.
+    /// `INSERT ... ON CONFLICT DO UPDATE` uses this to make the proposed row
+    /// reachable as `excluded`, and `UPDATE ... FROM` to expose the matched
+    /// source row.
+    pub fn apply_with(
+        &self,
+        row: Row,
+        foreign_keys: &[ForeignKey],
+        extra: Option<(&str, &Row)>,
+    ) -> Result<Row> {
+        let next = extra.map(|(alias, extra_row)| {
+            Rc::new(RowContext::new(alias, Cow::Borrowed(extra_row), None))
+        });
+        let context = RowContext::new(self.table_name, Cow::Borrowed(&row), next);
         let context = Some(Rc::new(context));
 
         let mut assignments = Vec::with_capacity(self.fields.len());

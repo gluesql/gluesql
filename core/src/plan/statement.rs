@@ -37,15 +37,21 @@ pub enum StatementPlan {
         table_name: String,
         columns: Vec<String>,
         source: QueryPlan,
+        on_conflict: Option<OnConflictPlan>,
+        returning: Option<Vec<SelectItemPlan>>,
     },
     Update {
         table_name: String,
         assignments: Vec<AssignmentPlan>,
+        from: Option<ast::SourceTable>,
         selection: Option<ExprPlan>,
+        returning: Option<Vec<SelectItemPlan>>,
     },
     Delete {
         table_name: String,
+        using: Option<ast::SourceTable>,
         selection: Option<ExprPlan>,
+        returning: Option<Vec<SelectItemPlan>>,
     },
     CreateTable {
         if_not_exists: bool,
@@ -97,6 +103,44 @@ pub struct AssignmentPlan {
     pub value: ExprPlan,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct OnConflictPlan {
+    pub conflict_target: Vec<String>,
+    pub action: OnConflictActionPlan,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum OnConflictActionPlan {
+    DoNothing,
+    DoUpdate {
+        assignments: Vec<AssignmentPlan>,
+        selection: Option<ExprPlan>,
+    },
+}
+
+impl From<ast::OnConflict> for OnConflictPlan {
+    fn from(on_conflict: ast::OnConflict) -> Self {
+        let ast::OnConflict {
+            conflict_target,
+            action,
+        } = on_conflict;
+
+        Self {
+            conflict_target,
+            action: match action {
+                ast::OnConflictAction::DoNothing => OnConflictActionPlan::DoNothing,
+                ast::OnConflictAction::DoUpdate {
+                    assignments,
+                    selection,
+                } => OnConflictActionPlan::DoUpdate {
+                    assignments: assignments.into_iter().map(Into::into).collect(),
+                    selection: selection.map(Into::into),
+                },
+            },
+        }
+    }
+}
+
 impl From<ast::Statement> for StatementPlan {
     fn from(statement: ast::Statement) -> Self {
         match statement {
@@ -106,26 +150,38 @@ impl From<ast::Statement> for StatementPlan {
                 table_name,
                 columns,
                 source,
+                on_conflict,
+                returning,
             } => Self::Insert {
                 table_name,
                 columns,
                 source: source.into(),
+                on_conflict: on_conflict.map(Into::into),
+                returning: returning.map(|items| items.into_iter().map(Into::into).collect()),
             },
             ast::Statement::Update {
                 table_name,
                 assignments,
+                from,
                 selection,
+                returning,
             } => Self::Update {
                 table_name,
                 assignments: assignments.into_iter().map(Into::into).collect(),
+                from,
                 selection: selection.map(Into::into),
+                returning: returning.map(|items| items.into_iter().map(Into::into).collect()),
             },
             ast::Statement::Delete {
                 table_name,
+                using,
                 selection,
+                returning,
             } => Self::Delete {
                 table_name,
+                using,
                 selection: selection.map(Into::into),
+                returning: returning.map(|items| items.into_iter().map(Into::into).collect()),
             },
             ast::Statement::CreateTable {
                 if_not_exists,

@@ -1531,11 +1531,13 @@ mod tests {
         let actual = plan(&storage, sql);
         let expected = StatementPlan::from(Statement::Delete {
             table_name: "Player".to_owned(),
+            using: None,
             selection: Some(Expr::BinaryOp {
                 left: Box::new(Expr::Identifier("id".to_owned())),
                 op: BinaryOperator::Eq,
                 right: Box::new(Expr::Literal(Literal::Number(1.into()))),
             }),
+            returning: None,
         });
         assert_eq!(actual, expected, "delete statement:\n{sql}");
 

@@ -41,6 +41,8 @@ fn transform_statement<S: BuildHasher>(
             table_name,
             columns,
             mut source,
+            on_conflict,
+            returning,
         } => {
             transform_query(schema_map, &mut source);
             let columns = if is_schemaless_table(schema_map, &table_name) {
@@ -53,12 +55,16 @@ fn transform_statement<S: BuildHasher>(
                 table_name,
                 columns,
                 source,
+                on_conflict,
+                returning,
             }
         }
         StatementPlan::Update {
             table_name,
             assignments,
+            from,
             selection,
+            returning,
         } => {
             let table_is_schemaless = is_schemaless_table(schema_map, &table_name);
 
@@ -85,12 +91,16 @@ fn transform_statement<S: BuildHasher>(
             StatementPlan::Update {
                 table_name,
                 assignments,
+                from,
                 selection,
+                returning,
             }
         }
         StatementPlan::Delete {
             table_name,
+            using,
             selection,
+            returning,
         } => {
             let table_is_schemaless = is_schemaless_table(schema_map, &table_name);
 
@@ -106,7 +116,9 @@ fn transform_statement<S: BuildHasher>(
 
             StatementPlan::Delete {
                 table_name,
+                using,
                 selection,
+                returning,
             }
         }
         StatementPlan::CreateTable {

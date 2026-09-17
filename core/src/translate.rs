@@ -13,7 +13,7 @@ pub use self::{
     ddl::translate_column_def,
     error::{
         CreateIndexOption, CreateTableOption, DeleteOption, InsertOption, JoinConstraintReason,
-        QueryOption, SelectOption, TransactionOption, TranslateError, UpdateOption,
+        QueryOption, SelectOption, TransactionOption, TranslateError,
     },
     expr::{translate_expr, translate_order_by_expr},
     param::{IntoParamLiteral, ParamLiteral},
@@ -22,17 +22,22 @@ pub use self::{
 
 use {
     crate::{
-        ast::{Assignment, Expr, ForeignKey, ReferentialAction, Statement, Variable},
+        ast::{
+            Assignment, Expr, ForeignKey, OnConflict, OnConflictAction, ReferentialAction,
+            SelectItem, SourceTable, Statement, Variable,
+        },
         result::Result,
     },
     ddl::{translate_alter_table_operation, translate_operate_function_arg},
     sqlparser::ast::{
         Assignment as SqlAssignment, AssignmentTarget as SqlAssignmentTarget,
-        CommentDef as SqlCommentDef, CreateFunctionBody as SqlCreateFunctionBody,
-        CreateIndex as SqlCreateIndex, CreateTable as SqlCreateTable, Delete as SqlDelete,
-        FromTable as SqlFromTable, Ident as SqlIdent, Insert as SqlInsert,
-        ObjectName as SqlObjectName, ObjectType as SqlObjectType,
-        ReferentialAction as SqlReferentialAction, Statement as SqlStatement,
+        CommentDef as SqlCommentDef, ConflictTarget as SqlConflictTarget,
+        CreateFunctionBody as SqlCreateFunctionBody, CreateIndex as SqlCreateIndex,
+        CreateTable as SqlCreateTable, Delete as SqlDelete, FromTable as SqlFromTable,
+        Ident as SqlIdent, Insert as SqlInsert, ObjectName as SqlObjectName,
+        ObjectType as SqlObjectType, OnConflictAction as SqlOnConflictAction,
+        OnInsert as SqlOnInsert, ReferentialAction as SqlReferentialAction,
+        SelectItem as SqlSelectItem, Statement as SqlStatement,
         TableConstraint as SqlTableConstraint, TableFactor, TableWithJoins,
     },
     std::num::NonZeroUsize,
@@ -76,11 +81,7 @@ pub fn translate_with_params(
             table,
             ..
         }) => {
-            let violation = if returning.is_some() {
-                Some(InsertOption::Returning)
-            } else if on.is_some() {
-                Some(InsertOption::OnConflict)
-            } else if table_alias.is_some() {
+            let violation = if table_alias.is_some() {
                 Some(InsertOption::TableAlias)
             } else if partitioned.is_some() {
                 Some(InsertOption::Partition)
@@ -95,6 +96,19 @@ pub fn translate_with_params(
             if let Some(reason) = violation {
                 return Err(TranslateError::UnsupportedInsertOption(reason).into());
             }
+
+            let on_conflict = match on {
+                Some(SqlOnInsert::OnConflict(on_conflict)) => {
+                    Some(translate_on_conflict(on_conflict, params)?)
+                }
+                Some(_) => {
+                    return Err(
+                        TranslateError::UnsupportedInsertOption(InsertOption::OnConflict).into(),
+                    );
+                }
+                None => None,
+            };
+            let returning = translate_returning(returning.as_deref(), params)?;
 
             let table_name = translate_object_name(table_name)?;
             let columns = translate_idents(columns);
@@ -112,6 +126,8 @@ pub fn translate_with_params(
                 table_name,
                 columns,
                 source,
+                on_conflict,
+                returning,
             })
         }
         SqlStatement::Update {
@@ -121,31 +137,19 @@ pub fn translate_with_params(
             from,
             returning,
             ..
-        } => {
-            let violation = if from.is_some() {
-                Some(UpdateOption::From)
-            } else if returning.is_some() {
-                Some(UpdateOption::Returning)
-            } else {
-                None
-            };
-
-            if let Some(reason) = violation {
-                return Err(TranslateError::UnsupportedUpdateOption(reason).into());
-            }
-
-            Ok(Statement::Update {
-                table_name: translate_table_with_join(table)?,
-                assignments: assignments
-                    .iter()
-                    .map(|assignment| translate_assignment(assignment, params))
-                    .collect::<Result<_>>()?,
-                selection: selection
-                    .as_ref()
-                    .map(|expr| translate_expr(expr, params))
-                    .transpose()?,
-            })
-        }
+        } => Ok(Statement::Update {
+            table_name: translate_table_with_join(table)?,
+            assignments: assignments
+                .iter()
+                .map(|assignment| translate_assignment(assignment, params))
+                .collect::<Result<_>>()?,
+            from: from.as_ref().map(translate_source_table).transpose()?,
+            selection: selection
+                .as_ref()
+                .map(|expr| translate_expr(expr, params))
+                .transpose()?,
+            returning: translate_returning(returning.as_deref(), params)?,
+        }),
         SqlStatement::Delete(SqlDelete {
             from,
             using,
@@ -155,11 +159,7 @@ pub fn translate_with_params(
             limit,
             ..
         }) => {
-            let violation = if using.is_some() {
-                Some(DeleteOption::Using)
-            } else if returning.is_some() {
-                Some(DeleteOption::Returning)
-            } else if !order_by.is_empty() {
+            let violation = if !order_by.is_empty() {
                 Some(DeleteOption::OrderBy)
             } else if limit.is_some() {
                 Some(DeleteOption::Limit)
@@ -183,12 +183,22 @@ pub fn translate_with_params(
                 .next()
                 .ok_or(TranslateError::UnreachableEmptyTable)??;
 
+            let using = match using.as_deref() {
+                Some([table]) => Some(translate_source_table(table)?),
+                Some(_) => {
+                    return Err(TranslateError::UnsupportedDeleteOption(DeleteOption::Using).into());
+                }
+                None => None,
+            };
+
             Ok(Statement::Delete {
                 table_name,
+                using,
                 selection: selection
                     .as_ref()
                     .map(|expr| translate_expr(expr, params))
                     .transpose()?,
+                returning: translate_returning(returning.as_deref(), params)?,
             })
         }
         SqlStatement::CreateTable(SqlCreateTable {
@@ -541,6 +551,67 @@ pub fn translate_assignment(
     })
 }
 
+fn translate_on_conflict(
+    on_conflict: &sqlparser::ast::OnConflict,
+    params: &[ParamLiteral],
+) -> Result<OnConflict> {
+    let conflict_target = match &on_conflict.conflict_target {
+        Some(SqlConflictTarget::Columns(columns)) => translate_idents(columns),
+        Some(SqlConflictTarget::OnConstraint(_)) => {
+            return Err(TranslateError::UnsupportedInsertOption(InsertOption::OnConflict).into());
+        }
+        None => Vec::new(),
+    };
+
+    let action = match &on_conflict.action {
+        SqlOnConflictAction::DoNothing => OnConflictAction::DoNothing,
+        SqlOnConflictAction::DoUpdate(do_update) => OnConflictAction::DoUpdate {
+            assignments: do_update
+                .assignments
+                .iter()
+                .map(|assignment| translate_assignment(assignment, params))
+                .collect::<Result<_>>()?,
+            selection: do_update
+                .selection
+                .as_ref()
+                .map(|expr| translate_expr(expr, params))
+                .transpose()?,
+        },
+    };
+
+    Ok(OnConflict {
+        conflict_target,
+        action,
+    })
+}
+
+fn translate_returning(
+    returning: Option<&[SqlSelectItem]>,
+    params: &[ParamLiteral],
+) -> Result<Option<Vec<SelectItem>>> {
+    returning
+        .map(|items| {
+            items
+                .iter()
+                .map(|item| translate_select_item(item, params))
+                .collect::<Result<Vec<_>>>()
+        })
+        .transpose()
+}
+
+fn translate_source_table(table: &TableWithJoins) -> Result<SourceTable> {
+    if !table.joins.is_empty() {
+        return Err(TranslateError::JoinOnUpdateNotSupported.into());
+    }
+    match &table.relation {
+        TableFactor::Table { name, alias, .. } => Ok(SourceTable {
+            name: translate_object_name(name)?,
+            alias: alias.as_ref().map(|alias| alias.name.value.clone()),
+        }),
+        t => Err(TranslateError::UnsupportedTableFactor(t.to_string()).into()),
+    }
+}
+
 fn translate_table_with_join(table: &TableWithJoins) -> Result<String> {
     if !table.joins.is_empty() {
         return Err(TranslateError::JoinOnUpdateNotSupported.into());
@@ -674,14 +745,6 @@ mod tests {
     fn insert_options_not_supported() {
         let cases = [
             (
-                "INSERT INTO Foo VALUES (1) RETURNING *",
-                TranslateError::UnsupportedInsertOption(InsertOption::Returning),
-            ),
-            (
-                "INSERT INTO Foo VALUES (1) ON CONFLICT DO NOTHING",
-                TranslateError::UnsupportedInsertOption(InsertOption::OnConflict),
-            ),
-            (
                 "INSERT INTO Foo AS f VALUES (1)",
                 TranslateError::UnsupportedInsertOption(InsertOption::TableAlias),
             ),
@@ -705,34 +768,8 @@ mod tests {
     }
 
     #[test]
-    fn update_options_not_supported() {
-        let cases = [
-            (
-                "UPDATE Foo SET id = 1 FROM Bar",
-                TranslateError::UnsupportedUpdateOption(UpdateOption::From),
-            ),
-            (
-                "UPDATE Foo SET id = 1 WHERE id = 1 RETURNING *",
-                TranslateError::UnsupportedUpdateOption(UpdateOption::Returning),
-            ),
-        ];
-
-        for (sql, err) in cases {
-            assert_translate_error(sql, err);
-        }
-    }
-
-    #[test]
     fn delete_options_not_supported() {
         let cases = [
-            (
-                "DELETE FROM Foo USING Bar",
-                TranslateError::UnsupportedDeleteOption(DeleteOption::Using),
-            ),
-            (
-                "DELETE FROM Foo WHERE id = 1 RETURNING *",
-                TranslateError::UnsupportedDeleteOption(DeleteOption::Returning),
-            ),
             (
                 "DELETE FROM Foo WHERE id = 1 ORDER BY id",
                 TranslateError::UnsupportedDeleteOption(DeleteOption::OrderBy),

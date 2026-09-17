@@ -67,11 +67,9 @@ pub enum CreateIndexOption {
 /// inspecting a free-form string.
 #[derive(Display, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InsertOption {
-    /// `INSERT ... RETURNING ...`
-    #[strum(to_string = "RETURNING clause")]
-    Returning,
-
-    /// `INSERT ... ON CONFLICT ...`
+    /// Conflict handling other than `ON CONFLICT [(<column>)] DO ...`, such as
+    /// `ON CONFLICT ON CONSTRAINT <name>` or `MySQL`'s
+    /// `ON DUPLICATE KEY UPDATE`.
     #[strum(to_string = "ON CONFLICT clause")]
     OnConflict,
 
@@ -92,22 +90,6 @@ pub enum InsertOption {
     TableKeyword,
 }
 
-/// `UPDATE` clauses that `GlueSQL` does not support yet.
-///
-/// Carried by [`TranslateError::UnsupportedUpdateOption`] so callers can
-/// match exhaustively on every currently-rejected clause instead of
-/// inspecting a free-form string.
-#[derive(Display, Debug, Clone, Copy, PartialEq, Eq)]
-pub enum UpdateOption {
-    /// `UPDATE ... FROM ...`
-    #[strum(to_string = "FROM clause")]
-    From,
-
-    /// `UPDATE ... RETURNING ...`
-    #[strum(to_string = "RETURNING clause")]
-    Returning,
-}
-
 /// `DELETE` clauses that `GlueSQL` does not support yet.
 ///
 /// Carried by [`TranslateError::UnsupportedDeleteOption`] so callers can
@@ -115,13 +97,9 @@ pub enum UpdateOption {
 /// inspecting a free-form string.
 #[derive(Display, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DeleteOption {
-    /// `DELETE ... USING ...`
+    /// `DELETE ... USING <table>, <table>, ...` with more than one table.
     #[strum(to_string = "USING clause")]
     Using,
-
-    /// `DELETE ... RETURNING ...`
-    #[strum(to_string = "RETURNING clause")]
-    Returning,
 
     /// `DELETE ... ORDER BY ...`
     #[strum(to_string = "ORDER BY clause")]
@@ -229,7 +207,6 @@ serialize_via_display!(
     CreateIndexOption,
     CreateTableOption,
     InsertOption,
-    UpdateOption,
     DeleteOption,
     TransactionOption,
     QueryOption,
@@ -313,9 +290,6 @@ pub enum TranslateError {
 
     #[error("unsupported CREATE INDEX option: {0}")]
     UnsupportedCreateIndexOption(CreateIndexOption),
-
-    #[error("unsupported UPDATE option: {0}")]
-    UnsupportedUpdateOption(UpdateOption),
 
     #[error("unsupported DELETE option: {0}")]
     UnsupportedDeleteOption(DeleteOption),

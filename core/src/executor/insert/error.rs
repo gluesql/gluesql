@@ -34,4 +34,16 @@ pub enum InsertError {
 
     #[error("unreachable referencing column name: {0}")]
     ConflictReferencingColumnName(String),
+
+    #[error("ON CONFLICT is not supported on schemaless table: {0}")]
+    OnConflictOnSchemalessTable(String),
+
+    #[error("ON CONFLICT DO UPDATE requires a conflict target column")]
+    ConflictTargetRequiredForDoUpdate,
+
+    #[error("conflict target must be a single column")]
+    ConflictTargetMustBeSingleColumn,
+
+    #[error("conflict target is not a primary key or unique column: {0}")]
+    ConflictTargetNotUnique(String),
 }

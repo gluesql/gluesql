@@ -60,6 +60,10 @@ pub enum Statement {
         columns: Vec<String>,
         /// A SQL query that specifies what to insert
         source: Query,
+        /// ON CONFLICT
+        on_conflict: Option<OnConflict>,
+        /// RETURNING
+        returning: Option<Vec<SelectItem>>,
     },
     /// UPDATE
     Update {
@@ -67,15 +71,23 @@ pub enum Statement {
         table_name: String,
         /// Column assignments
         assignments: Vec<Assignment>,
+        /// FROM
+        from: Option<SourceTable>,
         /// WHERE
         selection: Option<Expr>,
+        /// RETURNING
+        returning: Option<Vec<SelectItem>>,
     },
     /// DELETE
     Delete {
         /// FROM
         table_name: String,
+        /// USING
+        using: Option<SourceTable>,
         /// WHERE
         selection: Option<Expr>,
+        /// RETURNING
+        returning: Option<Vec<SelectItem>>,
     },
     /// CREATE TABLE
     CreateTable {
@@ -145,6 +157,29 @@ pub enum Statement {
 pub struct Assignment {
     pub id: String,
     pub value: Expr,
+}
+
+/// An additional table joined into an UPDATE (via FROM) or DELETE (via USING).
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct SourceTable {
+    pub name: String,
+    pub alias: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct OnConflict {
+    /// Conflict target columns, e.g. `ON CONFLICT (id)`; empty when omitted
+    pub conflict_target: Vec<String>,
+    pub action: OnConflictAction,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum OnConflictAction {
+    DoNothing,
+    DoUpdate {
+        assignments: Vec<Assignment>,
+        selection: Option<Expr>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

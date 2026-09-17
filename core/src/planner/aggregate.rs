@@ -22,12 +22,30 @@ pub fn plan(statement: StatementPlan) -> StatementPlan {
             table_name,
             columns,
             mut source,
+            mut on_conflict,
+            mut returning,
         } => {
             plan_query(&mut source);
+            if let Some(crate::plan::OnConflictPlan { action, .. }) = on_conflict.as_mut()
+                && let crate::plan::OnConflictActionPlan::DoUpdate {
+                    assignments,
+                    selection,
+                } = action
+            {
+                for assignment in assignments.iter_mut() {
+                    plan_expr(&mut assignment.value);
+                }
+                if let Some(selection) = selection.as_mut() {
+                    plan_expr(selection);
+                }
+            }
+            plan_returning(returning.as_mut());
             StatementPlan::Insert {
                 table_name,
                 columns,
                 source,
+                on_conflict,
+                returning,
             }
         }
         StatementPlan::CreateTable {
@@ -56,7 +74,9 @@ pub fn plan(statement: StatementPlan) -> StatementPlan {
         StatementPlan::Update {
             table_name,
             mut assignments,
+            from,
             mut selection,
+            mut returning,
         } => {
             for assignment in &mut assignments {
                 plan_expr(&mut assignment.value);
@@ -66,26 +86,46 @@ pub fn plan(statement: StatementPlan) -> StatementPlan {
                 plan_expr(selection);
             }
 
+            plan_returning(returning.as_mut());
+
             StatementPlan::Update {
                 table_name,
                 assignments,
+                from,
                 selection,
+                returning,
             }
         }
         StatementPlan::Delete {
             table_name,
+            using,
             mut selection,
+            mut returning,
         } => {
             if let Some(selection) = selection.as_mut() {
                 plan_expr(selection);
             }
 
+            plan_returning(returning.as_mut());
+
             StatementPlan::Delete {
                 table_name,
+                using,
                 selection,
+                returning,
             }
         }
         _ => statement,
+    }
+}
+
+fn plan_returning(returning: Option<&mut Vec<SelectItemPlan>>) {
+    if let Some(items) = returning {
+        for item in items.iter_mut() {
+            if let SelectItemPlan::Expr { expr, .. } = item {
+                plan_expr(expr);
+            }
+        }
     }
 }
 
@@ -604,6 +644,8 @@ mod tests {
             table_name: "Target".to_owned(),
             columns: Vec::new(),
             source: parse_and_plan_query("SELECT COUNT(*) FROM Source"),
+            on_conflict: None,
+            returning: None,
         };
         assert_eq!(actual, expected);
 
@@ -633,7 +675,9 @@ mod tests {
                     "SELECT COUNT(*) FROM Source",
                 ))),
             }],
+            from: None,
             selection: None,
+            returning: None,
         };
         assert_eq!(actual, expected);
 
@@ -645,6 +689,7 @@ mod tests {
                 id: "count".to_owned(),
                 value: ExprPlan::Literal(Literal::Number(1.into())),
             }],
+            from: None,
             selection: Some(ExprPlan::BinaryOp {
                 left: Box::new(ExprPlan::Identifier("id".to_owned())),
                 op: BinaryOperator::Eq,
@@ -652,12 +697,14 @@ mod tests {
                     "SELECT COUNT(*) FROM Source",
                 )))),
             }),
+            returning: None,
         };
         assert_eq!(actual, expected);
 
         let actual = parse_and_plan("DELETE FROM Target WHERE id = (SELECT COUNT(*) FROM Source)");
         let expected = StatementPlan::Delete {
             table_name: "Target".to_owned(),
+            using: None,
             selection: Some(ExprPlan::BinaryOp {
                 left: Box::new(ExprPlan::Identifier("id".to_owned())),
                 op: BinaryOperator::Eq,
@@ -665,6 +712,7 @@ mod tests {
                     "SELECT COUNT(*) FROM Source",
                 )))),
             }),
+            returning: None,
         };
         assert_eq!(actual, expected);
     }

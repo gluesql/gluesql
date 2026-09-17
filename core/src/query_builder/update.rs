@@ -91,7 +91,9 @@ impl Build for UpdateSetNode<'_> {
         Ok(StatementPlan::Update {
             table_name,
             assignments,
+            from: None,
             selection,
+            returning: None,
         })
     }
 }

@@ -79,6 +79,7 @@ pub fn fetch_schema_map<T: Store + ?Sized>(
         StatementPlan::Delete {
             table_name,
             selection,
+            ..
         } => {
             let table_schema = storage
                 .fetch_schema(table_name)?
