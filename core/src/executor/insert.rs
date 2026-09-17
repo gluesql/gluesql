@@ -8,6 +8,7 @@ pub use error::InsertError;
 use {
     super::{execute::Payload, returning},
     crate::{
+        ast::ColumnDef,
         data::{Key, Schema, Value},
         executor::execute::ExecuteError,
         plan::{OnConflictPlan, QueryPlan, SelectItemPlan},
@@ -20,6 +21,13 @@ use {
 enum RowsData {
     Append(Vec<Vec<Value>>),
     Insert(Vec<(Key, Vec<Value>)>),
+}
+
+/// The storage mutation an `INSERT` prepared but has not performed yet.
+enum PendingWrite {
+    Append(Vec<Vec<Value>>),
+    Insert(Vec<(Key, Vec<Value>)>),
+    Upsert(upsert::PendingWrite),
 }
 
 pub fn insert<T: GStore + GStoreMut>(
@@ -54,7 +62,7 @@ pub fn insert<T: GStore + GStoreMut>(
             .map(|()| Payload::Insert(num_rows));
     };
 
-    let column_defs: Rc<[crate::ast::ColumnDef]> = Rc::from(column_defs);
+    let column_defs: Rc<[ColumnDef]> = Rc::from(column_defs);
     let column_names: Rc<[String]> = column_defs
         .iter()
         .map(|column_def| column_def.name.clone())
@@ -65,9 +73,13 @@ pub fn insert<T: GStore + GStoreMut>(
         .map(|items| returning::labels(table_name, &column_names, items))
         .transpose()?;
 
-    let (num_rows, affected_rows) = if let Some(on_conflict) = on_conflict {
+    let (num_rows, affected_rows, write) = if let Some(on_conflict) = on_conflict {
         let rows = schemaful::build_rows(storage, &column_defs, columns, source)?;
-        let outcome = upsert::execute(
+        let upsert::UpsertOutcome {
+            rows_affected,
+            affected_rows,
+            write,
+        } = upsert::execute(
             storage,
             table_name,
             &column_defs,
@@ -76,7 +88,11 @@ pub fn insert<T: GStore + GStoreMut>(
             on_conflict,
         )?;
 
-        (outcome.rows_affected, Some(outcome.affected_rows))
+        (
+            rows_affected,
+            Some(affected_rows),
+            PendingWrite::Upsert(write),
+        )
     } else {
         let rows = schemaful::fetch_rows(
             storage,
@@ -92,8 +108,7 @@ pub fn insert<T: GStore + GStoreMut>(
                 let num_rows = rows.len();
                 let affected = returning.is_some().then(|| rows.clone());
 
-                storage.append_data(table_name, rows)?;
-                (num_rows, affected)
+                (num_rows, affected, PendingWrite::Append(rows))
             }
             RowsData::Insert(rows) => {
                 let num_rows = rows.len();
@@ -101,21 +116,31 @@ pub fn insert<T: GStore + GStoreMut>(
                     .is_some()
                     .then(|| rows.iter().map(|(_, values)| values.clone()).collect());
 
-                storage.insert_data(table_name, rows)?;
-                (num_rows, affected)
+                (num_rows, affected, PendingWrite::Insert(rows))
             }
         }
     };
 
-    match (returning, labels) {
-        (Some(items), Some(labels)) => returning::build_payload(
+    // The `RETURNING` payload is built before the storage mutation so that a
+    // failing projection leaves the table untouched, which matters for the
+    // storages that cannot roll a statement back.
+    let payload = match (returning, labels) {
+        (Some(items), Some(labels)) => Some(returning::build_payload(
             storage,
             table_name,
             &column_names,
             items,
             labels,
             affected_rows.unwrap_or_default(),
-        ),
-        _ => Ok(Payload::Insert(num_rows)),
+        )?),
+        _ => None,
+    };
+
+    match write {
+        PendingWrite::Append(rows) => storage.append_data(table_name, rows)?,
+        PendingWrite::Insert(rows) => storage.insert_data(table_name, rows)?,
+        PendingWrite::Upsert(write) => upsert::apply(storage, table_name, write)?,
     }
+
+    Ok(payload.unwrap_or(Payload::Insert(num_rows)))
 }

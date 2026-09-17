@@ -153,4 +153,6 @@ An `INSERT` returns the stored rows in statement order, including rows an `ON CO
 update touched with their final values, and excluding the ones it skipped. A statement
 that affects no rows returns an empty result that still carries the labels.
 
+`RETURNING` projections are evaluated before the statement's rows reach the storage, so a projection that fails to evaluate leaves the table unchanged, and a subquery inside `RETURNING` reads the table as it stood before the statement.
+
 `RETURNING` requires a table with a declared schema.

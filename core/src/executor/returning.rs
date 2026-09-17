@@ -44,8 +44,13 @@ pub fn labels(
 /// Builds the [`Payload::Select`] produced by a `RETURNING` clause.
 ///
 /// Each row in `rows` holds the values of every table column, ordered as in
-/// `column_names`. For `INSERT` and `UPDATE` these are the stored values, for
-/// `DELETE` the values of the deleted row. `labels` comes from [`labels`].
+/// `column_names`. For `INSERT` and `UPDATE` these are the values about to be
+/// stored, for `DELETE` the values of the row about to be deleted. `labels`
+/// comes from [`labels`].
+///
+/// Callers run this before handing the rows to the storage, so that a
+/// projection that fails to evaluate leaves the table untouched even on a
+/// storage that cannot roll a statement back.
 ///
 /// # Errors
 ///
@@ -65,7 +70,8 @@ pub fn build_payload<T: GStore>(
 
 /// Like [`build_payload`], but every result row may carry an extra row
 /// reachable in the projection under `extra_alias`. `UPDATE ... FROM` uses this
-/// to expose the matched source row's columns.
+/// to expose the matched source row's columns. It runs before the storage
+/// mutation for the same reason [`build_payload`] does.
 ///
 /// # Errors
 ///

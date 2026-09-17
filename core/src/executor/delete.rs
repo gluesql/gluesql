@@ -146,12 +146,22 @@ pub fn delete<T: GStore + GStoreMut>(
     }
     let num_keys = keys.len();
 
+    // The `RETURNING` payload is built before the storage mutation so that a
+    // failing projection leaves the table untouched, which matters for the
+    // storages that cannot roll a statement back.
+    let payload = match (returning, labels) {
+        (Some(items), Some(labels)) => Some(returning::build_payload(
+            storage,
+            table_name,
+            &columns,
+            items,
+            labels,
+            deleted_rows,
+        )?),
+        _ => None,
+    };
+
     storage.delete_data(table_name, keys)?;
 
-    match (returning, labels) {
-        (Some(items), Some(labels)) => {
-            returning::build_payload(storage, table_name, &columns, items, labels, deleted_rows)
-        }
-        _ => Ok(Payload::Delete(num_keys)),
-    }
+    Ok(payload.unwrap_or(Payload::Delete(num_keys)))
 }

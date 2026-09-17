@@ -134,3 +134,94 @@ UPDATE Doc SET a = 2 RETURNING *;
 DELETE FROM Doc WHERE TRUE RETURNING *;
 -- @expect: error Execute.ReturningOnSchemalessTable
 -- @json: "Doc"
+
+CREATE TABLE Guard (id INTEGER PRIMARY KEY, qty INTEGER);
+-- @expect: ok
+
+INSERT INTO Guard VALUES (1, 1), (2, 2);
+-- @expect: payload Insert
+-- @json: 2
+
+CREATE TABLE Many (id INTEGER);
+-- @expect: ok
+
+INSERT INTO Many VALUES (1), (2);
+-- @expect: payload Insert
+-- @json: 2
+
+-- @name: an INSERT whose RETURNING names an unknown column stores nothing
+INSERT INTO Guard VALUES (3, 3) RETURNING missing;
+-- @expect: error Evaluate.IdentifierNotFound
+-- @json: "missing"
+
+-- @name: the failed INSERT left the table unchanged
+SELECT id, qty FROM Guard ORDER BY id;
+-- @expect:
+-- | id: I64 | qty: I64 |
+-- | ------- | -------- |
+-- | 1       | 1        |
+-- | 2       | 2        |
+
+-- @name: an INSERT whose RETURNING subquery returns several rows stores nothing
+INSERT INTO Guard VALUES (3, 3) RETURNING (SELECT id FROM Many) AS one;
+-- @expect: error Evaluate.MoreThanOneRowReturned
+
+-- @name: the failed INSERT left the table unchanged
+SELECT id, qty FROM Guard ORDER BY id;
+-- @expect:
+-- | id: I64 | qty: I64 |
+-- | ------- | -------- |
+-- | 1       | 1        |
+-- | 2       | 2        |
+
+-- @name: a DO UPDATE whose RETURNING fails updates nothing
+INSERT INTO Guard VALUES (1, 9) ON CONFLICT (id) DO UPDATE SET qty = excluded.qty
+RETURNING (SELECT id FROM Many) AS one;
+-- @expect: error Evaluate.MoreThanOneRowReturned
+
+-- @name: the failed DO UPDATE left the table unchanged
+SELECT id, qty FROM Guard ORDER BY id;
+-- @expect:
+-- | id: I64 | qty: I64 |
+-- | ------- | -------- |
+-- | 1       | 1        |
+-- | 2       | 2        |
+
+-- @name: a DO UPDATE that inserts a fresh row also stores nothing when RETURNING fails
+INSERT INTO Guard VALUES (4, 4) ON CONFLICT (id) DO UPDATE SET qty = excluded.qty
+RETURNING missing;
+-- @expect: error Evaluate.IdentifierNotFound
+-- @json: "missing"
+
+-- @name: the failed DO UPDATE inserted no row
+SELECT id, qty FROM Guard ORDER BY id;
+-- @expect:
+-- | id: I64 | qty: I64 |
+-- | ------- | -------- |
+-- | 1       | 1        |
+-- | 2       | 2        |
+
+-- @name: an UPDATE whose RETURNING subquery returns several rows updates nothing
+UPDATE Guard SET qty = 100 WHERE id = 1 RETURNING (SELECT id FROM Many) AS one;
+-- @expect: error Evaluate.MoreThanOneRowReturned
+
+-- @name: the failed UPDATE left the table unchanged
+SELECT id, qty FROM Guard ORDER BY id;
+-- @expect:
+-- | id: I64 | qty: I64 |
+-- | ------- | -------- |
+-- | 1       | 1        |
+-- | 2       | 2        |
+
+-- @name: a DELETE whose RETURNING names an unknown column deletes nothing
+DELETE FROM Guard WHERE id = 1 RETURNING missing;
+-- @expect: error Evaluate.IdentifierNotFound
+-- @json: "missing"
+
+-- @name: the failed DELETE left the table unchanged
+SELECT id, qty FROM Guard ORDER BY id;
+-- @expect:
+-- | id: I64 | qty: I64 |
+-- | ------- | -------- |
+-- | 1       | 1        |
+-- | 2       | 2        |

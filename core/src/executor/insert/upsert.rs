@@ -22,6 +22,37 @@ pub(super) struct UpsertOutcome {
     pub rows_affected: usize,
     /// Final values of every inserted or updated row, in statement order.
     pub affected_rows: Vec<Vec<Value>>,
+    /// The rows [`apply`] hands to the storage once the caller is done
+    /// evaluating anything that must not observe the mutation.
+    pub write: PendingWrite,
+}
+
+/// The storage mutation [`execute`] prepared but did not perform.
+pub(super) struct PendingWrite {
+    keyed: Option<Vec<(Key, Vec<Value>)>>,
+    append: Vec<Vec<Value>>,
+}
+
+/// Performs the mutation [`execute`] prepared.
+///
+/// # Errors
+///
+/// Returns an error when the storage rejects the write.
+pub(super) fn apply<T: GStoreMut>(
+    storage: &mut T,
+    table_name: &str,
+    write: PendingWrite,
+) -> Result<()> {
+    let PendingWrite { keyed, append } = write;
+
+    if let Some(keyed) = keyed {
+        storage.insert_data(table_name, keyed)?;
+    }
+    if !append.is_empty() {
+        storage.append_data(table_name, append)?;
+    }
+
+    Ok(())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -30,8 +61,11 @@ enum Slot {
     Fresh(usize),
 }
 
-pub(super) fn execute<T: GStore + GStoreMut>(
-    storage: &mut T,
+/// Computes the outcome of an `INSERT ... ON CONFLICT` without touching the
+/// storage. The caller passes [`UpsertOutcome::write`] to [`apply`] once every
+/// fallible step that must not observe the mutation has run.
+pub(super) fn execute<T: GStore>(
+    storage: &T,
     table_name: &str,
     column_defs: &Rc<[ColumnDef]>,
     foreign_keys: &[ForeignKey],
@@ -83,10 +117,10 @@ pub(super) fn execute<T: GStore + GStoreMut>(
     for (position, (_, values)) in existing.iter().enumerate() {
         for (index, _) in &unique_columns {
             let key = Key::try_from(&values[*index])?;
-            if key != Key::None {
-                unique_maps
-                    .get_mut(index)
-                    .map(|map| map.insert(key, Slot::Existing(position)));
+            if key != Key::None
+                && let Some(map) = unique_maps.get_mut(index)
+            {
+                map.insert(key, Slot::Existing(position));
             }
         }
     }
@@ -99,7 +133,7 @@ pub(super) fn execute<T: GStore + GStoreMut>(
         } => (Some(assignments), selection.as_ref()),
     };
     let update = assignments
-        .map(|assignments| Update::new(&*storage, table_name, assignments, Some(column_defs)))
+        .map(|assignments| Update::new(storage, table_name, assignments, Some(column_defs)))
         .transpose()?;
 
     let mut fresh: Vec<Vec<Value>> = Vec::new();
@@ -137,8 +171,10 @@ pub(super) fn execute<T: GStore + GStoreMut>(
                 let slot = Slot::Fresh(fresh.len());
                 for (index, _) in &unique_columns {
                     let key = Key::try_from(&row[*index])?;
-                    if key != Key::None {
-                        unique_maps.get_mut(index).map(|map| map.insert(key, slot));
+                    if key != Key::None
+                        && let Some(map) = unique_maps.get_mut(index)
+                    {
+                        map.insert(key, slot);
                     }
                 }
                 fresh.push(row);
@@ -176,7 +212,7 @@ pub(super) fn execute<T: GStore + GStoreMut>(
                         Some(next),
                     ));
 
-                    if !check_expr(&*storage, Some(&context), None, expr)? {
+                    if !check_expr(storage, Some(&context), None, expr)? {
                         continue;
                     }
                 }
@@ -239,24 +275,26 @@ pub(super) fn execute<T: GStore + GStoreMut>(
         .map(|(_, entry)| entry)
         .collect();
 
-    if let Some(index) = schemaful::primary_key_index(column_defs) {
+    let write = if let Some(index) = schemaful::primary_key_index(column_defs) {
         for values in fresh {
             let key = Key::try_from(&values[index])?;
             keyed.push((key, values));
         }
 
-        storage.insert_data(table_name, keyed)?;
+        PendingWrite {
+            keyed: Some(keyed),
+            append: Vec::new(),
+        }
     } else {
-        if !keyed.is_empty() {
-            storage.insert_data(table_name, keyed)?;
+        PendingWrite {
+            keyed: (!keyed.is_empty()).then_some(keyed),
+            append: fresh,
         }
-        if !fresh.is_empty() {
-            storage.append_data(table_name, fresh)?;
-        }
-    }
+    };
 
     Ok(UpsertOutcome {
         rows_affected,
         affected_rows,
+        write,
     })
 }

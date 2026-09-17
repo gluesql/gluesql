@@ -356,10 +356,11 @@ fn execute_inner<T: GStore + GStoreMut>(
                 .map(|(key, row, _)| (key, row.into_values()))
                 .collect();
 
-            storage.insert_data(table_name, rows)?;
-
-            match (returning, labels) {
-                (Some(items), Some(labels)) => returning::build_payload_with(
+            // The `RETURNING` payload is built before the storage mutation so
+            // that a failing projection leaves the table untouched, which
+            // matters for the storages that cannot roll a statement back.
+            let payload = match (returning, labels) {
+                (Some(items), Some(labels)) => Some(returning::build_payload_with(
                     storage,
                     table_name,
                     &all_columns,
@@ -367,9 +368,13 @@ fn execute_inner<T: GStore + GStoreMut>(
                     labels,
                     affected_rows.unwrap_or_default(),
                     source.as_ref().map(|(alias, _)| alias.as_str()),
-                ),
-                _ => Ok(Payload::Update(num_rows)),
-            }
+                )?),
+                _ => None,
+            };
+
+            storage.insert_data(table_name, rows)?;
+
+            Ok(payload.unwrap_or(Payload::Update(num_rows)))
         }
         StatementPlan::Delete {
             table_name,
