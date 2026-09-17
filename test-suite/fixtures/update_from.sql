@@ -74,11 +74,11 @@ SELECT id, qty FROM Item ORDER BY id;
 -- | 2       | 5        |
 -- | 3       | 40       |
 
--- @name: a target row matching more than one source row fails the statement
 INSERT INTO Restock VALUES (2, 1), (2, 2);
 -- @expect: payload Insert
 -- @json: 2
 
+-- @name: a target row matching more than one source row fails the statement
 UPDATE Item SET qty = r.amount FROM Restock AS r WHERE id = r.item_id;
 -- @expect: error Update.MultipleSourceRowsForTargetRow
 

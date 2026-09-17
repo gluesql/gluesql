@@ -4,7 +4,7 @@ use {
     crate::{
         ast::Literal,
         data::{SCHEMALESS_DOC_COLUMN, Schema},
-        plan::{ExprPlan, StatementPlan},
+        plan::{ExprPlan, OnConflictActionPlan, OnConflictPlan, SelectItemPlan, StatementPlan},
         result::Result,
     },
     std::{collections::HashMap, hash::BuildHasher},
@@ -41,11 +41,49 @@ fn transform_statement<S: BuildHasher>(
             table_name,
             columns,
             mut source,
-            on_conflict,
-            returning,
+            mut on_conflict,
+            mut returning,
         } => {
             transform_query(schema_map, &mut source);
-            let columns = if is_schemaless_table(schema_map, &table_name) {
+
+            let table_is_schemaless = is_schemaless_table(schema_map, &table_name);
+
+            if let Some(OnConflictPlan {
+                action:
+                    OnConflictActionPlan::DoUpdate {
+                        assignments,
+                        selection,
+                    },
+                ..
+            }) = on_conflict.as_mut()
+            {
+                for assignment in assignments.iter_mut() {
+                    transform_single_table_expr(
+                        schema_map,
+                        &mut assignment.value,
+                        &table_name,
+                        table_is_schemaless,
+                    );
+                }
+
+                if let Some(selection) = selection.as_mut() {
+                    transform_single_table_expr(
+                        schema_map,
+                        selection,
+                        &table_name,
+                        table_is_schemaless,
+                    );
+                }
+            }
+
+            transform_returning(
+                schema_map,
+                returning.as_deref_mut(),
+                &table_name,
+                table_is_schemaless,
+            );
+
+            let columns = if table_is_schemaless {
                 vec![SCHEMALESS_DOC_COLUMN.to_owned()]
             } else {
                 columns
@@ -64,7 +102,7 @@ fn transform_statement<S: BuildHasher>(
             assignments,
             from,
             selection,
-            returning,
+            mut returning,
         } => {
             let table_is_schemaless = is_schemaless_table(schema_map, &table_name);
 
@@ -88,6 +126,13 @@ fn transform_statement<S: BuildHasher>(
                 );
             }
 
+            transform_returning(
+                schema_map,
+                returning.as_deref_mut(),
+                &table_name,
+                table_is_schemaless,
+            );
+
             StatementPlan::Update {
                 table_name,
                 assignments,
@@ -100,7 +145,7 @@ fn transform_statement<S: BuildHasher>(
             table_name,
             using,
             selection,
-            returning,
+            mut returning,
         } => {
             let table_is_schemaless = is_schemaless_table(schema_map, &table_name);
 
@@ -113,6 +158,13 @@ fn transform_statement<S: BuildHasher>(
                     table_is_schemaless,
                 );
             }
+
+            transform_returning(
+                schema_map,
+                returning.as_deref_mut(),
+                &table_name,
+                table_is_schemaless,
+            );
 
             StatementPlan::Delete {
                 table_name,
@@ -144,6 +196,26 @@ fn transform_statement<S: BuildHasher>(
             }
         }
         _ => statement,
+    }
+}
+
+/// Rewrites every `RETURNING` projection expression the way a single-table
+/// clause is rewritten, so that a subquery on a schemaless table reaches its
+/// fields through `_doc`.
+fn transform_returning(
+    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    returning: Option<&mut [SelectItemPlan]>,
+    table_name: &str,
+    table_is_schemaless: bool,
+) {
+    let Some(items) = returning else {
+        return;
+    };
+
+    for item in items.iter_mut() {
+        if let SelectItemPlan::Expr { expr, .. } = item {
+            transform_single_table_expr(schema_map, expr, table_name, table_is_schemaless);
+        }
     }
 }
 

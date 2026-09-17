@@ -354,3 +354,56 @@ INSERT INTO Doc VALUES ('{"a": 1}');
 INSERT INTO Doc VALUES ('{"a": 2}') ON CONFLICT DO NOTHING;
 -- @expect: error Insert.OnConflictOnSchemalessTable
 -- @json: "Doc"
+
+CREATE TABLE Meta;
+-- @expect: ok
+
+INSERT INTO Meta VALUES ('{"id": 1, "bonus": 7}');
+-- @expect: payload Insert
+-- @json: 1
+
+CREATE TABLE Ledger (id INTEGER PRIMARY KEY, qty INTEGER);
+-- @expect: ok
+
+INSERT INTO Ledger VALUES (1, 1);
+-- @expect: payload Insert
+-- @json: 1
+
+-- @name: a DO UPDATE assignment reads a schemaless table through _doc
+INSERT INTO Ledger VALUES (1, 5) ON CONFLICT (id) DO UPDATE SET qty = (SELECT bonus FROM Meta);
+-- @expect: payload Insert
+-- @json: 1
+
+SELECT qty FROM Ledger WHERE id = 1;
+-- @expect:
+-- | qty: I64 |
+-- | -------- |
+-- | 7        |
+
+-- @name: a DO UPDATE condition reads a schemaless table through _doc
+INSERT INTO Ledger VALUES (1, 9) ON CONFLICT (id) DO UPDATE SET qty = excluded.qty
+WHERE (SELECT bonus FROM Meta) > 100;
+-- @expect: payload Insert
+-- @json: 0
+
+SELECT qty FROM Ledger WHERE id = 1;
+-- @expect:
+-- | qty: I64 |
+-- | -------- |
+-- | 7        |
+
+-- @name: a DO UPDATE assignment may not wildcard a schemaless and a schemaful table together
+INSERT INTO Ledger VALUES (1, 9) ON CONFLICT (id)
+DO UPDATE SET qty = (SELECT * FROM Ledger JOIN Meta WHERE Ledger.id = Meta.id LIMIT 1);
+-- @expect: error Planner.SchemalessMixedJoinWildcardProjection
+
+-- @name: a DO UPDATE condition may not wildcard a schemaless and a schemaful table together
+INSERT INTO Ledger VALUES (1, 9) ON CONFLICT (id) DO UPDATE SET qty = 1
+WHERE EXISTS (SELECT * FROM Ledger JOIN Meta WHERE Ledger.id = Meta.id);
+-- @expect: error Planner.SchemalessMixedJoinWildcardProjection
+
+SELECT qty FROM Ledger WHERE id = 1;
+-- @expect:
+-- | qty: I64 |
+-- | -------- |
+-- | 7        |

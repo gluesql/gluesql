@@ -225,3 +225,50 @@ SELECT id, qty FROM Guard ORDER BY id;
 -- | ------- | -------- |
 -- | 1       | 1        |
 -- | 2       | 2        |
+
+CREATE TABLE Tag;
+-- @expect: ok
+
+INSERT INTO Tag VALUES ('{"id": 42}');
+-- @expect: payload Insert
+-- @json: 1
+
+CREATE TABLE Ref (id INTEGER PRIMARY KEY, name TEXT);
+-- @expect: ok
+
+INSERT INTO Ref VALUES (1, 'one'), (2, 'two');
+-- @expect: payload Insert
+-- @json: 2
+
+-- @name: an INSERT ... RETURNING subquery reads a schemaless table through _doc
+INSERT INTO Ref VALUES (3, 'three') RETURNING id, (SELECT id FROM Tag) AS tag_id;
+-- @expect:
+-- | id: I64 | tag_id: I64 |
+-- | ------- | ----------- |
+-- | 3       | 42          |
+
+-- @name: an UPDATE ... RETURNING subquery reads a schemaless table through _doc
+UPDATE Ref SET name = 'ONE' WHERE id = 1 RETURNING id, (SELECT id FROM Tag) AS tag_id;
+-- @expect:
+-- | id: I64 | tag_id: I64 |
+-- | ------- | ----------- |
+-- | 1       | 42          |
+
+-- @name: a DELETE ... RETURNING subquery reads a schemaless table through _doc
+DELETE FROM Ref WHERE id = 2 RETURNING id, (SELECT id FROM Tag) AS tag_id;
+-- @expect:
+-- | id: I64 | tag_id: I64 |
+-- | ------- | ----------- |
+-- | 2       | 42          |
+
+-- @name: a RETURNING subquery may not wildcard a schemaless and a schemaful table together
+DELETE FROM Ref WHERE id = 3 RETURNING (SELECT * FROM Tag JOIN Ref WHERE Tag.id = Ref.id LIMIT 1);
+-- @expect: error Planner.SchemalessMixedJoinWildcardProjection
+
+-- @name: the rejected DELETE left the table unchanged
+SELECT id FROM Ref ORDER BY id;
+-- @expect:
+-- | id: I64 |
+-- | ------- |
+-- | 1       |
+-- | 3       |

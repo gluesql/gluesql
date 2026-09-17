@@ -31,11 +31,11 @@ INSERT INTO Item VALUES (1, 'pen', 3), (3, 'pad', 7);
 -- @expect: payload Insert
 -- @json: 2
 
--- @name: a target row matching several source rows is removed once
 INSERT INTO Restock VALUES (1, 99);
 -- @expect: payload Insert
 -- @json: 1
 
+-- @name: a target row matching several source rows is removed once
 DELETE FROM Item USING Restock r WHERE id = r.item_id RETURNING id, name;
 -- @expect:
 -- | id: I64 | name: Str |
