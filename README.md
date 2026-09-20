@@ -11,12 +11,12 @@
 
 > [**Official Documentation Website**](https://gluesql.org/docs)
 
-GlueSQL is a library for Multi-Model SQL databases written in Rust.
+GlueSQL is a multi-model SQL database engine written in Rust.
 
 - Supports structured and unstructured data
 - Supports a variety of storage options
 - Supports custom storage backends through an extensible design
-- Supports both SQL and Query Builder
+- Supports both SQL and the Query Builder
 
 ## Installation
 
@@ -42,7 +42,7 @@ For more information, check out the [gluesql-js repository](https://github.com/g
 
 ## SQL and Query Builder
 
-GlueSQL supports both SQL and Query Builder. Use SQL for familiar or dynamic queries, and use Query Builder when composing queries in Rust or controlling execution more precisely. Both interfaces run through the same GlueSQL engine and storage backend. For more information, check out the [query builder documentation](https://gluesql.org/docs/0.20.0/query-builder/intro/) and [SQL documentation](https://gluesql.org/docs/0.20.0/sql-syntax/intro/).
+GlueSQL supports both SQL and a Query Builder. Use SQL for familiar or dynamic queries, and use the Query Builder when composing queries in Rust or controlling execution more precisely. Both interfaces run through the same GlueSQL engine and storage backend. For more information, check out the [Query Builder documentation](https://gluesql.org/docs/0.20.0/query-builder/intro/) and [SQL documentation](https://gluesql.org/docs/0.20.0/sql-syntax/intro/).
 
 ### SQL
 
@@ -63,11 +63,11 @@ table("Foo")
     .execute(&mut glue);
 ```
 
-Unlike ORM query builders that generate SQL for multiple database engines, GlueSQL's Query Builder builds executable statement plans directly for GlueSQL. It accepts both builder methods and SQL expressions, supports the full GlueSQL feature set, and can express execution details that SQL can only suggest through query hints.
+Unlike ORM query builders designed to support multiple database engines by generating SQL, GlueSQL's Query Builder builds executable statement plans directly. It accepts both builder methods and SQL expressions, supports the full GlueSQL feature set, and can express execution details that SQL can only suggest through query hints.
 
 ## Supporting Structured and Unstructured Data with Schema Flexibility
 
-GlueSQL supports both structured and unstructured (schemaless) data. While SQL databases typically assume that schemas are defined and used, GlueSQL does not make this assumption. It supports completely unstructured data, similar to a NoSQL document database, as well as semi-structured types such as MAP and LIST. This makes GlueSQL suitable for a wide range of use cases, including those that require handling of unstructured data. Additionally, it is possible to join tables with schemas and schemaless tables together and execute queries.
+GlueSQL supports both structured and unstructured (schemaless) data. Unlike traditional SQL databases, it does not require every table to have a predefined schema. Schemaless tables can store varying fields, while MAP and LIST support semi-structured values. Schema-defined and schemaless tables can also be joined in the same query.
 
 ### Schemaless SQL Example
 
@@ -92,7 +92,7 @@ SELECT * FROM Names JOIN Logs ON Names.id = Logs.id;
 
 ## Supported Reference Storages
 
-GlueSQL provides a variety of reference storages out of the box, including simple in-memory storage, key-value databases, and log file-based storage like JSON & JSONL. These reference storages are readily available for use and can be easily adapted to a variety of storage systems. Additionally, GlueSQL is constantly expanding its list of supported storages, making it a versatile tool for developers.
+GlueSQL provides reference storage implementations for in-memory data, embedded databases, local files, and external databases. Use the table below to choose a storage for your use case.
 
 | Use case | Recommended storage |
 | --- | --- |
@@ -109,7 +109,7 @@ See the [Storage documentation](https://gluesql.org/docs/0.20.0/storages/) for s
 
 ## Adapting GlueSQL to Your Environment: Creating Custom Storage
 
-GlueSQL is designed to be adaptable to a wide variety of environments, including file systems, key-value databases, complex NoSQL databases, and remote APIs. To create a custom storage for GlueSQL, you only need to implement the Store and StoreMut traits provided by GlueSQL. For more information, check out [developing custom storages documentation](https://gluesql.org/docs/0.20.0/storages/developing-custom-storages/intro/).
+GlueSQL is designed to be adaptable to a wide variety of environments, including file systems, key-value databases, complex NoSQL databases, and remote APIs. To create a custom storage for GlueSQL, you only need to implement the Store and StoreMut traits provided by GlueSQL. For more information, see the [custom storage development documentation](https://gluesql.org/docs/0.20.0/storages/developing-custom-storages/intro/).
 
 ## Contributing
 
@@ -117,4 +117,4 @@ GlueSQL is simpler to contribute to than it may look. Its test suite and continu
 
 ## License
 
-This project is licensed under the Apache License, Version 2.0 - see the [LICENSE](https://github.com/gluesql/gluesql/blob/main/LICENSE) file for details.
+This project is licensed under the Apache License, Version 2.0. See the [LICENSE](https://github.com/gluesql/gluesql/blob/main/LICENSE) file for details.
