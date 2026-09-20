@@ -185,6 +185,7 @@ macro_rules! generate_store_tests {
         sql_case!(expr::between);
         sql_case!(expr::in_list);
         sql_case!(expr::arrow);
+        sql_case!(expr::three_valued_logic);
         sql_case!(expr::unary_operator);
 
         sql_case!(alter::create_table);

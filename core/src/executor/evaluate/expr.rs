@@ -41,7 +41,10 @@ pub fn binary_op<'a>(
         }};
     }
 
-    if l.is_null() || r.is_null() {
+    // NULL propagates through every operator except AND and OR, where SQL's three-valued
+    // logic lets a known side decide: TRUE OR NULL is TRUE, FALSE AND NULL is FALSE.
+    let three_valued = matches!(op, BinaryOperator::And | BinaryOperator::Or);
+    if !three_valued && (l.is_null() || r.is_null()) {
         return Ok(Evaluated::Value(Cow::Owned(Value::Null)));
     }
 
@@ -64,14 +67,39 @@ pub fn binary_op<'a>(
             l.evaluate_cmp(&r),
             Some(Ordering::Greater | Ordering::Equal)
         )),
-        BinaryOperator::And => cond!(l && r),
-        BinaryOperator::Or => cond!(l || r),
+        BinaryOperator::And => logical(l, r, false),
+        BinaryOperator::Or => logical(l, r, true),
         BinaryOperator::Xor => cond!(l ^ r),
         BinaryOperator::BitwiseAnd => l.bitwise_and(&r),
         BinaryOperator::BitwiseShiftLeft => l.bitwise_shift_left(&r),
         BinaryOperator::BitwiseShiftRight => l.bitwise_shift_right(&r),
         BinaryOperator::Arrow => l.arrow(&r),
     }
+}
+
+/// `AND` and `OR` with SQL's three-valued logic. `deciding` is the value that settles the
+/// result on its own — FALSE for AND, TRUE for OR — so a NULL on the other side does not
+/// matter; otherwise a NULL side makes the result NULL.
+fn logical<'a>(l: Evaluated<'a>, r: Evaluated<'a>, deciding: bool) -> Result<Evaluated<'a>> {
+    let side = |v: Evaluated<'a>| -> Result<Option<bool>> {
+        if v.is_null() {
+            Ok(None)
+        } else {
+            v.try_into().map(Some)
+        }
+    };
+    let (l, r) = (side(l)?, side(r)?);
+    let result = if l == Some(deciding) || r == Some(deciding) {
+        Some(deciding)
+    } else if l.is_none() || r.is_none() {
+        None
+    } else {
+        Some(!deciding)
+    };
+
+    Ok(Evaluated::Value(Cow::Owned(
+        result.map_or(Value::Null, Value::Bool),
+    )))
 }
 
 pub fn unary_op<'a>(op: &UnaryOperator, v: Evaluated<'a>) -> Result<Evaluated<'a>> {
@@ -123,6 +151,55 @@ mod tests {
         bigdecimal::BigDecimal,
         std::borrow::Cow,
     };
+
+    #[test]
+    fn and_or_follow_three_valued_logic() {
+        use {
+            super::binary_op,
+            crate::{ast::BinaryOperator, data::Value},
+        };
+
+        let value =
+            |v: Option<bool>| Evaluated::Value(Cow::Owned(v.map_or(Value::Null, Value::Bool)));
+        let eval = |op: &BinaryOperator, l: Option<bool>, r: Option<bool>| -> Option<bool> {
+            match binary_op(op, value(l), value(r)).expect("evaluate") {
+                Evaluated::Value(cow) => match cow.as_ref() {
+                    Value::Bool(b) => Some(*b),
+                    Value::Null => None,
+                    other => panic!("unexpected {other:?}"),
+                },
+                other => panic!("unexpected {other:?}"),
+            }
+        };
+        let (t, f, n) = (Some(true), Some(false), None);
+
+        for (l, r, expected) in [
+            (t, n, t),
+            (n, t, t),
+            (f, n, n),
+            (n, f, n),
+            (n, n, n),
+            (t, f, t),
+            (f, f, f),
+        ] {
+            assert_eq!(eval(&BinaryOperator::Or, l, r), expected, "{l:?} OR {r:?}");
+        }
+        for (l, r, expected) in [
+            (f, n, f),
+            (n, f, f),
+            (t, n, n),
+            (n, t, n),
+            (n, n, n),
+            (t, f, f),
+            (t, t, t),
+        ] {
+            assert_eq!(
+                eval(&BinaryOperator::And, l, r),
+                expected,
+                "{l:?} AND {r:?}"
+            );
+        }
+    }
 
     #[test]
     fn test_literal() {
