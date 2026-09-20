@@ -69,10 +69,17 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
         I: IntoIterator<Item = P>,
         P: IntoParamLiteral,
     {
-        let statements = self.plan_with_params(sql, params)?;
+        let parsed = parse(sql)?;
+        let params: Vec<ParamLiteral> = params
+            .into_iter()
+            .map(IntoParamLiteral::into_param_literal)
+            .collect();
+
         let mut payloads = Vec::<Payload>::new();
-        for statement in &statements {
-            let payload = self.execute_stmt(statement)?;
+        for p in parsed {
+            let statement = translate_with_params(&p, &params)?;
+            let plan = self.storage.plan(statement.into())?;
+            let payload = self.execute_stmt(&plan)?;
             payloads.push(payload);
         }
 
