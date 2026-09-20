@@ -112,52 +112,18 @@ SELECT * FROM Names JOIN Logs ON Names.id = Logs.id;
 
 GlueSQL provides a variety of reference storages out of the box, including simple in-memory storage, key-value databases, and log file-based storage like JSON & JSONL. These reference storages are readily available for use and can be easily adapted to a variety of storage systems. Additionally, GlueSQL is constantly expanding its list of supported storages, making it a versatile tool for developers.
 
-### Memory Storage
+| Use case | Recommended storage |
+| --- | --- |
+| Temporary data, tests, and prototypes | [Memory](https://gluesql.org/docs/dev/storages/supported-storages/memory-storage/) |
+| Shared in-memory data across threads | [Shared Memory](https://gluesql.org/docs/dev/storages/supported-storages/shared-memory-storage/) |
+| Persistent embedded database | [Redb](https://gluesql.org/docs/dev/storages/supported-storages/redb-storage/) |
+| Querying CSV, JSON, or Parquet files | [CSV](https://gluesql.org/docs/dev/storages/supported-storages/csv-storage/), [JSON](https://gluesql.org/docs/dev/storages/supported-storages/json-storage/), or [Parquet](https://gluesql.org/docs/dev/storages/supported-storages/parquet-storage/) |
+| Lightweight filesystem persistence | [File](https://gluesql.org/docs/dev/storages/supported-storages/file-storage/) |
+| Version-controlled data | [Git](https://gluesql.org/docs/dev/storages/supported-storages/git-storage/) |
+| Existing MongoDB or Redis data | [Mongo](https://gluesql.org/docs/dev/storages/supported-storages/mongo-storage/) or [Redis](https://gluesql.org/docs/dev/storages/supported-storages/redis-storage/) |
+| Queries across multiple storage backends | [Composite](https://gluesql.org/docs/dev/storages/supported-storages/composite-storage/) |
 
-Memory Storage is a foundational storage option designed for in-memory, non-persistent data. It is a simple yet robust storage option that can be used in production environments.
-
-### Shared Memory Storage
-
-Shared Memory Storage is a storage option designed to provide more comfortable usage of Memory Storage in concurrent environments. It wraps the Memory Storage with a read-write lock and an atomic reference count, allowing you to clone the storage instance and use it effortlessly across multiple threads. All storage instances will refer to the same data, making it a convenient option for concurrent environments.
-
-### Sled Storage
-
-**Deprecated:** Sled Storage is deprecated as of v0.20.0 and will be removed in v0.21.0. Existing deployments can continue using it during the deprecation period, but new persistent-storage deployments should use Redb Storage.
-
-### Redb Storage
-
-Redb Storage leverages the [redb](https://docs.rs/redb) embedded database for persistent storage with transactional support. It stores everything in a single database file, offering another simple way to keep your data on disk while enjoying GlueSQL's query capabilities.
-
-### JSON Storage
-
-With GlueSQL, you can use JSONL or JSON files as a database that supports SQL and Query Builder, making it a powerful option for developers who need to work with JSON data. JSON Storage is a storage system that uses two types of files: a schema file (optional) and a data file. The schema file is written in Standard SQL and stores the structure of the table, while the data file contains the actual data and supports two file formats: `*.json` and `*.jsonl`. JSON Storage supports all DML features, but is particularly specialized for SELECT and INSERT.
-
-### CSV Storage
-
-CSV Storage in GlueSQL allows you to work with CSV files as if they were SQL databases. This feature is perfect for developers who want to use the simplicity of CSV files while taking advantage of SQL's capabilities.
-
-### Parquet Storage
-
-Parquet Storage in GlueSQL allows you to treat Parquet files as SQL databases, enabling SQL operations like SELECT, INSERT, and UPDATE directly on Parquet data. It offers a convenient way to work with the efficiency and structure of Parquet files while utilizing the full power of SQL.
-
-### File Storage
-
-File Storage is a custom storage implementation that utilizes the filesystem.
-For each table name, the schema information is saved in a .sql format using a CREATE TABLE query.
-The data is stored by creating a directory with the same name as the table and serializing the data using RON format in the subdirectory.
-
-### Git Storage
-
-Git Storage is a custom storage option in GlueSQL that integrates seamlessly with a Git repository, allowing you to version-control your data directly within Git. This storage option automatically handles add and commit operations, ensuring your data changes are tracked. For remote operations like pull and push, GitStorage provides methods that developers can manually invoke, giving you full control over synchronization with remote repositories.
-
-### Mongo Storage
-
-With Mongo storage, you can use mongodb as a storage for SQL queries. You can use all the features supported by GlueSQL, such as aggregations and joins, which were previously difficult to handle on an unstructured database. In particular, you can use GlueSQL's powerful schema system on mongodb, which is as strong as an RDBMS.
-To run tests, refer to [here](storages/mongo-storage/README.md)
-
-### Composite Storage
-
-Composite Storage is a powerful feature of GlueSQL that allows you to bundle together multiple existing storages, enabling you to perform JOIN operations across two distinct storages. This makes it useful for scenarios where data has to be queried or moved across different storage systems through the same SQL interface.
+See the [Storage documentation](https://gluesql.org/docs/dev/storages/) for setup, examples, and limitations.
 
 ## Adapting GlueSQL to Your Environment: Creating Custom Storage
 
