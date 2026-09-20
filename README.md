@@ -40,6 +40,23 @@ import { gluesql } from 'https://cdn.jsdelivr.net/npm/gluesql/gluesql.js';
 
 For more information, check out the [gluesql-js repository](https://github.com/gluesql/gluesql-js).
 
+## Supported Reference Storages
+
+GlueSQL provides reference storage implementations for in-memory data, embedded databases, local files, and external databases. Use the table below to choose a storage for your use case.
+
+| Use case | Recommended storage |
+| --- | --- |
+| Temporary data, tests, and prototypes | [Memory](https://gluesql.org/docs/0.20.0/storages/supported-storages/memory-storage/) |
+| Shared in-memory data across threads | [Shared Memory](https://gluesql.org/docs/0.20.0/storages/supported-storages/shared-memory-storage/) |
+| Persistent embedded database | [Redb](https://gluesql.org/docs/0.20.0/storages/supported-storages/redb-storage/) |
+| Querying CSV, JSON, or Parquet files | [CSV](https://gluesql.org/docs/0.20.0/storages/supported-storages/csv-storage/), [JSON](https://gluesql.org/docs/0.20.0/storages/supported-storages/json-storage/), or [Parquet](https://gluesql.org/docs/0.20.0/storages/supported-storages/parquet-storage/) |
+| Lightweight filesystem persistence | [File](https://gluesql.org/docs/0.20.0/storages/supported-storages/file-storage/) |
+| Version-controlled data | [Git](https://gluesql.org/docs/0.20.0/storages/supported-storages/git-storage/) |
+| Existing MongoDB or Redis data | [Mongo](https://gluesql.org/docs/0.20.0/storages/supported-storages/mongo-storage/) or [Redis](https://gluesql.org/docs/0.20.0/storages/supported-storages/redis-storage/) |
+| Queries across multiple storage backends | [Composite](https://gluesql.org/docs/0.20.0/storages/supported-storages/composite-storage/) |
+
+See the [Storage documentation](https://gluesql.org/docs/0.20.0/storages/) for setup, examples, and limitations.
+
 ## SQL and Query Builder
 
 GlueSQL supports both SQL and a Query Builder. Use SQL for familiar or dynamic queries, and use the Query Builder when composing queries in Rust or controlling execution more precisely. Both interfaces run through the same GlueSQL engine and storage backend. For more information, check out the [Query Builder documentation](https://gluesql.org/docs/0.20.0/query-builder/intro/) and [SQL documentation](https://gluesql.org/docs/0.20.0/sql-syntax/intro/).
@@ -89,23 +106,6 @@ SELECT * FROM Names JOIN Logs ON Names.id = Logs.id;
 | 2  |[1, 2, 3]| sql  | 3    |       |
 */
 ```
-
-## Supported Reference Storages
-
-GlueSQL provides reference storage implementations for in-memory data, embedded databases, local files, and external databases. Use the table below to choose a storage for your use case.
-
-| Use case | Recommended storage |
-| --- | --- |
-| Temporary data, tests, and prototypes | [Memory](https://gluesql.org/docs/0.20.0/storages/supported-storages/memory-storage/) |
-| Shared in-memory data across threads | [Shared Memory](https://gluesql.org/docs/0.20.0/storages/supported-storages/shared-memory-storage/) |
-| Persistent embedded database | [Redb](https://gluesql.org/docs/0.20.0/storages/supported-storages/redb-storage/) |
-| Querying CSV, JSON, or Parquet files | [CSV](https://gluesql.org/docs/0.20.0/storages/supported-storages/csv-storage/), [JSON](https://gluesql.org/docs/0.20.0/storages/supported-storages/json-storage/), or [Parquet](https://gluesql.org/docs/0.20.0/storages/supported-storages/parquet-storage/) |
-| Lightweight filesystem persistence | [File](https://gluesql.org/docs/0.20.0/storages/supported-storages/file-storage/) |
-| Version-controlled data | [Git](https://gluesql.org/docs/0.20.0/storages/supported-storages/git-storage/) |
-| Existing MongoDB or Redis data | [Mongo](https://gluesql.org/docs/0.20.0/storages/supported-storages/mongo-storage/) or [Redis](https://gluesql.org/docs/0.20.0/storages/supported-storages/redis-storage/) |
-| Queries across multiple storage backends | [Composite](https://gluesql.org/docs/0.20.0/storages/supported-storages/composite-storage/) |
-
-See the [Storage documentation](https://gluesql.org/docs/0.20.0/storages/) for setup, examples, and limitations.
 
 ## Adapting GlueSQL to Your Environment: Creating Custom Storage
 
