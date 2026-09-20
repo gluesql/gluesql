@@ -209,14 +209,18 @@ fn execute_inner<T: GStore + GStoreMut>(
                 .map(|assignment| assignment.id.clone())
                 .collect();
 
-            let update = Update::new(storage, table_name, assignments, column_defs.as_deref())?;
-
-            let foreign_keys = Rc::new(foreign_keys);
+            let update = Update::new(
+                storage,
+                table_name,
+                assignments,
+                column_defs.as_deref(),
+                &foreign_keys,
+            )?;
 
             let rows = fetch(storage, table_name, all_columns, selection.as_ref())?
                 .map(|item| {
                     let (key, row) = item?;
-                    let row = update.apply(row, foreign_keys.as_ref())?;
+                    let row = update.apply(row)?;
 
                     Ok((key, row))
                 })

@@ -132,9 +132,8 @@ pub fn create_table<T: GStore + GStoreMut>(
 
     for foreign_key in foreign_keys {
         let ForeignKey {
-            referencing_column_name,
             referenced_table_name,
-            referenced_column_name,
+            referenced_column_names,
             ..
         } = foreign_key;
 
@@ -151,40 +150,55 @@ pub fn create_table<T: GStore + GStoreMut>(
             referenced_schema.column_defs
         };
 
-        let referenced_column_def = column_defs
-            .and_then(|column_defs| {
-                column_defs
-                    .into_iter()
-                    .find(|column_def| column_def.name == *referenced_column_name)
-            })
-            .ok_or_else(|| AlterError::ReferencedColumnNotFound(referenced_column_name.to_owned()))?
-            .clone();
+        for (referencing_column_name, referenced_column_name) in foreign_key.column_pairs() {
+            let referenced_column_def = column_defs
+                .as_deref()
+                .and_then(|column_defs| {
+                    column_defs
+                        .iter()
+                        .find(|column_def| column_def.name == *referenced_column_name)
+                })
+                .ok_or_else(|| {
+                    AlterError::ReferencedColumnNotFound(referenced_column_name.to_owned())
+                })?;
 
-        let referencing_column_def = target_columns_defs
-            .as_deref()
-            .and_then(|column_defs| {
-                column_defs
-                    .iter()
-                    .find(|column_def| column_def.name == *referencing_column_name)
-            })
-            .ok_or_else(|| {
-                AlterError::ReferencingColumnNotFound(referencing_column_name.to_owned())
-            })?;
+            let referencing_column_def = target_columns_defs
+                .as_deref()
+                .and_then(|column_defs| {
+                    column_defs
+                        .iter()
+                        .find(|column_def| column_def.name == *referencing_column_name)
+                })
+                .ok_or_else(|| {
+                    AlterError::ReferencingColumnNotFound(referencing_column_name.to_owned())
+                })?;
 
-        if referencing_column_def.data_type != referenced_column_def.data_type {
-            return Err(AlterError::ForeignKeyDataTypeMismatch {
-                referencing_column: referencing_column_name.to_owned(),
-                referencing_column_type: referencing_column_def.data_type.clone(),
-                referenced_column: referenced_column_name.to_owned(),
-                referenced_column_type: referenced_column_def.data_type.clone(),
+            if referencing_column_def.data_type != referenced_column_def.data_type {
+                return Err(AlterError::ForeignKeyDataTypeMismatch {
+                    referencing_column: referencing_column_name.to_owned(),
+                    referencing_column_type: referencing_column_def.data_type.clone(),
+                    referenced_column: referenced_column_name.to_owned(),
+                    referenced_column_type: referenced_column_def.data_type.clone(),
+                }
+                .into());
             }
-            .into());
         }
 
-        if referenced_column_def.unique != Some(ColumnUniqueOption { is_primary: true }) {
+        let has_primary_key = referenced_column_names
+            .iter()
+            .any(|referenced_column_name| {
+                column_defs.as_deref().is_some_and(|column_defs| {
+                    column_defs.iter().any(|column_def| {
+                        column_def.name == *referenced_column_name
+                            && column_def.unique == Some(ColumnUniqueOption { is_primary: true })
+                    })
+                })
+            });
+
+        if !has_primary_key {
             return Err(AlterError::ReferencingNonPKColumn {
                 referenced_table: referenced_table_name.to_owned(),
-                referenced_column: referenced_column_name.to_owned(),
+                referenced_column: referenced_column_names.join(", "),
             }
             .into());
         }
@@ -347,9 +361,9 @@ mod tests {
             table_name: "Referencing".to_owned(),
             foreign_key: ForeignKey {
                 name: "FK_referenced_id-Referenced_id".to_owned(),
-                referencing_column_name: "referenced_id".to_owned(),
+                referencing_column_names: vec!["referenced_id".to_owned()],
                 referenced_table_name: "Referenced".to_owned(),
-                referenced_column_name: "id".to_owned(),
+                referenced_column_names: vec!["id".to_owned()],
                 on_delete: ReferentialAction::NoAction,
                 on_update: ReferentialAction::NoAction,
             },

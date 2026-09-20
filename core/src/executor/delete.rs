@@ -46,25 +46,42 @@ pub fn delete<T: GStore + GStoreMut>(
         for (referencing, columns) in &referencings {
             let Referencing {
                 table_name: referencing_table_name,
-                foreign_key:
-                    ForeignKey {
-                        referencing_column_name,
-                        referenced_column_name,
-                        on_delete,
-                        ..
-                    },
+                foreign_key,
             } = referencing;
+            let ForeignKey {
+                referencing_column_names,
+                on_delete,
+                ..
+            } = foreign_key;
 
-            let value = row
-                .get_value(referenced_column_name)
-                .ok_or(DeleteError::ValueNotFound(referenced_column_name.clone()))?
-                .clone();
+            // The tuple matches only when every pair does
+            let mut predicate = None;
+            for (referencing_column_name, referenced_column_name) in foreign_key.column_pairs() {
+                let value = row
+                    .get_value(referenced_column_name)
+                    .ok_or(DeleteError::ValueNotFound(referenced_column_name.clone()))?
+                    .clone();
 
-            let expr = &ExprPlan::BinaryOp {
-                left: Box::new(ExprPlan::Identifier(referencing_column_name.clone())),
-                op: BinaryOperator::Eq,
-                right: Box::new(ExprPlan::Value(value)),
+                let equality = ExprPlan::BinaryOp {
+                    left: Box::new(ExprPlan::Identifier(referencing_column_name.clone())),
+                    op: BinaryOperator::Eq,
+                    right: Box::new(ExprPlan::Value(value)),
+                };
+
+                predicate = Some(match predicate {
+                    None => equality,
+                    Some(predicate) => ExprPlan::BinaryOp {
+                        left: Box::new(predicate),
+                        op: BinaryOperator::And,
+                        right: Box::new(equality),
+                    },
+                });
+            }
+
+            let Some(expr) = predicate else {
+                continue;
             };
+            let expr = &expr;
 
             let mut referencing_rows = fetch(
                 storage,
@@ -76,7 +93,8 @@ pub fn delete<T: GStore + GStoreMut>(
             let referencing_row_exists = referencing_rows.next().transpose()?.is_some();
             if referencing_row_exists && on_delete == &ReferentialAction::NoAction {
                 return Err(DeleteError::ReferencingColumnExists(format!(
-                    "{referencing_table_name}.{referencing_column_name}"
+                    "{referencing_table_name}.{}",
+                    referencing_column_names.join(", ")
                 ))
                 .into());
             }

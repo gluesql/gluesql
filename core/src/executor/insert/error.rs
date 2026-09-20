@@ -34,4 +34,7 @@ pub enum InsertError {
 
     #[error("unreachable referencing column name: {0}")]
     ConflictReferencingColumnName(String),
+
+    #[error("unreachable foreign key column resolution: {0}")]
+    UnreachableForeignKeyColumn(String),
 }

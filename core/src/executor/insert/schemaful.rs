@@ -202,6 +202,55 @@ fn assign_values(
         .collect()
 }
 
+// Column positions for one foreign key, resolved against both tables' schemas.
+struct ResolvedForeignKey {
+    referencing_indexes: Vec<usize>,
+    referenced_indexes: Vec<usize>,
+    key_position: usize,
+}
+
+fn resolve_foreign_key(
+    foreign_key: &ForeignKey,
+    column_defs: &[ColumnDef],
+    referenced_column_defs: &[ColumnDef],
+) -> Result<ResolvedForeignKey> {
+    let index_of = |defs: &[ColumnDef], name: &str| {
+        defs.iter()
+            .position(|column_def| column_def.name == name)
+            .ok_or_else(|| InsertError::UnreachableForeignKeyColumn(name.to_owned()))
+    };
+
+    let referencing_indexes = foreign_key
+        .referencing_column_names
+        .iter()
+        .map(|name| index_of(column_defs, name))
+        .collect::<Result<Vec<_>, _>>()?;
+    let referenced_indexes = foreign_key
+        .referenced_column_names
+        .iter()
+        .map(|name| index_of(referenced_column_defs, name))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let key_position = foreign_key
+        .referenced_column_names
+        .iter()
+        .position(|name| {
+            referenced_column_defs.iter().any(|column_def| {
+                column_def.name == *name
+                    && column_def.unique == Some(ColumnUniqueOption { is_primary: true })
+            })
+        })
+        .ok_or_else(|| {
+            InsertError::UnreachableForeignKeyColumn(foreign_key.referenced_column_names.join(", "))
+        })?;
+
+    Ok(ResolvedForeignKey {
+        referencing_indexes,
+        referenced_indexes,
+        key_position,
+    })
+}
+
 fn validate_foreign_key<T: GStore>(
     storage: &T,
     column_defs: &Rc<[ColumnDef]>,
@@ -210,40 +259,60 @@ fn validate_foreign_key<T: GStore>(
 ) -> Result<()> {
     for foreign_key in foreign_keys {
         let ForeignKey {
-            referencing_column_name,
             referenced_table_name,
-            referenced_column_name,
+            referenced_column_names,
             ..
         } = &foreign_key;
 
-        let target_index = column_defs
-            .iter()
-            .enumerate()
-            .find(|(_, c)| &c.name == referencing_column_name)
-            .ok_or_else(|| {
-                InsertError::ConflictReferencingColumnName(referencing_column_name.to_owned())
-            })?;
+        let referenced_column_defs = storage
+            .fetch_schema(referenced_table_name)?
+            .and_then(|schema| schema.column_defs)
+            .unwrap_or_default();
+
+        let ResolvedForeignKey {
+            referencing_indexes,
+            referenced_indexes,
+            key_position,
+        } = resolve_foreign_key(&foreign_key, column_defs, &referenced_column_defs)?;
 
         for row in rows {
-            let value =
-                row.get(target_index.0)
-                    .ok_or(InsertError::ConflictReferencingColumnName(
-                        referencing_column_name.to_owned(),
-                    ))?;
+            let values = referencing_indexes
+                .iter()
+                .map(|index| {
+                    row.get(*index).ok_or_else(|| {
+                        InsertError::UnreachableForeignKeyColumn(
+                            foreign_key.referencing_column_names.join(", "),
+                        )
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()?;
 
-            if value == &Value::Null {
+            // MATCH SIMPLE: a NULL anywhere in the referencing tuple satisfies the constraint.
+            if values.contains(&&Value::Null) {
                 continue;
             }
 
-            let no_referenced = storage
-                .fetch_data(referenced_table_name, &Key::try_from(value)?)?
-                .is_none();
+            let referenced_row =
+                storage.fetch_data(referenced_table_name, &Key::try_from(values[key_position])?)?;
 
-            if no_referenced {
+            let matched = referenced_row.is_some_and(|referenced_row| {
+                values.iter().enumerate().all(|(position, value)| {
+                    position == key_position
+                        || referenced_row.get(referenced_indexes[position]) == Some(*value)
+                })
+            });
+
+            if !matched {
+                let referenced_value = values
+                    .iter()
+                    .map(|value| String::from((*value).clone()))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+
                 return Err(InsertError::CannotFindReferencedValue {
                     table_name: referenced_table_name.to_owned(),
-                    column_name: referenced_column_name.to_owned(),
-                    referenced_value: String::from(value),
+                    column_name: referenced_column_names.join(", "),
+                    referenced_value,
                 }
                 .into());
             }

@@ -127,9 +127,9 @@ ALTER TABLE Referenced DROP COLUMN id
 --       "name": "FK_referenced_id-Referenced_id",
 --       "on_delete": "NoAction",
 --       "on_update": "NoAction",
---       "referenced_column_name": "id",
+--       "referenced_column_names": ["id"],
 --       "referenced_table_name": "Referenced",
---       "referencing_column_name": "referenced_id"
+--       "referencing_column_names": ["referenced_id"]
 --     },
 --     "table_name": "Referencing"
 --   }
@@ -144,9 +144,9 @@ ALTER TABLE Referenced RENAME COLUMN id to new_id
 --       "name": "FK_referenced_id-Referenced_id",
 --       "on_delete": "NoAction",
 --       "on_update": "NoAction",
---       "referenced_column_name": "id",
+--       "referenced_column_names": ["id"],
 --       "referenced_table_name": "Referenced",
---       "referencing_column_name": "referenced_id"
+--       "referencing_column_names": ["referenced_id"]
 --     },
 --     "table_name": "Referencing"
 --   }
@@ -161,9 +161,9 @@ ALTER TABLE Referencing DROP COLUMN referenced_id
 --       "name": "FK_referenced_id-Referenced_id",
 --       "on_delete": "NoAction",
 --       "on_update": "NoAction",
---       "referenced_column_name": "id",
+--       "referenced_column_names": ["id"],
 --       "referenced_table_name": "Referenced",
---       "referencing_column_name": "referenced_id"
+--       "referencing_column_names": ["referenced_id"]
 --     },
 --     "table_name": "Referencing"
 --   }
@@ -178,9 +178,9 @@ ALTER TABLE Referencing RENAME COLUMN referenced_id to new_id
 --       "name": "FK_referenced_id-Referenced_id",
 --       "on_delete": "NoAction",
 --       "on_update": "NoAction",
---       "referenced_column_name": "id",
+--       "referenced_column_names": ["id"],
 --       "referenced_table_name": "Referenced",
---       "referencing_column_name": "referenced_id"
+--       "referencing_column_names": ["referenced_id"]
 --     },
 --     "table_name": "Referencing"
 --   }
