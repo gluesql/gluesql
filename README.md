@@ -22,11 +22,6 @@ GlueSQL is a library for Multi-Model SQL databases written in Rust.
 - Supports custom storage backends through an extensible design
 - Supports both SQL and Query Builder
 
-If you're interested in learning more about GlueSQL, we recommend the following blog articles for a deeper dive into its capabilities and benefits:
-
-1. [Breaking the Boundary between SQL and NoSQL Database](https://gluesql.org/docs/dev/articles/breaking-the-boundary-between-sql-and-nosql)
-2. [Revolutionizing Databases by Unifying Query Interfaces](https://gluesql.org/docs/dev/articles/revolutionizing-databases-by-unifying-query-interfaces)
-3. [Test-Driven Documentation - Automating User Manual Creation](https://gluesql.org/docs/dev/articles/test-driven-documentation)
 
 ## Supporting SQL and Query Builder
 
