@@ -96,16 +96,16 @@ GlueSQL provides a variety of reference storages out of the box, including simpl
 
 | Use case | Recommended storage |
 | --- | --- |
-| Temporary data, tests, and prototypes | [Memory](https://gluesql.org/docs/dev/storages/supported-storages/memory-storage/) |
-| Shared in-memory data across threads | [Shared Memory](https://gluesql.org/docs/dev/storages/supported-storages/shared-memory-storage/) |
-| Persistent embedded database | [Redb](https://gluesql.org/docs/dev/storages/supported-storages/redb-storage/) |
-| Querying CSV, JSON, or Parquet files | [CSV](https://gluesql.org/docs/dev/storages/supported-storages/csv-storage/), [JSON](https://gluesql.org/docs/dev/storages/supported-storages/json-storage/), or [Parquet](https://gluesql.org/docs/dev/storages/supported-storages/parquet-storage/) |
-| Lightweight filesystem persistence | [File](https://gluesql.org/docs/dev/storages/supported-storages/file-storage/) |
-| Version-controlled data | [Git](https://gluesql.org/docs/dev/storages/supported-storages/git-storage/) |
-| Existing MongoDB or Redis data | [Mongo](https://gluesql.org/docs/dev/storages/supported-storages/mongo-storage/) or [Redis](https://gluesql.org/docs/dev/storages/supported-storages/redis-storage/) |
-| Queries across multiple storage backends | [Composite](https://gluesql.org/docs/dev/storages/supported-storages/composite-storage/) |
+| Temporary data, tests, and prototypes | [Memory](https://gluesql.org/docs/0.20.0/storages/supported-storages/memory-storage/) |
+| Shared in-memory data across threads | [Shared Memory](https://gluesql.org/docs/0.20.0/storages/supported-storages/shared-memory-storage/) |
+| Persistent embedded database | [Redb](https://gluesql.org/docs/0.20.0/storages/supported-storages/redb-storage/) |
+| Querying CSV, JSON, or Parquet files | [CSV](https://gluesql.org/docs/0.20.0/storages/supported-storages/csv-storage/), [JSON](https://gluesql.org/docs/0.20.0/storages/supported-storages/json-storage/), or [Parquet](https://gluesql.org/docs/0.20.0/storages/supported-storages/parquet-storage/) |
+| Lightweight filesystem persistence | [File](https://gluesql.org/docs/0.20.0/storages/supported-storages/file-storage/) |
+| Version-controlled data | [Git](https://gluesql.org/docs/0.20.0/storages/supported-storages/git-storage/) |
+| Existing MongoDB or Redis data | [Mongo](https://gluesql.org/docs/0.20.0/storages/supported-storages/mongo-storage/) or [Redis](https://gluesql.org/docs/0.20.0/storages/supported-storages/redis-storage/) |
+| Queries across multiple storage backends | [Composite](https://gluesql.org/docs/0.20.0/storages/supported-storages/composite-storage/) |
 
-See the [Storage documentation](https://gluesql.org/docs/dev/storages/) for setup, examples, and limitations.
+See the [Storage documentation](https://gluesql.org/docs/0.20.0/storages/) for setup, examples, and limitations.
 
 ## Adapting GlueSQL to Your Environment: Creating Custom Storage
 
