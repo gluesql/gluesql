@@ -17,9 +17,9 @@ It is also available for JavaScript applications in the browser and Node.js.
 
 GlueSQL is quite sticky: it brings SQL to your application's storage. Use a provided storage backend or implement a custom adapter to query existing data without moving it into a separate database. GlueSQL handles SQL parsing, planning, and execution.
 
-- **Choose your storage:** use in-memory storage, embedded databases, local files, or external databases.
+- **Choose a storage backend:** use in-memory storage, embedded databases, local files, or external databases.
 - **Work with flexible data:** query schema-defined and schemaless tables together, including MAP and LIST values.
-- **Choose your query interface:** write SQL or compose queries with the Rust Query Builder, both backed by the same engine.
+- **Choose a query interface:** write SQL or compose queries with the Rust Query Builder, both backed by the same engine.
 
 [Explore the documentation →](https://gluesql.org/docs)
 
