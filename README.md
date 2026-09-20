@@ -14,7 +14,7 @@ It is also available for JavaScript applications in the browser and Node.js.
 
 ## Why GlueSQL?
 
-Query your application's existing data with SQL without moving it into a separate database. Use a provided storage backend or implement an adapter for your own data source. GlueSQL handles SQL parsing, planning, and execution.
+GlueSQL is quite sticky: it brings SQL to your application's storage. Use a provided storage backend or implement a custom adapter to query existing data without moving it into a separate database. GlueSQL handles SQL parsing, planning, and execution.
 
 - **Choose your storage:** use in-memory storage, embedded databases, local files, or external databases.
 - **Work with flexible data:** query schema-defined and schemaless tables together, including MAP and LIST values.
