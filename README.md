@@ -10,6 +10,7 @@
 ## An Embeddable Multi-Model SQL Engine
 
 GlueSQL is an embeddable, multi-model SQL database engine written in Rust.
+It combines SQL with the flexibility to work across different data models and storage environments.
 It is also available for JavaScript applications in the browser and Node.js.
 
 ## Why GlueSQL?
