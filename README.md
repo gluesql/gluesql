@@ -14,16 +14,11 @@ It is also available for JavaScript applications in the browser and Node.js.
 
 ## Why GlueSQL?
 
-Query your application's existing data with SQL without moving it into a separate database. Use
-a provided storage backend or implement an adapter for your own data source—GlueSQL handles SQL
-parsing, planning, and execution.
+Query your application's existing data with SQL without moving it into a separate database. Use a provided storage backend or implement an adapter for your own data source. GlueSQL handles SQL parsing, planning, and execution.
 
-- **Choose your storage:** use in-memory storage, embedded databases, local files, or external
-databases.
-- **Work with flexible data:** query schema-defined and schemaless tables together, including
-MAP and LIST values.
-- **Choose your query interface:** write SQL or compose queries with the Rust Query Builder,
-both backed by the same engine.
+- **Choose your storage:** use in-memory storage, embedded databases, local files, or external databases.
+- **Work with flexible data:** query schema-defined and schemaless tables together, including MAP and LIST values.
+- **Choose your query interface:** write SQL or compose queries with the Rust Query Builder, both backed by the same engine.
 
 [Explore the documentation →](https://gluesql.org/docs)
 
@@ -47,7 +42,7 @@ npm install gluesql
 import { gluesql } from 'https://cdn.jsdelivr.net/npm/gluesql/gluesql.js';
 ```
 
-For more information, check out the [gluesql-js repository](https://github.com/gluesql/gluesql-js).
+For more JS library information, check out the [gluesql-js repository](https://github.com/gluesql/gluesql-js).
 
 ## Supported Reference Storages
 
