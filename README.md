@@ -42,7 +42,7 @@ For more information, check out the [gluesql-js repository](https://github.com/g
 
 ## SQL and Query Builder
 
-GlueSQL supports both SQL and Query Builder. Use SQL for familiar or dynamic queries, and use Query Builder when composing queries in Rust or controlling execution more precisely. Both interfaces run through the same GlueSQL engine and storage backend.
+GlueSQL supports both SQL and Query Builder. Use SQL for familiar or dynamic queries, and use Query Builder when composing queries in Rust or controlling execution more precisely. Both interfaces run through the same GlueSQL engine and storage backend. For more information, check out the [query builder documentation](https://gluesql.org/docs/0.20.0/query-builder/intro/) and [SQL documentation](https://gluesql.org/docs/0.20.0/sql-syntax/intro/).
 
 ### SQL
 
