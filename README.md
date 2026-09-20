@@ -11,13 +11,16 @@
 [![Coverage Status](https://coveralls.io/repos/github/gluesql/gluesql/badge.svg?branch=main)](https://coveralls.io/github/gluesql/gluesql?branch=main)
 </center>
 
-## Multi-Model Database Engine as a Library
+## An Embeddable Multi-Model SQL Engine
 
-GlueSQL is a Rust library for SQL databases that includes a parser ([sqlparser-rs](https://github.com/sqlparser-rs/sqlparser-rs)), an execution layer, and a variety of storage options, both persistent and non-persistent, all in one package. It is a versatile tool for developers, supporting both SQL and Query Builder. GlueSQL can handle structured and unstructured data, making it suitable for a wide range of use cases. It is portable and can be used with various storage types, including log files and read-write capable storage. GlueSQL is designed to be extensible and supports custom planners, making it a powerful tool for developers who need SQL support for their databases or services.
+<center> [**official documentation website**](https://gluesql.org/docs) </center>
 
-For more information on how to use GlueSQL, please refer to the [**official documentation website**](https://gluesql.org/docs). The documentation provides detailed information on how to install and use GlueSQL, as well as examples and tutorials on how to create custom storage systems and perform SQL operations.
+GlueSQL is a library for Multi-Model SQL databases written in Rust.
 
-"We offer a service where the GlueSQL team can implement and maintain your custom storage, especially beneficial for NoSQL databases with their own query planner and execution layer. We welcome any services wishing to support SQL and GlueSQL query interfaces. For more details, please refer to [**here**](#gluesql-custom-storage-let-us-handle-it-for-you)."
+- Supports structured and unstructured data
+- Supports a variety of storage options
+- Supports custom storage backends through an extensible design
+- Supports both SQL and Query Builder
 
 If you're interested in learning more about GlueSQL, we recommend the following blog articles for a deeper dive into its capabilities and benefits:
 
@@ -155,6 +158,8 @@ To make it even easier to develop custom storages, GlueSQL provides a Test Suite
 Overall, creating a custom storage for GlueSQL is a straightforward process that allows you to adapt SQL and the Query Builder to your environment with ease.
 
 ## GlueSQL Custom Storage: Let Us Handle It for You
+
+We offer a service where the GlueSQL team can implement and maintain your custom storage, especially beneficial for NoSQL databases with their own query planner and execution layer. We welcome any services wishing to support SQL and GlueSQL query interfaces.
 
 Although anyone can develop a custom storage for GlueSQL with ease, our GlueSQL team can also implement and maintain it for you. This is especially recommended for NoSQL databases with their own query planner and execution layer, as adapting GlueSQL to them requires a deep understanding of GlueSQL's planner and storage layer details. We welcome not only database companies but also any services that want to support SQL and GlueSQL query interfaces. As GlueSQL is rapidly adding and improving features, we can help you develop and manage your custom storage effectively if you entrust it to us. If you're interested, please contact us at <taehoon@gluesql.com>.
 
