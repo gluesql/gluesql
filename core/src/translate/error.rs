@@ -71,8 +71,9 @@ pub enum InsertOption {
     #[strum(to_string = "RETURNING clause")]
     Returning,
 
-    /// `INSERT ... ON CONFLICT ...`
-    #[strum(to_string = "ON CONFLICT clause")]
+    /// `MySQL`'s `INSERT ... ON DUPLICATE KEY UPDATE ...`. `ON CONFLICT` itself is
+    /// supported; write that instead.
+    #[strum(to_string = "ON DUPLICATE KEY UPDATE clause")]
     OnConflict,
 
     /// `INSERT INTO <table> AS <alias> ...`
@@ -307,6 +308,9 @@ pub enum TranslateError {
 
     #[error("unsupported INSERT option: {0}")]
     UnsupportedInsertOption(InsertOption),
+
+    #[error("unsupported ON CONFLICT target: ON CONSTRAINT {0}")]
+    UnsupportedConflictTarget(String),
 
     #[error("unsupported CREATE TABLE option: {0}")]
     UnsupportedCreateTableOption(CreateTableOption),

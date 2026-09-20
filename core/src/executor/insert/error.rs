@@ -34,4 +34,13 @@ pub enum InsertError {
 
     #[error("unreachable referencing column name: {0}")]
     ConflictReferencingColumnName(String),
+
+    #[error("there is no unique constraint matching the ON CONFLICT target: {0}")]
+    NoUniqueConstraintForTarget(String),
+
+    #[error("ON CONFLICT DO UPDATE requires a conflict target")]
+    ConflictTargetRequired,
+
+    #[error("ON CONFLICT DO UPDATE cannot affect the same row twice")]
+    ConflictAffectsRowTwice,
 }

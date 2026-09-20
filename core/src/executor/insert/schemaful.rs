@@ -1,5 +1,5 @@
 use {
-    super::{InsertError, RowsData, values},
+    super::{InsertError, RowsData, Writes, conflict, values},
     crate::{
         ast::{ColumnDef, ColumnUniqueOption, ForeignKey},
         data::{Key, Value},
@@ -8,7 +8,7 @@ use {
             query,
             validate::{ColumnValidation, validate_unique},
         },
-        plan::{ExprPlan, QueryPlan, ValuesPlan, plan_scalar_expr},
+        plan::{ExprPlan, OnConflictPlan, QueryPlan, ValuesPlan, plan_scalar_expr},
         result::Result,
         store::GStore,
     },
@@ -22,7 +22,8 @@ pub(super) fn fetch_rows<T: GStore>(
     columns: &[String],
     source: &QueryPlan,
     foreign_keys: Vec<ForeignKey>,
-) -> Result<RowsData> {
+    on_conflict: Option<&OnConflictPlan>,
+) -> Result<Writes> {
     let column_defaults: Rc<[Option<ExprPlan>]> = Rc::from(
         column_defs
             .iter()
@@ -72,6 +73,24 @@ pub(super) fn fetch_rows<T: GStore>(
     };
     let rows = rows_iter.collect::<Result<Vec<Vec<Value>>>>()?;
 
+    // `ON CONFLICT` takes the rows that collide out of the insert, so what is validated
+    // and written below is what is actually being added.
+    let (rows, updated) = match on_conflict {
+        Some(on_conflict) => {
+            let conflict::Resolved { rows, updated } = conflict::resolve(
+                storage,
+                table_name,
+                &column_defs,
+                &foreign_keys,
+                on_conflict,
+                rows,
+            )?;
+
+            (rows, updated)
+        }
+        None => (rows, Vec::new()),
+    };
+
     validate_unique(
         storage,
         table_name,
@@ -85,7 +104,7 @@ pub(super) fn fetch_rows<T: GStore>(
         unique == &Some(ColumnUniqueOption { is_primary: true })
     });
 
-    match primary_key {
+    let rows = match primary_key {
         Some(i) => rows
             .into_iter()
             .filter_map(|values: Vec<Value>| {
@@ -95,9 +114,11 @@ pub(super) fn fetch_rows<T: GStore>(
                     .map(|result| result.map(|key| (key, values)))
             })
             .collect::<Result<Vec<_>>>()
-            .map(RowsData::Insert),
-        None => Ok(RowsData::Append(rows)),
-    }
+            .map(RowsData::Insert)?,
+        None => RowsData::Append(rows),
+    };
+
+    Ok(Writes { rows, updated })
 }
 
 fn values_rows<'a>(

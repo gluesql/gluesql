@@ -186,7 +186,10 @@ fn execute_inner<T: GStore + GStoreMut>(
             table_name,
             columns,
             source,
-        } => insert(storage, table_name, columns, source).map(Payload::Insert),
+            on_conflict,
+        } => {
+            insert(storage, table_name, columns, source, on_conflict.as_ref()).map(Payload::Insert)
+        }
         StatementPlan::Update {
             table_name,
             selection,

@@ -37,6 +37,7 @@ pub enum StatementPlan {
         table_name: String,
         columns: Vec<String>,
         source: QueryPlan,
+        on_conflict: Option<OnConflictPlan>,
     },
     Update {
         table_name: String,
@@ -97,6 +98,22 @@ pub struct AssignmentPlan {
     pub value: ExprPlan,
 }
 
+/// The planned form of [`ast::OnConflict`].
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct OnConflictPlan {
+    pub target: Option<Vec<String>>,
+    pub action: OnConflictActionPlan,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum OnConflictActionPlan {
+    DoNothing,
+    DoUpdate {
+        assignments: Vec<AssignmentPlan>,
+        selection: Option<ExprPlan>,
+    },
+}
+
 impl From<ast::Statement> for StatementPlan {
     fn from(statement: ast::Statement) -> Self {
         match statement {
@@ -106,10 +123,12 @@ impl From<ast::Statement> for StatementPlan {
                 table_name,
                 columns,
                 source,
+                on_conflict,
             } => Self::Insert {
                 table_name,
                 columns,
                 source: source.into(),
+                on_conflict: on_conflict.map(Into::into),
             },
             ast::Statement::Update {
                 table_name,
@@ -186,6 +205,32 @@ impl From<ast::Statement> for StatementPlan {
             ast::Statement::Rollback => Self::Rollback,
             ast::Statement::ShowVariable(variable) => Self::ShowVariable(variable),
             ast::Statement::ShowIndexes(table_name) => Self::ShowIndexes(table_name),
+        }
+    }
+}
+
+impl From<ast::OnConflict> for OnConflictPlan {
+    fn from(on_conflict: ast::OnConflict) -> Self {
+        let ast::OnConflict { target, action } = on_conflict;
+
+        Self {
+            target,
+            action: action.into(),
+        }
+    }
+}
+
+impl From<ast::OnConflictAction> for OnConflictActionPlan {
+    fn from(action: ast::OnConflictAction) -> Self {
+        match action {
+            ast::OnConflictAction::DoNothing => Self::DoNothing,
+            ast::OnConflictAction::DoUpdate {
+                assignments,
+                selection,
+            } => Self::DoUpdate {
+                assignments: assignments.into_iter().map(Into::into).collect(),
+                selection: selection.map(Into::into),
+            },
         }
     }
 }

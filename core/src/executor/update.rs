@@ -36,6 +36,34 @@ pub enum UpdateError {
     },
 }
 
+/// The alias `PostgreSQL` binds the proposed row to inside `ON CONFLICT DO UPDATE`.
+/// `GlueSQL` matches identifiers exactly, so both spellings clients write are bound.
+const EXCLUDED: &str = "excluded";
+const EXCLUDED_UPPERCASE: &str = "EXCLUDED";
+
+/// What an `ON CONFLICT DO UPDATE` expression sees: the row already in the table, by its
+/// own column names, and the row the insert proposed, under the `excluded` alias. The
+/// table comes first in the chain, so a bare column name is the stored row's, as
+/// `PostgreSQL` resolves it.
+pub fn conflict_context<'a>(
+    table_name: &'a str,
+    row: &'a Row,
+    excluded: &'a Row,
+) -> RowContext<'a> {
+    let uppercase = Rc::new(RowContext::new(
+        EXCLUDED_UPPERCASE,
+        Cow::Borrowed(excluded),
+        None,
+    ));
+    let excluded = Rc::new(RowContext::new(
+        EXCLUDED,
+        Cow::Borrowed(excluded),
+        Some(uppercase),
+    ));
+
+    RowContext::new(table_name, Cow::Borrowed(row), Some(excluded))
+}
+
 pub struct Update<'a, T: GStore> {
     storage: &'a T,
     table_name: &'a str,
@@ -73,7 +101,21 @@ impl<'a, T: GStore> Update<'a, T> {
     }
 
     pub fn apply(&self, row: Row, foreign_keys: &[ForeignKey]) -> Result<Row> {
-        let context = RowContext::new(self.table_name, Cow::Borrowed(&row), None);
+        self.apply_with(row, foreign_keys, None)
+    }
+
+    /// `excluded` is the row an `INSERT ... ON CONFLICT DO UPDATE` proposed; the
+    /// assignments see it under that alias.
+    pub fn apply_with(
+        &self,
+        row: Row,
+        foreign_keys: &[ForeignKey],
+        excluded: Option<&Row>,
+    ) -> Result<Row> {
+        let context = match excluded {
+            Some(excluded) => conflict_context(self.table_name, &row, excluded),
+            None => RowContext::new(self.table_name, Cow::Borrowed(&row), None),
+        };
         let context = Some(Rc::new(context));
 
         let mut assignments = Vec::with_capacity(self.fields.len());

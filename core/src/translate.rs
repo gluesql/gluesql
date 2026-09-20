@@ -22,16 +22,21 @@ pub use self::{
 
 use {
     crate::{
-        ast::{Assignment, Expr, ForeignKey, ReferentialAction, Statement, Variable},
+        ast::{
+            Assignment, Expr, ForeignKey, OnConflict, OnConflictAction, ReferentialAction,
+            Statement, Variable,
+        },
         result::Result,
     },
     ddl::{translate_alter_table_operation, translate_operate_function_arg},
     sqlparser::ast::{
         Assignment as SqlAssignment, AssignmentTarget as SqlAssignmentTarget,
-        CommentDef as SqlCommentDef, CreateFunctionBody as SqlCreateFunctionBody,
-        CreateIndex as SqlCreateIndex, CreateTable as SqlCreateTable, Delete as SqlDelete,
+        CommentDef as SqlCommentDef, ConflictTarget as SqlConflictTarget,
+        CreateFunctionBody as SqlCreateFunctionBody, CreateIndex as SqlCreateIndex,
+        CreateTable as SqlCreateTable, Delete as SqlDelete, DoUpdate as SqlDoUpdate,
         FromTable as SqlFromTable, Ident as SqlIdent, Insert as SqlInsert,
-        ObjectName as SqlObjectName, ObjectType as SqlObjectType,
+        ObjectName as SqlObjectName, ObjectType as SqlObjectType, OnConflict as SqlOnConflict,
+        OnConflictAction as SqlOnConflictAction, OnInsert as SqlOnInsert,
         ReferentialAction as SqlReferentialAction, Statement as SqlStatement,
         TableConstraint as SqlTableConstraint, TableFactor, TableWithJoins,
     },
@@ -78,8 +83,6 @@ pub fn translate_with_params(
         }) => {
             let violation = if returning.is_some() {
                 Some(InsertOption::Returning)
-            } else if on.is_some() {
-                Some(InsertOption::OnConflict)
             } else if table_alias.is_some() {
                 Some(InsertOption::TableAlias)
             } else if partitioned.is_some() {
@@ -112,6 +115,10 @@ pub fn translate_with_params(
                 table_name,
                 columns,
                 source,
+                on_conflict: on
+                    .as_ref()
+                    .map(|on| translate_on_insert(on, params))
+                    .transpose()?,
             })
         }
         SqlStatement::Update {
@@ -564,6 +571,47 @@ fn translate_object_name(sql_object_name: &SqlObjectName) -> Result<String> {
         .ok_or_else(|| TranslateError::UnreachableEmptyObject.into())
 }
 
+/// Translates `INSERT ... ON CONFLICT ...`.
+///
+/// `ON CONFLICT ON CONSTRAINT <name>` names a constraint, and `GlueSQL` does not name
+/// them; `MySQL`'s `ON DUPLICATE KEY UPDATE` is a different clause. Both are rejected.
+fn translate_on_insert(on_insert: &SqlOnInsert, params: &[ParamLiteral]) -> Result<OnConflict> {
+    let SqlOnInsert::OnConflict(SqlOnConflict {
+        conflict_target,
+        action,
+    }) = on_insert
+    else {
+        return Err(TranslateError::UnsupportedInsertOption(InsertOption::OnConflict).into());
+    };
+
+    let target = match conflict_target {
+        None => None,
+        Some(SqlConflictTarget::Columns(columns)) => Some(translate_idents(columns)),
+        Some(SqlConflictTarget::OnConstraint(name)) => {
+            return Err(TranslateError::UnsupportedConflictTarget(name.to_string()).into());
+        }
+    };
+
+    let action = match action {
+        SqlOnConflictAction::DoNothing => OnConflictAction::DoNothing,
+        SqlOnConflictAction::DoUpdate(SqlDoUpdate {
+            assignments,
+            selection,
+        }) => OnConflictAction::DoUpdate {
+            assignments: assignments
+                .iter()
+                .map(|assignment| translate_assignment(assignment, params))
+                .collect::<Result<_>>()?,
+            selection: selection
+                .as_ref()
+                .map(|expr| translate_expr(expr, params))
+                .transpose()?,
+        },
+    };
+
+    Ok(OnConflict { target, action })
+}
+
 pub fn translate_idents(idents: &[SqlIdent]) -> Vec<String> {
     idents.iter().map(|v| v.value.clone()).collect()
 }
@@ -671,6 +719,65 @@ mod tests {
     }
 
     #[test]
+    fn on_conflict() {
+        let translated = |sql: &str| {
+            let parsed = parse(sql).expect("parse");
+            let Statement::Insert { on_conflict, .. } = translate(&parsed[0]).expect("translate")
+            else {
+                panic!("not an insert: {sql}");
+            };
+
+            on_conflict
+        };
+
+        assert_eq!(
+            translated("INSERT INTO Foo VALUES (1) ON CONFLICT DO NOTHING"),
+            Some(OnConflict {
+                target: None,
+                action: OnConflictAction::DoNothing,
+            })
+        );
+        assert_eq!(
+            translated("INSERT INTO Foo VALUES (1) ON CONFLICT (id) DO NOTHING"),
+            Some(OnConflict {
+                target: Some(vec!["id".to_owned()]),
+                action: OnConflictAction::DoNothing,
+            })
+        );
+        assert_eq!(
+            translated(
+                "INSERT INTO Foo VALUES (1) ON CONFLICT (id) DO UPDATE SET total = excluded.total WHERE total < 10"
+            ),
+            Some(OnConflict {
+                target: Some(vec!["id".to_owned()]),
+                action: OnConflictAction::DoUpdate {
+                    assignments: vec![Assignment {
+                        id: "total".to_owned(),
+                        value: Expr::CompoundIdentifier {
+                            alias: "excluded".to_owned(),
+                            ident: "total".to_owned(),
+                        },
+                    }],
+                    selection: Some(Expr::BinaryOp {
+                        left: Box::new(Expr::Identifier("total".to_owned())),
+                        op: crate::ast::BinaryOperator::Lt,
+                        right: Box::new(Expr::Literal(crate::ast::Literal::Number(
+                            bigdecimal::BigDecimal::from(10),
+                        ))),
+                    }),
+                },
+            })
+        );
+        assert_eq!(translated("INSERT INTO Foo VALUES (1)"), None);
+
+        // A constraint has no name in GlueSQL, so it cannot be a conflict target.
+        assert_translate_error(
+            "INSERT INTO Foo VALUES (1) ON CONFLICT ON CONSTRAINT foo_pkey DO NOTHING",
+            TranslateError::UnsupportedConflictTarget("foo_pkey".to_owned()),
+        );
+    }
+
+    #[test]
     fn insert_options_not_supported() {
         let cases = [
             (
@@ -678,7 +785,8 @@ mod tests {
                 TranslateError::UnsupportedInsertOption(InsertOption::Returning),
             ),
             (
-                "INSERT INTO Foo VALUES (1) ON CONFLICT DO NOTHING",
+                // MySQL's spelling; `ON CONFLICT` is the one supported.
+                "INSERT INTO Foo VALUES (1) ON DUPLICATE KEY UPDATE a = 1",
                 TranslateError::UnsupportedInsertOption(InsertOption::OnConflict),
             ),
             (

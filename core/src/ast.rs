@@ -60,6 +60,8 @@ pub enum Statement {
         columns: Vec<String>,
         /// A SQL query that specifies what to insert
         source: Query,
+        /// ON CONFLICT
+        on_conflict: Option<OnConflict>,
     },
     /// UPDATE
     Update {
@@ -145,6 +147,29 @@ pub enum Statement {
 pub struct Assignment {
     pub id: String,
     pub value: Expr,
+}
+
+/// `INSERT ... ON CONFLICT [(column)] DO NOTHING | DO UPDATE SET ...`: what to do with a
+/// row whose unique or primary key value is already in the table.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct OnConflict {
+    /// The columns whose uniqueness is being watched. `None` is every unique column of
+    /// the table, which `DO NOTHING` allows and `DO UPDATE` does not, as in `PostgreSQL`.
+    pub target: Option<Vec<String>>,
+    pub action: OnConflictAction,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum OnConflictAction {
+    /// Leave the row in the table as it is and do not insert.
+    DoNothing,
+    /// Update the row in the table. The assignments see the row in the table by its
+    /// column name and the row the insert proposed under the `excluded` alias.
+    DoUpdate {
+        assignments: Vec<Assignment>,
+        /// `DO UPDATE SET ... WHERE`: with a false condition the row is left alone.
+        selection: Option<Expr>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

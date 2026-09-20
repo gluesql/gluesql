@@ -92,6 +92,7 @@ impl Build for InsertSourceNode<'_> {
             table_name,
             columns,
             source,
+            on_conflict: None,
         })
     }
 }

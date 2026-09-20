@@ -22,12 +22,14 @@ pub fn plan(statement: StatementPlan) -> StatementPlan {
             table_name,
             columns,
             mut source,
+            on_conflict,
         } => {
             plan_query(&mut source);
             StatementPlan::Insert {
                 table_name,
                 columns,
                 source,
+                on_conflict,
             }
         }
         StatementPlan::CreateTable {
@@ -601,6 +603,7 @@ mod tests {
     fn binds_insert_and_create_table_source_queries() {
         let actual = parse_and_plan("INSERT INTO Target SELECT COUNT(*) FROM Source");
         let expected = StatementPlan::Insert {
+            on_conflict: None,
             table_name: "Target".to_owned(),
             columns: Vec::new(),
             source: parse_and_plan_query("SELECT COUNT(*) FROM Source"),

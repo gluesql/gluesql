@@ -156,6 +156,7 @@ macro_rules! generate_store_tests {
         }
         sql_case!(update);
         sql_case!(insert);
+        sql_case!(on_conflict);
         sql_case!(delete);
         sql_case!(basic);
         sql_case!(array);
