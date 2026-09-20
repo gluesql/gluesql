@@ -38,6 +38,7 @@ pub struct FileRow {
 impl FileStorage {
     pub fn new<T: AsRef<Path>>(path: T) -> Result<Self> {
         let path = path.as_ref();
+        Self::ensure_no_migration_lock(path)?;
         fs::create_dir_all(path).map_storage_err()?;
         Self::ensure_schema_versions_supported(path)?;
 

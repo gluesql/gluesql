@@ -7,11 +7,14 @@ use {
     gluesql_file_storage::{FILE_STORAGE_FORMAT_VERSION, FileRow, FileStorage, migrate_to_latest},
     ron::ser::{PrettyConfig, to_string_pretty},
     serde::Serialize,
-    std::{collections::BTreeMap, fs},
+    std::{collections::BTreeMap, fs, path::Path, thread},
     uuid::Uuid,
 };
 
 const FORMAT_VERSION_PREFIX: &str = "-- gluesql:file-storage-format-version=";
+const LOCK_SUFFIX: &str = ".migration-lock";
+const STAGING_SUFFIX: &str = ".migrating";
+const BACKUP_SUFFIX: &str = ".backup";
 
 #[derive(Serialize)]
 enum V1DataRow {
@@ -36,6 +39,109 @@ struct V1WrappedFileRow {
 
 fn test_path(name: &str) -> String {
     format!("tmp/{name}-{}", Uuid::now_v7())
+}
+
+fn sibling(path: &str, suffix: &str) -> String {
+    format!("{path}{suffix}")
+}
+
+fn cleanup(path: &str) {
+    let _ = fs::remove_dir_all(path);
+    let _ = fs::remove_dir_all(sibling(path, STAGING_SUFFIX));
+    let _ = fs::remove_dir_all(sibling(path, BACKUP_SUFFIX));
+    let _ = fs::remove_file(sibling(path, LOCK_SUFFIX));
+}
+
+/// Writes the lock a crashed migration would have left.
+fn write_lock(path: &str, phase: &str) {
+    fs::write(sibling(path, LOCK_SUFFIX), format!("{phase}\n")).expect("write lock");
+}
+
+fn snapshot(root: &str) -> BTreeMap<String, String> {
+    fn collect(root: &Path, dir: &Path, files: &mut BTreeMap<String, String>) {
+        for entry in fs::read_dir(dir).expect("read dir") {
+            let entry = entry.expect("dir entry");
+            let path = entry.path();
+            let relative = path
+                .strip_prefix(root)
+                .expect("relative path")
+                .to_string_lossy()
+                .into_owned();
+
+            let file_type = entry.file_type().expect("file type");
+            if file_type.is_dir() {
+                files.insert(format!("{relative}/"), String::new());
+                collect(root, &path, files);
+                continue;
+            }
+            if !file_type.is_file() {
+                files.insert(relative, "<not a regular file>".to_owned());
+                continue;
+            }
+
+            files.insert(relative, fs::read_to_string(&path).expect("read file"));
+        }
+    }
+
+    let mut files = BTreeMap::new();
+    collect(Path::new(root), Path::new(root), &mut files);
+
+    files
+}
+
+fn v1_vec_row(key: &Key, values: Vec<Value>) -> String {
+    let row = V1FileRow {
+        key: key.clone(),
+        row: V1DataRow::Vec(values),
+    };
+
+    to_string_pretty(&row, PrettyConfig::default()).expect("serialize v1 row")
+}
+
+fn v2_row(key: &Key, values: Vec<Value>) -> String {
+    let row = FileRow {
+        key: key.clone(),
+        row: values,
+    };
+
+    to_string_pretty(&row, PrettyConfig::default()).expect("serialize v2 row")
+}
+
+/// Creates a v1 `Foo` table holding a valid row and, optionally, a broken one
+/// that sorts after it.
+fn write_v1_foo(path: &str, with_invalid_row: bool) -> FileStorage {
+    fs::create_dir_all(path).expect("create test path");
+    let storage = FileStorage::new(path).expect("FileStorage::new");
+    fs::write(format!("{path}/Foo.sql"), "CREATE TABLE Foo;").expect("write v1 schema");
+    fs::create_dir_all(storage.path("Foo")).expect("create table directory");
+
+    let key = Key::I64(1);
+    fs::write(
+        storage.data_path("Foo", &key).expect("row path"),
+        v1_vec_row(&key, vec![Value::I64(1)]),
+    )
+    .expect("write v1 row");
+
+    if with_invalid_row {
+        let broken = Key::I64(2);
+        fs::write(
+            storage.data_path("Foo", &broken).expect("row path"),
+            "this is not ron",
+        )
+        .expect("write invalid row");
+    }
+
+    storage
+}
+
+fn assert_no_migration_artifacts(path: &str) {
+    for suffix in [LOCK_SUFFIX, STAGING_SUFFIX, BACKUP_SUFFIX] {
+        let artifact = sibling(path, suffix);
+        assert!(
+            !Path::new(&artifact).exists(),
+            "leftover migration artifact: {artifact}"
+        );
+    }
 }
 
 #[test]
@@ -386,4 +492,696 @@ fn migration_report_counts_migrated_and_unchanged_tables() {
     assert_eq!(report.rewritten_rows, 1);
 
     let _ = fs::remove_dir_all(&path);
+}
+
+#[test]
+fn build_failure_leaves_every_source_byte_untouched() {
+    let path = test_path("build-failure-preserves-source");
+    write_v1_foo(&path, true);
+
+    let before = snapshot(&path);
+    let err = migrate_to_latest(&path).expect_err("migration should fail");
+    assert!(err.to_string().contains("failed to parse v1 row file"));
+
+    assert_eq!(snapshot(&path), before);
+    assert_no_migration_artifacts(&path);
+
+    cleanup(&path);
+}
+
+#[test]
+fn unexpected_source_entry_fails_without_deleting_data() {
+    let path = test_path("unexpected-source-entry");
+    let storage = write_v1_foo(&path, false);
+    // A leftover from an interrupted `write_file_atomically`: the canonical row
+    // file may be the one that is missing, so migration must not drop it.
+    fs::write(
+        storage.path("Foo").join("00010000000000000009.ron.bak-1"),
+        "leftover",
+    )
+    .expect("write leftover file");
+
+    let before = snapshot(&path);
+    let err = migrate_to_latest(&path).expect_err("migration should fail");
+    assert!(err.to_string().contains("unexpected entry"));
+
+    assert_eq!(snapshot(&path), before);
+    assert_no_migration_artifacts(&path);
+
+    cleanup(&path);
+}
+
+#[test]
+fn open_is_rejected_before_creating_canonical_path() {
+    let path = test_path("open-rejected-while-locked");
+    let _ = fs::create_dir_all("tmp");
+    write_lock(&path, "building");
+
+    let err = FileStorage::new(&path).expect_err("locked storage should not open");
+    assert!(
+        err.to_string()
+            .contains("migration or recovery in progress")
+    );
+    assert!(
+        !Path::new(&path).exists(),
+        "canonical path must not be created while the lock exists"
+    );
+
+    cleanup(&path);
+}
+
+#[test]
+fn a_staging_directory_beside_an_intact_storage_is_never_discarded() {
+    let path = test_path("staging-beside-intact-storage");
+    write_v1_foo(&path, false);
+
+    let staging = sibling(&path, STAGING_SUFFIX);
+    fs::create_dir_all(&staging).expect("create staging");
+    fs::write(
+        format!("{staging}/in-progress"),
+        "owned by another migration",
+    )
+    .expect("write staging file");
+    write_lock(&path, "building");
+
+    let before = snapshot(&path);
+    let err = migrate_to_latest(&path).expect_err("must refuse rather than guess");
+    let err = err.to_string();
+    assert!(err.contains("interrupted migration"));
+    // The remedy has to be spelled out, because it is now a manual step.
+    assert!(err.contains(&staging) && err.contains(&sibling(&path, LOCK_SUFFIX)));
+
+    assert_eq!(snapshot(&path), before);
+    assert!(
+        Path::new(&format!("{staging}/in-progress")).exists(),
+        "a staging directory that may still be in use must never be discarded"
+    );
+
+    cleanup(&path);
+}
+
+#[test]
+fn removing_the_leftovers_lets_the_migration_run_again() {
+    let path = test_path("leftovers-removed-then-retry");
+    write_v1_foo(&path, false);
+
+    let staging = sibling(&path, STAGING_SUFFIX);
+    fs::create_dir_all(&staging).expect("create staging");
+    write_lock(&path, "building");
+    migrate_to_latest(&path).expect_err("refused while the leftovers are there");
+
+    // The documented recovery for that refusal.
+    fs::remove_dir_all(&staging).expect("remove staging");
+    fs::remove_file(sibling(&path, LOCK_SUFFIX)).expect("remove lock");
+
+    let report = migrate_to_latest(&path).expect("migration runs after cleanup");
+    assert_eq!(report.migrated_tables, 1);
+    assert_eq!(report.rewritten_rows, 1);
+    assert_no_migration_artifacts(&path);
+
+    cleanup(&path);
+}
+
+#[test]
+fn interruption_after_first_rename_rolls_forward_completed_staging() {
+    let path = test_path("roll-forward-completed-staging");
+    write_v1_foo(&path, false);
+    migrate_to_latest(&path).expect("prepare migrated storage");
+
+    let migrated = snapshot(&path);
+    let staging = sibling(&path, STAGING_SUFFIX);
+    fs::rename(&path, &staging).expect("simulate completed staging");
+
+    let backup = sibling(&path, BACKUP_SUFFIX);
+    write_v1_foo(&backup, false);
+    write_lock(&path, "ready");
+
+    let report = migrate_to_latest(&path).expect("recover after first rename");
+    assert_eq!(report.migrated_tables, 0);
+    assert_eq!(report.unchanged_tables, 1);
+
+    assert_eq!(snapshot(&path), migrated);
+    assert_no_migration_artifacts(&path);
+
+    cleanup(&path);
+}
+
+#[test]
+fn interruption_after_first_rename_restores_backup_when_staging_is_gone() {
+    let path = test_path("restore-backup-without-staging");
+    let backup = sibling(&path, BACKUP_SUFFIX);
+    write_v1_foo(&backup, false);
+    let original = snapshot(&backup);
+
+    // The first rename completed, so the backup is authoritative, but the
+    // staging copy is not there to publish.
+    write_lock(&path, "ready");
+
+    let report = migrate_to_latest(&path).expect("recover with backup restore");
+    assert_eq!(report.migrated_tables, 1);
+    assert_eq!(report.rewritten_rows, 1);
+    assert_no_migration_artifacts(&path);
+
+    assert_eq!(original.len(), 3);
+    let schema = fs::read_to_string(format!("{path}/Foo.sql")).expect("read schema");
+    assert!(schema.starts_with(&format!(
+        "{FORMAT_VERSION_PREFIX}{FILE_STORAGE_FORMAT_VERSION}\n"
+    )));
+    let storage = FileStorage::new(&path).expect("open recovered storage");
+    assert_eq!(
+        storage
+            .fetch_data("Foo", &Key::I64(1))
+            .expect("fetch data")
+            .expect("row exists"),
+        vec![Value::I64(1)]
+    );
+
+    cleanup(&path);
+}
+
+#[test]
+fn interruption_after_second_rename_removes_backup_and_lock() {
+    let path = test_path("cleanup-after-second-rename");
+    write_v1_foo(&path, false);
+    migrate_to_latest(&path).expect("prepare migrated storage");
+    let migrated = snapshot(&path);
+
+    let backup = sibling(&path, BACKUP_SUFFIX);
+    write_v1_foo(&backup, false);
+    write_lock(&path, "ready");
+
+    let report = migrate_to_latest(&path).expect("recover after second rename");
+    assert_eq!(report.unchanged_tables, 1);
+    assert_eq!(snapshot(&path), migrated);
+    assert_no_migration_artifacts(&path);
+
+    cleanup(&path);
+}
+
+#[test]
+fn leftover_lock_alone_is_verified_and_removed() {
+    let path = test_path("leftover-lock-only");
+    write_v1_foo(&path, false);
+    migrate_to_latest(&path).expect("prepare migrated storage");
+    let migrated = snapshot(&path);
+
+    write_lock(&path, "ready");
+    let err = FileStorage::new(&path).expect_err("locked storage should not open");
+    assert!(
+        err.to_string()
+            .contains("migration or recovery in progress")
+    );
+
+    let report = migrate_to_latest(&path).expect("recover leftover lock");
+    assert_eq!(report.migrated_tables, 0);
+    assert_eq!(report.unchanged_tables, 1);
+    assert_eq!(snapshot(&path), migrated);
+    assert_no_migration_artifacts(&path);
+
+    FileStorage::new(&path).expect("open storage after lock cleanup");
+
+    cleanup(&path);
+}
+
+#[test]
+fn contradictory_layout_is_rejected_without_deleting_anything() {
+    let path = test_path("contradictory-layout");
+    write_v1_foo(&path, false);
+
+    let staging = sibling(&path, STAGING_SUFFIX);
+    let backup = sibling(&path, BACKUP_SUFFIX);
+    fs::create_dir_all(&staging).expect("create staging");
+    fs::write(format!("{staging}/marker"), "staging").expect("write staging marker");
+    fs::create_dir_all(&backup).expect("create backup");
+    fs::write(format!("{backup}/marker"), "backup").expect("write backup marker");
+    write_lock(&path, "building");
+
+    let before = snapshot(&path);
+    let err = migrate_to_latest(&path).expect_err("contradictory layout should fail");
+    assert!(err.to_string().contains("inconsistent"));
+
+    assert_eq!(snapshot(&path), before);
+    assert!(Path::new(&format!("{staging}/marker")).exists());
+    assert!(Path::new(&format!("{backup}/marker")).exists());
+    assert!(Path::new(&sibling(&path, LOCK_SUFFIX)).exists());
+
+    cleanup(&path);
+}
+
+#[test]
+fn mixed_v1_and_v2_tables_survive_staging() {
+    let path = test_path("mixed-v1-v2-staging");
+    fs::create_dir_all(&path).expect("create test path");
+    let storage = FileStorage::new(&path).expect("FileStorage::new");
+
+    fs::write(format!("{path}/Foo.sql"), "CREATE TABLE Foo;").expect("write v1 schema");
+    fs::create_dir_all(storage.path("Foo")).expect("create Foo directory");
+    let v1_key = Key::I64(1);
+    fs::write(
+        storage.data_path("Foo", &v1_key).expect("row path"),
+        v1_vec_row(&v1_key, vec![Value::I64(1)]),
+    )
+    .expect("write v1 row");
+    // A v1 table may already hold rows written in the v2 shape.
+    let v2_shaped_key = Key::I64(2);
+    fs::write(
+        storage.data_path("Foo", &v2_shaped_key).expect("row path"),
+        v2_row(&v2_shaped_key, vec![Value::I64(2)]),
+    )
+    .expect("write v2-shaped row");
+
+    fs::write(
+        format!("{path}/Bar.sql"),
+        format!(
+            "{FORMAT_VERSION_PREFIX}{FILE_STORAGE_FORMAT_VERSION}\nCREATE TABLE Bar (id INTEGER);"
+        ),
+    )
+    .expect("write v2 schema");
+    fs::create_dir_all(storage.path("Bar")).expect("create Bar directory");
+    let bar_key = Key::I64(3);
+    fs::write(
+        storage.data_path("Bar", &bar_key).expect("row path"),
+        v2_row(&bar_key, vec![Value::I64(3)]),
+    )
+    .expect("write v2 row");
+
+    let report = migrate_to_latest(&path).expect("migrate mixed storage");
+    assert_eq!(report.migrated_tables, 1);
+    assert_eq!(report.unchanged_tables, 1);
+    assert_eq!(report.rewritten_rows, 1);
+    assert_no_migration_artifacts(&path);
+
+    let storage = FileStorage::new(&path).expect("open migrated storage");
+    for (table, key, value) in [
+        ("Foo", v1_key, Value::I64(1)),
+        ("Foo", v2_shaped_key, Value::I64(2)),
+        ("Bar", bar_key, Value::I64(3)),
+    ] {
+        assert_eq!(
+            storage
+                .fetch_data(table, &key)
+                .expect("fetch data")
+                .expect("row exists"),
+            vec![value]
+        );
+    }
+
+    let second = migrate_to_latest(&path).expect("re-run migration");
+    assert_eq!(second.migrated_tables, 0);
+    assert_eq!(second.unchanged_tables, 2);
+    assert_eq!(second.rewritten_rows, 0);
+    assert_no_migration_artifacts(&path);
+
+    cleanup(&path);
+}
+
+#[test]
+fn unsupported_version_in_any_table_fails_before_writing() {
+    let path = test_path("unsupported-version-blocks-build");
+    fs::create_dir_all(&path).expect("create test path");
+    let storage = FileStorage::new(&path).expect("FileStorage::new");
+
+    // The v1 table sorts first, so migration must still validate every schema
+    // before it starts converting anything.
+    fs::write(format!("{path}/Aaa.sql"), "CREATE TABLE Aaa;").expect("write v1 schema");
+    fs::create_dir_all(storage.path("Aaa")).expect("create table directory");
+    let key = Key::I64(1);
+    fs::write(
+        storage.data_path("Aaa", &key).expect("row path"),
+        v1_vec_row(&key, vec![Value::I64(1)]),
+    )
+    .expect("write v1 row");
+    fs::write(
+        format!("{path}/Zzz.sql"),
+        format!("{FORMAT_VERSION_PREFIX}3\nCREATE TABLE Zzz (id INTEGER);"),
+    )
+    .expect("write v3 schema");
+
+    let before = snapshot(&path);
+    let err = migrate_to_latest(&path).expect_err("unsupported version should fail");
+    assert!(err.to_string().contains("unsupported newer format version"));
+
+    assert_eq!(snapshot(&path), before);
+    assert_no_migration_artifacts(&path);
+
+    cleanup(&path);
+}
+
+#[test]
+fn unrelated_sibling_directories_are_never_deleted() {
+    let path = test_path("unrelated-siblings");
+    write_v1_foo(&path, false);
+
+    // A user directory that merely happens to sit at the backup path. Without a
+    // migration lock it is not a migration artifact and must survive.
+    let backup = sibling(&path, BACKUP_SUFFIX);
+    fs::create_dir_all(&backup).expect("create unrelated directory");
+    fs::write(format!("{backup}/mine.txt"), "not a migration backup").expect("write user file");
+
+    let before = snapshot(&path);
+    let err = migrate_to_latest(&path).expect_err("occupied sibling path should fail");
+    assert!(err.to_string().contains("already exists"));
+
+    assert_eq!(snapshot(&path), before);
+    assert_eq!(
+        fs::read_to_string(format!("{backup}/mine.txt")).expect("read user file"),
+        "not a migration backup"
+    );
+    assert!(!Path::new(&sibling(&path, LOCK_SUFFIX)).exists());
+
+    cleanup(&path);
+}
+
+#[test]
+fn foreign_entries_are_copied_verbatim() {
+    let path = test_path("foreign-entries-preserved");
+    let storage = write_v1_foo(&path, false);
+
+    // git-storage keeps its repository inside the storage directory.
+    fs::create_dir_all(format!("{path}/.git/objects/ab")).expect("create fake git directory");
+    fs::write(format!("{path}/.git/HEAD"), "ref: refs/heads/main\n").expect("write git file");
+    fs::write(format!("{path}/.git/objects/ab/cdef"), "object payload").expect("write git object");
+    fs::write(format!("{path}/notes.txt"), "keep me").expect("write user file");
+    fs::write(storage.path("Foo").join("README"), "table note").expect("write table note");
+    // git makes its object files read-only, and repositories carry symlinks.
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::{PermissionsExt, symlink};
+
+        fs::set_permissions(
+            format!("{path}/.git/objects/ab/cdef"),
+            fs::Permissions::from_mode(0o444),
+        )
+        .expect("make the object read only");
+        symlink("objects", format!("{path}/.git/alternates")).expect("create symlink");
+        symlink("/nonexistent", format!("{path}/.git/dangling")).expect("create dangling symlink");
+    }
+
+    let report = migrate_to_latest(&path).expect("migrate storage with foreign entries");
+    assert_eq!(report.migrated_tables, 1);
+    assert_eq!(report.rewritten_rows, 1);
+    assert_no_migration_artifacts(&path);
+
+    for (relative, expected) in [
+        (".git/HEAD", "ref: refs/heads/main\n"),
+        (".git/objects/ab/cdef", "object payload"),
+        ("notes.txt", "keep me"),
+        ("Foo/README", "table note"),
+    ] {
+        assert_eq!(
+            fs::read_to_string(format!("{path}/{relative}")).expect("read preserved file"),
+            expected,
+            "{relative} must survive the cutover"
+        );
+    }
+
+    let storage = FileStorage::new(&path).expect("open migrated storage");
+    assert_eq!(
+        storage
+            .fetch_data("Foo", &Key::I64(1))
+            .expect("fetch data")
+            .expect("row exists"),
+        vec![Value::I64(1)]
+    );
+
+    cleanup(&path);
+}
+
+#[test]
+fn concurrent_migrations_never_corrupt_the_storage() {
+    let path = test_path("concurrent-migrations");
+    fs::create_dir_all(&path).expect("create test path");
+    let storage = FileStorage::new(&path).expect("FileStorage::new");
+    fs::write(format!("{path}/Foo.sql"), "CREATE TABLE Foo;").expect("write v1 schema");
+    fs::create_dir_all(storage.path("Foo")).expect("create table directory");
+
+    let keys = (0..64).map(Key::I64).collect::<Vec<_>>();
+    for key in &keys {
+        fs::write(
+            storage.data_path("Foo", key).expect("row path"),
+            v1_vec_row(key, vec![Value::I64(7)]),
+        )
+        .expect("write v1 row");
+    }
+
+    let results = thread::scope(|scope| {
+        let handles = (0..4)
+            .map(|_| scope.spawn(|| migrate_to_latest(&path)))
+            .collect::<Vec<_>>();
+
+        handles
+            .into_iter()
+            .map(|handle| handle.join().expect("thread join"))
+            .collect::<Vec<_>>()
+    });
+
+    // Concurrent migration is not a supported mode, so losers are allowed to
+    // fail in several ways; what must hold is that no row is ever lost and the
+    // storage converges once the contention is over.
+    drop(results);
+
+    migrate_to_latest(&path).expect("a single migration converges afterwards");
+    assert_no_migration_artifacts(&path);
+    let storage = FileStorage::new(&path).expect("open migrated storage");
+    for key in &keys {
+        assert_eq!(
+            storage
+                .fetch_data("Foo", key)
+                .expect("fetch data")
+                .expect("row exists"),
+            vec![Value::I64(7)]
+        );
+    }
+
+    cleanup(&path);
+}
+
+#[cfg(unix)]
+#[test]
+fn symlinked_storage_root_is_rejected() {
+    let real = test_path("symlink-target");
+    write_v1_foo(&real, false);
+    let before = snapshot(&real);
+
+    let link = test_path("symlink-root");
+    std::os::unix::fs::symlink(
+        Path::new(&real)
+            .canonicalize()
+            .expect("canonicalize target"),
+        &link,
+    )
+    .expect("create symlink");
+
+    let err = migrate_to_latest(&link).expect_err("symlinked root should be rejected");
+    assert!(err.to_string().contains("symbolic link"));
+    assert_eq!(snapshot(&real), before);
+
+    // The resolved path migrates normally.
+    migrate_to_latest(&real).expect("migrate resolved path");
+
+    let _ = fs::remove_file(&link);
+    cleanup(&real);
+}
+
+#[test]
+fn interrupted_write_leftover_is_detected_without_any_v1_table() {
+    let path = test_path("leftover-without-v1-table");
+    write_v1_foo(&path, false);
+    migrate_to_latest(&path).expect("migrate to latest");
+
+    // The canonical schema is gone and only the interrupted write's backup is
+    // left: the table must not be silently treated as absent.
+    fs::rename(
+        format!("{path}/Foo.sql"),
+        format!("{path}/Foo.sql.bak-0192f000-0000-7000-8000-000000000000"),
+    )
+    .expect("simulate interrupted schema write");
+
+    let before = snapshot(&path);
+    let err = migrate_to_latest(&path).expect_err("leftover should be reported");
+    assert!(err.to_string().contains("interrupted write"));
+
+    assert_eq!(snapshot(&path), before);
+    assert_no_migration_artifacts(&path);
+
+    cleanup(&path);
+}
+
+#[cfg(unix)]
+#[test]
+fn an_entry_that_is_neither_a_file_nor_a_directory_is_refused() {
+    let path = test_path("socket-entry");
+    let storage = write_v1_foo(&path, false);
+    std::os::unix::net::UnixListener::bind(storage.path("Foo").join("sock")).expect("bind socket");
+
+    let before = snapshot(&path);
+    let err = migrate_to_latest(&path).expect_err("an unsupported entry should fail");
+    assert!(err.to_string().contains("neither a file nor a directory"));
+
+    assert_eq!(snapshot(&path), before);
+    assert_no_migration_artifacts(&path);
+
+    cleanup(&path);
+}
+
+#[test]
+fn a_schema_file_naming_another_table_is_refused() {
+    let path = test_path("schema-name-mismatch");
+    write_v1_foo(&path, false);
+    fs::write(
+        format!("{path}/dump.sql"),
+        "CREATE TABLE Foo (totally TEXT, different TEXT);",
+    )
+    .expect("write a hand-placed schema");
+
+    let before = snapshot(&path);
+    let err = migrate_to_latest(&path).expect_err("a mismatched schema should be refused");
+    assert!(
+        err.to_string()
+            .contains("which its file name does not match")
+    );
+
+    assert_eq!(snapshot(&path), before);
+    assert_no_migration_artifacts(&path);
+
+    cleanup(&path);
+}
+
+#[cfg(unix)]
+#[test]
+fn a_backup_that_cannot_be_removed_still_leaves_the_storage_open() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let path = test_path("undeletable-backup");
+    write_v1_foo(&path, false);
+    fs::create_dir_all(format!("{path}/objects")).expect("create directory");
+    fs::write(format!("{path}/objects/blob"), "content").expect("write blob");
+    fs::set_permissions(format!("{path}/objects"), fs::Permissions::from_mode(0o555))
+        .expect("make the directory read-only");
+
+    let err = migrate_to_latest(&path).expect_err("removing the backup should fail");
+    assert!(err.to_string().contains("could not be removed"));
+
+    // The cutover already published the storage, so the lock must not survive it.
+    assert!(!Path::new(&sibling(&path, LOCK_SUFFIX)).exists());
+    assert!(Path::new(&sibling(&path, BACKUP_SUFFIX)).exists());
+    FileStorage::new(&path).expect("the migrated storage must open");
+
+    fs::set_permissions(
+        format!("{}/objects", sibling(&path, BACKUP_SUFFIX)),
+        fs::Permissions::from_mode(0o755),
+    )
+    .expect("restore permissions");
+    cleanup(&path);
+}
+
+#[test]
+fn a_row_whose_key_does_not_name_its_file_is_refused() {
+    let path = test_path("row-key-mismatch");
+    let storage = write_v1_foo(&path, false);
+
+    // A second file carrying the key of the first: staging derives the target
+    // name from the key, so one row would silently take the other's place.
+    let taken = Key::I64(1);
+    fs::write(
+        storage.data_path("Foo", &Key::I64(2)).expect("row path"),
+        v1_vec_row(&taken, vec![Value::I64(2)]),
+    )
+    .expect("write colliding row");
+
+    let before = snapshot(&path);
+    let err = migrate_to_latest(&path).expect_err("a colliding row should be refused");
+    assert!(err.to_string().contains("does not name its file"));
+
+    assert_eq!(snapshot(&path), before);
+    assert_no_migration_artifacts(&path);
+
+    cleanup(&path);
+}
+
+#[cfg(unix)]
+#[test]
+fn directory_permissions_survive_the_staged_copy() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let path = test_path("directory-permissions");
+    write_v1_foo(&path, false);
+    fs::create_dir_all(format!("{path}/private")).expect("create directory");
+    fs::write(format!("{path}/private/notes"), "secret").expect("write file");
+    fs::set_permissions(format!("{path}/private"), fs::Permissions::from_mode(0o700))
+        .expect("restrict the directory");
+
+    migrate_to_latest(&path).expect("migrate to latest");
+
+    let mode = fs::metadata(format!("{path}/private"))
+        .expect("staged directory")
+        .permissions()
+        .mode();
+    assert_eq!(mode & 0o777, 0o700, "a restricted directory must not widen");
+
+    cleanup(&path);
+}
+
+#[cfg(unix)]
+#[test]
+fn a_symlinked_schema_is_refused() {
+    let path = test_path("symlinked-schema");
+    write_v1_foo(&path, false);
+    fs::write(format!("{path}/outside.sql"), "CREATE TABLE Bar;").expect("write schema");
+    std::os::unix::fs::symlink("outside.sql", format!("{path}/Bar.sql")).expect("symlink schema");
+
+    let before = snapshot(&path);
+    let err = migrate_to_latest(&path).expect_err("a symlinked schema should be refused");
+    assert!(err.to_string().contains("symbolic link"));
+
+    assert_eq!(snapshot(&path), before);
+    assert_no_migration_artifacts(&path);
+
+    cleanup(&path);
+}
+
+#[cfg(unix)]
+#[test]
+fn a_symlinked_row_is_refused() {
+    let path = test_path("symlinked-row");
+    let storage = write_v1_foo(&path, false);
+    let key = Key::I64(7);
+    fs::write(
+        format!("{path}/outside.ron"),
+        v1_vec_row(&key, vec![Value::I64(7)]),
+    )
+    .expect("write row");
+    std::os::unix::fs::symlink(
+        "../outside.ron",
+        storage.data_path("Foo", &key).expect("row path"),
+    )
+    .expect("symlink row");
+
+    let before = snapshot(&path);
+    let err = migrate_to_latest(&path).expect_err("a symlinked row should be refused");
+    assert!(err.to_string().contains("symbolic link"));
+
+    assert_eq!(snapshot(&path), before);
+    assert_no_migration_artifacts(&path);
+
+    cleanup(&path);
+}
+
+#[cfg(unix)]
+#[test]
+fn a_symlinked_table_directory_is_refused() {
+    let path = test_path("symlinked-table-dir");
+    write_v1_foo(&path, false);
+    fs::create_dir_all(format!("{path}/outside")).expect("create outside directory");
+    fs::rename(format!("{path}/Foo"), format!("{path}/outside/Foo")).expect("move the table");
+    std::os::unix::fs::symlink("outside/Foo", format!("{path}/Foo")).expect("symlink the table");
+
+    let before = snapshot(&path);
+    let err = migrate_to_latest(&path).expect_err("a symlinked table should be refused");
+    assert!(err.to_string().contains("symbolic link"));
+
+    assert_eq!(snapshot(&path), before);
+    assert_no_migration_artifacts(&path);
+
+    cleanup(&path);
 }
