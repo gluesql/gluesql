@@ -23,6 +23,16 @@ pub enum DeleteError {
     ValueNotFound(String),
 }
 
+#[cfg_attr(
+    feature = "tracing",
+    gluesql_macros::observe(
+        name = "gluesql.mutation.collect",
+        fields(operation = "delete"),
+        start = before_let(keys),
+        end = after_let(num_keys),
+        record(buffered_rows = num_keys)
+    )
+)]
 pub fn delete<T: GStore + GStoreMut>(
     storage: &mut T,
     table_name: &str,

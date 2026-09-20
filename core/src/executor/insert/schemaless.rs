@@ -13,6 +13,15 @@ use {
     std::collections::BTreeMap,
 };
 
+#[cfg_attr(
+    feature = "tracing",
+    gluesql_macros::observe(
+        name = "gluesql.insert.collect",
+        target = "gluesql",
+        level = "debug",
+        on_ok(rows, record(buffered_rows = rows.len()))
+    )
+)]
 pub(super) fn fetch_rows<T: GStore>(storage: &T, source: &QueryPlan) -> Result<Vec<Vec<Value>>> {
     let rows_iter: Box<dyn Iterator<Item = Result<Vec<Value>>> + '_> =
         if let Some(rows) = values::execute(source, values_rows)? {

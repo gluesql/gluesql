@@ -62,6 +62,21 @@ pub(super) fn execute<'a, T: GStore>(
     Ok(PreparedSource { output, rows })
 }
 
+#[cfg_attr(
+    feature = "tracing",
+    gluesql_macros::observe(
+        before_let(
+            rows,
+            occurrence = 2,
+            event("selected query access path", access_path = "full_scan")
+        ),
+        after_let(key, event("selected query access path", access_path = "primary_key")),
+        after_let(
+            predicate,
+            event("selected query access path", access_path = "secondary_index")
+        )
+    )
+)]
 fn rows<'a, T: GStore>(
     storage: &'a T,
     table: &'a TableSourcePlan,

@@ -12,14 +12,16 @@ proc-macro = true
 [dependencies]
 proc-macro2 = "1"
 quote = "1"
-syn = { version = "2", features = ["full"] }
+syn = { version = "2", features = ["full", "visit-mut"] }
 proc-macro-crate = "3"
 
 [dev-dependencies]
-gluesql-core.workspace = true
+gluesql-core = { workspace = true, features = ["tracing"] }
 gluesql_memory_storage.workspace = true
 chrono = "0.4"
 rust_decimal = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["registry"] }
 trybuild = "1"
 
 [lints]
