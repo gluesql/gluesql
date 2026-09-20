@@ -46,6 +46,7 @@ GlueSQL provides reference storage implementations for in-memory data, embedded 
 
 | Use case | Recommended storage |
 | --- | --- |
+| Browser / JS applications | [JavaScript: memory, local Storage, or OPFS](https://github.com/gluesql/gluesql-js#pick-the-storage-that-matches-your-data) |
 | Temporary data, tests, and prototypes | [Memory](https://gluesql.org/docs/0.20.0/storages/supported-storages/memory-storage/) |
 | Shared in-memory data across threads | [Shared Memory](https://gluesql.org/docs/0.20.0/storages/supported-storages/shared-memory-storage/) |
 | Persistent embedded database | [Redb](https://gluesql.org/docs/0.20.0/storages/supported-storages/redb-storage/) |
