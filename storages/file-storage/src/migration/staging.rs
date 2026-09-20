@@ -296,24 +296,21 @@ fn reject_entries_under(
         let entry = entry.map_storage_err()?;
         let path = entry.path();
         let file_type = entry.file_type().map_storage_err()?;
-        let is_table_dir = file_type.is_dir()
-            && path
-                .file_name()
-                .and_then(OsStr::to_str)
-                .is_some_and(|name| table_names.contains(name));
-
-        if is_table_dir {
-            reject_entries_under(&path, &BTreeSet::new(), ROW_EXTENSION)?;
-            continue;
-        }
+        let name = path.file_name().and_then(OsStr::to_str);
 
         if file_type.is_symlink()
-            && path.extension().and_then(OsStr::to_str) == Some(data_extension)
+            && (path.extension().and_then(OsStr::to_str) == Some(data_extension)
+                || name.is_some_and(|name| table_names.contains(name)))
         {
             return Err(Error::StorageMsg(format!(
-                "[FileStorage] '{}' is a symbolic link; the storage reads it as data but the migration would copy it unconverted, so replace it with a regular file before migrating, no data was modified",
+                "[FileStorage] '{}' is a symbolic link where the storage keeps data; the migration would stage the link itself rather than what it points at, so replace it before migrating, no data was modified",
                 path.display()
             )));
+        }
+
+        if file_type.is_dir() && name.is_some_and(|name| table_names.contains(name)) {
+            reject_entries_under(&path, &BTreeSet::new(), ROW_EXTENSION)?;
+            continue;
         }
 
         if atomic_file::is_leftover(&path) {

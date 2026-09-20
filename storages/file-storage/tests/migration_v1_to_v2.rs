@@ -1166,3 +1166,22 @@ fn a_symlinked_row_is_refused() {
 
     cleanup(&path);
 }
+
+#[cfg(unix)]
+#[test]
+fn a_symlinked_table_directory_is_refused() {
+    let path = test_path("symlinked-table-dir");
+    write_v1_foo(&path, false);
+    fs::create_dir_all(format!("{path}/outside")).expect("create outside directory");
+    fs::rename(format!("{path}/Foo"), format!("{path}/outside/Foo")).expect("move the table");
+    std::os::unix::fs::symlink("outside/Foo", format!("{path}/Foo")).expect("symlink the table");
+
+    let before = snapshot(&path);
+    let err = migrate_to_latest(&path).expect_err("a symlinked table should be refused");
+    assert!(err.to_string().contains("symbolic link"));
+
+    assert_eq!(snapshot(&path), before);
+    assert_no_migration_artifacts(&path);
+
+    cleanup(&path);
+}
