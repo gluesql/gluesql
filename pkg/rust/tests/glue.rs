@@ -6,7 +6,7 @@ use gluesql::{
     prelude::*,
 };
 
-fn basic<T: GStore + GStoreMut + Planner>(mut glue: Glue<T>) {
+fn basic<T: GStore + GStoreMut + Planner>(glue: &mut Glue<T>) {
     // Demonstrate FromGlueRow derive + Payload conversion to struct
     #[derive(Debug, PartialEq, FromGlueRow)]
     struct ApiRow {
@@ -60,9 +60,44 @@ fn basic<T: GStore + GStoreMut + Planner>(mut glue: Glue<T>) {
     );
 }
 
+fn batch<T: GStore + GStoreMut + Planner>(glue: &mut Glue<T>) {
+    use gluesql::core::planner::PlannerError;
+
+    // a table created earlier in the same call must be visible to the planner
+    assert_eq!(
+        glue.execute(
+            "DROP TABLE IF EXISTS batch_doc;
+             CREATE TABLE batch_doc;
+             INSERT INTO batch_doc VALUES ('{\"a\": 1}');
+             SELECT a FROM batch_doc;"
+        ),
+        Ok(vec![
+            Payload::DropTable(0),
+            Payload::Create,
+            Payload::Insert(1),
+            Payload::Select {
+                labels: vec!["a".to_owned()],
+                rows: vec![vec![Value::I64(1)]],
+            },
+        ])
+    );
+
+    // validation must see schemas created earlier in the same call
+    assert_eq!(
+        glue.execute(
+            "DROP TABLE IF EXISTS batch_x;
+             DROP TABLE IF EXISTS batch_y;
+             CREATE TABLE batch_x (id INTEGER);
+             CREATE TABLE batch_y (id INTEGER);
+             SELECT id FROM batch_x JOIN batch_y ON batch_x.id = batch_y.id;"
+        ),
+        Err(PlannerError::ColumnReferenceAmbiguous("id".to_owned()).into())
+    );
+}
+
 #[cfg(feature = "gluesql-redb-storage")]
 #[test]
-fn redb_basic() {
+fn redb() {
     use {
         gluesql_redb_storage::RedbStorage,
         std::fs::{create_dir_all, remove_file},
@@ -73,18 +108,20 @@ fn redb_basic() {
     let _ = remove_file(path);
 
     let storage = RedbStorage::new(path).unwrap();
-    let glue = Glue::new(storage);
+    let mut glue = Glue::new(storage);
 
-    basic(glue);
+    basic(&mut glue);
+    batch(&mut glue);
 }
 
 #[cfg(feature = "gluesql_memory_storage")]
 #[test]
-fn memory_basic() {
+fn memory() {
     use gluesql_memory_storage::MemoryStorage;
 
     let storage = MemoryStorage::default();
-    let glue = Glue::new(storage);
+    let mut glue = Glue::new(storage);
 
-    basic(glue);
+    basic(&mut glue);
+    batch(&mut glue);
 }
