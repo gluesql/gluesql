@@ -171,10 +171,27 @@ impl MigrationLock {
         paths::sync_dir(paths::parent_dir(&self.path))
     }
 
+    /// An unreadable record reads as `Building`, which recovery refuses after cutover.
     fn persist(&self) -> Result<()> {
-        let file = fs::File::create(&self.path).map_storage_err()?;
+        let mut temp = self.path.clone().into_os_string();
+        temp.push(format!(".tmp-{}", Uuid::now_v7()));
+        let temp = PathBuf::from(temp);
 
-        write_record(file, self.record)
+        let written = fs::File::create(&temp)
+            .map_storage_err()
+            .and_then(|file| write_record(file, self.record));
+
+        if let Err(err) = written {
+            let _ = fs::remove_file(&temp);
+            return Err(err);
+        }
+
+        if let Err(err) = fs::rename(&temp, &self.path).map_storage_err() {
+            let _ = fs::remove_file(&temp);
+            return Err(err);
+        }
+
+        self.sync_namespace()
     }
 }
 
@@ -253,6 +270,38 @@ mod tests {
 
         lock.mark_ready().expect("mark ready");
         drop(lock);
+        assert_eq!(
+            MigrationLock::peek(&path).expect("peek").phase,
+            LockPhase::Ready
+        );
+
+        MigrationLock::resume(&path)
+            .expect("resume")
+            .release()
+            .expect("release");
+    }
+
+    #[test]
+    fn rewriting_the_record_leaves_nothing_beside_the_lock() {
+        let path = lock_path("atomic-persist");
+        let mut lock = MigrationLock::create(&path).expect("create");
+        lock.mark_ready().expect("mark ready");
+        drop(lock);
+        MigrationLock::resume(&path).expect("resume");
+
+        let strays = fs::read_dir("tmp")
+            .expect("read tmp")
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .filter(|entry| {
+                entry != &path
+                    && entry
+                        .to_string_lossy()
+                        .starts_with(&*path.to_string_lossy())
+            })
+            .collect::<Vec<_>>();
+
+        assert!(strays.is_empty(), "left behind {strays:?}");
         assert_eq!(
             MigrationLock::peek(&path).expect("peek").phase,
             LockPhase::Ready
