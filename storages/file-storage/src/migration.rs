@@ -58,7 +58,7 @@ pub fn migrate_to_latest<T: AsRef<Path>>(path: T) -> Result<MigrationReport> {
     recovery::finish_interrupted(&paths, recovery::inspect(&paths)?)?;
 
     paths.ensure_storage_dir()?;
-    staging::reject_interrupted_writes(&paths.storage)?;
+    staging::reject_unmigratable_entries(&paths.storage)?;
 
     let versions = schema_file::classify(&paths.storage)?;
     if versions.v1 == 0 {

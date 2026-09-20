@@ -114,6 +114,29 @@ fn resolved_root(path: &Path) -> Result<PathBuf> {
     }
 }
 
+/// A rename or a removal is durable only once the directory holding the name is
+/// flushed. Windows cannot open a directory as a file, so ordering is left to it.
+#[cfg(unix)]
+pub(super) fn sync_dir(path: &Path) -> Result<()> {
+    fs::File::open(path)
+        .map_storage_err()?
+        .sync_all()
+        .map_storage_err()
+}
+
+#[cfg(not(unix))]
+pub(super) fn sync_dir(_path: &Path) -> Result<()> {
+    Ok(())
+}
+
+/// A bare relative name has an empty parent, which cannot be opened.
+pub(super) fn parent_dir(path: &Path) -> &Path {
+    match path.parent() {
+        Some(parent) if !parent.as_os_str().is_empty() => parent,
+        _ => Path::new("."),
+    }
+}
+
 fn no_file_name_error(path: &Path) -> Error {
     Error::StorageMsg(format!(
         "[FileStorage] storage path '{}' has no file name; migration needs sibling paths",
@@ -152,6 +175,16 @@ mod tests {
             paths.lock,
             cwd.with_file_name(format!("{name}{LOCK_SUFFIX}"))
         );
+    }
+
+    #[test]
+    fn a_bare_name_still_has_a_directory_to_flush() {
+        assert_eq!(parent_dir(Path::new("db.migration-lock")), Path::new("."));
+        assert_eq!(
+            parent_dir(Path::new("tmp/db.migration-lock")),
+            Path::new("tmp")
+        );
+        assert!(sync_dir(parent_dir(Path::new("db.migration-lock"))).is_ok());
     }
 
     #[test]

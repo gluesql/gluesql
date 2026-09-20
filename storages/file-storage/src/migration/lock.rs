@@ -1,4 +1,5 @@
 use {
+    super::paths,
     crate::ResultExt,
     gluesql_core::error::{Error, Result},
     std::{
@@ -86,6 +87,7 @@ impl MigrationLock {
             keep_on_drop: false,
         };
         write_record(file, lock.record)?;
+        lock.sync_namespace()?;
 
         Ok(lock)
     }
@@ -136,8 +138,9 @@ impl MigrationLock {
 
     pub(super) fn rename(&self, from: &Path, to: &Path) -> Result<()> {
         self.ensure_owned()?;
+        fs::rename(from, to).map_storage_err()?;
 
-        fs::rename(from, to).map_storage_err()
+        self.sync_namespace()
     }
 
     /// The cutover has already published the new storage, so a backup that cannot
@@ -158,8 +161,14 @@ impl MigrationLock {
     pub(super) fn release(mut self) -> Result<()> {
         self.ensure_owned()?;
         self.keep_on_drop = false;
+        fs::remove_file(&self.path).map_storage_err()?;
 
-        fs::remove_file(&self.path).map_storage_err()
+        self.sync_namespace()
+    }
+
+    /// The lock and the directories it guards are siblings, so one flush covers both.
+    fn sync_namespace(&self) -> Result<()> {
+        paths::sync_dir(paths::parent_dir(&self.path))
     }
 
     fn persist(&self) -> Result<()> {
@@ -173,6 +182,7 @@ impl Drop for MigrationLock {
     fn drop(&mut self) {
         if !self.keep_on_drop && self.ensure_owned().is_ok() {
             let _ = fs::remove_file(&self.path);
+            let _ = self.sync_namespace();
         }
     }
 }

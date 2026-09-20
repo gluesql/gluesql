@@ -1074,3 +1074,95 @@ fn a_backup_that_cannot_be_removed_still_leaves_the_storage_open() {
     .expect("restore permissions");
     cleanup(&path);
 }
+
+#[test]
+fn a_row_whose_key_does_not_name_its_file_is_refused() {
+    let path = test_path("row-key-mismatch");
+    let storage = write_v1_foo(&path, false);
+
+    // A second file carrying the key of the first: staging derives the target
+    // name from the key, so one row would silently take the other's place.
+    let taken = Key::I64(1);
+    fs::write(
+        storage.data_path("Foo", &Key::I64(2)).expect("row path"),
+        v1_vec_row(&taken, vec![Value::I64(2)]),
+    )
+    .expect("write colliding row");
+
+    let before = snapshot(&path);
+    let err = migrate_to_latest(&path).expect_err("a colliding row should be refused");
+    assert!(err.to_string().contains("does not name its file"));
+
+    assert_eq!(snapshot(&path), before);
+    assert_no_migration_artifacts(&path);
+
+    cleanup(&path);
+}
+
+#[cfg(unix)]
+#[test]
+fn directory_permissions_survive_the_staged_copy() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let path = test_path("directory-permissions");
+    write_v1_foo(&path, false);
+    fs::create_dir_all(format!("{path}/private")).expect("create directory");
+    fs::write(format!("{path}/private/notes"), "secret").expect("write file");
+    fs::set_permissions(format!("{path}/private"), fs::Permissions::from_mode(0o700))
+        .expect("restrict the directory");
+
+    migrate_to_latest(&path).expect("migrate to latest");
+
+    let mode = fs::metadata(format!("{path}/private"))
+        .expect("staged directory")
+        .permissions()
+        .mode();
+    assert_eq!(mode & 0o777, 0o700, "a restricted directory must not widen");
+
+    cleanup(&path);
+}
+
+#[cfg(unix)]
+#[test]
+fn a_symlinked_schema_is_refused() {
+    let path = test_path("symlinked-schema");
+    write_v1_foo(&path, false);
+    fs::write(format!("{path}/outside.sql"), "CREATE TABLE Bar;").expect("write schema");
+    std::os::unix::fs::symlink("outside.sql", format!("{path}/Bar.sql")).expect("symlink schema");
+
+    let before = snapshot(&path);
+    let err = migrate_to_latest(&path).expect_err("a symlinked schema should be refused");
+    assert!(err.to_string().contains("symbolic link"));
+
+    assert_eq!(snapshot(&path), before);
+    assert_no_migration_artifacts(&path);
+
+    cleanup(&path);
+}
+
+#[cfg(unix)]
+#[test]
+fn a_symlinked_row_is_refused() {
+    let path = test_path("symlinked-row");
+    let storage = write_v1_foo(&path, false);
+    let key = Key::I64(7);
+    fs::write(
+        format!("{path}/outside.ron"),
+        v1_vec_row(&key, vec![Value::I64(7)]),
+    )
+    .expect("write row");
+    std::os::unix::fs::symlink(
+        "../outside.ron",
+        storage.data_path("Foo", &key).expect("row path"),
+    )
+    .expect("symlink row");
+
+    let before = snapshot(&path);
+    let err = migrate_to_latest(&path).expect_err("a symlinked row should be refused");
+    assert!(err.to_string().contains("symbolic link"));
+
+    assert_eq!(snapshot(&path), before);
+    assert_no_migration_artifacts(&path);
+
+    cleanup(&path);
+}

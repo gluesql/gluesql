@@ -1,5 +1,5 @@
 use {
-    super::{atomic_file, schema_file},
+    super::{atomic_file, paths, schema_file},
     crate::{FileStorage, ResultExt},
     gluesql_core::{
         data::{Key, Schema, Value},
@@ -47,6 +47,7 @@ pub(super) fn build(source: &Path, staging: &Path, decode: DecodeRow) -> Result<
     }
 
     copy_foreign_entries(source, staging, &table_names)?;
+    mirror_dir_modes(source, staging)?;
     sync_tree(staging)?;
 
     Ok(rewritten_rows)
@@ -92,6 +93,15 @@ impl Build<'_> {
 
         for row_path in entries.rows {
             let row = (self.decode)(&row_path)?;
+            let staged = self.target.data_path(table_name, &row.key)?;
+
+            if staged.file_name() != row_path.file_name() {
+                return Err(Error::StorageMsg(format!(
+                    "[FileStorage] the row in '{}' holds a key that does not name its file; staging derives the name from the key, so this row would take the place of '{}'. Resolve the mismatch before migrating, no data was modified",
+                    row_path.display(),
+                    staged.display()
+                )));
+            }
 
             self.target
                 .insert_data(table_name, vec![(row.key, row.values)])?;
@@ -112,13 +122,13 @@ impl Build<'_> {
     }
 }
 
-pub(super) fn reject_interrupted_writes(source: &Path) -> Result<()> {
+pub(super) fn reject_unmigratable_entries(source: &Path) -> Result<()> {
     let table_names = schema_file::list_paths(source)?
         .iter()
         .map(|schema_path| schema_file::table_name(schema_path))
         .collect::<Result<BTreeSet<_>>>()?;
 
-    reject_leftovers_under(source, &table_names)
+    reject_entries_under(source, &table_names, SCHEMA_EXTENSION)
 }
 
 #[derive(Debug)]
@@ -250,36 +260,60 @@ fn sync_tree(path: &Path) -> Result<()> {
             .map_storage_err()?;
     }
 
-    sync_dir(path)
+    paths::sync_dir(path)
 }
 
+/// `create_dir_all` gives staged directories the default mode, not the source's.
 #[cfg(unix)]
-fn sync_dir(path: &Path) -> Result<()> {
-    fs::File::open(path)
-        .map_storage_err()?
-        .sync_all()
-        .map_storage_err()
+fn mirror_dir_modes(source: &Path, staging: &Path) -> Result<()> {
+    for entry in fs::read_dir(staging).map_storage_err()? {
+        let entry = entry.map_storage_err()?;
+
+        if entry.file_type().map_storage_err()?.is_dir() {
+            mirror_dir_modes(&source.join(entry.file_name()), &entry.path())?;
+        }
+    }
+
+    match fs::symlink_metadata(source) {
+        Ok(metadata) if metadata.is_dir() => {
+            fs::set_permissions(staging, metadata.permissions()).map_storage_err()
+        }
+        _ => Ok(()),
+    }
 }
 
-/// Windows cannot open a directory as a file; the ordering is the filesystem's.
 #[cfg(not(unix))]
-fn sync_dir(_path: &Path) -> Result<()> {
+fn mirror_dir_modes(_source: &Path, _staging: &Path) -> Result<()> {
     Ok(())
 }
 
-fn reject_leftovers_under(dir: &Path, table_names: &BTreeSet<String>) -> Result<()> {
+fn reject_entries_under(
+    dir: &Path,
+    table_names: &BTreeSet<String>,
+    data_extension: &str,
+) -> Result<()> {
     for entry in fs::read_dir(dir).map_storage_err()? {
         let entry = entry.map_storage_err()?;
         let path = entry.path();
-        let is_table_dir = entry.file_type().map_storage_err()?.is_dir()
+        let file_type = entry.file_type().map_storage_err()?;
+        let is_table_dir = file_type.is_dir()
             && path
                 .file_name()
                 .and_then(OsStr::to_str)
                 .is_some_and(|name| table_names.contains(name));
 
         if is_table_dir {
-            reject_leftovers_under(&path, &BTreeSet::new())?;
+            reject_entries_under(&path, &BTreeSet::new(), ROW_EXTENSION)?;
             continue;
+        }
+
+        if file_type.is_symlink()
+            && path.extension().and_then(OsStr::to_str) == Some(data_extension)
+        {
+            return Err(Error::StorageMsg(format!(
+                "[FileStorage] '{}' is a symbolic link; the storage reads it as data but the migration would copy it unconverted, so replace it with a regular file before migrating, no data was modified",
+                path.display()
+            )));
         }
 
         if atomic_file::is_leftover(&path) {
