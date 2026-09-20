@@ -18,6 +18,10 @@ GlueSQL is a multi-model SQL database engine written in Rust.
 - Supports custom storage backends through an extensible design
 - Supports both SQL and the Query Builder
 
+## Why GlueSQL?
+
+Add SQL queries to your Rust application's existing data without building a query engine from scratch. GlueSQL handles SQL parsing, planning, and execution, while you choose a provided storage backend or implement an adapter for your own data source.
+
 ## Installation
 
 ### Rust
