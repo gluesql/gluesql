@@ -1,4 +1,7 @@
-# GlueSQL
+<center>
+    <h1>GlueSQL</h1>
+
+![GlueSQL Logo](https://avatars.githubusercontent.com/u/69316759)
 
 [![crates.io](https://img.shields.io/crates/v/gluesql.svg)](https://crates.io/crates/gluesql)
 [![LICENSE](https://img.shields.io/crates/l/gluesql.svg)](https://github.com/gluesql/gluesql/blob/main/LICENSE)
@@ -6,6 +9,7 @@
 [![docs.rs](https://docs.rs/gluesql/badge.svg)](https://docs.rs/gluesql)
 [![Chat](https://img.shields.io/discord/780298017940176946?logo=discord&logoColor=white)](https://discord.gg/C6TDEgzDzY)
 [![Coverage Status](https://coveralls.io/repos/github/gluesql/gluesql/badge.svg?branch=main)](https://coveralls.io/github/gluesql/gluesql?branch=main)
+</center>
 
 ## Multi-Model Database Engine as a Library
 
