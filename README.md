@@ -104,13 +104,12 @@ INSERT INTO Logs VALUES
     ('{ "id": 3, "rate": 5.0, "value": 100 }');
 
 SELECT * FROM Names JOIN Logs ON Names.id = Logs.id;
-/*
-| id | list    | name | rate | value |
-|----|---------|------|------|-------|
-| 1  |         | glue |      | 30    |
-| 2  |[1, 2, 3]| sql  | 3    |       |
-*/
 ```
+
+| id  | list      | name | rate | value |
+| --- | --------- | ---- | ---- | ----- |
+| 1   |           | glue |      | 30    |
+| 2   | [1, 2, 3] | sql  | 3    |       |
 
 ## Adapting GlueSQL to Your Environment: Creating Custom Storage
 
@@ -118,7 +117,9 @@ GlueSQL is designed to be adaptable to a wide variety of environments, including
 
 ## Contributing
 
-GlueSQL is simpler to contribute to than it may look. Its test suite and continuous integration provide guardrails that catch regressions before changes are merged, so don't hesitate to open an issue or pull request. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, testing commands, and pull request guidelines.
+GlueSQL is simpler to contribute to than it may look. Its test suite and continuous integration provide guardrails that catch regressions before changes are merged, so don't hesitate to open an issue or pull request.
+
+If you're not sure where to start, explore the [test suite](test-suite). The [SQL tests](test-suite/fixtures) show how existing features work, even if you're new to Rust. Try contributing a feature you'd like to use, or browse the [GitHub issues](https://github.com/gluesql/gluesql/issues) for more ideas.
 
 ## License
 
