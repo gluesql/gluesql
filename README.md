@@ -40,37 +40,17 @@ import { gluesql } from 'https://cdn.jsdelivr.net/npm/gluesql/gluesql.js';
 
 For more information, check out the [gluesql-js repository](https://github.com/gluesql/gluesql-js).
 
-## Supporting SQL and Query Builder
+## SQL and Query Builder
 
-GlueSQL supports both SQL and Query Builder. Unlike ORMs that generate SQL strings, GlueSQL's Query Builder constructs execution-facing statement plans directly while still allowing explicit AST outputs where they are needed. This keeps access to GlueSQL-specific query features without routing every query through SQL text generation.
+GlueSQL supports both SQL and Query Builder. Use SQL for familiar or dynamic queries, and use Query Builder when composing queries in Rust or controlling execution more precisely. Both interfaces run through the same GlueSQL engine and storage backend.
 
-### [Rust Example](./pkg/rust/examples/hello_world.rs)
-
-- example: [pkg/rust/examples/hello_world.rs](./pkg/rust/examples/hello_world.rs)
-
-```rust
-#[derive(gluesql::FromGlueRow)]
-struct Row {
-    id: i64,
-    name: String,
-}
-
-let storage = MemoryStorage::default();
-let mut glue = Glue::new(storage);
-
-let rows = glue
-    .execute("SELECT id, name FROM Foo;")
-    .rows_as::<Row>()
-    .unwrap();
-```
-
-### SQL Example
+### SQL
 
 ```sql
 SELECT id, name FROM Foo WHERE name = 'Lemon' AND price > 100
 ```
 
-### Query Builder Example
+### Query Builder
 
 ```rust
 table("Foo")
@@ -82,6 +62,8 @@ table("Foo")
     .project("id, name")
     .execute(&mut glue);
 ```
+
+Unlike ORM query builders that generate SQL for multiple database engines, GlueSQL's Query Builder builds executable statement plans directly for GlueSQL. It accepts both builder methods and SQL expressions, supports the full GlueSQL feature set, and can express execution details that SQL can only suggest through query hints.
 
 ## Supporting Structured and Unstructured Data with Schema Flexibility
 
