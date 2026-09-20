@@ -18,6 +18,27 @@ GlueSQL is a library for Multi-Model SQL databases written in Rust.
 - Supports custom storage backends through an extensible design
 - Supports both SQL and Query Builder
 
+## Installation
+
+### Rust
+
+```bash
+cargo add gluesql
+```
+
+### JavaScript
+
+```bash
+npm install gluesql
+```
+
+### Browser (CDN)
+
+```js
+import { gluesql } from 'https://cdn.jsdelivr.net/npm/gluesql/gluesql.js';
+```
+
+For more information, check out the [gluesql-js repository](https://github.com/gluesql/gluesql-js).
 
 ## Supporting SQL and Query Builder
 
