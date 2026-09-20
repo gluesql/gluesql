@@ -82,6 +82,48 @@ SELECT EXTRACT(SECOND FROM INTERVAL '8' SECOND) as extract
 -- | ------------ |
 -- | 8            |
 
+SELECT EXTRACT(EPOCH FROM TIMESTAMP '2016-12-31 13:30:15') as extract
+-- @expect:
+-- | extract: F64 |
+-- | ------------ |
+-- | 1483191015.0 |
+
+SELECT EXTRACT(EPOCH FROM TIMESTAMP '2016-12-31 13:30:15.5') as extract
+-- @expect:
+-- | extract: F64 |
+-- | ------------ |
+-- | 1483191015.5 |
+
+SELECT EXTRACT(EPOCH FROM DATE '2021-10-06') as extract
+-- @expect:
+-- | extract: F64 |
+-- | ------------ |
+-- | 1633478400.0 |
+
+SELECT EXTRACT(EPOCH FROM TIME '17:12:28') as extract
+-- @expect:
+-- | extract: F64 |
+-- | ------------ |
+-- | 61948.0      |
+
+SELECT EXTRACT(EPOCH FROM INTERVAL '5' DAY) as extract
+-- @expect:
+-- | extract: F64 |
+-- | ------------ |
+-- | 432000.0     |
+
+SELECT EXTRACT(EPOCH FROM INTERVAL '3' YEAR) as extract
+-- @expect:
+-- | extract: F64 |
+-- | ------------ |
+-- | 94672800.0   |
+
+SELECT EXTRACT(EPOCH FROM INTERVAL '4' MONTH) as extract
+-- @expect:
+-- | extract: F64 |
+-- | ------------ |
+-- | 10368000.0   |
+
 CREATE TABLE Item (number TEXT)
 -- @expect: payload Create
 

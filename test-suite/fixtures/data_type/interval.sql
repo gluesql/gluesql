@@ -93,3 +93,7 @@ SELECT INTERVAL '111' DAY TO MINUTE FROM IntervalLog;
 SELECT INTERVAL '111' DAY TO Second FROM IntervalLog;
 -- @expect: error Interval.FailedToParseDayToSecond
 -- @json: "111"
+
+SELECT INTERVAL '5' EPOCH AS interval
+-- @expect: error Interval.UnsupportedField
+-- @json: "Epoch"

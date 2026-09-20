@@ -12,6 +12,9 @@ pub enum IntervalError {
     #[error("unsupported interval range: {0} to {1}")]
     UnsupportedRange(String, String),
 
+    #[error("unsupported interval field: {0}")]
+    UnsupportedField(String),
+
     #[error("cannot add between YEAR TO MONTH and HOUR TO SECOND")]
     AddBetweenYearToMonthAndHourToSecond,
 

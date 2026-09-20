@@ -8,7 +8,7 @@ The `EXTRACT` function in SQL is used to retrieve a specific datetime field from
 EXTRACT(field FROM source)
 ```
 
-- `field`: The datetime field to extract. Valid fields include `YEAR`, `MONTH`, `DAY`, `HOUR`, `MINUTE`, `SECOND`.
+- `field`: The datetime field to extract. Valid fields include `YEAR`, `MONTH`, `DAY`, `HOUR`, `MINUTE`, `SECOND` and `EPOCH`.
 - `source`: The date, time, or interval value from which the datetime field is to be extracted.
 
 ## Usage
@@ -45,5 +45,12 @@ Here are examples of how `EXTRACT` can be used to pull specific datetime compone
    SELECT EXTRACT(MINUTE FROM INTERVAL '7' MINUTE) as extract;
    ```
    These return `3` and `7`, respectively.
+
+6. Extracting `EPOCH`, the number of seconds since `1970-01-01 00:00:00`, as a float: 
+   ```sql
+   SELECT EXTRACT(EPOCH FROM TIMESTAMP '2016-12-31 13:30:15') as extract;
+   SELECT EXTRACT(EPOCH FROM INTERVAL '5' DAY) as extract;
+   ```
+   These return `1483191015.0` and `432000.0`. A `DATE` counts from its midnight, a `TIME` from midnight of its day, and an `INTERVAL` gives its total seconds, a year counted as 365.25 days and a month as 30.
 
 Note that the `EXTRACT` function expects the `source` to be of a compatible datetime or interval type. Using a value of an incompatible type, such as a number or a string that cannot be interpreted as a datetime, will result in an error.

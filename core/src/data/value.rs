@@ -750,6 +750,20 @@ impl Value {
             (Value::Timestamp(v), DateTimeField::Hour) => v.hour().into(),
             (Value::Timestamp(v), DateTimeField::Minute) => v.minute().into(),
             (Value::Timestamp(v), DateTimeField::Second) => v.second().into(),
+            (Value::Date(v), DateTimeField::Epoch) => {
+                let midnight = NaiveDateTime::new(*v, NaiveTime::MIN);
+                return Ok(Value::F64(midnight.and_utc().timestamp() as f64));
+            }
+            (Value::Time(v), DateTimeField::Epoch) => {
+                let seconds = f64::from(v.num_seconds_from_midnight())
+                    + f64::from(v.nanosecond()) / 1_000_000_000.0;
+                return Ok(Value::F64(seconds));
+            }
+            (Value::Timestamp(v), DateTimeField::Epoch) => {
+                return Ok(Value::F64(
+                    v.and_utc().timestamp_micros() as f64 / 1_000_000.0,
+                ));
+            }
             (Value::Interval(v), _) => {
                 return v.extract(date_type);
             }

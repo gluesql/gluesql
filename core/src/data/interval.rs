@@ -163,6 +163,16 @@ impl Interval {
             (DateTimeField::Hour, Interval::Microsecond(i)) => i / HOUR,
             (DateTimeField::Minute, Interval::Microsecond(i)) => i / MINUTE,
             (DateTimeField::Second, Interval::Microsecond(i)) => i / SECOND,
+            (DateTimeField::Epoch, Interval::Month(i)) => {
+                let years = f64::from(i / 12);
+                let months = f64::from(i % 12);
+                return Ok(Value::F64(
+                    years * 365.25 * 86_400.0 + months * 30.0 * 86_400.0,
+                ));
+            }
+            (DateTimeField::Epoch, Interval::Microsecond(i)) => {
+                return Ok(Value::F64(i as f64 / SECOND as f64));
+            }
             _ => {
                 return Err(IntervalError::FailedToExtract.into());
             }
@@ -242,6 +252,7 @@ impl Interval {
             (Some(Hour), None) => parse_decimal(HOUR),
             (Some(Minute), None) => parse_decimal(MINUTE),
             (Some(Second), None) => parse_decimal(SECOND),
+            (Some(Epoch), None) => Err(IntervalError::UnsupportedField("Epoch".to_owned()).into()),
             (Some(Year), Some(Month)) => {
                 let nums = value
                     .trim_start_matches('-')

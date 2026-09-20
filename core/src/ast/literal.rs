@@ -32,6 +32,7 @@ pub enum DateTimeField {
     Hour,
     Minute,
     Second,
+    Epoch,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display)]

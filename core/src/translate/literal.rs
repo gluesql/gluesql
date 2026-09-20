@@ -35,6 +35,7 @@ pub fn translate_datetime_field(sql_datetime_field: &SqlDateTimeField) -> Result
         SqlDateTimeField::Hour => DateTimeField::Hour,
         SqlDateTimeField::Minute => DateTimeField::Minute,
         SqlDateTimeField::Second => DateTimeField::Second,
+        SqlDateTimeField::Epoch => DateTimeField::Epoch,
         _ => {
             return Err(
                 TranslateError::UnsupportedDateTimeField(sql_datetime_field.to_string()).into(),
