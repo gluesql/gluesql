@@ -87,9 +87,9 @@ table("Foo")
 
 Unlike ORM query builders designed to support multiple database engines by generating SQL, GlueSQL's Query Builder builds executable statement plans directly. It accepts both builder methods and SQL expressions, supports the full GlueSQL feature set, and can express execution details that SQL can only suggest through query hints.
 
-## Supporting Structured and Unstructured Data with Schema Flexibility
+## Supporting Schema-defined and Schemaless Data with Schema Flexibility
 
-GlueSQL supports both structured and unstructured (schemaless) data. Unlike traditional SQL databases, it does not require every table to have a predefined schema. Schemaless tables can store varying fields, while MAP and LIST support semi-structured values. Schema-defined and schemaless tables can also be joined in the same query.
+GlueSQL supports both schema-defined (structured) and schemaless (unstructured) data. Unlike traditional SQL databases, it does not require every table to have a predefined schema. Schemaless tables can store varying fields, while MAP and LIST support semi-structured values. Schema-defined and schemaless tables can also be joined in the same query.
 
 ### Schemaless SQL Example
 
