@@ -104,12 +104,14 @@ INSERT INTO Logs VALUES
     ('{ "id": 3, "rate": 5.0, "value": 100 }');
 
 SELECT * FROM Names JOIN Logs ON Names.id = Logs.id;
-```
 
-| id  | list      | name | rate | value |
-| --- | --------- | ---- | ---- | ----- |
-| 1   |           | glue |      | 30    |
-| 2   | [1, 2, 3] | sql  | 3    |       |
+/*
+| id | list    | name | rate | value |
+|----|---------|------|------|-------|
+| 1  |         | glue |      | 30    |
+| 2  |[1, 2, 3]| sql  | 3    |       |
+*/
+```
 
 ## Adapting GlueSQL to Your Environment: Creating Custom Storage
 
