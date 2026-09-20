@@ -9,7 +9,7 @@
 
 ## An Embeddable Multi-Model SQL Engine
 
-> [**official documentation website**](https://gluesql.org/docs)
+> [**Official Documentation Website**](https://gluesql.org/docs)
 
 GlueSQL is a library for Multi-Model SQL databases written in Rust.
 
