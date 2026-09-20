@@ -111,9 +111,9 @@ See the [Storage documentation](https://gluesql.org/docs/dev/storages/) for setu
 
 GlueSQL is designed to be adaptable to a wide variety of environments, including file systems, key-value databases, complex NoSQL databases, and remote APIs. To create a custom storage for GlueSQL, you only need to implement the Store and StoreMut traits provided by GlueSQL. For more information, check out [developing custom storages documentation](https://gluesql.org/docs/0.20.0/storages/developing-custom-storages/intro/).
 
-## Contribution
+## Contributing
 
-GlueSQL is a database project that is simpler than you might think. You only need to know three common Rust project commands: `cargo fmt`, `cargo clippy`, and `cargo test`. Don't hesitate to make pull requests and change the code as you see fit. We have set up GitHub Actions to validate your changes, so you don't have to worry about making mistakes. The line coverage of GlueSQL's core code is almost 99%, which is the result of not only careful test writing, but also of making the test suite easy to understand and use for anyone, even those who are not familiar with Rust. If you're not sure where to start, we recommend exploring the test suite first. Take a look at the existing features and try to understand how they work. Even if you're not familiar with Rust, you should be able to navigate the test suite without any problems. If there's a feature you'd like to see but isn't there yet, implementing it yourself and contributing it to GlueSQL is a great way to get involved. You can also check out the issues on the GlueSQL GitHub repository for more ideas on how to contribute.
+GlueSQL is simpler to contribute to than it may look. Its test suite and continuous integration provide guardrails that catch regressions before changes are merged, so don't hesitate to open an issue or pull request. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, testing commands, and pull request guidelines.
 
 ## License
 
