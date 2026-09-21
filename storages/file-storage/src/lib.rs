@@ -1,5 +1,6 @@
 #![deny(clippy::str_to_string)]
 
+mod atomic_write;
 mod migration;
 mod store;
 mod store_mut;

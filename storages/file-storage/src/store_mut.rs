@@ -1,15 +1,12 @@
 use {
-    crate::{FileRow, FileStorage, ResultExt},
+    crate::{FileRow, FileStorage, ResultExt, atomic_write::write_file_atomically},
     gluesql_core::{
         data::{Key, Schema, Value},
         error::Result,
         store::StoreMut,
     },
     ron::ser::{PrettyConfig, to_string_pretty},
-    std::{
-        fs::{self, File},
-        io::Write,
-    },
+    std::fs,
     uuid::Uuid,
 };
 
@@ -48,8 +45,7 @@ impl StoreMut for FileStorage {
             let row = FileRow { key, row };
             let row = to_string_pretty(&row, PrettyConfig::default()).map_storage_err()?;
 
-            let mut file = File::create(path).map_storage_err()?;
-            file.write_all(row.as_bytes()).map_storage_err()?;
+            write_file_atomically(&path, &row)?;
         }
 
         Ok(())
@@ -61,8 +57,7 @@ impl StoreMut for FileStorage {
             let row = FileRow { key, row };
             let row = to_string_pretty(&row, PrettyConfig::default()).map_storage_err()?;
 
-            let mut file = File::create(path).map_storage_err()?;
-            file.write_all(row.as_bytes()).map_storage_err()?;
+            write_file_atomically(&path, &row)?;
         }
 
         Ok(())
