@@ -1,5 +1,6 @@
 use {
     super::{ProjectPlan, SelectOrderByPlan},
+    crate::plan::explain::{Explain, ExplainContext, ExplainNode},
     serde::{Deserialize, Serialize},
 };
 
@@ -23,13 +24,33 @@ pub enum DistinctInputPlan {
     SelectOrderBy(SelectOrderByPlan),
 }
 
+impl Explain for DistinctPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        ExplainNode::new("distinct").with_child(self.input.explain(context))
+    }
+}
+
+impl Explain for DistinctInputPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        match self {
+            Self::Project(project) => project.explain(context),
+            Self::SelectOrderBy(order_by) => order_by.explain(context),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use {
         super::{DistinctInputPlan, DistinctPlan},
         crate::plan::{
-            ProjectInputPlan, ProjectPlan, ProjectionPlan, SelectOrderByPlan, SourcePlan,
-            TableAccessPlan, TableSourcePlan,
+            ExprPlan, OrderByExprPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan,
+            SelectItemPlan, SelectOrderByPlan, SourcePlan, TableAccessPlan, TableSourcePlan,
+            explain::test_explain,
         },
     };
 
@@ -40,7 +61,7 @@ mod tests {
                 alias: None,
                 access: TableAccessPlan::FullScan,
             })),
-            projection: ProjectionPlan::SelectItems(Vec::new()),
+            projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
         }
     }
 
@@ -61,5 +82,43 @@ mod tests {
             order_by.input,
             DistinctInputPlan::SelectOrderBy(_)
         ));
+    }
+
+    #[test]
+    fn explain() {
+        let actual = DistinctPlan {
+            input: DistinctInputPlan::Project(project_plan()),
+        };
+        let expected = r"
+• distinct
+└── • project
+    │ columns: *
+    │
+    └── • scan Item
+          access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = DistinctPlan {
+            input: DistinctInputPlan::SelectOrderBy(SelectOrderByPlan {
+                input: project_plan(),
+                exprs: vec![OrderByExprPlan {
+                    expr: ExprPlan::Identifier("id".to_owned()),
+                    asc: Some(false),
+                }],
+            }),
+        };
+        let expected = r"
+• distinct
+└── • sort
+    │ order: id DESC
+    │
+    └── • project
+        │ columns: *
+        │
+        └── • scan Item
+              access: full scan
+";
+        test_explain(&actual, expected);
     }
 }

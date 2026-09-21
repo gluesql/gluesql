@@ -158,6 +158,7 @@ macro_rules! generate_store_tests {
         sql_case!(insert);
         sql_case!(delete);
         sql_case!(basic);
+        sql_case!(explain);
         sql_case!(array);
         sql_case!(aggregate::avg);
         sql_case!(aggregate::count);

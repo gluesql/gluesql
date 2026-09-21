@@ -31,7 +31,9 @@ fn validate_statement_inner(
     statement: &StatementPlan,
 ) -> ValidateResult {
     match statement {
-        StatementPlan::Query(query) => validate_query(schema_map, query),
+        StatementPlan::Explain(query) | StatementPlan::Query(query) => {
+            validate_query(schema_map, query)
+        }
         StatementPlan::Insert {
             table_name,
             columns,

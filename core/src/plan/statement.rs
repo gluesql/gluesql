@@ -3,6 +3,10 @@ mod expr;
 mod projection;
 mod query;
 
+use {
+    crate::ast::{self, ForeignKey, Variable},
+    serde::{Deserialize, Serialize},
+};
 pub use {
     ddl::AlterTableOperationPlan,
     expr::{
@@ -20,11 +24,6 @@ pub use {
         SeriesSourcePlan, SourcePlan, TableAccessPlan, TableAliasPlan, TableSourcePlan,
         ValuesOrderByPlan, ValuesPlan,
     },
-};
-
-use {
-    crate::ast::{self, ForeignKey, Variable},
-    serde::{Deserialize, Serialize},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -89,6 +88,7 @@ pub enum StatementPlan {
     Rollback,
     ShowVariable(Variable),
     ShowIndexes(String),
+    Explain(QueryPlan),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -100,6 +100,7 @@ pub struct AssignmentPlan {
 impl From<ast::Statement> for StatementPlan {
     fn from(statement: ast::Statement) -> Self {
         match statement {
+            ast::Statement::Explain(query) => Self::Explain(query.into()),
             ast::Statement::ShowColumns { table_name } => Self::ShowColumns { table_name },
             ast::Statement::Query(query) => Self::Query(query.into()),
             ast::Statement::Insert {

@@ -24,6 +24,11 @@ pub fn plan<S: BuildHasher>(
     let planner = IndexPlanner { schema_map };
 
     match statement {
+        StatementPlan::Explain(query) => {
+            let query = planner.query(None, query);
+
+            StatementPlan::Explain(query)
+        }
         StatementPlan::Query(query) => {
             let query = planner.query(None, query);
 

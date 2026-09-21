@@ -37,6 +37,7 @@ enum Expectation {
     Ok,
     Select(Payload),
     Maps(Payload),
+    Explain(Vec<String>),
     Payload(SerdeExpectation),
     Error(SerdeExpectation),
     Count(usize),
@@ -102,6 +103,12 @@ where
                     panic!("{context}\nexpected one payload, found {}", payloads.len());
                 };
                 assert_payload(actual, &expected, &context);
+            }
+            Expectation::Explain(expected) => {
+                let [Payload::Explain(actual)] = actual.as_deref().expect(&context) else {
+                    panic!("{context}\nexpected one EXPLAIN payload");
+                };
+                pretty_assert_eq!(actual, &expected, "{context}\nquery plan mismatch");
             }
             Expectation::Payload(expected) => {
                 let payloads = actual.unwrap_or_else(|error| {
@@ -554,6 +561,10 @@ fn parse_expectation(lines: &[&str], index: usize, directive: &str) -> (Expectat
             assert_table_format(&rows, None);
             (Expectation::Maps(parse_maps(&rows)), index)
         }
+        "explain" => {
+            let (plan, index) = take_explain_lines(lines, index);
+            (Expectation::Explain(plan), index)
+        }
         "types" => {
             let (rows, index) = take_table_rows(lines, index);
             assert_table_format(&rows, None);
@@ -591,6 +602,28 @@ fn take_table_rows<'a>(lines: &[&'a str], mut index: usize) -> (Vec<&'a str>, us
         index += 1;
     }
     (rows, index)
+}
+
+fn take_explain_lines(lines: &[&str], mut index: usize) -> (Vec<String>, usize) {
+    let mut plan = Vec::new();
+
+    while let Some(line) = lines.get(index) {
+        let line = if *line == "--" {
+            ""
+        } else if let Some(line) = line.strip_prefix("-- ") {
+            line
+        } else {
+            break;
+        };
+        if line.starts_with('@') {
+            break;
+        }
+        plan.push(line.to_owned());
+        index += 1;
+    }
+
+    assert!(!plan.is_empty(), "explain expectation requires plan lines");
+    (plan, index)
 }
 
 fn assert_table_format(lines: &[&str], separator: Option<usize>) {
@@ -951,6 +984,11 @@ SELECT 1;
 -- | 1          | Str("a") |
 -- | NULL       | I64(2)   |
 
+EXPLAIN SELECT 1;
+-- @expect: explain
+-- • project
+-- └── • values
+
 UPDATE Example SET id = 1;
 -- @expect: payload Update
 -- @json: 0
@@ -976,16 +1014,20 @@ SELECT ADD_MONTH('invalid', 1);
 "#;
 
         let steps = parse_fixture(source);
-        assert_eq!(steps.len(), 7);
+        assert_eq!(steps.len(), 8);
         assert_eq!(steps[1].name.as_deref(), Some("mixed result"));
         assert_eq!(steps[2].name, None);
         assert!(matches!(steps[0].expectation, Expectation::Ok));
         assert!(matches!(steps[1].expectation, Expectation::Select(_)));
-        assert!(matches!(steps[2].expectation, Expectation::Payload(_)));
-        assert!(matches!(steps[3].expectation, Expectation::Count(0)));
-        assert!(matches!(steps[4].expectation, Expectation::Types(_)));
-        assert!(matches!(steps[5].expectation, Expectation::Error(_)));
+        assert_eq!(
+            steps[2].expectation,
+            Expectation::Explain(vec!["• project".to_owned(), "└── • values".to_owned()])
+        );
+        assert!(matches!(steps[3].expectation, Expectation::Payload(_)));
+        assert!(matches!(steps[4].expectation, Expectation::Count(0)));
+        assert!(matches!(steps[5].expectation, Expectation::Types(_)));
         assert!(matches!(steps[6].expectation, Expectation::Error(_)));
+        assert!(matches!(steps[7].expectation, Expectation::Error(_)));
     }
 
     #[test]

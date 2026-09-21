@@ -17,7 +17,7 @@ use {
         plan::{
             DictionarySourcePlan, ExprPlan, FilterInputPlan, FilterPlan, ProjectInputPlan,
             ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SourcePlan, StatementPlan,
-            TableAliasPlan,
+            TableAliasPlan, explain,
         },
         result::{Error, Result},
         store::{GStore, GStoreMut},
@@ -51,6 +51,7 @@ pub enum Payload {
         rows: Vec<Vec<Value>>,
     },
     SelectMap(Vec<BTreeMap<String, Value>>),
+    Explain(Vec<String>),
     Delete(usize),
     Update(usize),
     DropTable(usize),
@@ -246,6 +247,7 @@ fn execute_inner<T: GStore + GStoreMut>(
         } => delete(storage, table_name, selection.as_ref()),
 
         //- Selection
+        StatementPlan::Explain(query) => Ok(Payload::Explain(explain(query))),
         StatementPlan::Query(query) => select::execute(storage, query),
         StatementPlan::ShowColumns { table_name } => {
             let Schema { column_defs, .. } = storage

@@ -1,6 +1,9 @@
 use {
     super::{InnerJoinPlan, LeftOuterJoinPlan},
-    crate::plan::SourcePlan,
+    crate::plan::{
+        SourcePlan,
+        explain::{Explain, ExplainContext, ExplainNode},
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -46,13 +49,34 @@ impl NestedLoopJoinPlan {
     }
 }
 
+impl Explain for NestedLoopJoinPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        ExplainNode::new("nested-loop join")
+            .with_children([self.input.explain(context), self.right.explain(context)])
+    }
+}
+
+impl Explain for NestedLoopJoinInputPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        match self {
+            Self::Source(source) => source.explain(context),
+            Self::InnerJoin(join) => join.explain(context),
+            Self::LeftOuterJoin(join) => join.explain(context),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use {
         super::{NestedLoopJoinInputPlan, NestedLoopJoinPlan},
         crate::plan::{
             InnerJoinInputPlan, InnerJoinPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
-            SourcePlan, TableAccessPlan, TableSourcePlan,
+            SourcePlan, TableAccessPlan, TableSourcePlan, explain::test_explain,
         },
         pretty_assertions::assert_eq,
     };
@@ -120,5 +144,58 @@ mod tests {
         assert_eq!(actual.joined_sources(), expected.iter().collect::<Vec<_>>());
         *actual.base_source_mut() = table("left-outer");
         assert_eq!(actual.base_source(), &table("left-outer"));
+    }
+
+    #[test]
+    fn explain() {
+        let actual = NestedLoopJoinPlan {
+            input: NestedLoopJoinInputPlan::Source(table("A")),
+            right: table("B"),
+        };
+        let expected = r"
+• nested-loop join
+├── • scan A
+│     access: full scan
+│
+└── • scan B
+      access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = NestedLoopJoinPlan {
+            input: NestedLoopJoinInputPlan::InnerJoin(Box::new(inner_join())),
+            right: table("C"),
+        };
+        let expected = r"
+• nested-loop join
+├── • nested-loop join (inner)
+│   ├── • scan A
+│   │     access: full scan
+│   │
+│   └── • scan B
+│         access: full scan
+│
+└── • scan C
+      access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = NestedLoopJoinPlan {
+            input: NestedLoopJoinInputPlan::LeftOuterJoin(Box::new(left_outer_join())),
+            right: table("C"),
+        };
+        let expected = r"
+• nested-loop join
+├── • nested-loop join (left outer)
+│   ├── • scan A
+│   │     access: full scan
+│   │
+│   └── • scan B
+│         access: full scan
+│
+└── • scan C
+      access: full scan
+";
+        test_explain(&actual, expected);
     }
 }
