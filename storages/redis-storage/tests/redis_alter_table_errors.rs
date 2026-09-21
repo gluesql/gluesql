@@ -44,7 +44,7 @@ fn add_column_non_vec_row_error() {
     redis::cmd("SET")
         .arg(&key)
         .arg(value)
-        .query::<()>(&mut *glue.storage.conn.lock().unwrap())
+        .query::<()>(&mut *glue.storage.pool.checkout().unwrap())
         .unwrap();
 
     let column_def = ColumnDef {
@@ -84,7 +84,7 @@ fn add_column_deserialize_error() {
     redis::cmd("SET")
         .arg(&key)
         .arg("not-json")
-        .query::<()>(&mut *glue.storage.conn.lock().unwrap())
+        .query::<()>(&mut *glue.storage.pool.checkout().unwrap())
         .unwrap();
 
     let column_def = ColumnDef {
@@ -130,7 +130,7 @@ fn drop_column_non_vec_row_error() {
     redis::cmd("SET")
         .arg(&key)
         .arg(value)
-        .query::<()>(&mut *glue.storage.conn.lock().unwrap())
+        .query::<()>(&mut *glue.storage.pool.checkout().unwrap())
         .unwrap();
 
     let result = glue.storage.drop_column("dummy", "foo", false);
@@ -163,7 +163,7 @@ fn drop_column_deserialize_error() {
     redis::cmd("SET")
         .arg(&key)
         .arg("not-json")
-        .query::<()>(&mut *glue.storage.conn.lock().unwrap())
+        .query::<()>(&mut *glue.storage.pool.checkout().unwrap())
         .unwrap();
 
     let result = glue.storage.drop_column("dummy", "foo", false);
@@ -198,7 +198,7 @@ fn drop_column_short_row_error() {
     redis::cmd("SET")
         .arg(&key)
         .arg(value)
-        .query::<()>(&mut *glue.storage.conn.lock().unwrap())
+        .query::<()>(&mut *glue.storage.pool.checkout().unwrap())
         .unwrap();
 
     let result = glue.storage.drop_column("dummy", "foo", false);
