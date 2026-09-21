@@ -1,35 +1,44 @@
 use {
-    super::Evaluated,
+    super::{Evaluated, as_str},
     crate::{
-        data::{StringExt, Value},
+        data::{RegexCache, StringExt, Value, regex_with_cache},
         result::Result,
     },
     std::borrow::Cow,
 };
 
-/// Borrows the text behind an `Evaluated` without allocating, when it holds one.
-fn as_str<'a>(evaluated: &'a Evaluated<'_>) -> Option<&'a str> {
-    match evaluated {
-        Evaluated::Text(value) => Some(value.as_ref()),
-        Evaluated::StrSlice { source, range } => Some(&source[range.clone()]),
-        Evaluated::Value(value) => match value.as_ref() {
-            Value::Str(value) => Some(value.as_str()),
-            _ => None,
-        },
-        Evaluated::Number(_) => None,
-    }
-}
-
 impl<'a> Evaluated<'a> {
+    pub(crate) fn regex_with_cache(
+        &self,
+        other: Evaluated<'a>,
+        negated: bool,
+        case_sensitive: bool,
+        cache: &mut RegexCache,
+    ) -> Result<Evaluated<'a>> {
+        self.regex_inner(other, negated, case_sensitive, Some(cache))
+    }
+
     pub fn regex(
         &self,
         other: Evaluated<'a>,
         negated: bool,
         case_sensitive: bool,
     ) -> Result<Evaluated<'a>> {
-        if let (Some(target), Some(pattern)) = (as_str(self), as_str(&other)) {
-            let matched = target.regex(pattern, case_sensitive)?;
+        self.regex_inner(other, negated, case_sensitive, None)
+    }
 
+    fn regex_inner(
+        &self,
+        other: Evaluated<'a>,
+        negated: bool,
+        case_sensitive: bool,
+        mut cache: Option<&mut RegexCache>,
+    ) -> Result<Evaluated<'a>> {
+        if let (Some(target), Some(pattern)) = (as_str(self), as_str(&other)) {
+            let matched = match cache.as_mut() {
+                Some(cache) => regex_with_cache(target, pattern, case_sensitive, cache)?,
+                None => target.regex(pattern, case_sensitive)?,
+            };
             return Ok(Evaluated::Value(Cow::Owned(Value::Bool(matched ^ negated))));
         }
 
@@ -107,6 +116,43 @@ mod tests {
                 operator: "!~*".to_owned(),
             }
             .into()
+        );
+    }
+
+    #[test]
+    fn regex_with_cache_uses_cache_for_strings_and_falls_back_for_values() {
+        let text = |value: &str| Evaluated::Text(Cow::Owned(value.to_owned()));
+        let slice = |value: &str| Evaluated::StrSlice {
+            source: Cow::Owned(value.to_owned()),
+            range: 0..value.len(),
+        };
+        let number_literal = || Evaluated::Number(Cow::Owned("42".parse().unwrap()));
+        let number = Evaluated::Value(Cow::Owned(Value::I64(42)));
+        let mut cache = crate::data::RegexCache::new();
+
+        assert_eq!(
+            text("Hello")
+                .regex_with_cache(text("^hello$"), false, false, &mut cache)
+                .unwrap()
+                .to_string(),
+            "TRUE"
+        );
+        assert_eq!(
+            slice("Hello")
+                .regex_with_cache(slice("^hello$"), false, false, &mut cache)
+                .unwrap()
+                .to_string(),
+            "TRUE"
+        );
+        assert!(
+            number
+                .regex_with_cache(text("."), false, true, &mut cache)
+                .is_err()
+        );
+        assert!(
+            number_literal()
+                .regex_with_cache(text("."), false, true, &mut cache)
+                .is_err()
         );
     }
 }

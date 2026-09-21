@@ -1,7 +1,7 @@
 use {
-    super::Evaluated,
+    super::{Evaluated, as_str},
     crate::{
-        data::{StringExt, Value},
+        data::{RegexCache, StringExt, Value, like_with_cache},
         executor::evaluate::error::EvaluateError,
         result::Result,
     },
@@ -9,7 +9,37 @@ use {
 };
 
 impl<'a> Evaluated<'a> {
+    pub(crate) fn like_with_cache(
+        &self,
+        other: Evaluated<'a>,
+        case_sensitive: bool,
+        cache: &mut RegexCache,
+    ) -> Result<Evaluated<'a>> {
+        self.like_inner(other, case_sensitive, Some(cache))
+    }
+
     pub fn like(&self, other: Evaluated<'a>, case_sensitive: bool) -> Result<Evaluated<'a>> {
+        self.like_inner(other, case_sensitive, None)
+    }
+
+    fn like_inner(
+        &self,
+        other: Evaluated<'a>,
+        case_sensitive: bool,
+        mut cache: Option<&mut RegexCache>,
+    ) -> Result<Evaluated<'a>> {
+        if let (Some(left), Some(right)) = (as_str(self), as_str(&other)) {
+            let matched = match cache.as_mut() {
+                Some(cache) => like_with_cache(left, right, case_sensitive, cache)?,
+                None => left.like(right, case_sensitive)?,
+            };
+            return Ok(Evaluated::Value(Cow::Owned(Value::Bool(matched))));
+        }
+
+        self.like_values(other, case_sensitive)
+    }
+
+    fn like_values(&self, other: Evaluated<'a>, case_sensitive: bool) -> Result<Evaluated<'a>> {
         let evaluated = match (self, other) {
             (Evaluated::Text(lhs), Evaluated::Text(rhs)) => Evaluated::Value(Cow::Owned(
                 Value::Bool(lhs.as_ref().like(rhs.as_ref(), case_sensitive)?),
@@ -145,6 +175,61 @@ mod tests {
                 case_sensitive: true,
             }
             .into())
+        );
+    }
+
+    #[test]
+    fn like_with_cache_uses_cache_for_strings_and_falls_back_for_numbers() {
+        let text = |value: &str| Evaluated::Text(Cow::Owned(value.to_owned()));
+        let number = || Evaluated::Number(Cow::Owned(BigDecimal::from(42)));
+        let value = |value: &str| Evaluated::Value(Cow::Owned(Value::Str(value.to_owned())));
+        let boolean = || Evaluated::Value(Cow::Owned(Value::Bool(true)));
+        let slice = |value: &str| Evaluated::StrSlice {
+            source: Cow::Owned(value.to_owned()),
+            range: 0..value.len(),
+        };
+        let mut cache = crate::data::RegexCache::new();
+
+        assert_eq!(
+            text("hello")
+                .like_with_cache(text("h%"), false, &mut cache)
+                .unwrap()
+                .to_string(),
+            "TRUE"
+        );
+        assert_eq!(
+            slice("hello")
+                .like_with_cache(slice("h%"), false, &mut cache)
+                .unwrap()
+                .to_string(),
+            "TRUE"
+        );
+        assert_eq!(
+            value("hello")
+                .like_with_cache(value("h%"), false, &mut cache)
+                .unwrap()
+                .to_string(),
+            "TRUE"
+        );
+        assert!(
+            number()
+                .like_with_cache(text("%"), true, &mut cache)
+                .is_err()
+        );
+        assert!(
+            text("hello")
+                .like_with_cache(number(), true, &mut cache)
+                .is_err()
+        );
+        assert!(
+            boolean()
+                .like_with_cache(text("%"), true, &mut cache)
+                .is_err()
+        );
+        assert!(
+            text("hello")
+                .like_with_cache(boolean(), true, &mut cache)
+                .is_err()
         );
     }
 }

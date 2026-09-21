@@ -26,3 +26,5 @@ pub use {
     tribool::Tribool,
     value::{BTreeMapJsonExt, NumericBinaryOperator, Value, ValueError},
 };
+
+pub(crate) use string_ext::{RegexCache, like_with_cache, regex_with_cache};
