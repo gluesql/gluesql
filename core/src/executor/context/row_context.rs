@@ -11,6 +11,7 @@ pub enum RowContext<'a> {
         next: Option<Rc<RowContext<'a>>>,
     },
     RefVecData {
+        table_alias: Option<&'a str>,
         columns: &'a [String],
         values: &'a [Value],
     },
@@ -46,7 +47,9 @@ impl<'a> RowContext<'a> {
             Self::Bridge { left, right } => {
                 left.get_value(target).or_else(|| right.get_value(target))
             }
-            Self::RefVecData { columns, values } => columns
+            Self::RefVecData {
+                columns, values, ..
+            } => columns
                 .iter()
                 .position(|column| column == target)
                 .and_then(|index| values.get(index)),
@@ -75,6 +78,14 @@ impl<'a> RowContext<'a> {
             Self::Bridge { left, right } => left
                 .get_alias_value(target_table_alias, target)
                 .or_else(|| right.get_alias_value(target_table_alias, target)),
+            Self::RefVecData {
+                table_alias: Some(table_alias),
+                columns,
+                values,
+            } if *table_alias == target_table_alias => columns
+                .iter()
+                .position(|column| column == target)
+                .and_then(|index| values.get(index)),
             _ => None,
         }
     }
@@ -113,5 +124,33 @@ impl<'a> RowContext<'a> {
             }
             _ => vec![],
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::RowContext,
+        crate::data::{Row, Value},
+    };
+
+    #[test]
+    fn ref_vec_context_resolves_matching_alias_only() {
+        let row = Row {
+            columns: vec!["column1".to_owned()].into(),
+            values: vec![Value::I64(1)],
+        };
+        let context = row.as_context_with_alias(Some("VALUES"));
+
+        assert_eq!(context.get_value("column1"), Some(&Value::I64(1)));
+        assert_eq!(
+            context.get_alias_value("VALUES", "column1"),
+            Some(&Value::I64(1))
+        );
+        assert_eq!(context.get_alias_value("VALUES", "missing"), None);
+        assert_eq!(context.get_alias_value("Other", "column1"), None);
+        assert_eq!(row.as_context().get_alias_value("VALUES", "column1"), None);
+
+        assert!(matches!(context, RowContext::RefVecData { .. }));
     }
 }

@@ -1,9 +1,6 @@
 use {
     super::{try_visit_expr, visit_mut_expr},
-    crate::{
-        plan::{ExprPlan, FunctionExprPlan},
-        planner::PlannerError,
-    },
+    crate::plan::{ExprPlan, FunctionExprPlan},
 };
 
 macro_rules! apply_mut {
@@ -237,9 +234,9 @@ where
     visit_function_children!(func, visit_mut_expr, f, apply_mut);
 }
 
-pub fn try_visit_function<F>(func: &FunctionExprPlan, f: &mut F) -> Result<(), PlannerError>
+pub fn try_visit_function<F, E>(func: &FunctionExprPlan, f: &mut F) -> Result<(), E>
 where
-    F: FnMut(&ExprPlan) -> Result<(), PlannerError>,
+    F: FnMut(&ExprPlan) -> Result<(), E>,
 {
     visit_function_children!(func, try_visit_expr, f, apply_try);
     Ok(())
@@ -252,7 +249,6 @@ mod tests {
         crate::{
             parse_sql::parse_expr,
             plan::ExprPlan,
-            planner::PlannerError,
             translate::{NO_PARAMS, translate_expr},
         },
     };
@@ -262,8 +258,15 @@ mod tests {
         let mut expr = ExprPlan::from(translate_expr(&parsed, NO_PARAMS).expect(input));
 
         visit_mut_expr(&mut expr, &mut |e| {
-            if let ExprPlan::Identifier(ident) = e {
-                *e = ExprPlan::Identifier(format!("_{ident}"));
+            if let ExprPlan::UnplannedReference {
+                qualifier: None,
+                name,
+            } = e
+            {
+                *e = ExprPlan::UnplannedReference {
+                    qualifier: None,
+                    name: format!("_{name}"),
+                };
             }
         });
 
@@ -380,10 +383,13 @@ mod tests {
         let expr = ExprPlan::from(translate_expr(&parsed, NO_PARAMS).expect("CONCAT(a, b)"));
 
         let result = try_visit_expr(&expr, &mut |expr| match expr {
-            ExprPlan::Identifier(ident) if ident == "b" => Err(PlannerError::Unreachable),
+            ExprPlan::UnplannedReference {
+                qualifier: None,
+                name: ident,
+            } if ident == "b" => Err(()),
             _ => Ok(()),
         });
 
-        assert_eq!(result, Err(PlannerError::Unreachable));
+        assert_eq!(result, Err(()));
     }
 }

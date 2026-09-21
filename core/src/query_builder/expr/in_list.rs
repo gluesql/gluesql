@@ -181,7 +181,10 @@ mod test {
             });
 
             ExprPlan::InSubquery {
-                expr: Box::new(ExprPlan::Identifier("id".to_owned())),
+                expr: Box::new(ExprPlan::UnplannedReference {
+                    qualifier: None,
+                    name: "id".to_owned(),
+                }),
                 subquery: Box::new(query),
                 negated: false,
             }

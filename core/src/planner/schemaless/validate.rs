@@ -1,5 +1,5 @@
 use {
-    super::super::{PlannerError, expr::try_visit_expr},
+    super::super::PlannerError,
     crate::{
         data::Schema,
         plan::{
@@ -9,7 +9,7 @@ use {
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
             OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
             SelectItemPlan, SelectOrderByPlan, SourcePlan, StatementPlan, ValuesOrderByPlan,
-            ValuesPlan,
+            ValuesPlan, try_visit_expr,
         },
         result::Result,
     },

@@ -61,7 +61,10 @@ pub fn delete<T: GStore + GStoreMut>(
                 .clone();
 
             let expr = &ExprPlan::BinaryOp {
-                left: Box::new(ExprPlan::Identifier(referencing_column_name.clone())),
+                left: Box::new(ExprPlan::ResolvedColumn {
+                    alias: referencing_table_name.clone(),
+                    column: referencing_column_name.clone(),
+                }),
                 op: BinaryOperator::Eq,
                 right: Box::new(ExprPlan::Value(value)),
             };

@@ -31,7 +31,11 @@ pub fn validate(schema_map: &SchemaMap, statement: &StatementPlan) -> Result<()>
 
         for select_item in projection {
             if let SelectItemPlan::Expr {
-                expr: ExprPlan::Identifier(ident),
+                expr:
+                    ExprPlan::UnplannedReference {
+                        qualifier: None,
+                        name: ident,
+                    },
                 ..
             } = select_item
                 && let Some(context) = contextualize_query(schema_map, query)

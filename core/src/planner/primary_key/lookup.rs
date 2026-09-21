@@ -32,19 +32,32 @@ impl PrimaryKeyLookupCandidate {
 
     pub(super) fn contains(&self, key: &ExprPlan) -> bool {
         match key {
-            ExprPlan::Identifier(column) => {
+            ExprPlan::UnplannedReference {
+                qualifier: None,
+                name: column,
+            } => {
                 self.target.primary_key_column == *column
                     && self
                         .joined_relations
                         .iter()
                         .all(|relation| !relation.contains_column(column))
             }
-            ExprPlan::CompoundIdentifier { alias, ident } => {
+            ExprPlan::UnplannedReference {
+                qualifier: Some(alias),
+                name: ident,
+            } => {
                 self.target.matches(alias, ident)
                     && self
                         .joined_relations
                         .iter()
                         .all(|relation| !relation.contains_aliased_column(alias, ident))
+            }
+            ExprPlan::ResolvedColumn { alias, column } => {
+                self.target.matches(alias, column)
+                    && self
+                        .joined_relations
+                        .iter()
+                        .all(|relation| !relation.contains_aliased_column(alias, column))
             }
             _ => false,
         }
@@ -203,13 +216,16 @@ mod tests {
     }
 
     fn identifier(column: &str) -> ExprPlan {
-        ExprPlan::Identifier(column.to_owned())
+        ExprPlan::UnplannedReference {
+            qualifier: None,
+            name: column.to_owned(),
+        }
     }
 
     fn qualified(alias: &str, column: &str) -> ExprPlan {
-        ExprPlan::CompoundIdentifier {
-            alias: alias.to_owned(),
-            ident: column.to_owned(),
+        ExprPlan::UnplannedReference {
+            qualifier: Some(alias.to_owned()),
+            name: column.to_owned(),
         }
     }
 
