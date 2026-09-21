@@ -16,7 +16,7 @@ pub use self::{
         QueryOption, SelectOption, TransactionOption, TranslateError, UpdateOption,
     },
     expr::{translate_expr, translate_order_by_expr},
-    param::{IntoParamLiteral, ParamLiteral},
+    param::{IntoParamLiteral, ParamLiteral, ToParamLiteral},
     query::{alias_or_name, translate_query, translate_select_item},
 };
 
