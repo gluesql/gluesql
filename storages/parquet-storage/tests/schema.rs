@@ -5,6 +5,7 @@ use {
             Glue, Payload,
             Value::{self, *},
         },
+        store::Store,
     },
     gluesql_parquet_storage::ParquetStorage,
     parquet::data_type::ByteArray,
@@ -171,4 +172,21 @@ fn test_data_modify() {
     for (actual, expected) in cases {
         assert_eq!(actual.map(|mut payloads| payloads.remove(0)), expected);
     }
+}
+
+#[test]
+fn engine_round_trip() {
+    let path = "tmp/parquet_engine_round_trip";
+    let _ = fs::remove_dir_all(path);
+    let storage = ParquetStorage::new(path).expect("ParquetStorage::new");
+    let mut glue = Glue::new(storage);
+
+    glue.execute("CREATE TABLE EngineTable (id INTEGER) ENGINE = PARQUET;")
+        .unwrap();
+
+    let schema = glue.storage.fetch_schema("EngineTable").unwrap().unwrap();
+    assert_eq!(schema.engine.as_deref(), Some("PARQUET"));
+
+    drop(glue);
+    fs::remove_dir_all(path).unwrap();
 }

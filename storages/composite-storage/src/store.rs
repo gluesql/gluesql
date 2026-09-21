@@ -1,5 +1,5 @@
 use {
-    super::{CompositeStorage, IStorage},
+    super::CompositeStorage,
     gluesql_core::{
         data::{Key, Schema, Value},
         error::Result,
@@ -7,27 +7,31 @@ use {
     },
 };
 
+fn with_fallback_engine(mut schema: Schema, engine: &str) -> Schema {
+    schema.engine.get_or_insert_with(|| engine.to_owned());
+    schema
+}
+
 impl Store for CompositeStorage {
     fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
-        let schemas = self
-            .storages
-            .values()
-            .map(AsRef::as_ref)
-            .map(<dyn IStorage>::fetch_all_schemas)
-            .collect::<Result<Vec<_>>>()?
-            .into_iter()
-            .flatten()
-            .collect();
+        let mut schemas = Vec::new();
+
+        for (engine, storage) in &self.storages {
+            schemas.extend(
+                storage
+                    .fetch_all_schemas()?
+                    .into_iter()
+                    .map(|schema| with_fallback_engine(schema, engine)),
+            );
+        }
 
         Ok(schemas)
     }
 
     fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
-        for storage in self.storages.values() {
-            let schema = storage.fetch_schema(table_name)?;
-
-            if schema.is_some() {
-                return Ok(schema);
+        for (engine, storage) in &self.storages {
+            if let Some(schema) = storage.fetch_schema(table_name)? {
+                return Ok(Some(with_fallback_engine(schema, engine)));
             }
         }
 
