@@ -7,6 +7,7 @@ mod fetch;
 mod filter;
 mod insert;
 mod query;
+mod returning;
 mod select;
 mod update;
 mod validate;

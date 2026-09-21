@@ -4,11 +4,13 @@ use {
             CreateTableOptions, alter_table, create_index, create_table, delete_function,
             drop_table, insert_function,
         },
+        context::RowContext,
         delete::delete,
-        fetch::fetch,
+        fetch::{fetch, fetch_columns},
+        filter::check_expr,
         insert::insert,
-        query, select,
-        update::Update,
+        query, returning, select,
+        update::{Update, UpdateError},
         validate::{ColumnValidation, validate_unique},
     },
     crate::{
@@ -24,6 +26,7 @@ use {
     },
     serde::{Deserialize, Serialize},
     std::{
+        borrow::Cow,
         collections::{BTreeMap, HashMap},
         env::var,
         fmt::Debug,
@@ -39,6 +42,35 @@ pub enum ExecuteError {
 
     #[error("expected Map value in _doc column")]
     ExpectedMapValueInDocColumn,
+
+    #[error("RETURNING is not supported on schemaless table: {0}")]
+    ReturningOnSchemalessTable(String),
+
+    #[error("table not found in RETURNING clause: {0}")]
+    ReturningTableNotFound(String),
+
+    #[error("UPDATE FROM and DELETE USING require schema-defined tables: {0}")]
+    SourceRequiresSchema(String),
+}
+
+/// Fetches every row of the additional table an `UPDATE ... FROM` or
+/// `DELETE ... USING` clause names.
+pub fn fetch_source_rows<T: GStore>(storage: &T, table_name: &str) -> Result<Vec<Row>> {
+    let has_schema = storage
+        .fetch_schema(table_name)?
+        .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?
+        .column_defs
+        .is_some();
+
+    if !has_schema {
+        return Err(ExecuteError::SourceRequiresSchema(table_name.to_owned()).into());
+    }
+
+    let columns = Rc::from(fetch_columns(storage, table_name)?);
+
+    fetch(storage, table_name, columns, None)?
+        .map(|item| item.map(|(_, row)| row))
+        .collect()
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -186,11 +218,22 @@ fn execute_inner<T: GStore + GStoreMut>(
             table_name,
             columns,
             source,
-        } => insert(storage, table_name, columns, source).map(Payload::Insert),
+            on_conflict,
+            returning,
+        } => insert(
+            storage,
+            table_name,
+            columns,
+            source,
+            on_conflict.as_ref(),
+            returning.as_deref(),
+        ),
         StatementPlan::Update {
             table_name,
             selection,
             assignments,
+            from,
+            returning,
         } => {
             let Schema {
                 column_defs,
@@ -213,37 +256,138 @@ fn execute_inner<T: GStore + GStoreMut>(
 
             let foreign_keys = Rc::new(foreign_keys);
 
-            let rows = fetch(storage, table_name, all_columns, selection.as_ref())?
+            if returning.is_some() && column_defs.is_none() {
+                return Err(ExecuteError::ReturningOnSchemalessTable(table_name.clone()).into());
+            }
+
+            let labels = returning
+                .as_deref()
+                .map(|items| returning::labels(table_name, &all_columns, items))
+                .transpose()?;
+
+            let source = match from {
+                Some(source_table) => {
+                    if column_defs.is_none() {
+                        return Err(ExecuteError::SourceRequiresSchema(table_name.clone()).into());
+                    }
+                    let source_rows = fetch_source_rows(storage, &source_table.name)?;
+                    let alias = source_table
+                        .alias
+                        .clone()
+                        .unwrap_or_else(|| source_table.name.clone());
+
+                    Some((alias, source_rows))
+                }
+                None => None,
+            };
+
+            let rows: Vec<(Key, Row, Option<Row>)> = match &source {
+                Some((alias, source_rows)) => {
+                    let mut rows = Vec::new();
+                    for item in fetch(storage, table_name, Rc::clone(&all_columns), None)? {
+                        let (key, target_row) = item?;
+
+                        let mut matched: Option<&Row> = None;
+                        for source_row in source_rows {
+                            let next =
+                                Rc::new(RowContext::new(alias, Cow::Borrowed(source_row), None));
+                            let context = Rc::new(RowContext::new(
+                                table_name,
+                                Cow::Borrowed(&target_row),
+                                Some(next),
+                            ));
+                            let passes = match selection.as_ref() {
+                                Some(expr) => check_expr(storage, Some(&context), None, expr)?,
+                                None => true,
+                            };
+
+                            if passes {
+                                if matched.is_some() {
+                                    return Err(UpdateError::MultipleSourceRowsForTargetRow.into());
+                                }
+                                matched = Some(source_row);
+                            }
+                        }
+
+                        if let Some(source_row) = matched {
+                            let row = update.apply_with(
+                                target_row,
+                                foreign_keys.as_ref(),
+                                Some((alias, source_row)),
+                            )?;
+
+                            rows.push((key, row, Some(source_row.clone())));
+                        }
+                    }
+
+                    rows
+                }
+                None => fetch(
+                    storage,
+                    table_name,
+                    Rc::clone(&all_columns),
+                    selection.as_ref(),
+                )?
                 .map(|item| {
                     let (key, row) = item?;
                     let row = update.apply(row, foreign_keys.as_ref())?;
 
-                    Ok((key, row))
+                    Ok((key, row, None))
                 })
-                .collect::<Result<Vec<(Key, Row)>>>()?;
+                .collect::<Result<Vec<_>>>()?,
+            };
 
             if let Some(column_defs) = column_defs {
                 let column_validation =
                     ColumnValidation::SpecifiedColumns(&column_defs, columns_to_update);
-                let rows = rows.iter().map(|(_, row)| row.values.as_slice());
+                let rows = rows.iter().map(|(_, row, _)| row.values.as_slice());
 
                 validate_unique(storage, table_name, &column_validation, rows)?;
             }
 
             let num_rows = rows.len();
+            let affected_rows = returning.as_ref().map(|_| {
+                rows.iter()
+                    .map(|(_, row, source_row)| (row.values.clone(), source_row.clone()))
+                    .collect()
+            });
             let rows = rows
                 .into_iter()
-                .map(|(key, row)| (key, row.into_values()))
+                .map(|(key, row, _)| (key, row.into_values()))
                 .collect();
 
-            storage
-                .insert_data(table_name, rows)
-                .map(|()| Payload::Update(num_rows))
+            // The `RETURNING` payload is built before the storage mutation so
+            // that a failing projection leaves the table untouched, which
+            // matters for the storages that cannot roll a statement back.
+            let payload = match (returning, labels) {
+                (Some(items), Some(labels)) => Some(returning::build_payload_with(
+                    storage,
+                    table_name,
+                    &all_columns,
+                    items,
+                    labels,
+                    affected_rows.unwrap_or_default(),
+                    source.as_ref().map(|(alias, _)| alias.as_str()),
+                )?),
+                _ => None,
+            };
+
+            storage.insert_data(table_name, rows)?;
+
+            Ok(payload.unwrap_or(Payload::Update(num_rows)))
         }
         StatementPlan::Delete {
             table_name,
+            using,
             selection,
-        } => delete(storage, table_name, selection.as_ref()),
+            returning,
+        } => delete(
+            storage,
+            table_name,
+            using.as_ref(),
+            selection.as_ref(),
+            returning.as_deref(),
+        ),
 
         //- Selection
         StatementPlan::Query(query) => select::execute(storage, query),

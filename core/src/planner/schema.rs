@@ -7,9 +7,9 @@ use {
             FilterPlan, HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan,
             JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
-            OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan, ProjectPlan,
-            ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SourcePlan,
-            StatementPlan, ValuesOrderByPlan,
+            OffsetInputPlan, OffsetPlan, OnConflictActionPlan, OnConflictPlan, OrderByExprPlan,
+            ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
+            SelectOrderByPlan, SourcePlan, StatementPlan, ValuesOrderByPlan,
         },
         result::Result,
         store::Store,
@@ -24,7 +24,11 @@ pub fn fetch_schema_map<T: Store + ?Sized>(
     match statement {
         StatementPlan::Query(query) => scan_query(storage, query),
         StatementPlan::Insert {
-            table_name, source, ..
+            table_name,
+            source,
+            on_conflict,
+            returning,
+            ..
         } => {
             let table_schema = storage
                 .fetch_schema(table_name)?
@@ -32,7 +36,14 @@ pub fn fetch_schema_map<T: Store + ?Sized>(
                     HashMap::from([(table_name.to_owned(), schema)])
                 });
             let source_schema_list = scan_query(storage, source)?;
-            let schema_list = table_schema.into_iter().chain(source_schema_list).collect();
+            let on_conflict_schema = scan_on_conflict(storage, on_conflict.as_ref())?;
+            let returning_schema = scan_returning(storage, returning.as_deref())?;
+            let schema_list = table_schema
+                .into_iter()
+                .chain(source_schema_list)
+                .chain(on_conflict_schema)
+                .chain(returning_schema)
+                .collect();
 
             Ok(schema_list)
         }
@@ -62,7 +73,36 @@ pub fn fetch_schema_map<T: Store + ?Sized>(
         }
         StatementPlan::Update {
             table_name,
+            assignments,
             selection,
+            returning,
+            ..
+        } => {
+            let table_schema = storage
+                .fetch_schema(table_name)?
+                .map_or_else(HashMap::new, |schema| {
+                    HashMap::from([(table_name.to_owned(), schema)])
+                });
+            let mut assignment_schema = HashMap::new();
+            for assignment in assignments {
+                assignment_schema.extend(scan_expr(storage, &assignment.value)?);
+            }
+            let selection_schema = match selection {
+                Some(expr) => scan_expr(storage, expr)?,
+                None => HashMap::new(),
+            };
+            let returning_schema = scan_returning(storage, returning.as_deref())?;
+            Ok(table_schema
+                .into_iter()
+                .chain(assignment_schema)
+                .chain(selection_schema)
+                .chain(returning_schema)
+                .collect())
+        }
+        StatementPlan::Delete {
+            table_name,
+            selection,
+            returning,
             ..
         } => {
             let table_schema = storage
@@ -74,25 +114,59 @@ pub fn fetch_schema_map<T: Store + ?Sized>(
                 Some(expr) => scan_expr(storage, expr)?,
                 None => HashMap::new(),
             };
-            Ok(table_schema.into_iter().chain(selection_schema).collect())
-        }
-        StatementPlan::Delete {
-            table_name,
-            selection,
-        } => {
-            let table_schema = storage
-                .fetch_schema(table_name)?
-                .map_or_else(HashMap::new, |schema| {
-                    HashMap::from([(table_name.to_owned(), schema)])
-                });
-            let selection_schema = match selection {
-                Some(expr) => scan_expr(storage, expr)?,
-                None => HashMap::new(),
-            };
-            Ok(table_schema.into_iter().chain(selection_schema).collect())
+            let returning_schema = scan_returning(storage, returning.as_deref())?;
+            Ok(table_schema
+                .into_iter()
+                .chain(selection_schema)
+                .chain(returning_schema)
+                .collect())
         }
         _ => Ok(HashMap::new()),
     }
+}
+
+/// Collects the schemas the `ON CONFLICT DO UPDATE` assignments and condition
+/// reach through subqueries.
+fn scan_on_conflict<T: Store + ?Sized>(
+    storage: &T,
+    on_conflict: Option<&OnConflictPlan>,
+) -> Result<HashMap<String, Schema>> {
+    let Some(OnConflictPlan {
+        action:
+            OnConflictActionPlan::DoUpdate {
+                assignments,
+                selection,
+            },
+        ..
+    }) = on_conflict
+    else {
+        return Ok(HashMap::new());
+    };
+
+    let mut schema_map = HashMap::new();
+    for assignment in assignments {
+        schema_map.extend(scan_expr(storage, &assignment.value)?);
+    }
+    if let Some(expr) = selection {
+        schema_map.extend(scan_expr(storage, expr)?);
+    }
+
+    Ok(schema_map)
+}
+
+/// Collects the schemas the `RETURNING` projections reach through subqueries.
+fn scan_returning<T: Store + ?Sized>(
+    storage: &T,
+    returning: Option<&[SelectItemPlan]>,
+) -> Result<HashMap<String, Schema>> {
+    let mut schema_map = HashMap::new();
+    for item in returning.unwrap_or_default() {
+        if let SelectItemPlan::Expr { expr, .. } = item {
+            schema_map.extend(scan_expr(storage, expr)?);
+        }
+    }
+
+    Ok(schema_map)
 }
 
 fn scan_query<T: Store + ?Sized>(

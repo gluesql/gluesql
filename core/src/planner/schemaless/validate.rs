@@ -7,9 +7,9 @@ use {
             FilterPlan, HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan,
             JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
-            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, SelectOrderByPlan, SourcePlan, StatementPlan, ValuesOrderByPlan,
-            ValuesPlan,
+            OffsetInputPlan, OffsetPlan, OnConflictActionPlan, OnConflictPlan, ProjectInputPlan,
+            ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SourcePlan,
+            StatementPlan, ValuesOrderByPlan, ValuesPlan,
         },
         result::Result,
     },
@@ -36,12 +36,16 @@ fn validate_statement_inner(
             table_name,
             columns,
             source,
+            on_conflict,
+            returning,
         } => {
             if !columns.is_empty() && is_schemaless_table(schema_map, table_name) {
                 return Err(PlannerError::SchemalessInsertWithExplicitColumns);
             }
 
-            validate_query(schema_map, source)
+            validate_query(schema_map, source)?;
+            validate_on_conflict(schema_map, on_conflict.as_ref())?;
+            validate_returning(schema_map, returning.as_deref())
         }
         StatementPlan::CreateTable { source, .. } => source
             .as_ref()
@@ -49,21 +53,74 @@ fn validate_statement_inner(
         StatementPlan::Update {
             assignments,
             selection,
+            returning,
             ..
         } => {
             for assignment in assignments {
                 validate_expr(schema_map, &assignment.value)?;
             }
 
-            selection
-                .as_ref()
-                .map_or(Ok(()), |expr| validate_expr(schema_map, expr))
+            if let Some(expr) = selection {
+                validate_expr(schema_map, expr)?;
+            }
+
+            validate_returning(schema_map, returning.as_deref())
         }
-        StatementPlan::Delete { selection, .. } => selection
-            .as_ref()
-            .map_or(Ok(()), |expr| validate_expr(schema_map, expr)),
+        StatementPlan::Delete {
+            selection,
+            returning,
+            ..
+        } => {
+            if let Some(expr) = selection {
+                validate_expr(schema_map, expr)?;
+            }
+
+            validate_returning(schema_map, returning.as_deref())
+        }
         _ => Ok(()),
     }
+}
+
+/// Validates the expressions an `ON CONFLICT DO UPDATE` action carries, so a
+/// schemaful `INSERT` cannot smuggle an unsupported subquery past the checks
+/// that run over a plain statement.
+fn validate_on_conflict(
+    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    on_conflict: Option<&OnConflictPlan>,
+) -> ValidateResult {
+    let Some(OnConflictPlan {
+        action:
+            OnConflictActionPlan::DoUpdate {
+                assignments,
+                selection,
+            },
+        ..
+    }) = on_conflict
+    else {
+        return Ok(());
+    };
+
+    for assignment in assignments {
+        validate_expr(schema_map, &assignment.value)?;
+    }
+
+    selection
+        .as_ref()
+        .map_or(Ok(()), |expr| validate_expr(schema_map, expr))
+}
+
+/// Validates every expression a `RETURNING` clause projects.
+fn validate_returning(
+    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    returning: Option<&[SelectItemPlan]>,
+) -> ValidateResult {
+    for item in returning.unwrap_or_default() {
+        if let SelectItemPlan::Expr { expr, .. } = item {
+            validate_expr(schema_map, expr)?;
+        }
+    }
+
+    Ok(())
 }
 
 fn validate_query(

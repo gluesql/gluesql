@@ -35,7 +35,9 @@ impl Build for DeleteNode<'_> {
 
         Ok(StatementPlan::Delete {
             table_name,
+            using: None,
             selection,
+            returning: None,
         })
     }
 }

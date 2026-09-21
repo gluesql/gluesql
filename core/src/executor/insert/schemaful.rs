@@ -23,14 +23,57 @@ pub(super) fn fetch_rows<T: GStore>(
     source: &QueryPlan,
     foreign_keys: Vec<ForeignKey>,
 ) -> Result<RowsData> {
+    let column_defs: Rc<[ColumnDef]> = Rc::from(column_defs);
+    let rows = build_rows(storage, &column_defs, columns, source)?;
+
+    let column_validation = ColumnValidation::All(&column_defs);
+    validate_unique(
+        storage,
+        table_name,
+        &column_validation,
+        rows.iter().map(std::vec::Vec::as_slice),
+    )?;
+
+    validate_foreign_key(storage, &column_defs, foreign_keys, &rows)?;
+
+    rows_data(rows, primary_key_index(&column_defs))
+}
+
+pub(super) fn primary_key_index(column_defs: &[ColumnDef]) -> Option<usize> {
+    column_defs.iter().position(|ColumnDef { unique, .. }| {
+        unique == &Some(ColumnUniqueOption { is_primary: true })
+    })
+}
+
+pub(super) fn rows_data(rows: Vec<Vec<Value>>, primary_key: Option<usize>) -> Result<RowsData> {
+    match primary_key {
+        Some(i) => rows
+            .into_iter()
+            .filter_map(|values: Vec<Value>| {
+                values
+                    .get(i)
+                    .map(Key::try_from)
+                    .map(|result| result.map(|key| (key, values)))
+            })
+            .collect::<Result<Vec<_>>>()
+            .map(RowsData::Insert),
+        None => Ok(RowsData::Append(rows)),
+    }
+}
+
+pub(super) fn build_rows<T: GStore>(
+    storage: &T,
+    column_defs: &Rc<[ColumnDef]>,
+    columns: &[String],
+    source: &QueryPlan,
+) -> Result<Vec<Vec<Value>>> {
     let column_defaults: Rc<[Option<ExprPlan>]> = Rc::from(
         column_defs
             .iter()
             .map(|column_def| column_def.default.clone().map(plan_scalar_expr))
             .collect::<Vec<_>>(),
     );
-    let column_defs = Rc::from(column_defs);
-    let column_validation = ColumnValidation::All(&column_defs);
+    let column_defs = Rc::clone(column_defs);
 
     let rows_iter: Box<dyn Iterator<Item = Result<Vec<Value>>> + '_> = if let Some(rows) =
         values::execute(source, |plan| {
@@ -70,34 +113,8 @@ pub(super) fn fetch_rows<T: GStore>(
 
         Box::new(rows)
     };
-    let rows = rows_iter.collect::<Result<Vec<Vec<Value>>>>()?;
 
-    validate_unique(
-        storage,
-        table_name,
-        &column_validation,
-        rows.iter().map(std::vec::Vec::as_slice),
-    )?;
-
-    validate_foreign_key(storage, &column_defs, foreign_keys, &rows)?;
-
-    let primary_key = column_defs.iter().position(|ColumnDef { unique, .. }| {
-        unique == &Some(ColumnUniqueOption { is_primary: true })
-    });
-
-    match primary_key {
-        Some(i) => rows
-            .into_iter()
-            .filter_map(|values: Vec<Value>| {
-                values
-                    .get(i)
-                    .map(Key::try_from)
-                    .map(|result| result.map(|key| (key, values)))
-            })
-            .collect::<Result<Vec<_>>>()
-            .map(RowsData::Insert),
-        None => Ok(RowsData::Append(rows)),
-    }
+    rows_iter.collect::<Result<Vec<Vec<Value>>>>()
 }
 
 fn values_rows<'a>(
@@ -202,7 +219,7 @@ fn assign_values(
         .collect()
 }
 
-fn validate_foreign_key<T: GStore>(
+pub(super) fn validate_foreign_key<T: GStore>(
     storage: &T,
     column_defs: &Rc<[ColumnDef]>,
     foreign_keys: Vec<ForeignKey>,
