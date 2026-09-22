@@ -30,6 +30,7 @@ impl Tester<JsonStorage> for JsonTester {
 generate_store_tests!(test, JsonTester);
 generate_alter_table_tests!(test, JsonTester);
 
+/// Verifies JSON statistics use fallback estimates without scanning.
 #[test]
 fn plan_statistics_use_fallbacks_without_scanning_json_data() {
     let path = "tmp/json_plan_statistics";

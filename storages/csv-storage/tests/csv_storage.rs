@@ -30,6 +30,7 @@ impl Tester<CsvStorage> for CsvTester {
 generate_store_tests!(test, CsvTester);
 generate_alter_table_tests!(test, CsvTester);
 
+/// Verifies CSV statistics use fallback estimates without scanning.
 #[test]
 fn plan_statistics_use_fallbacks_without_scanning_csv_data() {
     let path = "tmp/csv_plan_statistics";

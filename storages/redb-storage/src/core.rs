@@ -104,6 +104,7 @@ impl StorageCore {
 
 // Store
 impl StorageCore {
+    /// Returns exact row-count statistics from Redb table metadata.
     pub fn fetch_table_statistics(&self, table_name: &str) -> Result<TableStatistics> {
         let table_def = Self::data_table_def(table_name)?;
         let row_count = match &self.state {

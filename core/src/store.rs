@@ -50,6 +50,7 @@ pub trait Store {
     ///
     /// Storage implementations without statistics can use this default and
     /// still receive fallback estimates without scanning their data.
+    /// Returns the optional statistics provider for this storage.
     fn statistics_provider(&self) -> Option<&dyn Statistics> {
         None
     }

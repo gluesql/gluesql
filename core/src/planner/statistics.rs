@@ -19,24 +19,33 @@ const DEFAULT_RANGE_SELECTIVITY: f64 = 1.0 / 3.0;
 /// Estimates collected from an already-produced statement plan.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct PlanStatistics {
+    /// Estimates for full table scans in the plan.
     pub full_scans: Vec<FullScanStatistics>,
+    /// Estimates for filter operators in the plan.
     pub filters: Vec<FilterStatistics>,
 }
 
 /// Cardinality and modeled cost for one full table scan.
 #[derive(Clone, Debug, PartialEq)]
 pub struct FullScanStatistics {
+    /// Name of the scanned table.
     pub table_name: String,
+    /// Estimated or exact input cardinality.
     pub cardinality: Statistic<u64>,
+    /// Modeled scan cost.
     pub cost: Statistic<u64>,
 }
 
 /// Cardinality and modeled cost for one filter predicate.
 #[derive(Clone, Debug, PartialEq)]
 pub struct FilterStatistics {
+    /// Estimated predicate selectivity.
     pub selectivity: Statistic<f64>,
+    /// Cardinality before applying the filter.
     pub input_cardinality: Statistic<u64>,
+    /// Cardinality after applying the filter.
     pub cardinality: Statistic<u64>,
+    /// Modeled filter cost.
     pub cost: Statistic<u64>,
 }
 
@@ -88,6 +97,7 @@ pub fn plan_statistics<S: Statistics + ?Sized>(
     Ok(statistics)
 }
 
+/// Collects estimates from a query plan.
 fn collect_query<S: Statistics + ?Sized>(
     storage: &S,
     query: &QueryPlan,
@@ -100,6 +110,7 @@ fn collect_query<S: Statistics + ?Sized>(
     Ok(())
 }
 
+/// Collects estimates from a project input.
 fn collect_project_input<S: Statistics + ?Sized>(
     storage: &S,
     input: &ProjectInputPlan,
@@ -139,6 +150,7 @@ fn collect_project_input<S: Statistics + ?Sized>(
     Ok(())
 }
 
+/// Collects estimates from an aggregation input.
 fn collect_aggregation_input<S: Statistics + ?Sized>(
     storage: &S,
     input: &crate::plan::AggregationInputPlan,
@@ -173,6 +185,7 @@ fn collect_aggregation_input<S: Statistics + ?Sized>(
     }
 }
 
+/// Collects estimates from a filter input.
 fn collect_filter_input<S: Statistics + ?Sized>(
     storage: &S,
     input: &FilterInputPlan,
@@ -185,6 +198,7 @@ fn collect_filter_input<S: Statistics + ?Sized>(
     }
 }
 
+/// Traverses an inner join for observable scan estimates.
 fn collect_inner_join<S: Statistics + ?Sized>(
     storage: &S,
     join: &crate::plan::InnerJoinPlan,
@@ -206,6 +220,7 @@ fn collect_inner_join<S: Statistics + ?Sized>(
     Ok(())
 }
 
+/// Traverses a left outer join for observable scan estimates.
 fn collect_left_outer_join<S: Statistics + ?Sized>(
     storage: &S,
     join: &crate::plan::LeftOuterJoinPlan,
@@ -227,6 +242,7 @@ fn collect_left_outer_join<S: Statistics + ?Sized>(
     Ok(())
 }
 
+/// Traverses a nested-loop join input.
 fn collect_nested_loop<S: Statistics + ?Sized>(
     storage: &S,
     input: &crate::plan::NestedLoopJoinInputPlan,
@@ -245,6 +261,7 @@ fn collect_nested_loop<S: Statistics + ?Sized>(
     }
 }
 
+/// Traverses a hash join input.
 fn collect_hash_input<S: Statistics + ?Sized>(
     storage: &S,
     input: &crate::plan::HashJoinInputPlan,
@@ -263,6 +280,7 @@ fn collect_hash_input<S: Statistics + ?Sized>(
     }
 }
 
+/// Traverses a join-condition input.
 fn collect_join_condition_input<S: Statistics + ?Sized>(
     storage: &S,
     input: &crate::plan::JoinConditionInputPlan,
@@ -280,6 +298,7 @@ fn collect_join_condition_input<S: Statistics + ?Sized>(
     }
 }
 
+/// Collects estimates from a source plan.
 fn collect_source<S: Statistics + ?Sized>(
     storage: &S,
     source: &SourcePlan,
@@ -295,6 +314,7 @@ fn collect_source<S: Statistics + ?Sized>(
     Ok(())
 }
 
+/// Records a table scan estimate.
 fn collect_table<S: Statistics + ?Sized>(
     storage: &S,
     table_name: &str,
@@ -313,6 +333,7 @@ fn collect_table<S: Statistics + ?Sized>(
     Ok(cardinality)
 }
 
+/// Records a provider-backed filter estimate.
 fn collect_filter<S: Statistics + ?Sized>(
     storage: &S,
     table_name: Option<&str>,
@@ -325,6 +346,7 @@ fn collect_filter<S: Statistics + ?Sized>(
     Ok(())
 }
 
+/// Records a provider-independent filter estimate.
 fn collect_fallback_filter(
     expr: &ExprPlan,
     input_cardinality: Statistic<u64>,
@@ -333,6 +355,7 @@ fn collect_fallback_filter(
     record_filter(fallback_selectivity(expr), input_cardinality, statistics);
 }
 
+/// Appends a filter estimate to the plan statistics.
 fn record_filter(
     selectivity: f64,
     input_cardinality: Statistic<u64>,
@@ -349,6 +372,7 @@ fn record_filter(
     });
 }
 
+/// Estimates selectivity without column statistics.
 fn fallback_selectivity(expr: &ExprPlan) -> f64 {
     if let ExprPlan::Value(crate::data::Value::Bool(value)) = expr {
         return if *value { 1.0 } else { 0.0 };
@@ -371,6 +395,7 @@ fn fallback_selectivity(expr: &ExprPlan) -> f64 {
     }
 }
 
+/// Estimates selectivity using an optional statistics provider.
 fn estimate_selectivity<S: Statistics + ?Sized>(
     storage: &S,
     table_name: Option<&str>,
@@ -399,6 +424,7 @@ fn estimate_selectivity<S: Statistics + ?Sized>(
     }
 }
 
+/// Estimates a range predicate from column bounds.
 fn range_selectivity<S: Statistics + ?Sized>(
     storage: &S,
     table_name: Option<&str>,
@@ -441,6 +467,7 @@ fn range_selectivity<S: Statistics + ?Sized>(
     Ok(selectivity.clamp(0.0, 1.0))
 }
 
+/// Reverses a range operator when operands are swapped.
 fn reverse_range_operator(op: &BinaryOperator) -> BinaryOperator {
     match op {
         BinaryOperator::Gt => BinaryOperator::Lt,
@@ -451,6 +478,7 @@ fn reverse_range_operator(op: &BinaryOperator) -> BinaryOperator {
     }
 }
 
+/// Estimates equality selectivity from distinct-count statistics.
 fn equality_selectivity<S: Statistics + ?Sized>(
     storage: &S,
     table_name: Option<&str>,
@@ -485,6 +513,7 @@ fn equality_selectivity<S: Statistics + ?Sized>(
     }
 }
 
+/// Finds the latest scan estimate for a table.
 fn find_table_cardinality(table_name: &str, statistics: &PlanStatistics) -> Option<Statistic<u64>> {
     statistics
         .full_scans
@@ -494,6 +523,7 @@ fn find_table_cardinality(table_name: &str, statistics: &PlanStatistics) -> Opti
         .map(|scan| scan.cardinality.clone())
 }
 
+/// Extracts a column name from an expression.
 fn column_name(expr: &ExprPlan) -> Option<&str> {
     match expr {
         ExprPlan::Identifier(name) => Some(name),
@@ -502,6 +532,7 @@ fn column_name(expr: &ExprPlan) -> Option<&str> {
     }
 }
 
+/// Returns whether an expression is a literal value.
 fn is_value(expr: &ExprPlan) -> bool {
     matches!(
         expr,
@@ -509,6 +540,7 @@ fn is_value(expr: &ExprPlan) -> bool {
     )
 }
 
+/// Converts a numeric expression to an estimate input.
 fn numeric_expr(expr: &ExprPlan) -> Option<f64> {
     match expr {
         ExprPlan::Value(value) => numeric_value(value),
@@ -517,6 +549,7 @@ fn numeric_expr(expr: &ExprPlan) -> Option<f64> {
     }
 }
 
+/// Converts a numeric value to `f64`.
 fn numeric_value(value: &crate::data::Value) -> Option<f64> {
     use crate::data::Value;
 
@@ -537,6 +570,7 @@ fn numeric_value(value: &crate::data::Value) -> Option<f64> {
     }
 }
 
+/// Resolves unknown cardinality to the default fallback.
 fn cardinality_value(statistic: &Statistic<u64>) -> u64 {
     match statistic {
         Statistic::Exact(value) | Statistic::Estimated(value) => *value,
@@ -544,6 +578,7 @@ fn cardinality_value(statistic: &Statistic<u64>) -> u64 {
     }
 }
 
+/// Applies selectivity to an input cardinality.
 fn scale(cardinality: u64, selectivity: f64) -> u64 {
     (cardinality as f64 * selectivity).floor() as u64
 }
@@ -646,14 +681,17 @@ mod tests {
         }
     }
 
+    /// Builds an identifier expression for estimator tests.
     fn column(name: &str) -> ExprPlan {
         ExprPlan::Identifier(name.to_owned())
     }
 
+    /// Builds an integer value expression for estimator tests.
     fn value(value: i64) -> ExprPlan {
         ExprPlan::Value(Value::I64(value))
     }
 
+    /// Builds a binary expression for estimator tests.
     fn binary(left: ExprPlan, op: BinaryOperator, right: ExprPlan) -> ExprPlan {
         ExprPlan::BinaryOp {
             left: Box::new(left),
@@ -662,6 +700,7 @@ mod tests {
         }
     }
 
+    /// Builds a full-scan table source for planner tests.
     fn table(name: &str) -> SourcePlan {
         SourcePlan::Table(TableSourcePlan {
             name: name.to_owned(),
@@ -670,6 +709,7 @@ mod tests {
         })
     }
 
+    /// Builds a nested-loop join wrapper for planner tests.
     fn nested(input: NestedLoopJoinInputPlan) -> NestedLoopJoinPlan {
         NestedLoopJoinPlan {
             input,
@@ -677,6 +717,7 @@ mod tests {
         }
     }
 
+    /// Builds a hash join wrapper for planner tests.
     fn hash(input: HashJoinInputPlan) -> HashJoinPlan {
         HashJoinPlan {
             input,
@@ -687,6 +728,7 @@ mod tests {
         }
     }
 
+    /// Builds a representative inner join.
     fn inner() -> InnerJoinPlan {
         InnerJoinPlan {
             input: InnerJoinInputPlan::NestedLoop(nested(NestedLoopJoinInputPlan::Source(table(
@@ -695,6 +737,7 @@ mod tests {
         }
     }
 
+    /// Builds a representative left outer join.
     fn left() -> LeftOuterJoinPlan {
         LeftOuterJoinPlan {
             input: LeftOuterJoinInputPlan::NestedLoop(nested(NestedLoopJoinInputPlan::Source(
@@ -703,6 +746,7 @@ mod tests {
         }
     }
 
+    /// Builds a project query wrapper for planner tests.
     fn project(input: ProjectInputPlan) -> QueryPlan {
         QueryPlan::Project(ProjectPlan {
             input,
@@ -711,6 +755,7 @@ mod tests {
     }
 
     #[test]
+    /// Covers the supported plan input shapes with observable scan output.
     fn collects_statistics_for_plan_shapes() {
         let provider = FixedStatistics;
         let mut stats = PlanStatistics::default();
@@ -873,6 +918,7 @@ mod tests {
     }
 
     #[test]
+    /// Verifies provider-backed and fallback selectivity formulas.
     fn estimates_equality_range_and_boolean_predicates() {
         let statistics = FixedStatistics;
         let equality = binary(column("known"), BinaryOperator::Eq, value(1));

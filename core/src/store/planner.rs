@@ -11,6 +11,7 @@ use {
 };
 
 pub trait Planner: Store {
+    /// Produces a planned statement without changing its execution semantics.
     fn plan(&self, statement: StatementPlan) -> Result<StatementPlan> {
         let schema_map = fetch_schema_map(self, &statement)?;
         validate(&schema_map, &statement)?;
@@ -80,6 +81,7 @@ mod tests {
         }
     }
 
+    /// Verifies provider errors are propagated through planning.
     #[test]
     fn propagates_statistics_provider_errors() {
         let storage = FailingStatisticsStorage(run("CREATE TABLE Foo (id INTEGER);"));
@@ -96,6 +98,7 @@ mod tests {
         );
     }
 
+    /// Verifies the default unknown-provider fallback estimate.
     #[test]
     fn plans_with_fallback_statistics_without_a_provider() {
         let storage = run("CREATE TABLE Foo (id INTEGER);");

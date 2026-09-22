@@ -50,6 +50,7 @@ fn assert_exact_row_count(glue: &Glue<RedbStorage>, table_name: &str, expected: 
     assert_eq!(statistics.row_count, Statistic::Exact(expected));
 }
 
+/// Verifies exact row-count statistics across mutations and transactions.
 #[test]
 fn table_statistics_track_rows_and_transaction_state() {
     let _ = create_dir("tmp");
@@ -163,6 +164,7 @@ fn table_statistics_count_unique_redb_entries() {
     remove_file(path).expect("remove test storage");
 }
 
+/// Verifies plan estimates preserve the selected Redb plan.
 #[test]
 fn plan_statistics_preserve_the_plan_and_use_exact_row_counts() {
     let _ = create_dir("tmp");
@@ -209,6 +211,7 @@ fn plan_statistics_preserve_the_plan_and_use_exact_row_counts() {
     remove_file(path).expect("remove test storage");
 }
 
+/// Verifies parameterized plan estimates preserve the selected plan.
 #[test]
 fn plan_statistics_with_parameters_preserve_the_plan() {
     let _ = create_dir("tmp");
@@ -246,6 +249,7 @@ fn plan_statistics_with_parameters_preserve_the_plan() {
     remove_file(path).expect("remove test storage");
 }
 
+/// Verifies boolean filter selectivity composition.
 #[test]
 fn plan_statistics_expose_boolean_filter_estimates() {
     let _ = create_dir("tmp");
@@ -289,6 +293,7 @@ fn plan_statistics_expose_boolean_filter_estimates() {
     remove_file(path).expect("remove test storage");
 }
 
+/// Verifies fallback estimates for an outer derived filter.
 #[test]
 fn plan_statistics_use_fallback_for_outer_derived_filters() {
     let _ = create_dir("tmp");
@@ -332,6 +337,7 @@ fn plan_statistics_use_fallback_for_outer_derived_filters() {
     remove_file(path).expect("remove test storage");
 }
 
+/// Verifies fallback estimates for join filter inputs.
 #[test]
 fn plan_statistics_use_fallback_for_join_filters() {
     let _ = create_dir("tmp");
