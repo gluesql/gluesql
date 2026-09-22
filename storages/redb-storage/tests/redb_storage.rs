@@ -331,3 +331,42 @@ fn plan_statistics_use_fallback_for_outer_derived_filters() {
     drop(glue);
     remove_file(path).expect("remove test storage");
 }
+
+#[test]
+fn plan_statistics_use_fallback_for_join_filters() {
+    let _ = create_dir("tmp");
+    let path = "tmp/redb_plan_statistics_join_filter";
+    let _ = remove_file(path);
+    let storage = RedbStorage::new(path).expect("open storage");
+    let mut glue = Glue::new(storage);
+    glue.execute("CREATE TABLE Foo (id INTEGER);").unwrap();
+    glue.execute("CREATE TABLE Bar (id INTEGER);").unwrap();
+
+    for join in ["INNER JOIN", "LEFT JOIN"] {
+        let sql = format!("SELECT * FROM Foo {join} Bar ON Foo.id = Bar.id WHERE Foo.id = 1");
+        let plan = glue.plan(&sql).unwrap();
+        let planned = glue.plan_with_statistics(&sql).unwrap().pop().unwrap();
+
+        assert_eq!(planned.plan, plan[0]);
+        assert_eq!(planned.statistics.filters.len(), 1);
+        assert_eq!(
+            planned.statistics.filters[0].input_cardinality,
+            Statistic::Estimated(1_000)
+        );
+        assert_eq!(
+            planned.statistics.filters[0].selectivity,
+            Statistic::Estimated(0.1)
+        );
+        assert_eq!(
+            planned.statistics.filters[0].cardinality,
+            Statistic::Estimated(100)
+        );
+        assert_eq!(
+            planned.statistics.filters[0].cost,
+            Statistic::Estimated(1_000)
+        );
+    }
+
+    drop(glue);
+    remove_file(path).expect("remove test storage");
+}

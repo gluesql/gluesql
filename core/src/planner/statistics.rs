@@ -116,7 +116,7 @@ fn collect_project_input<S: Statistics + ?Sized>(
                 && let Some(input) = find_table_cardinality(&table.name, statistics)
             {
                 collect_filter(storage, Some(&table.name), expr, input, statistics)?;
-            } else if matches!(input, FilterInputPlan::Source(SourcePlan::Derived(_))) {
+            } else {
                 collect_fallback_filter(
                     expr,
                     Statistic::Estimated(DEFAULT_FULL_SCAN_CARDINALITY),
@@ -155,7 +155,7 @@ fn collect_aggregation_input<S: Statistics + ?Sized>(
                 && let Some(input) = find_table_cardinality(&table.name, statistics)
             {
                 collect_filter(storage, Some(&table.name), expr, input, statistics)?;
-            } else if matches!(input, FilterInputPlan::Source(SourcePlan::Derived(_))) {
+            } else {
                 collect_fallback_filter(
                     expr,
                     Statistic::Estimated(DEFAULT_FULL_SCAN_CARDINALITY),
