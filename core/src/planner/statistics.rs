@@ -49,19 +49,19 @@ pub struct PlannedStatement {
 
 /// Collects observable estimates without changing the statement plan.
 pub fn plan_statistics<S: Statistics + ?Sized>(
-    storage: &S,
+    statistics_provider: &S,
     statement: &StatementPlan,
 ) -> Result<PlanStatistics> {
     let mut statistics = PlanStatistics::default();
 
     match statement {
         StatementPlan::Query(query) | StatementPlan::Insert { source: query, .. } => {
-            collect_query(storage, query, &mut statistics)?;
+            collect_query(statistics_provider, query, &mut statistics)?;
         }
         StatementPlan::CreateTable {
             source: Some(query),
             ..
-        } => collect_query(storage, query, &mut statistics)?,
+        } => collect_query(statistics_provider, query, &mut statistics)?,
         StatementPlan::Update {
             table_name,
             selection,
@@ -71,9 +71,15 @@ pub fn plan_statistics<S: Statistics + ?Sized>(
             table_name,
             selection,
         } => {
-            let input = collect_table(storage, table_name, &mut statistics)?;
+            let input = collect_table(statistics_provider, table_name, &mut statistics)?;
             if let Some(expr) = selection {
-                collect_filter(storage, Some(table_name), expr, input, &mut statistics)?;
+                collect_filter(
+                    statistics_provider,
+                    Some(table_name),
+                    expr,
+                    input,
+                    &mut statistics,
+                )?;
             }
         }
         _ => {}

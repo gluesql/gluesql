@@ -1,5 +1,5 @@
 use {
-    super::{Statistics, Store},
+    super::{Store, statistics::UnknownStatistics},
     crate::{
         plan::StatementPlan,
         planner::{
@@ -24,12 +24,11 @@ pub trait Planner: Store {
     }
 
     /// Plans a statement and returns estimates without changing its plan.
-    fn plan_with_statistics(&self, statement: StatementPlan) -> Result<PlannedStatement>
-    where
-        Self: Statistics,
-    {
+    fn plan_with_statistics(&self, statement: StatementPlan) -> Result<PlannedStatement> {
         let plan = self.plan(statement)?;
-        let statistics = plan_statistics(self, &plan)?;
+        let unknown = UnknownStatistics;
+        let provider = self.statistics_provider().unwrap_or(&unknown);
+        let statistics = plan_statistics(provider, &plan)?;
 
         Ok(PlannedStatement { plan, statistics })
     }
@@ -44,7 +43,7 @@ mod tests {
             mock::{MockStorage, run},
             parse_sql::parse,
             result::{Error, Result},
-            store::{RowIter, Statistics, Store, TableStatistics},
+            store::{RowIter, Statistic, Statistics, Store, TableStatistics},
             translate::translate,
         },
     };
@@ -67,6 +66,10 @@ mod tests {
         fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
             self.0.scan_data(table_name)
         }
+
+        fn statistics_provider(&self) -> Option<&dyn Statistics> {
+            Some(self)
+        }
     }
 
     impl Planner for FailingStatisticsStorage {}
@@ -87,6 +90,24 @@ mod tests {
         assert_eq!(
             storage.plan_with_statistics(statement),
             Err(Error::StorageMsg("statistics unavailable".to_owned()))
+        );
+    }
+
+    #[test]
+    fn plans_with_fallback_statistics_without_a_provider() {
+        let storage = run("CREATE TABLE Foo (id INTEGER);");
+        let statement = translate(&parse("SELECT * FROM Foo WHERE id = 1").unwrap()[0])
+            .unwrap()
+            .into();
+        let planned = storage.plan_with_statistics(statement).unwrap();
+
+        assert_eq!(
+            planned.statistics.full_scans[0].cardinality,
+            Statistic::Estimated(1_000)
+        );
+        assert_eq!(
+            planned.statistics.filters[0].cardinality,
+            Statistic::Estimated(100)
         );
     }
 }

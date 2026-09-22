@@ -1,8 +1,5 @@
 use {
-    gluesql_core::{
-        prelude::Glue,
-        store::{Statistic, Statistics},
-    },
+    gluesql_core::{prelude::Glue, store::Statistic},
     gluesql_csv_storage::CsvStorage,
     std::fs::remove_dir_all,
     test_suite::*,
@@ -41,14 +38,6 @@ fn plan_statistics_use_fallbacks_without_scanning_csv_data() {
     let mut glue = Glue::new(storage);
     glue.execute("CREATE TABLE Foo (id INTEGER);").unwrap();
     glue.execute("INSERT INTO Foo VALUES (1), (2);").unwrap();
-
-    assert_eq!(
-        glue.storage
-            .fetch_table_statistics("Foo")
-            .unwrap()
-            .row_count,
-        Statistic::Unknown
-    );
 
     let planned = glue
         .plan_with_statistics("SELECT * FROM Foo WHERE id = 1")

@@ -62,6 +62,11 @@ pub trait Statistics {
     }
 }
 
+/// A provider used when a storage does not expose statistics.
+pub(crate) struct UnknownStatistics;
+
+impl Statistics for UnknownStatistics {}
+
 #[cfg(test)]
 mod tests {
     use {

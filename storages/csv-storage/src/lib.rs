@@ -11,7 +11,7 @@ use {
         parse_sql::parse_data_type,
         store::{
             AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Planner,
-            Statistics, Transaction,
+            Transaction,
         },
         translate::translate_data_type,
     },
@@ -24,8 +24,6 @@ use {
 };
 
 type RowIter = Box<dyn Iterator<Item = Result<(Key, Vec<Value>)>>>;
-
-impl Statistics for CsvStorage {}
 
 pub struct CsvStorage {
     pub path: PathBuf,

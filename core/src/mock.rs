@@ -5,7 +5,7 @@ use {
         result::{Error, Result},
         store::{
             AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Planner,
-            RowIter, Statistics, Store, StoreMut, Transaction,
+            RowIter, Store, StoreMut, Transaction,
         },
     },
     std::collections::HashMap,
@@ -124,8 +124,6 @@ impl IndexMut for MockStorage {
 impl Transaction for MockStorage {}
 impl Metadata for MockStorage {}
 impl Planner for MockStorage {}
-impl Statistics for MockStorage {}
-
 #[cfg(test)]
 mod tests {
     use {
@@ -134,7 +132,7 @@ mod tests {
             ast::{ColumnDef, Expr, OrderByExpr},
             data::{Key, Schema, SchemaIndexOrd},
             prelude::DataType,
-            store::{AlterTable, Index, IndexMut, Statistics, Store, StoreMut, Transaction},
+            store::{AlterTable, Index, IndexMut, Store, StoreMut, Transaction},
         },
     };
 
@@ -201,18 +199,6 @@ mod tests {
         assert!(storage.commit().is_ok());
 
         assert!(matches!(storage.fetch_schema("Foo"), Ok(None)));
-
-        assert!(matches!(
-            storage.fetch_table_statistics("Foo"),
-            Ok(crate::store::TableStatistics {
-                row_count: crate::store::Statistic::Unknown,
-                size_bytes: crate::store::Statistic::Unknown,
-            })
-        ));
-        assert_eq!(
-            storage.fetch_column_statistics("Foo", "id").unwrap(),
-            crate::store::ColumnStatistics::default()
-        );
     }
 
     #[test]

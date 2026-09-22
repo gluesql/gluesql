@@ -14,7 +14,7 @@ use {
         error::Result,
         store::{
             AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Planner,
-            RowIter, Store, StoreMut, Transaction,
+            RowIter, Statistics, Store, StoreMut, Transaction,
         },
     },
     redb::Database,
@@ -50,6 +50,10 @@ impl Store for RedbStorage {
         let rows = self.0.scan_data(table_name)?;
 
         Ok(Box::new(rows.map(|row| row.map_err(Into::into))))
+    }
+
+    fn statistics_provider(&self) -> Option<&dyn Statistics> {
+        Some(self)
     }
 }
 

@@ -46,6 +46,14 @@ pub trait Store {
 
     fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>>;
 
+    /// Returns an optional statistics provider for planning estimates.
+    ///
+    /// Storage implementations without statistics can use this default and
+    /// still receive fallback estimates without scanning their data.
+    fn statistics_provider(&self) -> Option<&dyn Statistics> {
+        None
+    }
+
     fn fetch_referencings(&self, table_name: &str) -> Result<Vec<Referencing>> {
         let schemas = self.fetch_all_schemas()?;
 

@@ -4,7 +4,7 @@ use crate::{
     plan::StatementPlan,
     planner::PlannedStatement,
     result::Result,
-    store::{GStore, GStoreMut, Planner, Statistics},
+    store::{GStore, GStoreMut, Planner},
     translate::{IntoParamLiteral, ParamLiteral, translate_with_params},
 };
 
@@ -58,10 +58,7 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
     pub fn plan_with_statistics<Sql: AsRef<str>>(
         &mut self,
         sql: Sql,
-    ) -> Result<Vec<PlannedStatement>>
-    where
-        T: Statistics,
-    {
+    ) -> Result<Vec<PlannedStatement>> {
         self.plan_with_statistics_and_params(sql, std::iter::empty::<ParamLiteral>())
     }
 
@@ -75,7 +72,6 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
         Sql: AsRef<str>,
         I: IntoIterator<Item = P>,
         P: IntoParamLiteral,
-        T: Statistics,
     {
         let parsed = parse(sql)?;
         let params: Vec<ParamLiteral> = params
