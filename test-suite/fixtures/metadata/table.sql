@@ -1,6 +1,11 @@
 CREATE TABLE Meta (id INT, name TEXT)
 -- @expect: payload Create
 
+SELECT * FROM GLUE_OBJECTS WHERE FALSE
+-- @expect:
+-- | OBJECT_NAME | OBJECT_TYPE | CREATED |
+-- | ----------- | ----------- | ------- |
+
 SELECT OBJECT_NAME, OBJECT_TYPE
 FROM GLUE_OBJECTS
 WHERE CREATED > NOW() - INTERVAL 1 MINUTE

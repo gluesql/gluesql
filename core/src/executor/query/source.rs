@@ -29,7 +29,7 @@ pub(super) fn execute<'a, T: GStore>(
         SourcePlan::Table(table) => table::execute(storage, table),
         SourcePlan::Derived(derived) => derived::execute(storage, derived),
         SourcePlan::Series(series) => Ok(series::execute(series)),
-        SourcePlan::Dictionary(dictionary) => Ok(dictionary::execute(storage, dictionary)),
+        SourcePlan::Dictionary(dictionary) => dictionary::execute(storage, dictionary),
     }
 }
 

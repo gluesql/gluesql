@@ -112,3 +112,90 @@ fn schemaless_update_conflict_on_non_map_row() {
         Err(Error::Update(UpdateError::ConflictOnNonMapSchemalessRow))
     );
 }
+
+#[test]
+fn memory_storage_dynamic_metadata() {
+    use gluesql_core::{data::Value, prelude::Payload};
+
+    let storage = MemoryStorage::default();
+    let mut glue = Glue::new(storage);
+
+    exec!(glue "CREATE TABLE Restaurant (id INTEGER);");
+
+    let metadata = glue.storage.metadata.get_mut("Restaurant").unwrap();
+    metadata.insert("FOOD".to_owned(), Value::Str("Pizza".to_owned()));
+    let created = metadata.get("CREATED").unwrap().clone();
+
+    test!(
+        glue "SELECT * FROM GLUE_OBJECTS;",
+        Ok(vec![Payload::Select {
+            labels: vec![
+                "OBJECT_NAME".to_owned(),
+                "OBJECT_TYPE".to_owned(),
+                "CREATED".to_owned(),
+                "FOOD".to_owned(),
+            ],
+            rows: vec![vec![
+                Value::Str("Restaurant".to_owned()),
+                Value::Str("TABLE".to_owned()),
+                created,
+                Value::Str("Pizza".to_owned()),
+            ]],
+        }])
+    );
+}
+
+#[test]
+fn memory_storage_dynamic_metadata_union() {
+    use gluesql_core::{data::Value, prelude::Payload};
+
+    let storage = MemoryStorage::default();
+    let mut glue = Glue::new(storage);
+
+    exec!(glue "CREATE TABLE Cafe (id INTEGER);");
+    exec!(glue "CREATE TABLE Restaurant (id INTEGER);");
+
+    glue.storage
+        .metadata
+        .get_mut("Cafe")
+        .unwrap()
+        .insert("DRINK".to_owned(), Value::Str("Coffee".to_owned()));
+
+    glue.storage
+        .metadata
+        .get_mut("Restaurant")
+        .unwrap()
+        .insert("FOOD".to_owned(), Value::Str("Pizza".to_owned()));
+
+    let cafe_created = glue.storage.metadata["Cafe"]["CREATED"].clone();
+    let restaurant_created = glue.storage.metadata["Restaurant"]["CREATED"].clone();
+
+    test!(
+        glue "SELECT * FROM GLUE_OBJECTS;",
+        Ok(vec![Payload::Select {
+            labels: vec![
+                "OBJECT_NAME".to_owned(),
+                "OBJECT_TYPE".to_owned(),
+                "CREATED".to_owned(),
+                "DRINK".to_owned(),
+                "FOOD".to_owned(),
+            ],
+            rows: vec![
+                vec![
+                    Value::Str("Cafe".to_owned()),
+                    Value::Str("TABLE".to_owned()),
+                    cafe_created,
+                    Value::Str("Coffee".to_owned()),
+                    Value::Null,
+                ],
+                vec![
+                    Value::Str("Restaurant".to_owned()),
+                    Value::Str("TABLE".to_owned()),
+                    restaurant_created,
+                    Value::Null,
+                    Value::Str("Pizza".to_owned()),
+                ],
+            ],
+        }])
+    );
+}
