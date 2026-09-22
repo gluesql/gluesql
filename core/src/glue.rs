@@ -2,8 +2,9 @@ use crate::{
     executor::{Payload, execute},
     parse_sql::parse,
     plan::StatementPlan,
+    planner::PlannedStatement,
     result::Result,
-    store::{GStore, GStoreMut, Planner},
+    store::{GStore, GStoreMut, Planner, Statistics},
     translate::{IntoParamLiteral, ParamLiteral, translate_with_params},
 };
 
@@ -51,6 +52,43 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
     /// statements fails.
     pub fn plan<Sql: AsRef<str>>(&mut self, sql: Sql) -> Result<Vec<StatementPlan>> {
         self.plan_with_params(sql, std::iter::empty::<ParamLiteral>())
+    }
+
+    /// Plans statements and returns estimates without changing their plans.
+    pub fn plan_with_statistics<Sql: AsRef<str>>(
+        &mut self,
+        sql: Sql,
+    ) -> Result<Vec<PlannedStatement>>
+    where
+        T: Statistics,
+    {
+        self.plan_with_statistics_and_params(sql, std::iter::empty::<ParamLiteral>())
+    }
+
+    /// Plans statements with parameters and returns estimates without changing their plans.
+    pub fn plan_with_statistics_and_params<Sql, I, P>(
+        &mut self,
+        sql: Sql,
+        params: I,
+    ) -> Result<Vec<PlannedStatement>>
+    where
+        Sql: AsRef<str>,
+        I: IntoIterator<Item = P>,
+        P: IntoParamLiteral,
+        T: Statistics,
+    {
+        let parsed = parse(sql)?;
+        let params: Vec<ParamLiteral> = params
+            .into_iter()
+            .map(IntoParamLiteral::into_param_literal)
+            .collect();
+        parsed
+            .into_iter()
+            .map(|parsed| {
+                translate_with_params(&parsed, &params)
+                    .and_then(|statement| self.storage.plan_with_statistics(statement.into()))
+            })
+            .collect()
     }
 
     pub fn execute_stmt(&mut self, statement: &StatementPlan) -> Result<Payload> {

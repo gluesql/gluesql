@@ -12,7 +12,7 @@ use {
         ast::ColumnUniqueOption,
         data::{Key, Schema, Value, value::BTreeMapJsonExt},
         error::{Error, Result},
-        store::{Metadata, Planner, Store},
+        store::{Metadata, Planner, Statistics, Store},
     },
     iter_enum::Iterator,
     serde_json::Value as JsonValue,
@@ -25,6 +25,8 @@ use {
 };
 
 type RowIter = Box<dyn Iterator<Item = Result<(Key, Vec<Value>)>>>;
+
+impl Statistics for JsonStorage {}
 
 #[derive(Clone, Debug)]
 pub struct JsonStorage {

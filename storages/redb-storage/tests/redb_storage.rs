@@ -2,7 +2,7 @@ use {
     gluesql_core::{
         data::{Key, Value},
         prelude::Glue,
-        store::{Statistic, Statistics, StoreMut, Transaction},
+        store::{ColumnStatistics, Statistic, Statistics, StoreMut, Transaction},
     },
     gluesql_redb_storage::RedbStorage,
     redb::{Database, TableHandle},
@@ -40,6 +40,12 @@ fn exact_row_count(glue: &Glue<RedbStorage>, table_name: &str) -> u64 {
         .fetch_table_statistics(table_name)
         .expect("table statistics should be available");
     assert!(matches!(statistics.size_bytes, Statistic::Unknown));
+    assert_eq!(
+        glue.storage
+            .fetch_column_statistics(table_name, "id")
+            .expect("unsupported column statistics should be available"),
+        ColumnStatistics::default()
+    );
 
     match statistics.row_count {
         Statistic::Exact(row_count) => row_count,
@@ -155,6 +161,173 @@ fn table_statistics_count_unique_redb_entries() {
     let storage = RedbStorage::new(path).expect("reopen storage");
     let glue = Glue::new(storage);
     assert_eq!(exact_row_count(&glue, "Foo"), 1);
+
+    drop(glue);
+    remove_file(path).expect("remove test storage");
+}
+
+#[test]
+fn plan_statistics_preserve_the_plan_and_use_exact_row_counts() {
+    let _ = create_dir("tmp");
+    let path = "tmp/redb_plan_statistics";
+    let _ = remove_file(path);
+
+    let storage = RedbStorage::new(path).expect("open storage");
+    let mut glue = Glue::new(storage);
+    glue.execute("CREATE TABLE Foo (id INTEGER);").unwrap();
+    glue.execute("INSERT INTO Foo VALUES (1), (2), (3), (4), (5);")
+        .unwrap();
+
+    let plan = glue.plan("SELECT * FROM Foo WHERE id = 1").unwrap();
+    let planned = glue
+        .plan_with_statistics("SELECT * FROM Foo WHERE id = 1")
+        .unwrap()
+        .pop()
+        .unwrap();
+
+    assert_eq!(planned.plan, plan[0]);
+    assert_eq!(
+        planned.statistics.full_scans[0].cardinality,
+        Statistic::Exact(5)
+    );
+    assert_eq!(
+        planned.statistics.full_scans[0].cost,
+        Statistic::Estimated(5)
+    );
+    assert_eq!(
+        planned.statistics.filters[0].input_cardinality,
+        Statistic::Exact(5)
+    );
+    assert_eq!(
+        planned.statistics.filters[0].selectivity,
+        Statistic::Estimated(0.1)
+    );
+    assert_eq!(
+        planned.statistics.filters[0].cardinality,
+        Statistic::Estimated(0)
+    );
+    assert_eq!(planned.statistics.filters[0].cost, Statistic::Estimated(5));
+
+    drop(glue);
+    remove_file(path).expect("remove test storage");
+}
+
+#[test]
+fn plan_statistics_with_parameters_preserve_the_plan() {
+    let _ = create_dir("tmp");
+    let path = "tmp/redb_plan_statistics_params";
+    let _ = remove_file(path);
+    let storage = RedbStorage::new(path).expect("open storage");
+    let mut glue = Glue::new(storage);
+    glue.execute("CREATE TABLE Foo (id INTEGER);").unwrap();
+
+    let plan = glue
+        .plan_with_params("SELECT * FROM Foo WHERE id = $1", [1])
+        .unwrap();
+    let planned = glue
+        .plan_with_statistics_and_params("SELECT * FROM Foo WHERE id = $1", [1])
+        .unwrap()
+        .pop()
+        .unwrap();
+
+    assert_eq!(planned.plan, plan[0]);
+    assert_eq!(
+        planned.statistics.full_scans[0].cardinality,
+        Statistic::Exact(0)
+    );
+    assert_eq!(
+        planned.statistics.filters[0].selectivity,
+        Statistic::Estimated(0.1)
+    );
+    assert_eq!(
+        planned.statistics.filters[0].cardinality,
+        Statistic::Estimated(0)
+    );
+    assert_eq!(planned.statistics.filters[0].cost, Statistic::Estimated(0));
+
+    drop(glue);
+    remove_file(path).expect("remove test storage");
+}
+
+#[test]
+fn plan_statistics_expose_boolean_filter_estimates() {
+    let _ = create_dir("tmp");
+    let path = "tmp/redb_plan_statistics_boolean";
+    let _ = remove_file(path);
+    let storage = RedbStorage::new(path).expect("open storage");
+    let mut glue = Glue::new(storage);
+    glue.execute("CREATE TABLE Foo (id INTEGER);").unwrap();
+    for id in 0..100 {
+        glue.execute(format!("INSERT INTO Foo VALUES ({id});"))
+            .unwrap();
+    }
+
+    for (operator, selectivity, cardinality) in [("AND", 0.01, 1), ("OR", 0.19, 19)] {
+        let sql = format!("SELECT * FROM Foo WHERE id = 1 {operator} id = 2");
+        let plan = glue.plan(&sql).unwrap();
+        let planned = glue.plan_with_statistics(&sql).unwrap().pop().unwrap();
+
+        assert_eq!(planned.plan, plan[0]);
+        assert_eq!(
+            planned.statistics.filters[0].input_cardinality,
+            Statistic::Exact(100)
+        );
+        let Statistic::Estimated(actual) = planned.statistics.filters[0].selectivity else {
+            panic!("expected estimated selectivity");
+        };
+        assert!((actual - selectivity).abs() < f64::EPSILON);
+        assert_eq!(
+            planned.statistics.filters[0].cardinality,
+            Statistic::Estimated(cardinality)
+        );
+        assert_eq!(
+            planned.statistics.filters[0].cost,
+            Statistic::Estimated(100)
+        );
+    }
+
+    drop(glue);
+    remove_file(path).expect("remove test storage");
+}
+
+#[test]
+fn plan_statistics_use_fallback_for_outer_derived_filters() {
+    let _ = create_dir("tmp");
+    let path = "tmp/redb_plan_statistics_derived";
+    let _ = remove_file(path);
+    let storage = RedbStorage::new(path).expect("open storage");
+    let mut glue = Glue::new(storage);
+    glue.execute("CREATE TABLE Foo (id INTEGER);").unwrap();
+    glue.execute("INSERT INTO Foo VALUES (1), (2), (3), (4), (5);")
+        .unwrap();
+
+    let sql = "SELECT * FROM (SELECT * FROM Foo) AS sub WHERE id = 1";
+    let plan = glue.plan(sql).unwrap();
+    let planned = glue.plan_with_statistics(sql).unwrap().pop().unwrap();
+
+    assert_eq!(planned.plan, plan[0]);
+    assert_eq!(planned.statistics.full_scans.len(), 1);
+    assert_eq!(
+        planned.statistics.full_scans[0].cardinality,
+        Statistic::Exact(5)
+    );
+    assert_eq!(planned.statistics.filters.len(), 1);
+    assert_eq!(
+        planned.statistics.filters[0].input_cardinality,
+        Statistic::Estimated(1_000)
+    );
+    assert_eq!(
+        planned.statistics.filters[0].selectivity,
+        Statistic::Estimated(0.1)
+    );
+    assert_eq!(
+        planned.statistics.filters[0].cardinality,
+        Statistic::Estimated(100)
+    );
+    assert_eq!(
+        planned.statistics.filters[0].cost,
+        Statistic::Estimated(1_000)
+    );
 
     drop(glue);
     remove_file(path).expect("remove test storage");

@@ -108,6 +108,34 @@ mod tests {
         }
     }
 
+    struct TableOnlyStatistics;
+
+    impl Statistics for TableOnlyStatistics {
+        fn fetch_table_statistics(&self, _table_name: &str) -> Result<TableStatistics> {
+            Ok(TableStatistics {
+                row_count: Statistic::Exact(3),
+                size_bytes: Statistic::Unknown,
+            })
+        }
+    }
+
+    struct ColumnOnlyStatistics;
+
+    impl Statistics for ColumnOnlyStatistics {
+        fn fetch_column_statistics(
+            &self,
+            _table_name: &str,
+            _column_name: &str,
+        ) -> Result<ColumnStatistics> {
+            Ok(ColumnStatistics {
+                null_ratio: Statistic::Exact(0.25),
+                distinct_count: Statistic::Unknown,
+                min_value: Statistic::Unknown,
+                max_value: Statistic::Unknown,
+            })
+        }
+    }
+
     #[test]
     fn default_statistics_are_unknown() {
         let storage = UnknownStatistics;
@@ -153,6 +181,39 @@ mod tests {
         assert_eq!(
             error,
             Error::StorageMsg("statistics unavailable".to_owned())
+        );
+    }
+
+    #[test]
+    fn table_and_column_statistics_can_be_provided_independently() {
+        let table_only = TableOnlyStatistics;
+        assert_eq!(
+            table_only.fetch_table_statistics("users").unwrap(),
+            TableStatistics {
+                row_count: Statistic::Exact(3),
+                size_bytes: Statistic::Unknown,
+            }
+        );
+        assert_eq!(
+            table_only.fetch_column_statistics("users", "name").unwrap(),
+            ColumnStatistics::default()
+        );
+
+        let column_only = ColumnOnlyStatistics;
+        assert_eq!(
+            column_only.fetch_table_statistics("users").unwrap(),
+            TableStatistics::default()
+        );
+        assert_eq!(
+            column_only
+                .fetch_column_statistics("users", "name")
+                .unwrap(),
+            ColumnStatistics {
+                null_ratio: Statistic::Exact(0.25),
+                distinct_count: Statistic::Unknown,
+                min_value: Statistic::Unknown,
+                max_value: Statistic::Unknown,
+            }
         );
     }
 }

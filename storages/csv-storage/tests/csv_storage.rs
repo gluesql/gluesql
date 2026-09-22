@@ -1,5 +1,10 @@
 use {
-    gluesql_core::prelude::Glue, gluesql_csv_storage::CsvStorage, std::fs::remove_dir_all,
+    gluesql_core::{
+        prelude::Glue,
+        store::{Statistic, Statistics},
+    },
+    gluesql_csv_storage::CsvStorage,
+    std::fs::remove_dir_all,
     test_suite::*,
 };
 
@@ -27,3 +32,46 @@ impl Tester<CsvStorage> for CsvTester {
 
 generate_store_tests!(test, CsvTester);
 generate_alter_table_tests!(test, CsvTester);
+
+#[test]
+fn plan_statistics_use_fallbacks_without_scanning_csv_data() {
+    let path = "tmp/csv_plan_statistics";
+    let _ = remove_dir_all(path);
+    let storage = CsvStorage::new(path).unwrap();
+    let mut glue = Glue::new(storage);
+    glue.execute("CREATE TABLE Foo (id INTEGER);").unwrap();
+    glue.execute("INSERT INTO Foo VALUES (1), (2);").unwrap();
+
+    assert_eq!(
+        glue.storage
+            .fetch_table_statistics("Foo")
+            .unwrap()
+            .row_count,
+        Statistic::Unknown
+    );
+
+    let planned = glue
+        .plan_with_statistics("SELECT * FROM Foo WHERE id = 1")
+        .unwrap()
+        .pop()
+        .unwrap();
+
+    assert_eq!(
+        planned.statistics.full_scans[0].cardinality,
+        Statistic::Estimated(1_000)
+    );
+    assert_eq!(
+        planned.statistics.filters[0].selectivity,
+        Statistic::Estimated(0.1)
+    );
+    assert_eq!(
+        planned.statistics.filters[0].cardinality,
+        Statistic::Estimated(100)
+    );
+    assert_eq!(
+        planned.statistics.filters[0].cost,
+        Statistic::Estimated(1_000)
+    );
+
+    remove_dir_all(path).unwrap();
+}

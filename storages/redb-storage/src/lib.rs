@@ -3,6 +3,7 @@
 mod core;
 mod error;
 mod migration;
+mod statistics;
 
 pub use migration::{MigrationReport, REDB_STORAGE_FORMAT_VERSION, migrate_to_latest};
 
@@ -13,7 +14,7 @@ use {
         error::Result,
         store::{
             AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Planner,
-            RowIter, Statistics, Store, StoreMut, TableStatistics, Transaction,
+            RowIter, Store, StoreMut, Transaction,
         },
     },
     redb::Database,
@@ -92,13 +93,6 @@ impl AlterTable for RedbStorage {}
 impl Index for RedbStorage {}
 impl IndexMut for RedbStorage {}
 impl Metadata for RedbStorage {}
-impl Statistics for RedbStorage {
-    fn fetch_table_statistics(&self, table_name: &str) -> Result<TableStatistics> {
-        self.0
-            .fetch_table_statistics(table_name)
-            .map_err(Into::into)
-    }
-}
 impl CustomFunction for RedbStorage {}
 impl CustomFunctionMut for RedbStorage {}
 impl Planner for RedbStorage {}
