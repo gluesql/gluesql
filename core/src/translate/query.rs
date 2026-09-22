@@ -446,6 +446,22 @@ mod tests {
     }
 
     #[test]
+    fn group_by_all_rejected() {
+        assert_query_error(
+            "SELECT a FROM Foo GROUP BY ALL",
+            TranslateError::UnsupportedGroupByAll,
+        );
+    }
+
+    #[test]
+    fn nested_join_table_factor_rejected() {
+        assert_query_error(
+            "SELECT * FROM (Foo JOIN Bar ON 1 = 1)",
+            TranslateError::UnsupportedQueryTableFactor("(Foo JOIN Bar ON 1 = 1)".to_owned()),
+        );
+    }
+
+    #[test]
     #[should_panic(expected = "expected query statement")]
     fn query_option_helper_panics_on_non_query() {
         assert_query_error(
