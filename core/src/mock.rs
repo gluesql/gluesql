@@ -124,7 +124,6 @@ impl IndexMut for MockStorage {
 impl Transaction for MockStorage {}
 impl Metadata for MockStorage {}
 impl Planner for MockStorage {}
-
 #[cfg(test)]
 mod tests {
     use {
@@ -133,8 +132,7 @@ mod tests {
             ast::{ColumnDef, Expr, OrderByExpr},
             data::{Key, Schema, SchemaIndexOrd},
             prelude::DataType,
-            store::{AlterTable, Index, IndexMut, Transaction},
-            store::{Store, StoreMut},
+            store::{AlterTable, Index, IndexMut, Store, StoreMut, Transaction},
         },
     };
 

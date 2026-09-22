@@ -1,5 +1,7 @@
 use {
-    gluesql_core::prelude::Glue, gluesql_json_storage::JsonStorage, std::fs::remove_dir_all,
+    gluesql_core::{prelude::Glue, store::Statistic},
+    gluesql_json_storage::JsonStorage,
+    std::fs::remove_dir_all,
     test_suite::*,
 };
 
@@ -27,3 +29,39 @@ impl Tester<JsonStorage> for JsonTester {
 
 generate_store_tests!(test, JsonTester);
 generate_alter_table_tests!(test, JsonTester);
+
+/// Verifies JSON statistics use fallback estimates without scanning.
+#[test]
+fn plan_statistics_use_fallbacks_without_scanning_json_data() {
+    let path = "tmp/json_plan_statistics";
+    let _ = remove_dir_all(path);
+    let storage = JsonStorage::new(path).unwrap();
+    let mut glue = Glue::new(storage);
+    glue.execute("CREATE TABLE Foo (id INTEGER);").unwrap();
+    glue.execute("INSERT INTO Foo VALUES (1), (2);").unwrap();
+
+    let planned = glue
+        .plan_with_statistics("SELECT * FROM Foo WHERE id = 1")
+        .unwrap()
+        .pop()
+        .unwrap();
+
+    assert_eq!(
+        planned.statistics.full_scans[0].cardinality,
+        Statistic::Estimated(1_000)
+    );
+    assert_eq!(
+        planned.statistics.filters[0].selectivity,
+        Statistic::Estimated(0.1)
+    );
+    assert_eq!(
+        planned.statistics.filters[0].cardinality,
+        Statistic::Estimated(100)
+    );
+    assert_eq!(
+        planned.statistics.filters[0].cost,
+        Statistic::Estimated(1_000)
+    );
+
+    remove_dir_all(path).unwrap();
+}

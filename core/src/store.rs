@@ -3,6 +3,7 @@ mod function;
 mod index;
 mod metadata;
 mod planner;
+mod statistics;
 mod transaction;
 
 pub trait GStore: Store + Index + Metadata + CustomFunction {}
@@ -23,6 +24,7 @@ pub use {
     index::{Index, IndexError, IndexMut},
     metadata::{MetaIter, Metadata},
     planner::Planner,
+    statistics::{ColumnStatistics, Statistic, Statistics, TableStatistics},
     transaction::Transaction,
 };
 
@@ -43,6 +45,15 @@ pub trait Store {
     fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Vec<Value>>>;
 
     fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>>;
+
+    /// Returns an optional statistics provider for planning estimates.
+    ///
+    /// Storage implementations without statistics can use this default and
+    /// still receive fallback estimates without scanning their data.
+    /// Returns the optional statistics provider for this storage.
+    fn statistics_provider(&self) -> Option<&dyn Statistics> {
+        None
+    }
 
     fn fetch_referencings(&self, table_name: &str) -> Result<Vec<Referencing>> {
         let schemas = self.fetch_all_schemas()?;
