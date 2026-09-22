@@ -117,13 +117,11 @@ fn collect_project_input<S: Statistics + ?Sized>(
             {
                 collect_filter(storage, Some(&table.name), expr, input, statistics)?;
             } else if matches!(input, FilterInputPlan::Source(SourcePlan::Derived(_))) {
-                collect_filter(
-                    storage,
-                    None,
+                collect_fallback_filter(
                     expr,
                     Statistic::Estimated(DEFAULT_FULL_SCAN_CARDINALITY),
                     statistics,
-                )?;
+                );
             }
         }
         ProjectInputPlan::Aggregation(aggregation) => {
@@ -158,13 +156,11 @@ fn collect_aggregation_input<S: Statistics + ?Sized>(
             {
                 collect_filter(storage, Some(&table.name), expr, input, statistics)?;
             } else if matches!(input, FilterInputPlan::Source(SourcePlan::Derived(_))) {
-                collect_filter(
-                    storage,
-                    None,
+                collect_fallback_filter(
                     expr,
                     Statistic::Estimated(DEFAULT_FULL_SCAN_CARDINALITY),
                     statistics,
-                )?;
+                );
             }
             Ok(())
         }
@@ -325,6 +321,23 @@ fn collect_filter<S: Statistics + ?Sized>(
     statistics: &mut PlanStatistics,
 ) -> Result<()> {
     let selectivity = estimate_selectivity(storage, table_name, expr)?;
+    record_filter(selectivity, input_cardinality, statistics);
+    Ok(())
+}
+
+fn collect_fallback_filter(
+    expr: &ExprPlan,
+    input_cardinality: Statistic<u64>,
+    statistics: &mut PlanStatistics,
+) {
+    record_filter(fallback_selectivity(expr), input_cardinality, statistics);
+}
+
+fn record_filter(
+    selectivity: f64,
+    input_cardinality: Statistic<u64>,
+    statistics: &mut PlanStatistics,
+) {
     let cardinality =
         Statistic::Estimated(scale(cardinality_value(&input_cardinality), selectivity));
     let cost = Statistic::Estimated(cardinality_value(&input_cardinality));
@@ -334,7 +347,28 @@ fn collect_filter<S: Statistics + ?Sized>(
         cardinality,
         cost,
     });
-    Ok(())
+}
+
+fn fallback_selectivity(expr: &ExprPlan) -> f64 {
+    if let ExprPlan::Value(crate::data::Value::Bool(value)) = expr {
+        return if *value { 1.0 } else { 0.0 };
+    }
+    let ExprPlan::BinaryOp { left, op, right } = expr else {
+        return DEFAULT_EQUALITY_SELECTIVITY;
+    };
+
+    match op {
+        BinaryOperator::And => fallback_selectivity(left) * fallback_selectivity(right),
+        BinaryOperator::Or => {
+            let left = fallback_selectivity(left);
+            let right = fallback_selectivity(right);
+            left + right - (left * right)
+        }
+        BinaryOperator::Gt | BinaryOperator::GtEq | BinaryOperator::Lt | BinaryOperator::LtEq => {
+            DEFAULT_RANGE_SELECTIVITY
+        }
+        _ => DEFAULT_EQUALITY_SELECTIVITY,
+    }
 }
 
 fn estimate_selectivity<S: Statistics + ?Sized>(
@@ -517,19 +551,26 @@ fn scale(cardinality: u64, selectivity: f64) -> u64 {
 #[cfg(test)]
 mod tests {
     use {
-        super::{DEFAULT_EQUALITY_SELECTIVITY, estimate_selectivity},
+        super::{DEFAULT_EQUALITY_SELECTIVITY, estimate_selectivity, fallback_selectivity},
         crate::{
             ast::{BinaryOperator, Literal},
             data::Value,
             plan::ExprPlan,
             result::Result,
-            store::{ColumnStatistics, Statistic, Statistics},
+            store::{ColumnStatistics, Statistic, Statistics, TableStatistics},
         },
     };
 
     struct FixedStatistics;
 
     impl Statistics for FixedStatistics {
+        fn fetch_table_statistics(&self, _table_name: &str) -> Result<TableStatistics> {
+            Ok(TableStatistics {
+                row_count: Statistic::Exact(100),
+                ..TableStatistics::default()
+            })
+        }
+
         fn fetch_column_statistics(
             &self,
             _table_name: &str,
@@ -611,6 +652,15 @@ mod tests {
         assert_eq!(
             estimate_selectivity(
                 &statistics,
+                None,
+                &binary(column("known"), BinaryOperator::Eq, value(1)),
+            )
+            .unwrap(),
+            DEFAULT_EQUALITY_SELECTIVITY
+        );
+        assert_eq!(
+            estimate_selectivity(
+                &statistics,
                 Some("items"),
                 &ExprPlan::Value(Value::Bool(true))
             )
@@ -637,6 +687,27 @@ mod tests {
             estimate_selectivity(&statistics, Some("items"), &or).unwrap(),
             (1.0 / 20.0) + DEFAULT_EQUALITY_SELECTIVITY
                 - ((1.0 / 20.0) * DEFAULT_EQUALITY_SELECTIVITY)
+        );
+
+        let fallback_equality = binary(column("unknown"), BinaryOperator::Eq, value(1));
+        let fallback_range = binary(column("unknown"), BinaryOperator::Gt, value(1));
+        assert_eq!(fallback_selectivity(&fallback_range), 1.0 / 3.0);
+        assert_eq!(
+            fallback_selectivity(&binary(
+                fallback_equality.clone(),
+                BinaryOperator::And,
+                fallback_range.clone(),
+            )),
+            DEFAULT_EQUALITY_SELECTIVITY * (1.0 / 3.0)
+        );
+        assert_eq!(
+            fallback_selectivity(&binary(
+                fallback_equality,
+                BinaryOperator::Or,
+                fallback_range,
+            )),
+            DEFAULT_EQUALITY_SELECTIVITY + (1.0 / 3.0)
+                - (DEFAULT_EQUALITY_SELECTIVITY * (1.0 / 3.0))
         );
     }
 }

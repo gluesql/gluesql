@@ -34,7 +34,7 @@ impl Tester<RedbStorage> for RedbTester {
 generate_store_tests!(test, RedbTester);
 generate_transaction_tests!(test, RedbTester);
 
-fn exact_row_count(glue: &Glue<RedbStorage>, table_name: &str) -> u64 {
+fn assert_exact_row_count(glue: &Glue<RedbStorage>, table_name: &str, expected: u64) {
     let statistics = glue
         .storage
         .fetch_table_statistics(table_name)
@@ -47,10 +47,7 @@ fn exact_row_count(glue: &Glue<RedbStorage>, table_name: &str) -> u64 {
         ColumnStatistics::default()
     );
 
-    match statistics.row_count {
-        Statistic::Exact(row_count) => row_count,
-        other => panic!("expected exact row count, got {other:?}"),
-    }
+    assert_eq!(statistics.row_count, Statistic::Exact(expected));
 }
 
 #[test]
@@ -63,26 +60,26 @@ fn table_statistics_track_rows_and_transaction_state() {
     let mut glue = Glue::new(storage);
 
     glue.execute("CREATE TABLE Foo (id INTEGER);").unwrap();
-    assert_eq!(exact_row_count(&glue, "Foo"), 0);
+    assert_exact_row_count(&glue, "Foo", 0);
 
     glue.execute("INSERT INTO Foo VALUES (1), (2), (3);")
         .unwrap();
-    assert_eq!(exact_row_count(&glue, "Foo"), 3);
+    assert_exact_row_count(&glue, "Foo", 3);
 
     glue.execute("DELETE FROM Foo WHERE id = 2;").unwrap();
-    assert_eq!(exact_row_count(&glue, "Foo"), 2);
+    assert_exact_row_count(&glue, "Foo", 2);
 
     glue.execute("BEGIN;").unwrap();
     glue.execute("INSERT INTO Foo VALUES (4);").unwrap();
-    assert_eq!(exact_row_count(&glue, "Foo"), 3);
+    assert_exact_row_count(&glue, "Foo", 3);
     glue.execute("ROLLBACK;").unwrap();
-    assert_eq!(exact_row_count(&glue, "Foo"), 2);
+    assert_exact_row_count(&glue, "Foo", 2);
 
     glue.execute("BEGIN;").unwrap();
     glue.execute("INSERT INTO Foo VALUES (5);").unwrap();
-    assert_eq!(exact_row_count(&glue, "Foo"), 3);
+    assert_exact_row_count(&glue, "Foo", 3);
     glue.execute("COMMIT;").unwrap();
-    assert_eq!(exact_row_count(&glue, "Foo"), 3);
+    assert_exact_row_count(&glue, "Foo", 3);
 
     glue.execute("BEGIN;").unwrap();
     glue.execute("DROP TABLE Foo;").unwrap();
@@ -91,7 +88,7 @@ fn table_statistics_track_rows_and_transaction_state() {
         "dropped tables should not expose statistics inside a transaction"
     );
     glue.execute("ROLLBACK;").unwrap();
-    assert_eq!(exact_row_count(&glue, "Foo"), 3);
+    assert_exact_row_count(&glue, "Foo", 3);
 
     glue.execute("DROP TABLE Foo;").unwrap();
     assert!(
@@ -147,20 +144,20 @@ fn table_statistics_count_unique_redb_entries() {
     glue.storage
         .insert_data("Foo", vec![(Key::I64(1), vec![Value::I64(1)])])
         .unwrap();
-    assert_eq!(exact_row_count(&glue, "Foo"), 1);
+    assert_exact_row_count(&glue, "Foo", 1);
 
     glue.storage
         .insert_data("Foo", vec![(Key::I64(1), vec![Value::I64(2)])])
         .unwrap();
-    assert_eq!(exact_row_count(&glue, "Foo"), 1);
+    assert_exact_row_count(&glue, "Foo", 1);
     glue.storage.commit().unwrap();
 
-    assert_eq!(exact_row_count(&glue, "Foo"), 1);
+    assert_exact_row_count(&glue, "Foo", 1);
     drop(glue);
 
     let storage = RedbStorage::new(path).expect("reopen storage");
     let glue = Glue::new(storage);
-    assert_eq!(exact_row_count(&glue, "Foo"), 1);
+    assert_exact_row_count(&glue, "Foo", 1);
 
     drop(glue);
     remove_file(path).expect("remove test storage");
@@ -262,7 +259,9 @@ fn plan_statistics_expose_boolean_filter_estimates() {
             .unwrap();
     }
 
-    for (operator, selectivity, cardinality) in [("AND", 0.01, 1), ("OR", 0.19, 19)] {
+    for (operator, selectivity, cardinality) in
+        [("AND", 0.1 * 0.1, 1), ("OR", 0.1 + 0.1 - (0.1 * 0.1), 19)]
+    {
         let sql = format!("SELECT * FROM Foo WHERE id = 1 {operator} id = 2");
         let plan = glue.plan(&sql).unwrap();
         let planned = glue.plan_with_statistics(&sql).unwrap().pop().unwrap();
@@ -272,10 +271,10 @@ fn plan_statistics_expose_boolean_filter_estimates() {
             planned.statistics.filters[0].input_cardinality,
             Statistic::Exact(100)
         );
-        let Statistic::Estimated(actual) = planned.statistics.filters[0].selectivity else {
-            panic!("expected estimated selectivity");
-        };
-        assert!((actual - selectivity).abs() < f64::EPSILON);
+        assert_eq!(
+            planned.statistics.filters[0].selectivity,
+            Statistic::Estimated(selectivity)
+        );
         assert_eq!(
             planned.statistics.filters[0].cardinality,
             Statistic::Estimated(cardinality)
