@@ -551,17 +551,75 @@ fn scale(cardinality: u64, selectivity: f64) -> u64 {
 #[cfg(test)]
 mod tests {
     use {
-        super::{DEFAULT_EQUALITY_SELECTIVITY, estimate_selectivity, fallback_selectivity},
+        super::{
+            DEFAULT_EQUALITY_SELECTIVITY, PlanStatistics, cardinality_value,
+            collect_aggregation_input, collect_filter_input, collect_hash_input,
+            collect_inner_join, collect_join_condition_input, collect_left_outer_join,
+            collect_nested_loop, collect_project_input, collect_source, column_name,
+            estimate_selectivity, fallback_selectivity, numeric_expr, numeric_value,
+            plan_statistics, range_selectivity, reverse_range_operator,
+        },
         crate::{
             ast::{BinaryOperator, Literal},
             data::Value,
-            plan::ExprPlan,
+            plan::{
+                AggregationInputPlan, AggregationPlan, DictionarySourcePlan, ExprPlan,
+                FilterInputPlan, FilterPlan, HashJoinInputPlan, HashJoinPlan, HavingPlan,
+                InnerJoinInputPlan, InnerJoinPlan, JoinConditionInputPlan, JoinConditionPlan,
+                LeftOuterJoinInputPlan, LeftOuterJoinPlan, NestedLoopJoinInputPlan,
+                NestedLoopJoinPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
+                SeriesSourcePlan, SourcePlan, StatementPlan, TableAccessPlan, TableAliasPlan,
+                TableSourcePlan, ValuesPlan,
+            },
             result::Result,
             store::{ColumnStatistics, Statistic, Statistics, TableStatistics},
         },
     };
 
     struct FixedStatistics;
+
+    struct ColumnRangeStatistics(ColumnStatistics);
+
+    struct FailingTableStatistics;
+
+    impl Statistics for FailingTableStatistics {
+        fn fetch_table_statistics(&self, _table_name: &str) -> Result<TableStatistics> {
+            Err(crate::result::Error::StorageMsg(
+                "statistics unavailable".to_owned(),
+            ))
+        }
+    }
+
+    struct FailingColumnStatistics;
+
+    impl Statistics for FailingColumnStatistics {
+        fn fetch_table_statistics(&self, _table_name: &str) -> Result<TableStatistics> {
+            Ok(TableStatistics {
+                row_count: Statistic::Exact(1),
+                ..TableStatistics::default()
+            })
+        }
+
+        fn fetch_column_statistics(
+            &self,
+            _table_name: &str,
+            _column_name: &str,
+        ) -> Result<ColumnStatistics> {
+            Err(crate::result::Error::StorageMsg(
+                "statistics unavailable".to_owned(),
+            ))
+        }
+    }
+
+    impl Statistics for ColumnRangeStatistics {
+        fn fetch_column_statistics(
+            &self,
+            _table_name: &str,
+            _column_name: &str,
+        ) -> Result<ColumnStatistics> {
+            Ok(self.0.clone())
+        }
+    }
 
     impl Statistics for FixedStatistics {
         fn fetch_table_statistics(&self, _table_name: &str) -> Result<TableStatistics> {
@@ -602,6 +660,216 @@ mod tests {
             op,
             right: Box::new(right),
         }
+    }
+
+    fn table(name: &str) -> SourcePlan {
+        SourcePlan::Table(TableSourcePlan {
+            name: name.to_owned(),
+            alias: None,
+            access: TableAccessPlan::FullScan,
+        })
+    }
+
+    fn nested(input: NestedLoopJoinInputPlan) -> NestedLoopJoinPlan {
+        NestedLoopJoinPlan {
+            input,
+            right: table("right"),
+        }
+    }
+
+    fn hash(input: HashJoinInputPlan) -> HashJoinPlan {
+        HashJoinPlan {
+            input,
+            right: table("right"),
+            input_key: ExprPlan::Value(Value::Bool(true)),
+            right_key: ExprPlan::Value(Value::Bool(true)),
+            right_filter: None,
+        }
+    }
+
+    fn inner() -> InnerJoinPlan {
+        InnerJoinPlan {
+            input: InnerJoinInputPlan::NestedLoop(nested(NestedLoopJoinInputPlan::Source(table(
+                "left",
+            )))),
+        }
+    }
+
+    fn left() -> LeftOuterJoinPlan {
+        LeftOuterJoinPlan {
+            input: LeftOuterJoinInputPlan::NestedLoop(nested(NestedLoopJoinInputPlan::Source(
+                table("left"),
+            ))),
+        }
+    }
+
+    fn project(input: ProjectInputPlan) -> QueryPlan {
+        QueryPlan::Project(ProjectPlan {
+            input,
+            projection: ProjectionPlan::SelectItems(Vec::new()),
+        })
+    }
+
+    #[test]
+    fn collects_statistics_for_plan_shapes() {
+        let provider = FixedStatistics;
+        let mut stats = PlanStatistics::default();
+        let nested_source = nested(NestedLoopJoinInputPlan::Source(table("nested")));
+        let hash_source = hash(HashJoinInputPlan::Source(table("hash")));
+        for input in [
+            NestedLoopJoinInputPlan::Source(table("n")),
+            NestedLoopJoinInputPlan::InnerJoin(Box::new(inner())),
+            NestedLoopJoinInputPlan::LeftOuterJoin(Box::new(left())),
+        ] {
+            collect_nested_loop(&provider, &input, &mut stats).unwrap();
+        }
+        for input in [
+            HashJoinInputPlan::Source(table("h")),
+            HashJoinInputPlan::InnerJoin(Box::new(inner())),
+            HashJoinInputPlan::LeftOuterJoin(Box::new(left())),
+        ] {
+            collect_hash_input(&provider, &input, &mut stats).unwrap();
+        }
+        for input in [
+            JoinConditionInputPlan::NestedLoop(nested_source.clone()),
+            JoinConditionInputPlan::Hash(hash_source.clone()),
+        ] {
+            collect_join_condition_input(&provider, &input, &mut stats).unwrap();
+        }
+        for join in [
+            InnerJoinPlan {
+                input: InnerJoinInputPlan::NestedLoop(nested_source.clone()),
+            },
+            InnerJoinPlan {
+                input: InnerJoinInputPlan::Hash(hash_source.clone()),
+            },
+            InnerJoinPlan {
+                input: InnerJoinInputPlan::Condition(JoinConditionPlan {
+                    input: JoinConditionInputPlan::NestedLoop(nested_source.clone()),
+                    expr: ExprPlan::Value(Value::Bool(true)),
+                }),
+            },
+        ] {
+            collect_inner_join(&provider, &join, &mut stats).unwrap();
+        }
+        for join in [
+            LeftOuterJoinPlan {
+                input: LeftOuterJoinInputPlan::NestedLoop(nested_source.clone()),
+            },
+            LeftOuterJoinPlan {
+                input: LeftOuterJoinInputPlan::Hash(hash_source.clone()),
+            },
+            LeftOuterJoinPlan {
+                input: LeftOuterJoinInputPlan::Condition(JoinConditionPlan {
+                    input: JoinConditionInputPlan::Hash(hash_source.clone()),
+                    expr: ExprPlan::Value(Value::Bool(true)),
+                }),
+            },
+        ] {
+            collect_left_outer_join(&provider, &join, &mut stats).unwrap();
+        }
+
+        let filter = FilterPlan {
+            input: FilterInputPlan::Source(table("filter")),
+            expr: ExprPlan::Value(Value::Bool(true)),
+        };
+        for input in [
+            AggregationInputPlan::Source(table("a")),
+            AggregationInputPlan::Filter(filter.clone()),
+            AggregationInputPlan::InnerJoin(Box::new(inner())),
+            AggregationInputPlan::LeftOuterJoin(Box::new(left())),
+        ] {
+            collect_aggregation_input(&provider, &input, &mut stats).unwrap();
+        }
+        for input in [
+            FilterInputPlan::Source(table("f")),
+            FilterInputPlan::InnerJoin(Box::new(inner())),
+            FilterInputPlan::LeftOuterJoin(Box::new(left())),
+        ] {
+            collect_filter_input(&provider, &input, &mut stats).unwrap();
+        }
+        let aggregation = AggregationPlan {
+            input: AggregationInputPlan::Source(table("g")),
+            group_by: Vec::new(),
+            aggregate_slots: Vec::new(),
+        };
+        for input in [
+            ProjectInputPlan::Source(table("p")),
+            ProjectInputPlan::Aggregation(aggregation.clone()),
+            ProjectInputPlan::Having(HavingPlan {
+                input: aggregation.clone(),
+                expr: ExprPlan::Value(Value::Bool(true)),
+            }),
+            ProjectInputPlan::InnerJoin(Box::new(inner())),
+            ProjectInputPlan::LeftOuterJoin(Box::new(left())),
+        ] {
+            collect_project_input(&provider, &input, &mut stats).unwrap();
+        }
+        let alias = TableAliasPlan {
+            name: "source".to_owned(),
+            columns: Vec::new(),
+        };
+        for source in [
+            SourcePlan::Table(TableSourcePlan {
+                name: "indexed".to_owned(),
+                alias: None,
+                access: TableAccessPlan::PrimaryKey {
+                    expr: ExprPlan::Value(Value::Bool(true)),
+                },
+            }),
+            SourcePlan::Series(SeriesSourcePlan {
+                alias: alias.clone(),
+                size: ExprPlan::Value(Value::I64(1)),
+            }),
+            SourcePlan::Dictionary(DictionarySourcePlan {
+                dictionary: crate::ast::Dictionary::GlueTables,
+                alias,
+            }),
+        ] {
+            collect_source(&provider, &source, &mut stats).unwrap();
+        }
+        let statements = [
+            StatementPlan::Query(project(ProjectInputPlan::Source(table("q")))),
+            StatementPlan::Insert {
+                table_name: "t".to_owned(),
+                columns: Vec::new(),
+                source: project(ProjectInputPlan::Source(table("q"))),
+            },
+            StatementPlan::CreateTable {
+                if_not_exists: false,
+                name: "t".to_owned(),
+                columns: None,
+                source: Some(Box::new(project(ProjectInputPlan::Source(table("q"))))),
+                engine: None,
+                foreign_keys: Vec::new(),
+                comment: None,
+            },
+            StatementPlan::Update {
+                table_name: "t".to_owned(),
+                assignments: Vec::new(),
+                selection: None,
+            },
+            StatementPlan::Delete {
+                table_name: "t".to_owned(),
+                selection: None,
+            },
+            StatementPlan::ShowColumns {
+                table_name: "t".to_owned(),
+            },
+        ];
+        for statement in statements {
+            plan_statistics(&provider, &statement).unwrap();
+        }
+        assert!(!stats.full_scans.is_empty());
+        assert!(
+            plan_statistics(
+                &provider,
+                &StatementPlan::Query(QueryPlan::Values(ValuesPlan(Vec::new())))
+            )
+            .unwrap()
+            .full_scans
+            .is_empty()
+        );
     }
 
     #[test]
@@ -708,6 +976,206 @@ mod tests {
             )),
             DEFAULT_EQUALITY_SELECTIVITY + (1.0 / 3.0)
                 - (DEFAULT_EQUALITY_SELECTIVITY * (1.0 / 3.0))
+        );
+
+        let mut estimates = PlanStatistics::default();
+        plan_statistics(
+            &statistics,
+            &StatementPlan::Update {
+                table_name: "items".to_owned(),
+                assignments: Vec::new(),
+                selection: Some(ExprPlan::Value(Value::Bool(true))),
+            },
+        )
+        .unwrap();
+        let filter = FilterPlan {
+            input: FilterInputPlan::InnerJoin(Box::new(inner())),
+            expr: ExprPlan::Value(Value::Bool(true)),
+        };
+        collect_project_input(
+            &statistics,
+            &ProjectInputPlan::Filter(filter.clone()),
+            &mut estimates,
+        )
+        .unwrap();
+        collect_aggregation_input(
+            &statistics,
+            &AggregationInputPlan::Filter(filter),
+            &mut estimates,
+        )
+        .unwrap();
+        assert_eq!(estimates.filters.len(), 2);
+
+        for expr in [
+            ExprPlan::Identifier("id".to_owned()),
+            binary(value(1), BinaryOperator::NotEq, value(2)),
+        ] {
+            assert_eq!(
+                estimate_selectivity(&statistics, Some("items"), &expr).unwrap(),
+                DEFAULT_EQUALITY_SELECTIVITY
+            );
+        }
+        assert_eq!(numeric_expr(&ExprPlan::Value(Value::I64(1))), Some(1.0));
+        assert_eq!(numeric_expr(&ExprPlan::Value(Value::Bool(true))), None);
+        assert_eq!(
+            range_selectivity(
+                &statistics,
+                Some("items"),
+                &value(1),
+                &BinaryOperator::Eq,
+                &column("known"),
+            )
+            .unwrap(),
+            1.0 / 3.0
+        );
+        assert_eq!(
+            reverse_range_operator(&BinaryOperator::Eq),
+            BinaryOperator::Eq
+        );
+        for value in [
+            Value::I8(1),
+            Value::I16(1),
+            Value::I32(1),
+            Value::I64(1),
+            Value::I128(1),
+            Value::U8(1),
+            Value::U16(1),
+            Value::U32(1),
+            Value::U64(1),
+            Value::U128(1),
+            Value::F32(1.0),
+            Value::F64(1.0),
+        ] {
+            assert!(numeric_value(&value).is_some());
+        }
+        for op in [
+            BinaryOperator::Gt,
+            BinaryOperator::GtEq,
+            BinaryOperator::Lt,
+            BinaryOperator::LtEq,
+        ] {
+            let _ = reverse_range_operator(&op);
+        }
+        assert_eq!(cardinality_value(&Statistic::Unknown), 1_000);
+        assert_eq!(
+            fallback_selectivity(&ExprPlan::Identifier("id".to_owned())),
+            DEFAULT_EQUALITY_SELECTIVITY
+        );
+        assert_eq!(
+            estimate_selectivity(
+                &statistics,
+                Some("items"),
+                &binary(value(1), BinaryOperator::Eq, column("known"))
+            )
+            .unwrap(),
+            1.0 / 20.0
+        );
+        assert_eq!(
+            column_name(&ExprPlan::CompoundIdentifier {
+                alias: "items".to_owned(),
+                ident: "known".to_owned()
+            }),
+            Some("known")
+        );
+        assert_eq!(
+            estimate_selectivity(
+                &statistics,
+                Some("items"),
+                &binary(value(1), BinaryOperator::Eq, value(2)),
+            )
+            .unwrap(),
+            DEFAULT_EQUALITY_SELECTIVITY
+        );
+        assert_eq!(
+            estimate_selectivity(
+                &statistics,
+                Some("items"),
+                &binary(column("known"), BinaryOperator::Eq, column("other")),
+            )
+            .unwrap(),
+            DEFAULT_EQUALITY_SELECTIVITY
+        );
+        assert_eq!(
+            estimate_selectivity(
+                &statistics,
+                Some("items"),
+                &binary(
+                    column("known"),
+                    BinaryOperator::Eq,
+                    ExprPlan::TypedString {
+                        data_type: crate::ast::DataType::Int,
+                        value: "1".to_owned(),
+                    },
+                ),
+            )
+            .unwrap(),
+            1.0 / 20.0
+        );
+        assert_eq!(
+            range_selectivity(
+                &statistics,
+                Some("items"),
+                &value(1),
+                &BinaryOperator::Gt,
+                &value(2),
+            )
+            .unwrap(),
+            1.0 / 3.0
+        );
+        for column_statistics in [
+            ColumnStatistics::default(),
+            ColumnStatistics {
+                min_value: Statistic::Exact(Value::Str("a".to_owned())),
+                max_value: Statistic::Exact(Value::Str("z".to_owned())),
+                ..ColumnStatistics::default()
+            },
+            ColumnStatistics {
+                min_value: Statistic::Exact(Value::I64(10)),
+                max_value: Statistic::Exact(Value::I64(1)),
+                ..ColumnStatistics::default()
+            },
+        ] {
+            assert_eq!(
+                range_selectivity(
+                    &ColumnRangeStatistics(column_statistics),
+                    Some("items"),
+                    &column("known"),
+                    &BinaryOperator::Gt,
+                    &value(1),
+                )
+                .unwrap(),
+                1.0 / 3.0
+            );
+        }
+        let derived = SourcePlan::Derived(crate::plan::DerivedSourcePlan {
+            query: Box::new(project(ProjectInputPlan::Source(table("inner")))),
+            alias: TableAliasPlan {
+                name: "inner".to_owned(),
+                columns: Vec::new(),
+            },
+        });
+        collect_source(&statistics, &derived, &mut estimates).unwrap();
+        assert!(
+            plan_statistics(
+                &FailingTableStatistics,
+                &StatementPlan::Update {
+                    table_name: "items".to_owned(),
+                    assignments: Vec::new(),
+                    selection: Some(ExprPlan::Value(Value::Bool(true))),
+                }
+            )
+            .is_err()
+        );
+        assert!(
+            plan_statistics(
+                &FailingColumnStatistics,
+                &StatementPlan::Update {
+                    table_name: "items".to_owned(),
+                    assignments: Vec::new(),
+                    selection: Some(binary(column("id"), BinaryOperator::Eq, value(1))),
+                }
+            )
+            .is_err()
         );
     }
 }

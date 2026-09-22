@@ -83,6 +83,9 @@ mod tests {
     #[test]
     fn propagates_statistics_provider_errors() {
         let storage = FailingStatisticsStorage(run("CREATE TABLE Foo (id INTEGER);"));
+        let _ = storage.fetch_all_schemas();
+        let _ = storage.fetch_data("Foo", &Key::None);
+        let _ = storage.scan_data("Foo");
         let statement = translate(&parse("SELECT * FROM Foo").unwrap()[0])
             .unwrap()
             .into();
