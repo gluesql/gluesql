@@ -8,19 +8,37 @@ use {
         result::Result,
         store::GStore,
     },
-    std::{collections::BTreeMap, iter, rc::Rc},
+    std::{
+        collections::{BTreeMap, BTreeSet},
+        iter,
+        rc::Rc,
+    },
 };
+
+type TableMetas = BTreeMap<String, BTreeMap<String, Value>>;
 
 pub(super) fn execute<'a, T: GStore>(
     storage: &'a T,
     dictionary: &'a DictionarySourcePlan,
-) -> PreparedSource<'a> {
+) -> Result<PreparedSource<'a>> {
+    let table_metas = match dictionary.dictionary {
+        Dictionary::GlueObjects => storage.scan_table_meta()?.collect::<Result<TableMetas>>()?,
+        _ => BTreeMap::new(),
+    };
+
     let names = match dictionary.dictionary {
-        Dictionary::GlueObjects => vec![
-            "OBJECT_NAME".to_owned(),
-            "OBJECT_TYPE".to_owned(),
-            "CREATED".to_owned(),
-        ],
+        Dictionary::GlueObjects => {
+            let metadata_columns = table_metas
+                .values()
+                .flat_map(|meta| meta.keys())
+                .filter(|name| *name != "OBJECT_NAME" && *name != "OBJECT_TYPE")
+                .collect::<BTreeSet<_>>();
+
+            ["OBJECT_NAME".to_owned(), "OBJECT_TYPE".to_owned()]
+                .into_iter()
+                .chain(metadata_columns.into_iter().cloned())
+                .collect()
+        }
         Dictionary::GlueTables => vec!["TABLE_NAME".to_owned(), "COMMENT".to_owned()],
         Dictionary::GlueTableColumns => vec![
             "TABLE_NAME".to_owned(),
@@ -48,6 +66,8 @@ pub(super) fn execute<'a, T: GStore>(
         alias: output.alias,
         names: Rc::clone(&output.names),
     };
+    let table_metas = Rc::new(table_metas);
+
     let rows = Box::new(move |_: Option<Rc<RowContext<'a>>>| {
         rows(
             storage,
@@ -56,58 +76,55 @@ pub(super) fn execute<'a, T: GStore>(
                 alias: source.alias,
                 names: Rc::clone(&source.names),
             },
+            Rc::clone(&table_metas),
         )
     });
 
-    PreparedSource { output, rows }
+    Ok(PreparedSource { output, rows })
 }
 
 fn rows<'a, T: GStore>(
     storage: &'a T,
     dictionary: &'a DictionarySourcePlan,
     source: SourceColumns<'a>,
+    table_metas: Rc<TableMetas>,
 ) -> Result<SourceRows<'a>> {
     let columns = Rc::clone(&source.names);
     let rows = match &dictionary.dictionary {
         Dictionary::GlueObjects => {
             let schemas = storage.fetch_all_schemas()?;
-            let table_metas = storage
-                .scan_table_meta()?
-                .collect::<Result<BTreeMap<_, _>>>()?;
             let rows = schemas.into_iter().flat_map({
                 let columns = Rc::clone(&columns);
 
                 move |schema| {
-                    let meta = table_metas
-                        .iter()
-                        .find_map(|(table_name, hash_map)| {
-                            (table_name == &schema.table_name).then(|| hash_map.clone())
-                        })
-                        .unwrap_or_default();
-                    let table_rows = BTreeMap::from([
-                        ("OBJECT_NAME".to_owned(), Value::Str(schema.table_name)),
-                        ("OBJECT_TYPE".to_owned(), Value::Str("TABLE".to_owned())),
-                    ])
-                    .into_iter()
-                    .chain(meta)
-                    .collect::<BTreeMap<_, _>>();
-                    let index_rows = schema.indexes.into_iter().map(|index| {
-                        BTreeMap::from([
-                            ("OBJECT_NAME".to_owned(), Value::Str(index.name)),
-                            ("OBJECT_TYPE".to_owned(), Value::Str("INDEX".to_owned())),
-                        ])
-                    });
+                    let meta = table_metas.get(&schema.table_name);
                     let columns = Rc::clone(&columns);
 
-                    iter::once(table_rows)
-                        .chain(index_rows)
-                        .map(move |mut hash_map| Row {
-                            values: columns
-                                .iter()
-                                .map(|column| hash_map.remove(column).unwrap_or(Value::Null))
+                    let table_row = Row {
+                        values: iter::once(Value::Str(schema.table_name))
+                            .chain(iter::once(Value::Str("TABLE".to_owned())))
+                            .chain(columns.iter().skip(2).map(|column| {
+                                meta.and_then(|meta| meta.get(column))
+                                    .cloned()
+                                    .unwrap_or(Value::Null)
+                            }))
+                            .collect(),
+                        columns: Rc::clone(&columns),
+                    };
+
+                    let index_rows = schema.indexes.into_iter().map({
+                        let columns = Rc::clone(&columns);
+
+                        move |index| Row {
+                            values: iter::once(Value::Str(index.name))
+                                .chain(iter::once(Value::Str("INDEX".to_owned())))
+                                .chain(columns.iter().skip(2).map(|_| Value::Null))
                                 .collect(),
                             columns: Rc::clone(&columns),
-                        })
+                        }
+                    });
+
+                    iter::once(table_row).chain(index_rows)
                 }
             });
 
