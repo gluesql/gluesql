@@ -1,15 +1,15 @@
 use {
     super::{AlterError, validate, validate_column_names},
     crate::{
-        ast::{ColumnDef, ColumnUniqueOption, ForeignKey, ToSql},
+        ast::{ColumnUniqueOption, ForeignKey, ToSql},
         data::{Row, Schema},
         executor::{
             evaluate_stateless,
             query::{self, OutputBody},
         },
         plan::{
-            FilterInputPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, SourcePlan, ValuesPlan,
+            ColumnDefPlan, FilterInputPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan,
+            QueryPlan, SelectItemPlan, SourcePlan, ValuesPlan,
         },
         prelude::{DataType, Value},
         result::Result,
@@ -21,7 +21,7 @@ use {
 
 pub struct CreateTableOptions<'a> {
     pub target_table_name: &'a str,
-    pub column_defs: Option<&'a [ColumnDef]>,
+    pub column_defs: Option<&'a [ColumnDefPlan]>,
     pub if_not_exists: bool,
     pub source: &'a Option<Box<QueryPlan>>,
     pub engine: &'a Option<String>,
@@ -53,10 +53,12 @@ pub fn create_table<T: GStore + GStoreMut>(
                     } = schema
                         .ok_or_else(|| AlterError::CtasSourceTableNotFound(table.name.clone()))?;
 
-                    source_column_defs
+                    source_column_defs.map(|column_defs| {
+                        column_defs.into_iter().map(ColumnDefPlan::from).collect()
+                    })
                 }
                 Some(SourcePlan::Series(_)) => {
-                    let column_def = ColumnDef {
+                    let column_def = ColumnDefPlan {
                         name: "N".into(),
                         data_type: DataType::Int,
                         nullable: false,
@@ -105,7 +107,7 @@ pub fn create_table<T: GStore + GStoreMut>(
                         None => DataType::Text,
                     })
                     .enumerate()
-                    .map(|(i, data_type)| ColumnDef {
+                    .map(|(i, data_type)| ColumnDefPlan {
                         name: format!("column{}", i + 1),
                         data_type,
                         nullable: true,
@@ -118,7 +120,7 @@ pub fn create_table<T: GStore + GStoreMut>(
                 Some(column_defs)
             }
         },
-        None if column_defs.is_some() => column_defs.map(<[ColumnDef]>::to_vec),
+        None if column_defs.is_some() => column_defs.map(<[ColumnDefPlan]>::to_vec),
         None => None,
     };
 
@@ -148,7 +150,9 @@ pub fn create_table<T: GStore + GStoreMut>(
                         AlterError::ReferencedTableNotFound(referenced_table_name.to_owned())
                     })?;
 
-            referenced_schema.column_defs
+            referenced_schema
+                .column_defs
+                .map(|column_defs| column_defs.into_iter().map(ColumnDefPlan::from).collect())
         };
 
         let referenced_column_def = column_defs
@@ -193,7 +197,12 @@ pub fn create_table<T: GStore + GStoreMut>(
     if storage.fetch_schema(target_table_name)?.is_none() {
         let schema = Schema {
             table_name: target_table_name.to_owned(),
-            column_defs: target_columns_defs,
+            column_defs: target_columns_defs.as_ref().map(|column_defs| {
+                column_defs
+                    .iter()
+                    .map(ColumnDefPlan::to_column_def)
+                    .collect()
+            }),
             indexes: vec![],
             engine: engine.clone(),
             foreign_keys: foreign_keys.clone(),
@@ -245,7 +254,7 @@ fn source_for_schema_copy(project: &ProjectPlan) -> Option<&SourcePlan> {
     .then_some(source)
 }
 
-fn column_defs_from_rows(labels: Vec<String>, rows: &[Vec<Value>]) -> Vec<ColumnDef> {
+fn column_defs_from_rows(labels: Vec<String>, rows: &[Vec<Value>]) -> Vec<ColumnDefPlan> {
     labels
         .into_iter()
         .enumerate()
@@ -256,7 +265,7 @@ fn column_defs_from_rows(labels: Vec<String>, rows: &[Vec<Value>]) -> Vec<Column
                 .find_map(Value::get_type)
                 .unwrap_or(DataType::Text);
 
-            ColumnDef {
+            ColumnDefPlan {
                 name,
                 data_type,
                 nullable: true,

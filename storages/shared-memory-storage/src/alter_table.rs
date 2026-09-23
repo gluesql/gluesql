@@ -1,6 +1,6 @@
 use {
     super::{SharedMemoryStorage, lock_error},
-    gluesql_core::{ast::ColumnDef, error::Result, store::AlterTable},
+    gluesql_core::{ast::ColumnDef, data::Value, error::Result, store::AlterTable},
 };
 
 impl AlterTable for SharedMemoryStorage {
@@ -21,10 +21,15 @@ impl AlterTable for SharedMemoryStorage {
         database.rename_column(table_name, old_column_name, new_column_name)
     }
 
-    fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
+    fn add_column(
+        &mut self,
+        table_name: &str,
+        column_def: &ColumnDef,
+        default_value: Value,
+    ) -> Result<()> {
         let mut database = self.database.write().map_err(lock_error)?;
 
-        database.add_column(table_name, column_def)
+        database.add_column(table_name, column_def, default_value)
     }
 
     fn drop_column(&mut self, table_name: &str, column_name: &str, if_exists: bool) -> Result<()> {

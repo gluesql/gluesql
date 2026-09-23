@@ -56,7 +56,7 @@ fn add_column_non_vec_row_error() {
         comment: None,
     };
 
-    let result = glue.storage.add_column("dummy", &column_def);
+    let result = glue.storage.add_column("dummy", &column_def, Value::Null);
     assert_eq!(
         result,
         Err(Error::StorageMsg(
@@ -96,7 +96,7 @@ fn add_column_deserialize_error() {
         comment: None,
     };
 
-    let result = glue.storage.add_column("dummy", &column_def);
+    let result = glue.storage.add_column("dummy", &column_def, Value::Null);
     assert_eq!(
         result,
         Err(Error::StorageMsg(

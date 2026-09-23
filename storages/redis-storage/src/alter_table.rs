@@ -4,7 +4,6 @@ use {
         ast::ColumnDef,
         data::Value,
         error::{AlterTableError, Error, Result},
-        plan::plan_scalar_expr,
         store::{AlterTable, Store},
     },
     redis::Commands,
@@ -74,7 +73,12 @@ impl AlterTable for RedisStorage {
         Ok(())
     }
 
-    fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
+    fn add_column(
+        &mut self,
+        table_name: &str,
+        column_def: &ColumnDef,
+        default_value: Value,
+    ) -> Result<()> {
         if let Some(mut schema) = self.fetch_schema(table_name)? {
             let column_defs = schema
                 .column_defs
@@ -90,25 +94,7 @@ impl AlterTable for RedisStorage {
                 return Err(AlterTableError::AlreadyExistingColumn(adding_column).into());
             }
 
-            let ColumnDef {
-                data_type,
-                nullable,
-                default,
-                ..
-            } = column_def;
-
-            let new_value_of_new_column = match (default, nullable) {
-                (Some(expr), _) => {
-                    let expr = plan_scalar_expr(expr.clone());
-                    let evaluated = gluesql_core::executor::evaluate_stateless(None, &expr)?;
-
-                    evaluated.try_into_value(data_type, *nullable)?
-                }
-                (None, true) => Value::Null,
-                (None, false) => {
-                    return Err(AlterTableError::DefaultValueRequired(column_def.clone()).into());
-                }
-            };
+            let new_value_of_new_column = default_value;
 
             // NOTE: It cannot call self.redis_execute_scan/get/set methods directly.
             // column_defs has a reference to item and the item has a reference to self.

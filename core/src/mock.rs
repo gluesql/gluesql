@@ -20,6 +20,7 @@ pub fn run(sql: &str) -> MockStorage {
 
     for parsed in parse(sql).unwrap() {
         let statement = translate(&parsed).unwrap().into();
+        let statement = storage.plan(statement).unwrap();
 
         execute(&mut storage, &statement).unwrap();
     }
@@ -131,7 +132,7 @@ mod tests {
         super::MockStorage,
         crate::{
             ast::{ColumnDef, Expr, OrderByExpr},
-            data::{Key, Schema, SchemaIndexOrd},
+            data::{Key, Schema, SchemaIndexOrd, Value},
             prelude::DataType,
             store::{AlterTable, Index, IndexMut, Transaction},
             store::{Store, StoreMut},
@@ -167,6 +168,7 @@ mod tests {
                         unique: None,
                         comment: None,
                     },
+                    Value::Null,
                 )
                 .is_err()
         );

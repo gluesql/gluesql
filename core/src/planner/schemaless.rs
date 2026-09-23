@@ -41,6 +41,7 @@ fn transform_statement<S: BuildHasher>(
             table_name,
             columns,
             mut source,
+            table_columns,
         } => {
             transform_query(schema_map, &mut source);
             let columns = if is_schemaless_table(schema_map, &table_name) {
@@ -53,6 +54,7 @@ fn transform_statement<S: BuildHasher>(
                 table_name,
                 columns,
                 source,
+                table_columns,
             }
         }
         StatementPlan::Update {

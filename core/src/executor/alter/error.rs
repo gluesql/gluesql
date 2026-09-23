@@ -1,5 +1,8 @@
 use {
-    super::table::Referencing, crate::prelude::DataType, serde::Serialize, std::fmt::Debug,
+    super::table::Referencing,
+    crate::{ast::ColumnDef, prelude::DataType},
+    serde::Serialize,
+    std::fmt::Debug,
     thiserror::Error,
 };
 
@@ -39,6 +42,9 @@ pub enum AlterError {
 
     #[error("duplicate column name: {0}")]
     DuplicateColumnName(String),
+
+    #[error("Default value is required: {0:#?}")]
+    DefaultValueRequired(ColumnDef),
 
     #[error("duplicate arg name: {0}")]
     DuplicateArgName(String),
