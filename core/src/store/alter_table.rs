@@ -1,9 +1,6 @@
 use {
     super::{Store, StoreMut},
-    crate::{
-        ast::ColumnDef, data::Value, executor::evaluate_stateless, plan::plan_scalar_expr,
-        result::Result,
-    },
+    crate::{ast::ColumnDef, data::Value, result::Result},
     serde::Serialize,
     std::fmt::Debug,
     thiserror::Error,
@@ -16,9 +13,6 @@ pub enum AlterTableError {
 
     #[error("Renaming column not found")]
     RenamingColumnNotFound,
-
-    #[error("Default value is required: {0:#?}")]
-    DefaultValueRequired(ColumnDef),
 
     #[error("Already existing column: {0}")]
     AlreadyExistingColumn(String),
@@ -80,22 +74,15 @@ pub trait AlterTable: Store + StoreMut {
         self.insert_data(table_name, rows)
     }
 
-    fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
+    fn add_column(
+        &mut self,
+        table_name: &str,
+        column_def: &ColumnDef,
+        default_value: Value,
+    ) -> Result<()> {
         let mut schema = self
             .fetch_schema(table_name)?
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
-
-        let default_value = match (column_def.default.as_ref(), column_def.nullable) {
-            (Some(default), _) => {
-                let default = plan_scalar_expr(default.clone());
-
-                evaluate_stateless(None, &default)?.try_into()?
-            }
-            (None, true) => Value::Null,
-            (None, false) => {
-                return Err(AlterTableError::DefaultValueRequired(column_def.clone()).into());
-            }
-        };
 
         let column_defs = schema
             .column_defs

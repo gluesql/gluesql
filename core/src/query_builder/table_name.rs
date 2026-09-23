@@ -1,7 +1,7 @@
 use super::{
-    AlterTableNode, CreateIndexNode, CreateTableNode, DeleteNode, DropIndexNode, DropTableNode,
-    InsertNode, OrderByExprNode, SelectNode, ShowColumnsNode, SourceNode, TableAccessNode,
-    UpdateNode,
+    AlterTableNode, ColumnDefNode, CreateIndexNode, CreateTableNode, DeleteNode, DropIndexNode,
+    DropTableNode, InsertNode, InsertTableNode, OrderByExprNode, SelectNode, ShowColumnsNode,
+    SourceNode, TableAccessNode, UpdateNode,
 };
 #[derive(Clone, Debug)]
 pub struct TableNameNode {
@@ -29,6 +29,23 @@ impl<'a> TableNameNode {
 
     pub fn insert(self) -> InsertNode {
         InsertNode::new(self.table_name)
+    }
+
+    pub fn table_columns<T: AsRef<str>>(
+        self,
+        columns: impl IntoIterator<Item = T>,
+    ) -> InsertTableNode {
+        InsertTableNode::columns(
+            self.table_name,
+            columns
+                .into_iter()
+                .map(|column| ColumnDefNode::from(column.as_ref()))
+                .collect(),
+        )
+    }
+
+    pub fn schemaless(self) -> InsertTableNode {
+        InsertTableNode::schemaless(self.table_name)
     }
 
     pub fn show_columns(self) -> ShowColumnsNode {

@@ -60,7 +60,7 @@ pub use {
     expr_list::ExprList,
     expr_with_alias::ExprWithAliasNode,
     index::{CreateIndexNode, DropIndexNode},
-    insert::InsertNode,
+    insert::{InsertNode, InsertTableNode},
     order_by_expr::OrderByExprNode,
     order_by_expr_list::OrderByExprList,
     query::QueryNode,

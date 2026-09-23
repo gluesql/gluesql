@@ -10,8 +10,6 @@ use {
         ast::ColumnDef,
         data::{Value, schema::Schema},
         error::{AlterTableError, Result},
-        executor::evaluate_stateless,
-        plan::plan_scalar_expr,
         store::AlterTable,
     },
     sled::transaction::ConflictableTransactionError,
@@ -234,7 +232,13 @@ impl AlterTable for SledStorage {
         Ok(())
     }
 
-    fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
+    fn add_column(
+        &mut self,
+        table_name: &str,
+        column_def: &ColumnDef,
+        default_value: Value,
+    ) -> Result<()> {
+        let default_value_in_tx = default_value.clone();
         let prefix = format!("data/{table_name}/");
         let items = self
             .tree
@@ -284,30 +288,7 @@ impl AlterTable for SledStorage {
                 ));
             }
 
-            let ColumnDef {
-                data_type,
-                nullable,
-                default,
-                ..
-            } = column_def;
-
-            let value = match (default, nullable) {
-                (Some(expr), _) => {
-                    let expr = plan_scalar_expr(expr.clone());
-                    let evaluated = evaluate_stateless(None, &expr)
-                        .map_err(ConflictableTransactionError::Abort)?;
-
-                    evaluated
-                        .try_into_value(data_type, *nullable)
-                        .map_err(ConflictableTransactionError::Abort)?
-                }
-                (None, true) => Value::Null,
-                (None, false) => {
-                    return Err(ConflictableTransactionError::Abort(
-                        AlterTableError::DefaultValueRequired(column_def.clone()).into(),
-                    ));
-                }
-            };
+            let value = default_value_in_tx.clone();
 
             // migrate data
             for (key, snapshot) in &items {
@@ -368,7 +349,7 @@ impl AlterTable for SledStorage {
         });
 
         if self.check_retry(tx_result)? {
-            self.add_column(table_name, column_def)?;
+            self.add_column(table_name, column_def, default_value)?;
         }
 
         Ok(())
