@@ -69,11 +69,17 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
         I: IntoIterator<Item = P>,
         P: IntoParamLiteral,
     {
-        let statements = self.plan_with_params(sql, params)?;
+        let parsed = parse(sql)?;
+        let params: Vec<ParamLiteral> = params
+            .into_iter()
+            .map(IntoParamLiteral::into_param_literal)
+            .collect();
         let mut payloads = Vec::<Payload>::new();
-        for statement in &statements {
-            let payload = self.execute_stmt(statement)?;
-            payloads.push(payload);
+
+        for parsed in parsed {
+            let statement = translate_with_params(&parsed, &params)?;
+            let statement = self.storage.plan(statement.into())?;
+            payloads.push(self.execute_stmt(&statement)?);
         }
 
         Ok(payloads)
@@ -86,5 +92,29 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
     /// Returns an error when parsing fails, planning fails, or executing a statement fails.
     pub fn execute<Sql: AsRef<str>>(&mut self, sql: Sql) -> Result<Vec<Payload>> {
         self.execute_with_params(sql, std::iter::empty::<ParamLiteral>())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::Glue,
+        crate::{executor::InsertError, mock::MockStorage, result::Error},
+    };
+
+    #[test]
+    fn execute_plans_insert_after_create_in_the_same_script() {
+        let mut glue = Glue::new(MockStorage::default());
+        let result = glue.execute(
+            "
+            CREATE TABLE greet (name TEXT);
+            INSERT INTO greet VALUES ('World');
+            ",
+        );
+
+        assert!(
+            !matches!(result, Err(Error::Insert(InsertError::TableNotFound(_)))),
+            "{result:?}"
+        );
     }
 }
