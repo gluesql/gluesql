@@ -163,6 +163,8 @@ pub fn translate_with_params(
                 Some(DeleteOption::OrderBy)
             } else if limit.is_some() {
                 Some(DeleteOption::Limit)
+            } else if matches!(from, SqlFromTable::WithFromKeyword(tables) if tables.len() > 1) {
+                Some(DeleteOption::MultipleTables)
             } else {
                 None
             };
@@ -740,6 +742,14 @@ mod tests {
             (
                 "DELETE FROM Foo WHERE id = 1 LIMIT 1",
                 TranslateError::UnsupportedDeleteOption(DeleteOption::Limit),
+            ),
+            (
+                "DELETE FROM Foo, Bar WHERE id = 1",
+                TranslateError::UnsupportedDeleteOption(DeleteOption::MultipleTables),
+            ),
+            (
+                "DELETE FROM Foo, Foo WHERE id = 1",
+                TranslateError::UnsupportedDeleteOption(DeleteOption::MultipleTables),
             ),
         ];
 
