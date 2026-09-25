@@ -127,7 +127,10 @@ pub fn translate_with_params(
             } else if returning.is_some() {
                 Some(UpdateOption::Returning)
             } else {
-                None
+                table_alias_kind(table).map(|kind| match kind {
+                    TableAliasKind::Table => UpdateOption::TableAlias,
+                    TableAliasKind::Column => UpdateOption::TableColumnAlias,
+                })
             };
 
             if let Some(reason) = violation {
@@ -164,7 +167,15 @@ pub fn translate_with_params(
             } else if limit.is_some() {
                 Some(DeleteOption::Limit)
             } else {
-                None
+                match from {
+                    SqlFromTable::WithFromKeyword(tables) => tables.first(),
+                    SqlFromTable::WithoutKeyword(_) => None,
+                }
+                .and_then(table_alias_kind)
+                .map(|kind| match kind {
+                    TableAliasKind::Table => DeleteOption::TableAlias,
+                    TableAliasKind::Column => DeleteOption::TableColumnAlias,
+                })
             };
 
             if let Some(reason) = violation {
@@ -541,6 +552,26 @@ pub fn translate_assignment(
     })
 }
 
+#[derive(Clone, Copy)]
+enum TableAliasKind {
+    Table,
+    Column,
+}
+
+fn table_alias_kind(table: &TableWithJoins) -> Option<TableAliasKind> {
+    let TableFactor::Table {
+        alias: Some(alias), ..
+    } = &table.relation
+    else {
+        return None;
+    };
+
+    Some(match alias.columns.as_slice() {
+        [_, ..] => TableAliasKind::Column,
+        [] => TableAliasKind::Table,
+    })
+}
+
 fn translate_table_with_join(table: &TableWithJoins) -> Result<String> {
     if !table.joins.is_empty() {
         return Err(TranslateError::JoinOnUpdateNotSupported.into());
@@ -715,6 +746,18 @@ mod tests {
                 "UPDATE Foo SET id = 1 WHERE id = 1 RETURNING *",
                 TranslateError::UnsupportedUpdateOption(UpdateOption::Returning),
             ),
+            (
+                "UPDATE Foo AS f SET id = 1",
+                TranslateError::UnsupportedUpdateOption(UpdateOption::TableAlias),
+            ),
+            (
+                "UPDATE Foo f SET id = 1",
+                TranslateError::UnsupportedUpdateOption(UpdateOption::TableAlias),
+            ),
+            (
+                "UPDATE Foo AS f(x) SET x = 1",
+                TranslateError::UnsupportedUpdateOption(UpdateOption::TableColumnAlias),
+            ),
         ];
 
         for (sql, err) in cases {
@@ -741,10 +784,30 @@ mod tests {
                 "DELETE FROM Foo WHERE id = 1 LIMIT 1",
                 TranslateError::UnsupportedDeleteOption(DeleteOption::Limit),
             ),
+            (
+                "DELETE FROM Foo AS f WHERE id = 1",
+                TranslateError::UnsupportedDeleteOption(DeleteOption::TableAlias),
+            ),
+            (
+                "DELETE FROM Foo f WHERE id = 1",
+                TranslateError::UnsupportedDeleteOption(DeleteOption::TableAlias),
+            ),
+            (
+                "DELETE FROM Foo AS f(x) WHERE x = 1",
+                TranslateError::UnsupportedDeleteOption(DeleteOption::TableColumnAlias),
+            ),
         ];
 
         for (sql, err) in cases {
             assert_translate_error(sql, err);
+        }
+    }
+
+    #[test]
+    fn update_and_delete_without_alias() {
+        for sql in ["UPDATE Foo SET id = 1", "DELETE FROM Foo WHERE id = 1"] {
+            let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+            assert!(actual.is_ok(), "{sql}: {actual:?}");
         }
     }
 
