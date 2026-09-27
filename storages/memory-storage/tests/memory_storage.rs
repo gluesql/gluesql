@@ -146,6 +146,35 @@ fn memory_storage_dynamic_metadata() {
 }
 
 #[test]
+fn memory_storage_metadata_column_collision() {
+    use gluesql_core::{data::Value, prelude::Payload};
+
+    let mut glue = Glue::new(MemoryStorage::default());
+    exec!(glue "CREATE TABLE Restaurant (id INTEGER);");
+
+    let metadata = glue.storage.metadata.get_mut("Restaurant").unwrap();
+    metadata.insert("OBJECT_NAME".to_owned(), Value::Str("Other".to_owned()));
+    metadata.insert("OBJECT_TYPE".to_owned(), Value::Str("VIEW".to_owned()));
+    let created = metadata.get("CREATED").unwrap().clone();
+
+    test!(
+        glue "SELECT * FROM GLUE_OBJECTS;",
+        Ok(vec![Payload::Select {
+            labels: vec![
+                "OBJECT_NAME".to_owned(),
+                "OBJECT_TYPE".to_owned(),
+                "CREATED".to_owned(),
+            ],
+            rows: vec![vec![
+                Value::Str("Restaurant".to_owned()),
+                Value::Str("TABLE".to_owned()),
+                created,
+            ]],
+        }])
+    );
+}
+
+#[test]
 fn memory_storage_dynamic_metadata_union() {
     use gluesql_core::{data::Value, prelude::Payload};
 
