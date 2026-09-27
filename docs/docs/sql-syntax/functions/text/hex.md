@@ -1,6 +1,6 @@
 # HEX
 
-`HEX` converts an integer or string value to uppercase hexadecimal text.
+`HEX` converts an `INT` or string value to uppercase hexadecimal text.
 
 ## Syntax
 
@@ -10,7 +10,7 @@ HEX(value)
 
 ## Parameters
 
-- `value` - An integer or string value to convert.
+- `value` - An `INT` (`INTEGER`) or string value to convert. Integer literals such as `228` are `INT` values.
 
 ## Examples
 
@@ -33,3 +33,7 @@ This returns `E4`.
 ## Notes
 
 `HEX` requires exactly one argument. If the argument is `NULL`, the result is `NULL`.
+
+Other integer types, such as `INT32` or `UINT8`, are not accepted and return an error. Cast them to `INT` first, for example `HEX(CAST(value AS INT))`.
+
+Negative `INT` values are converted as 64-bit two's complement, so `HEX(-123)` returns `FFFFFFFFFFFFFF85`.

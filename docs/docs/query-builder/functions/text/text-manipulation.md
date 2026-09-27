@@ -8,7 +8,7 @@
 - REPEAT: Repeats a string a specified number of times.
 - REVERSE: Reverses the order of the characters in a string.
 - REPLACE: Replaces occurrences of one substring with another.
-- HEX: Converts an integer or string value to hexadecimal text.
+- HEX: Converts an `INT` or string value to hexadecimal text.
 
 ## REPLACE - replace
 
@@ -32,7 +32,7 @@ let actual = values(vec![
 
 ## HEX - hex
 
-The `hex` function converts an integer or string value to uppercase hexadecimal text.
+The `hex` function converts an `INT` or string value to uppercase hexadecimal text. Integer literals such as `num(228)` are `INT` values; values of other integer types, such as an `INT32` column, are not accepted.
 
 ```rust
 let actual = values(vec![
