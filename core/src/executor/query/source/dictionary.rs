@@ -8,19 +8,30 @@ use {
         result::Result,
         store::GStore,
     },
-    std::{collections::BTreeMap, iter, rc::Rc},
+    std::{
+        collections::{BTreeMap, BTreeSet},
+        iter,
+        rc::Rc,
+    },
 };
 
 pub(super) fn execute<'a, T: GStore>(
     storage: &'a T,
     dictionary: &'a DictionarySourcePlan,
-) -> PreparedSource<'a> {
+) -> Result<PreparedSource<'a>> {
     let names = match dictionary.dictionary {
-        Dictionary::GlueObjects => vec![
-            "OBJECT_NAME".to_owned(),
-            "OBJECT_TYPE".to_owned(),
-            "CREATED".to_owned(),
-        ],
+        Dictionary::GlueObjects => {
+            let mut metadata_columns = BTreeSet::new();
+            for meta in storage.scan_table_meta()? {
+                let (_, meta) = meta?;
+                metadata_columns.extend(meta.into_keys());
+            }
+
+            ["OBJECT_NAME".to_owned(), "OBJECT_TYPE".to_owned()]
+                .into_iter()
+                .chain(metadata_columns)
+                .collect()
+        }
         Dictionary::GlueTables => vec!["TABLE_NAME".to_owned(), "COMMENT".to_owned()],
         Dictionary::GlueTableColumns => vec![
             "TABLE_NAME".to_owned(),
@@ -59,7 +70,7 @@ pub(super) fn execute<'a, T: GStore>(
         )
     });
 
-    PreparedSource { output, rows }
+    Ok(PreparedSource { output, rows })
 }
 
 fn rows<'a, T: GStore>(
@@ -71,20 +82,16 @@ fn rows<'a, T: GStore>(
     let rows = match &dictionary.dictionary {
         Dictionary::GlueObjects => {
             let schemas = storage.fetch_all_schemas()?;
-            let table_metas = storage
+            let mut table_metas = storage
                 .scan_table_meta()?
                 .collect::<Result<BTreeMap<_, _>>>()?;
             let rows = schemas.into_iter().flat_map({
                 let columns = Rc::clone(&columns);
 
                 move |schema| {
-                    let meta = table_metas
-                        .iter()
-                        .find_map(|(table_name, hash_map)| {
-                            (table_name == &schema.table_name).then(|| hash_map.clone())
-                        })
-                        .unwrap_or_default();
-                    let table_rows = BTreeMap::from([
+                    let meta = table_metas.remove(&schema.table_name).unwrap_or_default();
+
+                    let table_row = BTreeMap::from([
                         ("OBJECT_NAME".to_owned(), Value::Str(schema.table_name)),
                         ("OBJECT_TYPE".to_owned(), Value::Str("TABLE".to_owned())),
                     ])
@@ -99,7 +106,7 @@ fn rows<'a, T: GStore>(
                     });
                     let columns = Rc::clone(&columns);
 
-                    iter::once(table_rows)
+                    iter::once(table_row)
                         .chain(index_rows)
                         .map(move |mut hash_map| Row {
                             values: columns

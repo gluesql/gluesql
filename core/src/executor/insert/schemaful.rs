@@ -1,14 +1,14 @@
 use {
     super::{InsertError, RowsData, values},
     crate::{
-        ast::{ColumnDef, ColumnUniqueOption, ForeignKey},
+        ast::{ColumnUniqueOption, ForeignKey},
         data::{Key, Value},
         executor::{
             evaluate::evaluate_stateless,
             query,
             validate::{ColumnValidation, validate_unique},
         },
-        plan::{ExprPlan, QueryPlan, ValuesPlan, plan_scalar_expr},
+        plan::{ColumnDefPlan, ExprPlan, QueryPlan, ValuesPlan},
         result::Result,
         store::GStore,
     },
@@ -18,19 +18,17 @@ use {
 pub(super) fn fetch_rows<T: GStore>(
     storage: &T,
     table_name: &str,
-    column_defs: Vec<ColumnDef>,
+    column_defs: &[ColumnDefPlan],
     columns: &[String],
     source: &QueryPlan,
     foreign_keys: Vec<ForeignKey>,
 ) -> Result<RowsData> {
-    let column_defaults: Rc<[Option<ExprPlan>]> = Rc::from(
-        column_defs
-            .iter()
-            .map(|column_def| column_def.default.clone().map(plan_scalar_expr))
-            .collect::<Vec<_>>(),
-    );
-    let column_defs = Rc::from(column_defs);
-    let column_validation = ColumnValidation::All(&column_defs);
+    let column_defs = Rc::<[ColumnDefPlan]>::from(column_defs);
+    let stored_column_defs = column_defs
+        .iter()
+        .map(ColumnDefPlan::to_column_def)
+        .collect::<Vec<_>>();
+    let column_validation = ColumnValidation::All(&stored_column_defs);
 
     let rows_iter: Box<dyn Iterator<Item = Result<Vec<Value>>> + '_> = if let Some(rows) =
         values::execute(source, |plan| {
@@ -42,7 +40,7 @@ pub(super) fn fetch_rows<T: GStore>(
             move |row| {
                 let values = row?.into_values();
 
-                assign_values(&column_defs, &column_defaults, columns, &values)
+                assign_values(&column_defs, columns, &values)
             }
         });
 
@@ -55,7 +53,7 @@ pub(super) fn fetch_rows<T: GStore>(
                 .iter()
                 .zip(values.iter())
                 .try_for_each(|(column_def, value)| {
-                    let ColumnDef {
+                    let ColumnDefPlan {
                         data_type,
                         nullable,
                         ..
@@ -81,9 +79,9 @@ pub(super) fn fetch_rows<T: GStore>(
 
     validate_foreign_key(storage, &column_defs, foreign_keys, &rows)?;
 
-    let primary_key = column_defs.iter().position(|ColumnDef { unique, .. }| {
-        unique == &Some(ColumnUniqueOption { is_primary: true })
-    });
+    let primary_key = column_defs
+        .iter()
+        .position(|column_def| column_def.unique == Some(ColumnUniqueOption { is_primary: true }));
 
     match primary_key {
         Some(i) => rows
@@ -102,7 +100,7 @@ pub(super) fn fetch_rows<T: GStore>(
 
 fn values_rows<'a>(
     ValuesPlan(values_list): &'a ValuesPlan,
-    column_defs: Rc<[ColumnDef]>,
+    column_defs: Rc<[ColumnDefPlan]>,
     columns: &'a [String],
 ) -> values::EvaluatedRows<'a> {
     let rows = values_list
@@ -113,7 +111,7 @@ fn values_rows<'a>(
 }
 
 fn evaluate_values(
-    column_defs: &[ColumnDef],
+    column_defs: &[ColumnDefPlan],
     columns: &[String],
     exprs: &[ExprPlan],
 ) -> Result<Vec<Value>> {
@@ -153,25 +151,24 @@ fn evaluate_values(
     }
 }
 
-fn evaluate_value(column_def: &ColumnDef, expr: &ExprPlan) -> Result<Value> {
+fn evaluate_value(column_def: &ColumnDefPlan, expr: &ExprPlan) -> Result<Value> {
     evaluate_stateless(None, expr)?.try_into_value(&column_def.data_type, column_def.nullable)
 }
 
 fn assign_values(
-    column_defs: &[ColumnDef],
-    column_defaults: &[Option<ExprPlan>],
+    column_defs: &[ColumnDefPlan],
     columns: &[String],
     values: &[Value],
 ) -> Result<Vec<Value>> {
     column_defs
         .iter()
         .enumerate()
-        .zip(column_defaults)
-        .map(|((index, column_def), default)| {
-            let ColumnDef {
+        .map(|(index, column_def)| {
+            let ColumnDefPlan {
                 name: def_name,
                 data_type,
                 nullable,
+                default,
                 ..
             } = column_def;
             let value = if columns.is_empty() {
@@ -191,7 +188,7 @@ fn assign_values(
                     Ok(value.clone())
                 }
                 (None, Some(expr), _) => {
-                    evaluate_stateless(None, expr)?.try_into_value(data_type, *nullable)
+                    evaluate_stateless(None, expr.planned())?.try_into_value(data_type, *nullable)
                 }
                 (None, None, true) => Ok(Value::Null),
                 (None, None, false) => {
@@ -204,7 +201,7 @@ fn assign_values(
 
 fn validate_foreign_key<T: GStore>(
     storage: &T,
-    column_defs: &Rc<[ColumnDef]>,
+    column_defs: &Rc<[ColumnDefPlan]>,
     foreign_keys: Vec<ForeignKey>,
     rows: &[Vec<Value>],
 ) -> Result<()> {

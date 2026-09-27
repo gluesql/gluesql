@@ -186,7 +186,8 @@ fn execute_inner<T: GStore + GStoreMut>(
             table_name,
             columns,
             source,
-        } => insert(storage, table_name, columns, source).map(Payload::Insert),
+            table_columns,
+        } => insert(storage, table_name, columns, source, table_columns).map(Payload::Insert),
         StatementPlan::Update {
             table_name,
             selection,

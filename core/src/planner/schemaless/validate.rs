@@ -36,6 +36,7 @@ fn validate_statement_inner(
             table_name,
             columns,
             source,
+            ..
         } => {
             if !columns.is_empty() && is_schemaless_table(schema_map, table_name) {
                 return Err(PlannerError::SchemalessInsertWithExplicitColumns);

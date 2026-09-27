@@ -5,6 +5,7 @@ site_description = "GlueSQL is quite sticky. It sticks to anything."
 docs_dir = "docs"
 site_dir = "build"
 use_directory_urls = true
+extra_css = ["assets/stylesheets/extra.css"]
 nav = [
   "index.md",
   {"Getting Started" = [
@@ -268,6 +269,7 @@ homepage = "https://gluesql.org/docs"
 
 [project.theme]
 custom_dir = "overrides"
+logo = "assets/gluesql.jpg"
 favicon = "assets/favicon.ico"
 features = [
   "navigation.path",
