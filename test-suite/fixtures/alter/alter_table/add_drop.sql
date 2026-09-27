@@ -13,7 +13,7 @@ SELECT * FROM Foo;
 -- | 2       |
 
 ALTER TABLE Foo ADD COLUMN amount INTEGER NOT NULL
--- @expect: error AlterTable.DefaultValueRequired
+-- @expect: error Alter.DefaultValueRequired
 -- @json:
 -- {
 --   "comment": null,

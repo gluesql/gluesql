@@ -22,12 +22,14 @@ pub fn plan(statement: StatementPlan) -> StatementPlan {
             table_name,
             columns,
             mut source,
+            table_columns,
         } => {
             plan_query(&mut source);
             StatementPlan::Insert {
                 table_name,
                 columns,
                 source,
+                table_columns,
             }
         }
         StatementPlan::CreateTable {
@@ -385,7 +387,7 @@ mod tests {
                 NestedLoopJoinPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan,
                 ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan,
                 SeriesSourcePlan, SourcePlan, StatementPlan, TableAccessPlan, TableAliasPlan,
-                TableSourcePlan, ValuesPlan,
+                TableColumnsPlan, TableSourcePlan, ValuesPlan,
             },
             query_builder::{Build, table},
             translate::{NO_PARAMS, translate, translate_query},
@@ -604,6 +606,7 @@ mod tests {
             table_name: "Target".to_owned(),
             columns: Vec::new(),
             source: parse_and_plan_query("SELECT COUNT(*) FROM Source"),
+            table_columns: TableColumnsPlan::Unplanned,
         };
         assert_eq!(actual, expected);
 
