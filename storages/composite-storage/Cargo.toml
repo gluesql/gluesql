@@ -1,6 +1,5 @@
 [package]
 name = "gluesql-composite-storage"
-authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
 version.workspace = true
 edition.workspace = true
 description.workspace = true
@@ -15,7 +14,7 @@ serde = { version = "1", features = ["derive"] }
 [dev-dependencies]
 test-suite.workspace = true
 gluesql_memory_storage.workspace = true
-gluesql_sled_storage.workspace = true
+gluesql-redb-storage.workspace = true
 
 [lints]
 workspace = true

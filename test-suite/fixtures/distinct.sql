@@ -21,6 +21,75 @@ SELECT DISTINCT id, name FROM Item ORDER BY id
 -- | 2       | "Banana"  |
 -- | 3       | NULL      |
 
+-- @name: ORDER BY then DISTINCT then OFFSET and LIMIT
+SELECT DISTINCT name
+FROM Item
+WHERE name IS NOT NULL
+ORDER BY name
+OFFSET 1
+LIMIT 1
+-- @expect:
+-- | name: Str |
+-- | --------- |
+-- | "Banana"  |
+
+-- @name: DISTINCT terminal stages in derived query
+SELECT *
+FROM (
+    SELECT DISTINCT name
+    FROM Item
+    WHERE name IS NOT NULL
+    ORDER BY name
+    OFFSET 1
+    LIMIT 1
+) AS DistinctItem
+-- @expect:
+-- | name: Str |
+-- | --------- |
+-- | "Banana"  |
+
+-- @name: Derived DISTINCT preserves output labels through LIMIT
+SELECT *
+FROM (
+    SELECT DISTINCT name
+    FROM Item
+    WHERE name = 'Apple'
+    LIMIT 1
+) AS LimitedDistinctItem
+-- @expect:
+-- | name: Str |
+-- | --------- |
+-- | "Apple"   |
+
+-- @name: SELECT DISTINCT with DISTINCT aggregate
+SELECT DISTINCT COUNT(DISTINCT id) AS count
+FROM Item
+ORDER BY count
+LIMIT 1
+-- @expect:
+-- | count: I64 |
+-- | ---------- |
+-- | 3          |
+
+CREATE TABLE DistinctItem (name TEXT)
+-- @expect: ok
+
+-- @name: INSERT SELECT uses DISTINCT terminal pipeline
+INSERT INTO DistinctItem
+SELECT DISTINCT name
+FROM Item
+WHERE name IS NOT NULL
+ORDER BY name
+OFFSET 1
+LIMIT 1
+-- @expect: ok
+
+SELECT * FROM DistinctItem
+-- @expect:
+-- | name: Str |
+-- | --------- |
+-- | "Banana"  |
+
 CREATE TABLE Restaurant (id INTEGER, menu MAP)
 -- @expect: ok
 

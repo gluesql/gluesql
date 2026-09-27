@@ -21,6 +21,12 @@ SELECT id, name FROM Allegro WHERE id = 1
 -- | ------- | --------- |
 -- | 1       | "hello"   |
 
+-- @name: missing PRIMARY KEY lookup returns an empty result
+SELECT id, name FROM Allegro WHERE id = 999
+-- @expect:
+-- | id  | name |
+-- | --- | ---- |
+
 SELECT id, name FROM Allegro WHERE id < 2
 -- @expect:
 -- | id: I64 | name: Str |

@@ -711,6 +711,31 @@ impl Value {
         }
     }
 
+    pub fn regex(&self, other: &Value, negated: bool, case_sensitive: bool) -> Result<Value> {
+        use Value::*;
+
+        match (self, other) {
+            (Str(a), Str(b)) => a
+                .regex(b, case_sensitive)
+                .map(|matched| Bool(matched ^ negated)),
+            // NULL only propagates once both operands are known to be text-compatible,
+            // so a type error is not silently masked by NULL data.
+            (Null, Str(_) | Null) | (Str(_), Null) => Ok(Null),
+            _ => Err(ValueError::RegexOnNonString {
+                base: self.clone(),
+                pattern: other.clone(),
+                operator: match (negated, case_sensitive) {
+                    (false, true) => "~",
+                    (false, false) => "~*",
+                    (true, true) => "!~",
+                    (true, false) => "!~*",
+                }
+                .to_owned(),
+            }
+            .into()),
+        }
+    }
+
     pub fn extract(&self, date_type: &DateTimeField) -> Result<Value> {
         let value = match (self, date_type) {
             (Value::Date(v), DateTimeField::Year) => v.year().into(),
@@ -917,7 +942,7 @@ fn str_position(from_str: &str, sub_str: &str) -> usize {
 #[cfg(test)]
 mod tests {
     use {
-        super::{Interval, Value::*},
+        super::{Interval, Value, Value::*},
         crate::data::{NumericBinaryOperator, ValueError, point::Point, value::uuid::parse_uuid},
         chrono::{NaiveDate, NaiveTime},
         rust_decimal::Decimal,
@@ -3160,6 +3185,87 @@ mod tests {
         let mut map2 = BTreeMap::new();
         map2.insert("a".to_owned(), I64(1));
         assert_eq!(Map(map1), Map(map2));
+    }
+
+    #[test]
+    fn regex() {
+        let str = |value: &str| Value::Str(value.to_owned());
+
+        assert_eq!(
+            str("Hello").regex(&str("ell"), false, true).unwrap(),
+            Value::Bool(true)
+        );
+        assert_eq!(
+            str("Hello").regex(&str("^hello$"), false, false).unwrap(),
+            Value::Bool(true)
+        );
+        assert_eq!(
+            str("Hello").regex(&str("ell"), true, true).unwrap(),
+            Value::Bool(false)
+        );
+        assert_eq!(
+            str("Hello").regex(&str("^hello$"), true, false).unwrap(),
+            Value::Bool(false)
+        );
+        assert_eq!(
+            Value::Null.regex(&str("."), false, true).unwrap(),
+            Value::Null
+        );
+        assert_eq!(
+            str("Hello").regex(&Value::Null, false, true).unwrap(),
+            Value::Null
+        );
+        assert_eq!(
+            Value::Null.regex(&Value::Null, false, true).unwrap(),
+            Value::Null
+        );
+        // negation must not turn NULL into a boolean
+        assert_eq!(
+            Value::Null.regex(&str("."), true, true).unwrap(),
+            Value::Null
+        );
+
+        // a non-text operand is rejected regardless of whether the other side is NULL
+        for (negated, case_sensitive, operator) in [
+            (false, true, "~"),
+            (false, false, "~*"),
+            (true, true, "!~"),
+            (true, false, "!~*"),
+        ] {
+            assert_eq!(
+                Value::Bool(true)
+                    .regex(&str("."), negated, case_sensitive)
+                    .unwrap_err(),
+                ValueError::RegexOnNonString {
+                    base: Value::Bool(true),
+                    pattern: str("."),
+                    operator: operator.to_owned(),
+                }
+                .into(),
+            );
+        }
+        assert_eq!(
+            Value::Bool(true)
+                .regex(&Value::Null, false, true)
+                .unwrap_err(),
+            ValueError::RegexOnNonString {
+                base: Value::Bool(true),
+                pattern: Value::Null,
+                operator: "~".to_owned(),
+            }
+            .into(),
+        );
+        assert_eq!(
+            Value::Null
+                .regex(&Value::Bool(true), false, true)
+                .unwrap_err(),
+            ValueError::RegexOnNonString {
+                base: Value::Null,
+                pattern: Value::Bool(true),
+                operator: "~".to_owned(),
+            }
+            .into(),
+        );
     }
 
     #[test]

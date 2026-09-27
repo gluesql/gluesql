@@ -8,12 +8,12 @@ To install and use GlueSQL in your Rust project, you'll first need to add it as 
 
 ```toml
 [dependencies]
-gluesql = "0.19.0"
+gluesql = "0.20.0"
 ```
 
 By default, all available storage features are included with GlueSQL. Here's a list of the available features:
 
-- `gluesql_sled_storage` - Storage based on the persistent key-value database called sled
+- `gluesql_sled_storage` - Deprecated Sled-backed storage; use `gluesql-redb-storage` for new persistent-storage deployments. It will be removed in v0.21.0
 - `gluesql-redb-storage` - Storage using the redb embedded database
 - `gluesql_memory_storage` - Simple in-memory storage
 - `gluesql-shared-memory-storage` - A wrapper around memory-storage for easy use in multi-threaded environments
@@ -30,7 +30,7 @@ If you don't need all the default storage features, you can disable them and sel
 
 ```toml
 [dependencies.gluesql]
-version = "0.19.0"
+version = "0.20.0"
 default-features = false
 features = ["gluesql_memory_storage", "gluesql-json-storage"]
 ```

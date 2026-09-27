@@ -2,7 +2,7 @@
 
 ## Introduction
 
-CompositeStorage is a special type of Storage. It does not possess any real storage implementation itself. Instead, it offers a powerful capability - the ability to bundle together multiple existing storages. For instance, with CompositeStorage, you can bundle JsonStorage and SledStorage together for simultaneous use. This means you can perform JOIN operations across two distinct storages. You can even read and analyze JSON log files, and directly insert the data into SledStorage.
+CompositeStorage is a special type of Storage. It does not possess any real storage implementation itself. Instead, it offers a powerful capability - the ability to bundle together multiple existing storages. For instance, with CompositeStorage, you can bundle JsonStorage and RedbStorage together for simultaneous use. This means you can perform JOIN operations across two distinct storages. You can even read and analyze JSON log files, and directly insert the data into RedbStorage.
 
 ## Unified Interface across Different Storages
 

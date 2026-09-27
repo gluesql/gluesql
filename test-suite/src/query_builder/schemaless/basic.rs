@@ -2,6 +2,7 @@ use {
     crate::*,
     gluesql_core::{error::InsertError, executor::Payload, prelude::Value, query_builder::*},
     serde_json::json,
+    std::collections::BTreeMap,
 };
 
 test_case!(basic, {
@@ -57,6 +58,11 @@ test_case!(basic, {
         actual, expected,
         "insert-select with empty projection should fail"
     );
+
+    let row = Value::Map(BTreeMap::from([("id".to_owned(), Value::I64(3))]));
+    let actual = table("Logs").insert().values(vec![vec![row]]).execute(glue);
+    let expected = Ok(Payload::Insert(1));
+    assert_eq!(actual, expected, "insert schemaless map value");
 
     let actual = table("Logs").drop_table().execute(glue);
     let expected = Ok(Payload::DropTable(1));

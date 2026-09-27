@@ -2,9 +2,10 @@ use {
     crate::SledStorage,
     gluesql_core::{
         error::Result,
-        plan::{
-            StatementPlan, fetch_schema_map, plan_aggregate, plan_index, plan_join,
-            plan_primary_key, plan_schemaless, validate,
+        plan::StatementPlan,
+        planner::{
+            fetch_schema_map, plan_aggregate, plan_hash_join, plan_index, plan_primary_key,
+            plan_schemaless, plan_table_columns, validate,
         },
         store::Planner,
     },
@@ -18,8 +19,9 @@ impl Planner for SledStorage {
         let statement = plan_schemaless(&schema_map, statement)?;
         let statement = plan_primary_key(&schema_map, statement);
         let statement = plan_index(&schema_map, statement);
-        let statement = plan_join(&schema_map, statement);
+        let statement = plan_hash_join(&schema_map, statement);
         let statement = plan_aggregate(statement);
+        let statement = plan_table_columns(&schema_map, statement)?;
 
         Ok(statement)
     }

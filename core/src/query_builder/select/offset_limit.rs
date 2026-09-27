@@ -2,8 +2,8 @@ use {
     super::{BuildQuery, BuildQueryPlan},
     crate::{
         ast::Query,
-        plan::QueryPlan,
-        query_builder::{ExprNode, OffsetNode, QueryNode, TableFactorNode},
+        plan::{LimitInputPlan, LimitPlan, OffsetPlan, QueryPlan},
+        query_builder::{ExprNode, OffsetNode, QueryNode, SourceNode},
         result::Result,
     },
 };
@@ -13,10 +13,10 @@ pub(super) enum PrevNode<'a> {
     Offset(OffsetNode<'a>),
 }
 
-impl BuildQueryPlan for PrevNode<'_> {
-    fn build_query_plan(self) -> Result<QueryPlan> {
+impl PrevNode<'_> {
+    fn build_offset_plan(self) -> Result<OffsetPlan> {
         match self {
-            Self::Offset(node) => node.build_query_plan(),
+            Self::Offset(node) => node.build_offset_plan(),
         }
     }
 }
@@ -49,17 +49,20 @@ impl<'a> OffsetLimitNode<'a> {
         }
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
+    pub fn alias_as(self, table_alias: &'a str) -> SourceNode<'a> {
         QueryNode::OffsetLimitNode(self).alias_as(table_alias)
     }
 }
 
 impl BuildQueryPlan for OffsetLimitNode<'_> {
     fn build_query_plan(self) -> Result<QueryPlan> {
-        let mut node_data = self.prev_node.build_query_plan()?;
-        node_data.limit = Some(self.expr.build_expr_plan()?);
-
-        Ok(node_data)
+        let count = self.expr.build_expr_plan()?;
+        self.prev_node.build_offset_plan().map(|offset| {
+            QueryPlan::Limit(LimitPlan {
+                input: LimitInputPlan::Offset(offset),
+                count,
+            })
+        })
     }
 }
 

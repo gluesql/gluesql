@@ -48,7 +48,7 @@ jobs:
           cargo test -p gluesql-macros --verbose
           cargo test -p gluesql-core --verbose
           cargo test -p gluesql-cli --verbose
-          cargo test -p gluesql --lib --bins --tests --examples --verbose --no-default-features --features "gluesql_memory_storage gluesql_sled_storage"
+          cargo test -p gluesql --lib --bins --tests --examples --verbose --no-default-features --features "gluesql_memory_storage gluesql_sled_storage gluesql-redb-storage"
 
   run_storage_tests:
     name: Run storage tests

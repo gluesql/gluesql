@@ -1,24 +1,32 @@
 use {
     super::AlterError,
     crate::{
-        ast::{ColumnDef, ColumnUniqueOption, OperateFunctionArg},
+        ast::{ColumnUniqueOption, OperateFunctionArg},
         executor::evaluate_stateless,
-        plan::plan_scalar_expr,
+        plan::{ColumnDefPlan, plan_scalar_expr},
         prelude::DataType,
         result::Result,
     },
 };
 
-pub fn validate(column_def: &ColumnDef) -> Result<()> {
-    let ColumnDef {
+pub fn validate(column_def: &ColumnDefPlan) -> Result<()> {
+    validate_column_def(column_def)?;
+
+    if let Some(expr) = &column_def.default {
+        evaluate_stateless(None, expr.planned())?;
+    }
+
+    Ok(())
+}
+
+pub fn validate_column_def(column_def: &ColumnDefPlan) -> Result<()> {
+    let ColumnDefPlan {
         data_type,
-        default,
         unique,
         name,
         ..
     } = column_def;
 
-    // unique + data type
     if matches!(
         data_type,
         DataType::Float | DataType::Float32 | DataType::Map
@@ -31,16 +39,10 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
         .into());
     }
 
-    if let Some(expr) = default {
-        let expr = plan_scalar_expr(expr.clone());
-
-        evaluate_stateless(None, &expr)?;
-    }
-
     Ok(())
 }
 
-pub fn validate_column_names(column_defs: &[ColumnDef]) -> Result<()> {
+pub fn validate_column_names(column_defs: &[ColumnDefPlan]) -> Result<()> {
     let duplicate_column_name = column_defs
         .iter()
         .enumerate()

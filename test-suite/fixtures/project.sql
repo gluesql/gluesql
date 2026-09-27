@@ -123,7 +123,7 @@ WHERE id IN (
 -- | 2       |
 
 SELECT Whatever.* FROM ProjectUser
--- @expect: error Fetch.TableAliasNotFound
+-- @expect: error Query.TableAliasNotFound
 -- @json: "Whatever"
 
 SELECT noname FROM ProjectUser

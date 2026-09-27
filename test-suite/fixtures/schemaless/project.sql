@@ -36,6 +36,14 @@ SELECT P.* FROM A AS P
 -- @expect: maps
 -- | {"a":"left","a_id":1} |
 
+-- @name: CTAS preserves schemaless map projection
+CREATE TABLE ACopy AS SELECT * FROM A
+-- @expect: ok
+
+SELECT * FROM ACopy
+-- @expect: maps
+-- | {"a":"left","a_id":1} |
+
 -- @name: schemaless projection by explicit fields in join
 SELECT A.a_id AS a_id, B.b_id AS b_id FROM A JOIN B WHERE A.a_id = B.a_id
 -- @expect:
@@ -59,11 +67,11 @@ SELECT A.*, B.* FROM A JOIN B WHERE A.a_id = B.a_id
 
 -- @name: wildcard join with schemaless root and schemaful join is rejected
 SELECT * FROM A JOIN S WHERE A.a_id = S.a_id
--- @expect: error Plan.SchemalessMixedJoinWildcardProjection
+-- @expect: error Planner.SchemalessMixedJoinWildcardProjection
 
 -- @name: wildcard join with schemaful root and schemaless join is rejected
 SELECT * FROM S JOIN A WHERE S.a_id = A.a_id
--- @expect: error Plan.SchemalessMixedJoinWildcardProjection
+-- @expect: error Planner.SchemalessMixedJoinWildcardProjection
 
 CREATE TABLE C (_doc INTEGER);
 -- @expect: ok

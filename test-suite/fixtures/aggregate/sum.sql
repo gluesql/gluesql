@@ -16,9 +16,9 @@ INSERT INTO Item (id, quantity, age, total) VALUES
 
 SELECT SUM(age) FROM Item
 -- @expect:
--- | SUM(age) |
--- | -------- |
--- | NULL     |
+-- | SUM(age): I64 |
+-- | ------------- |
+-- | 104           |
 
 SELECT SUM(id), SUM(quantity) FROM Item
 -- @expect:
@@ -64,9 +64,9 @@ SELECT SUM(DISTINCT id) FROM Item
 
 SELECT SUM(DISTINCT age) FROM Item
 -- @expect:
--- | SUM(DISTINCT age) |
--- | ----------------- |
--- | NULL              |
+-- | SUM(DISTINCT age): I64 |
+-- | ---------------------- |
+-- | 104                    |
 
 CREATE TABLE EmptyItem (id INTEGER NULL);
 -- @expect: ok

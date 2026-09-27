@@ -162,8 +162,10 @@ macro_rules! generate_store_tests {
         sql_case!(aggregate::avg);
         sql_case!(aggregate::count);
         sql_case!(aggregate::group_by);
+        sql_case!(aggregate::having);
         sql_case!(aggregate::max);
         sql_case!(aggregate::min);
+        sql_case!(aggregate::null);
         sql_case!(aggregate::stdev);
         sql_case!(aggregate::sum);
         sql_case!(aggregate::variance);
@@ -183,6 +185,7 @@ macro_rules! generate_store_tests {
         sql_case!(expr::between);
         sql_case!(expr::in_list);
         sql_case!(expr::arrow);
+        sql_case!(expr::long_arrow);
         sql_case!(expr::unary_operator);
 
         sql_case!(alter::create_table);
@@ -190,6 +193,7 @@ macro_rules! generate_store_tests {
         sql_case!(default);
         sql_case!(limit);
         sql_case!(like_ilike);
+        sql_case!(regex);
         sql_case!(filter);
         sql_case!(inline_view);
         sql_case!(values);

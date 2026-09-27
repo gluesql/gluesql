@@ -1,17 +1,25 @@
 mod ddl;
 mod expr;
-mod join;
 mod projection;
 mod query;
-mod table_factor;
 
 pub use {
-    ddl::AlterTableOperationPlan,
-    expr::{AggregateFunctionPlan, AggregatePlan, CountArgExprPlan, ExprPlan, FunctionPlan},
-    join::{JoinConstraintPlan, JoinExecutorPlan, JoinOperatorPlan, JoinPlan},
+    ddl::{AlterTableOperationPlan, ColumnDefPlan, DefaultExpr, TableColumnsPlan},
+    expr::{
+        AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan, FunctionExprPlan,
+        plan_scalar_expr,
+    },
     projection::{ProjectionPlan, SelectItemPlan},
-    query::{OrderByExprPlan, QueryPlan, SelectPlan, SetExprPlan, ValuesPlan},
-    table_factor::{IndexItemPlan, TableAliasPlan, TableFactorPlan, TableWithJoinsPlan},
+    query::{
+        AggregationInputPlan, AggregationPlan, DerivedSourcePlan, DictionarySourcePlan,
+        DistinctInputPlan, DistinctPlan, FilterInputPlan, FilterPlan, HashJoinInputPlan,
+        HashJoinPlan, HavingPlan, IndexPredicatePlan, InnerJoinInputPlan, InnerJoinPlan,
+        JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
+        LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan, OffsetInputPlan,
+        OffsetPlan, OrderByExprPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SelectOrderByPlan,
+        SeriesSourcePlan, SourcePlan, TableAccessPlan, TableAliasPlan, TableSourcePlan,
+        ValuesOrderByPlan, ValuesPlan,
+    },
 };
 
 use {
@@ -29,6 +37,7 @@ pub enum StatementPlan {
         table_name: String,
         columns: Vec<String>,
         source: QueryPlan,
+        table_columns: TableColumnsPlan,
     },
     Update {
         table_name: String,
@@ -42,7 +51,7 @@ pub enum StatementPlan {
     CreateTable {
         if_not_exists: bool,
         name: String,
-        columns: Option<Vec<ast::ColumnDef>>,
+        columns: Option<Vec<ColumnDefPlan>>,
         source: Option<Box<QueryPlan>>,
         engine: Option<String>,
         foreign_keys: Vec<ForeignKey>,
@@ -102,6 +111,7 @@ impl From<ast::Statement> for StatementPlan {
                 table_name,
                 columns,
                 source: source.into(),
+                table_columns: TableColumnsPlan::Unplanned,
             },
             ast::Statement::Update {
                 table_name,
@@ -130,7 +140,7 @@ impl From<ast::Statement> for StatementPlan {
             } => Self::CreateTable {
                 if_not_exists,
                 name,
-                columns,
+                columns: columns.map(|columns| columns.into_iter().map(Into::into).collect()),
                 source: source.map(|query| Box::new((*query).into())),
                 engine,
                 foreign_keys,

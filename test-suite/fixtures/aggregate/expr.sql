@@ -47,4 +47,4 @@ SELECT SUM(age) IS NULL AS test FROM Item;
 -- @expect:
 -- | test: Bool |
 -- | ---------- |
--- | true       |
+-- | false      |

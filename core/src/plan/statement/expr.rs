@@ -45,6 +45,12 @@ pub enum ExprPlan {
         negated: bool,
         pattern: Box<ExprPlan>,
     },
+    Regex {
+        expr: Box<ExprPlan>,
+        negated: bool,
+        pattern: Box<ExprPlan>,
+        case_sensitive: bool,
+    },
     BinaryOp {
         left: Box<ExprPlan>,
         op: BinaryOperator,
@@ -61,8 +67,8 @@ pub enum ExprPlan {
         data_type: DataType,
         value: String,
     },
-    Function(Box<FunctionPlan>),
-    Aggregate(Box<AggregatePlan>),
+    Function(Box<FunctionExprPlan>),
+    Aggregate(Box<AggregateExprPlan>),
     Exists {
         subquery: Box<QueryPlan>,
         negated: bool,
@@ -89,7 +95,7 @@ pub enum ExprPlan {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display)]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
-pub enum FunctionPlan {
+pub enum FunctionExprPlan {
     Abs(ExprPlan),
     AddMonth {
         expr: ExprPlan,
@@ -304,7 +310,7 @@ pub enum FunctionPlan {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct AggregatePlan {
+pub struct AggregateExprPlan {
     pub func: AggregateFunctionPlan,
     pub distinct: bool,
     pub slot: Option<usize>,
@@ -325,6 +331,10 @@ pub enum AggregateFunctionPlan {
 pub enum CountArgExprPlan {
     Wildcard,
     Expr(ExprPlan),
+}
+
+pub fn plan_scalar_expr(expr: ast::Expr) -> ExprPlan {
+    expr.into()
 }
 
 impl From<ast::Expr> for ExprPlan {
@@ -383,6 +393,17 @@ impl From<ast::Expr> for ExprPlan {
                 negated,
                 pattern: Box::new((*pattern).into()),
             },
+            ast::Expr::Regex {
+                expr,
+                negated,
+                pattern,
+                case_sensitive,
+            } => Self::Regex {
+                expr: Box::new((*expr).into()),
+                negated,
+                pattern: Box::new((*pattern).into()),
+                case_sensitive,
+            },
             ast::Expr::BinaryOp { left, op, right } => Self::BinaryOp {
                 left: Box::new((*left).into()),
                 op,
@@ -435,7 +456,7 @@ impl From<ast::Expr> for ExprPlan {
     }
 }
 
-impl From<ast::Function> for FunctionPlan {
+impl From<ast::Function> for FunctionExprPlan {
     fn from(function: ast::Function) -> Self {
         match function {
             ast::Function::Abs(expr) => Self::Abs(expr.into()),
@@ -682,7 +703,7 @@ impl From<ast::Function> for FunctionPlan {
     }
 }
 
-impl From<ast::Aggregate> for AggregatePlan {
+impl From<ast::Aggregate> for AggregateExprPlan {
     fn from(aggregate: ast::Aggregate) -> Self {
         let ast::Aggregate { func, distinct } = aggregate;
 

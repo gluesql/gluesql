@@ -1,3 +1,4 @@
+mod distinct;
 mod filter;
 mod group_by;
 mod having;
@@ -14,26 +15,62 @@ use {
     super::Build,
     crate::{
         ast::{Query, Select, SetExpr},
-        plan::{QueryPlan, SelectPlan, SetExprPlan, StatementPlan},
+        plan::{
+            AggregationInputPlan, AggregationPlan, FilterInputPlan, FilterPlan, HavingPlan,
+            ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SourcePlan,
+            StatementPlan,
+        },
         result::Result,
     },
 };
 pub use {
+    distinct::DistinctNode,
     filter::FilterNode,
     group_by::GroupByNode,
     having::HavingNode,
-    join::{HashJoinNode, JoinConstraintNode, JoinNode},
+    join::{
+        InnerHashJoinNode, InnerJoinConditionNode, InnerNestedLoopJoinNode, LeftOuterHashJoinNode,
+        LeftOuterJoinConditionNode, LeftOuterNestedLoopJoinNode,
+    },
     limit::LimitNode,
     offset::OffsetNode,
     offset_limit::OffsetLimitNode,
-    order_by::OrderByNode,
+    order_by::{SelectOrderByNode, ValuesOrderByNode},
     project::ProjectNode,
     root::{SelectNode, select},
     values::{ValuesNode, values},
 };
 
-pub(super) trait BuildSelectPlan {
-    fn build_select_plan(self) -> Result<SelectPlan>;
+pub(super) trait BuildSourcePlan {
+    fn build_source_plan(self) -> Result<SourcePlan>;
+}
+
+pub(super) trait BuildFilterInputPlan {
+    fn build_filter_input_plan(self) -> Result<FilterInputPlan>;
+}
+
+pub(super) trait BuildFilterPlan {
+    fn build_filter_plan(self) -> Result<FilterPlan>;
+}
+
+pub(super) trait BuildAggregationInputPlan {
+    fn build_aggregation_input_plan(self) -> Result<AggregationInputPlan>;
+}
+
+pub(super) trait BuildAggregationPlan {
+    fn build_aggregation_plan(self) -> Result<AggregationPlan>;
+}
+
+pub(super) trait BuildHavingPlan {
+    fn build_having_plan(self) -> Result<HavingPlan>;
+}
+
+pub(super) trait BuildProjectInputPlan {
+    fn build_project_input_plan(self) -> Result<ProjectInputPlan>;
+}
+
+pub(super) trait BuildProjectPlan {
+    fn build_project_plan(self) -> Result<ProjectPlan>;
 }
 
 pub(super) trait BuildSelect {
@@ -48,18 +85,18 @@ pub(super) trait BuildQuery {
     fn build_query(self) -> Result<Query>;
 }
 
-impl<T: BuildSelectPlan> BuildQueryPlan for T {
-    fn build_query_plan(self) -> Result<QueryPlan> {
-        let select = self.build_select_plan()?;
-        let body = SetExprPlan::Select(Box::new(select));
-        let query = QueryPlan {
-            body,
-            order_by: Vec::new(),
-            limit: None,
-            offset: None,
-        };
+impl<T: BuildProjectInputPlan> BuildProjectPlan for T {
+    fn build_project_plan(self) -> Result<ProjectPlan> {
+        self.build_project_input_plan().map(|input| ProjectPlan {
+            input,
+            projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
+        })
+    }
+}
 
-        Ok(query)
+impl<T: BuildProjectPlan> BuildQueryPlan for T {
+    fn build_query_plan(self) -> Result<QueryPlan> {
+        self.build_project_plan().map(QueryPlan::Project)
     }
 }
 

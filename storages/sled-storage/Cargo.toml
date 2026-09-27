@@ -1,9 +1,8 @@
 [package]
 name = "gluesql_sled_storage"
-authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
 version.workspace = true
 edition.workspace = true
-description.workspace = true
+description = "Deprecated Sled-backed storage for GlueSQL; use RedbStorage for new deployments"
 license.workspace = true
 repository.workspace = true
 documentation.workspace = true

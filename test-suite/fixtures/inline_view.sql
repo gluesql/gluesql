@@ -26,6 +26,19 @@ SELECT * FROM InnerTable
 -- | 2       | "SQL"     |
 -- | 3       | "SQL"     |
 
+SELECT * FROM InnerTable WHERE FALSE
+-- @expect:
+-- | id  | name |
+-- | --- | ---- |
+
+SELECT *
+FROM (
+    SELECT * FROM InnerTable WHERE FALSE
+) AS EmptyInlineView(id_alias, name_alias)
+-- @expect:
+-- | id_alias | name_alias |
+-- | -------- | ---------- |
+
 SELECT *
 FROM (
     SELECT COUNT(*) AS cnt FROM InnerTable
@@ -83,6 +96,17 @@ JOIN (
 -- | ------- | --------- | ------- | --------- |
 -- | 1       | "WORKS!"  | 1       | "GLUE"    |
 -- | 2       | "EXTRA"   | 2       | "SQL"     |
+
+SELECT *
+FROM OuterTable
+LEFT JOIN (
+    SELECT * FROM InnerTable WHERE FALSE
+) AS EmptyInlineView ON TRUE
+WHERE OuterTable.id = 1
+-- @expect:
+-- | id: I64 | name: Str | id   | name |
+-- | ------- | --------- | ---- | ---- |
+-- | 1       | "WORKS!"  | NULL | NULL |
 
 SELECT *
 FROM OuterTable JOIN (
@@ -195,6 +219,25 @@ SELECT * FROM (
 -- | 3       | "SQL"     |
 -- | 2       | "SQL"     |
 -- | 1       | "GLUE"    |
+
+-- @name: Derived VALUES preserves ORDER BY output labels
+SELECT *
+FROM (VALUES (2), (1) ORDER BY column1) AS OrderedValues
+-- @expect:
+-- | column1: I64 |
+-- | ------------ |
+-- | 1            |
+-- | 2            |
+
+-- @name: Derived DISTINCT preserves projected output labels
+SELECT *
+FROM (SELECT DISTINCT name FROM InnerTable) AS DistinctNames
+ORDER BY name
+-- @expect:
+-- | name: Str |
+-- | --------- |
+-- | "GLUE"    |
+-- | "SQL"     |
 
 SELECT *
 FROM OuterTable, (

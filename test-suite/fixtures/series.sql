@@ -54,7 +54,7 @@ SELECT * FROM SERIES()
 -- @expect: error Translate.LackOfArgs
 
 SELECT * FROM SERIES(-1)
--- @expect: error Fetch.SeriesSizeWrong
+-- @expect: error Query.InvalidSeriesSize
 -- @json: -1
 
 SELECT 1, 'a', true, 1 + 2, 'a' || 'b'

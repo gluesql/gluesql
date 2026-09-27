@@ -28,6 +28,43 @@ SELECT * FROM Item
 -- | {"dex":324,"id":100,"name":"Test 001","obj":{"cost":3000},"rare":false} |
 -- | {"id":200}                                                              |
 
+-- @name: INSERT SELECT preserves schemaless map rows
+CREATE TABLE MapCopy
+-- @expect: ok
+
+INSERT INTO MapCopy SELECT * FROM Item
+-- @expect: ok
+
+SELECT * FROM MapCopy
+-- @expect: maps
+-- | {"dex":324,"id":100,"name":"Test 001","obj":{"cost":3000},"rare":false} |
+-- | {"id":200}                                                              |
+
+-- @name: INSERT SELECT parses JSON object strings for schemaless rows
+CREATE TABLE StringCopy
+-- @expect: ok
+
+INSERT INTO StringCopy SELECT '{"id":300,"name":"Selected"}'
+-- @expect: ok
+
+SELECT * FROM StringCopy
+-- @expect: maps
+-- | {"id":300,"name":"Selected"} |
+
+-- @name: INSERT VALUES orders schemaless JSON object strings
+CREATE TABLE OrderedInsert
+-- @expect: ok
+
+INSERT INTO OrderedInsert
+VALUES ('{"id":2}'), ('{"id":1}')
+ORDER BY column1
+-- @expect: ok
+
+SELECT * FROM OrderedInsert
+-- @expect: maps
+-- | {"id":1} |
+-- | {"id":2} |
+
 DELETE FROM Item WHERE id > 100
 -- @expect: ok
 
@@ -63,3 +100,20 @@ WHERE flag IS NOT NULL;
 -- | player_id: I64 | player_name: Str | item_cost: I64 |
 -- | -------------- | ---------------- | -------------- |
 -- | 1001           | "Beam"           | 3000           |
+
+CREATE TABLE ItemName AS SELECT name, dex FROM Item
+-- @expect: ok
+
+SELECT name, dex FROM ItemName
+-- @expect:
+-- | name: Str  | dex: I64 |
+-- | ---------- | -------- |
+-- | "Test 001" | 324      |
+
+CREATE TABLE ItemCopy AS SELECT * FROM Item
+-- @expect: ok
+
+SELECT * FROM ItemCopy
+-- @expect: maps
+-- | {"dex":324,"id":101,"name":"Test 001","new_field":"Hello","obj":{"cost":3000},"rare":true} |
+

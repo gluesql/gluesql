@@ -73,3 +73,10 @@ SELECT COUNT(id) FROM EmptyItem;
 -- | COUNT(id): I64 |
 -- | -------------- |
 -- | 0              |
+
+-- @name: ORDER BY evaluates against an empty global aggregation
+SELECT COUNT(*) AS count FROM EmptyItem ORDER BY count;
+-- @expect:
+-- | count: I64 |
+-- | ---------- |
+-- | 0          |

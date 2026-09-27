@@ -20,6 +20,46 @@ pub enum CreateTableOption {
     CloneTable,
 }
 
+/// `CREATE INDEX` clauses that `GlueSQL` does not support yet.
+///
+/// Carried by [`TranslateError::UnsupportedCreateIndexOption`] so callers
+/// can match exhaustively on every currently-rejected clause instead of
+/// inspecting a free-form string.
+#[derive(Display, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CreateIndexOption {
+    /// `CREATE UNIQUE INDEX ...`
+    #[strum(to_string = "UNIQUE keyword")]
+    Unique,
+
+    /// `CREATE INDEX CONCURRENTLY ...`
+    #[strum(to_string = "CONCURRENTLY keyword")]
+    Concurrently,
+
+    /// `CREATE INDEX IF NOT EXISTS ...`
+    #[strum(to_string = "IF NOT EXISTS clause")]
+    IfNotExists,
+
+    /// `CREATE INDEX ... USING <method> ...`
+    #[strum(to_string = "USING clause")]
+    Using,
+
+    /// `CREATE INDEX ... INCLUDE (...)`
+    #[strum(to_string = "INCLUDE clause")]
+    Include,
+
+    /// `CREATE INDEX ... NULLS [NOT] DISTINCT`
+    #[strum(to_string = "NULLS DISTINCT clause")]
+    NullsDistinct,
+
+    /// `CREATE INDEX ... WITH (...)`
+    #[strum(to_string = "WITH clause")]
+    With,
+
+    /// `CREATE INDEX ... WHERE <predicate>`
+    #[strum(to_string = "WHERE clause")]
+    Where,
+}
+
 /// `INSERT` clauses that `GlueSQL` does not support yet.
 ///
 /// Carried by [`TranslateError::UnsupportedInsertOption`] so callers can
@@ -92,6 +132,31 @@ pub enum DeleteOption {
     Limit,
 }
 
+/// Transaction statement (`START TRANSACTION`/`COMMIT`/`ROLLBACK`) clauses
+/// that `GlueSQL` does not support yet.
+///
+/// Carried by [`TranslateError::UnsupportedTransactionOption`] so callers can
+/// match exhaustively on every currently-rejected clause instead of
+/// inspecting a free-form string.
+#[derive(Display, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TransactionOption {
+    /// `START TRANSACTION READ ONLY | READ WRITE | ISOLATION LEVEL ...`
+    #[strum(to_string = "transaction mode")]
+    Mode,
+
+    /// `BEGIN DEFERRED | IMMEDIATE | EXCLUSIVE` (`SQLite`)
+    #[strum(to_string = "transaction modifier")]
+    Modifier,
+
+    /// `COMMIT AND CHAIN` / `ROLLBACK AND CHAIN`
+    #[strum(to_string = "AND CHAIN clause")]
+    Chain,
+
+    /// `ROLLBACK TO [SAVEPOINT] <name>`
+    #[strum(to_string = "TO SAVEPOINT clause")]
+    Savepoint,
+}
+
 /// Query-level (`WITH`/`FETCH`/locking) clauses that `GlueSQL` does not
 /// support yet.
 ///
@@ -161,10 +226,12 @@ macro_rules! serialize_via_display {
 }
 
 serialize_via_display!(
+    CreateIndexOption,
     CreateTableOption,
     InsertOption,
     UpdateOption,
     DeleteOption,
+    TransactionOption,
     QueryOption,
     SelectOption,
     JoinConstraintReason,
@@ -244,11 +311,17 @@ pub enum TranslateError {
     #[error("unsupported CREATE TABLE option: {0}")]
     UnsupportedCreateTableOption(CreateTableOption),
 
+    #[error("unsupported CREATE INDEX option: {0}")]
+    UnsupportedCreateIndexOption(CreateIndexOption),
+
     #[error("unsupported UPDATE option: {0}")]
     UnsupportedUpdateOption(UpdateOption),
 
     #[error("unsupported DELETE option: {0}")]
     UnsupportedDeleteOption(DeleteOption),
+
+    #[error("unsupported transaction option: {0}")]
+    UnsupportedTransactionOption(TransactionOption),
 
     #[error("unsupported query option: {0}")]
     UnsupportedQueryOption(QueryOption),
