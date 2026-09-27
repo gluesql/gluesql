@@ -106,14 +106,13 @@ mod tests {
         let storage = run(ITEM);
 
         let sql = "INSERT INTO Item (name) VALUES ('glue')";
-        let actual = plan_table_columns(&storage, sql).unwrap();
+        let actual = plan_table_columns(&storage, sql);
         let expected = table("Item")
             .table_columns(ITEM_COLUMNS)
             .insert()
             .columns("name")
             .values(vec!["'glue'"])
-            .build()
-            .unwrap();
+            .build();
         test!(
             actual,
             expected,
@@ -121,13 +120,12 @@ mod tests {
         );
 
         let sql = "INSERT INTO Item SELECT id, name, note FROM Item";
-        let actual = plan_table_columns(&storage, sql).unwrap();
+        let actual = plan_table_columns(&storage, sql);
         let expected = table("Item")
             .table_columns(ITEM_COLUMNS)
             .insert()
             .as_select(table("Item").select().project("id, name, note"))
-            .build()
-            .unwrap();
+            .build();
         test!(
             actual,
             expected,
@@ -141,27 +139,32 @@ mod tests {
             .build()
             .unwrap();
         let schema_map = fetch_schema_map(&storage, &closed).unwrap();
-        let actual = plan(&schema_map, closed.clone()).unwrap();
-        test!(actual, closed, "closed insert is left unchanged:\n{sql}");
+        let actual = plan(&schema_map, closed.clone());
+        test!(
+            actual,
+            Ok(closed),
+            "closed insert is left unchanged:\n{sql}"
+        );
 
         let storage = run("CREATE TABLE Log;");
         let sql = "INSERT INTO Log VALUES ('{}')";
-        let actual = plan_table_columns(&storage, sql).unwrap();
+        let actual = plan_table_columns(&storage, sql);
         let expected = table("Log")
             .schemaless()
             .insert()
             .values(vec!["'{}'"])
-            .build()
-            .unwrap();
+            .build();
         test!(actual, expected, "schemaless insert:\n{sql}");
 
         let storage = MockStorage::default();
         let sql = "INSERT INTO Missing VALUES (1)";
-        let actual = plan_table_columns(&storage, sql).unwrap_err();
-        let expected = Error::Insert(InsertError::TableNotFound("Missing".to_owned()));
+        let actual = plan_table_columns(&storage, sql);
+        let expected = Err(Error::Insert(InsertError::TableNotFound(
+            "Missing".to_owned(),
+        )));
         test!(actual, expected, "missing table:\n{sql}");
 
-        let actual = storage.plan(statement(sql)).unwrap_err();
+        let actual = storage.plan(statement(sql));
         test!(
             actual,
             expected,
@@ -174,15 +177,19 @@ mod tests {
         let storage = run(ITEM);
 
         let sql = "SELECT * FROM Item";
-        let actual = plan_table_columns(&storage, sql).unwrap();
-        test!(actual, statement(sql), "select is unchanged:\n{sql}");
+        let actual = plan_table_columns(&storage, sql);
+        test!(actual, Ok(statement(sql)), "select is unchanged:\n{sql}");
 
         let sql = "DELETE FROM Item WHERE id = 1";
-        let actual = plan_table_columns(&storage, sql).unwrap();
-        test!(actual, statement(sql), "delete is unchanged:\n{sql}");
+        let actual = plan_table_columns(&storage, sql);
+        test!(actual, Ok(statement(sql)), "delete is unchanged:\n{sql}");
 
         let sql = "CREATE TABLE Other (id INTEGER DEFAULT 1)";
-        let actual = plan_table_columns(&storage, sql).unwrap();
-        test!(actual, statement(sql), "create table is unchanged:\n{sql}");
+        let actual = plan_table_columns(&storage, sql);
+        test!(
+            actual,
+            Ok(statement(sql)),
+            "create table is unchanged:\n{sql}"
+        );
     }
 }
