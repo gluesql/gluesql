@@ -164,7 +164,7 @@ mod tests {
         },
         result::Error,
         row_conversion::ToGlueRow,
-        translate::{IntoParamLiteral, ParamLiteral, TranslateError},
+        translate::{IntoParamLiteral, ParamLiteral, ToParamLiteral, TranslateError},
     };
 
     #[test]
@@ -262,9 +262,9 @@ mod tests {
 
         fn to_glue_row(&self) -> Vec<ParamLiteral> {
             vec![
-                self.id.into_param_literal(),
-                self.name.clone().into_param_literal(),
-                self.in_stock.into_param_literal(),
+                self.id.to_param_literal(),
+                self.name.to_param_literal(),
+                self.in_stock.to_param_literal(),
             ]
         }
     }
