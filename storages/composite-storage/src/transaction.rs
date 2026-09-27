@@ -23,7 +23,7 @@ impl Transaction for CompositeStorage {
 
     fn rollback(&mut self) -> Result<()> {
         for storage in self.storages.values_mut() {
-            storage.commit()?;
+            storage.rollback()?;
         }
 
         Ok(())

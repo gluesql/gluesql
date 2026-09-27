@@ -1,4 +1,13 @@
+//! Sled-backed persistent storage for `GlueSQL`.
+//!
+//! # Deprecation
+//!
+//! `SledStorage` is deprecated as of v0.20.0 and will be removed in v0.21.0.
+//! Existing deployments can continue using it during the deprecation period, but new
+//! persistent-storage deployments should use `RedbStorage`.
+
 #![deny(clippy::str_to_string)]
+#![allow(deprecated)]
 
 mod alter_table;
 mod error;
@@ -9,6 +18,7 @@ mod index_sync;
 mod key;
 mod lock;
 mod migration;
+mod open;
 mod planner;
 mod snapshot;
 mod store;
@@ -25,6 +35,7 @@ use {
             ensure_storage_format_version_supported, initialize_storage_format_version,
             prepare_import_destination,
         },
+        open::open_with_lock_wait,
         snapshot::Snapshot,
     },
     error::{err_into, tx_err_into},
@@ -55,6 +66,10 @@ pub enum State {
 }
 
 #[derive(Debug, Clone)]
+#[deprecated(
+    since = "0.20.0",
+    note = "SledStorage will be removed in v0.21.0; use RedbStorage for new persistent-storage deployments"
+)]
 pub struct SledStorage {
     pub tree: Db,
     pub id_offset: u64,
@@ -69,7 +84,8 @@ impl SledStorage {
     pub fn new<P: AsRef<std::path::Path>>(filename: P) -> Result<Self> {
         let path = filename.as_ref();
         let path_exists = path.exists();
-        let tree = sled::open(path).map_err(err_into)?;
+        let config = Config::new().path(path);
+        let tree = open_with_lock_wait(&config)?;
         if path_exists {
             ensure_storage_format_version_supported(&tree)?;
         } else {
@@ -124,7 +140,7 @@ impl TryFrom<Config> for SledStorage {
 
     fn try_from(config: Config) -> Result<Self> {
         let path_exists = config.get_path().exists();
-        let tree = config.open().map_err(err_into)?;
+        let tree = open_with_lock_wait(&config)?;
         if path_exists {
             ensure_storage_format_version_supported(&tree)?;
         } else {

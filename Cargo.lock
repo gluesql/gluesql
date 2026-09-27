@@ -1365,7 +1365,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "gluesql-cli",
  "gluesql-composite-storage",
@@ -1387,7 +1387,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-cli"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
@@ -1409,18 +1409,18 @@ dependencies = [
 
 [[package]]
 name = "gluesql-composite-storage"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "gluesql-core",
+ "gluesql-redb-storage",
  "gluesql-test-suite",
  "gluesql_memory_storage",
- "gluesql_sled_storage",
  "serde",
 ]
 
 [[package]]
 name = "gluesql-core"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "bigdecimal",
  "cfg-if",
@@ -1445,7 +1445,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-csv-storage"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "csv",
  "gluesql-core",
@@ -1459,7 +1459,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-file-storage"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "gluesql-core",
  "gluesql-test-suite",
@@ -1471,7 +1471,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-git-storage"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "gluesql-core",
  "gluesql-csv-storage",
@@ -1484,7 +1484,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-json-storage"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "gluesql-core",
  "gluesql-test-suite",
@@ -1498,7 +1498,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-macros"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "chrono",
  "gluesql-core",
@@ -1513,7 +1513,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-mongo-storage"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "bson",
  "chrono",
@@ -1530,7 +1530,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-parquet-storage"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "bincode",
  "byteorder",
@@ -1547,7 +1547,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-redb-storage"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "bincode",
  "gluesql-core",
@@ -1560,7 +1560,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-redis-storage"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "chrono",
  "gluesql-core",
@@ -1573,7 +1573,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-shared-memory-storage"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "gluesql-core",
  "gluesql-test-suite",
@@ -1583,21 +1583,24 @@ dependencies = [
 
 [[package]]
 name = "gluesql-test-suite"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "bigdecimal",
  "chrono",
  "gluesql-core",
  "hex",
+ "include_dir",
+ "paste",
  "pretty_assertions",
  "rust_decimal",
+ "serde",
  "serde_json",
  "uuid",
 ]
 
 [[package]]
 name = "gluesql_memory_storage"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "gluesql-core",
  "gluesql-test-suite",
@@ -1606,7 +1609,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql_sled_storage"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "bincode",
  "criterion",
@@ -1780,6 +1783,25 @@ dependencies = [
  "sized-chunks",
  "typenum",
  "version_check",
+]
+
+[[package]]
+name = "include_dir"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "923d117408f1e49d914f1a379a309cffe4f18c05cf4e3d12e613a15fc81bd0dd"
+dependencies = [
+ "include_dir_macros",
+]
+
+[[package]]
+name = "include_dir_macros"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7cab85a7ed0bd5f0e76d93846e0147172bed2e2d3f859bcc33a8d9699cad1a75"
+dependencies = [
+ "proc-macro2",
+ "quote",
 ]
 
 [[package]]

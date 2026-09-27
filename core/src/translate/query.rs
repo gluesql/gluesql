@@ -1,7 +1,8 @@
 use {
     super::{
-        ParamLiteral, TranslateError, function::translate_function_arg_exprs, translate_expr,
-        translate_idents, translate_object_name, translate_order_by_expr,
+        JoinConstraintReason, ParamLiteral, QueryOption, SelectOption, TranslateError,
+        function::translate_function_arg_exprs, translate_expr, translate_idents,
+        translate_object_name, translate_order_by_expr,
     },
     crate::{
         ast::{
@@ -39,11 +40,11 @@ pub fn translate_query(sql_query: &SqlQuery, params: &[ParamLiteral]) -> Result<
     } = sql_query;
 
     let violation = if with.is_some() {
-        Some("WITH clause")
+        Some(QueryOption::With)
     } else if fetch.is_some() {
-        Some("FETCH clause")
+        Some(QueryOption::Fetch)
     } else if !locks.is_empty() {
-        Some("LOCK clause")
+        Some(QueryOption::Lock)
     } else {
         None
     };
@@ -110,9 +111,9 @@ fn translate_select(sql_select: &SqlSelect, params: &[ParamLiteral]) -> Result<S
     } = sql_select;
 
     if into.is_some() {
-        return Err(TranslateError::UnsupportedSelectOption("INTO clause").into());
+        return Err(TranslateError::UnsupportedSelectOption(SelectOption::Into).into());
     } else if !named_window.is_empty() {
-        return Err(TranslateError::UnsupportedSelectOption("WINDOW clause").into());
+        return Err(TranslateError::UnsupportedSelectOption(SelectOption::Window).into());
     }
 
     if from.len() > 1 {
@@ -260,26 +261,38 @@ fn translate_table_factor(
             let alias = translate_table_alias(alias.as_ref());
 
             match (object_name.as_str(), args) {
-                ("SERIES", Some(SqlTableFunctionArgs { args, .. })) => Ok(TableFactor::Series {
-                    alias: alias_or_name(alias, object_name),
-                    size: translate_table_args(args)?,
-                }),
-                ("GLUE_OBJECTS", _) => Ok(TableFactor::Dictionary {
+                ("SERIES", Some(SqlTableFunctionArgs { args, .. })) => {
+                    if args.len() > 1 {
+                        return Err(TranslateError::UnsupportedQueryTableFactor(
+                            sql_table_factor.to_string(),
+                        )
+                        .into());
+                    }
+                    Ok(TableFactor::Series {
+                        alias: alias_or_name(alias, object_name),
+                        size: translate_table_args(args)?,
+                    })
+                }
+                ("GLUE_OBJECTS", None) => Ok(TableFactor::Dictionary {
                     dict: Dictionary::GlueObjects,
                     alias: alias_or_name(alias, object_name),
                 }),
-                ("GLUE_TABLES", _) => Ok(TableFactor::Dictionary {
+                ("GLUE_TABLES", None) => Ok(TableFactor::Dictionary {
                     dict: Dictionary::GlueTables,
                     alias: alias_or_name(alias, object_name),
                 }),
-                ("GLUE_INDEXES", _) => Ok(TableFactor::Dictionary {
+                ("GLUE_INDEXES", None) => Ok(TableFactor::Dictionary {
                     dict: Dictionary::GlueIndexes,
                     alias: alias_or_name(alias, object_name),
                 }),
-                ("GLUE_TABLE_COLUMNS", _) => Ok(TableFactor::Dictionary {
+                ("GLUE_TABLE_COLUMNS", None) => Ok(TableFactor::Dictionary {
                     dict: Dictionary::GlueTableColumns,
                     alias: alias_or_name(alias, object_name),
                 }),
+                (_, Some(_)) => Err(TranslateError::UnsupportedQueryTableFactor(
+                    sql_table_factor.to_string(),
+                )
+                .into()),
                 _ => Ok(TableFactor::Table {
                     name: translate_object_name(name)?,
                     alias,
@@ -323,10 +336,10 @@ fn translate_join(params: &[ParamLiteral], sql_join: &SqlJoin) -> Result<Join> {
         SqlJoinConstraint::On(expr) => translate_expr(expr, params).map(JoinConstraint::On),
         SqlJoinConstraint::None => Ok(JoinConstraint::None),
         SqlJoinConstraint::Using(_) => {
-            Err(TranslateError::UnsupportedJoinConstraint("USING".to_owned()).into())
+            Err(TranslateError::UnsupportedJoinConstraint(JoinConstraintReason::Using).into())
         }
         SqlJoinConstraint::Natural => {
-            Err(TranslateError::UnsupportedJoinConstraint("NATURAL".to_owned()).into())
+            Err(TranslateError::UnsupportedJoinConstraint(JoinConstraintReason::Natural).into())
         }
     };
 
@@ -373,18 +386,38 @@ mod tests {
     }
 
     #[test]
+    fn unsupported_table_function_args_rejected() {
+        assert_query_error(
+            "SELECT * FROM GLUE_TABLES(1)",
+            TranslateError::UnsupportedQueryTableFactor("GLUE_TABLES(1)".into()),
+        );
+        assert_query_error(
+            "SELECT * FROM GLUE_INDEXES(1)",
+            TranslateError::UnsupportedQueryTableFactor("GLUE_INDEXES(1)".into()),
+        );
+        assert_query_error(
+            "SELECT * FROM Foo(1)",
+            TranslateError::UnsupportedQueryTableFactor("Foo(1)".into()),
+        );
+        assert_query_error(
+            "SELECT * FROM SERIES(1, 2)",
+            TranslateError::UnsupportedQueryTableFactor("SERIES(1, 2)".into()),
+        );
+    }
+
+    #[test]
     fn query_options_rejected() {
         assert_query_error(
             "WITH t AS (SELECT 1) SELECT * FROM t",
-            TranslateError::UnsupportedQueryOption("WITH clause"),
+            TranslateError::UnsupportedQueryOption(QueryOption::With),
         );
         assert_query_error(
             "SELECT * FROM Foo FETCH FIRST 1 ROW ONLY",
-            TranslateError::UnsupportedQueryOption("FETCH clause"),
+            TranslateError::UnsupportedQueryOption(QueryOption::Fetch),
         );
         assert_query_error(
             "SELECT * FROM Foo FOR UPDATE",
-            TranslateError::UnsupportedQueryOption("LOCK clause"),
+            TranslateError::UnsupportedQueryOption(QueryOption::Lock),
         );
     }
 
@@ -392,11 +425,23 @@ mod tests {
     fn select_options_rejected() {
         assert_query_error(
             "SELECT * INTO Foo FROM Bar",
-            TranslateError::UnsupportedSelectOption("INTO clause"),
+            TranslateError::UnsupportedSelectOption(SelectOption::Into),
         );
         assert_query_error(
             "SELECT * FROM Foo WINDOW w AS (PARTITION BY id)",
-            TranslateError::UnsupportedSelectOption("WINDOW clause"),
+            TranslateError::UnsupportedSelectOption(SelectOption::Window),
+        );
+    }
+
+    #[test]
+    fn join_constraint_not_supported() {
+        assert_query_error(
+            "SELECT * FROM TableA JOIN TableB USING (id)",
+            TranslateError::UnsupportedJoinConstraint(JoinConstraintReason::Using),
+        );
+        assert_query_error(
+            "SELECT * FROM TableA NATURAL JOIN TableB",
+            TranslateError::UnsupportedJoinConstraint(JoinConstraintReason::Natural),
         );
     }
 
@@ -405,7 +450,7 @@ mod tests {
     fn query_option_helper_panics_on_non_query() {
         assert_query_error(
             "INSERT INTO Foo VALUES (1)",
-            TranslateError::UnsupportedQueryOption("unused"),
+            TranslateError::UnsupportedQueryOption(QueryOption::With),
         );
     }
 

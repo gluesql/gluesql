@@ -1,9 +1,5 @@
 [package]
 name = "gluesql-mongo-storage"
-authors = [
-  "Hyoungkwan Cho <devgony@gmail.com>",
-  "Taehoon Moon <taehoon.moon@outlook.com>",
-]
 version.workspace = true
 edition.workspace = true
 description.workspace = true

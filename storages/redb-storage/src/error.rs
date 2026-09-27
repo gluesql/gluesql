@@ -34,6 +34,8 @@ pub enum StorageError {
     RedbTransaction(Box<redb::TransactionError>),
     #[error(transparent)]
     RedbCommit(#[from] redb::CommitError),
+    #[error(transparent)]
+    RedbUpgrade(#[from] redb::UpgradeError),
 
     #[error(transparent)]
     Bincode(#[from] bincode::Error),

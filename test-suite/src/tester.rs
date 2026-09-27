@@ -1,24 +1,19 @@
 use {
     gluesql_core::{
         ast::*,
-        parse_sql::parse_expr,
-        plan::{IndexItemPlan, StatementPlan},
-        prelude::{Error, Glue, Payload, Result, parse, translate},
+        plan::{
+            AggregationInputPlan, AggregationPlan, ExprPlan, HavingPlan, ProjectInputPlan,
+            ProjectPlan, QueryPlan, SourcePlan, StatementPlan, TableAccessPlan,
+        },
+        prelude::{Glue, Payload, Result},
         store::{GStore, GStoreMut, Planner},
-        translate::translate_expr,
     },
     pretty_assertions::assert_eq,
 };
 
 pub mod macros;
 
-pub fn expr(sql: &str) -> Expr {
-    let parsed = parse_expr(sql).unwrap();
-
-    translate_expr(&parsed, &[]).unwrap()
-}
-
-pub fn test_indexes(statement: &StatementPlan, indexes: Option<Vec<IndexItemPlan>>) {
+pub fn test_indexes(statement: &StatementPlan, indexes: Option<Vec<TableAccessPlan>>) {
     if let Some(expected) = indexes {
         let found = find_indexes(statement);
 
@@ -38,42 +33,64 @@ pub fn test_indexes(statement: &StatementPlan, indexes: Option<Vec<IndexItemPlan
     }
 }
 
-fn find_indexes(statement: &StatementPlan) -> Vec<&IndexItemPlan> {
-    fn find_expr_indexes(expr: &gluesql_core::plan::ExprPlan) -> Vec<&IndexItemPlan> {
+fn find_indexes(statement: &StatementPlan) -> Vec<&TableAccessPlan> {
+    fn find_expr_indexes(expr: &ExprPlan) -> Vec<&TableAccessPlan> {
         match expr {
-            gluesql_core::plan::ExprPlan::Subquery(query)
-            | gluesql_core::plan::ExprPlan::Exists {
+            ExprPlan::Subquery(query)
+            | ExprPlan::Exists {
                 subquery: query, ..
             }
-            | gluesql_core::plan::ExprPlan::InSubquery {
+            | ExprPlan::InSubquery {
                 subquery: query, ..
             } => find_query_indexes(query),
-            _ => vec![],
+            _ => Vec::new(),
         }
     }
 
-    fn find_query_indexes(query: &gluesql_core::plan::QueryPlan) -> Vec<&IndexItemPlan> {
-        let select = match &query.body {
-            gluesql_core::plan::SetExprPlan::Select(select) => select,
-            gluesql_core::plan::SetExprPlan::Values(_) => {
-                return vec![];
+    fn find_source_indexes(source: &SourcePlan) -> Vec<&TableAccessPlan> {
+        match source {
+            SourcePlan::Table(table) if table.access != TableAccessPlan::FullScan => {
+                vec![&table.access]
             }
-        };
+            SourcePlan::Derived(derived) => find_query_indexes(&derived.query),
+            SourcePlan::Table(_) | SourcePlan::Series(_) | SourcePlan::Dictionary(_) => Vec::new(),
+        }
+    }
 
-        let selection_indexes = select
-            .selection
-            .as_ref()
-            .map(find_expr_indexes)
+    fn find_project_indexes(project: &ProjectPlan) -> Vec<&TableAccessPlan> {
+        let filter = match &project.input {
+            ProjectInputPlan::Filter(filter)
+            | ProjectInputPlan::Aggregation(AggregationPlan {
+                input: AggregationInputPlan::Filter(filter),
+                ..
+            })
+            | ProjectInputPlan::Having(HavingPlan {
+                input:
+                    AggregationPlan {
+                        input: AggregationInputPlan::Filter(filter),
+                        ..
+                    },
+                ..
+            }) => Some(filter),
+            ProjectInputPlan::Source(_)
+            | ProjectInputPlan::InnerJoin(_)
+            | ProjectInputPlan::LeftOuterJoin(_)
+            | ProjectInputPlan::Aggregation(_)
+            | ProjectInputPlan::Having(_) => None,
+        };
+        let filter_indexes = filter
+            .map(|filter| find_expr_indexes(&filter.expr))
             .unwrap_or_default();
+        let source_indexes = find_source_indexes(project.input.base_source());
 
-        let table_indexes = match &select.from.relation {
-            gluesql_core::plan::TableFactorPlan::Table {
-                index: Some(index), ..
-            } => vec![index],
-            _ => vec![],
-        };
+        [filter_indexes, source_indexes].concat()
+    }
 
-        [selection_indexes, table_indexes].concat()
+    fn find_query_indexes(query: &QueryPlan) -> Vec<&TableAccessPlan> {
+        query
+            .project()
+            .map(find_project_indexes)
+            .unwrap_or_default()
     }
 
     match statement {
@@ -126,67 +143,6 @@ pub trait Tester<T: GStore + GStoreMut + Planner> {
     fn new(namespace: &str) -> Self;
 
     fn get_glue(&mut self) -> &mut Glue<T>;
-
-    fn run_inner(&mut self, sql: &str) -> Result<Payload> {
-        let glue = self.get_glue();
-
-        println!("[RUN] {sql}");
-        let parsed = parse(sql)?;
-        let statement = translate(&parsed[0])?;
-        let statement = glue.storage.plan(statement.into())?;
-
-        glue.execute_stmt(&statement)
-    }
-
-    fn run(&mut self, sql: &str) -> Payload {
-        self.run_inner(sql).unwrap()
-    }
-
-    fn run_err(&mut self, sql: &str) -> Error {
-        self.run_inner(sql).unwrap_err()
-    }
-
-    fn count(&mut self, sql: &str, expected: usize) {
-        let actual = match self.run_inner(sql).unwrap() {
-            Payload::Select { rows, .. } => rows.len(),
-            Payload::Delete(num) | Payload::Update(num) => num,
-            _ => panic!("compare is only for Select, Delete and Update"),
-        };
-
-        assert_eq!(actual, expected, "[COUNT] {sql}");
-    }
-
-    fn type_match(&mut self, sql: &str, expected: &[DataType]) {
-        let actual = self.run_inner(sql).unwrap();
-
-        type_match(expected, Ok(actual));
-    }
-
-    fn test(&mut self, sql: &str, expected: Result<Payload>) {
-        let actual = self.run_inner(sql);
-
-        assert_eq!(actual, expected, "[TEST] {sql}");
-    }
-
-    fn named_test(&mut self, name: &str, sql: &str, expected: Result<Payload>) {
-        let actual = self.run_inner(sql);
-
-        assert_eq!(actual, expected, "[TEST] {name}");
-    }
-
-    fn test_idx(&mut self, sql: &str, expected: Result<Payload>, indexes: Vec<IndexItemPlan>) {
-        let glue = self.get_glue();
-
-        let parsed = parse(sql).unwrap();
-        let statement = translate(&parsed[0]).unwrap();
-        let statement = glue.storage.plan(statement.into()).unwrap();
-
-        test_indexes(&statement, Some(indexes));
-
-        let actual = glue.execute_stmt(&statement);
-
-        assert_eq!(actual, expected, "[TEST IDX] {sql}");
-    }
 }
 
 #[macro_export]
@@ -205,13 +161,6 @@ macro_rules! test_case {
             macro_rules! get_glue {
                 () => {
                     glue
-                };
-            }
-
-            #[allow(unused_macros)]
-            macro_rules! get_tester {
-                () => {
-                    &mut tester
                 };
             }
 

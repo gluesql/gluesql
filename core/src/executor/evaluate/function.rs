@@ -387,7 +387,7 @@ pub fn ifnull<'a>(expr: Evaluated<'a>, then: Evaluated<'a>) -> ControlFlow<Evalu
 }
 
 pub fn nullif<'a>(expr1: Evaluated<'a>, expr2: &Evaluated<'a>) -> ControlFlow<Evaluated<'a>> {
-    Continue(if &expr1 == expr2 {
+    Continue(if expr1.evaluate_eq(expr2).is_true() {
         Evaluated::Value(Cow::Owned(Value::Null))
     } else {
         expr1
@@ -1154,5 +1154,15 @@ pub fn select_arrow_value(base: &Value, selector: &Value) -> Result<Value> {
                 .unwrap_or(Value::Null))
         }
         _ => Err(EvaluateError::ArrowBaseRequiresMapOrList.into()),
+    }
+}
+
+pub fn select_long_arrow_value(base: &Value, selector: &Value) -> Result<Value> {
+    let value = select_arrow_value(base, selector)?;
+
+    match value {
+        Value::Null => Ok(Value::Null),
+        Value::Str(s) => Ok(Value::Str(s)),
+        other => Ok(Value::Str(String::from(&other))),
     }
 }

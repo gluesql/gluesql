@@ -1,38 +1,39 @@
-mod hash_join;
-mod join_constraint;
-mod root;
-
-pub use {hash_join::HashJoinNode, join_constraint::JoinConstraintNode, root::JoinNode};
-
 use crate::{
-    ast::{Expr, JoinConstraint, JoinOperator},
-    plan::{JoinConstraintPlan, JoinOperatorPlan},
+    ast::{TableAlias, TableFactor},
+    plan::{SourcePlan, TableAccessPlan, TableAliasPlan, TableSourcePlan},
 };
 
-#[derive(Clone, Copy, Debug)]
-pub(in crate::query_builder::select) enum JoinOperatorType {
-    Inner,
-    Left,
+mod inner_hash_join;
+mod inner_join_condition;
+mod inner_nested_loop_join;
+mod left_outer_hash_join;
+mod left_outer_join_condition;
+mod left_outer_nested_loop_join;
+
+pub use {
+    inner_hash_join::InnerHashJoinNode, inner_join_condition::InnerJoinConditionNode,
+    inner_nested_loop_join::InnerNestedLoopJoinNode, left_outer_hash_join::LeftOuterHashJoinNode,
+    left_outer_join_condition::LeftOuterJoinConditionNode,
+    left_outer_nested_loop_join::LeftOuterNestedLoopJoinNode,
+};
+
+fn table_source_plan(name: String, alias: Option<String>) -> SourcePlan {
+    SourcePlan::Table(TableSourcePlan {
+        name,
+        alias: alias.map(|name| TableAliasPlan {
+            name,
+            columns: Vec::new(),
+        }),
+        access: TableAccessPlan::FullScan,
+    })
 }
 
-pub(super) fn join_operator_with_constraint(
-    operator_type: JoinOperatorType,
-    constraint: Option<Expr>,
-) -> JoinOperator {
-    match (operator_type, constraint) {
-        (JoinOperatorType::Inner, Some(expr)) => JoinOperator::Inner(JoinConstraint::On(expr)),
-        (JoinOperatorType::Inner, None) => JoinOperator::Inner(JoinConstraint::None),
-        (JoinOperatorType::Left, Some(expr)) => JoinOperator::LeftOuter(JoinConstraint::On(expr)),
-        (JoinOperatorType::Left, None) => JoinOperator::LeftOuter(JoinConstraint::None),
-    }
-}
-
-pub(super) fn join_operator_plan_with_constraint(
-    operator_type: JoinOperatorType,
-    constraint: JoinConstraintPlan,
-) -> JoinOperatorPlan {
-    match operator_type {
-        JoinOperatorType::Inner => JoinOperatorPlan::Inner(constraint),
-        JoinOperatorType::Left => JoinOperatorPlan::LeftOuter(constraint),
+fn table_factor(name: String, alias: Option<String>) -> TableFactor {
+    TableFactor::Table {
+        name,
+        alias: alias.map(|name| TableAlias {
+            name,
+            columns: Vec::new(),
+        }),
     }
 }

@@ -23,6 +23,7 @@ mod concat;
 pub(super) mod convert;
 mod eq;
 mod like;
+mod regex;
 mod unary_op;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -162,6 +163,19 @@ impl<'a> Evaluated<'a> {
         } else {
             let base = Value::try_from(self.clone())?;
             function::select_arrow_value(&base, &selector)
+        };
+
+        value_result.map(|v| Evaluated::Value(Cow::Owned(v)))
+    }
+
+    pub fn long_arrow<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
+        let selector = Value::try_from(other.clone())?;
+
+        let value_result = if let Evaluated::Value(base) = self {
+            function::select_long_arrow_value(base, &selector)
+        } else {
+            let base = Value::try_from(self.clone())?;
+            function::select_long_arrow_value(&base, &selector)
         };
 
         value_result.map(|v| Evaluated::Value(Cow::Owned(v)))
@@ -673,6 +687,16 @@ mod tests {
         assert_eq!(val(Value::Bool(true)).to_string(), "TRUE");
         assert_eq!(val(Value::Null).to_string(), "NULL");
         assert_eq!(val(Value::Str("foo".to_owned())).to_string(), "foo");
+    }
+
+    #[test]
+    fn long_arrow_non_value_base() {
+        let base = Evaluated::Number(Cow::Owned(BigDecimal::from(1)));
+        let selector = Evaluated::Text(Cow::Owned("foo".to_owned()));
+        assert_eq!(
+            base.long_arrow(&selector),
+            Err(EvaluateError::ArrowBaseRequiresMapOrList.into()),
+        );
     }
 
     #[test]

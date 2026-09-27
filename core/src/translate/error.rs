@@ -1,4 +1,241 @@
-use {serde::Serialize, std::fmt::Debug, thiserror::Error};
+use {serde::Serialize, std::fmt::Debug, strum_macros::Display, thiserror::Error};
+
+/// `CREATE TABLE` clauses that `GlueSQL` does not support yet.
+///
+/// Carried by [`TranslateError::UnsupportedCreateTableOption`] so callers
+/// can match exhaustively on every currently-rejected clause instead of
+/// inspecting a free-form string.
+#[derive(Display, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CreateTableOption {
+    /// `CREATE TEMPORARY TABLE ...`
+    #[strum(to_string = "TEMPORARY clause")]
+    Temporary,
+
+    /// `CREATE TABLE ... LIKE <table>`
+    #[strum(to_string = "LIKE clause")]
+    Like,
+
+    /// `CREATE TABLE ... CLONE <table>`
+    #[strum(to_string = "CLONE clause")]
+    CloneTable,
+}
+
+/// `CREATE INDEX` clauses that `GlueSQL` does not support yet.
+///
+/// Carried by [`TranslateError::UnsupportedCreateIndexOption`] so callers
+/// can match exhaustively on every currently-rejected clause instead of
+/// inspecting a free-form string.
+#[derive(Display, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CreateIndexOption {
+    /// `CREATE UNIQUE INDEX ...`
+    #[strum(to_string = "UNIQUE keyword")]
+    Unique,
+
+    /// `CREATE INDEX CONCURRENTLY ...`
+    #[strum(to_string = "CONCURRENTLY keyword")]
+    Concurrently,
+
+    /// `CREATE INDEX IF NOT EXISTS ...`
+    #[strum(to_string = "IF NOT EXISTS clause")]
+    IfNotExists,
+
+    /// `CREATE INDEX ... USING <method> ...`
+    #[strum(to_string = "USING clause")]
+    Using,
+
+    /// `CREATE INDEX ... INCLUDE (...)`
+    #[strum(to_string = "INCLUDE clause")]
+    Include,
+
+    /// `CREATE INDEX ... NULLS [NOT] DISTINCT`
+    #[strum(to_string = "NULLS DISTINCT clause")]
+    NullsDistinct,
+
+    /// `CREATE INDEX ... WITH (...)`
+    #[strum(to_string = "WITH clause")]
+    With,
+
+    /// `CREATE INDEX ... WHERE <predicate>`
+    #[strum(to_string = "WHERE clause")]
+    Where,
+}
+
+/// `INSERT` clauses that `GlueSQL` does not support yet.
+///
+/// Carried by [`TranslateError::UnsupportedInsertOption`] so callers can
+/// match exhaustively on every currently-rejected clause instead of
+/// inspecting a free-form string.
+#[derive(Display, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InsertOption {
+    /// `INSERT ... RETURNING ...`
+    #[strum(to_string = "RETURNING clause")]
+    Returning,
+
+    /// `INSERT ... ON CONFLICT ...`
+    #[strum(to_string = "ON CONFLICT clause")]
+    OnConflict,
+
+    /// `INSERT INTO <table> AS <alias> ...`
+    #[strum(to_string = "table alias")]
+    TableAlias,
+
+    /// `INSERT INTO <table> PARTITION (...) ...`
+    #[strum(to_string = "PARTITION clause")]
+    Partition,
+
+    /// `INSERT OVERWRITE TABLE <table> ...`
+    #[strum(to_string = "OVERWRITE clause")]
+    Overwrite,
+
+    /// `INSERT TABLE <table> ...` (the `TABLE` keyword form)
+    #[strum(to_string = "TABLE keyword")]
+    TableKeyword,
+}
+
+/// `UPDATE` clauses that `GlueSQL` does not support yet.
+///
+/// Carried by [`TranslateError::UnsupportedUpdateOption`] so callers can
+/// match exhaustively on every currently-rejected clause instead of
+/// inspecting a free-form string.
+#[derive(Display, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UpdateOption {
+    /// `UPDATE ... FROM ...`
+    #[strum(to_string = "FROM clause")]
+    From,
+
+    /// `UPDATE ... RETURNING ...`
+    #[strum(to_string = "RETURNING clause")]
+    Returning,
+}
+
+/// `DELETE` clauses that `GlueSQL` does not support yet.
+///
+/// Carried by [`TranslateError::UnsupportedDeleteOption`] so callers can
+/// match exhaustively on every currently-rejected clause instead of
+/// inspecting a free-form string.
+#[derive(Display, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DeleteOption {
+    /// `DELETE ... USING ...`
+    #[strum(to_string = "USING clause")]
+    Using,
+
+    /// `DELETE ... RETURNING ...`
+    #[strum(to_string = "RETURNING clause")]
+    Returning,
+
+    /// `DELETE ... ORDER BY ...`
+    #[strum(to_string = "ORDER BY clause")]
+    OrderBy,
+
+    /// `DELETE ... LIMIT ...`
+    #[strum(to_string = "LIMIT clause")]
+    Limit,
+}
+
+/// Transaction statement (`START TRANSACTION`/`COMMIT`/`ROLLBACK`) clauses
+/// that `GlueSQL` does not support yet.
+///
+/// Carried by [`TranslateError::UnsupportedTransactionOption`] so callers can
+/// match exhaustively on every currently-rejected clause instead of
+/// inspecting a free-form string.
+#[derive(Display, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TransactionOption {
+    /// `START TRANSACTION READ ONLY | READ WRITE | ISOLATION LEVEL ...`
+    #[strum(to_string = "transaction mode")]
+    Mode,
+
+    /// `BEGIN DEFERRED | IMMEDIATE | EXCLUSIVE` (`SQLite`)
+    #[strum(to_string = "transaction modifier")]
+    Modifier,
+
+    /// `COMMIT AND CHAIN` / `ROLLBACK AND CHAIN`
+    #[strum(to_string = "AND CHAIN clause")]
+    Chain,
+
+    /// `ROLLBACK TO [SAVEPOINT] <name>`
+    #[strum(to_string = "TO SAVEPOINT clause")]
+    Savepoint,
+}
+
+/// Query-level (`WITH`/`FETCH`/locking) clauses that `GlueSQL` does not
+/// support yet.
+///
+/// Carried by [`TranslateError::UnsupportedQueryOption`] so callers can
+/// match exhaustively on every currently-rejected clause instead of
+/// inspecting a free-form string.
+#[derive(Display, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QueryOption {
+    /// `WITH <cte> ... SELECT ...`
+    #[strum(to_string = "WITH clause")]
+    With,
+
+    /// `SELECT ... FETCH FIRST ...`
+    #[strum(to_string = "FETCH clause")]
+    Fetch,
+
+    /// `SELECT ... FOR UPDATE` / other row-locking clauses
+    #[strum(to_string = "LOCK clause")]
+    Lock,
+}
+
+/// `SELECT` clauses that `GlueSQL` does not support yet.
+///
+/// Carried by [`TranslateError::UnsupportedSelectOption`] so callers can
+/// match exhaustively on every currently-rejected clause instead of
+/// inspecting a free-form string.
+#[derive(Display, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SelectOption {
+    /// `SELECT ... INTO <table> ...`
+    #[strum(to_string = "INTO clause")]
+    Into,
+
+    /// `SELECT ... WINDOW <name> AS (...)`
+    #[strum(to_string = "WINDOW clause")]
+    Window,
+}
+
+/// `JOIN` constraint forms that `GlueSQL` does not support yet.
+///
+/// Carried by [`TranslateError::UnsupportedJoinConstraint`] so callers can
+/// match exhaustively on every currently-rejected form instead of
+/// inspecting a free-form string.
+#[derive(Display, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum JoinConstraintReason {
+    /// `... JOIN ... USING (...)`
+    #[strum(to_string = "USING")]
+    Using,
+
+    /// `... NATURAL JOIN ...`
+    #[strum(to_string = "NATURAL")]
+    Natural,
+}
+
+/// Serializes a `strum::Display`-backed enum as its display string, keeping
+/// JSON output identical to the pre-refactor `&'static str`/`String` fields
+/// without duplicating each variant's text in a second `#[serde(rename)]`.
+macro_rules! serialize_via_display {
+    ($($ty:ty),+ $(,)?) => {
+        $(
+            impl Serialize for $ty {
+                fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+                    serializer.collect_str(self)
+                }
+            }
+        )+
+    };
+}
+
+serialize_via_display!(
+    CreateIndexOption,
+    CreateTableOption,
+    InsertOption,
+    UpdateOption,
+    DeleteOption,
+    TransactionOption,
+    QueryOption,
+    SelectOption,
+    JoinConstraintReason,
+);
 
 #[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum TranslateError {
@@ -69,19 +306,28 @@ pub enum TranslateError {
     UnsupportedUnnamedIndex,
 
     #[error("unsupported INSERT option: {0}")]
-    UnsupportedInsertOption(&'static str),
+    UnsupportedInsertOption(InsertOption),
+
+    #[error("unsupported CREATE TABLE option: {0}")]
+    UnsupportedCreateTableOption(CreateTableOption),
+
+    #[error("unsupported CREATE INDEX option: {0}")]
+    UnsupportedCreateIndexOption(CreateIndexOption),
 
     #[error("unsupported UPDATE option: {0}")]
-    UnsupportedUpdateOption(&'static str),
+    UnsupportedUpdateOption(UpdateOption),
 
     #[error("unsupported DELETE option: {0}")]
-    UnsupportedDeleteOption(&'static str),
+    UnsupportedDeleteOption(DeleteOption),
+
+    #[error("unsupported transaction option: {0}")]
+    UnsupportedTransactionOption(TransactionOption),
 
     #[error("unsupported query option: {0}")]
-    UnsupportedQueryOption(&'static str),
+    UnsupportedQueryOption(QueryOption),
 
     #[error("unsupported SELECT option: {0}")]
-    UnsupportedSelectOption(&'static str),
+    UnsupportedSelectOption(SelectOption),
 
     #[error(
         "unsupported trim chars: expected: `TRIM((BOTH | LEADING | TRAILING) <text> FROM <expr>)`, got: `TRIM(<expr> [<chars>, ..])` syntax"
@@ -157,7 +403,7 @@ pub enum TranslateError {
     UnsupportedQueryTableFactor(String),
 
     #[error("unsupported join constraint: {0}")]
-    UnsupportedJoinConstraint(String),
+    UnsupportedJoinConstraint(JoinConstraintReason),
 
     #[error("unsupported join operator: {0}")]
     UnsupportedJoinOperator(String),

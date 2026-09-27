@@ -1,0 +1,20 @@
+use {serde::Serialize, std::fmt::Debug, thiserror::Error as ThisError};
+
+#[derive(ThisError, Serialize, Debug, PartialEq, Eq)]
+pub enum PlannerError {
+    /// Error that that omits when user projects common column name from multiple tables in `JOIN`
+    /// situation.
+    #[error("column reference {0} is ambiguous, please specify the table name")]
+    ColumnReferenceAmbiguous(String),
+
+    #[error(
+        "SELECT * is not allowed for joins mixing schemaful and schemaless tables; use qualified wildcard or explicit columns"
+    )]
+    SchemalessMixedJoinWildcardProjection,
+
+    #[error("specifying columns is not allowed for schemaless table INSERT; omit the column list")]
+    SchemalessInsertWithExplicitColumns,
+
+    #[error("unreachable")]
+    Unreachable,
+}

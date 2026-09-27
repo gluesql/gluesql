@@ -1,7 +1,7 @@
 mod v1_to_v2;
 
 use {
-    crate::{Snapshot, err_into},
+    crate::{Snapshot, err_into, open::open_with_lock_wait},
     gluesql_core::{
         data::Schema,
         error::{Error, Result},
@@ -84,11 +84,8 @@ pub fn migrate_to_latest<P: AsRef<Path>>(path: P) -> Result<MigrationReport> {
         )));
     }
 
-    let tree = sled::Config::new()
-        .path(path)
-        .flush_every_ms(None)
-        .open()
-        .map_err(err_into)?;
+    let config = sled::Config::new().path(path).flush_every_ms(None);
+    let tree = open_with_lock_wait(&config)?;
     migrate_tree_to_latest(&tree)
 }
 
