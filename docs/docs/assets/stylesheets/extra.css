@@ -1,0 +1,13 @@
+.md-logo img {
+  border-radius: 6px;
+}
+
+@media screen and (min-width: 76.25em) {
+  .md-header__button.md-logo {
+    margin-right: 0;
+  }
+
+  .md-header__title {
+    margin-left: 0.1rem;
+  }
+}
