@@ -2,11 +2,13 @@
 
 use gluesql::{
     FromGlueRow,
-    core::store::{GStore, GStoreMut, Planner},
+    core::{
+        planner::PlannerError,
+        store::{GStore, GStoreMut, Planner},
+    },
     prelude::*,
 };
 
-/// Exercises the public API surface: DDL, DML, SELECT, and `FromGlueRow` conversion.
 fn basic<T: GStore + GStoreMut + Planner>(glue: &mut Glue<T>) {
     // Demonstrate FromGlueRow derive + Payload conversion to struct
     #[derive(Debug, PartialEq, FromGlueRow)]
@@ -61,11 +63,7 @@ fn basic<T: GStore + GStoreMut + Planner>(glue: &mut Glue<T>) {
     );
 }
 
-/// Verifies that statements in a single `execute` call are planned against the schema
-/// left behind by the statements before them (#2009).
 fn batch<T: GStore + GStoreMut + Planner>(glue: &mut Glue<T>) {
-    use gluesql::core::planner::PlannerError;
-
     // a table created earlier in the same call must be visible to the planner
     assert_eq!(
         glue.execute(
