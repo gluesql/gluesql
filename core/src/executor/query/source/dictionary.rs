@@ -24,10 +24,7 @@ pub(super) fn execute<'a, T: GStore>(
             let mut metadata_columns = BTreeSet::new();
             for meta in storage.scan_table_meta()? {
                 let (_, meta) = meta?;
-                metadata_columns.extend(
-                    meta.into_keys()
-                        .filter(|name| name != "OBJECT_NAME" && name != "OBJECT_TYPE"),
-                );
+                metadata_columns.extend(meta.into_keys());
             }
 
             ["OBJECT_NAME".to_owned(), "OBJECT_TYPE".to_owned()]
@@ -92,11 +89,15 @@ fn rows<'a, T: GStore>(
                 let columns = Rc::clone(&columns);
 
                 move |schema| {
-                    let mut table_row = table_metas.remove(&schema.table_name).unwrap_or_default();
-                    let columns = Rc::clone(&columns);
+                    let meta = table_metas.remove(&schema.table_name).unwrap_or_default();
 
-                    table_row.insert("OBJECT_NAME".to_owned(), Value::Str(schema.table_name));
-                    table_row.insert("OBJECT_TYPE".to_owned(), Value::Str("TABLE".to_owned()));
+                    let table_row = BTreeMap::from([
+                        ("OBJECT_NAME".to_owned(), Value::Str(schema.table_name)),
+                        ("OBJECT_TYPE".to_owned(), Value::Str("TABLE".to_owned())),
+                    ])
+                    .into_iter()
+                    .chain(meta)
+                    .collect::<BTreeMap<_, _>>();
                     let index_rows = schema.indexes.into_iter().map(|index| {
                         BTreeMap::from([
                             ("OBJECT_NAME".to_owned(), Value::Str(index.name)),
