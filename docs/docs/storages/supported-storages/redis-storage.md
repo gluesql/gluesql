@@ -26,7 +26,7 @@ Then create the storage by specifying a namespace and connection details.
 ## Example
 
 ```rust
-use gluesql::{prelude::Glue, redis_storage::RedisStorage};
+use {gluesql::prelude::Glue, gluesql_redis_storage::RedisStorage};
 
 fn main() {
     // connect to Redis on localhost:6379 using namespace "my_db"

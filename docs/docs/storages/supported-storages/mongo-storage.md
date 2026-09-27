@@ -21,7 +21,7 @@ Follow the [official MongoDB installation guide](https://www.mongodb.com/docs/ma
 Below is a minimal example showing how to execute SQL statements on MongoDB using GlueSQL in Rust:
 
 ```rust
-use gluesql::{prelude::Glue, mongo_storage::MongoStorage};
+use gluesql::{gluesql_mongo_storage::MongoStorage, prelude::Glue};
 
 fn main() {
     let conn_str = "mongodb://localhost:27017";
