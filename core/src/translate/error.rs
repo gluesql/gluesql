@@ -130,6 +130,10 @@ pub enum DeleteOption {
     /// `DELETE ... LIMIT ...`
     #[strum(to_string = "LIMIT clause")]
     Limit,
+
+    /// `DELETE FROM t1, t2 ...`
+    #[strum(to_string = "multiple tables")]
+    MultipleTables,
 }
 
 /// Transaction statement (`START TRANSACTION`/`COMMIT`/`ROLLBACK`) clauses
