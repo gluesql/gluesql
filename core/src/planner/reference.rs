@@ -213,13 +213,50 @@ fn input_context<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
     input: &ProjectInputPlan,
 ) -> Rc<Context> {
-    let mut sources = vec![input.base_source()];
-    sources.extend(input.joined_sources());
-    sources
+    join_context(
+        schema_map,
+        input.base_source(),
+        input.joined_sources(),
+        None,
+    )
+}
+
+fn join_context<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    base_source: &SourcePlan,
+    joined_sources: Vec<&SourcePlan>,
+    outer: Option<&Rc<Context>>,
+) -> Rc<Context> {
+    let mut sources = vec![base_source];
+    sources.extend(joined_sources);
+    let local = sources
         .into_iter()
         .map(|source| source_context(schema_map, source.alias_name(), Some(source)))
         .reduce(|left, right| Rc::new(Context::Bridge { left, right }))
-        .unwrap_or_else(|| Rc::new(Context::Barrier))
+        .unwrap_or_else(|| Rc::new(Context::Barrier));
+
+    match outer {
+        Some(outer) => Rc::new(Context::Scope {
+            local,
+            outer: Rc::clone(outer),
+        }),
+        None => local,
+    }
+}
+
+fn condition_context<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    input: &JoinConditionInputPlan,
+    outer: Option<&Rc<Context>>,
+) -> Rc<Context> {
+    match input {
+        JoinConditionInputPlan::NestedLoop(join) => {
+            join_context(schema_map, join.base_source(), join.joined_sources(), outer)
+        }
+        JoinConditionInputPlan::Hash(join) => {
+            join_context(schema_map, join.base_source(), join.joined_sources(), outer)
+        }
+    }
 }
 
 fn source_context<S: BuildHasher>(
@@ -629,7 +666,9 @@ fn visit_inner_exprs<S: BuildHasher>(
         InnerJoinInputPlan::NestedLoop(join) => visit_nested_exprs(schema_map, join, context),
         InnerJoinInputPlan::Condition(condition) => {
             visit_condition_exprs(schema_map, &mut condition.input, context)?;
-            plan_expr(schema_map, context, &mut condition.expr)
+            let condition_context =
+                condition_context(schema_map, &condition.input, context.outer());
+            plan_expr(schema_map, &condition_context, &mut condition.expr)
         }
         InnerJoinInputPlan::Hash(join) => visit_hash_exprs(schema_map, join, context),
     }
@@ -644,7 +683,9 @@ fn visit_left_exprs<S: BuildHasher>(
         LeftOuterJoinInputPlan::NestedLoop(join) => visit_nested_exprs(schema_map, join, context),
         LeftOuterJoinInputPlan::Condition(condition) => {
             visit_condition_exprs(schema_map, &mut condition.input, context)?;
-            plan_expr(schema_map, context, &mut condition.expr)
+            let condition_context =
+                condition_context(schema_map, &condition.input, context.outer());
+            plan_expr(schema_map, &condition_context, &mut condition.expr)
         }
         LeftOuterJoinInputPlan::Hash(join) => visit_hash_exprs(schema_map, join, context),
     }
@@ -678,10 +719,16 @@ fn visit_hash_exprs<S: BuildHasher>(
     join: &mut HashJoinPlan,
     context: &Rc<Context>,
 ) -> Result<()> {
-    plan_expr(schema_map, context, &mut join.input_key)?;
-    plan_expr(schema_map, context, &mut join.right_key)?;
+    let join_context = join_context(
+        schema_map,
+        join.base_source(),
+        join.joined_sources(),
+        context.outer(),
+    );
+    plan_expr(schema_map, &join_context, &mut join.input_key)?;
+    plan_expr(schema_map, &join_context, &mut join.right_key)?;
     if let Some(filter) = &mut join.right_filter {
-        plan_expr(schema_map, context, filter)?;
+        plan_expr(schema_map, &join_context, filter)?;
     }
     Ok(())
 }
@@ -741,6 +788,13 @@ enum Resolution {
 }
 
 impl Context {
+    fn outer(&self) -> Option<&Rc<Context>> {
+        match self {
+            Self::Scope { outer, .. } => Some(outer),
+            _ => None,
+        }
+    }
+
     fn all_labels(&self) -> Option<Vec<String>> {
         match self {
             Self::Data { labels, .. } => labels.clone(),
@@ -796,7 +850,7 @@ mod tests {
     use {
         super::{
             Context, Resolution, dictionary_labels, plan, prepare_hash, prepare_left,
-            visit_hash_exprs, visit_offset_input_exprs,
+            visit_hash_exprs, visit_left_exprs, visit_offset_input_exprs,
         },
         crate::{
             ast::Dictionary,
@@ -821,7 +875,7 @@ mod tests {
 
     fn plan_result(sql: &str) -> crate::result::Result<StatementPlan> {
         let storage = run(
-            "CREATE TABLE Users (id INTEGER, name TEXT); CREATE TABLE Teams (id INTEGER, team_id INTEGER, title TEXT); CREATE TABLE Logs;",
+            "CREATE TABLE Users (id INTEGER, name TEXT); CREATE TABLE Teams (id INTEGER, team_id INTEGER, title TEXT); CREATE TABLE Logs (id INTEGER);",
         );
         let statement = StatementPlan::from(translate(&parse(sql).unwrap().remove(0)).unwrap());
         let schema_map = fetch_schema_map(&storage, &statement).unwrap();
@@ -900,9 +954,12 @@ mod tests {
     #[test]
     fn visits_hash_and_distinct_inputs() {
         let schema_map = std::collections::HashMap::new();
-        let context = std::rc::Rc::new(Context::Data {
-            alias: "Users".to_owned(),
-            labels: Some(vec!["id".to_owned()]),
+        let context = std::rc::Rc::new(Context::Scope {
+            local: std::rc::Rc::new(Context::Barrier),
+            outer: std::rc::Rc::new(Context::Data {
+                alias: "Users".to_owned(),
+                labels: Some(vec!["id".to_owned()]),
+            }),
         });
         let mut left = crate::plan::LeftOuterJoinPlan {
             input: crate::plan::LeftOuterJoinInputPlan::Condition(JoinConditionPlan {
@@ -920,6 +977,7 @@ mod tests {
             }),
         };
         prepare_left(&schema_map, &mut left, None).unwrap();
+        visit_left_exprs(&schema_map, &mut left, &context).unwrap();
 
         for input in [
             HashJoinInputPlan::InnerJoin(Box::new(InnerJoinPlan {
@@ -1093,6 +1151,58 @@ mod tests {
             ),
             StatementPlan::Query(_)
         ));
+    }
+
+    #[test]
+    fn join_conditions_only_resolve_available_sources() {
+        let statement = format!(
+            "{:?}",
+            planned(
+                "SELECT Users.id
+                 FROM Users
+                 JOIN Teams ON Logs.id = Teams.team_id
+                 JOIN Logs ON Logs.id = Users.id"
+            )
+        );
+        assert!(
+            statement.contains("UnplannedReference { qualifier: Some(\"Logs\"), name: \"id\" }"),
+            "a join condition must not resolve a later source: {statement}"
+        );
+
+        let statement = format!(
+            "{:?}",
+            planned(
+                "SELECT Users.id
+                 FROM Users
+                 JOIN Teams ON Users.id = Teams.team_id
+                 JOIN Logs ON Logs.id = Teams.id"
+            )
+        );
+        assert!(
+            statement.contains("ResolvedColumn { alias: \"Teams\", column: \"id\" }"),
+            "a later join condition must resolve accumulated left sources: {statement}"
+        );
+    }
+
+    #[test]
+    fn join_conditions_preserve_correlated_outer_references() {
+        let statement = format!(
+            "{:?}",
+            planned(
+                "SELECT 1
+                 FROM Users U
+                 WHERE EXISTS (
+                     SELECT 1
+                     FROM Teams T
+                     JOIN Logs L ON L.id = U.id
+                 )"
+            )
+        );
+
+        assert!(
+            statement.contains("ResolvedColumn { alias: \"U\", column: \"id\" }"),
+            "a join condition must retain its outer query context: {statement}"
+        );
     }
 
     #[test]
