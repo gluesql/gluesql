@@ -41,6 +41,10 @@ pub fn create_table<T: GStore + GStoreMut>(
         comment,
     }: CreateTableOptions<'_>,
 ) -> Result<()> {
+    if if_not_exists && source.is_some() && storage.fetch_schema(target_table_name)?.is_some() {
+        return Ok(());
+    }
+
     let mut selected_source_rows = None;
     let target_columns_defs = match source.as_deref() {
         Some(source_query) => match query::output_body(source_query) {

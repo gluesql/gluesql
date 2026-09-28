@@ -198,6 +198,27 @@ CREATE TABLE TargetTableWithData AS SELECT * FROM CreateTable2
 -- @expect: error Alter.TableAlreadyExists
 -- @json: "TargetTableWithData"
 
+CREATE TABLE IfNotExistsSource (snack TEXT)
+-- @expect: payload Create
+
+INSERT INTO IfNotExistsSource VALUES ('cookie'), ('chips')
+-- @expect: payload Insert
+-- @json: 2
+
+CREATE TABLE IF NOT EXISTS TargetTableIfNotExists AS SELECT * FROM IfNotExistsSource
+-- @expect: payload Create
+
+-- @name: CTAS IF NOT EXISTS leaves an existing table unchanged
+CREATE TABLE IF NOT EXISTS TargetTableIfNotExists AS SELECT * FROM IfNotExistsSource
+-- @expect: payload Create
+
+SELECT * FROM TargetTableIfNotExists
+-- @expect:
+-- | snack: Str |
+-- | ---------- |
+-- | "cookie"   |
+-- | "chips"    |
+
 CREATE TABLE TargetTableWithData2 AS SELECT * FROM NonExistentTable
 -- @expect: error Alter.CtasSourceTableNotFound
 -- @json: "NonExistentTable"
