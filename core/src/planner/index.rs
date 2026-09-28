@@ -630,11 +630,11 @@ enum Planned {
 #[cfg(test)]
 mod tests {
     use {
-        super::plan,
+        super::{equivalent, plan},
         crate::{
             mock::{MockStorage, run},
             parse_sql::parse,
-            plan::StatementPlan,
+            plan::{ExprPlan, StatementPlan},
             planner::fetch_schema_map,
             query_builder::{
                 Build, TableAccessNode, col, exists, nested, non_clustered, null, num, primary_key,
@@ -673,6 +673,20 @@ CREATE INDEX idx_asc_name ON Test (asc_name ASC);
 CREATE INDEX idx_desc_name ON Test (desc_name DESC);
 CREATE TABLE Other (other_id INTEGER);
 ")
+    }
+
+    #[test]
+    fn equivalent_ignores_resolved_column_aliases() {
+        let left = ExprPlan::ResolvedColumn {
+            alias: "Test".to_owned(),
+            column: "id".to_owned(),
+        };
+        let right = ExprPlan::ResolvedColumn {
+            alias: "Other".to_owned(),
+            column: "id".to_owned(),
+        };
+
+        assert!(equivalent(&left, &right));
     }
 
     #[test]

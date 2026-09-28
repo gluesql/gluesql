@@ -3,8 +3,8 @@ use {
     crate::{
         plan::StatementPlan,
         planner::{
-            fetch_schema_map, plan_aggregate, plan_hash_join, plan_primary_key, plan_schemaless,
-            plan_references, plan_table_columns, validate,
+            fetch_schema_map, plan_aggregate, plan_hash_join, plan_primary_key, plan_references,
+            plan_schemaless, plan_table_columns, validate,
         },
         result::Result,
     },

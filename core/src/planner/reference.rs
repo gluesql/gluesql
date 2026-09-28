@@ -795,10 +795,11 @@ impl Context {
 mod tests {
     use {
         super::{
-            Context, Resolution, plan, prepare_hash, prepare_left, visit_hash_exprs,
-            visit_offset_input_exprs,
+            Context, Resolution, dictionary_labels, plan, prepare_hash, prepare_left,
+            visit_hash_exprs, visit_offset_input_exprs,
         },
         crate::{
+            ast::Dictionary,
             mock::run,
             parse_sql::parse,
             plan::{
@@ -847,6 +848,23 @@ mod tests {
         assert_eq!(
             first_projection_expr(&ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard])),
             None
+        );
+    }
+
+    #[test]
+    fn glue_indexes_dictionary_has_the_expected_labels() {
+        assert_eq!(
+            dictionary_labels(&Dictionary::GlueIndexes),
+            [
+                "TABLE_NAME",
+                "INDEX_NAME",
+                "ORDER",
+                "EXPRESSION",
+                "UNIQUENESS"
+            ]
+            .into_iter()
+            .map(str::to_owned)
+            .collect::<Vec<_>>(),
         );
     }
 
