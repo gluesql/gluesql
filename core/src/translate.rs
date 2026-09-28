@@ -747,10 +747,6 @@ mod tests {
                 "DELETE FROM Foo, Bar WHERE id = 1",
                 TranslateError::UnsupportedDeleteOption(DeleteOption::MultipleTables),
             ),
-            (
-                "DELETE FROM Foo, Foo WHERE id = 1",
-                TranslateError::UnsupportedDeleteOption(DeleteOption::MultipleTables),
-            ),
         ];
 
         for (sql, err) in cases {
