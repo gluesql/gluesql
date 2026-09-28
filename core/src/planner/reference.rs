@@ -719,6 +719,12 @@ fn visit_hash_exprs<S: BuildHasher>(
     join: &mut HashJoinPlan,
     context: &Rc<Context>,
 ) -> Result<()> {
+    match &mut join.input {
+        HashJoinInputPlan::Source(_) => {}
+        HashJoinInputPlan::InnerJoin(join) => visit_inner_exprs(schema_map, join, context)?,
+        HashJoinInputPlan::LeftOuterJoin(join) => visit_left_exprs(schema_map, join, context)?,
+    }
+
     let join_context = join_context(
         schema_map,
         join.base_source(),
@@ -1001,6 +1007,7 @@ mod tests {
                 right_filter: None,
             };
             prepare_hash(&schema_map, &mut hash, None).unwrap();
+            visit_hash_exprs(&schema_map, &mut hash, &context).unwrap();
         }
 
         let mut hash = HashJoinPlan {
@@ -1026,6 +1033,58 @@ mod tests {
             }),
         });
         visit_offset_input_exprs(&schema_map, &mut input, &context).unwrap();
+    }
+
+    #[test]
+    fn plans_nested_join_conditions_in_explicit_hash_joins() {
+        let storage = run(
+            "CREATE TABLE Users (id INTEGER); CREATE TABLE Teams (id INTEGER); CREATE TABLE Logs (id INTEGER);",
+        );
+        let statement = StatementPlan::Query(QueryPlan::Project(ProjectPlan {
+            input: ProjectInputPlan::InnerJoin(Box::new(InnerJoinPlan {
+                input: InnerJoinInputPlan::Hash(HashJoinPlan {
+                    input: HashJoinInputPlan::InnerJoin(Box::new(InnerJoinPlan {
+                        input: InnerJoinInputPlan::Condition(JoinConditionPlan {
+                            input: JoinConditionInputPlan::NestedLoop(NestedLoopJoinPlan {
+                                input: NestedLoopJoinInputPlan::Source(table("Users")),
+                                right: table("Teams"),
+                            }),
+                            expr: ExprPlan::UnplannedReference {
+                                qualifier: Some("Users".to_owned()),
+                                name: "id".to_owned(),
+                            },
+                        }),
+                    })),
+                    right: table("Logs"),
+                    input_key: ExprPlan::Literal(crate::ast::Literal::Number(1.into())),
+                    right_key: ExprPlan::Literal(crate::ast::Literal::Number(1.into())),
+                    right_filter: None,
+                }),
+            })),
+            projection: ProjectionPlan::SelectItems(Vec::new()),
+        }));
+        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
+        let statement = plan(&schema_map, statement).unwrap();
+
+        assert!(matches!(
+            statement,
+            StatementPlan::Query(QueryPlan::Project(ProjectPlan {
+                input: ProjectInputPlan::InnerJoin(join),
+                ..
+            })) if matches!(
+                &join.input,
+                InnerJoinInputPlan::Hash(HashJoinPlan {
+                    input: HashJoinInputPlan::InnerJoin(join),
+                    ..
+                }) if matches!(
+                    &join.input,
+                    InnerJoinInputPlan::Condition(JoinConditionPlan {
+                        expr: ExprPlan::ResolvedColumn { alias, column },
+                        ..
+                    }) if alias == "Users" && column == "id"
+                )
+            )
+        ));
     }
 
     #[test]
