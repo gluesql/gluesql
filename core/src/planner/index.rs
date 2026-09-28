@@ -459,11 +459,13 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
     }
 
     fn indexes(&self, relation: &SourcePlan) -> Option<Indexes<'_>> {
+        let source_alias = relation.alias_name();
+
         match relation {
             SourcePlan::Table(table) => self
                 .schema_map
                 .get(&table.name)
-                .map(|schema| Indexes::new(&schema.indexes)),
+                .map(|schema| Indexes::new(&schema.indexes, source_alias)),
             _ => None,
         }
     }
@@ -560,33 +562,37 @@ struct PlannedSchemaIndex<'a> {
     index: &'a SchemaIndex,
 }
 
-struct Indexes<'a>(Vec<PlannedSchemaIndex<'a>>);
+struct Indexes<'a> {
+    source_alias: String,
+    indexes: Vec<PlannedSchemaIndex<'a>>,
+}
 
 impl<'a> Indexes<'a> {
-    fn new(indexes: &'a [SchemaIndex]) -> Self {
-        Self(
-            indexes
+    fn new(indexes: &'a [SchemaIndex], source_alias: &str) -> Self {
+        Self {
+            source_alias: source_alias.to_owned(),
+            indexes: indexes
                 .iter()
                 .map(|index| PlannedSchemaIndex {
                     expr: plan_scalar_expr(index.expr.clone()),
                     index,
                 })
                 .collect(),
-        )
+        }
     }
 
     fn find(&self, target: &ExprPlan) -> Option<String> {
-        self.0
+        self.indexes
             .iter()
-            .find(|PlannedSchemaIndex { expr, .. }| equivalent(expr, target))
+            .find(|PlannedSchemaIndex { expr, .. }| equivalent(expr, target, &self.source_alias))
             .map(|PlannedSchemaIndex { index, .. }| index.name.clone())
     }
 
     fn find_ordered(&self, target: &OrderByExprPlan) -> Option<String> {
-        self.0
+        self.indexes
             .iter()
             .find(|PlannedSchemaIndex { expr, index }| {
-                if !equivalent(expr, &target.expr) {
+                if !equivalent(expr, &target.expr, &self.source_alias) {
                     return false;
                 }
 
@@ -601,10 +607,12 @@ impl<'a> Indexes<'a> {
     }
 }
 
-fn equivalent(left: &ExprPlan, right: &ExprPlan) -> bool {
-    fn normalize(mut expr: ExprPlan) -> ExprPlan {
+fn equivalent(left: &ExprPlan, right: &ExprPlan, source_alias: &str) -> bool {
+    fn normalize(mut expr: ExprPlan, source_alias: &str) -> ExprPlan {
         visit_mut_expr(&mut expr, &mut |expr| {
-            if let ExprPlan::ResolvedColumn { column, .. } = expr {
+            if let ExprPlan::ResolvedColumn { alias, column } = expr
+                && alias == source_alias
+            {
                 *expr = ExprPlan::UnplannedReference {
                     qualifier: None,
                     name: column.clone(),
@@ -614,7 +622,7 @@ fn equivalent(left: &ExprPlan, right: &ExprPlan) -> bool {
         expr
     }
 
-    normalize(left.clone()) == normalize(right.clone())
+    normalize(left.clone(), source_alias) == normalize(right.clone(), source_alias)
 }
 
 enum Planned {
@@ -634,8 +642,10 @@ mod tests {
         crate::{
             mock::{MockStorage, run},
             parse_sql::parse,
-            plan::{ExprPlan, StatementPlan},
-            planner::fetch_schema_map,
+            plan::{
+                ExprPlan, ProjectInputPlan, QueryPlan, SourcePlan, StatementPlan, TableAccessPlan,
+            },
+            planner::{fetch_schema_map, plan_references},
             query_builder::{
                 Build, TableAccessNode, col, exists, nested, non_clustered, null, num, primary_key,
                 table, text, values,
@@ -671,12 +681,12 @@ CREATE INDEX idx_flag ON Test (flag);
 CREATE INDEX idx_name ON Test (name);
 CREATE INDEX idx_asc_name ON Test (asc_name ASC);
 CREATE INDEX idx_desc_name ON Test (desc_name DESC);
-CREATE TABLE Other (other_id INTEGER);
+CREATE TABLE Other (id INTEGER, other_id INTEGER);
 ")
     }
 
     #[test]
-    fn equivalent_ignores_resolved_column_aliases() {
+    fn equivalent_requires_the_indexed_source_alias() {
         let left = ExprPlan::ResolvedColumn {
             alias: "Test".to_owned(),
             column: "id".to_owned(),
@@ -686,7 +696,69 @@ CREATE TABLE Other (other_id INTEGER);
             column: "id".to_owned(),
         };
 
-        assert!(equivalent(&left, &right));
+        assert!(!equivalent(&left, &right, "Test"));
+
+        let index_expr = ExprPlan::UnplannedReference {
+            qualifier: None,
+            name: "id".to_owned(),
+        };
+        assert!(equivalent(&index_expr, &left, "Test"));
+    }
+
+    #[test]
+    fn index_planning_does_not_use_base_index_for_joined_source_filter() {
+        let storage = storage_with_indexes();
+        let sql = "SELECT Test.id FROM Test JOIN Other WHERE Other.id = 1";
+        let parsed = parse(sql).unwrap();
+        let statement = StatementPlan::from(translate(&parsed[0]).unwrap());
+        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
+        let expected = plan_references(&schema_map, statement).unwrap();
+        let actual = plan(&schema_map, expected.clone());
+
+        assert_eq!(
+            actual, expected,
+            "keeps a joined source filter instead of applying Test's index:\n{sql}"
+        );
+    }
+
+    #[test]
+    fn index_planning_does_not_use_base_index_for_joined_source_order() {
+        let storage = storage_with_indexes();
+        let sql = "SELECT Test.id FROM Test JOIN Other ORDER BY Other.id";
+        let parsed = parse(sql).unwrap();
+        let statement = StatementPlan::from(translate(&parsed[0]).unwrap());
+        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
+        let expected = plan_references(&schema_map, statement).unwrap();
+        let actual = plan(&schema_map, expected.clone());
+
+        assert_eq!(
+            actual, expected,
+            "keeps a joined source order instead of applying Test's index:\n{sql}"
+        );
+    }
+
+    #[test]
+    fn index_planning_uses_base_index_for_aliased_source_filter() {
+        let storage = storage_with_indexes();
+        let sql = "SELECT t.id FROM Test AS t WHERE t.id = 1";
+        let parsed = parse(sql).unwrap();
+        let statement = StatementPlan::from(translate(&parsed[0]).unwrap());
+        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
+        let statement = plan_references(&schema_map, statement).unwrap();
+        let actual = plan(&schema_map, statement);
+
+        assert!(
+            matches!(
+                actual,
+                StatementPlan::Query(QueryPlan::Project(project))
+                if matches!(
+                    &project.input,
+                    ProjectInputPlan::Source(SourcePlan::Table(table))
+                        if matches!(&table.access, TableAccessPlan::Index { name, .. } if name == "idx_id")
+                )
+            ),
+            "uses Test's index for the matching source alias:\n{sql}"
+        );
     }
 
     #[test]
