@@ -140,29 +140,37 @@ pub fn create_table<T: GStore + GStoreMut>(
             ..
         } = foreign_key;
 
-        let column_defs = if referenced_table_name == target_table_name {
-            target_columns_defs.clone()
+        let referenced_schema = if referenced_table_name == target_table_name {
+            None
         } else {
-            let referenced_schema =
+            Some(
                 storage
                     .fetch_schema(referenced_table_name)?
                     .ok_or_else(|| {
                         AlterError::ReferencedTableNotFound(referenced_table_name.to_owned())
-                    })?;
-
-            referenced_schema
-                .column_defs
-                .map(|column_defs| column_defs.into_iter().map(ColumnDefPlan::from).collect())
+                    })?,
+            )
         };
 
-        let referenced_column_def = column_defs
-            .and_then(|column_defs| {
+        let referenced_column = match referenced_schema.as_ref() {
+            Some(schema) => schema
+                .column_defs
+                .as_deref()
+                .and_then(|column_defs| {
+                    column_defs
+                        .iter()
+                        .find(|column_def| column_def.name == *referenced_column_name)
+                })
+                .map(|column_def| (&column_def.data_type, column_def.unique)),
+            None => target_columns_defs.as_deref().and_then(|column_defs| {
                 column_defs
-                    .into_iter()
+                    .iter()
                     .find(|column_def| column_def.name == *referenced_column_name)
-            })
-            .ok_or_else(|| AlterError::ReferencedColumnNotFound(referenced_column_name.to_owned()))?
-            .clone();
+                    .map(|column_def| (&column_def.data_type, column_def.unique))
+            }),
+        }
+        .ok_or_else(|| AlterError::ReferencedColumnNotFound(referenced_column_name.to_owned()))?;
+        let (referenced_data_type, referenced_unique) = referenced_column;
 
         let referencing_column_def = target_columns_defs
             .as_deref()
@@ -175,17 +183,17 @@ pub fn create_table<T: GStore + GStoreMut>(
                 AlterError::ReferencingColumnNotFound(referencing_column_name.to_owned())
             })?;
 
-        if referencing_column_def.data_type != referenced_column_def.data_type {
+        if &referencing_column_def.data_type != referenced_data_type {
             return Err(AlterError::ForeignKeyDataTypeMismatch {
                 referencing_column: referencing_column_name.to_owned(),
                 referencing_column_type: referencing_column_def.data_type.clone(),
                 referenced_column: referenced_column_name.to_owned(),
-                referenced_column_type: referenced_column_def.data_type.clone(),
+                referenced_column_type: referenced_data_type.clone(),
             }
             .into());
         }
 
-        if referenced_column_def.unique != Some(ColumnUniqueOption { is_primary: true }) {
+        if referenced_unique != Some(ColumnUniqueOption { is_primary: true }) {
             return Err(AlterError::ReferencingNonPKColumn {
                 referenced_table: referenced_table_name.to_owned(),
                 referenced_column: referenced_column_name.to_owned(),
