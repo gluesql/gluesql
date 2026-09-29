@@ -1,9 +1,10 @@
 use {
     gluesql_core::{
+        observe,
         prelude::Glue,
         store::{MetaIter, Metadata},
     },
-    gluesql_macros::{observe, trace_storage},
+    gluesql_macros::trace_storage,
     gluesql_memory_storage::MemoryStorage,
     std::{
         collections::BTreeMap,

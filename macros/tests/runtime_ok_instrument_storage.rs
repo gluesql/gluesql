@@ -1,4 +1,4 @@
-use gluesql_macros::trace_storage;
+use gluesql_core::trace_storage;
 
 type Result<T> = std::result::Result<T, &'static str>;
 type Rows = Box<dyn Iterator<Item = Result<i32>>>;
