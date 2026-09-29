@@ -192,7 +192,9 @@ representation, records `row_count` for arguments named `rows` or `keys`, and re
 errors. Use `capture = "off"` to keep timing and iterator counts without argument, row, or error
 values. The generated span name follows `gluesql.<storage>.<method>`.
 
-`scan_data` and `scan_indexed_data` results are wrapped automatically. The wrapper emits each
+`Store::scan_data` and `Index::scan_indexed_data` results are wrapped automatically when the
+implemented trait path ends in `Store` or `Index`, respectively. Inherent methods with the same
+names are not automatically wrapped. The wrapper emits each
 yielded row or error as an event when capture is enabled and records `row_count`, `error_count`,
 and `completed` when dropped. For an iterator-returning method on any other trait, mark it inside
 the attributed implementation:

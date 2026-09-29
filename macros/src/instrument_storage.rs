@@ -61,6 +61,11 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> Result<TokenStream, syn::
     let args = Args::parse(attr)?;
     let mut implementation: ItemImpl = syn::parse2(item)?;
     let gluesql = resolve_gluesql_crate()?;
+    let trait_name = implementation
+        .trait_
+        .as_ref()
+        .and_then(|(_, path, _)| path.segments.last())
+        .map(|segment| segment.ident.to_string());
 
     for item in &mut implementation.items {
         let ImplItem::Fn(method) = item else {
@@ -98,8 +103,11 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> Result<TokenStream, syn::
         method
             .attrs
             .retain(|attribute| !attribute.path().is_ident("trace_iterator"));
-        let should_trace_iterator =
-            explicitly_traced || matches!(method_name.as_str(), "scan_data" | "scan_indexed_data");
+        let should_trace_iterator = explicitly_traced
+            || matches!(
+                (trait_name.as_deref(), method_name.as_str()),
+                (Some("Store"), "scan_data") | (Some("Index"), "scan_indexed_data")
+            );
 
         if should_trace_iterator {
             let capture_full = args.capture_full;
@@ -170,6 +178,35 @@ fn result_ok_type(output: &ReturnType) -> Option<Type> {
 #[cfg(test)]
 mod tests {
     use {super::expand, quote::quote};
+
+    #[test]
+    fn automatically_wraps_only_known_trait_methods() {
+        for (implementation, wrapped) in [
+            (
+                quote!(impl gluesql_core::store::Store for Storage {
+                    fn scan_data(&self) -> Result<Rows> { todo!() }
+                }),
+                true,
+            ),
+            (
+                quote!(impl Index for Storage {
+                    fn scan_indexed_data(&self) -> Result<Rows> { todo!() }
+                }),
+                true,
+            ),
+            (
+                quote!(impl ExternalStore for Storage {
+                    fn scan_data(&self) -> Vec<u8> { todo!() }
+                }),
+                false,
+            ),
+        ] {
+            let expanded = expand(quote!(name = "test"), implementation)
+                .unwrap()
+                .to_string();
+            assert_eq!(expanded.contains("TracedResultIterator"), wrapped);
+        }
+    }
 
     #[test]
     fn capture_off_omits_error_recording() {
