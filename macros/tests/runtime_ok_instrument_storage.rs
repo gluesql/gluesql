@@ -10,6 +10,13 @@ trait ExternalStore {
 
 struct Storage;
 
+#[trace_storage(name = "inherent")]
+impl Storage {
+    fn scan_data(&self) -> Vec<i32> {
+        vec![1, 2]
+    }
+}
+
 #[trace_storage(name = "external")]
 impl ExternalStore for Storage {
     fn lookup(&self, key: i32, rows: Vec<i32>) -> Result<Vec<i32>> {
@@ -25,6 +32,8 @@ impl ExternalStore for Storage {
 #[test]
 fn instruments_external_trait_without_changing_calls() {
     let storage = Storage;
+
+    assert_eq!(storage.scan_data(), vec![1, 2]);
 
     assert_eq!(storage.lookup(2, vec![1, 2, 3]), Ok(vec![2]));
     assert_eq!(

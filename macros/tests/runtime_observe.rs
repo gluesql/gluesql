@@ -316,6 +316,7 @@ struct ObservedStorage;
 
 #[trace_storage(name = "shared")]
 impl ObservedStorage {
+    #[trace_iterator]
     fn scan_data(&self) -> Result<Box<dyn Iterator<Item = Result<u8>>>> {
         Ok(Box::new([Ok(1), Err("private error")].into_iter()))
     }
@@ -340,6 +341,7 @@ struct TimingOnlyStorage;
 
 #[trace_storage(name = "timing_only", capture = "off")]
 impl TimingOnlyStorage {
+    #[trace_iterator]
     fn scan_data(&self) -> Result<Box<dyn Iterator<Item = Result<u8>>>> {
         Ok(Box::new([Ok(1), Err("private error")].into_iter()))
     }
