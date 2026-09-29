@@ -2,8 +2,9 @@ use {
     crate::{observe, resolve_gluesql_crate},
     proc_macro2::TokenStream,
     quote::quote,
+    std::collections::BTreeSet,
     syn::{
-        Expr, ExprLit, FnArg, GenericArgument, ImplItem, ItemImpl, Lit, MetaNameValue, Pat,
+        Expr, ExprLit, FnArg, GenericArgument, Ident, ImplItem, ItemImpl, Lit, Meta, Pat,
         PathArguments, ReturnType, Token, Type, parse::Parser, punctuated::Punctuated,
     },
 };
@@ -11,15 +12,39 @@ use {
 struct Args {
     name: String,
     capture_full: bool,
+    iterators: Vec<Ident>,
 }
 
 impl Args {
     fn parse(tokens: TokenStream) -> Result<Self, syn::Error> {
-        let values = Punctuated::<MetaNameValue, Token![,]>::parse_terminated.parse2(tokens)?;
+        let values = Punctuated::<Meta, Token![,]>::parse_terminated.parse2(tokens)?;
         let mut name = None;
         let mut capture_full = true;
+        let mut iterators = Vec::new();
+        let mut seen = BTreeSet::new();
 
-        for MetaNameValue { path, value, .. } in values {
+        for option in values {
+            let key = option.path().get_ident().ok_or_else(|| {
+                syn::Error::new_spanned(option.path(), "expected a storage option name")
+            })?;
+            if !seen.insert(key.to_string()) {
+                return Err(syn::Error::new_spanned(option, "duplicate storage option"));
+            }
+            if let Meta::List(list) = &option
+                && list.path.is_ident("iterators")
+            {
+                iterators = list
+                    .parse_args_with(Punctuated::<Ident, Token![,]>::parse_terminated)?
+                    .into_iter()
+                    .collect();
+                continue;
+            }
+            let Meta::NameValue(syn::MetaNameValue { path, value, .. }) = option else {
+                return Err(syn::Error::new_spanned(
+                    option,
+                    "unsupported storage option",
+                ));
+            };
             let Expr::Lit(ExprLit {
                 lit: Lit::Str(value),
                 ..
@@ -42,6 +67,7 @@ impl Args {
                 syn::Error::new(proc_macro2::Span::call_site(), "missing `name = \"...\"`")
             })?,
             capture_full,
+            iterators,
         })
     }
 }
@@ -61,6 +87,22 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> Result<TokenStream, syn::
     let args = Args::parse(attr)?;
     let mut implementation: ItemImpl = syn::parse2(item)?;
     let gluesql = resolve_gluesql_crate()?;
+    let mut selected = BTreeSet::new();
+    for name in &args.iterators {
+        if !selected.insert(name.to_string()) {
+            return Err(syn::Error::new_spanned(name, "duplicate iterator method"));
+        }
+        if !implementation
+            .items
+            .iter()
+            .any(|item| matches!(item, ImplItem::Fn(method) if method.sig.ident == *name))
+        {
+            return Err(syn::Error::new_spanned(
+                name,
+                "iterator method was not found in this impl",
+            ));
+        }
+    }
     let trait_name = implementation
         .trait_
         .as_ref()
@@ -104,6 +146,7 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> Result<TokenStream, syn::
             .attrs
             .retain(|attribute| !attribute.path().is_ident("trace_iterator"));
         let should_trace_iterator = explicitly_traced
+            || args.iterators.contains(&method.sig.ident)
             || matches!(
                 (trait_name.as_deref(), method_name.as_str()),
                 (Some("Store"), "scan_data") | (Some("Index"), "scan_indexed_data")
@@ -178,6 +221,21 @@ fn result_ok_type(output: &ReturnType) -> Option<Type> {
 #[cfg(test)]
 mod tests {
     use {super::expand, quote::quote};
+
+    #[test]
+    fn rejects_invalid_iterator_options() {
+        let implementation = quote!(impl Storage {
+            fn stream(&self) -> Result<Rows> { todo!() }
+        });
+        for options in [
+            quote!(name = "test", iterators(missing)),
+            quote!(name = "test", iterators(stream, stream)),
+            quote!(name = "test", iterators(stream), iterators(stream)),
+            quote!(name = "test", name = "other"),
+        ] {
+            assert!(expand(options, implementation.clone()).is_err());
+        }
+    }
 
     #[test]
     fn automatically_wraps_only_known_trait_methods() {
