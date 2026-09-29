@@ -10,10 +10,18 @@ trait ExternalStore {
 
 struct Storage;
 
-#[trace_storage(name = "inherent")]
+#[trace_storage(name = "inherent", skip(identity))]
 impl Storage {
     fn scan_data(&self) -> Vec<i32> {
         vec![1, 2]
+    }
+
+    fn identity<T>(value: T) -> T {
+        value
+    }
+
+    fn row_value(rows: i32) -> i32 {
+        rows
     }
 }
 
@@ -30,9 +38,12 @@ impl ExternalStore for Storage {
 
 #[test]
 fn instruments_external_trait_without_changing_calls() {
+    struct Opaque;
     let storage = Storage;
 
     assert_eq!(storage.scan_data(), vec![1, 2]);
+    let _: Opaque = Storage::identity(Opaque);
+    assert_eq!(Storage::row_value(3), 3);
     assert_eq!(
         UntracedStorage.stream().unwrap().collect::<Vec<_>>(),
         vec![Ok(4)]

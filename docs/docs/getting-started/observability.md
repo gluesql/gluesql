@@ -181,16 +181,22 @@ tracing = { version = "0.1", optional = true }
 Apply the attribute to each implemented trait without changing the method bodies or call sites:
 
 ```rust
-#[cfg_attr(feature = "tracing", gluesql_macros::trace_storage(name = "my_storage"))]
+#[cfg_attr(feature = "tracing", gluesql_macros::trace_storage(name = "my_storage", capture = "off"))]
 impl Store for MyStorage {
     // Existing implementation
 }
 ```
 
 The default `capture = "full"` records every simple named argument with its `Debug`
-representation, records `row_count` for arguments named `rows` or `keys`, and records `Result`
-errors. Use `capture = "off"` to keep timing and iterator counts without argument, row, or error
-values. The generated span name follows `gluesql.<storage>.<method>`.
+representation and records `Result` errors. Start with `capture = "off"` to keep timing and
+counts without argument, row, or error values. `StoreMut::append_data` and `insert_data` record
+`rows.len()`, and `StoreMut::delete_data` records `keys.len()`, as `row_count` in either mode.
+Other methods do not infer `.len()` from argument names. The generated span name follows
+`gluesql.<storage>.<method>`. The default remains `capture = "full"` for compatibility.
+
+Use `skip(new, helper)` in the outer attribute to leave selected methods unchanged, for example
+generic constructors whose arguments do not implement `Debug`. Skipped names must exist in the
+implementation and cannot also be selected with `iterators(...)` or `#[trace_iterator]`.
 
 `Store::scan_data` and `Index::scan_indexed_data` results are wrapped automatically when the
 implemented trait path ends in `Store` or `Index`, respectively. Inherent methods with the same
