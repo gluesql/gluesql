@@ -13,6 +13,7 @@ struct Args {
     name: String,
     capture_full: bool,
     iterators: Vec<Ident>,
+    skip: Vec<Ident>,
 }
 
 impl Args {
@@ -21,6 +22,7 @@ impl Args {
         let mut name = None;
         let mut capture_full = true;
         let mut iterators = Vec::new();
+        let mut skip = Vec::new();
         let mut seen = BTreeSet::new();
 
         for option in values {
@@ -31,12 +33,17 @@ impl Args {
                 return Err(syn::Error::new_spanned(option, "duplicate storage option"));
             }
             if let Meta::List(list) = &option
-                && list.path.is_ident("iterators")
+                && (list.path.is_ident("iterators") || list.path.is_ident("skip"))
             {
-                iterators = list
+                let methods = list
                     .parse_args_with(Punctuated::<Ident, Token![,]>::parse_terminated)?
                     .into_iter()
                     .collect();
+                if list.path.is_ident("iterators") {
+                    iterators = methods;
+                } else {
+                    skip = methods;
+                }
                 continue;
             }
             let Meta::NameValue(syn::MetaNameValue { path, value, .. }) = option else {
@@ -68,6 +75,7 @@ impl Args {
             })?,
             capture_full,
             iterators,
+            skip,
         })
     }
 }
@@ -88,9 +96,12 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> Result<TokenStream, syn::
     let mut implementation: ItemImpl = syn::parse2(item)?;
     let gluesql = resolve_gluesql_crate()?;
     let mut selected = BTreeSet::new();
-    for name in &args.iterators {
+    for name in args.iterators.iter().chain(&args.skip) {
         if !selected.insert(name.to_string()) {
-            return Err(syn::Error::new_spanned(name, "duplicate iterator method"));
+            return Err(syn::Error::new_spanned(
+                name,
+                "duplicate or conflicting method selection",
+            ));
         }
         if !implementation
             .items
@@ -99,7 +110,7 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> Result<TokenStream, syn::
         {
             return Err(syn::Error::new_spanned(
                 name,
-                "iterator method was not found in this impl",
+                "selected method was not found in this impl",
             ));
         }
     }
@@ -114,24 +125,45 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> Result<TokenStream, syn::
             continue;
         };
 
+        if args.skip.contains(&method.sig.ident) {
+            if method
+                .attrs
+                .iter()
+                .any(|attribute| attribute.path().is_ident("trace_iterator"))
+            {
+                return Err(syn::Error::new_spanned(
+                    &method.sig.ident,
+                    "skipped methods cannot use trace_iterator",
+                ));
+            }
+            continue;
+        }
+
         let method_name = method.sig.ident.to_string();
         let span_name = format!("gluesql.{}.{method_name}", args.name);
         let mut fields = Vec::new();
 
-        if args.capture_full {
-            for input in &method.sig.inputs {
-                let FnArg::Typed(input) = input else {
-                    continue;
-                };
-                let Pat::Ident(pattern) = input.pat.as_ref() else {
-                    continue;
-                };
-                let ident = &pattern.ident;
+        for input in &method.sig.inputs {
+            let FnArg::Typed(input) = input else {
+                continue;
+            };
+            let Pat::Ident(pattern) = input.pat.as_ref() else {
+                continue;
+            };
+            let ident = &pattern.ident;
+            if args.capture_full {
                 fields.push(quote!(#ident = ?#ident));
-
-                if ident == "rows" || ident == "keys" {
-                    fields.push(quote!(row_count = #ident.len()));
-                }
+            }
+            if matches!(
+                (
+                    trait_name.as_deref(),
+                    method_name.as_str(),
+                    ident.to_string().as_str()
+                ),
+                (Some("StoreMut"), "append_data" | "insert_data", "rows")
+                    | (Some("StoreMut"), "delete_data", "keys")
+            ) {
+                fields.push(quote!(row_count = #ident.len()));
             }
         }
 
@@ -232,6 +264,9 @@ mod tests {
             quote!(name = "test", iterators(stream, stream)),
             quote!(name = "test", iterators(stream), iterators(stream)),
             quote!(name = "test", name = "other"),
+            quote!(name = "test", skip(missing)),
+            quote!(name = "test", skip(stream, stream)),
+            quote!(name = "test", skip(stream), iterators(stream)),
         ] {
             assert!(expand(options, implementation.clone()).is_err());
         }

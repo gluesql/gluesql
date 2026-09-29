@@ -339,6 +339,34 @@ impl ObservedStorage {
 
 struct TimingOnlyStorage;
 
+trait StoreMut {
+    fn append_data(&mut self, rows: Vec<u8>) -> Result<()>;
+}
+
+#[trace_storage(name = "batch", capture = "off")]
+impl StoreMut for TimingOnlyStorage {
+    fn append_data(&mut self, rows: Vec<u8>) -> Result<()> {
+        assert_eq!(rows, vec![1, 2]);
+        Ok(())
+    }
+}
+
+#[test]
+fn batch_counts_do_not_require_value_capture() {
+    let capture = Capture::default();
+    tracing::subscriber::with_default(Registry::default().with(capture.clone()), || {
+        TimingOnlyStorage.append_data(vec![1, 2]).unwrap();
+    });
+    let records = capture.0.lock().unwrap();
+    let (_, fields) = records
+        .iter()
+        .find(|(name, _)| name == "gluesql.batch.append_data")
+        .unwrap();
+    assert_eq!(fields.get("row_count").map(String::as_str), Some("2"));
+    assert!(!fields.contains_key("rows"));
+    assert!(records.iter().all(|(name, _)| name != "event"));
+}
+
 #[trace_storage(name = "timing_only", capture = "off", iterators(scan_data, stream))]
 impl TimingOnlyStorage {
     fn scan_data(&self) -> Result<Box<dyn Iterator<Item = Result<u8>>>> {
