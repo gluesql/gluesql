@@ -198,8 +198,9 @@ Use `skip(new, helper)` in the outer attribute to leave selected methods unchang
 generic constructors whose arguments do not implement `Debug`. Skipped names must exist in the
 implementation and cannot also be selected with `iterators(...)` or `#[trace_iterator]`.
 
-`Store::scan_data` and `Index::scan_indexed_data` results are wrapped automatically when the
-implemented trait path ends in `Store` or `Index`, respectively. Inherent methods with the same
+`Store::scan_data`, `Index::scan_indexed_data`, and `Metadata::scan_table_meta` results are wrapped
+automatically when the implemented trait path ends in `Store`, `Index`, or `Metadata`, respectively.
+For renamed trait imports, select the method explicitly with `iterators(...)`. Inherent methods with the same
 names are not automatically wrapped. The wrapper emits each
 yielded row or error as an event when capture is enabled and records `row_count`, `error_count`,
 and `completed` when dropped. Select other iterator-returning methods in the outer attribute:
@@ -231,8 +232,9 @@ secondary_index
 full_scan
 ```
 
-`scan_data` and `scan_indexed_data` return lazy iterators. Their method spans measure iterator
-creation, while the generated iterator spans measure consumption.
+These methods return lazy iterators. Their method spans measure iterator creation, while the
+generated iterator spans measure consumption. Their iterator span suffixes are `scan_rows`,
+`scan_indexed_rows`, and `scan_table_meta_rows`, respectively.
 
 ### Backend-specific spans
 

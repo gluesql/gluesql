@@ -181,7 +181,9 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> Result<TokenStream, syn::
             || args.iterators.contains(&method.sig.ident)
             || matches!(
                 (trait_name.as_deref(), method_name.as_str()),
-                (Some("Store"), "scan_data") | (Some("Index"), "scan_indexed_data")
+                (Some("Store"), "scan_data")
+                    | (Some("Index"), "scan_indexed_data")
+                    | (Some("Metadata"), "scan_table_meta")
             );
 
         if should_trace_iterator {
