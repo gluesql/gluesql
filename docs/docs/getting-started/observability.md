@@ -167,21 +167,22 @@ continues to call storage traits directly; storage implementations opt in to met
 A storage opts in without changing its method bodies or any GlueSQL call sites. The procedural
 macro instruments the methods explicitly defined in each attributed `impl` block.
 
-Add the optional macro and tracing dependencies to the storage crate:
+Enable core tracing and add the optional `tracing` dependency to the storage crate. Core
+re-exports `trace_storage` and `observe` under this feature, so a separate `gluesql-macros`
+dependency is not required:
 
 ```toml
 [features]
-tracing = ["dep:gluesql-macros", "dep:tracing", "gluesql-core/tracing"]
+tracing = ["dep:tracing", "gluesql-core/tracing"]
 
 [dependencies]
-gluesql-macros = { version = "0.20", optional = true }
 tracing = { version = "0.1", optional = true }
 ```
 
 Apply the attribute to each implemented trait without changing the method bodies or call sites:
 
 ```rust
-#[cfg_attr(feature = "tracing", gluesql_macros::trace_storage(name = "my_storage", capture = "off"))]
+#[cfg_attr(feature = "tracing", gluesql_core::trace_storage(name = "my_storage", capture = "off"))]
 impl Store for MyStorage {
     // Existing implementation
 }
@@ -206,7 +207,7 @@ yielded row or error as an event when capture is enabled and records `row_count`
 and `completed` when dropped. Select other iterator-returning methods in the outer attribute:
 
 ```rust
-#[cfg_attr(feature = "tracing", gluesql_macros::trace_storage(name = "my_storage", iterators(stream)))]
+#[cfg_attr(feature = "tracing", gluesql_core::trace_storage(name = "my_storage", iterators(stream)))]
 impl MyStorage {
     fn stream(&self) -> Result<Box<dyn Iterator<Item = Result<Row>>>> {
         // Existing implementation
@@ -218,6 +219,18 @@ This leaves no helper attributes behind when the feature is disabled. Method nam
 in the attributed implementation and cannot be repeated. The legacy `#[trace_iterator]` marker
 is still accepted inside an unconditionally instrumented implementation; prefer `iterators(...)`
 with feature-gated instrumentation.
+
+The generated code still requires a direct dependency named `tracing`. Existing imports from
+`gluesql_macros` remain supported. If the storage is exposed as an optional dependency of the
+`gluesql` package, also append `"<storage-dependency-name>?/tracing"` to its existing `tracing`
+feature in `pkg/rust/Cargo.toml`; use the dependency key, including any underscores or rename.
+The `?` forwards tracing only when that storage is enabled and does not enable the storage itself.
+Likewise, storage wrappers can forward `"<inner-storage>/tracing"` once their inner storage
+provides that feature.
+
+Treat the Cargo feature, attributes on explicitly implemented trait methods, and facade feature
+forwarding as one integration change. Before shipping a new integration, check the storage with
+and without its `tracing` feature and check the facade with that storage and `tracing` enabled.
 
 The attribute works on inherent implementations and external traits as well as GlueSQL storage
 traits. Iterator methods must return a `Result` whose success value is a boxed iterator of
@@ -667,16 +680,16 @@ storages/redb-storage/Cargo.toml
 ```
 
 First add a `tracing` feature to the target storage crate. It must enable the optional `tracing`
-and `gluesql-macros` dependencies together with `gluesql-core/tracing`. Register the example with
+dependency together with `gluesql-core/tracing`; use the macros re-exported by `gluesql_core`.
+Register the example with
 `required-features = ["tracing"]` so its tracing and RSS dependencies are not compiled for normal
 storage users:
 
 ```toml
 [features]
-tracing = ["dep:gluesql-macros", "dep:tracing", "gluesql-core/tracing"]
+tracing = ["dep:tracing", "gluesql-core/tracing"]
 
 [dependencies]
-gluesql-macros = { version = "0.20", optional = true }
 tracing = { version = "0.1", optional = true }
 
 [dev-dependencies]
