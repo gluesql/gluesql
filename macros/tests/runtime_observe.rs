@@ -1,5 +1,8 @@
 use {
-    gluesql_core::prelude::Glue,
+    gluesql_core::{
+        prelude::Glue,
+        store::{MetaIter, Metadata},
+    },
     gluesql_macros::{observe, trace_storage},
     gluesql_memory_storage::MemoryStorage,
     std::{
@@ -338,6 +341,50 @@ impl ObservedStorage {
 }
 
 struct TimingOnlyStorage;
+
+#[trace_storage(name = "metadata", capture = "off")]
+impl Metadata for TimingOnlyStorage {
+    fn scan_table_meta(&self) -> gluesql_core::error::Result<MetaIter> {
+        Ok(Box::new(
+            [
+                Ok(("items".to_owned(), BTreeMap::new())),
+                Err(gluesql_core::error::Error::StorageMsg(
+                    "unreadable metadata".to_owned(),
+                )),
+            ]
+            .into_iter(),
+        ))
+    }
+}
+
+#[test]
+fn metadata_iterator_records_complete_and_partial_consumption() {
+    let capture = Capture::default();
+    tracing::subscriber::with_default(Registry::default().with(capture.clone()), || {
+        let mut rows = TimingOnlyStorage.scan_table_meta().unwrap();
+        assert_eq!(rows.next().unwrap().unwrap().0, "items");
+        drop(rows);
+        let rows = TimingOnlyStorage
+            .scan_table_meta()
+            .unwrap()
+            .collect::<Vec<_>>();
+        assert_eq!(rows.len(), 2);
+        assert!(rows[1].is_err());
+    });
+    let records = capture.0.lock().unwrap();
+    let spans = records
+        .iter()
+        .filter(|(name, _)| name == "gluesql.metadata.scan_table_meta_rows")
+        .collect::<Vec<_>>();
+    assert_eq!(spans.len(), 2);
+    for ((_, fields), (errors, completed)) in spans.into_iter().zip([("0", "false"), ("1", "true")])
+    {
+        assert_eq!(fields.get("row_count").map(String::as_str), Some("1"));
+        assert_eq!(fields.get("error_count").map(String::as_str), Some(errors));
+        assert_eq!(fields.get("completed").map(String::as_str), Some(completed));
+    }
+    assert!(records.iter().all(|(name, _)| name != "event"));
+}
 
 trait StoreMut {
     fn append_data(&mut self, rows: Vec<u8>) -> Result<()>;
