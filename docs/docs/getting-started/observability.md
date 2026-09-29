@@ -196,15 +196,21 @@ values. The generated span name follows `gluesql.<storage>.<method>`.
 implemented trait path ends in `Store` or `Index`, respectively. Inherent methods with the same
 names are not automatically wrapped. The wrapper emits each
 yielded row or error as an event when capture is enabled and records `row_count`, `error_count`,
-and `completed` when dropped. For an iterator-returning method on any other trait, mark it inside
-the attributed implementation:
+and `completed` when dropped. Select other iterator-returning methods in the outer attribute:
 
 ```rust
-#[trace_iterator]
-fn stream(&self) -> Result<Box<dyn Iterator<Item = Result<Row>>>> {
-    // Existing implementation
+#[cfg_attr(feature = "tracing", gluesql_macros::trace_storage(name = "my_storage", iterators(stream)))]
+impl MyStorage {
+    fn stream(&self) -> Result<Box<dyn Iterator<Item = Result<Row>>>> {
+        // Existing implementation
+    }
 }
 ```
+
+This leaves no helper attributes behind when the feature is disabled. Method names must exist
+in the attributed implementation and cannot be repeated. The legacy `#[trace_iterator]` marker
+is still accepted inside an unconditionally instrumented implementation; prefer `iterators(...)`
+with feature-gated instrumentation.
 
 The attribute works on inherent implementations and external traits as well as GlueSQL storage
 traits. Iterator methods must return a `Result` whose success value is a boxed iterator of

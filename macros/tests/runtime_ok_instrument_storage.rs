@@ -17,13 +17,12 @@ impl Storage {
     }
 }
 
-#[trace_storage(name = "external")]
+#[cfg_attr(all(), trace_storage(name = "external", iterators(stream)))]
 impl ExternalStore for Storage {
     fn lookup(&self, key: i32, rows: Vec<i32>) -> Result<Vec<i32>> {
         Ok(rows.into_iter().filter(|value| *value == key).collect())
     }
 
-    #[trace_iterator]
     fn stream(&self) -> Result<Rows> {
         Ok(Box::new([Ok(1), Err("broken row"), Ok(2)].into_iter()))
     }
@@ -34,10 +33,27 @@ fn instruments_external_trait_without_changing_calls() {
     let storage = Storage;
 
     assert_eq!(storage.scan_data(), vec![1, 2]);
+    assert_eq!(
+        UntracedStorage.stream().unwrap().collect::<Vec<_>>(),
+        vec![Ok(4)]
+    );
 
     assert_eq!(storage.lookup(2, vec![1, 2, 3]), Ok(vec![2]));
     assert_eq!(
         storage.stream().unwrap().collect::<Vec<_>>(),
         vec![Ok(1), Err("broken row"), Ok(2)]
     );
+}
+
+struct UntracedStorage;
+
+#[cfg_attr(any(), trace_storage(name = "off", iterators(stream)))]
+impl ExternalStore for UntracedStorage {
+    fn lookup(&self, key: i32, rows: Vec<i32>) -> Result<Vec<i32>> {
+        Storage.lookup(key, rows)
+    }
+
+    fn stream(&self) -> Result<Rows> {
+        Ok(Box::new([Ok(4)].into_iter()))
+    }
 }

@@ -339,14 +339,12 @@ impl ObservedStorage {
 
 struct TimingOnlyStorage;
 
-#[trace_storage(name = "timing_only", capture = "off")]
+#[trace_storage(name = "timing_only", capture = "off", iterators(scan_data, stream))]
 impl TimingOnlyStorage {
-    #[trace_iterator]
     fn scan_data(&self) -> Result<Box<dyn Iterator<Item = Result<u8>>>> {
         Ok(Box::new([Ok(1), Err("private error")].into_iter()))
     }
 
-    #[trace_iterator]
     fn stream(&self) -> Result<Box<dyn Iterator<Item = Result<u8>>>> {
         self.scan_data()
     }
