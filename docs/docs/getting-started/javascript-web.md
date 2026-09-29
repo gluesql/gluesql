@@ -34,7 +34,7 @@ The `gluesql` package provides three browser entry points. Pick the one that mat
 | --- | --- | --- |
 | `gluesql` | `memory`, `localStorage`, `sessionStorage` | Memory is lost on reload; Web Storage follows the browser's storage rules |
 | `gluesql/opfs` | OPFS file | Survives reloads and browser restarts, one tab at a time |
-| `gluesql/opfs/shared` | OPFS file, shared across tabs | Survives reloads and browser restarts, safe to open in many tabs |
+| `gluesql/opfs/shared` | OPFS file, shared across tabs | Survives reloads and browser restarts, safe to open in many tabs when Web Locks and `BroadcastChannel` are available |
 
 ## Usage
 
@@ -209,7 +209,7 @@ await db.query('CREATE TABLE IF NOT EXISTS Log (at TEXT);');
 
 Tabs using the same namespace elect a leader with the [Web Locks API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Locks_API). Only the leader starts the database worker and holds the OPFS file, and the other tabs send their queries to it through a [`BroadcastChannel`](https://developer.mozilla.org/en-US/docs/Web/API/BroadcastChannel). A write from one tab is immediately visible to the others.
 
-If the leader tab closes or crashes, another tab becomes the leader, and queries sent in the meantime are delivered to it. A query that the lost leader had already received is rejected with a `leader lost` error, because it may or may not have been applied. Retry reads freely, but guard non-idempotent writes in your application.
+If the leader tab closes or crashes, another tab becomes the leader, and pending queries are delivered to it. A query whose acceptance by the lost leader was already confirmed is rejected with a `leader lost` error, because it may or may not have been applied. A query whose acceptance was not confirmed is resent to the new leader, so if the old leader crashed right after starting it, the query can run twice. Retry reads freely, but guard non-idempotent writes in your application.
 
 If the Web Locks API or `BroadcastChannel` is unavailable, this entry point falls back to the single-tab behavior of `gluesql/opfs`.
 
