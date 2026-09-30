@@ -5,10 +5,12 @@ use {
             Glue,
             Value::{self, *},
         },
+        store::Store,
     },
     gluesql_json_storage::JsonStorage,
     std::{
         collections::BTreeMap,
+        fs::remove_dir_all,
         net::{IpAddr, Ipv4Addr},
     },
     test_suite::{concat_with, concat_with_null, row, select, select_with_null, stringify_label},
@@ -176,4 +178,21 @@ fn json_schema() {
     for (actual, expected) in cases {
         assert_eq!(actual.map(|mut payloads| payloads.remove(0)), expected);
     }
+}
+
+#[test]
+fn engine_round_trip() {
+    let path = "tmp/json_engine_round_trip";
+    let _ = remove_dir_all(path);
+    let storage = JsonStorage::new(path).expect("JsonStorage::new");
+    let mut glue = Glue::new(storage);
+
+    glue.execute("CREATE TABLE EngineTable (id INTEGER) ENGINE = JSON;")
+        .unwrap();
+
+    let schema = glue.storage.fetch_schema("EngineTable").unwrap().unwrap();
+    assert_eq!(schema.engine.as_deref(), Some("JSON"));
+
+    drop(glue);
+    remove_dir_all(path).unwrap();
 }
