@@ -145,7 +145,6 @@ impl<'a, T: GStore> Update<'a, T> {
         let context = Some(Rc::new(context));
 
         let mut assignments = Vec::with_capacity(self.fields.len());
-        let mut assigned = Vec::with_capacity(self.fields.len());
         for assignment in self.fields {
             let AssignmentPlan {
                 id,
@@ -168,7 +167,6 @@ impl<'a, T: GStore> Update<'a, T> {
                 None => evaluated.try_into()?,
             };
 
-            assigned.push(id.clone());
             assignments.push((id.as_str(), value));
         }
 
@@ -200,12 +198,12 @@ impl<'a, T: GStore> Update<'a, T> {
 
         let row = Row { columns, values };
 
-        self.validate_foreign_keys(&row, &assigned)?;
+        self.validate_foreign_keys(&row)?;
 
         Ok(row)
     }
 
-    fn validate_foreign_keys(&self, row: &Row, assigned: &[String]) -> Result<()> {
+    fn validate_foreign_keys(&self, row: &Row) -> Result<()> {
         for check in &self.foreign_key_checks {
             let ResolvedForeignKey {
                 foreign_key,
@@ -218,13 +216,6 @@ impl<'a, T: GStore> Update<'a, T> {
                 referenced_column_names,
                 ..
             } = *foreign_key;
-
-            if !referencing_column_names
-                .iter()
-                .any(|column_name| assigned.iter().any(|id| id == column_name))
-            {
-                continue;
-            }
 
             let values = referencing_column_names
                 .iter()
