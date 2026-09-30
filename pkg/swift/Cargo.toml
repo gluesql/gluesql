@@ -1,0 +1,29 @@
+[package]
+name = "gluesql_swift"
+version.workspace = true
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation.workspace = true
+
+[lib]
+name = "gluesql"
+crate-type = ["cdylib", "staticlib"]
+
+[build-dependencies]
+uniffi = { version = "0.29.3", features = ["build"] }
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "uniffi-bindgen.rs"
+
+[dependencies]
+gluesql-core.workspace = true
+gluesql_memory_storage.workspace = true
+gluesql-shared-memory-storage.workspace = true
+tokio = { version = "1.46.1", features = ["full"] }
+chrono = "0.4.41"
+lazy_static = "1.5.0"
+uuid = { version = "1.17.0", features = ["v4", "serde"] }
+uniffi = { version = "0.29.3", features = ["cli", "tokio"] }
