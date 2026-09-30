@@ -93,6 +93,9 @@ fn translate_set_expr(sql_set_expr: &SqlSetExpr, params: &[ParamLiteral]) -> Res
             .collect::<Result<_>>()
             .map(Values)
             .map(SetExpr::Values),
+        SqlSetExpr::SetOperation { op, .. } => {
+            Err(TranslateError::UnsupportedQuerySetExpr(op.to_string()).into())
+        }
         _ => Err(TranslateError::UnsupportedQuerySetExpr(sql_set_expr.to_string()).into()),
     }
 }
@@ -349,6 +352,15 @@ fn translate_join(params: &[ParamLiteral], sql_join: &SqlJoin) -> Result<Join> {
         }
         SqlJoinOperator::LeftOuter(sql_join_constraint) => {
             translate_constraint(sql_join_constraint).map(JoinOperator::LeftOuter)
+        }
+        SqlJoinOperator::RightOuter(_) => {
+            Err(TranslateError::UnsupportedJoinOperator("RIGHT JOIN".to_owned()).into())
+        }
+        SqlJoinOperator::FullOuter(_) => {
+            Err(TranslateError::UnsupportedJoinOperator("FULL OUTER JOIN".to_owned()).into())
+        }
+        SqlJoinOperator::CrossJoin => {
+            Err(TranslateError::UnsupportedJoinOperator("CROSS JOIN".to_owned()).into())
         }
         _ => Err(TranslateError::UnsupportedJoinOperator(format!("{sql_join_operator:?}")).into()),
     }?;
