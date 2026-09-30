@@ -1,5 +1,8 @@
 use {
-    crate::plan::{ExprPlan, InnerJoinPlan, LeftOuterJoinPlan, SourcePlan},
+    crate::plan::{
+        ExprPlan, InnerJoinPlan, LeftOuterJoinPlan, SourcePlan,
+        explain::{Explain, ExplainContext, ExplainNode},
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -42,6 +45,28 @@ pub struct FilterPlan {
     pub expr: ExprPlan,
 }
 
+impl Explain for FilterPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        ExplainNode::new("filter")
+            .with_property("expression", self.expr.explain(context))
+            .with_child(self.input.explain(context))
+    }
+}
+
+impl Explain for FilterInputPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        match self {
+            Self::Source(source) => source.explain(context),
+            Self::InnerJoin(join) => join.explain(context),
+            Self::LeftOuterJoin(join) => join.explain(context),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use {
@@ -51,7 +76,7 @@ mod tests {
             plan::{
                 ExprPlan, InnerJoinInputPlan, InnerJoinPlan, LeftOuterJoinInputPlan,
                 LeftOuterJoinPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan, SourcePlan,
-                TableAccessPlan, TableSourcePlan,
+                TableAccessPlan, TableSourcePlan, explain::test_explain,
             },
         },
         pretty_assertions::assert_eq,
@@ -125,5 +150,65 @@ mod tests {
         );
         *left_outer.input.base_source_mut() = table("left-outer");
         assert_eq!(left_outer.input.base_source(), &table("left-outer"));
+    }
+
+    #[test]
+    fn explain() {
+        let actual = FilterPlan {
+            input: FilterInputPlan::Source(table("Player")),
+            expr: ExprPlan::Identifier("active".to_owned()),
+        };
+        let expected = r"
+• filter
+│ expression: active
+│
+└── • scan Player
+      access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = FilterPlan {
+            input: FilterInputPlan::InnerJoin(Box::new(InnerJoinPlan {
+                input: InnerJoinInputPlan::NestedLoop(NestedLoopJoinPlan {
+                    input: NestedLoopJoinInputPlan::Source(table("A")),
+                    right: table("B"),
+                }),
+            })),
+            expr: ExprPlan::Identifier("active".to_owned()),
+        };
+        let expected = r"
+• filter
+│ expression: active
+│
+└── • nested-loop join (inner)
+    ├── • scan A
+    │     access: full scan
+    │
+    └── • scan B
+          access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = FilterPlan {
+            input: FilterInputPlan::LeftOuterJoin(Box::new(LeftOuterJoinPlan {
+                input: LeftOuterJoinInputPlan::NestedLoop(NestedLoopJoinPlan {
+                    input: NestedLoopJoinInputPlan::Source(table("A")),
+                    right: table("B"),
+                }),
+            })),
+            expr: ExprPlan::Identifier("active".to_owned()),
+        };
+        let expected = r"
+• filter
+│ expression: active
+│
+└── • nested-loop join (left outer)
+    ├── • scan A
+    │     access: full scan
+    │
+    └── • scan B
+          access: full scan
+";
+        test_explain(&actual, expected);
     }
 }

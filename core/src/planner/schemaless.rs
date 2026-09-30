@@ -33,6 +33,10 @@ fn transform_statement<S: BuildHasher>(
     statement: StatementPlan,
 ) -> StatementPlan {
     match statement {
+        StatementPlan::Explain(mut query) => {
+            transform_query(schema_map, &mut query);
+            StatementPlan::Explain(query)
+        }
         StatementPlan::Query(mut query) => {
             transform_query(schema_map, &mut query);
             StatementPlan::Query(query)

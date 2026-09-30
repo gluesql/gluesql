@@ -1,3 +1,4 @@
+mod explain;
 mod statement;
 
-pub use statement::*;
+pub use {explain::explain, statement::*};

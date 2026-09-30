@@ -1,6 +1,9 @@
 use {
     super::{InnerJoinPlan, LeftOuterJoinPlan},
-    crate::plan::{ExprPlan, SourcePlan},
+    crate::plan::{
+        ExprPlan, SourcePlan,
+        explain::{Explain, ExplainContext, ExplainNode},
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -49,6 +52,36 @@ impl HashJoinPlan {
     }
 }
 
+impl Explain for HashJoinPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        let equality = format!(
+            "{} = {}",
+            self.input_key.explain(context),
+            self.right_key.explain(context)
+        );
+        let right_filter = self.right_filter.as_ref().map(|expr| expr.explain(context));
+
+        ExplainNode::new("hash join")
+            .with_property("equality", equality)
+            .with_optional_property("right filter", right_filter)
+            .with_children([self.input.explain(context), self.right.explain(context)])
+    }
+}
+
+impl Explain for HashJoinInputPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        match self {
+            Self::Source(source) => source.explain(context),
+            Self::InnerJoin(join) => join.explain(context),
+            Self::LeftOuterJoin(join) => join.explain(context),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use {
@@ -58,7 +91,7 @@ mod tests {
             plan::{
                 ExprPlan, InnerJoinInputPlan, InnerJoinPlan, LeftOuterJoinInputPlan,
                 LeftOuterJoinPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan, SourcePlan,
-                TableAccessPlan, TableSourcePlan,
+                TableAccessPlan, TableSourcePlan, explain::test_explain,
             },
         },
         pretty_assertions::assert_eq,
@@ -140,5 +173,80 @@ mod tests {
         assert_eq!(actual.joined_sources(), expected.iter().collect::<Vec<_>>());
         *actual.base_source_mut() = table("left-outer");
         assert_eq!(actual.base_source(), &table("left-outer"));
+    }
+
+    #[test]
+    fn explain() {
+        let actual = HashJoinPlan {
+            input: HashJoinInputPlan::Source(table("A")),
+            right: table("B"),
+            input_key: ExprPlan::CompoundIdentifier {
+                alias: "A".to_owned(),
+                ident: "id".to_owned(),
+            },
+            right_key: ExprPlan::CompoundIdentifier {
+                alias: "B".to_owned(),
+                ident: "id".to_owned(),
+            },
+            right_filter: Some(ExprPlan::Value(Value::Bool(true))),
+        };
+        let expected = r"
+• hash join
+│ equality: A.id = B.id
+│ right filter: TRUE
+│
+├── • scan A
+│     access: full scan
+│
+└── • scan B
+      access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = HashJoinPlan {
+            input: HashJoinInputPlan::InnerJoin(Box::new(inner_join())),
+            right: table("C"),
+            input_key: expr(),
+            right_key: expr(),
+            right_filter: None,
+        };
+        let expected = r"
+• hash join
+│ equality: TRUE = TRUE
+│
+├── • nested-loop join (inner)
+│   ├── • scan A
+│   │     access: full scan
+│   │
+│   └── • scan B
+│         access: full scan
+│
+└── • scan C
+      access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = HashJoinPlan {
+            input: HashJoinInputPlan::LeftOuterJoin(Box::new(left_outer_join())),
+            right: table("C"),
+            input_key: expr(),
+            right_key: expr(),
+            right_filter: None,
+        };
+        let expected = r"
+• hash join
+│ equality: TRUE = TRUE
+│
+├── • nested-loop join (left outer)
+│   ├── • scan A
+│   │     access: full scan
+│   │
+│   └── • scan B
+│         access: full scan
+│
+└── • scan C
+      access: full scan
+";
+        test_explain(&actual, expected);
     }
 }

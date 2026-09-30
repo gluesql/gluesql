@@ -1,6 +1,9 @@
 use {
     super::{HashJoinPlan, NestedLoopJoinPlan},
-    crate::plan::{ExprPlan, SourcePlan},
+    crate::plan::{
+        ExprPlan, SourcePlan,
+        explain::{Explain, ExplainContext, ExplainNode},
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -39,6 +42,18 @@ impl JoinConditionPlan {
     }
 }
 
+impl Explain for JoinConditionPlan {
+    type Output = ExplainNode;
+
+    fn explain(&self, context: &mut ExplainContext) -> ExplainNode {
+        let node = match &self.input {
+            JoinConditionInputPlan::NestedLoop(join) => join.explain(context),
+            JoinConditionInputPlan::Hash(join) => join.explain(context),
+        };
+        node.with_property("condition", self.expr.explain(context))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use {
@@ -48,6 +63,7 @@ mod tests {
             plan::{
                 ExprPlan, HashJoinInputPlan, HashJoinPlan, NestedLoopJoinInputPlan,
                 NestedLoopJoinPlan, SourcePlan, TableAccessPlan, TableSourcePlan,
+                explain::test_explain,
             },
         },
         pretty_assertions::assert_eq,
@@ -107,5 +123,41 @@ mod tests {
         assert_eq!(actual.joined_sources(), expected.iter().collect::<Vec<_>>());
         *actual.base_source_mut() = table("hash");
         assert_eq!(actual.base_source(), &table("hash"));
+    }
+
+    #[test]
+    fn explain() {
+        let actual = JoinConditionPlan {
+            input: JoinConditionInputPlan::NestedLoop(nested_loop()),
+            expr: ExprPlan::Value(Value::Bool(true)),
+        };
+        let expected = r"
+• nested-loop join
+│ condition: TRUE
+│
+├── • scan A
+│     access: full scan
+│
+└── • scan B
+      access: full scan
+";
+        test_explain(&actual, expected);
+
+        let actual = JoinConditionPlan {
+            input: JoinConditionInputPlan::Hash(hash()),
+            expr: ExprPlan::Value(Value::Bool(true)),
+        };
+        let expected = r"
+• hash join
+│ equality: TRUE = TRUE
+│ condition: TRUE
+│
+├── • scan A
+│     access: full scan
+│
+└── • scan B
+      access: full scan
+";
+        test_explain(&actual, expected);
     }
 }

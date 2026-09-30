@@ -144,6 +144,20 @@ impl<'a, W: Write> Print<W> {
                 let table = Self::build_table(table);
                 self.writeln(table)?;
             }
+            Payload::Explain(lines) => {
+                if self.option.tabular {
+                    let mut table = Self::get_table(["QUERY PLAN"]);
+                    for line in lines {
+                        table.add_record([line]);
+                    }
+                    let table = Self::build_table(table);
+                    self.writeln(table)?;
+                } else {
+                    self.write_header(std::iter::once("QUERY PLAN"))?;
+                    let rows = lines.iter().map(|line| std::iter::once(line.to_owned()));
+                    self.write_rows(rows)?;
+                }
+            }
             Payload::Select { labels, rows } => match &self.option.tabular {
                 true => {
                     let labels = labels.iter().map(AsRef::as_ref);
@@ -399,6 +413,14 @@ mod tests {
         test!(Payload::Delete(300), "300 rows deleted");
         test!(Payload::Update(123), "123 rows updated");
         test!(
+            Payload::Explain(vec!["• project".to_owned(), "└── • scan Player".to_owned(),]),
+            "
+| QUERY PLAN        |
+|-------------------|
+| • project         |
+| └── • scan Player |"
+        );
+        test!(
             Payload::ShowVariable(PayloadVariable::Version("11.6.1989".to_owned())),
             "v11.6.1989"
         );
@@ -583,6 +605,13 @@ mod tests {
 
         // ".set tabular OFF" should print SELECTED payload without tabular option
         print.set_option(SetOption::Tabular(false));
+        test!(
+            Payload::Explain(vec!["• project".to_owned(), "└── • scan Player".to_owned(),]),
+            "
+QUERY PLAN
+• project
+└── • scan Player"
+        );
         test!(
             Payload::Select {
                 labels: ["id", "title", "valid"]
