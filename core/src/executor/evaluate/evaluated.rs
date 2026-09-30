@@ -37,6 +37,18 @@ pub enum Evaluated<'a> {
     Value(Cow<'a, Value>),
 }
 
+pub(super) fn as_str<'a>(evaluated: &'a Evaluated<'_>) -> Option<&'a str> {
+    match evaluated {
+        Evaluated::Text(value) => Some(value.as_ref()),
+        Evaluated::StrSlice { source, range } => Some(&source[range.clone()]),
+        Evaluated::Value(value) => match value.as_ref() {
+            Value::Str(value) => Some(value.as_str()),
+            _ => None,
+        },
+        Evaluated::Number(_) => None,
+    }
+}
+
 /// Formats the evaluated value as a string.
 /// This is primarily intended for error message generation, not for general-purpose display.
 impl Display for Evaluated<'_> {
