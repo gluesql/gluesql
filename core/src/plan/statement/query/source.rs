@@ -62,6 +62,7 @@ impl From<ast::TableFactor> for SourcePlan {
                 access: TableAccessPlan::FullScan,
             }),
             ast::TableFactor::Derived { subquery, alias } => Self::Derived(DerivedSourcePlan {
+                unplanned: None,
                 query: Box::new(subquery.into()),
                 alias: alias.into(),
             }),
@@ -125,6 +126,7 @@ mod tests {
         assert_eq!(actual, expected);
 
         let query = Query {
+            with: Vec::new(),
             body: SetExpr::Values(Values(vec![vec![Expr::Literal(Literal::Number(1.into()))]])),
             order_by: Vec::new(),
             limit: None,
@@ -135,6 +137,7 @@ mod tests {
             alias: alias("derived"),
         });
         let expected = SourcePlan::Derived(DerivedSourcePlan {
+            unplanned: None,
             query: Box::new(QueryPlan::from(query)),
             alias: TableAliasPlan {
                 name: "derived".to_owned(),

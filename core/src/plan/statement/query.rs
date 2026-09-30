@@ -64,7 +64,24 @@ impl QueryPlan {
 
 impl From<ast::Query> for QueryPlan {
     fn from(query: ast::Query) -> Self {
+        if !query.with.is_empty() {
+            // Keep the whole lexical query boundary until the Planner resolves its CTEs.
+            return Self::Project(ProjectPlan {
+                input: ProjectInputPlan::Source(SourcePlan::Derived(DerivedSourcePlan {
+                    unplanned: Some(Box::new(query)),
+                    query: Box::new(Self::Values(ValuesPlan(Vec::new()))),
+                    alias: TableAliasPlan {
+                        name: String::new(),
+                        columns: Vec::new(),
+                    },
+                })),
+                projection: crate::plan::ProjectionPlan::SelectItems(vec![
+                    crate::plan::SelectItemPlan::Wildcard,
+                ]),
+            });
+        }
         let ast::Query {
+            with: _,
             body,
             order_by,
             limit: limit_expr,

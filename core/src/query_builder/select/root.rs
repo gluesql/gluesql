@@ -124,6 +124,7 @@ impl BuildSourcePlan for SelectNode<'_> {
                 size: size.build_expr_plan()?,
             })),
             SourceNode::Derived { query, alias } => Ok(SourcePlan::Derived(DerivedSourcePlan {
+                unplanned: None,
                 query: Box::new(query.build_query_plan()?),
                 alias: TableAliasPlan {
                     name: alias,

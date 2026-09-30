@@ -8,10 +8,18 @@ use {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Query {
+    #[serde(default)]
+    pub with: Vec<Cte>,
     pub body: SetExpr,
     pub order_by: Vec<OrderByExpr>,
     pub limit: Option<Expr>,
     pub offset: Option<Expr>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Cte {
+    pub alias: TableAlias,
+    pub query: Query,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -137,6 +145,7 @@ impl Query {
         };
 
         let Query {
+            with,
             body,
             order_by,
             limit,
@@ -170,10 +179,30 @@ impl Query {
             .filter(|sql| !sql.is_empty())
             .join(" ");
 
-        if string.is_empty() {
-            body.to_sql_with(quoted)
+        let body = body.to_sql_with(quoted);
+        let body = if with.is_empty() {
+            body
         } else {
-            format!("{} {}", body.to_sql_with(quoted), string)
+            let ctes = with
+                .iter()
+                .map(|cte| {
+                    format!(
+                        "{} AS ({})",
+                        if quoted {
+                            format!(r#""{}""#, cte.alias.name)
+                        } else {
+                            cte.alias.name.clone()
+                        },
+                        cte.query.to_sql_with(quoted)
+                    )
+                })
+                .join(", ");
+            format!("WITH {ctes} {body}")
+        };
+        if string.is_empty() {
+            body
+        } else {
+            format!("{body} {string}")
         }
     }
 }
@@ -579,6 +608,7 @@ mod tests {
         let actual =
             r#"SELECT * FROM "FOO" AS "F" ORDER BY "name" ASC LIMIT 10 OFFSET 3"#.to_owned();
         let expected = Query {
+            with: Vec::new(),
             body: SetExpr::Select(Box::new(Select {
                 distinct: false,
                 projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
@@ -616,6 +646,7 @@ mod tests {
         }];
         let actual = "SELECT * FROM FOO AS F ORDER BY name ASC LIMIT 10 OFFSET 3".to_owned();
         let expected = Query {
+            with: Vec::new(),
             body: SetExpr::Select(Box::new(Select {
                 distinct: false,
                 projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
@@ -936,6 +967,7 @@ mod tests {
         let actual = r#"(SELECT * FROM "FOO") AS "F""#;
         let expected = TableFactor::Derived {
             subquery: Query {
+                with: Vec::new(),
                 body: SetExpr::Select(Box::new(Select {
                     distinct: false,
                     projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
@@ -1001,6 +1033,7 @@ mod tests {
         let actual = "(SELECT * FROM FOO) AS F";
         let expected = TableFactor::Derived {
             subquery: Query {
+                with: Vec::new(),
                 body: SetExpr::Select(Box::new(Select {
                     distinct: false,
                     projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
