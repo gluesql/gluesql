@@ -16,7 +16,7 @@ use {
         store::{GStore, GStoreMut},
     },
     serde::Serialize,
-    std::fmt,
+    std::{collections::HashSet, fmt},
 };
 
 pub struct CreateTableOptions<'a> {
@@ -295,6 +295,18 @@ pub fn drop_table<T: GStore + GStoreMut>(
     if_exists: bool,
     cascade: bool,
 ) -> Result<usize> {
+    if !if_exists {
+        // read-only pass: nothing is dropped unless every name can be dropped
+        let mut scheduled = HashSet::new();
+
+        for table_name in table_names {
+            if !scheduled.insert(table_name.as_str()) || storage.fetch_schema(table_name)?.is_none()
+            {
+                return Err(AlterError::TableNotFound(table_name.to_owned()).into());
+            }
+        }
+    }
+
     let mut n = 0;
 
     for table_name in table_names {
