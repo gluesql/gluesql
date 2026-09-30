@@ -112,12 +112,14 @@ where
         let context = RowContext::new(table_alias, Cow::Borrowed(&row), None);
         let label_context = Rc::new(context);
         let filter_context = match filter_context {
-            Some(filter_context) => Some(Rc::new(RowContext::concat(
+            Some(filter_context) => Rc::new(RowContext::concat(
                 filter_context,
                 Rc::clone(&label_context),
-            ))),
-            None => Some(Rc::clone(&label_context)),
+            )),
+            None => Rc::clone(&label_context),
         };
+        let output_context = Rc::new(RowContext::new("OUTPUT", Cow::Borrowed(&row), None));
+        let filter_context = Some(Rc::new(RowContext::concat(filter_context, output_context)));
 
         let keys = order_by
             .into_iter()

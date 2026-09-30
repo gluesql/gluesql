@@ -26,7 +26,12 @@ impl Row {
     }
 
     pub fn as_context(&self) -> RowContext<'_> {
+        self.as_context_with_alias(None)
+    }
+
+    pub fn as_context_with_alias<'a>(&'a self, table_alias: Option<&'a str>) -> RowContext<'a> {
         RowContext::RefVecData {
+            table_alias,
             columns: &self.columns,
             values: &self.values,
         }

@@ -109,6 +109,17 @@ pub enum EvaluateError {
     #[error("aggregate expression requires planner binding: {0:?}")]
     UnplannedAggregate(Box<AggregateExprPlan>),
 
+    #[error(
+        "unplanned reference reached evaluator: {reference}",
+        reference = qualifier
+            .as_ref()
+            .map_or_else(|| name.clone(), |qualifier| format!("{qualifier}.{name}"))
+    )]
+    UnplannedReference {
+        qualifier: Option<String>,
+        name: String,
+    },
+
     #[error("incompatible bit operation between {0} and {1}")]
     IncompatibleBitOperation(String, String),
 
@@ -235,4 +246,29 @@ pub enum EvaluateError {
         literal: String,
         data_type: DataType,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::EvaluateError;
+
+    #[test]
+    fn formats_unplanned_references_with_their_original_names() {
+        assert_eq!(
+            EvaluateError::UnplannedReference {
+                qualifier: None,
+                name: "missing".to_owned(),
+            }
+            .to_string(),
+            "unplanned reference reached evaluator: missing"
+        );
+        assert_eq!(
+            EvaluateError::UnplannedReference {
+                qualifier: Some("Users".to_owned()),
+                name: "id".to_owned(),
+            }
+            .to_string(),
+            "unplanned reference reached evaluator: Users.id"
+        );
+    }
 }

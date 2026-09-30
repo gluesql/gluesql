@@ -260,13 +260,13 @@ mod tests {
                                 alias: None,
                                 access: TableAccessPlan::FullScan,
                             }),
-                            input_key: ExprPlan::CompoundIdentifier {
-                                alias: "Bar".to_owned(),
-                                ident: "id".to_owned(),
+                            input_key: ExprPlan::UnplannedReference {
+                                qualifier: Some("Bar".to_owned()),
+                                name: "id".to_owned(),
                             },
-                            right_key: ExprPlan::CompoundIdentifier {
-                                alias: "Foo".to_owned(),
-                                ident: "id".to_owned(),
+                            right_key: ExprPlan::UnplannedReference {
+                                qualifier: Some("Foo".to_owned()),
+                                name: "id".to_owned(),
                             },
                             right_filter: None,
                         }),
