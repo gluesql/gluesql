@@ -79,15 +79,15 @@ fn memory_storage_index() {
 
 #[test]
 fn memory_storage_transaction() {
-    use gluesql_core::prelude::{Error, Glue, Payload};
+    use gluesql_core::prelude::{Error, Glue};
 
     let storage = MemoryStorage::default();
     let mut glue = Glue::new(storage);
 
     exec!(glue "CREATE TABLE TxTest (id INTEGER);");
     test!(glue "BEGIN", Err(Error::StorageMsg("[MemoryStorage] transaction is not supported".to_owned())));
-    test!(glue "COMMIT", Ok(vec![Payload::Commit]));
-    test!(glue "ROLLBACK", Ok(vec![Payload::Rollback]));
+    test!(glue "COMMIT", Err(Error::StorageMsg("[MemoryStorage] transaction is not supported".to_owned())));
+    test!(glue "ROLLBACK", Err(Error::StorageMsg("[MemoryStorage] transaction is not supported".to_owned())));
 }
 
 #[test]
