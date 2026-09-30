@@ -1,5 +1,5 @@
 use {
-    crate::{RedisStorage, mutex::MutexExt},
+    crate::RedisStorage,
     gluesql_core::{
         data::Value,
         error::{Error, Result},
@@ -14,7 +14,7 @@ impl Metadata for RedisStorage {
         let mut all_metadata: BTreeMap<String, BTreeMap<String, Value>> = BTreeMap::new();
         let metadata_scan_key = Self::redis_generate_scan_all_metadata_key(&self.namespace);
         let redis_keys: Vec<String> = {
-            let mut conn = self.conn.lock_err()?;
+            let mut conn = self.pool.checkout()?;
             conn.scan_match(&metadata_scan_key)
                 .map(Iterator::collect::<Vec<String>>)
                 .map_err(|_| {
@@ -30,7 +30,7 @@ impl Metadata for RedisStorage {
             // Another client just has removed the value with the key.
             // It's not a problem. Just ignore it.
             let value = {
-                let mut conn = self.conn.lock_err()?;
+                let mut conn = self.pool.checkout()?;
                 redis::cmd("GET")
                     .arg(&redis_key)
                     .query::<String>(&mut *conn)
