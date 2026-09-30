@@ -11,6 +11,19 @@ use {
     },
 };
 
+#[cfg_attr(
+    feature = "tracing",
+    gluesql_macros::observe(
+        name = "gluesql.result.materialize",
+        target = "gluesql",
+        level = "debug",
+        on_ok(payload, record(buffered_rows = match payload {
+            Payload::Select { rows, .. } => rows.len(),
+            Payload::SelectMap(rows) => rows.len(),
+            _ => unreachable!("select executor returned a non-select payload"),
+        }))
+    )
+)]
 pub(super) fn execute<T: GStore>(storage: &T, query: &QueryPlan) -> Result<Payload> {
     let (labels, rows) = query::execute_with_labels(storage, query, None)?;
 

@@ -9,6 +9,15 @@ use {
     std::{collections::HashSet, rc::Rc},
 };
 
+#[cfg_attr(
+    feature = "tracing",
+    gluesql_macros::observe(
+        name = "gluesql.query.distinct",
+        target = "gluesql",
+        level = "debug",
+        after_let(rows, occurrence = 4, record(buffered_rows = rows.len()))
+    )
+)]
 pub(super) fn execute<'a, T>(
     storage: &'a T,
     plan: &'a DistinctPlan,
@@ -33,6 +42,7 @@ where
         }
     }?;
     let rows = rows.collect::<Result<Vec<_>>>()?;
+
     let mut seen = HashSet::new();
     let rows = rows
         .into_iter()

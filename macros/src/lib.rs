@@ -8,6 +8,8 @@ use {
 };
 
 mod from_glue_row;
+mod instrument_storage;
+mod observe;
 mod to_glue_row;
 
 fn resolve_gluesql_crate() -> Result<syn::Path, syn::Error> {
@@ -66,6 +68,20 @@ pub fn derive_to_glue_row(input: TokenStream) -> TokenStream {
         Ok(ts) => TokenStream::from(ts),
         Err(e) => e.to_compile_error().into(),
     }
+}
+
+#[proc_macro_attribute]
+pub fn observe(attr: TokenStream, item: TokenStream) -> TokenStream {
+    observe::expand(attr.into(), item.into())
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
+}
+
+#[proc_macro_attribute]
+pub fn trace_storage(attr: TokenStream, item: TokenStream) -> TokenStream {
+    instrument_storage::expand(attr.into(), item.into())
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
 }
 
 fn parse_glue_rename(attr: &Attribute) -> Option<Result<Option<String>, syn::Error>> {

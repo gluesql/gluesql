@@ -14,7 +14,18 @@ pub struct Glue<T: GStore + GStoreMut + Planner> {
 
 impl<T: GStore + GStoreMut + Planner> Glue<T> {
     pub fn new(storage: T) -> Self {
+        #[cfg(feature = "tracing")]
+        crate::__private::ensure_default_subscriber();
+
         Self { storage }
+    }
+
+    #[cfg_attr(
+        feature = "tracing",
+        gluesql_macros::observe(name = "gluesql.plan", target = "gluesql", level = "debug")
+    )]
+    fn plan_statement(&self, statement: StatementPlan) -> Result<StatementPlan> {
+        self.storage.plan(statement)
     }
 
     /// Plans all statements in the SQL string using the supplied parameters.
@@ -23,6 +34,16 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
     ///
     /// Returns an error when parsing the SQL text fails or when building an execution plan for
     /// a statement fails.
+    #[cfg_attr(
+        feature = "tracing",
+        gluesql_macros::observe(
+            name = "gluesql.plan",
+            target = "gluesql",
+            level = "debug",
+            fields(sql = %sql.as_ref()),
+            after_let(params, record(params = ?params))
+        )
+    )]
     pub fn plan_with_params<Sql, I, P>(&mut self, sql: Sql, params: I) -> Result<Vec<StatementPlan>>
     where
         Sql: AsRef<str>,
@@ -53,6 +74,14 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
         self.plan_with_params(sql, std::iter::empty::<ParamLiteral>())
     }
 
+    #[cfg_attr(
+        feature = "tracing",
+        gluesql_macros::observe(
+            name = "gluesql.execute_statement",
+            target = "gluesql",
+            level = "debug",
+        )
+    )]
     pub fn execute_stmt(&mut self, statement: &StatementPlan) -> Result<Payload> {
         execute(&mut self.storage, statement)
     }
@@ -63,6 +92,18 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
     ///
     /// Returns an error when parsing fails, planning fails, or executing a statement
     /// against the storage fails.
+    #[cfg_attr(
+        feature = "tracing",
+        gluesql_macros::observe(
+            name = "gluesql.execute",
+            target = "gluesql",
+            level = "info",
+            fields(
+                sql = %sql.as_ref()
+            ),
+            after_let(params, record(params = ?params))
+        )
+    )]
     pub fn execute_with_params<Sql, I, P>(&mut self, sql: Sql, params: I) -> Result<Vec<Payload>>
     where
         Sql: AsRef<str>,
@@ -78,7 +119,7 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
 
         for parsed in parsed {
             let statement = translate_with_params(&parsed, &params)?;
-            let statement = self.storage.plan(statement.into())?;
+            let statement = self.plan_statement(statement.into())?;
             payloads.push(self.execute_stmt(&statement)?);
         }
 

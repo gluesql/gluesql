@@ -19,6 +19,10 @@ pub enum FetchError {
     TableNotFound(String),
 }
 
+#[cfg_attr(
+    feature = "tracing",
+    gluesql_macros::observe(event("selected query access path", access_path = "full_scan"))
+)]
 pub fn fetch<'a, T: GStore>(
     storage: &'a T,
     table_name: &'a str,

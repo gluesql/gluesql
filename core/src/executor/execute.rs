@@ -132,6 +132,16 @@ pub fn execute<T: GStore + GStoreMut>(
     }
 }
 
+#[cfg_attr(
+    feature = "tracing",
+    gluesql_macros::observe(
+        name = "gluesql.mutation.collect",
+        fields(operation = "update"),
+        start = before_let(rows, occurrence = 1),
+        end = after_let(rows, occurrence = 1),
+        record(buffered_rows = rows.len())
+    )
+)]
 fn execute_inner<T: GStore + GStoreMut>(
     storage: &mut T,
     statement: &StatementPlan,

@@ -25,6 +25,15 @@ pub(super) struct AggregatedRows<'a> {
     pub(super) rows: Vec<AggregateContext<'a>>,
 }
 
+#[cfg_attr(
+    feature = "tracing",
+    gluesql_macros::observe(
+        name = "gluesql.query.aggregate",
+        target = "gluesql",
+        level = "debug",
+        after_let(rows, occurrence = 2, record(buffered_groups = rows.len()))
+    )
+)]
 pub(super) fn execute<'a, T>(
     storage: &'a T,
     plan: &'a AggregationPlan,

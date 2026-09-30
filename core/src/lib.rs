@@ -3,6 +3,10 @@
 // re-export
 pub use {chrono, sqlparser};
 
+/// Instrumentation macros available when the `tracing` feature is enabled.
+#[cfg(feature = "tracing")]
+pub use gluesql_macros::{observe, trace_storage};
+
 mod glue;
 mod mock;
 mod result;
@@ -17,6 +21,10 @@ pub mod query_builder;
 pub mod row_conversion;
 pub mod store;
 pub mod translate;
+
+#[cfg(feature = "tracing")]
+#[doc(hidden)]
+pub mod __private;
 
 pub mod prelude {
     pub use crate::{
