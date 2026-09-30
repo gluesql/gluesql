@@ -1060,7 +1060,12 @@ fn a_backup_that_cannot_be_removed_still_leaves_the_storage_open() {
         .expect("make the directory read-only");
 
     let err = migrate_to_latest(&path).expect_err("removing the backup should fail");
-    assert!(err.to_string().contains("could not be removed"));
+    let message = err.to_string();
+    assert!(message.contains("could not be removed"));
+    assert!(
+        !message.contains("removed: storage:"),
+        "the cause should read as the filesystem reported it: {message}"
+    );
 
     // The cutover already published the storage, so the lock must not survive it.
     assert!(!Path::new(&sibling(&path, LOCK_SUFFIX)).exists());

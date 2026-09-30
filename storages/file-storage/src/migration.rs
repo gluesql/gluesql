@@ -1,9 +1,9 @@
 mod atomic_file;
 mod lock;
 mod paths;
-mod recovery;
 mod schema_file;
 mod staging;
+mod state;
 mod v1_to_v2;
 
 use {
@@ -12,10 +12,9 @@ use {
         data::Schema,
         error::{Error, Result},
     },
-    lock::MigrationLock,
     paths::MigrationPaths,
     schema_file::TableVersions,
-    std::{convert::AsRef, fs, path::Path},
+    std::{convert::AsRef, path::Path},
 };
 
 pub const FILE_STORAGE_FORMAT_VERSION: u32 = 2;
@@ -55,7 +54,7 @@ impl FileStorage {
 pub fn migrate_to_latest<T: AsRef<Path>>(path: T) -> Result<MigrationReport> {
     let paths = MigrationPaths::new(path.as_ref())?;
 
-    recovery::finish_interrupted(&paths, recovery::inspect(&paths)?)?;
+    state::finish_interrupted(&paths, state::inspect(&paths)?)?;
 
     paths.ensure_storage_dir()?;
     staging::reject_unmigratable_entries(&paths.storage)?;
@@ -65,25 +64,7 @@ pub fn migrate_to_latest<T: AsRef<Path>>(path: T) -> Result<MigrationReport> {
         return Ok(summarize(versions, 0));
     }
 
-    paths.ensure_renamable_root()?;
-
-    let mut lock = MigrationLock::create(&paths.lock)?;
-
-    let rewritten_rows = match staging::build(&paths.storage, &paths.staging, v1_to_v2::decode_row)
-    {
-        Ok(rewritten_rows) => rewritten_rows,
-        Err(err) => {
-            let _ = fs::remove_dir_all(&paths.staging);
-
-            return Err(err);
-        }
-    };
-
-    lock.mark_ready()?;
-    lock.rename(&paths.storage, &paths.backup)?;
-    lock.rename(&paths.staging, &paths.storage)?;
-
-    lock.discard_backup(&paths.backup)?;
+    let rewritten_rows = state::run(&paths, v1_to_v2::decode_row)?;
 
     Ok(summarize(versions, rewritten_rows))
 }
@@ -104,7 +85,8 @@ mod tests {
             data::{Key, Value},
             store::Store,
         },
-        std::mem,
+        lock::MigrationLock,
+        std::{fs, mem},
         uuid::Uuid,
     };
 
