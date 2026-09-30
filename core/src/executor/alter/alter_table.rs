@@ -1,8 +1,9 @@
 use {
-    super::{AlterError, Referencing, validate},
+    super::{AlterError, Referencing, validate_column_def},
     crate::{
         ast::{Expr, Function},
-        data::{Schema, SchemaIndex},
+        data::{Schema, SchemaIndex, Value},
+        executor::evaluate_stateless,
         plan::AlterTableOperationPlan,
         result::Result,
         store::{GStore, GStoreMut},
@@ -58,9 +59,18 @@ pub fn alter_table<T: GStore + GStoreMut>(
             new_column_name,
         } => storage.rename_column(table_name, old_column_name, new_column_name),
         AlterTableOperationPlan::AddColumn { column_def } => {
-            validate(column_def)?;
+            validate_column_def(column_def)?;
 
-            storage.add_column(table_name, column_def)
+            let default_value = match (&column_def.default, column_def.nullable) {
+                (Some(default), _) => evaluate_stateless(None, default.planned())?
+                    .try_into_value(&column_def.data_type, column_def.nullable)?,
+                (None, true) => Value::Null,
+                (None, false) => {
+                    return Err(AlterError::DefaultValueRequired(column_def.to_column_def()).into());
+                }
+            };
+
+            storage.add_column(table_name, &column_def.to_column_def(), default_value)
         }
         AlterTableOperationPlan::DropColumn {
             column_name,

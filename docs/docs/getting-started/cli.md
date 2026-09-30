@@ -21,7 +21,8 @@ $ cargo install gluesql
 Once you have installed the GlueSQL CLI, you can use it to interact with your database. The CLI has several options that you can use to customize your database configuration:
 
 ```
-$ gluesql [--execute ~/sql_path] [--path ~/data_path --storage={sled | json}]
+$ gluesql [--execute ~/sql_path] [--storage=memory]
+$ gluesql [--execute ~/sql_path] --path ~/data_path --storage={redb | json | csv | parquet | file | sled}
 ```
 
 ### --execute
@@ -34,15 +35,15 @@ gluesql --execute ~/sql_path/query.sql
 
 ### --path
 
-This option allows you to specify the path to your database's data directory. By default, GlueSQL stores your database in the current directory. However, you can use the --path option to specify a custom directory where you want to store your database files. For example, you can use the following command to specify a custom data directory `~/mydatabase`:
+This option allows you to specify the path to your database's data directory or file. The default `memory` storage is non-persistent and does not use `--path`. For path-backed storages, specify both `--path` and `--storage`. For example, you can use the following command to specify a custom data path `~/mydatabase`:
 
 ```
-gluesql --path ~/mydatabase
+gluesql --path ~/mydatabase --storage=redb
 ```
 
 ### --storage
 
-This option allows you to specify the storage engine you want to use for your database. By default, GlueSQL uses the [`memory`](../storages/supported-storages/memory-storage) storage engine. However, you can also use [`sled`](../storages/supported-storages/sled-storage) or [`json`](../storages/supported-storages/json-storage) storage engine by using the --storage option. Note that `sled` and `json` should be with `--path` option. For example, you can use the following command to specify the `json` storage engine:
+This option allows you to specify the storage engine you want to use for your database. By default, GlueSQL uses the [`memory`](../storages/supported-storages/memory-storage) storage engine. For persistent storage, use [`redb`](../storages/supported-storages/redb-storage). The other path-backed storages are `json`, `csv`, `parquet`, and `file`. The [`sled`](../storages/supported-storages/sled-storage) option is deprecated as of v0.20.0 and will be removed in v0.21.0. Storage engines other than `memory` must be used with `--path`. For example, you can use the following command to specify the `json` storage engine:
 
 ```
 gluesql --path ~/mydatabase --storage=json
@@ -230,20 +231,20 @@ If you execute `.help`, you can see various helper command starting with dot(`.`
 
 GlueSQL CLI supports generating SQL scripts for dumping whole schemas and data.
 
-For instance, if you want to dump your database schema and data to a file named `dump.sql`, you can use the following command:
+During the v0.20.0 deprecation period, `--dump` continues to open the source database with Sled Storage so existing deployments can export their schema and data before Sled Storage is removed in v0.21.0. To create a file named `dump.sql`, use the following command:
 
 ```
 $ gluesql --path ~/glue_data --dump ./dump.sql
 ```
 
-This will create a SQL script in the current directory that you can use to recreate your database.
+This prints a deprecation warning and creates a SQL script in the current directory that you can use to recreate your database. Complete this export before upgrading to v0.21.0.
 
 If you want to import the database from the `dump.sql` file, you can use the following command:
 
 ```
-$ gluesql --execute ./dump.sql --path ~/new_data --storage=sled
+$ gluesql --execute ./dump.sql --path ~/new_data --storage=redb
 ```
 
-This will create a new database in the specified path, using the Sled Storage engine.
+This will create a new database in the specified path using Redb Storage.
 
 That's it! You now know how to use GlueSQL to migrate your database schema and data using the CLI.

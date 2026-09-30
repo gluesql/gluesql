@@ -17,7 +17,7 @@ pub use self::{
         UpdateOption,
     },
     expr::{translate_expr, translate_order_by_expr},
-    param::{IntoParamLiteral, ParamLiteral},
+    param::{IntoParamLiteral, ParamLiteral, ToParamLiteral},
     query::{alias_or_name, translate_query, translate_select_item},
 };
 
@@ -164,6 +164,8 @@ pub fn translate_with_params(
                 Some(DeleteOption::OrderBy)
             } else if limit.is_some() {
                 Some(DeleteOption::Limit)
+            } else if matches!(from, SqlFromTable::WithFromKeyword(tables) if tables.len() > 1) {
+                Some(DeleteOption::MultipleTables)
             } else {
                 None
             };
@@ -764,6 +766,10 @@ mod tests {
             (
                 "DELETE FROM Foo WHERE id = 1 LIMIT 1",
                 TranslateError::UnsupportedDeleteOption(DeleteOption::Limit),
+            ),
+            (
+                "DELETE FROM Foo, Bar WHERE id = 1",
+                TranslateError::UnsupportedDeleteOption(DeleteOption::MultipleTables),
             ),
         ];
 

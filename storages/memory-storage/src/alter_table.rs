@@ -4,7 +4,6 @@ use {
         ast::ColumnDef,
         data::Value,
         error::{AlterTableError, Result},
-        plan::plan_scalar_expr,
         store::AlterTable,
     },
 };
@@ -56,7 +55,12 @@ impl AlterTable for MemoryStorage {
         Ok(())
     }
 
-    fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
+    fn add_column(
+        &mut self,
+        table_name: &str,
+        column_def: &ColumnDef,
+        default_value: Value,
+    ) -> Result<()> {
         let item = self
             .items
             .get_mut(table_name)
@@ -77,28 +81,8 @@ impl AlterTable for MemoryStorage {
             return Err(AlterTableError::AlreadyExistingColumn(adding_column).into());
         }
 
-        let ColumnDef {
-            data_type,
-            nullable,
-            default,
-            ..
-        } = column_def;
-
-        let value = match (default, nullable) {
-            (Some(expr), _) => {
-                let expr = plan_scalar_expr(expr.clone());
-                let evaluated = gluesql_core::executor::evaluate_stateless(None, &expr)?;
-
-                evaluated.try_into_value(data_type, *nullable)?
-            }
-            (None, true) => Value::Null,
-            (None, false) => {
-                return Err(AlterTableError::DefaultValueRequired(column_def.clone()).into());
-            }
-        };
-
         for row in item.rows.values_mut() {
-            row.push(value.clone());
+            row.push(default_value.clone());
         }
 
         column_defs.push(column_def.clone());

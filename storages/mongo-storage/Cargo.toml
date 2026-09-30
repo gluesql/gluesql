@@ -1,9 +1,5 @@
 [package]
 name = "gluesql-mongo-storage"
-authors = [
-  "Hyoungkwan Cho <devgony@gmail.com>",
-  "Taehoon Moon <taehoon.moon@outlook.com>",
-]
 version.workspace = true
 edition.workspace = true
 description.workspace = true
@@ -15,7 +11,7 @@ documentation.workspace = true
 gluesql-core.workspace = true
 
 thiserror = "1.0"
-mongodb = { version = "2.5.0", default-features = false, features = ["sync"] }
+mongodb = { version = "2.5.0", default-features = false, features = ["tokio-sync"] }
 bson = { version = "2.6.1", features = ["chrono-0_4"] }
 chrono = { version = "0.4.26", features = ["serde", "wasmbind"] }
 strum_macros = "0.24"

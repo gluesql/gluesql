@@ -5,6 +5,9 @@ pub enum InsertError {
     #[error("table not found: {0}")]
     TableNotFound(String),
 
+    #[error("unplanned table columns")]
+    UnplannedTableColumns,
+
     #[error("lack of required column: {0}")]
     LackOfRequiredColumn(String),
 

@@ -4,7 +4,7 @@ mod projection;
 mod query;
 
 pub use {
-    ddl::AlterTableOperationPlan,
+    ddl::{AlterTableOperationPlan, ColumnDefPlan, DefaultExpr, TableColumnsPlan},
     expr::{
         AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan, FunctionExprPlan,
         plan_scalar_expr,
@@ -37,6 +37,7 @@ pub enum StatementPlan {
         table_name: String,
         columns: Vec<String>,
         source: QueryPlan,
+        table_columns: TableColumnsPlan,
     },
     Update {
         table_name: String,
@@ -50,7 +51,7 @@ pub enum StatementPlan {
     CreateTable {
         if_not_exists: bool,
         name: String,
-        columns: Option<Vec<ast::ColumnDef>>,
+        columns: Option<Vec<ColumnDefPlan>>,
         source: Option<Box<QueryPlan>>,
         engine: Option<String>,
         foreign_keys: Vec<ForeignKey>,
@@ -110,6 +111,7 @@ impl From<ast::Statement> for StatementPlan {
                 table_name,
                 columns,
                 source: source.into(),
+                table_columns: TableColumnsPlan::Unplanned,
             },
             ast::Statement::Update {
                 table_name,
@@ -138,7 +140,7 @@ impl From<ast::Statement> for StatementPlan {
             } => Self::CreateTable {
                 if_not_exists,
                 name,
-                columns,
+                columns: columns.map(|columns| columns.into_iter().map(Into::into).collect()),
                 source: source.map(|query| Box::new((*query).into())),
                 engine,
                 foreign_keys,

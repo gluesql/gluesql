@@ -4,6 +4,8 @@
 //! Therefore, `SledStorage` is safe from READ UNCOMMITTED or READ COMMITTED concurrency conflict
 //! scenarios, but not PHANTOM READ safe.
 
+#![allow(deprecated)]
+
 use {
     gluesql_core::{
         executor::FetchError,

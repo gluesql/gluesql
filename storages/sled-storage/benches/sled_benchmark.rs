@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use {
     criterion::{Criterion, criterion_group, criterion_main},
     gluesql_core::prelude::Glue,

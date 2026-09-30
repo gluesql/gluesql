@@ -1,15 +1,28 @@
+#![allow(deprecated)]
+
 use {
     gluesql_cli::dump_database,
     gluesql_core::prelude::Glue,
     gluesql_sled_storage::{SledStorage, sled},
-    std::{fs::File, io::Read, path::PathBuf},
+    std::{
+        fs::{File, create_dir_all, remove_dir_all, remove_file},
+        io::Read,
+        path::PathBuf,
+    },
 };
 
 #[test]
 fn dump_and_import() {
+    let reset_path = |path| {
+        let _ = remove_file(path);
+        let _ = remove_dir_all(path);
+    };
+
+    let _ = create_dir_all("tmp");
     let data_path = "tmp/src";
     let dump_path = PathBuf::from("tmp/dump.sql");
 
+    reset_path(data_path);
     let config = sled::Config::default().path(data_path).temporary(true);
     let source_storage = SledStorage::try_from(config).unwrap();
     let mut source_glue = Glue::new(source_storage);
@@ -72,6 +85,7 @@ fn dump_and_import() {
     dump_database(&mut source_glue.storage, dump_path.clone()).unwrap();
 
     let data_path = "tmp/target";
+    reset_path(data_path);
     let config = sled::Config::default().path(data_path).temporary(true);
     let target_storage = SledStorage::try_from(config).unwrap();
     let mut target_glue = Glue::new(target_storage);
