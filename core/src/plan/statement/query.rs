@@ -353,6 +353,35 @@ mod tests {
         }
     }
 
+    #[test]
+    fn existing_ctas_target_skips_unplanned_with_when_planning_is_bypassed() {
+        let mut glue = crate::glue::Glue::new(crate::mock::run("CREATE TABLE result (n INT)"));
+        let statement = statement_plan(
+            "CREATE TABLE IF NOT EXISTS result AS WITH t AS (SELECT * FROM missing) SELECT * FROM t",
+        );
+        assert!(matches!(
+            &statement,
+            StatementPlan::CreateTable { source: Some(source), .. }
+                if matches!(source.as_ref(), QueryPlan::UnplannedWith(_))
+        ));
+
+        // execute_stmt bypasses planning; the existing target prevents source evaluation.
+        assert_eq!(
+            glue.execute_stmt(&statement),
+            Ok(crate::executor::Payload::Create)
+        );
+
+        let missing_target = statement_plan(
+            "CREATE TABLE IF NOT EXISTS absent AS WITH t AS (SELECT * FROM missing) SELECT * FROM t",
+        );
+        assert_eq!(
+            glue.execute_stmt(&missing_target),
+            Err(crate::result::Error::Query(
+                crate::executor::QueryError::UnplannedWith
+            ))
+        );
+    }
+
     fn relation_plan() -> SourcePlan {
         SourcePlan::Table(TableSourcePlan {
             name: "Item".to_owned(),

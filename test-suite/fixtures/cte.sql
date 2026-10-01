@@ -190,3 +190,28 @@ SELECT * FROM collision
 -- | n: I64 |
 -- | ------ |
 -- | 10     |
+
+-- Dictionary names are resolved during translation and are not shadowed by CTEs.
+WITH GLUE_OBJECTS AS (SELECT '__cte_dictionary_shadow__' AS OBJECT_NAME) SELECT COUNT(*) AS n FROM GLUE_OBJECTS WHERE OBJECT_NAME = '__cte_dictionary_shadow__'
+-- @expect:
+-- | n: I64 |
+-- | ------ |
+-- | 0      |
+
+WITH GLUE_TABLES AS (SELECT '__cte_dictionary_shadow__' AS TABLE_NAME) SELECT COUNT(*) AS n FROM GLUE_TABLES WHERE TABLE_NAME = '__cte_dictionary_shadow__'
+-- @expect:
+-- | n: I64 |
+-- | ------ |
+-- | 0      |
+
+WITH GLUE_INDEXES AS (SELECT '__cte_dictionary_shadow__' AS TABLE_NAME) SELECT COUNT(*) AS n FROM GLUE_INDEXES WHERE TABLE_NAME = '__cte_dictionary_shadow__'
+-- @expect:
+-- | n: I64 |
+-- | ------ |
+-- | 0      |
+
+WITH GLUE_TABLE_COLUMNS AS (SELECT '__cte_dictionary_shadow__' AS TABLE_NAME) SELECT COUNT(*) AS n FROM GLUE_TABLE_COLUMNS WHERE TABLE_NAME = '__cte_dictionary_shadow__'
+-- @expect:
+-- | n: I64 |
+-- | ------ |
+-- | 0      |
