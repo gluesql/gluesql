@@ -1,6 +1,7 @@
 use {
     crate::{
         data::{Key, Row, Value},
+        executor::QueryError,
         executor::evaluate::evaluate_stateless,
         plan::{
             ExprPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan,
@@ -19,6 +20,7 @@ where
     F: FnOnce(&'a ValuesPlan) -> EvaluatedRows<'a>,
 {
     match query {
+        QueryPlan::UnplannedWith(_) => Err(QueryError::UnplannedWith.into()),
         QueryPlan::Project(_) | QueryPlan::SelectOrderBy(_) | QueryPlan::Distinct(_) => Ok(None),
         QueryPlan::Values(plan) => Ok(Some(rows(values(plan)))),
         QueryPlan::ValuesOrderBy(plan) => Ok(Some(execute_order_by(plan, values)?)),

@@ -47,7 +47,7 @@ pub fn create_table<T: GStore + GStoreMut>(
 
     let mut selected_source_rows = None;
     let target_columns_defs = match source.as_deref() {
-        Some(source_query) => match query::output_body(source_query) {
+        Some(source_query) => match query::output_body(source_query)? {
             OutputBody::Project(project) => match source_for_schema_copy(project) {
                 Some(SourcePlan::Table(table)) => {
                     let schema = storage.fetch_schema(&table.name)?;

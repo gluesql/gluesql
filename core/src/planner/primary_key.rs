@@ -41,6 +41,7 @@ struct PrimaryKeyPlanner<'a, S> {
 impl<'a, S: BuildHasher> Planner<'a> for PrimaryKeyPlanner<'a, S> {
     fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
         match query {
+            unplanned @ QueryPlan::UnplannedWith(_) => unplanned,
             QueryPlan::Project(project) => {
                 QueryPlan::Project(self.project(outer_context.as_ref(), project))
             }

@@ -93,6 +93,7 @@ pub fn plan(statement: StatementPlan) -> StatementPlan {
 
 fn plan_query(query: &mut QueryPlan) {
     match query {
+        QueryPlan::UnplannedWith(_) => {}
         QueryPlan::Project(project) => plan_project_query(project, &mut []),
         QueryPlan::Values(values) => plan_values(values),
         QueryPlan::SelectOrderBy(order_by) => plan_select_order_by(order_by),
@@ -590,7 +591,6 @@ mod tests {
         let actual = query.project().map(|project| &project.input);
         let expected = ProjectInputPlan::Aggregation(AggregationPlan {
             input: AggregationInputPlan::Source(SourcePlan::Derived(DerivedSourcePlan {
-                unplanned: None,
                 query: Box::new(parse_and_plan_query("SELECT COUNT(*) FROM Item")),
                 alias: table_alias("sub"),
             })),
@@ -845,7 +845,6 @@ mod tests {
                 input: InnerJoinInputPlan::Condition(JoinConditionPlan {
                     input: JoinConditionInputPlan::Hash(HashJoinPlan {
                         input: HashJoinInputPlan::Source(SourcePlan::Derived(DerivedSourcePlan {
-                            unplanned: None,
                             query: Box::new(nested_query.clone()),
                             alias: table_alias("derived"),
                         })),

@@ -47,13 +47,15 @@ pub enum QueryPlan {
     Distinct(DistinctPlan),
     Offset(OffsetPlan),
     Limit(LimitPlan),
+    /// A complete lexical query awaiting CTE name resolution before schema collection.
+    UnplannedWith(Box<ast::Query>),
 }
 
 impl QueryPlan {
     pub fn project(&self) -> Option<&ProjectPlan> {
         match self {
             Self::Project(project) => Some(project),
-            Self::Values(_) | Self::ValuesOrderBy(_) => None,
+            Self::Values(_) | Self::ValuesOrderBy(_) | Self::UnplannedWith(_) => None,
             Self::SelectOrderBy(order_by) => Some(&order_by.input),
             Self::Distinct(distinct) => Some(distinct.project()),
             Self::Offset(offset) => offset.project(),
@@ -65,20 +67,7 @@ impl QueryPlan {
 impl From<ast::Query> for QueryPlan {
     fn from(query: ast::Query) -> Self {
         if !query.with.is_empty() {
-            // Keep the whole lexical query boundary until the Planner resolves its CTEs.
-            return Self::Project(ProjectPlan {
-                input: ProjectInputPlan::Source(SourcePlan::Derived(DerivedSourcePlan {
-                    unplanned: Some(Box::new(query)),
-                    query: Box::new(Self::Values(ValuesPlan(Vec::new()))),
-                    alias: TableAliasPlan {
-                        name: String::new(),
-                        columns: Vec::new(),
-                    },
-                })),
-                projection: crate::plan::ProjectionPlan::SelectItems(vec![
-                    crate::plan::SelectItemPlan::Wildcard,
-                ]),
-            });
+            return Self::UnplannedWith(Box::new(query));
         }
         let ast::Query {
             with: _,
@@ -308,6 +297,17 @@ mod tests {
             .and_then(|mut statements| translate(&statements.remove(0)))
             .map(StatementPlan::from)
             .unwrap()
+    }
+
+    #[test]
+    fn with_query_requires_planning() {
+        let statement = statement_plan("WITH t AS (SELECT 1 AS n) SELECT * FROM t");
+        let serialized = serde_json::to_value(&statement).unwrap();
+        assert!(serialized["Query"].get("UnplannedWith").is_some());
+        let storage = crate::mock::MockStorage::default();
+        assert!(crate::planner::fetch_schema_map(&storage, &statement).is_err());
+        let mut glue = crate::glue::Glue::new(storage);
+        assert!(glue.execute_stmt(&statement).is_err());
     }
 
     fn relation_plan() -> SourcePlan {

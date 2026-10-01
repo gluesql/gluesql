@@ -32,7 +32,7 @@ pub(super) fn transform_query<S: BuildHasher>(
         QueryPlan::Project(project) => {
             transform_project(schema_map, project);
         }
-        QueryPlan::Values(_) => {}
+        QueryPlan::UnplannedWith(_) | QueryPlan::Values(_) => {}
         QueryPlan::SelectOrderBy(order_by) => {
             transform_select_order_by(schema_map, order_by);
         }

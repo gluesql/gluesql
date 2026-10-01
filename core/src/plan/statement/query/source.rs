@@ -62,7 +62,6 @@ impl From<ast::TableFactor> for SourcePlan {
                 access: TableAccessPlan::FullScan,
             }),
             ast::TableFactor::Derived { subquery, alias } => Self::Derived(DerivedSourcePlan {
-                unplanned: None,
                 query: Box::new(subquery.into()),
                 alias: alias.into(),
             }),
@@ -137,7 +136,6 @@ mod tests {
             alias: alias("derived"),
         });
         let expected = SourcePlan::Derived(DerivedSourcePlan {
-            unplanned: None,
             query: Box::new(QueryPlan::from(query)),
             alias: TableAliasPlan {
                 name: "derived".to_owned(),

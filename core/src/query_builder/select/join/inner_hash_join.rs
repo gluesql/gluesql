@@ -560,7 +560,6 @@ mod tests {
             .build();
         let expected = Ok(StatementPlan::Query(QueryPlan::Project(ProjectPlan {
             input: ProjectInputPlan::Source(SourcePlan::Derived(DerivedSourcePlan {
-                unplanned: None,
                 query: Box::new(QueryPlan::Project(ProjectPlan {
                     input: ProjectInputPlan::InnerJoin(Box::new(join)),
                     projection: wildcard.clone(),

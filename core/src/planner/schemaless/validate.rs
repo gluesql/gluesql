@@ -72,6 +72,7 @@ fn validate_query(
     query: &QueryPlan,
 ) -> ValidateResult {
     match query {
+        QueryPlan::UnplannedWith(_) => Err(PlannerError::UnplannedWith),
         QueryPlan::Project(project) => validate_project(schema_map, project),
         QueryPlan::Values(values) => validate_values(schema_map, values),
         QueryPlan::SelectOrderBy(order_by) => validate_select_order_by(schema_map, order_by),
