@@ -24,11 +24,7 @@ pub(super) fn fetch_rows<T: GStore>(
     foreign_keys: Vec<ForeignKey>,
 ) -> Result<RowsData> {
     let column_defs = Rc::<[ColumnDefPlan]>::from(column_defs);
-    let stored_column_defs = column_defs
-        .iter()
-        .map(ColumnDefPlan::to_column_def)
-        .collect::<Vec<_>>();
-    let column_validation = ColumnValidation::All(&stored_column_defs);
+    let column_validation = ColumnValidation::All(&column_defs);
 
     let rows_iter: Box<dyn Iterator<Item = Result<Vec<Value>>> + '_> = if let Some(rows) =
         values::execute(source, |plan| {
