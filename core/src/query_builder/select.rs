@@ -105,6 +105,7 @@ impl<T: BuildSelect> BuildQuery for T {
         let select = self.build_select()?;
         let body = SetExpr::Select(Box::new(select));
         let query = Query {
+            with: Vec::new(),
             body,
             order_by: Vec::new(),
             limit: None,

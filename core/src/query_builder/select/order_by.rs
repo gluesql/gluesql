@@ -188,6 +188,7 @@ impl BuildQuery for SelectOrderByNode<'_> {
         let (select, order_by) = self.build_select_order_by()?;
 
         Ok(Query {
+            with: Vec::new(),
             body: SetExpr::Select(Box::new(select)),
             order_by,
             limit: None,

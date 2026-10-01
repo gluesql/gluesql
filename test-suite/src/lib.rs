@@ -196,6 +196,7 @@ macro_rules! generate_store_tests {
         sql_case!(regex);
         sql_case!(filter);
         sql_case!(inline_view);
+        sql_case!(cte);
         sql_case!(values);
         sql_case!(function::upper_lower);
         sql_case!(function::initcap);

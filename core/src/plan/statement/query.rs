@@ -47,13 +47,15 @@ pub enum QueryPlan {
     Distinct(DistinctPlan),
     Offset(OffsetPlan),
     Limit(LimitPlan),
+    /// A complete lexical query awaiting CTE name resolution before schema collection.
+    UnplannedWith(Box<ast::Query>),
 }
 
 impl QueryPlan {
     pub fn project(&self) -> Option<&ProjectPlan> {
         match self {
             Self::Project(project) => Some(project),
-            Self::Values(_) | Self::ValuesOrderBy(_) => None,
+            Self::Values(_) | Self::ValuesOrderBy(_) | Self::UnplannedWith(_) => None,
             Self::SelectOrderBy(order_by) => Some(&order_by.input),
             Self::Distinct(distinct) => Some(distinct.project()),
             Self::Offset(offset) => offset.project(),
@@ -64,7 +66,11 @@ impl QueryPlan {
 
 impl From<ast::Query> for QueryPlan {
     fn from(query: ast::Query) -> Self {
+        if !query.with.is_empty() {
+            return Self::UnplannedWith(Box::new(query));
+        }
         let ast::Query {
+            with: _,
             body,
             order_by,
             limit: limit_expr,
@@ -291,6 +297,89 @@ mod tests {
             .and_then(|mut statements| translate(&statements.remove(0)))
             .map(StatementPlan::from)
             .unwrap()
+    }
+
+    #[test]
+    fn with_query_requires_planning() {
+        let statement = statement_plan("WITH t AS (SELECT 1 AS n) SELECT * FROM t");
+        let serialized = serde_json::to_value(&statement).unwrap();
+        assert!(serialized["Query"].get("UnplannedWith").is_some());
+        assert_eq!(
+            serde_json::from_value::<StatementPlan>(serialized).unwrap(),
+            statement
+        );
+        let storage = crate::mock::MockStorage::default();
+        assert_eq!(
+            crate::planner::fetch_schema_map(&storage, &statement),
+            Err(crate::result::Error::Planner(
+                crate::planner::PlannerError::UnplannedWith
+            ))
+        );
+        let mut glue = crate::glue::Glue::new(storage);
+        assert_eq!(
+            glue.execute_stmt(&statement),
+            Err(crate::result::Error::Query(
+                crate::executor::QueryError::UnplannedWith
+            ))
+        );
+    }
+
+    #[test]
+    fn nested_unplanned_queries_are_rejected_when_planning_is_bypassed() {
+        for sql in [
+            "SELECT * FROM (WITH t AS (SELECT 1 AS n) SELECT * FROM t) AS x",
+            "SELECT (WITH t AS (SELECT 1 AS n) SELECT n FROM t) AS n",
+            "SELECT EXISTS (WITH t AS (SELECT 1 AS n) SELECT n FROM t)",
+            "SELECT 1 IN (WITH t AS (SELECT 1 AS n) SELECT n FROM t)",
+            "CREATE TABLE result AS WITH t AS (SELECT 1 AS n) SELECT * FROM t",
+        ] {
+            let statement = statement_plan(sql);
+            let storage = crate::mock::MockStorage::default();
+            assert_eq!(
+                crate::planner::fetch_schema_map(&storage, &statement),
+                Err(crate::result::Error::Planner(
+                    crate::planner::PlannerError::UnplannedWith
+                )),
+                "{sql}"
+            );
+            let mut glue = crate::glue::Glue::new(storage);
+            assert_eq!(
+                glue.execute_stmt(&statement),
+                Err(crate::result::Error::Query(
+                    crate::executor::QueryError::UnplannedWith
+                )),
+                "{sql}"
+            );
+        }
+    }
+
+    #[test]
+    fn existing_ctas_target_skips_unplanned_with_when_planning_is_bypassed() {
+        let mut glue = crate::glue::Glue::new(crate::mock::run("CREATE TABLE result (n INT)"));
+        let statement = statement_plan(
+            "CREATE TABLE IF NOT EXISTS result AS WITH t AS (SELECT * FROM missing) SELECT * FROM t",
+        );
+        assert!(matches!(
+            &statement,
+            StatementPlan::CreateTable { source: Some(source), .. }
+                if matches!(source.as_ref(), QueryPlan::UnplannedWith(_))
+        ));
+
+        // execute_stmt bypasses planning; the existing target prevents source evaluation.
+        assert_eq!(
+            glue.execute_stmt(&statement),
+            Ok(crate::executor::Payload::Create)
+        );
+
+        let missing_target = statement_plan(
+            "CREATE TABLE IF NOT EXISTS absent AS WITH t AS (SELECT * FROM missing) SELECT * FROM t",
+        );
+        assert_eq!(
+            glue.execute_stmt(&missing_target),
+            Err(crate::result::Error::Query(
+                crate::executor::QueryError::UnplannedWith
+            ))
+        );
     }
 
     fn relation_plan() -> SourcePlan {

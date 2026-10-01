@@ -2,6 +2,9 @@ use {serde::Serialize, std::fmt::Debug, thiserror::Error};
 
 #[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum QueryError {
+    #[error("WITH query must be planned before execution")]
+    UnplannedWith,
+
     #[error("VALUES lists must all be the same length")]
     ValuesLengthMismatch,
 

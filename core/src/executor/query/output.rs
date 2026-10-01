@@ -1,6 +1,12 @@
-use crate::plan::{
-    DistinctInputPlan, DistinctPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
-    ProjectPlan, QueryPlan, ValuesPlan,
+use {
+    super::QueryError,
+    crate::{
+        plan::{
+            DistinctInputPlan, DistinctPlan, LimitInputPlan, LimitPlan, OffsetInputPlan,
+            OffsetPlan, ProjectPlan, QueryPlan, ValuesPlan,
+        },
+        result::Result,
+    },
 };
 
 pub(crate) enum OutputBody<'a> {
@@ -8,8 +14,9 @@ pub(crate) enum OutputBody<'a> {
     Values(&'a ValuesPlan),
 }
 
-pub(crate) fn body(query: &QueryPlan) -> OutputBody<'_> {
-    match query {
+pub(crate) fn body(query: &QueryPlan) -> Result<OutputBody<'_>> {
+    Ok(match query {
+        QueryPlan::UnplannedWith(_) => return Err(QueryError::UnplannedWith.into()),
         QueryPlan::Project(project) => OutputBody::Project(project),
         QueryPlan::Values(values) => OutputBody::Values(values),
         QueryPlan::SelectOrderBy(order_by) => OutputBody::Project(&order_by.input),
@@ -24,7 +31,7 @@ pub(crate) fn body(query: &QueryPlan) -> OutputBody<'_> {
             LimitInputPlan::Distinct(distinct) => distinct_body(distinct),
             LimitInputPlan::Offset(offset) => offset_body(offset),
         },
-    }
+    })
 }
 
 fn offset_body(offset: &OffsetPlan) -> OutputBody<'_> {
