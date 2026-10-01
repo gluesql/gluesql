@@ -137,3 +137,28 @@ fn evaluate_count(expr: &ExprPlan) -> Result<usize> {
 
     Ok(size)
 }
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::execute,
+        crate::{
+            executor::QueryError,
+            parse_sql::parse_query,
+            plan::QueryPlan,
+            result::Error,
+            translate::{NO_PARAMS, translate_query},
+        },
+    };
+
+    #[test]
+    fn unplanned_with_is_rejected_before_insert_evaluation() {
+        let parsed = parse_query("WITH t AS (SELECT 1) SELECT * FROM t").unwrap();
+        let query = QueryPlan::from(translate_query(&parsed, NO_PARAMS).unwrap());
+        let actual = execute(&query, |_| panic!("unplanned query must not be evaluated"));
+        assert_eq!(
+            actual.map(|_| ()),
+            Err(Error::Query(QueryError::UnplannedWith))
+        );
+    }
+}

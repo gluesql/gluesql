@@ -304,10 +304,53 @@ mod tests {
         let statement = statement_plan("WITH t AS (SELECT 1 AS n) SELECT * FROM t");
         let serialized = serde_json::to_value(&statement).unwrap();
         assert!(serialized["Query"].get("UnplannedWith").is_some());
+        assert_eq!(
+            serde_json::from_value::<StatementPlan>(serialized).unwrap(),
+            statement
+        );
         let storage = crate::mock::MockStorage::default();
-        assert!(crate::planner::fetch_schema_map(&storage, &statement).is_err());
+        assert_eq!(
+            crate::planner::fetch_schema_map(&storage, &statement),
+            Err(crate::result::Error::Planner(
+                crate::planner::PlannerError::UnplannedWith
+            ))
+        );
         let mut glue = crate::glue::Glue::new(storage);
-        assert!(glue.execute_stmt(&statement).is_err());
+        assert_eq!(
+            glue.execute_stmt(&statement),
+            Err(crate::result::Error::Query(
+                crate::executor::QueryError::UnplannedWith
+            ))
+        );
+    }
+
+    #[test]
+    fn nested_unplanned_queries_are_rejected_when_planning_is_bypassed() {
+        for sql in [
+            "SELECT * FROM (WITH t AS (SELECT 1 AS n) SELECT * FROM t) AS x",
+            "SELECT (WITH t AS (SELECT 1 AS n) SELECT n FROM t) AS n",
+            "SELECT EXISTS (WITH t AS (SELECT 1 AS n) SELECT n FROM t)",
+            "SELECT 1 IN (WITH t AS (SELECT 1 AS n) SELECT n FROM t)",
+            "CREATE TABLE result AS WITH t AS (SELECT 1 AS n) SELECT * FROM t",
+        ] {
+            let statement = statement_plan(sql);
+            let storage = crate::mock::MockStorage::default();
+            assert_eq!(
+                crate::planner::fetch_schema_map(&storage, &statement),
+                Err(crate::result::Error::Planner(
+                    crate::planner::PlannerError::UnplannedWith
+                )),
+                "{sql}"
+            );
+            let mut glue = crate::glue::Glue::new(storage);
+            assert_eq!(
+                glue.execute_stmt(&statement),
+                Err(crate::result::Error::Query(
+                    crate::executor::QueryError::UnplannedWith
+                )),
+                "{sql}"
+            );
+        }
     }
 
     fn relation_plan() -> SourcePlan {

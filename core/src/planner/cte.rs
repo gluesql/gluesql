@@ -342,3 +342,121 @@ impl CtePlanner {
         });
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::plan,
+        crate::{
+            data::{Key, Schema, Value},
+            mock::MockStorage,
+            parse_sql::parse,
+            plan::{ExprPlan, StatementPlan},
+            planner::{
+                PlannerError, fetch_schema_map, plan_aggregate, plan_hash_join, plan_index,
+                plan_primary_key, plan_schemaless,
+            },
+            result::{Error, Result},
+            store::{RowIter, Store},
+            translate::translate,
+        },
+        std::{cell::RefCell, collections::HashMap},
+    };
+
+    #[derive(Default)]
+    struct RecordingStorage {
+        storage: MockStorage,
+        fetched: RefCell<Vec<String>>,
+    }
+
+    impl Store for RecordingStorage {
+        fn fetch_schema(&self, name: &str) -> Result<Option<Schema>> {
+            self.fetched.borrow_mut().push(name.to_owned());
+            self.storage.fetch_schema(name)
+        }
+
+        fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
+            self.storage.fetch_all_schemas()
+        }
+
+        fn fetch_data(&self, name: &str, key: &Key) -> Result<Option<Vec<Value>>> {
+            self.storage.fetch_data(name, key)
+        }
+
+        fn scan_data<'a>(&'a self, name: &str) -> Result<RowIter<'a>> {
+            self.storage.scan_data(name)
+        }
+    }
+
+    fn statement(sql: &str) -> StatementPlan {
+        translate(&parse(sql).unwrap().remove(0)).unwrap().into()
+    }
+
+    #[test]
+    fn cte_names_never_reach_storage_schema_lookup() {
+        for (sql, expected) in [
+            (
+                "WITH a AS (SELECT * FROM physical), b AS (SELECT * FROM a) SELECT * FROM b AS x JOIN b AS y",
+                vec!["physical", "physical"],
+            ),
+            (
+                "WITH a AS (SELECT * FROM physical) SELECT * FROM (SELECT * FROM a) AS x",
+                vec!["physical"],
+            ),
+            (
+                "WITH a AS (SELECT * FROM b), b AS (SELECT * FROM a) SELECT * FROM b",
+                vec!["b"],
+            ),
+            ("WITH a AS (SELECT * FROM a) SELECT * FROM a", vec!["a"]),
+            (
+                "WITH a AS (SELECT 1 AS n) SELECT * FROM (WITH a AS (SELECT * FROM a) SELECT * FROM a) AS x",
+                vec![],
+            ),
+        ] {
+            let storage = RecordingStorage::default();
+            let resolved = plan(statement(sql)).unwrap();
+            fetch_schema_map(&storage, &resolved).unwrap();
+            assert_eq!(*storage.fetched.borrow(), expected, "{sql}");
+        }
+    }
+
+    #[test]
+    fn duplicate_names_in_nested_definitions_propagate() {
+        for sql in [
+            "WITH a AS (WITH d AS (SELECT 1), d AS (SELECT 2) SELECT * FROM d) SELECT * FROM a",
+            "WITH a AS (SELECT 1) SELECT (WITH d AS (SELECT 1), d AS (SELECT 2) SELECT * FROM d), (SELECT 1)",
+        ] {
+            assert_eq!(
+                plan(statement(sql)),
+                Err(Error::Planner(PlannerError::DuplicateCteName("d".into())))
+            );
+        }
+    }
+
+    #[test]
+    fn optimization_passes_do_not_make_unplanned_with_executable() {
+        let original = statement("WITH t AS (SELECT 1) SELECT * FROM t");
+        let schema_map = HashMap::<String, Schema>::new();
+        let optimized = plan_primary_key(&schema_map, original.clone());
+        let optimized = plan_index(&schema_map, optimized);
+        let optimized = plan_hash_join(&schema_map, optimized);
+        let optimized = plan_aggregate(optimized);
+        assert_eq!(optimized, original);
+        let StatementPlan::Query(query) = optimized else {
+            panic!("expected query");
+        };
+        assert!(query.project().is_none());
+        assert!(!crate::planner::expr::evaluable::check_expr(
+            None,
+            &ExprPlan::Subquery(Box::new(query))
+        ));
+
+        let storage = crate::mock::run("CREATE TABLE Schemaless");
+        let schema = storage.fetch_schema("Schemaless").unwrap().unwrap();
+        let schema_map = HashMap::from([("Schemaless".into(), schema)]);
+        assert_eq!(
+            plan_schemaless(&schema_map, original),
+            Err(Error::Planner(PlannerError::UnplannedWith))
+        );
+    }
+}

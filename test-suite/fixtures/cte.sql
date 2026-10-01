@@ -130,3 +130,63 @@ WITH t AS (SELECT 1) FROM source SELECT * FROM t
 WITH t(n) AS (SELECT 1) SELECT * FROM t
 -- @expect: error Translate.UnsupportedCteOption
 -- @json: "CTE column alias list"
+
+WITH t AS (SELECT 15 AS n) SELECT t.* FROM t
+-- @expect:
+-- | n: I64 |
+-- | ------ |
+-- | 15     |
+
+WITH t AS (SELECT 16 AS n) SELECT x.renamed FROM t AS x(renamed)
+-- @expect:
+-- | renamed: I64 |
+-- | ------------ |
+-- | 16           |
+
+WITH t AS (VALUES (1), (1), (2)) SELECT DISTINCT column1 FROM t ORDER BY column1
+-- @expect:
+-- | column1: I64 |
+-- | ------------ |
+-- | 1            |
+-- | 2            |
+
+WITH t AS (VALUES (1), (2)) SELECT COUNT(*) AS n FROM t GROUP BY column1 HAVING COUNT(*) > 0 ORDER BY column1
+-- @expect:
+-- | n: I64 |
+-- | ------ |
+-- | 1      |
+-- | 1      |
+
+CREATE TABLE CteResult AS WITH t AS (SELECT 21 AS n) SELECT * FROM t
+-- @expect: payload Create
+
+SELECT * FROM CteResult
+-- @expect:
+-- | n: I64 |
+-- | ------ |
+-- | 21     |
+
+INSERT INTO collision WITH t AS (SELECT 22 AS n) SELECT * FROM t
+-- @expect: payload Insert
+-- @json: 1
+
+UPDATE collision SET n = (WITH t AS (SELECT 23 AS n) SELECT n FROM t) WHERE n IN (WITH t AS (SELECT 22 AS n) SELECT n FROM t)
+-- @expect: payload Update
+-- @json: 1
+
+SELECT * FROM collision ORDER BY n
+-- @expect:
+-- | n: I64 |
+-- | ------ |
+-- | 10     |
+-- | 23     |
+
+DELETE FROM collision WHERE n IN (WITH t AS (SELECT 23 AS n) SELECT n FROM t)
+-- @expect: payload Delete
+-- @json: 1
+
+SELECT * FROM collision
+-- @expect:
+-- | n: I64 |
+-- | ------ |
+-- | 10     |
