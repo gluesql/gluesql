@@ -2,6 +2,7 @@ use {
     crate::{
         ast::{ColumnDef, ColumnUniqueOption},
         data::{Key, Value},
+        plan::ColumnDefPlan,
         result::Result,
         store::Store,
     },
@@ -25,7 +26,7 @@ pub enum ValidateError {
 
 pub enum ColumnValidation<'column_def> {
     /// `INSERT`
-    All(&'column_def [ColumnDef]),
+    All(&'column_def [ColumnDefPlan]),
     /// `UPDATE`
     SpecifiedColumns(&'column_def [ColumnDef], Vec<String>),
 }
@@ -94,13 +95,13 @@ pub fn validate_unique<'a, T: Store>(
             let primary_key_index = column_defs
                 .iter()
                 .enumerate()
-                .find(|(_, ColumnDef { unique, .. })| {
+                .find(|(_, ColumnDefPlan { unique, .. })| {
                     unique == &Some(ColumnUniqueOption { is_primary: true })
                 })
                 .map(|(i, _)| i);
             let other_unique_column_def_count = column_defs
                 .iter()
-                .filter(|ColumnDef { unique, .. }| {
+                .filter(|ColumnDefPlan { unique, .. }| {
                     unique == &Some(ColumnUniqueOption { is_primary: false })
                 })
                 .count();
@@ -176,7 +177,7 @@ fn create_unique_constraints<'a>(
     Ok(constraints)
 }
 
-fn fetch_all_unique_columns(column_defs: &[ColumnDef]) -> Vec<(usize, String)> {
+fn fetch_all_unique_columns(column_defs: &[ColumnDefPlan]) -> Vec<(usize, String)> {
     column_defs
         .iter()
         .enumerate()
