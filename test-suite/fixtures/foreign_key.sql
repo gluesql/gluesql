@@ -479,3 +479,68 @@ INSERT INTO SelfCompositeRef VALUES (2, 'b', 1, 'a');
 -- @name: Self referencing composite foreign key should reject a broken tuple
 INSERT INTO SelfCompositeRef VALUES (3, 'c', 1, 'wrong');
 -- @expect: error Insert.CannotFindReferencedValue
+
+-- @name: UPDATE should reject a column referenced by a composite foreign key
+UPDATE CompositeParent SET tag = 'changed' WHERE id = 1;
+-- @expect: error Update.UpdateOnReferencedColumnNotSupported
+-- @json: "tag"
+
+-- @name: UPDATE should allow a column no foreign key references
+CREATE TABLE PartlyReferencedParent (
+    id INTEGER PRIMARY KEY,
+    tag TEXT,
+    note TEXT
+);
+-- @expect: payload Create
+
+CREATE TABLE PartlyReferencedChild (
+    id INTEGER,
+    tag TEXT,
+    FOREIGN KEY (id, tag) REFERENCES PartlyReferencedParent (id, tag)
+);
+-- @expect: payload Create
+
+INSERT INTO PartlyReferencedParent VALUES (1, 'alpha', 'n1');
+-- @expect: payload Insert
+-- @json: 1
+
+UPDATE PartlyReferencedParent SET note = 'n2' WHERE id = 1;
+-- @expect: payload Update
+-- @json: 1
+
+-- @name: UPDATE should reject a column referenced by a self referencing composite foreign key
+UPDATE SelfCompositeRef SET tag = 'changed' WHERE id = 1;
+-- @expect: error Update.UpdateOnReferencedColumnNotSupported
+-- @json: "tag"
+
+-- @name: UPDATE on a primary key referenced by a composite foreign key keeps the primary key error
+UPDATE CompositeParent SET id = 100 WHERE id = 1;
+-- @expect: error Update.UpdateOnPrimaryKeyNotSupported
+-- @json: "id"
+
+-- @name: UPDATE on a primary key referenced by a single column foreign key keeps the primary key error
+CREATE TABLE SingleParent (
+    id INTEGER PRIMARY KEY,
+    note TEXT
+);
+-- @expect: payload Create
+
+CREATE TABLE SingleChild (
+    id INTEGER,
+    parent_id INTEGER,
+    FOREIGN KEY (parent_id) REFERENCES SingleParent (id)
+);
+-- @expect: payload Create
+
+INSERT INTO SingleParent VALUES (1, 'n1');
+-- @expect: payload Insert
+-- @json: 1
+
+UPDATE SingleParent SET id = 100 WHERE id = 1;
+-- @expect: error Update.UpdateOnPrimaryKeyNotSupported
+-- @json: "id"
+
+-- @name: UPDATE on a non referenced column of a single column foreign key parent is still allowed
+UPDATE SingleParent SET note = 'n2' WHERE id = 1;
+-- @expect: payload Update
+-- @json: 1

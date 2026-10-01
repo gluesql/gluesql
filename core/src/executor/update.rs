@@ -20,6 +20,9 @@ pub enum UpdateError {
     #[error("update on primary key is not supported: {0}")]
     UpdateOnPrimaryKeyNotSupported(String),
 
+    #[error("update on column referenced by a foreign key is not supported: {0}")]
+    UpdateOnReferencedColumnNotSupported(String),
+
     #[error("conflict on schema, row data does not fit to schema")]
     ConflictOnSchema,
 
@@ -74,6 +77,27 @@ impl<'a, T: GStore> Update<'a, T> {
                     return Err(UpdateError::UpdateOnPrimaryKeyNotSupported(id.to_owned()).into());
                 }
             }
+        }
+
+        // Children are not re-validated on UPDATE, so a referenced column must stay
+        // immutable just like a primary key. fetch_referencings skips self references,
+        // so the table's own foreign keys are checked as well.
+        let referencings = storage.fetch_referencings(table_name)?;
+        let referenced_column_names = referencings
+            .iter()
+            .map(|referencing| &referencing.foreign_key)
+            .chain(
+                foreign_keys
+                    .iter()
+                    .filter(|foreign_key| foreign_key.referenced_table_name == table_name),
+            )
+            .flat_map(|foreign_key| &foreign_key.referenced_column_names)
+            .collect::<Vec<_>>();
+        if let Some(AssignmentPlan { id, .. }) = fields
+            .iter()
+            .find(|AssignmentPlan { id, .. }| referenced_column_names.contains(&id))
+        {
+            return Err(UpdateError::UpdateOnReferencedColumnNotSupported(id.to_owned()).into());
         }
 
         let foreign_key_checks = foreign_keys
