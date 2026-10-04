@@ -39,6 +39,8 @@ tabled = "0.8"
 thiserror = "1.0"
 edit = "0.1.4"
 anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
 strum_macros = "0.25"
 tracing-subscriber = { version = "0.3", optional = true, features = ["env-filter", "fmt"] }
 tracing-flame = { version = "0.2", optional = true }
@@ -54,6 +56,9 @@ opentelemetry_sdk = { version = "0.32", optional = true, default-features = fals
   "trace",
 ] }
 tracing-opentelemetry = { version = "0.33", optional = true, default-features = false }
+
+[dev-dependencies]
+tempfile = "3"
 
 [lints]
 workspace = true

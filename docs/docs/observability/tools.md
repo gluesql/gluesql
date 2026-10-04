@@ -50,6 +50,57 @@ Optional CLI exporter features build on the same instrumentation:
 
 `tracing-flame` and `opentelemetry` both enable `tracing` and can be enabled together.
 
+### TOML configuration
+
+Keep reusable CLI settings in a TOML file and select it explicitly with `--config`:
+
+```toml
+# gluesql.toml
+[observability]
+filter = "gluesql=debug"
+
+[observability.flamegraph]
+path = "query.folded"
+
+[observability.otlp]
+endpoint = "http://localhost:4318"
+```
+
+Build with the exporters used by the file, then run the CLI:
+
+```sh
+cargo build -p gluesql-cli --features tracing-flame,opentelemetry
+./target/debug/gluesql-cli --config gluesql.toml
+```
+
+The file is not discovered automatically. Omit exporter sections that the CLI build does not
+support; specifying them produces a startup error. Unknown keys, invalid TOML, and invalid
+effective settings also produce errors before storage is opened. Relative output paths are
+resolved against the current working directory, and their parent directories must already exist.
+
+Each setting uses the first available value in this order:
+
+| Setting | CLI option | Environment variable | TOML key | Default |
+| --- | --- | --- | --- | --- |
+| Span/event filter | `--log-filter` | `RUST_LOG` | `observability.filter` | `gluesql=info` |
+| Folded stack output | `--flamegraph-path` | `GLUESQL_FLAMEGRAPH_PATH` | `observability.flamegraph.path` | `tracing.folded` |
+| OTLP HTTP destination | `--otlp-endpoint` | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, then `OTEL_EXPORTER_OTLP_ENDPOINT` | `observability.otlp.endpoint` | `http://localhost:4318` |
+
+The TOML endpoint, CLI endpoint, and general `OTEL_EXPORTER_OTLP_ENDPOINT` are collector base
+URLs: `/v1/traces` is appended. `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` specifies the complete trace
+URL and is used unchanged. Other OpenTelemetry settings, such as `OTEL_SERVICE_NAME` and headers,
+continue to use the standard environment variables.
+
+For example, temporarily increase the detail without editing the file:
+
+```sh
+./target/debug/gluesql-cli --config gluesql.toml --log-filter gluesql=trace
+```
+
+This configuration applies to the CLI. Applications using GlueSQL as a library continue to
+configure their own subscriber; `Glue::new` does not load this file. The resource benchmark's
+memory sampling and Firefox Profiler settings remain specific to that example.
+
 ### Try tracing locally
 
 From the repository root, build the CLI with tracing enabled:
