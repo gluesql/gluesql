@@ -58,10 +58,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
 ///
 /// Returns an error when converting the provided parameters fails or when the SQL statement
 /// uses syntax `GlueSQL` does not support.
-#[cfg_attr(
-    feature = "tracing",
-    gluesql_macros::observe(name = "gluesql.translate")
-)]
+#[cfg_attr(feature = "tracing", gluesql_macros::observe)]
 pub fn translate_with_params(
     sql_statement: &SqlStatement,
     params: &[ParamLiteral],

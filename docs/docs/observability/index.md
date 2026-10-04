@@ -20,63 +20,38 @@ Both exporter features enable `tracing` and can be used together. For example:
 cargo build -p gluesql-cli --features tracing-flame,opentelemetry
 ```
 
-Keep reusable CLI settings in a TOML file:
-
-```toml
-# gluesql.toml
-[observability]
-filter = "gluesql=debug"
-
-[observability.flamegraph]
-path = "query.folded"
-
-[observability.otlp]
-endpoint = "http://localhost:4318"
-```
-
-Select the file explicitly; it is not discovered automatically:
+Run the CLI with environment variables for the outputs you use:
 
 ```sh
-./target/debug/gluesql-cli --config gluesql.toml
+RUST_LOG=gluesql=debug \
+GLUESQL_FLAMEGRAPH_PATH=query.folded \
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
+./target/debug/gluesql-cli
 ```
 
-Omit exporter sections that your CLI build does not support. Unknown keys, invalid TOML, and
-invalid effective settings cause startup errors before storage is opened. Relative output paths
-use the current working directory; their parent directories must already exist.
+| Environment variable | Purpose | Default |
+| --- | --- | --- |
+| `RUST_LOG` | Span/event filter | `gluesql=debug` |
+| `GLUESQL_FLAMEGRAPH_PATH` | Folded output, with `tracing-flame` | `tracing.folded` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP collector base URL, with `opentelemetry` | `http://localhost:4318` |
 
-Each setting uses the first available value from CLI options, environment variables, TOML,
-then the default:
-
-| Setting | CLI option | Environment variable | TOML key | Default |
-| --- | --- | --- | --- | --- |
-| Filter | `--log-filter` | `RUST_LOG` | `observability.filter` | `gluesql=info` |
-| Folded output | `--flamegraph-path` | `GLUESQL_FLAMEGRAPH_PATH` | `observability.flamegraph.path` | `tracing.folded` |
-| OTLP destination | `--otlp-endpoint` | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, then `OTEL_EXPORTER_OTLP_ENDPOINT` | `observability.otlp.endpoint` | `http://localhost:4318` |
-
-OTLP base URLs receive the `/v1/traces` suffix. `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` is a complete
-trace URL and is used unchanged. Standard settings such as `OTEL_SERVICE_NAME` and headers
-continue to use OpenTelemetry environment variables. The CLI flushes pending traces on exit.
+The OpenTelemetry SDK also supports `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, which takes precedence
+and specifies the complete trace URL. General endpoint URLs receive the `/v1/traces` suffix.
+Use standard OpenTelemetry variables for service names and headers. Pending traces are flushed
+on CLI exit. Relative output paths use the current working directory; parent directories must
+already exist. Unused exporter variables do not enable features.
 
 Use the filter to select measurement detail:
 
 | Level | Measurements under the `gluesql` target |
 | --- | --- |
-| `info` | Complete query execution and SQL source text |
-| `debug` | Parsing, translation, planning, executor functions, and access-path fields |
+| `info` | Application events and benchmark summaries; core function spans are disabled |
+| `debug` | All observed core functions, including parsing, planning, and execution |
 | `trace` | Also method spans for storages with tracing integration |
 
-For a temporary override, run `./target/debug/gluesql-cli --config gluesql.toml --log-filter gluesql=trace`.
+Use `RUST_LOG=gluesql=trace` to include storage method spans.
 The default in-memory session emits core spans; storage method spans require an integrated
-backend such as RedbStorage. Run these queries to compare access paths:
-
-```sql
-CREATE TABLE items (id INTEGER PRIMARY KEY);
-INSERT INTO items VALUES (1), (2);
-SELECT * FROM items WHERE id = 1;
-SELECT * FROM items;
-```
-
-The SELECTs record `access_path="primary_key"` and `access_path="full_scan"`, respectively.
+backend such as RedbStorage. Run SQL at the CLI prompt to inspect the function hierarchy.
 Append `2> query.log` to the CLI command to save tracing output separately from query results.
 
 ### Using GlueSQL as a library
@@ -89,7 +64,7 @@ gluesql = { version = "0.20", features = ["tracing"] }
 `Glue::new` installs a formatted subscriber with span-close events and a `RUST_LOG` filter
 when no dispatcher has already been configured. No initialization call is required. To use a
 custom subscriber or exporter, install it before constructing `Glue`; GlueSQL preserves it.
-CLI TOML settings do not apply to library applications.
+Applications configure their own exporters through the installed subscriber.
 
 ## View profiles
 
@@ -147,9 +122,9 @@ platform, because peak RSS is a process-lifetime high-water mark.
 
 ## Follow a query through its spans
 
-`Glue::execute` and `execute_with_params` create `gluesql.execute` for the complete SQL string.
+`Glue::execute` delegates to `execute_with_params`, whose span covers the complete SQL string.
 It includes parsing, parameter conversion, and translation, planning, and execution of each
-statement. SQL text is recorded at entry; converted parameter values are not recorded.
+statement. Core observations use default function names and record no argument fields.
 
 Execution-layer spans use their function names, such as `execute`, `rows`, and `sort`.
 Read them in their calling hierarchy; the function paths in the tables below identify the
@@ -159,14 +134,14 @@ name alone does not identify the operator.
 An illustrative SELECT hierarchy with Redb tracing enabled is:
 
 ```text
-gluesql.execute { sql }
-├── gluesql.parse
-├── gluesql.translate
-├── gluesql.plan
-└── gluesql.execute_statement
+execute_with_params
+├── parse
+├── translate_with_params
+├── plan_statement
+└── execute_stmt
     ├── gluesql.RedbStorage.begin
     ├── execute
-    │   ├── rows { access_path }
+    │   ├── rows
     │   │   └── gluesql.RedbStorage.scan_data
     │   ├── sort
     │   └── ...
@@ -181,8 +156,8 @@ they do not create or extend a storage span.
 
 Parsing happens once per SQL string. Translation, planning, and execution repeat per statement,
 so later statements see changes made by earlier statements. A separate call to `Glue::plan` or
-`plan_with_params` uses `gluesql.plan` for the complete planning call, including parsing and
-translation. Within an execute trace, that name wraps only the per-statement storage planner.
+`plan_with_params` measures the complete planning call, including parsing and translation.
+Within an execute trace, `plan_statement` measures only the per-statement storage planner.
 
 Parent and child timings overlap. Do not add their durations to calculate query time. Formatted
 span-close logs report busy time while the span is entered and idle time while it is not. For
@@ -218,8 +193,7 @@ variable or loop from an attribute.
 
 ## Mutations: preparing data before writing
 
-UPDATE and DELETE use the `collect_update_rows` and `collect_keys` function spans.
-The entry field `operation` also identifies the mutation:
+UPDATE and DELETE use the `collect_update_rows` and `collect_keys` function spans:
 
 | Operation | Observed function | Included work | Subsequent work |
 | --- | --- | --- | --- |
@@ -240,17 +214,8 @@ and surrounding collection span to identify the path's costs. No loop counter is
 
 ## Storage access and lazy work
 
-`rows` records the planned `access_path` at function entry:
-
-| Value | Meaning |
-| --- | --- |
-| `primary_key` | Primary-key lookup |
-| `secondary_index` | Secondary-index access |
-| `full_scan` | Scan without a key or index access path |
-
-This describes the plan selected for the call, including calls that fail while evaluating a key
-or preparing access. `fetch` also identifies its full-scan path at entry. Neither
-span reports the number of visited rows.
+`rows` prepares table access according to the query plan; `fetch` prepares mutation input.
+The spans measure these functions without classifying access paths or recording row counts.
 
 Storages opt into method spans. RedbStorage is the current reference implementation; its
 `gluesql.RedbStorage.*` spans require Redb tracing. Other storages need their own integration.
@@ -289,7 +254,7 @@ Peak RSS is a process-lifetime high-water mark; run comparisons in fresh process
 
 ## Data handling
 
-Top-level execute and public plan spans record SQL source text. Custom entry fields can also
-contain application data. Arguments, bound parameters, iterator rows, and returned errors are
-not captured automatically. Applications are responsible for selecting fields and handling
-redaction, retention, and access control in their subscriber or exporter.
+Built-in function spans record names and timing without capturing SQL, arguments, access paths,
+parameters, iterator rows, or returned errors. Custom subscribers and application events can
+still contain application data; select fields and handle redaction, retention, and access
+control at those integration points.

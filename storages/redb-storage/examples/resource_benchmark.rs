@@ -60,7 +60,7 @@ fn init_tracing() -> Result<(), Box<dyn Error>> {
 
     tracing_subscriber::fmt()
         .with_env_filter(
-            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("gluesql=info")),
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("gluesql=debug")),
         )
         .with_span_events(FmtSpan::CLOSE)
         .with_writer(io::stderr)

@@ -247,7 +247,7 @@ fn timestamp(elapsed: Duration) -> Timestamp {
 
 pub fn init() -> Result<FirefoxProfileLayer, Box<dyn Error>> {
     let filter =
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("gluesql=info"));
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("gluesql=debug"));
     let layer = FirefoxProfileLayer::new(
         env::var_os("GLUESQL_FIREFOX_PROFILE_PATH")
             .unwrap_or_else(|| "gluesql-benchmark-profile.json".into())
@@ -279,8 +279,8 @@ mod tests {
     fn profile_contains_tracing_markers_and_rss_counter() {
         let layer = FirefoxProfileLayer::new(PathBuf::new());
         layer.add_marker(
-            "gluesql.execute",
-            "rows=1",
+            "execute_with_params",
+            "",
             MarkerTiming::Instant(Timestamp::from_nanos_since_reference(1)),
         );
 

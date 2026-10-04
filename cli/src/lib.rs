@@ -3,13 +3,12 @@
 
 mod cli;
 mod command;
-mod config;
 mod helper;
 mod print;
 mod upgrade;
 
 use {
-    crate::{cli::Cli, config::Observability},
+    crate::cli::Cli,
     anyhow::Result,
     clap::Parser,
     gluesql_core::{
@@ -35,22 +34,6 @@ fn warn_sled_storage_deprecated() {
 #[derive(Parser, Debug)]
 #[clap(name = "gluesql", about, version)]
 struct Args {
-    /// TOML configuration file (loaded only when explicitly specified)
-    #[clap(long, value_parser)]
-    config: Option<PathBuf>,
-
-    /// Tracing filter; overrides `RUST_LOG` and the configuration file
-    #[clap(long)]
-    log_filter: Option<String>,
-
-    /// Folded stack output; requires tracing-flame
-    #[clap(long, value_parser)]
-    flamegraph_path: Option<PathBuf>,
-
-    /// OTLP HTTP collector base URL; requires opentelemetry
-    #[clap(long)]
-    otlp_endpoint: Option<String>,
-
     /// SQL file to execute
     #[clap(short, long, value_parser)]
     execute: Option<PathBuf>,
@@ -106,7 +89,7 @@ impl Drop for TracingGuard {
 }
 
 #[cfg(feature = "tracing")]
-fn init_tracing(config: &Observability) -> Result<TracingGuard> {
+fn init_tracing() -> Result<TracingGuard> {
     use tracing_subscriber::{
         EnvFilter,
         fmt::{self, format::FmtSpan},
@@ -114,18 +97,20 @@ fn init_tracing(config: &Observability) -> Result<TracingGuard> {
         util::SubscriberInitExt,
     };
 
-    let filter = EnvFilter::try_new(config.filter.as_deref().unwrap_or("gluesql=info"))?;
+    let filter =
+        EnvFilter::try_new(std::env::var("RUST_LOG").unwrap_or_else(|_| "gluesql=debug".into()))?;
     let fmt_layer = fmt::layer()
         .with_span_events(FmtSpan::CLOSE)
         .with_writer(std::io::stderr);
 
     #[cfg(feature = "tracing-flame")]
     let (flame_layer, flame_guard) = {
-        let path = config
-            .flamegraph
-            .as_ref()
-            .and_then(|config| config.path.as_deref())
-            .unwrap_or_else(|| std::path::Path::new("tracing.folded"));
+        let path = std::env::var_os("GLUESQL_FLAMEGRAPH_PATH")
+            .map_or_else(|| PathBuf::from("tracing.folded"), PathBuf::from);
+        anyhow::ensure!(
+            !path.as_os_str().is_empty(),
+            "GLUESQL_FLAMEGRAPH_PATH must not be empty"
+        );
         let (layer, guard) = tracing_flame::FlameLayer::with_file(path)?;
 
         (layer.with_empty_samples(false), guard)
@@ -133,17 +118,11 @@ fn init_tracing(config: &Observability) -> Result<TracingGuard> {
 
     #[cfg(feature = "opentelemetry")]
     let (otel_layer, provider) = {
-        use {opentelemetry::trace::TracerProvider as _, opentelemetry_otlp::WithExportConfig};
+        use opentelemetry::trace::TracerProvider as _;
 
-        let mut builder = opentelemetry_otlp::SpanExporter::builder().with_http();
-        if let Some(endpoint) = config
-            .otlp
-            .as_ref()
-            .and_then(|config| config.endpoint.as_ref())
-        {
-            builder = builder.with_endpoint(endpoint);
-        }
-        let exporter = builder.build()?;
+        let exporter = opentelemetry_otlp::SpanExporter::builder()
+            .with_http()
+            .build()?;
         let provider = opentelemetry_sdk::trace::SdkTracerProvider::builder()
             .with_batch_exporter(exporter)
             .build();
@@ -184,10 +163,6 @@ pub fn run() -> Result<()> {
     }
 
     let Args {
-        config,
-        log_filter,
-        flamegraph_path,
-        otlp_endpoint,
         execute,
         dump,
         storage,
@@ -195,15 +170,8 @@ pub fn run() -> Result<()> {
         upgrade,
     } = Args::parse();
 
-    let config = Observability::load(config.as_deref())?.resolve(
-        log_filter,
-        flamegraph_path,
-        otlp_endpoint,
-    )?;
     #[cfg(feature = "tracing")]
-    let _tracing_guard = init_tracing(&config)?;
-    #[cfg(not(feature = "tracing"))]
-    let _ = config;
+    let _tracing_guard = init_tracing()?;
 
     if upgrade {
         return upgrade::run_upgrade(path.as_deref(), storage, execute.is_some(), dump.is_some());

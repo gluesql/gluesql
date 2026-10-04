@@ -38,10 +38,7 @@ pub fn delete<T: GStore + GStoreMut>(
         .map(|()| Payload::Delete(num_keys))
 }
 
-#[cfg_attr(
-    feature = "tracing",
-    gluesql_macros::observe(fields(operation = "delete"))
-)]
+#[cfg_attr(feature = "tracing", gluesql_macros::observe)]
 fn collect_keys<T: GStore>(
     storage: &T,
     functions: &[CustomFunctionPlan],

@@ -67,28 +67,10 @@ cargo run -p gluesql-macros --example observe
 The example uses `#[observe]` directly with development dependencies and needs no feature flag.
 Its subscriber has a fixed filter independent of `RUST_LOG`.
 
-### Optional metadata
-
-| Option | Default | Purpose |
-| --- | --- | --- |
-| `name = "..."` | Function or method name | Custom operation name |
-| `target = "..."` | `gluesql` | Subscriber filtering |
-| `level = "..."` | `debug` | `trace`, `debug`, `info`, `warn`, or `error` |
-| `fields(...)` | No fields | Values available at function entry |
-
-Raw identifier prefixes are omitted: `fn r#type()` creates `type`. Execution-layer functions
-use automatic names and are read in their calling hierarchy. Entry fields use standard
-`tracing::instrument` syntax, with `%value` for Display and `?value` for Debug:
-
-```rust
-#[cfg_attr(feature = "tracing", gluesql_core::observe(fields(table = %table_name)))]
-fn load_table(table_name: &str) {
-    // Existing implementation.
-}
-```
-
-Unknown or duplicate options and unsupported levels produce compile errors. Observation points
-inside a function are not configurable; introduce a function boundary when another timing is needed.
+`observe` accepts no options: names come from functions, the target is `gluesql`, and the
+level is DEBUG. Raw identifier prefixes are omitted: `fn r#type()` creates `type`.
+Observations are read in their calling hierarchy. To measure another operation, introduce a
+function boundary rather than adding fields or selecting statements inside the function.
 
 ## Observe storage methods
 
@@ -117,9 +99,9 @@ identifier prefixes are omitted. Inherent implementations and external traits ar
 The macro uses the same whole-function instrumentation as `observe`, without capturing arguments,
 results, errors, batch counts, or iterator-consumption timings. Values need no Debug bound.
 
-Only `name = "..."` and `skip(new, helper)` are optional. An explicit name overrides the type;
-non-path types such as tuples or references require it. Skipped methods must exist and cannot
-be repeated. Use skip for methods such as const constructors that cannot create runtime spans.
+The only option is `skip(new, helper)` for methods such as const constructors that cannot
+create runtime spans. Skipped methods must exist and cannot be repeated. Implementation types
+must be named types; tuples and references are not supported.
 
 For a storage exposed as an optional facade dependency, add `"<storage-dependency-name>?/tracing"`
 to the `tracing` feature in `pkg/rust/Cargo.toml`. Use the dependency key, including any rename.

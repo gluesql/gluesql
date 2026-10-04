@@ -10,7 +10,7 @@ trait ExternalStore {
 
 struct Storage;
 
-#[trace_storage(name = "inherent", skip(identity))]
+#[trace_storage(skip(identity))]
 impl Storage {
     fn coerced_stream(empty: bool) -> Result<Rows> {
         if empty {
@@ -67,7 +67,7 @@ fn preserves_async_iterator_bodies() {
 
 struct MutableStorage(Vec<u8>);
 
-#[trace_storage(name = "mutable")]
+#[trace_storage]
 impl MutableStorage {
     fn stream(&mut self) -> Result<Box<dyn Iterator<Item = Result<&mut u8>> + '_>> {
         Ok(Box::new(self.0.iter_mut().map(Ok)))
@@ -116,7 +116,7 @@ fn instruments_external_trait_without_changing_calls() {
 
 struct UntracedStorage;
 
-#[cfg_attr(any(), trace_storage(name = "off"))]
+#[cfg_attr(any(), trace_storage)]
 impl ExternalStore for UntracedStorage {
     fn lookup(&self, key: i32, rows: Vec<i32>) -> Result<Vec<i32>> {
         Storage.lookup(key, rows)

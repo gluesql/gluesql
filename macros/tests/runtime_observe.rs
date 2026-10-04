@@ -2,18 +2,10 @@ use {
     gluesql_core::{observe, prelude::Glue},
     gluesql_macros::trace_storage,
     gluesql_memory_storage::MemoryStorage,
-    std::{
-        collections::BTreeMap,
-        fmt,
-        sync::{
-            Arc, Mutex,
-            atomic::{AtomicUsize, Ordering},
-        },
-    },
+    std::sync::{Arc, Mutex},
     tracing::{
         Subscriber,
-        field::{Field, Visit},
-        span::{Attributes, Id, Record},
+        span::{Attributes, Id},
     },
     tracing_subscriber::{
         Layer, Registry,
@@ -23,51 +15,28 @@ use {
 };
 
 type Result<T> = std::result::Result<T, &'static str>;
-type CapturedSpans = Vec<(String, BTreeMap<String, String>)>;
 
 #[derive(Clone, Default)]
-struct Capture(Arc<Mutex<CapturedSpans>>, Arc<Mutex<Vec<Vec<String>>>>);
-
-#[derive(Default)]
-struct Values(BTreeMap<String, String>);
-
-impl Visit for Values {
-    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
-        self.0.insert(field.name().to_owned(), format!("{value:?}"));
-    }
-}
+struct Capture(Arc<Mutex<Vec<String>>>, Arc<Mutex<Vec<Vec<String>>>>);
 
 impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for Capture {
-    fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
-        let mut values = Values::default();
-        attrs.record(&mut values);
-        ctx.span(id).unwrap().extensions_mut().insert(values);
+    fn on_new_span(&self, attrs: &Attributes<'_>, _: &Id, _: Context<'_, S>) {
+        assert!(attrs.metadata().fields().is_empty());
     }
 
-    fn on_record(&self, id: &Id, record: &Record<'_>, ctx: Context<'_, S>) {
-        let span = ctx.span(id).unwrap();
-        record.record(span.extensions_mut().get_mut::<Values>().unwrap());
-    }
-
-    fn on_event(&self, event: &tracing::Event<'_>, _: Context<'_, S>) {
-        let mut values = Values::default();
-        event.record(&mut values);
-        self.0.lock().unwrap().push(("event".into(), values.0));
+    fn on_event(&self, _: &tracing::Event<'_>, _: Context<'_, S>) {
+        self.0.lock().unwrap().push("event".into());
     }
 
     fn on_close(&self, id: Id, ctx: Context<'_, S>) {
         let span = ctx.span(&id).unwrap();
-        let values = span.extensions().get::<Values>().unwrap().0.clone();
         self.1.lock().unwrap().push(
             span.scope()
                 .from_root()
                 .map(|span| span.name().to_owned())
                 .collect(),
         );
-        self.0
-            .lock()
-            .unwrap()
-            .push((span.name().to_owned(), values));
+        self.0.lock().unwrap().push(span.name().to_owned());
     }
 }
 
@@ -79,7 +48,7 @@ fn automatic(early: bool) -> Result<u8> {
     Err("failed")
 }
 
-#[observe(name = "custom", fields(key = %key))]
+#[observe]
 fn borrow_input<'a>(key: &'a str) -> Result<&'a str> {
     Ok(key)
 }
@@ -100,7 +69,7 @@ impl MutableRows {
     }
 }
 
-#[cfg_attr(any(), observe(fields(n = nonexistent())))]
+#[cfg_attr(any(), observe)]
 fn feature_off() -> u8 {
     7
 }
@@ -132,21 +101,19 @@ fn function_spans_preserve_returns_borrows_and_async_context() {
         drop(future);
     });
     let records = capture.0.lock().unwrap();
-    let names: Vec<_> = records.iter().map(|(name, _)| name.as_str()).collect();
+    let names: Vec<_> = records.iter().map(String::as_str).collect();
     assert_eq!(
         names,
         [
             "automatic",
             "automatic",
-            "custom",
+            "borrow_input",
             "type",
             "rows_mut",
             "automatic_async",
             "parent"
         ]
     );
-    let (_, fields) = records.iter().find(|(name, _)| name == "custom").unwrap();
-    assert_eq!(fields.get("key").map(String::as_str), Some("key"));
 }
 
 struct Opaque;
@@ -179,9 +146,8 @@ fn storage_spans_close_before_lazy_consumption_without_debug_bounds() {
     });
     let records = capture.0.lock().unwrap();
     assert_eq!(records.len(), 2);
-    assert_eq!(records[0].0, "gluesql.Storage.stream");
-    assert_eq!(records[1].0, "gluesql.Storage.validate");
-    assert!(records.iter().all(|(_, fields)| fields.is_empty()));
+    assert_eq!(records[0], "gluesql.Storage.stream");
+    assert_eq!(records[1], "gluesql.Storage.validate");
 }
 
 #[test]
@@ -201,43 +167,37 @@ fn query_pipeline_keeps_function_spans_without_stage_counters() {
         ] {
             glue.execute(sql).unwrap();
         }
+        glue.plan("SELECT * FROM items").unwrap();
     });
     let records = capture.0.lock().unwrap();
     for expected in [
-        "gluesql.execute",
-        "gluesql.parse",
-        "gluesql.translate",
-        "gluesql.plan",
-        "gluesql.execute_statement",
+        "execute_with_params",
+        "parse",
+        "translate_with_params",
+        "plan_statement",
+        "plan_with_params",
+        "execute_stmt",
         "execute",
         "sort",
         "build_rows",
         "fetch_rows",
         "validate_unique",
         "rows",
+        "fetch",
+        "collect_update_rows",
+        "collect_keys",
     ] {
         assert!(
-            records.iter().any(|(name, _)| name == expected),
+            records.iter().any(|name| name == expected),
             "missing {expected}"
         );
     }
-    for (function, operation) in [
-        ("collect_update_rows", "update"),
-        ("collect_keys", "delete"),
-    ] {
-        assert!(records.iter().any(|(name, fields)| {
-            name == function
-                && fields
-                    .get("operation")
-                    .is_some_and(|value| value == &format!("{operation:?}"))
-        }));
-    }
     let paths = capture.1.lock().unwrap();
     for suffix in [
-        vec!["gluesql.execute_statement", "execute", "execute"],
-        vec!["gluesql.execute_statement", "execute", "sort"],
-        vec!["gluesql.execute_statement", "collect_update_rows"],
-        vec!["gluesql.execute_statement", "collect_keys"],
+        vec!["execute_stmt", "execute", "execute"],
+        vec!["execute_stmt", "execute", "sort"],
+        vec!["execute_stmt", "collect_update_rows"],
+        vec!["execute_stmt", "collect_keys"],
     ] {
         assert!(
             paths.iter().any(|path| path
@@ -248,19 +208,14 @@ fn query_pipeline_keeps_function_spans_without_stage_counters() {
             "missing hierarchy {suffix:?}"
         );
     }
-    assert!(records.iter().all(|(name, fields)| {
-        name != "event"
-            && ["buffered_rows", "buffered_groups", "scanned_rows", "params"]
-                .iter()
-                .all(|key| !fields.contains_key(*key))
-    }));
+    assert!(records.iter().all(|name| name != "event"));
 }
 
 #[test]
-fn disabled_subscriber_does_not_evaluate_entry_fields() {
-    static EVALUATIONS: AtomicUsize = AtomicUsize::new(0);
-    #[observe(fields(n = EVALUATIONS.fetch_add(1, Ordering::SeqCst)))]
-    fn disabled() {}
-    tracing::subscriber::with_default(tracing::subscriber::NoSubscriber::default(), disabled);
-    assert_eq!(EVALUATIONS.load(Ordering::SeqCst), 0);
+fn disabled_subscriber_preserves_function_results() {
+    tracing::subscriber::with_default(tracing::subscriber::NoSubscriber::default(), || {
+        assert_eq!(automatic(true), Ok(1));
+        assert_eq!(automatic(false), Err("failed"));
+        assert_eq!(borrow_input("key"), Ok("key"));
+    });
 }

@@ -20,7 +20,7 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
         Self { storage }
     }
 
-    #[cfg_attr(feature = "tracing", gluesql_macros::observe(name = "gluesql.plan"))]
+    #[cfg_attr(feature = "tracing", gluesql_macros::observe)]
     fn plan_statement(&self, statement: StatementPlan) -> Result<StatementPlan> {
         self.storage.plan(statement)
     }
@@ -31,13 +31,7 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
     ///
     /// Returns an error when parsing the SQL text fails or when building an execution plan for
     /// a statement fails.
-    #[cfg_attr(
-        feature = "tracing",
-        gluesql_macros::observe(
-            name = "gluesql.plan",
-            fields(sql = %sql.as_ref())
-        )
-    )]
+    #[cfg_attr(feature = "tracing", gluesql_macros::observe)]
     pub fn plan_with_params<Sql, I, P>(&mut self, sql: Sql, params: I) -> Result<Vec<StatementPlan>>
     where
         Sql: AsRef<str>,
@@ -68,10 +62,7 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
         self.plan_with_params(sql, std::iter::empty::<ParamLiteral>())
     }
 
-    #[cfg_attr(
-        feature = "tracing",
-        gluesql_macros::observe(name = "gluesql.execute_statement")
-    )]
+    #[cfg_attr(feature = "tracing", gluesql_macros::observe)]
     pub fn execute_stmt(&mut self, statement: &StatementPlan) -> Result<Payload> {
         execute(&mut self.storage, statement)
     }
@@ -82,16 +73,7 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
     ///
     /// Returns an error when parsing fails, planning fails, or executing a statement
     /// against the storage fails.
-    #[cfg_attr(
-        feature = "tracing",
-        gluesql_macros::observe(
-            name = "gluesql.execute",
-            level = "info",
-            fields(
-                sql = %sql.as_ref()
-            )
-        )
-    )]
+    #[cfg_attr(feature = "tracing", gluesql_macros::observe)]
     pub fn execute_with_params<Sql, I, P>(&mut self, sql: Sql, params: I) -> Result<Vec<Payload>>
     where
         Sql: AsRef<str>,
