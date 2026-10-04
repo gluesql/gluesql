@@ -15,6 +15,7 @@ use {
     std::rc::Rc,
 };
 
+#[cfg_attr(feature = "tracing", gluesql_macros::observe)]
 pub(super) fn fetch_rows<T: GStore>(
     storage: &T,
     table_name: &str,

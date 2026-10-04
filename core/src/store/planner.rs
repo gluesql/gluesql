@@ -11,6 +11,7 @@ use {
 };
 
 pub trait Planner: Store {
+    #[cfg_attr(feature = "tracing", gluesql_macros::observe)]
     fn plan(&self, statement: StatementPlan) -> Result<StatementPlan> {
         let schema_map = fetch_schema_map(self, &statement)?;
         validate(&schema_map, &statement)?;

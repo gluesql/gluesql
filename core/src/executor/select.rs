@@ -11,6 +11,7 @@ use {
     },
 };
 
+#[cfg_attr(feature = "tracing", gluesql_macros::observe)]
 pub(super) fn execute<T: GStore>(storage: &T, query: &QueryPlan) -> Result<Payload> {
     let (labels, rows) = query::execute_with_labels(storage, query, None)?;
 

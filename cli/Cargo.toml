@@ -7,6 +7,22 @@ license.workspace = true
 repository.workspace = true
 documentation.workspace = true
 
+[features]
+tracing = [
+  "gluesql-core/tracing",
+  "gluesql-redb-storage/tracing",
+  "dep:tracing-subscriber",
+]
+tracing-flame = ["tracing", "dep:tracing-flame"]
+firefox-profile = ["tracing", "dep:tracing", "dep:fxprof-processed-profile", "dep:serde_json"]
+opentelemetry = [
+  "tracing",
+  "dep:opentelemetry",
+  "dep:opentelemetry-otlp",
+  "dep:opentelemetry_sdk",
+  "dep:tracing-opentelemetry",
+]
+
 [dependencies]
 gluesql-core.workspace = true
 gluesql_sled_storage.workspace = true
@@ -25,6 +41,26 @@ thiserror = "1.0"
 edit = "0.1.4"
 anyhow = "1.0"
 strum_macros = "0.25"
+tracing-subscriber = { version = "0.3", optional = true, features = ["env-filter", "fmt"] }
+tracing-flame = { version = "0.2", optional = true }
+tracing = { version = "0.1", optional = true }
+fxprof-processed-profile = { version = "0.8.1", optional = true }
+serde_json = { version = "1", optional = true }
+opentelemetry = { version = "0.32", optional = true, default-features = false, features = [
+  "trace",
+] }
+opentelemetry-otlp = { version = "0.32", optional = true, default-features = false, features = [
+  "http-proto",
+  "reqwest-blocking-client",
+  "trace",
+] }
+opentelemetry_sdk = { version = "0.32", optional = true, default-features = false, features = [
+  "trace",
+] }
+tracing-opentelemetry = { version = "0.33", optional = true, default-features = false }
+
+[dev-dependencies]
+tempfile = "3"
 
 [lints]
 workspace = true
