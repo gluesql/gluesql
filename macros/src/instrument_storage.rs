@@ -5,7 +5,10 @@ use {
     std::collections::BTreeSet,
     syn::{
         Expr, ExprLit, FnArg, GenericArgument, Ident, ImplItem, ItemImpl, Lit, Meta, Pat,
-        PathArguments, ReturnType, Token, Type, parse::Parser, punctuated::Punctuated,
+        PathArguments, ReturnType, Token, Type,
+        parse::Parser,
+        punctuated::Punctuated,
+        visit_mut::{self, VisitMut},
     },
 };
 
@@ -187,7 +190,6 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> Result<TokenStream, syn::
             );
 
         if should_trace_iterator {
-            let capture_full = args.capture_full;
             let ok_type = result_ok_type(&method.sig.output).ok_or_else(|| {
                 syn::Error::new_spanned(
                     &method.sig.output,
@@ -200,9 +202,39 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> Result<TokenStream, syn::
                 _ => format!("{method_name}_rows"),
             };
             let iterator_span_name = format!("gluesql.{}.{iterator_operation}", args.name);
-            let block = &method.block;
+            let mut block = method.block.clone();
+            let output = &method.sig.output;
+            let call = if method.sig.asyncness.is_some() {
+                let ReturnType::Type(_, output) = output else {
+                    unreachable!()
+                };
+                TypedAsyncReturns(output).visit_block_mut(&mut block);
+                quote!(async {
+                    let result: #output = #block;
+                    result
+                }.await)
+            } else {
+                quote!({
+                    fn __gluesql_call_once<R>(body: impl ::std::ops::FnOnce() -> R) -> R {
+                        body()
+                    }
+                    __gluesql_call_once(|| #output #block)
+                })
+            };
+            let capture = if args.capture_full {
+                quote!(|item: &_| match item {
+                    ::std::result::Result::Ok(row) => {
+                        tracing::trace!(target: "gluesql", row = ?row, "storage iterator yielded a row");
+                    }
+                    ::std::result::Result::Err(error) => {
+                        tracing::trace!(target: "gluesql", error = ?error, "storage iterator yielded an error");
+                    }
+                })
+            } else {
+                quote!(|_: &_| {})
+            };
             method.block = syn::parse_quote!({
-                let __gluesql_result = (|| #block)();
+                let __gluesql_result = #call;
                 __gluesql_result.map(|__gluesql_iterator| {
                     let __gluesql_span = tracing::trace_span!(
                         target: "gluesql",
@@ -215,7 +247,7 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> Result<TokenStream, syn::
                         #gluesql::__private::TracedResultIterator::new(
                             __gluesql_iterator,
                             __gluesql_span,
-                            #capture_full,
+                            #capture,
                         ),
                     );
                     __gluesql_iterator
@@ -229,6 +261,25 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> Result<TokenStream, syn::
     }
 
     Ok(quote!(#implementation))
+}
+
+struct TypedAsyncReturns<'a>(&'a Type);
+
+impl VisitMut for TypedAsyncReturns<'_> {
+    fn visit_item_mut(&mut self, _: &mut syn::Item) {}
+    fn visit_expr_closure_mut(&mut self, _: &mut syn::ExprClosure) {}
+    fn visit_expr_async_mut(&mut self, _: &mut syn::ExprAsync) {}
+
+    fn visit_expr_return_mut(&mut self, expr: &mut syn::ExprReturn) {
+        visit_mut::visit_expr_return_mut(self, expr);
+        if let Some(value) = &expr.expr {
+            let output = self.0;
+            expr.expr = Some(Box::new(syn::parse_quote!({
+                let result: #output = #value;
+                result
+            })));
+        }
+    }
 }
 
 fn result_ok_type(output: &ReturnType) -> Option<Type> {

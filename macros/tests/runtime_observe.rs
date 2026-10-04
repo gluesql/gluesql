@@ -343,6 +343,44 @@ impl ObservedStorage {
 
 struct TimingOnlyStorage;
 
+struct OpaqueRow;
+struct OpaqueError;
+
+#[trace_storage(name = "opaque", capture = "off", iterators(stream_opaque))]
+impl TimingOnlyStorage {
+    fn stream_opaque(
+        &self,
+    ) -> std::result::Result<
+        Box<dyn Iterator<Item = std::result::Result<OpaqueRow, OpaqueError>>>,
+        OpaqueError,
+    > {
+        Ok(Box::new([Ok(OpaqueRow), Err(OpaqueError)].into_iter()))
+    }
+}
+
+#[test]
+fn capture_off_accepts_rows_and_errors_without_debug() {
+    let capture = Capture::default();
+    tracing::subscriber::with_default(Registry::default().with(capture.clone()), || {
+        let rows = match TimingOnlyStorage.stream_opaque() {
+            Ok(rows) => rows.collect::<Vec<_>>(),
+            Err(OpaqueError) => panic!("iterator creation should succeed"),
+        };
+        assert_eq!(rows.len(), 2);
+        assert!(rows[0].is_ok());
+        assert!(rows[1].is_err());
+    });
+    let records = capture.0.lock().unwrap();
+    let (_, fields) = records
+        .iter()
+        .find(|(name, _)| name == "gluesql.opaque.stream_opaque_rows")
+        .unwrap();
+    assert_eq!(fields.get("row_count").map(String::as_str), Some("1"));
+    assert_eq!(fields.get("error_count").map(String::as_str), Some("1"));
+    assert_eq!(fields.get("completed").map(String::as_str), Some("true"));
+    assert!(records.iter().all(|(name, _)| name != "event"));
+}
+
 #[trace_storage(name = "metadata", capture = "off")]
 impl Metadata for TimingOnlyStorage {
     fn scan_table_meta(&self) -> gluesql_core::error::Result<MetaIter> {

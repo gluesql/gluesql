@@ -1,6 +1,6 @@
 use {
-    std::{fmt::Debug, sync::OnceLock},
-    tracing::{Span, trace},
+    std::sync::OnceLock,
+    tracing::Span,
     tracing_subscriber::{EnvFilter, fmt::format::FmtSpan},
 };
 
@@ -22,21 +22,25 @@ pub fn ensure_default_subscriber() {
     });
 }
 
-pub struct TracedResultIterator<I> {
+pub struct TracedResultIterator<I, F> {
     inner: I,
     span: Span,
-    capture_full: bool,
+    capture: F,
     row_count: usize,
     error_count: usize,
     completed: bool,
 }
 
-impl<I> TracedResultIterator<I> {
-    pub fn new(inner: I, span: Span, capture_full: bool) -> Self {
+impl<I, F> TracedResultIterator<I, F>
+where
+    I: Iterator,
+    F: FnMut(&I::Item),
+{
+    pub fn new(inner: I, span: Span, capture: F) -> Self {
         Self {
             inner,
             span,
-            capture_full,
+            capture,
             row_count: 0,
             error_count: 0,
             completed: false,
@@ -44,11 +48,10 @@ impl<I> TracedResultIterator<I> {
     }
 }
 
-impl<I, T, E> Iterator for TracedResultIterator<I>
+impl<I, F, T, E> Iterator for TracedResultIterator<I, F>
 where
     I: Iterator<Item = Result<T, E>>,
-    T: Debug,
-    E: Debug,
+    F: FnMut(&Result<T, E>),
 {
     type Item = Result<T, E>;
 
@@ -58,19 +61,16 @@ where
             let item = self.inner.next();
 
             match &item {
-                Some(Ok(row)) => {
+                Some(Ok(_)) => {
                     self.row_count += 1;
-                    if self.capture_full {
-                        trace!(target: "gluesql", row = ?row, "storage iterator yielded a row");
-                    }
                 }
-                Some(Err(error)) => {
+                Some(Err(_)) => {
                     self.error_count += 1;
-                    if self.capture_full {
-                        trace!(target: "gluesql", error = ?error, "storage iterator yielded an error");
-                    }
                 }
                 None => self.completed = true,
+            }
+            if let Some(item) = &item {
+                (self.capture)(item);
             }
 
             item
@@ -78,7 +78,7 @@ where
     }
 }
 
-impl<I> Drop for TracedResultIterator<I> {
+impl<I, F> Drop for TracedResultIterator<I, F> {
     fn drop(&mut self) {
         self.span.record("row_count", self.row_count);
         self.span.record("error_count", self.error_count);
