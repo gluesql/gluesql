@@ -20,10 +20,7 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
         Self { storage }
     }
 
-    #[cfg_attr(
-        feature = "tracing",
-        gluesql_macros::observe(name = "gluesql.plan", target = "gluesql", level = "debug")
-    )]
+    #[cfg_attr(feature = "tracing", gluesql_macros::observe(name = "gluesql.plan"))]
     fn plan_statement(&self, statement: StatementPlan) -> Result<StatementPlan> {
         self.storage.plan(statement)
     }
@@ -38,10 +35,7 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
         feature = "tracing",
         gluesql_macros::observe(
             name = "gluesql.plan",
-            target = "gluesql",
-            level = "debug",
-            fields(sql = %sql.as_ref()),
-            after_let(params, record(params = ?params))
+            fields(sql = %sql.as_ref())
         )
     )]
     pub fn plan_with_params<Sql, I, P>(&mut self, sql: Sql, params: I) -> Result<Vec<StatementPlan>>
@@ -76,11 +70,7 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
 
     #[cfg_attr(
         feature = "tracing",
-        gluesql_macros::observe(
-            name = "gluesql.execute_statement",
-            target = "gluesql",
-            level = "debug",
-        )
+        gluesql_macros::observe(name = "gluesql.execute_statement")
     )]
     pub fn execute_stmt(&mut self, statement: &StatementPlan) -> Result<Payload> {
         execute(&mut self.storage, statement)
@@ -96,12 +86,10 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
         feature = "tracing",
         gluesql_macros::observe(
             name = "gluesql.execute",
-            target = "gluesql",
             level = "info",
             fields(
                 sql = %sql.as_ref()
-            ),
-            after_let(params, record(params = ?params))
+            )
         )
     )]
     pub fn execute_with_params<Sql, I, P>(&mut self, sql: Sql, params: I) -> Result<Vec<Payload>>

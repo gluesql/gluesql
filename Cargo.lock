@@ -1298,7 +1298,6 @@ dependencies = [
  "bincode",
  "fxprof-processed-profile",
  "gluesql-core",
- "gluesql-macros",
  "gluesql-test-suite",
  "libc",
  "redb",

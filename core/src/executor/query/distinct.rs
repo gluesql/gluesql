@@ -9,15 +9,7 @@ use {
     std::{collections::HashSet, rc::Rc},
 };
 
-#[cfg_attr(
-    feature = "tracing",
-    gluesql_macros::observe(
-        name = "gluesql.query.distinct",
-        target = "gluesql",
-        level = "debug",
-        after_let(rows, occurrence = 4, record(buffered_rows = rows.len()))
-    )
-)]
+#[cfg_attr(feature = "tracing", gluesql_macros::observe)]
 pub(super) fn execute<'a, T>(
     storage: &'a T,
     functions: &'a [CustomFunctionPlan],

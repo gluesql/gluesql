@@ -32,7 +32,7 @@ impl RedbStorage {
     }
 }
 
-#[cfg_attr(feature = "tracing", gluesql_macros::trace_storage(name = "redb"))]
+#[cfg_attr(feature = "tracing", gluesql_core::trace_storage)]
 impl Store for RedbStorage {
     fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         self.0.fetch_all_schemas().map_err(Into::into)
@@ -53,7 +53,7 @@ impl Store for RedbStorage {
     }
 }
 
-#[cfg_attr(feature = "tracing", gluesql_macros::trace_storage(name = "redb"))]
+#[cfg_attr(feature = "tracing", gluesql_core::trace_storage)]
 impl StoreMut for RedbStorage {
     fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         self.0.insert_schema(schema).map_err(Into::into)
@@ -76,7 +76,7 @@ impl StoreMut for RedbStorage {
     }
 }
 
-#[cfg_attr(feature = "tracing", gluesql_macros::trace_storage(name = "redb"))]
+#[cfg_attr(feature = "tracing", gluesql_core::trace_storage)]
 impl Transaction for RedbStorage {
     fn begin(&mut self, autocommit: bool) -> Result<bool> {
         self.0.begin(autocommit).map_err(Into::into)

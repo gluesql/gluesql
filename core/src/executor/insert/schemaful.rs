@@ -15,15 +15,7 @@ use {
     std::rc::Rc,
 };
 
-#[cfg_attr(
-    feature = "tracing",
-    gluesql_macros::observe(
-        name = "gluesql.insert.collect",
-        target = "gluesql",
-        level = "debug",
-        after_let(rows, occurrence = 3, record(buffered_rows = rows.len()))
-    )
-)]
+#[cfg_attr(feature = "tracing", gluesql_macros::observe)]
 pub(super) fn fetch_rows<T: GStore>(
     storage: &T,
     functions: &[CustomFunctionPlan],

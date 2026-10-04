@@ -1,396 +1,139 @@
 # Adding observability
 
-Use this guide when adding observation points to GlueSQL functions, integrating a storage, or
-creating a resource benchmark for another storage. For enabling tracing and interpreting the
-existing execution spans, start with [Execution stages and interpretation](index.md).
+Use this guide to instrument GlueSQL functions, integrate a storage, or create a resource
+benchmark for another storage. See [Execution stages and interpretation](index.md) for the
+existing measurement boundaries and [Tools and setup](tools.md) for subscribers and exporters.
 
-Declare observations with `cfg_attr(feature = "tracing", ...)` so the original function is
-compiled without instrumentation when tracing is disabled. A named observation normally covers
-the function call; `start` and `end` select a smaller interval. Field hooks record values at
-selected points but do not create separate timing intervals. Choose the interval first, then
-record the counts needed to interpret its cost.
+Observations follow function boundaries. Start with one attribute on a function. If a function
+contains separate operations whose costs need to be distinguished, extract those operations
+into cohesive functions and instrument them individually. The macro does not locate statements,
+rewrite loops, inspect return values, or choose intervals inside a function.
 
 ## Declaring function observations
 
-### Run a complete example
+### Start with one attribute
 
-From the root of this GlueSQL checkout, copy and run:
+```rust
+#[cfg_attr(feature = "tracing", gluesql_core::observe)]
+fn validate_rows(rows: &[i32]) -> Result<(), &'static str> {
+    if rows.iter().any(|row| *row < 0) {
+        return Err("negative row");
+    }
+    Ok(())
+}
+```
+
+This creates a DEBUG span named `validate_rows` under the `gluesql` target. It covers the whole
+function and closes on normal return, early return, error propagation with `?`, or unwinding.
+The macro does not automatically record arguments, successful return values, or errors. A span
+can therefore close on either success or failure without indicating which result was returned.
+
+Always use `cfg_attr` in consuming crates. Without the feature, the original function is compiled
+without instrumentation. Enable `gluesql-core/tracing` and an optional direct `tracing` dependency
+through the consuming crate's feature; core re-exports both observation macros. Existing
+`gluesql_macros` imports are also supported.
+
+Synchronous and async non-const functions and methods are supported. An async span is entered
+only while the future is polled, so suspension does not leave it entered on the calling thread.
+For iterator-producing functions, the span measures iterator creation and preparation, including
+any eager input processing performed by that function. Iterator consumption time is included in
+the consuming function's span, when instrumented. A const function cannot create a runtime span.
+
+### Split work at function boundaries
+
+Run the complete example from the repository root:
 
 ```sh
 cargo run -p gluesql-macros --example observe
 ```
 
-This runs `macros/examples/observe.rs`; no database, external collector, or extra installation
-is needed beyond the repository's Rust build prerequisites. It demonstrates a successful call,
-an early error return, and a span covering only part of a function. Both function bodies remain
-free of tracing calls; their attributes declare the observation points.
+The example uses `#[observe]` directly with the macro crate's development dependencies, so it
+needs no feature flag. It separates copying and validation into functions:
 
-The example installs a console subscriber at DEBUG level, which includes `observe`'s default
-DEBUG spans and ERROR events. `FmtSpan::CLOSE` prints the final recorded fields when each span
-closes. ANSI colors and time output are disabled to keep the output easy to compare. The level
-is fixed in code rather than selected with `EnvFilter`, so `RUST_LOG` does not change this
-example's output.
+```rust
+#[gluesql_macros::observe]
+fn collect(input: &[i32]) -> Result<Vec<i32>, &'static str> {
+    let rows = copy_rows(input);
+    validate_rows(&rows)?;
+    Ok(rows)
+}
 
-To save its logs in your home directory while leaving the check result on the terminal:
+#[gluesql_macros::observe]
+fn copy_rows(input: &[i32]) -> Vec<i32> {
+    input.to_vec()
+}
+
+#[gluesql_macros::observe]
+fn validate_rows(rows: &[i32]) -> Result<(), &'static str> {
+    if rows.iter().any(|row| *row < 0) {
+        return Err("negative row");
+    }
+    Ok(())
+}
+```
+
+Both the successful and failing calls produce this hierarchy:
+
+```text
+collect
+├── copy_rows
+└── validate_rows
+```
+
+The parent measures the complete operation, while each child measures one function. On validation
+failure, the error propagates through `collect` unchanged and both spans close. No loop counter,
+return-value field, or error event is generated.
+
+The example installs a DEBUG subscriber with `FmtSpan::CLOSE`, which prints busy and idle time
+when each span closes. Its fixed filter is independent of `RUST_LOG`. Assertions verify the
+return values; `macros/tests/runtime_observe.rs` verifies the observations and control flow.
+Save the example output with:
 
 ```sh
 cargo run --quiet -p gluesql-macros --example observe 2> "$HOME/gluesql-observe-example.log"
 less "$HOME/gluesql-observe-example.log"
 ```
 
-Cargo diagnostics also use stderr and may appear in that file. The program prints
-`All observation example checks passed.` to stdout on success. stdout and stderr may be
-displayed in a different order when combined. The assertions check the functions' return values;
-they do not automatically validate the emitted fields. Observation assertions are covered by
-`macros/tests/runtime_observe.rs`.
+### Optional span metadata
 
-It exercises these three cases:
+Only these options are supported:
 
-| Call | Expected observation |
-| --- | --- |
-| `collect(&[1, 2, 3])` | `gluesql.example.collect` closes with `input_rows=3`, `buffered_rows=3`, `scanned_rows=3`, and `returned_rows=3`. |
-| `collect(&[1, -2, 3])` | An error event contains `negative row`; the span closes with `scanned_rows=2` and no recorded `returned_rows` value. |
-| `count_keys(&[1, 2, 3])` | `gluesql.example.collect_keys` closes with `buffered_rows=3`; work after `let num_keys` is outside this span. |
-
-The tracing output is:
-
-```text
-DEBUG gluesql.example.collect{input_rows=3 buffered_rows=3 scanned_rows=3 returned_rows=3}: gluesql: close
-ERROR gluesql.example.collect{input_rows=3 buffered_rows=3 scanned_rows=2}: gluesql: error="negative row"
-DEBUG gluesql.example.collect{input_rows=3 buffered_rows=3 scanned_rows=2}: gluesql: close
-DEBUG gluesql.example.collect_keys{buffered_rows=3}: gluesql: close
-```
-
-#### Whole-function observations
-
-The first function copies its input, rejects negative values, and returns the copied rows:
-
-```rust
-#[gluesql_macros::observe(
-    name = "gluesql.example.collect",
-    fields(input_rows = input.len()),
-    after_let(rows, record(buffered_rows = rows.len())),
-    count_loop(binding = row, field = scanned_rows),
-    on_ok(rows, record(returned_rows = rows.len())),
-    err(Debug)
-)]
-fn collect(input: &[i32]) -> Result<Vec<i32>, &'static str> {
-    let rows = input.to_vec();
-    for row in &rows {
-        if *row < 0 {
-            return Err("negative row");
-        }
-    }
-    Ok(rows)
-}
-```
-
-Each attribute option observes a different point in that execution:
-
-| Option | Observation point | Recorded information |
+| Option | Default | Purpose |
 | --- | --- | --- |
-| `name` | The span surrounding the function call | The operation name `gluesql.example.collect` |
-| `fields(input_rows = input.len())` | Span creation | Number of input items |
-| `after_let(rows, record(buffered_rows = rows.len()))` | Immediately after `let rows = input.to_vec()` succeeds | Number of copied items retained in the buffer |
-| `count_loop(binding = row, field = scanned_rows)` | Each entry into the selected `for row` loop body | Number of items whose inspection started |
-| `on_ok(rows, record(returned_rows = rows.len()))` | After the function returns `Ok` | Number of successfully returned items |
-| `err(Debug)` | After the function returns `Err` | An ERROR event containing the error's `Debug` representation |
+| `name = "..."` | Function or method name | Stable operation name or distinction between functions with the same name |
+| `target = "..."` | `gluesql` | Subscriber filtering |
+| `level = "..."` | `debug` | `trace`, `debug`, `info`, `warn`, or `error` |
+| `fields(...)` | No fields | Values available at function entry |
 
-The field names are chosen by the example, not reserved metric names interpreted by the macro.
-In `on_ok`, `rows` names a reference to the successful return value; it does not select the local
-variable named `rows`. Renaming that local variable therefore requires updating `after_let`, but
-does not require changing `on_ok`.
+Raw function identifier prefixes are omitted: `fn r#type()` creates a span named `type`.
+Execution-layer functions use this default naming and are interpreted in their calling
+hierarchy. Explicit names remain available when a custom operation name is needed.
 
-For `[1, 2, 3]`, all four counts are 3: the function receives three items, copies three items,
-enters the loop three times, and returns three items. The counts happen to agree because this
-function does not filter its input.
-
-For `[1, -2, 3]`, copying still finishes before validation, so `input_rows` and `buffered_rows`
-remain 3. The loop enters twice and returns an error while inspecting `-2`; the third item is
-never inspected. `scanned_rows` is therefore 2, including the item that failed validation.
-To count only iterations that reach a particular successful initialization, use
-`increment = after_let(...)`, as in the `validate_unique` example below.
-
-The error call has no recorded `returned_rows` value because `on_ok` does not run for `Err`.
-This differs from a successful empty result, which records `returned_rows=0`. The partial loop
-count is preserved on early return, and the function span still closes. `err(Debug)` emits an
-event; it does not turn the error into a successful result or suppress its propagation.
-
-All these counts describe items, not allocated bytes or RSS.
-
-#### Observing part of a function
-
-The second function measures copying and counting without including the subsequent assertion
-or return:
-
-```rust
-#[gluesql_macros::observe(
-    name = "gluesql.example.collect_keys",
-    start = before_let(keys),
-    end = after_let(num_keys),
-    record(buffered_rows = num_keys)
-)]
-fn count_keys(input: &[i32]) -> usize {
-    let keys = input.to_vec();
-    let num_keys = keys.len();
-    // This work is outside the collection span.
-    assert_eq!(num_keys, input.len());
-    num_keys
-}
-```
-
-`start = before_let(keys)` opens the span immediately before the buffer is initialized.
-`end = after_let(num_keys)` records `buffered_rows` and closes the span immediately after the
-length is assigned. Both the copy and the length calculation are inside the observed interval;
-`assert_eq!` and the final return are outside it. The function returns `usize`, so this example
-uses a range-end `record` rather than `on_ok`.
-
-Range observations let an existing function expose the cost of one preparation or collection
-phase without extracting a helper function. An early return before the endpoint still closes
-the span, but does not perform the endpoint's final record.
-
-This macro-crate example deliberately uses the attribute directly and the crate's existing
-development dependencies, so it needs no `--features tracing` flag. In a consuming crate,
-keep tracing optional using `cfg_attr` and optional dependencies as described below. The
-remaining snippets are integration patterns, not standalone programs.
-
-### Integrate with an existing function
-
-Use `gluesql_macros::observe` to keep instrumentation out of function bodies. The attribute
-supports non-const functions and methods. Synchronous functions support all selectors below;
-async functions support whole-function spans with `name`, `level`, `target`, `fields`, and
-`err(Debug)`, entering the span only while their future is polled. Enable optional `gluesql-macros` and
-`tracing` dependencies through the consuming crate's `tracing` feature, as in the storage setup
-below. Always use `cfg_attr`: without the feature, the original function is compiled without
-generated spans, counters, or field expressions.
+Entry fields can identify the input without selecting an internal observation point:
 
 ```rust
 #[cfg_attr(
     feature = "tracing",
-    gluesql_macros::observe(name = "gluesql.evaluate", level = "trace")
+    gluesql_core::observe(fields(table = table_name))
 )]
-fn evaluate(/* existing arguments */) -> Result<Evaluated<'_>> {
+fn load_table(table_name: &str) {
     // Existing implementation.
 }
 ```
 
-`name` is required for spans; event-only observations omit it. `level` defaults to `debug` and accepts `trace`, `debug`, `info`, `warn`, or
-`error`; `target` defaults to `gluesql`. A function observation ends on normal return, early
-return, error propagation with `?`, or unwinding. It measures the function call, not subsequent
-consumption of a returned iterator. Continue using `trace_storage` for lazy storage iterators.
-The attribute does not install a subscriber.
+Use `?value` for Debug formatting and `%value` for Display formatting. Fields use the standard
+`tracing::instrument` syntax. Duplicate options, unknown options, and unsupported levels produce
+compile errors. The macro does not install a subscriber.
 
-### Initial fields and local values
-
-Use `fields` for values available when the observation starts:
-
-```rust
-#[cfg_attr(
-    feature = "tracing",
-    gluesql_macros::observe(
-        name = "gluesql.storage.lookup",
-        fields(backend = "example", table = table_name, key = ?key)
-    )
-)]
-fn lookup(/* existing arguments */) -> Result<Option<DataRow>> {
-    // Existing implementation.
-}
-```
-
-`?value` records `Debug` formatting and `%value` records `Display` formatting. Expressions are
-borrowed, not consumed, and are evaluated only when the generated span is enabled.
-
-Use `after_let` for values available inside the function. The macro declares the recorded fields
-automatically and inserts the recording immediately after the selected initialization succeeds:
-
-```rust
-#[cfg_attr(
-    feature = "tracing",
-    gluesql_macros::observe(
-        name = "gluesql.query.aggregate",
-        after_let(rows, occurrence = 2, record(buffered_groups = rows.len()))
-    )
-)]
-fn execute(/* existing arguments */) -> Result<AggregatedRows<'_>> {
-    // Existing implementation, including the original `let rows` declarations.
-}
-```
-
-Selectors match bound identifiers, including tuple and struct destructuring. They search the
-function's blocks in source order, counting a declaration before its initializer's nested blocks.
-Parameters, separate item definitions, closure bodies, async blocks, and macro token bodies are
-not searched. A `let` must have an initializer; `if let` and `while let` conditions are not targets.
-Generated hooks inherit the selected statement's `cfg` and `cfg_attr` attributes. A declaration
-excluded from compilation does not leave a dangling field expression behind. Occurrence numbers
-still count declarations in source order, including conditionally excluded declarations.
-Raw field identifiers such as `r#type` are supported and recorded as `type`.
-
-- Omit `occurrence` when exactly one declaration matches.
-- Use `occurrence = N` to select a declaration, counting from 1.
-- Use `all` to record after every matching declaration, including declarations in separate branches.
-- Repeat `after_let(...)` to select multiple specific declarations or record different fields.
-
-Repeated writes to one span field retain its latest value; they are not time-series samples.
-If initialization returns through `?`, the subsequent record is not reached. If an initializer
-moves a value into an iterator, select an earlier point where the desired buffer still exists.
-
-Use `after_loop(row, record(buffered_rows = rows.len()))` to record after a `for row in ...` loop,
-as in the hash-join build. This selector also accepts `occurrence` or `all`. It records after
-normal completion or a local `break`, but not when the function returns from inside the loop.
-
-### Measuring a partial function interval
-
-Pair `start` and `end` to measure a region without extracting a new function. DELETE uses:
-
-```rust
-#[cfg_attr(
-    feature = "tracing",
-    gluesql_macros::observe(
-        name = "gluesql.mutation.collect",
-        fields(operation = "delete"),
-        start = before_let(keys),
-        end = after_let(num_keys),
-        record(buffered_rows = num_keys)
-    )
-)]
-fn delete(/* existing arguments */) -> Result<Payload> {
-    // Existing setup.
-    let mut keys = Vec::new();
-    // Existing key collection and foreign-key validation.
-    let num_keys = keys.len();
-    // Existing storage mutation.
-}
-```
-
-Both endpoints accept `before_let` or `after_let`, with an optional `occurrence`. They must select
-ordered positions in the same block. The span starts only if execution reaches the start point.
-The top-level `record` runs at the end point, before the span is exited and closed. On earlier
-return or unwinding, the span closes without that final record. The storage mutation stays
-outside the collection span.
-Endpoints with their own `cfg` or `cfg_attr` are rejected, since separately conditional endpoints
-can leave a span without a matching start or end. Put the condition on their enclosing block or
-function instead.
-
-Range observations support `fields` and the final `record`; they cannot be combined with
-`after_let`, `after_loop`, `count_loop`, `on_ok`, or `err(Debug)` in the same attribute. Invalid
-combinations produce a compile error rather than silently omitting error events.
-
-### Counting loop iterations
-
-`count_loop(binding = row, field = scanned_rows)` counts entries into a selected `for row in ...`
-body, including iterations that immediately propagate an error. Add an increment point to count
-only after a particular initialization succeeds:
-
-```rust
-#[cfg_attr(
-    feature = "tracing",
-    gluesql_macros::observe(
-        name = "gluesql.validate.unique",
-        count_loop(
-            binding = row,
-            increment = after_let(values),
-            field = scanned_rows
-        )
-    )
-)]
-fn validate_unique(/* existing arguments */) -> Result<()> {
-    for row in storage.scan_data(table_name)? {
-        let (_, values) = row?;
-        // Existing validation.
-    }
-    Ok(())
-}
-```
-
-Loop selection accepts `occurrence = N` when its binding is ambiguous. The optional increment
-selector is resolved within that loop body and must identify one declaration. The counter is
-recorded when leaving the loop's surrounding execution region, including error return and
-unwinding. Unlike the previous success-only validation record, errors retain the partial scan
-count. A loop that executes zero iterations records zero; an unreached loop records nothing.
-Instrumentation never pulls additional items from the iterator.
-
-### Recording successful return values
-
-`on_ok` binds a reference to the successful `Result` value and records without cloning or
-consuming it:
-
-```rust
-#[cfg_attr(
-    feature = "tracing",
-    gluesql_macros::observe(
-        name = "gluesql.insert.collect",
-        on_ok(rows, record(buffered_rows = rows.len()))
-    )
-)]
-fn fetch_rows(/* existing arguments */) -> Result<Vec<Vec<Value>>> {
-    // Existing implementation.
-}
-```
-
-Explicit successful `return` statements are included. Errors pass through unchanged without the
-success record. The return type must be written as `Result<...>` (optionally qualified); aliases
-with other names are not supported. Mutable references and opaque success types such as
-`Result<impl Iterator<Item = Row>, Error>` retain their original return semantics.
-Add `err(Debug)` to emit an error event for a returned `Err`. `trace_storage` uses this same
-function observation generator for method spans, argument fields, and error events; its iterator
-wrapper continues to handle lazy consumption separately.
-
-### Declaring events without a span
-
-Use `event` without `name` when only an event is needed. This preserves the current parent span
-and does not add a new span to the hierarchy:
-
-```rust
-#[cfg_attr(
-    feature = "tracing",
-    gluesql_macros::observe(
-        event("selected query access path", access_path = "full_scan")
-    )
-)]
-fn fetch(/* existing arguments */) -> Result<KeyedRows<'_>> {
-    // Existing implementation.
-}
-```
-
-Events can also be attached to precise statement boundaries:
-
-```rust
-#[cfg_attr(
-    feature = "tracing",
-    gluesql_macros::observe(
-        after_let(key, event("selected query access path", access_path = "primary_key"))
-    )
-)]
-fn rows(/* existing arguments */) -> Result<SourceRows<'_>> {
-    // Existing implementation.
-}
-```
-
-`before_let` emits before initialization; `after_let` emits after successful initialization;
-`after_loop` emits after loop completion. All accept the same occurrence selection rules as
-recording hooks. Entry events and hooks use the attribute's `level` and `target`. Event expressions
-are evaluated only when the event is enabled. Access-path events use these attributes and leave
-the SQL execution bodies free of logging calls.
-
-### Validation when changing observed code
-
-Missing or ambiguous targets, invalid occurrence numbers, unsupported options, and invalid
-range boundaries produce macro errors. Rust checks expression types and visibility at each
-injected location. A refactor can change which declaration an occurrence selects even when it
-still compiles, so review the attribute alongside the body and verify the recorded values.
-
-Run checks with `tracing` enabled as well as disabled. Selectors are not checked when `cfg_attr`
-disables the macro. Runtime tests in `macros/tests/runtime_observe.rs` cover control flow, disabled
-field evaluation, and query-pipeline buffer counts.
+The former `before_let`, `after_let`, `after_loop`, `count_loop`, `start`, `end`, `record`, `on_ok`,
+`err(Debug)`, and `event` options are no longer supported. Remove statement selectors and
+counters, or extract a function when a separate timing boundary is needed. Access paths are now
+entry fields on a function span rather than events injected into selected branches.
 
 ## Adding tracing support to a storage
 
-A storage opts in without changing its method bodies or any GlueSQL call sites. The procedural
-macro instruments the methods explicitly defined in each attributed `impl` block.
-
-Enable core tracing and add the optional `tracing` dependency to the storage crate. Core
-re-exports `trace_storage` and `observe` under this feature, so a separate `gluesql-macros`
-dependency is not required:
+A storage opts in without changing its method bodies or GlueSQL call sites. Enable core tracing
+and add the optional direct `tracing` dependency:
 
 ```toml
 [features]
@@ -400,68 +143,49 @@ tracing = ["dep:tracing", "gluesql-core/tracing"]
 tracing = { version = "0.1", optional = true }
 ```
 
-Apply the attribute to each implemented trait without changing the method bodies or call sites:
+Apply one attribute to each implemented trait:
 
 ```rust
-#[cfg_attr(feature = "tracing", gluesql_core::trace_storage(name = "my_storage", capture = "off"))]
+#[cfg_attr(feature = "tracing", gluesql_core::trace_storage)]
 impl Store for MyStorage {
-    // Existing implementation
+    // Existing implementation.
 }
 ```
 
-The default `capture = "full"` records every simple named argument with its `Debug`
-representation and records `Result` errors. Start with `capture = "off"` to keep timing and
-counts without argument, row, or error values. `StoreMut::append_data` and `insert_data` record
-`rows.len()`, and `StoreMut::delete_data` records `keys.len()`, as `row_count` in either mode.
-Other methods do not infer `.len()` from argument names. The generated span name follows
-`gluesql.<storage>.<method>`. The default remains `capture = "full"` for compatibility. With
-`capture = "off"`, iterator rows and errors do not need to implement `Debug`.
+Each explicitly implemented method gets a TRACE span named `gluesql.<type>.<method>`. The type
+name comes from the implementation target: `impl Store for MyStorage` produces
+`gluesql.MyStorage.<method>`, and an inherent `impl MyStorage` uses the same name. Module paths
+and generic arguments are omitted, and raw identifier prefixes are stripped. An explicit
+`name = "my_storage"` overrides this default and produces `gluesql.my_storage.<method>`.
+Non-path implementation types, such as tuples or references, require an explicit name. The
+macro reuses the same whole-function instrumentation as `observe`. It also works on inherent
+implementations and external traits. Arguments and return values need no Debug bound because
+no values, errors, batch counts, or iterator counters are captured automatically.
 
-Use `skip(new, helper)` in the outer attribute to leave selected methods unchanged, for example
-generic constructors whose arguments do not implement `Debug`. Skipped names must exist in the
-implementation and cannot also be selected with `iterators(...)` or `#[trace_iterator]`.
+Use `skip(new, helper)` to leave selected methods unchanged, for example const constructors.
+Skipped method names must exist in the attributed implementation and cannot be repeated.
+Only `name` and `skip` are supported. The former `capture`, `iterators`, and `trace_iterator`
+options are removed.
 
-`Store::scan_data`, `Index::scan_indexed_data`, and `Metadata::scan_table_meta` results are wrapped
-automatically when the implemented trait path ends in `Store`, `Index`, or `Metadata`, respectively.
-For renamed trait imports, select the method explicitly with `iterators(...)`. Inherent methods with the same
-names are not automatically wrapped. The wrapper emits each
-yielded row or error as an event when capture is enabled and records `row_count`, `error_count`,
-and `completed` when dropped. Select other iterator-returning methods in the outer attribute:
+A scan method's span measures iterator creation and preparation. For Redb's normal read path,
+this includes read-transaction and table setup and range iterator preparation. Row-reading and
+decoding time during iterator consumption is included in the consuming function's span, when
+instrumented. No iterator wrapper or additional iterator-consumption span is generated.
 
-```rust
-#[cfg_attr(feature = "tracing", gluesql_core::trace_storage(name = "my_storage", iterators(stream)))]
-impl MyStorage {
-    fn stream(&self) -> Result<Box<dyn Iterator<Item = Result<Row>>>> {
-        // Existing implementation
-    }
-}
-```
+In Redb's explicit-transaction path, the scan span also measures the complete row-reading,
+decoding, and collection work needed to prepare an iterator over the collected vector.
+Subsequent iterator consumption traverses those collected rows. Inspect the implementation to
+distinguish iterator preparation time from the work performed during consumption.
 
-This leaves no helper attributes behind when the feature is disabled. Method names must exist
-in the attributed implementation and cannot be repeated. The legacy `#[trace_iterator]` marker
-is still accepted inside an unconditionally instrumented implementation; prefer `iterators(...)`
-with feature-gated instrumentation.
+The generated code requires a direct dependency named `tracing`. If the storage is exposed as
+an optional dependency of the `gluesql` package, append
+`"<storage-dependency-name>?/tracing"` to its existing `tracing` feature in `pkg/rust/Cargo.toml`.
+Use the dependency key, including any underscores or rename. The `?` forwards tracing only when
+that storage is enabled. Wrappers can likewise forward an inner storage's tracing feature.
 
-The generated code still requires a direct dependency named `tracing`. Existing imports from
-`gluesql_macros` remain supported. If the storage is exposed as an optional dependency of the
-`gluesql` package, also append `"<storage-dependency-name>?/tracing"` to its existing `tracing`
-feature in `pkg/rust/Cargo.toml`; use the dependency key, including any underscores or rename.
-The `?` forwards tracing only when that storage is enabled and does not enable the storage itself.
-Likewise, storage wrappers can forward `"<inner-storage>/tracing"` once their inner storage
-provides that feature.
-
-Treat the Cargo feature, attributes on explicitly implemented trait methods, and facade feature
-forwarding as one integration change. Before shipping a new integration, check the storage with
-and without its `tracing` feature and check the facade with that storage and `tracing` enabled.
-
-The attribute works on inherent implementations and external traits as well as GlueSQL storage
-traits. Iterator methods must return a `Result` whose success value is a boxed iterator of
-`Result` items. No subscriber setup is needed when calls begin through `Glue`; direct calls made
+Check a new integration with and without tracing and check the facade with the storage and
+tracing enabled. No subscriber setup is needed when calls begin through `Glue`; direct calls
 before `Glue::new` use any subscriber already installed by the application.
-
-The automatically wrapped storage scan methods return lazy iterators. Their method spans measure
-iterator creation, while the generated iterator spans measure consumption. Their iterator span suffixes are `scan_rows`,
-`scan_indexed_rows`, and `scan_table_meta_rows`, respectively.
 
 ## Adding a benchmark for another storage
 
@@ -531,9 +255,8 @@ Use the storage type to decide how `gluesql.database.size_bytes` is populated:
 | In-memory | Leave `gluesql.database.size_bytes` empty |
 | Remote service | Leave the local field empty; report a server-side metric separately if available |
 
-Apply `trace_storage` as described above when storage calls and their arguments must be visible.
-The macro uses one span for lazy iterator consumption, records its final row count, and emits row
-events rather than creating a span for every row.
+Apply `trace_storage` as described above when storage method durations must be visible.
+The macro measures each method call; it does not wrap returned iterators or record per-row events.
 
 Firefox Profiler support is optional. To include it, copy the `firefox_profile.rs` support module
 without changing its marker and counter names, retain `GLUESQL_FIREFOX_PROFILE_PATH` as the output
@@ -573,4 +296,3 @@ cargo run --release \
 Confirm that the formatted trace contains `gluesql.benchmark.run`, the Firefox profile contains
 GlueSQL markers and a `process_rss` counter, and a tracing-disabled build of the storage remains
 unchanged. Run each comparison in a fresh process with an equivalent workload and build profile.
-

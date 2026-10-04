@@ -8,7 +8,7 @@ repository.workspace = true
 documentation.workspace = true
 
 [features]
-tracing = ["dep:gluesql-macros", "dep:tracing", "gluesql-core/tracing"]
+tracing = ["dep:tracing", "gluesql-core/tracing"]
 firefox-profile = [
   "tracing",
   "dep:fxprof-processed-profile",
@@ -17,7 +17,6 @@ firefox-profile = [
 
 [dependencies]
 gluesql-core.workspace = true
-gluesql-macros = { path = "../../macros", version = "0.20.0", optional = true }
 redb = "2.6"
 serde = { version = "1", features = ["derive"] }
 thiserror = "2.0.3"

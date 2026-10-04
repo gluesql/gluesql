@@ -67,16 +67,11 @@ pub(super) fn execute<'a, T: GStore>(
 #[cfg_attr(
     feature = "tracing",
     gluesql_macros::observe(
-        before_let(
-            rows,
-            occurrence = 2,
-            event("selected query access path", access_path = "full_scan")
-        ),
-        after_let(key, event("selected query access path", access_path = "primary_key")),
-        after_let(
-            predicate,
-            event("selected query access path", access_path = "secondary_index")
-        )
+        fields(access_path = match &table.access {
+            TableAccessPlan::FullScan => "full_scan",
+            TableAccessPlan::PrimaryKey { .. } => "primary_key",
+            TableAccessPlan::Index { .. } => "secondary_index",
+        })
     )
 )]
 fn rows<'a, T: GStore>(

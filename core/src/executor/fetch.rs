@@ -21,7 +21,7 @@ pub enum FetchError {
 
 #[cfg_attr(
     feature = "tracing",
-    gluesql_macros::observe(event("selected query access path", access_path = "full_scan"))
+    gluesql_macros::observe(fields(access_path = "full_scan"))
 )]
 pub fn fetch<'a, T: GStore>(
     storage: &'a T,

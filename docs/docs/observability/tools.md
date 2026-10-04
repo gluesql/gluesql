@@ -34,8 +34,8 @@ The levels have the following intended scope:
 
 | Level | Data |
 | --- | --- |
-| `info` | Total query execution time, SQL source text, and bound parameters |
-| `debug` | Parse, translate, plan, statement execution, access paths, and execution-stage counts |
+| `info` | Total query execution time and SQL source text |
+| `debug` | Parse, translate, plan, statement execution, and access-path fields |
 | `trace` | Transaction, primary storage, and enabled backend call boundaries |
 
 The CLI reports span close events, including busy and idle durations.
@@ -133,11 +133,11 @@ SELECT * FROM Items WHERE id = 1;
 SELECT * FROM Items;
 ```
 
-The query with the primary-key predicate emits an access-path event with
+The query with the primary-key predicate creates an access span with
 `access_path="primary_key"`. The query without a predicate emits `access_path="full_scan"`.
 Storage method spans require a storage with tracing integration; RedbStorage is the current
 reference implementation. The default in-memory CLI session still emits core execution spans
-and access-path events.
+and access-path fields.
 
 Tracing output is written to standard error. Redirect it to a file while keeping query results in
 the terminal:

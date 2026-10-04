@@ -84,15 +84,7 @@ pub(super) fn execute<'a, T: GStore>(
     })
 }
 
-#[cfg_attr(
-    feature = "tracing",
-    gluesql_macros::observe(
-        name = "gluesql.query.hash_join.build",
-        target = "gluesql",
-        level = "debug",
-        after_loop(row, record(buffered_rows = rows.len()))
-    )
-)]
+#[cfg_attr(feature = "tracing", gluesql_macros::observe)]
 fn build_rows<'a, T: GStore>(
     storage: &'a T,
     functions: &'a [CustomFunctionPlan],

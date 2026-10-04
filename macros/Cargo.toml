@@ -12,7 +12,7 @@ proc-macro = true
 [dependencies]
 proc-macro2 = "1"
 quote = "1"
-syn = { version = "2", features = ["full", "visit-mut"] }
+syn = { version = "2", features = ["full"] }
 proc-macro-crate = "3"
 
 [dev-dependencies]

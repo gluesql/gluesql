@@ -10,20 +10,16 @@ trait ExternalStore {
 
 struct Storage;
 
-#[trace_storage(
-    name = "inherent",
-    skip(identity),
-    iterators(coerced_stream, async_stream)
-)]
+#[trace_storage(name = "inherent", skip(identity))]
 impl Storage {
-    fn coerced_stream(&self, empty: bool) -> Result<Rows> {
+    fn coerced_stream(empty: bool) -> Result<Rows> {
         if empty {
             return Ok(Box::new(std::iter::empty()));
         }
         Ok(Box::new(std::iter::once(Ok(1))))
     }
 
-    async fn async_stream(&self, empty: bool) -> Result<Rows> {
+    async fn async_stream(empty: bool) -> Result<Rows> {
         std::future::ready(()).await;
         if empty {
             return Ok(Box::new(std::iter::empty()));
@@ -31,11 +27,11 @@ impl Storage {
         Ok(Box::new(std::iter::once(Ok(2))))
     }
 
-    fn scan_data(&self) -> Vec<i32> {
+    fn scan_data() -> Vec<i32> {
         vec![1, 2]
     }
 
-    fn identity<T>(value: T) -> T {
+    const fn identity<T>(value: T) -> T {
         value
     }
 
@@ -47,16 +43,16 @@ impl Storage {
 #[test]
 fn preserves_iterator_return_coercions() {
     assert_eq!(
-        Storage.coerced_stream(false).unwrap().collect::<Vec<_>>(),
+        Storage::coerced_stream(false).unwrap().collect::<Vec<_>>(),
         vec![Ok(1)]
     );
-    assert!(Storage.coerced_stream(true).unwrap().next().is_none());
+    assert!(Storage::coerced_stream(true).unwrap().next().is_none());
 }
 
 #[test]
 fn preserves_async_iterator_bodies() {
     for empty in [false, true] {
-        let mut future = Box::pin(Storage.async_stream(empty));
+        let mut future = Box::pin(Storage::async_stream(empty));
         let mut context = std::task::Context::from_waker(std::task::Waker::noop());
         let std::task::Poll::Ready(rows) = std::future::Future::poll(future.as_mut(), &mut context)
         else {
@@ -71,7 +67,7 @@ fn preserves_async_iterator_bodies() {
 
 struct MutableStorage(Vec<u8>);
 
-#[trace_storage(name = "mutable", iterators(stream))]
+#[trace_storage(name = "mutable")]
 impl MutableStorage {
     fn stream(&mut self) -> Result<Box<dyn Iterator<Item = Result<&mut u8>> + '_>> {
         Ok(Box::new(self.0.iter_mut().map(Ok)))
@@ -87,7 +83,7 @@ fn preserves_mutable_iterator_borrows() {
     assert_eq!(storage.0, vec![2, 3]);
 }
 
-#[cfg_attr(all(), trace_storage(name = "external", iterators(stream)))]
+#[cfg_attr(all(), trace_storage)]
 impl ExternalStore for Storage {
     fn lookup(&self, key: i32, rows: Vec<i32>) -> Result<Vec<i32>> {
         Ok(rows.into_iter().filter(|value| *value == key).collect())
@@ -103,7 +99,7 @@ fn instruments_external_trait_without_changing_calls() {
     struct Opaque;
     let storage = Storage;
 
-    assert_eq!(storage.scan_data(), vec![1, 2]);
+    assert_eq!(Storage::scan_data(), vec![1, 2]);
     let _: Opaque = Storage::identity(Opaque);
     assert_eq!(Storage::row_value(3), 3);
     assert_eq!(
@@ -120,7 +116,7 @@ fn instruments_external_trait_without_changing_calls() {
 
 struct UntracedStorage;
 
-#[cfg_attr(any(), trace_storage(name = "off", iterators(stream)))]
+#[cfg_attr(any(), trace_storage(name = "off"))]
 impl ExternalStore for UntracedStorage {
     fn lookup(&self, key: i32, rows: Vec<i32>) -> Result<Vec<i32>> {
         Storage.lookup(key, rows)

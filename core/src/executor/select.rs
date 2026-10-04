@@ -11,19 +11,7 @@ use {
     },
 };
 
-#[cfg_attr(
-    feature = "tracing",
-    gluesql_macros::observe(
-        name = "gluesql.result.materialize",
-        target = "gluesql",
-        level = "debug",
-        on_ok(payload, record(buffered_rows = match payload {
-            Payload::Select { rows, .. } => rows.len(),
-            Payload::SelectMap(rows) => rows.len(),
-            _ => unreachable!("select executor returned a non-select payload"),
-        }))
-    )
-)]
+#[cfg_attr(feature = "tracing", gluesql_macros::observe)]
 pub(super) fn execute<T: GStore>(
     storage: &T,
     functions: &[CustomFunctionPlan],
