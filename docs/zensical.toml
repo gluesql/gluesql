@@ -13,7 +13,11 @@ nav = [
     "getting-started/javascript-web.md",
     "getting-started/nodejs.md",
     "getting-started/cli.md",
-    "getting-started/observability.md",
+  ]},
+  {"Observability" = [
+    "observability/index.md",
+    "observability/tools.md",
+    "observability/instrumentation.md",
   ]},
   {"SQL Syntax" = [
     "sql-syntax/intro.md",
