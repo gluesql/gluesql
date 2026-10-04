@@ -290,9 +290,15 @@ cargo run -p gluesql-macros --example observe
 ```
 
 This runs `macros/examples/observe.rs`; no database, external collector, or extra installation
-is needed beyond the repository's Rust build prerequisites. The example installs a console
-subscriber at DEBUG level and enables span-close events so that recorded fields are visible.
-It fixes the level in code, so `RUST_LOG` does not change this example's output.
+is needed beyond the repository's Rust build prerequisites. It demonstrates a successful call,
+an early error return, and a span covering only part of a function. Both function bodies remain
+free of tracing calls; their attributes declare the observation points.
+
+The example installs a console subscriber at DEBUG level, which includes `observe`'s default
+DEBUG spans and ERROR events. `FmtSpan::CLOSE` prints the final recorded fields when each span
+closes. ANSI colors and time output are disabled to keep the output easy to compare. The level
+is fixed in code rather than selected with `EnvFilter`, so `RUST_LOG` does not change this
+example's output.
 
 To save its logs in your home directory while leaving the check result on the terminal:
 
@@ -302,7 +308,12 @@ less "$HOME/gluesql-observe-example.log"
 ```
 
 Cargo diagnostics also use stderr and may appear in that file. The program prints
-`All observation example checks passed.` on success. It exercises these three cases:
+`All observation example checks passed.` to stdout on success. stdout and stderr may be
+displayed in a different order when combined. The assertions check the functions' return values;
+they do not automatically validate the emitted fields. Observation assertions are covered by
+`macros/tests/runtime_observe.rs`.
+
+It exercises these three cases:
 
 | Call | Expected observation |
 | --- | --- |
@@ -319,7 +330,9 @@ DEBUG gluesql.example.collect{input_rows=3 buffered_rows=3 scanned_rows=2}: glue
 DEBUG gluesql.example.collect_keys{buffered_rows=3}: gluesql: close
 ```
 
-For example, the first function is fully defined as follows; its body contains no tracing calls:
+#### Whole-function observations
+
+The first function copies its input, rejects negative values, and returns the copied rows:
 
 ```rust
 #[gluesql_macros::observe(
@@ -341,8 +354,69 @@ fn collect(input: &[i32]) -> Result<Vec<i32>, &'static str> {
 }
 ```
 
-`buffered_rows` counts items, not bytes or RSS. The failed call counts the second loop entry
-before returning the error; `on_ok` runs only for the successful call.
+Each attribute option observes a different point in that execution:
+
+| Option | Observation point | Recorded information |
+| --- | --- | --- |
+| `name` | The span surrounding the function call | The operation name `gluesql.example.collect` |
+| `fields(input_rows = input.len())` | Span creation | Number of input items |
+| `after_let(rows, record(buffered_rows = rows.len()))` | Immediately after `let rows = input.to_vec()` succeeds | Number of copied items retained in the buffer |
+| `count_loop(binding = row, field = scanned_rows)` | Each entry into the selected `for row` loop body | Number of items whose inspection started |
+| `on_ok(rows, record(returned_rows = rows.len()))` | After the function returns `Ok` | Number of successfully returned items |
+| `err(Debug)` | After the function returns `Err` | An ERROR event containing the error's `Debug` representation |
+
+The field names are chosen by the example, not reserved metric names interpreted by the macro.
+In `on_ok`, `rows` names a reference to the successful return value; it does not select the local
+variable named `rows`. Renaming that local variable therefore requires updating `after_let`, but
+does not require changing `on_ok`.
+
+For `[1, 2, 3]`, all four counts are 3: the function receives three items, copies three items,
+enters the loop three times, and returns three items. The counts happen to agree because this
+function does not filter its input.
+
+For `[1, -2, 3]`, copying still finishes before validation, so `input_rows` and `buffered_rows`
+remain 3. The loop enters twice and returns an error while inspecting `-2`; the third item is
+never inspected. `scanned_rows` is therefore 2, including the item that failed validation.
+To count only iterations that reach a particular successful initialization, use
+`increment = after_let(...)`, as in the `validate_unique` example below.
+
+The error call has no recorded `returned_rows` value because `on_ok` does not run for `Err`.
+This differs from a successful empty result, which records `returned_rows=0`. The partial loop
+count is preserved on early return, and the function span still closes. `err(Debug)` emits an
+event; it does not turn the error into a successful result or suppress its propagation.
+
+All these counts describe items, not allocated bytes or RSS.
+
+#### Observing part of a function
+
+The second function measures copying and counting without including the subsequent assertion
+or return:
+
+```rust
+#[gluesql_macros::observe(
+    name = "gluesql.example.collect_keys",
+    start = before_let(keys),
+    end = after_let(num_keys),
+    record(buffered_rows = num_keys)
+)]
+fn count_keys(input: &[i32]) -> usize {
+    let keys = input.to_vec();
+    let num_keys = keys.len();
+    // This work is outside the collection span.
+    assert_eq!(num_keys, input.len());
+    num_keys
+}
+```
+
+`start = before_let(keys)` opens the span immediately before the buffer is initialized.
+`end = after_let(num_keys)` records `buffered_rows` and closes the span immediately after the
+length is assigned. Both the copy and the length calculation are inside the observed interval;
+`assert_eq!` and the final return are outside it. The function returns `usize`, so this example
+uses a range-end `record` rather than `on_ok`.
+
+Range observations let an existing function expose the cost of one preparation or collection
+phase without extracting a helper function. An early return before the endpoint still closes
+the span, but does not perform the endpoint's final record.
 
 This macro-crate example deliberately uses the attribute directly and the crate's existing
 development dependencies, so it needs no `--features tracing` flag. In a consuming crate,
