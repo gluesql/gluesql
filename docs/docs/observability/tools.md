@@ -203,7 +203,7 @@ Current RSS sampling is supported on macOS and Linux.
 
 The optional `firefox-profile` feature keeps the formatted standard-error output and also writes
 GlueSQL spans, events, and RSS samples directly in the Firefox Profiler processed-profile JSON
-format. It uses a Rust library and does not require `protoc` or a separate trace converter.
+format.
 
 Generate a profile from one workload:
 
@@ -364,4 +364,3 @@ inferno-flamegraph < tracing.folded > tracing.svg
 
 `tracing-flame` measures elapsed time between instrumented span events; it is not a sampling CPU
 profiler. Use `perf` or `cargo-flamegraph` when function-level CPU samples are required.
-
