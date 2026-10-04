@@ -13,6 +13,11 @@ serde = { version = "1", features = ["derive"] }
 
 [dev-dependencies]
 test-suite.workspace = true
+criterion = "0.3"
+
+[[bench]]
+name = "query_evaluation"
+harness = false
 
 [lints]
 workspace = true
