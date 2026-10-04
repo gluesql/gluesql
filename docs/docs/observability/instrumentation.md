@@ -99,9 +99,9 @@ identifier prefixes are omitted. Inherent implementations and external traits ar
 The macro uses the same whole-function instrumentation as `observe`, without capturing arguments,
 results, errors, batch counts, or iterator-consumption timings. Values need no Debug bound.
 
-The only option is `skip(new, helper)` for methods such as const constructors that cannot
-create runtime spans. Skipped methods must exist and cannot be repeated. Implementation types
-must be named types; tuples and references are not supported.
+`trace_storage` accepts no options and observes every explicitly implemented method. Const
+methods cannot create runtime spans and are not supported. Implementation types must be named
+types; tuples and references are not supported.
 
 For a storage exposed as an optional facade dependency, add `"<storage-dependency-name>?/tracing"`
 to the `tracing` feature in `pkg/rust/Cargo.toml`. Use the dependency key, including any rename.

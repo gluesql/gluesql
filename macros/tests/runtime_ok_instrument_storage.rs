@@ -10,7 +10,7 @@ trait ExternalStore {
 
 struct Storage;
 
-#[trace_storage(skip(identity))]
+#[trace_storage]
 impl Storage {
     fn coerced_stream(empty: bool) -> Result<Rows> {
         if empty {
@@ -31,7 +31,7 @@ impl Storage {
         vec![1, 2]
     }
 
-    const fn identity<T>(value: T) -> T {
+    fn identity<T>(value: T) -> T {
         value
     }
 
