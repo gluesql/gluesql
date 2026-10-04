@@ -9,11 +9,6 @@ documentation.workspace = true
 
 [features]
 tracing = ["dep:tracing", "gluesql-core/tracing"]
-firefox-profile = [
-  "tracing",
-  "dep:fxprof-processed-profile",
-  "dep:serde_json",
-]
 
 [dependencies]
 gluesql-core.workspace = true
@@ -26,8 +21,6 @@ tracing = { version = "0.1", optional = true, default-features = false, features
   "attributes",
   "std",
 ] }
-fxprof-processed-profile = { version = "0.8.1", optional = true }
-serde_json = { version = "1", optional = true }
 
 [dev-dependencies]
 test-suite.workspace = true

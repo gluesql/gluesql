@@ -4,6 +4,10 @@ Observations follow function boundaries. Start with one attribute; when separate
 need separate timings, extract cohesive functions and instrument them individually. See
 [Observability](index.md) for setup, profiles, and existing measurement boundaries.
 
+Keep instrumentation in core or the storage implementation, and subscriber initialization
+in the CLI, example, or consuming application. Adding an observation point does not require
+selecting an output format or adding a subscriber dependency to core.
+
 ## Observe a function
 
 ```rust
@@ -107,18 +111,27 @@ separately, extract cohesive functions and apply `observe` to them.
 For a storage exposed as an optional facade dependency, add `"<storage-dependency-name>?/tracing"`
 to the `tracing` feature in `pkg/rust/Cargo.toml`. Use the dependency key, including any rename.
 Check the storage with and without tracing, and the facade with both storage and tracing enabled.
-Calls through `Glue` use its subscriber setup; direct storage calls need an installed subscriber.
+Applications install a subscriber for both calls through `Glue` and direct storage calls.
 
 ## Extend the resource benchmark
 
 Use Redb's [resource benchmark](index.md#resource-benchmark-profiles) as the reference. In
-`storages/redb-storage/`, start from `examples/resource_benchmark.rs`, its
-`examples/resource_benchmark/firefox_profile.rs` support module, and the example registration
-in `Cargo.toml`.
+`storages/redb-storage/`, start from `examples/resource_benchmark.rs` and the example
+registration in `Cargo.toml`. Firefox profile conversion lives separately in
+`cli/src/firefox_profile.rs`, registered by the CLI subscriber.
+
+When a subscriber is used only by tests and examples, add it as a development dependency:
+
+```sh
+cargo add tracing-subscriber --dev --features env-filter
+```
+
+This is how the macros and Redb packages use it. Storage implementation code only generates
+spans; the application selects and registers the subscriber.
 
 Adapt the storage construction, arguments, workload, and persistent-size measurement. Keep
-benchmark field names, profile markers, and RSS counter names unchanged for comparison.
+benchmark field names unchanged for comparison.
 In-memory and remote storages should leave the local persistent-size field empty when it is
 not measurable. Register the example with `required-features = ["tracing"]` and keep profiling
-dependencies optional or limited to development builds. Verify formatted output, Firefox
-markers and `process_rss`, and a tracing-disabled build; compare workloads in fresh processes.
+dependencies optional or limited to development builds. Verify formatted resource measurements
+and a tracing-disabled build; compare workloads in fresh processes.

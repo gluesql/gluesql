@@ -50,11 +50,6 @@ impl MemorySampler {
     }
 }
 
-#[cfg(feature = "firefox-profile")]
-#[path = "resource_benchmark/firefox_profile.rs"]
-mod firefox_profile;
-
-#[cfg(not(feature = "firefox-profile"))]
 fn init_tracing() -> Result<(), Box<dyn Error>> {
     use tracing_subscriber::{EnvFilter, util::SubscriberInitExt};
 
@@ -71,9 +66,6 @@ fn init_tracing() -> Result<(), Box<dyn Error>> {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    #[cfg(feature = "firefox-profile")]
-    let firefox_profile = firefox_profile::init()?;
-    #[cfg(not(feature = "firefox-profile"))]
     init_tracing()?;
 
     let mut args = env::args_os().skip(1);
@@ -139,8 +131,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     drop(entered);
     drop(span);
-    #[cfg(feature = "firefox-profile")]
-    firefox_profile.finish()?;
     Ok(())
 }
 

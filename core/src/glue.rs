@@ -14,9 +14,6 @@ pub struct Glue<T: GStore + GStoreMut + Planner> {
 
 impl<T: GStore + GStoreMut + Planner> Glue<T> {
     pub fn new(storage: T) -> Self {
-        #[cfg(feature = "tracing")]
-        crate::__private::ensure_default_subscriber();
-
         Self { storage }
     }
 

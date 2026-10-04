@@ -1124,6 +1124,7 @@ dependencies = [
  "anyhow",
  "clap 3.2.25",
  "edit",
+ "fxprof-processed-profile",
  "gluesql-core",
  "gluesql-csv-storage",
  "gluesql-file-storage",
@@ -1137,10 +1138,12 @@ dependencies = [
  "opentelemetry_sdk",
  "rustyline",
  "rustyline-derive",
+ "serde_json",
  "strum_macros 0.25.3",
  "tabled",
  "tempfile",
  "thiserror 1.0.63",
+ "tracing",
  "tracing-flame",
  "tracing-opentelemetry",
  "tracing-subscriber",
@@ -1181,7 +1184,6 @@ dependencies = [
  "strum_macros 0.25.3",
  "thiserror 1.0.63",
  "tracing",
- "tracing-subscriber",
  "uuid",
 ]
 
@@ -1294,13 +1296,11 @@ name = "gluesql-redb-storage"
 version = "0.20.0"
 dependencies = [
  "bincode",
- "fxprof-processed-profile",
  "gluesql-core",
  "gluesql-test-suite",
  "libc",
  "redb",
  "serde",
- "serde_json",
  "thiserror 2.0.3",
  "tracing",
  "tracing-subscriber",

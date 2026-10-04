@@ -39,6 +39,7 @@ tracing = [
 ]
 tracing-flame = ["cli?/tracing-flame"]
 opentelemetry = ["cli?/opentelemetry"]
+firefox-profile = ["cli?/firefox-profile"]
 
 # DB User
 default = [

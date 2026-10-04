@@ -1,6 +1,9 @@
 #![deny(clippy::str_to_string)]
 #![allow(deprecated)]
 
+#[cfg(feature = "firefox-profile")]
+mod firefox_profile;
+
 mod cli;
 mod command;
 mod helper;
@@ -73,15 +76,22 @@ enum Storage {
 
 #[cfg(feature = "tracing")]
 struct TracingGuard {
+    #[cfg(feature = "firefox-profile")]
+    firefox_profile: firefox_profile::FirefoxProfileLayer,
     #[cfg(feature = "tracing-flame")]
     _flame: tracing_flame::FlushGuard<std::io::BufWriter<std::fs::File>>,
     #[cfg(feature = "opentelemetry")]
     provider: opentelemetry_sdk::trace::SdkTracerProvider,
 }
 
-#[cfg(all(feature = "tracing", feature = "opentelemetry"))]
+#[cfg(any(feature = "firefox-profile", feature = "opentelemetry"))]
 impl Drop for TracingGuard {
     fn drop(&mut self) {
+        #[cfg(feature = "firefox-profile")]
+        if let Err(error) = self.firefox_profile.finish() {
+            eprintln!("[tracing] failed to save Firefox profile: {error}");
+        }
+        #[cfg(feature = "opentelemetry")]
         if let Err(error) = self.provider.shutdown() {
             eprintln!("[tracing] failed to shut down OpenTelemetry exporter: {error}");
         }
@@ -116,6 +126,17 @@ fn init_tracing() -> Result<TracingGuard> {
         (layer.with_empty_samples(false), guard)
     };
 
+    #[cfg(feature = "firefox-profile")]
+    let firefox_profile = {
+        let path = std::env::var_os("GLUESQL_FIREFOX_PROFILE_PATH")
+            .map_or_else(|| PathBuf::from("gluesql-profile.json"), PathBuf::from);
+        anyhow::ensure!(
+            !path.as_os_str().is_empty(),
+            "GLUESQL_FIREFOX_PROFILE_PATH must not be empty"
+        );
+        firefox_profile::FirefoxProfileLayer::new(path)
+    };
+
     #[cfg(feature = "opentelemetry")]
     let (otel_layer, provider) = {
         use opentelemetry::trace::TracerProvider as _;
@@ -136,9 +157,13 @@ fn init_tracing() -> Result<TracingGuard> {
     let subscriber = subscriber.with(flame_layer);
     #[cfg(feature = "opentelemetry")]
     let subscriber = subscriber.with(otel_layer);
+    #[cfg(feature = "firefox-profile")]
+    let subscriber = subscriber.with(firefox_profile.clone());
     subscriber.try_init()?;
 
     Ok(TracingGuard {
+        #[cfg(feature = "firefox-profile")]
+        firefox_profile,
         #[cfg(feature = "tracing-flame")]
         _flame: flame_guard,
         #[cfg(feature = "opentelemetry")]

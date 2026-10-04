@@ -22,10 +22,6 @@ pub mod row_conversion;
 pub mod store;
 pub mod translate;
 
-#[cfg(feature = "tracing")]
-#[doc(hidden)]
-pub mod __private;
-
 pub mod prelude {
     pub use crate::{
         ast::DataType,

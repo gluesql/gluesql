@@ -1,25 +1,19 @@
 use {
     fxprof_processed_profile::{
-        CategoryHandle, CounterHandle, MarkerFieldFlags, MarkerFieldFormat, MarkerLocations,
-        MarkerTiming, ProcessHandle, Profile, SamplingInterval, StaticSchemaMarker,
-        StaticSchemaMarkerField, StringHandle, ThreadHandle, Timestamp,
+        CategoryHandle, MarkerFieldFlags, MarkerFieldFormat, MarkerLocations, MarkerTiming,
+        ProcessHandle, Profile, SamplingInterval, StaticSchemaMarker, StaticSchemaMarkerField,
+        StringHandle, ThreadHandle, Timestamp,
     },
     std::{
-        env,
         error::Error,
         fs::File,
-        io::BufWriter,
+        io::{BufWriter, Write},
         path::PathBuf,
         sync::{Arc, Mutex},
         time::{Duration, Instant, SystemTime},
     },
     tracing::{Event, Subscriber, field::Visit, span},
-    tracing_subscriber::{
-        EnvFilter, Layer, fmt,
-        layer::{Context, SubscriberExt},
-        registry::LookupSpan,
-        util::SubscriberInitExt,
-    },
+    tracing_subscriber::{Layer, layer::Context, registry::LookupSpan},
 };
 
 #[derive(Clone)]
@@ -31,9 +25,7 @@ struct ProfileState {
     profile: Profile,
     process: ProcessHandle,
     thread: ThreadHandle,
-    rss_counter: CounterHandle,
     started_at: Instant,
-    previous_rss: u64,
     path: PathBuf,
 }
 
@@ -46,7 +38,6 @@ struct SpanRecord {
 #[derive(Default)]
 struct FieldVisitor {
     message: Option<String>,
-    rss_bytes: Option<u64>,
     fields: Vec<String>,
 }
 
@@ -87,36 +78,28 @@ impl StaticSchemaMarker for TraceMarker {
 }
 
 impl FirefoxProfileLayer {
-    fn new(path: PathBuf) -> Self {
+    pub(super) fn new(path: PathBuf) -> Self {
         let started_at = Instant::now();
         let mut profile = Profile::new(
-            "GlueSQL resource benchmark",
+            "GlueSQL CLI",
             SystemTime::now().into(),
             SamplingInterval::from_millis(1),
         );
         let start = Timestamp::from_nanos_since_reference(0);
         let pid = std::process::id();
-        let process = profile.add_process("resource_benchmark", pid, start);
+        let process = profile.add_process("gluesql-cli", pid, start);
         let thread = profile.add_thread(process, pid, start, true);
         profile.set_thread_name(thread, "GlueSQL");
         profile.add_initial_visible_thread(thread);
         profile.add_initial_selected_thread(thread);
         profile.set_symbolicated(true);
-        let rss_counter = profile.add_counter(
-            process,
-            "process_rss",
-            "Memory",
-            "Resident set size in bytes",
-        );
 
         Self {
             state: Arc::new(Mutex::new(ProfileState {
                 profile,
                 process,
                 thread,
-                rss_counter,
                 started_at,
-                previous_rss: 0,
                 path,
             })),
         }
@@ -129,7 +112,9 @@ impl FirefoxProfileLayer {
         let thread = state.thread;
         state.profile.set_process_end_time(process, end);
         state.profile.set_thread_end_time(thread, end);
-        serde_json::to_writer(BufWriter::new(File::create(&state.path)?), &state.profile)?;
+        let mut writer = BufWriter::new(File::create(&state.path)?);
+        serde_json::to_writer(&mut writer, &state.profile)?;
+        writer.flush()?;
         Ok(())
     }
 
@@ -176,18 +161,6 @@ where
     fn on_event(&self, event: &Event<'_>, _ctx: Context<'_, S>) {
         let mut fields = FieldVisitor::default();
         event.record(&mut fields);
-        if let Some(rss_bytes) = fields.rss_bytes {
-            let mut state = self.state.lock().expect("Firefox profile lock poisoned");
-            let sample_time = timestamp(state.started_at.elapsed());
-            let delta = rss_bytes as f64 - state.previous_rss as f64;
-            state.previous_rss = rss_bytes;
-            let counter = state.rss_counter;
-            state
-                .profile
-                .add_counter_sample(counter, sample_time, delta, 0);
-            return;
-        }
-
         let name = fields
             .message
             .as_deref()
@@ -218,9 +191,6 @@ where
 
 impl Visit for FieldVisitor {
     fn record_u64(&mut self, field: &tracing::field::Field, value: u64) {
-        if field.name() == "rss_bytes" {
-            self.rss_bytes = Some(value);
-        }
         self.fields.push(format!("{}={value}", field.name()));
     }
 
@@ -245,28 +215,6 @@ fn timestamp(elapsed: Duration) -> Timestamp {
     Timestamp::from_nanos_since_reference(elapsed.as_nanos() as u64)
 }
 
-pub fn init() -> Result<FirefoxProfileLayer, Box<dyn Error>> {
-    let filter =
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("gluesql=debug"));
-    let layer = FirefoxProfileLayer::new(
-        env::var_os("GLUESQL_FIREFOX_PROFILE_PATH")
-            .unwrap_or_else(|| "gluesql-benchmark-profile.json".into())
-            .into(),
-    );
-
-    tracing_subscriber::registry()
-        .with(filter)
-        .with(
-            fmt::layer()
-                .with_span_events(super::FmtSpan::CLOSE)
-                .with_writer(super::io::stderr),
-        )
-        .with(layer.clone())
-        .try_init()?;
-
-    Ok(layer)
-}
-
 #[cfg(test)]
 mod tests {
     use {
@@ -276,7 +224,7 @@ mod tests {
     };
 
     #[test]
-    fn profile_contains_tracing_markers_and_rss_counter() {
+    fn profile_contains_tracing_markers() {
         let layer = FirefoxProfileLayer::new(PathBuf::new());
         layer.add_marker(
             "execute_with_params",
@@ -287,7 +235,6 @@ mod tests {
         let state = layer.state.lock().expect("Firefox profile lock poisoned");
         let profile = serde_json::to_value(&state.profile).expect("profile should serialize");
 
-        assert_eq!(profile["counters"][0]["name"], "process_rss");
         assert_eq!(
             profile["meta"]["markerSchema"][0]["name"],
             "GlueSQL tracing"

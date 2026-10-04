@@ -4,6 +4,12 @@ GlueSQL tracing measures query execution at function boundaries. This guide cove
 tracing, viewing profiles, and interpreting measurements. See
 [Adding observability](instrumentation.md) to instrument functions or storages.
 
+Core and integrated storage implementations define observation points and emit tracing spans.
+They do not initialize subscribers, choose output formats, or write profile files. The CLI
+or consuming application registers a subscriber to collect those spans and select filters,
+formats, destinations, and exporter layers. Subscriber dependencies and output configuration
+belong to that application; core depends only on the instrumentation needed to emit spans.
+
 ## Enable tracing
 
 Tracing is optional and disabled by default. Build the CLI with the outputs you need:
@@ -13,8 +19,9 @@ Tracing is optional and disabled by default. Build the CLI with the outputs you 
 | `tracing` | Formatted span-close events on standard error |
 | `tracing-flame` | Formatted events and folded stacks for flamegraphs |
 | `opentelemetry` | Formatted events and OTLP traces over HTTP/Protobuf |
+| `firefox-profile` | Formatted events and Firefox Profiler JSON |
 
-Both exporter features enable `tracing` and can be used together. For example:
+All exporter features enable `tracing` and can be used together. For example:
 
 ```sh
 cargo build -p gluesql-cli --features tracing-flame,opentelemetry
@@ -33,11 +40,12 @@ OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
 | --- | --- | --- |
 | `RUST_LOG` | Span/event filter | `gluesql=debug` |
 | `GLUESQL_FLAMEGRAPH_PATH` | Folded output, with `tracing-flame` | `tracing.folded` |
+| `GLUESQL_FIREFOX_PROFILE_PATH` | Firefox JSON output, with `firefox-profile` | `gluesql-profile.json` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP collector base URL, with `opentelemetry` | `http://localhost:4318` |
 
 The OpenTelemetry SDK also supports `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, which takes precedence
 and specifies the complete trace URL. General endpoint URLs receive the `/v1/traces` suffix.
-Use standard OpenTelemetry variables for service names and headers. Pending traces are flushed
+Use standard OpenTelemetry variables for service names and headers. Pending traces and profile files are saved
 on CLI exit. Relative output paths use the current working directory; parent directories must
 already exist. Unused exporter variables do not enable features.
 
@@ -55,27 +63,100 @@ Append `2> query.log` to the CLI command to save tracing output separately from 
 
 ### Using GlueSQL as a library
 
-```toml
-[dependencies]
-gluesql = { version = "0.20", features = ["tracing"] }
+Create a separate Rust application that depends on GlueSQL. Register the subscriber in that
+application's initialization code; no changes to GlueSQL's source files are required. Run
+the following commands in your application's directory:
+
+```sh
+cargo add gluesql --features tracing
 ```
 
-`Glue::new` installs a formatted subscriber with span-close events and a `RUST_LOG` filter
-when no dispatcher has already been configured. No initialization call is required. To use a
-custom subscriber or exporter, install it before constructing `Glue`; GlueSQL preserves it.
-Applications configure their own exporters through the installed subscriber.
+Applications register a subscriber to choose their output format and destination. For
+formatted text with function timings:
+
+```sh
+cargo add tracing-subscriber --features env-filter
+```
+
+The application uses the subscriber at runtime, so add it as a normal dependency.
+GlueSQL core only generates spans through `tracing` and does not depend on `tracing-subscriber`.
+
+```rust
+use tracing_subscriber::{EnvFilter, fmt::format::FmtSpan};
+
+tracing_subscriber::fmt()
+    .with_env_filter(
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("gluesql=debug")),
+    )
+    .with_span_events(FmtSpan::CLOSE)
+    .with_writer(std::io::stderr)
+    .try_init()?;
+
+// Construct Glue and execute queries after registering the subscriber.
+```
+
+For JSON logs, add the `json` feature and call `.json()` before `.try_init()`:
+
+```sh
+cargo add tracing-subscriber --features env-filter,json
+```
+
+For flamegraphs or OpenTelemetry, register the corresponding layers on a subscriber registry.
+Applications own subscriber initialization; reuse an existing application subscriber rather
+than initializing another global one. Initialize once before the work to be measured.
+
+GlueSQL generates spans without installing a subscriber. Without one, queries still run but
+no observations are collected. The CLI and resource benchmark install their own subscribers.
 
 ## View profiles
 
-For folded stacks, exit the CLI to flush output, then generate an SVG:
+### Flamegraphs from an application subscriber
+
+Add a layer that writes tracing span stacks to a folded file:
+
+```sh
+cargo add tracing-subscriber --features env-filter
+cargo add tracing-flame
+```
+
+Register the layer before executing queries and keep its flush guard alive until the workload
+has completed. This replaces the formatted-text subscriber setup above:
+
+```rust
+use {
+    gluesql::{core::prelude::Glue, gluesql_memory_storage::MemoryStorage},
+    tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt},
+};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let (flame, guard) = tracing_flame::FlameLayer::with_file("query.folded")?;
+    tracing_subscriber::registry()
+        .with(EnvFilter::new("gluesql=debug"))
+        .with(flame.with_empty_samples(false))
+        .try_init()?;
+
+    let mut glue = Glue::new(MemoryStorage::default());
+    glue.execute("SELECT 1")?;
+    guard.flush()?;
+    Ok(())
+}
+```
+
+Use an integrated backend such as Redb with its tracing feature enabled to include storage
+methods. To also print text, add a `tracing_subscriber::fmt::layer()` to the same registry;
+register one subscriber containing all desired layers.
+
+After running the application, convert the folded file to SVG:
 
 ```sh
 cargo install inferno
-inferno-flamegraph < query.folded > query.svg
+inferno-flamegraph --countname nanoseconds < query.folded > query.svg
 ```
 
-The CLI excludes empty samples so waiting at the interactive prompt does not dominate the
-graph. `tracing-flame` measures elapsed time between span events, not sampled CPU usage.
+Open `query.svg` in a browser. The layer excludes intervals with no active span, so waiting
+outside observed functions does not dominate the graph. `tracing-flame` measures elapsed time
+between span events, not sampled CPU usage. The CLI's `tracing-flame` feature registers this
+layer for you; exit the CLI to flush its folded output before converting it.
 
 The CLI's OpenTelemetry exporter sends completed spans to an HTTP/Protobuf collector, which
 can forward them to Jaeger, Grafana Tempo, or another compatible backend. Library applications
@@ -84,24 +165,63 @@ configure their own exporter and subscriber; see the
 [OpenTelemetry layer](https://docs.rs/tracing-opentelemetry/latest/tracing_opentelemetry/), and
 [flame layer](https://docs.rs/tracing-flame/latest/tracing_flame/) documentation.
 
-### Resource benchmark profiles
+### Firefox Profiler through a subscriber layer
 
-The RedbStorage example runs a SQL file once and records query spans, resource measurements,
-and optional Firefox Profiler output. Generate a profile using a new database path:
+Firefox Profiler requires its own profile format; formatted JSON logs from `.json()` cannot
+be loaded as a profile. The CLI's `firefox-profile` feature registers a `FirefoxProfileLayer`
+alongside its other subscriber layers and saves the JSON when the CLI exits.
+
+Run the benchmark SQL through the CLI with a fresh Redb database:
 
 ```sh
 GLUESQL_FIREFOX_PROFILE_PATH=/tmp/gluesql-profile.json \
 RUST_LOG=gluesql=debug \
-cargo run --release -p gluesql-redb-storage \
-  --example resource_benchmark --features firefox-profile \
-  -- /tmp/gluesql-benchmark.redb \
-  storages/redb-storage/examples/resource_benchmark.sql
+cargo run --release -p gluesql-cli --features firefox-profile \
+  -- --storage redb --path /tmp/gluesql-profile.redb \
+  --execute storages/redb-storage/examples/resource_benchmark.sql < /dev/null
 ```
 
 Open [Firefox Profiler](https://profiler.firefox.com/), select **Load a profile from file**, and
-choose the JSON file. GlueSQL spans appear as interval markers and events as instant markers;
-select the `process_rss` counter track to inspect memory over time. The profile stays local
-unless you upload or share it.
+choose the JSON file. GlueSQL spans appear as interval markers and application events as
+instant markers. The profile stays local unless you upload or share it. CLI profiles contain
+tracing markers; RSS sampling belongs to the separate resource benchmark below.
+
+The conversion layer is implemented in `cli/src/firefox_profile.rs`. Core and storage crates
+have no Firefox profile dependencies. For a separate profiling application, copy this module
+into your own project, add its dependencies, and register the layer in your own subscriber:
+
+```sh
+cargo add tracing fxprof-processed-profile serde_json
+cargo add tracing-subscriber --features env-filter
+```
+
+```rust
+// Using the copied firefox_profile module in your application.
+let profile = firefox_profile::FirefoxProfileLayer::new("query.json".into());
+tracing_subscriber::registry()
+    .with(tracing_subscriber::EnvFilter::new("gluesql=debug"))
+    .with(profile.clone())
+    .try_init()?;
+// Run the workload and close its spans before saving.
+profile.finish()?;
+```
+
+Import `tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt}` for `.with()` and
+`.try_init()`. The layer is CLI implementation code, not a public GlueSQL API; adapting it in
+an application does not require modifying GlueSQL source files.
+
+### Resource benchmark profiles
+
+The Redb resource benchmark separately records RSS samples and final resource measurements
+as formatted tracing output. It installs its own subscriber and needs no Firefox exporter:
+
+```sh
+RUST_LOG=gluesql=debug \
+cargo run --release -p gluesql-redb-storage \
+  --example resource_benchmark --features tracing \
+  -- /tmp/gluesql-benchmark.redb \
+  storages/redb-storage/examples/resource_benchmark.sql
+```
 
 | Measurement or setting | Meaning or default |
 | --- | --- |
@@ -111,10 +231,8 @@ unless you upload or share it.
 | `process.executable.size_bytes` | Benchmark executable size |
 | `gluesql.benchmark.memory_sample` | Current RSS with `elapsed_ms` and `rss_bytes` |
 | `GLUESQL_MEMORY_SAMPLE_MS` | Positive sampling interval in milliseconds; default `10` |
-| `GLUESQL_FIREFOX_PROFILE_PATH` | Profile output; default `gluesql-benchmark-profile.json` |
 
-Use `--features tracing` instead of `firefox-profile` for formatted output only. At `info`,
-only final resource fields are recorded; `debug` and `trace` also enable RSS sampling.
+At `info`, only final resource fields are recorded; `debug` and `trace` also enable RSS sampling.
 Current RSS sampling supports macOS and Linux; peak RSS supports Unix. Samples include sampler
 thread overhead. Compare fresh processes and database paths using the same build profile and
 platform, because peak RSS is a process-lifetime high-water mark.
