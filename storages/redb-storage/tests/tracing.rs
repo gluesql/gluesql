@@ -58,7 +58,7 @@ fn observes_actual_implementations_without_delegating_wrapper_spans() {
         "begin",
         "commit",
     ] {
-        let name = format!("gluesql.StorageCore.{method}");
+        let name = method.to_owned();
         assert!(
             paths.iter().any(|path| path.last() == Some(&name)),
             "missing {name}"

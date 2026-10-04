@@ -1,7 +1,7 @@
 use {
     proc_macro2::TokenStream,
     quote::quote,
-    syn::{Attribute, ItemFn, Signature, ext::IdentExt, parse_quote},
+    syn::{ItemFn, ext::IdentExt, parse_quote},
 };
 
 pub fn expand(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> {
@@ -12,27 +12,20 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> 
         ));
     }
     let mut function: ItemFn = syn::parse2(item)?;
-    let name = function.sig.ident.unraw().to_string();
-    function
-        .attrs
-        .insert(0, instrument_attribute(&function.sig, &name, "debug")?);
-    Ok(quote!(#function))
-}
-
-pub(super) fn instrument_attribute(
-    signature: &Signature,
-    name: &str,
-    level: &str,
-) -> syn::Result<Attribute> {
-    if signature.constness.is_some() {
+    if function.sig.constness.is_some() {
         return Err(syn::Error::new_spanned(
-            signature,
+            &function.sig,
             "observe does not support const functions",
         ));
     }
-    Ok(parse_quote!(
-        #[tracing::instrument(name = #name, target = "gluesql", level = #level, skip_all)]
-    ))
+    let name = function.sig.ident.unraw().to_string();
+    function.attrs.insert(
+        0,
+        parse_quote!(
+            #[tracing::instrument(name = #name, target = "gluesql", level = "debug", skip_all)]
+        ),
+    );
+    Ok(quote!(#function))
 }
 
 #[cfg(test)]

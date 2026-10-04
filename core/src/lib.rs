@@ -3,9 +3,9 @@
 // re-export
 pub use {chrono, sqlparser};
 
-/// Instrumentation macros available when the `tracing` feature is enabled.
+/// Instrumentation macro available when the `tracing` feature is enabled.
 #[cfg(feature = "tracing")]
-pub use gluesql_macros::{observe, trace_storage};
+pub use gluesql_macros::observe;
 
 mod glue;
 mod mock;

@@ -1,4 +1,4 @@
-use gluesql_core::trace_storage;
+use gluesql_core::observe;
 
 type Result<T> = std::result::Result<T, &'static str>;
 type Rows = Box<dyn Iterator<Item = Result<i32>>>;
@@ -10,8 +10,8 @@ trait ExternalStore {
 
 struct Storage;
 
-#[trace_storage]
 impl Storage {
+    #[observe]
     fn coerced_stream(empty: bool) -> Result<Rows> {
         if empty {
             return Ok(Box::new(std::iter::empty()));
@@ -19,6 +19,7 @@ impl Storage {
         Ok(Box::new(std::iter::once(Ok(1))))
     }
 
+    #[observe]
     async fn async_stream(empty: bool) -> Result<Rows> {
         std::future::ready(()).await;
         if empty {
@@ -27,14 +28,17 @@ impl Storage {
         Ok(Box::new(std::iter::once(Ok(2))))
     }
 
+    #[observe]
     fn scan_data() -> Vec<i32> {
         vec![1, 2]
     }
 
+    #[observe]
     fn identity<T>(value: T) -> T {
         value
     }
 
+    #[observe]
     fn row_value(rows: i32) -> i32 {
         rows
     }
@@ -67,8 +71,8 @@ fn preserves_async_iterator_bodies() {
 
 struct MutableStorage(Vec<u8>);
 
-#[trace_storage]
 impl MutableStorage {
+    #[observe]
     fn stream(&mut self) -> Result<Box<dyn Iterator<Item = Result<&mut u8>> + '_>> {
         Ok(Box::new(self.0.iter_mut().map(Ok)))
     }
@@ -83,12 +87,13 @@ fn preserves_mutable_iterator_borrows() {
     assert_eq!(storage.0, vec![2, 3]);
 }
 
-#[cfg_attr(all(), trace_storage)]
 impl ExternalStore for Storage {
+    #[observe]
     fn lookup(&self, key: i32, rows: Vec<i32>) -> Result<Vec<i32>> {
         Ok(rows.into_iter().filter(|value| *value == key).collect())
     }
 
+    #[observe]
     fn stream(&self) -> Result<Rows> {
         Ok(Box::new([Ok(1), Err("broken row"), Ok(2)].into_iter()))
     }
@@ -116,12 +121,13 @@ fn instruments_external_trait_without_changing_calls() {
 
 struct UntracedStorage;
 
-#[cfg_attr(any(), trace_storage)]
 impl ExternalStore for UntracedStorage {
+    #[cfg_attr(any(), observe)]
     fn lookup(&self, key: i32, rows: Vec<i32>) -> Result<Vec<i32>> {
         Storage.lookup(key, rows)
     }
 
+    #[cfg_attr(any(), observe)]
     fn stream(&self) -> Result<Rows> {
         Ok(Box::new([Ok(4)].into_iter()))
     }

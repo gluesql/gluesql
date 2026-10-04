@@ -1,6 +1,5 @@
 use {
     gluesql_core::{observe, prelude::Glue},
-    gluesql_macros::trace_storage,
     gluesql_memory_storage::MemoryStorage,
     std::sync::{Arc, Mutex},
     tracing::{
@@ -119,12 +118,13 @@ fn function_spans_preserve_returns_borrows_and_async_context() {
 struct Opaque;
 struct Storage(Vec<Opaque>);
 
-#[trace_storage]
 impl Storage {
+    #[observe]
     fn stream(&mut self) -> Result<Box<dyn Iterator<Item = &mut Opaque> + '_>> {
         Ok(Box::new(self.0.iter_mut()))
     }
 
+    #[observe]
     fn validate(&self) -> std::result::Result<(), Opaque> {
         if self.0.is_empty() {
             Ok(())
@@ -146,8 +146,8 @@ fn storage_spans_close_before_lazy_consumption_without_debug_bounds() {
     });
     let records = capture.0.lock().unwrap();
     assert_eq!(records.len(), 2);
-    assert_eq!(records[0], "gluesql.Storage.stream");
-    assert_eq!(records[1], "gluesql.Storage.validate");
+    assert_eq!(records[0], "stream");
+    assert_eq!(records[1], "validate");
 }
 
 #[test]

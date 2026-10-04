@@ -20,7 +20,7 @@ This creates a DEBUG span named `validate_rows` under the `gluesql` target. It m
 whole function and closes on normal return, early return, error propagation with `?`, or
 unwinding. Arguments, successful results, and errors are not recorded automatically.
 
-Core re-exports both observation macros. Consuming crates enable `gluesql-core/tracing` and an
+Core re-exports `observe`. Consuming crates enable `gluesql-core/tracing` and an
 optional direct `tracing` dependency through their feature, as shown in the storage setup below.
 Use `cfg_attr` so tracing-disabled builds compile the original function. Existing
 `gluesql_macros` imports are also supported. The macro does not install a subscriber.
@@ -84,29 +84,25 @@ tracing = ["dep:tracing", "gluesql-core/tracing"]
 tracing = { version = "0.1", optional = true }
 ```
 
-Apply the attribute to an implementation containing the actual method bodies:
+Apply `observe` to each method containing the actual operation:
 
 ```rust
-#[cfg_attr(feature = "tracing", gluesql_core::trace_storage)]
 impl Store for MyStorage {
-    // Existing implementation.
+    #[cfg_attr(feature = "tracing", gluesql_core::observe)]
+    fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
+        // Existing method body.
+    }
 }
 ```
 
-Each explicitly implemented method gets a TRACE span named `gluesql.MyStorage.<method>`.
-The type comes from the implementation target; module paths, generic arguments, and raw
-identifier prefixes are omitted. Inherent implementations and external traits are also supported.
-The macro uses the same whole-function instrumentation as `observe`, without capturing arguments,
-results, errors, batch counts, or iterator-consumption timings. Values need no Debug bound.
+The method creates a DEBUG span named `fetch_schema`, using the same instrumentation as any
+other observed function. Arguments, results, errors, batch counts, and iterator-consumption
+timings are not captured automatically. Values need no Debug bound.
 
-Redb places the attribute on its operational `impl StorageCore` blocks; its public trait
-implementations only delegate and add no wrapper spans. Inherited methods do not appear in an
-impl block, so observe a shared default implementation directly with `observe`, as core does
-for `Planner::plan`. An override needs its own observation.
-
-`trace_storage` accepts no options and observes every explicitly implemented method. Const
-methods cannot create runtime spans and are not supported. Implementation types must be named
-types; tuples and references are not supported.
+Redb observes its operational `StorageCore` methods; its public trait implementations only
+delegate and add no wrapper spans. Observe a shared default implementation directly, as core
+does for `Planner::plan`. An override needs its own observation. To measure internal operations
+separately, extract cohesive functions and apply `observe` to them.
 
 For a storage exposed as an optional facade dependency, add `"<storage-dependency-name>?/tracing"`
 to the `tracing` feature in `pkg/rust/Cargo.toml`. Use the dependency key, including any rename.

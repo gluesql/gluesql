@@ -91,8 +91,8 @@ impl StorageCore {
 }
 
 // Store
-#[cfg_attr(feature = "tracing", gluesql_core::trace_storage)]
 impl StorageCore {
+    #[cfg_attr(feature = "tracing", gluesql_core::observe)]
     pub fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         let txn = self.txn()?;
         let table = txn.open_table(SCHEMA_TABLE)?;
@@ -107,6 +107,7 @@ impl StorageCore {
             .collect()
     }
 
+    #[cfg_attr(feature = "tracing", gluesql_core::observe)]
     pub fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         let schema = match &self.state {
             TransactionState::Active { txn, .. } => txn
@@ -125,6 +126,7 @@ impl StorageCore {
         Ok(schema)
     }
 
+    #[cfg_attr(feature = "tracing", gluesql_core::observe)]
     pub fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Vec<Value>>> {
         let txn = self.txn()?;
         let table_def = Self::data_table_def(table_name)?;
@@ -141,6 +143,7 @@ impl StorageCore {
         Ok(row)
     }
 
+    #[cfg_attr(feature = "tracing", gluesql_core::observe)]
     pub fn scan_data<'a>(&'a self, table_name: &str) -> Result<RedbRowIter<'a>> {
         if let TransactionState::Active { autocommit, txn } = &self.state
             && !autocommit
@@ -177,8 +180,8 @@ impl StorageCore {
 }
 
 // StoreMut
-#[cfg_attr(feature = "tracing", gluesql_core::trace_storage)]
 impl StorageCore {
+    #[cfg_attr(feature = "tracing", gluesql_core::observe)]
     pub fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let data_def = Self::data_table_def(&schema.table_name)?;
         let txn = self.txn_mut()?;
@@ -190,6 +193,7 @@ impl StorageCore {
         Ok(())
     }
 
+    #[cfg_attr(feature = "tracing", gluesql_core::observe)]
     pub fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let table_def = Self::data_table_def(table_name)?;
         let txn = self.txn_mut()?;
@@ -200,6 +204,7 @@ impl StorageCore {
         Ok(())
     }
 
+    #[cfg_attr(feature = "tracing", gluesql_core::observe)]
     pub fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
         let table_def = Self::data_table_def(table_name)?;
         let txn = self.txn_mut()?;
@@ -216,6 +221,7 @@ impl StorageCore {
         Ok(())
     }
 
+    #[cfg_attr(feature = "tracing", gluesql_core::observe)]
     pub fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
         let table_def = Self::data_table_def(table_name)?;
         let txn = self.txn_mut()?;
@@ -231,6 +237,7 @@ impl StorageCore {
         Ok(())
     }
 
+    #[cfg_attr(feature = "tracing", gluesql_core::observe)]
     pub fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let table_def = Self::data_table_def(table_name)?;
         let txn = self.txn_mut()?;
@@ -247,8 +254,8 @@ impl StorageCore {
 }
 
 // Transaction
-#[cfg_attr(feature = "tracing", gluesql_core::trace_storage)]
 impl StorageCore {
+    #[cfg_attr(feature = "tracing", gluesql_core::observe)]
     pub fn begin(&mut self, autocommit: bool) -> Result<bool> {
         match (&self.state, autocommit) {
             (TransactionState::Active { .. }, true) => Ok(false),
@@ -267,6 +274,7 @@ impl StorageCore {
         }
     }
 
+    #[cfg_attr(feature = "tracing", gluesql_core::observe)]
     pub fn rollback(&mut self) -> Result<()> {
         if let Some(txn) = self.take_txn() {
             txn.abort()?;
@@ -275,6 +283,7 @@ impl StorageCore {
         Ok(())
     }
 
+    #[cfg_attr(feature = "tracing", gluesql_core::observe)]
     pub fn commit(&mut self) -> Result<()> {
         if let Some(txn) = self.take_txn() {
             txn.commit()?;

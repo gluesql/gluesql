@@ -46,10 +46,9 @@ Use the filter to select measurement detail:
 | Level | Measurements under the `gluesql` target |
 | --- | --- |
 | `info` | Application events and benchmark summaries; core function spans are disabled |
-| `debug` | All observed core functions, including parsing, planning, and execution |
-| `trace` | Also method spans for storages with tracing integration |
+| `debug` | All observed functions and integrated storage methods, including parsing, planning, and execution |
 
-Use `RUST_LOG=gluesql=trace` to include storage method spans.
+Use `RUST_LOG=gluesql=debug` to include function and storage method spans.
 The default in-memory session emits core spans; storage method spans require an integrated
 backend such as RedbStorage. Run SQL at the CLI prompt to inspect the function hierarchy.
 Append `2> query.log` to the CLI command to save tracing output separately from query results.
@@ -139,17 +138,17 @@ execute_with_params
 ├── translate_with_params
 ├── plan
 └── execute
-    ├── gluesql.StorageCore.begin
+    ├── begin
     ├── execute
     │   ├── rows
-    │   │   └── gluesql.StorageCore.scan_data
+    │   │   └── scan_data
     │   ├── sort
     │   └── ...
-    └── gluesql.StorageCore.commit
+    └── commit
 ```
 
 The children depend on the query plan and storage integration. For a simple table query with
-ORDER BY on Redb's normal read path, `gluesql.StorageCore.scan_data` measures storage iterator
+ORDER BY on Redb's normal read path, `scan_data` measures storage iterator
 creation and preparation. `sort` measures input iterator consumption together
 with sorting. Storage reads and decoding during consumption are included in the order-by span;
 they do not create or extend a storage span.
@@ -220,13 +219,13 @@ and surrounding collection span to identify the path's costs. No loop counter is
 The spans measure these functions without classifying access paths or recording row counts.
 
 Storages opt into method spans. RedbStorage is the current reference implementation; its
-`gluesql.StorageCore.*` spans observe the actual operations in Redb's internal `StorageCore`
+method spans observe the actual operations in Redb's internal `StorageCore`
 and require Redb tracing. The public trait methods delegate to those operations without adding
 wrapper spans. Other storages need their own integration.
-`trace_storage` records method execution time without capturing arguments, errors, rows, or
+`observe` records method execution time without capturing arguments, errors, rows, or
 batch sizes.
 
-`gluesql.StorageCore.scan_data` measures iterator creation and preparation. Its scope differs
+`scan_data` measures iterator creation and preparation. Its scope differs
 between the two Redb scan paths:
 
 | Scan path | Time measured by `scan_data` | Work during iterator consumption |
