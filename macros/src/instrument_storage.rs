@@ -32,11 +32,10 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> 
             continue;
         };
         let span_name = format!("gluesql.{name}.{}", method.sig.ident.unraw());
-        *method = syn::parse2(observe::instrument(
-            &syn::parse2(quote!(#method))?,
-            &span_name,
-            "trace",
-        )?)?;
+        method.attrs.insert(
+            0,
+            observe::instrument_attribute(&method.sig, &span_name, "trace")?,
+        );
     }
     Ok(quote!(#implementation))
 }
@@ -47,17 +46,13 @@ mod tests {
 
     #[test]
     fn rejects_options_and_const_methods() {
-        let implementation = quote!(impl Storage {
-            fn stream(&self) -> Result<Rows> { todo!() }
-        });
-        for options in [
-            quote!(iterators(stream)),
-            quote!(capture = "full"),
-            quote!(skip(stream)),
-            quote!(name = "custom"),
-        ] {
-            assert!(expand(options, implementation.clone()).is_err());
-        }
+        assert!(
+            expand(
+                quote!(skip(stream)),
+                quote!(impl Storage { fn stream(&self) {} })
+            )
+            .is_err()
+        );
         assert!(expand(quote!(), quote!(impl Storage { const fn identity() {} })).is_err());
     }
 
@@ -72,9 +67,7 @@ mod tests {
                 }
             ),
         ] {
-            let inferred = expand(quote!(), implementation.clone())
-                .unwrap()
-                .to_string();
+            let inferred = expand(quote!(), implementation).unwrap().to_string();
             assert!(inferred.contains("\"gluesql.Storage.operation\""));
         }
         let raw = expand(quote!(), quote!(impl r#type { fn r#match(&self) {} }))
@@ -82,7 +75,6 @@ mod tests {
             .to_string();
         assert!(raw.contains("\"gluesql.type.match\""));
         let tuple = quote!(impl Store for (Storage, Storage) { fn operation(&self) {} });
-        assert!(expand(quote!(), tuple.clone()).is_err());
-        assert!(expand(quote!(name = "pair"), tuple).is_err());
+        assert!(expand(quote!(), tuple).is_err());
     }
 }

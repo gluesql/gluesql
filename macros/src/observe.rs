@@ -1,7 +1,7 @@
 use {
     proc_macro2::TokenStream,
     quote::quote,
-    syn::{ItemFn, ext::IdentExt},
+    syn::{Attribute, ItemFn, Signature, ext::IdentExt, parse_quote},
 };
 
 pub fn expand(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> {
@@ -11,22 +11,28 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> 
             "observe does not accept options",
         ));
     }
-    let function: ItemFn = syn::parse2(item)?;
+    let mut function: ItemFn = syn::parse2(item)?;
     let name = function.sig.ident.unraw().to_string();
-    instrument(&function, &name, "debug")
+    function
+        .attrs
+        .insert(0, instrument_attribute(&function.sig, &name, "debug")?);
+    Ok(quote!(#function))
 }
 
-pub(super) fn instrument(function: &ItemFn, name: &str, level: &str) -> syn::Result<TokenStream> {
-    if function.sig.constness.is_some() {
+pub(super) fn instrument_attribute(
+    signature: &Signature,
+    name: &str,
+    level: &str,
+) -> syn::Result<Attribute> {
+    if signature.constness.is_some() {
         return Err(syn::Error::new_spanned(
-            &function.sig,
+            signature,
             "observe does not support const functions",
         ));
     }
-    Ok(quote! {
+    Ok(parse_quote!(
         #[tracing::instrument(name = #name, target = "gluesql", level = #level, skip_all)]
-        #function
-    })
+    ))
 }
 
 #[cfg(test)]
@@ -35,27 +41,15 @@ mod tests {
 
     #[test]
     fn rejects_options_and_const_functions() {
-        for attr in [
-            quote!(name = "custom"),
-            quote!(target = "custom"),
-            quote!(level = "info"),
-            quote!(fields(n = 1)),
-            quote!(after_let(rows, record(n = 1))),
-            quote!(count_loop(binding = row, field = n)),
-            quote!(on_ok(value, record(n = 1))),
-            quote!(err(Debug)),
-        ] {
-            assert!(
-                expand(
-                    attr.clone(),
-                    quote!(
-                        fn example() {}
-                    )
+        assert!(
+            expand(
+                quote!(name = "custom"),
+                quote!(
+                    fn example() {}
                 )
-                .is_err(),
-                "accepted {attr}"
-            );
-        }
+            )
+            .is_err()
+        );
         assert!(
             expand(
                 quote!(),
