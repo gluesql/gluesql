@@ -174,9 +174,8 @@ fn query_pipeline_keeps_function_spans_without_stage_counters() {
         "execute_with_params",
         "parse",
         "translate_with_params",
-        "plan_statement",
+        "plan",
         "plan_with_params",
-        "execute_stmt",
         "execute",
         "sort",
         "build_rows",
@@ -194,10 +193,10 @@ fn query_pipeline_keeps_function_spans_without_stage_counters() {
     }
     let paths = capture.1.lock().unwrap();
     for suffix in [
-        vec!["execute_stmt", "execute", "execute"],
-        vec!["execute_stmt", "execute", "sort"],
-        vec!["execute_stmt", "collect_update_rows"],
-        vec!["execute_stmt", "collect_keys"],
+        vec!["execute", "execute", "execute"],
+        vec!["execute", "execute", "sort"],
+        vec!["execute", "collect_update_rows"],
+        vec!["execute", "collect_keys"],
     ] {
         assert!(
             paths.iter().any(|path| path
@@ -208,7 +207,11 @@ fn query_pipeline_keeps_function_spans_without_stage_counters() {
             "missing hierarchy {suffix:?}"
         );
     }
-    assert!(records.iter().all(|name| name != "event"));
+    assert!(
+        records
+            .iter()
+            .all(|name| !matches!(name.as_str(), "event" | "plan_statement" | "execute_stmt"))
+    );
 }
 
 #[test]

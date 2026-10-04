@@ -20,11 +20,6 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
         Self { storage }
     }
 
-    #[cfg_attr(feature = "tracing", gluesql_macros::observe)]
-    fn plan_statement(&self, statement: StatementPlan) -> Result<StatementPlan> {
-        self.storage.plan(statement)
-    }
-
     /// Plans all statements in the SQL string using the supplied parameters.
     ///
     /// # Errors
@@ -62,7 +57,6 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
         self.plan_with_params(sql, std::iter::empty::<ParamLiteral>())
     }
 
-    #[cfg_attr(feature = "tracing", gluesql_macros::observe)]
     pub fn execute_stmt(&mut self, statement: &StatementPlan) -> Result<Payload> {
         execute(&mut self.storage, statement)
     }
@@ -89,7 +83,7 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
 
         for parsed in parsed {
             let statement = translate_with_params(&parsed, &params)?;
-            let statement = self.plan_statement(statement.into())?;
+            let statement = self.storage.plan(statement.into())?;
             payloads.push(self.execute_stmt(&statement)?);
         }
 

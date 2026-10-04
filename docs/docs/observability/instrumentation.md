@@ -84,7 +84,7 @@ tracing = ["dep:tracing", "gluesql-core/tracing"]
 tracing = { version = "0.1", optional = true }
 ```
 
-Apply one attribute to each implemented trait without modifying method bodies:
+Apply the attribute to an implementation containing the actual method bodies:
 
 ```rust
 #[cfg_attr(feature = "tracing", gluesql_core::trace_storage)]
@@ -98,6 +98,11 @@ The type comes from the implementation target; module paths, generic arguments, 
 identifier prefixes are omitted. Inherent implementations and external traits are also supported.
 The macro uses the same whole-function instrumentation as `observe`, without capturing arguments,
 results, errors, batch counts, or iterator-consumption timings. Values need no Debug bound.
+
+Redb places the attribute on its operational `impl StorageCore` blocks; its public trait
+implementations only delegate and add no wrapper spans. Inherited methods do not appear in an
+impl block, so observe a shared default implementation directly with `observe`, as core does
+for `Planner::plan`. An override needs its own observation.
 
 `trace_storage` accepts no options and observes every explicitly implemented method. Const
 methods cannot create runtime spans and are not supported. Implementation types must be named

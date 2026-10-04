@@ -91,6 +91,7 @@ impl StorageCore {
 }
 
 // Store
+#[cfg_attr(feature = "tracing", gluesql_core::trace_storage)]
 impl StorageCore {
     pub fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         let txn = self.txn()?;
@@ -176,6 +177,7 @@ impl StorageCore {
 }
 
 // StoreMut
+#[cfg_attr(feature = "tracing", gluesql_core::trace_storage)]
 impl StorageCore {
     pub fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let data_def = Self::data_table_def(&schema.table_name)?;
@@ -245,6 +247,7 @@ impl StorageCore {
 }
 
 // Transaction
+#[cfg_attr(feature = "tracing", gluesql_core::trace_storage)]
 impl StorageCore {
     pub fn begin(&mut self, autocommit: bool) -> Result<bool> {
         match (&self.state, autocommit) {

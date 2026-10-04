@@ -104,6 +104,7 @@ pub enum PayloadVariable {
     Version(String),
 }
 
+#[cfg_attr(feature = "tracing", gluesql_macros::observe)]
 pub fn execute<T: GStore + GStoreMut>(
     storage: &mut T,
     statement: &StatementPlan,
