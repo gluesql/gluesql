@@ -11,7 +11,7 @@ use {
             AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
             FilterPlan, IndexPredicatePlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
             OrderByExprPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SelectOrderByPlan,
-            SourcePlan, StatementPlan, TableAccessPlan, plan_scalar_expr,
+            SourcePlan, StatementPlan, TableAccessPlan, WindowInputPlan, plan_scalar_expr,
         },
     },
     std::{collections::HashMap, hash::BuildHasher, rc::Rc},
@@ -190,6 +190,11 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                 having.input.input = input;
                 (ProjectInputPlan::Having(having), order_by)
             }
+            ProjectInputPlan::Window(mut window) => {
+                let (input, order_by) = self.window_input(outer_context, window.input, order_by);
+                window.input = input;
+                (ProjectInputPlan::Window(window), order_by)
+            }
         };
         project.input = input;
 
@@ -252,6 +257,49 @@ impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
                         FilterInputPlan::InnerJoin(join) => AggregationInputPlan::InnerJoin(join),
                         FilterInputPlan::LeftOuterJoin(join) => {
                             AggregationInputPlan::LeftOuterJoin(join)
+                        }
+                    },
+                };
+
+                (input, order_by)
+            }
+        }
+    }
+
+    fn window_input(
+        &self,
+        outer_context: Option<&Rc<Context<'a>>>,
+        input: WindowInputPlan,
+        order_by: Vec<OrderByExprPlan>,
+    ) -> (WindowInputPlan, Vec<OrderByExprPlan>) {
+        match input {
+            WindowInputPlan::Source(mut source) => {
+                let (_, order_by) = self.source(outer_context, &mut source, None, order_by);
+
+                (WindowInputPlan::Source(source), order_by)
+            }
+            WindowInputPlan::InnerJoin(mut join) => {
+                let (_, order_by) =
+                    self.source(outer_context, join.base_source_mut(), None, order_by);
+
+                (WindowInputPlan::InnerJoin(join), order_by)
+            }
+            WindowInputPlan::LeftOuterJoin(mut join) => {
+                let (_, order_by) =
+                    self.source(outer_context, join.base_source_mut(), None, order_by);
+
+                (WindowInputPlan::LeftOuterJoin(join), order_by)
+            }
+            WindowInputPlan::Filter(FilterPlan { mut input, expr }) => {
+                let (expr, order_by) =
+                    self.source(outer_context, input.base_source_mut(), Some(expr), order_by);
+                let input = match expr {
+                    Some(expr) => WindowInputPlan::Filter(FilterPlan { input, expr }),
+                    None => match input {
+                        FilterInputPlan::Source(relation) => WindowInputPlan::Source(relation),
+                        FilterInputPlan::InnerJoin(join) => WindowInputPlan::InnerJoin(join),
+                        FilterInputPlan::LeftOuterJoin(join) => {
+                            WindowInputPlan::LeftOuterJoin(join)
                         }
                     },
                 };

@@ -10,7 +10,7 @@ use {
             JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
             OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SourcePlan,
-            StatementPlan, TableAccessPlan,
+            StatementPlan, TableAccessPlan, WindowInputPlan,
         },
     },
     std::{collections::HashMap, hash::BuildHasher, rc::Rc},
@@ -167,6 +167,10 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                     self.aggregation_input(outer_context.map(Rc::clone), having.input.input);
                 ProjectInputPlan::Having(having)
             }
+            ProjectInputPlan::Window(mut window) => {
+                window.input = self.window_input(outer_context.map(Rc::clone), window.input);
+                ProjectInputPlan::Window(window)
+            }
         };
 
         project
@@ -212,6 +216,35 @@ impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
                         FilterInputPlan::InnerJoin(join) => AggregationInputPlan::InnerJoin(join),
                         FilterInputPlan::LeftOuterJoin(join) => {
                             AggregationInputPlan::LeftOuterJoin(join)
+                        }
+                    },
+                }
+            }
+        }
+    }
+
+    fn window_input(
+        &self,
+        outer_context: Option<Rc<Context<'a>>>,
+        input: WindowInputPlan,
+    ) -> WindowInputPlan {
+        match input {
+            WindowInputPlan::Source(relation) => WindowInputPlan::Source(relation),
+            WindowInputPlan::InnerJoin(join) => {
+                WindowInputPlan::InnerJoin(Box::new(self.inner_join(outer_context.as_ref(), *join)))
+            }
+            WindowInputPlan::LeftOuterJoin(join) => WindowInputPlan::LeftOuterJoin(Box::new(
+                self.left_outer_join(outer_context.as_ref(), *join),
+            )),
+            WindowInputPlan::Filter(filter) => {
+                let (input, expr) = self.filter(outer_context, filter);
+                match expr {
+                    Some(expr) => WindowInputPlan::Filter(FilterPlan { input, expr }),
+                    None => match input {
+                        FilterInputPlan::Source(relation) => WindowInputPlan::Source(relation),
+                        FilterInputPlan::InnerJoin(join) => WindowInputPlan::InnerJoin(join),
+                        FilterInputPlan::LeftOuterJoin(join) => {
+                            WindowInputPlan::LeftOuterJoin(join)
                         }
                     },
                 }
@@ -547,7 +580,8 @@ mod tests {
                 | ProjectInputPlan::LeftOuterJoin(_) => Some(project.input.base_source()),
                 ProjectInputPlan::Filter(_)
                 | ProjectInputPlan::Aggregation(_)
-                | ProjectInputPlan::Having(_) => None,
+                | ProjectInputPlan::Having(_)
+                | ProjectInputPlan::Window(_) => None,
             },
             _ => None,
         }

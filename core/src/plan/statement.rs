@@ -7,7 +7,7 @@ pub use {
     ddl::{AlterTableOperationPlan, ColumnDefPlan, DefaultExpr, TableColumnsPlan},
     expr::{
         AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan, FunctionExprPlan,
-        plan_scalar_expr,
+        WindowExprPlan, WindowFunctionPlan, WindowSpecPlan, plan_scalar_expr,
     },
     projection::{ProjectionPlan, SelectItemPlan},
     query::{
@@ -18,7 +18,7 @@ pub use {
         LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan, OffsetInputPlan,
         OffsetPlan, OrderByExprPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SelectOrderByPlan,
         SeriesSourcePlan, SourcePlan, TableAccessPlan, TableAliasPlan, TableSourcePlan,
-        ValuesOrderByPlan, ValuesPlan,
+        ValuesOrderByPlan, ValuesPlan, WindowInputPlan, WindowPlan,
     },
 };
 

@@ -1,7 +1,7 @@
 use {
     crate::{
         ast::{BinaryOperator, DataType, ToSql},
-        plan::AggregateExprPlan,
+        plan::{AggregateExprPlan, WindowExprPlan},
     },
     serde::Serialize,
     std::fmt::Debug,
@@ -108,6 +108,18 @@ pub enum EvaluateError {
 
     #[error("aggregate expression requires planner binding: {0:?}")]
     UnplannedAggregate(Box<AggregateExprPlan>),
+
+    #[error("window slot value missing: {0:?}")]
+    WindowSlotValueMissing(Box<WindowExprPlan>),
+
+    #[error("window expression requires planner binding: {0:?}")]
+    UnplannedWindow(Box<WindowExprPlan>),
+
+    #[error("LAG/LEAD offset must be an integer, found a non-integer value")]
+    WindowOffsetNotInteger,
+
+    #[error("LAG/LEAD offset {0} does not fit in a non-negative array index")]
+    WindowOffsetOutOfRange(i64),
 
     #[error("incompatible bit operation between {0} and {1}")]
     IncompatibleBitOperation(String, String),

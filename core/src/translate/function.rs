@@ -1,20 +1,24 @@
 use {
     super::{
-        ParamLiteral, TranslateError,
-        expr::translate_expr,
+        ParamLiteral, TranslateError, WindowOption,
+        expr::{translate_expr, translate_order_by_expr},
         literal::{translate_datetime_field, translate_trim_where_field},
         translate_data_type, translate_object_name,
     },
     crate::{
-        ast::{Aggregate, CountArgExpr, Expr, Function},
+        ast::{
+            Aggregate, CountArgExpr, Expr, Function, Literal, ToSql, Window, WindowFunction,
+            WindowSpec,
+        },
         result::Result,
     },
+    bigdecimal::BigDecimal,
     sqlparser::ast::{
         CastFormat as SqlCastFormat, CastKind as SqlCastKind, DataType as SqlDataType,
         DateTimeField as SqlDateTimeField, DuplicateTreatment as SqlDuplicateTreatment,
         Expr as SqlExpr, Function as SqlFunction, FunctionArg as SqlFunctionArg,
         FunctionArgExpr as SqlFunctionArgExpr, FunctionArguments as SqlFunctionArguments,
-        TrimWhereField as SqlTrimWhereField,
+        TrimWhereField as SqlTrimWhereField, WindowType as SqlWindowType,
     },
 };
 
@@ -157,21 +161,6 @@ fn translate_function_one_arg<T: FnOnce(Expr) -> Function>(
         .map(Expr::Function)
 }
 
-fn translate_aggregate_one_arg<T: FnOnce(Expr, bool) -> Aggregate>(
-    params: &[ParamLiteral],
-    func: T,
-    args: &[&SqlExpr],
-    name: String,
-    distinct: bool,
-) -> Result<Expr> {
-    check_len(name, args.len(), 1)?;
-
-    translate_expr(args[0], params)
-        .map(|expr| func(expr, distinct))
-        .map(Box::new)
-        .map(Expr::Aggregate)
-}
-
 fn translate_function_trim<T: FnOnce(Expr, Option<Expr>) -> Function>(
     params: &[ParamLiteral],
     func: T,
@@ -206,37 +195,68 @@ pub fn translate_function_arg_exprs(
         .collect::<Result<Vec<_>>>()
 }
 
-pub(crate) fn translate_function(
-    params: &[ParamLiteral],
-    sql_function: &SqlFunction,
-) -> Result<Expr> {
-    let SqlFunction { name, args, .. } = sql_function;
-    let name = translate_object_name(name)?.to_uppercase();
-    let (args, distinct) = match args {
-        SqlFunctionArguments::None => (Vec::new(), false),
+fn translate_window_offset(sql_expr: &SqlExpr, params: &[ParamLiteral]) -> Result<Expr> {
+    let expr = translate_expr(sql_expr, params)?;
+
+    let is_valid = matches!(&expr, Expr::Literal(Literal::Number(n))
+        if n.is_integer() && n >= &BigDecimal::from(0) && n <= &BigDecimal::from(i64::MAX));
+
+    if is_valid {
+        Ok(expr)
+    } else {
+        Err(TranslateError::InvalidWindowOffset(expr.to_sql()).into())
+    }
+}
+
+/// Extracts a call's raw argument list and its `DISTINCT` flag, the part of
+/// `SqlFunctionArguments` handling shared by every function call, window or
+/// not.
+fn translate_call_args(args: &SqlFunctionArguments) -> Result<(Vec<&SqlFunctionArg>, bool)> {
+    match args {
+        SqlFunctionArguments::None => Ok((Vec::new(), false)),
         SqlFunctionArguments::Subquery(_) => {
-            return Err(TranslateError::UnreachableSubqueryFunctionArgNotSupported.into());
+            Err(TranslateError::UnreachableSubqueryFunctionArgNotSupported.into())
         }
         SqlFunctionArguments::List(list) => {
             let distinct = list
                 .duplicate_treatment
                 .is_some_and(|dt| matches!(dt, SqlDuplicateTreatment::Distinct));
-            (list.args.iter().collect(), distinct)
-        }
-    };
 
-    let function_arg_exprs = args
-        .iter()
+            Ok((list.args.iter().collect(), distinct))
+        }
+    }
+}
+
+/// Rejects `name => value` named arguments, which `GlueSQL` does not support
+/// for any function, window or not.
+fn reject_named_function_args<'a>(
+    args: &[&'a SqlFunctionArg],
+) -> Result<Vec<&'a SqlFunctionArgExpr>> {
+    args.iter()
         .map(|arg| match arg {
             SqlFunctionArg::Named { .. } => {
                 Err(TranslateError::NamedFunctionArgNotSupported.into())
             }
             SqlFunctionArg::Unnamed(arg_expr) => Ok(arg_expr),
         })
-        .collect::<Result<Vec<_>>>()?;
+        .collect::<Result<Vec<_>>>()
+}
 
-    if name.as_str() == "COUNT" {
-        check_len(name, args.len(), 1)?;
+/// Builds an [`Aggregate`] from a resolved aggregate function name and its
+/// (already named-arg-checked) argument list. Shared by the plain
+/// `SELECT`-list aggregate path and the window-aggregate path in
+/// [`translate_window_function`] — the only difference between the two is
+/// which names are allowed to reach this function at all: window functions
+/// deliberately keep `VARIANCE`/`STDEV` out of scope (checked by the caller,
+/// not here), while the plain path allows every name below.
+fn translate_aggregate_call(
+    params: &[ParamLiteral],
+    name: &str,
+    function_arg_exprs: Vec<&SqlFunctionArgExpr>,
+    distinct: bool,
+) -> Result<Aggregate> {
+    if name == "COUNT" {
+        check_len(name.to_owned(), function_arg_exprs.len(), 1)?;
 
         let count_arg = match function_arg_exprs[0] {
             SqlFunctionArgExpr::Expr(expr) => CountArgExpr::Expr(translate_expr(expr, params)?),
@@ -249,22 +269,176 @@ pub(crate) fn translate_function(
             SqlFunctionArgExpr::Wildcard => CountArgExpr::Wildcard,
         };
 
-        return Ok(Expr::Aggregate(Box::new(Aggregate::count(
-            count_arg, distinct,
-        ))));
+        return Ok(Aggregate::count(count_arg, distinct));
+    }
+
+    check_len(name.to_owned(), function_arg_exprs.len(), 1)?;
+    let args = translate_function_arg_exprs(function_arg_exprs)?;
+    let expr = translate_expr(args[0], params)?;
+
+    Ok(match name {
+        "SUM" => Aggregate::sum(expr, distinct),
+        "MIN" => Aggregate::min(expr, distinct),
+        "MAX" => Aggregate::max(expr, distinct),
+        "AVG" => Aggregate::avg(expr, distinct),
+        "VARIANCE" => Aggregate::variance(expr, distinct),
+        "STDEV" => Aggregate::stdev(expr, distinct),
+        _ => unreachable!("caller only reaches here for a name it has already recognized"),
+    })
+}
+
+/// The aggregate functions usable as window aggregates, `<func>(...) OVER
+/// (...)`. `VARIANCE`/`STDEV` are regular aggregates but are deliberately
+/// out of scope for window functions.
+const WINDOW_AGGREGATE_FUNCTION_NAMES: [&str; 5] = ["COUNT", "SUM", "MIN", "MAX", "AVG"];
+
+/// Every function name `GlueSQL` recognizes as an aggregate, used for the
+/// plain `SELECT`-list aggregate path (a superset of
+/// [`WINDOW_AGGREGATE_FUNCTION_NAMES`] — `VARIANCE`/`STDEV` are regular
+/// aggregates but stay out of scope for window functions).
+const AGGREGATE_FUNCTION_NAMES: [&str; 7] =
+    ["COUNT", "SUM", "MIN", "MAX", "AVG", "VARIANCE", "STDEV"];
+
+fn translate_window_function(
+    params: &[ParamLiteral],
+    name: String,
+    args: &SqlFunctionArguments,
+    over: &SqlWindowType,
+) -> Result<Expr> {
+    let (args, distinct) = translate_call_args(args)?;
+
+    if distinct {
+        return Err(TranslateError::DistinctNotSupportedInWindowFunction.into());
+    }
+
+    let sql_window_spec = match over {
+        SqlWindowType::WindowSpec(spec) => spec,
+        SqlWindowType::NamedWindow(_) => {
+            return Err(TranslateError::UnsupportedWindowOption(WindowOption::NamedWindow).into());
+        }
+    };
+
+    if sql_window_spec.window_frame.is_some() {
+        return Err(TranslateError::UnsupportedWindowOption(WindowOption::Frame).into());
+    }
+
+    let partition_by = sql_window_spec
+        .partition_by
+        .iter()
+        .map(|expr| translate_expr(expr, params))
+        .collect::<Result<Vec<_>>>()?;
+    let order_by = sql_window_spec
+        .order_by
+        .iter()
+        .map(|expr| translate_order_by_expr(expr, params))
+        .collect::<Result<Vec<_>>>()?;
+    let window_spec = WindowSpec {
+        partition_by,
+        order_by,
+    };
+
+    let function_arg_exprs = reject_named_function_args(&args)?;
+
+    let func = match name.as_str() {
+        "ROW_NUMBER" => {
+            check_len(name, args.len(), 0)?;
+            WindowFunction::RowNumber
+        }
+        "RANK" => {
+            check_len(name, args.len(), 0)?;
+            WindowFunction::Rank
+        }
+        "DENSE_RANK" => {
+            check_len(name, args.len(), 0)?;
+            WindowFunction::DenseRank
+        }
+        "LAG" | "LEAD" => {
+            check_len_range(name.clone(), args.len(), 1, 3)?;
+
+            let raw_args = translate_function_arg_exprs(function_arg_exprs)?;
+            let expr = translate_expr(raw_args[0], params)?;
+            let offset = raw_args
+                .get(1)
+                .map(|offset| translate_window_offset(offset, params))
+                .transpose()?
+                .unwrap_or_else(|| Expr::Literal(Literal::Number(BigDecimal::from(1))));
+            let default = raw_args
+                .get(2)
+                .map(|default| translate_expr(default, params))
+                .transpose()?;
+
+            if name == "LAG" {
+                WindowFunction::Lag {
+                    expr,
+                    offset,
+                    default,
+                }
+            } else {
+                WindowFunction::Lead {
+                    expr,
+                    offset,
+                    default,
+                }
+            }
+        }
+        _ if WINDOW_AGGREGATE_FUNCTION_NAMES.contains(&name.as_str()) => {
+            let aggregate = translate_aggregate_call(params, &name, function_arg_exprs, false)?;
+
+            WindowFunction::Aggregate(aggregate)
+        }
+        _ => return Err(TranslateError::UnsupportedWindowFunction(name).into()),
+    };
+
+    Ok(Expr::Window(Box::new(Window {
+        func,
+        over: window_spec,
+    })))
+}
+
+pub(crate) fn translate_function(
+    params: &[ParamLiteral],
+    sql_function: &SqlFunction,
+) -> Result<Expr> {
+    let SqlFunction {
+        name,
+        args,
+        filter,
+        null_treatment,
+        over,
+        within_group,
+        ..
+    } = sql_function;
+
+    if filter.is_some() {
+        return Err(TranslateError::UnsupportedWindowOption(WindowOption::Filter).into());
+    }
+
+    if null_treatment.is_some() {
+        return Err(TranslateError::UnsupportedWindowOption(WindowOption::NullTreatment).into());
+    }
+
+    if !within_group.is_empty() {
+        return Err(TranslateError::UnsupportedWindowOption(WindowOption::WithinGroup).into());
+    }
+
+    let name = translate_object_name(name)?.to_uppercase();
+
+    if let Some(over) = over {
+        return translate_window_function(params, name, args, over);
+    }
+
+    let (args, distinct) = translate_call_args(args)?;
+    let function_arg_exprs = reject_named_function_args(&args)?;
+
+    if AGGREGATE_FUNCTION_NAMES.contains(&name.as_str()) {
+        let aggregate = translate_aggregate_call(params, &name, function_arg_exprs, distinct)?;
+
+        return Ok(Expr::Aggregate(Box::new(aggregate)));
     }
 
     let args = translate_function_arg_exprs(function_arg_exprs)?;
 
     match name.as_str() {
-        "SUM" => translate_aggregate_one_arg(params, Aggregate::sum, &args, name, distinct),
-        "MIN" => translate_aggregate_one_arg(params, Aggregate::min, &args, name, distinct),
-        "MAX" => translate_aggregate_one_arg(params, Aggregate::max, &args, name, distinct),
-        "AVG" => translate_aggregate_one_arg(params, Aggregate::avg, &args, name, distinct),
-        "VARIANCE" => {
-            translate_aggregate_one_arg(params, Aggregate::variance, &args, name, distinct)
-        }
-        "STDEV" => translate_aggregate_one_arg(params, Aggregate::stdev, &args, name, distinct),
         "COALESCE" => {
             let exprs = args
                 .into_iter()

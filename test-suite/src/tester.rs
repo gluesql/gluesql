@@ -76,7 +76,8 @@ fn find_indexes(statement: &StatementPlan) -> Vec<&TableAccessPlan> {
             | ProjectInputPlan::InnerJoin(_)
             | ProjectInputPlan::LeftOuterJoin(_)
             | ProjectInputPlan::Aggregation(_)
-            | ProjectInputPlan::Having(_) => None,
+            | ProjectInputPlan::Having(_)
+            | ProjectInputPlan::Window(_) => None,
         };
         let filter_indexes = filter
             .map(|filter| find_expr_indexes(&filter.expr))

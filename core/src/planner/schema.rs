@@ -9,7 +9,7 @@ use {
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
             OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan, ProjectPlan,
             ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SourcePlan,
-            StatementPlan, ValuesOrderByPlan,
+            StatementPlan, ValuesOrderByPlan, WindowExprPlan, WindowInputPlan,
         },
         result::Result,
         store::Store,
@@ -218,6 +218,19 @@ fn scan_project<T: Store + ?Sized>(
 
             schema_list.into_iter().chain(aggregation).collect()
         }
+        ProjectInputPlan::Window(window) => {
+            let schema_list = scan_window_input(storage, &window.input)?;
+            let window_exprs = window
+                .window_slots
+                .iter()
+                .flat_map(WindowExprPlan::as_exprs)
+                .map(|expr| scan_expr(storage, expr))
+                .collect::<Result<Vec<_>>>()?
+                .into_iter()
+                .flatten();
+
+            schema_list.into_iter().chain(window_exprs).collect()
+        }
     };
     let projection_items = match projection {
         ProjectionPlan::SelectItems(items) => items.as_slice(),
@@ -260,6 +273,18 @@ fn scan_aggregation_input<T: Store + ?Sized>(
         AggregationInputPlan::InnerJoin(join) => scan_inner_join(storage, join),
         AggregationInputPlan::LeftOuterJoin(join) => scan_left_outer_join(storage, join),
         AggregationInputPlan::Filter(filter) => scan_filter(storage, filter),
+    }
+}
+
+fn scan_window_input<T: Store + ?Sized>(
+    storage: &T,
+    input: &WindowInputPlan,
+) -> Result<HashMap<String, Schema>> {
+    match input {
+        WindowInputPlan::Source(relation) => scan_source(storage, relation),
+        WindowInputPlan::InnerJoin(join) => scan_inner_join(storage, join),
+        WindowInputPlan::LeftOuterJoin(join) => scan_left_outer_join(storage, join),
+        WindowInputPlan::Filter(filter) => scan_filter(storage, filter),
     }
 }
 

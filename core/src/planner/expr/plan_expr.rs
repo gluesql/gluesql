@@ -1,5 +1,6 @@
 mod aggregate;
 mod function;
+mod window;
 
 use {
     crate::plan::{ExprPlan, QueryPlan},
@@ -87,9 +88,11 @@ impl<'a> From<&'a ExprPlan> for PlanExpr<'a> {
                 subquery: query,
                 ..
             } => PlanExpr::QueryAndExpr { expr, query },
+            ExprPlan::Window(window) => PlanExpr::MultiExprs(window.as_exprs()),
         }
     }
 }
+
 #[cfg(test)]
 mod tests {
     use {
