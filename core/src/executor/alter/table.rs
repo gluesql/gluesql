@@ -310,7 +310,11 @@ pub fn drop_table<T: GStore + GStoreMut>(
             _ => {}
         }
 
-        let referencings = storage.fetch_referencings(table_name)?;
+        let referencings = storage
+            .fetch_referencings(table_name)?
+            .into_iter()
+            .filter(|referencing| referencing.table_name != *table_name)
+            .collect::<Vec<_>>();
 
         if !referencings.is_empty() && !cascade {
             return Err(AlterError::CannotDropTableWithReferencing {
