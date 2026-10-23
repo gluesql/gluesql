@@ -39,10 +39,13 @@ pub fn delete<T: GStore + GStoreMut>(
         })
         .collect::<Result<Vec<_>>>()?;
 
-    let mut keys = Vec::new();
+    let mut rows = Vec::new();
     for item in fetch(storage, table_name, columns, selection)? {
-        let (key, row) = item?;
+        rows.push(item?);
+    }
+    let keys = rows.iter().map(|(key, _)| key.clone()).collect::<Vec<_>>();
 
+    for (_, row) in &rows {
         for (referencing, columns) in &referencings {
             let Referencing {
                 table_name: referencing_table_name,
@@ -66,14 +69,23 @@ pub fn delete<T: GStore + GStoreMut>(
                 right: Box::new(ExprPlan::Value(value)),
             };
 
-            let mut referencing_rows = fetch(
+            let mut referencing_row_exists = false;
+            for item in fetch(
                 storage,
                 referencing_table_name,
                 Rc::clone(columns),
                 Some(expr),
-            )?;
+            )? {
+                let (key, _) = item?;
+                let deleted_in_same_statement =
+                    referencing_table_name == table_name && keys.contains(&key);
 
-            let referencing_row_exists = referencing_rows.next().transpose()?.is_some();
+                if !deleted_in_same_statement {
+                    referencing_row_exists = true;
+                    break;
+                }
+            }
+
             if referencing_row_exists && on_delete == &ReferentialAction::NoAction {
                 return Err(DeleteError::ReferencingColumnExists(format!(
                     "{referencing_table_name}.{referencing_column_name}"
@@ -81,8 +93,6 @@ pub fn delete<T: GStore + GStoreMut>(
                 .into());
             }
         }
-
-        keys.push(key);
     }
     let num_keys = keys.len();
 
