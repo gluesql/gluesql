@@ -382,7 +382,11 @@ impl<'a> Evaluated<'a> {
                 Value::I64(num) => num,
                 _ => return exceptional_int_val_to_eval(name, &value),
             }
-        } - 1;
+        }
+        .saturating_sub(1);
+
+        let sliced = &source[range.clone()];
+        let char_count = sliced.chars().count() as i64;
 
         let count = match count {
             Some(eval) => {
@@ -392,16 +396,24 @@ impl<'a> Evaluated<'a> {
                     _ => return exceptional_int_val_to_eval(name, &value),
                 }
             }
-            None => source.len() as i64,
+            None => char_count,
         };
 
-        let end = if count < 0 {
+        if count < 0 {
             return Err(EvaluateError::NegativeSubstrLenNotAllowed.into());
-        } else {
-            (range.start as i64 + start + count).clamp(0, source.len() as i64) as usize
-        };
+        }
 
-        let start = (start + range.start as i64).clamp(0, source.len() as i64) as usize;
+        let end = start.saturating_add(count).clamp(0, char_count);
+        let start = start.clamp(0, char_count);
+
+        let byte_offset = |char_idx: i64| {
+            sliced
+                .char_indices()
+                .nth(char_idx as usize)
+                .map_or(sliced.len(), |(idx, _)| idx)
+        };
+        let start = range.start + byte_offset(start);
+        let end = range.start + byte_offset(end);
 
         Ok(Evaluated::StrSlice {
             source,
