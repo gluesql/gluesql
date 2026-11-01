@@ -3,7 +3,7 @@ use {
     crate::{
         ast::{ColumnDef, ColumnUniqueOption, ForeignKey},
         data::{Key, Row, Value},
-        plan::AssignmentPlan,
+        plan::{AssignmentPlan, CustomFunctionPlan},
         result::Result,
         store::GStore,
     },
@@ -38,6 +38,7 @@ pub enum UpdateError {
 
 pub struct Update<'a, T: GStore> {
     storage: &'a T,
+    functions: &'a [CustomFunctionPlan],
     table_name: &'a str,
     fields: &'a [AssignmentPlan],
     column_defs: Option<&'a [ColumnDef]>,
@@ -46,6 +47,7 @@ pub struct Update<'a, T: GStore> {
 impl<'a, T: GStore> Update<'a, T> {
     pub fn new(
         storage: &'a T,
+        functions: &'a [CustomFunctionPlan],
         table_name: &'a str,
         fields: &'a [AssignmentPlan],
         column_defs: Option<&'a [ColumnDef]>,
@@ -66,6 +68,7 @@ impl<'a, T: GStore> Update<'a, T> {
 
         Ok(Self {
             storage,
+            functions,
             table_name,
             fields,
             column_defs,
@@ -82,7 +85,13 @@ impl<'a, T: GStore> Update<'a, T> {
                 id,
                 value: value_expr,
             } = assignment;
-            let evaluated = evaluate(self.storage, context.as_ref(), None, value_expr)?;
+            let evaluated = evaluate(
+                self.storage,
+                self.functions,
+                context.as_ref(),
+                None,
+                value_expr,
+            )?;
             let value = match self.column_defs {
                 Some(column_defs) => {
                     let ColumnDef {

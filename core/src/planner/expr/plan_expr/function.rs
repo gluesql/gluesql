@@ -205,7 +205,8 @@ impl FunctionExprPlan {
                 end_index: expr3,
                 values: None,
             } => Exprs::Triple([expr, expr2, expr3].into_iter()),
-            Self::Custom { name: _, exprs }
+            Self::UnplannedCustom { exprs, .. }
+            | Self::Custom { exprs, .. }
             | Self::Coalesce(exprs)
             | Self::Concat(exprs)
             | Self::Greatest(exprs) => Exprs::VariableArgs(exprs.iter()),

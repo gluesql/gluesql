@@ -8,7 +8,7 @@ use {
     crate::{
         data::Row,
         executor::{context::RowContext, query},
-        plan::DerivedSourcePlan,
+        plan::{CustomFunctionPlan, DerivedSourcePlan},
         result::Result,
         store::GStore,
     },
@@ -17,9 +17,10 @@ use {
 
 pub(super) fn execute<'a, T: GStore>(
     storage: &'a T,
+    functions: &'a [CustomFunctionPlan],
     derived: &'a DerivedSourcePlan,
 ) -> Result<PreparedSource<'a>> {
-    let labels = output_labels::query(storage, &derived.query)?;
+    let labels = output_labels::query(storage, functions, &derived.query)?;
     let alias_columns = &derived.alias.columns;
     if alias_columns.len() > labels.len() {
         return Err(QueryError::TooManyColumnAliases(
@@ -46,6 +47,7 @@ pub(super) fn execute<'a, T: GStore>(
     let rows = Box::new(move |evaluation_context: Option<Rc<RowContext<'a>>>| {
         rows(
             storage,
+            functions,
             derived,
             SourceColumns {
                 alias: source.alias,
@@ -60,12 +62,19 @@ pub(super) fn execute<'a, T: GStore>(
 
 fn rows<'a, T: GStore>(
     storage: &'a T,
+    functions: &'a [CustomFunctionPlan],
     derived: &'a DerivedSourcePlan,
     source: SourceColumns<'a>,
     evaluation_context: Option<&Rc<RowContext<'a>>>,
 ) -> Result<SourceRows<'a>> {
     let columns = Rc::clone(&source.names);
-    let rows = query::execute(storage, &derived.query, evaluation_context.map(Rc::clone))?.map({
+    let rows = query::execute(
+        storage,
+        functions,
+        &derived.query,
+        evaluation_context.map(Rc::clone),
+    )?
+    .map({
         let columns = Rc::clone(&columns);
 
         move |row| {

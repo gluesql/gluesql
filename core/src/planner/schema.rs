@@ -9,7 +9,7 @@ use {
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
             OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan, ProjectPlan,
             ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SourcePlan,
-            StatementPlan, ValuesOrderByPlan,
+            StatementPlan, StatementPlanKind, ValuesOrderByPlan,
         },
         result::Result,
         store::Store,
@@ -21,9 +21,9 @@ pub fn fetch_schema_map<T: Store + ?Sized>(
     storage: &T,
     statement: &StatementPlan,
 ) -> Result<HashMap<String, Schema>> {
-    match statement {
-        StatementPlan::Query(query) => scan_query(storage, query),
-        StatementPlan::Insert {
+    match &statement.kind {
+        StatementPlanKind::Query(query) => scan_query(storage, query),
+        StatementPlanKind::Insert {
             table_name, source, ..
         } => {
             let table_schema = storage
@@ -36,7 +36,7 @@ pub fn fetch_schema_map<T: Store + ?Sized>(
 
             Ok(schema_list)
         }
-        StatementPlan::CreateTable { name, source, .. } => {
+        StatementPlanKind::CreateTable { name, source, .. } => {
             let table_schema = storage
                 .fetch_schema(name)?
                 .map_or_else(HashMap::new, |schema| {
@@ -50,7 +50,7 @@ pub fn fetch_schema_map<T: Store + ?Sized>(
 
             Ok(schema_list)
         }
-        StatementPlan::DropTable { names, .. } => {
+        StatementPlanKind::DropTable { names, .. } => {
             let mut schema_map = HashMap::new();
             for table_name in names {
                 if let Some(schema) = storage.fetch_schema(table_name)? {
@@ -60,7 +60,7 @@ pub fn fetch_schema_map<T: Store + ?Sized>(
 
             Ok(schema_map)
         }
-        StatementPlan::Update {
+        StatementPlanKind::Update {
             table_name,
             selection,
             ..
@@ -76,7 +76,7 @@ pub fn fetch_schema_map<T: Store + ?Sized>(
             };
             Ok(table_schema.into_iter().chain(selection_schema).collect())
         }
-        StatementPlan::Delete {
+        StatementPlanKind::Delete {
             table_name,
             selection,
         } => {

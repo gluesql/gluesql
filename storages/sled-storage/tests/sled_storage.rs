@@ -92,3 +92,15 @@ generate_alter_table_index_tests!(test, SledTester);
 generate_transaction_alter_table_tests!(test, SledTester);
 generate_transaction_index_tests!(test, SledTester);
 generate_metadata_index_tests!(test, SledTester);
+
+#[test]
+fn planner_rejects_unsupported_custom_functions() {
+    let mut tester = SledTester::new("planner_custom_function");
+    let result = tester.get_glue().plan("SELECT missing_function()");
+    assert_eq!(
+        result,
+        Err(gluesql_core::prelude::Error::StorageMsg(
+            "[Storage] CustomFunction is not supported".to_owned(),
+        )),
+    );
+}

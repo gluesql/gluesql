@@ -174,6 +174,12 @@ pub enum EvaluateError {
     #[error("unsupported custom function in subqueries")]
     UnsupportedCustomFunction,
 
+    #[error("custom function has not been planned: {0}")]
+    UnplannedCustomFunction(String),
+
+    #[error("invalid custom function index: {0}")]
+    InvalidCustomFunctionIndex(usize),
+
     #[error(r#"The function "{function_name}" requires at least {required_minimum} argument(s), but {found} were provided."#)]
     FunctionRequiresMoreArguments {
         function_name: String,

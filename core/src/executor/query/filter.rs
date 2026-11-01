@@ -6,7 +6,7 @@ use {
     },
     crate::{
         executor::{context::RowContext, filter::check_expr},
-        plan::{FilterInputPlan, FilterPlan},
+        plan::{CustomFunctionPlan, FilterInputPlan, FilterPlan},
         result::Result,
         store::GStore,
     },
@@ -15,6 +15,7 @@ use {
 
 pub(super) fn execute<'a, T>(
     storage: &'a T,
+    functions: &'a [CustomFunctionPlan],
     plan: &'a FilterPlan,
     filter_context: Option<&Rc<RowContext<'a>>>,
 ) -> Result<SelectedRows<'a>>
@@ -23,11 +24,15 @@ where
 {
     let FilterPlan { input, expr } = plan;
     let SelectedRows { sources, rows } = match input {
-        FilterInputPlan::Source(source) => source::execute(storage, source)?
-            .rows(None)?
+        FilterInputPlan::Source(source) => source::execute(storage, functions, source)?
+            .rows(filter_context.map(Rc::clone))?
             .into_selected(None),
-        FilterInputPlan::InnerJoin(join) => inner::execute(storage, join, filter_context)?,
-        FilterInputPlan::LeftOuterJoin(join) => left_outer::execute(storage, join, filter_context)?,
+        FilterInputPlan::InnerJoin(join) => {
+            inner::execute(storage, functions, join, filter_context)?
+        }
+        FilterInputPlan::LeftOuterJoin(join) => {
+            left_outer::execute(storage, functions, join, filter_context)?
+        }
     };
     let filter_context = filter_context.map(Rc::clone);
     let rows = rows.filter_map(move |context| {
@@ -43,7 +48,7 @@ where
             None => Some(Rc::clone(&context)),
         };
 
-        match check_expr(storage, evaluate_context.as_ref(), None, expr) {
+        match check_expr(storage, functions, evaluate_context.as_ref(), None, expr) {
             Ok(true) => Some(Ok(context)),
             Ok(false) => None,
             Err(error) => Some(Err(error)),

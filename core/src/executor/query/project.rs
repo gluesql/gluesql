@@ -14,7 +14,7 @@ use {
             context::{AggregateContext, AggregateValues, RowContext},
             evaluate::evaluate,
         },
-        plan::{ProjectInputPlan, ProjectPlan, ProjectionPlan, SelectItemPlan},
+        plan::{CustomFunctionPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, SelectItemPlan},
         result::Result,
         store::GStore,
     },
@@ -33,6 +33,7 @@ pub(super) struct ProjectedRows<'a> {
 
 pub(super) fn execute<'a, T>(
     storage: &'a T,
+    functions: &'a [CustomFunctionPlan],
     plan: &'a ProjectPlan,
     filter_context: Option<Rc<RowContext<'a>>>,
 ) -> Result<ProjectedRows<'a>>
@@ -42,8 +43,8 @@ where
     let ProjectPlan { input, projection } = plan;
     let (sources, rows): (SelectedSources<'a>, ProjectInputIter<'a>) = match input {
         ProjectInputPlan::Source(source) => {
-            let SelectedRows { sources, rows } = source::execute(storage, source)?
-                .rows(None)?
+            let SelectedRows { sources, rows } = source::execute(storage, functions, source)?
+                .rows(filter_context.as_ref().map(Rc::clone))?
                 .into_selected(None);
             let rows = rows.map(|context| {
                 context.map(|context| AggregateContext {
@@ -56,7 +57,7 @@ where
         }
         ProjectInputPlan::InnerJoin(join) => {
             let SelectedRows { sources, rows } =
-                inner::execute(storage, join, filter_context.as_ref())?;
+                inner::execute(storage, functions, join, filter_context.as_ref())?;
             let rows = rows.map(|context| {
                 context.map(|context| AggregateContext {
                     aggregated: None,
@@ -68,7 +69,7 @@ where
         }
         ProjectInputPlan::LeftOuterJoin(join) => {
             let SelectedRows { sources, rows } =
-                left_outer::execute(storage, join, filter_context.as_ref())?;
+                left_outer::execute(storage, functions, join, filter_context.as_ref())?;
             let rows = rows.map(|context| {
                 context.map(|context| AggregateContext {
                     aggregated: None,
@@ -80,7 +81,7 @@ where
         }
         ProjectInputPlan::Filter(filter) => {
             let SelectedRows { sources, rows } =
-                filter::execute(storage, filter, filter_context.as_ref())?;
+                filter::execute(storage, functions, filter, filter_context.as_ref())?;
             let rows = rows.map(|context| {
                 context.map(|context| AggregateContext {
                     aggregated: None,
@@ -92,14 +93,14 @@ where
         }
         ProjectInputPlan::Aggregation(aggregation) => {
             let AggregatedRows { sources, rows } =
-                aggregation::execute(storage, aggregation, filter_context.as_ref())?;
+                aggregation::execute(storage, functions, aggregation, filter_context.as_ref())?;
             let rows = rows.into_iter().map(Ok);
 
             (sources, Box::new(rows))
         }
         ProjectInputPlan::Having(having) => {
             let AggregatedRows { sources, rows } =
-                having::execute(storage, having, filter_context.as_ref())?;
+                having::execute(storage, functions, having, filter_context.as_ref())?;
             let rows = rows.into_iter().map(Ok);
 
             (sources, Box::new(rows))
@@ -153,9 +154,14 @@ where
                             );
                         }
                         SelectItemPlan::Expr { expr, label } => {
-                            let value: Value =
-                                evaluate(storage, context.as_ref(), aggregated.as_ref(), expr)?
-                                    .try_into()?;
+                            let value: Value = evaluate(
+                                storage,
+                                functions,
+                                context.as_ref(),
+                                aggregated.as_ref(),
+                                expr,
+                            )?
+                            .try_into()?;
 
                             entries.push((label, value));
                         }

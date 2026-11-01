@@ -190,7 +190,7 @@ mod tests {
         plan::{
             DistinctInputPlan, DistinctPlan, HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan,
             InnerJoinPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SourcePlan,
-            StatementPlan, TableAccessPlan, TableSourcePlan,
+            StatementPlanKind, TableAccessPlan, TableSourcePlan,
         },
         query_builder::{
             Build, QueryBuilderError, SelectItemList, col, select::BuildQuery, table,
@@ -311,9 +311,10 @@ mod tests {
                 ),
             };
 
-            Ok(StatementPlan::Query(QueryPlan::Distinct(DistinctPlan {
+            Ok(StatementPlanKind::Query(QueryPlan::Distinct(DistinctPlan {
                 input: DistinctInputPlan::Project(project),
-            })))
+            }))
+            .into())
         };
         assert_eq!(actual, expected);
     }

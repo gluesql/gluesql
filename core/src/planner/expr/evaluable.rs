@@ -251,7 +251,7 @@ mod tests {
         crate::{
             mock::run,
             parse_sql::{parse_expr, parse_query},
-            plan::{ExprPlan, QueryPlan, StatementPlan},
+            plan::{ExprPlan, QueryPlan, StatementPlan, StatementPlanKind},
             planner::{context::Context, fetch_schema_map, plan_schemaless},
             query_builder::{Build, table},
             translate::{NO_PARAMS, translate_expr, translate_query},
@@ -288,8 +288,8 @@ mod tests {
     }
 
     fn check_query_statement(context: Option<&Rc<Context<'_>>>, statement: StatementPlan) -> bool {
-        match statement {
-            StatementPlan::Query(query) => check_query(context, &query),
+        match statement.kind {
+            StatementPlanKind::Query(query) => check_query(context, &query),
             _ => false,
         }
     }

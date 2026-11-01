@@ -6,7 +6,7 @@ use {
             context::{AggregateContext, AggregateValues, RowContext},
             evaluate::evaluate,
         },
-        plan::{AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan},
+        plan::{AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, CustomFunctionPlan},
         result::Result,
         store::GStore,
     },
@@ -323,13 +323,19 @@ impl<'a> GroupState<'a> {
 
 pub struct State<'a, T: GStore> {
     storage: &'a T,
+    functions: &'a [CustomFunctionPlan],
     slot_count: usize,
     groups: Vec<GroupState<'a>>,
     group_indexes: HashMap<Vec<Value>, usize>,
 }
 
 impl<'a, T: GStore> State<'a, T> {
-    pub fn new(storage: &'a T, slot_count: usize, global: bool) -> Self {
+    pub fn new(
+        storage: &'a T,
+        functions: &'a [CustomFunctionPlan],
+        slot_count: usize,
+        global: bool,
+    ) -> Self {
         let mut groups = Vec::new();
         let mut group_indexes = HashMap::new();
 
@@ -340,6 +346,7 @@ impl<'a, T: GStore> State<'a, T> {
 
         Self {
             storage,
+            functions,
             slot_count,
             groups,
             group_indexes,
@@ -386,9 +393,14 @@ impl<'a, T: GStore> State<'a, T> {
             | AggregateFunctionPlan::Max(expr)
             | AggregateFunctionPlan::Avg(expr)
             | AggregateFunctionPlan::Variance(expr)
-            | AggregateFunctionPlan::Stdev(expr) => {
-                evaluate(self.storage, Some(filter_context), None, expr)?.try_into()?
-            }
+            | AggregateFunctionPlan::Stdev(expr) => evaluate(
+                self.storage,
+                self.functions,
+                Some(filter_context),
+                None,
+                expr,
+            )?
+            .try_into()?,
         };
 
         // SQL eliminates NULL before applying a set function, so every aggregate but

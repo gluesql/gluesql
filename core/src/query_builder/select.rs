@@ -18,7 +18,7 @@ use {
         plan::{
             AggregationInputPlan, AggregationPlan, FilterInputPlan, FilterPlan, HavingPlan,
             ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SourcePlan,
-            StatementPlan,
+            StatementPlan, StatementPlanKind,
         },
         result::Result,
     },
@@ -119,6 +119,6 @@ impl<T: BuildQueryPlan> Build for T {
     fn build(self) -> Result<StatementPlan> {
         let query = self.build_query_plan()?;
 
-        Ok(StatementPlan::Query(query))
+        Ok(StatementPlanKind::Query(query).into())
     }
 }

@@ -10,9 +10,9 @@ use {
         query,
     },
     crate::{
-        data::{CustomFunction, Interval, Row, Value},
+        data::{Interval, Row, Value},
         mock::MockStorage,
-        plan::{ExprPlan, FunctionExprPlan, ProjectionPlan, plan_scalar_expr},
+        plan::{CustomFunctionPlan, ExprPlan, FunctionExprPlan, ProjectionPlan},
         result::{Error, Result},
         store::GStore,
     },
@@ -24,6 +24,7 @@ pub use {error::EvaluateError, evaluated::Evaluated};
 
 pub fn evaluate<'a, 'b, T>(
     storage: &'a T,
+    functions: &'a [CustomFunctionPlan],
     context: Option<&Rc<RowContext<'b>>>,
     aggregated: Option<&Rc<AggregateValues>>,
     expr: &'a ExprPlan,
@@ -32,7 +33,7 @@ where
     'b: 'a,
     T: GStore,
 {
-    evaluate_inner(Some(storage), context, aggregated, expr)
+    evaluate_inner(Some(storage), functions, context, aggregated, expr)
 }
 
 pub fn evaluate_stateless<'a, 'b: 'a>(
@@ -42,11 +43,12 @@ pub fn evaluate_stateless<'a, 'b: 'a>(
     let context = context.map(Rc::new);
     let storage: Option<&MockStorage> = None;
 
-    evaluate_inner(storage, context.as_ref(), None, expr)
+    evaluate_inner(storage, &[], context.as_ref(), None, expr)
 }
 
 fn evaluate_inner<'a, 'b, T>(
     storage: Option<&'a T>,
+    functions: &'a [CustomFunctionPlan],
     context: Option<&Rc<RowContext<'b>>>,
     aggregated: Option<&Rc<AggregateValues>>,
     expr: &'a ExprPlan,
@@ -55,7 +57,7 @@ where
     'b: 'a,
     T: GStore,
 {
-    let eval = |expr| evaluate_inner(storage, context, aggregated, expr);
+    let eval = |expr| evaluate_inner(storage, functions, context, aggregated, expr);
 
     match expr {
         ExprPlan::Literal(literal) => Ok(expr::literal(literal)),
@@ -95,7 +97,7 @@ where
                 return Err(EvaluateError::SchemalessProjectionForSubQuery.into());
             }
 
-            let evaluations = query::execute(storage, query, context.cloned())?
+            let evaluations = query::execute(storage, functions, query, context.cloned())?
                 .map(|row| {
                     let values = row?.into_values();
                     if values.len() > 1 {
@@ -141,7 +143,9 @@ where
             }
             None => Err(EvaluateError::AggregateSlotValueMissing(aggr.clone()).into()),
         },
-        ExprPlan::Function(func) => evaluate_function(storage, context, aggregated, func),
+        ExprPlan::Function(func) => {
+            evaluate_function(storage, functions, context, aggregated, func)
+        }
         ExprPlan::InList {
             expr,
             list,
@@ -175,7 +179,8 @@ where
                 return Err(EvaluateError::SchemalessProjectionForInSubQuery.into());
             }
             let target = eval(target_expr)?;
-            let (labels, rows) = query::execute_with_labels(storage, subquery, context.cloned())?;
+            let (labels, rows) =
+                query::execute_with_labels(storage, functions, subquery, context.cloned())?;
 
             if labels.len() > 1 {
                 return Err(EvaluateError::InSubqueryMustReturnOneColumn.into());
@@ -256,7 +261,7 @@ where
         ExprPlan::Exists { subquery, negated } => {
             let storage = storage.ok_or(EvaluateError::ExistsSubqueryNotAllowedInStatelessExpr)?;
 
-            let exists = query::execute(storage, subquery, context.cloned())?
+            let exists = query::execute(storage, functions, subquery, context.cloned())?
                 .next()
                 .transpose()?
                 .is_some();
@@ -326,13 +331,14 @@ where
 
 fn evaluate_function<'a, 'b: 'a, T: GStore>(
     storage: Option<&'a T>,
+    functions: &'a [CustomFunctionPlan],
     context: Option<&Rc<RowContext<'b>>>,
     aggregated: Option<&Rc<AggregateValues>>,
     func: &'a FunctionExprPlan,
 ) -> Result<Evaluated<'a>> {
     use function as f;
 
-    let eval = |expr| evaluate_inner(storage, context, aggregated, expr);
+    let eval = |expr| evaluate_inner(storage, functions, context, aggregated, expr);
 
     let name = func.to_string();
 
@@ -342,16 +348,16 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
             let exprs = exprs.iter().map(eval).collect::<Result<Vec<_>>>()?;
             f::concat(exprs)
         }
-        FunctionExprPlan::Custom { name, exprs } => {
-            let CustomFunction {
-                func_name,
-                args,
-                body,
-            } = storage
-                .ok_or(EvaluateError::UnsupportedCustomFunction)?
-                .fetch_function(name)?
-                .ok_or_else(|| EvaluateError::UnsupportedFunction(name.clone()))?;
-
+        FunctionExprPlan::UnplannedCustom { name, .. } => {
+            return Err(EvaluateError::UnplannedCustomFunction(name.clone()).into());
+        }
+        FunctionExprPlan::Custom { function_id, exprs } => {
+            let storage = storage.ok_or(EvaluateError::UnsupportedCustomFunction)?;
+            let definition = functions
+                .get(*function_id)
+                .ok_or(EvaluateError::InvalidCustomFunctionIndex(*function_id))?;
+            let args = &definition.args;
+            let func_name = &definition.name;
             let min = args.iter().filter(|arg| arg.default.is_none()).count();
             let max = args.len();
 
@@ -378,10 +384,7 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
                             found: exprs.len(),
                         }
                     })?;
-                    let default = plan_scalar_expr(default.clone());
-
-                    evaluate_inner(storage, context, aggregated, &default)?
-                        .try_into_value(&arg.data_type, true)
+                    evaluate_stateless(None, default)?.try_into_value(&arg.data_type, true)
                 }?;
 
                 pairs.push((arg.name.clone(), value));
@@ -392,11 +395,15 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
                 columns: columns.into(),
                 values,
             });
-            let context = RowContext::new(name, row, None);
-            let context = Some(Rc::new(context));
-
-            let body = plan_scalar_expr(body.clone());
-            let evaluated = evaluate_inner(storage, context.as_ref(), None, &body)?;
+            let alias = definition.name.to_uppercase();
+            let context = Rc::new(RowContext::new(&alias, row, None));
+            let evaluated = evaluate_inner(
+                Some(storage),
+                functions,
+                Some(&context),
+                None,
+                &definition.body,
+            )?;
             let value = evaluated.try_into()?;
 
             return Ok(Evaluated::Value(Cow::Owned(value)));
@@ -752,10 +759,13 @@ mod tests {
             ast::{Expr, Projection, SelectItem, SetExpr, Statement},
             executor::context::AggregateValues,
             mock::MockStorage,
-            parse_sql::parse,
-            plan::{AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan},
+            parse_sql::{parse, parse_expr},
+            plan::{
+                AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan,
+                FunctionExprPlan,
+            },
             result::Error,
-            translate::translate,
+            translate::{NO_PARAMS, translate, translate_expr},
         },
         std::rc::Rc,
     };
@@ -807,7 +817,7 @@ mod tests {
         let storage = MockStorage::default();
         let aggregated = Rc::new(AggregateValues::new(Vec::new()));
 
-        let result = evaluate(&storage, None, Some(&aggregated), &expr);
+        let result = evaluate(&storage, &[], None, Some(&aggregated), &expr);
 
         assert_eq!(
             result,
@@ -815,5 +825,29 @@ mod tests {
                 Box::new(aggregate)
             )))
         );
+    }
+
+    #[test]
+    fn rejects_unplanned_calls_and_invalid_indices_before_arguments() {
+        let storage = MockStorage::default();
+        let unplanned = ExprPlan::from(
+            translate_expr(&parse_expr("absent(missing_column)").unwrap(), NO_PARAMS).unwrap(),
+        );
+        let invalid_index = ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+            function_id: 10,
+            exprs: vec![ExprPlan::Identifier("missing_column".to_owned())],
+        }));
+        for (expr, expected) in [
+            (
+                unplanned,
+                EvaluateError::UnplannedCustomFunction("ABSENT".to_owned()),
+            ),
+            (invalid_index, EvaluateError::InvalidCustomFunctionIndex(10)),
+        ] {
+            assert_eq!(
+                evaluate(&storage, &[], None, None, &expr),
+                Err(Error::Evaluate(expected))
+            );
+        }
     }
 }

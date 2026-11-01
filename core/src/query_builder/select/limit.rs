@@ -218,7 +218,7 @@ mod tests {
             plan::{
                 HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan, LimitInputPlan,
                 LimitPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SourcePlan,
-                StatementPlan, TableAccessPlan, TableSourcePlan,
+                StatementPlanKind, TableAccessPlan, TableSourcePlan,
             },
             query_builder::{Build, SelectItemList, col, num, table, test_query_builder},
         },
@@ -341,7 +341,7 @@ mod tests {
                 count: num(100).build_expr_plan().unwrap(),
             };
 
-            Ok(StatementPlan::Query(QueryPlan::Limit(limit)))
+            Ok(StatementPlanKind::Query(QueryPlan::Limit(limit)).into())
         };
         assert_eq!(actual, expected);
 

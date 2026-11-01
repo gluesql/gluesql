@@ -192,7 +192,7 @@ mod tests {
             plan::{
                 FilterInputPlan, FilterPlan, HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan,
                 InnerJoinPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
-                SourcePlan, StatementPlan, TableAccessPlan, TableSourcePlan,
+                SourcePlan, StatementPlanKind, TableAccessPlan, TableSourcePlan,
             },
             query_builder::{Build, SelectItemList, col, expr, table, test_query_builder},
         },
@@ -294,7 +294,7 @@ mod tests {
                 ),
             };
 
-            Ok(StatementPlan::Query(QueryPlan::Project(project)))
+            Ok(StatementPlanKind::Query(QueryPlan::Project(project)).into())
         };
         assert_eq!(actual, expected);
 

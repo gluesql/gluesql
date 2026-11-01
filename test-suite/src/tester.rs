@@ -3,7 +3,7 @@ use {
         ast::*,
         plan::{
             AggregationInputPlan, AggregationPlan, ExprPlan, HavingPlan, ProjectInputPlan,
-            ProjectPlan, QueryPlan, SourcePlan, StatementPlan, TableAccessPlan,
+            ProjectPlan, QueryPlan, SourcePlan, StatementPlan, StatementPlanKind, TableAccessPlan,
         },
         prelude::{Glue, Payload, Result},
         store::{GStore, GStoreMut, Planner},
@@ -93,8 +93,8 @@ fn find_indexes(statement: &StatementPlan) -> Vec<&TableAccessPlan> {
             .unwrap_or_default()
     }
 
-    match statement {
-        StatementPlan::Query(query) => find_query_indexes(query),
+    match &statement.kind {
+        StatementPlanKind::Query(query) => find_query_indexes(query),
         _ => vec![],
     }
 }

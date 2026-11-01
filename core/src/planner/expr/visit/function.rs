@@ -1,8 +1,9 @@
 use {
-    super::{try_visit_expr, visit_mut_expr},
+    super::{try_visit_expr, try_visit_mut_expr, visit_mut_expr},
     crate::{
         plan::{ExprPlan, FunctionExprPlan},
         planner::PlannerError,
+        result::Error,
     },
 };
 
@@ -85,6 +86,7 @@ macro_rules! visit_function_children {
             FunctionExprPlan::Coalesce(exprs)
             | FunctionExprPlan::Concat(exprs)
             | FunctionExprPlan::Greatest(exprs)
+            | FunctionExprPlan::UnplannedCustom { exprs, .. }
             | FunctionExprPlan::Custom { exprs, .. } => {
                 for e in exprs {
                     $apply!($visit_expr(e, $f));
@@ -242,6 +244,14 @@ where
     F: FnMut(&ExprPlan) -> Result<(), PlannerError>,
 {
     visit_function_children!(func, try_visit_expr, f, apply_try);
+    Ok(())
+}
+
+pub(super) fn try_visit_mut_function<F>(func: &mut FunctionExprPlan, f: &mut F) -> Result<(), Error>
+where
+    F: FnMut(&mut ExprPlan) -> Result<(), Error>,
+{
+    visit_function_children!(func, try_visit_mut_expr, f, apply_try);
     Ok(())
 }
 

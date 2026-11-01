@@ -278,18 +278,18 @@ mod tests {
                 ExprPlan, FilterInputPlan, InnerJoinInputPlan, InnerJoinPlan,
                 JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan,
                 LeftOuterJoinPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan, ProjectionPlan,
-                SelectItemPlan, SelectOrderByPlan, SourcePlan, StatementPlan, TableAccessPlan,
-                TableSourcePlan, ValuesOrderByPlan,
+                SelectItemPlan, SelectOrderByPlan, SourcePlan, StatementPlan, StatementPlanKind,
+                TableAccessPlan, TableSourcePlan, ValuesOrderByPlan,
             },
             translate::translate,
         },
         pretty_assertions::assert_eq,
     };
 
-    fn statement_plan(sql: &str) -> StatementPlan {
+    fn statement_plan(sql: &str) -> StatementPlanKind {
         parse(sql)
             .and_then(|mut statements| translate(&statements.remove(0)))
-            .map(StatementPlan::from)
+            .map(|statement| StatementPlan::from(statement).kind)
             .unwrap()
     }
 
@@ -308,8 +308,8 @@ mod tests {
         }
     }
 
-    fn project_statement(input: ProjectInputPlan) -> StatementPlan {
-        StatementPlan::Query(QueryPlan::Project(ProjectPlan {
+    fn project_statement(input: ProjectInputPlan) -> StatementPlanKind {
+        StatementPlanKind::Query(QueryPlan::Project(ProjectPlan {
             input,
             projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
         }))
@@ -409,7 +409,7 @@ mod tests {
             input: OffsetInputPlan::Distinct(distinct),
             count: ExprPlan::Literal(Literal::Number(2.into())),
         };
-        let expected = StatementPlan::Query(QueryPlan::Limit(LimitPlan {
+        let expected = StatementPlanKind::Query(QueryPlan::Limit(LimitPlan {
             input: LimitInputPlan::Offset(offset),
             count: ExprPlan::Literal(Literal::Number(3.into())),
         }));
@@ -486,7 +486,7 @@ mod tests {
         ] {
             let statement = statement_plan(sql);
             let actual = match &statement {
-                StatementPlan::Query(query) => query.project(),
+                StatementPlanKind::Query(query) => query.project(),
                 _ => None,
             };
 
@@ -505,7 +505,7 @@ mod tests {
         ] {
             let statement = statement_plan(sql);
             let actual = match &statement {
-                StatementPlan::Query(query) => query.project(),
+                StatementPlanKind::Query(query) => query.project(),
                 _ => None,
             };
 
@@ -517,43 +517,43 @@ mod tests {
     fn query_plan_wraps_only_present_terminal_stages() {
         assert!(matches!(
             statement_plan("SELECT * FROM Item"),
-            StatementPlan::Query(QueryPlan::Project(_))
+            StatementPlanKind::Query(QueryPlan::Project(_))
         ));
         assert!(matches!(
             statement_plan("SELECT * FROM Item ORDER BY id"),
-            StatementPlan::Query(QueryPlan::SelectOrderBy(_))
+            StatementPlanKind::Query(QueryPlan::SelectOrderBy(_))
         ));
         assert!(matches!(
             statement_plan("SELECT * FROM Item LIMIT 3"),
-            StatementPlan::Query(QueryPlan::Limit(LimitPlan {
+            StatementPlanKind::Query(QueryPlan::Limit(LimitPlan {
                 input: LimitInputPlan::Project(_),
                 ..
             }))
         ));
         assert!(matches!(
             statement_plan("SELECT * FROM Item OFFSET 2"),
-            StatementPlan::Query(QueryPlan::Offset(OffsetPlan {
+            StatementPlanKind::Query(QueryPlan::Offset(OffsetPlan {
                 input: OffsetInputPlan::Project(_),
                 ..
             }))
         ));
         assert!(matches!(
             statement_plan("SELECT * FROM Item ORDER BY id OFFSET 2"),
-            StatementPlan::Query(QueryPlan::Offset(OffsetPlan {
+            StatementPlanKind::Query(QueryPlan::Offset(OffsetPlan {
                 input: OffsetInputPlan::SelectOrderBy(_),
                 ..
             }))
         ));
         assert!(matches!(
             statement_plan("SELECT * FROM Item ORDER BY id LIMIT 3"),
-            StatementPlan::Query(QueryPlan::Limit(LimitPlan {
+            StatementPlanKind::Query(QueryPlan::Limit(LimitPlan {
                 input: LimitInputPlan::SelectOrderBy(_),
                 ..
             }))
         ));
         assert!(matches!(
             statement_plan("SELECT * FROM Item LIMIT 3 OFFSET 2"),
-            StatementPlan::Query(QueryPlan::Limit(LimitPlan {
+            StatementPlanKind::Query(QueryPlan::Limit(LimitPlan {
                 count: ExprPlan::Literal(Literal::Number(limit)),
                 input: LimitInputPlan::Offset(OffsetPlan {
                     count: ExprPlan::Literal(Literal::Number(offset)),
@@ -563,7 +563,7 @@ mod tests {
         ));
         assert!(matches!(
             statement_plan("SELECT * FROM Item ORDER BY id LIMIT 3 OFFSET 2"),
-            StatementPlan::Query(QueryPlan::Limit(LimitPlan {
+            StatementPlanKind::Query(QueryPlan::Limit(LimitPlan {
                 input: LimitInputPlan::Offset(OffsetPlan {
                     input: OffsetInputPlan::SelectOrderBy(SelectOrderByPlan { .. }),
                     ..
@@ -577,19 +577,19 @@ mod tests {
     fn query_plan_places_select_distinct_after_order_by() {
         assert!(matches!(
             statement_plan("SELECT DISTINCT * FROM Item"),
-            StatementPlan::Query(QueryPlan::Distinct(DistinctPlan {
+            StatementPlanKind::Query(QueryPlan::Distinct(DistinctPlan {
                 input: DistinctInputPlan::Project(_),
             }))
         ));
         assert!(matches!(
             statement_plan("SELECT DISTINCT * FROM Item ORDER BY id"),
-            StatementPlan::Query(QueryPlan::Distinct(DistinctPlan {
+            StatementPlanKind::Query(QueryPlan::Distinct(DistinctPlan {
                 input: DistinctInputPlan::SelectOrderBy(_),
             }))
         ));
         assert!(matches!(
             statement_plan("SELECT DISTINCT * FROM Item OFFSET 2"),
-            StatementPlan::Query(QueryPlan::Offset(OffsetPlan {
+            StatementPlanKind::Query(QueryPlan::Offset(OffsetPlan {
                 input: OffsetInputPlan::Distinct(DistinctPlan {
                     input: DistinctInputPlan::Project(_),
                 }),
@@ -598,7 +598,7 @@ mod tests {
         ));
         assert!(matches!(
             statement_plan("SELECT DISTINCT * FROM Item ORDER BY id OFFSET 2"),
-            StatementPlan::Query(QueryPlan::Offset(OffsetPlan {
+            StatementPlanKind::Query(QueryPlan::Offset(OffsetPlan {
                 input: OffsetInputPlan::Distinct(DistinctPlan {
                     input: DistinctInputPlan::SelectOrderBy(_),
                 }),
@@ -607,7 +607,7 @@ mod tests {
         ));
         assert!(matches!(
             statement_plan("SELECT DISTINCT * FROM Item LIMIT 3"),
-            StatementPlan::Query(QueryPlan::Limit(LimitPlan {
+            StatementPlanKind::Query(QueryPlan::Limit(LimitPlan {
                 input: LimitInputPlan::Distinct(DistinctPlan {
                     input: DistinctInputPlan::Project(_),
                 }),
@@ -616,7 +616,7 @@ mod tests {
         ));
         assert!(matches!(
             statement_plan("SELECT DISTINCT * FROM Item ORDER BY id LIMIT 3"),
-            StatementPlan::Query(QueryPlan::Limit(LimitPlan {
+            StatementPlanKind::Query(QueryPlan::Limit(LimitPlan {
                 input: LimitInputPlan::Distinct(DistinctPlan {
                     input: DistinctInputPlan::SelectOrderBy(_),
                 }),
@@ -625,7 +625,7 @@ mod tests {
         ));
         assert!(matches!(
             statement_plan("SELECT DISTINCT * FROM Item LIMIT 3 OFFSET 2"),
-            StatementPlan::Query(QueryPlan::Limit(LimitPlan {
+            StatementPlanKind::Query(QueryPlan::Limit(LimitPlan {
                 input: LimitInputPlan::Offset(OffsetPlan {
                     input: OffsetInputPlan::Distinct(DistinctPlan {
                         input: DistinctInputPlan::Project(_),
@@ -637,7 +637,7 @@ mod tests {
         ));
         assert!(matches!(
             statement_plan("SELECT DISTINCT * FROM Item ORDER BY id LIMIT 3 OFFSET 2"),
-            StatementPlan::Query(QueryPlan::Limit(LimitPlan {
+            StatementPlanKind::Query(QueryPlan::Limit(LimitPlan {
                 input: LimitInputPlan::Offset(OffsetPlan {
                     input: OffsetInputPlan::Distinct(DistinctPlan {
                         input: DistinctInputPlan::SelectOrderBy(_),
@@ -653,43 +653,43 @@ mod tests {
     fn query_plan_preserves_values_terminal_stage_relations() {
         assert!(matches!(
             statement_plan("VALUES (1)"),
-            StatementPlan::Query(QueryPlan::Values(_))
+            StatementPlanKind::Query(QueryPlan::Values(_))
         ));
         assert!(matches!(
             statement_plan("VALUES (1) ORDER BY column1"),
-            StatementPlan::Query(QueryPlan::ValuesOrderBy(_))
+            StatementPlanKind::Query(QueryPlan::ValuesOrderBy(_))
         ));
         assert!(matches!(
             statement_plan("VALUES (1) OFFSET 2"),
-            StatementPlan::Query(QueryPlan::Offset(OffsetPlan {
+            StatementPlanKind::Query(QueryPlan::Offset(OffsetPlan {
                 input: OffsetInputPlan::Values(_),
                 ..
             }))
         ));
         assert!(matches!(
             statement_plan("VALUES (1) ORDER BY column1 OFFSET 2"),
-            StatementPlan::Query(QueryPlan::Offset(OffsetPlan {
+            StatementPlanKind::Query(QueryPlan::Offset(OffsetPlan {
                 input: OffsetInputPlan::ValuesOrderBy(_),
                 ..
             }))
         ));
         assert!(matches!(
             statement_plan("VALUES (1) LIMIT 3"),
-            StatementPlan::Query(QueryPlan::Limit(LimitPlan {
+            StatementPlanKind::Query(QueryPlan::Limit(LimitPlan {
                 input: LimitInputPlan::Values(_),
                 ..
             }))
         ));
         assert!(matches!(
             statement_plan("VALUES (1) ORDER BY column1 LIMIT 3"),
-            StatementPlan::Query(QueryPlan::Limit(LimitPlan {
+            StatementPlanKind::Query(QueryPlan::Limit(LimitPlan {
                 input: LimitInputPlan::ValuesOrderBy(_),
                 ..
             }))
         ));
         assert!(matches!(
             statement_plan("VALUES (1) LIMIT 3 OFFSET 2"),
-            StatementPlan::Query(QueryPlan::Limit(LimitPlan {
+            StatementPlanKind::Query(QueryPlan::Limit(LimitPlan {
                 input: LimitInputPlan::Offset(OffsetPlan {
                     input: OffsetInputPlan::Values(_),
                     ..
@@ -699,7 +699,7 @@ mod tests {
         ));
         assert!(matches!(
             statement_plan("VALUES (1) ORDER BY column1 LIMIT 3 OFFSET 2"),
-            StatementPlan::Query(QueryPlan::Limit(LimitPlan {
+            StatementPlanKind::Query(QueryPlan::Limit(LimitPlan {
                 input: LimitInputPlan::Offset(OffsetPlan {
                     input: OffsetInputPlan::ValuesOrderBy(ValuesOrderByPlan { .. }),
                     ..

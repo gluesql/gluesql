@@ -1,6 +1,9 @@
 use {
     super::{Build, ExprNode},
-    crate::{plan::StatementPlan, result::Result},
+    crate::{
+        plan::{StatementPlan, StatementPlanKind},
+        result::Result,
+    },
 };
 
 #[derive(Clone, Debug)]
@@ -33,10 +36,11 @@ impl Build for DeleteNode<'_> {
             .map(ExprNode::build_expr_plan)
             .transpose()?;
 
-        Ok(StatementPlan::Delete {
+        Ok(StatementPlanKind::Delete {
             table_name,
             selection,
-        })
+        }
+        .into())
     }
 }
 

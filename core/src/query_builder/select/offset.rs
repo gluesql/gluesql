@@ -226,7 +226,7 @@ mod tests {
             plan::{
                 HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan,
                 OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan,
-                QueryPlan, SourcePlan, StatementPlan, TableAccessPlan, TableSourcePlan,
+                QueryPlan, SourcePlan, StatementPlanKind, TableAccessPlan, TableSourcePlan,
             },
             query_builder::{Build, SelectItemList, col, num, table, test_query_builder},
         },
@@ -338,7 +338,7 @@ mod tests {
                 count: num(100).build_expr_plan().unwrap(),
             };
 
-            Ok(StatementPlan::Query(QueryPlan::Offset(offset)))
+            Ok(StatementPlanKind::Query(QueryPlan::Offset(offset)).into())
         };
         assert_eq!(actual, expected);
 

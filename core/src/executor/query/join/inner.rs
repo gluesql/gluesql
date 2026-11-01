@@ -3,7 +3,7 @@ use {
     super::{JoinCandidates, condition, hash, nested_loop},
     crate::{
         executor::context::RowContext,
-        plan::{InnerJoinInputPlan, InnerJoinPlan},
+        plan::{CustomFunctionPlan, InnerJoinInputPlan, InnerJoinPlan},
         result::Result,
         store::GStore,
     },
@@ -12,6 +12,7 @@ use {
 
 pub(crate) fn execute<'a, T: GStore>(
     storage: &'a T,
+    functions: &'a [CustomFunctionPlan],
     plan: &'a InnerJoinPlan,
     filter_context: Option<&Rc<RowContext<'a>>>,
 ) -> Result<SelectedRows<'a>> {
@@ -19,11 +20,11 @@ pub(crate) fn execute<'a, T: GStore>(
         sources, groups, ..
     } = match &plan.input {
         InnerJoinInputPlan::NestedLoop(join) => {
-            nested_loop::execute(storage, join, filter_context)?
+            nested_loop::execute(storage, functions, join, filter_context)?
         }
-        InnerJoinInputPlan::Hash(join) => hash::execute(storage, join, filter_context)?,
+        InnerJoinInputPlan::Hash(join) => hash::execute(storage, functions, join, filter_context)?,
         InnerJoinInputPlan::Condition(condition) => {
-            condition::execute(storage, condition, filter_context)?
+            condition::execute(storage, functions, condition, filter_context)?
         }
     };
     let rows = groups.flat_map(|group| match group {

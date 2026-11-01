@@ -65,7 +65,7 @@ fn function_may_return_null(function: &FunctionExprPlan) -> bool {
     match function {
         Coalesce(exprs) => exprs.iter().all(may_return_null),
         IfNull { expr, then } => may_return_null(expr) && may_return_null(then),
-        NullIf { .. } | Custom { .. } => true,
+        NullIf { .. } | UnplannedCustom { .. } | Custom { .. } => true,
         Now() | CurrentDate() | CurrentTime() | CurrentTimestamp() | Pi() | GenerateUuid()
         | Rand(_) => false,
         Cast { expr, .. }

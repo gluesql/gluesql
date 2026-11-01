@@ -5,7 +5,7 @@ use {
             context::{AggregateContext, RowContext},
             filter::check_expr,
         },
-        plan::HavingPlan,
+        plan::{CustomFunctionPlan, HavingPlan},
         result::Result,
         store::GStore,
     },
@@ -14,6 +14,7 @@ use {
 
 pub(super) fn execute<'a, T>(
     storage: &'a T,
+    functions: &'a [CustomFunctionPlan],
     plan: &'a HavingPlan,
     filter_context: Option<&Rc<RowContext<'a>>>,
 ) -> Result<AggregatedRows<'a>>
@@ -21,7 +22,8 @@ where
     T: GStore,
 {
     let HavingPlan { input, expr } = plan;
-    let AggregatedRows { sources, rows } = aggregation::execute(storage, input, filter_context)?;
+    let AggregatedRows { sources, rows } =
+        aggregation::execute(storage, functions, input, filter_context)?;
     let mut filtered = Vec::new();
 
     for aggregate_context in rows {
@@ -36,7 +38,13 @@ where
             (None, None) => None,
         };
 
-        if check_expr(storage, context.as_ref(), aggregated.as_ref(), expr)? {
+        if check_expr(
+            storage,
+            functions,
+            context.as_ref(),
+            aggregated.as_ref(),
+            expr,
+        )? {
             filtered.push(AggregateContext { aggregated, next });
         }
     }

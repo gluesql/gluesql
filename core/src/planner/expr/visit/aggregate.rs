@@ -1,8 +1,9 @@
 use {
-    super::{try_visit_expr, visit_mut_expr},
+    super::{try_visit_expr, try_visit_mut_expr, visit_mut_expr},
     crate::{
         plan::{AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan},
         planner::PlannerError,
+        result::Error,
     },
 };
 
@@ -50,6 +51,17 @@ where
     F: FnMut(&ExprPlan) -> Result<(), PlannerError>,
 {
     visit_aggregate_children!(&aggr.func, try_visit_expr, f, apply_try);
+    Ok(())
+}
+
+pub(super) fn try_visit_mut_aggregate<F>(
+    aggr: &mut AggregateExprPlan,
+    f: &mut F,
+) -> Result<(), Error>
+where
+    F: FnMut(&mut ExprPlan) -> Result<(), Error>,
+{
+    visit_aggregate_children!(&mut aggr.func, try_visit_mut_expr, f, apply_try);
     Ok(())
 }
 

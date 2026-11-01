@@ -6,7 +6,7 @@ use {
     crate::{
         data::{Key, Row},
         executor::{context::RowContext, evaluate::evaluate, fetch::fetch_columns},
-        plan::{TableAccessPlan, TableSourcePlan},
+        plan::{CustomFunctionPlan, TableAccessPlan, TableSourcePlan},
         result::Result,
         store::GStore,
     },
@@ -15,6 +15,7 @@ use {
 
 pub(super) fn execute<'a, T: GStore>(
     storage: &'a T,
+    functions: &'a [CustomFunctionPlan],
     table: &'a TableSourcePlan,
 ) -> Result<PreparedSource<'a>> {
     let names = fetch_columns(storage, &table.name)?;
@@ -50,6 +51,7 @@ pub(super) fn execute<'a, T: GStore>(
     let rows = Box::new(move |evaluation_context: Option<Rc<RowContext<'a>>>| {
         rows(
             storage,
+            functions,
             table,
             SourceColumns {
                 alias: source.alias,
@@ -64,6 +66,7 @@ pub(super) fn execute<'a, T: GStore>(
 
 fn rows<'a, T: GStore>(
     storage: &'a T,
+    functions: &'a [CustomFunctionPlan],
     table: &'a TableSourcePlan,
     source: SourceColumns<'a>,
     evaluation_context: Option<&Rc<RowContext<'a>>>,
@@ -89,7 +92,7 @@ fn rows<'a, T: GStore>(
             let schema = storage.fetch_schema(&table.name)?.ok_or_else(|| {
                 QueryError::UnreachableTableSchemaMissingAfterPreparation(table.name.clone())
             })?;
-            let evaluated = evaluate(storage, evaluation_context, None, expr)?;
+            let evaluated = evaluate(storage, functions, evaluation_context, None, expr)?;
             let column_def = schema
                 .column_defs
                 .as_ref()
@@ -117,7 +120,7 @@ fn rows<'a, T: GStore>(
         } => {
             let predicate = match predicate {
                 Some(predicate) => {
-                    let evaluated = evaluate(storage, None, None, &predicate.expr)?;
+                    let evaluated = evaluate(storage, functions, None, None, &predicate.expr)?;
 
                     Some((&predicate.operator, evaluated.try_into()?))
                 }

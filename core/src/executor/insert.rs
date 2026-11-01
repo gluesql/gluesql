@@ -5,7 +5,7 @@ mod values;
 
 use crate::{
     data::{Key, Schema, Value},
-    plan::{QueryPlan, TableColumnsPlan},
+    plan::{CustomFunctionPlan, QueryPlan, TableColumnsPlan},
     result::Result,
     store::{GStore, GStoreMut},
 };
@@ -18,6 +18,7 @@ enum RowsData {
 
 pub fn insert<T: GStore + GStoreMut>(
     storage: &mut T,
+    functions: &[CustomFunctionPlan],
     table_name: &str,
     columns: &[String],
     source: &QueryPlan,
@@ -33,9 +34,10 @@ pub fn insert<T: GStore + GStoreMut>(
         .ok_or_else(|| InsertError::TableNotFound(table_name.to_owned()))?;
 
     let rows = match column_defs {
-        None => schemaless::fetch_rows(storage, source).map(RowsData::Append),
+        None => schemaless::fetch_rows(storage, functions, source).map(RowsData::Append),
         Some(column_defs) => schemaful::fetch_rows(
             storage,
+            functions,
             table_name,
             column_defs,
             columns,
@@ -75,6 +77,7 @@ mod tests {
         let source = QueryPlan::Values(ValuesPlan(Vec::new()));
         let actual = insert(
             &mut storage,
+            &[],
             "Item",
             &[],
             &source,

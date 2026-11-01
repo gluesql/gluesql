@@ -4,7 +4,7 @@ use {
     crate::{
         ast::Literal,
         data::{SCHEMALESS_DOC_COLUMN, Schema},
-        plan::{ExprPlan, StatementPlan},
+        plan::{ExprPlan, StatementPlan, StatementPlanKind},
         result::Result,
     },
     std::{collections::HashMap, hash::BuildHasher},
@@ -30,111 +30,62 @@ pub fn plan<S: BuildHasher>(
 
 fn transform_statement<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
-    statement: StatementPlan,
+    mut statement: StatementPlan,
 ) -> StatementPlan {
-    match statement {
-        StatementPlan::Query(mut query) => {
-            transform_query(schema_map, &mut query);
-            StatementPlan::Query(query)
+    match &mut statement.kind {
+        StatementPlanKind::Query(query) => {
+            transform_query(schema_map, query);
         }
-        StatementPlan::Insert {
+        StatementPlanKind::Insert {
             table_name,
             columns,
-            mut source,
-            table_columns,
+            source,
+            ..
         } => {
-            transform_query(schema_map, &mut source);
-            let columns = if is_schemaless_table(schema_map, &table_name) {
-                vec![SCHEMALESS_DOC_COLUMN.to_owned()]
-            } else {
-                columns
-            };
-
-            StatementPlan::Insert {
-                table_name,
-                columns,
-                source,
-                table_columns,
+            transform_query(schema_map, source);
+            if is_schemaless_table(schema_map, table_name) {
+                *columns = vec![SCHEMALESS_DOC_COLUMN.to_owned()];
             }
         }
-        StatementPlan::Update {
+        StatementPlanKind::Update {
             table_name,
             assignments,
             selection,
         } => {
-            let table_is_schemaless = is_schemaless_table(schema_map, &table_name);
+            let table_is_schemaless = is_schemaless_table(schema_map, table_name);
 
-            let mut assignments = assignments;
-            for assignment in &mut assignments {
+            for assignment in assignments {
                 transform_single_table_expr(
                     schema_map,
                     &mut assignment.value,
-                    &table_name,
+                    table_name,
                     table_is_schemaless,
                 );
             }
 
-            let mut selection = selection;
-            if let Some(selection) = selection.as_mut() {
-                transform_single_table_expr(
-                    schema_map,
-                    selection,
-                    &table_name,
-                    table_is_schemaless,
-                );
-            }
-
-            StatementPlan::Update {
-                table_name,
-                assignments,
-                selection,
+            if let Some(selection) = selection {
+                transform_single_table_expr(schema_map, selection, table_name, table_is_schemaless);
             }
         }
-        StatementPlan::Delete {
+        StatementPlanKind::Delete {
             table_name,
             selection,
         } => {
-            let table_is_schemaless = is_schemaless_table(schema_map, &table_name);
+            let table_is_schemaless = is_schemaless_table(schema_map, table_name);
 
-            let mut selection = selection;
-            if let Some(selection) = selection.as_mut() {
-                transform_single_table_expr(
-                    schema_map,
-                    selection,
-                    &table_name,
-                    table_is_schemaless,
-                );
-            }
-
-            StatementPlan::Delete {
-                table_name,
-                selection,
+            if let Some(selection) = selection {
+                transform_single_table_expr(schema_map, selection, table_name, table_is_schemaless);
             }
         }
-        StatementPlan::CreateTable {
-            if_not_exists,
-            name,
-            columns,
-            mut source,
-            engine,
-            foreign_keys,
-            comment,
+        StatementPlanKind::CreateTable {
+            source: Some(source),
+            ..
         } => {
-            if let Some(source) = source.as_mut() {
-                transform_query(schema_map, source);
-            }
-            StatementPlan::CreateTable {
-                if_not_exists,
-                name,
-                columns,
-                source,
-                engine,
-                foreign_keys,
-                comment,
-            }
+            transform_query(schema_map, source);
         }
-        _ => statement,
+        _ => {}
     }
+    statement
 }
 
 fn transform_single_table_expr(
@@ -188,7 +139,7 @@ mod tests {
         crate::{
             mock::{MockStorage, run},
             parse_sql::parse,
-            plan::{ProjectionPlan, QueryPlan, StatementPlan},
+            plan::{ProjectionPlan, QueryPlan, StatementPlan, StatementPlanKind},
             planner::fetch_schema_map,
             query_builder::{Build, table},
             result::Result,
@@ -226,9 +177,9 @@ mod tests {
             let expected_parsed = parse(expected).expect(expected).into_iter().next().unwrap();
             let mut expected_stmt = StatementPlan::from(translate(&expected_parsed).unwrap());
             if let (
-                StatementPlan::Query(QueryPlan::Project(actual_project)),
-                StatementPlan::Query(QueryPlan::Project(expected_project)),
-            ) = (&result, &mut expected_stmt)
+                StatementPlanKind::Query(QueryPlan::Project(actual_project)),
+                StatementPlanKind::Query(QueryPlan::Project(expected_project)),
+            ) = (&result.kind, &mut expected_stmt.kind)
             {
                 expected_project.projection = actual_project.projection.clone();
             }
@@ -540,9 +491,9 @@ mod tests {
             let statement = StatementPlan::from(translate(&parsed).unwrap());
             let schema_map = fetch_schema_map(&storage, &statement).unwrap();
             let planned = plan_schemaless(&schema_map, statement).unwrap();
-            let query = match planned {
-                StatementPlan::Query(query) => query,
-                StatementPlan::CreateTable {
+            let query = match planned.kind {
+                StatementPlanKind::Query(query) => query,
+                StatementPlanKind::CreateTable {
                     source: Some(source),
                     ..
                 } => *source,

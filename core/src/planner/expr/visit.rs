@@ -2,9 +2,9 @@ mod aggregate;
 mod function;
 
 use {
-    crate::{plan::ExprPlan, planner::PlannerError},
-    aggregate::{try_visit_aggregate, visit_mut_aggregate},
-    function::{try_visit_function, visit_mut_function},
+    crate::{plan::ExprPlan, planner::PlannerError, result::Error},
+    aggregate::{try_visit_aggregate, try_visit_mut_aggregate, visit_mut_aggregate},
+    function::{try_visit_function, try_visit_mut_function, visit_mut_function},
 };
 
 macro_rules! apply_mut {
@@ -122,6 +122,21 @@ where
         try_visit_expr,
         try_visit_function,
         try_visit_aggregate,
+        f,
+        apply_try
+    );
+    f(expr)
+}
+
+pub fn try_visit_mut_expr<F>(expr: &mut ExprPlan, f: &mut F) -> Result<(), Error>
+where
+    F: FnMut(&mut ExprPlan) -> Result<(), Error>,
+{
+    visit_expr_children!(
+        expr,
+        try_visit_mut_expr,
+        try_visit_mut_function,
+        try_visit_mut_aggregate,
         f,
         apply_try
     );

@@ -17,7 +17,7 @@ use {
         plan::{
             DictionarySourcePlan, ExprPlan, FilterInputPlan, FilterPlan, ProjectInputPlan,
             ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SourcePlan, StatementPlan,
-            TableAliasPlan,
+            StatementPlanKind, TableAliasPlan,
         },
         result::{Error, Result},
         store::{GStore, GStoreMut},
@@ -109,8 +109,10 @@ pub fn execute<T: GStore + GStoreMut>(
     statement: &StatementPlan,
 ) -> Result<Payload> {
     if matches!(
-        statement,
-        StatementPlan::StartTransaction | StatementPlan::Rollback | StatementPlan::Commit
+        &statement.kind,
+        StatementPlanKind::StartTransaction
+            | StatementPlanKind::Rollback
+            | StatementPlanKind::Commit
     ) {
         return execute_inner(storage, statement);
     }
@@ -136,10 +138,11 @@ fn execute_inner<T: GStore + GStoreMut>(
     storage: &mut T,
     statement: &StatementPlan,
 ) -> Result<Payload> {
-    match statement {
+    let functions = &statement.functions;
+    match &statement.kind {
         //- Modification
         //-- Tables
-        StatementPlan::CreateTable {
+        StatementPlanKind::CreateTable {
             name,
             columns,
             if_not_exists,
@@ -158,37 +161,47 @@ fn execute_inner<T: GStore + GStoreMut>(
                 comment,
             };
 
-            create_table(storage, options).map(|()| Payload::Create)
+            create_table(storage, functions, options).map(|()| Payload::Create)
         }
-        StatementPlan::DropTable {
+        StatementPlanKind::DropTable {
             names,
             if_exists,
             cascade,
             ..
         } => drop_table(storage, names, *if_exists, *cascade).map(Payload::DropTable),
-        StatementPlan::AlterTable { name, operation } => {
+        StatementPlanKind::AlterTable { name, operation } => {
             alter_table(storage, name, operation).map(|()| Payload::AlterTable)
         }
-        StatementPlan::CreateIndex {
+        StatementPlanKind::CreateIndex {
             name,
             table_name,
             column,
         } => create_index(storage, table_name, name, column).map(|()| Payload::CreateIndex),
-        StatementPlan::DropIndex { name, table_name } => storage
+        StatementPlanKind::DropIndex { name, table_name } => storage
             .drop_index(table_name, name)
             .map(|()| Payload::DropIndex),
         //- Transaction
-        StatementPlan::StartTransaction => storage.begin(false).map(|_| Payload::StartTransaction),
-        StatementPlan::Commit => storage.commit().map(|()| Payload::Commit),
-        StatementPlan::Rollback => storage.rollback().map(|()| Payload::Rollback),
+        StatementPlanKind::StartTransaction => {
+            storage.begin(false).map(|_| Payload::StartTransaction)
+        }
+        StatementPlanKind::Commit => storage.commit().map(|()| Payload::Commit),
+        StatementPlanKind::Rollback => storage.rollback().map(|()| Payload::Rollback),
         //-- Rows
-        StatementPlan::Insert {
+        StatementPlanKind::Insert {
             table_name,
             columns,
             source,
             table_columns,
-        } => insert(storage, table_name, columns, source, table_columns).map(Payload::Insert),
-        StatementPlan::Update {
+        } => insert(
+            storage,
+            functions,
+            table_name,
+            columns,
+            source,
+            table_columns,
+        )
+        .map(Payload::Insert),
+        StatementPlanKind::Update {
             table_name,
             selection,
             assignments,
@@ -210,18 +223,30 @@ fn execute_inner<T: GStore + GStoreMut>(
                 .map(|assignment| assignment.id.clone())
                 .collect();
 
-            let update = Update::new(storage, table_name, assignments, column_defs.as_deref())?;
+            let update = Update::new(
+                storage,
+                functions,
+                table_name,
+                assignments,
+                column_defs.as_deref(),
+            )?;
 
             let foreign_keys = Rc::new(foreign_keys);
 
-            let rows = fetch(storage, table_name, all_columns, selection.as_ref())?
-                .map(|item| {
-                    let (key, row) = item?;
-                    let row = update.apply(row, foreign_keys.as_ref())?;
+            let rows = fetch(
+                storage,
+                functions,
+                table_name,
+                all_columns,
+                selection.as_ref(),
+            )?
+            .map(|item| {
+                let (key, row) = item?;
+                let row = update.apply(row, foreign_keys.as_ref())?;
 
-                    Ok((key, row))
-                })
-                .collect::<Result<Vec<(Key, Row)>>>()?;
+                Ok((key, row))
+            })
+            .collect::<Result<Vec<(Key, Row)>>>()?;
 
             if let Some(column_defs) = column_defs {
                 let column_validation =
@@ -241,14 +266,14 @@ fn execute_inner<T: GStore + GStoreMut>(
                 .insert_data(table_name, rows)
                 .map(|()| Payload::Update(num_rows))
         }
-        StatementPlan::Delete {
+        StatementPlanKind::Delete {
             table_name,
             selection,
-        } => delete(storage, table_name, selection.as_ref()),
+        } => delete(storage, functions, table_name, selection.as_ref()),
 
         //- Selection
-        StatementPlan::Query(query) => select::execute(storage, query),
-        StatementPlan::ShowColumns { table_name } => {
+        StatementPlanKind::Query(query) => select::execute(storage, functions, query),
+        StatementPlanKind::ShowColumns { table_name } => {
             let Schema { column_defs, .. } = storage
                 .fetch_schema(table_name)?
                 .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
@@ -261,7 +286,7 @@ fn execute_inner<T: GStore + GStoreMut>(
 
             Ok(Payload::ShowColumns(output))
         }
-        StatementPlan::ShowIndexes(table_name) => {
+        StatementPlanKind::ShowIndexes(table_name) => {
             let query = QueryPlan::Project(ProjectPlan {
                 projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
                 input: ProjectInputPlan::Filter(FilterPlan {
@@ -282,7 +307,7 @@ fn execute_inner<T: GStore + GStoreMut>(
                 }),
             });
 
-            let (labels, rows) = query::execute_with_labels(storage, &query, None)?;
+            let (labels, rows) = query::execute_with_labels(storage, functions, &query, None)?;
             let rows = rows
                 .map(|row| Ok::<_, Error>(row?.into_values()))
                 .collect::<Result<Vec<_>>>()?;
@@ -293,7 +318,7 @@ fn execute_inner<T: GStore + GStoreMut>(
 
             Ok(Payload::Select { labels, rows })
         }
-        StatementPlan::ShowVariable(variable) => match variable {
+        StatementPlanKind::ShowVariable(variable) => match variable {
             Variable::Tables => {
                 let query = QueryPlan::Project(ProjectPlan {
                     projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
@@ -309,7 +334,7 @@ fn execute_inner<T: GStore + GStoreMut>(
                     })),
                 });
 
-                let table_names = query::execute(storage, &query, None)?
+                let table_names = query::execute(storage, functions, &query, None)?
                     .map(|row| Ok::<_, Error>(row?.into_values()))
                     .collect::<Result<Vec<Vec<Value>>>>()?
                     .iter()
@@ -337,13 +362,13 @@ fn execute_inner<T: GStore + GStoreMut>(
                 Ok(payload)
             }
         },
-        StatementPlan::CreateFunction {
+        StatementPlanKind::CreateFunction {
             or_replace,
             name,
             args,
             return_,
         } => insert_function(storage, name, args, *or_replace, return_).map(|()| Payload::Create),
-        StatementPlan::DropFunction { if_exists, names } => {
+        StatementPlanKind::DropFunction { if_exists, names } => {
             delete_function(storage, names, *if_exists).map(|()| Payload::DropFunction)
         }
     }

@@ -142,6 +142,10 @@ pub enum FunctionExprPlan {
         exprs: Vec<ExprPlan>,
     },
     Custom {
+        function_id: usize,
+        exprs: Vec<ExprPlan>,
+    },
+    UnplannedCustom {
         name: String,
         exprs: Vec<ExprPlan>,
     },
@@ -508,7 +512,7 @@ impl From<ast::Function> for FunctionExprPlan {
                 separator: separator.into(),
                 exprs: exprs.into_iter().map(Into::into).collect(),
             },
-            ast::Function::Custom { name, exprs } => Self::Custom {
+            ast::Function::Custom { name, exprs } => Self::UnplannedCustom {
                 name,
                 exprs: exprs.into_iter().map(Into::into).collect(),
             },

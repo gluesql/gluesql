@@ -1,7 +1,7 @@
 use {
     super::{AssignmentNode, Build, ExprNode},
     crate::{
-        plan::{AssignmentPlan, StatementPlan},
+        plan::{AssignmentPlan, StatementPlan, StatementPlanKind},
         result::Result,
     },
 };
@@ -88,11 +88,12 @@ impl Build for UpdateSetNode<'_> {
             .into_iter()
             .map(AssignmentPlan::try_from)
             .collect::<Result<Vec<_>>>()?;
-        Ok(StatementPlan::Update {
+        Ok(StatementPlanKind::Update {
             table_name,
             assignments,
             selection,
-        })
+        }
+        .into())
     }
 }
 

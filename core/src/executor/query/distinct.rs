@@ -2,7 +2,7 @@ use {
     super::{LabeledRows, QueryIter, order_by, project},
     crate::{
         executor::context::RowContext,
-        plan::{DistinctInputPlan, DistinctPlan},
+        plan::{CustomFunctionPlan, DistinctInputPlan, DistinctPlan},
         result::Result,
         store::GStore,
     },
@@ -11,6 +11,7 @@ use {
 
 pub(super) fn execute<'a, T>(
     storage: &'a T,
+    functions: &'a [CustomFunctionPlan],
     plan: &'a DistinctPlan,
     filter_context: Option<Rc<RowContext<'a>>>,
 ) -> Result<LabeledRows<'a>>
@@ -20,7 +21,7 @@ where
     let LabeledRows { labels, rows } = match &plan.input {
         DistinctInputPlan::Project(project) => {
             let project::ProjectedRows { labels, rows, .. } =
-                project::execute(storage, project, filter_context)?;
+                project::execute(storage, functions, project, filter_context)?;
             let rows = rows.map(|row| row.map(|(.., row)| row));
 
             Ok(LabeledRows {
@@ -29,7 +30,7 @@ where
             })
         }
         DistinctInputPlan::SelectOrderBy(order_by) => {
-            order_by::select::execute(storage, order_by, filter_context)
+            order_by::select::execute(storage, functions, order_by, filter_context)
         }
     }?;
     let rows = rows.collect::<Result<Vec<_>>>()?;

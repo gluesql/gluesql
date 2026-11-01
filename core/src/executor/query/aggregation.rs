@@ -13,7 +13,7 @@ use {
             context::{AggregateContext, RowContext},
             evaluate::evaluate,
         },
-        plan::{AggregationInputPlan, AggregationPlan},
+        plan::{AggregationInputPlan, AggregationPlan, CustomFunctionPlan},
         result::Result,
         store::GStore,
     },
@@ -27,6 +27,7 @@ pub(super) struct AggregatedRows<'a> {
 
 pub(super) fn execute<'a, T>(
     storage: &'a T,
+    functions: &'a [CustomFunctionPlan],
     plan: &'a AggregationPlan,
     filter_context: Option<&Rc<RowContext<'a>>>,
 ) -> Result<AggregatedRows<'a>>
@@ -39,16 +40,25 @@ where
         aggregate_slots,
     } = plan;
     let SelectedRows { sources, rows } = match input {
-        AggregationInputPlan::Source(source) => source::execute(storage, source)?
-            .rows(None)?
+        AggregationInputPlan::Source(source) => source::execute(storage, functions, source)?
+            .rows(filter_context.map(Rc::clone))?
             .into_selected(None),
-        AggregationInputPlan::InnerJoin(join) => inner::execute(storage, join, filter_context)?,
-        AggregationInputPlan::LeftOuterJoin(join) => {
-            left_outer::execute(storage, join, filter_context)?
+        AggregationInputPlan::InnerJoin(join) => {
+            inner::execute(storage, functions, join, filter_context)?
         }
-        AggregationInputPlan::Filter(filter) => filter::execute(storage, filter, filter_context)?,
+        AggregationInputPlan::LeftOuterJoin(join) => {
+            left_outer::execute(storage, functions, join, filter_context)?
+        }
+        AggregationInputPlan::Filter(filter) => {
+            filter::execute(storage, functions, filter, filter_context)?
+        }
     };
-    let mut state = State::new(storage, aggregate_slots.len(), group_by.is_empty());
+    let mut state = State::new(
+        storage,
+        functions,
+        aggregate_slots.len(),
+        group_by.is_empty(),
+    );
 
     for context in rows {
         let context = context?;
@@ -61,7 +71,9 @@ where
         };
         let group = group_by
             .iter()
-            .map(|expr| evaluate(storage, Some(&row_filter_context), None, expr)?.try_into())
+            .map(|expr| {
+                evaluate(storage, functions, Some(&row_filter_context), None, expr)?.try_into()
+            })
             .collect::<Result<Vec<Value>>>()?;
         let group_index = state.apply(group, Rc::clone(&context));
 

@@ -65,6 +65,7 @@ fn is_function_deterministic(function: &FunctionExprPlan) -> bool {
         | CurrentTimestamp()
         | GenerateUuid()
         | Rand(_)
+        | UnplannedCustom { .. }
         | Custom { .. } => false,
         Cast { expr, .. }
         | Abs(expr)

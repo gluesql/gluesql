@@ -2,7 +2,7 @@ use {
     super::{Build, ColumnDefNode, ColumnList, ExprList, ExprNode, QueryBuilderError, QueryNode},
     crate::{
         ast::ColumnDef,
-        plan::{ColumnDefPlan, StatementPlan, TableColumnsPlan},
+        plan::{ColumnDefPlan, StatementPlan, StatementPlanKind, TableColumnsPlan},
         result::Result,
         row_conversion::ToGlueRow,
     },
@@ -143,12 +143,13 @@ impl Build for InsertSourceNode<'_> {
             ),
         };
 
-        Ok(StatementPlan::Insert {
+        Ok(StatementPlanKind::Insert {
             table_name,
             columns,
             source,
             table_columns,
-        })
+        }
+        .into())
     }
 }
 
@@ -157,7 +158,7 @@ mod tests {
     use crate::{
         ast::ColumnDef,
         data::Value,
-        plan::{ColumnDefPlan, StatementPlan, TableColumnsPlan},
+        plan::{ColumnDefPlan, StatementPlanKind, TableColumnsPlan},
         query_builder::{
             Build, ColumnDefNode, QueryBuilderError, num, select::BuildQueryPlan, table, test,
             value, values,
@@ -218,7 +219,7 @@ mod tests {
             .columns("name")
             .values(vec!["'glue'"])
             .build();
-        let expected = Ok(StatementPlan::Insert {
+        let expected = Ok(StatementPlanKind::Insert {
             table_name: "Item".to_owned(),
             columns: vec!["name".to_owned()],
             source: values(vec!["'glue'"]).build_query_plan().unwrap(),
@@ -231,7 +232,8 @@ mod tests {
                     ColumnDef::try_from(ColumnDefNode::from("name TEXT NULL")).unwrap(),
                 ),
             ]),
-        });
+        }
+        .into());
         pretty_assertions::assert_eq!(actual, expected);
 
         let actual = table("Log")
@@ -239,12 +241,13 @@ mod tests {
             .insert()
             .values(vec!["'{}'"])
             .build();
-        let expected = Ok(StatementPlan::Insert {
+        let expected = Ok(StatementPlanKind::Insert {
             table_name: "Log".to_owned(),
             columns: Vec::new(),
             source: values(vec!["'{}'"]).build_query_plan().unwrap(),
             table_columns: TableColumnsPlan::Schemaless,
-        });
+        }
+        .into());
         pretty_assertions::assert_eq!(actual, expected);
     }
 

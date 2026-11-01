@@ -8,8 +8,8 @@ use {
             JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
             OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, SelectOrderByPlan, SourcePlan, StatementPlan, ValuesOrderByPlan,
-            ValuesPlan,
+            SelectItemPlan, SelectOrderByPlan, SourcePlan, StatementPlan, StatementPlanKind,
+            ValuesOrderByPlan, ValuesPlan,
         },
         result::Result,
     },
@@ -30,9 +30,9 @@ fn validate_statement_inner(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
     statement: &StatementPlan,
 ) -> ValidateResult {
-    match statement {
-        StatementPlan::Query(query) => validate_query(schema_map, query),
-        StatementPlan::Insert {
+    match &statement.kind {
+        StatementPlanKind::Query(query) => validate_query(schema_map, query),
+        StatementPlanKind::Insert {
             table_name,
             columns,
             source,
@@ -44,10 +44,10 @@ fn validate_statement_inner(
 
             validate_query(schema_map, source)
         }
-        StatementPlan::CreateTable { source, .. } => source
+        StatementPlanKind::CreateTable { source, .. } => source
             .as_ref()
             .map_or(Ok(()), |query| validate_query(schema_map, query)),
-        StatementPlan::Update {
+        StatementPlanKind::Update {
             assignments,
             selection,
             ..
@@ -60,7 +60,7 @@ fn validate_statement_inner(
                 .as_ref()
                 .map_or(Ok(()), |expr| validate_expr(schema_map, expr))
         }
-        StatementPlan::Delete { selection, .. } => selection
+        StatementPlanKind::Delete { selection, .. } => selection
             .as_ref()
             .map_or(Ok(()), |expr| validate_expr(schema_map, expr)),
         _ => Ok(()),
