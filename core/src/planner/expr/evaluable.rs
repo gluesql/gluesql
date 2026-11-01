@@ -46,6 +46,7 @@ pub fn check_expr(context: Option<Rc<Context<'_>>>, expr: &ExprPlan) -> bool {
 
 fn check_query(context: Option<&Rc<Context<'_>>>, query: &QueryPlan) -> bool {
     match query {
+        QueryPlan::UnplannedWith(_) => false,
         QueryPlan::Project(project) => check_project(context, project),
         QueryPlan::Values(values) => check_values(context, values),
         QueryPlan::SelectOrderBy(order_by) => check_select_order_by(context, order_by),

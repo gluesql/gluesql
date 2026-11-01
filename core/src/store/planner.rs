@@ -3,8 +3,8 @@ use {
     crate::{
         plan::StatementPlan,
         planner::{
-            fetch_schema_map, plan_aggregate, plan_hash_join, plan_primary_key, plan_schemaless,
-            plan_table_columns, validate,
+            fetch_schema_map, plan_aggregate, plan_cte, plan_hash_join, plan_primary_key,
+            plan_schemaless, plan_table_columns, validate,
         },
         result::Result,
     },
@@ -12,6 +12,7 @@ use {
 
 pub trait Planner: Store {
     fn plan(&self, statement: StatementPlan) -> Result<StatementPlan> {
+        let statement = plan_cte(statement)?;
         let schema_map = fetch_schema_map(self, &statement)?;
         validate(&schema_map, &statement)?;
 

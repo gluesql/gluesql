@@ -125,6 +125,7 @@ mod tests {
         assert_eq!(actual, expected);
 
         let query = Query {
+            with: Vec::new(),
             body: SetExpr::Values(Values(vec![vec![Expr::Literal(Literal::Number(1.into()))]])),
             order_by: Vec::new(),
             limit: None,

@@ -1,5 +1,5 @@
 use {
-    super::expr::PlanExpr,
+    super::{PlannerError, expr::PlanExpr},
     crate::{
         data::Schema,
         plan::{
@@ -100,6 +100,7 @@ fn scan_query<T: Store + ?Sized>(
     query: &QueryPlan,
 ) -> Result<HashMap<String, Schema>> {
     match query {
+        QueryPlan::UnplannedWith(_) => Err(PlannerError::UnplannedWith.into()),
         QueryPlan::Project(project) => scan_project(storage, project),
         QueryPlan::Values(_) => Ok(HashMap::new()),
         QueryPlan::SelectOrderBy(order_by) => scan_select_order_by(storage, order_by),

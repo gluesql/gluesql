@@ -6,7 +6,7 @@ use crate::{
 };
 
 pub(super) fn query<'a, T: GStore>(storage: &'a T, query: &'a QueryPlan) -> Result<Vec<String>> {
-    match output_body(query) {
+    match output_body(query)? {
         OutputBody::Project(project) => project_plan(storage, project),
         OutputBody::Values(values_plan) => Ok(values::labels(values_plan)),
     }

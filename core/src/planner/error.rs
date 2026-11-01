@@ -2,6 +2,12 @@ use {serde::Serialize, std::fmt::Debug, thiserror::Error as ThisError};
 
 #[derive(ThisError, Serialize, Debug, PartialEq, Eq)]
 pub enum PlannerError {
+    #[error("WITH query must be planned before schema collection or validation")]
+    UnplannedWith,
+
+    #[error("duplicate CTE name: {0}")]
+    DuplicateCteName(String),
+
     /// Error that that omits when user projects common column name from multiple tables in `JOIN`
     /// situation.
     #[error("column reference {0} is ambiguous, please specify the table name")]

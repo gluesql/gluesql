@@ -243,6 +243,9 @@ serialize_via_display!(
 
 #[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum TranslateError {
+    #[error("unsupported CTE option: {0}")]
+    UnsupportedCteOption(String),
+
     #[error("unimplemented - select on two or more than tables are not supported")]
     TooManyTables,
 

@@ -6,7 +6,7 @@ use {
     },
     crate::{
         ast::{
-            Dictionary, Expr, Join, JoinConstraint, JoinOperator, Literal, Projection, Query,
+            Cte, Dictionary, Expr, Join, JoinConstraint, JoinOperator, Literal, Projection, Query,
             Select, SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, Values,
         },
         result::Result,
@@ -39,9 +39,7 @@ pub fn translate_query(sql_query: &SqlQuery, params: &[ParamLiteral]) -> Result<
         ..
     } = sql_query;
 
-    let violation = if with.is_some() {
-        Some(QueryOption::With)
-    } else if fetch.is_some() {
+    let violation = if fetch.is_some() {
         Some(QueryOption::Fetch)
     } else if !locks.is_empty() {
         Some(QueryOption::Lock)
@@ -53,6 +51,39 @@ pub fn translate_query(sql_query: &SqlQuery, params: &[ParamLiteral]) -> Result<
         return Err(TranslateError::UnsupportedQueryOption(reason).into());
     }
 
+    let with = with
+        .as_ref()
+        .map(|with| {
+            if with.recursive {
+                return Err(TranslateError::UnsupportedCteOption("WITH RECURSIVE".into()).into());
+            }
+            with.cte_tables
+                .iter()
+                .map(|cte| {
+                    let unsupported = if let Some(materialized) = &cte.materialized {
+                        Some(materialized.to_string())
+                    } else if cte.from.is_some() {
+                        Some("CTE FROM".into())
+                    } else if !cte.alias.columns.is_empty() {
+                        Some("CTE column alias list".into())
+                    } else {
+                        None
+                    };
+                    if let Some(option) = unsupported {
+                        return Err(TranslateError::UnsupportedCteOption(option).into());
+                    }
+                    Ok(Cte {
+                        alias: TableAlias {
+                            name: cte.alias.name.value.clone(),
+                            columns: Vec::new(),
+                        },
+                        query: translate_query(&cte.query, params)?,
+                    })
+                })
+                .collect::<Result<Vec<_>>>()
+        })
+        .transpose()?
+        .unwrap_or_default();
     let body = translate_set_expr(body, params)?;
     let mut order_by_exprs = Vec::new();
     if let Some(order_by) = order_by {
@@ -70,6 +101,7 @@ pub fn translate_query(sql_query: &SqlQuery, params: &[ParamLiteral]) -> Result<
         .transpose()?;
 
     Ok(Query {
+        with,
         body,
         order_by: order_by_exprs,
         limit,
@@ -364,7 +396,10 @@ mod tests {
     use {
         super::*,
         crate::{
-            ast::{Expr, Literal, Query, Select, SelectItem, SetExpr, TableFactor, TableWithJoins},
+            ast::{
+                Expr, Literal, Query, Select, SelectItem, SetExpr, TableFactor, TableWithJoins,
+                ToSqlUnquoted,
+            },
             data::Value,
             parse_sql::{parse, parse_query},
             result::Error,
@@ -383,6 +418,42 @@ mod tests {
         let actual = translate_query(&query, NO_PARAMS);
         let expected = Err::<Query, Error>(Error::Translate(expected));
         assert_eq!(actual, expected, "translate_query mismatch for `{sql}`");
+    }
+
+    #[test]
+    fn preserves_inline_cte() {
+        let query = parse_query("WITH t AS (SELECT 1 AS n) SELECT t.n FROM t").unwrap();
+        let translated = translate_query(&query, NO_PARAMS).unwrap();
+        assert_eq!(translated.with.len(), 1);
+        assert_eq!(translated.with[0].alias.name, "t");
+        assert_eq!(
+            translated.to_sql_unquoted(),
+            "WITH t AS (SELECT 1 AS n FROM SERIES(1) AS Series) SELECT t.n AS n FROM t"
+        );
+    }
+
+    #[test]
+    fn unsupported_cte_options() {
+        for (sql, option) in [
+            (
+                "WITH t AS MATERIALIZED (SELECT 1) SELECT * FROM t",
+                "MATERIALIZED",
+            ),
+            (
+                "WITH t AS NOT MATERIALIZED (SELECT 1) SELECT * FROM t",
+                "NOT MATERIALIZED",
+            ),
+            (
+                "WITH t AS (SELECT 1) FROM source SELECT * FROM t",
+                "CTE FROM",
+            ),
+            (
+                "WITH t(n) AS (SELECT 1) SELECT * FROM t",
+                "CTE column alias list",
+            ),
+        ] {
+            assert_query_error(sql, TranslateError::UnsupportedCteOption(option.into()));
+        }
     }
 
     #[test]
@@ -408,8 +479,8 @@ mod tests {
     #[test]
     fn query_options_rejected() {
         assert_query_error(
-            "WITH t AS (SELECT 1) SELECT * FROM t",
-            TranslateError::UnsupportedQueryOption(QueryOption::With),
+            "WITH RECURSIVE t AS (SELECT 1) SELECT * FROM t",
+            TranslateError::UnsupportedCteOption("WITH RECURSIVE".into()),
         );
         assert_query_error(
             "SELECT * FROM Foo FETCH FIRST 1 ROW ONLY",
@@ -461,6 +532,7 @@ mod tests {
         let translated = translate_query(query.as_ref(), &params).expect("translate");
 
         let expected = Query {
+            with: Vec::new(),
             body: SetExpr::Select(Box::new(Select {
                 distinct: false,
                 projection: Projection::SelectItems(vec![

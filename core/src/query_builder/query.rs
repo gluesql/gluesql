@@ -59,6 +59,7 @@ impl<'a> QueryNode<'a> {
                     .collect::<Result<Vec<_>>>()?;
 
                 Ok(Query {
+                    with: Vec::new(),
                     body: SetExpr::Values(Values(values)),
                     order_by: Vec::new(),
                     limit: None,

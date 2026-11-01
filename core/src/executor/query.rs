@@ -75,6 +75,7 @@ where
     T: GStore,
 {
     match query {
+        QueryPlan::UnplannedWith(_) => Err(QueryError::UnplannedWith.into()),
         QueryPlan::Project(project) => {
             let project::ProjectedRows { labels, rows, .. } =
                 project::execute(storage, project, filter_context)?;

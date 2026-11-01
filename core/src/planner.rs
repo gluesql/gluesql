@@ -1,5 +1,6 @@
 mod aggregate;
 mod context;
+mod cte;
 mod error;
 mod expr;
 mod hash_join;
@@ -12,7 +13,7 @@ mod table_columns;
 mod validate;
 
 pub use {
-    self::validate::validate, aggregate::plan as plan_aggregate, error::*,
+    self::validate::validate, aggregate::plan as plan_aggregate, cte::plan as plan_cte, error::*,
     hash_join::plan as plan_hash_join, index::plan as plan_index,
     primary_key::plan as plan_primary_key, schema::fetch_schema_map,
     schemaless::plan as plan_schemaless, table_columns::plan as plan_table_columns,

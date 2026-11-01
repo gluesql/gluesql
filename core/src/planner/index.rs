@@ -40,6 +40,7 @@ struct IndexPlanner<'a, S> {
 impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
     fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
         match query {
+            unplanned @ QueryPlan::UnplannedWith(_) => unplanned,
             QueryPlan::Project(input) => {
                 QueryPlan::Project(self.project(outer_context.as_ref(), input, Vec::new()).0)
             }

@@ -64,6 +64,7 @@ impl BuildQuery for ValuesNode<'_> {
         let body = SetExpr::Values(Values(values));
 
         Ok(Query {
+            with: Vec::new(),
             body,
             order_by: Vec::new(),
             limit: None,

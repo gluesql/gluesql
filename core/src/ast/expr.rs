@@ -493,6 +493,7 @@ mod tests {
             Expr::InSubquery {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 subquery: Box::new(Query {
+                    with: Vec::new(),
                     body: SetExpr::Select(Box::new(Select {
                         distinct: false,
                         projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
@@ -521,6 +522,7 @@ mod tests {
             Expr::InSubquery {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 subquery: Box::new(Query {
+                    with: Vec::new(),
                     body: SetExpr::Select(Box::new(Select {
                         distinct: false,
                         projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
@@ -548,6 +550,7 @@ mod tests {
             r#"EXISTS(SELECT * FROM "FOO")"#,
             Expr::Exists {
                 subquery: Box::new(Query {
+                    with: Vec::new(),
                     body: SetExpr::Select(Box::new(Select {
                         distinct: false,
                         projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
@@ -575,6 +578,7 @@ mod tests {
             r#"NOT EXISTS(SELECT * FROM "FOO")"#,
             Expr::Exists {
                 subquery: Box::new(Query {
+                    with: Vec::new(),
                     body: SetExpr::Select(Box::new(Select {
                         distinct: false,
                         projection: Projection::SelectItems(vec![SelectItem::Wildcard]),
@@ -601,6 +605,7 @@ mod tests {
         assert_eq!(
             r#"(SELECT * FROM "FOO")"#,
             Expr::Subquery(Box::new(Query {
+                with: Vec::new(),
                 body: SetExpr::Select(Box::new(Select {
                     distinct: false,
                     projection: Projection::SelectItems(vec![SelectItem::Wildcard]),

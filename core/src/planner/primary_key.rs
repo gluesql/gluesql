@@ -41,6 +41,7 @@ struct PrimaryKeyPlanner<'a, S> {
 impl<'a, S: BuildHasher> Planner<'a> for PrimaryKeyPlanner<'a, S> {
     fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
         match query {
+            unplanned @ QueryPlan::UnplannedWith(_) => unplanned,
             QueryPlan::Project(project) => {
                 QueryPlan::Project(self.project(outer_context.as_ref(), project))
             }
@@ -562,6 +563,7 @@ mod tests {
 
     fn select(select: Select) -> StatementPlan {
         StatementPlan::from(Statement::Query(Query {
+            with: Vec::new(),
             body: SetExpr::Select(Box::new(select)),
             limit: None,
             offset: None,
@@ -1433,6 +1435,7 @@ mod tests {
         let actual = plan(&storage, sql);
         let expected = {
             let subquery = Query {
+                with: Vec::new(),
                 body: SetExpr::Select(Box::new(Select {
                     distinct: false,
                     projection: Projection::SelectItems(vec![SelectItem::Expr {
@@ -1484,6 +1487,7 @@ mod tests {
         let actual = plan(&storage, sql);
         let expected = {
             let subquery = Query {
+                with: Vec::new(),
                 body: SetExpr::Select(Box::new(Select {
                     distinct: false,
                     projection: Projection::SelectItems(vec![SelectItem::Expr {
@@ -1542,6 +1546,7 @@ mod tests {
         let sql = "VALUES (1), (2);";
         let actual = plan(&storage, sql);
         let expected = StatementPlan::from(Statement::Query(Query {
+            with: Vec::new(),
             body: SetExpr::Values(Values(vec![
                 vec![Expr::Literal(Literal::Number(1.into()))],
                 vec![Expr::Literal(Literal::Number(2.into()))],

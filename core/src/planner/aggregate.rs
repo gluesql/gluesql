@@ -93,6 +93,7 @@ pub fn plan(statement: StatementPlan) -> StatementPlan {
 
 fn plan_query(query: &mut QueryPlan) {
     match query {
+        QueryPlan::UnplannedWith(_) => {}
         QueryPlan::Project(project) => plan_project_query(project, &mut []),
         QueryPlan::Values(values) => plan_values(values),
         QueryPlan::SelectOrderBy(order_by) => plan_select_order_by(order_by),

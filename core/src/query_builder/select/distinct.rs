@@ -176,6 +176,7 @@ impl BuildQuery for DistinctNode<'_> {
         select.distinct = true;
 
         Ok(Query {
+            with: Vec::new(),
             body: SetExpr::Select(Box::new(select)),
             order_by,
             limit: None,
