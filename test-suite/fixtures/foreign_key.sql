@@ -258,6 +258,41 @@ CREATE TABLE SelfReferencingTable (
 );
 -- @expect: payload Create
 
+INSERT INTO SelfReferencingTable VALUES (1, 'root', NULL);
+-- @expect: ok
+
+INSERT INTO SelfReferencingTable VALUES (2, 'child', 1);
+-- @expect: ok
+
+-- @name: Deleting a self-referenced row should fail while a referencing row survives
+DELETE FROM SelfReferencingTable WHERE id = 1;
+-- @expect: error Delete.ReferencingColumnExists
+-- @json: "SelfReferencingTable.referenced_id"
+
+-- @name: Deleting both the referencing and referenced rows in one statement should succeed
+DELETE FROM SelfReferencingTable WHERE id IN (1, 2);
+-- @expect: payload Delete
+-- @json: 2
+
+INSERT INTO SelfReferencingTable VALUES (1, 'root', NULL);
+-- @expect: ok
+
+INSERT INTO SelfReferencingTable VALUES (2, 'child', 1);
+-- @expect: ok
+
+-- @name: Dropping a self-referenced column should fail while a referencing row survives
+ALTER TABLE SelfReferencingTable DROP COLUMN id;
+-- @expect: error Alter.CannotAlterReferencedColumn
+
+-- @name: Renaming a self-referenced column should fail while a referencing row survives
+ALTER TABLE SelfReferencingTable RENAME COLUMN id TO new_id;
+-- @expect: error Alter.CannotAlterReferencedColumn
+
+-- @name: Deleting an unreferenced self-referencing row should succeed
+DELETE FROM SelfReferencingTable WHERE id = 2;
+-- @expect: payload Delete
+-- @json: 1
+
 -- @name: Dropping self referencing table should succeed
 DROP TABLE SelfReferencingTable;
 -- @expect: payload DropTable
