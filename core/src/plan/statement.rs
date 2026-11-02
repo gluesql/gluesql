@@ -2,6 +2,7 @@ mod ddl;
 mod expr;
 mod projection;
 mod query;
+mod visit;
 
 pub use {
     ddl::{AlterTableOperationPlan, ColumnDefPlan, DefaultExpr, TableColumnsPlan},
@@ -20,6 +21,7 @@ pub use {
         SeriesSourcePlan, SourcePlan, TableAccessPlan, TableAliasPlan, TableSourcePlan,
         ValuesOrderByPlan, ValuesPlan,
     },
+    visit::{try_visit_expr, visit_mut_expr},
 };
 
 use {

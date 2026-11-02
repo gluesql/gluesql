@@ -60,6 +60,17 @@ impl QueryPlan {
             Self::Limit(limit) => limit.project(),
         }
     }
+
+    pub fn project_mut(&mut self) -> Option<&mut ProjectPlan> {
+        match self {
+            Self::Project(project) => Some(project),
+            Self::Values(_) | Self::ValuesOrderBy(_) => None,
+            Self::SelectOrderBy(order_by) => Some(&mut order_by.input),
+            Self::Distinct(distinct) => Some(distinct.project_mut()),
+            Self::Offset(offset) => offset.project_mut(),
+            Self::Limit(limit) => limit.project_mut(),
+        }
+    }
 }
 
 impl From<ast::Query> for QueryPlan {
@@ -304,7 +315,10 @@ mod tests {
     fn filter_plan() -> FilterPlan {
         FilterPlan {
             input: FilterInputPlan::Source(relation_plan()),
-            expr: ExprPlan::Identifier("active".to_owned()),
+            expr: ExprPlan::UnplannedReference {
+                qualifier: None,
+                name: "active".to_owned(),
+            },
         }
     }
 
@@ -329,7 +343,10 @@ mod tests {
             statement_plan("SELECT * FROM Item GROUP BY category"),
             project_statement(ProjectInputPlan::Aggregation(AggregationPlan {
                 input: AggregationInputPlan::Source(relation_plan()),
-                group_by: vec![ExprPlan::Identifier("category".to_owned())],
+                group_by: vec![ExprPlan::UnplannedReference {
+                    qualifier: None,
+                    name: "category".to_owned(),
+                }],
                 aggregate_slots: Vec::new(),
             }))
         );
@@ -337,7 +354,10 @@ mod tests {
             statement_plan("SELECT * FROM Item WHERE active GROUP BY category"),
             project_statement(ProjectInputPlan::Aggregation(AggregationPlan {
                 input: AggregationInputPlan::Filter(filter_plan()),
-                group_by: vec![ExprPlan::Identifier("category".to_owned())],
+                group_by: vec![ExprPlan::UnplannedReference {
+                    qualifier: None,
+                    name: "category".to_owned(),
+                }],
                 aggregate_slots: Vec::new(),
             }))
         );
@@ -346,7 +366,10 @@ mod tests {
             project_statement(ProjectInputPlan::Having(HavingPlan {
                 input: AggregationPlan {
                     input: AggregationInputPlan::Source(relation_plan()),
-                    group_by: vec![ExprPlan::Identifier("category".to_owned())],
+                    group_by: vec![ExprPlan::UnplannedReference {
+                        qualifier: None,
+                        name: "category".to_owned(),
+                    }],
                     aggregate_slots: Vec::new(),
                 },
                 expr: ExprPlan::Value(Value::Bool(true)),
@@ -357,7 +380,10 @@ mod tests {
             project_statement(ProjectInputPlan::Having(HavingPlan {
                 input: AggregationPlan {
                     input: AggregationInputPlan::Filter(filter_plan()),
-                    group_by: vec![ExprPlan::Identifier("category".to_owned())],
+                    group_by: vec![ExprPlan::UnplannedReference {
+                        qualifier: None,
+                        name: "category".to_owned(),
+                    }],
                     aggregate_slots: Vec::new(),
                 },
                 expr: ExprPlan::Value(Value::Bool(true)),
@@ -398,7 +424,10 @@ mod tests {
         let order_by = SelectOrderByPlan {
             input: project,
             exprs: vec![OrderByExprPlan {
-                expr: ExprPlan::Identifier("id".to_owned()),
+                expr: ExprPlan::UnplannedReference {
+                    qualifier: None,
+                    name: "id".to_owned(),
+                },
                 asc: None,
             }],
         };
@@ -435,14 +464,14 @@ mod tests {
                     }),
                 }),
                 expr: ExprPlan::BinaryOp {
-                    left: Box::new(ExprPlan::CompoundIdentifier {
-                        alias: "A".to_owned(),
-                        ident: "id".to_owned(),
+                    left: Box::new(ExprPlan::UnplannedReference {
+                        qualifier: Some("A".to_owned()),
+                        name: "id".to_owned(),
                     }),
                     op: BinaryOperator::Eq,
-                    right: Box::new(ExprPlan::CompoundIdentifier {
-                        alias: "B".to_owned(),
-                        ident: "a_id".to_owned(),
+                    right: Box::new(ExprPlan::UnplannedReference {
+                        qualifier: Some("B".to_owned()),
+                        name: "a_id".to_owned(),
                     }),
                 },
             }),

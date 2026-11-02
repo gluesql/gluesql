@@ -3,8 +3,8 @@ use crate::plan::{ExprPlan, FunctionExprPlan};
 pub fn is_deterministic(expr: &ExprPlan) -> bool {
     match expr {
         ExprPlan::Literal(_) | ExprPlan::Value(_) | ExprPlan::TypedString { .. } => true,
-        ExprPlan::Identifier(_)
-        | ExprPlan::CompoundIdentifier { .. }
+        ExprPlan::UnplannedReference { .. }
+        | ExprPlan::ResolvedColumn { .. }
         | ExprPlan::Subquery(_)
         | ExprPlan::Exists { .. }
         | ExprPlan::InSubquery { .. }

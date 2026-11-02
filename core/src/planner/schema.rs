@@ -62,19 +62,28 @@ pub fn fetch_schema_map<T: Store + ?Sized>(
         }
         StatementPlan::Update {
             table_name,
+            assignments,
             selection,
-            ..
         } => {
             let table_schema = storage
                 .fetch_schema(table_name)?
                 .map_or_else(HashMap::new, |schema| {
                     HashMap::from([(table_name.to_owned(), schema)])
                 });
-            let selection_schema = match selection {
-                Some(expr) => scan_expr(storage, expr)?,
-                None => HashMap::new(),
-            };
-            Ok(table_schema.into_iter().chain(selection_schema).collect())
+            let assignment_schema = assignments
+                .iter()
+                .map(|assignment| scan_expr(storage, &assignment.value))
+                .collect::<Result<Vec<_>>>()?
+                .into_iter()
+                .flatten();
+            let selection_schema = selection
+                .as_ref()
+                .map_or_else(|| Ok(HashMap::new()), |expr| scan_expr(storage, expr))?;
+            Ok(table_schema
+                .into_iter()
+                .chain(assignment_schema)
+                .chain(selection_schema)
+                .collect())
         }
         StatementPlan::Delete {
             table_name,
@@ -356,7 +365,7 @@ where
     T: Store + ?Sized,
 {
     let schema_list = match expr.into() {
-        PlanExpr::None | PlanExpr::Identifier(_) | PlanExpr::CompoundIdentifier { .. } => {
+        PlanExpr::None | PlanExpr::UnplannedReference { .. } | PlanExpr::ResolvedColumn { .. } => {
             HashMap::new()
         }
         PlanExpr::Expr(expr) => scan_expr(storage, expr)?,

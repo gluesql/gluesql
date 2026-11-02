@@ -1,5 +1,4 @@
 use {
-    super::expr::visit_mut_expr,
     crate::plan::{
         AggregateFunctionPlan, AggregationInputPlan, AggregationPlan, DistinctInputPlan,
         DistinctPlan, ExprPlan, FilterInputPlan, FilterPlan, HashJoinInputPlan, HashJoinPlan,
@@ -8,6 +7,7 @@ use {
         NestedLoopJoinInputPlan, NestedLoopJoinPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan,
         ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
         SelectOrderByPlan, SourcePlan, StatementPlan, ValuesOrderByPlan, ValuesPlan,
+        visit_mut_expr,
     },
     std::collections::HashMap,
 };
@@ -433,9 +433,12 @@ mod tests {
 
     fn count_distinct_id(slot: Option<usize>) -> AggregateExprPlan {
         AggregateExprPlan {
-            func: AggregateFunctionPlan::Count(CountArgExprPlan::Expr(ExprPlan::Identifier(
-                "id".to_owned(),
-            ))),
+            func: AggregateFunctionPlan::Count(CountArgExprPlan::Expr(
+                ExprPlan::UnplannedReference {
+                    qualifier: None,
+                    name: "id".to_owned(),
+                },
+            )),
             distinct: true,
             slot,
         }
@@ -649,7 +652,10 @@ mod tests {
                 value: ExprPlan::Literal(Literal::Number(1.into())),
             }],
             selection: Some(ExprPlan::BinaryOp {
-                left: Box::new(ExprPlan::Identifier("id".to_owned())),
+                left: Box::new(ExprPlan::UnplannedReference {
+                    qualifier: None,
+                    name: "id".to_owned(),
+                }),
                 op: BinaryOperator::Eq,
                 right: Box::new(ExprPlan::Subquery(Box::new(parse_and_plan_query(
                     "SELECT COUNT(*) FROM Source",
@@ -662,7 +668,10 @@ mod tests {
         let expected = StatementPlan::Delete {
             table_name: "Target".to_owned(),
             selection: Some(ExprPlan::BinaryOp {
-                left: Box::new(ExprPlan::Identifier("id".to_owned())),
+                left: Box::new(ExprPlan::UnplannedReference {
+                    qualifier: None,
+                    name: "id".to_owned(),
+                }),
                 op: BinaryOperator::Eq,
                 right: Box::new(ExprPlan::Subquery(Box::new(parse_and_plan_query(
                     "SELECT COUNT(*) FROM Source",
@@ -741,7 +750,10 @@ mod tests {
                 },
             }),
             group_by: vec![ExprPlan::InSubquery {
-                expr: Box::new(ExprPlan::Identifier("id".to_owned())),
+                expr: Box::new(ExprPlan::UnplannedReference {
+                    qualifier: None,
+                    name: "id".to_owned(),
+                }),
                 subquery: Box::new(parse_and_plan_query("SELECT COUNT(*) FROM Source")),
                 negated: false,
             }],
