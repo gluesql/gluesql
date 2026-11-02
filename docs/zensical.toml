@@ -252,6 +252,9 @@ nav = [
       "storages/developing-custom-storages/using-test-suite.md",
     ]},
   ]},
+  {"Development" = [
+    "development/review-policy.md",
+  ]},
   {"Archive" = [
     {"Articles" = [
       "articles/index.md",

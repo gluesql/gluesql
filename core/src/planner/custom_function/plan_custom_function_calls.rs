@@ -137,7 +137,7 @@ impl<T: CustomFunction + ?Sized> CustomFunctionPlanner<'_, T> {
         let function = self
             .functions
             .get(index)
-            .ok_or(EvaluateError::InvalidCustomFunctionIndex(index))?;
+            .ok_or(EvaluateError::MalformedPlanCustomFunctionIndex(index))?;
         let min = function
             .args
             .iter()

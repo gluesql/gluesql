@@ -353,9 +353,9 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
         }
         FunctionExprPlan::Custom { function_id, exprs } => {
             let storage = storage.ok_or(EvaluateError::UnsupportedCustomFunction)?;
-            let definition = functions
-                .get(*function_id)
-                .ok_or(EvaluateError::InvalidCustomFunctionIndex(*function_id))?;
+            let definition = functions.get(*function_id).ok_or(
+                EvaluateError::MalformedPlanCustomFunctionIndex(*function_id),
+            )?;
             let args = &definition.args;
             let func_name = &definition.name;
             let min = args.iter().filter(|arg| arg.default.is_none()).count();
@@ -828,12 +828,12 @@ mod tests {
     }
 
     #[test]
-    fn rejects_unplanned_calls_and_invalid_indices_before_arguments() {
+    fn rejects_unplanned_and_malformed_calls_before_arguments() {
         let storage = MockStorage::default();
         let unplanned = ExprPlan::from(
             translate_expr(&parse_expr("absent(missing_column)").unwrap(), NO_PARAMS).unwrap(),
         );
-        let invalid_index = ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+        let malformed_call = ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
             function_id: 10,
             exprs: vec![ExprPlan::Identifier("missing_column".to_owned())],
         }));
@@ -842,7 +842,10 @@ mod tests {
                 unplanned,
                 EvaluateError::UnplannedCustomFunction("ABSENT".to_owned()),
             ),
-            (invalid_index, EvaluateError::InvalidCustomFunctionIndex(10)),
+            (
+                malformed_call,
+                EvaluateError::MalformedPlanCustomFunctionIndex(10),
+            ),
         ] {
             assert_eq!(
                 evaluate(&storage, &[], None, None, &expr),

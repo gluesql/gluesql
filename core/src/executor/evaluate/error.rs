@@ -177,8 +177,8 @@ pub enum EvaluateError {
     #[error("custom function has not been planned: {0}")]
     UnplannedCustomFunction(String),
 
-    #[error("invalid custom function index: {0}")]
-    InvalidCustomFunctionIndex(usize),
+    #[error("malformed plan - custom function index is out of bounds: {0}")]
+    MalformedPlanCustomFunctionIndex(usize),
 
     #[error(r#"The function "{function_name}" requires at least {required_minimum} argument(s), but {found} were provided."#)]
     FunctionRequiresMoreArguments {
