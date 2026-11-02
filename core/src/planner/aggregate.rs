@@ -14,6 +14,10 @@ use {
 
 pub fn plan(statement: StatementPlan) -> StatementPlan {
     match statement {
+        StatementPlan::Explain(mut query) => {
+            plan_query(&mut query);
+            StatementPlan::Explain(query)
+        }
         StatementPlan::Query(mut query) => {
             plan_query(&mut query);
             StatementPlan::Query(query)

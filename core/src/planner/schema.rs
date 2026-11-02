@@ -22,7 +22,7 @@ pub fn fetch_schema_map<T: Store + ?Sized>(
     statement: &StatementPlan,
 ) -> Result<HashMap<String, Schema>> {
     match statement {
-        StatementPlan::Query(query) => scan_query(storage, query),
+        StatementPlan::Explain(query) | StatementPlan::Query(query) => scan_query(storage, query),
         StatementPlan::Insert {
             table_name, source, ..
         } => {

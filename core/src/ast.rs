@@ -139,6 +139,8 @@ pub enum Statement {
     /// SHOW VARIABLE
     ShowVariable(Variable),
     ShowIndexes(String),
+    /// EXPLAIN
+    Explain(Query),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

@@ -15,7 +15,7 @@ type SchemaMap = HashMap<String, Schema>;
 /// Validate user select column should not be ambiguous
 pub fn validate(schema_map: &SchemaMap, statement: &StatementPlan) -> Result<()> {
     let query = match statement {
-        StatementPlan::Query(query) => Some(query),
+        StatementPlan::Explain(query) | StatementPlan::Query(query) => Some(query),
         StatementPlan::Insert { source, .. } => Some(source),
         StatementPlan::CreateTable { source, .. } => source.as_deref(),
         _ => None,
