@@ -38,11 +38,6 @@ pub struct MockStorage {
 
 impl CustomFunction for MockStorage {
     fn fetch_function<'a>(&'a self, name: &str) -> Result<Option<&'a StructCustomFunction>> {
-        if name == "__ERR__" {
-            return Err(Error::StorageMsg(
-                "[MockStorage] fetch_function - user triggered error".to_owned(),
-            ));
-        }
         Ok(self.function_map.get(&name.to_uppercase()))
     }
 
@@ -161,7 +156,6 @@ mod tests {
             ast::{ColumnDef, Expr, OrderByExpr},
             data::{CustomFunction as StructCustomFunction, Key, Schema, SchemaIndexOrd, Value},
             prelude::DataType,
-            result::Error,
             store::{
                 AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Store, StoreMut,
                 Transaction,
@@ -184,12 +178,6 @@ mod tests {
         assert!(storage.delete_data("Foo", Vec::new()).is_err());
 
         // CustomFunction & CustomFunctionMut
-        assert_eq!(
-            storage.fetch_function("__ERR__"),
-            Err(Error::StorageMsg(
-                "[MockStorage] fetch_function - user triggered error".to_owned(),
-            ))
-        );
         assert_eq!(storage.fetch_function("Foo"), Ok(None));
         assert_eq!(storage.fetch_all_functions(), Ok(Vec::new()));
         assert_eq!(storage.delete_function("Foo"), Ok(()));

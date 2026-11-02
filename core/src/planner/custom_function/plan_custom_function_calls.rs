@@ -588,10 +588,13 @@ mod tests {
 
     #[test]
     fn stored_definition() {
-        let storage = MockStorage::default();
-        let actual = plan(&storage, statement("VALUES (__err__())"));
+        struct UnsupportedFunctionStorage;
+        impl CustomFunction for UnsupportedFunctionStorage {}
+
+        let storage = UnsupportedFunctionStorage;
+        let actual = plan(&storage, statement("VALUES (f())"));
         let expected = Err(Error::StorageMsg(
-            "[MockStorage] fetch_function - user triggered error".to_owned(),
+            "[Storage] CustomFunction is not supported".to_owned(),
         ));
         assert_eq!(actual, expected, "storage errors propagate unchanged");
 
