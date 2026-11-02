@@ -32,11 +32,20 @@ pub trait ToSqlUnquoted {
 #[derive(PartialEq, Debug, Clone, Eq, Hash, Serialize, Deserialize)]
 pub struct ForeignKey {
     pub name: String,
-    pub referencing_column_name: String,
+    pub referencing_column_names: Vec<String>,
     pub referenced_table_name: String,
-    pub referenced_column_name: String,
+    pub referenced_column_names: Vec<String>,
     pub on_delete: ReferentialAction,
     pub on_update: ReferentialAction,
+}
+
+impl ForeignKey {
+    /// Translation guarantees equal lengths, so the zip never truncates
+    pub fn column_pairs(&self) -> impl Iterator<Item = (&String, &String)> {
+        self.referencing_column_names
+            .iter()
+            .zip(self.referenced_column_names.iter())
+    }
 }
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash, Serialize, Deserialize, Display)]
@@ -157,16 +166,26 @@ pub enum Variable {
 impl ToSql for ForeignKey {
     fn to_sql(&self) -> String {
         let ForeignKey {
-            referencing_column_name,
+            referencing_column_names,
             referenced_table_name,
-            referenced_column_name,
+            referenced_column_names,
             name,
             on_delete,
             on_update,
         } = self;
 
+        let quote_all = |columns: &[String]| {
+            columns
+                .iter()
+                .map(|column| format!(r#""{column}""#))
+                .collect::<Vec<_>>()
+                .join(", ")
+        };
+        let referencing = quote_all(referencing_column_names);
+        let referenced = quote_all(referenced_column_names);
+
         format!(
-            r#"CONSTRAINT "{name}" FOREIGN KEY ("{referencing_column_name}") REFERENCES "{referenced_table_name}" ("{referenced_column_name}") ON DELETE {on_delete} ON UPDATE {on_update}"#
+            r#"CONSTRAINT "{name}" FOREIGN KEY ({referencing}) REFERENCES "{referenced_table_name}" ({referenced}) ON DELETE {on_delete} ON UPDATE {on_update}"#
         )
     }
 }
