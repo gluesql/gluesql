@@ -124,10 +124,14 @@ where
             .map(|(sort_type, asc)| {
                 match sort_type {
                     SortType::Value(value) => Ok(value),
-                    SortType::Expr(expr) => {
-                        evaluate(storage, filter_context.as_ref(), aggregated.as_ref(), expr)?
-                            .try_into()
-                    }
+                    SortType::Expr(expr) => evaluate(
+                        storage,
+                        filter_context.as_ref(),
+                        aggregated.as_ref(),
+                        None,
+                        expr,
+                    )?
+                    .try_into(),
                 }?
                 .try_into()
                 .map(|key| (key, asc))

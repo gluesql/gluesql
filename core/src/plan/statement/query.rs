@@ -10,6 +10,7 @@ mod project;
 mod select_order_by;
 mod source;
 mod values;
+mod window;
 
 pub use {
     aggregation::{AggregationInputPlan, AggregationPlan},
@@ -31,6 +32,7 @@ pub use {
         TableAccessPlan, TableAliasPlan, TableSourcePlan,
     },
     values::{ValuesOrderByPlan, ValuesPlan},
+    window::{WindowInputPlan, WindowPlan},
 };
 
 use {

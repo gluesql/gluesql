@@ -6,12 +6,12 @@ use {
         aggregation::{self, AggregatedRows},
         filter, having,
         join::{inner, left_outer},
-        source,
+        source, window,
     },
     crate::{
         data::{Row, SCHEMALESS_DOC_COLUMN, Value},
         executor::{
-            context::{AggregateContext, AggregateValues, RowContext},
+            context::{AggregateContext, AggregateValues, RowContext, WindowValues},
             evaluate::evaluate,
         },
         plan::{ProjectInputPlan, ProjectPlan, ProjectionPlan, SelectItemPlan},
@@ -23,7 +23,8 @@ use {
 
 type ProjectedRow<'a> = (Option<Rc<AggregateValues>>, Option<Rc<RowContext<'a>>>, Row);
 type ProjectedIter<'a> = Box<dyn Iterator<Item = Result<ProjectedRow<'a>>> + 'a>;
-type ProjectInputIter<'a> = Box<dyn Iterator<Item = Result<AggregateContext<'a>>> + 'a>;
+type ProjectInputIter<'a> =
+    Box<dyn Iterator<Item = Result<(AggregateContext<'a>, Option<Rc<WindowValues>>)>> + 'a>;
 
 pub(super) struct ProjectedRows<'a> {
     pub(super) labels: Vec<String>,
@@ -46,9 +47,14 @@ where
                 .rows(None)?
                 .into_selected(None);
             let rows = rows.map(|context| {
-                context.map(|context| AggregateContext {
-                    aggregated: None,
-                    next: Some(context),
+                context.map(|context| {
+                    (
+                        AggregateContext {
+                            aggregated: None,
+                            next: Some(context),
+                        },
+                        None,
+                    )
                 })
             });
 
@@ -58,9 +64,14 @@ where
             let SelectedRows { sources, rows } =
                 inner::execute(storage, join, filter_context.as_ref())?;
             let rows = rows.map(|context| {
-                context.map(|context| AggregateContext {
-                    aggregated: None,
-                    next: Some(context),
+                context.map(|context| {
+                    (
+                        AggregateContext {
+                            aggregated: None,
+                            next: Some(context),
+                        },
+                        None,
+                    )
                 })
             });
 
@@ -70,9 +81,14 @@ where
             let SelectedRows { sources, rows } =
                 left_outer::execute(storage, join, filter_context.as_ref())?;
             let rows = rows.map(|context| {
-                context.map(|context| AggregateContext {
-                    aggregated: None,
-                    next: Some(context),
+                context.map(|context| {
+                    (
+                        AggregateContext {
+                            aggregated: None,
+                            next: Some(context),
+                        },
+                        None,
+                    )
                 })
             });
 
@@ -82,9 +98,14 @@ where
             let SelectedRows { sources, rows } =
                 filter::execute(storage, filter, filter_context.as_ref())?;
             let rows = rows.map(|context| {
-                context.map(|context| AggregateContext {
-                    aggregated: None,
-                    next: Some(context),
+                context.map(|context| {
+                    (
+                        AggregateContext {
+                            aggregated: None,
+                            next: Some(context),
+                        },
+                        None,
+                    )
                 })
             });
 
@@ -93,13 +114,20 @@ where
         ProjectInputPlan::Aggregation(aggregation) => {
             let AggregatedRows { sources, rows } =
                 aggregation::execute(storage, aggregation, filter_context.as_ref())?;
-            let rows = rows.into_iter().map(Ok);
+            let rows = rows.into_iter().map(|context| Ok((context, None)));
 
             (sources, Box::new(rows))
         }
         ProjectInputPlan::Having(having) => {
             let AggregatedRows { sources, rows } =
                 having::execute(storage, having, filter_context.as_ref())?;
+            let rows = rows.into_iter().map(|context| Ok((context, None)));
+
+            (sources, Box::new(rows))
+        }
+        ProjectInputPlan::Window(window) => {
+            let window::WindowedRows { sources, rows } =
+                window::execute(storage, window, filter_context.as_ref())?;
             let rows = rows.into_iter().map(Ok);
 
             (sources, Box::new(rows))
@@ -117,13 +145,13 @@ where
                 SelectItemPlan::Wildcard | SelectItemPlan::QualifiedWildcard(_)
             ))
     );
-    let rows = rows.filter_map(move |aggregate_context| match aggregate_context {
-        Ok(AggregateContext { next: None, .. }) if has_wildcard => None,
-        Ok(aggregate_context) => Some(Ok(aggregate_context)),
+    let rows = rows.filter_map(move |row| match row {
+        Ok((AggregateContext { next: None, .. }, _)) if has_wildcard => None,
+        Ok(row) => Some(Ok(row)),
         Err(error) => Some(Err(error)),
     });
-    let rows = rows.map(move |aggregate_context| {
-        let AggregateContext { aggregated, next } = aggregate_context?;
+    let rows = rows.map(move |row| {
+        let (AggregateContext { aggregated, next }, windowed) = row?;
         let context = match (&next, &filter_context) {
             (Some(context), Some(filter_context)) => Some(Rc::new(RowContext::concat(
                 Rc::clone(context),
@@ -153,9 +181,14 @@ where
                             );
                         }
                         SelectItemPlan::Expr { expr, label } => {
-                            let value: Value =
-                                evaluate(storage, context.as_ref(), aggregated.as_ref(), expr)?
-                                    .try_into()?;
+                            let value: Value = evaluate(
+                                storage,
+                                context.as_ref(),
+                                aggregated.as_ref(),
+                                windowed.as_ref(),
+                                expr,
+                            )?
+                            .try_into()?;
 
                             entries.push((label, value));
                         }

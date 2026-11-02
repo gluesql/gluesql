@@ -9,6 +9,7 @@ use {
             JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
             OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan, StatementPlan,
+            WindowInputPlan,
         },
     },
     std::{collections::HashMap, hash::BuildHasher, rc::Rc},
@@ -147,6 +148,10 @@ impl<'a, S: BuildHasher> HashJoinPlanner<'a, S> {
                     self.aggregation_input(outer_context.map(Rc::clone), having.input.input);
                 ProjectInputPlan::Having(having)
             }
+            ProjectInputPlan::Window(mut window) => {
+                window.input = self.window_input(outer_context.map(Rc::clone), window.input);
+                ProjectInputPlan::Window(window)
+            }
         };
 
         project
@@ -187,6 +192,27 @@ impl<'a, S: BuildHasher> HashJoinPlanner<'a, S> {
             }
             AggregationInputPlan::Filter(filter) => {
                 AggregationInputPlan::Filter(self.filter(outer_context, filter))
+            }
+        }
+    }
+
+    fn window_input(
+        &self,
+        outer_context: Option<Rc<Context<'a>>>,
+        input: WindowInputPlan,
+    ) -> WindowInputPlan {
+        match input {
+            WindowInputPlan::Source(relation) => WindowInputPlan::Source(relation),
+            WindowInputPlan::InnerJoin(join) => {
+                let (_, join) = self.inner_join(outer_context.as_ref(), *join);
+                WindowInputPlan::InnerJoin(Box::new(join))
+            }
+            WindowInputPlan::LeftOuterJoin(join) => {
+                let (_, join) = self.left_outer_join(outer_context.as_ref(), *join);
+                WindowInputPlan::LeftOuterJoin(Box::new(join))
+            }
+            WindowInputPlan::Filter(filter) => {
+                WindowInputPlan::Filter(self.filter(outer_context, filter))
             }
         }
     }

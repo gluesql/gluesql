@@ -198,6 +198,35 @@ pub enum SelectOption {
     Window,
 }
 
+/// `OVER (...)` window specification forms that `GlueSQL` does not support
+/// yet.
+///
+/// Carried by [`TranslateError::UnsupportedWindowOption`] so callers can
+/// match exhaustively on every currently-rejected form instead of
+/// inspecting a free-form string.
+#[derive(Display, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WindowOption {
+    /// `OVER (... ROWS | RANGE | GROUPS ...)`
+    #[strum(to_string = "window frame clause")]
+    Frame,
+
+    /// `OVER <name>` referring to a `WINDOW <name> AS (...)` definition
+    #[strum(to_string = "named window")]
+    NamedWindow,
+
+    /// `<func>(...) FILTER (WHERE ...) OVER (...)`
+    #[strum(to_string = "FILTER clause")]
+    Filter,
+
+    /// `<func>(...) (IGNORE | RESPECT) NULLS OVER (...)`
+    #[strum(to_string = "IGNORE/RESPECT NULLS clause")]
+    NullTreatment,
+
+    /// `<func>(...) WITHIN GROUP (...) OVER (...)`
+    #[strum(to_string = "WITHIN GROUP clause")]
+    WithinGroup,
+}
+
 /// `JOIN` constraint forms that `GlueSQL` does not support yet.
 ///
 /// Carried by [`TranslateError::UnsupportedJoinConstraint`] so callers can
@@ -238,6 +267,7 @@ serialize_via_display!(
     TransactionOption,
     QueryOption,
     SelectOption,
+    WindowOption,
     JoinConstraintReason,
 );
 
@@ -456,4 +486,16 @@ pub enum TranslateError {
 
     #[error("invalid parameter placeholder: {placeholder}")]
     InvalidPlaceholder { placeholder: String },
+
+    #[error("unsupported window option: {0}")]
+    UnsupportedWindowOption(WindowOption),
+
+    #[error("DISTINCT is not supported inside a window function")]
+    DistinctNotSupportedInWindowFunction,
+
+    #[error("unsupported window function: {0}")]
+    UnsupportedWindowFunction(String),
+
+    #[error("window offset must be a non-negative integer literal: {0}")]
+    InvalidWindowOffset(String),
 }

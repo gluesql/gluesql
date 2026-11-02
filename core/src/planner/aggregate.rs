@@ -8,6 +8,7 @@ use {
         NestedLoopJoinInputPlan, NestedLoopJoinPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan,
         ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
         SelectOrderByPlan, SourcePlan, StatementPlan, ValuesOrderByPlan, ValuesPlan,
+        WindowInputPlan,
     },
     std::collections::HashMap,
 };
@@ -171,6 +172,16 @@ fn plan_project_input(input: &mut ProjectInputPlan) {
             }
             plan_expr(&mut having.expr);
         }
+        ProjectInputPlan::Window(window) => plan_window_input(&mut window.input),
+    }
+}
+
+fn plan_window_input(input: &mut WindowInputPlan) {
+    match input {
+        WindowInputPlan::Source(relation) => plan_source(relation),
+        WindowInputPlan::InnerJoin(join) => plan_inner_join(join),
+        WindowInputPlan::LeftOuterJoin(join) => plan_left_outer_join(join),
+        WindowInputPlan::Filter(filter) => plan_filter(filter),
     }
 }
 
@@ -366,6 +377,15 @@ fn bind_project(
         }
         ProjectInputPlan::Having(having) => {
             having.input.aggregate_slots = aggregates;
+        }
+        // `planner::window` rejects a plain aggregate anywhere in the
+        // projection when a window function is present, so a `WindowPlan`
+        // never has aggregate slots of its own to bind here.
+        ProjectInputPlan::Window(_) => {
+            debug_assert!(
+                aggregates.is_empty(),
+                "bare aggregates combined with window functions should already be rejected"
+            );
         }
     }
 }

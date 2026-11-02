@@ -1,5 +1,5 @@
 use {
-    super::{AggregationPlan, FilterPlan, HavingPlan},
+    super::{AggregationPlan, FilterPlan, HavingPlan, WindowPlan},
     crate::plan::{InnerJoinPlan, LeftOuterJoinPlan, ProjectionPlan, SourcePlan},
     serde::{Deserialize, Serialize},
 };
@@ -12,6 +12,7 @@ pub enum ProjectInputPlan {
     Filter(FilterPlan),
     Aggregation(AggregationPlan),
     Having(HavingPlan),
+    Window(WindowPlan),
 }
 
 impl ProjectInputPlan {
@@ -23,6 +24,7 @@ impl ProjectInputPlan {
             Self::Filter(filter) => filter.input.base_source(),
             Self::Aggregation(aggregation) => aggregation.input.base_source(),
             Self::Having(having) => having.input.input.base_source(),
+            Self::Window(window) => window.input.base_source(),
         }
     }
 
@@ -34,6 +36,7 @@ impl ProjectInputPlan {
             Self::Filter(filter) => filter.input.joined_sources(),
             Self::Aggregation(aggregation) => aggregation.input.joined_sources(),
             Self::Having(having) => having.input.input.joined_sources(),
+            Self::Window(window) => window.input.joined_sources(),
         }
     }
 }

@@ -251,7 +251,8 @@ fn source_for_schema_copy(project: &ProjectPlan) -> Option<&SourcePlan> {
         ProjectInputPlan::InnerJoin(_)
         | ProjectInputPlan::LeftOuterJoin(_)
         | ProjectInputPlan::Aggregation(_)
-        | ProjectInputPlan::Having(_) => return None,
+        | ProjectInputPlan::Having(_)
+        | ProjectInputPlan::Window(_) => return None,
     };
 
     match &project.projection {

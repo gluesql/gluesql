@@ -1,5 +1,5 @@
 use {
-    super::super::expr::visit_mut_expr,
+    super::super::expr::{visit_mut_expr, visit_mut_window},
     crate::{
         ast::Literal,
         data::{SCHEMALESS_DOC_COLUMN, Schema},
@@ -9,7 +9,8 @@ use {
             JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
             OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, SelectOrderByPlan, SourcePlan, ValuesOrderByPlan,
+            SelectItemPlan, SelectOrderByPlan, SourcePlan, ValuesOrderByPlan, WindowExprPlan,
+            WindowInputPlan,
         },
     },
     std::{
@@ -147,6 +148,13 @@ fn transform_project<S: BuildHasher>(
             transform_query_expr(schema_map, &mut having.expr, &state);
             state
         }
+        ProjectInputPlan::Window(window) => {
+            let state = transform_window_input(schema_map, &mut window.input);
+            for window_slot in &mut window.window_slots {
+                transform_window_slot(schema_map, window_slot, &state);
+            }
+            state
+        }
     };
     let (base_source, has_join) = project_source(input);
     rewrite_projection(schema_map, projection, base_source, has_join, &state);
@@ -178,6 +186,29 @@ fn transform_aggregation_input<S: BuildHasher>(
         AggregationInputPlan::LeftOuterJoin(join) => transform_left_outer_join(schema_map, join),
         AggregationInputPlan::Filter(filter) => transform_filter(schema_map, filter),
     }
+}
+
+fn transform_window_input<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    input: &mut WindowInputPlan,
+) -> QueryRewriteState {
+    match input {
+        WindowInputPlan::Source(relation) => transform_source(schema_map, relation),
+        WindowInputPlan::InnerJoin(join) => transform_inner_join(schema_map, join),
+        WindowInputPlan::LeftOuterJoin(join) => transform_left_outer_join(schema_map, join),
+        WindowInputPlan::Filter(filter) => transform_filter(schema_map, filter),
+    }
+}
+
+/// Rewrites a window expression's own `OVER` clause and function arguments
+/// (including any subqueries reachable from them), walking its children via
+/// `visit_mut_window` instead of hand-enumerating them.
+fn transform_window_slot<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    window: &mut WindowExprPlan,
+    state: &QueryRewriteState,
+) {
+    visit_mut_window(window, &mut |e| rewrite_node(schema_map, e, state));
 }
 
 fn transform_source<S: BuildHasher>(
@@ -402,7 +433,21 @@ fn transform_query_expr(
     expr: &mut ExprPlan,
     state: &QueryRewriteState,
 ) {
-    visit_mut_expr(expr, &mut |e| match e {
+    visit_mut_expr(expr, &mut |e| rewrite_node(schema_map, e, state));
+}
+
+/// Rewrites a single expression node in place: unqualified identifiers and
+/// aliased identifiers under a schemaless table become `doc[...]` array
+/// indexing, and subqueries are recursively transformed. Shared by the
+/// generic expression walk (`transform_query_expr`, via `visit_mut_expr`)
+/// and the window-expression walk (`transform_window_slot`, via
+/// `visit_mut_window`) so both rewrite identically.
+fn rewrite_node(
+    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    e: &mut ExprPlan,
+    state: &QueryRewriteState,
+) {
+    match e {
         ExprPlan::Identifier(ident) => {
             if state.rewrite_unqualified_identifiers {
                 *e = ExprPlan::ArrayIndex {
@@ -428,7 +473,7 @@ fn transform_query_expr(
             transform_query(schema_map, subquery.as_mut());
         }
         _ => {}
-    });
+    }
 }
 
 fn transform_wildcard_projection(

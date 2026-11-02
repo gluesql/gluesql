@@ -11,6 +11,7 @@ mod output;
 mod project;
 mod source;
 mod values;
+mod window;
 
 pub use error::QueryError;
 pub(super) use output::{OutputBody, body as output_body};

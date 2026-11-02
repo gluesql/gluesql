@@ -56,7 +56,7 @@ pub(super) fn execute<'a, T: GStore>(
             ))),
             None => Some(Rc::clone(&left)),
         };
-        let rows = evaluate(storage, evaluation_context.as_ref(), None, input_key)
+        let rows = evaluate(storage, evaluation_context.as_ref(), None, None, input_key)
             .and_then(|evaluated| Key::try_from(evaluated).map(|key| rows_map.get(&key).cloned()));
         let rows: Box<dyn Iterator<Item = Result<Row>> + 'a> = match rows {
             Ok(Some(rows)) => Box::new(rows.into_iter().map(Ok)),
@@ -89,7 +89,7 @@ fn build_rows<'a, T: GStore>(
             Cow::Borrowed(&row),
             filter_context.map(Rc::clone),
         ));
-        let key: Key = evaluate(storage, Some(&context), None, right_key)?.try_into()?;
+        let key: Key = evaluate(storage, Some(&context), None, None, right_key)?.try_into()?;
         if matches!(key, Key::None) {
             continue;
         }
