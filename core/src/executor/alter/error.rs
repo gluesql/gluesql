@@ -46,12 +46,6 @@ pub enum AlterError {
     #[error("Default value is required: {0:#?}")]
     DefaultValueRequired(ColumnDef),
 
-    #[error("duplicate arg name: {0}")]
-    DuplicateArgName(String),
-
-    #[error("non-default argument should not follow the default argument")]
-    NonDefaultArgumentFollowsDefaultArgument,
-
     #[error("foreign table not found: {0}")]
     ReferencedTableNotFound(String),
 

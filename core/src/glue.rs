@@ -100,9 +100,7 @@ mod tests {
     use {
         super::Glue,
         crate::{
-            executor::{EvaluateError, InsertError},
-            mock::MockStorage,
-            result::Error,
+            executor::InsertError, mock::MockStorage, planner::PlannerError, result::Error,
             store::CustomFunction,
         },
     };
@@ -128,7 +126,7 @@ mod tests {
         let mut glue = Glue::new(MockStorage::default());
         let sql = "CREATE FUNCTION pending() RETURN 1; SELECT pending()";
         let actual = glue.plan(sql);
-        let expected = Err(Error::Evaluate(EvaluateError::UnsupportedFunction(
+        let expected = Err(Error::Planner(PlannerError::UnsupportedFunction(
             "PENDING".to_owned(),
         )));
 

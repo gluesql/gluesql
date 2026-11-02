@@ -2,6 +2,21 @@
 
 Use this policy when implementing and reviewing changes to GlueSQL.
 
+## Error ownership
+
+For an error created in a module, search that module and then its parents.
+Use the first existing error type declared along that path, adding a variant
+there if needed. A module's own `error.rs` counts as its declaration site;
+imports and re-exports do not.
+
+Choose by declaration location, regardless of feature, SQL statement, or
+user-facing message. Reapply this rule when moving a check to another module.
+
+An error propagated from a call keeps the type chosen where it was created.
+The caller's location does not change its ownership.
+
+Ownership selects the error type; prefixes describe the error condition.
+
 ## Error prefixes
 
 The following error-variant prefixes have specific meanings. Choose a prefix by

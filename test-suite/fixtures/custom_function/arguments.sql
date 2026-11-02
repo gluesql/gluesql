@@ -34,7 +34,7 @@ SELECT add_two(1, NULL, 2) AS r;
 
 -- @name: A required argument cannot be omitted
 SELECT add_one();
--- @expect: error Evaluate.FunctionArgsLengthNotWithinRange
+-- @expect: error Planner.FunctionArgsLengthNotWithinRange
 -- @json:
 -- {
 --   "expected_maximum": 2,
@@ -45,7 +45,7 @@ SELECT add_one();
 
 -- @name: Extra arguments are rejected
 SELECT add_one(1, 2, 4);
--- @expect: error Evaluate.FunctionArgsLengthNotWithinRange
+-- @expect: error Planner.FunctionArgsLengthNotWithinRange
 -- @json:
 -- {
 --   "expected_maximum": 2,
@@ -56,7 +56,7 @@ SELECT add_one(1, 2, 4);
 
 -- @name: Required arguments must precede arguments with defaults
 CREATE FUNCTION invalid_defaults(n INT, x INT DEFAULT 1, y INT) RETURN n + x + y;
--- @expect: error Alter.NonDefaultArgumentFollowsDefaultArgument
+-- @expect: error Planner.NonDefaultArgumentFollowsDefaultArgument
 
 -- @name: Every argument must have a name
 CREATE FUNCTION test(INT) RETURN 1;
@@ -64,7 +64,7 @@ CREATE FUNCTION test(INT) RETURN 1;
 
 -- @name: Argument names must be distinct
 CREATE FUNCTION test(a INT, a BOOLEAN) RETURN 1;
--- @expect: error Alter.DuplicateArgName
+-- @expect: error Planner.DuplicateArgName
 -- @json: "a"
 
 -- @name: Calling a custom function in an argument default is rejected

@@ -1,6 +1,6 @@
 use crate::{
     ast::{Expr, OperateFunctionArg},
-    executor::{AlterError, evaluate_stateless},
+    executor::evaluate_stateless,
     plan::{CustomFunctionPlan, ExprPlan, OperateFunctionArgPlan, SourcePlan},
     planner::{
         PlannerError,
@@ -16,7 +16,7 @@ pub fn validate(
 ) -> Result<CustomFunctionPlan> {
     for (index, arg) in args.iter().enumerate() {
         if args[index + 1..].iter().any(|other| arg.name == other.name) {
-            return Err(AlterError::DuplicateArgName(arg.name.clone()).into());
+            return Err(PlannerError::DuplicateArgName(arg.name.clone()).into());
         }
     }
     let args = args
@@ -32,7 +32,7 @@ pub fn validate(
         .skip_while(|arg| arg.default.is_none())
         .all(|arg| arg.default.is_some())
     {
-        return Err(AlterError::NonDefaultArgumentFollowsDefaultArgument.into());
+        return Err(PlannerError::NonDefaultArgumentFollowsDefaultArgument.into());
     }
 
     let body = ExprPlan::from(body.clone());
@@ -65,7 +65,7 @@ mod tests {
         super::validate,
         crate::{
             ast::{DataType, Statement},
-            executor::{AlterError, EvaluateError},
+            executor::EvaluateError,
             parse_sql::{parse, parse_expr},
             plan::{CustomFunctionPlan, ExprPlan, OperateFunctionArgPlan},
             planner::PlannerError,
@@ -118,11 +118,11 @@ mod tests {
         let cases = [
             (
                 "CREATE FUNCTION f(x INT, y INT, x INT) RETURN x",
-                AlterError::DuplicateArgName("x".to_owned()).into(),
+                PlannerError::DuplicateArgName("x".to_owned()).into(),
             ),
             (
                 "CREATE FUNCTION f(x INT DEFAULT 1, y INT) RETURN x",
-                AlterError::NonDefaultArgumentFollowsDefaultArgument.into(),
+                PlannerError::NonDefaultArgumentFollowsDefaultArgument.into(),
             ),
             (
                 "CREATE FUNCTION f(x INT DEFAULT missing) RETURN x",

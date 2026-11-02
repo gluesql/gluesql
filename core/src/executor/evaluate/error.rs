@@ -197,9 +197,6 @@ pub enum EvaluateError {
         found: usize,
     },
 
-    #[error("unsupported function: {0}")]
-    UnsupportedFunction(String),
-
     #[error("The provided arguments are non-comparable: {0}")]
     NonComparableArgumentError(String),
 

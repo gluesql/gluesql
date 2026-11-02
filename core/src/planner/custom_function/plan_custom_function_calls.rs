@@ -2,10 +2,9 @@ use {
     super::shared::validate_function_definition,
     crate::{
         data::Value,
-        executor::EvaluateError,
         plan::{CustomFunctionPlan, ExprPlan, FunctionPlan, StatementPlan, StatementPlanKind},
         planner::{
-            aggregate,
+            PlannerError, aggregate,
             visit_mut::{VisitorMut, walk_expr_mut},
         },
         result::{Error, Result},
@@ -112,7 +111,7 @@ impl<T: CustomFunction + ?Sized> CustomFunctionPlanner<'_, T> {
         let definition = self
             .storage
             .fetch_function(&key)?
-            .ok_or_else(|| EvaluateError::UnsupportedFunction(name.to_owned()))?;
+            .ok_or_else(|| PlannerError::UnsupportedFunction(name.to_owned()))?;
         let function = validate_function_definition(
             &definition.func_name,
             &definition.args,
@@ -128,7 +127,7 @@ impl<T: CustomFunction + ?Sized> CustomFunctionPlanner<'_, T> {
         let function = self
             .functions
             .get(index)
-            .ok_or(EvaluateError::MalformedPlanCustomFunctionIndex(index))?;
+            .ok_or(PlannerError::MalformedPlanCustomFunctionIndex(index))?;
         let min = function
             .args
             .iter()
@@ -136,7 +135,7 @@ impl<T: CustomFunction + ?Sized> CustomFunctionPlanner<'_, T> {
             .count();
         let max = function.args.len();
         if !(min..=max).contains(&found) {
-            return Err(EvaluateError::FunctionArgsLengthNotWithinRange {
+            return Err(PlannerError::FunctionArgsLengthNotWithinRange {
                 name: function.name.clone(),
                 expected_minimum: min,
                 expected_maximum: max,
@@ -155,7 +154,6 @@ mod tests {
         crate::{
             ast::{DataType, Expr},
             data::CustomFunction as Definition,
-            executor::EvaluateError,
             mock::{MockStorage, run},
             parse_sql::{parse, parse_expr},
             plan::{
@@ -198,7 +196,7 @@ mod tests {
             "VALUES (ABS(missing()))",
         ] {
             let actual = plan(&storage, statement(sql));
-            let expected = Err(Error::Evaluate(EvaluateError::UnsupportedFunction(
+            let expected = Err(Error::Planner(PlannerError::UnsupportedFunction(
                 "MISSING".to_owned(),
             )));
             assert_eq!(actual, expected, "call must be visited: {sql}");
@@ -230,8 +228,8 @@ mod tests {
         let storage = run("CREATE FUNCTION f(x INT, y INT DEFAULT 2) RETURN x + y");
         for (sql, found) in [("VALUES (f())", 0), ("VALUES (f(1, 2, 3))", 3)] {
             let actual = plan(&storage, statement(sql));
-            let expected = Err(Error::Evaluate(
-                EvaluateError::FunctionArgsLengthNotWithinRange {
+            let expected = Err(Error::Planner(
+                PlannerError::FunctionArgsLengthNotWithinRange {
                     name: "f".to_owned(),
                     expected_minimum: 1,
                     expected_maximum: 2,
@@ -282,8 +280,8 @@ mod tests {
             ]]))),
             functions,
         };
-        let expected = Err(Error::Evaluate(
-            EvaluateError::FunctionArgsLengthNotWithinRange {
+        let expected = Err(Error::Planner(
+            PlannerError::FunctionArgsLengthNotWithinRange {
                 name: "f".to_owned(),
                 expected_minimum: 1,
                 expected_maximum: 2,
@@ -297,8 +295,8 @@ mod tests {
         );
 
         input.functions.clear();
-        let expected = Err(Error::Evaluate(
-            EvaluateError::MalformedPlanCustomFunctionIndex(0),
+        let expected = Err(Error::Planner(
+            PlannerError::MalformedPlanCustomFunctionIndex(0),
         ));
         assert_eq!(
             plan(&storage, input),
@@ -517,7 +515,7 @@ mod tests {
         );
 
         let actual = plan(&storage, statement(sql));
-        let expected = Err(Error::Evaluate(EvaluateError::UnsupportedFunction(
+        let expected = Err(Error::Planner(PlannerError::UnsupportedFunction(
             "TWICE".to_owned(),
         )));
         assert_eq!(
@@ -599,7 +597,7 @@ mod tests {
 
         let storage = run("CREATE FUNCTION forward_call() RETURN missing()");
         let actual = plan(&storage, statement("VALUES (forward_call())"));
-        let expected = Err(Error::Evaluate(EvaluateError::UnsupportedFunction(
+        let expected = Err(Error::Planner(PlannerError::UnsupportedFunction(
             "MISSING".to_owned(),
         )));
         assert_eq!(actual, expected, "a missing dependency fails body planning");
