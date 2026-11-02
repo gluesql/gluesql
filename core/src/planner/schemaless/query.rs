@@ -9,7 +9,7 @@ use {
             JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
             OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, SelectOrderByPlan, SourcePlan, ValuesOrderByPlan,
+            SelectItemPlan, SelectOrderByPlan, SourcePlan, ValuesOrderByPlan, ValuesPlan,
         },
     },
     std::{
@@ -32,7 +32,9 @@ pub(super) fn transform_query<S: BuildHasher>(
         QueryPlan::Project(project) => {
             transform_project(schema_map, project);
         }
-        QueryPlan::Values(_) => {}
+        QueryPlan::Values(values) => {
+            transform_values(schema_map, values);
+        }
         QueryPlan::SelectOrderBy(order_by) => {
             transform_select_order_by(schema_map, order_by);
         }
@@ -48,7 +50,7 @@ pub(super) fn transform_query<S: BuildHasher>(
         QueryPlan::Limit(LimitPlan { input, count }) => {
             let state = match input {
                 LimitInputPlan::Project(project) => transform_project(schema_map, project),
-                LimitInputPlan::Values(_) => empty_rewrite_state(),
+                LimitInputPlan::Values(values) => transform_values(schema_map, values),
                 LimitInputPlan::SelectOrderBy(order_by) => {
                     transform_select_order_by(schema_map, order_by)
                 }
@@ -69,7 +71,7 @@ fn transform_offset<S: BuildHasher>(
 ) -> QueryRewriteState {
     let state = match input {
         OffsetInputPlan::Project(project) => transform_project(schema_map, project),
-        OffsetInputPlan::Values(_) => empty_rewrite_state(),
+        OffsetInputPlan::Values(values) => transform_values(schema_map, values),
         OffsetInputPlan::SelectOrderBy(order_by) => transform_select_order_by(schema_map, order_by),
         OffsetInputPlan::ValuesOrderBy(order_by) => transform_values_order_by(schema_map, order_by),
         OffsetInputPlan::Distinct(distinct) => transform_distinct(schema_map, distinct),
@@ -105,11 +107,23 @@ fn transform_select_order_by<S: BuildHasher>(
 
 fn transform_values_order_by<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
-    ValuesOrderByPlan { exprs, .. }: &mut ValuesOrderByPlan,
+    ValuesOrderByPlan { input, exprs }: &mut ValuesOrderByPlan,
 ) -> QueryRewriteState {
-    let state = empty_rewrite_state();
+    let state = transform_values(schema_map, input);
     for order_by in exprs {
         transform_query_expr(schema_map, &mut order_by.expr, &state);
+    }
+
+    state
+}
+
+fn transform_values<S: BuildHasher>(
+    schema_map: &HashMap<String, Schema, S>,
+    ValuesPlan(rows): &mut ValuesPlan,
+) -> QueryRewriteState {
+    let state = empty_rewrite_state();
+    for expr in rows.iter_mut().flatten() {
+        transform_query_expr(schema_map, expr, &state);
     }
 
     state
@@ -339,8 +353,12 @@ fn rewrite_source(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
     relation: &mut SourcePlan,
 ) {
-    if let SourcePlan::Derived(derived) = relation {
-        transform_query(schema_map, &mut derived.query);
+    match relation {
+        SourcePlan::Derived(derived) => transform_query(schema_map, &mut derived.query),
+        SourcePlan::Series(series) => {
+            transform_query_expr(schema_map, &mut series.size, &empty_rewrite_state());
+        }
+        SourcePlan::Table(_) | SourcePlan::Dictionary(_) => {}
     }
 }
 
@@ -468,4 +486,146 @@ fn is_schemaless_table(
     schema_map
         .get(table_name)
         .is_some_and(|schema| schema.column_defs.is_none())
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::transform_query,
+        crate::{
+            mock::run,
+            parse_sql::parse_query,
+            plan::QueryPlan,
+            store::Store,
+            translate::{NO_PARAMS, translate_query},
+        },
+        pretty_assertions::assert_eq,
+        std::collections::HashMap,
+    };
+
+    fn query(sql: &str) -> QueryPlan {
+        translate_query(&parse_query(sql).expect(sql), NO_PARAMS)
+            .expect(sql)
+            .into()
+    }
+
+    #[test]
+    fn values() {
+        let storage = run("CREATE TABLE Doc");
+        let schema = storage.fetch_schema("Doc").unwrap().unwrap();
+        let schema_map = HashMap::from([("Doc".to_owned(), schema)]);
+        let test = |actual: &str, expected: &str, name: &str| {
+            let mut result = query(actual);
+            transform_query(&schema_map, &mut result);
+            let expected_plan = query(expected);
+
+            assert_eq!(
+                result, expected_plan,
+                "\n[{name}]\nactual: {actual}\nexpected: {expected}"
+            );
+        };
+
+        let actual = "
+            VALUES
+                ((SELECT x FROM Doc), outer_value),
+                ((SELECT d.x FROM Doc d), 2)
+        ";
+        let expected = "
+            VALUES
+                ((SELECT _doc['x'] AS x FROM Doc), outer_value),
+                ((SELECT d._doc['x'] AS x FROM Doc d), 2)
+        ";
+        test(actual, expected, "multiple rows");
+
+        let actual = "
+            VALUES
+                ((SELECT x FROM Doc), outer_value),
+                ((SELECT d.x FROM Doc d), 2)
+            ORDER BY column1
+        ";
+        let expected = "
+            VALUES
+                ((SELECT _doc['x'] AS x FROM Doc), outer_value),
+                ((SELECT d._doc['x'] AS x FROM Doc d), 2)
+            ORDER BY column1
+        ";
+        test(actual, expected, "order by");
+
+        let actual = "
+            VALUES
+                ((SELECT x FROM Doc), outer_value),
+                ((SELECT d.x FROM Doc d), 2)
+            LIMIT 1
+        ";
+        let expected = "
+            VALUES
+                ((SELECT _doc['x'] AS x FROM Doc), outer_value),
+                ((SELECT d._doc['x'] AS x FROM Doc d), 2)
+            LIMIT 1
+        ";
+        test(actual, expected, "limit");
+
+        let actual = "
+            VALUES
+                ((SELECT x FROM Doc), outer_value),
+                ((SELECT d.x FROM Doc d), 2)
+            OFFSET 1
+        ";
+        let expected = "
+            VALUES
+                ((SELECT _doc['x'] AS x FROM Doc), outer_value),
+                ((SELECT d._doc['x'] AS x FROM Doc d), 2)
+            OFFSET 1
+        ";
+        test(actual, expected, "offset");
+
+        let actual = "
+            VALUES
+                ((SELECT x FROM Doc), outer_value),
+                ((SELECT d.x FROM Doc d), 2)
+            ORDER BY column1
+            LIMIT 1
+            OFFSET 1
+        ";
+        let expected = "
+            VALUES
+                ((SELECT _doc['x'] AS x FROM Doc), outer_value),
+                ((SELECT d._doc['x'] AS x FROM Doc d), 2)
+            ORDER BY column1
+            LIMIT 1
+            OFFSET 1
+        ";
+        test(actual, expected, "order by with limit and offset");
+    }
+
+    #[test]
+    fn series() {
+        let storage = run("CREATE TABLE Doc");
+        let schema = storage.fetch_schema("Doc").unwrap().unwrap();
+        let schema_map = HashMap::from([("Doc".to_owned(), schema)]);
+        let test = |actual: &str, expected: &str, name: &str| {
+            let mut result = query(actual);
+            transform_query(&schema_map, &mut result);
+            let expected_plan = query(expected);
+
+            assert_eq!(
+                result, expected_plan,
+                "\n[{name}]\nactual: {actual}\nexpected: {expected}"
+            );
+        };
+
+        let actual = "
+            SELECT *
+            FROM SERIES(outer_size + (
+                SELECT d.x FROM Doc d
+            ))
+        ";
+        let expected = "
+            SELECT *
+            FROM SERIES(outer_size + (
+                SELECT d._doc['x'] AS x FROM Doc d
+            ))
+        ";
+        test(actual, expected, "size subquery with outer identifier");
+    }
 }

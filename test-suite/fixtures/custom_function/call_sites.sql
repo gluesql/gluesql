@@ -92,6 +92,22 @@ SELECT x FROM FunctionDocs;
 -- | ------ |
 -- | 2      |
 
+-- @name: VALUES call arguments can read a schemaless table
+VALUES (inc((SELECT x FROM FunctionDocs)));
+-- @expect:
+-- | column1: I64 |
+-- | ------------ |
+-- | 3            |
+
+-- @name: SERIES call arguments can read a schemaless table
+SELECT * FROM SERIES(inc((SELECT x FROM FunctionDocs)));
+-- @expect:
+-- | N: I64 |
+-- | ------ |
+-- | 1      |
+-- | 2      |
+-- | 3      |
+
 -- @name: CREATE TABLE AS VALUES can call custom functions
 CREATE TABLE FunctionValues AS VALUES (inc(0));
 -- @expect: payload Create

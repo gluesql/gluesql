@@ -299,7 +299,8 @@ fn validate_source(
 ) -> ValidateResult {
     match source {
         SourcePlan::Derived(derived) => validate_query(schema_map, &derived.query),
-        _ => Ok(()),
+        SourcePlan::Series(series) => validate_expr(schema_map, &series.size),
+        SourcePlan::Table(_) | SourcePlan::Dictionary(_) => Ok(()),
     }
 }
 
@@ -452,6 +453,29 @@ mod tests {
         assert_mixed_join_wildcard_error(
             &storage,
             "SELECT (SELECT * FROM Player JOIN Item WHERE Player.id = Item.id LIMIT 1) FROM Item",
+        );
+    }
+
+    #[test]
+    fn validates_series_size() {
+        let storage = setup_storage();
+
+        assert_plan_ok(
+            &storage,
+            "SELECT * FROM SERIES((SELECT id FROM Player LIMIT 1))",
+        );
+        assert_mixed_join_wildcard_error(
+            &storage,
+            "
+            SELECT *
+            FROM SERIES((
+                SELECT *
+                FROM Player
+                JOIN Item
+                WHERE Player.id = Item.id
+                LIMIT 1
+            ))
+            ",
         );
     }
 
