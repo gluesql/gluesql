@@ -258,10 +258,10 @@ where
 #[cfg(test)]
 mod tests {
     use {
-        super::{try_visit_expr, visit_mut_expr},
+        super::{try_visit_expr, try_visit_mut_expr, visit_mut_expr},
         crate::{
             parse_sql::parse_expr,
-            plan::ExprPlan,
+            plan::{ExprPlan, FunctionExprPlan},
             planner::PlannerError,
             translate::{NO_PARAMS, translate_expr},
         },
@@ -270,6 +270,7 @@ mod tests {
     fn test(input: &str, expected: &str) {
         let parsed = parse_expr(input).expect(input);
         let mut expr = ExprPlan::from(translate_expr(&parsed, NO_PARAMS).expect(input));
+        let mut fallible = expr.clone();
 
         visit_mut_expr(&mut expr, &mut |e| {
             if let ExprPlan::Identifier(ident) = e {
@@ -277,10 +278,19 @@ mod tests {
             }
         });
 
+        let result = try_visit_mut_expr(&mut fallible, &mut |e| {
+            if let ExprPlan::Identifier(ident) = e {
+                *e = ExprPlan::Identifier(format!("_{ident}"));
+            }
+            Ok(())
+        });
+
         let expected_parsed = parse_expr(expected).expect(expected);
         let expected = ExprPlan::from(translate_expr(&expected_parsed, NO_PARAMS).expect(expected));
 
         assert_eq!(expr, expected, "\ninput: {input}\nexpected: {expected:?}");
+        assert_eq!(result, Ok(()), "{input}");
+        assert_eq!(fallible, expected, "fallible traversal: {input}");
     }
 
     #[test]
@@ -382,6 +392,8 @@ mod tests {
         test("SPLICE(l, a, b)", "SPLICE(_l, _a, _b)");
         test("SPLICE(l, a, b, v)", "SPLICE(_l, _a, _b, _v)");
         test("DEDUP(l)", "DEDUP(_l)");
+        test("custom_func()", "custom_func()");
+        test("custom_func(a, b)", "custom_func(_a, _b)");
     }
 
     #[test]
@@ -395,5 +407,125 @@ mod tests {
         });
 
         assert_eq!(result, Err(PlannerError::Unreachable));
+    }
+
+    #[test]
+    fn planned_custom_function() {
+        let mut expr = ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+            function_id: 7,
+            exprs: vec![
+                ExprPlan::Identifier("a".to_owned()),
+                ExprPlan::Identifier("b".to_owned()),
+            ],
+        }));
+        let expected = ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+            function_id: 7,
+            exprs: vec![
+                ExprPlan::Identifier("_a".to_owned()),
+                ExprPlan::Identifier("_b".to_owned()),
+            ],
+        }));
+        for mut input in [
+            expr.clone(),
+            ExprPlan::Function(Box::new(FunctionExprPlan::UnplannedCustom {
+                name: "F".to_owned(),
+                exprs: vec![
+                    ExprPlan::Identifier("a".to_owned()),
+                    ExprPlan::Identifier("b".to_owned()),
+                ],
+            })),
+        ] {
+            let mut visited = Vec::new();
+            let result = try_visit_expr(&input, &mut |expr| {
+                if let ExprPlan::Identifier(name) = expr {
+                    visited.push(name.clone());
+                }
+                Ok(())
+            });
+            assert_eq!(result, Ok(()));
+            assert_eq!(visited, vec!["a".to_owned(), "b".to_owned()]);
+            let mut visited = Vec::new();
+            let result = try_visit_mut_expr(&mut input, &mut |expr| {
+                if let ExprPlan::Identifier(name) = expr {
+                    visited.push(name.clone());
+                    return Err(PlannerError::Unreachable.into());
+                }
+                Ok(())
+            });
+            assert_eq!(result, Err(PlannerError::Unreachable.into()));
+            assert_eq!(visited, vec!["a".to_owned()]);
+        }
+        let mut infallible = expr.clone();
+        visit_mut_expr(&mut infallible, &mut |expr| {
+            if let ExprPlan::Identifier(name) = expr {
+                *name = format!("_{name}");
+            }
+        });
+        assert_eq!(infallible, expected);
+        let result = try_visit_mut_expr(&mut expr, &mut |expr| {
+            if let ExprPlan::Identifier(name) = expr {
+                *name = format!("_{name}");
+            }
+            Ok(())
+        });
+        assert_eq!(result, Ok(()));
+        assert_eq!(expr, expected);
+    }
+
+    #[test]
+    fn try_visit_mut_function_short_circuits_after_error() {
+        let cases: &[(&str, &[&str])] = &[
+            ("ABS(a)", &["a"]),
+            ("ADD_MONTH(a, b)", &["a", "b"]),
+            ("LPAD(a, b, c)", &["a", "b", "c"]),
+            ("REPLACE(a, b, c)", &["a", "b", "c"]),
+            ("CAST(a AS INT)", &["a"]),
+            ("CONCAT(a, b)", &["a", "b"]),
+            ("custom_func(a, b)", &["a", "b"]),
+            ("CONCAT_WS(a, b, c)", &["a", "b", "c"]),
+            ("IFNULL(a, b)", &["a", "b"]),
+            ("NULLIF(a, b)", &["a", "b"]),
+            ("RAND(a)", &["a"]),
+            ("TRIM(b FROM a)", &["a", "b"]),
+            ("LOG(a, b)", &["a", "b"]),
+            ("DIV(a, b)", &["a", "b"]),
+            ("GCD(a, b)", &["a", "b"]),
+            ("POWER(a, b)", &["a", "b"]),
+            ("LTRIM(a, b)", &["a", "b"]),
+            ("SUBSTR(a, b, c)", &["a", "b", "c"]),
+            ("UNWRAP(a, b)", &["a", "b"]),
+            ("FORMAT(a, b)", &["a", "b"]),
+            ("POSITION(a IN b)", &["b", "a"]),
+            ("FIND_IDX(a, b, c)", &["a", "b", "c"]),
+            ("APPEND(a, b)", &["a", "b"]),
+            ("SORT(a, b)", &["a", "b"]),
+            ("SLICE(a, b, c)", &["a", "b", "c"]),
+            ("POINT(a, b)", &["a", "b"]),
+            ("CALC_DISTANCE(a, b)", &["a", "b"]),
+            ("SPLICE(a, b, c, d)", &["a", "b", "c", "d"]),
+        ];
+        for &(sql, expected) in cases {
+            for end in 0..expected.len() {
+                let parsed = parse_expr(sql).expect(sql);
+                let mut expr = ExprPlan::from(translate_expr(&parsed, NO_PARAMS).expect(sql));
+                let mut visited = Vec::new();
+                let actual = try_visit_mut_expr(&mut expr, &mut |expr| {
+                    if let ExprPlan::Identifier(name) = expr {
+                        visited.push(name.clone());
+                        if name == expected[end] {
+                            return Err(PlannerError::Unreachable.into());
+                        }
+                    }
+                    Ok(())
+                });
+                assert_eq!(
+                    actual,
+                    Err(PlannerError::Unreachable.into()),
+                    "{sql}: stop at {}",
+                    expected[end]
+                );
+                assert_eq!(visited, expected[..=end], "{sql}");
+            }
+        }
     }
 }

@@ -389,6 +389,7 @@ macro_rules! generate_custom_function_tests {
 
         sql_case!(custom_function::definition);
         sql_case!(custom_function::arguments);
+        sql_case!(custom_function::recursion);
         sql_case!(custom_function::subquery);
         sql_case!(custom_function::scope);
         sql_case!(custom_function::call_sites);

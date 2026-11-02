@@ -213,6 +213,7 @@ mod tests {
         super::is_deterministic,
         crate::{
             parse_sql::parse_expr,
+            plan::{ExprPlan, FunctionExprPlan},
             translate::{NO_PARAMS, translate_expr},
         },
     };
@@ -344,6 +345,15 @@ mod tests {
         test("RAND(1)", false);
         test("SPLICE('[1,2,3]', 1, 2, '[9]')", true);
         test("DEDUP('[1,1,2]')", true);
+    }
+
+    #[test]
+    fn planned_custom_function() {
+        let expr = ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+            function_id: 0,
+            exprs: Vec::new(),
+        }));
+        assert!(!is_deterministic(&expr));
     }
 
     #[test]

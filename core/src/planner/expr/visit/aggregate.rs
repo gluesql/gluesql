@@ -68,7 +68,7 @@ where
 #[cfg(test)]
 mod tests {
     use {
-        super::{try_visit_expr, visit_mut_expr},
+        super::{try_visit_expr, try_visit_mut_expr, visit_mut_expr},
         crate::{
             parse_sql::parse_expr,
             plan::ExprPlan,
@@ -80,6 +80,7 @@ mod tests {
     fn test(input: &str, expected: &str) {
         let parsed = parse_expr(input).expect(input);
         let mut expr = ExprPlan::from(translate_expr(&parsed, NO_PARAMS).expect(input));
+        let mut fallible = expr.clone();
 
         visit_mut_expr(&mut expr, &mut |e| {
             if let ExprPlan::Identifier(ident) = e {
@@ -87,10 +88,19 @@ mod tests {
             }
         });
 
+        let result = try_visit_mut_expr(&mut fallible, &mut |e| {
+            if let ExprPlan::Identifier(ident) = e {
+                *e = ExprPlan::Identifier(format!("_{ident}"));
+            }
+            Ok(())
+        });
+
         let expected_parsed = parse_expr(expected).expect(expected);
         let expected = ExprPlan::from(translate_expr(&expected_parsed, NO_PARAMS).expect(expected));
 
         assert_eq!(expr, expected, "\ninput: {input}\nexpected: {expected:?}");
+        assert_eq!(result, Ok(()), "{input}");
+        assert_eq!(fallible, expected, "fallible traversal: {input}");
     }
 
     #[test]
@@ -101,6 +111,8 @@ mod tests {
         test("MIN(x)", "MIN(_x)");
         test("MAX(x)", "MAX(_x)");
         test("AVG(x)", "AVG(_x)");
+        test("VARIANCE(x)", "VARIANCE(_x)");
+        test("STDEV(x)", "STDEV(_x)");
     }
 
     #[test]
@@ -111,5 +123,28 @@ mod tests {
         let result = try_visit_expr(&expr, &mut |_| Err(PlannerError::Unreachable));
 
         assert_eq!(result, Err(PlannerError::Unreachable));
+    }
+
+    #[test]
+    fn try_visit_mut_aggregate_propagates_error() {
+        for sql in [
+            "COUNT(x)",
+            "SUM(x)",
+            "MIN(x)",
+            "MAX(x)",
+            "AVG(x)",
+            "VARIANCE(x)",
+            "STDEV(x)",
+        ] {
+            let parsed = parse_expr(sql).expect(sql);
+            let mut expr = ExprPlan::from(translate_expr(&parsed, NO_PARAMS).expect(sql));
+            let mut visited = Vec::new();
+            let actual = try_visit_mut_expr(&mut expr, &mut |expr| {
+                visited.push(expr.clone());
+                Err(PlannerError::Unreachable.into())
+            });
+            assert_eq!(actual, Err(PlannerError::Unreachable.into()), "{sql}");
+            assert_eq!(visited, vec![ExprPlan::Identifier("x".to_owned())], "{sql}");
+        }
     }
 }

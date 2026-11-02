@@ -227,7 +227,7 @@ impl FunctionExprPlan {
 mod tests {
     use crate::{
         parse_sql::parse_expr,
-        plan::ExprPlan,
+        plan::{ExprPlan, FunctionExprPlan},
         translate::{NO_PARAMS, translate_expr},
     };
 
@@ -383,5 +383,22 @@ mod tests {
             r#"CONCAT_WS(",", "gluesql", "is", "cool")"#,
             &[r#"",""#, r#""gluesql""#, r#""is""#, r#""cool""#],
         );
+    }
+
+    #[test]
+    fn planned_custom_function() {
+        let function = FunctionExprPlan::Custom {
+            function_id: 3,
+            exprs: vec![expr("x"), expr("y + 1")],
+        };
+        let actual = function.as_exprs().cloned().collect::<Vec<_>>();
+        let expected = vec![expr("x"), expr("y + 1")];
+        assert_eq!(actual, expected);
+
+        let function = FunctionExprPlan::Custom {
+            function_id: 3,
+            exprs: Vec::new(),
+        };
+        assert_eq!(function.as_exprs().count(), 0);
     }
 }

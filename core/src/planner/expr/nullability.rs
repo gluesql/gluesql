@@ -208,6 +208,7 @@ mod tests {
         super::may_return_null,
         crate::{
             parse_sql::parse_expr,
+            plan::{ExprPlan, FunctionExprPlan},
             translate::{NO_PARAMS, translate_expr},
         },
     };
@@ -343,6 +344,15 @@ mod tests {
         test("COALESCE()", true);
         test("SPLICE('[1,2,3]', 1, 2, '[9]')", false);
         test("DEDUP('[1,1,2]')", false);
+    }
+
+    #[test]
+    fn planned_custom_function() {
+        let expr = ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+            function_id: 0,
+            exprs: Vec::new(),
+        }));
+        assert!(may_return_null(&expr));
     }
 
     #[test]

@@ -27,27 +27,24 @@ mod tests {
     };
 
     #[test]
-    fn validates_definition_without_executing_the_body() {
-        for body in [
-            "(SELECT id FROM Item)",
-            "(SELECT COUNT(*) FROM GLUE_TABLES)",
-            "CASE WHEN true THEN 1 ELSE (SELECT id FROM Item) END",
-            "(SELECT 1 FROM SERIES((SELECT id FROM Item)))",
-            "(SELECT column1 FROM (VALUES ((SELECT id FROM Item))) v)",
-        ] {
-            let sql = format!("CREATE FUNCTION leak() RETURN {body}");
-            let statement = translate(&parse(&sql).unwrap()[0]).unwrap().into();
-            assert_eq!(
-                validate(&statement),
+    fn create_function() {
+        let cases = [
+            (
+                "CREATE FUNCTION leak() RETURN (SELECT id FROM Item)",
                 Err(Error::Planner(PlannerError::StorageAccessInFunctionBody)),
-                "{sql}"
-            );
+            ),
+            (
+                "CREATE FUNCTION forward_call() RETURN future_call()",
+                Ok(()),
+            ),
+            ("SELECT future_call()", Ok(())),
+        ];
+
+        for (sql, expected) in cases {
+            let parsed = parse(sql).expect(sql).into_iter().next().expect(sql);
+            let statement = translate(&parsed).expect(sql).into();
+            let actual = validate(&statement);
+            assert_eq!(actual, expected, "validate without resolving calls: {sql}");
         }
-        // CREATE validates the definition without resolving or executing its calls.
-        let statement =
-            translate(&parse("CREATE FUNCTION forward_call() RETURN future_call()").unwrap()[0])
-                .unwrap()
-                .into();
-        assert_eq!(validate(&statement), Ok(()));
     }
 }

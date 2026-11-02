@@ -146,7 +146,7 @@ where
 #[cfg(test)]
 mod tests {
     use {
-        super::{try_visit_expr, visit_mut_expr},
+        super::{try_visit_expr, try_visit_mut_expr, visit_mut_expr},
         crate::{
             parse_sql::parse_expr,
             plan::ExprPlan,
@@ -158,6 +158,7 @@ mod tests {
     fn test(input: &str, expected: &str) {
         let parsed = parse_expr(input).expect(input);
         let mut expr = ExprPlan::from(translate_expr(&parsed, NO_PARAMS).expect(input));
+        let mut fallible = expr.clone();
 
         visit_mut_expr(&mut expr, &mut |e| {
             if let ExprPlan::Identifier(ident) = e {
@@ -165,10 +166,19 @@ mod tests {
             }
         });
 
+        let result = try_visit_mut_expr(&mut fallible, &mut |e| {
+            if let ExprPlan::Identifier(ident) = e {
+                *e = ExprPlan::Identifier(format!("_{ident}"));
+            }
+            Ok(())
+        });
+
         let expected_parsed = parse_expr(expected).expect(expected);
         let expected = ExprPlan::from(translate_expr(&expected_parsed, NO_PARAMS).expect(expected));
 
         assert_eq!(expr, expected, "\ninput: {input}\nexpected: {expected:?}");
+        assert_eq!(result, Ok(()), "{input}");
+        assert_eq!(fallible, expected, "fallible traversal: {input}");
     }
 
     #[test]
@@ -202,6 +212,7 @@ mod tests {
             "CASE x WHEN 1 THEN a ELSE b END",
             "CASE _x WHEN 1 THEN _a ELSE _b END",
         );
+        test("CASE WHEN a THEN b END", "CASE WHEN _a THEN _b END");
         test("arr[idx]", "_arr[_idx]");
         test("INTERVAL x DAY", "INTERVAL _x DAY");
         test("[a, b, c]", "[_a, _b, _c]");
@@ -240,5 +251,52 @@ mod tests {
 
         assert_eq!(result, Err(PlannerError::Unreachable));
         assert_eq!(visited, vec!["a".to_owned(), "b".to_owned()]);
+    }
+
+    #[test]
+    fn try_visit_mut_expr_short_circuits_after_error() {
+        let cases: &[(&str, &[&str])] = &[
+            ("a IS NULL", &["a"]),
+            ("a IS NOT NULL", &["a"]),
+            ("a + b", &["a", "b"]),
+            ("a IN (b, c)", &["a", "b", "c"]),
+            ("a IN (SELECT 1)", &["a"]),
+            ("a BETWEEN b AND c", &["a", "b", "c"]),
+            ("a LIKE b", &["a", "b"]),
+            ("a ILIKE b", &["a", "b"]),
+            ("a ~ b", &["a", "b"]),
+            ("-a", &["a"]),
+            ("(a)", &["a"]),
+            ("a[b][c]", &["a", "b", "c"]),
+            ("INTERVAL a DAY", &["a"]),
+            ("[a, b]", &["a", "b"]),
+            ("CASE a WHEN b THEN c ELSE d END", &["a", "b", "c", "d"]),
+            ("CASE WHEN a THEN b END", &["a", "b"]),
+            ("ABS(a)", &["a"]),
+            ("SUM(a)", &["a"]),
+        ];
+        for &(sql, expected) in cases {
+            for end in 0..expected.len() {
+                let parsed = parse_expr(sql).expect(sql);
+                let mut expr = ExprPlan::from(translate_expr(&parsed, NO_PARAMS).expect(sql));
+                let mut visited = Vec::new();
+                let actual = try_visit_mut_expr(&mut expr, &mut |expr| {
+                    if let ExprPlan::Identifier(name) = expr {
+                        visited.push(name.clone());
+                        if name == expected[end] {
+                            return Err(PlannerError::Unreachable.into());
+                        }
+                    }
+                    Ok(())
+                });
+                assert_eq!(
+                    actual,
+                    Err(PlannerError::Unreachable.into()),
+                    "{sql}: stop at {}",
+                    expected[end]
+                );
+                assert_eq!(visited, expected[..=end], "{sql}");
+            }
+        }
     }
 }

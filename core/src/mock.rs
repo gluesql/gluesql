@@ -1,7 +1,9 @@
 use {
     crate::{
         ast::OrderByExpr,
-        data::{Key, Schema, SchemaIndex, SchemaIndexOrd, Value},
+        data::{
+            CustomFunction as StructCustomFunction, Key, Schema, SchemaIndex, SchemaIndexOrd, Value,
+        },
         result::{Error, Result},
         store::{
             AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Planner,
@@ -31,11 +33,36 @@ pub fn run(sql: &str) -> MockStorage {
 #[derive(Default, Debug)]
 pub struct MockStorage {
     schema_map: HashMap<String, Schema>,
+    function_map: HashMap<String, StructCustomFunction>,
 }
 
-impl CustomFunction for MockStorage {}
+impl CustomFunction for MockStorage {
+    fn fetch_function<'a>(&'a self, name: &str) -> Result<Option<&'a StructCustomFunction>> {
+        if name == "__ERR__" {
+            return Err(Error::StorageMsg(
+                "[MockStorage] fetch_function - user triggered error".to_owned(),
+            ));
+        }
+        Ok(self.function_map.get(&name.to_uppercase()))
+    }
 
-impl CustomFunctionMut for MockStorage {}
+    fn fetch_all_functions(&self) -> Result<Vec<&StructCustomFunction>> {
+        Ok(self.function_map.values().collect())
+    }
+}
+
+impl CustomFunctionMut for MockStorage {
+    fn insert_function(&mut self, function: StructCustomFunction) -> Result<()> {
+        self.function_map
+            .insert(function.func_name.to_uppercase(), function);
+        Ok(())
+    }
+
+    fn delete_function(&mut self, name: &str) -> Result<()> {
+        self.function_map.remove(&name.to_uppercase());
+        Ok(())
+    }
+}
 
 impl Store for MockStorage {
     fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
@@ -132,10 +159,13 @@ mod tests {
         super::MockStorage,
         crate::{
             ast::{ColumnDef, Expr, OrderByExpr},
-            data::{Key, Schema, SchemaIndexOrd, Value},
+            data::{CustomFunction as StructCustomFunction, Key, Schema, SchemaIndexOrd, Value},
             prelude::DataType,
-            store::{AlterTable, Index, IndexMut, Transaction},
-            store::{Store, StoreMut},
+            result::Error,
+            store::{
+                AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Store, StoreMut,
+                Transaction,
+            },
         },
     };
 
@@ -152,6 +182,17 @@ mod tests {
         assert!(storage.append_data("Foo", Vec::new()).is_err());
         assert!(storage.insert_data("Foo", Vec::new()).is_err());
         assert!(storage.delete_data("Foo", Vec::new()).is_err());
+
+        // CustomFunction & CustomFunctionMut
+        assert_eq!(
+            storage.fetch_function("__ERR__"),
+            Err(Error::StorageMsg(
+                "[MockStorage] fetch_function - user triggered error".to_owned(),
+            ))
+        );
+        assert_eq!(storage.fetch_function("Foo"), Ok(None));
+        assert_eq!(storage.fetch_all_functions(), Ok(Vec::new()));
+        assert_eq!(storage.delete_function("Foo"), Ok(()));
 
         // AlterTable
         assert!(storage.rename_schema("Foo", "Bar").is_err());
@@ -203,6 +244,33 @@ mod tests {
         assert!(storage.commit().is_ok());
 
         assert!(matches!(storage.fetch_schema("Foo"), Ok(None)));
+    }
+
+    #[test]
+    fn custom_function() {
+        let mut storage = MockStorage::default();
+        let function = StructCustomFunction {
+            func_name: "Func".to_owned(),
+            args: Vec::new(),
+            body: Expr::Value(Value::I64(1)),
+        };
+
+        storage.insert_function(function.clone()).unwrap();
+        assert_eq!(storage.fetch_function("func"), Ok(Some(&function)));
+        assert_eq!(storage.fetch_all_functions(), Ok(vec![&function]));
+
+        let function = StructCustomFunction {
+            func_name: "FUNC".to_owned(),
+            body: Expr::Value(Value::I64(2)),
+            ..function
+        };
+        storage.insert_function(function.clone()).unwrap();
+        assert_eq!(storage.fetch_function("Func"), Ok(Some(&function)));
+        assert_eq!(storage.fetch_all_functions(), Ok(vec![&function]));
+
+        storage.delete_function("fUnC").unwrap();
+        assert_eq!(storage.fetch_function("func"), Ok(None));
+        assert_eq!(storage.fetch_all_functions(), Ok(Vec::new()));
     }
 
     #[test]

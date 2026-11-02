@@ -160,202 +160,473 @@ impl<T: CustomFunction + ?Sized> CustomFunctionPlanner<'_, T> {
 #[cfg(test)]
 mod tests {
     use {
+        super::plan,
         crate::{
-            data::{CustomFunction as Definition, Key, Schema, Value},
-            executor::{Payload, execute},
-            glue::Glue,
-            parse_sql::parse,
-            plan::{StatementPlan, StatementPlanKind},
-            planner::PlannerError,
-            query_builder::Execute,
-            result::{Error, Result},
-            store::{
-                AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Planner,
-                RowIter, Store, StoreMut, Transaction,
+            ast::{DataType, Expr},
+            data::CustomFunction as Definition,
+            executor::EvaluateError,
+            mock::{MockStorage, run},
+            parse_sql::{parse, parse_expr},
+            plan::{
+                AggregateExprPlan, AggregateFunctionPlan, AggregationInputPlan, AggregationPlan,
+                CustomFunctionPlan, ExprPlan, FunctionArgPlan, FunctionExprPlan, ProjectInputPlan,
+                ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SeriesSourcePlan,
+                SourcePlan, StatementPlan, StatementPlanKind, TableAliasPlan, ValuesPlan,
             },
-            translate::translate,
+            planner::{PlannerError, aggregate},
+            result::Error,
+            store::{CustomFunction, CustomFunctionMut},
+            translate::{NO_PARAMS, translate, translate_expr},
         },
-        std::{cell::Cell, collections::HashMap},
+        pretty_assertions::assert_eq,
     };
 
-    #[derive(Default)]
-    struct FunctionStorage {
-        definitions: HashMap<String, Definition>,
-        lookups: Cell<usize>,
-    }
-
-    impl CustomFunction for FunctionStorage {
-        fn fetch_function<'a>(&'a self, name: &str) -> Result<Option<&'a Definition>> {
-            self.lookups.set(self.lookups.get() + 1);
-            Ok(self.definitions.get(name))
-        }
-    }
-    impl Store for FunctionStorage {
-        fn fetch_schema(&self, _: &str) -> Result<Option<Schema>> {
-            panic!("function body must not fetch schemas");
-        }
-
-        fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
-            panic!("function body must not fetch metadata");
-        }
-
-        fn fetch_data(&self, _: &str, _: &Key) -> Result<Option<Vec<Value>>> {
-            panic!("function body must not fetch rows");
-        }
-
-        fn scan_data(&self, _: &str) -> Result<RowIter<'_>> {
-            panic!("function body must not scan rows");
-        }
-    }
-    impl StoreMut for FunctionStorage {}
-    impl Index for FunctionStorage {}
-    impl IndexMut for FunctionStorage {}
-    impl Metadata for FunctionStorage {}
-    impl AlterTable for FunctionStorage {}
-    impl CustomFunctionMut for FunctionStorage {}
-    impl Transaction for FunctionStorage {}
-    impl Planner for FunctionStorage {}
-
     fn statement(sql: &str) -> StatementPlan {
-        translate(&parse(sql).unwrap()[0]).unwrap().into()
+        let parsed = parse(sql).expect(sql).into_iter().next().expect(sql);
+        translate(&parsed).expect(sql).into()
     }
 
-    impl FunctionStorage {
-        fn define(&mut self, sql: &str) {
-            let StatementPlanKind::CreateFunction {
-                name,
-                args,
-                return_,
-                ..
-            } = statement(sql).kind
-            else {
-                panic!("expected CREATE FUNCTION");
-            };
-            self.definitions.insert(
-                name.to_uppercase(),
-                Definition {
-                    func_name: name,
-                    args,
-                    body: return_,
-                },
-            );
-        }
-    }
-
-    fn scalar(payload: Payload) -> Value {
-        let Payload::Select { mut rows, .. } = payload else {
-            panic!("expected SELECT");
-        };
-        assert_eq!(rows.len(), 1);
-        assert_eq!(rows[0].len(), 1);
-        rows.remove(0).remove(0)
+    fn expr(sql: &str) -> Expr {
+        translate_expr(&parse_expr(sql).expect(sql), NO_PARAMS).expect(sql)
     }
 
     #[test]
-    fn prepares_each_definition_once_including_aggregate_slots() {
-        let mut storage = FunctionStorage::default();
-        storage.define("CREATE FUNCTION plus_one(x INT) RETURN x + 1");
-        storage.define("CREATE FUNCTION twice(x INT) RETURN plus_one(plus_one(x))");
-        let plan = storage
-            .plan(statement("SELECT SUM(twice(N)) FROM SERIES(3)"))
-            .unwrap();
-        assert_eq!(plan.functions.len(), 2);
-        assert_eq!(storage.lookups.get(), 2);
-        for _ in 0..2 {
-            assert_eq!(
-                scalar(execute(&mut storage, &plan).unwrap()),
-                Value::I64(12)
-            );
-        }
-        let replanned = storage.plan(plan.clone()).unwrap();
-        assert_eq!(replanned, plan);
-        assert_eq!(storage.lookups.get(), 2);
-    }
-
-    #[test]
-    fn prepared_subqueries_execute_without_storage_access() {
-        let mut storage = FunctionStorage::default();
-        storage.define("CREATE FUNCTION plus_one(x INT) RETURN x + 1");
-        storage.define(
-            "CREATE FUNCTION sum_plus(x INT) RETURN (SELECT SUM(plus_one(N)) FROM SERIES(x))",
-        );
-        let plan = storage.plan(statement("VALUES (sum_plus(3))")).unwrap();
-        assert_eq!(storage.lookups.get(), 2);
-        assert_eq!(scalar(execute(&mut storage, &plan).unwrap()), Value::I64(9));
-        assert_eq!(storage.lookups.get(), 2);
-    }
-
-    #[test]
-    fn validates_stored_definitions_before_binding_calls() {
-        let mut storage = FunctionStorage::default();
-        for body in [
-            "(SELECT id FROM Item)",
-            "(SELECT COUNT(*) FROM GLUE_TABLES)",
-            "CASE WHEN true THEN 1 ELSE (SELECT id FROM Item) END",
-            "(SELECT 1 FROM SERIES((SELECT id FROM Item)))",
-            "(SELECT column1 FROM (VALUES ((SELECT id FROM Item))) v)",
+    fn call_sites() {
+        let storage = MockStorage::default();
+        for sql in [
+            "INSERT INTO Item VALUES (missing())",
+            "CREATE TABLE Item AS SELECT missing()",
+            "UPDATE Item SET n = missing()",
+            "UPDATE Item SET n = 1, m = missing()",
+            "UPDATE Item SET n = 1 WHERE missing()",
+            "DELETE FROM Item WHERE missing()",
+            "VALUES ((SELECT missing()))",
+            "VALUES (EXISTS (SELECT missing()))",
+            "VALUES (1 IN (SELECT missing()))",
+            "VALUES (ABS(missing()))",
         ] {
-            let sql = format!("CREATE FUNCTION leak() RETURN {body}");
-            storage.define(&sql);
+            let actual = plan(&storage, statement(sql));
+            let expected = Err(Error::Evaluate(EvaluateError::UnsupportedFunction(
+                "MISSING".to_owned(),
+            )));
+            assert_eq!(actual, expected, "call must be visited: {sql}");
+        }
+
+        for sql in [
+            "VALUES (ABS(1))",
+            "INSERT INTO Item VALUES (1)",
+            "CREATE TABLE Item AS SELECT 1",
+            "CREATE TABLE Item (n INT)",
+            "UPDATE Item SET n = ABS(1)",
+            "UPDATE Item SET n = 1 WHERE n = 2",
+            "DELETE FROM Item WHERE n = 1",
+            "DELETE FROM Item",
+            "CREATE FUNCTION f() RETURN missing()",
+        ] {
+            let actual = plan(&storage, statement(sql));
+            let expected = statement(sql);
             assert_eq!(
-                storage.plan(statement("SELECT leak()")),
-                Err(Error::Planner(PlannerError::StorageAccessInFunctionBody)),
-                "{sql}"
+                actual,
+                Ok(expected),
+                "statement without calls to bind: {sql}"
             );
         }
-        storage.define("CREATE FUNCTION indirect() RETURN leak()");
+    }
+
+    #[test]
+    fn call_arguments() {
+        let storage = run("CREATE FUNCTION f(x INT, y INT DEFAULT 2) RETURN x + y");
+        for (sql, found) in [("VALUES (f())", 0), ("VALUES (f(1, 2, 3))", 3)] {
+            let actual = plan(&storage, statement(sql));
+            let expected = Err(Error::Evaluate(
+                EvaluateError::FunctionArgsLengthNotWithinRange {
+                    name: "f".to_owned(),
+                    expected_minimum: 1,
+                    expected_maximum: 2,
+                    found,
+                },
+            ));
+            assert_eq!(actual, expected, "{sql}");
+        }
+
+        let functions = vec![CustomFunctionPlan {
+            name: "f".to_owned(),
+            args: vec![
+                FunctionArgPlan {
+                    name: "x".to_owned(),
+                    data_type: DataType::Int,
+                    default: None,
+                },
+                FunctionArgPlan {
+                    name: "y".to_owned(),
+                    data_type: DataType::Int,
+                    default: Some(expr("2").into()),
+                },
+            ],
+            body: expr("x + y").into(),
+        }];
+        for (sql, args) in [
+            ("VALUES (f(1))", vec![expr("1").into()]),
+            ("VALUES (f(1, 2))", vec![expr("1").into(), expr("2").into()]),
+        ] {
+            let expected = StatementPlan {
+                kind: StatementPlanKind::Query(QueryPlan::Values(ValuesPlan(vec![vec![
+                    ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+                        function_id: 0,
+                        exprs: args,
+                    })),
+                ]]))),
+                functions: functions.clone(),
+            };
+            assert_eq!(plan(&storage, statement(sql)), Ok(expected), "{sql}");
+        }
+
+        let mut input = StatementPlan {
+            kind: StatementPlanKind::Query(QueryPlan::Values(ValuesPlan(vec![vec![
+                ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+                    function_id: 0,
+                    exprs: Vec::new(),
+                })),
+            ]]))),
+            functions,
+        };
+        let expected = Err(Error::Evaluate(
+            EvaluateError::FunctionArgsLengthNotWithinRange {
+                name: "f".to_owned(),
+                expected_minimum: 1,
+                expected_maximum: 2,
+                found: 0,
+            },
+        ));
         assert_eq!(
-            storage.plan(statement("SELECT indirect()")),
-            Err(Error::Planner(PlannerError::StorageAccessInFunctionBody))
+            plan(&storage, input.clone()),
+            expected,
+            "prepared calls also validate arity"
+        );
+
+        input.functions.clear();
+        let expected = Err(Error::Evaluate(
+            EvaluateError::MalformedPlanCustomFunctionIndex(0),
+        ));
+        assert_eq!(
+            plan(&storage, input),
+            expected,
+            "prepared index must identify a definition"
         );
     }
 
     #[test]
-    fn recursive_calls_have_finite_plans() {
-        let mut storage = FunctionStorage::default();
-        storage.define(
-            "CREATE FUNCTION total(x INT) RETURN CASE WHEN x <= 0 THEN 0 ELSE x + total(x - 1) END",
-        );
-        let plan = storage.plan(statement("SELECT total(5)")).unwrap();
-        assert_eq!(plan.functions.len(), 1);
-        assert_eq!(
-            scalar(execute(&mut storage, &plan).unwrap()),
-            Value::I64(15)
-        );
+    fn existing_functions() {
+        let storage = run("CREATE FUNCTION fresh() RETURN 2");
+        let existing = CustomFunctionPlan {
+            name: "Existing".to_owned(),
+            args: Vec::new(),
+            body: expr("1").into(),
+        };
+        let mut input = statement("VALUES (existing(), fresh(), EXISTING())");
+        input.functions.push(existing.clone());
+        let expected = StatementPlan {
+            kind: StatementPlanKind::Query(QueryPlan::Values(ValuesPlan(vec![vec![
+                ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+                    function_id: 0,
+                    exprs: Vec::new(),
+                })),
+                ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+                    function_id: 1,
+                    exprs: Vec::new(),
+                })),
+                ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+                    function_id: 0,
+                    exprs: Vec::new(),
+                })),
+            ]]))),
+            functions: vec![
+                existing,
+                CustomFunctionPlan {
+                    name: "fresh".to_owned(),
+                    args: Vec::new(),
+                    body: expr("2").into(),
+                },
+            ],
+        };
+        assert_eq!(plan(&storage, input), Ok(expected));
+    }
 
-        storage.define("CREATE FUNCTION even_value(x INT) RETURN CASE WHEN x = 0 THEN true ELSE odd_value(x - 1) END");
-        storage.define("CREATE FUNCTION odd_value(x INT) RETURN CASE WHEN x = 0 THEN false ELSE even_value(x - 1) END");
-        let plan = storage.plan(statement("SELECT even_value(4)")).unwrap();
-        assert_eq!(plan.functions.len(), 2);
+    #[test]
+    fn function_body() {
+        let storage =
+            run("CREATE FUNCTION sum_to(n INT) RETURN (SELECT SUM(N) AS total FROM SERIES(n))");
+        let sql = "VALUES (sum_to(3))";
+        let aggregate = AggregateExprPlan {
+            func: AggregateFunctionPlan::Sum(expr("N").into()),
+            distinct: false,
+            slot: Some(0),
+        };
+        let expected = StatementPlan {
+            kind: StatementPlanKind::Query(QueryPlan::Values(ValuesPlan(vec![vec![
+                ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+                    function_id: 0,
+                    exprs: vec![expr("3").into()],
+                })),
+            ]]))),
+            functions: vec![CustomFunctionPlan {
+                name: "sum_to".to_owned(),
+                args: vec![FunctionArgPlan {
+                    name: "n".to_owned(),
+                    data_type: DataType::Int,
+                    default: None,
+                }],
+                body: ExprPlan::Subquery(Box::new(QueryPlan::Project(ProjectPlan {
+                    input: ProjectInputPlan::Aggregation(AggregationPlan {
+                        input: AggregationInputPlan::Source(SourcePlan::Series(SeriesSourcePlan {
+                            alias: TableAliasPlan {
+                                name: "SERIES".to_owned(),
+                                columns: Vec::new(),
+                            },
+                            size: expr("n").into(),
+                        })),
+                        group_by: Vec::new(),
+                        aggregate_slots: vec![aggregate.clone()],
+                    }),
+                    projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
+                        expr: ExprPlan::Aggregate(Box::new(aggregate)),
+                        label: "total".to_owned(),
+                    }]),
+                }))),
+            }],
+        };
         assert_eq!(
-            scalar(execute(&mut storage, &plan).unwrap()),
-            Value::Bool(true)
+            plan(&storage, statement(sql)),
+            Ok(expected),
+            "newly fetched bodies receive aggregate slots: {sql}"
         );
     }
 
     #[test]
-    fn prepared_snapshots_survive_catalog_changes_and_replanning() {
-        let mut glue = Glue::new(FunctionStorage::default());
-        glue.storage
-            .define("CREATE FUNCTION bump(x INT) RETURN x + 1");
-        glue.storage
-            .define("CREATE FUNCTION call_bump(x INT) RETURN bump(x)");
-        let plan = glue.plan("SELECT call_bump(1)").unwrap().remove(0);
-        let original = glue.execute_stmt(&plan).unwrap();
+    fn calls() {
+        let mut storage = run("
+            CREATE FUNCTION plus_one(x INT DEFAULT 1) RETURN x + 1;
+            CREATE FUNCTION twice(x INT) RETURN plus_one(plus_one(x));
+        ");
 
-        glue.storage
-            .define("CREATE FUNCTION bump(x INT) RETURN x + 100");
-        assert_eq!(plan.clone().execute(&mut glue).unwrap(), original);
-        let fresh = glue.plan("SELECT call_bump(1)").unwrap().remove(0);
-        assert_eq!(scalar(glue.execute_stmt(&fresh).unwrap()), Value::I64(101));
-
-        glue.storage.definitions.clear();
-        assert_eq!(plan.execute(&mut glue).unwrap(), original);
-        assert!(glue.plan("SELECT call_bump(1)").is_err());
-        assert!(
-            glue.plan("CREATE FUNCTION pending() RETURN 1; SELECT pending()")
-                .is_err()
+        let sql = "VALUES (twice(2), plus_one())";
+        let actual = plan(&storage, statement(sql));
+        let expected = StatementPlan {
+            kind: StatementPlanKind::Query(QueryPlan::Values(ValuesPlan(vec![vec![
+                ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+                    function_id: 0,
+                    exprs: vec![expr("2").into()],
+                })),
+                ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+                    function_id: 1,
+                    exprs: Vec::new(),
+                })),
+            ]]))),
+            functions: vec![
+                CustomFunctionPlan {
+                    name: "twice".to_owned(),
+                    args: vec![FunctionArgPlan {
+                        name: "x".to_owned(),
+                        data_type: DataType::Int,
+                        default: None,
+                    }],
+                    body: ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+                        function_id: 1,
+                        exprs: vec![ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+                            function_id: 1,
+                            exprs: vec![expr("x").into()],
+                        }))],
+                    })),
+                },
+                CustomFunctionPlan {
+                    name: "plus_one".to_owned(),
+                    args: vec![FunctionArgPlan {
+                        name: "x".to_owned(),
+                        data_type: DataType::Int,
+                        default: Some(expr("1").into()),
+                    }],
+                    body: expr("x + 1").into(),
+                },
+            ],
+        };
+        assert_eq!(
+            actual,
+            Ok(expected.clone()),
+            "nested and repeated calls: {sql}"
         );
-        assert!(!glue.storage.definitions.contains_key("PENDING"));
+
+        let prepared = expected;
+        let aggregate_sql = "SELECT SUM(twice(N)) AS r FROM SERIES(3)";
+        let actual = plan(&storage, aggregate::plan(statement(aggregate_sql)));
+        let aggregate = AggregateExprPlan {
+            func: AggregateFunctionPlan::Sum(ExprPlan::Function(Box::new(
+                FunctionExprPlan::Custom {
+                    function_id: 0,
+                    exprs: vec![expr("N").into()],
+                },
+            ))),
+            distinct: false,
+            slot: Some(0),
+        };
+        let expected = StatementPlan {
+            kind: StatementPlanKind::Query(QueryPlan::Project(ProjectPlan {
+                input: ProjectInputPlan::Aggregation(AggregationPlan {
+                    input: AggregationInputPlan::Source(SourcePlan::Series(SeriesSourcePlan {
+                        alias: TableAliasPlan {
+                            name: "SERIES".to_owned(),
+                            columns: Vec::new(),
+                        },
+                        size: expr("3").into(),
+                    })),
+                    group_by: Vec::new(),
+                    aggregate_slots: vec![aggregate.clone()],
+                }),
+                projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
+                    expr: ExprPlan::Aggregate(Box::new(aggregate)),
+                    label: "r".to_owned(),
+                }]),
+            })),
+            functions: prepared.functions.clone(),
+        };
+        assert_eq!(
+            actual,
+            Ok(expected),
+            "aggregate slots and projection reuse definitions: {aggregate_sql}"
+        );
+
+        let mut definition = storage.fetch_function("plus_one").unwrap().unwrap().clone();
+        definition.body = expr("x + 100");
+        storage.insert_function(definition).unwrap();
+
+        let actual = plan(&storage, prepared.clone());
+        let expected = prepared.clone();
+        assert_eq!(
+            actual,
+            Ok(expected),
+            "prepared calls keep the original body: {sql}"
+        );
+
+        let actual = plan(&storage, statement(sql));
+        let mut expected = prepared.clone();
+        expected.functions[1].body = expr("x + 100").into();
+        assert_eq!(
+            actual,
+            Ok(expected),
+            "new calls use the current body: {sql}"
+        );
+
+        storage.delete_function("plus_one").unwrap();
+        storage.delete_function("twice").unwrap();
+
+        let actual = plan(&storage, prepared.clone());
+        let expected = prepared;
+        assert_eq!(
+            actual,
+            Ok(expected),
+            "prepared calls keep deleted definitions: {sql}"
+        );
+
+        let actual = plan(&storage, statement(sql));
+        let expected = Err(Error::Evaluate(EvaluateError::UnsupportedFunction(
+            "TWICE".to_owned(),
+        )));
+        assert_eq!(
+            actual, expected,
+            "new calls require the stored definition: {sql}"
+        );
+    }
+
+    #[test]
+    fn recursive_calls() {
+        let storage = run("
+            CREATE FUNCTION recur() RETURN recur();
+            CREATE FUNCTION first() RETURN second();
+            CREATE FUNCTION second() RETURN first();
+        ");
+
+        let sql = "VALUES (recur())";
+        let actual = plan(&storage, statement(sql));
+        let call = ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+            function_id: 0,
+            exprs: Vec::new(),
+        }));
+        let expected = StatementPlan {
+            kind: StatementPlanKind::Query(QueryPlan::Values(ValuesPlan(vec![vec![call.clone()]]))),
+            functions: vec![CustomFunctionPlan {
+                name: "recur".to_owned(),
+                args: Vec::new(),
+                body: call,
+            }],
+        };
+        assert_eq!(
+            actual,
+            Ok(expected),
+            "self reference reuses the function index: {sql}"
+        );
+
+        let sql = "VALUES (first())";
+        let actual = plan(&storage, statement(sql));
+        let first = ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+            function_id: 0,
+            exprs: Vec::new(),
+        }));
+        let second = ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+            function_id: 1,
+            exprs: Vec::new(),
+        }));
+        let expected = StatementPlan {
+            kind: StatementPlanKind::Query(QueryPlan::Values(ValuesPlan(vec![vec![
+                first.clone(),
+            ]]))),
+            functions: vec![
+                CustomFunctionPlan {
+                    name: "first".to_owned(),
+                    args: Vec::new(),
+                    body: second,
+                },
+                CustomFunctionPlan {
+                    name: "second".to_owned(),
+                    args: Vec::new(),
+                    body: first,
+                },
+            ],
+        };
+        assert_eq!(
+            actual,
+            Ok(expected),
+            "mutual references use finite indices: {sql}"
+        );
+    }
+
+    #[test]
+    fn stored_definition() {
+        let storage = MockStorage::default();
+        let actual = plan(&storage, statement("VALUES (__err__())"));
+        let expected = Err(Error::StorageMsg(
+            "[MockStorage] fetch_function - user triggered error".to_owned(),
+        ));
+        assert_eq!(actual, expected, "storage errors propagate unchanged");
+
+        let storage = run("CREATE FUNCTION forward_call() RETURN missing()");
+        let actual = plan(&storage, statement("VALUES (forward_call())"));
+        let expected = Err(Error::Evaluate(EvaluateError::UnsupportedFunction(
+            "MISSING".to_owned(),
+        )));
+        assert_eq!(actual, expected, "a missing dependency fails body planning");
+
+        let mut storage = run("CREATE FUNCTION indirect() RETURN leak()");
+        storage
+            .insert_function(Definition {
+                func_name: "leak".to_owned(),
+                args: Vec::new(),
+                body: expr("(SELECT id FROM Item)"),
+            })
+            .unwrap();
+
+        for sql in ["SELECT leak()", "SELECT indirect()"] {
+            let actual = plan(&storage, statement(sql));
+            let expected = Err(Error::Planner(PlannerError::StorageAccessInFunctionBody));
+            assert_eq!(actual, expected, "stored definition is validated: {sql}");
+        }
     }
 }
