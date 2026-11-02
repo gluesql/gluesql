@@ -6,7 +6,7 @@ mod function;
 use {
     self::function::BreakCase,
     super::{
-        context::{AggregateValues, RowContext},
+        context::{AggregateValues, ExecutionContext, RowContext},
         query,
     },
     crate::{
@@ -32,7 +32,7 @@ where
     'b: 'a,
     T: GStore,
 {
-    evaluate_inner(Some(storage), context, aggregated, expr)
+    ExecutionContext::with_scope(|| evaluate_inner(Some(storage), context, aggregated, expr))
 }
 
 pub fn evaluate_stateless<'a, 'b: 'a>(
@@ -41,8 +41,7 @@ pub fn evaluate_stateless<'a, 'b: 'a>(
 ) -> Result<Evaluated<'a>> {
     let context = context.map(Rc::new);
     let storage: Option<&MockStorage> = None;
-
-    evaluate_inner(storage, context.as_ref(), None, expr)
+    ExecutionContext::with_scope(|| evaluate_inner(storage, context.as_ref(), None, expr))
 }
 
 fn evaluate_inner<'a, 'b, T>(
@@ -213,7 +212,9 @@ where
         } => {
             let target = eval(expr)?;
             let pattern = eval(pattern)?;
-            let evaluated = target.like(pattern, true)?;
+            let evaluated = ExecutionContext::with_regex_cache(|cache| {
+                target.like_with_cache(pattern, true, cache)
+            })?;
 
             Ok(match negated {
                 true => {
@@ -231,7 +232,9 @@ where
         } => {
             let target = eval(expr)?;
             let pattern = eval(pattern)?;
-            let evaluated = target.like(pattern, false)?;
+            let evaluated = ExecutionContext::with_regex_cache(|cache| {
+                target.like_with_cache(pattern, false, cache)
+            })?;
 
             Ok(match negated {
                 true => {
@@ -251,7 +254,9 @@ where
             let target = eval(expr)?;
             let pattern = eval(pattern)?;
 
-            target.regex(pattern, *negated, *case_sensitive)
+            ExecutionContext::with_regex_cache(|cache| {
+                target.regex_with_cache(pattern, *negated, *case_sensitive, cache)
+            })
         }
         ExprPlan::Exists { subquery, negated } => {
             let storage = storage.ok_or(EvaluateError::ExistsSubqueryNotAllowedInStatelessExpr)?;
@@ -750,7 +755,8 @@ mod tests {
         super::{EvaluateError, evaluate, evaluate_stateless},
         crate::{
             ast::{Expr, Projection, SelectItem, SetExpr, Statement},
-            executor::context::AggregateValues,
+            data::Value,
+            executor::context::{AggregateValues, ExecutionContext},
             mock::MockStorage,
             parse_sql::parse,
             plan::{AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan},
@@ -815,5 +821,67 @@ mod tests {
                 Box::new(aggregate)
             )))
         );
+    }
+
+    #[test]
+    fn cached_pattern_operators_evaluate_through_execution_cache() {
+        let value = |value: &str| ExprPlan::Value(Value::Str(value.to_owned()));
+        let pattern_match = ExprPlan::Like {
+            expr: Box::new(value("Hello")),
+            negated: false,
+            pattern: Box::new(value("H%")),
+        };
+        let insensitive_match = ExprPlan::ILike {
+            expr: Box::new(value("Hello")),
+            negated: false,
+            pattern: Box::new(value("h%")),
+        };
+        let regex = ExprPlan::Regex {
+            expr: Box::new(value("Hello")),
+            negated: false,
+            pattern: Box::new(value("^hello$")),
+            case_sensitive: false,
+        };
+
+        assert_eq!(
+            evaluate_stateless(None, &pattern_match)
+                .unwrap()
+                .to_string(),
+            "TRUE"
+        );
+        assert_eq!(
+            evaluate_stateless(None, &insensitive_match)
+                .unwrap()
+                .to_string(),
+            "TRUE"
+        );
+        assert_eq!(
+            evaluate_stateless(None, &regex).unwrap().to_string(),
+            "TRUE"
+        );
+        let context = ExecutionContext::new();
+        let _scope = context.activate();
+        evaluate_stateless(None, &pattern_match).unwrap();
+        evaluate_stateless(None, &pattern_match).unwrap();
+        ExecutionContext::with_regex_cache(|cache| assert_eq!(cache.len(), 1));
+    }
+
+    #[test]
+    fn stateless_pattern_evaluation_creates_a_temporary_scope() {
+        let expression = ExprPlan::Regex {
+            expr: Box::new(ExprPlan::Value(Value::Str("Hello".to_owned()))),
+            negated: false,
+            pattern: Box::new(ExprPlan::Value(Value::Str("Hello".to_owned()))),
+            case_sensitive: true,
+        };
+
+        assert_eq!(
+            evaluate_stateless(None, &expression).unwrap().to_string(),
+            "TRUE"
+        );
+
+        let context = ExecutionContext::new();
+        let _scope = context.activate();
+        ExecutionContext::with_regex_cache(|cache| assert_eq!(cache.len(), 0));
     }
 }
