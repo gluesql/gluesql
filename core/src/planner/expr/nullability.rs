@@ -1,6 +1,6 @@
 use crate::{
     data::Value,
-    plan::{ExprPlan, FunctionExprPlan},
+    plan::{ExprPlan, FunctionPlan},
 };
 
 pub fn may_return_null(expr: &ExprPlan) -> bool {
@@ -59,8 +59,8 @@ pub fn may_return_null(expr: &ExprPlan) -> bool {
     }
 }
 
-fn function_may_return_null(function: &FunctionExprPlan) -> bool {
-    use FunctionExprPlan::*;
+fn function_may_return_null(function: &FunctionPlan) -> bool {
+    use FunctionPlan::*;
 
     match function {
         Coalesce(exprs) => exprs.iter().all(may_return_null),
@@ -208,7 +208,7 @@ mod tests {
         super::may_return_null,
         crate::{
             parse_sql::parse_expr,
-            plan::{ExprPlan, FunctionExprPlan},
+            plan::{ExprPlan, FunctionPlan},
             translate::{NO_PARAMS, translate_expr},
         },
     };
@@ -348,7 +348,7 @@ mod tests {
 
     #[test]
     fn planned_custom_function() {
-        let expr = ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+        let expr = ExprPlan::Function(Box::new(FunctionPlan::Custom {
             function_id: 0,
             exprs: Vec::new(),
         }));

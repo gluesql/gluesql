@@ -1,100 +1,99 @@
-use {super::super::VisitorMut, crate::plan::FunctionExprPlan};
+use {super::super::VisitorMut, crate::plan::FunctionPlan};
 
 pub fn walk_function_mut<V: VisitorMut + ?Sized>(
     visitor: &mut V,
-    function: &mut FunctionExprPlan,
+    function: &mut FunctionPlan,
 ) -> Result<(), V::Error> {
     match function {
-        FunctionExprPlan::Abs(expr)
-        | FunctionExprPlan::Lower(expr)
-        | FunctionExprPlan::Initcap(expr)
-        | FunctionExprPlan::Upper(expr)
-        | FunctionExprPlan::Asin(expr)
-        | FunctionExprPlan::Acos(expr)
-        | FunctionExprPlan::Atan(expr)
-        | FunctionExprPlan::Ceil(expr)
-        | FunctionExprPlan::Round(expr)
-        | FunctionExprPlan::Trunc(expr)
-        | FunctionExprPlan::Floor(expr)
-        | FunctionExprPlan::Exp(expr)
-        | FunctionExprPlan::Ln(expr)
-        | FunctionExprPlan::Log2(expr)
-        | FunctionExprPlan::Log10(expr)
-        | FunctionExprPlan::Sin(expr)
-        | FunctionExprPlan::Cos(expr)
-        | FunctionExprPlan::Tan(expr)
-        | FunctionExprPlan::Sqrt(expr)
-        | FunctionExprPlan::Radians(expr)
-        | FunctionExprPlan::Degrees(expr)
-        | FunctionExprPlan::LastDay(expr)
-        | FunctionExprPlan::Reverse(expr)
-        | FunctionExprPlan::Sign(expr)
-        | FunctionExprPlan::Ascii(expr)
-        | FunctionExprPlan::Chr(expr)
-        | FunctionExprPlan::Md5(expr)
-        | FunctionExprPlan::Hex(expr)
-        | FunctionExprPlan::IsEmpty(expr)
-        | FunctionExprPlan::Length(expr)
-        | FunctionExprPlan::Entries(expr)
-        | FunctionExprPlan::Keys(expr)
-        | FunctionExprPlan::Values(expr)
-        | FunctionExprPlan::Dedup(expr)
-        | FunctionExprPlan::GetX(expr)
-        | FunctionExprPlan::GetY(expr) => visitor.visit_expr(expr)?,
-        FunctionExprPlan::AddMonth { expr, size }
-        | FunctionExprPlan::Left { expr, size }
-        | FunctionExprPlan::Right { expr, size }
-        | FunctionExprPlan::Repeat { expr, num: size }
-        | FunctionExprPlan::Skip { expr, size }
-        | FunctionExprPlan::Take { expr, size } => {
+        FunctionPlan::Abs(expr)
+        | FunctionPlan::Lower(expr)
+        | FunctionPlan::Initcap(expr)
+        | FunctionPlan::Upper(expr)
+        | FunctionPlan::Asin(expr)
+        | FunctionPlan::Acos(expr)
+        | FunctionPlan::Atan(expr)
+        | FunctionPlan::Ceil(expr)
+        | FunctionPlan::Round(expr)
+        | FunctionPlan::Trunc(expr)
+        | FunctionPlan::Floor(expr)
+        | FunctionPlan::Exp(expr)
+        | FunctionPlan::Ln(expr)
+        | FunctionPlan::Log2(expr)
+        | FunctionPlan::Log10(expr)
+        | FunctionPlan::Sin(expr)
+        | FunctionPlan::Cos(expr)
+        | FunctionPlan::Tan(expr)
+        | FunctionPlan::Sqrt(expr)
+        | FunctionPlan::Radians(expr)
+        | FunctionPlan::Degrees(expr)
+        | FunctionPlan::LastDay(expr)
+        | FunctionPlan::Reverse(expr)
+        | FunctionPlan::Sign(expr)
+        | FunctionPlan::Ascii(expr)
+        | FunctionPlan::Chr(expr)
+        | FunctionPlan::Md5(expr)
+        | FunctionPlan::Hex(expr)
+        | FunctionPlan::IsEmpty(expr)
+        | FunctionPlan::Length(expr)
+        | FunctionPlan::Entries(expr)
+        | FunctionPlan::Keys(expr)
+        | FunctionPlan::Values(expr)
+        | FunctionPlan::Dedup(expr)
+        | FunctionPlan::GetX(expr)
+        | FunctionPlan::GetY(expr) => visitor.visit_expr(expr)?,
+        FunctionPlan::AddMonth { expr, size }
+        | FunctionPlan::Left { expr, size }
+        | FunctionPlan::Right { expr, size }
+        | FunctionPlan::Repeat { expr, num: size }
+        | FunctionPlan::Skip { expr, size }
+        | FunctionPlan::Take { expr, size } => {
             visitor.visit_expr(expr)?;
             visitor.visit_expr(size)?;
         }
-        FunctionExprPlan::Lpad { expr, size, fill }
-        | FunctionExprPlan::Rpad { expr, size, fill } => {
+        FunctionPlan::Lpad { expr, size, fill } | FunctionPlan::Rpad { expr, size, fill } => {
             visitor.visit_expr(expr)?;
             visitor.visit_expr(size)?;
             if let Some(e) = fill {
                 visitor.visit_expr(e)?;
             }
         }
-        FunctionExprPlan::Replace { expr, old, new } => {
+        FunctionPlan::Replace { expr, old, new } => {
             visitor.visit_expr(expr)?;
             visitor.visit_expr(old)?;
             visitor.visit_expr(new)?;
         }
-        FunctionExprPlan::Cast { expr, .. } | FunctionExprPlan::Extract { expr, .. } => {
+        FunctionPlan::Cast { expr, .. } | FunctionPlan::Extract { expr, .. } => {
             visitor.visit_expr(expr)?;
         }
-        FunctionExprPlan::Coalesce(exprs)
-        | FunctionExprPlan::Concat(exprs)
-        | FunctionExprPlan::Greatest(exprs)
-        | FunctionExprPlan::UnplannedCustom { exprs, .. }
-        | FunctionExprPlan::Custom { exprs, .. } => {
+        FunctionPlan::Coalesce(exprs)
+        | FunctionPlan::Concat(exprs)
+        | FunctionPlan::Greatest(exprs)
+        | FunctionPlan::UnplannedCustom { exprs, .. }
+        | FunctionPlan::Custom { exprs, .. } => {
             for e in exprs {
                 visitor.visit_expr(e)?;
             }
         }
-        FunctionExprPlan::ConcatWs { separator, exprs } => {
+        FunctionPlan::ConcatWs { separator, exprs } => {
             visitor.visit_expr(separator)?;
             for e in exprs {
                 visitor.visit_expr(e)?;
             }
         }
-        FunctionExprPlan::IfNull { expr, then } => {
+        FunctionPlan::IfNull { expr, then } => {
             visitor.visit_expr(expr)?;
             visitor.visit_expr(then)?;
         }
-        FunctionExprPlan::NullIf { expr1, expr2 } => {
+        FunctionPlan::NullIf { expr1, expr2 } => {
             visitor.visit_expr(expr1)?;
             visitor.visit_expr(expr2)?;
         }
-        FunctionExprPlan::Rand(expr) => {
+        FunctionPlan::Rand(expr) => {
             if let Some(e) = expr {
                 visitor.visit_expr(e)?;
             }
         }
-        FunctionExprPlan::Trim {
+        FunctionPlan::Trim {
             expr, filter_chars, ..
         } => {
             visitor.visit_expr(expr)?;
@@ -102,55 +101,54 @@ pub fn walk_function_mut<V: VisitorMut + ?Sized>(
                 visitor.visit_expr(e)?;
             }
         }
-        FunctionExprPlan::Log { antilog, base } => {
+        FunctionPlan::Log { antilog, base } => {
             visitor.visit_expr(antilog)?;
             visitor.visit_expr(base)?;
         }
-        FunctionExprPlan::Div { dividend, divisor }
-        | FunctionExprPlan::Mod { dividend, divisor } => {
+        FunctionPlan::Div { dividend, divisor } | FunctionPlan::Mod { dividend, divisor } => {
             visitor.visit_expr(dividend)?;
             visitor.visit_expr(divisor)?;
         }
-        FunctionExprPlan::Gcd { left, right } | FunctionExprPlan::Lcm { left, right } => {
+        FunctionPlan::Gcd { left, right } | FunctionPlan::Lcm { left, right } => {
             visitor.visit_expr(left)?;
             visitor.visit_expr(right)?;
         }
-        FunctionExprPlan::Power { expr, power } => {
+        FunctionPlan::Power { expr, power } => {
             visitor.visit_expr(expr)?;
             visitor.visit_expr(power)?;
         }
-        FunctionExprPlan::Ltrim { expr, chars } | FunctionExprPlan::Rtrim { expr, chars } => {
+        FunctionPlan::Ltrim { expr, chars } | FunctionPlan::Rtrim { expr, chars } => {
             visitor.visit_expr(expr)?;
             if let Some(e) = chars {
                 visitor.visit_expr(e)?;
             }
         }
-        FunctionExprPlan::Substr { expr, start, count } => {
+        FunctionPlan::Substr { expr, start, count } => {
             visitor.visit_expr(expr)?;
             visitor.visit_expr(start)?;
             if let Some(e) = count {
                 visitor.visit_expr(e)?;
             }
         }
-        FunctionExprPlan::Unwrap { expr, selector } => {
+        FunctionPlan::Unwrap { expr, selector } => {
             visitor.visit_expr(expr)?;
             visitor.visit_expr(selector)?;
         }
-        FunctionExprPlan::Format { expr, format }
-        | FunctionExprPlan::ToDate { expr, format }
-        | FunctionExprPlan::ToTimestamp { expr, format }
-        | FunctionExprPlan::ToTime { expr, format } => {
+        FunctionPlan::Format { expr, format }
+        | FunctionPlan::ToDate { expr, format }
+        | FunctionPlan::ToTimestamp { expr, format }
+        | FunctionPlan::ToTime { expr, format } => {
             visitor.visit_expr(expr)?;
             visitor.visit_expr(format)?;
         }
-        FunctionExprPlan::Position {
+        FunctionPlan::Position {
             from_expr,
             sub_expr,
         } => {
             visitor.visit_expr(from_expr)?;
             visitor.visit_expr(sub_expr)?;
         }
-        FunctionExprPlan::FindIdx {
+        FunctionPlan::FindIdx {
             from_expr,
             sub_expr,
             start,
@@ -161,17 +159,17 @@ pub fn walk_function_mut<V: VisitorMut + ?Sized>(
                 visitor.visit_expr(e)?;
             }
         }
-        FunctionExprPlan::Append { expr, value } | FunctionExprPlan::Prepend { expr, value } => {
+        FunctionPlan::Append { expr, value } | FunctionPlan::Prepend { expr, value } => {
             visitor.visit_expr(expr)?;
             visitor.visit_expr(value)?;
         }
-        FunctionExprPlan::Sort { expr, order } => {
+        FunctionPlan::Sort { expr, order } => {
             visitor.visit_expr(expr)?;
             if let Some(e) = order {
                 visitor.visit_expr(e)?;
             }
         }
-        FunctionExprPlan::Slice {
+        FunctionPlan::Slice {
             expr,
             start,
             length,
@@ -180,18 +178,18 @@ pub fn walk_function_mut<V: VisitorMut + ?Sized>(
             visitor.visit_expr(start)?;
             visitor.visit_expr(length)?;
         }
-        FunctionExprPlan::Point { x, y } => {
+        FunctionPlan::Point { x, y } => {
             visitor.visit_expr(x)?;
             visitor.visit_expr(y)?;
         }
-        FunctionExprPlan::CalcDistance {
+        FunctionPlan::CalcDistance {
             geometry1,
             geometry2,
         } => {
             visitor.visit_expr(geometry1)?;
             visitor.visit_expr(geometry2)?;
         }
-        FunctionExprPlan::Splice {
+        FunctionPlan::Splice {
             list_data,
             begin_index,
             end_index,
@@ -204,12 +202,12 @@ pub fn walk_function_mut<V: VisitorMut + ?Sized>(
                 visitor.visit_expr(e)?;
             }
         }
-        FunctionExprPlan::Now()
-        | FunctionExprPlan::CurrentDate()
-        | FunctionExprPlan::CurrentTime()
-        | FunctionExprPlan::CurrentTimestamp()
-        | FunctionExprPlan::Pi()
-        | FunctionExprPlan::GenerateUuid() => {}
+        FunctionPlan::Now()
+        | FunctionPlan::CurrentDate()
+        | FunctionPlan::CurrentTime()
+        | FunctionPlan::CurrentTimestamp()
+        | FunctionPlan::Pi()
+        | FunctionPlan::GenerateUuid() => {}
     }
     Ok(())
 }
@@ -220,7 +218,7 @@ mod tests {
         super::super::{try_visit_mut_expr, visit_mut_expr},
         crate::{
             parse_sql::parse_expr,
-            plan::{ExprPlan, FunctionExprPlan},
+            plan::{ExprPlan, FunctionPlan},
             translate::{NO_PARAMS, translate_expr},
         },
     };
@@ -425,14 +423,14 @@ mod tests {
 
     #[test]
     fn planned_custom_function() {
-        let mut expr = ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+        let mut expr = ExprPlan::Function(Box::new(FunctionPlan::Custom {
             function_id: 7,
             exprs: vec![
                 ExprPlan::Identifier("a".to_owned()),
                 ExprPlan::Identifier("b".to_owned()),
             ],
         }));
-        let expected = ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+        let expected = ExprPlan::Function(Box::new(FunctionPlan::Custom {
             function_id: 7,
             exprs: vec![
                 ExprPlan::Identifier("_a".to_owned()),

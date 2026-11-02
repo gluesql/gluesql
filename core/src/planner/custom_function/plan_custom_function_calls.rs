@@ -3,7 +3,7 @@ use {
     crate::{
         data::Value,
         executor::EvaluateError,
-        plan::{CustomFunctionPlan, ExprPlan, FunctionExprPlan, StatementPlan, StatementPlanKind},
+        plan::{CustomFunctionPlan, ExprPlan, FunctionPlan, StatementPlan, StatementPlanKind},
         planner::{
             aggregate,
             visit_mut::{VisitorMut, walk_expr_mut},
@@ -85,15 +85,15 @@ impl<T: CustomFunction + ?Sized> VisitorMut for CustomFunctionPlanner<'_, T> {
         walk_expr_mut(self, expr)?;
         if let ExprPlan::Function(function) = expr {
             match function.as_mut() {
-                FunctionExprPlan::UnplannedCustom { name, exprs } => {
+                FunctionPlan::UnplannedCustom { name, exprs } => {
                     let function_id = self.prepare(name)?;
                     self.validate_call(function_id, exprs.len())?;
-                    **function = FunctionExprPlan::Custom {
+                    **function = FunctionPlan::Custom {
                         function_id,
                         exprs: mem::take(exprs),
                     };
                 }
-                FunctionExprPlan::Custom { function_id, exprs } => {
+                FunctionPlan::Custom { function_id, exprs } => {
                     self.validate_call(*function_id, exprs.len())?;
                 }
                 _ => {}
@@ -160,9 +160,10 @@ mod tests {
             parse_sql::{parse, parse_expr},
             plan::{
                 AggregateExprPlan, AggregateFunctionPlan, AggregationInputPlan, AggregationPlan,
-                CustomFunctionPlan, ExprPlan, FunctionArgPlan, FunctionExprPlan, ProjectInputPlan,
-                ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SeriesSourcePlan,
-                SourcePlan, StatementPlan, StatementPlanKind, TableAliasPlan, ValuesPlan,
+                CustomFunctionPlan, ExprPlan, FunctionPlan, OperateFunctionArgPlan,
+                ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
+                SeriesSourcePlan, SourcePlan, StatementPlan, StatementPlanKind, TableAliasPlan,
+                ValuesPlan,
             },
             planner::{PlannerError, aggregate},
             result::Error,
@@ -243,12 +244,12 @@ mod tests {
         let functions = vec![CustomFunctionPlan {
             name: "f".to_owned(),
             args: vec![
-                FunctionArgPlan {
+                OperateFunctionArgPlan {
                     name: "x".to_owned(),
                     data_type: DataType::Int,
                     default: None,
                 },
-                FunctionArgPlan {
+                OperateFunctionArgPlan {
                     name: "y".to_owned(),
                     data_type: DataType::Int,
                     default: Some(expr("2").into()),
@@ -262,7 +263,7 @@ mod tests {
         ] {
             let expected = StatementPlan {
                 kind: StatementPlanKind::Query(QueryPlan::Values(ValuesPlan(vec![vec![
-                    ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+                    ExprPlan::Function(Box::new(FunctionPlan::Custom {
                         function_id: 0,
                         exprs: args,
                     })),
@@ -274,7 +275,7 @@ mod tests {
 
         let mut input = StatementPlan {
             kind: StatementPlanKind::Query(QueryPlan::Values(ValuesPlan(vec![vec![
-                ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+                ExprPlan::Function(Box::new(FunctionPlan::Custom {
                     function_id: 0,
                     exprs: Vec::new(),
                 })),
@@ -318,15 +319,15 @@ mod tests {
         input.functions.push(existing.clone());
         let expected = StatementPlan {
             kind: StatementPlanKind::Query(QueryPlan::Values(ValuesPlan(vec![vec![
-                ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+                ExprPlan::Function(Box::new(FunctionPlan::Custom {
                     function_id: 0,
                     exprs: Vec::new(),
                 })),
-                ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+                ExprPlan::Function(Box::new(FunctionPlan::Custom {
                     function_id: 1,
                     exprs: Vec::new(),
                 })),
-                ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+                ExprPlan::Function(Box::new(FunctionPlan::Custom {
                     function_id: 0,
                     exprs: Vec::new(),
                 })),
@@ -355,14 +356,14 @@ mod tests {
         };
         let expected = StatementPlan {
             kind: StatementPlanKind::Query(QueryPlan::Values(ValuesPlan(vec![vec![
-                ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+                ExprPlan::Function(Box::new(FunctionPlan::Custom {
                     function_id: 0,
                     exprs: vec![expr("3").into()],
                 })),
             ]]))),
             functions: vec![CustomFunctionPlan {
                 name: "sum_to".to_owned(),
-                args: vec![FunctionArgPlan {
+                args: vec![OperateFunctionArgPlan {
                     name: "n".to_owned(),
                     data_type: DataType::Int,
                     default: None,
@@ -404,11 +405,11 @@ mod tests {
         let actual = plan(&storage, statement(sql));
         let expected = StatementPlan {
             kind: StatementPlanKind::Query(QueryPlan::Values(ValuesPlan(vec![vec![
-                ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+                ExprPlan::Function(Box::new(FunctionPlan::Custom {
                     function_id: 0,
                     exprs: vec![expr("2").into()],
                 })),
-                ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+                ExprPlan::Function(Box::new(FunctionPlan::Custom {
                     function_id: 1,
                     exprs: Vec::new(),
                 })),
@@ -416,14 +417,14 @@ mod tests {
             functions: vec![
                 CustomFunctionPlan {
                     name: "twice".to_owned(),
-                    args: vec![FunctionArgPlan {
+                    args: vec![OperateFunctionArgPlan {
                         name: "x".to_owned(),
                         data_type: DataType::Int,
                         default: None,
                     }],
-                    body: ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+                    body: ExprPlan::Function(Box::new(FunctionPlan::Custom {
                         function_id: 1,
-                        exprs: vec![ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+                        exprs: vec![ExprPlan::Function(Box::new(FunctionPlan::Custom {
                             function_id: 1,
                             exprs: vec![expr("x").into()],
                         }))],
@@ -431,7 +432,7 @@ mod tests {
                 },
                 CustomFunctionPlan {
                     name: "plus_one".to_owned(),
-                    args: vec![FunctionArgPlan {
+                    args: vec![OperateFunctionArgPlan {
                         name: "x".to_owned(),
                         data_type: DataType::Int,
                         default: Some(expr("1").into()),
@@ -450,12 +451,10 @@ mod tests {
         let aggregate_sql = "SELECT SUM(twice(N)) AS r FROM SERIES(3)";
         let actual = plan(&storage, aggregate::plan(statement(aggregate_sql)));
         let aggregate = AggregateExprPlan {
-            func: AggregateFunctionPlan::Sum(ExprPlan::Function(Box::new(
-                FunctionExprPlan::Custom {
-                    function_id: 0,
-                    exprs: vec![expr("N").into()],
-                },
-            ))),
+            func: AggregateFunctionPlan::Sum(ExprPlan::Function(Box::new(FunctionPlan::Custom {
+                function_id: 0,
+                exprs: vec![expr("N").into()],
+            }))),
             distinct: false,
             slot: Some(0),
         };
@@ -537,7 +536,7 @@ mod tests {
 
         let sql = "VALUES (recur())";
         let actual = plan(&storage, statement(sql));
-        let call = ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+        let call = ExprPlan::Function(Box::new(FunctionPlan::Custom {
             function_id: 0,
             exprs: Vec::new(),
         }));
@@ -557,11 +556,11 @@ mod tests {
 
         let sql = "VALUES (first())";
         let actual = plan(&storage, statement(sql));
-        let first = ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+        let first = ExprPlan::Function(Box::new(FunctionPlan::Custom {
             function_id: 0,
             exprs: Vec::new(),
         }));
-        let second = ExprPlan::Function(Box::new(FunctionExprPlan::Custom {
+        let second = ExprPlan::Function(Box::new(FunctionPlan::Custom {
             function_id: 1,
             exprs: Vec::new(),
         }));

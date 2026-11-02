@@ -5,12 +5,14 @@ mod projection;
 mod query;
 
 pub use {
-    ddl::{AlterTableOperationPlan, ColumnDefPlan, DefaultExpr, TableColumnsPlan},
-    expr::{
-        AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan, FunctionExprPlan,
-        plan_scalar_expr,
+    ddl::{
+        AlterTableOperationPlan, ColumnDefPlan, DefaultExpr, OperateFunctionArgPlan,
+        TableColumnsPlan,
     },
-    function::{CustomFunctionPlan, FunctionArgPlan},
+    expr::{
+        AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan, plan_scalar_expr,
+    },
+    function::{CustomFunctionPlan, FunctionPlan},
     projection::{ProjectionPlan, SelectItemPlan},
     query::{
         AggregationInputPlan, AggregationPlan, DerivedSourcePlan, DictionarySourcePlan,

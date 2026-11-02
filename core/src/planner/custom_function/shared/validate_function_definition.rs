@@ -1,7 +1,7 @@
 use crate::{
     ast::{Expr, OperateFunctionArg},
     executor::{AlterError, evaluate_stateless},
-    plan::{CustomFunctionPlan, ExprPlan, FunctionArgPlan, SourcePlan},
+    plan::{CustomFunctionPlan, ExprPlan, OperateFunctionArgPlan, SourcePlan},
     planner::{
         PlannerError,
         visit::{Visitor, walk_source},
@@ -22,7 +22,7 @@ pub fn validate(
     let args = args
         .iter()
         .cloned()
-        .map(FunctionArgPlan::from)
+        .map(OperateFunctionArgPlan::from)
         .collect::<Vec<_>>();
     for default in args.iter().filter_map(|arg| arg.default.as_ref()) {
         evaluate_stateless(None, default)?;
@@ -67,7 +67,7 @@ mod tests {
             ast::{DataType, Statement},
             executor::{AlterError, EvaluateError},
             parse_sql::{parse, parse_expr},
-            plan::{CustomFunctionPlan, ExprPlan, FunctionArgPlan},
+            plan::{CustomFunctionPlan, ExprPlan, OperateFunctionArgPlan},
             planner::PlannerError,
             result::{Error, Result},
             translate::{NO_PARAMS, translate, translate_expr},
@@ -100,12 +100,12 @@ mod tests {
         let expected = CustomFunctionPlan {
             name: "add".to_owned(),
             args: vec![
-                FunctionArgPlan {
+                OperateFunctionArgPlan {
                     name: "x".to_owned(),
                     data_type: DataType::Int,
                     default: None,
                 },
-                FunctionArgPlan {
+                OperateFunctionArgPlan {
                     name: "y".to_owned(),
                     data_type: DataType::Int,
                     default: Some(expr("1 + 2")),

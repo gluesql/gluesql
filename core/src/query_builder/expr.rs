@@ -271,7 +271,7 @@ impl ExprNode<'_> {
                 .map(Box::new)
                 .map(ExprPlan::Nested),
             ExprNode::Function(func_expr) => (*func_expr)
-                .build_function_expr_plan()
+                .build_function_plan()
                 .map(Box::new)
                 .map(ExprPlan::Function),
             ExprNode::Aggregate(aggr_expr) => (*aggr_expr)

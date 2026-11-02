@@ -333,7 +333,7 @@ mod tests {
                 AggregateExprPlan, AggregateFunctionPlan, AggregationInputPlan, AggregationPlan,
                 AssignmentPlan, CountArgExprPlan, DerivedSourcePlan, DictionarySourcePlan,
                 DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan, FilterPlan,
-                FunctionExprPlan, HashJoinInputPlan, HashJoinPlan, HavingPlan, InnerJoinInputPlan,
+                FunctionPlan, HashJoinInputPlan, HashJoinPlan, HavingPlan, InnerJoinInputPlan,
                 InnerJoinPlan, JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan,
                 LeftOuterJoinPlan, LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan,
                 NestedLoopJoinPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan,
@@ -448,7 +448,7 @@ mod tests {
                     ),
                 }),
                 projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
-                    expr: ExprPlan::Function(Box::new(FunctionExprPlan::Coalesce(vec![
+                    expr: ExprPlan::Function(Box::new(FunctionPlan::Coalesce(vec![
                         count_wildcard_expr(Some(0)),
                         ExprPlan::Literal(Literal::Number(0.into())),
                     ]))),
