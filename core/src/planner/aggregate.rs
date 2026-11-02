@@ -1,5 +1,5 @@
 use {
-    super::expr::visit_mut_expr,
+    super::visit_mut::visit_mut_expr,
     crate::plan::{
         AggregateFunctionPlan, AggregationInputPlan, AggregationPlan, DistinctInputPlan,
         DistinctPlan, ExprPlan, FilterInputPlan, FilterPlan, HashJoinInputPlan, HashJoinPlan,

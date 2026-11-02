@@ -1,14 +1,14 @@
 use {
-    super::shared::{try_visit_mut_query, validate_function_definition},
+    super::shared::validate_function_definition,
     crate::{
         data::Value,
         executor::EvaluateError,
-        plan::{
-            CustomFunctionPlan, ExprPlan, FunctionExprPlan, QueryPlan, StatementPlan,
-            StatementPlanKind,
+        plan::{CustomFunctionPlan, ExprPlan, FunctionExprPlan, StatementPlan, StatementPlanKind},
+        planner::{
+            aggregate,
+            visit_mut::{VisitorMut, walk_expr_mut},
         },
-        planner::{aggregate, expr::try_visit_mut_expr},
-        result::Result,
+        result::{Error, Result},
         store::CustomFunction,
     },
     std::{collections::HashMap, mem},
@@ -31,28 +31,28 @@ pub fn plan<T: CustomFunction + ?Sized>(
     };
     match &mut statement.kind {
         StatementPlanKind::Query(query) | StatementPlanKind::Insert { source: query, .. } => {
-            planner.query(query)?;
+            planner.visit_query(query)?;
         }
         StatementPlanKind::CreateTable {
             source: Some(query),
             ..
-        } => planner.query(query)?,
+        } => planner.visit_query(query)?,
         StatementPlanKind::Update {
             assignments,
             selection,
             ..
         } => {
             for assignment in assignments {
-                planner.expr(&mut assignment.value)?;
+                planner.visit_expr(&mut assignment.value)?;
             }
             if let Some(expr) = selection {
-                planner.expr(expr)?;
+                planner.visit_expr(expr)?;
             }
         }
         StatementPlanKind::Delete {
             selection: Some(expr),
             ..
-        } => planner.expr(expr)?,
+        } => planner.visit_expr(expr)?,
         _ => {}
     }
 
@@ -64,7 +64,7 @@ pub fn plan<T: CustomFunction + ?Sized>(
             &mut planner.functions[index].body,
             ExprPlan::Value(Value::Null),
         );
-        planner.expr(&mut body)?;
+        planner.visit_expr(&mut body)?;
         aggregate::plan_expr(&mut body);
         planner.functions[index].body = body;
         index += 1;
@@ -78,41 +78,32 @@ struct CustomFunctionPlanner<'a, T: ?Sized> {
     functions: &'a mut Vec<CustomFunctionPlan>,
 }
 
-impl<T: CustomFunction + ?Sized> CustomFunctionPlanner<'_, T> {
-    fn query(&mut self, query: &mut QueryPlan) -> Result<()> {
-        try_visit_mut_query(query, &mut |expr| self.expr(expr), &mut |_| Ok(()))
-    }
+impl<T: CustomFunction + ?Sized> VisitorMut for CustomFunctionPlanner<'_, T> {
+    type Error = Error;
 
-    fn expr(&mut self, expr: &mut ExprPlan) -> Result<()> {
-        try_visit_mut_expr(expr, &mut |expr| match expr {
-            ExprPlan::Subquery(query)
-            | ExprPlan::Exists {
-                subquery: query, ..
-            }
-            | ExprPlan::InSubquery {
-                subquery: query, ..
-            } => self.query(query),
-            ExprPlan::Function(function) => {
-                match function.as_mut() {
-                    FunctionExprPlan::UnplannedCustom { name, exprs } => {
-                        let function_id = self.prepare(name)?;
-                        self.validate_call(function_id, exprs.len())?;
-                        **function = FunctionExprPlan::Custom {
-                            function_id,
-                            exprs: mem::take(exprs),
-                        };
-                    }
-                    FunctionExprPlan::Custom { function_id, exprs } => {
-                        self.validate_call(*function_id, exprs.len())?;
-                    }
-                    _ => {}
+    fn visit_expr(&mut self, expr: &mut ExprPlan) -> Result<()> {
+        walk_expr_mut(self, expr)?;
+        if let ExprPlan::Function(function) = expr {
+            match function.as_mut() {
+                FunctionExprPlan::UnplannedCustom { name, exprs } => {
+                    let function_id = self.prepare(name)?;
+                    self.validate_call(function_id, exprs.len())?;
+                    **function = FunctionExprPlan::Custom {
+                        function_id,
+                        exprs: mem::take(exprs),
+                    };
                 }
-                Ok(())
+                FunctionExprPlan::Custom { function_id, exprs } => {
+                    self.validate_call(*function_id, exprs.len())?;
+                }
+                _ => {}
             }
-            _ => Ok(()),
-        })
+        }
+        Ok(())
     }
+}
 
+impl<T: CustomFunction + ?Sized> CustomFunctionPlanner<'_, T> {
     fn prepare(&mut self, name: &str) -> Result<usize> {
         let key = name.to_uppercase();
         if let Some(index) = self.names.get(&key) {

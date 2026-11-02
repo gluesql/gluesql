@@ -11,6 +11,8 @@ mod schema;
 mod schemaless;
 mod table_columns;
 mod validate;
+mod visit;
+mod visit_mut;
 
 pub use {
     self::validate::validate,

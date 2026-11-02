@@ -1,12 +1,12 @@
-use {
-    super::try_visit_mut_query,
-    crate::{
-        ast::{Expr, OperateFunctionArg},
-        executor::{AlterError, evaluate_stateless},
-        plan::{CustomFunctionPlan, ExprPlan, FunctionArgPlan, SourcePlan},
-        planner::{PlannerError, expr::try_visit_mut_expr},
-        result::Result,
+use crate::{
+    ast::{Expr, OperateFunctionArg},
+    executor::{AlterError, evaluate_stateless},
+    plan::{CustomFunctionPlan, ExprPlan, FunctionArgPlan, SourcePlan},
+    planner::{
+        PlannerError,
+        visit::{Visitor, walk_source},
     },
+    result::Result,
 };
 
 pub fn validate(
@@ -35,8 +35,8 @@ pub fn validate(
         return Err(AlterError::NonDefaultArgumentFollowsDefaultArgument.into());
     }
 
-    let mut body = ExprPlan::from(body.clone());
-    validate_body(&mut body)?;
+    let body = ExprPlan::from(body.clone());
+    FunctionBodyValidator.visit_expr(&body)?;
     Ok(CustomFunctionPlan {
         name: name.to_owned(),
         args,
@@ -44,22 +44,19 @@ pub fn validate(
     })
 }
 
-fn validate_body(expr: &mut ExprPlan) -> Result<()> {
-    try_visit_mut_expr(expr, &mut |expr| match expr {
-        ExprPlan::Subquery(query)
-        | ExprPlan::Exists {
-            subquery: query, ..
-        }
-        | ExprPlan::InSubquery {
-            subquery: query, ..
-        } => try_visit_mut_query(query, &mut validate_body, &mut |source| match source {
+struct FunctionBodyValidator;
+
+impl Visitor for FunctionBodyValidator {
+    type Error = PlannerError;
+
+    fn visit_source(&mut self, source: &SourcePlan) -> std::result::Result<(), PlannerError> {
+        match source {
             SourcePlan::Table(_) | SourcePlan::Dictionary(_) => {
-                Err(PlannerError::StorageAccessInFunctionBody.into())
+                Err(PlannerError::StorageAccessInFunctionBody)
             }
-            SourcePlan::Derived(_) | SourcePlan::Series(_) => Ok(()),
-        }),
-        _ => Ok(()),
-    })
+            SourcePlan::Derived(_) | SourcePlan::Series(_) => walk_source(self, source),
+        }
+    }
 }
 
 #[cfg(test)]

@@ -1,5 +1,5 @@
 use {
-    super::super::{PlannerError, expr::try_visit_expr},
+    super::super::{PlannerError, visit::try_visit_expr},
     crate::{
         data::Schema,
         plan::{

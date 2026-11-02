@@ -1,6 +1,6 @@
 use {
     self::{query::transform_query, validate::validate_statement},
-    super::expr::visit_mut_expr,
+    super::visit_mut::visit_mut_expr,
     crate::{
         ast::Literal,
         data::{SCHEMALESS_DOC_COLUMN, Schema},

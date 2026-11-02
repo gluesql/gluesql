@@ -1,5 +1,5 @@
 use {
-    super::super::expr::visit_mut_expr,
+    super::super::visit_mut::visit_mut_expr,
     crate::{
         ast::Literal,
         data::{SCHEMALESS_DOC_COLUMN, Schema},
