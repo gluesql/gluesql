@@ -304,3 +304,181 @@ mod regex_insertion {
         }
     }
 }
+
+#[cfg(test)]
+mod expr_conversion {
+    use {
+        super::super::expr as old,
+        gluesql_core::{
+            ast::{self as current, DataType, DateTimeField, Literal, UnaryOperator},
+            data::Value,
+        },
+    };
+
+    macro_rules! test {
+        ($case:expr) => {{
+            let input = {
+                #[allow(unused_imports)]
+                use old::{BinaryOperator, Expr, Function};
+                #[allow(dead_code)]
+                fn ident(name: &str) -> old::Expr {
+                    old::Expr::Identifier(name.into())
+                }
+                $case
+            };
+            let expected = {
+                #[allow(unused_imports)]
+                use current::{BinaryOperator, Expr, Function};
+                #[allow(dead_code)]
+                fn ident(name: &str) -> current::Expr {
+                    current::Expr::Identifier(name.into())
+                }
+                $case
+            };
+            let actual = input.into_current().unwrap();
+            assert_eq!(actual, expected, "{}", stringify!($case));
+        }};
+    }
+
+    #[test]
+    fn expression_variants() {
+        test!(Expr::Identifier("column".into()));
+        test!(Expr::CompoundIdentifier {
+            alias: "source".into(),
+            ident: "column".into(),
+        });
+        test!(Expr::IsNull(Box::new(ident("value"))));
+        test!(Expr::IsNotNull(Box::new(ident("value"))));
+        test!(Expr::InList {
+            expr: Box::new(ident("value")),
+            list: vec![],
+            negated: false,
+        });
+        test!(Expr::InList {
+            expr: Box::new(ident("value")),
+            list: vec![ident("first"), ident("second")],
+            negated: true,
+        });
+        test!(Expr::Between {
+            expr: Box::new(ident("value")),
+            negated: false,
+            low: Box::new(ident("low")),
+            high: Box::new(ident("high")),
+        });
+        test!(Expr::Between {
+            expr: Box::new(ident("value")),
+            negated: true,
+            low: Box::new(ident("low")),
+            high: Box::new(ident("high")),
+        });
+        test!(Expr::Like {
+            expr: Box::new(ident("text")),
+            negated: false,
+            pattern: Box::new(ident("pattern")),
+        });
+        test!(Expr::Like {
+            expr: Box::new(ident("text")),
+            negated: true,
+            pattern: Box::new(ident("pattern")),
+        });
+        test!(Expr::ILike {
+            expr: Box::new(ident("text")),
+            negated: false,
+            pattern: Box::new(ident("pattern")),
+        });
+        test!(Expr::ILike {
+            expr: Box::new(ident("text")),
+            negated: true,
+            pattern: Box::new(ident("pattern")),
+        });
+        test!(Expr::BinaryOp {
+            left: Box::new(ident("left")),
+            op: BinaryOperator::Minus,
+            right: Box::new(ident("right")),
+        });
+        test!(Expr::UnaryOp {
+            op: UnaryOperator::Not,
+            expr: Box::new(ident("value")),
+        });
+        test!(Expr::Nested(Box::new(ident("value"))));
+        test!(Expr::Literal(Literal::QuotedString("text".into())));
+        test!(Expr::Value(Value::I64(17)));
+        test!(Expr::TypedString {
+            data_type: DataType::Date,
+            value: "2020-01-02".into(),
+        });
+        test!(Expr::Function(Box::new(Function::Abs(ident("value")))));
+        test!(Expr::Case {
+            operand: None,
+            when_then: vec![],
+            else_result: None,
+        });
+        test!(Expr::Case {
+            operand: Some(Box::new(ident("operand"))),
+            when_then: vec![
+                (ident("when_first"), ident("then_first")),
+                (ident("when_second"), ident("then_second")),
+            ],
+            else_result: Some(Box::new(ident("fallback"))),
+        });
+        test!(Expr::ArrayIndex {
+            obj: Box::new(ident("array")),
+            indexes: vec![],
+        });
+        test!(Expr::ArrayIndex {
+            obj: Box::new(ident("array")),
+            indexes: vec![ident("row"), ident("column")],
+        });
+        test!(Expr::Interval {
+            expr: Box::new(ident("duration")),
+            leading_field: None,
+            last_field: None,
+        });
+        test!(Expr::Interval {
+            expr: Box::new(ident("duration")),
+            leading_field: Some(DateTimeField::Day),
+            last_field: Some(DateTimeField::Second),
+        });
+        test!(Expr::Array { elem: vec![] });
+        test!(Expr::Array {
+            elem: vec![ident("first"), ident("second")],
+        });
+    }
+
+    #[test]
+    fn binary_operator_variants() {
+        macro_rules! test {
+            ($case:expr) => {{
+                let input = {
+                    use old::BinaryOperator;
+                    $case
+                };
+                let expected = {
+                    use current::BinaryOperator;
+                    $case
+                };
+                assert_eq!(input.into_current(), expected, "{}", stringify!($case));
+            }};
+        }
+
+        test!(BinaryOperator::Plus);
+        test!(BinaryOperator::Minus);
+        test!(BinaryOperator::Multiply);
+        test!(BinaryOperator::Divide);
+        test!(BinaryOperator::Modulo);
+        test!(BinaryOperator::StringConcat);
+        test!(BinaryOperator::Gt);
+        test!(BinaryOperator::Lt);
+        test!(BinaryOperator::GtEq);
+        test!(BinaryOperator::LtEq);
+        test!(BinaryOperator::Eq);
+        test!(BinaryOperator::NotEq);
+        test!(BinaryOperator::And);
+        test!(BinaryOperator::Or);
+        test!(BinaryOperator::Xor);
+        test!(BinaryOperator::BitwiseAnd);
+        test!(BinaryOperator::BitwiseShiftLeft);
+        test!(BinaryOperator::BitwiseShiftRight);
+        test!(BinaryOperator::Arrow);
+    }
+}

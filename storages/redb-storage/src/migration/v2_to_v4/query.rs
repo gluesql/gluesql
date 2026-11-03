@@ -469,3 +469,212 @@ mod query_layout_changes {
         }
     }
 }
+
+#[cfg(test)]
+mod query_conversion {
+    use {
+        super::super::query as old,
+        gluesql_core::ast::{self as current, Dictionary, TableAlias},
+    };
+
+    fn old_ident(name: &str) -> old::Expr {
+        old::Expr::Identifier(name.into())
+    }
+
+    fn current_ident(name: &str) -> current::Expr {
+        current::Expr::Identifier(name.into())
+    }
+
+    fn old_query() -> old::Query {
+        old::Query {
+            body: old::SetExpr::Values(old::Values(vec![vec![old_ident("value")]])),
+            order_by: vec![],
+            limit: None,
+            offset: None,
+        }
+    }
+
+    fn current_query() -> current::Query {
+        current::Query {
+            body: current::SetExpr::Values(current::Values(vec![vec![current_ident("value")]])),
+            order_by: vec![],
+            limit: None,
+            offset: None,
+        }
+    }
+
+    fn alias() -> TableAlias {
+        TableAlias {
+            name: "source".into(),
+            columns: vec!["first".into(), "second".into()],
+        }
+    }
+
+    macro_rules! test {
+        ($case:expr) => {{
+            let input = {
+                #[allow(unused_imports)]
+                use {
+                    self::{old_ident as ident, old_query as query},
+                    old::{Expr, OrderByExpr, Query, SelectItem, SetExpr, TableFactor, Values},
+                };
+                $case
+            };
+            let expected = {
+                #[allow(unused_imports)]
+                use {
+                    self::{current_ident as ident, current_query as query},
+                    current::{Expr, OrderByExpr, Query, SelectItem, SetExpr, TableFactor, Values},
+                };
+                $case
+            };
+            let actual = input.into_current().unwrap();
+            assert_eq!(actual, expected, "{}", stringify!($case));
+        }};
+    }
+
+    #[test]
+    fn values_query() {
+        test!(Query {
+            body: SetExpr::Values(Values(vec![])),
+            order_by: vec![],
+            limit: None,
+            offset: None,
+        });
+        test!(Query {
+            body: SetExpr::Values(Values(vec![
+                vec![ident("first_row_first"), ident("first_row_second")],
+                vec![ident("second_row_first"), ident("second_row_second")],
+            ])),
+            order_by: vec![
+                OrderByExpr {
+                    expr: ident("first_sort"),
+                    asc: Some(false),
+                },
+                OrderByExpr {
+                    expr: ident("second_sort"),
+                    asc: None,
+                },
+            ],
+            limit: Some(ident("limit")),
+            offset: Some(ident("offset")),
+        });
+    }
+
+    #[test]
+    fn select_preserves_filters_groups_and_joins() {
+        let input = old::SetExpr::Select(Box::new(old::Select {
+            distinct: true,
+            projection: old::Projection(vec![old::SelectItem::Expr {
+                expr: old_ident("selected"),
+                label: "column_label".into(),
+            }]),
+            from: old::TableWithJoins {
+                relation: old::TableFactor::Table {
+                    name: "Source".into(),
+                    alias: None,
+                    index: None,
+                },
+                joins: vec![old::Join {
+                    relation: old::TableFactor::Series {
+                        alias: alias(),
+                        size: old_ident("size"),
+                    },
+                    join_operator: old::JoinOperator::LeftOuter(old::JoinConstraint::On(
+                        old_ident("join_condition"),
+                    )),
+                    join_executor: old::JoinExecutor::NestedLoop,
+                }],
+            },
+            selection: Some(old_ident("filter")),
+            group_by: vec![old_ident("first_group"), old_ident("second_group")],
+            having: Some(old_ident("having")),
+        }));
+        let expected = current::SetExpr::Select(Box::new(current::Select {
+            distinct: true,
+            projection: current::Projection::SelectItems(vec![current::SelectItem::Expr {
+                expr: current_ident("selected"),
+                label: "column_label".into(),
+            }]),
+            from: current::TableWithJoins {
+                relation: current::TableFactor::Table {
+                    name: "Source".into(),
+                    alias: None,
+                },
+                joins: vec![current::Join {
+                    relation: current::TableFactor::Series {
+                        alias: alias(),
+                        size: current_ident("size"),
+                    },
+                    join_operator: current::JoinOperator::LeftOuter(current::JoinConstraint::On(
+                        current_ident("join_condition"),
+                    )),
+                }],
+            },
+            selection: Some(current_ident("filter")),
+            group_by: vec![current_ident("first_group"), current_ident("second_group")],
+            having: Some(current_ident("having")),
+        }));
+        assert_eq!(input.into_current().unwrap(), expected);
+    }
+
+    #[test]
+    fn select_item_variants() {
+        test!(SelectItem::Expr {
+            expr: ident("value"),
+            label: "column_label".into(),
+        });
+        test!(SelectItem::QualifiedWildcard("source".into()));
+        test!(SelectItem::Wildcard);
+    }
+
+    #[test]
+    fn table_factors_without_index_plans() {
+        test!(TableFactor::Derived {
+            subquery: query(),
+            alias: alias(),
+        });
+        test!(TableFactor::Series {
+            alias: alias(),
+            size: ident("size"),
+        });
+        test!(TableFactor::Dictionary {
+            dict: Dictionary::GlueTableColumns,
+            alias: alias(),
+        });
+
+        let input = old::TableFactor::Table {
+            name: "Source".into(),
+            alias: Some(alias()),
+            index: None,
+        };
+        let expected = current::TableFactor::Table {
+            name: "Source".into(),
+            alias: Some(alias()),
+        };
+        assert_eq!(input.into_current().unwrap(), expected);
+    }
+
+    #[test]
+    fn subquery_expressions() {
+        test!(Expr::InSubquery {
+            expr: Box::new(ident("value")),
+            subquery: Box::new(query()),
+            negated: false,
+        });
+        test!(Expr::InSubquery {
+            expr: Box::new(ident("value")),
+            subquery: Box::new(query()),
+            negated: true,
+        });
+        test!(Expr::Exists {
+            subquery: Box::new(query()),
+            negated: false,
+        });
+        test!(Expr::Exists {
+            subquery: Box::new(query()),
+            negated: true,
+        });
+        test!(Expr::Subquery(Box::new(query())));
+    }
+}

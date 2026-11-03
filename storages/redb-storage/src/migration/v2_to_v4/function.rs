@@ -576,3 +576,343 @@ mod nested_expr_tags {
         );
     }
 }
+
+#[cfg(test)]
+mod function_conversion {
+    use {
+        super::super::function as old,
+        gluesql_core::ast::{self as current, DataType, DateTimeField, TrimWhereField},
+    };
+
+    // Construct each side independently; only the construction syntax is shared.
+    macro_rules! test {
+        ($case:expr) => {{
+            let input = {
+                #[allow(unused_imports)]
+                use old::{Aggregate, AggregateFunction, CountArgExpr, Function};
+                #[allow(dead_code)]
+                fn ident(name: &str) -> old::Expr {
+                    old::Expr::Identifier(name.into())
+                }
+                $case
+            };
+            let expected = {
+                #[allow(unused_imports)]
+                use current::{Aggregate, AggregateFunction, CountArgExpr, Function};
+                #[allow(dead_code)]
+                fn ident(name: &str) -> current::Expr {
+                    current::Expr::Identifier(name.into())
+                }
+                $case
+            };
+            let actual = input.into_current().unwrap();
+            assert_eq!(actual, expected, "{}", stringify!($case));
+        }};
+    }
+
+    #[test]
+    fn function_variants() {
+        test!(Function::Abs(ident("value")));
+        test!(Function::AddMonth {
+            expr: ident("date"),
+            size: ident("months"),
+        });
+        test!(Function::Lower(ident("text")));
+        test!(Function::Initcap(ident("text")));
+        test!(Function::Upper(ident("text")));
+        test!(Function::Left {
+            expr: ident("text"),
+            size: ident("size"),
+        });
+        test!(Function::Right {
+            expr: ident("text"),
+            size: ident("size"),
+        });
+        test!(Function::Asin(ident("value")));
+        test!(Function::Acos(ident("value")));
+        test!(Function::Atan(ident("value")));
+        test!(Function::Lpad {
+            expr: ident("text"),
+            size: ident("size"),
+            fill: None,
+        });
+        test!(Function::Lpad {
+            expr: ident("text"),
+            size: ident("size"),
+            fill: Some(ident("fill")),
+        });
+        test!(Function::Rpad {
+            expr: ident("text"),
+            size: ident("size"),
+            fill: None,
+        });
+        test!(Function::Rpad {
+            expr: ident("text"),
+            size: ident("size"),
+            fill: Some(ident("fill")),
+        });
+        test!(Function::Replace {
+            expr: ident("text"),
+            old: ident("old_text"),
+            new: ident("new_text"),
+        });
+        test!(Function::Cast {
+            expr: ident("value"),
+            data_type: DataType::Text,
+        });
+        test!(Function::Ceil(ident("value")));
+        test!(Function::Coalesce(vec![]));
+        test!(Function::Coalesce(vec![ident("first"), ident("second")]));
+        test!(Function::Concat(vec![]));
+        test!(Function::Concat(vec![ident("first"), ident("second")]));
+        test!(Function::ConcatWs {
+            separator: ident("separator"),
+            exprs: vec![],
+        });
+        test!(Function::ConcatWs {
+            separator: ident("separator"),
+            exprs: vec![ident("first"), ident("second")],
+        });
+        test!(Function::Custom {
+            name: "custom_name".into(),
+            exprs: vec![],
+        });
+        test!(Function::Custom {
+            name: "custom_name".into(),
+            exprs: vec![ident("first"), ident("second")],
+        });
+        test!(Function::IfNull {
+            expr: ident("value"),
+            then: ident("fallback"),
+        });
+        test!(Function::NullIf {
+            expr1: ident("first"),
+            expr2: ident("second"),
+        });
+        test!(Function::Rand(None));
+        test!(Function::Rand(Some(ident("seed"))));
+        test!(Function::Round(ident("value")));
+        test!(Function::Trunc(ident("value")));
+        test!(Function::Floor(ident("value")));
+        test!(Function::Trim {
+            expr: ident("text"),
+            filter_chars: None,
+            trim_where_field: None,
+        });
+        test!(Function::Trim {
+            expr: ident("text"),
+            filter_chars: Some(ident("chars")),
+            trim_where_field: Some(TrimWhereField::Leading),
+        });
+        test!(Function::Exp(ident("value")));
+        test!(Function::Extract {
+            field: DateTimeField::Month,
+            expr: ident("date"),
+        });
+        test!(Function::Ln(ident("value")));
+        test!(Function::Log {
+            antilog: ident("antilog"),
+            base: ident("base"),
+        });
+        test!(Function::Log2(ident("value")));
+        test!(Function::Log10(ident("value")));
+        test!(Function::Div {
+            dividend: ident("dividend"),
+            divisor: ident("divisor"),
+        });
+        test!(Function::Mod {
+            dividend: ident("dividend"),
+            divisor: ident("divisor"),
+        });
+        test!(Function::Gcd {
+            left: ident("left"),
+            right: ident("right"),
+        });
+        test!(Function::Lcm {
+            left: ident("left"),
+            right: ident("right"),
+        });
+        test!(Function::Sin(ident("value")));
+        test!(Function::Cos(ident("value")));
+        test!(Function::Tan(ident("value")));
+        test!(Function::Sqrt(ident("value")));
+        test!(Function::Power {
+            expr: ident("value"),
+            power: ident("power"),
+        });
+        test!(Function::Radians(ident("value")));
+        test!(Function::Degrees(ident("value")));
+        test!(Function::Now());
+        test!(Function::CurrentDate());
+        test!(Function::CurrentTime());
+        test!(Function::CurrentTimestamp());
+        test!(Function::Pi());
+        test!(Function::LastDay(ident("date")));
+        test!(Function::Ltrim {
+            expr: ident("text"),
+            chars: None,
+        });
+        test!(Function::Ltrim {
+            expr: ident("text"),
+            chars: Some(ident("chars")),
+        });
+        test!(Function::Rtrim {
+            expr: ident("text"),
+            chars: None,
+        });
+        test!(Function::Rtrim {
+            expr: ident("text"),
+            chars: Some(ident("chars")),
+        });
+        test!(Function::Reverse(ident("text")));
+        test!(Function::Repeat {
+            expr: ident("text"),
+            num: ident("times"),
+        });
+        test!(Function::Sign(ident("value")));
+        test!(Function::Substr {
+            expr: ident("text"),
+            start: ident("start"),
+            count: None,
+        });
+        test!(Function::Substr {
+            expr: ident("text"),
+            start: ident("start"),
+            count: Some(ident("count")),
+        });
+        test!(Function::Unwrap {
+            expr: ident("object"),
+            selector: ident("selector"),
+        });
+        test!(Function::GenerateUuid());
+        test!(Function::Greatest(vec![]));
+        test!(Function::Greatest(vec![ident("first"), ident("second")]));
+        test!(Function::Format {
+            expr: ident("value"),
+            format: ident("format"),
+        });
+        test!(Function::ToDate {
+            expr: ident("text"),
+            format: ident("format"),
+        });
+        test!(Function::ToTimestamp {
+            expr: ident("text"),
+            format: ident("format"),
+        });
+        test!(Function::ToTime {
+            expr: ident("text"),
+            format: ident("format"),
+        });
+        test!(Function::Position {
+            from_expr: ident("text"),
+            sub_expr: ident("substring"),
+        });
+        test!(Function::FindIdx {
+            from_expr: ident("text"),
+            sub_expr: ident("substring"),
+            start: None,
+        });
+        test!(Function::FindIdx {
+            from_expr: ident("text"),
+            sub_expr: ident("substring"),
+            start: Some(ident("start")),
+        });
+        test!(Function::Ascii(ident("text")));
+        test!(Function::Chr(ident("code")));
+        test!(Function::Md5(ident("text")));
+        test!(Function::Hex(ident("value")));
+        test!(Function::Append {
+            expr: ident("list"),
+            value: ident("value"),
+        });
+        test!(Function::Sort {
+            expr: ident("list"),
+            order: None,
+        });
+        test!(Function::Sort {
+            expr: ident("list"),
+            order: Some(ident("order")),
+        });
+        test!(Function::Slice {
+            expr: ident("list"),
+            start: ident("start"),
+            length: ident("length"),
+        });
+        test!(Function::Prepend {
+            expr: ident("list"),
+            value: ident("value"),
+        });
+        test!(Function::Skip {
+            expr: ident("list"),
+            size: ident("size"),
+        });
+        test!(Function::Take {
+            expr: ident("list"),
+            size: ident("size"),
+        });
+        test!(Function::GetX(ident("point")));
+        test!(Function::GetY(ident("point")));
+        test!(Function::Point {
+            x: ident("x"),
+            y: ident("y"),
+        });
+        test!(Function::CalcDistance {
+            geometry1: ident("first"),
+            geometry2: ident("second"),
+        });
+        test!(Function::IsEmpty(ident("list")));
+        test!(Function::Length(ident("list")));
+        test!(Function::Entries(ident("map")));
+        test!(Function::Keys(ident("map")));
+        test!(Function::Values(ident("map")));
+        test!(Function::Splice {
+            list_data: ident("list"),
+            begin_index: ident("begin"),
+            end_index: ident("end"),
+            values: None,
+        });
+        test!(Function::Splice {
+            list_data: ident("list"),
+            begin_index: ident("begin"),
+            end_index: ident("end"),
+            values: Some(ident("replacement")),
+        });
+        test!(Function::Dedup(ident("list")));
+    }
+
+    #[test]
+    fn aggregate_variants() {
+        test!(Aggregate {
+            func: AggregateFunction::Count(CountArgExpr::Expr(ident("value"))),
+            distinct: true,
+        });
+        test!(Aggregate {
+            func: AggregateFunction::Count(CountArgExpr::Wildcard),
+            distinct: false,
+        });
+        test!(Aggregate {
+            func: AggregateFunction::Sum(ident("value")),
+            distinct: false,
+        });
+        test!(Aggregate {
+            func: AggregateFunction::Max(ident("value")),
+            distinct: true,
+        });
+        test!(Aggregate {
+            func: AggregateFunction::Min(ident("value")),
+            distinct: false,
+        });
+        test!(Aggregate {
+            func: AggregateFunction::Avg(ident("value")),
+            distinct: true,
+        });
+        test!(Aggregate {
+            func: AggregateFunction::Variance(ident("value")),
+            distinct: false,
+        });
+        test!(Aggregate {
+            func: AggregateFunction::Stdev(ident("value")),
+            distinct: true,
+        });
+    }
+}
