@@ -88,9 +88,18 @@ impl Store for MemoryStorage {
     }
 
     fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
-        let rows = MemoryStorage::scan_data(self, table_name)
+        // Borrow the table's rows and clone each entry lazily, so callers that
+        // stop early (e.g. `LIMIT`) never pay to clone rows they don't consume.
+        // This deliberately avoids the eager full-table clone in the inherent
+        // `MemoryStorage::scan_data`, which is kept for `SharedMemoryStorage`
+        // where the rows must be materialized while the lock guard is held.
+        let rows = self
+            .items
+            .get(table_name)
+            .map(|item| item.rows.iter())
             .into_iter()
-            .map(Ok);
+            .flatten()
+            .map(|(key, row)| Ok((key.clone(), row.clone())));
 
         Ok(Box::new(rows))
     }
