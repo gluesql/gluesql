@@ -2,7 +2,7 @@ use {
     crate::{
         data::Schema,
         executor::InsertError,
-        plan::{ColumnDefPlan, StatementPlan, TableColumnsPlan},
+        plan::{ColumnDefPlan, StatementPlan, StatementPlanKind, TableColumnsPlan},
         result::Result,
     },
     std::{collections::HashMap, hash::BuildHasher},
@@ -10,26 +10,18 @@ use {
 
 pub fn plan<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
-    statement: StatementPlan,
+    mut statement: StatementPlan,
 ) -> Result<StatementPlan> {
-    match statement {
-        StatementPlan::Insert {
-            table_name,
-            columns,
-            source,
-            table_columns: TableColumnsPlan::Unplanned,
-        } => {
-            let table_columns = table_columns_from_schema(schema_map, &table_name)?;
-
-            Ok(StatementPlan::Insert {
-                table_name,
-                columns,
-                source,
-                table_columns,
-            })
-        }
-        statement => Ok(statement),
+    if let StatementPlanKind::Insert {
+        table_name,
+        table_columns,
+        ..
+    } = &mut statement.kind
+        && matches!(table_columns, TableColumnsPlan::Unplanned)
+    {
+        *table_columns = table_columns_from_schema(schema_map, table_name)?;
     }
+    Ok(statement)
 }
 
 fn table_columns_from_schema<S: BuildHasher>(

@@ -10,7 +10,7 @@ use {
             JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
             OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SourcePlan,
-            StatementPlan, TableAccessPlan,
+            StatementPlan, StatementPlanKind, TableAccessPlan,
         },
     },
     std::{collections::HashMap, hash::BuildHasher, rc::Rc},
@@ -20,18 +20,14 @@ mod lookup;
 
 pub fn plan<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
-    statement: StatementPlan,
+    mut statement: StatementPlan,
 ) -> StatementPlan {
     let planner = PrimaryKeyPlanner { schema_map };
-
-    match statement {
-        StatementPlan::Query(query) => {
-            let query = planner.query(None, query);
-
-            StatementPlan::Query(query)
-        }
-        _ => statement,
-    }
+    statement.kind = match statement.kind {
+        StatementPlanKind::Query(query) => StatementPlanKind::Query(planner.query(None, query)),
+        kind => kind,
+    };
+    statement
 }
 
 struct PrimaryKeyPlanner<'a, S> {
@@ -525,8 +521,8 @@ mod tests {
             mock::{MockStorage, run},
             parse_sql::{parse, parse_expr},
             plan::{
-                ExprPlan, ProjectInputPlan, QueryPlan, SourcePlan, StatementPlan, TableAccessPlan,
-                TableAliasPlan, TableSourcePlan,
+                ExprPlan, ProjectInputPlan, QueryPlan, SourcePlan, StatementPlan,
+                StatementPlanKind, TableAccessPlan, TableAliasPlan, TableSourcePlan,
             },
             planner::fetch_schema_map,
             query_builder::{Build, col, exists, primary_key, subquery, table},
@@ -540,8 +536,8 @@ mod tests {
     }
 
     fn direct_project_base_source(statement: &StatementPlan) -> Option<&SourcePlan> {
-        match statement {
-            StatementPlan::Query(QueryPlan::Project(project)) => match &project.input {
+        match &statement.kind {
+            StatementPlanKind::Query(QueryPlan::Project(project)) => match &project.input {
                 ProjectInputPlan::Source(_)
                 | ProjectInputPlan::InnerJoin(_)
                 | ProjectInputPlan::LeftOuterJoin(_) => Some(project.input.base_source()),

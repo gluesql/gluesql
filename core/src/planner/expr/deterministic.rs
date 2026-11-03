@@ -1,4 +1,4 @@
-use crate::plan::{ExprPlan, FunctionExprPlan};
+use crate::plan::{ExprPlan, FunctionPlan};
 
 pub fn is_deterministic(expr: &ExprPlan) -> bool {
     match expr {
@@ -55,8 +55,8 @@ pub fn is_deterministic(expr: &ExprPlan) -> bool {
     }
 }
 
-fn is_function_deterministic(function: &FunctionExprPlan) -> bool {
-    use FunctionExprPlan::*;
+fn is_function_deterministic(function: &FunctionPlan) -> bool {
+    use FunctionPlan::*;
 
     match function {
         Now()
@@ -65,6 +65,7 @@ fn is_function_deterministic(function: &FunctionExprPlan) -> bool {
         | CurrentTimestamp()
         | GenerateUuid()
         | Rand(_)
+        | UnplannedCustom { .. }
         | Custom { .. } => false,
         Cast { expr, .. }
         | Abs(expr)
@@ -212,6 +213,7 @@ mod tests {
         super::is_deterministic,
         crate::{
             parse_sql::parse_expr,
+            plan::{ExprPlan, FunctionPlan},
             translate::{NO_PARAMS, translate_expr},
         },
     };
@@ -343,6 +345,15 @@ mod tests {
         test("RAND(1)", false);
         test("SPLICE('[1,2,3]', 1, 2, '[9]')", true);
         test("DEDUP('[1,1,2]')", true);
+    }
+
+    #[test]
+    fn planned_custom_function() {
+        let expr = ExprPlan::Function(Box::new(FunctionPlan::Custom {
+            function_id: 0,
+            exprs: Vec::new(),
+        }));
+        assert!(!is_deterministic(&expr));
     }
 
     #[test]

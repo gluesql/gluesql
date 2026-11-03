@@ -258,7 +258,7 @@ mod tests {
             plan::{
                 HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan,
                 ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectOrderByPlan,
-                SourcePlan, StatementPlan, TableAccessPlan, TableSourcePlan,
+                SourcePlan, StatementPlanKind, TableAccessPlan, TableSourcePlan,
             },
             query_builder::{
                 Build, ExprNode, OrderByExprList, SelectItemList, col, table, test_query_builder,
@@ -412,14 +412,15 @@ mod tests {
                 ),
             };
 
-            Ok(StatementPlan::Query(QueryPlan::SelectOrderBy(
-                SelectOrderByPlan {
+            Ok(
+                StatementPlanKind::Query(QueryPlan::SelectOrderBy(SelectOrderByPlan {
                     input: project,
                     exprs: OrderByExprList::from("Player.score DESC")
                         .build_order_by_exprs_plan()
                         .unwrap(),
-                },
-            )))
+                }))
+                .into(),
+            )
         };
         assert_eq!(actual, expected);
 

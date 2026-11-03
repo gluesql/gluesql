@@ -1,5 +1,5 @@
 use {
-    super::{AlterError, validate_arg_names, validate_default_args},
+    super::AlterError,
     crate::{
         ast::{Expr, OperateFunctionArg},
         data::CustomFunction,
@@ -15,9 +15,6 @@ pub fn insert_function<T: GStore + GStoreMut>(
     or_replace: bool,
     body: &Expr,
 ) -> Result<()> {
-    validate_arg_names(args)?;
-    validate_default_args(args)?;
-
     if storage.fetch_function(func_name)?.is_none() || or_replace {
         storage.delete_function(func_name)?;
         storage.insert_function(CustomFunction {

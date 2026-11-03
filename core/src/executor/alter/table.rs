@@ -4,12 +4,12 @@ use {
         ast::{ColumnUniqueOption, ForeignKey, ToSql},
         data::{Row, Schema},
         executor::{
-            evaluate_stateless,
+            evaluate::evaluate,
             query::{self, OutputBody},
         },
         plan::{
-            ColumnDefPlan, FilterInputPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan,
-            QueryPlan, SelectItemPlan, SourcePlan, ValuesPlan,
+            ColumnDefPlan, CustomFunctionPlan, FilterInputPlan, ProjectInputPlan, ProjectPlan,
+            ProjectionPlan, QueryPlan, SelectItemPlan, SourcePlan, ValuesPlan,
         },
         prelude::{DataType, Value},
         result::Result,
@@ -31,6 +31,7 @@ pub struct CreateTableOptions<'a> {
 
 pub fn create_table<T: GStore + GStoreMut>(
     storage: &mut T,
+    functions: &[CustomFunctionPlan],
     CreateTableOptions {
         target_table_name,
         column_defs,
@@ -74,7 +75,8 @@ pub fn create_table<T: GStore + GStoreMut>(
                     Some(vec![column_def])
                 }
                 _ => {
-                    let (labels, rows) = query::execute_with_labels(storage, source_query, None)?;
+                    let (labels, rows) =
+                        query::execute_with_labels(storage, functions, source_query, None)?;
                     let rows = rows
                         .map(|row| row.map(Row::into_values))
                         .collect::<Result<Vec<_>>>()?;
@@ -94,7 +96,7 @@ pub fn create_table<T: GStore + GStoreMut>(
                             continue;
                         }
 
-                        column_types[i] = evaluate_stateless(None, expr)
+                        column_types[i] = evaluate(storage, functions, None, None, expr)
                             .and_then(Value::try_from)
                             .map(|value| value.get_type())?;
                     }
@@ -230,7 +232,7 @@ pub fn create_table<T: GStore + GStoreMut>(
         Some(query) => {
             let rows = match selected_source_rows {
                 Some(rows) => rows,
-                None => query::execute(storage, query, None)?
+                None => query::execute(storage, functions, query, None)?
                     .map(|row| row.map(Row::into_values))
                     .collect::<Result<Vec<_>>>()?,
             };

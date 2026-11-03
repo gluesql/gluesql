@@ -1,9 +1,9 @@
 use {
-    crate::plan::{ExprPlan, FunctionExprPlan},
+    crate::plan::{ExprPlan, FunctionPlan},
     std::iter,
 };
 
-impl FunctionExprPlan {
+impl FunctionPlan {
     pub fn as_exprs(&self) -> impl Iterator<Item = &ExprPlan> {
         #[derive(iter_enum::Iterator)]
         enum Exprs<I0, I1, I2, I3, I4, I5, I6> {
@@ -18,12 +18,12 @@ impl FunctionExprPlan {
 
         match self {
             Self::Now()
-            | FunctionExprPlan::Pi()
-            | FunctionExprPlan::GenerateUuid()
+            | FunctionPlan::Pi()
+            | FunctionPlan::GenerateUuid()
             | Self::Rand(None)
-            | FunctionExprPlan::CurrentDate()
-            | FunctionExprPlan::CurrentTime()
-            | FunctionExprPlan::CurrentTimestamp() => Exprs::Empty(iter::empty()),
+            | FunctionPlan::CurrentDate()
+            | FunctionPlan::CurrentTime()
+            | FunctionPlan::CurrentTimestamp() => Exprs::Empty(iter::empty()),
             Self::Lower(expr)
             | Self::Length(expr)
             | Self::Initcap(expr)
@@ -205,7 +205,8 @@ impl FunctionExprPlan {
                 end_index: expr3,
                 values: None,
             } => Exprs::Triple([expr, expr2, expr3].into_iter()),
-            Self::Custom { name: _, exprs }
+            Self::UnplannedCustom { exprs, .. }
+            | Self::Custom { exprs, .. }
             | Self::Coalesce(exprs)
             | Self::Concat(exprs)
             | Self::Greatest(exprs) => Exprs::VariableArgs(exprs.iter()),
@@ -226,7 +227,7 @@ impl FunctionExprPlan {
 mod tests {
     use crate::{
         parse_sql::parse_expr,
-        plan::ExprPlan,
+        plan::{ExprPlan, FunctionPlan},
         translate::{NO_PARAMS, translate_expr},
     };
 
@@ -382,5 +383,22 @@ mod tests {
             r#"CONCAT_WS(",", "gluesql", "is", "cool")"#,
             &[r#"",""#, r#""gluesql""#, r#""is""#, r#""cool""#],
         );
+    }
+
+    #[test]
+    fn planned_custom_function() {
+        let function = FunctionPlan::Custom {
+            function_id: 3,
+            exprs: vec![expr("x"), expr("y + 1")],
+        };
+        let actual = function.as_exprs().cloned().collect::<Vec<_>>();
+        let expected = vec![expr("x"), expr("y + 1")];
+        assert_eq!(actual, expected);
+
+        let function = FunctionPlan::Custom {
+            function_id: 3,
+            exprs: Vec::new(),
+        };
+        assert_eq!(function.as_exprs().count(), 0);
     }
 }

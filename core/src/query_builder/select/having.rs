@@ -191,7 +191,7 @@ mod tests {
             plan::{
                 AggregationInputPlan, AggregationPlan, ExprPlan, HashJoinInputPlan, HashJoinPlan,
                 HavingPlan, InnerJoinInputPlan, InnerJoinPlan, ProjectInputPlan, ProjectPlan,
-                ProjectionPlan, QueryPlan, SelectItemPlan, SourcePlan, StatementPlan,
+                ProjectionPlan, QueryPlan, SelectItemPlan, SourcePlan, StatementPlanKind,
                 TableAccessPlan, TableSourcePlan,
             },
             query_builder::{
@@ -245,7 +245,7 @@ mod tests {
             .hash_executor("Foo.id", "Bar.id")
             .having("TRUE")
             .build();
-        let expected = Ok(StatementPlan::Query(QueryPlan::Project(ProjectPlan {
+        let expected = Ok(StatementPlanKind::Query(QueryPlan::Project(ProjectPlan {
             input: ProjectInputPlan::Having(HavingPlan {
                 input: AggregationPlan {
                     input: AggregationInputPlan::InnerJoin(Box::new(InnerJoinPlan {
@@ -277,7 +277,8 @@ mod tests {
                 expr: ExprPlan::Value(Value::Bool(true)),
             }),
             projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]),
-        })));
+        }))
+        .into());
 
         assert_eq!(actual, expected);
     }

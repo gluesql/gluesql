@@ -6,7 +6,11 @@ mod table;
 use {
     super::{SelectedRows, SelectedSources, SourceColumns},
     crate::{
-        data::Row, executor::context::RowContext, plan::SourcePlan, result::Result, store::GStore,
+        data::Row,
+        executor::context::RowContext,
+        plan::{CustomFunctionPlan, SourcePlan},
+        result::Result,
+        store::GStore,
     },
     std::{borrow::Cow, rc::Rc},
 };
@@ -23,12 +27,13 @@ pub(super) struct SourceRows<'a> {
 
 pub(super) fn execute<'a, T: GStore>(
     storage: &'a T,
+    functions: &'a [CustomFunctionPlan],
     source: &'a SourcePlan,
 ) -> Result<PreparedSource<'a>> {
     match source {
-        SourcePlan::Table(table) => table::execute(storage, table),
-        SourcePlan::Derived(derived) => derived::execute(storage, derived),
-        SourcePlan::Series(series) => Ok(series::execute(series)),
+        SourcePlan::Table(table) => table::execute(storage, functions, table),
+        SourcePlan::Derived(derived) => derived::execute(storage, functions, derived),
+        SourcePlan::Series(series) => Ok(series::execute(storage, functions, series)),
         SourcePlan::Dictionary(dictionary) => dictionary::execute(storage, dictionary),
     }
 }

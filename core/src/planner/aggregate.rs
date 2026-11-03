@@ -1,5 +1,5 @@
 use {
-    super::expr::visit_mut_expr,
+    super::visit_mut::visit_mut_expr,
     crate::plan::{
         AggregateFunctionPlan, AggregationInputPlan, AggregationPlan, DistinctInputPlan,
         DistinctPlan, ExprPlan, FilterInputPlan, FilterPlan, HashJoinInputPlan, HashJoinPlan,
@@ -7,88 +7,40 @@ use {
         LeftOuterJoinInputPlan, LeftOuterJoinPlan, LimitInputPlan, LimitPlan,
         NestedLoopJoinInputPlan, NestedLoopJoinPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan,
         ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
-        SelectOrderByPlan, SourcePlan, StatementPlan, ValuesOrderByPlan, ValuesPlan,
+        SelectOrderByPlan, SourcePlan, StatementPlan, StatementPlanKind, ValuesOrderByPlan,
+        ValuesPlan,
     },
     std::collections::HashMap,
 };
 
-pub fn plan(statement: StatementPlan) -> StatementPlan {
-    match statement {
-        StatementPlan::Query(mut query) => {
-            plan_query(&mut query);
-            StatementPlan::Query(query)
+pub fn plan(mut statement: StatementPlan) -> StatementPlan {
+    match &mut statement.kind {
+        StatementPlanKind::Query(query) | StatementPlanKind::Insert { source: query, .. } => {
+            plan_query(query);
         }
-        StatementPlan::Insert {
-            table_name,
-            columns,
-            mut source,
-            table_columns,
+        StatementPlanKind::CreateTable {
+            source: Some(query),
+            ..
+        } => plan_query(query),
+        StatementPlanKind::Update {
+            assignments,
+            selection,
+            ..
         } => {
-            plan_query(&mut source);
-            StatementPlan::Insert {
-                table_name,
-                columns,
-                source,
-                table_columns,
-            }
-        }
-        StatementPlan::CreateTable {
-            if_not_exists,
-            name,
-            columns,
-            mut source,
-            engine,
-            foreign_keys,
-            comment,
-        } => {
-            if let Some(source) = source.as_mut() {
-                plan_query(source);
-            }
-
-            StatementPlan::CreateTable {
-                if_not_exists,
-                name,
-                columns,
-                source,
-                engine,
-                foreign_keys,
-                comment,
-            }
-        }
-        StatementPlan::Update {
-            table_name,
-            mut assignments,
-            mut selection,
-        } => {
-            for assignment in &mut assignments {
+            for assignment in assignments {
                 plan_expr(&mut assignment.value);
             }
-
-            if let Some(selection) = selection.as_mut() {
-                plan_expr(selection);
-            }
-
-            StatementPlan::Update {
-                table_name,
-                assignments,
-                selection,
+            if let Some(expr) = selection {
+                plan_expr(expr);
             }
         }
-        StatementPlan::Delete {
-            table_name,
-            mut selection,
-        } => {
-            if let Some(selection) = selection.as_mut() {
-                plan_expr(selection);
-            }
-
-            StatementPlan::Delete {
-                table_name,
-                selection,
-            }
-        }
-        _ => statement,
+        StatementPlanKind::Delete {
+            selection: Some(expr),
+            ..
+        } => plan_expr(expr),
+        _ => {}
     }
+    statement
 }
 
 fn plan_query(query: &mut QueryPlan) {
@@ -269,7 +221,7 @@ fn plan_source(source: &mut SourcePlan) {
     }
 }
 
-fn plan_expr(expr: &mut ExprPlan) {
+pub(super) fn plan_expr(expr: &mut ExprPlan) {
     visit_mut_expr(expr, &mut |expr| match expr {
         ExprPlan::Subquery(subquery)
         | ExprPlan::Exists { subquery, .. }
@@ -381,13 +333,13 @@ mod tests {
                 AggregateExprPlan, AggregateFunctionPlan, AggregationInputPlan, AggregationPlan,
                 AssignmentPlan, CountArgExprPlan, DerivedSourcePlan, DictionarySourcePlan,
                 DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan, FilterPlan,
-                FunctionExprPlan, HashJoinInputPlan, HashJoinPlan, HavingPlan, InnerJoinInputPlan,
+                FunctionPlan, HashJoinInputPlan, HashJoinPlan, HavingPlan, InnerJoinInputPlan,
                 InnerJoinPlan, JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan,
                 LeftOuterJoinPlan, LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan,
                 NestedLoopJoinPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan,
                 ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan,
-                SeriesSourcePlan, SourcePlan, StatementPlan, TableAccessPlan, TableAliasPlan,
-                TableColumnsPlan, TableSourcePlan, ValuesPlan,
+                SeriesSourcePlan, SourcePlan, StatementPlan, StatementPlanKind, TableAccessPlan,
+                TableAliasPlan, TableColumnsPlan, TableSourcePlan, ValuesPlan,
             },
             query_builder::{Build, table},
             translate::{NO_PARAMS, translate, translate_query},
@@ -496,7 +448,7 @@ mod tests {
                     ),
                 }),
                 projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
-                    expr: ExprPlan::Function(Box::new(FunctionExprPlan::Coalesce(vec![
+                    expr: ExprPlan::Function(Box::new(FunctionPlan::Coalesce(vec![
                         count_wildcard_expr(Some(0)),
                         ExprPlan::Literal(Literal::Number(0.into())),
                     ]))),
@@ -602,16 +554,17 @@ mod tests {
     #[test]
     fn binds_insert_and_create_table_source_queries() {
         let actual = parse_and_plan("INSERT INTO Target SELECT COUNT(*) FROM Source");
-        let expected = StatementPlan::Insert {
+        let expected: StatementPlan = StatementPlanKind::Insert {
             table_name: "Target".to_owned(),
             columns: Vec::new(),
             source: parse_and_plan_query("SELECT COUNT(*) FROM Source"),
             table_columns: TableColumnsPlan::Unplanned,
-        };
+        }
+        .into();
         assert_eq!(actual, expected);
 
         let actual = parse_and_plan("CREATE TABLE Target AS SELECT COUNT(*) FROM Source");
-        let expected = StatementPlan::CreateTable {
+        let expected: StatementPlan = StatementPlanKind::CreateTable {
             if_not_exists: false,
             name: "Target".to_owned(),
             columns: None,
@@ -621,14 +574,15 @@ mod tests {
             engine: None,
             foreign_keys: Vec::new(),
             comment: None,
-        };
+        }
+        .into();
         assert_eq!(actual, expected);
     }
 
     #[test]
     fn binds_update_and_delete_expr_subqueries() {
         let actual = parse_and_plan("UPDATE Target SET count = (SELECT COUNT(*) FROM Source)");
-        let expected = StatementPlan::Update {
+        let expected: StatementPlan = StatementPlanKind::Update {
             table_name: "Target".to_owned(),
             assignments: vec![AssignmentPlan {
                 id: "count".to_owned(),
@@ -637,12 +591,13 @@ mod tests {
                 ))),
             }],
             selection: None,
-        };
+        }
+        .into();
         assert_eq!(actual, expected);
 
         let actual =
             parse_and_plan("UPDATE Target SET count = 1 WHERE id = (SELECT COUNT(*) FROM Source)");
-        let expected = StatementPlan::Update {
+        let expected: StatementPlan = StatementPlanKind::Update {
             table_name: "Target".to_owned(),
             assignments: vec![AssignmentPlan {
                 id: "count".to_owned(),
@@ -655,11 +610,12 @@ mod tests {
                     "SELECT COUNT(*) FROM Source",
                 )))),
             }),
-        };
+        }
+        .into();
         assert_eq!(actual, expected);
 
         let actual = parse_and_plan("DELETE FROM Target WHERE id = (SELECT COUNT(*) FROM Source)");
-        let expected = StatementPlan::Delete {
+        let expected: StatementPlan = StatementPlanKind::Delete {
             table_name: "Target".to_owned(),
             selection: Some(ExprPlan::BinaryOp {
                 left: Box::new(ExprPlan::Identifier("id".to_owned())),
@@ -668,7 +624,8 @@ mod tests {
                     "SELECT COUNT(*) FROM Source",
                 )))),
             }),
-        };
+        }
+        .into();
         assert_eq!(actual, expected);
     }
 

@@ -8,17 +8,23 @@ use {
     },
     crate::{
         data::{Key, Row, Value},
-        executor::evaluate::evaluate_stateless,
-        plan::{OrderByExprPlan, ValuesOrderByPlan},
+        executor::{context::RowContext, evaluate::evaluate},
+        plan::{CustomFunctionPlan, OrderByExprPlan, ValuesOrderByPlan},
         result::Result,
+        store::GStore,
     },
+    std::rc::Rc,
 };
 
-pub(crate) fn execute<'a>(
-    ValuesOrderByPlan { input, exprs }: &ValuesOrderByPlan,
+pub(crate) fn execute<'a, T: GStore>(
+    storage: &'a T,
+    functions: &'a [CustomFunctionPlan],
+    ValuesOrderByPlan { input, exprs }: &'a ValuesOrderByPlan,
+    filter_context: Option<&Rc<RowContext<'a>>>,
 ) -> Result<LabeledRows<'a>> {
-    let MaterializedRows { labels, rows } = values::materialize(input)?;
-    let rows = sort(rows, exprs)?;
+    let MaterializedRows { labels, rows } =
+        values::materialize(storage, functions, input, filter_context)?;
+    let rows = sort(storage, functions, rows, exprs, filter_context)?;
 
     Ok(LabeledRows {
         labels,
@@ -26,13 +32,24 @@ pub(crate) fn execute<'a>(
     })
 }
 
-fn sort(rows: Vec<Row>, order_by: &[OrderByExprPlan]) -> Result<Vec<Row>> {
+fn sort<T: GStore>(
+    storage: &T,
+    functions: &[CustomFunctionPlan],
+    rows: Vec<Row>,
+    order_by: &[OrderByExprPlan],
+    filter_context: Option<&Rc<RowContext<'_>>>,
+) -> Result<Vec<Row>> {
     let mut keyed_rows = Vec::with_capacity(rows.len());
     for row in rows {
+        let context = Rc::new(row.as_context());
+        let context = match filter_context {
+            Some(filter_context) => Rc::new(RowContext::concat(context, Rc::clone(filter_context))),
+            None => context,
+        };
         let keys = order_by
             .iter()
             .map(|OrderByExprPlan { expr, asc }| {
-                evaluate_stateless(Some(row.as_context()), expr)
+                evaluate(storage, functions, Some(&context), None, expr)
                     .and_then(Value::try_from)
                     .and_then(Key::try_from)
                     .map(|key| (key, *asc))

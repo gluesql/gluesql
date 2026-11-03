@@ -10,9 +10,9 @@ use {
         query,
     },
     crate::{
-        data::{CustomFunction, Interval, Row, Value},
+        data::{Interval, Row, Value},
         mock::MockStorage,
-        plan::{ExprPlan, FunctionExprPlan, ProjectionPlan, plan_scalar_expr},
+        plan::{CustomFunctionPlan, ExprPlan, FunctionPlan, ProjectionPlan},
         result::{Error, Result},
         store::GStore,
     },
@@ -24,6 +24,7 @@ pub use {error::EvaluateError, evaluated::Evaluated};
 
 pub fn evaluate<'a, 'b, T>(
     storage: &'a T,
+    functions: &'a [CustomFunctionPlan],
     context: Option<&Rc<RowContext<'b>>>,
     aggregated: Option<&Rc<AggregateValues>>,
     expr: &'a ExprPlan,
@@ -32,7 +33,7 @@ where
     'b: 'a,
     T: GStore,
 {
-    evaluate_inner(Some(storage), context, aggregated, expr)
+    evaluate_inner(Some(storage), functions, context, aggregated, expr)
 }
 
 pub fn evaluate_stateless<'a, 'b: 'a>(
@@ -42,11 +43,12 @@ pub fn evaluate_stateless<'a, 'b: 'a>(
     let context = context.map(Rc::new);
     let storage: Option<&MockStorage> = None;
 
-    evaluate_inner(storage, context.as_ref(), None, expr)
+    evaluate_inner(storage, &[], context.as_ref(), None, expr)
 }
 
 fn evaluate_inner<'a, 'b, T>(
     storage: Option<&'a T>,
+    functions: &'a [CustomFunctionPlan],
     context: Option<&Rc<RowContext<'b>>>,
     aggregated: Option<&Rc<AggregateValues>>,
     expr: &'a ExprPlan,
@@ -55,7 +57,7 @@ where
     'b: 'a,
     T: GStore,
 {
-    let eval = |expr| evaluate_inner(storage, context, aggregated, expr);
+    let eval = |expr| evaluate_inner(storage, functions, context, aggregated, expr);
 
     match expr {
         ExprPlan::Literal(literal) => Ok(expr::literal(literal)),
@@ -95,7 +97,7 @@ where
                 return Err(EvaluateError::SchemalessProjectionForSubQuery.into());
             }
 
-            let evaluations = query::execute(storage, query, context.cloned())?
+            let evaluations = query::execute(storage, functions, query, context.cloned())?
                 .map(|row| {
                     let values = row?.into_values();
                     if values.len() > 1 {
@@ -141,7 +143,9 @@ where
             }
             None => Err(EvaluateError::AggregateSlotValueMissing(aggr.clone()).into()),
         },
-        ExprPlan::Function(func) => evaluate_function(storage, context, aggregated, func),
+        ExprPlan::Function(func) => {
+            evaluate_function(storage, functions, context, aggregated, func)
+        }
         ExprPlan::InList {
             expr,
             list,
@@ -175,7 +179,8 @@ where
                 return Err(EvaluateError::SchemalessProjectionForInSubQuery.into());
             }
             let target = eval(target_expr)?;
-            let (labels, rows) = query::execute_with_labels(storage, subquery, context.cloned())?;
+            let (labels, rows) =
+                query::execute_with_labels(storage, functions, subquery, context.cloned())?;
 
             if labels.len() > 1 {
                 return Err(EvaluateError::InSubqueryMustReturnOneColumn.into());
@@ -256,7 +261,7 @@ where
         ExprPlan::Exists { subquery, negated } => {
             let storage = storage.ok_or(EvaluateError::ExistsSubqueryNotAllowedInStatelessExpr)?;
 
-            let exists = query::execute(storage, subquery, context.cloned())?
+            let exists = query::execute(storage, functions, subquery, context.cloned())?
                 .next()
                 .transpose()?
                 .is_some();
@@ -326,32 +331,33 @@ where
 
 fn evaluate_function<'a, 'b: 'a, T: GStore>(
     storage: Option<&'a T>,
+    functions: &'a [CustomFunctionPlan],
     context: Option<&Rc<RowContext<'b>>>,
     aggregated: Option<&Rc<AggregateValues>>,
-    func: &'a FunctionExprPlan,
+    func: &'a FunctionPlan,
 ) -> Result<Evaluated<'a>> {
     use function as f;
 
-    let eval = |expr| evaluate_inner(storage, context, aggregated, expr);
+    let eval = |expr| evaluate_inner(storage, functions, context, aggregated, expr);
 
     let name = func.to_string();
 
     let result = match func {
         // --- text ---
-        FunctionExprPlan::Concat(exprs) => {
+        FunctionPlan::Concat(exprs) => {
             let exprs = exprs.iter().map(eval).collect::<Result<Vec<_>>>()?;
             f::concat(exprs)
         }
-        FunctionExprPlan::Custom { name, exprs } => {
-            let CustomFunction {
-                func_name,
-                args,
-                body,
-            } = storage
-                .ok_or(EvaluateError::UnsupportedCustomFunction)?
-                .fetch_function(name)?
-                .ok_or_else(|| EvaluateError::UnsupportedFunction(name.clone()))?;
-
+        FunctionPlan::UnplannedCustom { name, .. } => {
+            return Err(EvaluateError::UnplannedCustomFunction(name.clone()).into());
+        }
+        FunctionPlan::Custom { function_id, exprs } => {
+            let storage = storage.ok_or(EvaluateError::UnsupportedCustomFunction)?;
+            let definition = functions.get(*function_id).ok_or(
+                EvaluateError::MalformedPlanCustomFunctionIndex(*function_id),
+            )?;
+            let args = &definition.args;
+            let func_name = &definition.name;
             let min = args.iter().filter(|arg| arg.default.is_none()).count();
             let max = args.len();
 
@@ -378,10 +384,7 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
                             found: exprs.len(),
                         }
                     })?;
-                    let default = plan_scalar_expr(default.clone());
-
-                    evaluate_inner(storage, context, aggregated, &default)?
-                        .try_into_value(&arg.data_type, true)
+                    evaluate_stateless(None, default)?.try_into_value(&arg.data_type, true)
                 }?;
 
                 pairs.push((arg.name.clone(), value));
@@ -392,40 +395,43 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
                 columns: columns.into(),
                 values,
             });
-            let context = RowContext::new(name, row, None);
-            let context = Some(Rc::new(context));
-
-            let body = plan_scalar_expr(body.clone());
-            let evaluated = evaluate_inner(storage, context.as_ref(), None, &body)?;
+            let alias = definition.name.to_uppercase();
+            let context = Rc::new(RowContext::new(&alias, row, None));
+            let evaluated = evaluate_inner(
+                Some(storage),
+                functions,
+                Some(&context),
+                None,
+                &definition.body,
+            )?;
             let value = evaluated.try_into()?;
 
             return Ok(Evaluated::Value(Cow::Owned(value)));
         }
-        FunctionExprPlan::ConcatWs { separator, exprs } => {
+        FunctionPlan::ConcatWs { separator, exprs } => {
             let separator = eval(separator)?;
             let exprs = exprs.iter().map(eval).collect::<Result<Vec<_>>>()?;
             f::concat_ws(&name, separator, exprs)
         }
-        FunctionExprPlan::IfNull { expr, then } => f::ifnull(eval(expr)?, eval(then)?),
-        FunctionExprPlan::NullIf { expr1, expr2 } => f::nullif(eval(expr1)?, &eval(expr2)?),
-        FunctionExprPlan::Lower(expr) => f::lower(&name, eval(expr)?),
-        FunctionExprPlan::Initcap(expr) => f::initcap(&name, eval(expr)?),
-        FunctionExprPlan::Upper(expr) => f::upper(&name, eval(expr)?),
-        FunctionExprPlan::Left { expr, size } | FunctionExprPlan::Right { expr, size } => {
+        FunctionPlan::IfNull { expr, then } => f::ifnull(eval(expr)?, eval(then)?),
+        FunctionPlan::NullIf { expr1, expr2 } => f::nullif(eval(expr1)?, &eval(expr2)?),
+        FunctionPlan::Lower(expr) => f::lower(&name, eval(expr)?),
+        FunctionPlan::Initcap(expr) => f::initcap(&name, eval(expr)?),
+        FunctionPlan::Upper(expr) => f::upper(&name, eval(expr)?),
+        FunctionPlan::Left { expr, size } | FunctionPlan::Right { expr, size } => {
             let expr = eval(expr)?;
             let size = eval(size)?;
 
             f::left_or_right(&name, expr, size)
         }
-        FunctionExprPlan::Replace { expr, old, new } => {
+        FunctionPlan::Replace { expr, old, new } => {
             let expr = eval(expr)?;
             let old = eval(old)?;
             let new = eval(new)?;
 
             f::replace(&name, expr, old, new)
         }
-        FunctionExprPlan::Lpad { expr, size, fill }
-        | FunctionExprPlan::Rpad { expr, size, fill } => {
+        FunctionPlan::Lpad { expr, size, fill } | FunctionPlan::Rpad { expr, size, fill } => {
             let expr = eval(expr)?;
             let size = eval(size)?;
             let fill = match fill {
@@ -435,11 +441,11 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
 
             f::lpad_or_rpad(&name, expr, size, fill)
         }
-        FunctionExprPlan::LastDay(expr) => {
+        FunctionPlan::LastDay(expr) => {
             let expr = eval(expr)?;
             f::last_day(&name, expr)
         }
-        FunctionExprPlan::Trim {
+        FunctionPlan::Trim {
             expr,
             filter_chars,
             trim_where_field,
@@ -452,7 +458,7 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
 
             return expr.trim(name, filter_chars, trim_where_field.as_ref());
         }
-        FunctionExprPlan::Ltrim { expr, chars } => {
+        FunctionPlan::Ltrim { expr, chars } => {
             let expr = eval(expr)?;
             let chars = match chars {
                 Some(v) => Some(eval(v)?),
@@ -461,7 +467,7 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
 
             return expr.ltrim(name, chars);
         }
-        FunctionExprPlan::Rtrim { expr, chars } => {
+        FunctionPlan::Rtrim { expr, chars } => {
             let expr = eval(expr)?;
             let chars = match chars {
                 Some(v) => Some(eval(v)?),
@@ -470,18 +476,18 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
 
             return expr.rtrim(name, chars);
         }
-        FunctionExprPlan::Reverse(expr) => {
+        FunctionPlan::Reverse(expr) => {
             let expr = eval(expr)?;
 
             f::reverse(&name, expr)
         }
-        FunctionExprPlan::Repeat { expr, num } => {
+        FunctionPlan::Repeat { expr, num } => {
             let expr = eval(expr)?;
             let num = eval(num)?;
 
             f::repeat(&name, expr, num)
         }
-        FunctionExprPlan::Substr { expr, start, count } => {
+        FunctionPlan::Substr { expr, start, count } => {
             let expr = eval(expr)?;
             let start = eval(start)?;
             let count = match count {
@@ -491,23 +497,23 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
 
             return expr.substr(name, start, count);
         }
-        FunctionExprPlan::Ascii(expr) => f::ascii(&name, eval(expr)?),
-        FunctionExprPlan::Chr(expr) => f::chr(&name, eval(expr)?),
-        FunctionExprPlan::Md5(expr) => f::md5(&name, eval(expr)?),
-        FunctionExprPlan::Hex(expr) => f::hex(&name, eval(expr)?),
+        FunctionPlan::Ascii(expr) => f::ascii(&name, eval(expr)?),
+        FunctionPlan::Chr(expr) => f::chr(&name, eval(expr)?),
+        FunctionPlan::Md5(expr) => f::md5(&name, eval(expr)?),
+        FunctionPlan::Hex(expr) => f::hex(&name, eval(expr)?),
 
         // --- float ---
-        FunctionExprPlan::Abs(expr) => f::abs(&name, eval(expr)?),
-        FunctionExprPlan::Sign(expr) => f::sign(&name, eval(expr)?),
-        FunctionExprPlan::Sqrt(expr) => f::sqrt(eval(expr)?),
-        FunctionExprPlan::Power { expr, power } => {
+        FunctionPlan::Abs(expr) => f::abs(&name, eval(expr)?),
+        FunctionPlan::Sign(expr) => f::sign(&name, eval(expr)?),
+        FunctionPlan::Sqrt(expr) => f::sqrt(eval(expr)?),
+        FunctionPlan::Power { expr, power } => {
             let expr = eval(expr)?;
             let power = eval(power)?;
 
             f::power(&name, expr, power)
         }
-        FunctionExprPlan::Ceil(expr) => f::ceil(&name, eval(expr)?),
-        FunctionExprPlan::Rand(expr) => {
+        FunctionPlan::Ceil(expr) => f::ceil(&name, eval(expr)?),
+        FunctionPlan::Rand(expr) => {
             let expr = match expr {
                 Some(v) => Some(eval(v)?),
                 None => None,
@@ -515,53 +521,53 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
 
             f::rand(&name, expr)
         }
-        FunctionExprPlan::Round(expr) => f::round(&name, eval(expr)?),
-        FunctionExprPlan::Trunc(expr) => f::trunc(&name, eval(expr)?),
-        FunctionExprPlan::Floor(expr) => f::floor(&name, eval(expr)?),
-        FunctionExprPlan::Radians(expr) => f::radians(&name, eval(expr)?),
-        FunctionExprPlan::Degrees(expr) => f::degrees(&name, eval(expr)?),
-        FunctionExprPlan::Pi() => {
+        FunctionPlan::Round(expr) => f::round(&name, eval(expr)?),
+        FunctionPlan::Trunc(expr) => f::trunc(&name, eval(expr)?),
+        FunctionPlan::Floor(expr) => f::floor(&name, eval(expr)?),
+        FunctionPlan::Radians(expr) => f::radians(&name, eval(expr)?),
+        FunctionPlan::Degrees(expr) => f::degrees(&name, eval(expr)?),
+        FunctionPlan::Pi() => {
             return Ok(Evaluated::Value(Cow::Owned(Value::F64(
                 std::f64::consts::PI,
             ))));
         }
-        FunctionExprPlan::Exp(expr) => f::exp(&name, eval(expr)?),
-        FunctionExprPlan::Log { antilog, base } => {
+        FunctionPlan::Exp(expr) => f::exp(&name, eval(expr)?),
+        FunctionPlan::Log { antilog, base } => {
             let antilog = eval(antilog)?;
             let base = eval(base)?;
 
             f::log(&name, antilog, base)
         }
-        FunctionExprPlan::Ln(expr) => f::ln(&name, eval(expr)?),
-        FunctionExprPlan::Log2(expr) => f::log2(&name, eval(expr)?),
-        FunctionExprPlan::Log10(expr) => f::log10(&name, eval(expr)?),
-        FunctionExprPlan::Sin(expr) => f::sin(&name, eval(expr)?),
-        FunctionExprPlan::Cos(expr) => f::cos(&name, eval(expr)?),
-        FunctionExprPlan::Tan(expr) => f::tan(&name, eval(expr)?),
-        FunctionExprPlan::Asin(expr) => f::asin(&name, eval(expr)?),
-        FunctionExprPlan::Acos(expr) => f::acos(&name, eval(expr)?),
-        FunctionExprPlan::Atan(expr) => f::atan(&name, eval(expr)?),
+        FunctionPlan::Ln(expr) => f::ln(&name, eval(expr)?),
+        FunctionPlan::Log2(expr) => f::log2(&name, eval(expr)?),
+        FunctionPlan::Log10(expr) => f::log10(&name, eval(expr)?),
+        FunctionPlan::Sin(expr) => f::sin(&name, eval(expr)?),
+        FunctionPlan::Cos(expr) => f::cos(&name, eval(expr)?),
+        FunctionPlan::Tan(expr) => f::tan(&name, eval(expr)?),
+        FunctionPlan::Asin(expr) => f::asin(&name, eval(expr)?),
+        FunctionPlan::Acos(expr) => f::acos(&name, eval(expr)?),
+        FunctionPlan::Atan(expr) => f::atan(&name, eval(expr)?),
 
         // --- integer ---
-        FunctionExprPlan::Div { dividend, divisor } => {
+        FunctionPlan::Div { dividend, divisor } => {
             let dividend = eval(dividend)?;
             let divisor = eval(divisor)?;
 
             f::div(&name, dividend, divisor)
         }
-        FunctionExprPlan::Mod { dividend, divisor } => {
+        FunctionPlan::Mod { dividend, divisor } => {
             let dividend = eval(dividend)?;
             let divisor = eval(divisor)?;
 
             return dividend.modulo(&divisor);
         }
-        FunctionExprPlan::Gcd { left, right } => {
+        FunctionPlan::Gcd { left, right } => {
             let left = eval(left)?;
             let right = eval(right)?;
 
             f::gcd(&name, left, right)
         }
-        FunctionExprPlan::Lcm { left, right } => {
+        FunctionPlan::Lcm { left, right } => {
             let left = eval(left)?;
             let right = eval(right)?;
 
@@ -569,15 +575,15 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
         }
 
         // --- spatial ---
-        FunctionExprPlan::Point { x, y } => {
+        FunctionPlan::Point { x, y } => {
             let x = eval(x)?;
             let y = eval(y)?;
 
             f::point(&name, x, y)
         }
-        FunctionExprPlan::GetX(expr) => f::get_x(&name, eval(expr)?),
-        FunctionExprPlan::GetY(expr) => f::get_y(&name, eval(expr)?),
-        FunctionExprPlan::CalcDistance {
+        FunctionPlan::GetX(expr) => f::get_x(&name, eval(expr)?),
+        FunctionPlan::GetY(expr) => f::get_y(&name, eval(expr)?),
+        FunctionPlan::CalcDistance {
             geometry1,
             geometry2,
         } => {
@@ -588,52 +594,52 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
         }
 
         // --- etc ---
-        FunctionExprPlan::Unwrap { expr, selector } => {
+        FunctionPlan::Unwrap { expr, selector } => {
             let expr = eval(expr)?;
             let selector = eval(selector)?;
 
             f::unwrap(&name, expr, selector)
         }
-        FunctionExprPlan::GenerateUuid() => return Ok(f::generate_uuid()),
-        FunctionExprPlan::Greatest(exprs) => {
+        FunctionPlan::GenerateUuid() => return Ok(f::generate_uuid()),
+        FunctionPlan::Greatest(exprs) => {
             let exprs = exprs.iter().map(eval).collect::<Result<Vec<_>>>()?;
             return f::greatest(&name, exprs);
         }
-        FunctionExprPlan::Now() | FunctionExprPlan::CurrentTimestamp() => {
+        FunctionPlan::Now() | FunctionPlan::CurrentTimestamp() => {
             return Ok(Evaluated::Value(Cow::Owned(Value::Timestamp(
                 Utc::now().naive_utc(),
             ))));
         }
-        FunctionExprPlan::CurrentDate() => {
+        FunctionPlan::CurrentDate() => {
             return Ok(Evaluated::Value(Cow::Owned(Value::Date(
                 Utc::now().date_naive(),
             ))));
         }
-        FunctionExprPlan::CurrentTime() => {
+        FunctionPlan::CurrentTime() => {
             return Ok(Evaluated::Value(Cow::Owned(Value::Time(Utc::now().time()))));
         }
-        FunctionExprPlan::Format { expr, format } => {
+        FunctionPlan::Format { expr, format } => {
             let expr = eval(expr)?;
             let format = eval(format)?;
 
             f::format(&name, expr, format)
         }
-        FunctionExprPlan::ToDate { expr, format } => {
+        FunctionPlan::ToDate { expr, format } => {
             let expr = eval(expr)?;
             let format = eval(format)?;
             f::to_date(&name, expr, format)
         }
-        FunctionExprPlan::ToTimestamp { expr, format } => {
+        FunctionPlan::ToTimestamp { expr, format } => {
             let expr = eval(expr)?;
             let format = eval(format)?;
             f::to_timestamp(&name, expr, format)
         }
-        FunctionExprPlan::ToTime { expr, format } => {
+        FunctionPlan::ToTime { expr, format } => {
             let expr = eval(expr)?;
             let format = eval(format)?;
             f::to_time(&name, expr, format)
         }
-        FunctionExprPlan::Position {
+        FunctionPlan::Position {
             from_expr,
             sub_expr,
         } => {
@@ -641,7 +647,7 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
             let sub_expr = eval(sub_expr)?;
             f::position(from_expr, sub_expr)
         }
-        FunctionExprPlan::FindIdx {
+        FunctionPlan::FindIdx {
             from_expr,
             sub_expr,
             start,
@@ -654,33 +660,33 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
             };
             f::find_idx(&name, from_expr, sub_expr, start)
         }
-        FunctionExprPlan::Cast { expr, data_type } => return eval(expr)?.cast(data_type),
-        FunctionExprPlan::Extract { field, expr } => {
+        FunctionPlan::Cast { expr, data_type } => return eval(expr)?.cast(data_type),
+        FunctionPlan::Extract { field, expr } => {
             let expr = eval(expr)?;
             f::extract(*field, expr)
         }
-        FunctionExprPlan::Coalesce(exprs) => {
+        FunctionPlan::Coalesce(exprs) => {
             let exprs = exprs.iter().map(eval).collect::<Result<Vec<_>>>()?;
             return f::coalesce(exprs);
         }
 
         // --- list ---
-        FunctionExprPlan::Append { expr, value } => {
+        FunctionPlan::Append { expr, value } => {
             let expr = eval(expr)?;
             let value = eval(value)?;
             f::append(expr, value)
         }
-        FunctionExprPlan::Prepend { expr, value } => {
+        FunctionPlan::Prepend { expr, value } => {
             let expr = eval(expr)?;
             let value = eval(value)?;
             f::prepend(expr, value)
         }
-        FunctionExprPlan::Skip { expr, size } => {
+        FunctionPlan::Skip { expr, size } => {
             let expr = eval(expr)?;
             let size = eval(size)?;
             f::skip(&name, expr, size)
         }
-        FunctionExprPlan::Sort { expr, order } => {
+        FunctionPlan::Sort { expr, order } => {
             let expr = eval(expr)?;
             let order = match order {
                 Some(o) => eval(o)?,
@@ -688,12 +694,12 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
             };
             f::sort(expr, order)
         }
-        FunctionExprPlan::Take { expr, size } => {
+        FunctionPlan::Take { expr, size } => {
             let expr = eval(expr)?;
             let size = eval(size)?;
             f::take(&name, expr, size)
         }
-        FunctionExprPlan::Slice {
+        FunctionPlan::Slice {
             expr,
             start,
             length,
@@ -703,23 +709,23 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
             let length = eval(length)?;
             f::slice(&name, expr, start, length)
         }
-        FunctionExprPlan::IsEmpty(expr) => {
+        FunctionPlan::IsEmpty(expr) => {
             let expr = eval(expr)?;
             f::is_empty(expr)
         }
-        FunctionExprPlan::AddMonth { expr, size } => {
+        FunctionPlan::AddMonth { expr, size } => {
             let expr = eval(expr)?;
             let size = eval(size)?;
             f::add_month(&name, expr, size)
         }
-        FunctionExprPlan::Length(expr) => f::length(&name, eval(expr)?),
-        FunctionExprPlan::Entries(expr) => f::entries(&name, eval(expr)?),
-        FunctionExprPlan::Keys(expr) => f::keys(eval(expr)?),
-        FunctionExprPlan::Values(expr) => {
+        FunctionPlan::Length(expr) => f::length(&name, eval(expr)?),
+        FunctionPlan::Entries(expr) => f::entries(&name, eval(expr)?),
+        FunctionPlan::Keys(expr) => f::keys(eval(expr)?),
+        FunctionPlan::Values(expr) => {
             let expr = eval(expr)?;
             f::values(expr)
         }
-        FunctionExprPlan::Splice {
+        FunctionPlan::Splice {
             list_data,
             begin_index,
             end_index,
@@ -734,7 +740,7 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
             };
             f::splice(&name, list_data, begin_index, end_index, values)
         }
-        FunctionExprPlan::Dedup(list) => f::dedup(eval(list)?),
+        FunctionPlan::Dedup(list) => f::dedup(eval(list)?),
     };
 
     match result {
@@ -752,10 +758,12 @@ mod tests {
             ast::{Expr, Projection, SelectItem, SetExpr, Statement},
             executor::context::AggregateValues,
             mock::MockStorage,
-            parse_sql::parse,
-            plan::{AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan},
+            parse_sql::{parse, parse_expr},
+            plan::{
+                AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan, FunctionPlan,
+            },
             result::Error,
-            translate::translate,
+            translate::{NO_PARAMS, translate, translate_expr},
         },
         std::rc::Rc,
     };
@@ -807,7 +815,7 @@ mod tests {
         let storage = MockStorage::default();
         let aggregated = Rc::new(AggregateValues::new(Vec::new()));
 
-        let result = evaluate(&storage, None, Some(&aggregated), &expr);
+        let result = evaluate(&storage, &[], None, Some(&aggregated), &expr);
 
         assert_eq!(
             result,
@@ -815,5 +823,32 @@ mod tests {
                 Box::new(aggregate)
             )))
         );
+    }
+
+    #[test]
+    fn rejects_unplanned_and_malformed_calls_before_arguments() {
+        let storage = MockStorage::default();
+        let unplanned = ExprPlan::from(
+            translate_expr(&parse_expr("absent(missing_column)").unwrap(), NO_PARAMS).unwrap(),
+        );
+        let malformed_call = ExprPlan::Function(Box::new(FunctionPlan::Custom {
+            function_id: 10,
+            exprs: vec![ExprPlan::Identifier("missing_column".to_owned())],
+        }));
+        for (expr, expected) in [
+            (
+                unplanned,
+                EvaluateError::UnplannedCustomFunction("ABSENT".to_owned()),
+            ),
+            (
+                malformed_call,
+                EvaluateError::MalformedPlanCustomFunctionIndex(10),
+            ),
+        ] {
+            assert_eq!(
+                evaluate(&storage, &[], None, None, &expr),
+                Err(Error::Evaluate(expected))
+            );
+        }
     }
 }

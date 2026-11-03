@@ -2,7 +2,7 @@ use {
     super::{context::RowContext, filter::check_expr},
     crate::{
         data::{Key, Row, SCHEMALESS_DOC_COLUMN},
-        plan::ExprPlan,
+        plan::{CustomFunctionPlan, ExprPlan},
         result::Result,
         store::GStore,
     },
@@ -21,6 +21,7 @@ pub enum FetchError {
 
 pub fn fetch<'a, T: GStore>(
     storage: &'a T,
+    functions: &'a [CustomFunctionPlan],
     table_name: &'a str,
     columns: Rc<[String]>,
     where_clause: Option<&'a ExprPlan>,
@@ -39,7 +40,7 @@ pub fn fetch<'a, T: GStore>(
             Some(expr) => {
                 let context = RowContext::new(table_name, Cow::Borrowed(&row), None);
                 let context = Rc::new(context);
-                match check_expr(storage, Some(&context), None, expr) {
+                match check_expr(storage, functions, Some(&context), None, expr) {
                     Ok(true) => Some(Ok((key, row))),
                     Ok(false) => None,
                     Err(error) => Some(Err(error)),

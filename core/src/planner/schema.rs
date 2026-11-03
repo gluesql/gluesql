@@ -9,7 +9,7 @@ use {
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
             OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan, ProjectPlan,
             ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SourcePlan,
-            StatementPlan, ValuesOrderByPlan,
+            StatementPlan, StatementPlanKind, ValuesOrderByPlan, ValuesPlan,
         },
         result::Result,
         store::Store,
@@ -21,9 +21,9 @@ pub fn fetch_schema_map<T: Store + ?Sized>(
     storage: &T,
     statement: &StatementPlan,
 ) -> Result<HashMap<String, Schema>> {
-    match statement {
-        StatementPlan::Query(query) => scan_query(storage, query),
-        StatementPlan::Insert {
+    match &statement.kind {
+        StatementPlanKind::Query(query) => scan_query(storage, query),
+        StatementPlanKind::Insert {
             table_name, source, ..
         } => {
             let table_schema = storage
@@ -36,7 +36,7 @@ pub fn fetch_schema_map<T: Store + ?Sized>(
 
             Ok(schema_list)
         }
-        StatementPlan::CreateTable { name, source, .. } => {
+        StatementPlanKind::CreateTable { name, source, .. } => {
             let table_schema = storage
                 .fetch_schema(name)?
                 .map_or_else(HashMap::new, |schema| {
@@ -50,7 +50,7 @@ pub fn fetch_schema_map<T: Store + ?Sized>(
 
             Ok(schema_list)
         }
-        StatementPlan::DropTable { names, .. } => {
+        StatementPlanKind::DropTable { names, .. } => {
             let mut schema_map = HashMap::new();
             for table_name in names {
                 if let Some(schema) = storage.fetch_schema(table_name)? {
@@ -60,7 +60,7 @@ pub fn fetch_schema_map<T: Store + ?Sized>(
 
             Ok(schema_map)
         }
-        StatementPlan::Update {
+        StatementPlanKind::Update {
             table_name,
             selection,
             ..
@@ -76,7 +76,7 @@ pub fn fetch_schema_map<T: Store + ?Sized>(
             };
             Ok(table_schema.into_iter().chain(selection_schema).collect())
         }
-        StatementPlan::Delete {
+        StatementPlanKind::Delete {
             table_name,
             selection,
         } => {
@@ -101,7 +101,7 @@ fn scan_query<T: Store + ?Sized>(
 ) -> Result<HashMap<String, Schema>> {
     match query {
         QueryPlan::Project(project) => scan_project(storage, project),
-        QueryPlan::Values(_) => Ok(HashMap::new()),
+        QueryPlan::Values(values) => scan_values(storage, values),
         QueryPlan::SelectOrderBy(order_by) => scan_select_order_by(storage, order_by),
         QueryPlan::ValuesOrderBy(order_by) => scan_values_order_by(storage, order_by),
         QueryPlan::Distinct(distinct) => scan_distinct(storage, distinct),
@@ -109,7 +109,7 @@ fn scan_query<T: Store + ?Sized>(
         QueryPlan::Limit(LimitPlan { input, count }) => {
             let schema_list = match input {
                 LimitInputPlan::Project(project) => scan_project(storage, project)?,
-                LimitInputPlan::Values(_) => HashMap::new(),
+                LimitInputPlan::Values(values) => scan_values(storage, values)?,
                 LimitInputPlan::SelectOrderBy(order_by) => scan_select_order_by(storage, order_by)?,
                 LimitInputPlan::ValuesOrderBy(order_by) => scan_values_order_by(storage, order_by)?,
                 LimitInputPlan::Distinct(distinct) => scan_distinct(storage, distinct)?,
@@ -130,7 +130,7 @@ fn scan_offset<T: Store + ?Sized>(
 ) -> Result<HashMap<String, Schema>> {
     let schema_list = match input {
         OffsetInputPlan::Project(project) => scan_project(storage, project)?,
-        OffsetInputPlan::Values(_) => HashMap::new(),
+        OffsetInputPlan::Values(values) => scan_values(storage, values)?,
         OffsetInputPlan::SelectOrderBy(order_by) => scan_select_order_by(storage, order_by)?,
         OffsetInputPlan::ValuesOrderBy(order_by) => scan_values_order_by(storage, order_by)?,
         OffsetInputPlan::Distinct(distinct) => scan_distinct(storage, distinct)?,
@@ -163,9 +163,23 @@ fn scan_select_order_by<T: Store + ?Sized>(
 
 fn scan_values_order_by<T: Store + ?Sized>(
     storage: &T,
-    ValuesOrderByPlan { exprs, .. }: &ValuesOrderByPlan,
+    ValuesOrderByPlan { input, exprs }: &ValuesOrderByPlan,
 ) -> Result<HashMap<String, Schema>> {
-    scan_order_by_exprs(storage, HashMap::new(), exprs)
+    let schema_list = scan_values(storage, input)?;
+
+    scan_order_by_exprs(storage, schema_list, exprs)
+}
+
+fn scan_values<T: Store + ?Sized>(
+    storage: &T,
+    ValuesPlan(rows): &ValuesPlan,
+) -> Result<HashMap<String, Schema>> {
+    let mut schema_map = HashMap::new();
+    for expr in rows.iter().flatten() {
+        schema_map.extend(scan_expr(storage, expr)?);
+    }
+
+    Ok(schema_map)
 }
 
 fn scan_order_by_exprs<T: Store + ?Sized>(
@@ -347,7 +361,8 @@ where
             Ok(schema_list)
         }
         SourcePlan::Derived(derived) => scan_query(storage, &derived.query),
-        SourcePlan::Series(_) | SourcePlan::Dictionary(_) => Ok(HashMap::new()),
+        SourcePlan::Series(series) => scan_expr(storage, &series.size),
+        SourcePlan::Dictionary(_) => Ok(HashMap::new()),
     }
 }
 
@@ -559,6 +574,56 @@ mod tests {
     }
 
     #[test]
+    fn values() {
+        let storage = run("
+            CREATE TABLE Foo (id INTEGER);
+            CREATE TABLE Bar (id INTEGER);
+            CREATE TABLE Baz (id INTEGER);
+        ");
+        let test = |sql, expected| run_test(&storage, sql, expected);
+
+        test("VALUES (1), (2)", &[]);
+        test("VALUES ((SELECT id FROM Foo))", &["Foo"]);
+        test(
+            "
+            VALUES
+                ((SELECT id FROM Foo), (SELECT id FROM Bar)),
+                ((SELECT id FROM Baz), (SELECT id FROM Foo))
+            ",
+            &["Bar", "Baz", "Foo"],
+        );
+        test("VALUES ((SELECT id FROM Foo)) ORDER BY column1", &["Foo"]);
+        test("VALUES ((SELECT id FROM Foo)) LIMIT 1", &["Foo"]);
+        test("VALUES ((SELECT id FROM Foo)) OFFSET 1", &["Foo"]);
+        test(
+            "
+            VALUES ((SELECT id FROM Foo))
+            ORDER BY column1
+            LIMIT 1
+            OFFSET 1
+            ",
+            &["Foo"],
+        );
+        test(
+            "
+            VALUES ((SELECT id FROM Foo))
+            ORDER BY (SELECT id FROM Bar)
+            LIMIT (SELECT id FROM Baz)
+            ",
+            &["Bar", "Baz", "Foo"],
+        );
+    }
+
+    #[test]
+    fn series() {
+        let storage = run("CREATE TABLE Foo (id INTEGER)");
+        let test = |sql, expected| run_test(&storage, sql, expected);
+
+        test("SELECT * FROM SERIES(2)", &[]);
+        test("SELECT * FROM SERIES((SELECT id FROM Foo))", &["Foo"]);
+    }
+
+    #[test]
     fn storage_err() {
         let storage = run("
             CREATE TABLE Foo (id INTEGER);
@@ -580,5 +645,10 @@ mod tests {
         test("SELECT * FROM Foo WHERE id IN (SELECT * FROM __Err__)");
         test("SELECT * FROM Foo LEFT JOIN Bar ON Bar.id = (SELECT id FROM __Err__ LIMIT 1)");
         test("SELECT id, (SELECT id FROM __Err__ LIMIT 1) AS cc FROM Foo;");
+        test("VALUES (1), ((SELECT id FROM __Err__))");
+        test("VALUES ((SELECT id FROM __Err__)) ORDER BY column1");
+        test("VALUES ((SELECT id FROM __Err__)) LIMIT 1");
+        test("VALUES ((SELECT id FROM __Err__)) OFFSET 1");
+        test("SELECT * FROM SERIES((SELECT id FROM __Err__))");
     }
 }

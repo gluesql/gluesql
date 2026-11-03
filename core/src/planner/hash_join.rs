@@ -9,6 +9,7 @@ use {
             JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
             OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan, StatementPlan,
+            StatementPlanKind,
         },
     },
     std::{collections::HashMap, hash::BuildHasher, rc::Rc},
@@ -16,18 +17,14 @@ use {
 
 pub fn plan<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
-    statement: StatementPlan,
+    mut statement: StatementPlan,
 ) -> StatementPlan {
     let planner = HashJoinPlanner { schema_map };
-
-    match statement {
-        StatementPlan::Query(query) => {
-            let query = planner.query(None, query);
-
-            StatementPlan::Query(query)
-        }
-        _ => statement,
-    }
+    statement.kind = match statement.kind {
+        StatementPlanKind::Query(query) => StatementPlanKind::Query(planner.query(None, query)),
+        kind => kind,
+    };
+    statement
 }
 
 struct HashJoinPlanner<'a, S> {

@@ -5,7 +5,7 @@ use {
     },
     crate::{
         ast::{BinaryOperator, ForeignKey, ReferentialAction},
-        plan::ExprPlan,
+        plan::{CustomFunctionPlan, ExprPlan},
         result::Result,
         store::{GStore, GStoreMut},
     },
@@ -25,6 +25,7 @@ pub enum DeleteError {
 
 pub fn delete<T: GStore + GStoreMut>(
     storage: &mut T,
+    functions: &[CustomFunctionPlan],
     table_name: &str,
     selection: Option<&ExprPlan>,
 ) -> Result<Payload> {
@@ -40,7 +41,7 @@ pub fn delete<T: GStore + GStoreMut>(
         .collect::<Result<Vec<_>>>()?;
 
     let mut keys = Vec::new();
-    for item in fetch(storage, table_name, columns, selection)? {
+    for item in fetch(storage, functions, table_name, columns, selection)? {
         let (key, row) = item?;
 
         for (referencing, columns) in &referencings {
@@ -68,6 +69,7 @@ pub fn delete<T: GStore + GStoreMut>(
 
             let mut referencing_rows = fetch(
                 storage,
+                functions,
                 referencing_table_name,
                 Rc::clone(columns),
                 Some(expr),

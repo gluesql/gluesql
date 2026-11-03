@@ -5,14 +5,18 @@ use {
     },
     crate::{
         data::Value,
-        plan::{ProjectionPlan, QueryPlan},
+        plan::{CustomFunctionPlan, ProjectionPlan, QueryPlan},
         result::Result,
         store::GStore,
     },
 };
 
-pub(super) fn execute<T: GStore>(storage: &T, query: &QueryPlan) -> Result<Payload> {
-    let (labels, rows) = query::execute_with_labels(storage, query, None)?;
+pub(super) fn execute<T: GStore>(
+    storage: &T,
+    functions: &[CustomFunctionPlan],
+    query: &QueryPlan,
+) -> Result<Payload> {
+    let (labels, rows) = query::execute_with_labels(storage, functions, query, None)?;
 
     if is_schemaless_map(query) {
         rows.map(|row| {

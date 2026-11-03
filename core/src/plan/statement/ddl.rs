@@ -121,3 +121,26 @@ impl From<ast::AlterTableOperation> for AlterTableOperationPlan {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct OperateFunctionArgPlan {
+    pub name: String,
+    pub data_type: DataType,
+    pub default: Option<ExprPlan>,
+}
+
+impl From<ast::OperateFunctionArg> for OperateFunctionArgPlan {
+    fn from(arg: ast::OperateFunctionArg) -> Self {
+        let ast::OperateFunctionArg {
+            name,
+            data_type,
+            default,
+        } = arg;
+
+        Self {
+            name,
+            data_type,
+            default: default.map(ExprPlan::from),
+        }
+    }
+}

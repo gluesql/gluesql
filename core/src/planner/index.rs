@@ -11,7 +11,7 @@ use {
             AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
             FilterPlan, IndexPredicatePlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
             OrderByExprPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SelectOrderByPlan,
-            SourcePlan, StatementPlan, TableAccessPlan, plan_scalar_expr,
+            SourcePlan, StatementPlan, StatementPlanKind, TableAccessPlan, plan_scalar_expr,
         },
     },
     std::{collections::HashMap, hash::BuildHasher, rc::Rc},
@@ -19,18 +19,14 @@ use {
 
 pub fn plan<S: BuildHasher>(
     schema_map: &HashMap<String, Schema, S>,
-    statement: StatementPlan,
+    mut statement: StatementPlan,
 ) -> StatementPlan {
     let planner = IndexPlanner { schema_map };
-
-    match statement {
-        StatementPlan::Query(query) => {
-            let query = planner.query(None, query);
-
-            StatementPlan::Query(query)
-        }
-        _ => statement,
-    }
+    statement.kind = match statement.kind {
+        StatementPlanKind::Query(query) => StatementPlanKind::Query(planner.query(None, query)),
+        kind => kind,
+    };
+    statement
 }
 
 struct IndexPlanner<'a, S> {

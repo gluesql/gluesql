@@ -5,14 +5,19 @@ use {
     },
     crate::{
         data::{Row, Value},
-        executor::{context::RowContext, evaluate::evaluate_stateless},
-        plan::SeriesSourcePlan,
+        executor::{context::RowContext, evaluate::evaluate},
+        plan::{CustomFunctionPlan, SeriesSourcePlan},
         result::Result,
+        store::GStore,
     },
     std::rc::Rc,
 };
 
-pub(super) fn execute<'a>(series: &'a SeriesSourcePlan) -> PreparedSource<'a> {
+pub(super) fn execute<'a, T: GStore>(
+    storage: &'a T,
+    functions: &'a [CustomFunctionPlan],
+    series: &'a SeriesSourcePlan,
+) -> PreparedSource<'a> {
     let output = SourceColumns {
         alias: &series.alias.name,
         names: Rc::from(vec!["N".to_owned()]),
@@ -21,22 +26,31 @@ pub(super) fn execute<'a>(series: &'a SeriesSourcePlan) -> PreparedSource<'a> {
         alias: output.alias,
         names: Rc::clone(&output.names),
     };
-    let rows = Box::new(move |_: Option<Rc<RowContext<'a>>>| {
+    let rows = Box::new(move |evaluation_context: Option<Rc<RowContext<'a>>>| {
         rows(
+            storage,
+            functions,
             series,
             SourceColumns {
                 alias: source.alias,
                 names: Rc::clone(&source.names),
             },
+            evaluation_context.as_ref(),
         )
     });
 
     PreparedSource { output, rows }
 }
 
-fn rows<'a>(series: &'a SeriesSourcePlan, source: SourceColumns<'a>) -> Result<SourceRows<'a>> {
+fn rows<'a, T: GStore>(
+    storage: &'a T,
+    functions: &'a [CustomFunctionPlan],
+    series: &'a SeriesSourcePlan,
+    source: SourceColumns<'a>,
+    context: Option<&Rc<RowContext<'a>>>,
+) -> Result<SourceRows<'a>> {
     let columns = Rc::clone(&source.names);
-    let value: Value = evaluate_stateless(None, &series.size)?.try_into()?;
+    let value: Value = evaluate(storage, functions, context, None, &series.size)?.try_into()?;
     let size: i64 = value.try_into()?;
     if size < 0 {
         return Err(QueryError::InvalidSeriesSize(size).into());

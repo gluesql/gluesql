@@ -1,14 +1,18 @@
 mod ddl;
 mod expr;
+mod function;
 mod projection;
 mod query;
 
 pub use {
-    ddl::{AlterTableOperationPlan, ColumnDefPlan, DefaultExpr, TableColumnsPlan},
-    expr::{
-        AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan, FunctionExprPlan,
-        plan_scalar_expr,
+    ddl::{
+        AlterTableOperationPlan, ColumnDefPlan, DefaultExpr, OperateFunctionArgPlan,
+        TableColumnsPlan,
     },
+    expr::{
+        AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan, plan_scalar_expr,
+    },
+    function::{CustomFunctionPlan, FunctionPlan},
     projection::{ProjectionPlan, SelectItemPlan},
     query::{
         AggregationInputPlan, AggregationPlan, DerivedSourcePlan, DictionarySourcePlan,
@@ -28,7 +32,13 @@ use {
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum StatementPlan {
+pub struct StatementPlan {
+    pub kind: StatementPlanKind,
+    pub functions: Vec<CustomFunctionPlan>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum StatementPlanKind {
     ShowColumns {
         table_name: String,
     },
@@ -98,7 +108,7 @@ pub struct AssignmentPlan {
     pub value: ExprPlan,
 }
 
-impl From<ast::Statement> for StatementPlan {
+impl From<ast::Statement> for StatementPlanKind {
     fn from(statement: ast::Statement) -> Self {
         match statement {
             ast::Statement::ShowColumns { table_name } => Self::ShowColumns { table_name },
@@ -200,5 +210,20 @@ impl From<ast::Assignment> for AssignmentPlan {
             id,
             value: value.into(),
         }
+    }
+}
+
+impl From<StatementPlanKind> for StatementPlan {
+    fn from(kind: StatementPlanKind) -> Self {
+        Self {
+            kind,
+            functions: Vec::new(),
+        }
+    }
+}
+
+impl From<ast::Statement> for StatementPlan {
+    fn from(statement: ast::Statement) -> Self {
+        StatementPlanKind::from(statement).into()
     }
 }

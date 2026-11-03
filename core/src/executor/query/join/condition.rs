@@ -2,7 +2,7 @@ use {
     super::{JoinCandidates, hash, nested_loop},
     crate::{
         executor::{context::RowContext, filter::check_expr},
-        plan::{JoinConditionInputPlan, JoinConditionPlan},
+        plan::{CustomFunctionPlan, JoinConditionInputPlan, JoinConditionPlan},
         result::Result,
         store::GStore,
     },
@@ -11,6 +11,7 @@ use {
 
 pub(super) fn execute<'a, T: GStore>(
     storage: &'a T,
+    functions: &'a [CustomFunctionPlan],
     plan: &'a JoinConditionPlan,
     filter_context: Option<&Rc<RowContext<'a>>>,
 ) -> Result<JoinCandidates<'a>> {
@@ -21,9 +22,11 @@ pub(super) fn execute<'a, T: GStore>(
         groups,
     } = match input {
         JoinConditionInputPlan::NestedLoop(join) => {
-            nested_loop::execute(storage, join, filter_context)?
+            nested_loop::execute(storage, functions, join, filter_context)?
         }
-        JoinConditionInputPlan::Hash(join) => hash::execute(storage, join, filter_context)?,
+        JoinConditionInputPlan::Hash(join) => {
+            hash::execute(storage, functions, join, filter_context)?
+        }
     };
     let filter_context = filter_context.map(Rc::clone);
     let groups = groups.map(move |group| {
@@ -42,7 +45,7 @@ pub(super) fn execute<'a, T: GStore>(
                 None => Some(Rc::clone(&row)),
             };
 
-            match check_expr(storage, evaluation_context.as_ref(), None, expr) {
+            match check_expr(storage, functions, evaluation_context.as_ref(), None, expr) {
                 Ok(true) => Some(Ok(row)),
                 Ok(false) => None,
                 Err(error) => Some(Err(error)),

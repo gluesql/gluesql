@@ -2,9 +2,10 @@ use {
     super::{LabeledRows, QueryError},
     crate::{
         data::{Row, Value},
-        executor::evaluate::evaluate_stateless,
-        plan::ValuesPlan,
+        executor::{context::RowContext, evaluate::evaluate},
+        plan::{CustomFunctionPlan, ValuesPlan},
         result::Result,
+        store::GStore,
     },
     std::rc::Rc,
 };
@@ -14,8 +15,13 @@ pub(super) struct MaterializedRows {
     pub(super) rows: Vec<Row>,
 }
 
-pub(super) fn execute<'a>(plan: &ValuesPlan) -> Result<LabeledRows<'a>> {
-    let MaterializedRows { labels, rows } = materialize(plan)?;
+pub(super) fn execute<'a, T: GStore>(
+    storage: &'a T,
+    functions: &'a [CustomFunctionPlan],
+    plan: &'a ValuesPlan,
+    filter_context: Option<&Rc<RowContext<'a>>>,
+) -> Result<LabeledRows<'a>> {
+    let MaterializedRows { labels, rows } = materialize(storage, functions, plan, filter_context)?;
 
     Ok(LabeledRows {
         labels,
@@ -23,7 +29,12 @@ pub(super) fn execute<'a>(plan: &ValuesPlan) -> Result<LabeledRows<'a>> {
     })
 }
 
-pub(super) fn materialize(ValuesPlan(exprs_list): &ValuesPlan) -> Result<MaterializedRows> {
+pub(super) fn materialize<'a, T: GStore>(
+    storage: &'a T,
+    functions: &'a [CustomFunctionPlan],
+    ValuesPlan(exprs_list): &'a ValuesPlan,
+    context: Option<&Rc<RowContext<'a>>>,
+) -> Result<MaterializedRows> {
     let first_len = exprs_list.first().map_or(0, Vec::len);
     let labels = labels_from_len(first_len);
     let columns = Rc::from(labels.clone());
@@ -39,7 +50,7 @@ pub(super) fn materialize(ValuesPlan(exprs_list): &ValuesPlan) -> Result<Materia
         let mut values = Vec::with_capacity(exprs.len());
 
         for (expr, column_type) in exprs.iter().zip(column_types.iter_mut()) {
-            let evaluated = evaluate_stateless(None, expr)?;
+            let evaluated = evaluate(storage, functions, context, None, expr)?;
 
             let value = if let Some(data_type) = column_type.as_ref() {
                 evaluated.try_into_value(data_type, true)?

@@ -174,6 +174,12 @@ pub enum EvaluateError {
     #[error("unsupported custom function in subqueries")]
     UnsupportedCustomFunction,
 
+    #[error("custom function has not been planned: {0}")]
+    UnplannedCustomFunction(String),
+
+    #[error("malformed plan - custom function index is out of bounds: {0}")]
+    MalformedPlanCustomFunctionIndex(usize),
+
     #[error(r#"The function "{function_name}" requires at least {required_minimum} argument(s), but {found} were provided."#)]
     FunctionRequiresMoreArguments {
         function_name: String,
@@ -190,9 +196,6 @@ pub enum EvaluateError {
         expected_maximum: usize,
         found: usize,
     },
-
-    #[error("unsupported function: {0}")]
-    UnsupportedFunction(String),
 
     #[error("The provided arguments are non-comparable: {0}")]
     NonComparableArgumentError(String),

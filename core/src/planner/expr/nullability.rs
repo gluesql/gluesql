@@ -1,6 +1,6 @@
 use crate::{
     data::Value,
-    plan::{ExprPlan, FunctionExprPlan},
+    plan::{ExprPlan, FunctionPlan},
 };
 
 pub fn may_return_null(expr: &ExprPlan) -> bool {
@@ -59,13 +59,13 @@ pub fn may_return_null(expr: &ExprPlan) -> bool {
     }
 }
 
-fn function_may_return_null(function: &FunctionExprPlan) -> bool {
-    use FunctionExprPlan::*;
+fn function_may_return_null(function: &FunctionPlan) -> bool {
+    use FunctionPlan::*;
 
     match function {
         Coalesce(exprs) => exprs.iter().all(may_return_null),
         IfNull { expr, then } => may_return_null(expr) && may_return_null(then),
-        NullIf { .. } | Custom { .. } => true,
+        NullIf { .. } | UnplannedCustom { .. } | Custom { .. } => true,
         Now() | CurrentDate() | CurrentTime() | CurrentTimestamp() | Pi() | GenerateUuid()
         | Rand(_) => false,
         Cast { expr, .. }
@@ -208,6 +208,7 @@ mod tests {
         super::may_return_null,
         crate::{
             parse_sql::parse_expr,
+            plan::{ExprPlan, FunctionPlan},
             translate::{NO_PARAMS, translate_expr},
         },
     };
@@ -343,6 +344,15 @@ mod tests {
         test("COALESCE()", true);
         test("SPLICE('[1,2,3]', 1, 2, '[9]')", false);
         test("DEDUP('[1,1,2]')", false);
+    }
+
+    #[test]
+    fn planned_custom_function() {
+        let expr = ExprPlan::Function(Box::new(FunctionPlan::Custom {
+            function_id: 0,
+            exprs: Vec::new(),
+        }));
+        assert!(may_return_null(&expr));
     }
 
     #[test]

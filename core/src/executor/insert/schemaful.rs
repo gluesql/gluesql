@@ -4,11 +4,11 @@ use {
         ast::{ColumnUniqueOption, ForeignKey},
         data::{Key, Value},
         executor::{
-            evaluate::evaluate_stateless,
+            evaluate::{evaluate, evaluate_stateless},
             query,
             validate::{ColumnValidation, validate_unique},
         },
-        plan::{ColumnDefPlan, ExprPlan, QueryPlan, ValuesPlan},
+        plan::{ColumnDefPlan, CustomFunctionPlan, ExprPlan, QueryPlan, ValuesPlan},
         result::Result,
         store::GStore,
     },
@@ -17,6 +17,7 @@ use {
 
 pub(super) fn fetch_rows<T: GStore>(
     storage: &T,
+    functions: &[CustomFunctionPlan],
     table_name: &str,
     column_defs: &[ColumnDefPlan],
     columns: &[String],
@@ -27,8 +28,8 @@ pub(super) fn fetch_rows<T: GStore>(
     let column_validation = ColumnValidation::All(&column_defs);
 
     let rows_iter: Box<dyn Iterator<Item = Result<Vec<Value>>> + '_> = if let Some(rows) =
-        values::execute(source, |plan| {
-            values_rows(plan, Rc::clone(&column_defs), columns)
+        values::execute(storage, functions, source, |plan| {
+            values_rows(storage, functions, plan, Rc::clone(&column_defs), columns)
         })? {
         let rows = rows.map({
             let column_defs = Rc::clone(&column_defs);
@@ -42,7 +43,7 @@ pub(super) fn fetch_rows<T: GStore>(
 
         Box::new(rows)
     } else {
-        let rows = query::execute(storage, source, None)?.map(|row| {
+        let rows = query::execute(storage, functions, source, None)?.map(|row| {
             let values = row?.into_values();
 
             column_defs
@@ -94,19 +95,23 @@ pub(super) fn fetch_rows<T: GStore>(
     }
 }
 
-fn values_rows<'a>(
+fn values_rows<'a, T: GStore>(
+    storage: &'a T,
+    functions: &'a [CustomFunctionPlan],
     ValuesPlan(values_list): &'a ValuesPlan,
     column_defs: Rc<[ColumnDefPlan]>,
     columns: &'a [String],
 ) -> values::EvaluatedRows<'a> {
     let rows = values_list
         .iter()
-        .map(move |exprs| evaluate_values(&column_defs, columns, exprs));
+        .map(move |exprs| evaluate_values(storage, functions, &column_defs, columns, exprs));
 
     Box::new(rows)
 }
 
-fn evaluate_values(
+fn evaluate_values<T: GStore>(
+    storage: &T,
+    functions: &[CustomFunctionPlan],
     column_defs: &[ColumnDefPlan],
     columns: &[String],
     exprs: &[ExprPlan],
@@ -129,7 +134,7 @@ fn evaluate_values(
         column_defs
             .iter()
             .zip(exprs)
-            .map(|(column_def, expr)| evaluate_value(column_def, expr))
+            .map(|(column_def, expr)| evaluate_value(storage, functions, column_def, expr))
             .collect()
     } else {
         columns
@@ -141,14 +146,20 @@ fn evaluate_values(
                     .find(|column_def| &column_def.name == name)
                     .ok_or_else(|| InsertError::WrongColumnName(name.to_owned()))?;
 
-                evaluate_value(column_def, expr)
+                evaluate_value(storage, functions, column_def, expr)
             })
             .collect()
     }
 }
 
-fn evaluate_value(column_def: &ColumnDefPlan, expr: &ExprPlan) -> Result<Value> {
-    evaluate_stateless(None, expr)?.try_into_value(&column_def.data_type, column_def.nullable)
+fn evaluate_value<T: GStore>(
+    storage: &T,
+    functions: &[CustomFunctionPlan],
+    column_def: &ColumnDefPlan,
+    expr: &ExprPlan,
+) -> Result<Value> {
+    evaluate(storage, functions, None, None, expr)?
+        .try_into_value(&column_def.data_type, column_def.nullable)
 }
 
 fn assign_values(

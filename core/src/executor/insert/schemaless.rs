@@ -3,38 +3,48 @@ use {
     crate::{
         data::{Value, value::BTreeMapJsonExt},
         executor::{
-            evaluate::{EvaluateError, evaluate_stateless},
+            evaluate::{EvaluateError, evaluate},
             query,
         },
-        plan::{QueryPlan, ValuesPlan},
+        plan::{CustomFunctionPlan, QueryPlan, ValuesPlan},
         result::Result,
         store::GStore,
     },
     std::collections::BTreeMap,
 };
 
-pub(super) fn fetch_rows<T: GStore>(storage: &T, source: &QueryPlan) -> Result<Vec<Vec<Value>>> {
-    let rows_iter: Box<dyn Iterator<Item = Result<Vec<Value>>> + '_> =
-        if let Some(rows) = values::execute(source, values_rows)? {
-            let rows = rows.map(|row| convert_values(row?.into_values()));
+pub(super) fn fetch_rows<T: GStore>(
+    storage: &T,
+    functions: &[CustomFunctionPlan],
+    source: &QueryPlan,
+) -> Result<Vec<Vec<Value>>> {
+    let rows_iter: Box<dyn Iterator<Item = Result<Vec<Value>>> + '_> = if let Some(rows) =
+        values::execute(storage, functions, source, |plan| {
+            values_rows(storage, functions, plan)
+        })? {
+        let rows = rows.map(|row| convert_values(row?.into_values()));
 
-            Box::new(rows)
-        } else {
-            let rows = query::execute(storage, source, None)?
-                .map(|row| convert_query_values(row?.into_values()));
+        Box::new(rows)
+    } else {
+        let rows = query::execute(storage, functions, source, None)?
+            .map(|row| convert_query_values(row?.into_values()));
 
-            Box::new(rows)
-        };
+        Box::new(rows)
+    };
     let rows = rows_iter.collect::<Result<Vec<Vec<Value>>>>()?;
 
     Ok(rows)
 }
 
-fn values_rows(ValuesPlan(values_list): &ValuesPlan) -> values::EvaluatedRows<'_> {
-    let rows = values_list.iter().map(|exprs| {
+fn values_rows<'a, T: GStore>(
+    storage: &'a T,
+    functions: &'a [CustomFunctionPlan],
+    ValuesPlan(values_list): &'a ValuesPlan,
+) -> values::EvaluatedRows<'a> {
+    let rows = values_list.iter().map(move |exprs| {
         exprs
             .iter()
-            .map(|expr| evaluate_stateless(None, expr).and_then(Value::try_from))
+            .map(|expr| evaluate(storage, functions, None, None, expr).and_then(Value::try_from))
             .collect::<Result<Vec<_>>>()
     });
 

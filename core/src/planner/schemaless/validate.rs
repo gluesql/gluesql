@@ -1,5 +1,5 @@
 use {
-    super::super::{PlannerError, expr::try_visit_expr},
+    super::super::{PlannerError, visit::try_visit_expr},
     crate::{
         data::Schema,
         plan::{
@@ -8,8 +8,8 @@ use {
             JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
             OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, SelectOrderByPlan, SourcePlan, StatementPlan, ValuesOrderByPlan,
-            ValuesPlan,
+            SelectItemPlan, SelectOrderByPlan, SourcePlan, StatementPlan, StatementPlanKind,
+            ValuesOrderByPlan, ValuesPlan,
         },
         result::Result,
     },
@@ -30,9 +30,9 @@ fn validate_statement_inner(
     schema_map: &HashMap<String, Schema, impl BuildHasher>,
     statement: &StatementPlan,
 ) -> ValidateResult {
-    match statement {
-        StatementPlan::Query(query) => validate_query(schema_map, query),
-        StatementPlan::Insert {
+    match &statement.kind {
+        StatementPlanKind::Query(query) => validate_query(schema_map, query),
+        StatementPlanKind::Insert {
             table_name,
             columns,
             source,
@@ -44,10 +44,10 @@ fn validate_statement_inner(
 
             validate_query(schema_map, source)
         }
-        StatementPlan::CreateTable { source, .. } => source
+        StatementPlanKind::CreateTable { source, .. } => source
             .as_ref()
             .map_or(Ok(()), |query| validate_query(schema_map, query)),
-        StatementPlan::Update {
+        StatementPlanKind::Update {
             assignments,
             selection,
             ..
@@ -60,7 +60,7 @@ fn validate_statement_inner(
                 .as_ref()
                 .map_or(Ok(()), |expr| validate_expr(schema_map, expr))
         }
-        StatementPlan::Delete { selection, .. } => selection
+        StatementPlanKind::Delete { selection, .. } => selection
             .as_ref()
             .map_or(Ok(()), |expr| validate_expr(schema_map, expr)),
         _ => Ok(()),
@@ -299,7 +299,8 @@ fn validate_source(
 ) -> ValidateResult {
     match source {
         SourcePlan::Derived(derived) => validate_query(schema_map, &derived.query),
-        _ => Ok(()),
+        SourcePlan::Series(series) => validate_expr(schema_map, &series.size),
+        SourcePlan::Table(_) | SourcePlan::Dictionary(_) => Ok(()),
     }
 }
 
@@ -452,6 +453,29 @@ mod tests {
         assert_mixed_join_wildcard_error(
             &storage,
             "SELECT (SELECT * FROM Player JOIN Item WHERE Player.id = Item.id LIMIT 1) FROM Item",
+        );
+    }
+
+    #[test]
+    fn validates_series_size() {
+        let storage = setup_storage();
+
+        assert_plan_ok(
+            &storage,
+            "SELECT * FROM SERIES((SELECT id FROM Player LIMIT 1))",
+        );
+        assert_mixed_join_wildcard_error(
+            &storage,
+            "
+            SELECT *
+            FROM SERIES((
+                SELECT *
+                FROM Player
+                JOIN Item
+                WHERE Player.id = Item.id
+                LIMIT 1
+            ))
+            ",
         );
     }
 

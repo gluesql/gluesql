@@ -265,7 +265,7 @@ mod tests {
                 LeftOuterJoinPlan, LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan,
                 NestedLoopJoinPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan,
                 ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan,
-                SourcePlan, StatementPlan, TableAccessPlan, TableAliasPlan, TableSourcePlan,
+                SourcePlan, StatementPlanKind, TableAccessPlan, TableAliasPlan, TableSourcePlan,
             },
             query_builder::{
                 Build, QueryBuilderError, QueryNode, col, expr, num, select::BuildQuery, table,
@@ -438,13 +438,14 @@ mod tests {
             .hash_executor("B.id", "A.id")
             .project("A.id")
             .build();
-        let expected = Ok(StatementPlan::Query(QueryPlan::Project(ProjectPlan {
+        let expected = Ok(StatementPlanKind::Query(QueryPlan::Project(ProjectPlan {
             input: ProjectInputPlan::LeftOuterJoin(Box::new(join.clone())),
             projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
                 expr: col("A.id").build_expr_plan().unwrap(),
                 label: "id".to_owned(),
             }]),
-        })));
+        }))
+        .into());
         assert_eq!(actual, expected);
 
         let actual = table("A")
@@ -453,14 +454,15 @@ mod tests {
             .hash_executor("B.id", "A.id")
             .group_by("A.id")
             .build();
-        let expected = Ok(StatementPlan::Query(QueryPlan::Project(ProjectPlan {
+        let expected = Ok(StatementPlanKind::Query(QueryPlan::Project(ProjectPlan {
             input: ProjectInputPlan::Aggregation(AggregationPlan {
                 input: AggregationInputPlan::LeftOuterJoin(Box::new(join.clone())),
                 group_by: vec![col("A.id").build_expr_plan().unwrap()],
                 aggregate_slots: Vec::new(),
             }),
             projection: wildcard.clone(),
-        })));
+        }))
+        .into());
         assert_eq!(actual, expected);
 
         let actual = table("A")
@@ -469,7 +471,7 @@ mod tests {
             .hash_executor("B.id", "A.id")
             .having("TRUE")
             .build();
-        let expected = Ok(StatementPlan::Query(QueryPlan::Project(ProjectPlan {
+        let expected = Ok(StatementPlanKind::Query(QueryPlan::Project(ProjectPlan {
             input: ProjectInputPlan::Having(HavingPlan {
                 input: AggregationPlan {
                     input: AggregationInputPlan::LeftOuterJoin(Box::new(join.clone())),
@@ -479,7 +481,8 @@ mod tests {
                 expr: expr("TRUE").build_expr_plan().unwrap(),
             }),
             projection: wildcard.clone(),
-        })));
+        }))
+        .into());
         assert_eq!(actual, expected);
 
         let actual = table("A")
@@ -488,13 +491,14 @@ mod tests {
             .hash_executor("B.id", "A.id")
             .filter("A.active")
             .build();
-        let expected = Ok(StatementPlan::Query(QueryPlan::Project(ProjectPlan {
+        let expected = Ok(StatementPlanKind::Query(QueryPlan::Project(ProjectPlan {
             input: ProjectInputPlan::Filter(FilterPlan {
                 input: FilterInputPlan::LeftOuterJoin(Box::new(join.clone())),
                 expr: col("A.active").build_expr_plan().unwrap(),
             }),
             projection: wildcard.clone(),
-        })));
+        }))
+        .into());
         assert_eq!(actual, expected);
 
         let project = ProjectPlan {
@@ -507,15 +511,16 @@ mod tests {
             .hash_executor("B.id", "A.id")
             .order_by("A.id")
             .build();
-        let expected = Ok(StatementPlan::Query(QueryPlan::SelectOrderBy(
-            SelectOrderByPlan {
+        let expected = Ok(
+            StatementPlanKind::Query(QueryPlan::SelectOrderBy(SelectOrderByPlan {
                 input: project.clone(),
                 exprs: vec![OrderByExprPlan {
                     expr: col("A.id").build_expr_plan().unwrap(),
                     asc: None,
                 }],
-            },
-        )));
+            }))
+            .into(),
+        );
         assert_eq!(actual, expected);
 
         let actual = table("A")
@@ -524,9 +529,10 @@ mod tests {
             .hash_executor("B.id", "A.id")
             .distinct()
             .build();
-        let expected = Ok(StatementPlan::Query(QueryPlan::Distinct(DistinctPlan {
+        let expected = Ok(StatementPlanKind::Query(QueryPlan::Distinct(DistinctPlan {
             input: DistinctInputPlan::Project(project.clone()),
-        })));
+        }))
+        .into());
         assert_eq!(actual, expected);
 
         let actual = table("A")
@@ -535,10 +541,11 @@ mod tests {
             .hash_executor("B.id", "A.id")
             .offset(1)
             .build();
-        let expected = Ok(StatementPlan::Query(QueryPlan::Offset(OffsetPlan {
+        let expected = Ok(StatementPlanKind::Query(QueryPlan::Offset(OffsetPlan {
             input: OffsetInputPlan::Project(project.clone()),
             count: num(1).build_expr_plan().unwrap(),
-        })));
+        }))
+        .into());
         assert_eq!(actual, expected);
 
         let actual = table("A")
@@ -547,10 +554,11 @@ mod tests {
             .hash_executor("B.id", "A.id")
             .limit(1)
             .build();
-        let expected = Ok(StatementPlan::Query(QueryPlan::Limit(LimitPlan {
+        let expected = Ok(StatementPlanKind::Query(QueryPlan::Limit(LimitPlan {
             input: LimitInputPlan::Project(project),
             count: num(1).build_expr_plan().unwrap(),
-        })));
+        }))
+        .into());
         assert_eq!(actual, expected);
 
         let actual = table("A")
@@ -560,7 +568,7 @@ mod tests {
             .alias_as("Joined")
             .select()
             .build();
-        let expected = Ok(StatementPlan::Query(QueryPlan::Project(ProjectPlan {
+        let expected = Ok(StatementPlanKind::Query(QueryPlan::Project(ProjectPlan {
             input: ProjectInputPlan::Source(SourcePlan::Derived(DerivedSourcePlan {
                 query: Box::new(QueryPlan::Project(ProjectPlan {
                     input: ProjectInputPlan::LeftOuterJoin(Box::new(join)),
@@ -572,7 +580,8 @@ mod tests {
                 },
             })),
             projection: wildcard,
-        })));
+        }))
+        .into());
         assert_eq!(actual, expected);
     }
 

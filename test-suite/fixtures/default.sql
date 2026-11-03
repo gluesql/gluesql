@@ -41,7 +41,11 @@ INSERT INTO FunctionTest VALUES (GENERATE_UUID(), 1.0)
 -- @expect: payload Insert
 -- @json: 1
 
-INSERT INTO FunctionTest VALUES (GENERATE_UUID(), (SELECT id FROM Foo))
+INSERT INTO FunctionTest VALUES (GENERATE_UUID(), (SELECT 2.0))
+-- @expect: payload Insert
+-- @json: 1
+
+CREATE TABLE SubqueryDefault (id INT DEFAULT (SELECT 1))
 -- @expect: error Evaluate.SubqueryNotAllowedInStatelessExpr
 
 CREATE TABLE TestExpr (

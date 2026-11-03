@@ -13,7 +13,7 @@ use {
             context::{AggregateValues, RowContext},
             evaluate::evaluate,
         },
-        plan::{ExprPlan, OrderByExprPlan, SelectOrderByPlan},
+        plan::{CustomFunctionPlan, ExprPlan, OrderByExprPlan, SelectOrderByPlan},
         result::Result,
         store::GStore,
     },
@@ -23,6 +23,7 @@ use {
 
 pub(crate) fn execute<'a, T>(
     storage: &'a T,
+    functions: &'a [CustomFunctionPlan],
     plan: &'a SelectOrderByPlan,
     filter_context: Option<Rc<RowContext<'a>>>,
 ) -> Result<LabeledRows<'a>>
@@ -35,14 +36,22 @@ where
         labels,
         rows,
         table_alias,
-    } = project::execute(storage, input, filter_context)?;
-    let rows = sort(storage, sort_context.as_ref(), rows, table_alias, exprs)?;
+    } = project::execute(storage, functions, input, filter_context)?;
+    let rows = sort(
+        storage,
+        functions,
+        sort_context.as_ref(),
+        rows,
+        table_alias,
+        exprs,
+    )?;
 
     Ok(LabeledRows { labels, rows })
 }
 
 fn sort<'a, T>(
     storage: &'a T,
+    functions: &'a [CustomFunctionPlan],
     context: Option<&Rc<RowContext<'a>>>,
     rows: impl Iterator<Item = Result<(Option<Rc<AggregateValues>>, Option<Rc<RowContext<'a>>>, Row)>>
     + 'a,
@@ -124,10 +133,14 @@ where
             .map(|(sort_type, asc)| {
                 match sort_type {
                     SortType::Value(value) => Ok(value),
-                    SortType::Expr(expr) => {
-                        evaluate(storage, filter_context.as_ref(), aggregated.as_ref(), expr)?
-                            .try_into()
-                    }
+                    SortType::Expr(expr) => evaluate(
+                        storage,
+                        functions,
+                        filter_context.as_ref(),
+                        aggregated.as_ref(),
+                        expr,
+                    )?
+                    .try_into(),
                 }?
                 .try_into()
                 .map(|key| (key, asc))
