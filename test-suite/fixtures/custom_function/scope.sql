@@ -26,6 +26,23 @@ SELECT order_with_argument(4) AS r;
 -- | ------ |
 -- | 5      |
 
+CREATE FUNCTION ordered_values(x INT) RETURN (
+    SELECT column1
+    FROM (
+        VALUES (x), (x + 1), (x + 2), (x + 3)
+        ORDER BY column1 + x DESC
+        LIMIT x - 3 OFFSET x - 3
+    ) v
+);
+-- @expect: payload Create
+
+-- @name: VALUES, ORDER BY, LIMIT and OFFSET can use function arguments
+SELECT ordered_values(4) AS r;
+-- @expect:
+-- | r: I64 |
+-- | ------ |
+-- | 6      |
+
 CREATE FUNCTION nested_scopes(x INT) RETURN (
     SELECT (SELECT inc(v.n + x) FROM SERIES(v.n) LIMIT 1)
     FROM (VALUES (x + 1)) v(n)
