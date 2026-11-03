@@ -206,7 +206,7 @@ mod tests {
 
     fn query(sql: &str) -> QueryPlan {
         let parsed = parse(sql).expect(sql).into_iter().next().expect(sql);
-        // The call planner receives queries after aggregate planning.
+        // Populate aggregate slots so their expressions are visited too.
         let statement = aggregate::plan(translate(&parsed).expect(sql).into());
         let StatementPlanKind::Query(query) = statement.kind else {
             panic!("expected query: {sql}");
@@ -235,68 +235,11 @@ mod tests {
         }
     }
 
-    fn test(input: &str, expected: &[&str]) {
-        let actual = query(input);
+    fn test(actual: &str, expected: &[&str], name: &str) {
+        let input = query(actual);
         let mut visitor = Identifiers::default();
-        assert_eq!(visitor.visit_query(&actual), Ok(()), "{input}");
-        assert_eq!(visitor.0, expected, "{input}");
-    }
-
-    #[test]
-    fn query_inputs() {
-        test("SELECT x AS r", &["x"]);
-        test("VALUES (x, y), (z, w)", &["x", "y", "z", "w"]);
-        test("SELECT x AS r ORDER BY y, z", &["x", "y", "z"]);
-        test("VALUES (x) ORDER BY y", &["x", "y"]);
-        test("SELECT DISTINCT x AS r", &["x"]);
-        test("SELECT DISTINCT x AS r ORDER BY y", &["x", "y"]);
-
-        test("SELECT x AS r LIMIT n", &["x", "n"]);
-        test("VALUES (x) LIMIT n", &["x", "n"]);
-        test("SELECT x AS r ORDER BY y LIMIT n", &["x", "y", "n"]);
-        test("VALUES (x) ORDER BY y LIMIT n", &["x", "y", "n"]);
-        test("SELECT DISTINCT x AS r LIMIT n", &["x", "n"]);
-        test("SELECT x AS r OFFSET m LIMIT n", &["x", "m", "n"]);
-
-        test("SELECT x AS r OFFSET n", &["x", "n"]);
-        test("VALUES (x) OFFSET n", &["x", "n"]);
-        test("SELECT x AS r ORDER BY y OFFSET n", &["x", "y", "n"]);
-        test("VALUES (x) ORDER BY y OFFSET n", &["x", "y", "n"]);
-        test("SELECT DISTINCT x AS r OFFSET n", &["x", "n"]);
-
-        test("SELECT *, t.*, x AS r FROM Item t", &["x"]);
-        test("SELECT x AS r FROM SERIES(n)", &["n", "x"]);
-        test("SELECT x AS r FROM (VALUES (y)) v", &["y", "x"]);
-        test("SELECT x AS r FROM GLUE_TABLES", &["x"]);
-        test("SELECT x AS r FROM Item WHERE y", &["y", "x"]);
-        test("SELECT x AS r FROM Item GROUP BY y", &["y", "x"]);
-        test(
-            "SELECT x AS r FROM Item WHERE y GROUP BY z HAVING w",
-            &["y", "z", "w", "x"],
-        );
-        test(
-            "SELECT COUNT(*) AS a, COUNT(x) AS b, SUM(y) AS c, MIN(z) AS d, MAX(w) AS e, AVG(v) AS f, VARIANCE(u) AS g, STDEV(t) AS h FROM Item",
-            &[
-                "x", "y", "z", "w", "v", "u", "t", "x", "y", "z", "w", "v", "u", "t",
-            ],
-        );
-    }
-
-    #[test]
-    fn join_inputs() {
-        test("SELECT x AS r FROM A JOIN B", &["x"]);
-        test("SELECT x AS r FROM A LEFT JOIN B", &["x"]);
-        test("SELECT x AS r FROM A JOIN B ON y", &["y", "x"]);
-        test("SELECT x AS r FROM A LEFT JOIN B ON y", &["y", "x"]);
-        test("SELECT x AS r FROM A JOIN B WHERE y", &["y", "x"]);
-        test("SELECT x AS r FROM A LEFT JOIN B WHERE y", &["y", "x"]);
-        test("SELECT x AS r FROM A JOIN B GROUP BY y", &["y", "x"]);
-        test("SELECT x AS r FROM A LEFT JOIN B GROUP BY y", &["y", "x"]);
-        test("SELECT x AS r FROM A JOIN B JOIN SERIES(y)", &["y", "x"]);
-        test(
-            "SELECT x AS r FROM A LEFT JOIN B JOIN SERIES(y)",
-            &["y", "x"],
-        );
+        assert_eq!(visitor.visit_query(&input), Ok(()), "[{name}] {actual}");
+        assert_eq!(visitor.0, expected, "[{name}] {actual}");
     }
 
     #[derive(Default)]
@@ -338,108 +281,6 @@ mod tests {
         }
     }
 
-    #[test]
-    fn hash_join_inputs() {
-        let source = SourcePlan::Table(TableSourcePlan {
-            name: "Item".to_owned(),
-            alias: None,
-            access: TableAccessPlan::FullScan,
-        });
-        let hash = HashJoinPlan {
-            input: HashJoinInputPlan::Source(source),
-            right: SourcePlan::Table(TableSourcePlan {
-                name: "Other".to_owned(),
-                alias: None,
-                access: TableAccessPlan::FullScan,
-            }),
-            input_key: expr("left_key"),
-            right_key: expr("right_key"),
-            right_filter: None,
-        };
-        let cases = [
-            (
-                HashJoinInputPlan::Source(hash.right.clone()),
-                vec![expr("left_key"), expr("right_key"), expr("filter")],
-            ),
-            (
-                HashJoinInputPlan::InnerJoin(Box::new(InnerJoinPlan {
-                    input: InnerJoinInputPlan::Hash(hash.clone()),
-                })),
-                vec![
-                    expr("left_key"),
-                    expr("right_key"),
-                    expr("left_key"),
-                    expr("right_key"),
-                    expr("filter"),
-                ],
-            ),
-            (
-                HashJoinInputPlan::LeftOuterJoin(Box::new(LeftOuterJoinPlan {
-                    input: LeftOuterJoinInputPlan::Hash(hash.clone()),
-                })),
-                vec![
-                    expr("left_key"),
-                    expr("right_key"),
-                    expr("left_key"),
-                    expr("right_key"),
-                    expr("filter"),
-                ],
-            ),
-        ];
-        for (input, expected) in cases {
-            let plan = HashJoinPlan {
-                input,
-                right_filter: Some(expr("filter")),
-                ..hash.clone()
-            };
-            let mut read = Expressions::default();
-            assert_eq!(QueryWalker { visitor: &mut read }.hash_join(&plan), Ok(()));
-            assert_eq!(read.visited, expected);
-
-            for end in 0..expected.len() {
-                let mut read = Expressions {
-                    stop_after: Some(end + 1),
-                    ..Default::default()
-                };
-                let result = QueryWalker { visitor: &mut read }.hash_join(&plan);
-                assert_eq!(result, Err("stop"));
-                assert_eq!(read.visited, expected[..=end]);
-            }
-        }
-
-        for (name, expected) in [("Item", vec!["Item"]), ("Other", vec!["Item", "Other"])] {
-            let mut read = RejectSource {
-                name,
-                visited: Vec::new(),
-            };
-            let result = QueryWalker { visitor: &mut read }.hash_join(&hash);
-            assert_eq!(result, Err("source"));
-            assert_eq!(read.visited, expected);
-        }
-
-        let condition = JoinConditionPlan {
-            input: JoinConditionInputPlan::Hash(hash),
-            expr: expr("condition"),
-        };
-        for input in [
-            ProjectInputPlan::InnerJoin(Box::new(InnerJoinPlan {
-                input: InnerJoinInputPlan::Condition(condition.clone()),
-            })),
-            ProjectInputPlan::LeftOuterJoin(Box::new(LeftOuterJoinPlan {
-                input: LeftOuterJoinInputPlan::Condition(condition.clone()),
-            })),
-        ] {
-            let query = QueryPlan::Project(ProjectPlan {
-                input,
-                projection: ProjectionPlan::SchemalessMap,
-            });
-            let expected = vec![expr("left_key"), expr("right_key"), expr("condition")];
-            let mut read = Expressions::default();
-            assert_eq!(Visitor::visit_query(&mut read, &query), Ok(()));
-            assert_eq!(read.visited, expected);
-        }
-    }
-
     #[derive(Default)]
     struct RejectIdentifiers(Vec<String>);
 
@@ -456,59 +297,581 @@ mod tests {
         }
     }
 
-    #[test]
-    fn callback_errors() {
-        for sql in [
-            "VALUES (stop, later)",
-            "VALUES (stop) OFFSET later",
-            "VALUES (stop) ORDER BY later",
-            "SELECT stop AS r, later AS s FROM Item",
-            "SELECT stop AS r FROM Item ORDER BY later",
-            "SELECT 1 FROM Item WHERE stop",
-            "SELECT 1 FROM SERIES(stop) WHERE later",
-            "SELECT 1 FROM Item GROUP BY stop",
-            "SELECT 1 FROM SERIES(stop) GROUP BY later",
-            "SELECT 1 FROM Item GROUP BY 1 HAVING stop",
-            "SELECT 1 FROM Item GROUP BY stop HAVING later",
-            "SELECT SUM(stop) AS r FROM Item",
-            "SELECT 1 FROM Item ORDER BY stop, later",
-            "VALUES (1) ORDER BY stop, later",
-            "SELECT 1 FROM Item LIMIT stop",
-            "VALUES (1) OFFSET stop LIMIT later",
-            "SELECT 1 FROM SERIES(stop)",
-            "SELECT 1 FROM (VALUES (stop)) v",
-            "SELECT 1 FROM Item JOIN Other ON stop",
-            "SELECT 1 FROM Item LEFT JOIN Other ON stop",
-            "SELECT 1 FROM SERIES(stop) JOIN Item",
-            "SELECT 1 FROM SERIES(stop) JOIN Item ON later",
-        ] {
-            let query = query(sql);
-            let mut read = RejectIdentifiers::default();
-            assert_eq!(
-                Visitor::visit_query(&mut read, &query),
-                Err("stop"),
-                "{sql}"
-            );
-            assert_eq!(read.0, vec!["stop".to_owned()], "{sql}");
-        }
+    fn test_error(actual: &str, name: &str) {
+        let input = query(actual);
+        let mut visitor = RejectIdentifiers::default();
+        let result = visitor.visit_query(&input);
+        assert_eq!(result, Err("stop"), "[{name}] {actual}");
+        assert_eq!(visitor.0, ["stop"], "[{name}] {actual}");
+    }
 
-        for (sql, name) in [
-            ("SELECT x FROM Item", "Item"),
-            ("SELECT x FROM SERIES(n)", "SERIES"),
-            ("SELECT x FROM (VALUES (y)) v", "v"),
-            ("SELECT x FROM GLUE_TABLES", "GLUE_TABLES"),
-        ] {
-            let query = query(sql);
-            let mut read = RejectSource {
-                name,
+    #[test]
+    fn limit() {
+        let actual = "SELECT x AS r LIMIT n";
+        let expected = &["x", "n"];
+        test(actual, expected, "project");
+
+        let actual = "VALUES (x) LIMIT n";
+        let expected = &["x", "n"];
+        test(actual, expected, "values");
+
+        let actual = "SELECT x AS r ORDER BY y LIMIT n";
+        let expected = &["x", "y", "n"];
+        test(actual, expected, "select order by");
+
+        let actual = "VALUES (x) ORDER BY y LIMIT n";
+        let expected = &["x", "y", "n"];
+        test(actual, expected, "values order by");
+
+        let actual = "SELECT DISTINCT x AS r LIMIT n";
+        let expected = &["x", "n"];
+        test(actual, expected, "distinct");
+
+        let actual = "SELECT x AS r OFFSET m LIMIT n";
+        let expected = &["x", "m", "n"];
+        test(actual, expected, "offset");
+    }
+
+    #[test]
+    fn limit_errors() {
+        let actual = "SELECT 1 FROM Item LIMIT stop";
+        test_error(actual, "count");
+
+        let actual = "VALUES (1) OFFSET stop LIMIT later";
+        test_error(actual, "input");
+    }
+
+    #[test]
+    fn offset() {
+        let actual = "SELECT x AS r OFFSET n";
+        let expected = &["x", "n"];
+        test(actual, expected, "project");
+
+        let actual = "VALUES (x) OFFSET n";
+        let expected = &["x", "n"];
+        test(actual, expected, "values");
+
+        let actual = "SELECT x AS r ORDER BY y OFFSET n";
+        let expected = &["x", "y", "n"];
+        test(actual, expected, "select order by");
+
+        let actual = "VALUES (x) ORDER BY y OFFSET n";
+        let expected = &["x", "y", "n"];
+        test(actual, expected, "values order by");
+
+        let actual = "SELECT DISTINCT x AS r OFFSET n";
+        let expected = &["x", "n"];
+        test(actual, expected, "distinct");
+    }
+
+    #[test]
+    fn offset_errors() {
+        let actual = "VALUES (stop) OFFSET later";
+        test_error(actual, "input");
+    }
+
+    #[test]
+    fn distinct() {
+        let actual = "SELECT DISTINCT x AS r";
+        let expected = &["x"];
+        test(actual, expected, "project");
+
+        let actual = "SELECT DISTINCT x AS r ORDER BY y";
+        let expected = &["x", "y"];
+        test(actual, expected, "select order by");
+    }
+
+    #[test]
+    fn select_order_by() {
+        let actual = "SELECT x AS r ORDER BY y, z";
+        let expected = &["x", "y", "z"];
+        test(actual, expected, "multiple sort expressions");
+    }
+
+    #[test]
+    fn select_order_by_errors() {
+        let actual = "SELECT stop AS r FROM Item ORDER BY later";
+        test_error(actual, "input");
+
+        let actual = "SELECT 1 FROM Item ORDER BY stop, later";
+        test_error(actual, "sort expressions");
+    }
+
+    #[test]
+    fn values_order_by() {
+        let actual = "VALUES (x) ORDER BY y";
+        let expected = &["x", "y"];
+        test(actual, expected, "sort expression");
+    }
+
+    #[test]
+    fn values_order_by_errors() {
+        let actual = "VALUES (stop) ORDER BY later";
+        test_error(actual, "input");
+
+        let actual = "VALUES (1) ORDER BY stop, later";
+        test_error(actual, "sort expressions");
+    }
+
+    #[test]
+    fn values() {
+        let actual = "VALUES (x, y), (z, w)";
+        let expected = &["x", "y", "z", "w"];
+        test(actual, expected, "multiple rows and columns");
+    }
+
+    #[test]
+    fn values_errors() {
+        let actual = "VALUES (stop, later)";
+        test_error(actual, "row expressions");
+    }
+
+    #[test]
+    fn project() {
+        let actual = "SELECT x AS r";
+        let expected = &["x"];
+        test(actual, expected, "expression");
+
+        let actual = "SELECT *, t.*, x AS r FROM Item t";
+        let expected = &["x"];
+        test(actual, expected, "wildcards and expression");
+
+        let actual = "SELECT x AS r FROM SERIES(n)";
+        let expected = &["n", "x"];
+        test(actual, expected, "series");
+
+        let actual = "SELECT x AS r FROM (VALUES (y)) v";
+        let expected = &["y", "x"];
+        test(actual, expected, "derived query");
+
+        let actual = "SELECT x AS r FROM GLUE_TABLES";
+        let expected = &["x"];
+        test(actual, expected, "dictionary");
+    }
+
+    #[test]
+    fn project_errors() {
+        let actual = "SELECT stop AS r, later AS s FROM Item";
+        test_error(actual, "projection");
+
+        let actual = "SELECT 1 FROM SERIES(stop)";
+        test_error(actual, "series input");
+
+        let actual = "SELECT 1 FROM (VALUES (stop)) v";
+        test_error(actual, "derived input");
+    }
+
+    #[test]
+    fn project_source_errors() {
+        let test = |actual: &str, expected: &'static str, name: &str| {
+            let input = query(actual);
+            let mut visitor = RejectSource {
+                name: expected,
                 visited: Vec::new(),
             };
             assert_eq!(
-                Visitor::visit_query(&mut read, &query),
+                visitor.visit_query(&input),
                 Err("source"),
-                "{sql}"
+                "[{name}] {actual}"
             );
-            assert_eq!(read.visited, vec![name]);
-        }
+            assert_eq!(visitor.visited, [expected], "[{name}] {actual}");
+        };
+
+        let actual = "SELECT x FROM Item";
+        let expected = "Item";
+        test(actual, expected, "table");
+
+        let actual = "SELECT x FROM SERIES(n)";
+        let expected = "SERIES";
+        test(actual, expected, "series");
+
+        let actual = "SELECT x FROM (VALUES (y)) v";
+        let expected = "v";
+        test(actual, expected, "derived");
+
+        let actual = "SELECT x FROM GLUE_TABLES";
+        let expected = "GLUE_TABLES";
+        test(actual, expected, "dictionary");
+    }
+
+    #[test]
+    fn aggregation() {
+        let actual = "SELECT x AS r FROM Item GROUP BY y";
+        let expected = &["y", "x"];
+        test(actual, expected, "source");
+
+        let actual = "SELECT x AS r FROM A JOIN B GROUP BY y";
+        let expected = &["y", "x"];
+        test(actual, expected, "inner join");
+
+        let actual = "SELECT x AS r FROM A LEFT JOIN B GROUP BY y";
+        let expected = &["y", "x"];
+        test(actual, expected, "left outer join");
+
+        let actual = "
+            SELECT
+                COUNT(*) AS a,
+                COUNT(x) AS b,
+                SUM(y) AS c,
+                MIN(z) AS d,
+                MAX(w) AS e,
+                AVG(v) AS f,
+                VARIANCE(u) AS g,
+                STDEV(t) AS h
+            FROM Item
+        ";
+        let expected = &[
+            "x", "y", "z", "w", "v", "u", "t", "x", "y", "z", "w", "v", "u", "t",
+        ];
+        test(actual, expected, "aggregate slots and projection");
+    }
+
+    #[test]
+    fn aggregation_errors() {
+        let actual = "SELECT 1 FROM Item GROUP BY stop";
+        test_error(actual, "group by");
+
+        let actual = "SELECT 1 FROM SERIES(stop) GROUP BY later";
+        test_error(actual, "input");
+
+        let actual = "SELECT SUM(stop) AS r FROM Item";
+        test_error(actual, "aggregate slot");
+    }
+
+    #[test]
+    fn filter() {
+        let actual = "SELECT x AS r FROM Item WHERE y";
+        let expected = &["y", "x"];
+        test(actual, expected, "source");
+
+        let actual = "SELECT x AS r FROM A JOIN B WHERE y";
+        let expected = &["y", "x"];
+        test(actual, expected, "inner join");
+
+        let actual = "SELECT x AS r FROM A LEFT JOIN B WHERE y";
+        let expected = &["y", "x"];
+        test(actual, expected, "left outer join");
+    }
+
+    #[test]
+    fn filter_errors() {
+        let actual = "SELECT 1 FROM Item WHERE stop";
+        test_error(actual, "predicate");
+
+        let actual = "SELECT 1 FROM SERIES(stop) WHERE later";
+        test_error(actual, "input");
+    }
+
+    #[test]
+    fn having() {
+        let actual = "SELECT x AS r FROM Item WHERE y GROUP BY z HAVING w";
+        let expected = &["y", "z", "w", "x"];
+        test(actual, expected, "filter and aggregation");
+    }
+
+    #[test]
+    fn having_errors() {
+        let actual = "SELECT 1 FROM Item GROUP BY 1 HAVING stop";
+        test_error(actual, "predicate");
+
+        let actual = "SELECT 1 FROM Item GROUP BY stop HAVING later";
+        test_error(actual, "input");
+    }
+
+    #[test]
+    fn inner_join() {
+        let actual = "SELECT x AS r FROM A JOIN B";
+        let expected = &["x"];
+        test(actual, expected, "nested loop");
+    }
+
+    #[test]
+    fn left_outer_join() {
+        let actual = "SELECT x AS r FROM A LEFT JOIN B";
+        let expected = &["x"];
+        test(actual, expected, "nested loop");
+    }
+
+    #[test]
+    fn join_condition() {
+        let actual = "SELECT x AS r FROM A JOIN B ON y";
+        let expected = &["y", "x"];
+        test(actual, expected, "inner join");
+
+        let actual = "SELECT x AS r FROM A LEFT JOIN B ON y";
+        let expected = &["y", "x"];
+        test(actual, expected, "left outer join");
+    }
+
+    #[test]
+    fn join_condition_hash() {
+        let test = |actual: QueryPlan, expected: &[ExprPlan], name: &str| {
+            let mut visitor = Expressions::default();
+            assert_eq!(visitor.visit_query(&actual), Ok(()), "{name}");
+            assert_eq!(visitor.visited, expected, "{name}");
+        };
+
+        let hash = HashJoinPlan {
+            input: HashJoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
+                name: "Item".to_owned(),
+                alias: None,
+                access: TableAccessPlan::FullScan,
+            })),
+            right: SourcePlan::Table(TableSourcePlan {
+                name: "Other".to_owned(),
+                alias: None,
+                access: TableAccessPlan::FullScan,
+            }),
+            input_key: expr("left_key"),
+            right_key: expr("right_key"),
+            right_filter: None,
+        };
+
+        let condition = JoinConditionPlan {
+            input: JoinConditionInputPlan::Hash(hash.clone()),
+            expr: expr("condition"),
+        };
+
+        let actual = QueryPlan::Project(ProjectPlan {
+            input: ProjectInputPlan::InnerJoin(Box::new(InnerJoinPlan {
+                input: InnerJoinInputPlan::Condition(condition.clone()),
+            })),
+            projection: ProjectionPlan::SchemalessMap,
+        });
+        let expected = &[expr("left_key"), expr("right_key"), expr("condition")];
+        test(actual, expected, "inner join");
+
+        let actual = QueryPlan::Project(ProjectPlan {
+            input: ProjectInputPlan::LeftOuterJoin(Box::new(LeftOuterJoinPlan {
+                input: LeftOuterJoinInputPlan::Condition(condition.clone()),
+            })),
+            projection: ProjectionPlan::SchemalessMap,
+        });
+        let expected = &[expr("left_key"), expr("right_key"), expr("condition")];
+        test(actual, expected, "left outer join");
+    }
+
+    #[test]
+    fn join_condition_errors() {
+        let actual = "SELECT 1 FROM Item JOIN Other ON stop";
+        test_error(actual, "inner join predicate");
+
+        let actual = "SELECT 1 FROM Item LEFT JOIN Other ON stop";
+        test_error(actual, "left outer join predicate");
+    }
+
+    #[test]
+    fn nested_loop_join() {
+        let actual = "SELECT x AS r FROM A JOIN B JOIN SERIES(y)";
+        let expected = &["y", "x"];
+        test(actual, expected, "inner join input");
+
+        let actual = "SELECT x AS r FROM A LEFT JOIN B JOIN SERIES(y)";
+        let expected = &["y", "x"];
+        test(actual, expected, "left outer join input");
+    }
+
+    #[test]
+    fn nested_loop_join_errors() {
+        let actual = "SELECT 1 FROM SERIES(stop) JOIN Item";
+        test_error(actual, "input");
+
+        let actual = "SELECT 1 FROM SERIES(stop) JOIN Item ON later";
+        test_error(actual, "input before condition");
+    }
+
+    #[test]
+    fn hash_join() {
+        let test = |actual: HashJoinPlan, expected: &[ExprPlan], name: &str| {
+            let mut visitor = Expressions::default();
+            let result = QueryWalker {
+                visitor: &mut visitor,
+            }
+            .hash_join(&actual);
+            assert_eq!(result, Ok(()), "{name}");
+            assert_eq!(visitor.visited, expected, "{name}");
+        };
+
+        let hash = HashJoinPlan {
+            input: HashJoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
+                name: "Item".to_owned(),
+                alias: None,
+                access: TableAccessPlan::FullScan,
+            })),
+            right: SourcePlan::Table(TableSourcePlan {
+                name: "Other".to_owned(),
+                alias: None,
+                access: TableAccessPlan::FullScan,
+            }),
+            input_key: expr("left_key"),
+            right_key: expr("right_key"),
+            right_filter: None,
+        };
+
+        let actual = hash.clone();
+        let expected = &[expr("left_key"), expr("right_key")];
+        test(actual, expected, "source without filter");
+
+        let actual = HashJoinPlan {
+            right_filter: Some(expr("filter")),
+            ..hash.clone()
+        };
+        let expected = &[expr("left_key"), expr("right_key"), expr("filter")];
+        test(actual, expected, "source with filter");
+
+        let actual = HashJoinPlan {
+            input: HashJoinInputPlan::InnerJoin(Box::new(InnerJoinPlan {
+                input: InnerJoinInputPlan::Hash(hash.clone()),
+            })),
+            input_key: expr("outer_left"),
+            right_key: expr("outer_right"),
+            right_filter: Some(expr("filter")),
+            ..hash.clone()
+        };
+        let expected = &[
+            expr("left_key"),
+            expr("right_key"),
+            expr("outer_left"),
+            expr("outer_right"),
+            expr("filter"),
+        ];
+        test(actual, expected, "inner join input");
+
+        let actual = HashJoinPlan {
+            input: HashJoinInputPlan::LeftOuterJoin(Box::new(LeftOuterJoinPlan {
+                input: LeftOuterJoinInputPlan::Hash(hash.clone()),
+            })),
+            input_key: expr("outer_left"),
+            right_key: expr("outer_right"),
+            right_filter: Some(expr("filter")),
+            ..hash.clone()
+        };
+        let expected = &[
+            expr("left_key"),
+            expr("right_key"),
+            expr("outer_left"),
+            expr("outer_right"),
+            expr("filter"),
+        ];
+        test(actual, expected, "left outer join input");
+    }
+
+    #[test]
+    fn hash_join_errors() {
+        let test = |input: HashJoinPlan, expected: &[ExprPlan], name: &str| {
+            for end in 0..expected.len() {
+                let actual = input.clone();
+                let mut visitor = Expressions {
+                    stop_after: Some(end + 1),
+                    ..Default::default()
+                };
+                let result = QueryWalker {
+                    visitor: &mut visitor,
+                }
+                .hash_join(&actual);
+                assert_eq!(result, Err("stop"), "[{name}] child {end}");
+                assert_eq!(visitor.visited, expected[..=end], "[{name}] child {end}");
+            }
+        };
+
+        let hash = HashJoinPlan {
+            input: HashJoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
+                name: "Item".to_owned(),
+                alias: None,
+                access: TableAccessPlan::FullScan,
+            })),
+            right: SourcePlan::Table(TableSourcePlan {
+                name: "Other".to_owned(),
+                alias: None,
+                access: TableAccessPlan::FullScan,
+            }),
+            input_key: expr("left_key"),
+            right_key: expr("right_key"),
+            right_filter: None,
+        };
+
+        let actual = HashJoinPlan {
+            right_filter: Some(expr("filter")),
+            ..hash.clone()
+        };
+        let expected = &[expr("left_key"), expr("right_key"), expr("filter")];
+        test(actual, expected, "source input");
+
+        let actual = HashJoinPlan {
+            input: HashJoinInputPlan::InnerJoin(Box::new(InnerJoinPlan {
+                input: InnerJoinInputPlan::Hash(hash.clone()),
+            })),
+            input_key: expr("outer_left"),
+            right_key: expr("outer_right"),
+            right_filter: Some(expr("filter")),
+            ..hash.clone()
+        };
+        let expected = &[
+            expr("left_key"),
+            expr("right_key"),
+            expr("outer_left"),
+            expr("outer_right"),
+            expr("filter"),
+        ];
+        test(actual, expected, "inner join input");
+
+        let actual = HashJoinPlan {
+            input: HashJoinInputPlan::LeftOuterJoin(Box::new(LeftOuterJoinPlan {
+                input: LeftOuterJoinInputPlan::Hash(hash.clone()),
+            })),
+            input_key: expr("outer_left"),
+            right_key: expr("outer_right"),
+            right_filter: Some(expr("filter")),
+            ..hash.clone()
+        };
+        let expected = &[
+            expr("left_key"),
+            expr("right_key"),
+            expr("outer_left"),
+            expr("outer_right"),
+            expr("filter"),
+        ];
+        test(actual, expected, "left outer join input");
+    }
+
+    #[test]
+    fn hash_join_source_errors() {
+        let hash = HashJoinPlan {
+            input: HashJoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
+                name: "Item".to_owned(),
+                alias: None,
+                access: TableAccessPlan::FullScan,
+            })),
+            right: SourcePlan::Table(TableSourcePlan {
+                name: "Other".to_owned(),
+                alias: None,
+                access: TableAccessPlan::FullScan,
+            }),
+            input_key: expr("left_key"),
+            right_key: expr("right_key"),
+            right_filter: None,
+        };
+
+        let test = |rejected: &'static str, expected: &[&str], name: &str| {
+            let actual = hash.clone();
+            let mut visitor = RejectSource {
+                name: rejected,
+                visited: Vec::new(),
+            };
+            let result = QueryWalker {
+                visitor: &mut visitor,
+            }
+            .hash_join(&actual);
+            assert_eq!(result, Err("source"), "{name}");
+            assert_eq!(visitor.visited, expected, "{name}");
+        };
+
+        let actual = "Item";
+        let expected = &["Item"];
+        test(actual, expected, "input source");
+
+        let actual = "Other";
+        let expected = &["Item", "Other"];
+        test(actual, expected, "right source");
     }
 }

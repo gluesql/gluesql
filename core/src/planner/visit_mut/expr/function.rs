@@ -228,7 +228,7 @@ mod tests {
         let mut expr = ExprPlan::from(translate_expr(&parsed, NO_PARAMS).expect(input));
         visit_mut_expr(&mut expr, &mut |e| {
             if let ExprPlan::Identifier(ident) = e {
-                *e = ExprPlan::Identifier(format!("_{ident}"));
+                *e = ExprPlan::Identifier(format!("__{ident}__"));
             }
         });
 
@@ -240,105 +240,105 @@ mod tests {
 
     #[test]
     fn visit_mut_function_variants() {
-        test("ABS(x)", "ABS(_x)");
-        test("ADD_MONTH(d, n)", "ADD_MONTH(_d, _n)");
-        test("LOWER(s)", "LOWER(_s)");
-        test("INITCAP(s)", "INITCAP(_s)");
-        test("UPPER(s)", "UPPER(_s)");
-        test("LEFT(s, n)", "LEFT(_s, _n)");
-        test("RIGHT(s, n)", "RIGHT(_s, _n)");
-        test("ASIN(x)", "ASIN(_x)");
-        test("ACOS(x)", "ACOS(_x)");
-        test("ATAN(x)", "ATAN(_x)");
-        test("LPAD(s, n)", "LPAD(_s, _n)");
-        test("LPAD(s, n, f)", "LPAD(_s, _n, _f)");
-        test("RPAD(s, n)", "RPAD(_s, _n)");
-        test("RPAD(s, n, f)", "RPAD(_s, _n, _f)");
-        test("REPLACE(s, o, n)", "REPLACE(_s, _o, _n)");
-        test("CAST(x AS INTEGER)", "CAST(_x AS INTEGER)");
-        test("CEIL(x)", "CEIL(_x)");
-        test("COALESCE(a, b, c)", "COALESCE(_a, _b, _c)");
-        test("CONCAT(a, b)", "CONCAT(_a, _b)");
-        test("CONCAT_WS(sep, a, b)", "CONCAT_WS(_sep, _a, _b)");
-        test("IFNULL(a, b)", "IFNULL(_a, _b)");
-        test("NULLIF(a, b)", "NULLIF(_a, _b)");
+        test("ABS(x)", "ABS(__x__)");
+        test("ADD_MONTH(d, n)", "ADD_MONTH(__d__, __n__)");
+        test("LOWER(s)", "LOWER(__s__)");
+        test("INITCAP(s)", "INITCAP(__s__)");
+        test("UPPER(s)", "UPPER(__s__)");
+        test("LEFT(s, n)", "LEFT(__s__, __n__)");
+        test("RIGHT(s, n)", "RIGHT(__s__, __n__)");
+        test("ASIN(x)", "ASIN(__x__)");
+        test("ACOS(x)", "ACOS(__x__)");
+        test("ATAN(x)", "ATAN(__x__)");
+        test("LPAD(s, n)", "LPAD(__s__, __n__)");
+        test("LPAD(s, n, f)", "LPAD(__s__, __n__, __f__)");
+        test("RPAD(s, n)", "RPAD(__s__, __n__)");
+        test("RPAD(s, n, f)", "RPAD(__s__, __n__, __f__)");
+        test("REPLACE(s, o, n)", "REPLACE(__s__, __o__, __n__)");
+        test("CAST(x AS INTEGER)", "CAST(__x__ AS INTEGER)");
+        test("CEIL(x)", "CEIL(__x__)");
+        test("COALESCE(a, b, c)", "COALESCE(__a__, __b__, __c__)");
+        test("CONCAT(a, b)", "CONCAT(__a__, __b__)");
+        test("CONCAT_WS(sep, a, b)", "CONCAT_WS(__sep__, __a__, __b__)");
+        test("IFNULL(a, b)", "IFNULL(__a__, __b__)");
+        test("NULLIF(a, b)", "NULLIF(__a__, __b__)");
         test("RAND()", "RAND()");
-        test("RAND(x)", "RAND(_x)");
-        test("ROUND(x)", "ROUND(_x)");
-        test("TRUNC(x)", "TRUNC(_x)");
-        test("FLOOR(x)", "FLOOR(_x)");
-        test("TRIM(s)", "TRIM(_s)");
-        test("TRIM(LEADING c FROM s)", "TRIM(LEADING _c FROM _s)");
-        test("EXP(x)", "EXP(_x)");
-        test("EXTRACT(YEAR FROM d)", "EXTRACT(YEAR FROM _d)");
-        test("LN(x)", "LN(_x)");
-        test("LOG(a, b)", "LOG(_a, _b)");
-        test("LOG2(x)", "LOG2(_x)");
-        test("LOG10(x)", "LOG10(_x)");
-        test("DIV(a, b)", "DIV(_a, _b)");
-        test("MOD(a, b)", "MOD(_a, _b)");
-        test("GCD(a, b)", "GCD(_a, _b)");
-        test("LCM(a, b)", "LCM(_a, _b)");
-        test("SIN(x)", "SIN(_x)");
-        test("COS(x)", "COS(_x)");
-        test("TAN(x)", "TAN(_x)");
-        test("SQRT(x)", "SQRT(_x)");
-        test("POWER(a, b)", "POWER(_a, _b)");
-        test("RADIANS(x)", "RADIANS(_x)");
-        test("DEGREES(x)", "DEGREES(_x)");
+        test("RAND(x)", "RAND(__x__)");
+        test("ROUND(x)", "ROUND(__x__)");
+        test("TRUNC(x)", "TRUNC(__x__)");
+        test("FLOOR(x)", "FLOOR(__x__)");
+        test("TRIM(s)", "TRIM(__s__)");
+        test("TRIM(LEADING c FROM s)", "TRIM(LEADING __c__ FROM __s__)");
+        test("EXP(x)", "EXP(__x__)");
+        test("EXTRACT(YEAR FROM d)", "EXTRACT(YEAR FROM __d__)");
+        test("LN(x)", "LN(__x__)");
+        test("LOG(a, b)", "LOG(__a__, __b__)");
+        test("LOG2(x)", "LOG2(__x__)");
+        test("LOG10(x)", "LOG10(__x__)");
+        test("DIV(a, b)", "DIV(__a__, __b__)");
+        test("MOD(a, b)", "MOD(__a__, __b__)");
+        test("GCD(a, b)", "GCD(__a__, __b__)");
+        test("LCM(a, b)", "LCM(__a__, __b__)");
+        test("SIN(x)", "SIN(__x__)");
+        test("COS(x)", "COS(__x__)");
+        test("TAN(x)", "TAN(__x__)");
+        test("SQRT(x)", "SQRT(__x__)");
+        test("POWER(a, b)", "POWER(__a__, __b__)");
+        test("RADIANS(x)", "RADIANS(__x__)");
+        test("DEGREES(x)", "DEGREES(__x__)");
         test("NOW()", "NOW()");
         test("CURRENT_DATE()", "CURRENT_DATE()");
         test("CURRENT_TIME()", "CURRENT_TIME()");
         test("CURRENT_TIMESTAMP()", "CURRENT_TIMESTAMP()");
         test("PI()", "PI()");
-        test("LAST_DAY(d)", "LAST_DAY(_d)");
-        test("LTRIM(s)", "LTRIM(_s)");
-        test("LTRIM(s, c)", "LTRIM(_s, _c)");
-        test("RTRIM(s)", "RTRIM(_s)");
-        test("RTRIM(s, c)", "RTRIM(_s, _c)");
-        test("REVERSE(s)", "REVERSE(_s)");
-        test("REPEAT(s, n)", "REPEAT(_s, _n)");
-        test("SIGN(x)", "SIGN(_x)");
-        test("SUBSTR(s, i)", "SUBSTR(_s, _i)");
-        test("SUBSTR(s, i, n)", "SUBSTR(_s, _i, _n)");
-        test("UNWRAP(m, k)", "UNWRAP(_m, _k)");
+        test("LAST_DAY(d)", "LAST_DAY(__d__)");
+        test("LTRIM(s)", "LTRIM(__s__)");
+        test("LTRIM(s, c)", "LTRIM(__s__, __c__)");
+        test("RTRIM(s)", "RTRIM(__s__)");
+        test("RTRIM(s, c)", "RTRIM(__s__, __c__)");
+        test("REVERSE(s)", "REVERSE(__s__)");
+        test("REPEAT(s, n)", "REPEAT(__s__, __n__)");
+        test("SIGN(x)", "SIGN(__x__)");
+        test("SUBSTR(s, i)", "SUBSTR(__s__, __i__)");
+        test("SUBSTR(s, i, n)", "SUBSTR(__s__, __i__, __n__)");
+        test("UNWRAP(m, k)", "UNWRAP(__m__, __k__)");
         test("GENERATE_UUID()", "GENERATE_UUID()");
-        test("GREATEST(a, b, c)", "GREATEST(_a, _b, _c)");
-        test("FORMAT(d, f)", "FORMAT(_d, _f)");
-        test("TO_DATE(s, f)", "TO_DATE(_s, _f)");
-        test("TO_TIMESTAMP(s, f)", "TO_TIMESTAMP(_s, _f)");
-        test("TO_TIME(s, f)", "TO_TIME(_s, _f)");
-        test("POSITION(a IN b)", "POSITION(_a IN _b)");
-        test("FIND_IDX(a, b)", "FIND_IDX(_a, _b)");
-        test("FIND_IDX(a, b, n)", "FIND_IDX(_a, _b, _n)");
-        test("ASCII(s)", "ASCII(_s)");
-        test("CHR(n)", "CHR(_n)");
-        test("MD5(s)", "MD5(_s)");
-        test("HEX(x)", "HEX(_x)");
-        test("APPEND(l, v)", "APPEND(_l, _v)");
-        test("SORT(l)", "SORT(_l)");
-        test("SORT(l, o)", "SORT(_l, _o)");
-        test("SLICE(l, s, n)", "SLICE(_l, _s, _n)");
-        test("PREPEND(l, v)", "PREPEND(_l, _v)");
-        test("SKIP(l, n)", "SKIP(_l, _n)");
-        test("TAKE(l, n)", "TAKE(_l, _n)");
-        test("GET_X(p)", "GET_X(_p)");
-        test("GET_Y(p)", "GET_Y(_p)");
-        test("POINT(x, y)", "POINT(_x, _y)");
+        test("GREATEST(a, b, c)", "GREATEST(__a__, __b__, __c__)");
+        test("FORMAT(d, f)", "FORMAT(__d__, __f__)");
+        test("TO_DATE(s, f)", "TO_DATE(__s__, __f__)");
+        test("TO_TIMESTAMP(s, f)", "TO_TIMESTAMP(__s__, __f__)");
+        test("TO_TIME(s, f)", "TO_TIME(__s__, __f__)");
+        test("POSITION(a IN b)", "POSITION(__a__ IN __b__)");
+        test("FIND_IDX(a, b)", "FIND_IDX(__a__, __b__)");
+        test("FIND_IDX(a, b, n)", "FIND_IDX(__a__, __b__, __n__)");
+        test("ASCII(s)", "ASCII(__s__)");
+        test("CHR(n)", "CHR(__n__)");
+        test("MD5(s)", "MD5(__s__)");
+        test("HEX(x)", "HEX(__x__)");
+        test("APPEND(l, v)", "APPEND(__l__, __v__)");
+        test("SORT(l)", "SORT(__l__)");
+        test("SORT(l, o)", "SORT(__l__, __o__)");
+        test("SLICE(l, s, n)", "SLICE(__l__, __s__, __n__)");
+        test("PREPEND(l, v)", "PREPEND(__l__, __v__)");
+        test("SKIP(l, n)", "SKIP(__l__, __n__)");
+        test("TAKE(l, n)", "TAKE(__l__, __n__)");
+        test("GET_X(p)", "GET_X(__p__)");
+        test("GET_Y(p)", "GET_Y(__p__)");
+        test("POINT(x, y)", "POINT(__x__, __y__)");
         test(
             "CALC_DISTANCE(POINT(a, b), POINT(c, d))",
-            "CALC_DISTANCE(POINT(_a, _b), POINT(_c, _d))",
+            "CALC_DISTANCE(POINT(__a__, __b__), POINT(__c__, __d__))",
         );
-        test("IS_EMPTY(l)", "IS_EMPTY(_l)");
-        test("LENGTH(s)", "LENGTH(_s)");
-        test("ENTRIES(m)", "ENTRIES(_m)");
-        test("KEYS(m)", "KEYS(_m)");
-        test("VALUES(m)", "VALUES(_m)");
-        test("SPLICE(l, a, b)", "SPLICE(_l, _a, _b)");
-        test("SPLICE(l, a, b, v)", "SPLICE(_l, _a, _b, _v)");
-        test("DEDUP(l)", "DEDUP(_l)");
+        test("IS_EMPTY(l)", "IS_EMPTY(__l__)");
+        test("LENGTH(s)", "LENGTH(__s__)");
+        test("ENTRIES(m)", "ENTRIES(__m__)");
+        test("KEYS(m)", "KEYS(__m__)");
+        test("VALUES(m)", "VALUES(__m__)");
+        test("SPLICE(l, a, b)", "SPLICE(__l__, __a__, __b__)");
+        test("SPLICE(l, a, b, v)", "SPLICE(__l__, __a__, __b__, __v__)");
+        test("DEDUP(l)", "DEDUP(__l__)");
         test("custom_func()", "custom_func()");
-        test("custom_func(a, b)", "custom_func(_a, _b)");
+        test("custom_func(a, b)", "custom_func(__a__, __b__)");
     }
 
     #[test]
@@ -433,13 +433,13 @@ mod tests {
         let expected = ExprPlan::Function(Box::new(FunctionPlan::Custom {
             function_id: 7,
             exprs: vec![
-                ExprPlan::Identifier("_a".to_owned()),
-                ExprPlan::Identifier("_b".to_owned()),
+                ExprPlan::Identifier("__a__".to_owned()),
+                ExprPlan::Identifier("__b__".to_owned()),
             ],
         }));
         visit_mut_expr(&mut expr, &mut |expr| {
             if let ExprPlan::Identifier(name) = expr {
-                *name = format!("_{name}");
+                *name = format!("__{name}__");
             }
         });
         assert_eq!(expr, expected);

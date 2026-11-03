@@ -84,73 +84,109 @@ mod tests {
 
     #[test]
     fn table_access() {
-        let cases = [
-            (TableAccessPlan::FullScan, Vec::new()),
-            (
-                TableAccessPlan::PrimaryKey { expr: expr("key") },
-                vec![expr("key")],
-            ),
-            (
-                TableAccessPlan::Index {
-                    name: "idx".to_owned(),
-                    asc: None,
-                    predicate: None,
-                },
-                Vec::new(),
-            ),
-            (
-                TableAccessPlan::Index {
-                    name: "idx".to_owned(),
-                    asc: Some(true),
-                    predicate: Some(IndexPredicatePlan {
-                        operator: IndexOperator::Eq,
-                        expr: expr("key"),
-                    }),
-                },
-                vec![expr("key")],
-            ),
-        ];
-        for (access, expected_exprs) in cases {
-            let source = SourcePlan::Table(TableSourcePlan {
+        let test = |actual: TableAccessPlan, expected: &[ExprPlan], name: &str| {
+            let actual = SourcePlan::Table(TableSourcePlan {
                 name: "Item".to_owned(),
                 alias: None,
-                access,
+                access: actual,
             });
-            let mut read = Expressions::default();
-            assert_eq!(Visitor::visit_source(&mut read, &source), Ok(()));
-            assert_eq!(read.0, expected_exprs);
+            let mut visitor = Expressions::default();
+            assert_eq!(visitor.visit_source(&actual), Ok(()), "{name}");
+            assert_eq!(visitor.0, expected, "{name}");
+        };
 
-            if !expected_exprs.is_empty() {
-                assert_eq!(
-                    Visitor::visit_source(&mut RejectExpressions, &source),
-                    Err("expr")
-                );
-            }
-        }
+        let actual = TableAccessPlan::FullScan;
+        let expected = &[];
+        test(actual, expected, "full scan");
+
+        let actual = TableAccessPlan::PrimaryKey { expr: expr("key") };
+        let expected = &[expr("key")];
+        test(actual, expected, "primary key");
+
+        let actual = TableAccessPlan::Index {
+            name: "idx".to_owned(),
+            asc: None,
+            predicate: None,
+        };
+        let expected = &[];
+        test(actual, expected, "index without predicate");
+
+        let actual = TableAccessPlan::Index {
+            name: "idx".to_owned(),
+            asc: Some(true),
+            predicate: Some(IndexPredicatePlan {
+                operator: IndexOperator::Eq,
+                expr: expr("key"),
+            }),
+        };
+        let expected = &[expr("key")];
+        test(actual, expected, "index with predicate");
     }
 
     #[test]
-    fn source_inputs() {
-        for (input, expressions) in [
-            ("SELECT * FROM SERIES(n)", vec![expr("n")]),
-            (
-                "SELECT * FROM (VALUES (x), (y)) v",
-                vec![expr("x"), expr("y")],
-            ),
-            ("SELECT * FROM GLUE_TABLES", Vec::new()),
-        ] {
-            let actual = source(input);
-            let mut read = Expressions::default();
-            assert_eq!(Visitor::visit_source(&mut read, &actual), Ok(()), "{input}");
-            assert_eq!(read.0, expressions, "{input}");
+    fn table_access_errors() {
+        let test = |actual: TableAccessPlan, expected: Result<(), &str>, name: &str| {
+            let actual = SourcePlan::Table(TableSourcePlan {
+                name: "Item".to_owned(),
+                alias: None,
+                access: actual,
+            });
+            let result = RejectExpressions.visit_source(&actual);
+            assert_eq!(result, expected, "{name}");
+        };
 
-            if !expressions.is_empty() {
-                assert_eq!(
-                    Visitor::visit_source(&mut RejectExpressions, &actual),
-                    Err("expr"),
-                    "{input}"
-                );
-            }
-        }
+        let actual = TableAccessPlan::PrimaryKey { expr: expr("key") };
+        let expected = Err("expr");
+        test(actual, expected, "primary key");
+
+        let actual = TableAccessPlan::Index {
+            name: "idx".to_owned(),
+            asc: Some(true),
+            predicate: Some(IndexPredicatePlan {
+                operator: IndexOperator::Eq,
+                expr: expr("key"),
+            }),
+        };
+        let expected = Err("expr");
+        test(actual, expected, "index with predicate");
+    }
+
+    #[test]
+    fn source_variants() {
+        let test = |actual: &str, expected: &[ExprPlan], name: &str| {
+            let input = source(actual);
+            let mut visitor = Expressions::default();
+            assert_eq!(visitor.visit_source(&input), Ok(()), "[{name}] {actual}");
+            assert_eq!(visitor.0, expected, "[{name}] {actual}");
+        };
+
+        let actual = "SELECT * FROM SERIES(n)";
+        let expected = &[expr("n")];
+        test(actual, expected, "series");
+
+        let actual = "SELECT * FROM (VALUES (x), (y)) v";
+        let expected = &[expr("x"), expr("y")];
+        test(actual, expected, "derived query");
+
+        let actual = "SELECT * FROM GLUE_TABLES";
+        let expected = &[];
+        test(actual, expected, "dictionary");
+    }
+
+    #[test]
+    fn source_errors() {
+        let test = |actual: &str, expected: Result<(), &str>, name: &str| {
+            let input = source(actual);
+            let result = RejectExpressions.visit_source(&input);
+            assert_eq!(result, expected, "[{name}] {actual}");
+        };
+
+        let actual = "SELECT * FROM SERIES(n)";
+        let expected = Err("expr");
+        test(actual, expected, "series");
+
+        let actual = "SELECT * FROM (VALUES (x), (y)) v";
+        let expected = Err("expr");
+        test(actual, expected, "derived query");
     }
 }

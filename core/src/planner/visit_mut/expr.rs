@@ -160,7 +160,7 @@ mod tests {
         let mut expr = ExprPlan::from(translate_expr(&parsed, NO_PARAMS).expect(input));
         visit_mut_expr(&mut expr, &mut |e| {
             if let ExprPlan::Identifier(ident) = e {
-                *e = ExprPlan::Identifier(format!("_{ident}"));
+                *e = ExprPlan::Identifier(format!("__{ident}__"));
             }
         });
 
@@ -172,39 +172,42 @@ mod tests {
 
     #[test]
     fn visit_mut_expr_variants() {
-        test("id", "_id");
+        test("id", "__id__");
         test("t.id", "t.id");
-        test("id IS NULL", "_id IS NULL");
-        test("id IS NOT NULL", "_id IS NOT NULL");
-        test("id IN (a, b, c)", "_id IN (_a, _b, _c)");
-        test("id IN (SELECT 1)", "_id IN (SELECT 1)");
-        test("id BETWEEN low AND high", "_id BETWEEN _low AND _high");
-        test("name LIKE pattern", "_name LIKE _pattern");
-        test("name ILIKE pattern", "_name ILIKE _pattern");
-        test("name ~* pattern", "_name ~* _pattern");
-        test("a + b", "_a + _b");
-        test("-x", "-_x");
-        test("(id)", "(_id)");
+        test("id IS NULL", "__id__ IS NULL");
+        test("id IS NOT NULL", "__id__ IS NOT NULL");
+        test("id IN (a, b, c)", "__id__ IN (__a__, __b__, __c__)");
+        test("id IN (SELECT 1)", "__id__ IN (SELECT 1)");
+        test(
+            "id BETWEEN low AND high",
+            "__id__ BETWEEN __low__ AND __high__",
+        );
+        test("name LIKE pattern", "__name__ LIKE __pattern__");
+        test("name ILIKE pattern", "__name__ ILIKE __pattern__");
+        test("name ~* pattern", "__name__ ~* __pattern__");
+        test("a + b", "__a__ + __b__");
+        test("-x", "-__x__");
+        test("(id)", "(__id__)");
         test("123", "123");
         test("TRUE", "TRUE");
         test("NULL", "NULL");
         test("INT '123'", "INT '123'");
-        test("ABS(x)", "ABS(_x)");
-        test("SUM(x)", "SUM(_x)");
+        test("ABS(x)", "ABS(__x__)");
+        test("SUM(x)", "SUM(__x__)");
         test("EXISTS(SELECT 1)", "EXISTS(SELECT 1)");
         test("(SELECT x)", "(SELECT x)");
         test(
             "CASE WHEN a THEN b ELSE c END",
-            "CASE WHEN _a THEN _b ELSE _c END",
+            "CASE WHEN __a__ THEN __b__ ELSE __c__ END",
         );
         test(
             "CASE x WHEN 1 THEN a ELSE b END",
-            "CASE _x WHEN 1 THEN _a ELSE _b END",
+            "CASE __x__ WHEN 1 THEN __a__ ELSE __b__ END",
         );
-        test("CASE WHEN a THEN b END", "CASE WHEN _a THEN _b END");
-        test("arr[idx]", "_arr[_idx]");
-        test("INTERVAL x DAY", "INTERVAL _x DAY");
-        test("[a, b, c]", "[_a, _b, _c]");
+        test("CASE WHEN a THEN b END", "CASE WHEN __a__ THEN __b__ END");
+        test("arr[idx]", "__arr__[__idx__]");
+        test("INTERVAL x DAY", "INTERVAL __x__ DAY");
+        test("[a, b, c]", "[__a__, __b__, __c__]");
     }
 
     #[test]
@@ -259,7 +262,7 @@ mod tests {
             walk_expr_mut(self, expr)?;
             if let ExprPlan::Identifier(name) = expr {
                 self.0.push(name.clone());
-                *name = format!("_{name}");
+                *name = format!("__{name}__");
             }
             Ok(())
         }
@@ -267,50 +270,70 @@ mod tests {
 
     #[test]
     fn subqueries() {
-        let cases: &[(&str, &str, &[&str], &[&str])] = &[
-            ("(SELECT x AS r)", "(SELECT _x AS r)", &["x"], &[]),
-            (
-                "EXISTS(SELECT x AS r FROM SERIES(n))",
-                "EXISTS(SELECT _x AS r FROM SERIES(_n))",
-                &["n", "x"],
-                &[],
-            ),
-            (
-                "x IN (SELECT y AS r FROM (VALUES (z)) v)",
-                "_x IN (SELECT _y AS r FROM (VALUES (_z)) v)",
-                &["x", "z", "y"],
-                &["x"],
-            ),
-            (
-                "ABS((SELECT x AS r FROM SERIES((SELECT n AS s))))",
-                "ABS((SELECT _x AS r FROM SERIES((SELECT _n AS s))))",
-                &["n", "x"],
-                &[],
-            ),
-            ("SUM((SELECT x AS r))", "SUM((SELECT _x AS r))", &["x"], &[]),
-        ];
-        for &(input, expected, identifiers, outer_identifiers) in cases {
-            let mut actual = expr(input);
-            let mut write = Identifiers::default();
+        let test = |actual: &str, expected: &str, expected_identifiers: &[&str], name: &str| {
+            let mut result = expr(actual);
+            let mut visitor = Identifiers::default();
+            assert_eq!(visitor.visit_expr(&mut result), Ok(()), "[{name}] {actual}");
+            assert_eq!(visitor.0, expected_identifiers, "[{name}] {actual}");
             assert_eq!(
-                VisitorMut::visit_expr(&mut write, &mut actual),
-                Ok(()),
-                "{input}"
+                result,
+                expr(expected),
+                "\n[{name}]\nactual: {actual}\nexpected: {expected}"
             );
-            assert_eq!(write.0, identifiers, "{input}");
-            assert_eq!(actual, expr(expected), "{input}");
+        };
 
-            let mut visited = Vec::new();
-            visit_mut_expr(&mut expr(input), &mut |expr| {
-                if let ExprPlan::Identifier(name) = expr {
-                    visited.push(name.clone());
-                }
-            });
-            assert_eq!(
-                visited, outer_identifiers,
-                "expression-only mutable: {input}"
-            );
-        }
+        let actual = "(SELECT x AS r)";
+        let expected = "(SELECT __x__ AS r)";
+        let expected_identifiers = &["x"];
+        test(actual, expected, expected_identifiers, "scalar subquery");
+
+        let actual = "EXISTS(SELECT x AS r FROM SERIES(n))";
+        let expected = "EXISTS(SELECT __x__ AS r FROM SERIES(__n__))";
+        let expected_identifiers = &["n", "x"];
+        test(actual, expected, expected_identifiers, "exists");
+
+        let actual = "x IN (SELECT y AS r FROM (VALUES (z)) v)";
+        let expected = "__x__ IN (SELECT __y__ AS r FROM (VALUES (__z__)) v)";
+        let expected_identifiers = &["x", "z", "y"];
+        test(actual, expected, expected_identifiers, "in subquery");
+
+        let actual = "ABS((SELECT x AS r FROM SERIES((SELECT n AS s))))";
+        let expected = "ABS((SELECT __x__ AS r FROM SERIES((SELECT __n__ AS s))))";
+        let expected_identifiers = &["n", "x"];
+        test(
+            actual,
+            expected,
+            expected_identifiers,
+            "nested subqueries in function",
+        );
+
+        let actual = "SUM((SELECT x AS r))";
+        let expected = "SUM((SELECT __x__ AS r))";
+        let expected_identifiers = &["x"];
+        test(actual, expected, expected_identifiers, "aggregate argument");
+    }
+
+    #[test]
+    fn expression_only_subqueries() {
+        let actual = "(SELECT x AS r)";
+        let expected = "(SELECT x AS r)";
+        test(actual, expected);
+
+        let actual = "EXISTS(SELECT x AS r FROM SERIES(n))";
+        let expected = "EXISTS(SELECT x AS r FROM SERIES(n))";
+        test(actual, expected);
+
+        let actual = "x IN (SELECT y AS r FROM (VALUES (z)) v)";
+        let expected = "__x__ IN (SELECT y AS r FROM (VALUES (z)) v)";
+        test(actual, expected);
+
+        let actual = "ABS((SELECT x AS r FROM SERIES((SELECT n AS s))))";
+        let expected = "ABS((SELECT x AS r FROM SERIES((SELECT n AS s))))";
+        test(actual, expected);
+
+        let actual = "SUM((SELECT x AS r))";
+        let expected = "SUM((SELECT x AS r))";
+        test(actual, expected);
     }
 
     #[test]
@@ -325,15 +348,23 @@ mod tests {
             }
         }
 
-        for sql in ["(SELECT x)", "EXISTS(SELECT x)", "x IN (SELECT y)"] {
-            let mut input = expr(sql);
+        let test = |actual: &str, expected: Result<(), &str>, name: &str| {
+            let mut input = expr(actual);
+            let result = RejectQueries.visit_expr(&mut input);
+            assert_eq!(result, expected, "[{name}] {actual}");
+        };
 
-            assert_eq!(
-                VisitorMut::visit_expr(&mut RejectQueries, &mut input),
-                Err("query"),
-                "{sql}"
-            );
-        }
+        let actual = "(SELECT x)";
+        let expected = Err("query");
+        test(actual, expected, "scalar subquery");
+
+        let actual = "EXISTS(SELECT x)";
+        let expected = Err("query");
+        test(actual, expected, "exists");
+
+        let actual = "x IN (SELECT y)";
+        let expected = Err("query");
+        test(actual, expected, "in subquery");
     }
 
     #[test]

@@ -41,7 +41,7 @@ mod tests {
         let mut expr = ExprPlan::from(translate_expr(&parsed, NO_PARAMS).expect(input));
         visit_mut_expr(&mut expr, &mut |e| {
             if let ExprPlan::Identifier(ident) = e {
-                *e = ExprPlan::Identifier(format!("_{ident}"));
+                *e = ExprPlan::Identifier(format!("__{ident}__"));
             }
         });
 
@@ -53,14 +53,14 @@ mod tests {
 
     #[test]
     fn visit_mut_aggregate_variants() {
-        test("SUM(x)", "SUM(_x)");
-        test("COUNT(x)", "COUNT(_x)");
+        test("SUM(x)", "SUM(__x__)");
+        test("COUNT(x)", "COUNT(__x__)");
         test("COUNT(*)", "COUNT(*)");
-        test("MIN(x)", "MIN(_x)");
-        test("MAX(x)", "MAX(_x)");
-        test("AVG(x)", "AVG(_x)");
-        test("VARIANCE(x)", "VARIANCE(_x)");
-        test("STDEV(x)", "STDEV(_x)");
+        test("MIN(x)", "MIN(__x__)");
+        test("MAX(x)", "MAX(__x__)");
+        test("AVG(x)", "AVG(__x__)");
+        test("VARIANCE(x)", "VARIANCE(__x__)");
+        test("STDEV(x)", "STDEV(__x__)");
     }
 
     #[test]

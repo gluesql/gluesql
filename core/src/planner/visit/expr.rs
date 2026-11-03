@@ -259,37 +259,55 @@ mod tests {
 
     #[test]
     fn subqueries() {
-        let cases: &[(&str, &[&str], &[&str])] = &[
-            ("(SELECT x AS r)", &["x"], &[]),
-            ("EXISTS(SELECT x AS r FROM SERIES(n))", &["n", "x"], &[]),
-            (
-                "x IN (SELECT y AS r FROM (VALUES (z)) v)",
-                &["x", "z", "y"],
-                &["x"],
-            ),
-            (
-                "ABS((SELECT x AS r FROM SERIES((SELECT n AS s))))",
-                &["n", "x"],
-                &[],
-            ),
-            ("SUM((SELECT x AS r))", &["x"], &[]),
-        ];
-        for &(input, identifiers, outer_identifiers) in cases {
-            let actual = expr(input);
-            let mut read = Identifiers::default();
-            assert_eq!(Visitor::visit_expr(&mut read, &actual), Ok(()), "{input}");
-            assert_eq!(read.0, identifiers, "{input}");
+        let test = |actual: &str, expected: &[&str], name: &str| {
+            let input = expr(actual);
+            let mut visitor = Identifiers::default();
+            assert_eq!(visitor.visit_expr(&input), Ok(()), "[{name}] {actual}");
+            assert_eq!(visitor.0, expected, "[{name}] {actual}");
+        };
 
-            let mut visited = Vec::new();
-            let result: Result<(), &str> = try_visit_expr(&expr(input), &mut |expr| {
-                if let ExprPlan::Identifier(name) = expr {
-                    visited.push(name.clone());
-                }
-                Ok(())
-            });
-            assert_eq!(result, Ok(()));
-            assert_eq!(visited, outer_identifiers, "expression-only: {input}");
-        }
+        let actual = "(SELECT x AS r)";
+        let expected = &["x"];
+        test(actual, expected, "scalar subquery");
+
+        let actual = "EXISTS(SELECT x AS r FROM SERIES(n))";
+        let expected = &["n", "x"];
+        test(actual, expected, "exists");
+
+        let actual = "x IN (SELECT y AS r FROM (VALUES (z)) v)";
+        let expected = &["x", "z", "y"];
+        test(actual, expected, "in subquery");
+
+        let actual = "ABS((SELECT x AS r FROM SERIES((SELECT n AS s))))";
+        let expected = &["n", "x"];
+        test(actual, expected, "nested subqueries in function");
+
+        let actual = "SUM((SELECT x AS r))";
+        let expected = &["x"];
+        test(actual, expected, "aggregate argument");
+    }
+
+    #[test]
+    fn expression_only_subqueries() {
+        let actual = "(SELECT x AS r)";
+        let expected = &[];
+        test(actual, expected);
+
+        let actual = "EXISTS(SELECT x AS r FROM SERIES(n))";
+        let expected = &[];
+        test(actual, expected);
+
+        let actual = "x IN (SELECT y AS r FROM (VALUES (z)) v)";
+        let expected = &["x"];
+        test(actual, expected);
+
+        let actual = "ABS((SELECT x AS r FROM SERIES((SELECT n AS s))))";
+        let expected = &[];
+        test(actual, expected);
+
+        let actual = "SUM((SELECT x AS r))";
+        let expected = &[];
+        test(actual, expected);
     }
 
     #[test]
@@ -304,14 +322,23 @@ mod tests {
             }
         }
 
-        for sql in ["(SELECT x)", "EXISTS(SELECT x)", "x IN (SELECT y)"] {
-            let input = expr(sql);
-            assert_eq!(
-                Visitor::visit_expr(&mut RejectQueries, &input),
-                Err("query"),
-                "{sql}"
-            );
-        }
+        let test = |actual: &str, expected: Result<(), &str>, name: &str| {
+            let input = expr(actual);
+            let result = RejectQueries.visit_expr(&input);
+            assert_eq!(result, expected, "[{name}] {actual}");
+        };
+
+        let actual = "(SELECT x)";
+        let expected = Err("query");
+        test(actual, expected, "scalar subquery");
+
+        let actual = "EXISTS(SELECT x)";
+        let expected = Err("query");
+        test(actual, expected, "exists");
+
+        let actual = "x IN (SELECT y)";
+        let expected = Err("query");
+        test(actual, expected, "in subquery");
     }
 
     #[test]
