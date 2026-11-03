@@ -152,7 +152,7 @@ mod tests {
     use {
         super::plan,
         crate::{
-            ast::{DataType, Expr},
+            ast::{DataType, Expr, OperateFunctionArg},
             data::CustomFunction as Definition,
             mock::{MockStorage, run},
             parse_sql::{parse, parse_expr},
@@ -619,5 +619,23 @@ mod tests {
             let expected = Err(Error::Planner(PlannerError::StorageAccessInFunctionBody));
             assert_eq!(actual, expected, "stored definition is validated: {sql}");
         }
+
+        storage
+            .insert_function(Definition {
+                func_name: "f".to_owned(),
+                args: vec![OperateFunctionArg {
+                    name: "x".to_owned(),
+                    data_type: DataType::Int,
+                    default: Some(expr("CASE WHEN true THEN 1 ELSE helper() END")),
+                }],
+                body: expr("x"),
+            })
+            .unwrap();
+
+        let actual = plan(&storage, statement("SELECT f()"));
+        let expected = Err(Error::Planner(
+            PlannerError::CustomFunctionInArgumentDefault("HELPER".to_owned()),
+        ));
+        assert_eq!(actual, expected, "stored argument defaults are validated");
     }
 }

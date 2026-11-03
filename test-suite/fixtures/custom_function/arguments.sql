@@ -32,6 +32,16 @@ SELECT add_two(1, NULL, 2) AS r;
 -- | ---- |
 -- | NULL |
 
+CREATE FUNCTION case_default(x INT DEFAULT CASE WHEN true THEN ABS(-2) ELSE 3 END) RETURN x;
+-- @expect: payload Create
+
+-- @name: Argument defaults can use CASE and built-in functions
+SELECT case_default() AS r;
+-- @expect:
+-- | r: I64 |
+-- | ------ |
+-- | 2      |
+
 -- @name: A required argument cannot be omitted
 SELECT add_one();
 -- @expect: error Planner.FunctionArgsLengthNotWithinRange
@@ -69,5 +79,10 @@ CREATE FUNCTION test(a INT, a BOOLEAN) RETURN 1;
 
 -- @name: Calling a custom function in an argument default is rejected
 CREATE FUNCTION test(a INT DEFAULT test()) RETURN 1;
--- @expect: error Evaluate.UnplannedCustomFunction
+-- @expect: error Planner.CustomFunctionInArgumentDefault
+-- @json: "TEST"
+
+-- @name: An unselected default branch cannot contain a custom function call
+CREATE FUNCTION test(a INT DEFAULT CASE WHEN true THEN 1 ELSE test() END) RETURN a;
+-- @expect: error Planner.CustomFunctionInArgumentDefault
 -- @json: "TEST"

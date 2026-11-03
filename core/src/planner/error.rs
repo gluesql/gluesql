@@ -5,6 +5,9 @@ pub enum PlannerError {
     #[error("storage access is not allowed in a custom function body")]
     StorageAccessInFunctionBody,
 
+    #[error("custom function is not allowed in an argument default: {0}")]
+    CustomFunctionInArgumentDefault(String),
+
     #[error("unsupported function: {0}")]
     UnsupportedFunction(String),
 

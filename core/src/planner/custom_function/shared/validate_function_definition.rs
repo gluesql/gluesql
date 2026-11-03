@@ -1,10 +1,10 @@
 use crate::{
     ast::{Expr, OperateFunctionArg},
     executor::evaluate_stateless,
-    plan::{CustomFunctionPlan, ExprPlan, OperateFunctionArgPlan, SourcePlan},
+    plan::{CustomFunctionPlan, ExprPlan, FunctionPlan, OperateFunctionArgPlan, SourcePlan},
     planner::{
         PlannerError,
-        visit::{Visitor, walk_source},
+        visit::{Visitor, walk_expr, walk_source},
     },
     result::Result,
 };
@@ -25,6 +25,7 @@ pub fn validate(
         .map(OperateFunctionArgPlan::from)
         .collect::<Vec<_>>();
     for default in args.iter().filter_map(|arg| arg.default.as_ref()) {
+        FunctionDefaultValidator.visit_expr(default)?;
         evaluate_stateless(None, default)?;
     }
     if !args
@@ -42,6 +43,21 @@ pub fn validate(
         args,
         body,
     })
+}
+
+struct FunctionDefaultValidator;
+
+impl Visitor for FunctionDefaultValidator {
+    type Error = PlannerError;
+
+    fn visit_expr(&mut self, expr: &ExprPlan) -> std::result::Result<(), PlannerError> {
+        if let ExprPlan::Function(function) = expr
+            && let FunctionPlan::UnplannedCustom { name, .. } = function.as_ref()
+        {
+            return Err(PlannerError::CustomFunctionInArgumentDefault(name.clone()));
+        }
+        walk_expr(self, expr)
+    }
 }
 
 struct FunctionBodyValidator;
@@ -134,6 +150,37 @@ mod tests {
         for (sql, expected) in cases {
             assert_eq!(definition(sql), Err(expected), "{sql}");
         }
+    }
+
+    #[test]
+    fn argument_defaults() {
+        let test = |default: &str, name: &str| {
+            let sql = format!("CREATE FUNCTION f(x INT DEFAULT {default}) RETURN x");
+            let actual = definition(&sql);
+            let expected = Err(Error::Planner(
+                PlannerError::CustomFunctionInArgumentDefault("HELPER".to_owned()),
+            ));
+            assert_eq!(actual, expected, "[{name}] {sql}");
+        };
+
+        test("CASE WHEN true THEN 1 ELSE helper() END", "unselected ELSE");
+        test(
+            "CASE WHEN false THEN helper() ELSE 1 END",
+            "unselected THEN",
+        );
+        test(
+            "CASE WHEN true THEN 1 WHEN helper() = 0 THEN 2 ELSE 3 END",
+            "unselected WHEN",
+        );
+        test(
+            "ABS(CASE WHEN true THEN 1 ELSE helper() END)",
+            "builtin argument",
+        );
+        test(
+            "CASE WHEN true THEN 1 ELSE (SELECT helper()) END",
+            "subquery in an unselected branch",
+        );
+        test("helper()", "direct custom call");
     }
 
     #[test]
