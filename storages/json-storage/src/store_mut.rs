@@ -195,7 +195,7 @@ impl JsonStorage {
                             Value::Map(map) => Some(map),
                             _ => None,
                         })
-                        .unwrap_or_default();
+                        .map_storage_err(JsonStorageError::JsonObjectTypeRequired)?;
 
                     map.into_iter()
                         .map(|(key, value)| Ok((key, value.try_into()?)))
