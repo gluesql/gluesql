@@ -4,7 +4,7 @@ mod source;
 
 pub use {
     expr::{visit_mut_expr, walk_expr_mut},
-    query::walk_query_mut,
+    query::{walk_project_mut, walk_query_mut},
     source::walk_source_mut,
 };
 

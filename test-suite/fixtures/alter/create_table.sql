@@ -220,7 +220,7 @@ SELECT * FROM TargetTableIfNotExists
 -- | "chips"    |
 
 CREATE TABLE TargetTableWithData2 AS SELECT * FROM NonExistentTable
--- @expect: error Alter.CtasSourceTableNotFound
+-- @expect: error Planner.CtasSourceTableNotFound
 -- @json: "NonExistentTable"
 
 CREATE TABLE DuplicateColumns (id INT, id INT)

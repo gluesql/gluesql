@@ -34,6 +34,7 @@ pub fn run(sql: &str) -> MockStorage {
 pub struct MockStorage {
     schema_map: HashMap<String, Schema>,
     function_map: HashMap<String, StructCustomFunction>,
+    data_map: HashMap<String, HashMap<Key, Vec<Value>>>,
 }
 
 impl CustomFunction for MockStorage {
@@ -79,10 +80,12 @@ impl Store for MockStorage {
         Err(Error::StorageMsg(msg))
     }
 
-    fn fetch_data(&self, _table_name: &str, _key: &Key) -> Result<Option<Vec<Value>>> {
-        Err(Error::StorageMsg(
-            "[MockStorage] fetch_data not supported".to_owned(),
-        ))
+    fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Vec<Value>>> {
+        Ok(self
+            .data_map
+            .get(table_name)
+            .and_then(|rows| rows.get(key))
+            .cloned())
     }
 
     fn scan_data<'a>(&'a self, _table_name: &str) -> Result<RowIter<'a>> {
@@ -93,6 +96,14 @@ impl Store for MockStorage {
 }
 
 impl StoreMut for MockStorage {
+    fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
+        self.data_map
+            .entry(table_name.to_owned())
+            .or_default()
+            .extend(rows);
+        Ok(())
+    }
+
     fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let table_name = schema.table_name.clone();
         let schema = schema.clone();
@@ -169,12 +180,12 @@ mod tests {
 
         // Store & StoreMut
         assert!(storage.scan_data("Foo").is_err());
-        assert!(storage.fetch_data("Foo", &Key::None).is_err());
+        assert_eq!(storage.fetch_data("Foo", &Key::None), Ok(None));
         assert!(storage.fetch_schema("__Err__").is_err());
         assert!(storage.fetch_all_schemas().is_err());
         assert!(storage.delete_schema("Foo").is_err());
         assert!(storage.append_data("Foo", Vec::new()).is_err());
-        assert!(storage.insert_data("Foo", Vec::new()).is_err());
+        assert_eq!(storage.insert_data("Foo", Vec::new()), Ok(()));
         assert!(storage.delete_data("Foo", Vec::new()).is_err());
 
         // CustomFunction & CustomFunctionMut
@@ -232,6 +243,28 @@ mod tests {
         assert!(storage.commit().is_ok());
 
         assert!(matches!(storage.fetch_schema("Foo"), Ok(None)));
+    }
+
+    #[test]
+    fn keyed_rows() {
+        let mut storage = MockStorage::default();
+        let key = Key::I64(1);
+        let row = vec![Value::I64(1), Value::Str("first".to_owned())];
+        assert_eq!(storage.fetch_data("Item", &key), Ok(None));
+        assert_eq!(
+            storage.insert_data("Item", vec![(key.clone(), row.clone())]),
+            Ok(())
+        );
+        assert_eq!(storage.fetch_data("Item", &key), Ok(Some(row)));
+        assert_eq!(storage.fetch_data("Other", &key), Ok(None));
+        assert_eq!(storage.fetch_data("Item", &Key::I64(2)), Ok(None));
+
+        let row = vec![Value::I64(1), Value::Str("replaced".to_owned())];
+        assert_eq!(
+            storage.insert_data("Item", vec![(key.clone(), row.clone())]),
+            Ok(())
+        );
+        assert_eq!(storage.fetch_data("Item", &key), Ok(Some(row)));
     }
 
     #[test]

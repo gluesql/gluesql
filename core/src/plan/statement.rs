@@ -61,7 +61,9 @@ pub enum StatementPlanKind {
     CreateTable {
         if_not_exists: bool,
         name: String,
-        columns: Option<Vec<ColumnDefPlan>>,
+        /// Target definitions prepared by the CREATE columns planner.
+        /// CTAS without explicit definitions starts as `Unplanned`.
+        columns: TableColumnsPlan,
         source: Option<Box<QueryPlan>>,
         engine: Option<String>,
         foreign_keys: Vec<ForeignKey>,
@@ -150,7 +152,13 @@ impl From<ast::Statement> for StatementPlanKind {
             } => Self::CreateTable {
                 if_not_exists,
                 name,
-                columns: columns.map(|columns| columns.into_iter().map(Into::into).collect()),
+                columns: match columns {
+                    Some(columns) => {
+                        TableColumnsPlan::Columns(columns.into_iter().map(Into::into).collect())
+                    }
+                    None if source.is_some() => TableColumnsPlan::Unplanned,
+                    None => TableColumnsPlan::Schemaless,
+                },
                 source: source.map(|query| Box::new((*query).into())),
                 engine,
                 foreign_keys,
@@ -225,5 +233,64 @@ impl From<StatementPlanKind> for StatementPlan {
 impl From<ast::Statement> for StatementPlan {
     fn from(statement: ast::Statement) -> Self {
         StatementPlanKind::from(statement).into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::{StatementPlanKind, TableColumnsPlan},
+        crate::{
+            ast::{DataType, Literal},
+            parse_sql::parse,
+            plan::{ColumnDefPlan, ExprPlan, QueryPlan, ValuesPlan},
+            translate::translate,
+        },
+    };
+
+    #[test]
+    fn create_table_columns() {
+        let test = |sql: &str, columns: TableColumnsPlan, source: Option<QueryPlan>| {
+            let parsed = parse(sql).expect(sql);
+            let actual = StatementPlanKind::from(translate(&parsed[0]).expect(sql));
+            let expected = StatementPlanKind::CreateTable {
+                if_not_exists: false,
+                name: "Item".to_owned(),
+                columns,
+                source: source.map(Box::new),
+                engine: None,
+                foreign_keys: Vec::new(),
+                comment: None,
+            };
+            assert_eq!(actual, expected, "{sql}");
+        };
+        let columns = vec![ColumnDefPlan {
+            name: "id".to_owned(),
+            data_type: DataType::Int,
+            nullable: true,
+            default: None,
+            unique: None,
+            comment: None,
+        }];
+        let source = QueryPlan::Values(ValuesPlan(vec![vec![ExprPlan::Literal(Literal::Number(
+            1.into(),
+        ))]]));
+
+        test("CREATE TABLE Item", TableColumnsPlan::Schemaless, None);
+        test(
+            "CREATE TABLE Item (id INT)",
+            TableColumnsPlan::Columns(columns.clone()),
+            None,
+        );
+        test(
+            "CREATE TABLE Item AS VALUES (1)",
+            TableColumnsPlan::Unplanned,
+            Some(source.clone()),
+        );
+        test(
+            "CREATE TABLE Item (id INT) AS VALUES (1)",
+            TableColumnsPlan::Columns(columns),
+            Some(source),
+        );
     }
 }

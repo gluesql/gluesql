@@ -6,7 +6,7 @@ use {
         executor::{
             evaluate::{evaluate, evaluate_stateless},
             query,
-            validate::{ColumnValidation, validate_unique},
+            validate::{ColumnValidation, validate_foreign_key, validate_unique},
         },
         plan::{ColumnDefPlan, CustomFunctionPlan, ExprPlan, QueryPlan, ValuesPlan},
         result::Result,
@@ -22,7 +22,7 @@ pub(super) fn fetch_rows<T: GStore>(
     column_defs: &[ColumnDefPlan],
     columns: &[String],
     source: &QueryPlan,
-    foreign_keys: Vec<ForeignKey>,
+    foreign_keys: &[ForeignKey],
 ) -> Result<RowsData> {
     let column_defs = Rc::<[ColumnDefPlan]>::from(column_defs);
     let column_validation = ColumnValidation::All(&column_defs);
@@ -204,55 +204,4 @@ fn assign_values(
             }
         })
         .collect()
-}
-
-fn validate_foreign_key<T: GStore>(
-    storage: &T,
-    column_defs: &Rc<[ColumnDefPlan]>,
-    foreign_keys: Vec<ForeignKey>,
-    rows: &[Vec<Value>],
-) -> Result<()> {
-    for foreign_key in foreign_keys {
-        let ForeignKey {
-            referencing_column_name,
-            referenced_table_name,
-            referenced_column_name,
-            ..
-        } = &foreign_key;
-
-        let target_index = column_defs
-            .iter()
-            .enumerate()
-            .find(|(_, c)| &c.name == referencing_column_name)
-            .ok_or_else(|| {
-                InsertError::ConflictReferencingColumnName(referencing_column_name.to_owned())
-            })?;
-
-        for row in rows {
-            let value =
-                row.get(target_index.0)
-                    .ok_or(InsertError::ConflictReferencingColumnName(
-                        referencing_column_name.to_owned(),
-                    ))?;
-
-            if value == &Value::Null {
-                continue;
-            }
-
-            let no_referenced = storage
-                .fetch_data(referenced_table_name, &Key::try_from(value)?)?
-                .is_none();
-
-            if no_referenced {
-                return Err(InsertError::CannotFindReferencedValue {
-                    table_name: referenced_table_name.to_owned(),
-                    column_name: referenced_column_name.to_owned(),
-                    referenced_value: String::from(value),
-                }
-                .into());
-            }
-        }
-    }
-
-    Ok(())
 }

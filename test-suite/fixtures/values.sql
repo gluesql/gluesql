@@ -85,7 +85,7 @@ VALUES (1, NULL), (2, 'a'), (3, 4)
 --   "literal": "4"
 -- }
 
-CREATE TABLE TableFromValues AS VALUES (1, 'a', True, Null, Null), (2, 'b', False, 3, Null)
+CREATE TABLE TableFromValues AS VALUES (1, 'a', True, Null, CAST(NULL AS TEXT)), (2, 'b', False, 3, Null)
 -- @expect: payload Create
 
 SELECT * FROM TableFromValues

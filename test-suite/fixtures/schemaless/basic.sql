@@ -101,7 +101,7 @@ WHERE flag IS NOT NULL;
 -- | -------------- | ---------------- | -------------- |
 -- | 1001           | "Beam"           | 3000           |
 
-CREATE TABLE ItemName AS SELECT name, dex FROM Item
+CREATE TABLE ItemName AS SELECT CAST(name AS TEXT) AS name, CAST(dex AS INT) AS dex FROM Item
 -- @expect: ok
 
 SELECT name, dex FROM ItemName

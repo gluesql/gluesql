@@ -153,7 +153,7 @@ fn execute_inner<T: GStore + GStoreMut>(
         } => {
             let options = CreateTableOptions {
                 target_table_name: name,
-                column_defs: columns.as_ref().map(Vec::as_slice),
+                columns,
                 if_not_exists: *if_not_exists,
                 source,
                 engine,

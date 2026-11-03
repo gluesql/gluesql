@@ -567,7 +567,7 @@ mod tests {
         let expected: StatementPlan = StatementPlanKind::CreateTable {
             if_not_exists: false,
             name: "Target".to_owned(),
-            columns: None,
+            columns: TableColumnsPlan::Unplanned,
             source: Some(Box::new(parse_and_plan_query(
                 "SELECT COUNT(*) FROM Source",
             ))),

@@ -120,7 +120,7 @@ CREATE TABLE ReferencingTable (
 
 -- @name: If there is no referenced value, insert should fail
 INSERT INTO ReferencingTable VALUES (1, 'orphan', 1);
--- @expect: error Insert.CannotFindReferencedValue
+-- @expect: error Validate.CannotFindReferencedValue
 -- @json:
 -- {
 --   "column_name": "id",
