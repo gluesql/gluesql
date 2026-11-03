@@ -1,6 +1,11 @@
+//! v1 -> v2: remove the `V1DataRow` envelope from each `(Key, V1DataRow)` payload.
+//! `Vec(values)` becomes `values`; `Map(fields)` becomes `[Value::Map(fields)]`.
+//! Schema bytes are preserved by this step.
+
 use {
+    super::{MigrationError, decode},
     crate::error::StorageError,
-    bincode::{deserialize, serialize},
+    bincode::serialize,
     gluesql_core::data::{Key, Value},
     redb::{ReadableTable, TableDefinition, WriteTransaction},
     serde::Deserialize,
@@ -86,12 +91,12 @@ fn collect_rewrite_batch(
 }
 
 fn migrate_row_payload(table_name: &str, payload: &[u8]) -> Result<Option<Vec<u8>>> {
-    if deserialize::<(Key, Vec<Value>)>(payload).is_ok() {
+    if decode::deserialize::<(Key, Vec<Value>)>(payload).is_ok() {
         return Ok(None);
     }
 
-    let (key, row): (Key, V1DataRow) = deserialize(payload)
-        .map_err(|_| StorageError::InvalidV1RowPayload(table_name.to_owned()))?;
+    let (key, row): (Key, V1DataRow) = decode::deserialize(payload)
+        .map_err(|_| MigrationError::InvalidV1RowPayload(table_name.to_owned()))?;
     let row = match row {
         V1DataRow::Vec(values) => values,
         V1DataRow::Map(values) => vec![Value::Map(values)],
@@ -99,4 +104,82 @@ fn migrate_row_payload(table_name: &str, payload: &[u8]) -> Result<Option<Vec<u8
     let migrated = serialize(&(&key, row))?;
 
     Ok(Some(migrated))
+}
+
+#[cfg(test)]
+mod row_conversion {
+    use {
+        super::{Key, MigrationError, StorageError, Value, migrate_row_payload},
+        std::collections::BTreeMap,
+    };
+
+    #[test]
+    fn removes_the_data_row_vec_envelope() {
+        let key = Key::I64(17);
+        let values = vec![Value::I64(23), Value::Str("second".into())];
+        // v1: (key, V1DataRow::Vec(values)), with Vec tag 0.
+        let payload = bincode::serialize(&(&key, 0_u32, &values)).unwrap();
+        let migrated = migrate_row_payload("Item", &payload).unwrap().unwrap();
+        // v2: (key, values), without the enum tag.
+        assert_eq!(migrated, bincode::serialize(&(key, values)).unwrap());
+    }
+
+    #[test]
+    fn wraps_the_data_row_map_in_one_value() {
+        let key = Key::I64(17);
+        let fields = BTreeMap::from([("name".into(), Value::Str("Item".into()))]);
+        // v1: (key, V1DataRow::Map(fields)), with Map tag 1.
+        let payload = bincode::serialize(&(&key, 1_u32, &fields)).unwrap();
+        let migrated = migrate_row_payload("Item", &payload).unwrap().unwrap();
+        // v2: a schemaless row is a one-element Vec containing the whole map.
+        assert_eq!(
+            migrated,
+            bincode::serialize(&(key, vec![Value::Map(fields)])).unwrap()
+        );
+    }
+
+    #[test]
+    fn empty_historical_vec_is_not_mistaken_for_a_current_row() {
+        let key = Key::I64(1);
+        let payload = bincode::serialize(&(&key, 0_u32, Vec::<Value>::new())).unwrap();
+        let migrated = migrate_row_payload("Item", &payload).unwrap().unwrap();
+        assert_eq!(
+            migrated,
+            bincode::serialize(&(key, Vec::<Value>::new())).unwrap()
+        );
+    }
+
+    #[test]
+    fn empty_historical_map_remains_a_schemaless_row() {
+        let key = Key::I64(1);
+        let payload = bincode::serialize(&(&key, 1_u32, BTreeMap::<String, Value>::new())).unwrap();
+        let migrated = migrate_row_payload("Item", &payload).unwrap().unwrap();
+        assert_eq!(
+            bincode::deserialize::<(Key, Vec<Value>)>(&migrated).unwrap(),
+            (key, vec![Value::Map(BTreeMap::new())])
+        );
+    }
+
+    #[test]
+    fn already_converted_rows_are_unchanged() {
+        for values in [
+            vec![],
+            vec![Value::I64(100)],
+            vec![Value::Map(BTreeMap::new())],
+        ] {
+            let payload = bincode::serialize(&(Key::I64(7), values)).unwrap();
+            assert_eq!(migrate_row_payload("Item", &payload).unwrap(), None);
+        }
+    }
+
+    #[test]
+    fn invalid_rows_report_the_owning_table() {
+        let mut trailing = bincode::serialize(&(Key::I64(1), vec![Value::I64(2)])).unwrap();
+        trailing.push(255);
+        for payload in [vec![], vec![255], vec![1, 2, 3, 4], trailing] {
+            assert!(matches!(migrate_row_payload("Broken", &payload),
+                Err(StorageError::Migration(MigrationError::InvalidV1RowPayload(name))) if name == "Broken"
+            ));
+        }
+    }
 }

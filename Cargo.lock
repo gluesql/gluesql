@@ -1232,10 +1232,13 @@ dependencies = [
 name = "gluesql-redb-storage"
 version = "0.20.0"
 dependencies = [
+ "bigdecimal",
  "bincode",
  "gluesql-core",
  "gluesql-test-suite",
+ "ordered-float 4.2.2",
  "redb",
+ "rust_decimal",
  "serde",
  "thiserror 2.0.3",
  "uuid",

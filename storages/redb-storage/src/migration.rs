@@ -1,13 +1,21 @@
+mod decode;
+mod error;
+mod schema_rewrites;
 mod v1_to_v2;
 mod v2_to_v3;
+mod v2_to_v4;
+mod v3_to_v4;
+
+pub(super) use error::MigrationError;
 
 use {
     crate::{
         core::{SCHEMA_TABLE_NAME, STORAGE_META_TABLE_NAME},
         error::StorageError,
     },
-    gluesql_core::error::{Error, Result},
+    gluesql_core::error::Result,
     redb::{Database, ReadTransaction, ReadableTable, TableDefinition, WriteTransaction},
+    schema_rewrites::SchemaRewrites,
     std::path::Path,
 };
 
@@ -15,11 +23,13 @@ use {
 ///
 /// This is stored in the `__GLUESQL_META__` table and is independent of both
 /// the redb crate version and redb's internal file format version. Storage
-/// format v3 keeps the v2 row serialization and requires redb file format v3.
-pub const REDB_STORAGE_FORMAT_VERSION: u32 = 3;
+/// format v4 uses the current core bincode schema layout, keeps the v2 row
+/// serialization and requires redb file format v3.
+pub const REDB_STORAGE_FORMAT_VERSION: u32 = 4;
 
 const V1_REDB_STORAGE_FORMAT_VERSION: u32 = 1;
 const V2_REDB_STORAGE_FORMAT_VERSION: u32 = 2;
+const V3_REDB_STORAGE_FORMAT_VERSION: u32 = 3;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct MigrationReport {
@@ -40,6 +50,7 @@ enum DetectedStorageFormatVersion {
     V1,
     V2,
     V3,
+    V4,
     UnsupportedNewer(u32),
     Unsupported(u32),
 }
@@ -54,20 +65,27 @@ pub(super) fn initialize_storage_format_version(db: &Database) -> StorageResult<
 
 pub(super) fn ensure_storage_format_version_supported(db: &Database) -> StorageResult<()> {
     match detect_storage_format_version(db)? {
-        DetectedStorageFormatVersion::V1 => Err(StorageError::MigrationRequired {
+        DetectedStorageFormatVersion::V1 => Err(MigrationError::MigrationRequired {
             found: V1_REDB_STORAGE_FORMAT_VERSION,
             expected: REDB_STORAGE_FORMAT_VERSION,
-        }),
-        DetectedStorageFormatVersion::V2 => Err(StorageError::MigrationRequired {
+        }
+        .into()),
+        DetectedStorageFormatVersion::V2 => Err(MigrationError::MigrationRequired {
             found: V2_REDB_STORAGE_FORMAT_VERSION,
             expected: REDB_STORAGE_FORMAT_VERSION,
-        }),
-        DetectedStorageFormatVersion::V3 => Ok(()),
+        }
+        .into()),
+        DetectedStorageFormatVersion::V3 => Err(MigrationError::MigrationRequired {
+            found: V3_REDB_STORAGE_FORMAT_VERSION,
+            expected: REDB_STORAGE_FORMAT_VERSION,
+        }
+        .into()),
+        DetectedStorageFormatVersion::V4 => Ok(()),
         DetectedStorageFormatVersion::UnsupportedNewer(version) => {
-            Err(StorageError::UnsupportedNewerFormatVersion(version))
+            Err(MigrationError::UnsupportedNewerFormatVersion(version).into())
         }
         DetectedStorageFormatVersion::Unsupported(version) => {
-            Err(StorageError::UnsupportedFormatVersion(version))
+            Err(MigrationError::UnsupportedFormatVersion(version).into())
         }
     }
 }
@@ -75,16 +93,16 @@ pub(super) fn ensure_storage_format_version_supported(db: &Database) -> StorageR
 pub fn migrate_to_latest<P: AsRef<Path>>(filename: P) -> Result<MigrationReport> {
     let path = filename.as_ref();
     if !path.exists() {
-        return Err(Error::StorageMsg(format!(
-            "[RedbStorage] storage path '{}' does not exist",
-            path.display()
-        )));
+        return Err(
+            StorageError::Migration(MigrationError::StoragePathDoesNotExist(path.to_path_buf()))
+                .into(),
+        );
     }
     if !path.is_file() {
-        return Err(Error::StorageMsg(format!(
-            "[RedbStorage] storage path '{}' is not a file",
-            path.display()
-        )));
+        return Err(StorageError::Migration(MigrationError::StoragePathNotFile(
+            path.to_path_buf(),
+        ))
+        .into());
     }
 
     let mut db = Database::open(path).map_err(StorageError::from)?;
@@ -93,52 +111,12 @@ pub fn migrate_to_latest<P: AsRef<Path>>(filename: P) -> Result<MigrationReport>
 
 fn migrate_database_to_latest(db: &mut Database) -> StorageResult<MigrationReport> {
     match detect_storage_format_version(db)? {
-        DetectedStorageFormatVersion::V1 => {
-            // Phase 1: rewrite rows from GlueSQL v1 serialisation to v2 format.
-            let mut report = MigrationReport::default();
-            let txn = db.begin_write()?;
-            let table_names = list_user_table_names(&txn)?;
-            report.migrated_tables = table_names.len();
-
-            for table_name in &table_names {
-                let rewritten_rows = v1_to_v2::migrate_table_rows(&txn, table_name)?;
-                report.rewritten_rows += rewritten_rows;
-            }
-
-            txn.commit()?;
-
-            // Phase 2: upgrade redb internal file format v2 → v3.
-            v2_to_v3::migrate(db)?;
-
-            // Phase 3: record GlueSQL storage version 3.
-            let txn = db.begin_write()?;
-            write_storage_format_version(&txn, REDB_STORAGE_FORMAT_VERSION)?;
-            txn.commit()?;
-
-            Ok(report)
-        }
-        DetectedStorageFormatVersion::V2 => {
-            // GlueSQL row format is unchanged; only the redb file format needs upgrading.
+        DetectedStorageFormatVersion::V1 => migrate_v1_to_v4(db),
+        DetectedStorageFormatVersion::V2 => v2_to_v4::migrate(db),
+        DetectedStorageFormatVersion::V3 => v3_to_v4::migrate(db),
+        DetectedStorageFormatVersion::V4 => {
             let read_txn = db.begin_read()?;
             let unchanged_tables = list_user_table_names_from_read(&read_txn)?.len();
-            drop(read_txn);
-
-            v2_to_v3::migrate(db)?;
-
-            let txn = db.begin_write()?;
-            write_storage_format_version(&txn, REDB_STORAGE_FORMAT_VERSION)?;
-            txn.commit()?;
-
-            Ok(MigrationReport {
-                migrated_tables: 0,
-                unchanged_tables,
-                rewritten_rows: 0,
-            })
-        }
-        DetectedStorageFormatVersion::V3 => {
-            let read_txn = db.begin_read()?;
-            let unchanged_tables = list_user_table_names_from_read(&read_txn)?.len();
-
             Ok(MigrationReport {
                 migrated_tables: 0,
                 unchanged_tables,
@@ -146,12 +124,41 @@ fn migrate_database_to_latest(db: &mut Database) -> StorageResult<MigrationRepor
             })
         }
         DetectedStorageFormatVersion::UnsupportedNewer(version) => {
-            Err(StorageError::UnsupportedNewerFormatVersion(version))
+            Err(MigrationError::UnsupportedNewerFormatVersion(version).into())
         }
         DetectedStorageFormatVersion::Unsupported(version) => {
-            Err(StorageError::UnsupportedFormatVersion(version))
+            Err(MigrationError::UnsupportedFormatVersion(version).into())
         }
     }
+}
+
+fn migrate_v1_to_v4(db: &mut Database) -> StorageResult<MigrationReport> {
+    // Keep v1 provenance during preflight: its schemas use the v0.19 layout.
+    let schemas = SchemaRewrites::inspect(db, v2_to_v4::rewrite_schema)?;
+
+    // This physical upgrade is outside the payload transaction. If it succeeds
+    // and a later row fails, logical v1 remains and upgrade() is a no-op on retry.
+    v2_to_v3::migrate(db)?;
+
+    let txn = db.begin_write()?;
+    let mut report = MigrationReport {
+        migrated_tables: schemas.table_names().len(),
+        unchanged_tables: 0,
+        rewritten_rows: 0,
+    };
+    // Logical path: v1 -> v2 rows -> v4 schemas, committed together with meta.
+    for table_name in schemas.table_names() {
+        report.rewritten_rows += v1_to_v2::migrate_table_rows(&txn, table_name)?;
+    }
+    schemas.apply(&txn)?;
+    commit_v4(txn)?;
+    Ok(report)
+}
+
+fn commit_v4(txn: WriteTransaction) -> StorageResult<()> {
+    write_storage_format_version(&txn, REDB_STORAGE_FORMAT_VERSION)?;
+    txn.commit()?;
+    Ok(())
 }
 
 fn detect_storage_format_version(db: &Database) -> StorageResult<DetectedStorageFormatVersion> {
@@ -161,11 +168,12 @@ fn detect_storage_format_version(db: &Database) -> StorageResult<DetectedStorage
             let version = table
                 .get(STORAGE_META_VERSION_KEY)?
                 .map(|value| value.value())
-                .ok_or(StorageError::MissingFormatVersionMetadata)?;
+                .ok_or(MigrationError::MissingFormatVersionMetadata)?;
 
             Ok(match version {
                 V2_REDB_STORAGE_FORMAT_VERSION => DetectedStorageFormatVersion::V2,
-                REDB_STORAGE_FORMAT_VERSION => DetectedStorageFormatVersion::V3,
+                V3_REDB_STORAGE_FORMAT_VERSION => DetectedStorageFormatVersion::V3,
+                REDB_STORAGE_FORMAT_VERSION => DetectedStorageFormatVersion::V4,
                 version if version > REDB_STORAGE_FORMAT_VERSION => {
                     DetectedStorageFormatVersion::UnsupportedNewer(version)
                 }
@@ -175,20 +183,6 @@ fn detect_storage_format_version(db: &Database) -> StorageResult<DetectedStorage
         Err(redb::TableError::TableDoesNotExist(_)) => Ok(DetectedStorageFormatVersion::V1),
         Err(err) => Err(err.into()),
     }
-}
-
-fn list_user_table_names(txn: &WriteTransaction) -> StorageResult<Vec<String>> {
-    let table = txn.open_table(SCHEMA_TABLE)?;
-    let mut names = table
-        .iter()?
-        .map(|entry| {
-            let (table_name, _schema) = entry?;
-            Ok(table_name.value().to_owned())
-        })
-        .collect::<StorageResult<Vec<_>>>()?;
-    names.sort();
-
-    Ok(names)
 }
 
 fn list_user_table_names_from_read(txn: &ReadTransaction) -> StorageResult<Vec<String>> {
