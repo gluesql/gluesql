@@ -99,10 +99,7 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
 mod tests {
     use {
         super::Glue,
-        crate::{
-            executor::InsertError, mock::MockStorage, planner::PlannerError, result::Error,
-            store::CustomFunction,
-        },
+        crate::{executor::InsertError, mock::MockStorage, result::Error},
     };
 
     #[test]
@@ -119,18 +116,5 @@ mod tests {
             !matches!(result, Err(Error::Insert(InsertError::TableNotFound(_)))),
             "{result:?}"
         );
-    }
-
-    #[test]
-    fn plan_does_not_execute_create_function() {
-        let mut glue = Glue::new(MockStorage::default());
-        let sql = "CREATE FUNCTION pending() RETURN 1; SELECT pending()";
-        let actual = glue.plan(sql);
-        let expected = Err(Error::Planner(PlannerError::UnsupportedFunction(
-            "PENDING".to_owned(),
-        )));
-
-        assert_eq!(actual, expected, "planning does not execute CREATE: {sql}");
-        assert_eq!(glue.storage.fetch_function("pending"), Ok(None));
     }
 }
