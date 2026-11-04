@@ -2,12 +2,13 @@ use {
     super::{AlterError, validate, validate_column_names},
     crate::{
         ast::{ColumnUniqueOption, ForeignKey, ToSql},
-        data::{Key, Row, Schema},
+        data::{Row, Schema},
         executor::{
-            query,
-            validate::{validate_foreign_key, validate_row, validate_unique_rows},
+            evaluate::evaluate,
+            query::{self, OutputBody},
         },
-        plan::{ColumnDefPlan, CustomFunctionPlan, QueryPlan, TableColumnsPlan},
+        plan::{ColumnDefPlan, CreateTableColumnsPlan, CustomFunctionPlan, QueryPlan, ValuesPlan},
+        prelude::{DataType, Value},
         result::Result,
         store::{GStore, GStoreMut},
     },
@@ -17,7 +18,7 @@ use {
 
 pub struct CreateTableOptions<'a> {
     pub target_table_name: &'a str,
-    pub columns: &'a TableColumnsPlan,
+    pub columns: &'a CreateTableColumnsPlan,
     pub if_not_exists: bool,
     pub source: &'a Option<Box<QueryPlan>>,
     pub engine: &'a Option<String>,
@@ -38,20 +39,80 @@ pub fn create_table<T: GStore + GStoreMut>(
         comment,
     }: CreateTableOptions<'_>,
 ) -> Result<()> {
+    let mut selected_source_rows = None;
     let target_columns_defs = match columns {
-        TableColumnsPlan::Unplanned => return Err(AlterError::UnplannedTableColumns.into()),
-        TableColumnsPlan::Schemaless => None,
-        TableColumnsPlan::Columns(columns) => Some(columns.as_slice()),
-    };
-    if source.is_some() && storage.fetch_schema(target_table_name)?.is_some() {
-        return if if_not_exists {
-            Ok(())
-        } else {
-            Err(AlterError::TableAlreadyExists(target_table_name.to_owned()).into())
-        };
-    }
+        CreateTableColumnsPlan::Unplanned { .. } => {
+            return Err(AlterError::UnplannedCreateTableColumns.into());
+        }
+        _ if if_not_exists
+            && source.is_some()
+            && storage.fetch_schema(target_table_name)?.is_some() =>
+        {
+            return Ok(());
+        }
+        CreateTableColumnsPlan::Columns(columns) => Some(columns.clone()),
+        CreateTableColumnsPlan::Schemaless => None,
+        CreateTableColumnsPlan::FromQuery => {
+            let source_query = source
+                .as_deref()
+                .ok_or(AlterError::MalformedPlanCreateTableSource)?;
 
-    if let Some(column_defs) = target_columns_defs {
+            match query::output_body(source_query) {
+                OutputBody::Project(_) => {
+                    let (labels, rows) =
+                        query::execute_with_labels(storage, functions, source_query, None)?;
+                    let rows = rows
+                        .map(|row| row.map(Row::into_values))
+                        .collect::<Result<Vec<_>>>()?;
+                    let column_defs = column_defs_from_rows(labels, &rows);
+                    selected_source_rows = Some(rows);
+
+                    Some(column_defs)
+                }
+                OutputBody::Values(ValuesPlan(values_list)) => {
+                    let first_len = values_list[0].len();
+                    let mut column_types = vec![None; first_len];
+
+                    for exprs in values_list {
+                        for (i, expr) in exprs.iter().enumerate() {
+                            if column_types[i].is_some() {
+                                continue;
+                            }
+
+                            column_types[i] = evaluate(storage, functions, None, None, expr)
+                                .and_then(Value::try_from)
+                                .map(|value| value.get_type())?;
+                        }
+
+                        if column_types.iter().all(Option::is_some) {
+                            break;
+                        }
+                    }
+
+                    let column_defs = column_types
+                        .iter()
+                        .map(|column_type| match column_type {
+                            Some(column_type) => column_type.to_owned(),
+                            None => DataType::Text,
+                        })
+                        .enumerate()
+                        .map(|(i, data_type)| ColumnDefPlan {
+                            name: format!("column{}", i + 1),
+                            data_type,
+                            nullable: true,
+                            default: None,
+                            unique: None,
+                            comment: None,
+                        })
+                        .collect::<Vec<_>>();
+
+                    Some(column_defs)
+                }
+            }
+        }
+    };
+
+    if let Some(column_defs) = target_columns_defs.as_deref() {
         validate_column_names(column_defs)?;
 
         for column_def in column_defs {
@@ -89,7 +150,7 @@ pub fn create_table<T: GStore + GStoreMut>(
                         .find(|column_def| column_def.name == *referenced_column_name)
                 })
                 .map(|column_def| (&column_def.data_type, column_def.unique)),
-            None => target_columns_defs.and_then(|column_defs| {
+            None => target_columns_defs.as_deref().and_then(|column_defs| {
                 column_defs
                     .iter()
                     .find(|column_def| column_def.name == *referenced_column_name)
@@ -100,6 +161,7 @@ pub fn create_table<T: GStore + GStoreMut>(
         let (referenced_data_type, referenced_unique) = referenced_column;
 
         let referencing_column_def = target_columns_defs
+            .as_deref()
             .and_then(|column_defs| {
                 column_defs
                     .iter()
@@ -128,62 +190,62 @@ pub fn create_table<T: GStore + GStoreMut>(
         }
     }
 
-    let schema = Schema {
-        table_name: target_table_name.to_owned(),
-        column_defs: target_columns_defs.map(|column_defs| {
-            column_defs
-                .iter()
-                .map(ColumnDefPlan::to_column_def)
-                .collect()
-        }),
-        indexes: vec![],
-        engine: engine.clone(),
-        foreign_keys: foreign_keys.clone(),
-        comment: comment.clone(),
-    };
-    let Some(source) = source.as_deref() else {
-        if storage.fetch_schema(target_table_name)?.is_some() {
-            return if if_not_exists {
-                Ok(())
-            } else {
-                Err(AlterError::TableAlreadyExists(target_table_name.to_owned()).into())
+    if storage.fetch_schema(target_table_name)?.is_none() {
+        let schema = Schema {
+            table_name: target_table_name.to_owned(),
+            column_defs: target_columns_defs.as_ref().map(|column_defs| {
+                column_defs
+                    .iter()
+                    .map(ColumnDefPlan::to_column_def)
+                    .collect()
+            }),
+            indexes: vec![],
+            engine: engine.clone(),
+            foreign_keys: foreign_keys.clone(),
+            comment: comment.clone(),
+        };
+
+        storage.insert_schema(&schema)?;
+    } else if !if_not_exists {
+        return Err(AlterError::TableAlreadyExists(target_table_name.to_owned()).into());
+    }
+
+    match source {
+        Some(query) => {
+            let rows = match selected_source_rows {
+                Some(rows) => rows,
+                None => query::execute(storage, functions, query, None)?
+                    .map(|row| row.map(Row::into_values))
+                    .collect::<Result<Vec<_>>>()?,
             };
+
+            storage.append_data(target_table_name, rows)
         }
-
-        return storage.insert_schema(&schema);
-    };
-
-    let rows = query::execute(storage, functions, source, None)?
-        .map(|row| row.map(Row::into_values))
-        .collect::<Result<Vec<_>>>()?;
-    for row in &rows {
-        validate_row(target_columns_defs, row)?;
+        None => Ok(()),
     }
+}
 
-    let primary_key = match target_columns_defs {
-        Some(columns) => {
-            validate_unique_rows(columns, &rows)?;
-            validate_foreign_key(storage, columns, foreign_keys, &rows)?;
+fn column_defs_from_rows(labels: Vec<String>, rows: &[Vec<Value>]) -> Vec<ColumnDefPlan> {
+    labels
+        .into_iter()
+        .enumerate()
+        .map(|(index, name)| {
+            let data_type = rows
+                .iter()
+                .filter_map(|row| row.get(index))
+                .find_map(Value::get_type)
+                .unwrap_or(DataType::Text);
 
-            columns.iter().position(|column_def| {
-                column_def.unique == Some(ColumnUniqueOption { is_primary: true })
-            })
-        }
-        None => None,
-    };
-
-    if let Some(index) = primary_key {
-        let rows = rows
-            .into_iter()
-            .map(|row| Key::try_from(&row[index]).map(|key| (key, row)))
-            .collect::<Result<Vec<_>>>()?;
-
-        storage.insert_schema(&schema)?;
-        storage.insert_data(target_table_name, rows)
-    } else {
-        storage.insert_schema(&schema)?;
-        storage.append_data(target_table_name, rows)
-    }
+            ColumnDefPlan {
+                name,
+                data_type,
+                nullable: true,
+                default: None,
+                unique: None,
+                comment: None,
+            }
+        })
+        .collect()
 }
 
 pub fn drop_table<T: GStore + GStoreMut>(
@@ -257,27 +319,60 @@ impl fmt::Display for Referencing {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::ast::ReferentialAction};
+    use {
+        super::*,
+        crate::{
+            ast::ReferentialAction,
+            mock::{MockStorage, run},
+            result::Error,
+        },
+    };
 
     #[test]
-    fn unplanned_columns_before_existing_target() {
-        let mut storage = crate::mock::run("CREATE TABLE Item (id INT)");
+    fn unplanned_columns_are_rejected() {
+        let mut storage = run("CREATE TABLE Target (id INT)");
+        let source = Some(Box::new(QueryPlan::Values(ValuesPlan(Vec::new()))));
         let actual = create_table(
             &mut storage,
             &[],
             CreateTableOptions {
-                target_table_name: "Item",
-                columns: &TableColumnsPlan::Unplanned,
+                target_table_name: "Target",
+                columns: &CreateTableColumnsPlan::Unplanned { columns: None },
                 if_not_exists: true,
-                source: &Some(Box::new(QueryPlan::Values(crate::plan::ValuesPlan(
-                    Vec::new(),
-                )))),
+                source: &source,
                 engine: &None,
                 foreign_keys: &Vec::new(),
                 comment: &None,
             },
         );
-        assert_eq!(actual, Err(AlterError::UnplannedTableColumns.into()));
+        let expected = Err(Error::Alter(Box::new(
+            AlterError::UnplannedCreateTableColumns,
+        )));
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn from_query_requires_source() {
+        let mut storage = MockStorage::default();
+        let actual = create_table(
+            &mut storage,
+            &[],
+            CreateTableOptions {
+                target_table_name: "Target",
+                columns: &CreateTableColumnsPlan::FromQuery,
+                if_not_exists: false,
+                source: &None,
+                engine: &None,
+                foreign_keys: &Vec::new(),
+                comment: &None,
+            },
+        );
+        let expected = Err(Error::Alter(Box::new(
+            AlterError::MalformedPlanCreateTableSource,
+        )));
+
+        assert_eq!(actual, expected);
     }
 
     #[test]

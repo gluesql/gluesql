@@ -17,13 +17,6 @@ pub fn walk_query_mut<V: VisitorMut + ?Sized>(
     QueryWalkerMut { visitor }.query(query)
 }
 
-pub fn walk_project_mut<V: VisitorMut + ?Sized>(
-    visitor: &mut V,
-    project: &mut ProjectPlan,
-) -> Result<(), V::Error> {
-    QueryWalkerMut { visitor }.project(project)
-}
-
 struct QueryWalkerMut<'a, V: ?Sized> {
     visitor: &'a mut V,
 }

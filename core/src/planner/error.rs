@@ -1,56 +1,9 @@
-use {crate::ast::DataType, serde::Serialize, std::fmt::Debug, thiserror::Error as ThisError};
+use {serde::Serialize, std::fmt::Debug, thiserror::Error as ThisError};
 
 #[derive(ThisError, Serialize, Debug, PartialEq, Eq)]
 pub enum PlannerError {
-    #[error("CTAS source table not found: {0}")]
+    #[error("CTAS source table does not exist: {0}")]
     CtasSourceTableNotFound(String),
-
-    #[error("cannot determine CTAS column type: {0}")]
-    CtasColumnTypeUnknown(String),
-
-    #[error("CTAS column {column} has type {found}, expected {expected}")]
-    CtasColumnTypeMismatch {
-        column: String,
-        expected: DataType,
-        found: DataType,
-    },
-
-    #[error("CTAS source has {found} columns, expected {expected}")]
-    CtasColumnCountMismatch { expected: usize, found: usize },
-
-    #[error("VALUES row {row} has {found} columns, expected {expected}")]
-    CtasValuesLengthMismatch {
-        row: usize,
-        expected: usize,
-        found: usize,
-    },
-
-    #[error("CTAS source and target must have the same schemaful or schemaless format")]
-    CtasSourceFormatMismatch,
-
-    #[error("cannot determine wildcard columns for CTAS source: {0}")]
-    CtasWildcardColumnsUnknown(String),
-
-    #[error("column not found: {0}")]
-    CtasColumnNotFound(String),
-
-    #[error("table alias not found: {0}")]
-    CtasAliasNotFound(String),
-
-    #[error("table alias has {found} column names, but the source has {expected} columns")]
-    CtasAliasColumnsOverflow { expected: usize, found: usize },
-
-    #[error("self-referencing foreign keys are not supported in CTAS: {0}")]
-    UnsupportedSelfReferencingForeignKeyInCtas(String),
-
-    #[error("malformed plan - unplanned CREATE TABLE columns have no source")]
-    MalformedPlanCtasWithoutSource,
-
-    #[error("malformed plan - VALUES has no rows")]
-    MalformedPlanEmptyCtasValues,
-
-    #[error("unplanned custom function: {0}")]
-    UnplannedCustomFunction(String),
 
     #[error("storage access is not allowed in a custom function body")]
     StorageAccessInFunctionBody,

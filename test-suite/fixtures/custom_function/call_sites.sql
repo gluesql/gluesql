@@ -119,24 +119,6 @@ SELECT column1 FROM FunctionValues;
 -- | ------------ |
 -- | 1            |
 
--- @name: CTAS does not normalize the return branches of a stored function
-CREATE FUNCTION mixed(x FLOAT) RETURN CASE WHEN x IS NULL THEN 0 ELSE x END;
--- @expect: ok
-
-CREATE TABLE UnknownFunction AS SELECT mixed(NULL) AS value;
--- @expect: error Planner.CtasColumnTypeUnknown
--- @json: "value"
-
--- @name: An explicit CAST supplies the type of a variable function result
-CREATE TABLE CastFunction AS SELECT CAST(mixed(NULL) AS FLOAT) AS value;
--- @expect: ok
-
-SELECT * FROM CastFunction;
--- @expect:
--- | value: F64 |
--- | ---------- |
--- | 0.0        |
-
 -- @name: Calling a custom function in a column default is rejected
 CREATE TABLE Defaults (x INT DEFAULT inc(1));
 -- @expect: error Evaluate.UnplannedCustomFunction

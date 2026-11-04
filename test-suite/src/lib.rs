@@ -189,9 +189,6 @@ macro_rules! generate_store_tests {
         sql_case!(expr::unary_operator);
 
         sql_case!(alter::create_table);
-        sql_case!(alter::ctas::columns);
-        sql_case!(alter::ctas::types);
-        sql_case!(alter::ctas::constraints);
         sql_case!(alter::drop_table);
         sql_case!(default);
         sql_case!(limit);

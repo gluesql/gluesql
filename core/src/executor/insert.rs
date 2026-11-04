@@ -42,7 +42,7 @@ pub fn insert<T: GStore + GStoreMut>(
             column_defs,
             columns,
             source,
-            &foreign_keys,
+            foreign_keys,
         ),
     }?;
 

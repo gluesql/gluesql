@@ -6,8 +6,8 @@ mod query;
 
 pub use {
     ddl::{
-        AlterTableOperationPlan, ColumnDefPlan, DefaultExpr, OperateFunctionArgPlan,
-        TableColumnsPlan,
+        AlterTableOperationPlan, ColumnDefPlan, CreateTableColumnsPlan, DefaultExpr,
+        OperateFunctionArgPlan, TableColumnsPlan,
     },
     expr::{
         AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan, plan_scalar_expr,
@@ -61,9 +61,7 @@ pub enum StatementPlanKind {
     CreateTable {
         if_not_exists: bool,
         name: String,
-        /// Target definitions prepared by the CREATE columns planner.
-        /// CTAS without explicit definitions starts as `Unplanned`.
-        columns: TableColumnsPlan,
+        columns: CreateTableColumnsPlan,
         source: Option<Box<QueryPlan>>,
         engine: Option<String>,
         foreign_keys: Vec<ForeignKey>,
@@ -149,21 +147,27 @@ impl From<ast::Statement> for StatementPlanKind {
                 engine,
                 foreign_keys,
                 comment,
-            } => Self::CreateTable {
-                if_not_exists,
-                name,
-                columns: match columns {
-                    Some(columns) => {
-                        TableColumnsPlan::Columns(columns.into_iter().map(Into::into).collect())
-                    }
-                    None if source.is_some() => TableColumnsPlan::Unplanned,
-                    None => TableColumnsPlan::Schemaless,
-                },
-                source: source.map(|query| Box::new((*query).into())),
-                engine,
-                foreign_keys,
-                comment,
-            },
+            } => {
+                let columns = columns.map(|columns| columns.into_iter().map(Into::into).collect());
+                let columns = if source.is_some() {
+                    CreateTableColumnsPlan::Unplanned { columns }
+                } else {
+                    columns.map_or(
+                        CreateTableColumnsPlan::Schemaless,
+                        CreateTableColumnsPlan::Columns,
+                    )
+                };
+
+                Self::CreateTable {
+                    if_not_exists,
+                    name,
+                    columns,
+                    source: source.map(|query| Box::new((*query).into())),
+                    engine,
+                    foreign_keys,
+                    comment,
+                }
+            }
             ast::Statement::CreateFunction {
                 or_replace,
                 name,
@@ -239,7 +243,7 @@ impl From<ast::Statement> for StatementPlan {
 #[cfg(test)]
 mod tests {
     use {
-        super::{StatementPlanKind, TableColumnsPlan},
+        super::{CreateTableColumnsPlan, StatementPlanKind},
         crate::{
             ast::{DataType, Literal},
             parse_sql::parse,
@@ -250,7 +254,7 @@ mod tests {
 
     #[test]
     fn create_table_columns() {
-        let test = |sql: &str, columns: TableColumnsPlan, source: Option<QueryPlan>| {
+        let test = |sql: &str, columns, source: Option<QueryPlan>| {
             let parsed = parse(sql).expect(sql);
             let actual = StatementPlanKind::from(translate(&parsed[0]).expect(sql));
             let expected = StatementPlanKind::CreateTable {
@@ -276,20 +280,26 @@ mod tests {
             1.into(),
         ))]]));
 
-        test("CREATE TABLE Item", TableColumnsPlan::Schemaless, None);
+        test(
+            "CREATE TABLE Item",
+            CreateTableColumnsPlan::Schemaless,
+            None,
+        );
         test(
             "CREATE TABLE Item (id INT)",
-            TableColumnsPlan::Columns(columns.clone()),
+            CreateTableColumnsPlan::Columns(columns.clone()),
             None,
         );
         test(
             "CREATE TABLE Item AS VALUES (1)",
-            TableColumnsPlan::Unplanned,
+            CreateTableColumnsPlan::Unplanned { columns: None },
             Some(source.clone()),
         );
         test(
             "CREATE TABLE Item (id INT) AS VALUES (1)",
-            TableColumnsPlan::Columns(columns),
+            CreateTableColumnsPlan::Unplanned {
+                columns: Some(columns),
+            },
             Some(source),
         );
     }
