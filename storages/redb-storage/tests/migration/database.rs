@@ -46,7 +46,13 @@ pub fn snapshot(file: &TestFile) -> Snapshot {
     let db = Database::open(&file.0).expect("open raw database");
     let txn = db.begin_read().unwrap();
     let version = match txn.open_table(META) {
-        Ok(table) => table.get(VERSION_KEY).unwrap().map(|value| value.value()),
+        Ok(table) => Some(
+            table
+                .get(VERSION_KEY)
+                .unwrap()
+                .expect("storage format version in metadata table")
+                .value(),
+        ),
         Err(redb::TableError::TableDoesNotExist(_)) => None,
         Err(error) => panic!("metadata: {error}"),
     };
@@ -66,18 +72,17 @@ pub fn snapshot(file: &TestFile) -> Snapshot {
         .keys()
         .map(|name| {
             let definition = TableDefinition::<&[u8], Vec<u8>>::new(name);
-            let rows = match txn.open_table(definition) {
-                Ok(table) => table
-                    .iter()
-                    .unwrap()
-                    .map(|entry| {
-                        let (key, value) = entry.unwrap();
-                        (key.value().to_vec(), value.value())
-                    })
-                    .collect(),
-                Err(redb::TableError::TableDoesNotExist(_)) => Vec::new(),
-                Err(error) => panic!("rows: {error}"),
-            };
+            let table = txn
+                .open_table(definition)
+                .expect("row table referenced by schema");
+            let rows = table
+                .iter()
+                .unwrap()
+                .map(|entry| {
+                    let (key, value) = entry.unwrap();
+                    (key.value().to_vec(), value.value())
+                })
+                .collect();
             (name.clone(), rows)
         })
         .collect();
