@@ -366,6 +366,7 @@ impl<'de, A: VariantAccess<'de>> VariantAccess<'de> for WrappedAccess<'de, A> {
 mod strict_payload {
     use {
         super::{DecodeError, MAX_DEPTH, deserialize},
+        gluesql_core::data::{Key, Value},
         serde::{Deserialize, Serialize},
         std::collections::BTreeMap,
     };
@@ -395,6 +396,17 @@ mod strict_payload {
         ] {
             let bytes = bincode::serialize(&expected).unwrap();
             assert_eq!(deserialize::<Payload>(&bytes).unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn decodes_ipv4_and_ipv6_keys_and_values() {
+        for address in ["192.0.2.1", "2001:db8::1"] {
+            let ip = address.parse().unwrap();
+            let expected = (Key::Inet(ip), vec![Value::Inet(ip)]);
+            let bytes = bincode::serialize(&expected).unwrap();
+            let actual = deserialize::<(Key, Vec<Value>)>(&bytes).unwrap();
+            assert_eq!(actual, expected, "{address}");
         }
     }
 

@@ -46,9 +46,6 @@ pub(super) fn migrate_table_rows(txn: &WriteTransaction, table_name: &str) -> Re
         }
 
         last_scanned_key = batch_last_scanned_key;
-        if last_scanned_key.is_none() {
-            break;
-        }
     }
 
     Ok(rewritten_rows)
