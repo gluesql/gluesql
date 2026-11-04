@@ -119,14 +119,14 @@ pub(super) fn migrate(db: &mut Database) -> StorageResult<MigrationReport> {
 // before converting its rows. The source layout is known in both entry paths.
 pub(super) fn rewrite_schema(table_name: &str, payload: &[u8]) -> StorageResult<Option<Vec<u8>>> {
     let schema =
-        decode_v1_schema(payload).map_err(|error| MigrationError::InvalidSchemaPayload {
+        decode_v1_schema(payload).map_err(|source| MigrationError::InvalidSchemaPayload {
             table_name: table_name.to_owned(),
-            reason: error.to_string(),
+            source,
         })?;
     if schema.table_name != table_name {
         return Err(MigrationError::InvalidSchemaPayload {
             table_name: table_name.to_owned(),
-            reason: "v1 (v0.19.0): table name does not match the schema key".to_owned(),
+            source: SchemaDecodeError::TableNameMismatch,
         }
         .into());
     }
@@ -136,10 +136,16 @@ pub(super) fn rewrite_schema(table_name: &str, payload: &[u8]) -> StorageResult<
 }
 
 #[cfg(test)]
-mod default_expr_rewrite {
+mod tests {
     use {
-        super::{MigrationError, rewrite_schema},
-        crate::error::StorageError,
+        super::{
+            MigrationError, SchemaDecodeError, SchemaIndexOrd, V1Schema, ast, data,
+            decode_v1_schema, rewrite_schema,
+        },
+        crate::{
+            error::StorageError,
+            migration::decode::{self, DecodeError},
+        },
         gluesql_core::{
             ast::{ColumnUniqueOption, DataType, ForeignKey, Literal},
             data::{Schema, SchemaIndex},
@@ -193,8 +199,10 @@ mod default_expr_rewrite {
     fn rejects_a_mismatched_table_key() {
         assert!(
             matches!(rewrite_schema("Other", &schema_with_v1_literal_default()),
-                Err(StorageError::Migration(MigrationError::InvalidSchemaPayload { table_name, reason }))
-                if table_name == "Other" && reason == "v1 (v0.19.0): table name does not match the schema key"
+                Err(StorageError::Migration(MigrationError::InvalidSchemaPayload {
+                    table_name,
+                    source: SchemaDecodeError::TableNameMismatch,
+                })) if table_name == "Other"
             )
         );
     }
@@ -207,18 +215,13 @@ mod default_expr_rewrite {
         truncated.pop();
         for payload in [trailing, truncated, vec![255]] {
             assert!(matches!(rewrite_schema("Item", &payload),
-                Err(StorageError::Migration(MigrationError::InvalidSchemaPayload { table_name, .. })) if table_name == "Item"
+                Err(StorageError::Migration(MigrationError::InvalidSchemaPayload {
+                    table_name,
+                    source: SchemaDecodeError::Payload(DecodeError::Invalid(_)),
+                })) if table_name == "Item"
             ));
         }
     }
-}
-
-#[cfg(test)]
-mod index_expression {
-    use {
-        super::{SchemaIndexOrd, V1Schema, ast, data},
-        crate::migration::decode,
-    };
 
     #[test]
     fn restores_shifted_expr_tags_in_index_expressions() {
@@ -253,15 +256,6 @@ mod index_expression {
             expected
         );
     }
-}
-
-#[cfg(test)]
-mod schema_decoding {
-    use {
-        super::{SchemaDecodeError, decode_v1_schema},
-        crate::migration::decode::DecodeError,
-        gluesql_core::ast::DataType,
-    };
 
     fn schema_with_index_plan() -> Vec<u8> {
         // v0.19.0 wire fields, independent of the Deserialize-only types:
@@ -302,9 +296,7 @@ mod schema_decoding {
     fn completely_decoded_index_plan_requires_recovery() {
         assert!(matches!(
             decode_v1_schema(&schema_with_index_plan()),
-            Err(SchemaDecodeError::RecoveryRequired(
-                "historical index access plan requires explicit recovery"
-            ))
+            Err(SchemaDecodeError::UnrecoverableIndexAccessPlan)
         ));
     }
 

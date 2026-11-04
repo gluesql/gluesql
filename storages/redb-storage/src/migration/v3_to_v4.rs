@@ -51,7 +51,7 @@ fn select_schema(
         // candidate must not override a depth limit or an unrecoverable v1 plan.
         (
             Err(
-                error @ (SchemaDecodeError::RecoveryRequired(_)
+                error @ (SchemaDecodeError::UnrecoverableIndexAccessPlan
                 | SchemaDecodeError::Payload(DecodeError::NestingLimit)),
             ),
             _,
@@ -59,7 +59,7 @@ fn select_schema(
         | (_, Err(error @ SchemaDecodeError::Payload(DecodeError::NestingLimit))) => {
             Err(MigrationError::InvalidSchemaPayload {
                 table_name: table_name.to_owned(),
-                reason: error.to_string(),
+                source: error,
             }
             .into())
         }
@@ -83,16 +83,17 @@ fn select_schema(
         (Err(_), Ok(_)) => Ok(None),
 
         // Neither layout decodes: retain both reasons for the affected table.
-        (Err(v1), Err(current)) => Err(MigrationError::InvalidSchemaPayload {
+        (Err(v1), Err(v3)) => Err(MigrationError::BothSchemaCandidatesFailed {
             table_name: table_name.to_owned(),
-            reason: format!("v1 (v0.19.0): {v1}; v3 (v0.20.0): {current}"),
+            v1,
+            v3,
         }
         .into()),
     }
 }
 
 #[cfg(test)]
-mod schema_selection {
+mod tests {
     use {
         super::{
             CurrentSchema, DecodeError, MigrationError, SchemaDecodeError, rewrite_schema,
@@ -106,12 +107,6 @@ mod schema_selection {
         CurrentSchema::from_ddl("CREATE TABLE Item (id INT);").unwrap()
     }
 
-    fn invalid() -> SchemaDecodeError {
-        SchemaDecodeError::Payload(DecodeError::Invalid(Box::new(bincode::ErrorKind::Custom(
-            "invalid candidate".into(),
-        ))))
-    }
-
     #[test]
     fn only_historical_success_rewrites_to_the_restored_schema() {
         let restored = schema();
@@ -120,34 +115,37 @@ mod schema_selection {
                 "Item",
                 b"historical bytes",
                 Ok(restored.clone()),
-                Err(invalid())
+                Err(SchemaDecodeError::TableNameMismatch)
             )
             .unwrap(),
             Some(bincode::serialize(&restored).unwrap())
         );
         let unchanged = bincode::serialize(&restored).unwrap();
         assert_eq!(
-            select_schema("Item", &unchanged, Ok(restored), Err(invalid())).unwrap(),
+            select_schema(
+                "Item",
+                &unchanged,
+                Ok(restored),
+                Err(SchemaDecodeError::TableNameMismatch)
+            )
+            .unwrap(),
             None
         );
     }
 
     #[test]
     fn only_current_success_preserves_the_original_payload() {
-        assert_eq!(
-            select_schema("Item", b"original", Err(invalid()), Ok(schema())).unwrap(),
-            None
-        );
-        assert_eq!(
-            select_schema(
-                "Item",
-                b"original",
-                Err(SchemaDecodeError::TableNameMismatch),
-                Ok(schema())
-            )
-            .unwrap(),
-            None
-        );
+        for error in [
+            SchemaDecodeError::Payload(DecodeError::Invalid(Box::new(
+                bincode::ErrorKind::InvalidBoolEncoding(2),
+            ))),
+            SchemaDecodeError::TableNameMismatch,
+        ] {
+            assert_eq!(
+                select_schema("Item", b"original", Err(error), Ok(schema())).unwrap(),
+                None
+            );
+        }
     }
 
     #[test]
@@ -184,8 +182,8 @@ mod schema_selection {
             assert!(matches!(
                 select_schema("Item", b"original", Ok(historical), Ok(current)),
                 Err(StorageError::Migration(
-                    MigrationError::AmbiguousSchemaPayload(_)
-                ))
+                    MigrationError::AmbiguousSchemaPayload(name)
+                )) if name == "Item"
             ));
         }
     }
@@ -195,14 +193,20 @@ mod schema_selection {
         let error = select_schema(
             "Item",
             b"original",
-            Err(invalid()),
+            Err(SchemaDecodeError::Payload(DecodeError::Invalid(Box::new(
+                bincode::ErrorKind::InvalidBoolEncoding(2),
+            )))),
             Err(SchemaDecodeError::TableNameMismatch),
         )
         .unwrap_err();
         assert!(matches!(error,
-            StorageError::Migration(MigrationError::InvalidSchemaPayload { table_name, reason })
+            StorageError::Migration(MigrationError::BothSchemaCandidatesFailed {
+                table_name,
+                v1: SchemaDecodeError::Payload(DecodeError::Invalid(error)),
+                v3: SchemaDecodeError::TableNameMismatch,
+            })
             if table_name == "Item"
-                && reason == "v1 (v0.19.0): invalid candidate; v3 (v0.20.0): table name does not match the schema key"
+                && matches!(*error, bincode::ErrorKind::InvalidBoolEncoding(2))
         ));
     }
 
@@ -216,8 +220,10 @@ mod schema_selection {
         )
         .unwrap_err();
         assert!(matches!(error,
-            StorageError::Migration(MigrationError::InvalidSchemaPayload { table_name, reason })
-            if table_name == "Item" && reason == "migration decoding nesting limit exceeded"
+            StorageError::Migration(MigrationError::InvalidSchemaPayload {
+                table_name,
+                source: SchemaDecodeError::Payload(DecodeError::NestingLimit),
+            }) if table_name == "Item"
         ));
     }
 
@@ -231,8 +237,10 @@ mod schema_selection {
         )
         .unwrap_err();
         assert!(matches!(error,
-            StorageError::Migration(MigrationError::InvalidSchemaPayload { table_name, reason })
-            if table_name == "Item" && reason == "migration decoding nesting limit exceeded"
+            StorageError::Migration(MigrationError::InvalidSchemaPayload {
+                table_name,
+                source: SchemaDecodeError::Payload(DecodeError::NestingLimit),
+            }) if table_name == "Item"
         ));
     }
 
@@ -241,13 +249,15 @@ mod schema_selection {
         let error = select_schema(
             "Item",
             b"original",
-            Err(SchemaDecodeError::RecoveryRequired("unrecoverable plan")),
+            Err(SchemaDecodeError::UnrecoverableIndexAccessPlan),
             Ok(schema()),
         )
         .unwrap_err();
         assert!(matches!(error,
-            StorageError::Migration(MigrationError::InvalidSchemaPayload { table_name, reason })
-            if table_name == "Item" && reason == "unrecoverable plan"
+            StorageError::Migration(MigrationError::InvalidSchemaPayload {
+                table_name,
+                source: SchemaDecodeError::UnrecoverableIndexAccessPlan,
+            }) if table_name == "Item"
         ));
     }
 
@@ -273,8 +283,10 @@ mod schema_selection {
         current.column_defs.as_mut().unwrap()[0].default = Some(expr);
         let payload = bincode::serialize(&current).unwrap();
         assert!(matches!(rewrite_schema("Item", &payload),
-            Err(StorageError::Migration(MigrationError::InvalidSchemaPayload { table_name, reason }))
-            if table_name == "Item" && reason == "migration decoding nesting limit exceeded"
+            Err(StorageError::Migration(MigrationError::InvalidSchemaPayload {
+                table_name,
+                source: SchemaDecodeError::Payload(DecodeError::NestingLimit),
+            })) if table_name == "Item"
         ));
     }
 
@@ -283,8 +295,11 @@ mod schema_selection {
         let payload = bincode::serialize(&schema()).unwrap();
         assert_eq!(rewrite_schema("Item", &payload).unwrap(), None);
         assert!(matches!(rewrite_schema("Other", &payload),
-            Err(StorageError::Migration(MigrationError::InvalidSchemaPayload { table_name, reason }))
-            if table_name == "Other" && reason == "v1 (v0.19.0): table name does not match the schema key; v3 (v0.20.0): table name does not match the schema key"
+            Err(StorageError::Migration(MigrationError::BothSchemaCandidatesFailed {
+                table_name,
+                v1: SchemaDecodeError::TableNameMismatch,
+                v3: SchemaDecodeError::TableNameMismatch,
+            })) if table_name == "Other"
         ));
     }
 }

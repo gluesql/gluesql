@@ -14,7 +14,7 @@ use {
 const MAX_DEPTH: usize = 256;
 
 #[derive(Debug, Error)]
-pub(super) enum DecodeError {
+pub enum DecodeError {
     #[error("{0}")]
     Invalid(#[from] bincode::Error),
 
@@ -355,7 +355,7 @@ impl<'de, A: VariantAccess<'de>> VariantAccess<'de> for WrappedAccess<'de, A> {
 }
 
 #[cfg(test)]
-mod strict_payload {
+mod tests {
     use {
         super::{DecodeError, MAX_DEPTH, deserialize},
         gluesql_core::data::{Key, Value},

@@ -104,7 +104,7 @@ fn migrate_row_payload(table_name: &str, payload: &[u8]) -> Result<Option<Vec<u8
 }
 
 #[cfg(test)]
-mod row_conversion {
+mod tests {
     use {
         super::{Key, MigrationError, StorageError, Value, migrate_row_payload},
         std::collections::BTreeMap,

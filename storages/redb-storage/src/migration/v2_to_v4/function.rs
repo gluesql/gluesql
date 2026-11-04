@@ -536,11 +536,14 @@ impl CountArgExpr {
 }
 
 #[cfg(test)]
-mod nested_expr_tags {
+mod tests {
     use {
-        super::super::expr::Expr,
+        super::super::{expr::Expr, function as old},
         crate::migration::decode,
-        gluesql_core::{ast, data::Value},
+        gluesql_core::{
+            ast::{self as current, DataType, DateTimeField, TrimWhereField},
+            data::Value,
+        },
     };
 
     #[test]
@@ -553,9 +556,9 @@ mod nested_expr_tags {
                 .unwrap()
                 .into_current()
                 .unwrap(),
-            ast::Expr::Function(Box::new(ast::Function::Abs(ast::Expr::Value(Value::I64(
-                -7
-            )))))
+            current::Expr::Function(Box::new(current::Function::Abs(current::Expr::Value(
+                Value::I64(-7)
+            ))))
         );
     }
 
@@ -569,20 +572,12 @@ mod nested_expr_tags {
                 .unwrap()
                 .into_current()
                 .unwrap(),
-            ast::Expr::Aggregate(Box::new(ast::Aggregate {
-                func: ast::AggregateFunction::Sum(ast::Expr::Value(Value::I64(7))),
+            current::Expr::Aggregate(Box::new(current::Aggregate {
+                func: current::AggregateFunction::Sum(current::Expr::Value(Value::I64(7))),
                 distinct: true,
             }))
         );
     }
-}
-
-#[cfg(test)]
-mod function_conversion {
-    use {
-        super::super::function as old,
-        gluesql_core::ast::{self as current, DataType, DateTimeField, TrimWhereField},
-    };
 
     // Construct each side independently; only the construction syntax is shared.
     macro_rules! test {

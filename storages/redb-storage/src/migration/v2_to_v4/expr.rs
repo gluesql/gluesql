@@ -262,11 +262,14 @@ impl BinaryOperator {
 }
 
 #[cfg(test)]
-mod regex_insertion {
+mod tests {
     use {
-        super::{Expr, Literal, ast},
+        super::{super::expr as old, Expr},
         crate::migration::decode,
-        gluesql_core::{ast::DataType, data::Value},
+        gluesql_core::{
+            ast::{self as current, DataType, DateTimeField, Literal, UnaryOperator},
+            data::Value,
+        },
     };
 
     #[test]
@@ -280,13 +283,13 @@ mod regex_insertion {
             (
                 literal.as_slice(),
                 13_u32,
-                ast::Expr::Literal(Literal::QuotedString("x".into())),
+                current::Expr::Literal(Literal::QuotedString("x".into())),
             ),
-            (value.as_slice(), 14, ast::Expr::Value(Value::I64(7))),
+            (value.as_slice(), 14, current::Expr::Value(Value::I64(7))),
             (
                 typed.as_slice(),
                 15,
-                ast::Expr::TypedString {
+                current::Expr::TypedString {
                     data_type: DataType::Text,
                     value: "x".into(),
                 },
@@ -303,17 +306,6 @@ mod regex_insertion {
             );
         }
     }
-}
-
-#[cfg(test)]
-mod expr_conversion {
-    use {
-        super::super::expr as old,
-        gluesql_core::{
-            ast::{self as current, DataType, DateTimeField, Literal, UnaryOperator},
-            data::Value,
-        },
-    };
 
     macro_rules! test {
         ($case:expr) => {{

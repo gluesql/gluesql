@@ -5,7 +5,8 @@ pub mod database;
 use {
     database::{TestFile, snapshot},
     gluesql_core::{
-        data::{Schema, Value},
+        data::{Key, Schema, Value},
+        executor::ValidateError,
         prelude::{
             Glue, Payload,
             Value::{Bool, I64, List, Map, Str},
@@ -59,9 +60,9 @@ fn assert_defaults(file: &TestFile) {
         select(&mut glue, "SELECT * FROM Defaults WHERE id = 2;"),
         vec![expected_row(2)]
     );
-    assert!(
-        glue.execute("INSERT INTO Defaults (id) VALUES (2);")
-            .is_err()
+    assert_eq!(
+        glue.execute("INSERT INTO Defaults (id) VALUES (2);"),
+        Err(ValidateError::DuplicateEntryOnPrimaryKeyField(Key::I64(2)).into())
     );
     glue.execute("ALTER TABLE Defaults ADD COLUMN extra INT DEFAULT (4 + 5);")
         .unwrap();

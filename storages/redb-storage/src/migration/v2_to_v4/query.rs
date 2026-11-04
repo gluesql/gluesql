@@ -211,9 +211,7 @@ impl TableFactor {
                 // This runs only after the entire schema has decoded. A partially
                 // parsed candidate must not prevent selection of another layout.
                 if index.is_some() {
-                    return Err(SchemaDecodeError::RecoveryRequired(
-                        "historical index access plan requires explicit recovery",
-                    ));
+                    return Err(SchemaDecodeError::UnrecoverableIndexAccessPlan);
                 }
                 ast::TableFactor::Table { name, alias }
             }
@@ -311,26 +309,28 @@ fn and(left: ast::Expr, right: ast::Expr) -> ast::Expr {
 }
 
 #[cfg(test)]
-mod query_layout_changes {
+mod tests {
     use {
         super::{
-            Expr, IndexItem, Join, JoinConstraint, JoinExecutor, JoinOperator, Projection,
-            SchemaDecodeError, TableFactor,
+            super::query as old, Expr, IndexItem, Join, JoinConstraint, JoinExecutor, JoinOperator,
+            Projection, SchemaDecodeError, TableFactor,
         },
         crate::migration::decode,
-        gluesql_core::ast::{self, BinaryOperator, IndexOperator},
+        gluesql_core::ast::{
+            self as current, BinaryOperator, Dictionary, IndexOperator, TableAlias,
+        },
     };
 
     fn old_identifier(name: &str) -> Expr {
         Expr::Identifier(name.into())
     }
 
-    fn identifier(name: &str) -> ast::Expr {
-        ast::Expr::Identifier(name.into())
+    fn identifier(name: &str) -> current::Expr {
+        current::Expr::Identifier(name.into())
     }
 
-    fn binary(left: ast::Expr, op: BinaryOperator, right: ast::Expr) -> ast::Expr {
-        ast::Expr::BinaryOp {
+    fn binary(left: current::Expr, op: BinaryOperator, right: current::Expr) -> current::Expr {
+        current::Expr::BinaryOp {
             left: Box::new(left),
             op,
             right: Box::new(right),
@@ -345,8 +345,8 @@ mod query_layout_changes {
         }
     }
 
-    fn current_table() -> ast::TableFactor {
-        ast::TableFactor::Table {
+    fn current_table() -> current::TableFactor {
+        current::TableFactor::Table {
             name: "Source".into(),
             alias: None,
         }
@@ -362,7 +362,7 @@ mod query_layout_changes {
                 .unwrap()
                 .into_current()
                 .unwrap(),
-            ast::Projection::SelectItems(vec![ast::SelectItem::Wildcard])
+            current::Projection::SelectItems(vec![current::SelectItem::Wildcard])
         );
     }
 
@@ -379,9 +379,9 @@ mod query_layout_changes {
         };
         assert_eq!(
             join.into_current().unwrap(),
-            ast::Join {
+            current::Join {
                 relation: current_table(),
-                join_operator: ast::JoinOperator::Inner(ast::JoinConstraint::On(binary(
+                join_operator: current::JoinOperator::Inner(current::JoinConstraint::On(binary(
                     identifier("left_key"),
                     BinaryOperator::Eq,
                     identifier("right_key"),
@@ -419,9 +419,11 @@ mod query_layout_changes {
         );
         assert_eq!(
             join.into_current().unwrap(),
-            ast::Join {
+            current::Join {
                 relation: current_table(),
-                join_operator: ast::JoinOperator::LeftOuter(ast::JoinConstraint::On(expected_on)),
+                join_operator: current::JoinOperator::LeftOuter(current::JoinConstraint::On(
+                    expected_on
+                )),
             }
         );
     }
@@ -435,11 +437,11 @@ mod query_layout_changes {
         };
         assert_eq!(
             join.into_current().unwrap(),
-            ast::Join {
+            current::Join {
                 relation: current_table(),
-                join_operator: ast::JoinOperator::Inner(ast::JoinConstraint::On(identifier(
-                    "original_on"
-                ))),
+                join_operator: current::JoinOperator::Inner(current::JoinConstraint::On(
+                    identifier("original_on")
+                )),
             }
         );
     }
@@ -462,20 +464,10 @@ mod query_layout_changes {
             };
             assert!(matches!(
                 table.into_current(),
-                Err(SchemaDecodeError::RecoveryRequired(
-                    "historical index access plan requires explicit recovery"
-                ))
+                Err(SchemaDecodeError::UnrecoverableIndexAccessPlan)
             ));
         }
     }
-}
-
-#[cfg(test)]
-mod query_conversion {
-    use {
-        super::super::query as old,
-        gluesql_core::ast::{self as current, Dictionary, TableAlias},
-    };
 
     fn old_ident(name: &str) -> old::Expr {
         old::Expr::Identifier(name.into())
