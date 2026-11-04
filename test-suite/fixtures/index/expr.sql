@@ -24,7 +24,7 @@ CREATE INDEX idx_cast ON Test (CAST(id AS TEXT));
 -- @expect: payload CreateIndex
 
 CREATE INDEX idx_literal ON Test (100);
--- @expect: error Alter.IndexExprRequiresColumnReference
+-- @expect: error Planner.IndexExprRequiresColumnReference
 
 INSERT INTO Test VALUES (4, 7, 'Well');
 -- @expect: payload Insert

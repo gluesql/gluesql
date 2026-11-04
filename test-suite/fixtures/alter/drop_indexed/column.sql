@@ -27,7 +27,7 @@ CREATE INDEX idx_cast ON Test (CAST(id AS TEXT));
 -- @expect: ok
 
 CREATE INDEX idx_literal ON Test (100);
--- @expect: error Alter.IndexExprRequiresColumnReference
+-- @expect: error Planner.IndexExprRequiresColumnReference
 
 SELECT id, num, name FROM Test;
 -- @expect-index: none

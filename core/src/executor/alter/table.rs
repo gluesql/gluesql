@@ -7,10 +7,7 @@ use {
             evaluate::evaluate,
             query::{self, OutputBody},
         },
-        plan::{
-            ColumnDefPlan, CustomFunctionPlan, FilterInputPlan, ProjectInputPlan, ProjectPlan,
-            ProjectionPlan, QueryPlan, SelectItemPlan, SourcePlan, ValuesPlan,
-        },
+        plan::{ColumnDefPlan, CreateTableColumnsPlan, CustomFunctionPlan, QueryPlan, ValuesPlan},
         prelude::{DataType, Value},
         result::Result,
         store::{GStore, GStoreMut},
@@ -21,7 +18,7 @@ use {
 
 pub struct CreateTableOptions<'a> {
     pub target_table_name: &'a str,
-    pub column_defs: Option<&'a [ColumnDefPlan]>,
+    pub columns: &'a CreateTableColumnsPlan,
     pub if_not_exists: bool,
     pub source: &'a Option<Box<QueryPlan>>,
     pub engine: &'a Option<String>,
@@ -34,7 +31,7 @@ pub fn create_table<T: GStore + GStoreMut>(
     functions: &[CustomFunctionPlan],
     CreateTableOptions {
         target_table_name,
-        column_defs,
+        columns,
         if_not_exists,
         source,
         engine,
@@ -42,39 +39,28 @@ pub fn create_table<T: GStore + GStoreMut>(
         comment,
     }: CreateTableOptions<'_>,
 ) -> Result<()> {
-    if if_not_exists && source.is_some() && storage.fetch_schema(target_table_name)?.is_some() {
-        return Ok(());
-    }
-
     let mut selected_source_rows = None;
-    let target_columns_defs = match source.as_deref() {
-        Some(source_query) => match query::output_body(source_query) {
-            OutputBody::Project(project) => match source_for_schema_copy(project) {
-                Some(SourcePlan::Table(table)) => {
-                    let schema = storage.fetch_schema(&table.name)?;
-                    let Schema {
-                        column_defs: source_column_defs,
-                        ..
-                    } = schema
-                        .ok_or_else(|| AlterError::CtasSourceTableNotFound(table.name.clone()))?;
+    let target_columns_defs = match columns {
+        CreateTableColumnsPlan::Unplanned { .. } => {
+            return Err(
+                AlterError::UnplannedCreateTableColumns(target_table_name.to_owned()).into(),
+            );
+        }
+        _ if if_not_exists
+            && source.is_some()
+            && storage.fetch_schema(target_table_name)?.is_some() =>
+        {
+            return Ok(());
+        }
+        CreateTableColumnsPlan::Columns(columns) => Some(columns.clone()),
+        CreateTableColumnsPlan::Schemaless => None,
+        CreateTableColumnsPlan::FromQuery => {
+            let source_query = source
+                .as_deref()
+                .ok_or(AlterError::MalformedPlanCreateTableSource)?;
 
-                    source_column_defs.map(|column_defs| {
-                        column_defs.into_iter().map(ColumnDefPlan::from).collect()
-                    })
-                }
-                Some(SourcePlan::Series(_)) => {
-                    let column_def = ColumnDefPlan {
-                        name: "N".into(),
-                        data_type: DataType::Int,
-                        nullable: false,
-                        default: None,
-                        unique: None,
-                        comment: None,
-                    };
-
-                    Some(vec![column_def])
-                }
-                _ => {
+            match query::output_body(source_query) {
+                OutputBody::Project(_) => {
                     let (labels, rows) =
                         query::execute_with_labels(storage, functions, source_query, None)?;
                     let rows = rows
@@ -85,49 +71,47 @@ pub fn create_table<T: GStore + GStoreMut>(
 
                     Some(column_defs)
                 }
-            },
-            OutputBody::Values(ValuesPlan(values_list)) => {
-                let first_len = values_list[0].len();
-                let mut column_types = vec![None; first_len];
+                OutputBody::Values(ValuesPlan(values_list)) => {
+                    let first_len = values_list[0].len();
+                    let mut column_types = vec![None; first_len];
 
-                for exprs in values_list {
-                    for (i, expr) in exprs.iter().enumerate() {
-                        if column_types[i].is_some() {
-                            continue;
+                    for exprs in values_list {
+                        for (i, expr) in exprs.iter().enumerate() {
+                            if column_types[i].is_some() {
+                                continue;
+                            }
+
+                            column_types[i] = evaluate(storage, functions, None, None, expr)
+                                .and_then(Value::try_from)
+                                .map(|value| value.get_type())?;
                         }
 
-                        column_types[i] = evaluate(storage, functions, None, None, expr)
-                            .and_then(Value::try_from)
-                            .map(|value| value.get_type())?;
+                        if column_types.iter().all(Option::is_some) {
+                            break;
+                        }
                     }
 
-                    if column_types.iter().all(Option::is_some) {
-                        break;
-                    }
+                    let column_defs = column_types
+                        .iter()
+                        .map(|column_type| match column_type {
+                            Some(column_type) => column_type.to_owned(),
+                            None => DataType::Text,
+                        })
+                        .enumerate()
+                        .map(|(i, data_type)| ColumnDefPlan {
+                            name: format!("column{}", i + 1),
+                            data_type,
+                            nullable: true,
+                            default: None,
+                            unique: None,
+                            comment: None,
+                        })
+                        .collect::<Vec<_>>();
+
+                    Some(column_defs)
                 }
-
-                let column_defs = column_types
-                    .iter()
-                    .map(|column_type| match column_type {
-                        Some(column_type) => column_type.to_owned(),
-                        None => DataType::Text,
-                    })
-                    .enumerate()
-                    .map(|(i, data_type)| ColumnDefPlan {
-                        name: format!("column{}", i + 1),
-                        data_type,
-                        nullable: true,
-                        default: None,
-                        unique: None,
-                        comment: None,
-                    })
-                    .collect::<Vec<_>>();
-
-                Some(column_defs)
             }
-        },
-        None if column_defs.is_some() => column_defs.map(<[ColumnDefPlan]>::to_vec),
-        None => None,
+        }
     };
 
     if let Some(column_defs) = target_columns_defs.as_deref() {
@@ -243,31 +227,6 @@ pub fn create_table<T: GStore + GStoreMut>(
     }
 }
 
-fn source_for_schema_copy(project: &ProjectPlan) -> Option<&SourcePlan> {
-    let source = match &project.input {
-        ProjectInputPlan::Source(relation) => relation,
-        ProjectInputPlan::Filter(filter) => match &filter.input {
-            FilterInputPlan::Source(relation) => relation,
-            FilterInputPlan::InnerJoin(_) | FilterInputPlan::LeftOuterJoin(_) => return None,
-        },
-        ProjectInputPlan::InnerJoin(_)
-        | ProjectInputPlan::LeftOuterJoin(_)
-        | ProjectInputPlan::Aggregation(_)
-        | ProjectInputPlan::Having(_) => return None,
-    };
-
-    match &project.projection {
-        ProjectionPlan::SchemalessMap => true,
-        ProjectionPlan::SelectItems(items) => items.iter().all(|item| {
-            matches!(
-                item,
-                SelectItemPlan::Wildcard | SelectItemPlan::QualifiedWildcard(_)
-            )
-        }),
-    }
-    .then_some(source)
-}
-
 fn column_defs_from_rows(labels: Vec<String>, rows: &[Vec<Value>]) -> Vec<ColumnDefPlan> {
     labels
         .into_iter()
@@ -362,7 +321,61 @@ impl fmt::Display for Referencing {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::ast::ReferentialAction};
+    use {
+        super::*,
+        crate::{
+            ast::ReferentialAction,
+            mock::{MockStorage, run},
+            result::Error,
+        },
+    };
+
+    #[test]
+    fn unplanned_columns_are_rejected() {
+        let mut storage = run("CREATE TABLE Target (id INT)");
+        let source = Some(Box::new(QueryPlan::Values(ValuesPlan(Vec::new()))));
+        let actual = create_table(
+            &mut storage,
+            &[],
+            CreateTableOptions {
+                target_table_name: "Target",
+                columns: &CreateTableColumnsPlan::Unplanned { columns: None },
+                if_not_exists: true,
+                source: &source,
+                engine: &None,
+                foreign_keys: &Vec::new(),
+                comment: &None,
+            },
+        );
+        let expected = Err(Error::Alter(Box::new(
+            AlterError::UnplannedCreateTableColumns("Target".to_owned()),
+        )));
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn from_query_requires_source() {
+        let mut storage = MockStorage::default();
+        let actual = create_table(
+            &mut storage,
+            &[],
+            CreateTableOptions {
+                target_table_name: "Target",
+                columns: &CreateTableColumnsPlan::FromQuery,
+                if_not_exists: false,
+                source: &None,
+                engine: &None,
+                foreign_keys: &Vec::new(),
+                comment: &None,
+            },
+        );
+        let expected = Err(Error::Alter(Box::new(
+            AlterError::MalformedPlanCreateTableSource,
+        )));
+
+        assert_eq!(actual, expected);
+    }
 
     #[test]
     fn test_referencing_display() {

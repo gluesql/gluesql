@@ -80,7 +80,7 @@ mod tests {
         StatementPlan::from(translate(&parsed).unwrap())
     }
 
-    fn plan_table_columns(storage: &MockStorage, sql: &str) -> Result<StatementPlan> {
+    fn plan_insert_table_columns(storage: &MockStorage, sql: &str) -> Result<StatementPlan> {
         let statement = statement(sql);
         let schema_map = fetch_schema_map(storage, &statement).unwrap();
 
@@ -98,7 +98,7 @@ mod tests {
         let storage = run(ITEM);
 
         let sql = "INSERT INTO Item (name) VALUES ('glue')";
-        let actual = plan_table_columns(&storage, sql);
+        let actual = plan_insert_table_columns(&storage, sql);
         let expected = table("Item")
             .table_columns(ITEM_COLUMNS)
             .insert()
@@ -112,7 +112,7 @@ mod tests {
         );
 
         let sql = "INSERT INTO Item SELECT id, name, note FROM Item";
-        let actual = plan_table_columns(&storage, sql);
+        let actual = plan_insert_table_columns(&storage, sql);
         let expected = table("Item")
             .table_columns(ITEM_COLUMNS)
             .insert()
@@ -140,7 +140,7 @@ mod tests {
 
         let storage = run("CREATE TABLE Log;");
         let sql = "INSERT INTO Log VALUES ('{}')";
-        let actual = plan_table_columns(&storage, sql);
+        let actual = plan_insert_table_columns(&storage, sql);
         let expected = table("Log")
             .schemaless()
             .insert()
@@ -150,7 +150,7 @@ mod tests {
 
         let storage = MockStorage::default();
         let sql = "INSERT INTO Missing VALUES (1)";
-        let actual = plan_table_columns(&storage, sql);
+        let actual = plan_insert_table_columns(&storage, sql);
         let expected = Err(Error::Insert(InsertError::TableNotFound(
             "Missing".to_owned(),
         )));
@@ -169,15 +169,15 @@ mod tests {
         let storage = run(ITEM);
 
         let sql = "SELECT * FROM Item";
-        let actual = plan_table_columns(&storage, sql);
+        let actual = plan_insert_table_columns(&storage, sql);
         test!(actual, Ok(statement(sql)), "select is unchanged:\n{sql}");
 
         let sql = "DELETE FROM Item WHERE id = 1";
-        let actual = plan_table_columns(&storage, sql);
+        let actual = plan_insert_table_columns(&storage, sql);
         test!(actual, Ok(statement(sql)), "delete is unchanged:\n{sql}");
 
         let sql = "CREATE TABLE Other (id INTEGER DEFAULT 1)";
-        let actual = plan_table_columns(&storage, sql);
+        let actual = plan_insert_table_columns(&storage, sql);
         test!(
             actual,
             Ok(statement(sql)),

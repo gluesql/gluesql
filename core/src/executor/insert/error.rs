@@ -35,6 +35,6 @@ pub enum InsertError {
         referenced_value: String,
     },
 
-    #[error("unreachable referencing column name: {0}")]
+    #[error("conflict - foreign key referencing column not found in schema or row: {0}")]
     ConflictReferencingColumnName(String),
 }

@@ -18,27 +18,23 @@ pub enum AlterError {
     #[error("function does not exist: {0}")]
     FunctionNotFound(String),
 
-    // CREATE INDEX, DROP TABLE
+    // DROP TABLE, ALTER TABLE
     #[error("table does not exist: {0}")]
     TableNotFound(String),
 
-    #[error("CTAS source table does not exist: {0}")]
-    CtasSourceTableNotFound(String),
+    #[error("unplanned CREATE TABLE columns: {0}")]
+    UnplannedCreateTableColumns(String),
+
+    #[error("malformed plan - CREATE TABLE source query is missing")]
+    MalformedPlanCreateTableSource,
 
     // validate column def
     #[error("column '{0}' of data type '{1:?}' is unsupported for unique constraint")]
     UnsupportedDataTypeForUniqueColumn(String, DataType),
 
     // validate index expr
-    #[error("unsupported index expression")]
-    UnsupportedIndexExpr,
-
-    // validate index expr
     #[error("unsupported unnamed argument")]
     UnsupportedUnnamedArg,
-
-    #[error("index expression must reference at least one column")]
-    IndexExprRequiresColumnReference,
 
     #[error("duplicate column name: {0}")]
     DuplicateColumnName(String),
