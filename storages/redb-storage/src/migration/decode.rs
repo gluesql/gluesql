@@ -1,5 +1,5 @@
-//! Strict bincode decoding with bounded nesting and collection sizes.
-//! This module does not interpret storage versions or change enum tags.
+//! Strict bincode decoding for the schema and row types used by these migrations.
+//! Bounds nesting and collection sizes without interpreting versions or changing enum tags.
 
 use {
     bincode::Options,
@@ -191,12 +191,7 @@ impl<'de, V: Visitor<'de>> Visitor<'de> for WrappedVisitor<'de, V> {
         visit_bool, bool; visit_i8, i8; visit_i16, i16; visit_i32, i32;
         visit_i64, i64; visit_i128, i128; visit_u8, u8; visit_u16, u16;
         visit_u32, u32; visit_u64, u64; visit_u128, u128; visit_f32, f32;
-        visit_f64, f64; visit_char, char; visit_str, &str; visit_string, String;
-        visit_borrowed_str, &'de str; visit_bytes, &[u8];
-        visit_borrowed_bytes, &'de [u8]; visit_byte_buf, Vec<u8>;
-    }
-    fn visit_unit<E: de::Error>(self) -> Result<Self::Value, E> {
-        self.inner.visit_unit()
+        visit_f64, f64; visit_str, &str; visit_string, String;
     }
     fn visit_none<E: de::Error>(self) -> Result<Self::Value, E> {
         self.inner.visit_none()
@@ -291,9 +286,6 @@ impl<'de, A: MapAccess<'de>> MapAccess<'de> for WrappedAccess<'de, A> {
             inner: seed,
             context: self.context,
         })
-    }
-    fn size_hint(&self) -> Option<usize> {
-        self.inner.size_hint()
     }
 }
 
@@ -396,6 +388,29 @@ mod strict_payload {
         ] {
             let bytes = bincode::serialize(&expected).unwrap();
             assert_eq!(deserialize::<Payload>(&bytes).unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn decodes_numeric_keys_and_values() {
+        for (key, value) in [
+            (Key::I8(i8::MIN), Value::I8(i8::MAX)),
+            (Key::I16(i16::MIN), Value::I16(i16::MAX)),
+            (Key::I32(i32::MIN), Value::I32(i32::MAX)),
+            (Key::I64(i64::MIN), Value::I64(i64::MAX)),
+            (Key::I128(i128::MIN), Value::I128(i128::MAX)),
+            (Key::U8(u8::MIN), Value::U8(u8::MAX)),
+            (Key::U16(u16::MIN), Value::U16(u16::MAX)),
+            (Key::U32(u32::MIN), Value::U32(u32::MAX)),
+            (Key::U64(u64::MIN), Value::U64(u64::MAX)),
+            (Key::U128(u128::MIN), Value::U128(u128::MAX)),
+            (Key::F32((-1.25).into()), Value::F32(1.25)),
+            (Key::F64((-2.5).into()), Value::F64(2.5)),
+        ] {
+            let expected = (key, vec![value]);
+            let bytes = bincode::serialize(&expected).unwrap();
+            let actual = deserialize::<(Key, Vec<Value>)>(&bytes).unwrap();
+            assert_eq!(actual, expected);
         }
     }
 

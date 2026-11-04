@@ -44,10 +44,6 @@ impl<'de> de::Deserializer<'de> for EnumProbe<'_> {
         visitor.visit_enum(self)
     }
 
-    fn is_human_readable(&self) -> bool {
-        false
-    }
-
     serde::forward_to_deserialize_any! {
         bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
         bytes byte_buf option unit unit_struct newtype_struct seq tuple
@@ -144,10 +140,6 @@ impl<'de> de::Deserializer<'de> for StructProbe<'_> {
     ) -> Result<V::Value, Error> {
         *self.0 = Some(Shape::Newtype);
         Err(de::Error::custom(CAPTURED))
-    }
-
-    fn is_human_readable(&self) -> bool {
-        false
     }
 
     serde::forward_to_deserialize_any! {
