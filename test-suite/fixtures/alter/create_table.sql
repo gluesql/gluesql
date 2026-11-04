@@ -302,3 +302,40 @@ SELECT * FROM EmptyDefaultCopy;
 CREATE TABLE IF NOT EXISTS DefaultCopy AS SELECT * FROM MissingDefaultSource;
 -- @expect: error Planner.CtasSourceTableNotFound
 -- @json: "MissingDefaultSource"
+
+CREATE TABLE AliasSource (id INT, name TEXT);
+-- @expect: payload Create
+
+INSERT INTO AliasSource VALUES (1, 'one');
+-- @expect: payload Insert
+-- @json: 1
+
+-- @name: CTAS copies alias names for every aliased column
+CREATE TABLE AliasCopyFull AS SELECT * FROM AliasSource AS t(renamed_id, renamed_name);
+-- @expect: payload Create
+
+SELECT renamed_id, renamed_name FROM AliasCopyFull ORDER BY renamed_id;
+-- @expect:
+-- | renamed_id: I64 | renamed_name: Str |
+-- | --------------- | ----------------- |
+-- | 1               | "one"             |
+
+-- @name: CTAS keeps original names for columns the alias does not cover
+CREATE TABLE AliasCopyPartial AS SELECT * FROM AliasSource AS t(renamed_id);
+-- @expect: payload Create
+
+SELECT renamed_id, name FROM AliasCopyPartial ORDER BY renamed_id;
+-- @expect:
+-- | renamed_id: I64 | name: Str |
+-- | --------------- | --------- |
+-- | 1               | "one"     |
+
+-- @name: CTAS copies alias names through a qualified wildcard
+CREATE TABLE AliasCopyQualified AS SELECT t.* FROM AliasSource AS t(renamed_id, renamed_name);
+-- @expect: payload Create
+
+SELECT renamed_id, renamed_name FROM AliasCopyQualified ORDER BY renamed_id;
+-- @expect:
+-- | renamed_id: I64 | renamed_name: Str |
+-- | --------------- | ----------------- |
+-- | 1               | "one"             |

@@ -31,9 +31,26 @@ pub fn plan<S: BuildHasher>(
                         .ok_or_else(|| PlannerError::CtasSourceTableNotFound(table.name.clone()))?;
 
                     match &schema.column_defs {
-                        Some(columns) => CreateTableColumnsPlan::Columns(
-                            columns.iter().cloned().map(ColumnDefPlan::from).collect(),
-                        ),
+                        Some(column_defs) => {
+                            let aliases = table
+                                .alias
+                                .as_ref()
+                                .map(|alias| alias.columns.as_slice())
+                                .unwrap_or_default();
+                            CreateTableColumnsPlan::Columns(
+                                column_defs
+                                    .iter()
+                                    .cloned()
+                                    .enumerate()
+                                    .map(|(index, mut column_def)| {
+                                        if let Some(name) = aliases.get(index) {
+                                            column_def.name.clone_from(name);
+                                        }
+                                        ColumnDefPlan::from(column_def)
+                                    })
+                                    .collect(),
+                            )
+                        }
                         None => CreateTableColumnsPlan::Schemaless,
                     }
                 }
@@ -227,6 +244,30 @@ mod tests {
             actual,
             expected,
             "runtime columns keep existing CTAS precedence",
+        );
+
+        let actual = "CREATE TABLE Target AS SELECT * FROM Item AS t(renamed_id, renamed_label)";
+        let expected = create(
+            Some(query("SELECT * FROM Item AS t(renamed_id, renamed_label)")),
+            CreateTableColumnsPlan::Columns(columns(&[
+                "renamed_id INT PRIMARY KEY DEFAULT 1 + 2 COMMENT 'id'",
+                "renamed_label TEXT",
+            ])),
+        );
+        test(actual, expected, "alias renames every copied column");
+
+        let actual = "CREATE TABLE Target AS SELECT * FROM Item AS t(renamed_id)";
+        let expected = create(
+            Some(query("SELECT * FROM Item AS t(renamed_id)")),
+            CreateTableColumnsPlan::Columns(columns(&[
+                "renamed_id INT PRIMARY KEY DEFAULT 1 + 2 COMMENT 'id'",
+                "label TEXT",
+            ])),
+        );
+        test(
+            actual,
+            expected,
+            "partial alias keeps uncovered column names",
         );
 
         let actual = plan_columns(&storage, "CREATE TABLE Target AS SELECT * FROM Missing");
