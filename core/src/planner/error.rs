@@ -2,6 +2,15 @@ use {serde::Serialize, std::fmt::Debug, thiserror::Error as ThisError};
 
 #[derive(ThisError, Serialize, Debug, PartialEq, Eq)]
 pub enum PlannerError {
+    #[error("CREATE INDEX target table does not exist: {0}")]
+    CreateIndexTableNotFound(String),
+
+    #[error("unsupported index expression")]
+    UnsupportedIndexExpr,
+
+    #[error("index expression must reference at least one column")]
+    IndexExprRequiresColumnReference,
+
     #[error("CTAS source table does not exist: {0}")]
     CtasSourceTableNotFound(String),
 
