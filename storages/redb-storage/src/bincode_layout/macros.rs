@@ -89,18 +89,16 @@ macro_rules! struct_layout {
         }
     };
 
-    ($test:ident: $target:ident ( $( $field:ident : $field_type:ty ),* $(,)? )) => {
+    ($test:ident: $target:ident ( $field:ident : $field_type:ty $(,)? )) => {
         #[test]
         fn $test() {
             use $target as Target;
             fn field_types(value: Target) {
-                let Target($( $field ),*) = value;
-                $( let _: $field_type = $field; )*
+                let Target($field) = value;
+                let _: $field_type = $field;
             }
             let _: fn(Target) = field_types;
-            let expected = $crate::bincode_layout::macros::enum_layout!(
-                @shape ($( $field : $field_type ),*)
-            );
+            let expected = $crate::bincode_layout::serde_metadata::Shape::Newtype;
             assert_eq!(
                 $crate::bincode_layout::serde_metadata::struct_layout::<Target>(),
                 expected,

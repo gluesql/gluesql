@@ -146,23 +146,13 @@ impl<'de> de::Deserializer<'de> for StructProbe<'_> {
         Err(de::Error::custom(CAPTURED))
     }
 
-    fn deserialize_tuple_struct<V: Visitor<'de>>(
-        self,
-        _: &'static str,
-        len: usize,
-        _: V,
-    ) -> Result<V::Value, Error> {
-        *self.0 = Some(Shape::Tuple(len));
-        Err(de::Error::custom(CAPTURED))
-    }
-
     fn is_human_readable(&self) -> bool {
         false
     }
 
     serde::forward_to_deserialize_any! {
         bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
-        bytes byte_buf option unit unit_struct seq tuple map enum identifier ignored_any
+        bytes byte_buf option unit unit_struct seq tuple tuple_struct map enum identifier ignored_any
     }
 }
 
