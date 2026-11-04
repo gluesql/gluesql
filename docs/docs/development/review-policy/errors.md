@@ -118,9 +118,7 @@ state by constructing or modifying a plan. A planner bug can also produce it;
 the error class describes the invalid plan without assuming its origin.
 
 Test the guard by constructing the malformed plan and passing it to the relevant
-execution path. Assert the error variant and its details. For the custom function
-index guard, the existing evaluator test also checks that the error is returned
-before evaluating call arguments.
+execution path. Assert the error variant and its details.
 
 ## Applying the policy
 

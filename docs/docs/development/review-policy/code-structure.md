@@ -59,8 +59,8 @@ fn normalize(text: &str, for_tag: bool) -> String {
 }
 ```
 
-If each caller already knows which operation it needs, the flag exists only
-to combine the implementations. Keep the operations separate:
+In this example, callers always pass `true` for tags and `false` for titles.
+The flag was added only to combine the two operations. Keep them separate:
 
 ```rust
 fn normalize_tag(text: &str) -> String {

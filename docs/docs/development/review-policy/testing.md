@@ -29,6 +29,7 @@ people and tools. Group cases by SQL feature and behavior. Use representative
 examples that show successful usage and expected errors. Give each case a clear
 name, and keep its setup, SQL, and expected results easy to read.
 
+The fixtures also serve a unit-testing role for the execution layer.
 For each behavior covered by a fixture, test every executor branch and error
 path that SQL can reach. Run the cases through the production SQL pipeline and
 assert their results. When a case tests storage behavior, also check the stored
