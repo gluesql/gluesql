@@ -253,7 +253,12 @@ nav = [
     ]},
   ]},
   {"Development" = [
-    "development/review-policy.md",
+    {"Review Policy" = [
+      {"Overview" = "development/review-policy.md"},
+      "development/review-policy/errors.md",
+      "development/review-policy/testing.md",
+      "development/review-policy/code-structure.md",
+    ]},
   ]},
   {"Archive" = [
     {"Articles" = [

@@ -1,5 +1,5 @@
 # AGENTS.md
-- Follow [docs/docs/development/review-policy.md](docs/docs/development/review-policy.md) when implementing or reviewing changes.
+- Follow [docs/docs/development/review-policy.md](docs/docs/development/review-policy.md) and its linked topic policies when implementing or reviewing changes.
 - After editing code, run `cargo clippy --all-targets -- -D warnings`.
 - Then run `cargo fmt --all`.
 - When importing items, group them under a single `use` statement whenever possible.
