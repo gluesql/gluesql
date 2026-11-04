@@ -12,6 +12,7 @@ mod query;
 mod schema;
 mod schemaless;
 mod validate;
+mod validate_create_index;
 mod visit;
 mod visit_mut;
 
@@ -27,4 +28,5 @@ pub use {
     primary_key::plan as plan_primary_key,
     schema::fetch_schema_map,
     schemaless::plan as plan_schemaless,
+    validate_create_index::validate as validate_create_index,
 };

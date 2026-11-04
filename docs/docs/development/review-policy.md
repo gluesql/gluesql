@@ -15,7 +15,23 @@ user-facing message. Reapply this rule when moving a check to another module.
 An error propagated from a call keeps the type chosen where it was created.
 The caller's location does not change its ownership.
 
-Ownership selects the error type; prefixes describe the error condition.
+Ownership selects the error type. Variants distinguish failures; prefixes
+classify their conditions.
+
+## Error variants
+
+Give independent failure conditions distinct variants, even when their messages
+would be similar. Do not reuse a broad variant across unrelated checks.
+
+Represent distinctions within a variant with enum payloads, not string tags or
+message text. String fields may carry diagnostic data such as table names.
+
+For example, use `CreateIndexTableNotFound(String)` for a missing CREATE INDEX
+target and `CtasSourceTableNotFound(String)` for a missing CTAS source. Each string
+holds the table name; the variants identify the failed checks.
+
+An error produced by the same check in a shared function may be propagated
+unchanged by multiple callers.
 
 ## Error prefixes
 

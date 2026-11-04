@@ -1,7 +1,6 @@
 mod alter_table;
 mod error;
 mod function;
-mod index;
 mod table;
 mod validate;
 
@@ -11,6 +10,5 @@ pub use {
     alter_table::alter_table,
     error::AlterError,
     function::{delete_function, insert_function},
-    index::create_index,
     table::{CreateTableOptions, Referencing, create_table, drop_table},
 };

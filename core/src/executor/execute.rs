@@ -1,8 +1,8 @@
 use {
     super::{
         alter::{
-            CreateTableOptions, alter_table, create_index, create_table, delete_function,
-            drop_table, insert_function,
+            CreateTableOptions, alter_table, create_table, delete_function, drop_table,
+            insert_function,
         },
         delete::delete,
         fetch::fetch,
@@ -176,7 +176,9 @@ fn execute_inner<T: GStore + GStoreMut>(
             name,
             table_name,
             column,
-        } => create_index(storage, table_name, name, column).map(|()| Payload::CreateIndex),
+        } => storage
+            .create_index(table_name, name, column)
+            .map(|()| Payload::CreateIndex),
         StatementPlanKind::DropIndex { name, table_name } => storage
             .drop_index(table_name, name)
             .map(|()| Payload::DropIndex),

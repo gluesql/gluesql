@@ -214,10 +214,14 @@ DROP INDEX Test.idx_id, Test.idx_id2;
 -- @expect: error Translate.TooManyParamsInDropIndex
 
 CREATE INDEX idx_wow ON Test (a.b);
--- @expect: error Alter.UnsupportedIndexExpr
+-- @expect: error Planner.UnsupportedIndexExpr
+
+CREATE INDEX idx_wow ON Test (missing);
+-- @expect: error Planner.CreateIndexColumnNotFound
+-- @json: "missing"
 
 CREATE INDEX idx_wow ON Abc (name);
--- @expect: error Alter.TableNotFound
+-- @expect: error Planner.CreateIndexTableNotFound
 -- @json: "Abc"
 
 DROP INDEX NoNameTable.idx_id;

@@ -50,6 +50,15 @@ pub fn fetch_schema_map<T: Store + ?Sized>(
 
             Ok(schema_list)
         }
+        StatementPlanKind::CreateIndex { table_name, .. } => {
+            let schema_map = storage
+                .fetch_schema(table_name)?
+                .map_or_else(HashMap::new, |schema| {
+                    HashMap::from([(table_name.to_owned(), schema)])
+                });
+
+            Ok(schema_map)
+        }
         StatementPlanKind::DropTable { names, .. } => {
             let mut schema_map = HashMap::new();
             for table_name in names {
@@ -408,7 +417,7 @@ mod tests {
         crate::{
             mock::{MockStorage, run},
             parse_sql::parse,
-            result::Result,
+            result::{Error, Result},
             translate::translate,
         },
     };
@@ -445,6 +454,38 @@ mod tests {
         test("DROP TABLE Foo, Bar;", &["Bar", "Foo"]);
         test("UPDATE Foo SET id = 1;", &["Foo"]);
         test("DELETE FROM Foo;", &["Foo"]);
+    }
+
+    #[test]
+    fn create_index() {
+        let storage = run("CREATE TABLE Foo (id INTEGER)");
+        let test = |sql: &str, expected: &[&str], name: &str| {
+            let actual = plan(&storage, sql).expect(sql);
+            assert_eq!(actual.as_slice(), expected, "{name}: {sql}");
+        };
+
+        let actual = "CREATE INDEX idx ON Foo (id)";
+        let expected = &["Foo"];
+        test(actual, expected, "index target schema");
+
+        let actual = "CREATE INDEX idx ON Missing (id)";
+        let expected = &[];
+        test(actual, expected, "missing schema is left to validation");
+
+        let actual = "CREATE INDEX idx ON Foo ((SELECT id FROM __Err__))";
+        let expected = &["Foo"];
+        test(
+            actual,
+            expected,
+            "unsupported index subquery is not scanned",
+        );
+
+        let sql = "CREATE INDEX idx ON __Err__ (id)";
+        let actual = plan(&storage, sql);
+        let expected = Err(Error::StorageMsg(
+            "[MockStorage] fetch_schema - user triggered error".to_owned(),
+        ));
+        assert_eq!(actual, expected, "target schema error propagates: {sql}");
     }
 
     #[test]
