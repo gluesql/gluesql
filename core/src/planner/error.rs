@@ -5,6 +5,9 @@ pub enum PlannerError {
     #[error("CREATE INDEX target table does not exist: {0}")]
     CreateIndexTableNotFound(String),
 
+    #[error("CREATE INDEX column does not exist: {0}")]
+    CreateIndexColumnNotFound(String),
+
     #[error("unsupported index expression")]
     UnsupportedIndexExpr,
 
