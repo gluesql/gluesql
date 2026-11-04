@@ -22,8 +22,11 @@ pub enum AlterError {
     #[error("table does not exist: {0}")]
     TableNotFound(String),
 
-    #[error("CTAS source table does not exist: {0}")]
-    CtasSourceTableNotFound(String),
+    #[error("unplanned CREATE TABLE columns: {0}")]
+    UnplannedCreateTableColumns(String),
+
+    #[error("malformed plan - CREATE TABLE source query is missing")]
+    MalformedPlanCreateTableSource,
 
     // validate column def
     #[error("column '{0}' of data type '{1:?}' is unsupported for unique constraint")]

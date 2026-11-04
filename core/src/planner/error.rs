@@ -2,6 +2,9 @@ use {serde::Serialize, std::fmt::Debug, thiserror::Error as ThisError};
 
 #[derive(ThisError, Serialize, Debug, PartialEq, Eq)]
 pub enum PlannerError {
+    #[error("CTAS source table does not exist: {0}")]
+    CtasSourceTableNotFound(String),
+
     #[error("storage access is not allowed in a custom function body")]
     StorageAccessInFunctionBody,
 

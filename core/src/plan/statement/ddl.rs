@@ -78,6 +78,18 @@ pub enum TableColumnsPlan {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum CreateTableColumnsPlan {
+    /// Input definitions awaiting CTAS column planning.
+    Unplanned {
+        columns: Option<Vec<ColumnDefPlan>>,
+    },
+    Columns(Vec<ColumnDefPlan>),
+    Schemaless,
+    /// Determine columns from source values during execution.
+    FromQuery,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AlterTableOperationPlan {
     AddColumn {
         column_def: ColumnDefPlan,

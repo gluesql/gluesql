@@ -6,8 +6,8 @@ mod query;
 
 pub use {
     ddl::{
-        AlterTableOperationPlan, ColumnDefPlan, DefaultExpr, OperateFunctionArgPlan,
-        TableColumnsPlan,
+        AlterTableOperationPlan, ColumnDefPlan, CreateTableColumnsPlan, DefaultExpr,
+        OperateFunctionArgPlan, TableColumnsPlan,
     },
     expr::{
         AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan, plan_scalar_expr,
@@ -61,7 +61,7 @@ pub enum StatementPlanKind {
     CreateTable {
         if_not_exists: bool,
         name: String,
-        columns: Option<Vec<ColumnDefPlan>>,
+        columns: CreateTableColumnsPlan,
         source: Option<Box<QueryPlan>>,
         engine: Option<String>,
         foreign_keys: Vec<ForeignKey>,
@@ -147,15 +147,27 @@ impl From<ast::Statement> for StatementPlanKind {
                 engine,
                 foreign_keys,
                 comment,
-            } => Self::CreateTable {
-                if_not_exists,
-                name,
-                columns: columns.map(|columns| columns.into_iter().map(Into::into).collect()),
-                source: source.map(|query| Box::new((*query).into())),
-                engine,
-                foreign_keys,
-                comment,
-            },
+            } => {
+                let columns = columns.map(|columns| columns.into_iter().map(Into::into).collect());
+                let columns = if source.is_some() {
+                    CreateTableColumnsPlan::Unplanned { columns }
+                } else {
+                    columns.map_or(
+                        CreateTableColumnsPlan::Schemaless,
+                        CreateTableColumnsPlan::Columns,
+                    )
+                };
+
+                Self::CreateTable {
+                    if_not_exists,
+                    name,
+                    columns,
+                    source: source.map(|query| Box::new((*query).into())),
+                    engine,
+                    foreign_keys,
+                    comment,
+                }
+            }
             ast::Statement::CreateFunction {
                 or_replace,
                 name,
@@ -225,5 +237,70 @@ impl From<StatementPlanKind> for StatementPlan {
 impl From<ast::Statement> for StatementPlan {
     fn from(statement: ast::Statement) -> Self {
         StatementPlanKind::from(statement).into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::{CreateTableColumnsPlan, StatementPlanKind},
+        crate::{
+            ast::{DataType, Literal},
+            parse_sql::parse,
+            plan::{ColumnDefPlan, ExprPlan, QueryPlan, ValuesPlan},
+            translate::translate,
+        },
+    };
+
+    #[test]
+    fn create_table_columns() {
+        let test = |sql: &str, columns, source: Option<QueryPlan>| {
+            let parsed = parse(sql).expect(sql);
+            let actual = StatementPlanKind::from(translate(&parsed[0]).expect(sql));
+            let expected = StatementPlanKind::CreateTable {
+                if_not_exists: false,
+                name: "Item".to_owned(),
+                columns,
+                source: source.map(Box::new),
+                engine: None,
+                foreign_keys: Vec::new(),
+                comment: None,
+            };
+            assert_eq!(actual, expected, "{sql}");
+        };
+        let columns = vec![ColumnDefPlan {
+            name: "id".to_owned(),
+            data_type: DataType::Int,
+            nullable: true,
+            default: None,
+            unique: None,
+            comment: None,
+        }];
+        let source = QueryPlan::Values(ValuesPlan(vec![vec![ExprPlan::Literal(Literal::Number(
+            1.into(),
+        ))]]));
+
+        test(
+            "CREATE TABLE Item",
+            CreateTableColumnsPlan::Schemaless,
+            None,
+        );
+        test(
+            "CREATE TABLE Item (id INT)",
+            CreateTableColumnsPlan::Columns(columns.clone()),
+            None,
+        );
+        test(
+            "CREATE TABLE Item AS VALUES (1)",
+            CreateTableColumnsPlan::Unplanned { columns: None },
+            Some(source.clone()),
+        );
+        test(
+            "CREATE TABLE Item (id INT) AS VALUES (1)",
+            CreateTableColumnsPlan::Unplanned {
+                columns: Some(columns),
+            },
+            Some(source),
+        );
     }
 }

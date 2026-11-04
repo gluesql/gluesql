@@ -220,7 +220,7 @@ SELECT * FROM TargetTableIfNotExists
 -- | "chips"    |
 
 CREATE TABLE TargetTableWithData2 AS SELECT * FROM NonExistentTable
--- @expect: error Alter.CtasSourceTableNotFound
+-- @expect: error Planner.CtasSourceTableNotFound
 -- @json: "NonExistentTable"
 
 CREATE TABLE DuplicateColumns (id INT, id INT)
@@ -250,3 +250,55 @@ SELECT * FROM TargetTableWithEmptyAggregate
 -- | COUNT(*): I64 |
 -- | ------------- |
 -- | 0             |
+
+CREATE TABLE DefaultSource (
+    id INT,
+    amount INT NOT NULL DEFAULT 1 + 2 COMMENT 'copied default'
+);
+-- @expect: payload Create
+
+INSERT INTO DefaultSource VALUES (1, 9);
+-- @expect: payload Insert
+-- @json: 1
+
+-- @name: CTAS copies defaults without applying them to source rows
+CREATE TABLE DefaultCopy AS SELECT * FROM DefaultSource;
+-- @expect: payload Create
+
+INSERT INTO DefaultCopy (id) VALUES (2);
+-- @expect: payload Insert
+-- @json: 1
+
+SELECT * FROM DefaultCopy ORDER BY id;
+-- @expect:
+-- | id: I64 | amount: I64 |
+-- | ------- | ----------- |
+-- | 1       | 9           |
+-- | 2       | 3           |
+
+-- @name: A copied default keeps its stored expression and column metadata
+SELECT NULLABLE, "DEFAULT" AS default_expr, COMMENT FROM GLUE_TABLE_COLUMNS
+WHERE TABLE_NAME = 'DefaultCopy' AND COLUMN_NAME = 'amount';
+-- @expect:
+-- | NULLABLE: Bool | default_expr: Str | COMMENT: Str     |
+-- | -------------- | ----------------- | ---------------- |
+-- | false          | "1 + 2"           | "copied default" |
+
+-- @name: An empty CTAS copy retains its default for later INSERT
+CREATE TABLE EmptyDefaultCopy AS SELECT * FROM DefaultSource WHERE FALSE;
+-- @expect: payload Create
+
+INSERT INTO EmptyDefaultCopy (id) VALUES (3);
+-- @expect: payload Insert
+-- @json: 1
+
+SELECT * FROM EmptyDefaultCopy;
+-- @expect:
+-- | id: I64 | amount: I64 |
+-- | ------- | ----------- |
+-- | 3       | 3           |
+
+-- @name: IF NOT EXISTS still prepares copied columns before execution
+CREATE TABLE IF NOT EXISTS DefaultCopy AS SELECT * FROM MissingDefaultSource;
+-- @expect: error Planner.CtasSourceTableNotFound
+-- @json: "MissingDefaultSource"
