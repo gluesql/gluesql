@@ -22,8 +22,8 @@ pub enum AlterError {
     #[error("table does not exist: {0}")]
     TableNotFound(String),
 
-    #[error("unplanned CREATE TABLE columns")]
-    UnplannedCreateTableColumns,
+    #[error("unplanned CREATE TABLE columns: {0}")]
+    UnplannedCreateTableColumns(String),
 
     #[error("malformed plan - CREATE TABLE source query is missing")]
     MalformedPlanCreateTableSource,

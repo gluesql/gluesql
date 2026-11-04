@@ -42,7 +42,9 @@ pub fn create_table<T: GStore + GStoreMut>(
     let mut selected_source_rows = None;
     let target_columns_defs = match columns {
         CreateTableColumnsPlan::Unplanned { .. } => {
-            return Err(AlterError::UnplannedCreateTableColumns.into());
+            return Err(
+                AlterError::UnplannedCreateTableColumns(target_table_name.to_owned()).into(),
+            );
         }
         _ if if_not_exists
             && source.is_some()
@@ -346,7 +348,7 @@ mod tests {
             },
         );
         let expected = Err(Error::Alter(Box::new(
-            AlterError::UnplannedCreateTableColumns,
+            AlterError::UnplannedCreateTableColumns("Target".to_owned()),
         )));
 
         assert_eq!(actual, expected);
