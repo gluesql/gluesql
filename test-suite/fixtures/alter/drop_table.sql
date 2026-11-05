@@ -127,3 +127,29 @@ SELECT id, num, name FROM DropTable1;
 SELECT id, num, name FROM DropTable2;
 -- @expect: error Fetch.TableNotFound
 -- @json: "DropTable2"
+
+CREATE TABLE DropAtomicA (id INT)
+-- @expect: payload Create
+
+INSERT INTO DropAtomicA VALUES (1)
+-- @expect: ok
+
+DROP TABLE DropAtomicA, DropAtomicMissing;
+-- @expect: error Alter.TableNotFound
+-- @json: "DropAtomicMissing"
+
+SELECT id FROM DropAtomicA;
+-- @expect:
+-- | id: I64 |
+-- | ------- |
+-- | 1       |
+
+DROP TABLE DropAtomicA, DropAtomicA;
+-- @expect: error Alter.TableNotFound
+-- @json: "DropAtomicA"
+
+SELECT id FROM DropAtomicA;
+-- @expect:
+-- | id: I64 |
+-- | ------- |
+-- | 1       |
