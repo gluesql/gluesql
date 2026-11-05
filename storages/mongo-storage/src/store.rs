@@ -256,13 +256,14 @@ impl MongoStorage {
             let TableDescription {
                 foreign_keys,
                 comment,
+                engine,
             } = from_str::<TableDescription>(table_description).map_storage_err()?;
 
             let schema = Schema {
                 table_name: collection_name.to_owned(),
                 column_defs,
                 indexes: Vec::new(),
-                engine: None,
+                engine,
                 foreign_keys,
                 comment,
             };

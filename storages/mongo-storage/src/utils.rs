@@ -26,6 +26,16 @@ impl Validator {
         foreign_keys: Vec<ForeignKey>,
         comment: Option<String>,
     ) -> Result<Self> {
+        Self::new_with_engine(labels, column_types, foreign_keys, comment, None)
+    }
+
+    pub(crate) fn new_with_engine(
+        labels: Vec<String>,
+        column_types: Document,
+        foreign_keys: Vec<ForeignKey>,
+        comment: Option<String>,
+        engine: Option<String>,
+    ) -> Result<Self> {
         let mut required = vec!["_id".to_owned()];
         required.extend(labels);
 
@@ -39,6 +49,7 @@ impl Validator {
             &(TableDescription {
                 foreign_keys,
                 comment,
+                engine,
             }),
         )
         .map_storage_err()?;
