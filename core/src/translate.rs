@@ -126,6 +126,15 @@ pub fn translate_with_params(
                 Some(UpdateOption::From)
             } else if returning.is_some() {
                 Some(UpdateOption::Returning)
+            } else if let TableFactor::Table {
+                alias: Some(alias), ..
+            } = &table.relation
+            {
+                Some(if alias.columns.is_empty() {
+                    UpdateOption::TableAlias
+                } else {
+                    UpdateOption::TableColumnAlias
+                })
             } else {
                 None
             };
@@ -165,6 +174,17 @@ pub fn translate_with_params(
                 Some(DeleteOption::Limit)
             } else if matches!(from, SqlFromTable::WithFromKeyword(tables) if tables.len() > 1) {
                 Some(DeleteOption::MultipleTables)
+            } else if let SqlFromTable::WithFromKeyword(tables) = from
+                && let Some(table) = tables.first()
+                && let TableFactor::Table {
+                    alias: Some(alias), ..
+                } = &table.relation
+            {
+                Some(if alias.columns.is_empty() {
+                    DeleteOption::TableAlias
+                } else {
+                    DeleteOption::TableColumnAlias
+                })
             } else {
                 None
             };
@@ -717,6 +737,18 @@ mod tests {
                 "UPDATE Foo SET id = 1 WHERE id = 1 RETURNING *",
                 TranslateError::UnsupportedUpdateOption(UpdateOption::Returning),
             ),
+            (
+                "UPDATE Foo AS f SET id = 1",
+                TranslateError::UnsupportedUpdateOption(UpdateOption::TableAlias),
+            ),
+            (
+                "UPDATE Foo f SET id = 1",
+                TranslateError::UnsupportedUpdateOption(UpdateOption::TableAlias),
+            ),
+            (
+                "UPDATE Foo AS f(x) SET x = 1",
+                TranslateError::UnsupportedUpdateOption(UpdateOption::TableColumnAlias),
+            ),
         ];
 
         for (sql, err) in cases {
@@ -747,10 +779,30 @@ mod tests {
                 "DELETE FROM Foo, Bar WHERE id = 1",
                 TranslateError::UnsupportedDeleteOption(DeleteOption::MultipleTables),
             ),
+            (
+                "DELETE FROM Foo AS f WHERE id = 1",
+                TranslateError::UnsupportedDeleteOption(DeleteOption::TableAlias),
+            ),
+            (
+                "DELETE FROM Foo f WHERE id = 1",
+                TranslateError::UnsupportedDeleteOption(DeleteOption::TableAlias),
+            ),
+            (
+                "DELETE FROM Foo AS f(x) WHERE x = 1",
+                TranslateError::UnsupportedDeleteOption(DeleteOption::TableColumnAlias),
+            ),
         ];
 
         for (sql, err) in cases {
             assert_translate_error(sql, err);
+        }
+    }
+
+    #[test]
+    fn update_and_delete_without_alias() {
+        for sql in ["UPDATE Foo SET id = 1", "DELETE FROM Foo WHERE id = 1"] {
+            let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+            assert!(actual.is_ok(), "{sql}: {actual:?}");
         }
     }
 
