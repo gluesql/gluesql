@@ -5,6 +5,7 @@ use {
     },
     crate::{
         ast::{BinaryOperator, ForeignKey, ReferentialAction},
+        data::Key,
         plan::{CustomFunctionPlan, ExprPlan},
         result::Result,
         store::{GStore, GStoreMut},
@@ -29,6 +30,21 @@ pub fn delete<T: GStore + GStoreMut>(
     table_name: &str,
     selection: Option<&ExprPlan>,
 ) -> Result<Payload> {
+    let keys = collect_keys(storage, functions, table_name, selection)?;
+    let num_keys = keys.len();
+
+    storage
+        .delete_data(table_name, keys)
+        .map(|()| Payload::Delete(num_keys))
+}
+
+#[cfg_attr(feature = "tracing", gluesql_macros::observe)]
+fn collect_keys<T: GStore>(
+    storage: &T,
+    functions: &[CustomFunctionPlan],
+    table_name: &str,
+    selection: Option<&ExprPlan>,
+) -> Result<Vec<Key>> {
     let columns = Rc::from(fetch_columns(storage, table_name)?);
     let referencings = storage
         .fetch_referencings(table_name)?
@@ -86,9 +102,5 @@ pub fn delete<T: GStore + GStoreMut>(
 
         keys.push(key);
     }
-    let num_keys = keys.len();
-
-    storage
-        .delete_data(table_name, keys)
-        .map(|()| Payload::Delete(num_keys))
+    Ok(keys)
 }

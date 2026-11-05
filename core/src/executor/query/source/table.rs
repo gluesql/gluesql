@@ -64,6 +64,7 @@ pub(super) fn execute<'a, T: GStore>(
     Ok(PreparedSource { output, rows })
 }
 
+#[cfg_attr(feature = "tracing", gluesql_macros::observe)]
 fn rows<'a, T: GStore>(
     storage: &'a T,
     functions: &'a [CustomFunctionPlan],

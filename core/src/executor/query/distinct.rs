@@ -9,6 +9,7 @@ use {
     std::{collections::HashSet, rc::Rc},
 };
 
+#[cfg_attr(feature = "tracing", gluesql_macros::observe)]
 pub(super) fn execute<'a, T>(
     storage: &'a T,
     functions: &'a [CustomFunctionPlan],
@@ -34,6 +35,7 @@ where
         }
     }?;
     let rows = rows.collect::<Result<Vec<_>>>()?;
+
     let mut seen = HashSet::new();
     let rows = rows
         .into_iter()

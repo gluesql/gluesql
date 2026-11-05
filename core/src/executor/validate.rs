@@ -77,6 +77,7 @@ impl UniqueConstraint {
     }
 }
 
+#[cfg_attr(feature = "tracing", gluesql_macros::observe)]
 pub fn validate_unique<'a, T: Store>(
     storage: &T,
     table_name: &str,

@@ -13,6 +13,7 @@ use {
     std::collections::BTreeMap,
 };
 
+#[cfg_attr(feature = "tracing", gluesql_macros::observe)]
 pub(super) fn fetch_rows<T: GStore>(
     storage: &T,
     functions: &[CustomFunctionPlan],

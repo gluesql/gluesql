@@ -49,6 +49,7 @@ where
     Ok(LabeledRows { labels, rows })
 }
 
+#[cfg_attr(feature = "tracing", gluesql_macros::observe)]
 fn sort<'a, T>(
     storage: &'a T,
     functions: &'a [CustomFunctionPlan],
@@ -66,6 +67,7 @@ where
     }
 
     let rows = rows.collect::<Result<Vec<_>>>()?;
+
     let mut keyed_rows = Vec::with_capacity(rows.len());
     for (aggregated, next, row) in rows {
         enum SortType<'a> {

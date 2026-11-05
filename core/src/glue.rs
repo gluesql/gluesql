@@ -23,6 +23,7 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
     ///
     /// Returns an error when parsing the SQL text fails or when building an execution plan for
     /// a statement fails.
+    #[cfg_attr(feature = "tracing", gluesql_macros::observe)]
     pub fn plan_with_params<Sql, I, P>(&mut self, sql: Sql, params: I) -> Result<Vec<StatementPlan>>
     where
         Sql: AsRef<str>,
@@ -63,6 +64,7 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
     ///
     /// Returns an error when parsing fails, planning fails, or executing a statement
     /// against the storage fails.
+    #[cfg_attr(feature = "tracing", gluesql_macros::observe)]
     pub fn execute_with_params<Sql, I, P>(&mut self, sql: Sql, params: I) -> Result<Vec<Payload>>
     where
         Sql: AsRef<str>,

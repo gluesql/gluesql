@@ -1,6 +1,9 @@
 #![deny(clippy::str_to_string)]
 #![allow(deprecated)]
 
+#[cfg(feature = "firefox-profile")]
+mod firefox_profile;
+
 mod cli;
 mod command;
 mod helper;
@@ -71,6 +74,103 @@ enum Storage {
     File,
 }
 
+#[cfg(feature = "tracing")]
+struct TracingGuard {
+    #[cfg(feature = "firefox-profile")]
+    firefox_profile: firefox_profile::FirefoxProfileLayer,
+    #[cfg(feature = "tracing-flame")]
+    _flame: tracing_flame::FlushGuard<std::io::BufWriter<std::fs::File>>,
+    #[cfg(feature = "opentelemetry")]
+    provider: opentelemetry_sdk::trace::SdkTracerProvider,
+}
+
+#[cfg(any(feature = "firefox-profile", feature = "opentelemetry"))]
+impl Drop for TracingGuard {
+    fn drop(&mut self) {
+        #[cfg(feature = "firefox-profile")]
+        if let Err(error) = self.firefox_profile.finish() {
+            eprintln!("[tracing] failed to save Firefox profile: {error}");
+        }
+        #[cfg(feature = "opentelemetry")]
+        if let Err(error) = self.provider.shutdown() {
+            eprintln!("[tracing] failed to shut down OpenTelemetry exporter: {error}");
+        }
+    }
+}
+
+#[cfg(feature = "tracing")]
+fn init_tracing() -> Result<TracingGuard> {
+    use tracing_subscriber::{
+        EnvFilter,
+        fmt::{self, format::FmtSpan},
+        layer::SubscriberExt,
+        util::SubscriberInitExt,
+    };
+
+    let filter =
+        EnvFilter::try_new(std::env::var("RUST_LOG").unwrap_or_else(|_| "gluesql=debug".into()))?;
+    let fmt_layer = fmt::layer()
+        .with_span_events(FmtSpan::CLOSE)
+        .with_writer(std::io::stderr);
+
+    #[cfg(feature = "tracing-flame")]
+    let (flame_layer, flame_guard) = {
+        let path = std::env::var_os("GLUESQL_FLAMEGRAPH_PATH")
+            .map_or_else(|| PathBuf::from("tracing.folded"), PathBuf::from);
+        anyhow::ensure!(
+            !path.as_os_str().is_empty(),
+            "GLUESQL_FLAMEGRAPH_PATH must not be empty"
+        );
+        let (layer, guard) = tracing_flame::FlameLayer::with_file(path)?;
+
+        (layer.with_empty_samples(false), guard)
+    };
+
+    #[cfg(feature = "firefox-profile")]
+    let firefox_profile = {
+        let path = std::env::var_os("GLUESQL_FIREFOX_PROFILE_PATH")
+            .map_or_else(|| PathBuf::from("gluesql-profile.json"), PathBuf::from);
+        anyhow::ensure!(
+            !path.as_os_str().is_empty(),
+            "GLUESQL_FIREFOX_PROFILE_PATH must not be empty"
+        );
+        firefox_profile::FirefoxProfileLayer::new(path)
+    };
+
+    #[cfg(feature = "opentelemetry")]
+    let (otel_layer, provider) = {
+        use opentelemetry::trace::TracerProvider as _;
+
+        let exporter = opentelemetry_otlp::SpanExporter::builder()
+            .with_http()
+            .build()?;
+        let provider = opentelemetry_sdk::trace::SdkTracerProvider::builder()
+            .with_batch_exporter(exporter)
+            .build();
+        let tracer = provider.tracer("gluesql-cli");
+
+        (tracing_opentelemetry::layer().with_tracer(tracer), provider)
+    };
+
+    let subscriber = tracing_subscriber::registry().with(filter).with(fmt_layer);
+    #[cfg(feature = "tracing-flame")]
+    let subscriber = subscriber.with(flame_layer);
+    #[cfg(feature = "opentelemetry")]
+    let subscriber = subscriber.with(otel_layer);
+    #[cfg(feature = "firefox-profile")]
+    let subscriber = subscriber.with(firefox_profile.clone());
+    subscriber.try_init()?;
+
+    Ok(TracingGuard {
+        #[cfg(feature = "firefox-profile")]
+        firefox_profile,
+        #[cfg(feature = "tracing-flame")]
+        _flame: flame_guard,
+        #[cfg(feature = "opentelemetry")]
+        provider,
+    })
+}
+
 pub fn run() -> Result<()> {
     fn run<T: GStore + GStoreMut + Planner>(storage: T, input: Option<PathBuf>) {
         let output = std::io::stdout();
@@ -94,6 +194,9 @@ pub fn run() -> Result<()> {
         path,
         upgrade,
     } = Args::parse();
+
+    #[cfg(feature = "tracing")]
+    let _tracing_guard = init_tracing()?;
 
     if upgrade {
         return upgrade::run_upgrade(path.as_deref(), storage, execute.is_some(), dump.is_some());
