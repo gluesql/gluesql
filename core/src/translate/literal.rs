@@ -51,3 +51,20 @@ pub fn translate_trim_where_field(sql_trim_where_field: SqlTrimWhereField) -> Tr
         SqlTrimWhereField::Trailing => Trailing,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        parse_sql::parse_expr,
+        translate::{NO_PARAMS, TranslateError, translate_expr},
+    };
+
+    #[test]
+    fn dollar_quoted_string_literal_rejected() {
+        // PostgreSqlDialect tokenizes `$$..$$` into Value::DollarQuotedString,
+        // which translate_literal does not support.
+        let actual = parse_expr("$$abc$$").and_then(|parsed| translate_expr(&parsed, NO_PARAMS));
+        let expected = Err(TranslateError::UnsupportedLiteral("$$abc$$".to_owned()).into());
+        assert_eq!(actual, expected);
+    }
+}
