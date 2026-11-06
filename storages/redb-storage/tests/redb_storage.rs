@@ -28,3 +28,9 @@ impl Tester<RedbStorage> for RedbTester {
 
 generate_store_tests!(test, RedbTester);
 generate_transaction_tests!(test, RedbTester);
+generate_index_tests!(test, RedbTester);
+generate_alter_table_tests!(test, RedbTester);
+generate_alter_table_index_tests!(test, RedbTester);
+generate_transaction_alter_table_tests!(test, RedbTester);
+generate_transaction_index_tests!(test, RedbTester);
+generate_metadata_index_tests!(test, RedbTester);

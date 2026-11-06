@@ -1,3 +1,6 @@
+mod alter_table;
+mod index;
+
 use {
     super::{
         error::StorageError,
@@ -61,8 +64,14 @@ impl StorageCore {
     }
 
     fn data_table_def(table_name: &str) -> Result<TableDefinition<'_, &'static [u8], Vec<u8>>> {
-        if matches!(table_name, SCHEMA_TABLE_NAME | STORAGE_META_TABLE_NAME) {
+        if matches!(table_name, SCHEMA_TABLE_NAME | STORAGE_META_TABLE_NAME)
+            || table_name.starts_with(index::INDEX_TABLE_PREFIX)
+        {
             return Err(StorageError::ReservedTableName(table_name.to_owned()));
+        }
+
+        if table_name.contains('/') {
+            return Err(StorageError::TableNameContainsSlash(table_name.to_owned()));
         }
 
         Ok(TableDefinition::new(table_name))
@@ -190,7 +199,15 @@ impl StorageCore {
 
     pub fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let table_def = Self::data_table_def(table_name)?;
+        self.txn()?;
+        let schema = self.fetch_schema(table_name)?;
         let txn = self.txn_mut()?;
+        if let Some(schema) = schema {
+            for index in schema.indexes {
+                let name = index::index_table_name(table_name, &index.name);
+                txn.delete_multimap_table(index::index_table_def(&name))?;
+            }
+        }
         let mut table = txn.open_table(SCHEMA_TABLE)?;
         table.remove(table_name)?;
         txn.delete_table(table_def)?;
@@ -200,6 +217,13 @@ impl StorageCore {
 
     pub fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
         let table_def = Self::data_table_def(table_name)?;
+        self.txn()?;
+        if let Some(schema) = self
+            .fetch_schema(table_name)?
+            .filter(|s| !s.indexes.is_empty())
+        {
+            return self.append_indexed_data(&schema, rows);
+        }
         let txn = self.txn_mut()?;
         let mut table = txn.open_table(table_def)?;
 
@@ -216,6 +240,13 @@ impl StorageCore {
 
     pub fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
         let table_def = Self::data_table_def(table_name)?;
+        self.txn()?;
+        if let Some(schema) = self
+            .fetch_schema(table_name)?
+            .filter(|s| !s.indexes.is_empty())
+        {
+            return self.insert_indexed_data(&schema, rows);
+        }
         let txn = self.txn_mut()?;
         let mut table = txn.open_table(table_def)?;
 
@@ -231,6 +262,13 @@ impl StorageCore {
 
     pub fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let table_def = Self::data_table_def(table_name)?;
+        self.txn()?;
+        if let Some(schema) = self
+            .fetch_schema(table_name)?
+            .filter(|s| !s.indexes.is_empty())
+        {
+            return self.delete_indexed_data(&schema, keys);
+        }
         let txn = self.txn_mut()?;
         let mut table = txn.open_table(table_def)?;
 
