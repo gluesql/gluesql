@@ -4,6 +4,9 @@ mod core;
 mod error;
 mod migration;
 
+#[cfg(test)]
+mod bincode_layout;
+
 pub use migration::{MigrationReport, REDB_STORAGE_FORMAT_VERSION, migrate_to_latest};
 
 use {
