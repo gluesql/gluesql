@@ -500,6 +500,53 @@ mod tests {
     }
 
     #[test]
+    fn missing_row_table_stops_each_old_version_before_recording_v4() {
+        let schema = Schema::from_ddl("CREATE TABLE Item (id INT);").unwrap();
+        let payload = bincode::serialize(&schema).unwrap();
+        for (version, expected) in [
+            (None, DetectedStorageFormatVersion::V1),
+            (Some(2), DetectedStorageFormatVersion::V2),
+            (Some(3), DetectedStorageFormatVersion::V3),
+        ] {
+            let mut db = Database::builder()
+                .create_with_backend(InMemoryBackend::new())
+                .unwrap();
+            let txn = db.begin_write().unwrap();
+            if let Some(version) = version {
+                txn.open_table(STORAGE_META_TABLE)
+                    .unwrap()
+                    .insert(STORAGE_META_VERSION_KEY, version)
+                    .unwrap();
+            }
+            txn.open_table(SCHEMA_TABLE)
+                .unwrap()
+                .insert("Item", payload.clone())
+                .unwrap();
+            txn.commit().unwrap();
+
+            assert!(matches!(migrate_database_to_latest(&mut db),
+                Err(StorageError::RedbTable(TableError::TableDoesNotExist(name)))
+                if name == "Item"
+            ));
+            assert_eq!(detect_storage_format_version(&db).unwrap(), expected);
+            let txn = db.begin_read().unwrap();
+            assert!(matches!(
+                txn.open_table(TableDefinition::<&[u8], Vec<u8>>::new("Item")),
+                Err(TableError::TableDoesNotExist(name)) if name == "Item"
+            ));
+            assert_eq!(
+                txn.open_table(SCHEMA_TABLE)
+                    .unwrap()
+                    .get("Item")
+                    .unwrap()
+                    .unwrap()
+                    .value(),
+                payload
+            );
+        }
+    }
+
+    #[test]
     fn source_version_selects_the_schema_failure_policy() {
         for version in [None, Some(2), Some(3)] {
             let mut db = Database::builder()

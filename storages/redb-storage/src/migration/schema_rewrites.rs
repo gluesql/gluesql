@@ -1,8 +1,8 @@
-//! Read schema tables and apply changes prepared by each migration path.
+//! Inspect schemas and their row tables before applying each migration's changes.
 
 use {
     super::{MigrationReport, SCHEMA_TABLE, StorageResult},
-    redb::{Database, ReadableTable, WriteTransaction},
+    redb::{Database, ReadableTable, TableDefinition, WriteTransaction},
 };
 
 type RewriteSchema = fn(&str, &[u8]) -> StorageResult<Option<Vec<u8>>>;
@@ -35,6 +35,7 @@ impl SchemaRewrites {
             if let Some(payload) = rewrite_schema(&name, &payload.value())? {
                 migration.rewrites.push((name.clone(), payload));
             }
+            txn.open_table(TableDefinition::<&[u8], Vec<u8>>::new(&name))?;
             migration.table_names.push(name);
         }
         migration.table_names.sort();
@@ -98,6 +99,10 @@ mod tests {
             table.insert("ZUnchanged", b"current".to_vec()).unwrap();
             table.insert("AChanged", b"old".to_vec()).unwrap();
         }
+        txn.open_table(TableDefinition::<&[u8], Vec<u8>>::new("ZUnchanged"))
+            .unwrap();
+        txn.open_table(TableDefinition::<&[u8], Vec<u8>>::new("AChanged"))
+            .unwrap();
         txn.commit().unwrap();
 
         let schemas = SchemaRewrites::inspect(&db, |_, payload| {
@@ -139,6 +144,10 @@ mod tests {
             table.insert("AChanged", b"old".to_vec()).unwrap();
             table.insert("ZBroken", b"ambiguous".to_vec()).unwrap();
         }
+        txn.open_table(TableDefinition::<&[u8], Vec<u8>>::new("AChanged"))
+            .unwrap();
+        txn.open_table(TableDefinition::<&[u8], Vec<u8>>::new("ZBroken"))
+            .unwrap();
         txn.commit().unwrap();
 
         let result = SchemaRewrites::inspect(&db, |name, payload| {
@@ -156,6 +165,82 @@ mod tests {
         let table = txn.open_table(SCHEMA_TABLE).unwrap();
         assert_eq!(table.get("AChanged").unwrap().unwrap().value(), b"old");
         assert_eq!(table.get("ZBroken").unwrap().unwrap().value(), b"ambiguous");
+    }
+
+    #[test]
+    fn missing_row_table_stops_before_applying_earlier_rewrites() {
+        let db = Database::builder()
+            .create_with_backend(InMemoryBackend::new())
+            .unwrap();
+        let txn = db.begin_write().unwrap();
+        {
+            let mut table = txn.open_table(SCHEMA_TABLE).unwrap();
+            table.insert("AChanged", b"old".to_vec()).unwrap();
+            table.insert("ZMissing", b"current".to_vec()).unwrap();
+        }
+        txn.open_table(TableDefinition::<&[u8], Vec<u8>>::new("AChanged"))
+            .unwrap();
+        txn.commit().unwrap();
+
+        let result = SchemaRewrites::inspect(&db, |_, payload| {
+            Ok((payload == b"old").then(|| b"restored".to_vec()))
+        });
+        assert!(matches!(result,
+            Err(StorageError::RedbTable(TableError::TableDoesNotExist(name)))
+            if name == "ZMissing"
+        ));
+        let txn = db.begin_read().unwrap();
+        let table = txn.open_table(SCHEMA_TABLE).unwrap();
+        assert_eq!(table.get("AChanged").unwrap().unwrap().value(), b"old");
+        assert_eq!(table.get("ZMissing").unwrap().unwrap().value(), b"current");
+        assert!(matches!(
+            txn.open_table(TableDefinition::<&[u8], Vec<u8>>::new("ZMissing")),
+            Err(TableError::TableDoesNotExist(name)) if name == "ZMissing"
+        ));
+    }
+
+    #[test]
+    fn row_table_key_type_errors_keep_their_source() {
+        let db = Database::builder()
+            .create_with_backend(InMemoryBackend::new())
+            .unwrap();
+        let txn = db.begin_write().unwrap();
+        txn.open_table(SCHEMA_TABLE)
+            .unwrap()
+            .insert("Item", b"schema".to_vec())
+            .unwrap();
+        txn.open_table(TableDefinition::<&str, Vec<u8>>::new("Item"))
+            .unwrap();
+        txn.commit().unwrap();
+
+        assert!(matches!(SchemaRewrites::inspect(&db, |_, _| Ok(None)),
+            Err(StorageError::RedbTable(TableError::TableTypeMismatch { table, key, value }))
+            if table == "Item"
+                && key == <&str as redb::Value>::type_name()
+                && value == <Vec<u8> as redb::Value>::type_name()
+        ));
+    }
+
+    #[test]
+    fn row_table_value_type_errors_keep_their_source() {
+        let db = Database::builder()
+            .create_with_backend(InMemoryBackend::new())
+            .unwrap();
+        let txn = db.begin_write().unwrap();
+        txn.open_table(SCHEMA_TABLE)
+            .unwrap()
+            .insert("Item", b"schema".to_vec())
+            .unwrap();
+        txn.open_table(TableDefinition::<&[u8], u32>::new("Item"))
+            .unwrap();
+        txn.commit().unwrap();
+
+        assert!(matches!(SchemaRewrites::inspect(&db, |_, _| Ok(None)),
+            Err(StorageError::RedbTable(TableError::TableTypeMismatch { table, key, value }))
+            if table == "Item"
+                && key == <&[u8] as redb::Value>::type_name()
+                && value == <u32 as redb::Value>::type_name()
+        ));
     }
 
     #[test]

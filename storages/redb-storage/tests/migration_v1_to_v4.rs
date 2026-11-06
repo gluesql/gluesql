@@ -4,16 +4,59 @@ pub mod database;
 
 use {
     bincode::serialize,
-    database::{SCHEMAS, Snapshot, TestFile, replace_row, snapshot, write_database},
+    database::{META, SCHEMAS, Snapshot, TestFile, replace_row, snapshot, write_database},
     gluesql_core::{
         data::{Key, Schema, Value},
         error::Error,
         prelude::{Glue, Payload},
     },
     gluesql_redb_storage::{MigrationReport, RedbStorage, migrate_to_latest},
-    redb::{Database, TableDefinition},
+    redb::{Database, TableDefinition, TableError},
     std::collections::BTreeMap,
 };
+
+#[test]
+fn missing_row_table_stops_before_physical_upgrade_or_payload_changes() {
+    let file = TestFile::fixture("v1/defaults.redb");
+    let original = snapshot(&file);
+    let rows = TableDefinition::<&[u8], Vec<u8>>::new("Defaults");
+    {
+        let db = Database::open(&file.0).unwrap();
+        let txn = db.begin_write().unwrap();
+        assert!(txn.delete_table(rows).unwrap());
+        txn.commit().unwrap();
+    }
+
+    assert_eq!(
+        migrate_to_latest(&file.0),
+        Err(Error::StorageMsg("Table 'Defaults' does not exist".into()))
+    );
+    let mut db = Database::open(&file.0).unwrap();
+    {
+        let txn = db.begin_read().unwrap();
+        assert!(matches!(
+            txn.open_table(rows),
+            Err(TableError::TableDoesNotExist(name)) if name == "Defaults"
+        ));
+        assert!(matches!(
+            txn.open_table(META),
+            Err(TableError::TableDoesNotExist(name)) if name == "__GLUESQL_META__"
+        ));
+        assert_eq!(
+            txn.open_table(SCHEMAS)
+                .unwrap()
+                .get("Defaults")
+                .unwrap()
+                .unwrap()
+                .value(),
+            original.schemas["Defaults"]
+        );
+    }
+    assert!(
+        db.upgrade().unwrap(),
+        "preflight must leave the old file format"
+    );
+}
 
 #[test]
 fn failed_v1_row_conversion_rolls_back_payloads_and_retry_uses_upgraded_file() {
