@@ -495,6 +495,7 @@ macro_rules! generate_transaction_index_tests {
 
         sql_case!(transaction::index::create);
         sql_case!(transaction::index::drop);
+        sql_case!(transaction::index::error);
     };
 }
 
