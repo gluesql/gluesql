@@ -11,7 +11,7 @@ use {
         store::{Index, IndexError, Store, StoreMut, Transaction},
     },
     gluesql_redb_storage::{MigrationReport, RedbStorage, migrate_to_latest},
-    redb::{Database, TableDefinition},
+    redb::{Database, MultimapTableHandle, TableDefinition},
     std::collections::BTreeMap,
 };
 
@@ -283,6 +283,62 @@ fn repeated_row_keys_replace_every_index_entry() {
         vec![(Key::I64(1), vec![Value::I64(30)])]
     );
     glue.storage.rollback().unwrap();
+}
+
+#[test]
+fn insert_schema_rejects_missing_index_table() {
+    let file = TestFile::empty();
+    let mut glue = Glue::new(RedbStorage::new(&file.0).unwrap());
+    glue.execute(
+        "CREATE TABLE Items (id INT PRIMARY KEY, n INT);
+         INSERT INTO Items VALUES (1, 10);
+         CREATE INDEX by_n ON Items (n)",
+    )
+    .unwrap();
+
+    let mut storage = glue.storage;
+    let schema = storage.fetch_schema("Items").unwrap().unwrap();
+
+    let mut updated_schema = schema.clone();
+    let mut missing = updated_schema.indexes[0].clone();
+    missing.name = "missing".into();
+    updated_schema.indexes.push(missing);
+
+    storage.begin(false).unwrap();
+    assert_eq!(
+        storage.insert_schema(&updated_schema),
+        Err(Error::StorageMsg(
+            "conflict - cannot insert schema: referenced index table does not exist: __GLUESQL_INDEX__/Items/missing".into(),
+        ))
+    );
+
+    assert_eq!(storage.fetch_schema("Items").unwrap(), Some(schema));
+    assert_eq!(
+        storage
+            .scan_data("Items")
+            .unwrap()
+            .collect::<Result<Vec<_>>>(),
+        Ok(vec![(Key::I64(1), vec![Value::I64(1), Value::I64(10)])])
+    );
+    assert_eq!(
+        scan_index(&storage, "Items", "by_n", None, None),
+        vec![(Key::I64(1), vec![Value::I64(1), Value::I64(10)])]
+    );
+
+    // Commit so rollback cannot hide an index table created by the rejected schema write.
+    storage.commit().unwrap();
+    drop(storage);
+
+    let db = Database::open(&file.0).unwrap();
+    assert_eq!(
+        db.begin_read()
+            .unwrap()
+            .list_multimap_tables()
+            .unwrap()
+            .map(|table| table.name().to_owned())
+            .collect::<Vec<_>>(),
+        vec!["__GLUESQL_INDEX__/Items/by_n".to_owned()]
+    );
 }
 
 #[test]

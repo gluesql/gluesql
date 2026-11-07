@@ -8,8 +8,10 @@ use {
     },
     bincode::{deserialize, serialize},
     gluesql_core::data::{Key, Schema, Value},
-    redb::{Builder, Database, ReadableTable, TableDefinition, WriteTransaction},
-    std::path::Path,
+    redb::{
+        Builder, Database, MultimapTableHandle, ReadableTable, TableDefinition, WriteTransaction,
+    },
+    std::{collections::HashSet, path::Path},
     uuid::Uuid,
 };
 
@@ -190,6 +192,21 @@ impl StorageCore {
     pub fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let data_def = Self::data_table_def(&schema.table_name)?;
         let txn = self.txn_mut()?;
+
+        if !schema.indexes.is_empty() {
+            let tables = txn
+                .list_multimap_tables()?
+                .map(|table| table.name().to_owned())
+                .collect::<HashSet<_>>();
+
+            for index in &schema.indexes {
+                let name = index::index_table_name(&schema.table_name, &index.name);
+                if !tables.contains(&name) {
+                    return Err(StorageError::ConflictMissingIndexTableOnSchemaInsert(name));
+                }
+            }
+        }
+
         let mut table = txn.open_table(SCHEMA_TABLE)?;
         let value = serialize(&schema)?;
         table.insert(schema.table_name.as_str(), value)?;

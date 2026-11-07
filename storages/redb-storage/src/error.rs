@@ -21,6 +21,9 @@ pub enum StorageError {
     #[error("table name cannot contain '/': {0}")]
     TableNameContainsSlash(String),
 
+    #[error("conflict - cannot insert schema: referenced index table does not exist: {0}")]
+    ConflictMissingIndexTableOnSchemaInsert(String),
+
     #[error("conflict - unsupported stored index expression during column rename")]
     ConflictRenamingIndexExpression,
 
