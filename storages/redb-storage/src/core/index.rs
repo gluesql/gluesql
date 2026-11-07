@@ -34,8 +34,7 @@ impl StorageCore {
     ) -> Result<()> {
         let data_def = Self::data_table_def(table_name)?;
         let txn = self.txn()?;
-        let mut schema = self
-            .fetch_schema(table_name)?
+        let mut schema = Self::fetch_schema_in_txn(txn, table_name)?
             .ok_or_else(|| IndexError::TableNotFound(table_name.to_owned()))?;
         if schema.indexes.iter().any(|index| index.name == index_name) {
             return Err(IndexError::IndexNameAlreadyExists(index_name.to_owned()).into());
@@ -73,8 +72,7 @@ impl StorageCore {
     pub(crate) fn drop_index(&mut self, table_name: &str, index_name: &str) -> Result<()> {
         Self::data_table_def(table_name)?;
         let txn = self.txn()?;
-        let mut schema = self
-            .fetch_schema(table_name)?
+        let mut schema = Self::fetch_schema_in_txn(txn, table_name)?
             .ok_or_else(|| IndexError::TableNotFound(table_name.to_owned()))?;
         let position = schema
             .indexes

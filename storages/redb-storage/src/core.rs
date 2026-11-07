@@ -116,19 +116,20 @@ impl StorageCore {
     }
 
     pub fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
-        let schema = match &self.state {
-            TransactionState::Active { txn, .. } => txn
-                .open_table(SCHEMA_TABLE)?
-                .get(table_name)?
-                .map(|v| deserialize(&v.value())),
-            TransactionState::None => self
-                .db
-                .begin_write()?
-                .open_table(SCHEMA_TABLE)?
-                .get(table_name)?
-                .map(|v| deserialize(&v.value())),
+        match &self.state {
+            TransactionState::Active { txn, .. } => Self::fetch_schema_in_txn(txn, table_name),
+            TransactionState::None => {
+                Self::fetch_schema_in_txn(&self.db.begin_write()?, table_name)
+            }
         }
-        .transpose()?;
+    }
+
+    fn fetch_schema_in_txn(txn: &WriteTransaction, table_name: &str) -> Result<Option<Schema>> {
+        let schema = txn
+            .open_table(SCHEMA_TABLE)?
+            .get(table_name)?
+            .map(|v| deserialize(&v.value()))
+            .transpose()?;
 
         Ok(schema)
     }
@@ -199,9 +200,8 @@ impl StorageCore {
 
     pub fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let table_def = Self::data_table_def(table_name)?;
-        self.txn()?;
-        let schema = self.fetch_schema(table_name)?;
         let txn = self.txn_mut()?;
+        let schema = Self::fetch_schema_in_txn(txn, table_name)?;
         if let Some(schema) = schema {
             for index in schema.indexes {
                 let name = index::index_table_name(table_name, &index.name);
@@ -217,14 +217,12 @@ impl StorageCore {
 
     pub fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
         let table_def = Self::data_table_def(table_name)?;
-        self.txn()?;
-        if let Some(schema) = self
-            .fetch_schema(table_name)?
-            .filter(|s| !s.indexes.is_empty())
+        let txn = self.txn_mut()?;
+        if let Some(schema) =
+            Self::fetch_schema_in_txn(txn, table_name)?.filter(|s| !s.indexes.is_empty())
         {
             return self.append_indexed_data(&schema, rows);
         }
-        let txn = self.txn_mut()?;
         let mut table = txn.open_table(table_def)?;
 
         for row in rows {
@@ -240,14 +238,12 @@ impl StorageCore {
 
     pub fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
         let table_def = Self::data_table_def(table_name)?;
-        self.txn()?;
-        if let Some(schema) = self
-            .fetch_schema(table_name)?
-            .filter(|s| !s.indexes.is_empty())
+        let txn = self.txn_mut()?;
+        if let Some(schema) =
+            Self::fetch_schema_in_txn(txn, table_name)?.filter(|s| !s.indexes.is_empty())
         {
             return self.insert_indexed_data(&schema, rows);
         }
-        let txn = self.txn_mut()?;
         let mut table = txn.open_table(table_def)?;
 
         for (key, row) in rows {
@@ -262,14 +258,12 @@ impl StorageCore {
 
     pub fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let table_def = Self::data_table_def(table_name)?;
-        self.txn()?;
-        if let Some(schema) = self
-            .fetch_schema(table_name)?
-            .filter(|s| !s.indexes.is_empty())
+        let txn = self.txn_mut()?;
+        if let Some(schema) =
+            Self::fetch_schema_in_txn(txn, table_name)?.filter(|s| !s.indexes.is_empty())
         {
             return self.delete_indexed_data(&schema, keys);
         }
-        let txn = self.txn_mut()?;
         let mut table = txn.open_table(table_def)?;
 
         for key in keys {

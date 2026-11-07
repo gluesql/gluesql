@@ -18,8 +18,7 @@ impl StorageCore {
         let old_def = Self::data_table_def(table_name)?;
         let new_def = Self::data_table_def(new_table_name)?;
         let txn = self.txn()?;
-        let mut schema = self
-            .fetch_schema(table_name)?
+        let mut schema = Self::fetch_schema_in_txn(txn, table_name)?
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
         new_table_name.clone_into(&mut schema.table_name);
         let payload = serialize(&schema)?;
@@ -45,9 +44,8 @@ impl StorageCore {
         old_name: &str,
         new_name: &str,
     ) -> Result<()> {
-        self.txn()?;
-        let mut schema = self
-            .fetch_schema(table_name)?
+        let txn = self.txn()?;
+        let mut schema = Self::fetch_schema_in_txn(txn, table_name)?
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
         let columns = schema
             .column_defs
@@ -74,8 +72,7 @@ impl StorageCore {
         default: &Value,
     ) -> Result<()> {
         let txn = self.txn()?;
-        let mut schema = self
-            .fetch_schema(table_name)?
+        let mut schema = Self::fetch_schema_in_txn(txn, table_name)?
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
         let columns = schema
             .column_defs
@@ -111,8 +108,7 @@ impl StorageCore {
         if_exists: bool,
     ) -> Result<()> {
         let txn = self.txn()?;
-        let mut schema = self
-            .fetch_schema(table_name)?
+        let mut schema = Self::fetch_schema_in_txn(txn, table_name)?
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
         let columns = schema
             .column_defs
