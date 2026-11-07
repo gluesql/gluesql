@@ -1,4 +1,4 @@
-//! Constructed database scenarios for the complete v1 -> v4 path.
+//! Constructed database scenarios for the complete v1 -> v4 -> latest path.
 #[path = "migration/database.rs"]
 pub mod database;
 
@@ -97,7 +97,7 @@ fn failed_v1_row_conversion_rolls_back_payloads_and_retry_uses_upgraded_file() {
     drop(db);
     replace_row(&file, "ZFailure", key, valid_row);
     assert_eq!(migrate_to_latest(&file.0).unwrap().rewritten_rows, 2);
-    assert_eq!(snapshot(&file).version, Some(4));
+    assert_eq!(snapshot(&file).version, Some(5));
 }
 
 #[test]
@@ -125,7 +125,7 @@ fn physical_upgrade_failure_preserves_logical_payloads_and_can_be_retried() {
         txn.commit().unwrap();
     }
     assert_eq!(migrate_to_latest(&file.0).unwrap().rewritten_rows, 1);
-    assert_eq!(snapshot(&file).version, Some(4));
+    assert_eq!(snapshot(&file).version, Some(5));
     let mut glue = Glue::new(RedbStorage::new(&file.0).unwrap());
     glue.execute("INSERT INTO Defaults (id) VALUES (2);")
         .unwrap();
@@ -194,7 +194,7 @@ fn batching_visits_every_key_with_old_and_already_converted_rows_interleaved() {
         }
     );
     let after = snapshot(&file);
-    assert_eq!(after.version, Some(4));
+    assert_eq!(after.version, Some(5));
     assert_eq!(after.schemas, before.schemas);
     assert_eq!(after.rows["Mixed"], expected_rows);
     assert_eq!(

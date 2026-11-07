@@ -4,9 +4,9 @@ pub mod database;
 use {
     gluesql_core::{
         ast::{Expr, OrderByExpr},
-        data::Schema,
+        data::{Key, Schema, Value},
         error::Error,
-        store::{IndexMut, Store, StoreMut, Transaction},
+        store::{IndexError, IndexMut, Store, StoreMut, Transaction},
     },
     gluesql_redb_storage::RedbStorage,
     std::fs::{create_dir, remove_file},
@@ -33,9 +33,10 @@ fn redb_storage_interface_error() {
 }
 
 #[test]
-fn index_creation_is_unsupported_by_the_storage_interface() {
+fn index_errors_keep_the_shared_storage_interface_variant() {
     let file = database::TestFile::empty();
     let mut storage = RedbStorage::new(&file.0).unwrap();
+    storage.begin(false).unwrap();
     assert_eq!(
         storage.create_index(
             "Item",
@@ -45,10 +46,9 @@ fn index_creation_is_unsupported_by_the_storage_interface() {
                 asc: Some(true),
             }
         ),
-        Err(Error::StorageMsg(
-            "[Storage] Index::create_index is not supported".into()
-        ))
+        Err(Error::Index(IndexError::TableNotFound("Item".into())))
     );
+    storage.rollback().unwrap();
 }
 
 #[test]
@@ -67,6 +67,18 @@ fn store_methods_without_transaction_return_transaction_not_found() {
         .insert_schema(&schema)
         .expect_err("insert_schema should fail");
     assert_eq!(err, Error::StorageMsg("transaction not found".to_owned()));
+
+    let expected = Err(Error::StorageMsg("transaction not found".to_owned()));
+    assert_eq!(
+        storage.append_data("Foo", vec![vec![Value::I64(1)]]),
+        expected
+    );
+    assert_eq!(
+        storage.insert_data("Foo", vec![(Key::I64(1), vec![Value::I64(1)])]),
+        expected
+    );
+    assert_eq!(storage.delete_data("Foo", vec![Key::I64(1)]), expected);
+    assert_eq!(storage.delete_schema("Foo"), expected);
 
     storage.rollback().expect("rollback without txn");
     storage.commit().expect("commit without txn");

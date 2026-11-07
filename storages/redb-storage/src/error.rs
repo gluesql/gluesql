@@ -1,4 +1,11 @@
-use {crate::migration::MigrationError, gluesql_core::error::Error, thiserror::Error as ThisError};
+use {
+    crate::migration::MigrationError,
+    gluesql_core::{
+        error::Error,
+        store::{AlterTableError, IndexError},
+    },
+    thiserror::Error as ThisError,
+};
 
 #[derive(ThisError, Debug)]
 pub enum StorageError {
@@ -10,6 +17,21 @@ pub enum StorageError {
 
     #[error("cannot create table with reserved name: {0}")]
     ReservedTableName(String),
+
+    #[error("table name cannot contain '/': {0}")]
+    TableNameContainsSlash(String),
+
+    #[error("conflict - unsupported stored index expression during column rename")]
+    ConflictRenamingIndexExpression,
+
+    #[error("conflict - row has no column at position {0}")]
+    ConflictDroppingColumnIndex(usize),
+
+    #[error(transparent)]
+    AlterTable(#[from] AlterTableError),
+
+    #[error(transparent)]
+    Index(#[from] IndexError),
 
     #[error(transparent)]
     Migration(#[from] MigrationError),
@@ -41,7 +63,11 @@ pub enum StorageError {
 
 impl From<StorageError> for Error {
     fn from(e: StorageError) -> Error {
-        Error::StorageMsg(e.to_string())
+        match e {
+            StorageError::AlterTable(e) => e.into(),
+            StorageError::Index(e) => e.into(),
+            e => Error::StorageMsg(e.to_string()),
+        }
     }
 }
 

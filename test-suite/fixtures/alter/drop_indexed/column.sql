@@ -97,3 +97,11 @@ SHOW INDEXES FROM Test;
 -- | TABLE_NAME: Str | INDEX_NAME: Str | ORDER: Str | EXPRESSION: Str | UNIQUENESS: Bool |
 -- | --------------- | --------------- | ---------- | --------------- | ---------------- |
 -- | "Test"          | "idx_name"      | "BOTH"     | "num + 1"       | false            |
+
+-- A surviving index still refers to num after the preceding column is removed.
+SELECT num, name FROM Test WHERE num + 1 = 3;
+-- @expect-index: idx_name = 3
+-- @expect:
+-- | num: I64 | name: Str |
+-- | -------- | --------- |
+-- | 2        | "Hello"   |

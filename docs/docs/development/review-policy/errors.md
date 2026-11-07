@@ -2,6 +2,9 @@
 
 ## Error ownership
 
+Use the shared storage-interface errors described below for their matching
+failure conditions. For other errors, follow the declaration-location rule.
+
 For an error created in a module, search that module and then its parents.
 Use the first existing error type declared along that path, adding a variant
 there if needed. A module's own `error.rs` counts as its declaration site;
@@ -15,6 +18,18 @@ The caller's location does not change its ownership.
 
 Ownership selects the error type. Variants distinguish failures; prefixes
 classify their conditions.
+
+### Shared storage-interface errors
+
+`AlterTableError` and `IndexError` are shared by implementations of the
+corresponding storage traits. Use their existing variants for matching failure
+conditions, including in new storage implementations. Preserve these variants
+when returning GlueSQL's `Error`.
+
+Use the declaration-location rule for storage-specific failures. Do not create
+a storage-local duplicate of a shared error solely to satisfy that rule.
+Reusing an existing error does not require reproducing another storage's
+internal checks.
 
 ## Error variants
 

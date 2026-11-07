@@ -3,6 +3,7 @@
 mod core;
 mod error;
 mod migration;
+mod planner;
 
 #[cfg(test)]
 mod bincode_layout;
@@ -12,11 +13,12 @@ pub use migration::{MigrationReport, REDB_STORAGE_FORMAT_VERSION, migrate_to_lat
 use {
     core::StorageCore,
     gluesql_core::{
+        ast::{ColumnDef, IndexOperator, OrderByExpr},
         data::{Key, Schema, Value},
         error::Result,
         store::{
-            AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Planner,
-            RowIter, Store, StoreMut, Transaction,
+            AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, RowIter,
+            Store, StoreMut, Transaction,
         },
     },
     redb::Database,
@@ -91,10 +93,75 @@ impl Transaction for RedbStorage {
     }
 }
 
-impl AlterTable for RedbStorage {}
-impl Index for RedbStorage {}
-impl IndexMut for RedbStorage {}
+impl AlterTable for RedbStorage {
+    fn rename_schema(&mut self, table_name: &str, new_table_name: &str) -> Result<()> {
+        self.0
+            .rename_schema(table_name, new_table_name)
+            .map_err(Into::into)
+    }
+
+    fn rename_column(
+        &mut self,
+        table_name: &str,
+        old_column_name: &str,
+        new_column_name: &str,
+    ) -> Result<()> {
+        self.0
+            .rename_column(table_name, old_column_name, new_column_name)
+            .map_err(Into::into)
+    }
+
+    fn add_column(
+        &mut self,
+        table_name: &str,
+        column_def: &ColumnDef,
+        default_value: Value,
+    ) -> Result<()> {
+        self.0
+            .add_column(table_name, column_def, &default_value)
+            .map_err(Into::into)
+    }
+
+    fn drop_column(&mut self, table_name: &str, column_name: &str, if_exists: bool) -> Result<()> {
+        self.0
+            .drop_column(table_name, column_name, if_exists)
+            .map_err(Into::into)
+    }
+}
+
+impl Index for RedbStorage {
+    fn scan_indexed_data<'a>(
+        &'a self,
+        table_name: &str,
+        index_name: &str,
+        asc: Option<bool>,
+        cmp_value: Option<(&IndexOperator, Value)>,
+    ) -> Result<RowIter<'a>> {
+        let rows = self
+            .0
+            .scan_indexed_data(table_name, index_name, asc, cmp_value)?;
+        Ok(Box::new(rows.map(|row| row.map_err(Into::into))))
+    }
+}
+
+impl IndexMut for RedbStorage {
+    fn create_index(
+        &mut self,
+        table_name: &str,
+        index_name: &str,
+        column: &OrderByExpr,
+    ) -> Result<()> {
+        self.0
+            .create_index(table_name, index_name, column)
+            .map_err(Into::into)
+    }
+
+    fn drop_index(&mut self, table_name: &str, index_name: &str) -> Result<()> {
+        self.0
+            .drop_index(table_name, index_name)
+            .map_err(Into::into)
+    }
+}
 impl Metadata for RedbStorage {}
 impl CustomFunction for RedbStorage {}
 impl CustomFunctionMut for RedbStorage {}
-impl Planner for RedbStorage {}
