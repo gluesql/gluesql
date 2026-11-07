@@ -1,5 +1,5 @@
 use {
-    super::{evaluate_index_key, index_columns, index_table_def, index_table_name},
+    super::{IndexTableDefinition, evaluate_index_key, index_columns, index_table_name},
     crate::core::{Result, StorageCore},
     bincode::{deserialize, serialize},
     gluesql_core::{
@@ -128,7 +128,7 @@ impl IndexSync {
 
     fn insert(&self, txn: &WriteTransaction, key: &[u8], values: &[Vec<u8>]) -> Result<()> {
         for ((name, _), value) in self.indexes.iter().zip(values) {
-            txn.open_multimap_table(index_table_def(name))?
+            txn.open_multimap_table(IndexTableDefinition::new(name))?
                 .insert(value.as_slice(), key)?;
         }
         Ok(())
@@ -136,7 +136,7 @@ impl IndexSync {
 
     fn remove(&self, txn: &WriteTransaction, key: &[u8], values: &[Vec<u8>]) -> Result<()> {
         for ((name, _), value) in self.indexes.iter().zip(values) {
-            txn.open_multimap_table(index_table_def(name))?
+            txn.open_multimap_table(IndexTableDefinition::new(name))?
                 .remove(value.as_slice(), key)?;
         }
         Ok(())

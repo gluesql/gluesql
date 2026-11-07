@@ -205,7 +205,7 @@ impl StorageCore {
         if let Some(schema) = schema {
             for index in schema.indexes {
                 let name = index::index_table_name(table_name, &index.name);
-                txn.delete_multimap_table(index::index_table_def(&name))?;
+                txn.delete_multimap_table(index::IndexTableDefinition::new(&name))?;
             }
         }
         let mut table = txn.open_table(SCHEMA_TABLE)?;

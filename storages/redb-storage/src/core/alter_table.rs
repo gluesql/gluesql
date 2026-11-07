@@ -1,7 +1,7 @@
 use {
     super::{
         Result, SCHEMA_TABLE, StorageCore,
-        index::{index_table_def, index_table_name},
+        index::{IndexTableDefinition, index_table_name},
     },
     crate::error::StorageError,
     bincode::{deserialize, serialize},
@@ -28,7 +28,10 @@ impl StorageCore {
         for index in &schema.indexes {
             let old_name = index_table_name(table_name, &index.name);
             let new_name = index_table_name(new_table_name, &index.name);
-            txn.rename_multimap_table(index_table_def(&old_name), index_table_def(&new_name))?;
+            txn.rename_multimap_table(
+                IndexTableDefinition::new(&old_name),
+                IndexTableDefinition::new(&new_name),
+            )?;
         }
         let mut schemas = txn.open_table(SCHEMA_TABLE)?;
         schemas.remove(table_name)?;

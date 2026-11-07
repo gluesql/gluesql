@@ -16,8 +16,14 @@ use {
 };
 
 type IndexBounds = (Bound<Vec<u8>>, Bound<Vec<u8>>);
+pub(super) type IndexTableDefinition<'a> =
+    MultimapTableDefinition<'a, &'static [u8], &'static [u8]>;
 
 pub(super) const INDEX_TABLE_PREFIX: &str = "__GLUESQL_INDEX__";
+
+pub(super) fn index_table_name(table_name: &str, index_name: &str) -> String {
+    format!("{INDEX_TABLE_PREFIX}/{table_name}/{index_name}")
+}
 
 impl StorageCore {
     pub(crate) fn create_index(
@@ -48,7 +54,7 @@ impl StorageCore {
             })
             .collect::<Result<Vec<_>>>()?;
         let name = index_table_name(table_name, index_name);
-        let mut index = txn.open_multimap_table(index_table_def(&name))?;
+        let mut index = txn.open_multimap_table(IndexTableDefinition::new(&name))?;
         for (value, key) in entries {
             index.insert(value.as_slice(), key.as_slice())?;
         }
@@ -77,7 +83,7 @@ impl StorageCore {
             .ok_or_else(|| IndexError::IndexNameDoesNotExist(index_name.to_owned()))?;
 
         let name = index_table_name(table_name, index_name);
-        txn.delete_multimap_table(index_table_def(&name))?;
+        txn.delete_multimap_table(IndexTableDefinition::new(&name))?;
         schema.indexes.remove(position);
         self.insert_schema(&schema)
     }
@@ -102,7 +108,7 @@ impl StorageCore {
             txn,
         } = &self.state
         {
-            let index = txn.open_multimap_table(index_table_def(&name))?;
+            let index = txn.open_multimap_table(IndexTableDefinition::new(&name))?;
             let data = txn.open_table(data_def)?;
             let rows = indexed_rows(index.range::<&[u8]>(bounds)?, data, asc)
                 .collect::<Result<Vec<_>>>()?;
@@ -110,20 +116,10 @@ impl StorageCore {
         }
 
         let txn = self.db.begin_read()?;
-        let index = txn.open_multimap_table(index_table_def(&name))?;
+        let index = txn.open_multimap_table(IndexTableDefinition::new(&name))?;
         let data = txn.open_table(data_def)?;
         Ok(indexed_rows(index.range::<&[u8]>(bounds)?, data, asc))
     }
-}
-
-pub(super) fn index_table_name(table_name: &str, index_name: &str) -> String {
-    format!("{INDEX_TABLE_PREFIX}/{table_name}/{index_name}")
-}
-
-pub(super) fn index_table_def(
-    name: &str,
-) -> MultimapTableDefinition<'_, &'static [u8], &'static [u8]> {
-    MultimapTableDefinition::new(name)
 }
 
 fn index_columns(schema: &Schema) -> Vec<String> {
