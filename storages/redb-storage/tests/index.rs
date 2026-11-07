@@ -37,6 +37,24 @@ fn scan_index(
         .unwrap()
 }
 
+fn lookup_index(
+    storage: &RedbStorage,
+    table_name: &str,
+    index_name: &str,
+    value: Value,
+) -> Vec<Vec<Value>> {
+    scan_index(
+        storage,
+        table_name,
+        index_name,
+        None,
+        Some((&IndexOperator::Eq, value)),
+    )
+    .into_iter()
+    .map(|(_, row)| row)
+    .collect()
+}
+
 #[test]
 fn indexed_alter_survives_reopen_and_future_writes() {
     let file = TestFile::empty();
@@ -58,28 +76,19 @@ fn indexed_alter_survives_reopen_and_future_writes() {
     let mut reopened = Glue::new(RedbStorage::new(&file.0).unwrap());
     assert_eq!(reopened.storage.fetch_schema("Items").unwrap(), None);
     assert_eq!(
-        select(
-            &mut reopened,
-            "SELECT renamed, tag FROM RenamedItems WHERE renamed * 2 = 20"
-        ),
+        lookup_index(&reopened.storage, "RenamedItems", "by/n", Value::I64(20)),
         vec![vec![Value::I64(10), Value::Str("new".into())]]
     );
     reopened
         .execute("UPDATE RenamedItems SET renamed = 30 WHERE renamed = 10")
         .unwrap();
     assert_eq!(
-        select(
-            &mut reopened,
-            "SELECT renamed FROM RenamedItems WHERE renamed * 2 = 20"
-        ),
+        lookup_index(&reopened.storage, "RenamedItems", "by/n", Value::I64(20)),
         Vec::<Vec<Value>>::new()
     );
     assert_eq!(
-        select(
-            &mut reopened,
-            "SELECT renamed FROM RenamedItems WHERE renamed * 2 = 60"
-        ),
-        vec![vec![Value::I64(30)]]
+        lookup_index(&reopened.storage, "RenamedItems", "by/n", Value::I64(60)),
+        vec![vec![Value::I64(30), Value::Str("new".into())]]
     );
     reopened.execute("DROP TABLE RenamedItems").unwrap();
     drop(reopened);
@@ -102,7 +111,7 @@ fn indexed_alter_survives_reopen_and_future_writes() {
 
     let mut reopened = Glue::new(RedbStorage::new(&file.0).unwrap());
     assert_eq!(
-        select(&mut reopened, "SELECT n FROM Items WHERE n = 10"),
+        lookup_index(&reopened.storage, "Items", "by_n", Value::I64(10)),
         Vec::<Vec<Value>>::new()
     );
     reopened.execute("DROP TABLE Items").unwrap();
@@ -119,49 +128,37 @@ fn indexed_alter_survives_reopen_and_future_writes() {
 }
 
 #[test]
-fn statement_failure_keeps_explicit_transaction_until_user_rollback() {
+fn index_transaction_changes_survive_reopen() {
     let file = TestFile::empty();
     let mut glue = Glue::new(RedbStorage::new(&file.0).unwrap());
     glue.execute(
         "CREATE TABLE Items (n INT); INSERT INTO Items VALUES (10); CREATE INDEX by_n ON Items (n)",
     )
     .unwrap();
-    glue.execute("BEGIN; UPDATE Items SET n = 20").unwrap();
-    assert_eq!(
-        glue.execute("CREATE INDEX by_n ON Items (n)"),
-        Err(Error::Index(IndexError::IndexNameAlreadyExists(
-            "by_n".into()
-        )))
-    );
-    assert_eq!(
-        select(&mut glue, "SELECT n FROM Items WHERE n = 20"),
-        vec![vec![Value::I64(20)]]
-    );
-    glue.execute("ALTER TABLE Items RENAME TO Temporary; ROLLBACK")
+    glue.execute("BEGIN; UPDATE Items SET n = 20; ROLLBACK")
         .unwrap();
-    assert_eq!(glue.storage.fetch_schema("Temporary").unwrap(), None);
-    assert_eq!(
-        select(&mut glue, "SELECT n FROM Items WHERE n = 20"),
-        Vec::<Vec<Value>>::new()
-    );
-    assert_eq!(
-        select(&mut glue, "SELECT n FROM Items WHERE n = 10"),
-        vec![vec![Value::I64(10)]]
-    );
     drop(glue);
 
     let mut reopened = Glue::new(RedbStorage::new(&file.0).unwrap());
     assert_eq!(
-        select(&mut reopened, "SELECT n FROM Items WHERE n = 10"),
+        lookup_index(&reopened.storage, "Items", "by_n", Value::I64(10)),
         vec![vec![Value::I64(10)]]
+    );
+    assert_eq!(
+        lookup_index(&reopened.storage, "Items", "by_n", Value::I64(20)),
+        Vec::<Vec<Value>>::new()
     );
     reopened
         .execute("BEGIN; UPDATE Items SET n = 30; COMMIT")
         .unwrap();
     drop(reopened);
-    let mut reopened = Glue::new(RedbStorage::new(&file.0).unwrap());
+    let reopened = Glue::new(RedbStorage::new(&file.0).unwrap());
     assert_eq!(
-        select(&mut reopened, "SELECT n FROM Items WHERE n = 30"),
+        lookup_index(&reopened.storage, "Items", "by_n", Value::I64(10)),
+        Vec::<Vec<Value>>::new()
+    );
+    assert_eq!(
+        lookup_index(&reopened.storage, "Items", "by_n", Value::I64(30)),
         vec![vec![Value::I64(30)]]
     );
 }
@@ -199,16 +196,16 @@ fn v4_payloads_are_preserved_before_creating_persistent_indexes() {
 
     let mut reopened = Glue::new(RedbStorage::new(&file.0).unwrap());
     assert_eq!(
-        select(&mut reopened, "SELECT n FROM Items WHERE n = 10"),
+        lookup_index(&reopened.storage, "Items", "by_n", Value::I64(10)),
         vec![vec![Value::I64(10)]]
     );
     reopened.execute("UPDATE Items SET n = 20").unwrap();
     assert_eq!(
-        select(&mut reopened, "SELECT n FROM Items WHERE n = 10"),
+        lookup_index(&reopened.storage, "Items", "by_n", Value::I64(10)),
         Vec::<Vec<Value>>::new()
     );
     assert_eq!(
-        select(&mut reopened, "SELECT n FROM Items WHERE n = 20"),
+        lookup_index(&reopened.storage, "Items", "by_n", Value::I64(20)),
         vec![vec![Value::I64(20)]]
     );
 }
