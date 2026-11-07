@@ -4,7 +4,10 @@ pub mod database;
 
 use {
     database::{META, SCHEMAS, Snapshot, TestFile, VERSION_KEY, snapshot, write_database},
-    gluesql_core::error::Error,
+    gluesql_core::{
+        data::{Key, Schema, Value},
+        error::Error,
+    },
     gluesql_redb_storage::{
         MigrationReport, REDB_STORAGE_FORMAT_VERSION, RedbStorage, migrate_to_latest,
     },
@@ -153,6 +156,32 @@ fn current_empty_database_does_not_need_a_schema_table() {
         MigrationReport::default()
     );
     assert_eq!(snapshot(&file), before);
+}
+
+#[test]
+fn v4_table_name_with_slash_is_rejected_without_changes() {
+    let file = TestFile::empty();
+    let schema = Schema::from_ddl(r#"CREATE TABLE "a/b" (n INT)"#).unwrap();
+    let source = Snapshot {
+        version: Some(4),
+        schemas: BTreeMap::from([("a/b".into(), bincode::serialize(&schema).unwrap())]),
+        rows: BTreeMap::from([(
+            "a/b".into(),
+            vec![(
+                Key::I64(1).to_cmp_be_bytes().unwrap(),
+                bincode::serialize(&(Key::I64(1), vec![Value::I64(10)])).unwrap(),
+            )],
+        )]),
+    };
+    write_database(&file, true, &source);
+
+    assert_eq!(
+        migrate_to_latest(&file.0),
+        Err(Error::StorageMsg(
+            "[RedbStorage] cannot migrate to v5: table name 'a/b' contains '/'; rename it with a v4-compatible version before retrying".into(),
+        ))
+    );
+    assert_eq!(snapshot(&file), source);
 }
 
 #[test]
