@@ -48,7 +48,7 @@ jobs:
           cargo test -p gluesql-macros --verbose
           cargo test -p gluesql-core --verbose
           cargo test -p gluesql-cli --verbose
-          cargo test -p gluesql --lib --bins --tests --examples --verbose --no-default-features --features "gluesql_memory_storage gluesql_sled_storage gluesql-redb-storage"
+          cargo test -p gluesql --lib --bins --tests --examples --verbose --no-default-features --features "gluesql_memory_storage gluesql-redb-storage"
 
   run_storage_tests:
     name: Run storage tests
@@ -65,9 +65,6 @@ jobs:
           cargo test -p gluesql-parquet-storage --verbose
           cargo test -p gluesql-file-storage --verbose
           cargo test -p gluesql-redb-storage --verbose
-          cargo test -p gluesql_sled_storage --verbose -- --skip sled_transaction_timeout
-          cargo test -p gluesql_sled_storage sled_transaction_timeout --verbose -- --test-threads=1
-          cargo test -p gluesql_sled_storage --benches
 
   run_mongostorage_tests:
     name: Run MongoStorage tests
@@ -135,7 +132,5 @@ jobs:
           cargo run --package gluesql --example hello_world
           cargo run --package gluesql --example api_usage
           cargo run --package gluesql --example memory_storage_usage
-          cargo run --package gluesql --example sled_multi_threaded
-          cargo run --package gluesql --example using_config
           cargo run --package gluesql --example hello_query_builder
           cargo run --package gluesql --example parameter_binding

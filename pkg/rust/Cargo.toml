@@ -20,7 +20,6 @@ cli = { workspace = true, optional = true }
 test-suite = { workspace = true, optional = true }
 gluesql_memory_storage = { workspace = true, optional = true }
 gluesql-shared-memory-storage = { workspace = true, optional = true }
-gluesql_sled_storage = { workspace = true, optional = true }
 gluesql-redb-storage = { workspace = true, optional = true }
 gluesql-json-storage = { workspace = true, optional = true }
 gluesql-csv-storage = { workspace = true, optional = true }
@@ -38,7 +37,6 @@ default = [
   "test-suite",
   "gluesql_memory_storage",
   "gluesql-shared-memory-storage",
-  "gluesql_sled_storage",
   "gluesql-redb-storage",
   "gluesql-json-storage",
   "gluesql-parquet-storage",

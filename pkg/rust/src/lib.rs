@@ -20,9 +20,6 @@ pub use gluesql_memory_storage;
 #[cfg(feature = "gluesql-shared-memory-storage")]
 pub use gluesql_shared_memory_storage;
 
-#[cfg(feature = "gluesql_sled_storage")]
-pub use gluesql_sled_storage;
-
 #[cfg(feature = "gluesql-redb-storage")]
 pub use gluesql_redb_storage;
 
@@ -58,10 +55,6 @@ pub mod prelude {
 
     #[cfg(feature = "gluesql-shared-memory-storage")]
     pub use gluesql_shared_memory_storage::SharedMemoryStorage;
-
-    #[cfg(feature = "gluesql_sled_storage")]
-    #[allow(deprecated)]
-    pub use gluesql_sled_storage::SledStorage;
 
     #[cfg(feature = "gluesql-redb-storage")]
     pub use gluesql_redb_storage::RedbStorage;

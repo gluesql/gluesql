@@ -22,7 +22,7 @@ Once you have installed the GlueSQL CLI, you can use it to interact with your da
 
 ```
 $ gluesql [--execute ~/sql_path] [--storage=memory]
-$ gluesql [--execute ~/sql_path] --path ~/data_path --storage={redb | json | csv | parquet | file | sled}
+$ gluesql [--execute ~/sql_path] --path ~/data_path --storage={redb | json | csv | parquet | file}
 ```
 
 ### --execute
@@ -43,7 +43,7 @@ gluesql --path ~/mydatabase --storage=redb
 
 ### --storage
 
-This option allows you to specify the storage engine you want to use for your database. By default, GlueSQL uses the [`memory`](../storages/supported-storages/memory-storage) storage engine. For persistent storage, use [`redb`](../storages/supported-storages/redb-storage). The other path-backed storages are `json`, `csv`, `parquet`, and `file`. The [`sled`](../storages/supported-storages/sled-storage) option is deprecated as of v0.20.0 and will be removed in v0.21.0. Storage engines other than `memory` must be used with `--path`. For example, you can use the following command to specify the `json` storage engine:
+This option allows you to specify the storage engine you want to use for your database. By default, GlueSQL uses the [`memory`](../storages/supported-storages/memory-storage) storage engine. For persistent storage, use [`redb`](../storages/supported-storages/redb-storage). The other path-backed storages are `json`, `csv`, `parquet`, and `file`. Storage engines other than `memory` must be used with `--path`. For example, you can use the following command to specify the `json` storage engine:
 
 ```
 gluesql --path ~/mydatabase --storage=json
@@ -254,13 +254,3 @@ gluesql --storage=redb --path ~/restored.redb --execute ./dump.sql
 
 When moving between storage types, choose a destination that supports the
 features used by the exported SQL, such as indexes.
-
-To export an existing Sled database before Sled Storage is removed, select it
-explicitly:
-
-```sh
-gluesql --storage=sled --path ~/glue_data --dump ./dump.sql
-```
-
-Sled Storage remains deprecated. SQL dump is available for the other storage
-types as well.
