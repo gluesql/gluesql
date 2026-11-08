@@ -1,5 +1,4 @@
 #![deny(clippy::str_to_string)]
-#![allow(deprecated)]
 
 mod cli;
 mod command;
@@ -21,7 +20,6 @@ use {
     gluesql_memory_storage::MemoryStorage,
     gluesql_parquet_storage::ParquetStorage,
     gluesql_redb_storage::RedbStorage,
-    gluesql_sled_storage::SledStorage,
     std::{
         fmt::Debug,
         fs::File,
@@ -29,12 +27,6 @@ use {
         path::{Path, PathBuf},
     },
 };
-
-const SLED_STORAGE_DEPRECATION_WARNING: &str = "[warning] sled-storage is deprecated and will be removed in v0.21.0; use redb-storage for new persistent-storage deployments";
-
-fn warn_sled_storage_deprecated() {
-    eprintln!("{SLED_STORAGE_DEPRECATION_WARNING}");
-}
 
 #[derive(Parser, Debug)]
 #[clap(name = "gluesql", about, version)]
@@ -54,7 +46,6 @@ struct Args {
     dump: Option<PathBuf>,
 
     /// Storage type to store data; defaults to memory.
-    /// sled is deprecated and will be removed in v0.21.0; use redb for new deployments.
     #[clap(short, long, value_parser)]
     storage: Option<Storage>,
 
@@ -74,7 +65,6 @@ struct Args {
 #[derive(clap::ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
 enum Storage {
     Memory,
-    Sled,
     Redb,
     Json,
     Csv,
@@ -143,17 +133,6 @@ pub fn run() -> Result<()> {
         }
         (Some(_), Some(Storage::Memory)) => {
             panic!("failed to load memory-storage: it should be without path");
-        }
-        (Some(path), Some(Storage::Sled)) => {
-            warn_sled_storage_deprecated();
-            println!("[sled-storage] connected to {}", path.display());
-
-            run(
-                SledStorage::new(path).expect("failed to load sled-storage"),
-                Some(path),
-                execute,
-                dump,
-            )?;
         }
         (Some(path), Some(Storage::Redb)) => {
             println!("[redb-storage] connected to {}", path.display());
@@ -346,13 +325,14 @@ mod tests {
             "gluesql",
             "--upgrade",
             "--storage",
-            "sled",
+            "redb",
             "--path",
             "./tmp",
             "--execute",
             "query.sql",
-        ]);
-        assert!(args.is_err());
+        ])
+        .unwrap_err();
+        assert_eq!(args.kind(), ErrorKind::ArgumentConflict);
     }
 
     #[test]

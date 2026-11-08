@@ -9,7 +9,6 @@ documentation.workspace = true
 
 [dependencies]
 gluesql-core.workspace = true
-gluesql_sled_storage.workspace = true
 gluesql_memory_storage.workspace = true
 gluesql-json-storage.workspace = true
 gluesql-csv-storage.workspace = true

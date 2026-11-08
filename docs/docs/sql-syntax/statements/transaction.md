@@ -6,7 +6,7 @@ sidebar_position: 4
 
 Transactions in SQL are a series of queries that are executed as a single unit of work. In GlueSQL, transactions help to ensure the consistency and integrity of the database. They follow the ACID properties: Atomicity, Consistency, Isolation, and Durability.
 
-**Note: In GlueSQL, transactions are an optional feature. Support for transactions depends on the storage engine being used. Currently, both `SledStorage` and `RedbStorage` support transactions, and additional storages may add support in the future. Transaction isolation levels may also vary depending on the storage engine. For example, the current transaction isolation level for `SledStorage` is SNAPSHOT ISOLATION.**
+**Note: In GlueSQL, transactions are an optional feature. Support for transactions depends on the storage engine being used. Currently, `RedbStorage` supports transactions, and additional storages may add support in the future. Transaction isolation levels may also vary depending on the storage engine.**
 
 ## BEGIN TRANSACTION
 

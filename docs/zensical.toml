@@ -234,7 +234,6 @@ nav = [
       "storages/supported-storages/redb-storage.md",
       "storages/supported-storages/redis-storage.md",
       "storages/supported-storages/shared-memory-storage.md",
-      "storages/supported-storages/sled-storage.md",
     ]},
     {"Developing Custom Storages" = [
       "storages/developing-custom-storages/intro.md",

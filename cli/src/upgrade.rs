@@ -1,9 +1,8 @@
 use {
-    crate::{Storage, warn_sled_storage_deprecated},
+    crate::Storage,
     anyhow::{Result, bail},
     gluesql_file_storage::migrate_to_latest as migrate_file_storage_to_latest,
     gluesql_redb_storage::migrate_to_latest as migrate_redb_storage_to_latest,
-    gluesql_sled_storage::migrate_to_latest as migrate_sled_storage_to_latest,
     std::path::Path,
 };
 
@@ -22,17 +21,6 @@ pub(super) fn run_upgrade(
     };
 
     match storage {
-        Storage::Sled => {
-            warn_sled_storage_deprecated();
-            let report = migrate_sled_storage_to_latest(path)?;
-            print_upgrade_report(
-                "sled",
-                path,
-                report.migrated_tables,
-                report.unchanged_tables,
-                report.rewritten_rows,
-            );
-        }
         Storage::Redb => {
             let report = migrate_redb_storage_to_latest(path)?;
             print_upgrade_report(
@@ -54,7 +42,7 @@ pub(super) fn run_upgrade(
             );
         }
         _ => {
-            bail!("--upgrade is supported only for storage types: sled, redb, file");
+            bail!("--upgrade is supported only for storage types: redb, file");
         }
     }
 
@@ -81,7 +69,6 @@ mod tests {
         crate::Storage,
         gluesql_file_storage::FileStorage,
         gluesql_redb_storage::RedbStorage,
-        gluesql_sled_storage::SledStorage,
         std::{
             fs,
             path::{Path, PathBuf},
@@ -101,7 +88,7 @@ mod tests {
     #[test]
     fn upgrade_rejects_unsupported_storage() {
         let actual = run_upgrade(Some(Path::new("./tmp")), Some(Storage::Json), false, false);
-        let expected = "--upgrade is supported only for storage types: sled, redb, file";
+        let expected = "--upgrade is supported only for storage types: redb, file";
 
         assert_eq!(
             actual
@@ -113,7 +100,7 @@ mod tests {
 
     #[test]
     fn upgrade_rejects_execute_or_dump() {
-        let actual = run_upgrade(Some(Path::new("./tmp")), Some(Storage::Sled), true, false);
+        let actual = run_upgrade(Some(Path::new("./tmp")), Some(Storage::Redb), true, false);
         let expected = "--upgrade cannot be used with --execute or --dump";
 
         assert_eq!(
@@ -124,24 +111,13 @@ mod tests {
 
     #[test]
     fn upgrade_requires_path_and_storage() {
-        let actual = run_upgrade(None, Some(Storage::Sled), false, false);
+        let actual = run_upgrade(None, Some(Storage::Redb), false, false);
         let expected = "both --path and --storage should be specified with --upgrade";
 
         assert_eq!(
             actual.expect_err("missing path should fail").to_string(),
             expected
         );
-    }
-
-    #[test]
-    fn upgrade_accepts_sled_storage() {
-        let path = test_path("sled");
-        SledStorage::new(&path).expect("failed to initialize sled storage for upgrade test");
-
-        let actual = run_upgrade(Some(path.as_path()), Some(Storage::Sled), false, false);
-
-        assert!(actual.is_ok(), "sled upgrade should succeed: {actual:?}");
-        let _ = fs::remove_dir_all(path);
     }
 
     #[test]
