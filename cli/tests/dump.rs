@@ -203,7 +203,93 @@ fn dump_schema_error_without_transaction() {
 }
 
 #[test]
-fn cli_dump_redb() {
+fn cli_dump_rejects_storage_path() {
+    let dir = tempfile::tempdir().unwrap();
+    let data_path = dir.path().canonicalize().unwrap().join("data.redb");
+    let mut glue = Glue::new(RedbStorage::new(&data_path).unwrap());
+    glue.execute("CREATE TABLE Items (n INT); INSERT INTO Items VALUES (10)")
+        .unwrap();
+    drop(glue);
+
+    let output = Command::new(env!("CARGO_BIN_EXE_gluesql-cli"))
+        .current_dir(dir.path())
+        .args(["--storage", "redb", "--path", "data.redb", "--dump"])
+        .arg(&data_path)
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success(), "{output:?}");
+    let actual = String::from_utf8(output.stderr).unwrap();
+    let expected = format!(
+        "dump output path matches storage path: {}",
+        data_path.display()
+    );
+    assert!(actual.contains(&expected), "{actual}");
+
+    let mut glue = Glue::new(RedbStorage::new(&data_path).unwrap());
+    let actual = glue.execute("SELECT n FROM Items").unwrap();
+    let expected = vec![Payload::Select {
+        labels: vec!["n".to_owned()],
+        rows: vec![vec![Value::I64(10)]],
+    }];
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn cli_dump_rejects_new_storage_path() {
+    let dir = tempfile::tempdir().unwrap();
+    let data_path = dir.path().canonicalize().unwrap().join("data");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_gluesql-cli"))
+        .args(["--storage", "file", "--path"])
+        .arg(&data_path)
+        .arg("--dump")
+        .arg(&data_path)
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+
+    assert!(data_path.is_dir());
+    assert!(!output.status.success(), "{output:?}");
+    let actual = String::from_utf8(output.stderr).unwrap();
+    let expected = format!(
+        "dump output path matches storage path: {}",
+        data_path.display()
+    );
+    assert!(actual.contains(&expected), "{actual}");
+}
+
+#[test]
+fn cli_dump_overwrites_existing_output() {
+    let dir = tempfile::tempdir().unwrap();
+    let data_path = dir.path().join("data");
+    let dump_path = dir.path().join("dump.sql");
+    let mut glue = Glue::new(FileStorage::new(&data_path).unwrap());
+    glue.execute("CREATE TABLE Items (n INT); INSERT INTO Items VALUES (10)")
+        .unwrap();
+    fs::write(&dump_path, "previous dump").unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_gluesql-cli"))
+        .args(["--storage", "file", "--path"])
+        .arg(data_path)
+        .arg("--dump")
+        .arg(&dump_path)
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+
+    assert!(output.status.success(), "{output:?}");
+    let actual = fs::read_to_string(dump_path).unwrap();
+    let expected = r#"
+        CREATE TABLE "Items" ("n" INT NULL);
+        INSERT INTO "Items" VALUES (10);
+    "#;
+    test_dump(&actual, expected);
+}
+
+#[test]
+fn cli_dump_creates_missing_output() {
     let dir = tempfile::tempdir().unwrap();
     let data_path = dir.path().join("data.redb");
     let dump_path = dir.path().join("dump.sql");
@@ -232,30 +318,30 @@ fn cli_dump_redb() {
 }
 
 #[test]
-fn cli_dump_file_storage() {
+fn cli_dump_returns_path_resolution_error() {
     let dir = tempfile::tempdir().unwrap();
     let data_path = dir.path().join("data");
-    let dump_path = dir.path().join("dump.sql");
-    let mut glue = Glue::new(FileStorage::new(&data_path).unwrap());
-    glue.execute("CREATE TABLE Items (n INT); INSERT INTO Items VALUES (10)")
-        .unwrap();
+    let parent_path = dir.path().join("not-a-directory");
+    let dump_path = parent_path.join("dump.sql");
+    fs::write(&parent_path, "original contents").unwrap();
 
     let output = Command::new(env!("CARGO_BIN_EXE_gluesql-cli"))
         .args(["--storage", "file", "--path"])
         .arg(data_path)
         .arg("--dump")
-        .arg(&dump_path)
+        .arg(dump_path)
         .stdin(Stdio::null())
         .output()
         .unwrap();
 
-    assert!(output.status.success(), "{output:?}");
-    let actual = fs::read_to_string(dump_path).unwrap();
-    let expected = r#"
-        CREATE TABLE "Items" ("n" INT NULL);
-        INSERT INTO "Items" VALUES (10);
-    "#;
-    test_dump(&actual, expected);
+    assert!(!output.status.success(), "{output:?}");
+    let actual = String::from_utf8(output.stderr).unwrap();
+    let expected = "called `Result::unwrap()` on an `Err` value:";
+    assert!(actual.contains(expected), "{actual}");
+
+    let actual = fs::read_to_string(parent_path).unwrap();
+    let expected = "original contents";
+    assert_eq!(actual, expected);
 }
 
 #[test]
@@ -294,7 +380,7 @@ fn cli_dump_requires_storage() {
 }
 
 #[test]
-fn cli_dump_error_exit_status() {
+fn cli_dump_returns_file_creation_error() {
     let dir = tempfile::tempdir().unwrap();
 
     let output = Command::new(env!("CARGO_BIN_EXE_gluesql-cli"))

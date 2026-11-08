@@ -22,7 +22,12 @@ use {
     gluesql_parquet_storage::ParquetStorage,
     gluesql_redb_storage::RedbStorage,
     gluesql_sled_storage::SledStorage,
-    std::{fmt::Debug, fs::File, io::Write, path::PathBuf},
+    std::{
+        fmt::Debug,
+        fs::File,
+        io::{ErrorKind, Write},
+        path::{Path, PathBuf},
+    },
 };
 
 const SLED_STORAGE_DEPRECATION_WARNING: &str = "[warning] sled-storage is deprecated and will be removed in v0.21.0; use redb-storage for new persistent-storage deployments";
@@ -80,10 +85,23 @@ enum Storage {
 pub fn run() -> Result<()> {
     fn run<T: GStore + GStoreMut + Planner>(
         mut storage: T,
+        storage_path: Option<&Path>,
         input: Option<PathBuf>,
         dump: Option<PathBuf>,
     ) -> Result<()> {
         if let Some(path) = dump {
+            if let Some(storage_path) = storage_path {
+                match path.canonicalize() {
+                    Ok(dump_path) => assert!(
+                        dump_path != storage_path.canonicalize()?,
+                        "dump output path matches storage path: {}",
+                        dump_path.display()
+                    ),
+                    Err(error) if error.kind() == ErrorKind::NotFound => {}
+                    Err(error) => return Err(error.into()),
+                }
+            }
+
             return dump_database(&mut storage, path);
         }
 
@@ -121,7 +139,7 @@ pub fn run() -> Result<()> {
         (None, None | Some(Storage::Memory)) => {
             println!("[memory-storage] initialized");
 
-            run(MemoryStorage::default(), execute, dump)?;
+            run(MemoryStorage::default(), None, execute, dump)?;
         }
         (Some(_), Some(Storage::Memory)) => {
             panic!("failed to load memory-storage: it should be without path");
@@ -132,6 +150,7 @@ pub fn run() -> Result<()> {
 
             run(
                 SledStorage::new(path).expect("failed to load sled-storage"),
+                Some(path),
                 execute,
                 dump,
             )?;
@@ -141,6 +160,7 @@ pub fn run() -> Result<()> {
 
             run(
                 RedbStorage::new(path).expect("failed to load redb-storage"),
+                Some(path),
                 execute,
                 dump,
             )?;
@@ -150,6 +170,7 @@ pub fn run() -> Result<()> {
 
             run(
                 JsonStorage::new(path).expect("failed to load json-storage"),
+                Some(path),
                 execute,
                 dump,
             )?;
@@ -159,6 +180,7 @@ pub fn run() -> Result<()> {
 
             run(
                 CsvStorage::new(path).expect("failed to load csv-storage"),
+                Some(path),
                 execute,
                 dump,
             )?;
@@ -168,6 +190,7 @@ pub fn run() -> Result<()> {
 
             run(
                 ParquetStorage::new(path).expect("failed to load parquet-storage"),
+                Some(path),
                 execute,
                 dump,
             )?;
@@ -177,6 +200,7 @@ pub fn run() -> Result<()> {
 
             run(
                 FileStorage::new(path).expect("failed to load file-storage"),
+                Some(path),
                 execute,
                 dump,
             )?;
