@@ -73,22 +73,22 @@ fn begin_write_after_io_error() {
         .expect("create database");
 
     {
-        let tx = db.begin_write().expect("begin write for metadata");
-        let mut table = tx.open_table(META_TABLE).expect("open metadata table");
+        let txn = db.begin_write().expect("begin write for metadata");
+        let mut table = txn.open_table(META_TABLE).expect("open metadata table");
         table
             .insert("storage_format_version", &REDB_STORAGE_FORMAT_VERSION)
             .expect("insert storage format version");
         drop(table);
-        tx.commit().expect("commit metadata");
+        txn.commit().expect("commit metadata");
     }
 
     fail_flag.store(true, Ordering::SeqCst);
-    let tx = db.begin_write().expect("begin write");
+    let txn = db.begin_write().expect("begin write");
     {
-        let mut table = tx.open_table(TABLE).expect("open table");
+        let mut table = txn.open_table(TABLE).expect("open table");
         table.insert(&0, &0).expect("insert");
     }
-    let _ = tx.commit().expect_err("commit should fail");
+    let _ = txn.commit().expect_err("commit should fail");
 
     let mut storage = RedbStorage::from_database(db).expect("from_database should validate format");
     let err = storage.begin(true).expect_err("begin should fail");
