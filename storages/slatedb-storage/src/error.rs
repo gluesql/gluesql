@@ -11,6 +11,12 @@ pub(super) enum StorageError {
     #[error("table name cannot contain '/': {0}")]
     TableNameContainsSlash(String),
 
+    #[error("failed to parse storage URL: {0}")]
+    Url(#[source] url::ParseError),
+
+    #[error("failed to configure object store: {0}")]
+    ObjectStore(#[source] slatedb::object_store::Error),
+
     #[error("failed to create SlateDB runtime: {0}")]
     Runtime(#[source] std::io::Error),
 

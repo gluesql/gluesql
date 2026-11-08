@@ -1668,6 +1668,7 @@ dependencies = [
  "slatedb",
  "thiserror 2.0.3",
  "tokio",
+ "url",
  "uuid",
 ]
 

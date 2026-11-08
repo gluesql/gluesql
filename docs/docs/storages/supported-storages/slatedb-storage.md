@@ -2,8 +2,8 @@
 
 `SlatedbStorage` stores GlueSQL schemas and rows in
 [SlateDB](https://slatedb.io/), an embedded key-value engine backed by object
-storage. Pass an `Arc<dyn ObjectStore>` and a database prefix to its constructor.
-SlateDB manages the WAL, SST files, caching, and compaction.
+storage. Open a database with a URL that selects the object store and database
+prefix. SlateDB manages the WAL, SST files, caching, and compaction.
 
 The storage supports CRUD, primary-key lookups, table scans, and transactions.
 It uses GlueSQL's default planner and `AlterTable` implementation. Secondary
@@ -13,41 +13,53 @@ empty result.
 ## Example
 
 ```rust
-use {
-    gluesql::{
-        gluesql_slatedb_storage::{SlatedbStorage, object_store::memory::InMemory},
-        prelude::Glue,
-    },
-    std::sync::Arc,
-};
+use gluesql::{gluesql_slatedb_storage::SlatedbStorage, prelude::Glue};
 
 fn main() -> gluesql::core::error::Result<()> {
-    let objects = Arc::new(InMemory::new());
-    let storage = SlatedbStorage::new(objects.clone(), "my_database")?;
+    let storage = SlatedbStorage::open("memory:///my_database")?;
     let mut glue = Glue::new(storage);
 
     glue.execute("CREATE TABLE Items (id INTEGER PRIMARY KEY, name TEXT)")?;
     glue.execute("BEGIN")?;
     glue.execute("INSERT INTO Items VALUES (1, 'Alice')")?;
     glue.execute("COMMIT")?;
-    glue.storage.close()?;
-
-    // Reuse the same object store and prefix to reopen the database.
-    let storage = SlatedbStorage::new(objects, "my_database")?;
-    let mut glue = Glue::new(storage);
     println!("{:?}", glue.execute("SELECT * FROM Items WHERE id = 1")?);
     glue.storage.close()
 }
 ```
 
-`InMemory` needs no external service and is used by the storage's integration
-tests. Its contents live only as long as the in-memory store is retained.
+Each `open("memory:///my_database")` call creates a fresh in-memory database.
 
 ## S3 and Cloudflare R2
 
-Use `object_store::aws::AmazonS3Builder` to configure S3 or R2, then pass the
-built store to the same constructor. The `object_store` re-export uses the
-version compatible with SlateDB.
+Use an S3 URL or your R2 account's endpoint URL:
+
+```rust
+use gluesql::gluesql_slatedb_storage::SlatedbStorage;
+
+let storage = SlatedbStorage::open("s3://my-bucket/my_database")?;
+storage.close()?;
+
+let storage = SlatedbStorage::open(
+    "https://ACCOUNT_ID.r2.cloudflarestorage.com/my-bucket/my_database",
+)?;
+storage.close()?;
+```
+
+The path after the bucket is the database prefix. `open()` passes environment
+variables to
+[`object_store::parse_url_opts`](https://docs.rs/object_store/latest/object_store/fn.parse_url_opts.html).
+For example, configure `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and
+`AWS_DEFAULT_REGION` for S3. For R2, use the R2 access credentials; the R2 URL
+supplies the endpoint and region `auto`.
+
+Cloud endpoint and credential behavior requires validation in the deployment
+environment; the local tests use InMemory.
+
+## Using a configured object store
+
+Use `new(object_store, prefix)` to pass an explicitly configured object store.
+The `object_store` re-export uses the version compatible with SlateDB.
 
 ```rust
 use {
@@ -60,17 +72,12 @@ use {
 
 // Configure AWS credentials using the object_store builder or environment.
 let objects = AmazonS3Builder::from_env()
-    .with_bucket("my-bucket")
+    .with_bucket_name("my-bucket")
     .with_region("us-east-1")
     .build()?;
 let storage = SlatedbStorage::new(Arc::new(objects), "gluesql/my_database")?;
+storage.close()?;
 ```
-
-For R2, configure the account's S3-compatible endpoint, R2 access credentials,
-and region `auto` on the builder. Bucket configuration belongs to the object
-store; the constructor's prefix selects the database within that bucket.
-Cloud endpoint and credential behavior requires validation in the deployment
-environment; the local tests use InMemory.
 
 ## Transactions and naming
 
@@ -99,15 +106,9 @@ thread. For example, inside an async function:
 
 ```rust
 tokio::task::spawn_blocking(|| -> gluesql::core::error::Result<()> {
-    use {
-        gluesql::{
-            gluesql_slatedb_storage::{SlatedbStorage, object_store::memory::InMemory},
-            prelude::Glue,
-        },
-        std::sync::Arc,
-    };
+    use gluesql::{gluesql_slatedb_storage::SlatedbStorage, prelude::Glue};
 
-    let storage = SlatedbStorage::new(Arc::new(InMemory::new()), "example")?;
+    let storage = SlatedbStorage::open("memory:///example")?;
     let mut glue = Glue::new(storage);
     glue.execute("CREATE TABLE Items (id INTEGER)")?;
     glue.storage.close()

@@ -1,9 +1,4 @@
-use {
-    gluesql_core::prelude::Glue,
-    gluesql_slatedb_storage::{SlatedbStorage, object_store::memory::InMemory},
-    std::sync::Arc,
-    test_suite::*,
-};
+use {gluesql_core::prelude::Glue, gluesql_slatedb_storage::SlatedbStorage, test_suite::*};
 
 struct SlatedbTester {
     glue: Glue<SlatedbStorage>,
@@ -11,7 +6,7 @@ struct SlatedbTester {
 
 impl Tester<SlatedbStorage> for SlatedbTester {
     fn new(namespace: &str) -> Self {
-        let storage = SlatedbStorage::new(Arc::new(InMemory::new()), namespace).unwrap();
+        let storage = SlatedbStorage::open(&format!("memory:///{namespace}")).unwrap();
         Self {
             glue: Glue::new(storage),
         }

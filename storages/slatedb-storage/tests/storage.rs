@@ -11,6 +11,50 @@ use {
 };
 
 #[test]
+fn opening_the_same_memory_url_creates_a_fresh_database() {
+    let storage = SlatedbStorage::open("memory:///my_database").unwrap();
+    let mut glue = Glue::new(storage);
+    glue.execute(
+        r"
+        CREATE TABLE Items (id INTEGER PRIMARY KEY);
+        INSERT INTO Items VALUES (1);
+        ",
+    )
+    .unwrap();
+
+    assert_eq!(
+        glue.storage.fetch_data("Items", &Key::I64(1)),
+        Ok(Some(vec![Value::I64(1)]))
+    );
+    glue.storage.close().unwrap();
+
+    let storage = SlatedbStorage::open("memory:///my_database").unwrap();
+    assert_eq!(storage.fetch_all_schemas(), Ok(vec![]));
+    assert_eq!(storage.fetch_data("Items", &Key::I64(1)), Ok(None));
+    storage.close().unwrap();
+}
+
+#[test]
+fn open_rejects_a_relative_url() {
+    assert_eq!(
+        SlatedbStorage::open("my_database").err(),
+        Some(Error::StorageMsg(
+            "failed to parse storage URL: relative URL without a base".into()
+        ))
+    );
+}
+
+#[test]
+fn open_reports_an_unsupported_object_store_scheme() {
+    assert_eq!(
+        SlatedbStorage::open("unknown:///my_database").err(),
+        Some(Error::StorageMsg(
+            r#"failed to configure object store: Generic URL error: Unable to recognise URL "unknown:///my_database""#.into()
+        ))
+    );
+}
+
+#[test]
 fn table_names_survive_reopen() {
     let objects = Arc::new(InMemory::new());
     let mut storage = SlatedbStorage::new(objects.clone(), "table_names").unwrap();
