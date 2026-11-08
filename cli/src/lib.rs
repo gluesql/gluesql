@@ -39,7 +39,13 @@ struct Args {
     execute: Option<PathBuf>,
 
     /// SQL file to dump the selected storage into
-    #[clap(short, long, value_parser, conflicts_with = "execute")]
+    #[clap(
+        short,
+        long,
+        value_parser,
+        requires = "storage",
+        conflicts_with = "execute"
+    )]
     dump: Option<PathBuf>,
 
     /// Storage type to store data; defaults to memory.
@@ -278,17 +284,29 @@ mod tests {
     }
 
     #[test]
-    fn parse_dump_requires_storage_with_path() {
-        let actual = Args::try_parse_from(["gluesql", "--path", "data.redb", "--dump", "dump.sql"])
-            .unwrap_err();
+    fn parse_dump_requires_storage() {
+        let actual = Args::try_parse_from(["gluesql", "--dump", "dump.sql"]).unwrap_err();
+        assert_eq!(actual.kind(), ErrorKind::MissingRequiredArgument);
+    }
+
+    #[test]
+    fn parse_path_requires_storage() {
+        let actual = Args::try_parse_from(["gluesql", "--path", "data.redb"]).unwrap_err();
         assert_eq!(actual.kind(), ErrorKind::MissingRequiredArgument);
     }
 
     #[test]
     fn parse_dump_rejects_execute() {
-        let actual =
-            Args::try_parse_from(["gluesql", "--execute", "query.sql", "--dump", "dump.sql"])
-                .unwrap_err();
+        let actual = Args::try_parse_from([
+            "gluesql",
+            "--storage",
+            "memory",
+            "--execute",
+            "query.sql",
+            "--dump",
+            "dump.sql",
+        ])
+        .unwrap_err();
         assert_eq!(actual.kind(), ErrorKind::ArgumentConflict);
     }
 

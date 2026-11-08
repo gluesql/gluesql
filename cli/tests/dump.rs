@@ -264,7 +264,7 @@ fn cli_dump_empty_memory_storage() {
     let dump_path = dir.path().join("dump.sql");
 
     let output = Command::new(env!("CARGO_BIN_EXE_gluesql-cli"))
-        .arg("--dump")
+        .args(["--storage", "memory", "--dump"])
         .arg(&dump_path)
         .stdin(Stdio::null())
         .output()
@@ -275,11 +275,30 @@ fn cli_dump_empty_memory_storage() {
 }
 
 #[test]
+fn cli_dump_requires_storage() {
+    let dir = tempfile::tempdir().unwrap();
+    let dump_path = dir.path().join("dump.sql");
+    fs::write(&dump_path, "previous dump").unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_gluesql-cli"))
+        .arg("--dump")
+        .arg(&dump_path)
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(2), "{output:?}");
+    let actual = fs::read_to_string(dump_path).unwrap();
+    let expected = "previous dump";
+    assert_eq!(actual, expected);
+}
+
+#[test]
 fn cli_dump_error_exit_status() {
     let dir = tempfile::tempdir().unwrap();
 
     let output = Command::new(env!("CARGO_BIN_EXE_gluesql-cli"))
-        .arg("--dump")
+        .args(["--storage", "memory", "--dump"])
         .arg(dir.path().join("missing/dump.sql"))
         .stdin(Stdio::null())
         .output()

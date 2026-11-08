@@ -57,7 +57,7 @@ Export the selected storage's table definitions and rows to a SQL file, then exi
 gluesql --storage=redb --path ~/data.redb --dump ./dump.sql
 ```
 
-Specify both `--storage` and `--path` for path-backed storages.
+`--dump` requires `--storage`. For path-backed storages, also specify `--path`.
 `--dump` cannot be combined with `--execute` or `--upgrade`.
 
 ## Dot command
