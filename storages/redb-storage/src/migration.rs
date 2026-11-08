@@ -5,6 +5,7 @@ mod v1_to_v2;
 mod v2_to_v3;
 mod v2_to_v4;
 mod v3_to_v4;
+mod v4_to_v5;
 
 pub(super) use error::MigrationError;
 
@@ -23,13 +24,15 @@ use {
 ///
 /// This is stored in the `__GLUESQL_META__` table and is independent of both
 /// the redb crate version and redb's internal file format version. Storage
-/// format v4 uses the current core bincode schema layout, keeps the v2 row
-/// serialization and requires redb file format v3.
-pub const REDB_STORAGE_FORMAT_VERSION: u32 = 4;
+/// format v5 adds index maintenance, keeps v4 schemas and v2 row serialization,
+/// and requires redb file format v3. Older writers must not modify indexed data.
+pub const REDB_STORAGE_FORMAT_VERSION: u32 = V5_REDB_STORAGE_FORMAT_VERSION;
 
 const V1_REDB_STORAGE_FORMAT_VERSION: u32 = 1;
 const V2_REDB_STORAGE_FORMAT_VERSION: u32 = 2;
 const V3_REDB_STORAGE_FORMAT_VERSION: u32 = 3;
+const V4_REDB_STORAGE_FORMAT_VERSION: u32 = 4;
+const V5_REDB_STORAGE_FORMAT_VERSION: u32 = 5;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct MigrationReport {
@@ -51,6 +54,7 @@ enum DetectedStorageFormatVersion {
     V2,
     V3,
     V4,
+    V5,
     UnsupportedNewer(u32),
     Unsupported(u32),
 }
@@ -80,7 +84,12 @@ pub(super) fn ensure_storage_format_version_supported(db: &Database) -> StorageR
             expected: REDB_STORAGE_FORMAT_VERSION,
         }
         .into()),
-        DetectedStorageFormatVersion::V4 => Ok(()),
+        DetectedStorageFormatVersion::V4 => Err(MigrationError::MigrationRequired {
+            found: V4_REDB_STORAGE_FORMAT_VERSION,
+            expected: REDB_STORAGE_FORMAT_VERSION,
+        }
+        .into()),
+        DetectedStorageFormatVersion::V5 => Ok(()),
         DetectedStorageFormatVersion::UnsupportedNewer(version) => {
             Err(MigrationError::UnsupportedNewerFormatVersion(version).into())
         }
@@ -110,18 +119,19 @@ pub fn migrate_to_latest<P: AsRef<Path>>(filename: P) -> Result<MigrationReport>
 }
 
 fn migrate_database_to_latest(db: &mut Database) -> StorageResult<MigrationReport> {
-    match detect_storage_format_version(db)? {
+    let report = match detect_storage_format_version(db)? {
         DetectedStorageFormatVersion::V1 => migrate_v1_to_v4(db),
         DetectedStorageFormatVersion::V2 => v2_to_v4::migrate(db),
         DetectedStorageFormatVersion::V3 => v3_to_v4::migrate(db),
-        DetectedStorageFormatVersion::V4 => {
+        DetectedStorageFormatVersion::V4 => return v4_to_v5::migrate(db),
+        DetectedStorageFormatVersion::V5 => {
             let read_txn = db.begin_read()?;
             let unchanged_tables = list_user_table_names_from_read(&read_txn)?.len();
-            Ok(MigrationReport {
+            return Ok(MigrationReport {
                 migrated_tables: 0,
                 unchanged_tables,
                 rewritten_rows: 0,
-            })
+            });
         }
         DetectedStorageFormatVersion::UnsupportedNewer(version) => {
             Err(MigrationError::UnsupportedNewerFormatVersion(version).into())
@@ -129,7 +139,10 @@ fn migrate_database_to_latest(db: &mut Database) -> StorageResult<MigrationRepor
         DetectedStorageFormatVersion::Unsupported(version) => {
             Err(MigrationError::UnsupportedFormatVersion(version).into())
         }
-    }
+    }?;
+    // Preserve the source migration's counts; v5 does not rewrite its payloads.
+    v4_to_v5::migrate(db)?;
+    Ok(report)
 }
 
 fn migrate_v1_to_v4(db: &mut Database) -> StorageResult<MigrationReport> {
@@ -156,7 +169,7 @@ fn migrate_v1_to_v4(db: &mut Database) -> StorageResult<MigrationReport> {
 }
 
 fn commit_v4(txn: WriteTransaction) -> StorageResult<()> {
-    write_storage_format_version(&txn, REDB_STORAGE_FORMAT_VERSION)?;
+    write_storage_format_version(&txn, V4_REDB_STORAGE_FORMAT_VERSION)?;
     txn.commit()?;
     Ok(())
 }
@@ -173,7 +186,8 @@ fn detect_storage_format_version(db: &Database) -> StorageResult<DetectedStorage
             Ok(match version {
                 V2_REDB_STORAGE_FORMAT_VERSION => DetectedStorageFormatVersion::V2,
                 V3_REDB_STORAGE_FORMAT_VERSION => DetectedStorageFormatVersion::V3,
-                REDB_STORAGE_FORMAT_VERSION => DetectedStorageFormatVersion::V4,
+                V4_REDB_STORAGE_FORMAT_VERSION => DetectedStorageFormatVersion::V4,
+                V5_REDB_STORAGE_FORMAT_VERSION => DetectedStorageFormatVersion::V5,
                 version if version > REDB_STORAGE_FORMAT_VERSION => {
                     DetectedStorageFormatVersion::UnsupportedNewer(version)
                 }
@@ -273,9 +287,10 @@ mod tests {
             (Some(2), DetectedStorageFormatVersion::V2),
             (Some(3), DetectedStorageFormatVersion::V3),
             (Some(4), DetectedStorageFormatVersion::V4),
+            (Some(5), DetectedStorageFormatVersion::V5),
             (Some(0), DetectedStorageFormatVersion::Unsupported(0)),
             (Some(1), DetectedStorageFormatVersion::Unsupported(1)),
-            (Some(5), DetectedStorageFormatVersion::UnsupportedNewer(5)),
+            (Some(6), DetectedStorageFormatVersion::UnsupportedNewer(6)),
         ] {
             let db = Database::builder()
                 .create_with_backend(InMemoryBackend::new())
@@ -294,7 +309,7 @@ mod tests {
 
     #[test]
     fn old_versions_require_migration_before_opening_storage() {
-        for (version, expected_found) in [(None, 1), (Some(2), 2), (Some(3), 3)] {
+        for (version, expected_found) in [(None, 1), (Some(2), 2), (Some(3), 3), (Some(4), 4)] {
             let db = Database::builder()
                 .create_with_backend(InMemoryBackend::new())
                 .unwrap();
@@ -307,14 +322,14 @@ mod tests {
                 txn.commit().unwrap();
             }
             assert!(matches!(ensure_storage_format_version_supported(&db),
-                Err(StorageError::Migration(MigrationError::MigrationRequired { found, expected: 4 }))
+                Err(StorageError::Migration(MigrationError::MigrationRequired { found, expected: 5 }))
                 if found == expected_found
             ));
         }
     }
 
     #[test]
-    fn initialization_records_v4_and_allows_opening_storage() {
+    fn initialization_records_v5_and_allows_opening_storage() {
         let db = Database::builder()
             .create_with_backend(InMemoryBackend::new())
             .unwrap();
@@ -327,7 +342,7 @@ mod tests {
                 .unwrap()
                 .unwrap()
                 .value(),
-            4
+            5
         );
         ensure_storage_format_version_supported(&db).unwrap();
     }
@@ -364,7 +379,7 @@ mod tests {
         let txn = db.begin_write().unwrap();
         txn.open_table(STORAGE_META_TABLE)
             .unwrap()
-            .insert(STORAGE_META_VERSION_KEY, 5)
+            .insert(STORAGE_META_VERSION_KEY, 6)
             .unwrap();
         txn.commit().unwrap();
         for error in [
@@ -373,7 +388,7 @@ mod tests {
         ] {
             assert!(matches!(
                 error,
-                StorageError::Migration(MigrationError::UnsupportedNewerFormatVersion(5))
+                StorageError::Migration(MigrationError::UnsupportedNewerFormatVersion(6))
             ));
         }
     }
@@ -422,7 +437,7 @@ mod tests {
     }
 
     #[test]
-    fn old_versions_dispatch_to_v4_and_report_their_row_work() {
+    fn old_versions_dispatch_to_v5_and_report_their_row_work() {
         let key = Key::I64(7);
         let values = vec![Value::I64(9)];
         for (version, payload, expected) in [
@@ -485,7 +500,7 @@ mod tests {
                     .unwrap()
                     .unwrap()
                     .value(),
-                4
+                5
             );
             assert_eq!(
                 txn.open_table(rows)

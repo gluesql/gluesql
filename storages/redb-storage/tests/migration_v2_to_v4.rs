@@ -1,4 +1,4 @@
-//! Constructed database scenarios for v2 -> v4.
+//! Constructed database scenarios for v2 -> v4 -> latest.
 #[path = "migration/database.rs"]
 pub mod database;
 
@@ -40,7 +40,7 @@ fn physical_upgrade_preserves_schema_row_and_lookup_key_bytes() {
         }
     );
     let after = snapshot(&file);
-    assert_eq!(after.version, Some(4));
+    assert_eq!(after.version, Some(5));
     assert_eq!(after.schemas, before.schemas);
     assert_eq!(after.rows, before.rows);
     assert_eq!(
@@ -100,7 +100,7 @@ fn physical_upgrade_failure_keeps_v2_payloads_and_allows_retry() {
         }
     );
     let after = snapshot(&file);
-    assert_eq!(after.version, Some(4));
+    assert_eq!(after.version, Some(5));
     assert_eq!(after.rows, before.rows);
     let mut glue = Glue::new(RedbStorage::new(&file.0).unwrap());
     glue.execute("INSERT INTO Defaults (id) VALUES (2);")

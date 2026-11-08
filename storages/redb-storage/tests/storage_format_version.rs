@@ -4,7 +4,10 @@ pub mod database;
 
 use {
     database::{META, SCHEMAS, Snapshot, TestFile, VERSION_KEY, snapshot, write_database},
-    gluesql_core::error::Error,
+    gluesql_core::{
+        data::{Key, Schema, Value},
+        error::Error,
+    },
     gluesql_redb_storage::{
         MigrationReport, REDB_STORAGE_FORMAT_VERSION, RedbStorage, migrate_to_latest,
     },
@@ -33,11 +36,11 @@ fn assert_both_constructors_reject(file: &TestFile, message: &str) {
 }
 
 #[test]
-fn new_storage_records_v4_and_the_current_physical_format() {
-    assert_eq!(REDB_STORAGE_FORMAT_VERSION, 4);
+fn new_storage_records_v5_and_the_current_physical_format() {
+    assert_eq!(REDB_STORAGE_FORMAT_VERSION, 5);
     let file = TestFile::empty();
     drop(RedbStorage::new(&file.0).unwrap());
-    assert_eq!(snapshot(&file).version, Some(4));
+    assert_eq!(snapshot(&file).version, Some(5));
     let mut db = Database::open(&file.0).unwrap();
     assert!(!db.upgrade().unwrap());
     drop(RedbStorage::from_database(db).unwrap());
@@ -45,18 +48,22 @@ fn new_storage_records_v4_and_the_current_physical_format() {
 
 #[test]
 fn both_constructors_block_each_supported_old_version_until_migration() {
-    for (version, found, physical_v3) in [(None, 1, false), (Some(2), 2, false), (Some(3), 3, true)]
-    {
+    for (version, found, physical_v3) in [
+        (None, 1, false),
+        (Some(2), 2, false),
+        (Some(3), 3, true),
+        (Some(4), 4, true),
+    ] {
         let file = TestFile::empty();
         write_database(&file, physical_v3, &state(version));
         let before = snapshot(&file);
         let message = format!(
-            "[RedbStorage] migration required (found v{found}, expected v4); migrate redb-storage data to the latest format before opening"
+            "[RedbStorage] migration required (found v{found}, expected v5); migrate redb-storage data to the latest format before opening"
         );
         assert_both_constructors_reject(&file, &message);
         assert_eq!(snapshot(&file), before);
         migrate_to_latest(&file.0).unwrap();
-        assert_eq!(snapshot(&file).version, Some(4));
+        assert_eq!(snapshot(&file).version, Some(5));
         drop(RedbStorage::new(&file.0).unwrap());
         drop(RedbStorage::from_database(Database::open(&file.0).unwrap()).unwrap());
     }
@@ -68,7 +75,7 @@ fn unsupported_and_newer_versions_are_rejected_without_changes() {
     for (version, message) in [
         (0, "[RedbStorage] unsupported format version v0"),
         (1, "[RedbStorage] unsupported format version v1"),
-        (5, "[RedbStorage] unsupported newer format version v5"),
+        (6, "[RedbStorage] unsupported newer format version v6"),
     ] {
         let file = TestFile::empty();
         write_database(&file, true, &state(Some(version)));
@@ -130,7 +137,7 @@ fn empty_old_database_is_initialized_and_current_empty_database_is_unchanged() {
         MigrationReport::default()
     );
     let after = snapshot(&file);
-    assert_eq!(after.version, Some(4));
+    assert_eq!(after.version, Some(5));
     assert_eq!(
         migrate_to_latest(&file.0).unwrap(),
         MigrationReport::default()
@@ -152,25 +159,66 @@ fn current_empty_database_does_not_need_a_schema_table() {
 }
 
 #[test]
-fn current_version_does_not_hide_a_schema_table_type_error() {
+fn v4_table_name_with_slash_is_rejected_without_changes() {
     let file = TestFile::empty();
-    let db = Database::create(&file.0).unwrap();
-    let txn = db.begin_write().unwrap();
-    txn.open_table(META)
-        .unwrap()
-        .insert(VERSION_KEY, &4)
-        .unwrap();
-    txn.open_table(TableDefinition::<&[u8], Vec<u8>>::new("__SCHEMA__"))
-        .unwrap()
-        .insert(b"Foo".as_slice(), vec![1])
-        .unwrap();
-    txn.commit().unwrap();
-    let message = db
-        .begin_read()
-        .unwrap()
-        .open_table(SCHEMAS)
-        .unwrap_err()
-        .to_string();
-    drop(db);
-    assert_eq!(migrate_to_latest(&file.0), Err(Error::StorageMsg(message)));
+    let schema = Schema::from_ddl(r#"CREATE TABLE "a/b" (n INT)"#).unwrap();
+    let source = Snapshot {
+        version: Some(4),
+        schemas: BTreeMap::from([("a/b".into(), bincode::serialize(&schema).unwrap())]),
+        rows: BTreeMap::from([(
+            "a/b".into(),
+            vec![(
+                Key::I64(1).to_cmp_be_bytes().unwrap(),
+                bincode::serialize(&(Key::I64(1), vec![Value::I64(10)])).unwrap(),
+            )],
+        )]),
+    };
+    write_database(&file, true, &source);
+
+    assert_eq!(
+        migrate_to_latest(&file.0),
+        Err(Error::StorageMsg(
+            "[RedbStorage] cannot migrate to v5: table name 'a/b' contains '/'; rename it with a v4-compatible version before retrying".into(),
+        ))
+    );
+    assert_eq!(snapshot(&file), source);
+}
+
+#[test]
+fn schema_table_type_error_does_not_advance_the_version() {
+    for version in [4, 5] {
+        let file = TestFile::empty();
+        let db = Database::create(&file.0).unwrap();
+        let txn = db.begin_write().unwrap();
+        txn.open_table(META)
+            .unwrap()
+            .insert(VERSION_KEY, &version)
+            .unwrap();
+        txn.open_table(TableDefinition::<&[u8], Vec<u8>>::new("__SCHEMA__"))
+            .unwrap()
+            .insert(b"Foo".as_slice(), vec![1])
+            .unwrap();
+        txn.commit().unwrap();
+        let message = db
+            .begin_read()
+            .unwrap()
+            .open_table(SCHEMAS)
+            .unwrap_err()
+            .to_string();
+        drop(db);
+        assert_eq!(migrate_to_latest(&file.0), Err(Error::StorageMsg(message)));
+
+        let db = Database::open(&file.0).unwrap();
+        assert_eq!(
+            db.begin_read()
+                .unwrap()
+                .open_table(META)
+                .unwrap()
+                .get(VERSION_KEY)
+                .unwrap()
+                .unwrap()
+                .value(),
+            version
+        );
+    }
 }

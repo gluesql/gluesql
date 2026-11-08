@@ -2,25 +2,66 @@
 
 ## Unit tests
 
-Test every reachable branch of the implementation. Use inputs that reach each
-branch, and assert its result or state change. A test that fails earlier in the
-pipeline does not cover that branch.
+- **Test every reachable branch and check transformation results.**
 
-Put unit tests in an inline `#[cfg(test)] mod tests` in the module that contains
-the implementation. Do not put them in a separate `tests.rs` file or a module
-that only re-exports the implementation.
+    Build cases from the implementation under test. Use inputs that reach each
+    branch, and assert the returned value or state change. A test that fails
+    before reaching the target code does not test that code's error handling.
 
-Move the tests when you move the implementation. Do not widen production
-visibility just to let tests access private code.
+- **Test the caller's own behavior when it calls another function.**
 
-Test the branches of shared code in its own module. Caller tests cover the
-caller's branches, including how it uses results and handles errors from shared
-code.
+    Check how the caller uses return values and handles errors. Test the called
+    function's internal algorithms and branches in the module that implements it.
+    Do not repeat a shared function's case list in every caller.
 
-For a planner pass, prepare the inputs it needs and call the pass directly.
-Use separate test cases to check that the full planner pipeline runs the pass.
+    Passing tests for the called function do not verify the caller. Run the caller
+    and assert its result or state change.
 
-Test an execution entry point's own branches in its unit tests.
+    For a helper that only forwards a call or wraps its result, check the result
+    through the caller. Do not add a separate helper test that repeats the same
+    assertion.
+
+- **Do not put integration test scenarios in unit tests.**
+
+    A unit test for a sorting function can pass `[3, 1, 2]` to the function and
+    assert that the result is `[1, 2, 3]`.
+
+    Creating a table, inserting those values, and checking the result of
+    `SELECT ... ORDER BY` tests SQL execution together with data storage and
+    retrieval. Put that scenario in the shared SQL fixtures in `test-suite`,
+    not in the sorting function's unit tests.
+
+- **Write inputs and expected results that show the behavior being tested.**
+
+    Long AST or plan construction code can obscure the transformation being
+    tested. In that case, write expected results as SQL and let a helper parse
+    them for comparison.
+
+    This example uses SQL to show that the query builder should combine two
+    filters with `AND`:
+
+    ```rust
+    let actual = table("Items")
+        .select()
+        .filter("n > 10")
+        .filter("n < 20");
+    let expected = "SELECT * FROM Items WHERE n > 10 AND n < 20";
+    test_query_builder(actual, expected);
+    ```
+
+    The helper compares the builder's output with the parsed expected SQL as ASTs
+    and plans. Parsing makes the expected result easier to read; the test checks
+    the builder's filter combination. Do not add parser syntax cases to this test.
+
+    Other modules may prepare inputs or express expected results. Using them for
+    those tasks does not make their behavior part of this test's scope.
+
+- **Keep unit tests in the module that contains the implementation.**
+
+    Write them in an inline `#[cfg(test)] mod tests`. Do not put them in a separate
+    `tests.rs` file or a module that only re-exports the implementation. Move the
+    tests when you move the implementation. Do not widen production visibility
+    just to let tests access private code.
 
 ## SQL fixtures
 
@@ -41,6 +82,29 @@ separate examples even when they use the same branch.
 Constructing an AST or plan directly does not prove that SQL can reach the same
 behavior. For guards that require a manually constructed plan or inconsistent
 storage, use the setup and assertions in [Error prefixes](errors.md#error-prefixes).
+
+## Storage integration tests
+
+Put behavior that storage implementations must share in `test-suite`. Use SQL
+fixtures for shared SQL behavior, including index updates and transaction
+commit or rollback. Keep these cases in the shared suite; storage crates
+register and run them.
+
+Put behavior that can only be verified for a particular storage implementation
+in that storage crate's `tests/` directory. For example, transaction isolation
+levels can differ between storages. Test concurrent transaction visibility
+against that storage's isolation guarantees in its integration tests. Do not
+put one storage's expected visibility in the shared suite as a requirement
+for all storages.
+
+Tests that reopen a storage's database files, migrate its on-disk format, or
+inspect its internal data structures also belong in that storage's tests.
+
+Apply the same placement rule to errors: shared failure conditions belong in
+`test-suite`, and storage-specific failures belong in that storage's tests.
+Call the operation that should fail and assert its error. Constructing an
+internal error and calling its conversion helper does not verify what the
+operation returns.
 
 ## Expected results
 

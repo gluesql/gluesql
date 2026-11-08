@@ -1,4 +1,4 @@
-//! Constructed database scenarios for v3 -> v4.
+//! Constructed database scenarios for v3 -> v4 -> latest.
 #[path = "migration/database.rs"]
 pub mod database;
 
@@ -37,7 +37,7 @@ fn mixed_historical_and_current_tables_commit_together_and_remain_usable() {
         }
     );
     let after = snapshot(&file);
-    assert_eq!(after.version, Some(4));
+    assert_eq!(after.version, Some(5));
     assert_eq!(after.rows, before.rows);
     assert_ne!(after.schemas["Defaults"], before.schemas["Defaults"]);
     assert_eq!(after.schemas["Modern"], before.schemas["Modern"]);

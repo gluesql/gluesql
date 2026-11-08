@@ -21,6 +21,11 @@ pub enum MigrationError {
     InvalidV1RowPayload(String),
 
     #[error(
+        "[RedbStorage] cannot migrate to v5: table name '{0}' contains '/'; rename it with a v4-compatible version before retrying"
+    )]
+    V5TableNameContainsSlash(String),
+
+    #[error(
         "[RedbStorage] failed to decode schema in table '{table_name}': {source}; migration stopped"
     )]
     InvalidSchemaPayload {

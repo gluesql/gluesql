@@ -78,7 +78,7 @@ fn assert_defaults(file: &TestFile) {
 }
 
 #[test]
-fn defaults_migrate_from_v3_to_v4_and_remain_usable_after_reopen() {
+fn defaults_migrate_from_v3_to_latest_and_remain_usable_after_reopen() {
     let file = TestFile::fixture("v3/upgraded_v1_defaults.redb");
     let before = snapshot(&file);
     assert_eq!(before.version, Some(3));
@@ -91,7 +91,7 @@ fn defaults_migrate_from_v3_to_v4_and_remain_usable_after_reopen() {
         }
     );
     let after = snapshot(&file);
-    assert_eq!(after.version, Some(4));
+    assert_eq!(after.version, Some(5));
     assert_ne!(after.schemas, before.schemas);
     assert_eq!(after.rows, before.rows);
     assert_eq!(
@@ -123,7 +123,7 @@ fn current_only_schema_and_rows_are_not_rewritten() {
         }
     );
     let after = snapshot(&file);
-    assert_eq!(after.version, Some(4));
+    assert_eq!(after.version, Some(5));
     assert_eq!(after.schemas, before.schemas);
     assert_eq!(after.rows, before.rows);
     let mut glue = Glue::new(RedbStorage::new(&file.0).unwrap());

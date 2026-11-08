@@ -81,7 +81,7 @@ fn assert_defaults(file: &TestFile) {
 }
 
 #[test]
-fn defaults_migrate_from_v2_to_v4_and_remain_usable_after_reopen() {
+fn defaults_migrate_from_v2_to_latest_and_remain_usable_after_reopen() {
     let file = TestFile::fixture("v2/defaults.redb");
     let before = snapshot(&file);
     assert_eq!(before.version, Some(2));
@@ -94,7 +94,7 @@ fn defaults_migrate_from_v2_to_v4_and_remain_usable_after_reopen() {
         }
     );
     let after = snapshot(&file);
-    assert_eq!(after.version, Some(4));
+    assert_eq!(after.version, Some(5));
     assert_ne!(after.schemas, before.schemas);
     assert_eq!(after.rows, before.rows);
     assert_eq!(
@@ -126,7 +126,7 @@ fn typed_defaults_use_the_known_v2_origin() {
         }
     );
     let after = snapshot(&file);
-    assert_eq!(after.version, Some(4));
+    assert_eq!(after.version, Some(5));
     assert_eq!(after.rows, before.rows);
     let expected = Schema::from_ddl("CREATE TABLE Ambiguous (id INT PRIMARY KEY, flag BOOLEAN DEFAULT TEXT '2' BETWEEN TEXT '10' AND TEXT '9');").unwrap();
     let mut glue = Glue::new(RedbStorage::new(&file.0).unwrap());
@@ -165,7 +165,7 @@ fn migrate_v2_mixed_schema_schemaless_fixture() {
     assert!(!db.upgrade().unwrap());
     drop(db);
 
-    assert_eq!(snapshot(&file).version, Some(4));
+    assert_eq!(snapshot(&file).version, Some(5));
     let storage = RedbStorage::new(path).expect("open migrated storage");
     let mut glue = Glue::new(storage);
 

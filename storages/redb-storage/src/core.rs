@@ -1,3 +1,6 @@
+mod alter_table;
+mod index;
+
 use {
     super::{
         error::StorageError,
@@ -5,8 +8,10 @@ use {
     },
     bincode::{deserialize, serialize},
     gluesql_core::data::{Key, Schema, Value},
-    redb::{Builder, Database, ReadableTable, TableDefinition, WriteTransaction},
-    std::path::Path,
+    redb::{
+        Builder, Database, MultimapTableHandle, ReadableTable, TableDefinition, WriteTransaction,
+    },
+    std::{collections::HashSet, path::Path},
     uuid::Uuid,
 };
 
@@ -61,8 +66,14 @@ impl StorageCore {
     }
 
     fn data_table_def(table_name: &str) -> Result<TableDefinition<'_, &'static [u8], Vec<u8>>> {
-        if matches!(table_name, SCHEMA_TABLE_NAME | STORAGE_META_TABLE_NAME) {
+        if matches!(table_name, SCHEMA_TABLE_NAME | STORAGE_META_TABLE_NAME)
+            || table_name.starts_with(index::INDEX_TABLE_PREFIX)
+        {
             return Err(StorageError::ReservedTableName(table_name.to_owned()));
+        }
+
+        if table_name.contains('/') {
+            return Err(StorageError::TableNameContainsSlash(table_name.to_owned()));
         }
 
         Ok(TableDefinition::new(table_name))
@@ -107,19 +118,20 @@ impl StorageCore {
     }
 
     pub fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
-        let schema = match &self.state {
-            TransactionState::Active { txn, .. } => txn
-                .open_table(SCHEMA_TABLE)?
-                .get(table_name)?
-                .map(|v| deserialize(&v.value())),
-            TransactionState::None => self
-                .db
-                .begin_write()?
-                .open_table(SCHEMA_TABLE)?
-                .get(table_name)?
-                .map(|v| deserialize(&v.value())),
+        match &self.state {
+            TransactionState::Active { txn, .. } => Self::fetch_schema_in_txn(txn, table_name),
+            TransactionState::None => {
+                Self::fetch_schema_in_txn(&self.db.begin_write()?, table_name)
+            }
         }
-        .transpose()?;
+    }
+
+    fn fetch_schema_in_txn(txn: &WriteTransaction, table_name: &str) -> Result<Option<Schema>> {
+        let schema = txn
+            .open_table(SCHEMA_TABLE)?
+            .get(table_name)?
+            .map(|v| deserialize(&v.value()))
+            .transpose()?;
 
         Ok(schema)
     }
@@ -180,6 +192,21 @@ impl StorageCore {
     pub fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let data_def = Self::data_table_def(&schema.table_name)?;
         let txn = self.txn_mut()?;
+
+        if !schema.indexes.is_empty() {
+            let tables = txn
+                .list_multimap_tables()?
+                .map(|table| table.name().to_owned())
+                .collect::<HashSet<_>>();
+
+            for index in &schema.indexes {
+                let name = index::index_table_name(&schema.table_name, &index.name);
+                if !tables.contains(&name) {
+                    return Err(StorageError::ConflictMissingIndexTableOnSchemaInsert(name));
+                }
+            }
+        }
+
         let mut table = txn.open_table(SCHEMA_TABLE)?;
         let value = serialize(&schema)?;
         table.insert(schema.table_name.as_str(), value)?;
@@ -191,6 +218,13 @@ impl StorageCore {
     pub fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let table_def = Self::data_table_def(table_name)?;
         let txn = self.txn_mut()?;
+        let schema = Self::fetch_schema_in_txn(txn, table_name)?;
+        if let Some(schema) = schema {
+            for index in schema.indexes {
+                let name = index::index_table_name(table_name, &index.name);
+                txn.delete_multimap_table(index::IndexTableDefinition::new(&name))?;
+            }
+        }
         let mut table = txn.open_table(SCHEMA_TABLE)?;
         table.remove(table_name)?;
         txn.delete_table(table_def)?;
@@ -201,6 +235,11 @@ impl StorageCore {
     pub fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
         let table_def = Self::data_table_def(table_name)?;
         let txn = self.txn_mut()?;
+        if let Some(schema) =
+            Self::fetch_schema_in_txn(txn, table_name)?.filter(|s| !s.indexes.is_empty())
+        {
+            return self.append_indexed_data(&schema, rows);
+        }
         let mut table = txn.open_table(table_def)?;
 
         for row in rows {
@@ -217,6 +256,11 @@ impl StorageCore {
     pub fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
         let table_def = Self::data_table_def(table_name)?;
         let txn = self.txn_mut()?;
+        if let Some(schema) =
+            Self::fetch_schema_in_txn(txn, table_name)?.filter(|s| !s.indexes.is_empty())
+        {
+            return self.insert_indexed_data(&schema, rows);
+        }
         let mut table = txn.open_table(table_def)?;
 
         for (key, row) in rows {
@@ -232,6 +276,11 @@ impl StorageCore {
     pub fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let table_def = Self::data_table_def(table_name)?;
         let txn = self.txn_mut()?;
+        if let Some(schema) =
+            Self::fetch_schema_in_txn(txn, table_name)?.filter(|s| !s.indexes.is_empty())
+        {
+            return self.delete_indexed_data(&schema, keys);
+        }
         let mut table = txn.open_table(table_def)?;
 
         for key in keys {

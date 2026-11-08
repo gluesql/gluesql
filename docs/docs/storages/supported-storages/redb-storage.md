@@ -1,8 +1,11 @@
 # Redb Storage
 
-RedbStorage allows GlueSQL to persist data using the [redb](https://github.com/cberner/redb) embedded key-value database. It provides ACID transactions, fast single-file access, and a stable API.
+RedbStorage stores GlueSQL data in a single file using the
+[redb](https://github.com/cberner/redb) embedded database. It supports ACID
+transactions.
 
-RedbStorage implements GlueSQL's `Store`, `StoreMut`, and `Transaction` traits.
+RedbStorage implements GlueSQL's `Store`, `StoreMut`, `Transaction`, `Index`,
+`IndexMut`, and `AlterTable` traits.
 
 ## Example
 
@@ -24,21 +27,36 @@ fn main() {
 }
 ```
 
+## Indexes
+
+Create indexes on columns or expressions with
+[`CREATE INDEX`](../../sql-syntax/statements/data-definition/create-index.md):
+
+```sql
+CREATE INDEX by_name ON Foo (name);
+SELECT * FROM Foo WHERE name = 'Alice';
+DROP INDEX Foo.by_name;
+```
+
+Indexes can be used for range queries and for `ORDER BY` in either direction.
+
 ## Things to keep in mind
 
 - Nested transactions are not supported.
 - Only one RedbStorage instance should open the same database file at a time.
-
-RedbStorage gives you an embedded, serverless database that integrates seamlessly with GlueSQL. Use `RedbStorage::new` to open or create a database file and execute SQL through `Glue`.
+- Table names cannot contain `/`. The names `__SCHEMA__`, `__GLUESQL_META__`,
+  and all names starting with `__GLUESQL_INDEX__` are reserved.
 
 ## File format migration
 
-GlueSQL continues to use the redb 2.6 crate, but new databases use redb's internal file format v3. GlueSQL's redb storage format version is also v3; this is separate metadata used to require the file upgrade, not the redb crate version.
+New databases use GlueSQL storage format v5. Existing databases in formats
+v1 through v4 require migration before opening them.
 
-Existing redb storage format v1 or v2 files must be upgraded once before opening them:
+Back up the database first. Older GlueSQL releases cannot open the upgraded
+database.
 
 ```shell
 gluesql --storage redb --path data.redb --upgrade
 ```
 
-Library users can call `gluesql_redb_storage::migrate_to_latest(path)` instead. The migration preserves the existing row serialization while upgrading the redb file from v2 to v3. Back up the database first because older GlueSQL releases reject storage format v3 after the upgrade.
+Library users can call `gluesql_redb_storage::migrate_to_latest(path)` instead.
