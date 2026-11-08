@@ -1087,6 +1087,7 @@ dependencies = [
  "rustyline-derive",
  "strum_macros 0.25.3",
  "tabled",
+ "tempfile",
  "thiserror 1.0.63",
 ]
 
