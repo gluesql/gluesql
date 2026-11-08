@@ -26,5 +26,8 @@ edit = "0.1.4"
 anyhow = "1.0"
 strum_macros = "0.25"
 
+[dev-dependencies]
+tempfile = "3.12"
+
 [lints]
 workspace = true

@@ -49,6 +49,17 @@ This option allows you to specify the storage engine you want to use for your da
 gluesql --path ~/mydatabase --storage=json
 ```
 
+### --dump
+
+Export the selected storage's table definitions and rows to a SQL file, then exit:
+
+```sh
+gluesql --storage=redb --path ~/data.redb --dump ./dump.sql
+```
+
+Specify both `--storage` and `--path` for path-backed storages.
+`--dump` cannot be combined with `--execute` or `--upgrade`.
+
 ## Dot command
 
 ### .show
@@ -229,22 +240,27 @@ If you execute `.help`, you can see various helper command starting with dot(`.`
 
 ## Migration using CLI
 
-GlueSQL CLI supports generating SQL scripts for dumping whole schemas and data.
+Use `--dump` to export table definitions, index definitions, and rows as SQL:
 
-During the v0.20.0 deprecation period, `--dump` continues to open the source database with Sled Storage so existing deployments can export their schema and data before Sled Storage is removed in v0.21.0. To create a file named `dump.sql`, use the following command:
-
-```
-$ gluesql --path ~/glue_data --dump ./dump.sql
+```sh
+gluesql --storage=redb --path ~/data.redb --dump ./dump.sql
 ```
 
-This prints a deprecation warning and creates a SQL script in the current directory that you can use to recreate your database. Complete this export before upgrading to v0.21.0.
+To restore the dump into a new Redb database, execute the SQL file:
 
-If you want to import the database from the `dump.sql` file, you can use the following command:
-
-```
-$ gluesql --execute ./dump.sql --path ~/new_data --storage=redb
+```sh
+gluesql --storage=redb --path ~/restored.redb --execute ./dump.sql
 ```
 
-This will create a new database in the specified path using Redb Storage.
+When moving between storage types, choose a destination that supports the
+features used by the exported SQL, such as indexes.
 
-That's it! You now know how to use GlueSQL to migrate your database schema and data using the CLI.
+To export an existing Sled database before Sled Storage is removed, select it
+explicitly:
+
+```sh
+gluesql --storage=sled --path ~/glue_data --dump ./dump.sql
+```
+
+Sled Storage remains deprecated. SQL dump is available for the other storage
+types as well.
