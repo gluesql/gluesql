@@ -73,8 +73,14 @@ impl SlatedbStorage {
     /// ```
     pub fn open(url: &str) -> Result<Self> {
         let url = Url::parse(url).map_err(StorageError::Url)?;
+        let options = env::vars_os().filter_map(|(key, value)| {
+            let key = key.into_string().ok()?;
+            let value = value.into_string().ok()?;
+
+            Some((key, value))
+        });
         let (object_store, prefix) =
-            parse_url_opts(&url, env::vars()).map_err(StorageError::ObjectStore)?;
+            parse_url_opts(&url, options).map_err(StorageError::ObjectStore)?;
 
         Self::new(Arc::from(object_store), prefix)
     }
