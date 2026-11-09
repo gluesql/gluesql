@@ -4,9 +4,9 @@ sidebar_position: 2
 
 # StoreMut
 
-While the `Store` trait is for supporting SELECT queries and reading data, the `StoreMut` trait is for modifying data. Implementing the `StoreMut` trait requires the implementation of the `Store` trait as well. By implementing both the `Store` and `StoreMut` traits, you can support most of the commonly used SQL statements. Additionally, you can use the Test Suite to utilize the integration test set provided by GlueSQL. Custom storage developers can verify their own Store & StoreMut implementations by checking if they pass all the tests provided in the Test Suite.
+`StoreMut` writes schemas and rows for CREATE TABLE, INSERT, UPDATE, DELETE, and DROP TABLE. Override the methods your storage supports. The defaults return unsupported errors, which a read-only adapter can keep.
 
-Here are the five methods required to implement the `StoreMut` trait:
+It provides five methods:
 
 1. `insert_schema`: This method is responsible for inserting a new schema into the storage system.
 
