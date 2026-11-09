@@ -189,6 +189,13 @@ mod tests {
             .collect::<Vec<_>>();
         let expected = PlanExpr::MultiExprs(expected.iter().collect());
         test!(actual, expected);
+        let actual = expr("items[position + 1]");
+        let expected = ["position + 1", "items"]
+            .into_iter()
+            .map(expr)
+            .collect::<Vec<_>>();
+        let expected = PlanExpr::MultiExprs(expected.iter().collect());
+        test!(actual, expected);
         let actual = expr(
             "
             CASE id

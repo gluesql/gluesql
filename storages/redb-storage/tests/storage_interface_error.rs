@@ -7,7 +7,7 @@ use {
         data::{Key, Schema, Value},
         error::Error,
         prelude::{Glue, execute},
-        store::{IndexError, IndexMut, StoreMut, Transaction},
+        store::{IndexError, IndexMut, Store, StoreMut, Transaction},
     },
     gluesql_redb_storage::RedbStorage,
     std::fs::{create_dir, remove_file},
@@ -57,6 +57,11 @@ fn store_methods_without_transaction_return_transaction_not_found() {
     let file = database::TestFile::empty();
     let path = &file.0;
     let mut storage = RedbStorage::new(path).expect("new storage");
+
+    assert_eq!(
+        storage.fetch_data("Foo", &Key::I64(1)),
+        Err(Error::StorageMsg("transaction not found".to_owned())),
+    );
 
     let schema = Schema::from_ddl("CREATE TABLE Foo (id INTEGER);").expect("parse schema");
     let err = storage
