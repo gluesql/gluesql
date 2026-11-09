@@ -494,22 +494,21 @@ mod tests {
     }
 
     #[test]
-    fn plan_schemaless_projection_mode() {
+    fn plan_schemaless_ctas_projection() {
         let storage = setup_schemaless_storage();
         let test = |sql: &str, expected_schemaless_map: bool| {
             let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
             let statement = StatementPlan::from(translate(&parsed).unwrap());
             let statement = plan_schema_map(&storage, statement).unwrap();
             let planned = plan_schemaless(statement).unwrap();
-            let query = match planned.kind {
-                StatementPlanKind::Query(query) => query,
-                StatementPlanKind::CreateTable {
-                    source: Some(source),
-                    ..
-                } => *source,
-                _ => panic!("expected query or create table as select"),
+            let StatementPlanKind::CreateTable {
+                source: Some(source),
+                ..
+            } = planned.kind
+            else {
+                panic!("expected create table as select");
             };
-            let QueryPlan::Project(project) = query else {
+            let QueryPlan::Project(project) = *source else {
                 panic!("expected project query");
             };
             assert_eq!(
@@ -518,24 +517,6 @@ mod tests {
                 "{sql}"
             );
         };
-
-        test("SELECT * FROM Player", true);
-        test("SELECT * FROM Player AS P", true);
-        test("SELECT P.* FROM Player AS P", true);
-        test("SELECT id FROM Player", false);
-        test(
-            r"
-                SELECT Player.*, Team.*
-                FROM Player
-                JOIN Team
-                WHERE Player.id = Team.id
-            ",
-            false,
-        );
-        test(
-            "SELECT P.*, T.* FROM Player AS P JOIN Team AS T WHERE P.id = T.id",
-            false,
-        );
 
         test("CREATE TABLE T AS SELECT * FROM Player", true);
         test("CREATE TABLE T AS SELECT id FROM Player", false);

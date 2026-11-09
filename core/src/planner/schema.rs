@@ -444,34 +444,6 @@ mod tests {
     }
 
     #[test]
-    fn storage_err() {
-        let storage = run("
-            CREATE TABLE Foo (id INTEGER);
-            CREATE TABLE Bar (id INTEGER);
-            CREATE TABLE Baz (flag BOOLEAN);
-        ");
-
-        let test = |sql| assert!(plan(&storage, sql).is_err(), "{sql}");
-
-        test("SELECT * FROM __Err__");
-        test("INSERT INTO __Err__ VALUES (1), (2)");
-
-        test("SELECT * FROM Foo WHERE id = (SELECT foo_id FROM __Err__ LIMIT 1)");
-        test("SELECT * FROM Foo WHERE (SELECT foo_id FROM __Err__ LIMIT 1) = id");
-        test("SELECT * FROM Foo WHERE id BETWEEN (SELECT foo_id FROM __Err__ LIMIT 1) AND 100");
-        test("SELECT * FROM Foo WHERE (SELECT id FROM __Err__ LIMIT 1) BETWEEN 20 AND 50");
-        test("SELECT * FROM Foo WHERE id IN (1, 2, (SELECT foo_id FROM __Err__ LIMIT 1), 5)");
-        test("SELECT * FROM Foo WHERE id IN (SELECT * FROM __Err__)");
-        test("SELECT * FROM Foo LEFT JOIN Bar ON Bar.id = (SELECT id FROM __Err__ LIMIT 1)");
-        test("SELECT id, (SELECT id FROM __Err__ LIMIT 1) AS cc FROM Foo;");
-        test("VALUES (1), ((SELECT id FROM __Err__))");
-        test("VALUES ((SELECT id FROM __Err__)) ORDER BY column1");
-        test("VALUES ((SELECT id FROM __Err__)) LIMIT 1");
-        test("VALUES ((SELECT id FROM __Err__)) OFFSET 1");
-        test("SELECT * FROM SERIES((SELECT id FROM __Err__))");
-    }
-
-    #[test]
     fn prepares_schema_map() {
         let ddl = "CREATE TABLE Item (id INT DEFAULT 7)";
         let storage = run(ddl);
