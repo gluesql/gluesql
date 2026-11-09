@@ -1,9 +1,12 @@
 use {
-    super::{context::RowContext, evaluate::evaluate},
+    super::{
+        context::{RowContext, StatementContext},
+        evaluate::evaluate,
+    },
     crate::{
-        ast::{ColumnDef, ColumnUniqueOption, ForeignKey},
+        ast::{ColumnUniqueOption, ForeignKey},
         data::{Key, Row, Value},
-        plan::{AssignmentPlan, CustomFunctionPlan},
+        plan::{AssignmentPlan, ColumnDefPlan},
         result::Result,
         store::GStore,
     },
@@ -38,19 +41,19 @@ pub enum UpdateError {
 
 pub struct Update<'a, T: GStore> {
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
+    stmt_context: StatementContext<'a>,
     table_name: &'a str,
     fields: &'a [AssignmentPlan],
-    column_defs: Option<&'a [ColumnDef]>,
+    column_defs: Option<&'a [ColumnDefPlan]>,
 }
 
 impl<'a, T: GStore> Update<'a, T> {
     pub fn new(
         storage: &'a T,
-        functions: &'a [CustomFunctionPlan],
+        stmt_context: StatementContext<'a>,
         table_name: &'a str,
         fields: &'a [AssignmentPlan],
-        column_defs: Option<&'a [ColumnDef]>,
+        column_defs: Option<&'a [ColumnDefPlan]>,
     ) -> Result<Self> {
         if let Some(column_defs) = column_defs {
             for assignment in fields {
@@ -58,9 +61,13 @@ impl<'a, T: GStore> Update<'a, T> {
 
                 if column_defs.iter().all(|col_def| &col_def.name != id) {
                     return Err(UpdateError::ColumnNotFound(id.to_owned()).into());
-                } else if column_defs.iter().any(|ColumnDef { name, unique, .. }| {
-                    name == id && matches!(unique, Some(ColumnUniqueOption { is_primary: true }))
-                }) {
+                } else if column_defs
+                    .iter()
+                    .any(|ColumnDefPlan { name, unique, .. }| {
+                        name == id
+                            && matches!(unique, Some(ColumnUniqueOption { is_primary: true }))
+                    })
+                {
                     return Err(UpdateError::UpdateOnPrimaryKeyNotSupported(id.to_owned()).into());
                 }
             }
@@ -68,7 +75,7 @@ impl<'a, T: GStore> Update<'a, T> {
 
         Ok(Self {
             storage,
-            functions,
+            stmt_context,
             table_name,
             fields,
             column_defs,
@@ -87,14 +94,14 @@ impl<'a, T: GStore> Update<'a, T> {
             } = assignment;
             let evaluated = evaluate(
                 self.storage,
-                self.functions,
+                self.stmt_context,
                 context.as_ref(),
                 None,
                 value_expr,
             )?;
             let value = match self.column_defs {
                 Some(column_defs) => {
-                    let ColumnDef {
+                    let ColumnDefPlan {
                         data_type,
                         nullable,
                         ..

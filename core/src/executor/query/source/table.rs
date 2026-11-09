@@ -5,8 +5,12 @@ use {
     },
     crate::{
         data::{Key, Row},
-        executor::{context::RowContext, evaluate::evaluate, fetch::fetch_columns},
-        plan::{CustomFunctionPlan, TableAccessPlan, TableSourcePlan},
+        executor::{
+            context::{RowContext, StatementContext},
+            evaluate::evaluate,
+            fetch::fetch_columns,
+        },
+        plan::{TableAccessPlan, TableSourcePlan},
         result::Result,
         store::GStore,
     },
@@ -15,10 +19,10 @@ use {
 
 pub(super) fn execute<'a, T: GStore>(
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
+    stmt_context: StatementContext<'a>,
     table: &'a TableSourcePlan,
 ) -> Result<PreparedSource<'a>> {
-    let names = fetch_columns(storage, &table.name)?;
+    let names = fetch_columns(stmt_context, &table.name)?;
     let names = match &table.alias {
         None => names,
         Some(alias) if alias.columns.len() > names.len() => {
@@ -51,13 +55,13 @@ pub(super) fn execute<'a, T: GStore>(
     let rows = Box::new(move |evaluation_context: Option<Rc<RowContext<'a>>>| {
         rows(
             storage,
-            functions,
-            table,
+            stmt_context,
             SourceColumns {
                 alias: source.alias,
                 names: Rc::clone(&source.names),
             },
             evaluation_context.as_ref(),
+            table,
         )
     });
 
@@ -66,10 +70,10 @@ pub(super) fn execute<'a, T: GStore>(
 
 fn rows<'a, T: GStore>(
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
-    table: &'a TableSourcePlan,
+    stmt_context: StatementContext<'a>,
     source: SourceColumns<'a>,
     evaluation_context: Option<&Rc<RowContext<'a>>>,
+    table: &'a TableSourcePlan,
 ) -> Result<SourceRows<'a>> {
     let columns = Rc::clone(&source.names);
     let rows = match &table.access {
@@ -89,10 +93,10 @@ fn rows<'a, T: GStore>(
             Box::new(rows) as Box<dyn Iterator<Item = Result<Row>> + 'a>
         }
         TableAccessPlan::PrimaryKey { expr } => {
-            let schema = storage.fetch_schema(&table.name)?.ok_or_else(|| {
+            let schema = stmt_context.schema_map.get(&table.name).ok_or_else(|| {
                 QueryError::UnreachableTableSchemaMissingAfterPreparation(table.name.clone())
             })?;
-            let evaluated = evaluate(storage, functions, evaluation_context, None, expr)?;
+            let evaluated = evaluate(storage, stmt_context, evaluation_context, None, expr)?;
             let column_def = schema
                 .column_defs
                 .as_ref()
@@ -120,7 +124,7 @@ fn rows<'a, T: GStore>(
         } => {
             let predicate = match predicate {
                 Some(predicate) => {
-                    let evaluated = evaluate(storage, functions, None, None, &predicate.expr)?;
+                    let evaluated = evaluate(storage, stmt_context, None, None, &predicate.expr)?;
 
                     Some((&predicate.operator, evaluated.try_into()?))
                 }

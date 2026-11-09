@@ -3,10 +3,10 @@ use {
         ast::DataType,
         data::Value,
         executor::{
-            context::{AggregateContext, AggregateValues, RowContext},
+            context::{AggregateContext, AggregateValues, RowContext, StatementContext},
             evaluate::evaluate,
         },
-        plan::{AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, CustomFunctionPlan},
+        plan::{AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan},
         result::Result,
         store::GStore,
     },
@@ -323,7 +323,7 @@ impl<'a> GroupState<'a> {
 
 pub struct State<'a, T: GStore> {
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
+    stmt_context: StatementContext<'a>,
     slot_count: usize,
     groups: Vec<GroupState<'a>>,
     group_indexes: HashMap<Vec<Value>, usize>,
@@ -332,7 +332,7 @@ pub struct State<'a, T: GStore> {
 impl<'a, T: GStore> State<'a, T> {
     pub fn new(
         storage: &'a T,
-        functions: &'a [CustomFunctionPlan],
+        stmt_context: StatementContext<'a>,
         slot_count: usize,
         global: bool,
     ) -> Self {
@@ -346,7 +346,7 @@ impl<'a, T: GStore> State<'a, T> {
 
         Self {
             storage,
-            functions,
+            stmt_context,
             slot_count,
             groups,
             group_indexes,
@@ -395,7 +395,7 @@ impl<'a, T: GStore> State<'a, T> {
             | AggregateFunctionPlan::Variance(expr)
             | AggregateFunctionPlan::Stdev(expr) => evaluate(
                 self.storage,
-                self.functions,
+                self.stmt_context,
                 Some(filter_context),
                 None,
                 expr,

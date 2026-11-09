@@ -11,7 +11,7 @@ use {
     thiserror::Error as ThisError,
 };
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Display)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Display)]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub enum SchemaIndexOrd {
     Asc,
@@ -19,7 +19,7 @@ pub enum SchemaIndexOrd {
     Both,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct SchemaIndex {
     pub name: String,
     pub expr: Expr,

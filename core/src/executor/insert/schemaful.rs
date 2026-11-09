@@ -4,11 +4,12 @@ use {
         ast::{ColumnUniqueOption, ForeignKey},
         data::{Key, Value},
         executor::{
+            context::StatementContext,
             evaluate::{evaluate, evaluate_stateless},
             query,
             validate::{ColumnValidation, validate_unique},
         },
-        plan::{ColumnDefPlan, CustomFunctionPlan, ExprPlan, QueryPlan, ValuesPlan},
+        plan::{ColumnDefPlan, ExprPlan, QueryPlan, ValuesPlan},
         result::Result,
         store::GStore,
     },
@@ -17,20 +18,31 @@ use {
 
 pub(super) fn fetch_rows<T: GStore>(
     storage: &T,
-    functions: &[CustomFunctionPlan],
+    stmt_context: StatementContext<'_>,
     table_name: &str,
     column_defs: &[ColumnDefPlan],
     columns: &[String],
-    source: &QueryPlan,
     foreign_keys: Vec<ForeignKey>,
+    source: &QueryPlan,
 ) -> Result<RowsData> {
     let column_defs = Rc::<[ColumnDefPlan]>::from(column_defs);
     let column_validation = ColumnValidation::All(&column_defs);
 
     let rows_iter: Box<dyn Iterator<Item = Result<Vec<Value>>> + '_> = if let Some(rows) =
-        values::execute(storage, functions, source, |plan| {
-            values_rows(storage, functions, plan, Rc::clone(&column_defs), columns)
-        })? {
+        values::execute(
+            storage,
+            stmt_context,
+            |plan| {
+                values_rows(
+                    storage,
+                    stmt_context,
+                    Rc::clone(&column_defs),
+                    columns,
+                    plan,
+                )
+            },
+            source,
+        )? {
         let rows = rows.map({
             let column_defs = Rc::clone(&column_defs);
 
@@ -43,7 +55,7 @@ pub(super) fn fetch_rows<T: GStore>(
 
         Box::new(rows)
     } else {
-        let rows = query::execute(storage, functions, source, None)?.map(|row| {
+        let rows = query::execute(storage, stmt_context, None, source)?.map(|row| {
             let values = row?.into_values();
 
             column_defs
@@ -97,21 +109,21 @@ pub(super) fn fetch_rows<T: GStore>(
 
 fn values_rows<'a, T: GStore>(
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
-    ValuesPlan(values_list): &'a ValuesPlan,
+    stmt_context: StatementContext<'a>,
     column_defs: Rc<[ColumnDefPlan]>,
     columns: &'a [String],
+    ValuesPlan(values_list): &'a ValuesPlan,
 ) -> values::EvaluatedRows<'a> {
     let rows = values_list
         .iter()
-        .map(move |exprs| evaluate_values(storage, functions, &column_defs, columns, exprs));
+        .map(move |exprs| evaluate_values(storage, stmt_context, &column_defs, columns, exprs));
 
     Box::new(rows)
 }
 
 fn evaluate_values<T: GStore>(
     storage: &T,
-    functions: &[CustomFunctionPlan],
+    stmt_context: StatementContext<'_>,
     column_defs: &[ColumnDefPlan],
     columns: &[String],
     exprs: &[ExprPlan],
@@ -134,7 +146,7 @@ fn evaluate_values<T: GStore>(
         column_defs
             .iter()
             .zip(exprs)
-            .map(|(column_def, expr)| evaluate_value(storage, functions, column_def, expr))
+            .map(|(column_def, expr)| evaluate_value(storage, stmt_context, column_def, expr))
             .collect()
     } else {
         columns
@@ -146,7 +158,7 @@ fn evaluate_values<T: GStore>(
                     .find(|column_def| &column_def.name == name)
                     .ok_or_else(|| InsertError::WrongColumnName(name.to_owned()))?;
 
-                evaluate_value(storage, functions, column_def, expr)
+                evaluate_value(storage, stmt_context, column_def, expr)
             })
             .collect()
     }
@@ -154,11 +166,11 @@ fn evaluate_values<T: GStore>(
 
 fn evaluate_value<T: GStore>(
     storage: &T,
-    functions: &[CustomFunctionPlan],
+    stmt_context: StatementContext<'_>,
     column_def: &ColumnDefPlan,
     expr: &ExprPlan,
 ) -> Result<Value> {
-    evaluate(storage, functions, None, None, expr)?
+    evaluate(storage, stmt_context, None, None, expr)?
         .try_into_value(&column_def.data_type, column_def.nullable)
 }
 

@@ -1,18 +1,17 @@
 use {
     super::PlannerError,
     crate::{
-        ast::{ColumnDef, Expr, Function},
-        data::Schema,
-        plan::{StatementPlan, StatementPlanKind},
+        ast::{Expr, Function},
+        plan::{ColumnDefPlan, SchemaMapPlan, StatementPlan, StatementPlanKind},
         result::Result,
     },
-    std::{collections::HashMap, hash::BuildHasher},
 };
 
-pub fn validate<S: BuildHasher>(
-    schema_map: &HashMap<String, Schema, S>,
-    statement: &StatementPlan,
-) -> Result<()> {
+pub fn validate(statement: &StatementPlan) -> Result<()> {
+    let SchemaMapPlan::Planned(schema_map) = &statement.schema_map else {
+        return Err(PlannerError::UnplannedSchemaMap.into());
+    };
+
     if let StatementPlanKind::CreateIndex {
         table_name, column, ..
     } = &statement.kind
@@ -31,7 +30,7 @@ pub fn validate<S: BuildHasher>(
     Ok(())
 }
 
-fn validate_index_expr(columns: &[ColumnDef], expr: &Expr) -> Result<bool> {
+fn validate_index_expr(columns: &[ColumnDefPlan], expr: &Expr) -> Result<bool> {
     let validate = |expr| validate_index_expr(columns, expr);
 
     match expr {
@@ -68,7 +67,7 @@ mod tests {
             mock::run,
             parse_sql::{parse, parse_expr},
             plan::StatementPlan,
-            planner::{PlannerError, fetch_schema_map},
+            planner::{PlannerError, plan_schema_map},
             query_builder::ColumnDefNode,
             result::Error,
             store::Planner,
@@ -81,6 +80,15 @@ mod tests {
     }
 
     #[test]
+    fn unplanned_schema_map() {
+        let input = statement("CREATE INDEX idx ON Item (id)");
+
+        let actual = validate(&input);
+        let expected = Err(PlannerError::UnplannedSchemaMap.into());
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
     fn create_index() {
         let storage = run("
             CREATE TABLE Item (id INTEGER);
@@ -88,8 +96,8 @@ mod tests {
         ");
         let test = |sql: &str, expected, name: &str| {
             let statement = statement(sql);
-            let schema_map = fetch_schema_map(&storage, &statement).expect(sql);
-            let actual = validate(&schema_map, &statement);
+            let statement = plan_schema_map(&storage, statement).expect(sql);
+            let actual = validate(&statement);
             assert_eq!(actual, expected, "{name}: {sql}");
         };
 
@@ -150,7 +158,9 @@ mod tests {
 
     #[test]
     fn index_expr() {
-        let columns = [ColumnDef::try_from(ColumnDefNode::from("id INTEGER")).unwrap()];
+        let columns = [ColumnDef::try_from(ColumnDefNode::from("id INTEGER"))
+            .unwrap()
+            .into()];
         let test = |sql: &str, expected, name: &str| {
             let expr = translate_expr(&parse_expr(sql).expect(sql), NO_PARAMS).expect(sql);
             let actual = validate_index_expr(&columns, &expr);

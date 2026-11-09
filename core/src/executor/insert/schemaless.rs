@@ -3,10 +3,11 @@ use {
     crate::{
         data::{Value, value::BTreeMapJsonExt},
         executor::{
+            context::StatementContext,
             evaluate::{EvaluateError, evaluate},
             query,
         },
-        plan::{CustomFunctionPlan, QueryPlan, ValuesPlan},
+        plan::{QueryPlan, ValuesPlan},
         result::Result,
         store::GStore,
     },
@@ -15,18 +16,21 @@ use {
 
 pub(super) fn fetch_rows<T: GStore>(
     storage: &T,
-    functions: &[CustomFunctionPlan],
+    stmt_context: StatementContext<'_>,
     source: &QueryPlan,
 ) -> Result<Vec<Vec<Value>>> {
     let rows_iter: Box<dyn Iterator<Item = Result<Vec<Value>>> + '_> = if let Some(rows) =
-        values::execute(storage, functions, source, |plan| {
-            values_rows(storage, functions, plan)
-        })? {
+        values::execute(
+            storage,
+            stmt_context,
+            |plan| values_rows(storage, stmt_context, plan),
+            source,
+        )? {
         let rows = rows.map(|row| convert_values(row?.into_values()));
 
         Box::new(rows)
     } else {
-        let rows = query::execute(storage, functions, source, None)?
+        let rows = query::execute(storage, stmt_context, None, source)?
             .map(|row| convert_query_values(row?.into_values()));
 
         Box::new(rows)
@@ -38,13 +42,13 @@ pub(super) fn fetch_rows<T: GStore>(
 
 fn values_rows<'a, T: GStore>(
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
+    stmt_context: StatementContext<'a>,
     ValuesPlan(values_list): &'a ValuesPlan,
 ) -> values::EvaluatedRows<'a> {
     let rows = values_list.iter().map(move |exprs| {
         exprs
             .iter()
-            .map(|expr| evaluate(storage, functions, None, None, expr).and_then(Value::try_from))
+            .map(|expr| evaluate(storage, stmt_context, None, None, expr).and_then(Value::try_from))
             .collect::<Result<Vec<_>>>()
     });
 

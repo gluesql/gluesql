@@ -3,11 +3,12 @@ mod expr;
 mod function;
 mod projection;
 mod query;
+mod schema;
 
 pub use {
     ddl::{
         AlterTableOperationPlan, ColumnDefPlan, CreateTableColumnsPlan, DefaultExpr,
-        OperateFunctionArgPlan, TableColumnsPlan,
+        OperateFunctionArgPlan,
     },
     expr::{
         AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan, plan_scalar_expr,
@@ -24,6 +25,7 @@ pub use {
         SeriesSourcePlan, SourcePlan, TableAccessPlan, TableAliasPlan, TableSourcePlan,
         ValuesOrderByPlan, ValuesPlan,
     },
+    schema::{SchemaMap, SchemaMapPlan, SchemaPlan},
 };
 
 use {
@@ -35,6 +37,7 @@ use {
 pub struct StatementPlan {
     pub kind: StatementPlanKind,
     pub functions: Vec<CustomFunctionPlan>,
+    pub schema_map: SchemaMapPlan,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -47,7 +50,6 @@ pub enum StatementPlanKind {
         table_name: String,
         columns: Vec<String>,
         source: QueryPlan,
-        table_columns: TableColumnsPlan,
     },
     Update {
         table_name: String,
@@ -121,7 +123,6 @@ impl From<ast::Statement> for StatementPlanKind {
                 table_name,
                 columns,
                 source: source.into(),
-                table_columns: TableColumnsPlan::Unplanned,
             },
             ast::Statement::Update {
                 table_name,
@@ -230,6 +231,7 @@ impl From<StatementPlanKind> for StatementPlan {
         Self {
             kind,
             functions: Vec::new(),
+            schema_map: SchemaMapPlan::Unplanned,
         }
     }
 }

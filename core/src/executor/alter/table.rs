@@ -4,10 +4,12 @@ use {
         ast::{ColumnUniqueOption, ForeignKey, ToSql},
         data::{Row, Schema},
         executor::{
+            context::StatementContext,
             evaluate::evaluate,
+            fetch::fetch_referencings,
             query::{self, OutputBody},
         },
-        plan::{ColumnDefPlan, CreateTableColumnsPlan, CustomFunctionPlan, QueryPlan, ValuesPlan},
+        plan::{ColumnDefPlan, CreateTableColumnsPlan, QueryPlan, SchemaMap, ValuesPlan},
         prelude::{DataType, Value},
         result::Result,
         store::{GStore, GStoreMut},
@@ -28,7 +30,7 @@ pub struct CreateTableOptions<'a> {
 
 pub fn create_table<T: GStore + GStoreMut>(
     storage: &mut T,
-    functions: &[CustomFunctionPlan],
+    stmt_context: StatementContext<'_>,
     CreateTableOptions {
         target_table_name,
         columns,
@@ -48,7 +50,7 @@ pub fn create_table<T: GStore + GStoreMut>(
         }
         _ if if_not_exists
             && source.is_some()
-            && storage.fetch_schema(target_table_name)?.is_some() =>
+            && stmt_context.schema_map.contains_key(target_table_name) =>
         {
             return Ok(());
         }
@@ -62,7 +64,7 @@ pub fn create_table<T: GStore + GStoreMut>(
             match query::output_body(source_query) {
                 OutputBody::Project(_) => {
                     let (labels, rows) =
-                        query::execute_with_labels(storage, functions, source_query, None)?;
+                        query::execute_with_labels(storage, stmt_context, None, source_query)?;
                     let rows = rows
                         .map(|row| row.map(Row::into_values))
                         .collect::<Result<Vec<_>>>()?;
@@ -81,7 +83,7 @@ pub fn create_table<T: GStore + GStoreMut>(
                                 continue;
                             }
 
-                            column_types[i] = evaluate(storage, functions, None, None, expr)
+                            column_types[i] = evaluate(storage, stmt_context, None, None, expr)
                                 .and_then(Value::try_from)
                                 .map(|value| value.get_type())?;
                         }
@@ -134,8 +136,9 @@ pub fn create_table<T: GStore + GStoreMut>(
             None
         } else {
             Some(
-                storage
-                    .fetch_schema(referenced_table_name)?
+                stmt_context
+                    .schema_map
+                    .get(referenced_table_name)
                     .ok_or_else(|| {
                         AlterError::ReferencedTableNotFound(referenced_table_name.to_owned())
                     })?,
@@ -192,7 +195,7 @@ pub fn create_table<T: GStore + GStoreMut>(
         }
     }
 
-    if storage.fetch_schema(target_table_name)?.is_none() {
+    if !stmt_context.schema_map.contains_key(target_table_name) {
         let schema = Schema {
             table_name: target_table_name.to_owned(),
             column_defs: target_columns_defs.as_ref().map(|column_defs| {
@@ -216,7 +219,7 @@ pub fn create_table<T: GStore + GStoreMut>(
         Some(query) => {
             let rows = match selected_source_rows {
                 Some(rows) => rows,
-                None => query::execute(storage, functions, query, None)?
+                None => query::execute(storage, stmt_context, None, query)?
                     .map(|row| row.map(Row::into_values))
                     .collect::<Result<Vec<_>>>()?,
             };
@@ -252,30 +255,39 @@ fn column_defs_from_rows(labels: Vec<String>, rows: &[Vec<Value>]) -> Vec<Column
 
 pub fn drop_table<T: GStore + GStoreMut>(
     storage: &mut T,
+    stmt_context: StatementContext<'_>,
     table_names: &[String],
     if_exists: bool,
     cascade: bool,
 ) -> Result<usize> {
+    let mut remaining_schemas: SchemaMap = stmt_context
+        .schema_map
+        .iter()
+        .filter(|(name, schema)| {
+            table_names.contains(*name)
+                || schema
+                    .foreign_keys
+                    .iter()
+                    .any(|foreign_key| table_names.contains(&foreign_key.referenced_table_name))
+        })
+        .map(|(name, schema)| (name.clone(), schema.clone()))
+        .collect();
     let mut n = 0;
 
     for table_name in table_names {
-        let schema = storage.fetch_schema(table_name)?;
-
-        match (schema, if_exists) {
-            (None, true) => {
+        if !remaining_schemas.contains_key(table_name) {
+            if if_exists {
                 continue;
             }
-            (None, false) => {
-                return Err(AlterError::TableNotFound(table_name.to_owned()).into());
-            }
-            _ => {}
+
+            return Err(AlterError::TableNotFound(table_name.clone()).into());
         }
 
-        let referencings = storage.fetch_referencings(table_name)?;
+        let referencings = fetch_referencings(&remaining_schemas, table_name);
 
         if !referencings.is_empty() && !cascade {
             return Err(AlterError::CannotDropTableWithReferencing {
-                referenced_table_name: table_name.into(),
+                referenced_table_name: table_name.clone(),
                 referencings,
             }
             .into());
@@ -286,16 +298,18 @@ pub fn drop_table<T: GStore + GStoreMut>(
             foreign_key: ForeignKey { name, .. },
         } in referencings
         {
-            let mut schema = storage
-                .fetch_schema(&table_name)?
+            let schema = remaining_schemas
+                .get_mut(&table_name)
                 .ok_or_else(|| AlterError::TableNotFound(table_name.clone()))?;
             schema
                 .foreign_keys
                 .retain(|foreign_key| foreign_key.name != name);
-            storage.insert_schema(&schema)?;
-        }
-        storage.delete_schema(table_name)?;
 
+            storage.insert_schema(&schema.to_schema(&table_name))?;
+        }
+
+        storage.delete_schema(table_name)?;
+        remaining_schemas.remove(table_name);
         n += 1;
     }
 
@@ -336,7 +350,7 @@ mod tests {
         let source = Some(Box::new(QueryPlan::Values(ValuesPlan(Vec::new()))));
         let actual = create_table(
             &mut storage,
-            &[],
+            StatementContext::EMPTY,
             CreateTableOptions {
                 target_table_name: "Target",
                 columns: &CreateTableColumnsPlan::Unplanned { columns: None },
@@ -359,7 +373,7 @@ mod tests {
         let mut storage = MockStorage::default();
         let actual = create_table(
             &mut storage,
-            &[],
+            StatementContext::EMPTY,
             CreateTableOptions {
                 target_table_name: "Target",
                 columns: &CreateTableColumnsPlan::FromQuery,

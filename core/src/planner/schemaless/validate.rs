@@ -1,36 +1,28 @@
 use {
     super::super::{PlannerError, visit::try_visit_expr},
     crate::{
-        data::Schema,
         plan::{
             AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
             FilterPlan, HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan,
             JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
             OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, SelectOrderByPlan, SourcePlan, StatementPlan, StatementPlanKind,
+            SchemaMap, SelectItemPlan, SelectOrderByPlan, SourcePlan, StatementPlanKind,
             ValuesOrderByPlan, ValuesPlan,
         },
         result::Result,
     },
-    std::{collections::HashMap, hash::BuildHasher},
 };
 
 type ValidateResult = std::result::Result<(), PlannerError>;
 
 /// Rejects schemaless-specific unsupported patterns before rewrite.
-pub(super) fn validate_statement<S: BuildHasher>(
-    schema_map: &HashMap<String, Schema, S>,
-    statement: &StatementPlan,
-) -> Result<()> {
-    validate_statement_inner(schema_map, statement).map_err(Into::into)
+pub(super) fn validate_statement(schema_map: &SchemaMap, kind: &StatementPlanKind) -> Result<()> {
+    validate_statement_inner(schema_map, kind).map_err(Into::into)
 }
 
-fn validate_statement_inner(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    statement: &StatementPlan,
-) -> ValidateResult {
-    match &statement.kind {
+fn validate_statement_inner(schema_map: &SchemaMap, kind: &StatementPlanKind) -> ValidateResult {
+    match kind {
         StatementPlanKind::Query(query) => validate_query(schema_map, query),
         StatementPlanKind::Insert {
             table_name,
@@ -67,10 +59,7 @@ fn validate_statement_inner(
     }
 }
 
-fn validate_query(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    query: &QueryPlan,
-) -> ValidateResult {
+fn validate_query(schema_map: &SchemaMap, query: &QueryPlan) -> ValidateResult {
     match query {
         QueryPlan::Project(project) => validate_project(schema_map, project),
         QueryPlan::Values(values) => validate_values(schema_map, values),
@@ -98,7 +87,7 @@ fn validate_query(
 }
 
 fn validate_offset(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    schema_map: &SchemaMap,
     OffsetPlan { input, count }: &OffsetPlan,
 ) -> ValidateResult {
     match input {
@@ -117,7 +106,7 @@ fn validate_offset(
 }
 
 fn validate_distinct(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    schema_map: &SchemaMap,
     DistinctPlan { input }: &DistinctPlan,
 ) -> ValidateResult {
     match input {
@@ -129,7 +118,7 @@ fn validate_distinct(
 }
 
 fn validate_select_order_by(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    schema_map: &SchemaMap,
     SelectOrderByPlan { input, exprs }: &SelectOrderByPlan,
 ) -> ValidateResult {
     validate_project(schema_map, input)?;
@@ -141,7 +130,7 @@ fn validate_select_order_by(
 }
 
 fn validate_values_order_by(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    schema_map: &SchemaMap,
     ValuesOrderByPlan { input, exprs }: &ValuesOrderByPlan,
 ) -> ValidateResult {
     validate_values(schema_map, input)?;
@@ -152,10 +141,7 @@ fn validate_values_order_by(
     Ok(())
 }
 
-fn validate_values(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    values: &ValuesPlan,
-) -> ValidateResult {
+fn validate_values(schema_map: &SchemaMap, values: &ValuesPlan) -> ValidateResult {
     for row in &values.0 {
         for expr in row {
             validate_expr(schema_map, expr)?;
@@ -165,10 +151,7 @@ fn validate_values(
     Ok(())
 }
 
-fn validate_project(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    project: &ProjectPlan,
-) -> ValidateResult {
+fn validate_project(schema_map: &SchemaMap, project: &ProjectPlan) -> ValidateResult {
     validate_mixed_join_wildcard_projection(schema_map, project)?;
     match &project.input {
         ProjectInputPlan::Source(relation) => validate_source(schema_map, relation)?,
@@ -202,7 +185,7 @@ fn validate_project(
 }
 
 fn validate_filter(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    schema_map: &SchemaMap,
     FilterPlan { input, expr }: &FilterPlan,
 ) -> ValidateResult {
     match input {
@@ -214,7 +197,7 @@ fn validate_filter(
 }
 
 fn validate_aggregation_input(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    schema_map: &SchemaMap,
     input: &AggregationInputPlan,
 ) -> ValidateResult {
     match input {
@@ -225,10 +208,7 @@ fn validate_aggregation_input(
     }
 }
 
-fn validate_inner_join(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    join: &InnerJoinPlan,
-) -> ValidateResult {
+fn validate_inner_join(schema_map: &SchemaMap, join: &InnerJoinPlan) -> ValidateResult {
     match &join.input {
         InnerJoinInputPlan::NestedLoop(join) => validate_nested_loop(schema_map, join),
         InnerJoinInputPlan::Hash(join) => validate_hash(schema_map, join),
@@ -236,10 +216,7 @@ fn validate_inner_join(
     }
 }
 
-fn validate_left_outer_join(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    join: &LeftOuterJoinPlan,
-) -> ValidateResult {
+fn validate_left_outer_join(schema_map: &SchemaMap, join: &LeftOuterJoinPlan) -> ValidateResult {
     match &join.input {
         LeftOuterJoinInputPlan::NestedLoop(join) => validate_nested_loop(schema_map, join),
         LeftOuterJoinInputPlan::Hash(join) => validate_hash(schema_map, join),
@@ -247,10 +224,7 @@ fn validate_left_outer_join(
     }
 }
 
-fn validate_condition(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    condition: &JoinConditionPlan,
-) -> ValidateResult {
+fn validate_condition(schema_map: &SchemaMap, condition: &JoinConditionPlan) -> ValidateResult {
     match &condition.input {
         JoinConditionInputPlan::NestedLoop(join) => validate_nested_loop(schema_map, join)?,
         JoinConditionInputPlan::Hash(join) => validate_hash(schema_map, join)?,
@@ -258,10 +232,7 @@ fn validate_condition(
     validate_expr(schema_map, &condition.expr)
 }
 
-fn validate_nested_loop(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    join: &NestedLoopJoinPlan,
-) -> ValidateResult {
+fn validate_nested_loop(schema_map: &SchemaMap, join: &NestedLoopJoinPlan) -> ValidateResult {
     match &join.input {
         NestedLoopJoinInputPlan::Source(source) => validate_source(schema_map, source)?,
         NestedLoopJoinInputPlan::InnerJoin(join) => validate_inner_join(schema_map, join)?,
@@ -272,10 +243,7 @@ fn validate_nested_loop(
     validate_source(schema_map, &join.right)
 }
 
-fn validate_hash(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    join: &HashJoinPlan,
-) -> ValidateResult {
+fn validate_hash(schema_map: &SchemaMap, join: &HashJoinPlan) -> ValidateResult {
     match &join.input {
         HashJoinInputPlan::Source(source) => validate_source(schema_map, source)?,
         HashJoinInputPlan::InnerJoin(join) => validate_inner_join(schema_map, join)?,
@@ -293,10 +261,7 @@ fn validate_hash(
     Ok(())
 }
 
-fn validate_source(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    source: &SourcePlan,
-) -> ValidateResult {
+fn validate_source(schema_map: &SchemaMap, source: &SourcePlan) -> ValidateResult {
     match source {
         SourcePlan::Derived(derived) => validate_query(schema_map, &derived.query),
         SourcePlan::Series(series) => validate_expr(schema_map, &series.size),
@@ -304,10 +269,7 @@ fn validate_source(
     }
 }
 
-fn validate_expr(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    expr: &ExprPlan,
-) -> ValidateResult {
+fn validate_expr(schema_map: &SchemaMap, expr: &ExprPlan) -> ValidateResult {
     try_visit_expr(expr, &mut |expr| match expr {
         ExprPlan::Subquery(subquery)
         | ExprPlan::Exists { subquery, .. }
@@ -317,7 +279,7 @@ fn validate_expr(
 }
 
 fn validate_mixed_join_wildcard_projection(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    schema_map: &SchemaMap,
     project: &ProjectPlan,
 ) -> ValidateResult {
     if !matches!(
@@ -359,10 +321,7 @@ fn validate_mixed_join_wildcard_projection(
     Ok(())
 }
 
-fn is_schemaless_table(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    table_name: &str,
-) -> bool {
+fn is_schemaless_table(schema_map: &SchemaMap, table_name: &str) -> bool {
     schema_map
         .get(table_name)
         .is_some_and(|schema| schema.column_defs.is_none())
@@ -375,8 +334,8 @@ mod tests {
         crate::{
             mock::{MockStorage, run},
             parse_sql::parse,
-            plan::StatementPlan,
-            planner::{PlannerError, fetch_schema_map},
+            plan::{SchemaMapPlan, StatementPlan},
+            planner::{PlannerError, plan_schema_map},
             query_builder::{Build, table},
             translate::translate,
         },
@@ -400,8 +359,8 @@ mod tests {
     fn assert_planner_error(storage: &MockStorage, sql: &str, expected: PlannerError) {
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
         let statement = StatementPlan::from(translate(&parsed).unwrap());
-        let schema_map = fetch_schema_map(storage, &statement).unwrap();
-        let planned = plan_schemaless(&schema_map, statement);
+        let statement = plan_schema_map(storage, statement).unwrap();
+        let planned = plan_schemaless(statement);
 
         assert_eq!(planned, Err(expected.into()), "{sql}");
     }
@@ -409,8 +368,8 @@ mod tests {
     fn assert_plan_ok(storage: &MockStorage, sql: &str) {
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
         let statement = StatementPlan::from(translate(&parsed).unwrap());
-        let schema_map = fetch_schema_map(storage, &statement).unwrap();
-        let planned = plan_schemaless(&schema_map, statement);
+        let statement = plan_schema_map(storage, statement).unwrap();
+        let planned = plan_schemaless(statement);
         assert!(planned.is_ok(), "{sql}");
     }
 
@@ -546,9 +505,16 @@ mod tests {
         let sql = "SELECT id FROM Player ORDER BY id LIMIT 1 OFFSET 0";
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
         let statement = StatementPlan::from(translate(&parsed).unwrap());
-        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
+        let statement = plan_schema_map(&storage, statement).unwrap();
+        let SchemaMapPlan::Planned(schema_map) = &statement.schema_map else {
+            panic!("expected planned schemas");
+        };
 
-        assert!(validate_statement(&schema_map, &statement).is_ok(), "{sql}");
+        assert_eq!(
+            validate_statement(schema_map, &statement.kind),
+            Ok(()),
+            "{sql}"
+        );
 
         assert_plan_ok(&storage, "SELECT id FROM Player ORDER BY id LIMIT 1");
     }
@@ -559,9 +525,16 @@ mod tests {
         let sql = "VALUES (1), (2)";
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
         let statement = StatementPlan::from(translate(&parsed).unwrap());
-        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
+        let statement = plan_schema_map(&storage, statement).unwrap();
+        let SchemaMapPlan::Planned(schema_map) = &statement.schema_map else {
+            panic!("expected planned schemas");
+        };
 
-        assert!(validate_statement(&schema_map, &statement).is_ok(), "{sql}");
+        assert_eq!(
+            validate_statement(schema_map, &statement.kind),
+            Ok(()),
+            "{sql}"
+        );
     }
 
     #[test]
@@ -575,22 +548,15 @@ mod tests {
 
     #[test]
     fn validates_non_query_statement_path() {
-        let storage = setup_storage();
-        let parsed = parse("SELECT * FROM Player")
-            .expect("SELECT * FROM Player")
-            .into_iter()
-            .next()
+        let input = table("Temp")
+            .drop_table_if_exists()
+            .with_schema("CREATE TABLE Player")
+            .build()
             .unwrap();
-        let statement = StatementPlan::from(translate(&parsed).unwrap());
-        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
 
-        let drop_parsed = parse("DROP TABLE IF EXISTS Temp")
-            .expect("DROP TABLE IF EXISTS Temp")
-            .into_iter()
-            .next()
-            .unwrap();
-        let drop_statement = StatementPlan::from(translate(&drop_parsed).unwrap());
-        assert!(plan_schemaless(&schema_map, drop_statement).is_ok());
+        let actual = plan_schemaless(input.clone());
+        let expected = Ok(input);
+        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -604,9 +570,9 @@ mod tests {
             .project("Item.id")
             .build()
             .unwrap();
-        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
+        let statement = plan_schema_map(&storage, statement).unwrap();
 
-        assert!(plan_schemaless(&schema_map, statement).is_ok());
+        assert!(plan_schemaless(statement).is_ok());
     }
 
     #[test]
@@ -619,9 +585,9 @@ mod tests {
             .project("Item.id")
             .build()
             .unwrap();
-        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
+        let statement = plan_schema_map(&storage, statement).unwrap();
 
-        assert!(plan_schemaless(&schema_map, statement).is_ok());
+        assert!(plan_schemaless(statement).is_ok());
     }
 
     #[test]

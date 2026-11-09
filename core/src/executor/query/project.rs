@@ -11,10 +11,10 @@ use {
     crate::{
         data::{Row, SCHEMALESS_DOC_COLUMN, Value},
         executor::{
-            context::{AggregateContext, AggregateValues, RowContext},
+            context::{AggregateContext, AggregateValues, RowContext, StatementContext},
             evaluate::evaluate,
         },
-        plan::{CustomFunctionPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, SelectItemPlan},
+        plan::{ProjectInputPlan, ProjectPlan, ProjectionPlan, SelectItemPlan},
         result::Result,
         store::GStore,
     },
@@ -33,9 +33,9 @@ pub(super) struct ProjectedRows<'a> {
 
 pub(super) fn execute<'a, T>(
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
-    plan: &'a ProjectPlan,
+    stmt_context: StatementContext<'a>,
     filter_context: Option<Rc<RowContext<'a>>>,
+    plan: &'a ProjectPlan,
 ) -> Result<ProjectedRows<'a>>
 where
     T: GStore,
@@ -43,7 +43,7 @@ where
     let ProjectPlan { input, projection } = plan;
     let (sources, rows): (SelectedSources<'a>, ProjectInputIter<'a>) = match input {
         ProjectInputPlan::Source(source) => {
-            let SelectedRows { sources, rows } = source::execute(storage, functions, source)?
+            let SelectedRows { sources, rows } = source::execute(storage, stmt_context, source)?
                 .rows(filter_context.as_ref().map(Rc::clone))?
                 .into_selected(None);
             let rows = rows.map(|context| {
@@ -57,7 +57,7 @@ where
         }
         ProjectInputPlan::InnerJoin(join) => {
             let SelectedRows { sources, rows } =
-                inner::execute(storage, functions, join, filter_context.as_ref())?;
+                inner::execute(storage, stmt_context, filter_context.as_ref(), join)?;
             let rows = rows.map(|context| {
                 context.map(|context| AggregateContext {
                     aggregated: None,
@@ -69,7 +69,7 @@ where
         }
         ProjectInputPlan::LeftOuterJoin(join) => {
             let SelectedRows { sources, rows } =
-                left_outer::execute(storage, functions, join, filter_context.as_ref())?;
+                left_outer::execute(storage, stmt_context, filter_context.as_ref(), join)?;
             let rows = rows.map(|context| {
                 context.map(|context| AggregateContext {
                     aggregated: None,
@@ -81,7 +81,7 @@ where
         }
         ProjectInputPlan::Filter(filter) => {
             let SelectedRows { sources, rows } =
-                filter::execute(storage, functions, filter, filter_context.as_ref())?;
+                filter::execute(storage, stmt_context, filter_context.as_ref(), filter)?;
             let rows = rows.map(|context| {
                 context.map(|context| AggregateContext {
                     aggregated: None,
@@ -93,14 +93,14 @@ where
         }
         ProjectInputPlan::Aggregation(aggregation) => {
             let AggregatedRows { sources, rows } =
-                aggregation::execute(storage, functions, aggregation, filter_context.as_ref())?;
+                aggregation::execute(storage, stmt_context, filter_context.as_ref(), aggregation)?;
             let rows = rows.into_iter().map(Ok);
 
             (sources, Box::new(rows))
         }
         ProjectInputPlan::Having(having) => {
             let AggregatedRows { sources, rows } =
-                having::execute(storage, functions, having, filter_context.as_ref())?;
+                having::execute(storage, stmt_context, filter_context.as_ref(), having)?;
             let rows = rows.into_iter().map(Ok);
 
             (sources, Box::new(rows))
@@ -156,7 +156,7 @@ where
                         SelectItemPlan::Expr { expr, label } => {
                             let value: Value = evaluate(
                                 storage,
-                                functions,
+                                stmt_context,
                                 context.as_ref(),
                                 aggregated.as_ref(),
                                 expr,

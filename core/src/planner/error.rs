@@ -2,6 +2,12 @@ use {serde::Serialize, std::fmt::Debug, thiserror::Error as ThisError};
 
 #[derive(ThisError, Serialize, Debug, PartialEq, Eq)]
 pub enum PlannerError {
+    #[error("unplanned schema map")]
+    UnplannedSchemaMap,
+
+    #[error("INSERT target table does not exist: {0}")]
+    InsertTableNotFound(String),
+
     #[error("CREATE INDEX target table does not exist: {0}")]
     CreateIndexTableNotFound(String),
 

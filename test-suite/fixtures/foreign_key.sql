@@ -262,3 +262,77 @@ CREATE TABLE SelfReferencingTable (
 DROP TABLE SelfReferencingTable;
 -- @expect: payload DropTable
 -- @json: 1
+
+-- @name: CASCADE accumulates removals for two parents and multiple foreign keys on one child
+CREATE TABLE CascadeP1 (id INT PRIMARY KEY);
+-- @expect: ok
+CREATE TABLE CascadeP2 (id INT PRIMARY KEY);
+-- @expect: ok
+CREATE TABLE CascadeChild (
+    a INT, b INT, c INT,
+    FOREIGN KEY (a) REFERENCES CascadeP1(id),
+    FOREIGN KEY (b) REFERENCES CascadeP1(id),
+    FOREIGN KEY (c) REFERENCES CascadeP2(id)
+);
+-- @expect: ok
+DROP TABLE CascadeP1, CascadeP2 CASCADE;
+-- @expect: payload DropTable
+-- @json: 2
+
+-- @name: All removed constraints stay removed on the surviving child
+INSERT INTO CascadeChild VALUES (11, 22, 33);
+-- @expect: payload Insert
+-- @json: 1
+SELECT * FROM CascadeChild;
+-- @expect:
+-- | a: I64 | b: I64 | c: I64 |
+-- | ------ | ------ | ------ |
+-- | 11     | 22     | 33     |
+
+-- @name: A child dropped earlier in the same statement is not restored
+CREATE TABLE OrderedParent (id INT PRIMARY KEY);
+-- @expect: ok
+CREATE TABLE OrderedChild (id INT, FOREIGN KEY (id) REFERENCES OrderedParent(id));
+-- @expect: ok
+DROP TABLE OrderedChild, OrderedParent CASCADE;
+-- @expect: payload DropTable
+-- @json: 2
+SELECT * FROM OrderedChild;
+-- @expect: error Fetch.TableNotFound
+-- @json: "OrderedChild"
+
+-- @name: IF EXISTS counts a duplicate target only once
+CREATE TABLE DuplicateDrop (id INT PRIMARY KEY);
+-- @expect: ok
+DROP TABLE IF EXISTS DuplicateDrop, DuplicateDrop, MissingDuplicateDrop CASCADE;
+-- @expect: payload DropTable
+-- @json: 1
+
+-- @name: Repeating a target without IF EXISTS reports the removed table
+CREATE TABLE DuplicateDropError (id INT PRIMARY KEY);
+-- @expect: ok
+DROP TABLE DuplicateDropError, DuplicateDropError CASCADE;
+-- @expect: error Alter.TableNotFound
+-- @json: "DuplicateDropError"
+
+-- @name: Self-referencing CREATE validates the new definition before the existing-table no-op
+CREATE TABLE SelfDefinition (id TEXT PRIMARY KEY);
+-- @expect: ok
+CREATE TABLE IF NOT EXISTS SelfDefinition (
+    id INT PRIMARY KEY, parent_id INT,
+    FOREIGN KEY (parent_id) REFERENCES SelfDefinition(id)
+);
+-- @expect: payload Create
+INSERT INTO SelfDefinition VALUES ('existing');
+-- @expect: payload Insert
+-- @json: 1
+SELECT * FROM SelfDefinition;
+-- @expect:
+-- | id: Str    |
+-- | ---------- |
+-- | "existing" |
+
+-- @name: IF NOT EXISTS still reports external foreign-key errors
+CREATE TABLE IF NOT EXISTS SelfDefinition (id INT, FOREIGN KEY (id) REFERENCES MissingFKParent(id));
+-- @expect: error Alter.ReferencedTableNotFound
+-- @json: "MissingFKParent"

@@ -57,10 +57,7 @@ fn store_methods_without_transaction_return_transaction_not_found() {
     let path = &file.0;
     let mut storage = RedbStorage::new(path).expect("new storage");
 
-    let err = storage
-        .fetch_all_schemas()
-        .expect_err("fetch_all_schemas should fail");
-    assert_eq!(err, Error::StorageMsg("transaction not found".to_owned()));
+    assert_eq!(storage.fetch_all_schemas(), Ok(Vec::new()));
 
     let schema = Schema::from_ddl("CREATE TABLE Foo (id INTEGER);").expect("parse schema");
     let err = storage

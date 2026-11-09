@@ -21,3 +21,24 @@ pub trait Transaction {
     fn commit(&mut self) -> Result<()>;
 }
 ```
+
+## Execution and transaction ownership
+
+For each ordinary statement, `Glue::execute` calls `begin(true)` before planning
+and execution. `Glue::execute_stmt` does the same for execution of an already
+prepared plan. Query Builder execution uses the same Glue path as SQL execution.
+When `begin(true)` returns `true`, Glue commits on success and rolls back on
+failure. When it returns `false`, Glue returns the operation's result without
+calling commit or rollback. The default trait implementation returns `Ok(false)`
+for `begin(true)`, so storage implementations without transaction support keep
+working through this path.
+
+SQL `BEGIN`, `COMMIT`, and `ROLLBACK` bypass automatic transaction handling and
+invoke the corresponding storage operation. The default implementation rejects
+an explicit `BEGIN`, which calls `begin(false)`.
+
+The low-level `executor::execute`, also exported as `prelude::execute`, runs a
+prepared plan without automatic transaction handling. This changes its previous
+behavior: direct callers must manage the surrounding transaction when required
+by their storage, or use `Glue::execute_stmt` to have Glue manage it. Planning
+remains separate from this low-level execution API.

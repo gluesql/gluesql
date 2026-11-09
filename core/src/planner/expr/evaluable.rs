@@ -252,7 +252,7 @@ mod tests {
             mock::run,
             parse_sql::{parse_expr, parse_query},
             plan::{ExprPlan, QueryPlan, StatementPlan, StatementPlanKind},
-            planner::{context::Context, fetch_schema_map, plan_schemaless},
+            planner::{context::Context, plan_schema_map, plan_schemaless},
             query_builder::{Build, table},
             translate::{NO_PARAMS, translate_expr, translate_query},
         },
@@ -479,8 +479,8 @@ mod tests {
         let context = context();
         let storage = run("CREATE TABLE Foo;");
         let statement = table("Foo").select().build().unwrap();
-        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
-        let planned = plan_schemaless(&schema_map, statement).unwrap();
+        let statement = plan_schema_map(&storage, statement).unwrap();
+        let planned = plan_schemaless(statement).unwrap();
         let actual = check_query_statement(context.as_ref(), planned);
         let expected = true;
         assert_eq!(actual, expected);

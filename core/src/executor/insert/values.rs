@@ -1,10 +1,10 @@
 use {
     crate::{
         data::{Key, Row, Value},
-        executor::evaluate::evaluate,
+        executor::{context::StatementContext, evaluate::evaluate},
         plan::{
-            CustomFunctionPlan, ExprPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
-            OrderByExprPlan, QueryPlan, ValuesOrderByPlan, ValuesPlan,
+            ExprPlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan, OrderByExprPlan,
+            QueryPlan, ValuesOrderByPlan, ValuesPlan,
         },
         result::Result,
         store::GStore,
@@ -17,9 +17,9 @@ pub(super) type Rows<'a> = Box<dyn Iterator<Item = Result<Row>> + 'a>;
 
 pub(super) fn execute<'a, T: GStore, F>(
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
-    query: &'a QueryPlan,
+    stmt_context: StatementContext<'a>,
     values: F,
+    query: &'a QueryPlan,
 ) -> Result<Option<Rows<'a>>>
 where
     F: FnOnce(&'a ValuesPlan) -> EvaluatedRows<'a>,
@@ -28,10 +28,10 @@ where
         QueryPlan::Project(_) | QueryPlan::SelectOrderBy(_) | QueryPlan::Distinct(_) => Ok(None),
         QueryPlan::Values(plan) => Ok(Some(rows(values(plan)))),
         QueryPlan::ValuesOrderBy(plan) => {
-            Ok(Some(execute_order_by(storage, functions, plan, values)?))
+            Ok(Some(execute_order_by(storage, stmt_context, values, plan)?))
         }
-        QueryPlan::Offset(plan) => execute_offset(storage, functions, plan, values),
-        QueryPlan::Limit(plan) => execute_limit(storage, functions, plan, values),
+        QueryPlan::Offset(plan) => execute_offset(storage, stmt_context, values, plan),
+        QueryPlan::Limit(plan) => execute_limit(storage, stmt_context, values, plan),
     }
 }
 
@@ -51,22 +51,22 @@ fn row(values: Vec<Value>) -> Row {
 
 fn execute_order_by<'a, T: GStore, F>(
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
-    plan: &'a ValuesOrderByPlan,
+    stmt_context: StatementContext<'a>,
     values: F,
+    plan: &'a ValuesOrderByPlan,
 ) -> Result<Rows<'a>>
 where
     F: FnOnce(&'a ValuesPlan) -> EvaluatedRows<'a>,
 {
     let rows = rows(values(&plan.input)).collect::<Result<Vec<_>>>()?;
-    let rows = sort(storage, functions, rows, &plan.exprs)?;
+    let rows = sort(storage, stmt_context, rows, &plan.exprs)?;
 
     Ok(Box::new(rows.into_iter().map(Ok)))
 }
 
 fn sort<T: GStore>(
     storage: &T,
-    functions: &[CustomFunctionPlan],
+    stmt_context: StatementContext<'_>,
     rows: Vec<Row>,
     order_by: &[OrderByExprPlan],
 ) -> Result<Vec<Row>> {
@@ -77,7 +77,7 @@ fn sort<T: GStore>(
             .map(|OrderByExprPlan { expr, asc }| {
                 evaluate(
                     storage,
-                    functions,
+                    stmt_context,
                     Some(&Rc::new(row.as_context())),
                     None,
                     expr,
@@ -116,9 +116,9 @@ fn compare_keys(keys_a: &[(Key, Option<bool>)], keys_b: &[(Key, Option<bool>)]) 
 
 fn execute_offset<'a, T: GStore, F>(
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
-    plan: &'a OffsetPlan,
+    stmt_context: StatementContext<'a>,
     values: F,
+    plan: &'a OffsetPlan,
 ) -> Result<Option<Rows<'a>>>
 where
     F: FnOnce(&'a ValuesPlan) -> EvaluatedRows<'a>,
@@ -128,18 +128,20 @@ where
         | OffsetInputPlan::SelectOrderBy(_)
         | OffsetInputPlan::Distinct(_) => return Ok(None),
         OffsetInputPlan::Values(plan) => rows(values(plan)),
-        OffsetInputPlan::ValuesOrderBy(plan) => execute_order_by(storage, functions, plan, values)?,
+        OffsetInputPlan::ValuesOrderBy(plan) => {
+            execute_order_by(storage, stmt_context, values, plan)?
+        }
     };
-    let count = evaluate_count(storage, functions, &plan.count)?;
+    let count = evaluate_count(storage, stmt_context, &plan.count)?;
 
     Ok(Some(Box::new(rows.skip(count))))
 }
 
 fn execute_limit<'a, T: GStore, F>(
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
-    plan: &'a LimitPlan,
+    stmt_context: StatementContext<'a>,
     values: F,
+    plan: &'a LimitPlan,
 ) -> Result<Option<Rows<'a>>>
 where
     F: FnOnce(&'a ValuesPlan) -> EvaluatedRows<'a>,
@@ -149,26 +151,28 @@ where
         | LimitInputPlan::SelectOrderBy(_)
         | LimitInputPlan::Distinct(_) => return Ok(None),
         LimitInputPlan::Values(plan) => rows(values(plan)),
-        LimitInputPlan::ValuesOrderBy(plan) => execute_order_by(storage, functions, plan, values)?,
+        LimitInputPlan::ValuesOrderBy(plan) => {
+            execute_order_by(storage, stmt_context, values, plan)?
+        }
         LimitInputPlan::Offset(plan) => {
-            let Some(rows) = execute_offset(storage, functions, plan, values)? else {
+            let Some(rows) = execute_offset(storage, stmt_context, values, plan)? else {
                 return Ok(None);
             };
 
             rows
         }
     };
-    let count = evaluate_count(storage, functions, &plan.count)?;
+    let count = evaluate_count(storage, stmt_context, &plan.count)?;
 
     Ok(Some(Box::new(rows.take(count))))
 }
 
 fn evaluate_count<T: GStore>(
     storage: &T,
-    functions: &[CustomFunctionPlan],
+    stmt_context: StatementContext<'_>,
     expr: &ExprPlan,
 ) -> Result<usize> {
-    let evaluated = evaluate(storage, functions, None, None, expr)?;
+    let evaluated = evaluate(storage, stmt_context, None, None, expr)?;
     let size: usize = Value::try_from(evaluated)?.try_into()?;
 
     Ok(size)

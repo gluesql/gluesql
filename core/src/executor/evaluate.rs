@@ -6,13 +6,13 @@ mod function;
 use {
     self::function::BreakCase,
     super::{
-        context::{AggregateValues, RowContext},
+        context::{AggregateValues, RowContext, StatementContext},
         query,
     },
     crate::{
         data::{Interval, Row, Value},
         mock::MockStorage,
-        plan::{CustomFunctionPlan, ExprPlan, FunctionPlan, ProjectionPlan},
+        plan::{ExprPlan, FunctionPlan, ProjectionPlan},
         result::{Error, Result},
         store::GStore,
     },
@@ -24,7 +24,7 @@ pub use {error::EvaluateError, evaluated::Evaluated};
 
 pub fn evaluate<'a, 'b, T>(
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
+    stmt_context: StatementContext<'a>,
     context: Option<&Rc<RowContext<'b>>>,
     aggregated: Option<&Rc<AggregateValues>>,
     expr: &'a ExprPlan,
@@ -33,7 +33,7 @@ where
     'b: 'a,
     T: GStore,
 {
-    evaluate_inner(Some(storage), functions, context, aggregated, expr)
+    evaluate_inner(Some(storage), stmt_context, context, aggregated, expr)
 }
 
 pub fn evaluate_stateless<'a, 'b: 'a>(
@@ -43,12 +43,18 @@ pub fn evaluate_stateless<'a, 'b: 'a>(
     let context = context.map(Rc::new);
     let storage: Option<&MockStorage> = None;
 
-    evaluate_inner(storage, &[], context.as_ref(), None, expr)
+    evaluate_inner(
+        storage,
+        StatementContext::EMPTY,
+        context.as_ref(),
+        None,
+        expr,
+    )
 }
 
 fn evaluate_inner<'a, 'b, T>(
     storage: Option<&'a T>,
-    functions: &'a [CustomFunctionPlan],
+    stmt_context: StatementContext<'a>,
     context: Option<&Rc<RowContext<'b>>>,
     aggregated: Option<&Rc<AggregateValues>>,
     expr: &'a ExprPlan,
@@ -57,7 +63,7 @@ where
     'b: 'a,
     T: GStore,
 {
-    let eval = |expr| evaluate_inner(storage, functions, context, aggregated, expr);
+    let eval = |expr| evaluate_inner(storage, stmt_context, context, aggregated, expr);
 
     match expr {
         ExprPlan::Literal(literal) => Ok(expr::literal(literal)),
@@ -97,7 +103,7 @@ where
                 return Err(EvaluateError::SchemalessProjectionForSubQuery.into());
             }
 
-            let evaluations = query::execute(storage, functions, query, context.cloned())?
+            let evaluations = query::execute(storage, stmt_context, context.cloned(), query)?
                 .map(|row| {
                     let values = row?.into_values();
                     if values.len() > 1 {
@@ -144,7 +150,7 @@ where
             None => Err(EvaluateError::AggregateSlotValueMissing(aggr.clone()).into()),
         },
         ExprPlan::Function(func) => {
-            evaluate_function(storage, functions, context, aggregated, func)
+            evaluate_function(storage, stmt_context, context, aggregated, func)
         }
         ExprPlan::InList {
             expr,
@@ -180,7 +186,7 @@ where
             }
             let target = eval(target_expr)?;
             let (labels, rows) =
-                query::execute_with_labels(storage, functions, subquery, context.cloned())?;
+                query::execute_with_labels(storage, stmt_context, context.cloned(), subquery)?;
 
             if labels.len() > 1 {
                 return Err(EvaluateError::InSubqueryMustReturnOneColumn.into());
@@ -261,7 +267,7 @@ where
         ExprPlan::Exists { subquery, negated } => {
             let storage = storage.ok_or(EvaluateError::ExistsSubqueryNotAllowedInStatelessExpr)?;
 
-            let exists = query::execute(storage, functions, subquery, context.cloned())?
+            let exists = query::execute(storage, stmt_context, context.cloned(), subquery)?
                 .next()
                 .transpose()?
                 .is_some();
@@ -331,14 +337,14 @@ where
 
 fn evaluate_function<'a, 'b: 'a, T: GStore>(
     storage: Option<&'a T>,
-    functions: &'a [CustomFunctionPlan],
+    stmt_context: StatementContext<'a>,
     context: Option<&Rc<RowContext<'b>>>,
     aggregated: Option<&Rc<AggregateValues>>,
     func: &'a FunctionPlan,
 ) -> Result<Evaluated<'a>> {
     use function as f;
 
-    let eval = |expr| evaluate_inner(storage, functions, context, aggregated, expr);
+    let eval = |expr| evaluate_inner(storage, stmt_context, context, aggregated, expr);
 
     let name = func.to_string();
 
@@ -353,7 +359,7 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
         }
         FunctionPlan::Custom { function_id, exprs } => {
             let storage = storage.ok_or(EvaluateError::UnsupportedCustomFunction)?;
-            let definition = functions.get(*function_id).ok_or(
+            let definition = stmt_context.functions.get(*function_id).ok_or(
                 EvaluateError::MalformedPlanCustomFunctionIndex(*function_id),
             )?;
             let args = &definition.args;
@@ -399,7 +405,7 @@ fn evaluate_function<'a, 'b: 'a, T: GStore>(
             let context = Rc::new(RowContext::new(&alias, row, None));
             let evaluated = evaluate_inner(
                 Some(storage),
-                functions,
+                stmt_context,
                 Some(&context),
                 None,
                 &definition.body,
@@ -756,7 +762,7 @@ mod tests {
         super::{EvaluateError, evaluate, evaluate_stateless},
         crate::{
             ast::{Expr, Projection, SelectItem, SetExpr, Statement},
-            executor::context::AggregateValues,
+            executor::context::{AggregateValues, StatementContext},
             mock::MockStorage,
             parse_sql::{parse, parse_expr},
             plan::{
@@ -815,7 +821,13 @@ mod tests {
         let storage = MockStorage::default();
         let aggregated = Rc::new(AggregateValues::new(Vec::new()));
 
-        let result = evaluate(&storage, &[], None, Some(&aggregated), &expr);
+        let result = evaluate(
+            &storage,
+            StatementContext::EMPTY,
+            None,
+            Some(&aggregated),
+            &expr,
+        );
 
         assert_eq!(
             result,
@@ -846,7 +858,7 @@ mod tests {
             ),
         ] {
             assert_eq!(
-                evaluate(&storage, &[], None, None, &expr),
+                evaluate(&storage, StatementContext::EMPTY, None, None, &expr),
                 Err(Error::Evaluate(expected))
             );
         }

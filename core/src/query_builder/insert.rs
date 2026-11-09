@@ -1,8 +1,7 @@
 use {
-    super::{Build, ColumnDefNode, ColumnList, ExprList, ExprNode, QueryBuilderError, QueryNode},
+    super::{Build, ColumnList, ExprList, ExprNode, QueryBuilderError, QueryNode},
     crate::{
-        ast::ColumnDef,
-        plan::{ColumnDefPlan, StatementPlan, StatementPlanKind, TableColumnsPlan},
+        plan::{StatementPlan, StatementPlanKind},
         result::Result,
         row_conversion::ToGlueRow,
     },
@@ -10,47 +9,9 @@ use {
 };
 
 #[derive(Clone, Debug)]
-enum InsertTableColumns {
-    Unplanned,
-    Schemaless,
-    Columns(Vec<ColumnDefNode>),
-}
-
-#[derive(Clone, Debug)]
-pub struct InsertTableNode {
-    table_name: String,
-    table_columns: InsertTableColumns,
-}
-
-impl InsertTableNode {
-    pub(crate) fn columns(table_name: String, columns: Vec<ColumnDefNode>) -> Self {
-        Self {
-            table_name,
-            table_columns: InsertTableColumns::Columns(columns),
-        }
-    }
-
-    pub(crate) fn schemaless(table_name: String) -> Self {
-        Self {
-            table_name,
-            table_columns: InsertTableColumns::Schemaless,
-        }
-    }
-
-    pub fn insert(self) -> InsertNode {
-        InsertNode {
-            table_name: self.table_name,
-            columns: None,
-            table_columns: self.table_columns,
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
 pub struct InsertNode {
     table_name: String,
     columns: Option<ColumnList>,
-    table_columns: InsertTableColumns,
 }
 
 impl InsertNode {
@@ -58,7 +19,6 @@ impl InsertNode {
         Self {
             table_name,
             columns: None,
-            table_columns: InsertTableColumns::Unplanned,
         }
     }
 
@@ -132,22 +92,10 @@ impl Build for InsertSourceNode<'_> {
         let columns = columns.map_or_else(|| Ok(vec![]), TryInto::try_into)?;
         let source = self.source.build_query_plan()?;
 
-        let table_columns = match self.insert_node.table_columns {
-            InsertTableColumns::Unplanned => TableColumnsPlan::Unplanned,
-            InsertTableColumns::Schemaless => TableColumnsPlan::Schemaless,
-            InsertTableColumns::Columns(columns) => TableColumnsPlan::Columns(
-                columns
-                    .into_iter()
-                    .map(|column| ColumnDef::try_from(column).map(ColumnDefPlan::from))
-                    .collect::<Result<Vec<_>>>()?,
-            ),
-        };
-
         Ok(StatementPlanKind::Insert {
             table_name,
             columns,
             source,
-            table_columns,
         }
         .into())
     }
@@ -156,16 +104,11 @@ impl Build for InsertSourceNode<'_> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ast::ColumnDef,
         data::Value,
-        plan::{ColumnDefPlan, StatementPlanKind, TableColumnsPlan},
-        query_builder::{
-            Build, ColumnDefNode, QueryBuilderError, num, select::BuildQueryPlan, table, test,
-            value, values,
-        },
+        query_builder::{Build, QueryBuilderError, num, table, test, value},
         result::Error,
         row_conversion::ToGlueRow,
-        translate::{IntoParamLiteral, ParamLiteral, ToParamLiteral, TranslateError},
+        translate::{IntoParamLiteral, ParamLiteral, ToParamLiteral},
     };
 
     #[test]
@@ -209,46 +152,6 @@ mod tests {
             .build();
         let expected = r"INSERT INTO Foo SELECT DISTINCT id FROM Bar ORDER BY id";
         test(&actual, expected);
-    }
-
-    #[test]
-    fn table_columns() {
-        let actual = table("Item")
-            .table_columns(["id INTEGER NOT NULL DEFAULT 1", "name TEXT NULL"])
-            .insert()
-            .columns("name")
-            .values(vec!["'glue'"])
-            .build();
-        let expected = Ok(StatementPlanKind::Insert {
-            table_name: "Item".to_owned(),
-            columns: vec!["name".to_owned()],
-            source: values(vec!["'glue'"]).build_query_plan().unwrap(),
-            table_columns: TableColumnsPlan::Columns(vec![
-                ColumnDefPlan::from(
-                    ColumnDef::try_from(ColumnDefNode::from("id INTEGER NOT NULL DEFAULT 1"))
-                        .unwrap(),
-                ),
-                ColumnDefPlan::from(
-                    ColumnDef::try_from(ColumnDefNode::from("name TEXT NULL")).unwrap(),
-                ),
-            ]),
-        }
-        .into());
-        pretty_assertions::assert_eq!(actual, expected);
-
-        let actual = table("Log")
-            .schemaless()
-            .insert()
-            .values(vec!["'{}'"])
-            .build();
-        let expected = Ok(StatementPlanKind::Insert {
-            table_name: "Log".to_owned(),
-            columns: Vec::new(),
-            source: values(vec!["'{}'"]).build_query_plan().unwrap(),
-            table_columns: TableColumnsPlan::Schemaless,
-        }
-        .into());
-        pretty_assertions::assert_eq!(actual, expected);
     }
 
     struct Item {
@@ -361,20 +264,6 @@ mod tests {
                 found: 1,
             },
         ));
-        pretty_assertions::assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn insert_table_columns_reject_invalid_definitions() {
-        let actual = table("Item")
-            .table_columns(["id FOOBAR"])
-            .insert()
-            .values(vec!["1"])
-            .build();
-        let expected = Err(Error::Translate(TranslateError::UnsupportedDataType(
-            "FOOBAR".to_owned(),
-        )));
-
         pretty_assertions::assert_eq!(actual, expected);
     }
 }

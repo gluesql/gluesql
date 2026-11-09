@@ -1,6 +1,6 @@
 use {
     crate::{
-        ast::{ColumnDef, ColumnUniqueOption},
+        ast::ColumnUniqueOption,
         data::{Key, Value},
         plan::ColumnDefPlan,
         result::Result,
@@ -28,7 +28,7 @@ pub enum ColumnValidation<'column_def> {
     /// `INSERT`
     All(&'column_def [ColumnDefPlan]),
     /// `UPDATE`
-    SpecifiedColumns(&'column_def [ColumnDef], Vec<String>),
+    SpecifiedColumns(&'column_def [ColumnDefPlan], Vec<String>),
 }
 
 #[derive(Debug)]
@@ -186,7 +186,7 @@ fn fetch_all_unique_columns(column_defs: &[ColumnDefPlan]) -> Vec<(usize, String
 }
 
 fn fetch_specified_unique_columns(
-    all_column_defs: &[ColumnDef],
+    all_column_defs: &[ColumnDefPlan],
     specified_columns: &[String],
 ) -> Vec<(usize, String)> {
     all_column_defs

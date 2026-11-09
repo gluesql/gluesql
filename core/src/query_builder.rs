@@ -17,6 +17,7 @@ mod insert;
 mod order_by_expr;
 mod order_by_expr_list;
 mod query;
+mod schema;
 mod select;
 mod select_item;
 mod select_item_list;
@@ -26,6 +27,7 @@ mod table_access;
 mod table_name;
 mod transaction;
 mod update;
+mod with_schema;
 
 /// Available expression builder functions
 pub use expr::{
@@ -60,10 +62,11 @@ pub use {
     expr_list::ExprList,
     expr_with_alias::ExprWithAliasNode,
     index::{CreateIndexNode, DropIndexNode},
-    insert::{InsertNode, InsertTableNode},
+    insert::InsertNode,
     order_by_expr::OrderByExprNode,
     order_by_expr_list::OrderByExprList,
     query::QueryNode,
+    schema::SchemaNode,
     select::{
         DistinctNode, FilterNode, GroupByNode, HavingNode, InnerHashJoinNode,
         InnerJoinConditionNode, InnerNestedLoopJoinNode, LeftOuterHashJoinNode,
@@ -80,6 +83,7 @@ pub use {
     },
     table_name::table,
     update::UpdateNode,
+    with_schema::WithSchemaNode,
 };
 
 #[cfg(test)]

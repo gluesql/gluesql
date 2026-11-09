@@ -104,7 +104,13 @@ impl StorageCore {
 // Store
 impl StorageCore {
     pub fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
-        let txn = self.txn()?;
+        match &self.state {
+            TransactionState::Active { txn, .. } => Self::fetch_all_schemas_in_txn(txn),
+            TransactionState::None => Self::fetch_all_schemas_in_txn(&self.db.begin_write()?),
+        }
+    }
+
+    fn fetch_all_schemas_in_txn(txn: &WriteTransaction) -> Result<Vec<Schema>> {
         let table = txn.open_table(SCHEMA_TABLE)?;
 
         table

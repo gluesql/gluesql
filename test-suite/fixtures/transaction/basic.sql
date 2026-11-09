@@ -172,3 +172,33 @@ BEGIN;
 
 COMMIT;
 -- @expect: ok
+
+-- @name: A planning failure does not close an explicit transaction
+BEGIN;
+-- @expect: payload StartTransaction
+INSERT INTO TxTest VALUES (99, 'pending');
+-- @expect: payload Insert
+-- @json: 1
+INSERT INTO MissingTransactionTarget VALUES (1);
+-- @expect: error Planner.InsertTableNotFound
+-- @json: "MissingTransactionTarget"
+SELECT name FROM TxTest WHERE id = 99;
+-- @expect:
+-- | name: Str |
+-- | --------- |
+-- | "pending" |
+ROLLBACK;
+-- @expect: payload Rollback
+SELECT name FROM TxTest WHERE id = 99;
+-- @expect:
+-- | name |
+-- | ---- |
+
+-- @name: An automatic planning failure leaves the next statement usable
+INSERT INTO MissingTransactionTarget VALUES (1);
+-- @expect: error Planner.InsertTableNotFound
+-- @json: "MissingTransactionTarget"
+SELECT name FROM TxTest WHERE id = 99;
+-- @expect:
+-- | name |
+-- | ---- |

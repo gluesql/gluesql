@@ -1,39 +1,43 @@
 use {
     super::{
+        PlannerError,
         context::Context,
         expr::{deterministic::is_deterministic, nullability::may_return_null},
         query::Planner,
     },
     crate::{
         ast::{BinaryOperator, IndexOperator},
-        data::{Schema, SchemaIndex, SchemaIndexOrd, Value},
+        data::{SchemaIndex, SchemaIndexOrd, Value},
         plan::{
             AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
             FilterPlan, IndexPredicatePlan, LimitInputPlan, LimitPlan, OffsetInputPlan, OffsetPlan,
-            OrderByExprPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SelectOrderByPlan,
-            SourcePlan, StatementPlan, StatementPlanKind, TableAccessPlan, plan_scalar_expr,
+            OrderByExprPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SchemaMap, SchemaMapPlan,
+            SchemaPlan, SelectOrderByPlan, SourcePlan, StatementPlan, StatementPlanKind,
+            TableAccessPlan, plan_scalar_expr,
         },
+        result::Result,
     },
-    std::{collections::HashMap, hash::BuildHasher, rc::Rc},
+    std::rc::Rc,
 };
 
-pub fn plan<S: BuildHasher>(
-    schema_map: &HashMap<String, Schema, S>,
-    mut statement: StatementPlan,
-) -> StatementPlan {
+pub fn plan(mut statement: StatementPlan) -> Result<StatementPlan> {
+    let SchemaMapPlan::Planned(schema_map) = &statement.schema_map else {
+        return Err(PlannerError::UnplannedSchemaMap.into());
+    };
+
     let planner = IndexPlanner { schema_map };
     statement.kind = match statement.kind {
         StatementPlanKind::Query(query) => StatementPlanKind::Query(planner.query(None, query)),
         kind => kind,
     };
-    statement
+    Ok(statement)
 }
 
-struct IndexPlanner<'a, S> {
-    schema_map: &'a HashMap<String, Schema, S>,
+struct IndexPlanner<'a> {
+    schema_map: &'a SchemaMap,
 }
 
-impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
+impl<'a> Planner<'a> for IndexPlanner<'a> {
     fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
         match query {
             QueryPlan::Project(input) => {
@@ -128,12 +132,12 @@ impl<'a, S: BuildHasher> Planner<'a> for IndexPlanner<'a, S> {
         }
     }
 
-    fn get_schema(&self, name: &str) -> Option<&'a Schema> {
+    fn get_schema(&self, name: &str) -> Option<&'a SchemaPlan> {
         self.schema_map.get(name)
     }
 }
 
-impl<'a, S: BuildHasher> IndexPlanner<'a, S> {
+impl<'a> IndexPlanner<'a> {
     fn project(
         &self,
         outer_context: Option<&Rc<Context<'a>>>,
@@ -615,26 +619,21 @@ mod tests {
             mock::{MockStorage, run},
             parse_sql::parse,
             plan::StatementPlan,
-            planner::fetch_schema_map,
+            planner::{PlannerError, plan_schema_map},
             query_builder::{
                 Build, TableAccessNode, col, exists, nested, non_clustered, null, num, primary_key,
                 table, text, values,
             },
-            result::{Error, Result},
             translate::translate,
         },
     };
 
-    fn plan_index(storage: &MockStorage, sql: &str) -> Result<StatementPlan> {
-        let parsed = parse(sql)?;
-        let parsed = parsed
-            .into_iter()
-            .next()
-            .ok_or_else(|| Error::StorageMsg(format!("no statement parsed from: {sql}")))?;
-        let statement = StatementPlan::from(translate(&parsed)?);
-        let schema_map = fetch_schema_map(storage, &statement)?;
+    fn plan_index(storage: &MockStorage, sql: &str) -> StatementPlan {
+        let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
+        let statement = StatementPlan::from(translate(&parsed).unwrap());
+        let statement = plan_schema_map(storage, statement).unwrap();
 
-        Ok(plan(&schema_map, statement))
+        plan(statement).unwrap()
     }
 
     fn storage_with_indexes() -> MockStorage {
@@ -655,6 +654,23 @@ CREATE TABLE Other (other_id INTEGER);
 ")
     }
 
+    macro_rules! test {
+        ($actual: expr, $expected: expr, $name: literal) => {
+            let expected = $expected.build().unwrap();
+
+            assert_eq!(($actual).kind, expected.kind, $name);
+        };
+    }
+
+    #[test]
+    fn unplanned_schema_map() {
+        let input = table("Item").select().build().unwrap();
+
+        let actual = plan(input);
+        let expected = Err(PlannerError::UnplannedSchemaMap.into());
+        assert_eq!(actual, expected);
+    }
+
     #[test]
     fn index_planning_scenarios() {
         let storage = storage_with_indexes();
@@ -663,23 +679,22 @@ CREATE TABLE Other (other_id INTEGER);
         let actual = plan_index(&storage, sql);
         let expected = table("Test")
             .index_by(non_clustered("idx_id".to_owned()).eq(num(1)))
-            .select()
-            .build();
-        assert_eq!(actual, expected, "uses index for eq constant:\n{sql}");
+            .select();
+        test!(actual, expected, "uses index for eq constant:\n{sql}");
 
         let sql = "SELECT * FROM Test WHERE id = NULL";
         let actual = plan_index(&storage, sql);
-        let expected = table("Test").select().filter("id = NULL").build();
-        assert_eq!(actual, expected, "skips index for nullable value:\n{sql}");
+        let expected = table("Test").select().filter("id = NULL");
+        test!(actual, expected, "skips index for nullable value:\n{sql}");
 
         let sql = "SELECT * FROM Test WHERE flag = ('ABC' IS NULL)";
         let actual = plan_index(&storage, sql);
         let expected = table("Test")
             .index_by(non_clustered("idx_flag".to_owned()).eq(nested(text("ABC").is_null())))
-            .select()
-            .build();
-        assert_eq!(
-            actual, expected,
+            .select();
+        test!(
+            actual,
+            expected,
             "uses index for deterministic expression:\n{sql}"
         );
 
@@ -687,34 +702,33 @@ CREATE TABLE Other (other_id INTEGER);
         let actual = plan_index(&storage, sql);
         let expected = table("Test")
             .index_by(non_clustered("idx_name".to_owned()))
-            .select()
-            .build();
-        assert_eq!(actual, expected, "applies order by index:\n{sql}");
+            .select();
+        test!(actual, expected, "applies order by index:\n{sql}");
 
         let sql = "SELECT * FROM Test WHERE flag IS NULL";
         let actual = plan_index(&storage, sql);
         let expected = table("Test")
             .index_by(non_clustered("idx_flag".to_owned()).eq(null()))
-            .select()
-            .build();
-        assert_eq!(actual, expected, "uses index for is null filter:\n{sql}");
+            .select();
+        test!(actual, expected, "uses index for is null filter:\n{sql}");
 
         let sql = "SELECT * FROM Test WHERE flag IS NOT NULL";
         let actual = plan_index(&storage, sql);
         let expected = table("Test")
             .index_by(non_clustered("idx_flag".to_owned()).lt(null()))
-            .select()
-            .build();
-        assert_eq!(
-            actual, expected,
+            .select();
+        test!(
+            actual,
+            expected,
             "uses index for is not null filter:\n{sql}"
         );
 
         let sql = "SELECT * FROM Test WHERE id = flag";
         let actual = plan_index(&storage, sql);
-        let expected = table("Test").select().filter("id = flag").build();
-        assert_eq!(
-            actual, expected,
+        let expected = table("Test").select().filter("id = flag");
+        test!(
+            actual,
+            expected,
             "skips index for non constant expression:\n{sql}"
         );
 
@@ -723,19 +737,18 @@ CREATE TABLE Other (other_id INTEGER);
         let expected = table("Test")
             .index_by(non_clustered("idx_id".to_owned()).eq(num(1)))
             .select()
-            .filter("name = 'Alice'")
-            .build();
-        assert_eq!(actual, expected, "keeps residual filter:\n{sql}");
+            .filter("name = 'Alice'");
+        test!(actual, expected, "keeps residual filter:\n{sql}");
 
         let sql = "SELECT * FROM Test WHERE id = 1 ORDER BY name";
         let actual = plan_index(&storage, sql);
         let expected = table("Test")
             .index_by(non_clustered("idx_name".to_owned()))
             .select()
-            .filter("id = 1")
-            .build();
-        assert_eq!(
-            actual, expected,
+            .filter("id = 1");
+        test!(
+            actual,
+            expected,
             "keeps filter when order by owns the access path:\n{sql}"
         );
 
@@ -745,9 +758,8 @@ CREATE TABLE Other (other_id INTEGER);
             .index_by(non_clustered("idx_id".to_owned()).eq(num(1)))
             .select()
             .group_by("id")
-            .project("id")
-            .build();
-        assert_eq!(actual, expected, "preserves aggregation wrapper:\n{sql}");
+            .project("id");
+        test!(actual, expected, "preserves aggregation wrapper:\n{sql}");
 
         let sql = "SELECT id FROM Test WHERE id = 1 GROUP BY id HAVING TRUE";
         let actual = plan_index(&storage, sql);
@@ -756,9 +768,8 @@ CREATE TABLE Other (other_id INTEGER);
             .select()
             .group_by("id")
             .having("TRUE")
-            .project("id")
-            .build();
-        assert_eq!(actual, expected, "preserves having wrapper:\n{sql}");
+            .project("id");
+        test!(actual, expected, "preserves having wrapper:\n{sql}");
     }
 
     #[test]
@@ -773,9 +784,8 @@ CREATE TABLE Other (other_id INTEGER);
                 asc: None,
                 predicate: None,
             })
-            .select()
-            .build();
-        assert_eq!(actual, expected, "uses ascending index:\n{sql}");
+            .select();
+        test!(actual, expected, "uses ascending index:\n{sql}");
 
         let sql = "SELECT * FROM Test ORDER BY desc_name DESC";
         let actual = plan_index(&storage, sql);
@@ -785,22 +795,22 @@ CREATE TABLE Other (other_id INTEGER);
                 asc: Some(false),
                 predicate: None,
             })
-            .select()
-            .build();
-        assert_eq!(actual, expected, "uses descending index:\n{sql}");
+            .select();
+        test!(actual, expected, "uses descending index:\n{sql}");
 
         let sql = "SELECT * FROM Test ORDER BY asc_name DESC";
         let actual = plan_index(&storage, sql);
-        let expected = table("Test").select().order_by("asc_name DESC").build();
-        assert_eq!(
-            actual, expected,
+        let expected = table("Test").select().order_by("asc_name DESC");
+        test!(
+            actual,
+            expected,
             "keeps mismatched descending order:\n{sql}"
         );
 
         let sql = "SELECT * FROM Test ORDER BY desc_name";
         let actual = plan_index(&storage, sql);
-        let expected = table("Test").select().order_by("desc_name").build();
-        assert_eq!(actual, expected, "keeps mismatched ascending order:\n{sql}");
+        let expected = table("Test").select().order_by("desc_name");
+        test!(actual, expected, "keeps mismatched ascending order:\n{sql}");
     }
 
     #[test]
@@ -809,80 +819,66 @@ CREATE TABLE Other (other_id INTEGER);
 
         let sql = "SELECT * FROM Test ORDER BY id + name";
         let actual = plan_index(&storage, sql);
-        let expected = table("Test").select().order_by("id + name").build();
-        assert_eq!(actual, expected, "keeps unmatched order by:\n{sql}");
+        let expected = table("Test").select().order_by("id + name");
+        test!(actual, expected, "keeps unmatched order by:\n{sql}");
 
         let sql = "SELECT DISTINCT * FROM Test ORDER BY name";
         let actual = plan_index(&storage, sql);
         let expected = table("Test")
             .index_by(non_clustered("idx_name".to_owned()))
             .select()
-            .distinct()
-            .build();
-        assert_eq!(
-            actual, expected,
+            .distinct();
+        test!(
+            actual,
+            expected,
             "removes indexed distinct order by:\n{sql}"
         );
 
         let sql = "SELECT DISTINCT * FROM Test ORDER BY id + name";
         let actual = plan_index(&storage, sql);
-        let expected = table("Test")
-            .select()
-            .order_by("id + name")
-            .distinct()
-            .build();
-        assert_eq!(actual, expected, "keeps distinct order by:\n{sql}");
+        let expected = table("Test").select().order_by("id + name").distinct();
+        test!(actual, expected, "keeps distinct order by:\n{sql}");
 
         let sql = "SELECT * FROM Test OFFSET 1";
         let actual = plan_index(&storage, sql);
-        let expected = table("Test").select().offset(1).build();
-        assert_eq!(actual, expected, "keeps offset input:\n{sql}");
+        let expected = table("Test").select().offset(1);
+        test!(actual, expected, "keeps offset input:\n{sql}");
 
         let sql = "SELECT * FROM Test ORDER BY name OFFSET 1";
         let actual = plan_index(&storage, sql);
         let expected = table("Test")
             .index_by(non_clustered("idx_name".to_owned()))
             .select()
-            .offset(1)
-            .build();
-        assert_eq!(actual, expected, "removes indexed offset order by:\n{sql}");
+            .offset(1);
+        test!(actual, expected, "removes indexed offset order by:\n{sql}");
 
         let sql = "SELECT * FROM Test ORDER BY id + name OFFSET 1";
         let actual = plan_index(&storage, sql);
-        let expected = table("Test")
-            .select()
-            .order_by("id + name")
-            .offset(1)
-            .build();
-        assert_eq!(actual, expected, "keeps offset order by:\n{sql}");
+        let expected = table("Test").select().order_by("id + name").offset(1);
+        test!(actual, expected, "keeps offset order by:\n{sql}");
 
         let sql = "SELECT * FROM Test LIMIT 2";
         let actual = plan_index(&storage, sql);
-        let expected = table("Test").select().limit(2).build();
-        assert_eq!(actual, expected, "keeps limit input:\n{sql}");
+        let expected = table("Test").select().limit(2);
+        test!(actual, expected, "keeps limit input:\n{sql}");
 
         let sql = "SELECT * FROM Test ORDER BY name LIMIT 2";
         let actual = plan_index(&storage, sql);
         let expected = table("Test")
             .index_by(non_clustered("idx_name".to_owned()))
             .select()
-            .limit(2)
-            .build();
-        assert_eq!(actual, expected, "removes indexed limit order by:\n{sql}");
+            .limit(2);
+        test!(actual, expected, "removes indexed limit order by:\n{sql}");
 
         let sql = "SELECT * FROM Test ORDER BY id + name LIMIT 2";
         let actual = plan_index(&storage, sql);
-        let expected = table("Test")
-            .select()
-            .order_by("id + name")
-            .limit(2)
-            .build();
-        assert_eq!(actual, expected, "keeps limit order by:\n{sql}");
+        let expected = table("Test").select().order_by("id + name").limit(2);
+        test!(actual, expected, "keeps limit order by:\n{sql}");
 
         let sql = "SELECT * FROM Test LIMIT 2 OFFSET 1";
         let actual = plan_index(&storage, sql);
-        let expected = table("Test").select().offset(1).limit(2).build();
-        assert_eq!(actual, expected, "keeps offset limit input:\n{sql}");
+        let expected = table("Test").select().offset(1).limit(2);
+        test!(actual, expected, "keeps offset limit input:\n{sql}");
 
         let sql = "SELECT * FROM Test ORDER BY name LIMIT 2 OFFSET 1";
         let actual = plan_index(&storage, sql);
@@ -890,10 +886,10 @@ CREATE TABLE Other (other_id INTEGER);
             .index_by(non_clustered("idx_name".to_owned()))
             .select()
             .offset(1)
-            .limit(2)
-            .build();
-        assert_eq!(
-            actual, expected,
+            .limit(2);
+        test!(
+            actual,
+            expected,
             "removes indexed terminal order by:\n{sql}"
         );
 
@@ -903,9 +899,8 @@ CREATE TABLE Other (other_id INTEGER);
             .select()
             .order_by("id + name")
             .offset(1)
-            .limit(2)
-            .build();
-        assert_eq!(actual, expected, "keeps terminal order by:\n{sql}");
+            .limit(2);
+        test!(actual, expected, "keeps terminal order by:\n{sql}");
 
         let sql = "SELECT id FROM Test GROUP BY id ORDER BY name";
         let actual = plan_index(&storage, sql);
@@ -913,9 +908,8 @@ CREATE TABLE Other (other_id INTEGER);
             .index_by(non_clustered("idx_name".to_owned()))
             .select()
             .group_by("id")
-            .project("id")
-            .build();
-        assert_eq!(actual, expected, "removes aggregate order by:\n{sql}");
+            .project("id");
+        test!(actual, expected, "removes aggregate order by:\n{sql}");
 
         let sql = "SELECT id FROM Test GROUP BY id ORDER BY id + name";
         let actual = plan_index(&storage, sql);
@@ -923,9 +917,8 @@ CREATE TABLE Other (other_id INTEGER);
             .select()
             .group_by("id")
             .project("id")
-            .order_by("id + name")
-            .build();
-        assert_eq!(actual, expected, "keeps aggregate order by:\n{sql}");
+            .order_by("id + name");
+        test!(actual, expected, "keeps aggregate order by:\n{sql}");
 
         let sql = "SELECT id FROM Test GROUP BY id HAVING TRUE ORDER BY name";
         let actual = plan_index(&storage, sql);
@@ -934,19 +927,18 @@ CREATE TABLE Other (other_id INTEGER);
             .select()
             .group_by("id")
             .having("TRUE")
-            .project("id")
-            .build();
-        assert_eq!(actual, expected, "removes having order by:\n{sql}");
+            .project("id");
+        test!(actual, expected, "removes having order by:\n{sql}");
 
         let sql = "VALUES (1) ORDER BY column1 OFFSET 1";
         let actual = plan_index(&storage, sql);
-        let expected = values(vec!["1"]).order_by("column1").offset(1).build();
-        assert_eq!(actual, expected, "keeps values order by offset:\n{sql}");
+        let expected = values(vec!["1"]).order_by("column1").offset(1);
+        test!(actual, expected, "keeps values order by offset:\n{sql}");
 
         let sql = "VALUES (1) LIMIT 1 OFFSET 1";
         let actual = plan_index(&storage, sql);
-        let expected = values(vec!["1"]).offset(1).limit(1).build();
-        assert_eq!(actual, expected, "keeps values offset limit:\n{sql}");
+        let expected = values(vec!["1"]).offset(1).limit(1);
+        test!(actual, expected, "keeps values offset limit:\n{sql}");
     }
 
     #[test]
@@ -959,9 +951,8 @@ CREATE TABLE Other (other_id INTEGER);
             .index_by(non_clustered("idx_name".to_owned()))
             .select()
             .join("Other")
-            .project("Test.id")
-            .build();
-        assert_eq!(actual, expected, "preserves ordered inner join:\n{sql}");
+            .project("Test.id");
+        test!(actual, expected, "preserves ordered inner join:\n{sql}");
 
         let sql = "SELECT Test.id FROM Test LEFT JOIN Other ORDER BY name";
         let actual = plan_index(&storage, sql);
@@ -969,10 +960,10 @@ CREATE TABLE Other (other_id INTEGER);
             .index_by(non_clustered("idx_name".to_owned()))
             .select()
             .left_join("Other")
-            .project("Test.id")
-            .build();
-        assert_eq!(
-            actual, expected,
+            .project("Test.id");
+        test!(
+            actual,
+            expected,
             "preserves ordered left outer join:\n{sql}"
         );
 
@@ -983,9 +974,8 @@ CREATE TABLE Other (other_id INTEGER);
             .select()
             .join("Other")
             .group_by("Test.id")
-            .project("Test.id")
-            .build();
-        assert_eq!(actual, expected, "preserves aggregated inner join:\n{sql}");
+            .project("Test.id");
+        test!(actual, expected, "preserves aggregated inner join:\n{sql}");
 
         let sql = "SELECT Test.id FROM Test LEFT JOIN Other GROUP BY Test.id ORDER BY name";
         let actual = plan_index(&storage, sql);
@@ -994,10 +984,10 @@ CREATE TABLE Other (other_id INTEGER);
             .select()
             .left_join("Other")
             .group_by("Test.id")
-            .project("Test.id")
-            .build();
-        assert_eq!(
-            actual, expected,
+            .project("Test.id");
+        test!(
+            actual,
+            expected,
             "preserves aggregated left outer join:\n{sql}"
         );
 
@@ -1007,9 +997,8 @@ CREATE TABLE Other (other_id INTEGER);
             .index_by(non_clustered("idx_id".to_owned()).eq(num(1)))
             .select()
             .join("Other")
-            .project("Test.id")
-            .build();
-        assert_eq!(actual, expected, "preserves inner join:\n{sql}");
+            .project("Test.id");
+        test!(actual, expected, "preserves inner join:\n{sql}");
 
         let sql = "SELECT Test.id FROM Test LEFT JOIN Other WHERE id = 1";
         let actual = plan_index(&storage, sql);
@@ -1017,9 +1006,8 @@ CREATE TABLE Other (other_id INTEGER);
             .index_by(non_clustered("idx_id".to_owned()).eq(num(1)))
             .select()
             .left_join("Other")
-            .project("Test.id")
-            .build();
-        assert_eq!(actual, expected, "preserves left outer join:\n{sql}");
+            .project("Test.id");
+        test!(actual, expected, "preserves left outer join:\n{sql}");
 
         let sql = "SELECT Test.id FROM Test JOIN Other WHERE id = 1 GROUP BY Test.id";
         let actual = plan_index(&storage, sql);
@@ -1028,9 +1016,8 @@ CREATE TABLE Other (other_id INTEGER);
             .select()
             .join("Other")
             .group_by("Test.id")
-            .project("Test.id")
-            .build();
-        assert_eq!(actual, expected, "preserves aggregated inner join:\n{sql}");
+            .project("Test.id");
+        test!(actual, expected, "preserves aggregated inner join:\n{sql}");
 
         let sql =
             "SELECT Test.id FROM Test LEFT JOIN Other WHERE id = 1 GROUP BY Test.id HAVING TRUE";
@@ -1041,9 +1028,8 @@ CREATE TABLE Other (other_id INTEGER);
             .left_join("Other")
             .group_by("Test.id")
             .having("TRUE")
-            .project("Test.id")
-            .build();
-        assert_eq!(actual, expected, "preserves having left outer join:\n{sql}");
+            .project("Test.id");
+        test!(actual, expected, "preserves having left outer join:\n{sql}");
     }
 
     #[test]
@@ -1063,17 +1049,16 @@ CREATE TABLE Other (other_id INTEGER);
             .build()
             .unwrap();
 
-        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
-        let actual = plan(&schema_map, statement);
+        let statement = plan_schema_map(&storage, statement).unwrap();
+        let actual = plan(statement).unwrap();
 
         let expected = table("Test")
             .index_by(primary_key().eq(num(1)))
             .select()
-            .filter("name = 'x'")
-            .build()
-            .unwrap();
-        assert_eq!(
-            actual, expected,
+            .filter("name = 'x'");
+        test!(
+            actual,
+            expected,
             "keeps existing access path instead of clobbering it with a secondary index"
         );
     }
@@ -1092,16 +1077,14 @@ WHERE EXISTS (
 );
 ";
         let actual = plan_index(&storage, sql);
-        let expected = table("Test")
-            .select()
-            .filter(exists(
-                table("Test")
-                    .index_by(non_clustered("idx_id".to_owned()).eq(num(1)))
-                    .select(),
-            ))
-            .build();
-        assert_eq!(
-            actual, expected,
+        let expected = table("Test").select().filter(exists(
+            table("Test")
+                .index_by(non_clustered("idx_id".to_owned()).eq(num(1)))
+                .select(),
+        ));
+        test!(
+            actual,
+            expected,
             "uses index inside EXISTS subquery:\n{sql}"
         );
 
@@ -1115,18 +1098,15 @@ WHERE id IN (
 );
 ";
         let actual = plan_index(&storage, sql);
-        let expected = table("Test")
-            .select()
-            .filter(
-                col("id").in_list(
-                    table("Test")
-                        .index_by(non_clustered("idx_flag".to_owned()).eq(true))
-                        .select()
-                        .project("id"),
-                ),
-            )
-            .build();
-        assert_eq!(actual, expected, "uses index inside IN subquery:\n{sql}");
+        let expected = table("Test").select().filter(
+            col("id").in_list(
+                table("Test")
+                    .index_by(non_clustered("idx_flag".to_owned()).eq(true))
+                    .select()
+                    .project("id"),
+            ),
+        );
+        test!(actual, expected, "uses index inside IN subquery:\n{sql}");
 
         let sql = "
 SELECT *
@@ -1138,16 +1118,14 @@ WHERE EXISTS (
 );
 ";
         let actual = plan_index(&storage, sql);
-        let expected = table("Test")
-            .select()
-            .filter(exists(
-                table("Test")
-                    .index_by(non_clustered("idx_flag".to_owned()).eq(null()))
-                    .select(),
-            ))
-            .build();
-        assert_eq!(
-            actual, expected,
+        let expected = table("Test").select().filter(exists(
+            table("Test")
+                .index_by(non_clustered("idx_flag".to_owned()).eq(null()))
+                .select(),
+        ));
+        test!(
+            actual,
+            expected,
             "uses index for NULL check inside subquery:\n{sql}"
         );
 
@@ -1169,10 +1147,10 @@ ORDER BY name;
                 table("Test")
                     .index_by(non_clustered("idx_flag".to_owned()).eq(true))
                     .select(),
-            ))
-            .build();
-        assert_eq!(
-            actual, expected,
+            ));
+        test!(
+            actual,
+            expected,
             "plans filter subquery when order by owns the outer index:\n{sql}"
         );
 
@@ -1194,10 +1172,10 @@ WHERE id = 1
                 table("Test")
                     .index_by(non_clustered("idx_flag".to_owned()).eq(true))
                     .select(),
-            ))
-            .build();
-        assert_eq!(
-            actual, expected,
+            ));
+        test!(
+            actual,
+            expected,
             "plans right conjunct subquery after selecting the outer index:\n{sql}"
         );
 
@@ -1221,10 +1199,10 @@ WHERE (id = 1 AND name IS NOT NULL)
                         .index_by(non_clustered("idx_flag".to_owned()).eq(true))
                         .select(),
                 )),
-            )
-            .build();
-        assert_eq!(
-            actual, expected,
+            );
+        test!(
+            actual,
+            expected,
             "preserves left residual and plans right conjunct subquery:\n{sql}"
         );
     }

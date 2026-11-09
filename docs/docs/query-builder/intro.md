@@ -76,6 +76,40 @@ let actual = table("Foo")
     .execute(glue);
 ```
 
+## Supplying schemas
+
+Use `with_schema(...)` after constructing a statement to supply its schema metadata.
+Each call accepts either CREATE TABLE DDL or a `gluesql_core::data::Schema`:
+
+```rust
+use gluesql_core::{data::Schema, query_builder::{Build, table}};
+
+let source_schema = Schema::from_ddl("CREATE TABLE Source (id INT)")?;
+let plan = table("Item")
+    .insert()
+    .as_select(table("Source").select())
+    .with_schema("CREATE TABLE Item (id INT)")
+    .with_schema(source_schema)
+    .build()?;
+```
+
+Repeated calls stay on the same `WithSchemaNode` until `build()`. Build parses
+DDL, prepares column defaults, and stores a complete `SchemaMapPlan::Planned`
+snapshot on the statement. Schemas use their original table names; query aliases
+do not become map keys. A later input replaces an earlier schema with the same name.
+
+Supply all schemas needed by the statement, including incoming foreign-key
+references for DELETE, DROP, or relevant ALTER operations. Planning treats this
+map as complete and does not fetch missing entries. A present schema without
+column definitions denotes a schemaless table; a missing entry denotes an absent
+table. Other planning passes still run when the builder's `execute` is called.
+
+Without `with_schema`, `build()` leaves the map `Unplanned`, and normal planning
+prepares it from storage. `Glue::execute_stmt` requires a prepared root map.
+The former INSERT metadata methods `table_columns` and `schemaless` are replaced
+by this statement-wide API. The INSERT `columns(...)` method continues to specify
+SQL target columns.
+
 ## Summary
 
 In this introduction to the Query Builder, we have covered the key differences between the Query Builder and ORM query builders, and provided examples of how to use the Query Builder in Rust for various query types. The Query Builder is a powerful and efficient tool for working with GlueSQL, offering greater flexibility and control compared to traditional SQL statements.

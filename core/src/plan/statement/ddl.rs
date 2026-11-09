@@ -71,13 +71,6 @@ impl From<ast::ColumnDef> for ColumnDefPlan {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum TableColumnsPlan {
-    Unplanned,
-    Schemaless,
-    Columns(Vec<ColumnDefPlan>),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CreateTableColumnsPlan {
     /// Input definitions awaiting CTAS column planning.
     Unplanned {

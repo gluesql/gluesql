@@ -2,20 +2,20 @@ use {
     super::PlannerError,
     crate::{
         ast::DataType,
-        data::Schema,
         plan::{
             ColumnDefPlan, CreateTableColumnsPlan, FilterInputPlan, ProjectInputPlan, ProjectPlan,
-            ProjectionPlan, SelectItemPlan, SourcePlan, StatementPlan, StatementPlanKind,
+            ProjectionPlan, SchemaMapPlan, SelectItemPlan, SourcePlan, StatementPlan,
+            StatementPlanKind,
         },
         result::Result,
     },
-    std::{collections::HashMap, hash::BuildHasher},
 };
 
-pub fn plan<S: BuildHasher>(
-    schema_map: &HashMap<String, Schema, S>,
-    mut statement: StatementPlan,
-) -> Result<StatementPlan> {
+pub fn plan(mut statement: StatementPlan) -> Result<StatementPlan> {
+    let SchemaMapPlan::Planned(schema_map) = &statement.schema_map else {
+        return Err(PlannerError::UnplannedSchemaMap.into());
+    };
+
     if let StatementPlanKind::CreateTable {
         columns, source, ..
     } = &mut statement.kind
@@ -46,7 +46,7 @@ pub fn plan<S: BuildHasher>(
                                         if let Some(name) = aliases.get(index) {
                                             column_def.name.clone_from(name);
                                         }
-                                        ColumnDefPlan::from(column_def)
+                                        column_def
                                     })
                                     .collect(),
                             )
@@ -110,15 +110,14 @@ mod tests {
             parse_sql::{parse, parse_query},
             plan::{
                 ColumnDefPlan, CreateTableColumnsPlan, ProjectInputPlan, ProjectPlan,
-                ProjectionPlan, QueryPlan, SourcePlan, StatementPlan, StatementPlanKind,
-                TableAccessPlan, TableSourcePlan,
+                ProjectionPlan, QueryPlan, SchemaMap, SchemaMapPlan, SourcePlan, StatementPlan,
+                StatementPlanKind, TableAccessPlan, TableSourcePlan,
             },
-            planner::{PlannerError, fetch_schema_map},
+            planner::{PlannerError, plan_schema_map},
             query_builder::ColumnDefNode,
             result::{Error, Result},
             translate::{NO_PARAMS, translate, translate_query},
         },
-        std::collections::HashMap,
     };
 
     fn statement(sql: &str) -> StatementPlan {
@@ -157,8 +156,17 @@ mod tests {
 
     fn plan_columns(storage: &MockStorage, sql: &str) -> Result<StatementPlan> {
         let statement = statement(sql);
-        let schema_map = fetch_schema_map(storage, &statement)?;
-        plan(&schema_map, statement)
+        let statement = plan_schema_map(storage, statement)?;
+        plan(statement)
+    }
+
+    #[test]
+    fn unplanned_schema_map() {
+        let input = statement("CREATE TABLE Target AS SELECT * FROM Item");
+
+        let actual = plan(input);
+        let expected = Err(PlannerError::UnplannedSchemaMap.into());
+        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -167,9 +175,9 @@ mod tests {
             "CREATE TABLE Item (id INT PRIMARY KEY DEFAULT 1 + 2 COMMENT 'id', label TEXT);
              CREATE TABLE Documents;",
         );
-        let test = |sql: &str, expected, name: &str| {
-            let actual = plan_columns(&storage, sql);
-            assert_eq!(actual, Ok(expected), "{name}: {sql}");
+        let test = |sql: &str, expected: StatementPlan, name: &str| {
+            let actual = plan_columns(&storage, sql).unwrap();
+            assert_eq!(actual.kind, expected.kind, "{name}: {sql}");
         };
 
         let actual = "CREATE TABLE Target AS SELECT * FROM Item";
@@ -279,31 +287,40 @@ mod tests {
 
     #[test]
     fn unplanned_columns_without_source() {
-        let input = create(
+        let mut input = create(
             None,
             CreateTableColumnsPlan::Unplanned {
                 columns: Some(columns(&["id INT DEFAULT 7"])),
             },
         );
-        let actual = plan(&HashMap::new(), input);
-        let expected = Ok(create(
+        input.schema_map = SchemaMapPlan::Planned(SchemaMap::new());
+
+        let actual = plan(input).unwrap();
+        let expected = create(
             None,
             CreateTableColumnsPlan::Columns(columns(&["id INT DEFAULT 7"])),
-        ));
-        assert_eq!(actual, expected, "explicit definitions without a source");
+        );
+        assert_eq!(
+            actual.kind, expected.kind,
+            "explicit definitions without a source"
+        );
 
-        let input = create(None, CreateTableColumnsPlan::Unplanned { columns: None });
-        let actual = plan(&HashMap::new(), input);
-        let expected = Ok(create(None, CreateTableColumnsPlan::Schemaless));
-        assert_eq!(actual, expected, "schemaless without a source");
+        let mut input = create(None, CreateTableColumnsPlan::Unplanned { columns: None });
+        input.schema_map = SchemaMapPlan::Planned(SchemaMap::new());
+
+        let actual = plan(input).unwrap();
+        let expected = create(None, CreateTableColumnsPlan::Schemaless);
+        assert_eq!(actual.kind, expected.kind, "schemaless without a source");
     }
 
     #[test]
     fn leaves_other_statements_and_prepared_columns() {
-        let test = |input: StatementPlan, name: &str| {
-            let actual = plan(&HashMap::new(), input.clone());
-            let expected = Ok(input);
-            assert_eq!(actual, expected, "{name}");
+        let test = |mut input: StatementPlan, name: &str| {
+            input.schema_map = SchemaMapPlan::Planned(SchemaMap::new());
+
+            let expected = input.kind.clone();
+            let actual = plan(input).unwrap();
+            assert_eq!(actual.kind, expected, "{name}");
         };
 
         test(statement("SELECT 1"), "other statement");

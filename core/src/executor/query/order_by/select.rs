@@ -10,10 +10,10 @@ use {
         ast::{Literal, UnaryOperator},
         data::{Row, Value},
         executor::{
-            context::{AggregateValues, RowContext},
+            context::{AggregateValues, RowContext, StatementContext},
             evaluate::evaluate,
         },
-        plan::{CustomFunctionPlan, ExprPlan, OrderByExprPlan, SelectOrderByPlan},
+        plan::{ExprPlan, OrderByExprPlan, SelectOrderByPlan},
         result::Result,
         store::GStore,
     },
@@ -23,9 +23,9 @@ use {
 
 pub(crate) fn execute<'a, T>(
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
-    plan: &'a SelectOrderByPlan,
+    stmt_context: StatementContext<'a>,
     filter_context: Option<Rc<RowContext<'a>>>,
+    plan: &'a SelectOrderByPlan,
 ) -> Result<LabeledRows<'a>>
 where
     T: GStore,
@@ -36,10 +36,10 @@ where
         labels,
         rows,
         table_alias,
-    } = project::execute(storage, functions, input, filter_context)?;
+    } = project::execute(storage, stmt_context, filter_context, input)?;
     let rows = sort(
         storage,
-        functions,
+        stmt_context,
         sort_context.as_ref(),
         rows,
         table_alias,
@@ -51,7 +51,7 @@ where
 
 fn sort<'a, T>(
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
+    stmt_context: StatementContext<'a>,
     context: Option<&Rc<RowContext<'a>>>,
     rows: impl Iterator<Item = Result<(Option<Rc<AggregateValues>>, Option<Rc<RowContext<'a>>>, Row)>>
     + 'a,
@@ -135,7 +135,7 @@ where
                     SortType::Value(value) => Ok(value),
                     SortType::Expr(expr) => evaluate(
                         storage,
-                        functions,
+                        stmt_context,
                         filter_context.as_ref(),
                         aggregated.as_ref(),
                         expr,

@@ -252,5 +252,5 @@ INSERT INTO Items VALUES (100, 'a', 'b', 1);
 -- @expect: error Insert.TooManyValues
 
 INSERT INTO Nothing VALUES (1);
--- @expect: error Insert.TableNotFound
+-- @expect: error Planner.InsertTableNotFound
 -- @json: "Nothing"

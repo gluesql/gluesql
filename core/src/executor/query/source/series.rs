@@ -5,8 +5,11 @@ use {
     },
     crate::{
         data::{Row, Value},
-        executor::{context::RowContext, evaluate::evaluate},
-        plan::{CustomFunctionPlan, SeriesSourcePlan},
+        executor::{
+            context::{RowContext, StatementContext},
+            evaluate::evaluate,
+        },
+        plan::SeriesSourcePlan,
         result::Result,
         store::GStore,
     },
@@ -15,7 +18,7 @@ use {
 
 pub(super) fn execute<'a, T: GStore>(
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
+    stmt_context: StatementContext<'a>,
     series: &'a SeriesSourcePlan,
 ) -> PreparedSource<'a> {
     let output = SourceColumns {
@@ -29,13 +32,13 @@ pub(super) fn execute<'a, T: GStore>(
     let rows = Box::new(move |evaluation_context: Option<Rc<RowContext<'a>>>| {
         rows(
             storage,
-            functions,
-            series,
+            stmt_context,
             SourceColumns {
                 alias: source.alias,
                 names: Rc::clone(&source.names),
             },
             evaluation_context.as_ref(),
+            series,
         )
     });
 
@@ -44,13 +47,13 @@ pub(super) fn execute<'a, T: GStore>(
 
 fn rows<'a, T: GStore>(
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
-    series: &'a SeriesSourcePlan,
+    stmt_context: StatementContext<'a>,
     source: SourceColumns<'a>,
     context: Option<&Rc<RowContext<'a>>>,
+    series: &'a SeriesSourcePlan,
 ) -> Result<SourceRows<'a>> {
     let columns = Rc::clone(&source.names);
-    let value: Value = evaluate(storage, functions, context, None, &series.size)?.try_into()?;
+    let value: Value = evaluate(storage, stmt_context, context, None, &series.size)?.try_into()?;
     let size: i64 = value.try_into()?;
     if size < 0 {
         return Err(QueryError::InvalidSeriesSize(size).into());
