@@ -546,11 +546,18 @@ mod tests {
         input.functions = vec![CustomFunctionPlan {
             name: "provided".to_owned(),
             body: expr("(SELECT id FROM Body)"),
-            args: vec![OperateFunctionArgPlan {
-                name: "arg".to_owned(),
-                data_type: DataType::Int,
-                default: Some(expr("(SELECT id FROM Arg)")),
-            }],
+            args: vec![
+                OperateFunctionArgPlan {
+                    name: "required".to_owned(),
+                    data_type: DataType::Int,
+                    default: None,
+                },
+                OperateFunctionArgPlan {
+                    name: "arg".to_owned(),
+                    data_type: DataType::Int,
+                    default: Some(expr("(SELECT id FROM Arg)")),
+                },
+            ],
         }];
         let actual = plan_statement(&storage, input).unwrap();
         let expected = ["Arg", "Body", "Item"];
