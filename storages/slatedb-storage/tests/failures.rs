@@ -1,6 +1,9 @@
 use {
     async_trait::async_trait,
-    futures::stream::{self, BoxStream},
+    futures::{
+        executor::block_on,
+        stream::{self, BoxStream},
+    },
     gluesql_core::{
         data::{Key, Schema, Value},
         error::Error,
@@ -124,6 +127,48 @@ impl ObjectStore for FailingStore {
     ) -> object_store::Result<()> {
         unimplemented!("not used by these failure tests")
     }
+}
+
+// These required trait methods are unused by the storage failure scenarios.
+#[test]
+#[should_panic(expected = "not used by these failure tests")]
+fn failing_store_display_is_unimplemented() {
+    let _ = FailingStore::default().to_string();
+}
+
+#[test]
+#[should_panic(expected = "not used by these failure tests")]
+fn failing_store_put_multipart_opts_is_unimplemented() {
+    let objects = FailingStore::default();
+    let path = Path::from("unused");
+
+    let _ = block_on(objects.put_multipart_opts(&path, PutMultipartOptions::default()));
+}
+
+#[test]
+#[should_panic(expected = "not used by these failure tests")]
+fn failing_store_delete_stream_is_unimplemented() {
+    let objects = FailingStore::default();
+
+    let _ = objects.delete_stream(Box::pin(stream::empty()));
+}
+
+#[test]
+#[should_panic(expected = "not used by these failure tests")]
+fn failing_store_list_with_delimiter_is_unimplemented() {
+    let objects = FailingStore::default();
+
+    let _ = block_on(objects.list_with_delimiter(None));
+}
+
+#[test]
+#[should_panic(expected = "not used by these failure tests")]
+fn failing_store_copy_opts_is_unimplemented() {
+    let objects = FailingStore::default();
+    let from = Path::from("source");
+    let to = Path::from("destination");
+
+    let _ = block_on(objects.copy_opts(&from, &to, CopyOptions::default()));
 }
 
 #[test]
