@@ -55,6 +55,20 @@ fn open_reports_an_unsupported_object_store_scheme() {
 }
 
 #[test]
+fn open_reports_invalid_s3_configuration() {
+    // S3 configuration is read before this endpoint is rejected, without I/O.
+    assert_eq!(
+        SlatedbStorage::open("https://invalid.amazonaws.com/my_database").err(),
+        Some(Error::StorageMsg(
+            "failed to configure object store: Generic S3 error: \
+             URL did not match any known pattern for scheme: \
+             https://invalid.amazonaws.com/my_database"
+                .into()
+        ))
+    );
+}
+
+#[test]
 fn table_names_survive_reopen() {
     let objects = Arc::new(InMemory::new());
     let mut storage = SlatedbStorage::new(objects.clone(), "table_names").unwrap();

@@ -1,6 +1,6 @@
 use {
     async_trait::async_trait,
-    futures::stream::BoxStream,
+    futures::stream::{self, BoxStream},
     gluesql_core::{
         data::{Key, Schema, Value},
         error::Error,
@@ -28,7 +28,9 @@ use {
 #[derive(Debug, Default)]
 struct FailingStore {
     inner: InMemory,
+    fail_list: AtomicBool,
     fail_wal: AtomicBool,
+    fail_sst_writes: AtomicBool,
     fail_sst_reads: AtomicBool,
 }
 
@@ -54,6 +56,13 @@ impl ObjectStore for FailingStore {
             });
         }
 
+        if self.fail_sst_writes.load(Ordering::SeqCst) && location.as_ref().contains("/compacted/")
+        {
+            return Err(object_store::Error::NotSupported {
+                source: Box::new(io::Error::other("injected SST write failure")),
+            });
+        }
+
         self.inner.put_opts(location, payload, options).await
     }
 
@@ -70,9 +79,9 @@ impl ObjectStore for FailingStore {
         location: &Path,
         options: GetOptions,
     ) -> object_store::Result<GetResult> {
+        // Restrict faults to SST reads so background metadata refresh cannot
+        // close the database while testing schema and row reads.
         if self.fail_sst_reads.load(Ordering::SeqCst) && location.as_ref().contains("/compacted/") {
-            // Restrict the fault to SST reads so background metadata refresh
-            // cannot close the database while testing row reads.
             return Err(object_store::Error::NotSupported {
                 source: Box::new(io::Error::other("injected read failure")),
             });
@@ -89,6 +98,14 @@ impl ObjectStore for FailingStore {
     }
 
     fn list(&self, prefix: Option<&Path>) -> BoxStream<'static, object_store::Result<ObjectMeta>> {
+        if self.fail_list.load(Ordering::SeqCst) {
+            return Box::pin(stream::once(async {
+                Err(object_store::Error::NotSupported {
+                    source: Box::new(io::Error::other("injected list failure")),
+                })
+            }));
+        }
+
         self.inner.list(prefix)
     }
 
@@ -107,6 +124,48 @@ impl ObjectStore for FailingStore {
     ) -> object_store::Result<()> {
         unimplemented!("not used by these failure tests")
     }
+}
+
+#[test]
+fn object_list_failure_prevents_open() {
+    let objects = Arc::new(FailingStore::default());
+    objects.fail_list.store(true, Ordering::SeqCst);
+
+    assert_eq!(
+        SlatedbStorage::new(objects, "open_failure").err(),
+        Some(Error::StorageMsg(
+            "Unavailable error: object store error (Operation not supported: injected list failure)"
+                .into()
+        ))
+    );
+}
+
+#[test]
+fn close_flush_failure_preserves_committed_data_in_the_wal() {
+    let objects = Arc::new(FailingStore::default());
+    let mut storage = SlatedbStorage::new(objects.clone(), "close_failure").unwrap();
+
+    storage.begin(false).unwrap();
+    storage
+        .insert_data("Items", vec![(Key::I64(1), vec![Value::I64(1)])])
+        .unwrap();
+    storage.commit().unwrap();
+
+    objects.fail_sst_writes.store(true, Ordering::SeqCst);
+    // SlateDB marks the DB closed before flushing, so this failure is reported
+    // as Closed rather than the underlying object-store error.
+    assert_eq!(
+        storage.close(),
+        Err(Error::StorageMsg("Closed error: db is closed".into()))
+    );
+
+    objects.fail_sst_writes.store(false, Ordering::SeqCst);
+    let storage = SlatedbStorage::new(objects, "close_failure").unwrap();
+    assert_eq!(
+        storage.fetch_data("Items", &Key::I64(1)).unwrap(),
+        Some(vec![Value::I64(1)])
+    );
+    storage.close().unwrap();
 }
 
 #[test]
@@ -156,35 +215,134 @@ fn failed_wal_write_reports_unconfirmed_durability() {
 fn object_read_failure_reaches_fetch_and_scan_open() {
     let objects = Arc::new(FailingStore::default());
     let mut storage = SlatedbStorage::new(objects.clone(), "read_failure").unwrap();
+    let schema = Schema::from_ddl("CREATE TABLE Items (id INTEGER)").unwrap();
 
     storage.begin(false).unwrap();
-    storage
-        .insert_schema(&Schema::from_ddl("CREATE TABLE Items (id INTEGER)").unwrap())
-        .unwrap();
+    storage.insert_schema(&schema).unwrap();
     storage
         .insert_data("Items", vec![(Key::I64(1), vec![Value::I64(1)])])
         .unwrap();
     storage.commit().unwrap();
     storage.close().unwrap();
 
-    let storage = SlatedbStorage::new(objects.clone(), "read_failure").unwrap();
+    let mut storage = SlatedbStorage::new(objects.clone(), "read_failure").unwrap();
     objects.fail_sst_reads.store(true, Ordering::SeqCst);
     let expected = Error::StorageMsg(
         "Unavailable error: object store error (Operation not supported: injected read failure)"
             .into(),
     );
+    assert_eq!(storage.fetch_all_schemas().unwrap_err(), expected);
     assert_eq!(
         storage.fetch_data("Items", &Key::I64(1)).unwrap_err(),
         expected
     );
+    assert_eq!(storage.scan_data("Items").err().unwrap(), expected);
 
-    assert_eq!(storage.scan_data("Items").err(), Some(expected));
+    storage.begin(false).unwrap();
+    assert_eq!(storage.delete_schema("Items"), Err(expected));
+    storage.rollback().unwrap();
 
     objects.fail_sst_reads.store(false, Ordering::SeqCst);
+    assert_eq!(storage.fetch_schema("Items").unwrap(), Some(schema));
     assert_eq!(
         storage.fetch_data("Items", &Key::I64(1)).unwrap(),
         Some(vec![Value::I64(1)])
     );
+    storage.close().unwrap();
+}
+
+#[test]
+fn fetch_all_schemas_propagates_iteration_failure() {
+    let objects = Arc::new(FailingStore::default());
+    let mut storage = SlatedbStorage::new(objects.clone(), "schema_iteration_failure").unwrap();
+
+    // Spread schemas across blocks while leaving several in the first block
+    // for the iterator's initial lookahead.
+    let schemas: Vec<_> = (0..32)
+        .map(|id| {
+            let mut schema = Schema::from_ddl("CREATE TABLE Items (id INTEGER)").unwrap();
+            schema.table_name = format!("Items{id:03}");
+            schema.comment = Some("x".repeat(512));
+            schema
+        })
+        .collect();
+
+    storage.begin(false).unwrap();
+    for schema in &schemas {
+        storage.insert_schema(schema).unwrap();
+    }
+    storage.commit().unwrap();
+    storage.close().unwrap();
+
+    let storage = SlatedbStorage::new(objects.clone(), "schema_iteration_failure").unwrap();
+
+    // Cache the first block; later blocks still need object-store reads.
+    assert_eq!(
+        storage.fetch_schema("Items000").unwrap(),
+        Some(schemas[0].clone())
+    );
+
+    objects.fail_sst_reads.store(true, Ordering::SeqCst);
+    assert_eq!(
+        storage.fetch_all_schemas(),
+        Err(Error::StorageMsg(
+            "Unavailable error: object store error (Operation not supported: injected read failure)"
+                .into()
+        ))
+    );
+
+    objects.fail_sst_reads.store(false, Ordering::SeqCst);
+    assert_eq!(storage.fetch_all_schemas().unwrap(), schemas);
+    storage.close().unwrap();
+}
+
+#[test]
+fn failed_schema_deletion_can_be_rolled_back() {
+    let objects = Arc::new(FailingStore::default());
+    let mut storage = SlatedbStorage::new(objects.clone(), "delete_iteration_failure").unwrap();
+    let schema = Schema::from_ddl("CREATE TABLE Items (value TEXT)").unwrap();
+
+    // Keep several rows in the first block so deletion begins before a later
+    // block read fails.
+    let rows: Vec<_> = (0..32)
+        .map(|id| (Key::I64(id), vec![Value::Str("x".repeat(512))]))
+        .collect();
+
+    storage.begin(false).unwrap();
+    storage.insert_schema(&schema).unwrap();
+    storage.insert_data("Items", rows.clone()).unwrap();
+    storage.commit().unwrap();
+    storage.close().unwrap();
+
+    let mut storage = SlatedbStorage::new(objects.clone(), "delete_iteration_failure").unwrap();
+
+    // Cache the first block so deletion starts before a later read fails.
+    assert_eq!(
+        storage.fetch_data("Items", &Key::I64(0)).unwrap(),
+        Some(vec![Value::Str("x".repeat(512))])
+    );
+
+    storage.begin(false).unwrap();
+    objects.fail_sst_reads.store(true, Ordering::SeqCst);
+    assert_eq!(
+        storage.delete_schema("Items"),
+        Err(Error::StorageMsg(
+            "Unavailable error: object store error (Operation not supported: injected read failure)"
+                .into()
+        ))
+    );
+
+    objects.fail_sst_reads.store(false, Ordering::SeqCst);
+    assert_eq!(storage.fetch_data("Items", &Key::I64(0)).unwrap(), None);
+    storage.rollback().unwrap();
+
+    assert_eq!(storage.fetch_schema("Items").unwrap(), Some(schema));
+    let restored_rows = storage
+        .scan_data("Items")
+        .unwrap()
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
+    assert_eq!(restored_rows, rows);
     storage.close().unwrap();
 }
 
