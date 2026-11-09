@@ -66,7 +66,7 @@ SELECT * FROM Names JOIN Logs ON Names.id = Logs.id;
 ```
 
 ## Supported Reference Storages
-GlueSQL provides a variety of reference storages out of the box, including simple in-memory storage, key-value databases, and log file-based storage like JSON & JSONL. These reference storages are readily available for use and can be easily adapted to a variety of storage systems. Additionally, GlueSQL is constantly expanding its list of supported storages, making it a versatile tool for developers.
+GlueSQL provides reference storages for in-memory data, embedded databases, local files, object stores, and external databases. See the [storage documentation](storages/intro.md) for setup, examples, and limitations.
 
 ### Memory Storage
 Memory Storage is a foundational storage option designed for in-memory, non-persistent data. It is a simple yet robust storage option that can be used in production environments.
@@ -76,6 +76,9 @@ Shared Memory Storage is a storage option designed to provide more comfortable u
 
 ### Redb Storage
 Redb Storage leverages the [redb](https://docs.rs/redb) embedded database for persistent storage with transactional support. It keeps all tables in a single database file, offering another simple way to keep your data on disk while enjoying GlueSQL's query capabilities.
+
+### SlateDB Storage
+[SlateDB Storage](storages/supported-storages/slatedb-storage.md) stores GlueSQL schemas and rows in an embedded key-value engine backed by object storage, including Amazon S3 and Cloudflare R2. It supports reads, writes, and transactions, while SlateDB manages caching and compaction.
 
 ### JSON Storage
 With GlueSQL, you can use JSONL or JSON files as a database that supports SQL and Query Builder, making it a powerful option for developers who need to work with JSON data. JSON Storage is a storage system that uses two types of files: a schema file (optional) and a data file. The schema file is written in Standard SQL and stores the structure of the table, while the data file contains the actual data and supports two file formats: `*.json` and `*.jsonl`. JSON Storage supports all DML features, but is particularly specialized for SELECT and INSERT.
@@ -97,17 +100,16 @@ Git Storage is a custom storage option in GlueSQL that integrates seamlessly wit
 ### Mongo Storage
 With Mongo storage, you can use mongodb as a storage for SQL queries. You can use all the features supported by GlueSQL, such as aggregations and joins, which were previously difficult to handle on an unstructured database. In particular, you can use GlueSQL's powerful schema system on mongodb, which is as strong as an RDBMS.
 
+### Redis Storage
+[Redis Storage](storages/supported-storages/redis-storage.md) stores GlueSQL schemas and rows in a running Redis server. A namespace keeps each database's keys separate within the server.
+
 ### Composite Storage
 Composite Storage is a powerful feature of GlueSQL that allows you to bundle together multiple existing storages, enabling you to perform JOIN operations across two distinct storages. This makes it useful for scenarios where data has to be queried or moved across different storage systems through the same SQL interface.
 
 ## Adapting GlueSQL to Your Environment: Creating Custom Storage
-GlueSQL is designed to be adaptable to a wide variety of environments, including file systems, key-value databases, complex NoSQL databases, and remote APIs. To create a custom storage for GlueSQL, you only need to implement the Store and StoreMut traits provided by GlueSQL. These traits allow you to support SELECT queries and modify data, such as INSERT, UPDATE, and DELETE.
+Connect GlueSQL to your files, databases, or APIs through the storage traits. `Store` handles reads and `StoreMut` handles writes. Additional traits support features such as transactions, indexes, and custom functions.
 
-If you want to support additional features, such as schema changes, transactions, or custom functions, you can implement the corresponding traits. However, these traits are optional, and you can choose to implement only the ones that are relevant to your storage system.
-
-To make it even easier to develop custom storages, GlueSQL provides a Test Suite that allows you to test your storage implementation against a set of standard SQL queries. This ensures that your storage system is compatible with GlueSQL and can handle common SQL operations.
-
-Overall, creating a custom storage for GlueSQL is a straightforward process that allows you to adapt SQL and the Query Builder to your environment with ease.
+See the [custom storage guide](storages/developing-custom-storages/intro.md) for implementation details and the [Test Suite](storages/developing-custom-storages/using-test-suite.md) for shared SQL tests.
 
 ## GlueSQL Custom Storage: Let Us Handle It for You
 Although anyone can develop a custom storage for GlueSQL with ease, our GlueSQL team can also implement and maintain it for you. This is especially recommended for NoSQL databases with their own query planner and execution layer, as adapting GlueSQL to them requires a deep understanding of GlueSQL's planner and storage layer details. We welcome not only database companies but also any services that want to support SQL and GlueSQL query interfaces. As GlueSQL is rapidly adding and improving features, we can help you develop and manage your custom storage effectively if you entrust it to us. If you're interested, please contact us at \<taehoon@gluesql.com>.

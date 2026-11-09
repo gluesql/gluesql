@@ -27,6 +27,19 @@ jobs:
         run: |
           cargo release version ${{ github.event.inputs.version }} --workspace --execute --no-confirm
           NEW_VERSION="v$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n 1)"
+
+          python3 - "${NEW_VERSION#v}" <<'PY'
+          import re
+          import sys
+          from pathlib import Path
+
+          readme = Path("README.md")
+          content = readme.read_text()
+          pattern = r"https://gluesql\.org/docs/(?:dev|[0-9][0-9A-Za-z.+-]*)/"
+          content = re.sub(pattern, f"https://gluesql.org/docs/{sys.argv[1]}/", content)
+          readme.write_text(content)
+          PY
+
           NEW_BRANCH="prepare-release-$NEW_VERSION"
           git checkout -b $NEW_BRANCH
           git config --local user.email "taehoon.moon@outlook.com"

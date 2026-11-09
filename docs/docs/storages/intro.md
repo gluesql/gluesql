@@ -8,13 +8,13 @@ GlueSQL is not only suitable for use as a conventional database, but one of its 
 
 ## Supported Storages
 
-GlueSQL provides a variety of reference storages out of the box, ranging from simple in-memory storage to key-value databases and log file-based storage like JSON & JSONL.
+GlueSQL provides reference storages for in-memory data, embedded databases, local files, object stores, and external databases. [SlateDB Storage](supported-storages/slatedb-storage.md) uses object stores such as Amazon S3 and Cloudflare R2. See the [Rust getting-started guide](../getting-started/rust.md) for the full list of storage features.
 
 ## Developing Custom Storages
 
-GlueSQL offers an easy-to-understand and implement interface for custom storage development. By implementing the corresponding interface, developers can have SQL and the Query Builder automatically support their custom storage.
+The [custom storage guide](developing-custom-storages/intro.md) explains the traits that connect your storage to SQL and the Query Builder, including the default implementations you can reuse.
 
-Verification of custom storage implementation is also straightforward using GlueSQL's test-suite, which allows developers to easily test their implementation and fix any issues found during the process. With a line coverage of nearly 99% in the GlueSQL project's core code, custom storage developers can complete the development and verification process simply by passing all the test-suite cases.
+Use the [shared test suite](developing-custom-storages/using-test-suite.md) to verify the SQL features your storage supports. Add storage-specific integration tests for behavior such as persistence, transaction isolation, and backend failures.
 
 ## Exploring the Storages Section
 

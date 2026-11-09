@@ -4,13 +4,11 @@ sidebar_position: 4
 
 # Transaction
 
-While transactions are often considered an essential feature for databases, GlueSQL treats transactions as an optional trait. Custom storage developers can choose whether or not to support transactions in their storage implementation. Transactions can be quite heavy and expensive in terms of performance.
+`Transaction` handles BEGIN, COMMIT, and ROLLBACK. Implement its methods to support transactions.
 
-If you're building a general-purpose OLTP database, transactions are a necessary feature. However, if you want to handle JSONL log files using SQL, transactions may be desirable, but not strictly necessary at the cost of significant performance degradation.
+With the defaults, statements run without a transaction and BEGIN returns an unsupported error. SAVEPOINT is not supported.
 
-You can verify your `Transaction` trait implementation using the Test Suite. However, the Test Suite only provides logical tests for single-threaded environments. If you intend to support transactions in a concurrent environment, you'll need to write additional tests to verify your implementation. This allows different storage implementations to support various transaction isolation levels.
-
-Currently, the SAVEPOINT feature is not supported, and only three methods are available: BEGIN (or START TRANSACTION), ROLLBACK, and COMMIT.
+Use the shared Test Suite for commit and rollback behavior. Transaction isolation can differ between storages, so add integration tests for the guarantees your storage provides.
 
 ```rust
 pub trait Transaction {

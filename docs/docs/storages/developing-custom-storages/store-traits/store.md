@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Store
 
-The `Store` trait is the most essential trait to implement for custom storage. Simply by implementing the Store trait, you can support SELECT queries in SQL. You may want to analyze and retrieve data from log files or external APIs using SQL. In this case, having only SELECT queries available is sufficient, and there might not be any need for data modification. In such scenarios, implementing GlueSQL's `Store` trait alone would be adequate.
+`Store` reads schemas and rows for SELECT queries. Implement its four methods to query data from a database, file, or API.
 
 Here are the four methods required to implement the `Store` trait:
 
