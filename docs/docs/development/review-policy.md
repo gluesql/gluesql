@@ -7,7 +7,7 @@ the change. Keep unrelated migrations of existing code in separate changes.
 | Topic | Rules |
 | --- | --- |
 | [Errors](review-policy/errors.md) | Error ownership, variants, prefixes, and error-path testing. |
-| [Testing](review-policy/testing.md) | Unit tests, executable SQL documentation, storage integration tests, assertions, and helpers. |
+| [Testing](review-policy/testing.md) | Test responsibilities and maintenance, unit tests, SQL fixtures, storage integration tests, assertions, and helpers. |
 | [Code Structure](review-policy/code-structure.md) | Guidance on design and declaration order, plus minimum visibility. |
 
 ## Change scope
