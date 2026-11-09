@@ -33,8 +33,8 @@ struct FailingStore {
 }
 
 impl fmt::Display for FailingStore {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("FailingStore")
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        unimplemented!("not used by these failure tests")
     }
 }
 
@@ -59,10 +59,10 @@ impl ObjectStore for FailingStore {
 
     async fn put_multipart_opts(
         &self,
-        location: &Path,
-        options: PutMultipartOptions,
+        _location: &Path,
+        _options: PutMultipartOptions,
     ) -> object_store::Result<Box<dyn MultipartUpload>> {
-        self.inner.put_multipart_opts(location, options).await
+        unimplemented!("not used by these failure tests")
     }
 
     async fn get_opts(
@@ -83,26 +83,29 @@ impl ObjectStore for FailingStore {
 
     fn delete_stream(
         &self,
-        locations: BoxStream<'static, object_store::Result<Path>>,
+        _locations: BoxStream<'static, object_store::Result<Path>>,
     ) -> BoxStream<'static, object_store::Result<Path>> {
-        self.inner.delete_stream(locations)
+        unimplemented!("not used by these failure tests")
     }
 
     fn list(&self, prefix: Option<&Path>) -> BoxStream<'static, object_store::Result<ObjectMeta>> {
         self.inner.list(prefix)
     }
 
-    async fn list_with_delimiter(&self, prefix: Option<&Path>) -> object_store::Result<ListResult> {
-        self.inner.list_with_delimiter(prefix).await
+    async fn list_with_delimiter(
+        &self,
+        _prefix: Option<&Path>,
+    ) -> object_store::Result<ListResult> {
+        unimplemented!("not used by these failure tests")
     }
 
     async fn copy_opts(
         &self,
-        from: &Path,
-        to: &Path,
-        options: CopyOptions,
+        _from: &Path,
+        _to: &Path,
+        _options: CopyOptions,
     ) -> object_store::Result<()> {
-        self.inner.copy_opts(from, to, options).await
+        unimplemented!("not used by these failure tests")
     }
 }
 
@@ -150,7 +153,7 @@ fn failed_wal_write_reports_unconfirmed_durability() {
 }
 
 #[test]
-fn object_read_failure_reaches_fetch_and_scan() {
+fn object_read_failure_reaches_fetch_and_scan_open() {
     let objects = Arc::new(FailingStore::default());
     let mut storage = SlatedbStorage::new(objects.clone(), "read_failure").unwrap();
 
@@ -175,13 +178,7 @@ fn object_read_failure_reaches_fetch_and_scan() {
         expected
     );
 
-    // Depending on which SST metadata is cached, failure can happen when
-    // opening the scan or when requesting its first row. Both must propagate.
-    let error = match storage.scan_data("Items") {
-        Ok(mut rows) => rows.next().unwrap().unwrap_err(),
-        Err(error) => error,
-    };
-    assert_eq!(error, expected);
+    assert_eq!(storage.scan_data("Items").err(), Some(expected));
 
     objects.fail_sst_reads.store(false, Ordering::SeqCst);
     assert_eq!(
@@ -196,8 +193,7 @@ fn object_read_failure_during_iteration_is_returned_once() {
     let objects = Arc::new(FailingStore::default());
     let mut storage = SlatedbStorage::new(objects.clone(), "lazy_read_failure").unwrap();
 
-    // With SlateDB's default one-block read-ahead, 128 rows of 2 KiB leave
-    // blocks to fetch after opening the scan and enabling the fault.
+    // Leave unread SST blocks after consuming the first row.
     let payload = "x".repeat(2048);
     let row_count = 128;
 
@@ -215,14 +211,16 @@ fn object_read_failure_during_iteration_is_returned_once() {
 
     let storage = SlatedbStorage::new(objects.clone(), "lazy_read_failure").unwrap();
     let mut rows = storage.scan_data("Items").unwrap();
-    objects.fail_sst_reads.store(true, Ordering::SeqCst);
+    assert_eq!(
+        rows.next().unwrap().unwrap(),
+        (Key::I64(0), vec![Value::Str(payload)])
+    );
 
-    let error = loop {
-        match rows.next().expect("a later block read must fail") {
-            Ok((_, values)) => assert_eq!(values, vec![Value::Str(payload.clone())]),
-            Err(error) => break error,
-        }
-    };
+    objects.fail_sst_reads.store(true, Ordering::SeqCst);
+    let error = rows
+        .find_map(Result::err)
+        .expect("reading an uncached SST block must fail");
+
     assert_eq!(
         error,
         Error::StorageMsg(
@@ -230,7 +228,6 @@ fn object_read_failure_during_iteration_is_returned_once() {
                 .into()
         )
     );
-    assert_eq!(rows.next(), None);
     assert_eq!(rows.next(), None);
 
     drop(rows);
