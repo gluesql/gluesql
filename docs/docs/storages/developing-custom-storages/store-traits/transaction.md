@@ -22,23 +22,20 @@ pub trait Transaction {
 }
 ```
 
-## Execution and transaction ownership
+## Automatic and explicit transactions
 
-For each ordinary statement, `Glue::execute` calls `begin(true)` before planning
-and execution. `Glue::execute_stmt` does the same for execution of an already
-prepared plan. Query Builder execution uses the same Glue path as SQL execution.
-When `begin(true)` returns `true`, Glue commits on success and rolls back on
-failure. When it returns `false`, Glue returns the operation's result without
-calling commit or rollback. The default trait implementation returns `Ok(false)`
-for `begin(true)`, so storage implementations without transaction support keep
-working through this path.
+`begin(true)` is used for automatic transactions around the planning and execution
+of one SQL statement. Its return value controls how the transaction is finished:
 
-SQL `BEGIN`, `COMMIT`, and `ROLLBACK` bypass automatic transaction handling and
-invoke the corresponding storage operation. The default implementation rejects
-an explicit `BEGIN`, which calls `begin(false)`.
+- Return `Ok(true)` when the call starts a transaction that should be committed
+  automatically on success or rolled back on failure.
+- Return `Ok(false)` when the call should not be followed by an automatic commit
+  or rollback, such as when reusing an existing transaction.
 
-The low-level `executor::execute`, also exported as `prelude::execute`, runs a
-prepared plan without automatic transaction handling. This changes its previous
-behavior: direct callers must manage the surrounding transaction when required
-by their storage, or use `Glue::execute_stmt` to have Glue manage it. Planning
-remains separate from this low-level execution API.
+An explicit `BEGIN` calls `begin(false)`. Keep that transaction open until
+`COMMIT` or `ROLLBACK`. Statements within it should reuse the transaction and
+return `Ok(false)` from `begin(true)`.
+
+The default implementation returns `Ok(false)` for `begin(true)` and an
+unsupported-operation error for `begin(false)`. Its `commit` and `rollback`
+methods do nothing and return `Ok(())`.

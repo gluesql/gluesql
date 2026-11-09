@@ -78,8 +78,9 @@ let actual = table("Foo")
 
 ## Supplying schemas
 
-Use `with_schema(...)` after constructing a statement to supply its schema metadata.
-Each call accepts either CREATE TABLE DDL or a `gluesql_core::data::Schema`:
+Queries use the table definitions in storage by default. To supply definitions
+yourself, call `with_schema(...)` before `build()` or `execute()`. Each call accepts
+either CREATE TABLE DDL or a `gluesql_core::data::Schema`:
 
 ```rust
 use gluesql_core::{data::Schema, query_builder::{Build, table}};
@@ -93,22 +94,12 @@ let plan = table("Item")
     .build()?;
 ```
 
-Repeated calls stay on the same `WithSchemaNode` until `build()`. Build parses
-DDL, prepares column defaults, and stores a complete `SchemaMapPlan::Planned`
-snapshot on the statement. Schemas use their original table names; query aliases
-do not become map keys. A later input replaces an earlier schema with the same name.
+Supply every table definition the statement needs, including tables involved in
+foreign-key checks. Missing definitions are not loaded from storage.
 
-Supply all schemas needed by the statement, including incoming foreign-key
-references for DELETE, DROP, or relevant ALTER operations. Planning treats this
-map as complete and does not fetch missing entries. A present schema without
-column definitions denotes a schemaless table; a missing entry denotes an absent
-table. Other planning passes still run when the builder's `execute` is called.
-
-Without `with_schema`, `build()` leaves the map `Unplanned`, and normal planning
-prepares it from storage. `Glue::execute_stmt` requires a prepared root map.
-The former INSERT metadata methods `table_columns` and `schemaless` are replaced
-by this statement-wide API. The INSERT `columns(...)` method continues to specify
-SQL target columns.
+Use the actual table names, even when the query uses aliases. If you supply the
+same table more than once, the last definition is used. Supplying a definition
+does not create the table.
 
 ## Summary
 

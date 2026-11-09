@@ -66,7 +66,7 @@ fn execution_transaction_ownership() {
     }]);
     assert_eq!(actual, expected);
 
-    let actual = glue.execute_stmt(&statement);
+    let actual = glue.execute_prepared(&statement);
     let expected = Ok(Payload::Insert(1));
     assert_eq!(actual, expected);
 

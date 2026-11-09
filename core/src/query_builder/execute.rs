@@ -17,7 +17,7 @@ where
     fn execute(self, glue: &mut Glue<T>) -> Result<Payload> {
         let statement = self.build()?;
 
-        glue.plan_and_execute(statement)
+        glue.execute_stmt(statement)
     }
 }
 

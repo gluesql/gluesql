@@ -110,7 +110,7 @@ pub enum PayloadVariable {
 
 /// Executes a prepared statement without planning or automatic transaction handling.
 ///
-/// Use [`Glue::execute_stmt`](crate::prelude::Glue::execute_stmt) to manage the
+/// Use [`Glue::execute_prepared`](crate::prelude::Glue::execute_prepared) to manage the
 /// transaction automatically. SQL transaction statements still perform their
 /// explicit BEGIN, COMMIT, or ROLLBACK operation.
 pub fn execute<T: GStore + GStoreMut>(

@@ -56,12 +56,7 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
         self.plan_with_params(sql, std::iter::empty::<ParamLiteral>())
     }
 
-    /// Executes a prepared statement with automatic transaction handling, without planning.
-    pub fn execute_stmt(&mut self, statement: &StatementPlan) -> Result<Payload> {
-        self.with_transaction(execute, statement)
-    }
-
-    /// Executes all statements in the SQL string using the supplied parameters.
+    /// Plans and executes all statements in the SQL string using the supplied parameters.
     ///
     /// # Errors
     ///
@@ -82,13 +77,13 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
 
         for parsed in parsed {
             let statement = translate_with_params(&parsed, &params)?;
-            payloads.push(self.plan_and_execute(statement.into())?);
+            payloads.push(self.execute_stmt(statement.into())?);
         }
 
         Ok(payloads)
     }
 
-    /// Executes all statements in the SQL string without parameters.
+    /// Plans and executes all statements in the SQL string without parameters.
     ///
     /// # Errors
     ///
@@ -97,7 +92,11 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
         self.execute_with_params(sql, std::iter::empty::<ParamLiteral>())
     }
 
-    pub(crate) fn plan_and_execute(&mut self, statement: StatementPlan) -> Result<Payload> {
+    /// Plans and executes a statement with automatic transaction handling.
+    ///
+    /// SQL and Query Builder execution use this entry point. Use
+    /// [`Self::execute_prepared`] to execute a prepared plan without planning.
+    pub fn execute_stmt(&mut self, statement: StatementPlan) -> Result<Payload> {
         self.with_transaction(
             |storage, statement| {
                 let statement = storage.plan(statement)?;
@@ -106,6 +105,11 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
             },
             statement,
         )
+    }
+
+    /// Executes a prepared statement with automatic transaction handling, without planning.
+    pub fn execute_prepared(&mut self, statement: &StatementPlan) -> Result<Payload> {
+        self.with_transaction(execute, statement)
     }
 
     fn with_transaction<S: Borrow<StatementPlan>>(
