@@ -76,31 +76,6 @@ let actual = table("Foo")
     .execute(glue);
 ```
 
-## Supplying schemas
-
-Queries use the table definitions in storage by default. To supply definitions
-yourself, call `with_schema(...)` before `build()` or `execute()`. Each call accepts
-either CREATE TABLE DDL or a `gluesql_core::data::Schema`:
-
-```rust
-use gluesql_core::{data::Schema, query_builder::{Build, table}};
-
-let source_schema = Schema::from_ddl("CREATE TABLE Source (id INT)")?;
-let plan = table("Item")
-    .insert()
-    .as_select(table("Source").select())
-    .with_schema("CREATE TABLE Item (id INT)")
-    .with_schema(source_schema)
-    .build()?;
-```
-
-Supply every table definition the statement needs, including tables involved in
-foreign-key checks. Missing definitions are not loaded from storage.
-
-Use the actual table names, even when the query uses aliases. If you supply the
-same table more than once, the last definition is used. Supplying a definition
-does not create the table.
-
 ## Summary
 
 In this introduction to the Query Builder, we have covered the key differences between the Query Builder and ORM query builders, and provided examples of how to use the Query Builder in Rust for various query types. The Query Builder is a powerful and efficient tool for working with GlueSQL, offering greater flexibility and control compared to traditional SQL statements.
