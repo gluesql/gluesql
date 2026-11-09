@@ -4,11 +4,7 @@ sidebar_position: 8
 
 # IndexMut
 
-The `IndexMut` trait, when implemented along with the `Index` trait, allows custom storage developers to provide users with the ability to create, use, and delete non-clustered indexes. Implementing the `IndexMut` trait enhances the storage system's capabilities by providing support for dynamic index management.
-
-Non-clustered indexes can improve query performance by reducing the amount of data that needs to be read during search operations. Users can create multiple non-clustered indexes tailored to their specific use cases, providing a more efficient and optimized experience when working with large datasets.
-
-The `IndexMut` trait requires the implementation of two methods:
+`IndexMut` creates and drops secondary indexes. Override its two methods to support CREATE INDEX and DROP INDEX; both return unsupported errors by default.
 
 1. `create_index`: This method creates a new non-clustered index on the specified column with a given index name for the provided table. The index can be used to speed up queries involving the indexed column.
 
@@ -26,5 +22,3 @@ pub trait IndexMut {
     fn drop_index(&mut self, table_name: &str, index_name: &str) -> Result<()>;
 }
 ```
-
-By implementing both the `Index` and `IndexMut` traits, custom storage developers can provide users with the ability to manage non-clustered indexes according to their specific needs, improving overall query performance and providing a more tailored experience.

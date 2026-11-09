@@ -4,11 +4,9 @@ sidebar_position: 9
 
 # Metadata
 
-The `Metadata` trait is an optional implementation for providing additional metadata support in GlueSQL. GlueSQL does not enforce any specific metadata implementation, allowing custom storage developers to decide which type of metadata, such as create time, modify time, etc., they want to provide.
+The `Metadata` trait lets a storage expose additional information about its tables. GlueSQL does not require a fixed set of properties; each storage decides what to provide, such as creation or modification times.
 
-Implementing the `Metadata` trait can be beneficial in cases where users need to access and manage metadata related to tables, columns, or other database objects. This can help users understand the structure and properties of their data, ensuring proper management and organization.
-
-Currently, the `Metadata` trait supports the `scan_table_meta` method for retrieving table metadata. The metadata provided by the storage can be queried using the data dictionary table `GLUE_TABLES`.
+Implement `scan_table_meta` to return the metadata for each table. Users can query these properties through the `GLUE_OBJECTS` data dictionary table.
 
 ```rust
 type ObjectName = String;
@@ -20,5 +18,3 @@ pub trait Metadata {
     }
 }
 ```
-
-By implementing the `Metadata` trait, custom storage developers can provide users with a way to access and manage metadata related to various database objects. This can be particularly useful in situations where users need to understand the properties of their data or maintain a well-organized database structure.

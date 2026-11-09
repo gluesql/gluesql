@@ -14,6 +14,7 @@ gluesql = "0.20.0"
 By default, GlueSQL enables all bundled storage features. Here's a list of the available storage features:
 
 - `gluesql-redb-storage` - Storage using the redb embedded database
+- `gluesql-slatedb-storage` - SlateDB key-value storage backed by an object store
 - `gluesql_memory_storage` - Simple in-memory storage
 - `gluesql-shared-memory-storage` - A wrapper around memory-storage for easy use in multi-threaded environments
 - `gluesql-json-storage` - Storage that allows you to analyze and modify JSON or JSONL files using SQL

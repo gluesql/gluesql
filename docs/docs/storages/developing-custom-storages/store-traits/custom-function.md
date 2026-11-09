@@ -4,11 +4,11 @@ sidebar_position: 5
 
 # CustomFunction
 
-The `CustomFunction` trait is an optional trait for supporting user-level custom functions. Through the `CustomFunction` trait, you can retrieve custom functions stored in the storage system. You can choose to implement the `CustomFunction` trait alone or together with the `CustomFunctionMut` trait.
+`CustomFunction` reads user-defined functions from storage. Override its methods to expose functions; their defaults return unsupported errors.
 
-In some cases, you might want to provide storage-specific functions pre-built and separately available for each storage system. In such cases, you can implement the `CustomFunction` trait and create additional functions stored in advance when using it. To achieve this, the `CustomFunction` and `CustomFunctionMut` traits are provided separately for implementation.
+For example, a storage can provide a fixed set of functions through `CustomFunction`. Use `CustomFunctionMut` to support creating and deleting functions.
 
-There are two methods available:
+It provides two methods:
 
 1. `fetch_function`: This method retrieves a custom function from the storage system using the provided function name.
 

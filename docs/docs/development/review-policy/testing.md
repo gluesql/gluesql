@@ -1,12 +1,26 @@
 # Testing
 
+Tests are maintained code and executable documentation. **Both insufficient
+and excessive testing are problems.** Missing tests leave required behavior
+unchecked; unnecessary tests add maintenance work without verifying a distinct
+behavior, condition, or responsibility. Add cases that fill gaps and remove
+cases that add no verification value.
+
+A reader should be able to understand what a test verifies without the original
+discussion or change history. Review the maintenance cost of test setup,
+helpers, fault injection, and production code changes made to support them.
+
+One scenario can cover several branches. Different behaviors may need separate
+examples even when they use the same branch.
+
 ## Unit tests
 
 - **Test every reachable branch and check transformation results.**
 
-    Build cases from the implementation under test. Use inputs that reach each
-    branch, and assert the returned value or state change. A test that fails
-    before reaching the target code does not test that code's error handling.
+    Start with the behavior and expected result, then inspect the implementation
+    for missing cases. Use inputs that reach each branch, and assert the returned
+    value or state change. A test that fails before reaching the target code
+    does not test that code's error handling.
 
 - **Test the caller's own behavior when it calls another function.**
 
@@ -65,19 +79,16 @@
 
 ## SQL fixtures
 
-The SQL fixtures in `test-suite/fixtures` are executable documentation for
-people and tools. Group cases by SQL feature and behavior. Use representative
-examples that show successful usage and expected errors. Give each case a clear
-name, and keep its setup, SQL, and expected results easy to read.
+Group the SQL fixtures in `test-suite/fixtures` by feature and behavior. Use
+representative examples that show successful usage and expected errors. Give
+each case a clear name, and keep its setup, SQL, and expected results easy to
+read.
 
 The fixtures also serve a unit-testing role for the execution layer.
 For each behavior covered by a fixture, test every executor branch and error
 path that SQL can reach. Run the cases through the production SQL pipeline and
 assert their results. When a case tests storage behavior, also check the stored
 state. Readable examples and branch coverage are both required.
-
-One scenario can cover several branches. Different SQL behaviors may need
-separate examples even when they use the same branch.
 
 Constructing an AST or plan directly does not prove that SQL can reach the same
 behavior. For guards that require a manually constructed plan or inconsistent
@@ -129,6 +140,7 @@ Do not run the planner being tested to build the expected plan.
 Keep the inputs and expected results visible in each test case. Also show the
 setup that determines the behavior being tested.
 
-Use helpers for repeated parsing, calls, and assertions. Do not hide choices
-that the test checks inside a helper, such as variants, IDs, defaults, or
-traversal rules.
+Extract repeated parsing, calls, or assertions when a helper makes the tests
+easier to understand and change. Keeping a short sequence inline can make a
+case easier to follow. Do not hide choices that the test checks inside a helper,
+such as variants, IDs, defaults, or traversal rules.

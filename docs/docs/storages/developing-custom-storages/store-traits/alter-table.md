@@ -4,9 +4,9 @@ sidebar_position: 3
 
 # AlterTable
 
-The `AlterTable` trait corresponds to the SQL ALTER TABLE statement and is used for modifying existing schemas. It is not necessary to implement the `AlterTable` trait. If you are dealing with data that is difficult to modify schema-wise or schemaless data, there is no need to implement the `AlterTable` trait. It is an optional trait that custom storage developers can choose to implement.
+`AlterTable` handles SQL ALTER TABLE statements. Its default methods use `Store` and `StoreMut`. Override them for storage-specific schema changes, such as updating secondary indexes.
 
-Similar to the `Store` & `StoreMut` combination, if you implement the `AlterTable` trait, you can use additional tests in the Test Suite to verify your implementation. There are currently four types of methods supported by `AlterTable`:
+It provides four methods:
 
 1. `rename_schema`: Corresponds to the SQL statement `ALTER TABLE {table-name} RENAME TO {other-name};`. This method renames a schema.
 
