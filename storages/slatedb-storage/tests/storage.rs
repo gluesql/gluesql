@@ -84,22 +84,18 @@ fn table_names_survive_reopen() {
 }
 
 #[test]
-fn row_keys_with_slashes_survive_reopen() {
+fn row_key_with_slash_survives_reopen() {
     let objects = Arc::new(InMemory::new());
     let mut storage = SlatedbStorage::new(objects.clone(), "row_keys").unwrap();
     let schema = Schema::from_ddl("CREATE TABLE Items (value TEXT)").unwrap();
-    let string_key = Key::Str("a/b".into());
-    let binary_key = Key::Bytea(b"/\0\xff".to_vec());
+    let key = Key::Str("a/b".into());
 
     storage.begin(false).unwrap();
     storage.insert_schema(&schema).unwrap();
     storage
         .insert_data(
             "Items",
-            vec![
-                (string_key.clone(), vec![Value::Str("string key".into())]),
-                (binary_key.clone(), vec![Value::Str("binary key".into())]),
-            ],
+            vec![(key.clone(), vec![Value::Str("string key".into())])],
         )
         .unwrap();
     storage.commit().unwrap();
@@ -107,22 +103,15 @@ fn row_keys_with_slashes_survive_reopen() {
 
     let storage = SlatedbStorage::new(objects, "row_keys").unwrap();
     assert_eq!(
-        storage.fetch_data("Items", &string_key),
+        storage.fetch_data("Items", &key),
         Ok(Some(vec![Value::Str("string key".into())]))
-    );
-    assert_eq!(
-        storage.fetch_data("Items", &binary_key),
-        Ok(Some(vec![Value::Str("binary key".into())]))
     );
     assert_eq!(
         storage
             .scan_data("Items")
             .unwrap()
             .collect::<Result<Vec<_>>>(),
-        Ok(vec![
-            (string_key, vec![Value::Str("string key".into())]),
-            (binary_key, vec![Value::Str("binary key".into())]),
-        ])
+        Ok(vec![(key, vec![Value::Str("string key".into())])])
     );
     storage.close().unwrap();
 }

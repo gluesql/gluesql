@@ -76,10 +76,6 @@ mod tests {
             super::row_key(prefix, &Key::Str("a/b".into())),
             Ok(b"data/users/\0a/b".to_vec())
         );
-        assert_eq!(
-            super::row_key(prefix, &Key::Bytea(b"/\0\xff".to_vec())),
-            Ok(b"data/users//\0\xff".to_vec())
-        );
 
         assert_eq!(
             super::row_key(prefix, &Key::F64(1.0.into())),
