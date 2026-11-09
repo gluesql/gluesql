@@ -65,6 +65,7 @@ jobs:
           cargo test -p gluesql-parquet-storage --verbose
           cargo test -p gluesql-file-storage --verbose
           cargo test -p gluesql-redb-storage --verbose
+          cargo test -p gluesql-slatedb-storage --verbose
 
   run_mongostorage_tests:
     name: Run MongoStorage tests
