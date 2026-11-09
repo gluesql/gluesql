@@ -4,7 +4,9 @@ sidebar_position: 9
 
 # Metadata
 
-`Metadata::scan_table_meta` returns table properties such as creation and modification times. SQL queries can read these properties through `GLUE_TABLES`. The default returns an empty iterator.
+The `Metadata` trait lets a storage expose additional information about its tables. GlueSQL does not require a fixed set of properties; each storage decides what to provide, such as creation or modification times.
+
+Implement `scan_table_meta` to return the metadata for each table. Users can query these properties through the `GLUE_OBJECTS` data dictionary table.
 
 ```rust
 type ObjectName = String;

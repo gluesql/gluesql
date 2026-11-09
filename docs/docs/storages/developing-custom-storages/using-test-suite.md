@@ -4,7 +4,11 @@ sidebar_position: 3
 
 # Using the Test Suite
 
-The Test Suite checks shared SQL behavior. Implement `Tester` to run it against your storage. For example, MemoryStorage uses:
+The Test Suite checks shared SQL behavior.
+
+## Running the Shared Tests
+
+Implement `Tester` to run the shared tests against your storage. For example, MemoryStorage uses:
 
 ```rust
 use {gluesql_core::prelude::Glue, gluesql_memory_storage::MemoryStorage, test_suite::*};
@@ -56,5 +60,13 @@ Additionally, the Test Suite provides combined test sets for storage features us
 - `generate_transaction_alter_table_tests!` - Tests for the `Transaction` and `AlterTable` trait implementations.
 - `generate_transaction_index_tests!` - Tests for the `Transaction`, `Index`, and `IndexMut` trait implementations.
 - `generate_metadata_index_tests!` - Tests for the `Metadata`, `Index`, and `IndexMut` trait implementations.
+
+## Testing SELECT-only Storage
+
+The shared suite does not provide a SELECT-only test set. `generate_store_tests!` includes INSERT, UPDATE, and DELETE tests. Its SELECT cases can also depend on CREATE TABLE and INSERT to prepare data, so a read-only adapter cannot run the complete set.
+
+Use the storage crate's integration tests to check SELECT-only adapters against data prepared outside SQL. For a file adapter, this can be a fixture file included with the tests. Open it through the adapter, run SELECT using `Glue`, and compare the returned rows with the expected data.
+
+## Storage-specific Tests
 
 Keep storage-specific checks, such as reopening database files, transaction isolation, and backend failures, in your storage crate's integration tests. See the [testing policy](../../development/review-policy/testing.md#storage-integration-tests) for the boundary between shared SQL cases and storage-specific tests.
