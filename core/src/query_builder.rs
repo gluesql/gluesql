@@ -82,6 +82,7 @@ pub use {
         primary_key,
     },
     table_name::table,
+    transaction::TransactionNode,
     update::UpdateNode,
     with_schema::WithSchemaNode,
 };

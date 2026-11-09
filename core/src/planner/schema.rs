@@ -552,13 +552,8 @@ mod tests {
                 default: Some(expr("(SELECT id FROM Arg)")),
             }],
         }];
-        let expected = input
-            .clone()
-            .with_schema("CREATE TABLE Item (id INT)")
-            .with_schema("CREATE TABLE Body (id INT)")
-            .with_schema("CREATE TABLE Arg (id INT)")
-            .build();
-        let actual = plan_schema_map(&storage, input);
+        let actual = plan_statement(&storage, input).unwrap();
+        let expected = ["Arg", "Body", "Item"];
         assert_eq!(actual, expected);
     }
 

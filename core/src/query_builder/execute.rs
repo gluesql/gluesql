@@ -29,24 +29,11 @@ impl Build for Statement {
     }
 }
 
-impl Build for StatementPlan {
-    fn build(self) -> Result<StatementPlan> {
-        Ok(self)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use {
         crate::{
-            data::Value,
-            executor::Payload,
-            glue::Glue,
-            mock::{MockStorage, run},
-            parse_sql::parse,
-            plan::StatementPlan,
-            query_builder::{Build, Execute},
-            translate::translate,
+            parse_sql::parse, plan::StatementPlan, query_builder::Build, translate::translate,
         },
         pretty_assertions::assert_eq,
     };
@@ -57,23 +44,5 @@ mod tests {
         let expected = StatementPlan::from(statement.clone());
 
         assert_eq!(statement.build(), Ok(expected));
-    }
-
-    #[test]
-    fn executes_prepared_statement() {
-        let mut glue = Glue::new(run("CREATE FUNCTION one() RETURN 1"));
-        let sql = "VALUES (one())";
-        let statement = glue.plan(sql).unwrap().remove(0);
-
-        let mut glue = Glue::new(MockStorage::default());
-        let actual = statement.execute(&mut glue);
-        let expected = Ok(Payload::Select {
-            labels: vec!["column1".to_owned()],
-            rows: vec![vec![Value::I64(1)]],
-        });
-        assert_eq!(
-            actual, expected,
-            "execute a prepared statement without stored definitions: {sql}"
-        );
     }
 }

@@ -529,7 +529,9 @@ mod tests {
 
         macro_rules! test_unchanged {
             ($sql: literal) => {
-                let input = statement($sql)
+                let parsed = parse($sql).expect($sql);
+                let input = translate(&parsed[0])
+                    .unwrap()
                     .with_schema("CREATE TABLE Player")
                     .build()
                     .unwrap();

@@ -46,8 +46,6 @@ test_case!(basic, {
         .select()
         .filter("name = 'Lemon'")
         .project("id, name")
-        .build()
-        .expect("build and execute")
         .execute(glue);
     let expected = Ok(select!(
         id  | name
