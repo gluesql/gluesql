@@ -158,7 +158,6 @@ mod tests {
         let input = translate(&parse("SELECT * FROM Item").unwrap()[0])
             .unwrap()
             .into();
-
         let actual = validate(&input);
         let expected = Err(PlannerError::UnplannedSchemaMap.into());
         assert_eq!(actual, expected);

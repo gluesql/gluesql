@@ -82,7 +82,6 @@ mod tests {
     #[test]
     fn unplanned_schema_map() {
         let input = statement("CREATE INDEX idx ON Item (id)");
-
         let actual = validate(&input);
         let expected = Err(PlannerError::UnplannedSchemaMap.into());
         assert_eq!(actual, expected);

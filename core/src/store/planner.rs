@@ -54,7 +54,6 @@ mod tests {
             .with_schema("CREATE TABLE Unused (name TEXT)")
             .build()
             .unwrap();
-
         let actual = storage.plan(input);
         let expected = table("Item")
             .index_by(primary_key().eq("7"))
@@ -73,7 +72,6 @@ mod tests {
             .values(vec!["missing()"])
             .build()
             .unwrap();
-
         let actual = storage.plan(input);
         let expected = Err(Error::Planner(PlannerError::UnsupportedFunction(
             "MISSING".to_owned(),
@@ -86,7 +84,6 @@ mod tests {
             .values(vec!["one()"])
             .build()
             .unwrap();
-
         let actual = storage.plan(input);
         let expected = Err(Error::Planner(PlannerError::InsertTableNotFound(
             "Missing".to_owned(),

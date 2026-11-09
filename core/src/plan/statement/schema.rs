@@ -120,7 +120,6 @@ mod tests {
             foreign_keys: vec![foreign_key.clone()],
             comment: Some("items".to_owned()),
         };
-
         let actual = SchemaPlan::from(schema);
         let expected = SchemaPlan {
             column_defs: Some(vec![ColumnDefPlan::from(column)]),
@@ -164,7 +163,6 @@ mod tests {
         )
         .unwrap();
         let input = SchemaPlan::from(schema.clone());
-
         let actual = input.to_schema("Renamed");
         let expected = Schema {
             table_name: "Renamed".to_owned(),
@@ -179,7 +177,6 @@ mod tests {
             foreign_keys: vec![],
             comment: None,
         };
-
         let actual = input.to_schema("Doc");
         let expected = Schema::from_ddl("CREATE TABLE Doc").unwrap();
         assert_eq!(actual, expected);

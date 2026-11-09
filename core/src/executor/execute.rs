@@ -372,7 +372,6 @@ mod tests {
     fn execute() {
         let mut storage = MockStorage::default();
         let statement = table("Item").select().build().unwrap();
-
         let actual = super::execute(&mut storage, &statement);
         let expected = Err(Error::Execute(ExecuteError::UnplannedSchemaMap));
         assert_eq!(actual, expected);

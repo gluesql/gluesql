@@ -32,13 +32,11 @@ mod tests {
     #[test]
     fn validate() {
         let mut input = table("Item").insert().values(vec!["1"]).build().unwrap();
-
         let actual = super::validate(&input);
         let expected = Err(Error::Planner(PlannerError::UnplannedSchemaMap));
         assert_eq!(actual, expected);
 
         input.schema_map = SchemaMapPlan::Planned(SchemaMap::new());
-
         let actual = super::validate(&input);
         let expected = Err(Error::Planner(PlannerError::InsertTableNotFound(
             "Item".to_owned(),
@@ -52,7 +50,6 @@ mod tests {
                 .with_schema(ddl)
                 .build()
                 .unwrap();
-
             let actual = super::validate(&input);
             let expected = Ok(());
             assert_eq!(actual, expected, "{ddl}");
@@ -60,7 +57,6 @@ mod tests {
 
         let mut input = table("Item").select().build().unwrap();
         input.schema_map = SchemaMapPlan::Planned(SchemaMap::new());
-
         let actual = super::validate(&input);
         let expected = Ok(());
         assert_eq!(actual, expected);

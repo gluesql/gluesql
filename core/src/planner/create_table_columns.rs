@@ -163,7 +163,6 @@ mod tests {
     #[test]
     fn unplanned_schema_map() {
         let input = statement("CREATE TABLE Target AS SELECT * FROM Item");
-
         let actual = plan(input);
         let expected = Err(PlannerError::UnplannedSchemaMap.into());
         assert_eq!(actual, expected);
@@ -294,7 +293,6 @@ mod tests {
             },
         );
         input.schema_map = SchemaMapPlan::Planned(SchemaMap::new());
-
         let actual = plan(input).unwrap();
         let expected = create(
             None,
@@ -307,7 +305,6 @@ mod tests {
 
         let mut input = create(None, CreateTableColumnsPlan::Unplanned { columns: None });
         input.schema_map = SchemaMapPlan::Planned(SchemaMap::new());
-
         let actual = plan(input).unwrap();
         let expected = create(None, CreateTableColumnsPlan::Schemaless);
         assert_eq!(actual.kind, expected.kind, "schemaless without a source");
@@ -317,7 +314,6 @@ mod tests {
     fn leaves_other_statements_and_prepared_columns() {
         let test = |mut input: StatementPlan, name: &str| {
             input.schema_map = SchemaMapPlan::Planned(SchemaMap::new());
-
             let expected = input.kind.clone();
             let actual = plan(input).unwrap();
             assert_eq!(actual.kind, expected, "{name}");

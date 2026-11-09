@@ -476,7 +476,6 @@ mod tests {
         let ddl = "CREATE TABLE Item (id INT DEFAULT 7)";
         let storage = run(ddl);
         let input = table("Item").select().build().unwrap();
-
         let actual = plan_schema_map(&storage, input);
         let expected = table("Item").select().with_schema(ddl).build();
         assert_eq!(actual, expected);
@@ -486,7 +485,6 @@ mod tests {
             schema_map: SchemaMapPlan::Planned(SchemaMap::new()),
             ..input.clone()
         };
-
         let actual = plan_schema_map(&storage, input);
         assert_eq!(actual, Ok(expected));
     }
@@ -500,7 +498,6 @@ mod tests {
             .build()
             .unwrap();
         let expected = Ok(input.clone());
-
         let actual = plan_schema_map(&storage, input);
         assert_eq!(actual, expected);
 
@@ -509,7 +506,6 @@ mod tests {
             ..table("Item").select().build().unwrap()
         };
         let expected = Ok(input.clone());
-
         let actual = plan_schema_map(&storage, input);
         assert_eq!(actual, expected);
     }
@@ -551,7 +547,6 @@ mod tests {
             .select()
             .build()
             .unwrap();
-
         let actual = plan_statement(&storage, input).unwrap();
         let expected = ["Item", "Lookup"];
         assert_eq!(actual, expected);
@@ -561,7 +556,6 @@ mod tests {
             .select()
             .build()
             .unwrap();
-
         let actual = plan_statement(&storage, input).unwrap();
         let expected = ["Item", "Lookup"];
         assert_eq!(actual, expected);
@@ -586,14 +580,12 @@ mod tests {
                 default: Some(expr("(SELECT id FROM Arg)")),
             }],
         }];
-
         let expected = input
             .clone()
             .with_schema("CREATE TABLE Item (id INT)")
             .with_schema("CREATE TABLE Body (id INT)")
             .with_schema("CREATE TABLE Arg (id INT)")
             .build();
-
         let actual = plan_schema_map(&storage, input);
         assert_eq!(actual, expected);
     }
@@ -614,7 +606,6 @@ mod tests {
             .hash_filter("B.id = (SELECT id FROM Filter)")
             .build()
             .unwrap();
-
         let actual = plan_statement(&storage, input).unwrap();
         let expected = ["A", "B", "Filter", "InputKey", "RightKey"];
         assert_eq!(actual, expected);

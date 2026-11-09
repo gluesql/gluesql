@@ -66,7 +66,6 @@ mod tests {
             .with_schema("CREATE TABLE Unused (name TEXT)")
             .build()
             .unwrap();
-
         let actual = storage.plan(input);
         let expected = table("Item")
             .index_by(non_clustered("by_id".to_owned()).eq("7"))

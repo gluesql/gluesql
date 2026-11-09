@@ -743,7 +743,6 @@ mod tests {
     #[test]
     fn unplanned_schema_map() {
         let input = table("Item").select().build().unwrap();
-
         let actual = plan(input);
         let expected = Err(PlannerError::UnplannedSchemaMap.into());
         assert_eq!(actual, expected);

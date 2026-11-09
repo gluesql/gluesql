@@ -553,7 +553,6 @@ mod tests {
             .with_schema("CREATE TABLE Player")
             .build()
             .unwrap();
-
         let actual = plan_schemaless(input.clone());
         let expected = Ok(input);
         assert_eq!(actual, expected);
