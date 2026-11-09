@@ -16,6 +16,7 @@ INSERT INTO TxTest VALUES (3, 'New one');
 -- @expect: payload Insert
 -- @json: 1
 
+-- @name: ROLLBACK discards the inserted row
 ROLLBACK;
 -- @expect: payload Rollback
 
@@ -33,6 +34,7 @@ INSERT INTO TxTest VALUES (3, 'Vienna');
 -- @expect: payload Insert
 -- @json: 1
 
+-- @name: The inserted row is visible before COMMIT
 SELECT id, name FROM TxTest
 -- @expect:
 -- | id: I64 | name: Str |
@@ -41,6 +43,7 @@ SELECT id, name FROM TxTest
 -- | 2       | "Phone"   |
 -- | 3       | "Vienna"  |
 
+-- @name: COMMIT keeps the inserted row
 COMMIT;
 -- @expect: payload Commit
 
@@ -51,103 +54,6 @@ SELECT id, name FROM TxTest
 -- | 1       | "Friday"  |
 -- | 2       | "Phone"   |
 -- | 3       | "Vienna"  |
-
-BEGIN;
--- @expect: payload StartTransaction
-
-DELETE FROM TxTest WHERE id = 3;
--- @expect: payload Delete
--- @json: 1
-
-SELECT id, name FROM TxTest
--- @expect:
--- | id: I64 | name: Str |
--- | ------- | --------- |
--- | 1       | "Friday"  |
--- | 2       | "Phone"   |
-
-ROLLBACK;
--- @expect: payload Rollback
-
-SELECT id, name FROM TxTest
--- @expect:
--- | id: I64 | name: Str |
--- | ------- | --------- |
--- | 1       | "Friday"  |
--- | 2       | "Phone"   |
--- | 3       | "Vienna"  |
-
-BEGIN;
--- @expect: payload StartTransaction
-
-DELETE FROM TxTest WHERE id = 3;
--- @expect: payload Delete
--- @json: 1
-
-SELECT id, name FROM TxTest
--- @expect:
--- | id: I64 | name: Str |
--- | ------- | --------- |
--- | 1       | "Friday"  |
--- | 2       | "Phone"   |
-
-COMMIT;
--- @expect: payload Commit
-
-SELECT id, name FROM TxTest
--- @expect:
--- | id: I64 | name: Str |
--- | ------- | --------- |
--- | 1       | "Friday"  |
--- | 2       | "Phone"   |
-
-BEGIN;
--- @expect: payload StartTransaction
-
-UPDATE TxTest SET name = 'Sunday' WHERE id = 1;
--- @expect: payload Update
--- @json: 1
-
-SELECT id, name FROM TxTest
--- @expect:
--- | id: I64 | name: Str |
--- | ------- | --------- |
--- | 1       | "Sunday"  |
--- | 2       | "Phone"   |
-
-ROLLBACK;
--- @expect: payload Rollback
-
-SELECT id, name FROM TxTest
--- @expect:
--- | id: I64 | name: Str |
--- | ------- | --------- |
--- | 1       | "Friday"  |
--- | 2       | "Phone"   |
-
-BEGIN;
--- @expect: payload StartTransaction
-
-UPDATE TxTest SET name = 'Sunday' WHERE id = 1;
--- @expect: payload Update
--- @json: 1
-
-SELECT id, name FROM TxTest
--- @expect:
--- | id: I64 | name: Str |
--- | ------- | --------- |
--- | 1       | "Sunday"  |
--- | 2       | "Phone"   |
-
-COMMIT;
--- @expect: payload Commit
-
-SELECT id, name FROM TxTest
--- @expect:
--- | id: I64 | name: Str |
--- | ------- | --------- |
--- | 1       | "Sunday"  |
--- | 2       | "Phone"   |
 
 BEGIN;
 -- @expect: ok
@@ -155,6 +61,7 @@ BEGIN;
 SELECT * FROM TxTest;
 -- @expect: ok
 
+-- @name: A read-only transaction can be rolled back
 ROLLBACK;
 -- @expect: ok
 
@@ -164,41 +71,13 @@ BEGIN;
 SELECT * FROM TxTest;
 -- @expect: ok
 
+-- @name: A read-only transaction can be committed
 COMMIT;
 -- @expect: ok
 
 BEGIN;
 -- @expect: ok
 
+-- @name: An empty transaction can be committed
 COMMIT;
 -- @expect: ok
-
--- @name: A planning failure does not close an explicit transaction
-BEGIN;
--- @expect: payload StartTransaction
-INSERT INTO TxTest VALUES (99, 'pending');
--- @expect: payload Insert
--- @json: 1
-INSERT INTO MissingTransactionTarget VALUES (1);
--- @expect: error Planner.InsertTableNotFound
--- @json: "MissingTransactionTarget"
-SELECT name FROM TxTest WHERE id = 99;
--- @expect:
--- | name: Str |
--- | --------- |
--- | "pending" |
-ROLLBACK;
--- @expect: payload Rollback
-SELECT name FROM TxTest WHERE id = 99;
--- @expect:
--- | name |
--- | ---- |
-
--- @name: An automatic planning failure leaves the next statement usable
-INSERT INTO MissingTransactionTarget VALUES (1);
--- @expect: error Planner.InsertTableNotFound
--- @json: "MissingTransactionTarget"
-SELECT name FROM TxTest WHERE id = 99;
--- @expect:
--- | name |
--- | ---- |

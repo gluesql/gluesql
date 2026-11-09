@@ -262,7 +262,9 @@ macro_rules! generate_store_tests {
         sql_case!(migrate);
         sql_case!(nested_select);
         sql_case!(primary_key);
-        sql_case!(foreign_key);
+        sql_case!(foreign_key::create_table);
+        sql_case!(foreign_key::dml);
+        sql_case!(foreign_key::drop_table);
         sql_case!(series);
         sql_case!(nullable);
         sql_case!(nullable::text);
@@ -439,6 +441,8 @@ macro_rules! generate_transaction_tests {
         }
 
         sql_case!(transaction::basic);
+        sql_case!(transaction::dml);
+        sql_case!(transaction::error);
         sql_case!(transaction::table);
         sql_case!(transaction::dictionary);
         rust_case!(transaction::query_builder);
