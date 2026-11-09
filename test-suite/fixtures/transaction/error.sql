@@ -46,3 +46,10 @@ SELECT name FROM TxTest WHERE id = 99;
 -- @expect:
 -- | name |
 -- | ---- |
+
+-- @name: A new transaction can begin after an automatic planning failure
+BEGIN;
+-- @expect: payload StartTransaction
+
+ROLLBACK;
+-- @expect: payload Rollback
