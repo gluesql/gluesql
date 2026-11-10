@@ -50,7 +50,10 @@ fn find_indexes(statement: &StatementPlan) -> Vec<&TableAccessPlan> {
     fn find_source_indexes(source: &SourcePlan) -> Vec<&TableAccessPlan> {
         match source {
             SourcePlan::Table(table)
-                if !matches!(&table.access, TableAccessPlan::FullScan { .. }) =>
+                if !matches!(
+                    &table.access,
+                    TableAccessPlan::FullScan | TableAccessPlan::ProjectedScan { .. }
+                ) =>
             {
                 vec![&table.access]
             }

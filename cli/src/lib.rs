@@ -12,7 +12,7 @@ use {
     clap::Parser,
     gluesql_core::{
         ast::{Expr, ToSql},
-        store::{GStore, GStoreMut, Planner, Store, Transaction},
+        store::{GStore, GStoreMut, Planner, ScanColumns, Store, Transaction},
     },
     gluesql_csv_storage::CsvStorage,
     gluesql_file_storage::FileStorage,
@@ -218,7 +218,7 @@ fn write_dump<T: Store>(storage: &T, file: &mut File) -> Result<()> {
         writeln!(file, "{}", schema.to_ddl())?;
 
         let mut rows = storage
-            .scan_data(&schema.table_name, None)?
+            .scan_data(&schema.table_name, ScanColumns::All)?
             .map(|result| result.map(|(_, row)| row));
 
         loop {

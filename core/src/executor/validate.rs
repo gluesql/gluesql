@@ -4,7 +4,7 @@ use {
         data::{Key, Value},
         plan::ColumnDefPlan,
         result::Result,
-        store::Store,
+        store::{ScanColumns, Store},
     },
     im::HashSet,
     serde::Serialize,
@@ -136,7 +136,7 @@ pub fn validate_unique<'a, T: Store>(
                 return Ok(());
             }
 
-            for row in storage.scan_data(table_name, None)? {
+            for row in storage.scan_data(table_name, ScanColumns::All)? {
                 let (_, values) = row?;
                 for constraint in &unique_constraints {
                     let col_idx = constraint.column_index;

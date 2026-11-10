@@ -30,7 +30,7 @@ mod tests {
             input: AggregationInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                 name: "Item".to_owned(),
                 alias: None,
-                access: TableAccessPlan::FullScan { columns: None },
+                access: TableAccessPlan::FullScan,
             })),
             group_by: Vec::new(),
             aggregate_slots: Vec::new(),

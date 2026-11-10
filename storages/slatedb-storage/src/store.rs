@@ -8,7 +8,7 @@ use {
     gluesql_core::{
         data::{Key, Schema, Value},
         error::Result,
-        store::{RowIter, ScanColumn, Store},
+        store::{RowIter, ScanColumns, Store},
     },
     slatedb::{DbIterator, bytes::Bytes},
     std::iter,
@@ -73,16 +73,16 @@ impl Store for SlatedbStorage {
         Ok(Some(row))
     }
 
-    fn scan_data<'a>(
-        &'a self,
-        table_name: &str,
-        columns: Option<&[ScanColumn]>,
-    ) -> Result<RowIter<'a>> {
+    fn scan_data<'a>(&'a self, table_name: &str, columns: ScanColumns<'_>) -> Result<RowIter<'a>> {
         let prefix = data_prefix(table_name)?;
         let entries = self.scan(&prefix)?;
         let mut entries = Some(entries);
-        let column_indexes =
-            columns.map(|columns| columns.iter().map(|(_, index)| *index).collect::<Vec<_>>());
+        let column_indexes = match columns {
+            ScanColumns::All => None,
+            ScanColumns::Selected(columns) => {
+                Some(columns.iter().map(|(_, index)| *index).collect::<Vec<_>>())
+            }
+        };
 
         let rows = iter::from_fn(move || {
             let iter = entries.as_mut()?;

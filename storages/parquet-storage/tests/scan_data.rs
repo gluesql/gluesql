@@ -3,7 +3,7 @@ use {
         chrono::{NaiveDate, NaiveTime},
         data::{Key, Schema, Value},
         error::Result,
-        store::{Store, StoreMut},
+        store::{ScanColumns, Store, StoreMut},
     },
     gluesql_parquet_storage::ParquetStorage,
     parquet::{
@@ -67,7 +67,7 @@ fn empty_projection_across_row_groups() {
         writer.close().unwrap();
 
         let actual = storage
-            .scan_data(table, Some(&[]))
+            .scan_data(table, ScanColumns::Selected(&[]))
             .unwrap()
             .collect::<Result<Vec<_>>>()
             .unwrap();
@@ -115,7 +115,9 @@ fn projected_fields_use_original_schema_positions() {
             ("at".to_owned(), 2),
             ("token".to_owned(), 3),
         ];
-        storage.scan_data("Item", Some(&columns)).unwrap()
+        storage
+            .scan_data("Item", ScanColumns::Selected(&columns))
+            .unwrap()
     };
     let actual = rows.collect::<Result<Vec<_>>>().unwrap();
     let expected = vec![(

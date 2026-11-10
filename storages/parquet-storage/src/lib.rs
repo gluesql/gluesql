@@ -5,7 +5,7 @@ use {
         data::Schema,
         error::Result,
         prelude::{DataType, Key, Value},
-        store::{Metadata, Planner, ScanColumn, Store},
+        store::{Metadata, Planner, ScanColumns, Store},
     },
     parquet::{
         file::{reader::FileReader, serialized_reader::SerializedFileReader},
@@ -63,11 +63,7 @@ impl ParquetStorage {
     }
 
     #[allow(clippy::too_many_lines)]
-    fn scan_data(
-        &self,
-        table_name: &str,
-        columns: Option<&[ScanColumn]>,
-    ) -> Result<(RowIter, Schema)> {
+    fn scan_data(&self, table_name: &str, columns: ScanColumns<'_>) -> Result<(RowIter, Schema)> {
         let fetched_schema = <Self as Store>::fetch_schema(self, table_name)?.map_storage_err(
             ParquetStorageError::TableDoesNotExist(table_name.to_owned()),
         )?;
@@ -82,8 +78,9 @@ impl ParquetStorage {
         });
 
         let rows: RowIter = if let Some(column_defs) = &scan_schema.column_defs {
-            let projection = columns
-                .map(|columns| -> Result<_> {
+            let projection = match columns {
+                ScanColumns::All => None,
+                ScanColumns::Selected(columns) => {
                     let mut read_columns = columns.to_vec();
                     if let Some(index) = primary_key_index {
                         read_columns.push((column_defs[index].name.clone(), index));
@@ -109,9 +106,9 @@ impl ParquetStorage {
                         .build()
                         .map_storage_err()?;
 
-                    Ok((schema, read_columns, output_positions))
-                })
-                .transpose()?;
+                    Some((schema, read_columns, output_positions))
+                }
+            };
             let row_iter = ParquetRowIter::from_file_into(Box::new(parquet_reader));
             let (row_iter, projection) = match projection {
                 Some((schema, read_columns, output_positions)) => (
@@ -279,7 +276,9 @@ mod tests {
 
         file_writer.close().expect("close parquet writer");
 
-        let (mut rows, _) = storage.scan_data("Foo", None).expect("scan data");
+        let (mut rows, _) = storage
+            .scan_data("Foo", ScanColumns::All)
+            .expect("scan data");
         let error = rows
             .next()
             .expect("conversion error row")

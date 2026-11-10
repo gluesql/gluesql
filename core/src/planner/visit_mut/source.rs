@@ -14,7 +14,8 @@ pub fn walk_source_mut<V: VisitorMut + ?Sized>(
                 predicate: Some(predicate),
                 ..
             } => visitor.visit_expr(&mut predicate.expr)?,
-            TableAccessPlan::FullScan { .. }
+            TableAccessPlan::FullScan
+            | TableAccessPlan::ProjectedScan { .. }
             | TableAccessPlan::Index {
                 predicate: None, ..
             } => {}
@@ -100,9 +101,17 @@ mod tests {
             assert_eq!(actual, expected, "{name}");
         };
 
-        let actual = TableAccessPlan::FullScan { columns: None };
-        let expected = TableAccessPlan::FullScan { columns: None };
+        let actual = TableAccessPlan::FullScan;
+        let expected = TableAccessPlan::FullScan;
         test(actual, expected, "full scan");
+
+        let actual = TableAccessPlan::ProjectedScan {
+            columns: vec!["name".to_owned()],
+        };
+        let expected = TableAccessPlan::ProjectedScan {
+            columns: vec!["name".to_owned()],
+        };
+        test(actual, expected, "projected column names stay unchanged");
 
         let actual = TableAccessPlan::PrimaryKey { expr: expr("key") };
         let expected = TableAccessPlan::PrimaryKey {

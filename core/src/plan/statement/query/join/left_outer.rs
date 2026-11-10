@@ -61,7 +61,7 @@ mod tests {
         SourcePlan::Table(TableSourcePlan {
             name: name.to_owned(),
             alias: None,
-            access: TableAccessPlan::FullScan { columns: None },
+            access: TableAccessPlan::FullScan,
         })
     }
 

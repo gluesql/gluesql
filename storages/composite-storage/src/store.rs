@@ -3,7 +3,7 @@ use {
     gluesql_core::{
         data::{Key, Schema, Value},
         error::Result,
-        store::{RowIter, ScanColumn, Store},
+        store::{RowIter, ScanColumns, Store},
     },
 };
 
@@ -38,11 +38,7 @@ impl Store for CompositeStorage {
         self.fetch_storage(table_name)?.fetch_data(table_name, key)
     }
 
-    fn scan_data<'a>(
-        &'a self,
-        table_name: &str,
-        columns: Option<&[ScanColumn]>,
-    ) -> Result<RowIter<'a>> {
+    fn scan_data<'a>(&'a self, table_name: &str, columns: ScanColumns<'_>) -> Result<RowIter<'a>> {
         self.fetch_storage(table_name)?
             .scan_data(table_name, columns)
     }

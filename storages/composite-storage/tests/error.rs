@@ -2,7 +2,7 @@ use {
     gluesql_composite_storage::CompositeStorage,
     gluesql_core::{
         prelude::{Error, Glue},
-        store::{Store, StoreMut},
+        store::{ScanColumns, Store, StoreMut},
     },
     gluesql_memory_storage::MemoryStorage,
 };
@@ -12,7 +12,7 @@ fn error() {
     let storage = CompositeStorage::new();
 
     assert_eq!(
-        storage.scan_data("Foo", None).map(|_| ()),
+        storage.scan_data("Foo", ScanColumns::All).map(|_| ()),
         Err(Error::StorageMsg(
             "engine not found for table: Foo".to_owned()
         ))
@@ -41,7 +41,9 @@ fn error() {
     glue.execute("CREATE TABLE Foo (id INTEGER);").unwrap();
 
     assert_eq!(
-        glue.storage.scan_data("WrongEngine", None).map(|_| ()),
+        glue.storage
+            .scan_data("WrongEngine", ScanColumns::All)
+            .map(|_| ()),
         Err(Error::StorageMsg(
             "[fetch_storage] storage not found for table: WrongEngine".to_owned()
         ))
@@ -81,7 +83,7 @@ fn composite_storage_index() {
 
     assert_eq!(
         glue.storage
-            .scan_data("Idx", None)
+            .scan_data("Idx", ScanColumns::All)
             .unwrap()
             .collect::<gluesql_core::prelude::Result<Vec<_>>>()
             .as_ref()

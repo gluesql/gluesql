@@ -1,5 +1,5 @@
 use {
-    super::{Store, StoreMut},
+    super::{ScanColumns, Store, StoreMut},
     crate::{ast::ColumnDef, data::Value, result::Result},
     serde::Serialize,
     std::fmt::Debug,
@@ -33,7 +33,7 @@ pub trait AlterTable: Store + StoreMut {
         self.insert_schema(&schema)?;
 
         let rows = self
-            .scan_data(table_name, None)?
+            .scan_data(table_name, ScanColumns::All)?
             .collect::<Result<Vec<_>>>()?;
 
         self.insert_data(new_table_name, rows)?;
@@ -71,7 +71,7 @@ pub trait AlterTable: Store + StoreMut {
         );
 
         let rows = self
-            .scan_data(table_name, None)?
+            .scan_data(table_name, ScanColumns::All)?
             .collect::<Result<Vec<_>>>()?;
 
         self.insert_schema(&schema)?;
@@ -100,7 +100,7 @@ pub trait AlterTable: Store + StoreMut {
         column_defs.push(column_def.clone());
 
         let rows = self
-            .scan_data(table_name, None)?
+            .scan_data(table_name, ScanColumns::All)?
             .map(|row| {
                 let (key, mut values) = row?;
                 let default_value = default_value.clone();
@@ -138,7 +138,7 @@ pub trait AlterTable: Store + StoreMut {
         column_defs.retain(|column_def| column_def.name != column_name);
 
         let rows = self
-            .scan_data(table_name, None)?
+            .scan_data(table_name, ScanColumns::All)?
             .map(|row| {
                 let (key, mut values) = row?;
                 values.remove(i);

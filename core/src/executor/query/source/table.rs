@@ -12,7 +12,7 @@ use {
         },
         plan::{TableAccessPlan, TableSourcePlan},
         result::Result,
-        store::{GStore, RowIter, ScanColumn},
+        store::{GStore, RowIter, ScanColumn, ScanColumns},
     },
     std::rc::Rc,
 };
@@ -49,22 +49,21 @@ pub(super) fn execute<'a, T: GStore>(
     };
 
     let prepared = match &table.access {
-        TableAccessPlan::FullScan { columns } => {
+        TableAccessPlan::FullScan => prepare_source(source, move |_| {
+            storage.scan_data(&table.name, ScanColumns::All)
+        }),
+        TableAccessPlan::ProjectedScan { columns } => {
             let mut source = source;
-            let scan_columns = columns.as_ref().map(|columns| {
-                let (scan_columns, names): (Vec<ScanColumn>, Vec<String>) = original_names
-                    .into_iter()
-                    .enumerate()
-                    .filter(|(_, name)| columns.contains(name))
-                    .map(|(index, name)| ((name, index), source.names[index].clone()))
-                    .unzip();
-                source.names = Rc::from(names);
-
-                scan_columns
-            });
+            let (scan_columns, names): (Vec<ScanColumn>, Vec<String>) = original_names
+                .into_iter()
+                .enumerate()
+                .filter(|(_, name)| columns.contains(name))
+                .map(|(index, name)| ((name, index), source.names[index].clone()))
+                .unzip();
+            source.names = Rc::from(names);
 
             prepare_source(source, move |_| {
-                storage.scan_data(&table.name, scan_columns.as_deref())
+                storage.scan_data(&table.name, ScanColumns::Selected(&scan_columns))
             })
         }
         TableAccessPlan::PrimaryKey { expr } => prepare_source(source, move |evaluation_context| {

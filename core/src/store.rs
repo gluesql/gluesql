@@ -36,6 +36,12 @@ pub type RowIter<'a> = Box<dyn Iterator<Item = Result<(Key, Vec<Value>)>> + 'a>;
 /// Original column name and zero-based position in the full row.
 pub type ScanColumn = (String, usize);
 
+#[derive(Debug, Clone, Copy)]
+pub enum ScanColumns<'a> {
+    All,
+    Selected(&'a [ScanColumn]),
+}
+
 /// By implementing `Store` trait, you can run `SELECT` query.
 pub trait Store {
     fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>>;
@@ -46,18 +52,14 @@ pub trait Store {
 
     /// Scans rows, returning the requested columns in request order.
     ///
-    /// `None` returns all columns. `Some(&[])` returns empty values for each row.
+    /// `All` returns all columns. `Selected(&[])` returns empty values for each row.
     /// Column selection preserves the rows and their keys. Each requested name
     /// and position must identify the same column in the full table schema.
-    /// Schemaless tables use `None` and return complete documents.
+    /// Schemaless tables use `All` and return complete documents.
     ///
     /// The request is not borrowed by the returned iterator. Implementations
     /// retain any positions or reader projection needed during iteration.
-    fn scan_data<'a>(
-        &'a self,
-        table_name: &str,
-        columns: Option<&[ScanColumn]>,
-    ) -> Result<RowIter<'a>>;
+    fn scan_data<'a>(&'a self, table_name: &str, columns: ScanColumns<'_>) -> Result<RowIter<'a>>;
 }
 
 /// By implementing `StoreMut` trait,

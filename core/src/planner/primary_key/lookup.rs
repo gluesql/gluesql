@@ -57,7 +57,10 @@ impl PrimaryKeyLookupTarget {
         let SourcePlan::Table(table) = relation else {
             return None;
         };
-        if !matches!(&table.access, TableAccessPlan::FullScan { .. }) {
+        if !matches!(
+            &table.access,
+            TableAccessPlan::FullScan | TableAccessPlan::ProjectedScan { .. }
+        ) {
             return None;
         }
         let column_defs = schema_map.get(&table.name)?.column_defs.as_ref()?;

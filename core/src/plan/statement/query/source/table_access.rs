@@ -9,10 +9,10 @@ use {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TableAccessPlan {
-    FullScan {
-        /// Original column names in schema order. `None` requests all columns;
-        /// an empty list preserves rows without returning column values.
-        columns: Option<Vec<String>>,
+    FullScan,
+    ProjectedScan {
+        /// Original column names in schema order.
+        columns: Vec<String>,
     },
     PrimaryKey {
         expr: ExprPlan,

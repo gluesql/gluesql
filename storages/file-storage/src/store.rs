@@ -3,7 +3,7 @@ use {
     gluesql_core::{
         data::{Key, Schema, Value},
         error::Result,
-        store::{RowIter, ScanColumn, Store},
+        store::{RowIter, ScanColumns, Store},
     },
     std::{ffi::OsStr, fs},
 };
@@ -56,11 +56,7 @@ impl Store for FileStorage {
             .map(Some)
     }
 
-    fn scan_data<'a>(
-        &'a self,
-        table_name: &str,
-        columns: Option<&[ScanColumn]>,
-    ) -> Result<RowIter<'a>> {
+    fn scan_data<'a>(&'a self, table_name: &str, columns: ScanColumns<'_>) -> Result<RowIter<'a>> {
         let path = self.path(table_name);
         let mut entries = fs::read_dir(path)
             .map_storage_err()?
@@ -80,8 +76,12 @@ impl Store for FileStorage {
 
         entries.sort();
 
-        let column_indexes =
-            columns.map(|columns| columns.iter().map(|(_, index)| *index).collect::<Vec<_>>());
+        let column_indexes = match columns {
+            ScanColumns::All => None,
+            ScanColumns::Selected(columns) => {
+                Some(columns.iter().map(|(_, index)| *index).collect::<Vec<_>>())
+            }
+        };
         let rows = entries.into_iter().map(move |path| {
             let data = fs::read_to_string(path).map_storage_err()?;
 

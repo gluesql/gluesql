@@ -14,7 +14,8 @@ pub fn walk_source<V: Visitor + ?Sized>(
                 predicate: Some(predicate),
                 ..
             } => visitor.visit_expr(&predicate.expr)?,
-            TableAccessPlan::FullScan { .. }
+            TableAccessPlan::FullScan
+            | TableAccessPlan::ProjectedScan { .. }
             | TableAccessPlan::Index {
                 predicate: None, ..
             } => {}
@@ -95,9 +96,19 @@ mod tests {
             assert_eq!(visitor.0, expected, "{name}");
         };
 
-        let actual = TableAccessPlan::FullScan { columns: None };
+        let actual = TableAccessPlan::FullScan;
         let expected = &[];
         test(actual, expected, "full scan");
+
+        let actual = TableAccessPlan::ProjectedScan {
+            columns: vec!["name".to_owned()],
+        };
+        let expected = &[];
+        test(
+            actual,
+            expected,
+            "projected column names are not expressions",
+        );
 
         let actual = TableAccessPlan::PrimaryKey { expr: expr("key") };
         let expected = &[expr("key")];

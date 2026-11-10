@@ -59,7 +59,7 @@ impl From<ast::TableFactor> for SourcePlan {
             ast::TableFactor::Table { name, alias } => Self::Table(TableSourcePlan {
                 name,
                 alias: alias.map(Into::into),
-                access: TableAccessPlan::FullScan { columns: None },
+                access: TableAccessPlan::FullScan,
             }),
             ast::TableFactor::Derived { subquery, alias } => Self::Derived(DerivedSourcePlan {
                 query: Box::new(subquery.into()),
@@ -120,7 +120,7 @@ mod tests {
                 name: "i".to_owned(),
                 columns: Vec::new(),
             }),
-            access: TableAccessPlan::FullScan { columns: None },
+            access: TableAccessPlan::FullScan,
         });
         assert_eq!(actual, expected);
 

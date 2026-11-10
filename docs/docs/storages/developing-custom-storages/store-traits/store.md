@@ -20,6 +20,12 @@ Here are the four methods required to implement the `Store` trait:
 pub type RowIter<'a> = Box<dyn Iterator<Item = Result<(Key, Vec<Value>)>> + 'a>;
 pub type ScanColumn = (String, usize);
 
+#[derive(Debug, Clone, Copy)]
+pub enum ScanColumns<'a> {
+    All,
+    Selected(&'a [ScanColumn]),
+}
+
 /// By implementing `Store` trait, you can run `SELECT` query.
 pub trait Store {
     fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>>;
@@ -31,7 +37,7 @@ pub trait Store {
     fn scan_data<'a>(
         &'a self,
         table_name: &str,
-        columns: Option<&[ScanColumn]>,
+        columns: ScanColumns<'_>,
     ) -> Result<RowIter<'a>>;
 }
 ```
@@ -41,10 +47,11 @@ in the full table schema. Return values in the requested order. For example,
 given `[id, name, payload, price]`, the request `[("price", 3), ("name", 1)]`
 returns `[price, name]` for each row.
 
-`None` requests all columns. An empty request, `Some(&[])`, returns an empty
-value vector for every row. Column selection must preserve row keys and row
-counts; a storage may read a primary key internally without returning its value
-unless requested. Schemaless tables use `None` to return complete documents.
+`ScanColumns::All` requests all columns. An empty request,
+`ScanColumns::Selected(&[])`, returns an empty value vector for every row.
+Column selection must preserve row keys and row counts; a storage may read a
+primary key internally without returning its value unless requested.
+Schemaless tables use `ScanColumns::All` to return complete documents.
 
 The request is not borrowed by the returned iterator. Copy any positions or
 reader projection needed during iteration. The supplied names and positions

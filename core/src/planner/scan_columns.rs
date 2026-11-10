@@ -28,7 +28,7 @@ pub fn plan(mut statement: StatementPlan) -> Result<StatementPlan> {
     Ok(statement)
 }
 
-// Schemaful FullScan sources belonging to one query.
+// Schemaful scan sources belonging to one query.
 type ScanScope<'a> = Vec<ScanSource<'a>>;
 
 struct ScanColumnsPlanner<'a> {
@@ -176,7 +176,10 @@ fn scan_column_defs<'a>(
     schema_map: &'a SchemaMap,
     table: &TableSourcePlan,
 ) -> Option<&'a [ColumnDefPlan]> {
-    if !matches!(table.access, TableAccessPlan::FullScan { .. }) {
+    if !matches!(
+        table.access,
+        TableAccessPlan::FullScan | TableAccessPlan::ProjectedScan { .. }
+    ) {
         return None;
     }
 
@@ -229,25 +232,30 @@ impl VisitorMut for ScanColumnsApplier<'_> {
         let SourcePlan::Table(table) = source else {
             return Ok(());
         };
-        let column_defs = scan_column_defs(self.schema_map, table);
-        let TableAccessPlan::FullScan { columns } = &mut table.access else {
+        if !matches!(
+            table.access,
+            TableAccessPlan::FullScan | TableAccessPlan::ProjectedScan { .. }
+        ) {
             return Ok(());
-        };
-        let Some(column_defs) = column_defs else {
-            *columns = None;
+        }
+        let Some(column_defs) = scan_column_defs(self.schema_map, table) else {
+            table.access = TableAccessPlan::FullScan;
             return Ok(());
         };
         let source = self
             .sources
             .next()
             .expect("collected scan sources follow query source order");
-        *columns = source.required_columns.map(|required_columns| {
-            column_defs
-                .iter()
-                .filter(|column| required_columns.contains(&column.name))
-                .map(|column| column.name.clone())
-                .collect()
-        });
+        table.access = match source.required_columns {
+            Some(required_columns) => TableAccessPlan::ProjectedScan {
+                columns: column_defs
+                    .iter()
+                    .filter(|column| required_columns.contains(&column.name))
+                    .map(|column| column.name.clone())
+                    .collect(),
+            },
+            None => TableAccessPlan::FullScan,
+        };
 
         Ok(())
     }
@@ -269,7 +277,8 @@ mod tests {
                 AggregateExprPlan, AggregateFunctionPlan, AggregationInputPlan, AggregationPlan,
                 CountArgExprPlan, ExprPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan,
                 QueryPlan, SelectItemPlan, SourcePlan, StatementPlan, StatementPlanKind,
-                TableAccessPlan, TableSourcePlan,
+                TableAccessPlan::{self, FullScan},
+                TableSourcePlan,
             },
             planner::{
                 PlannerError, plan_schema_map,
@@ -296,38 +305,47 @@ mod tests {
         SourcePlan::Table(TableSourcePlan {
             name: name.to_owned(),
             alias: None,
-            access: TableAccessPlan::FullScan { columns: None },
+            access: TableAccessPlan::FullScan,
         })
     }
 
-    #[derive(Default)]
-    struct ScanColumns(Vec<(String, Option<Vec<String>>)>);
+    fn projected_scan(columns: &[&str]) -> TableAccessPlan {
+        TableAccessPlan::ProjectedScan {
+            columns: columns.iter().map(|column| (*column).to_owned()).collect(),
+        }
+    }
 
-    impl Visitor for ScanColumns {
+    #[derive(Default)]
+    struct ScanAccesses(Vec<(String, TableAccessPlan)>);
+
+    impl Visitor for ScanAccesses {
         type Error = Infallible;
 
         fn visit_source(&mut self, source: &SourcePlan) -> Result<(), Self::Error> {
             if let SourcePlan::Table(table) = source
-                && let TableAccessPlan::FullScan { columns } = &table.access
+                && matches!(
+                    table.access,
+                    TableAccessPlan::FullScan | TableAccessPlan::ProjectedScan { .. }
+                )
             {
                 self.0
-                    .push((source.alias_name().to_owned(), columns.clone()));
+                    .push((source.alias_name().to_owned(), table.access.clone()));
             }
             walk_source(self, source)
         }
     }
 
-    fn collect_scan_columns(statement: &StatementPlan) -> Vec<(String, Option<Vec<String>>)> {
-        let mut columns = ScanColumns::default();
+    fn collect_scan_accesses(statement: &StatementPlan) -> Vec<(String, TableAccessPlan)> {
+        let mut accesses = ScanAccesses::default();
         match &statement.kind {
             StatementPlanKind::Query(query) | StatementPlanKind::Insert { source: query, .. } => {
-                columns.visit_query(query).unwrap();
+                accesses.visit_query(query).unwrap();
             }
             StatementPlanKind::CreateTable {
                 source: Some(query),
                 ..
             } => {
-                columns.visit_query(query).unwrap();
+                accesses.visit_query(query).unwrap();
             }
             StatementPlanKind::Update {
                 assignments,
@@ -335,38 +353,31 @@ mod tests {
                 ..
             } => {
                 for assignment in assignments {
-                    columns.visit_expr(&assignment.value).unwrap();
+                    accesses.visit_expr(&assignment.value).unwrap();
                 }
                 if let Some(expr) = selection {
-                    columns.visit_expr(expr).unwrap();
+                    accesses.visit_expr(expr).unwrap();
                 }
             }
             StatementPlanKind::Delete {
                 selection: Some(expr),
                 ..
             } => {
-                columns.visit_expr(expr).unwrap();
+                accesses.visit_expr(expr).unwrap();
             }
             _ => {}
         }
 
-        columns.0
+        accesses.0
     }
 
     macro_rules! test {
         ($actual:expr, $expected:expr, $name:literal) => {
-            let actual = collect_scan_columns(&$actual);
-            let expected: &[(&str, Option<&[&str]>)] = &$expected;
+            let actual = collect_scan_accesses(&$actual);
+            let expected: &[(&str, TableAccessPlan)] = &$expected;
             let expected = expected
                 .iter()
-                .map(|(source, columns)| {
-                    (
-                        (*source).to_owned(),
-                        columns.map(|columns| {
-                            columns.iter().map(|column| (*column).to_owned()).collect()
-                        }),
-                    )
-                })
+                .map(|(source, access)| ((*source).to_owned(), access.clone()))
                 .collect::<Vec<_>>();
 
             assert_eq!(actual, expected, $name);
@@ -379,7 +390,7 @@ mod tests {
 
         let sql = "SELECT COALESCE(b, 0) FROM Item WHERE c > 0 ORDER BY d";
         let actual = plan(&storage, sql);
-        let expected = [("Item", Some(&["b", "c", "d"][..]))];
+        let expected = [("Item", projected_scan(&["b", "c", "d"]))];
         test!(
             actual,
             expected,
@@ -387,7 +398,7 @@ mod tests {
         );
 
         let actual = plan_scan_columns(actual).unwrap();
-        let expected = [("Item", Some(&["b", "c", "d"][..]))];
+        let expected = [("Item", projected_scan(&["b", "c", "d"]))];
         test!(
             actual,
             expected,
@@ -396,7 +407,7 @@ mod tests {
 
         let sql = "SELECT y FROM Item AS i(x, y, z, w)";
         let actual = plan(&storage, sql);
-        let expected = [("i", Some(&["b"][..]))];
+        let expected = [("i", projected_scan(&["b"]))];
         test!(
             actual,
             expected,
@@ -405,7 +416,7 @@ mod tests {
 
         let sql = "SELECT b AS a FROM Item ORDER BY a";
         let actual = plan(&storage, sql);
-        let expected = [("Item", Some(&["a", "b"][..]))];
+        let expected = [("Item", projected_scan(&["a", "b"]))];
         test!(
             actual,
             expected,
@@ -414,7 +425,7 @@ mod tests {
 
         let sql = "SELECT x FROM Item AS i(x, x, z, w)";
         let actual = plan(&storage, sql);
-        let expected = [("i", Some(&["a", "b"][..]))];
+        let expected = [("i", projected_scan(&["a", "b"]))];
         test!(
             actual,
             expected,
@@ -423,7 +434,7 @@ mod tests {
 
         let sql = "SELECT Item.a FROM Item AS i";
         let actual = plan(&storage, sql);
-        let expected = [("i", Some(&[][..]))];
+        let expected = [("i", projected_scan(&[]))];
         test!(
             actual,
             expected,
@@ -432,12 +443,12 @@ mod tests {
 
         let sql = "SELECT missing FROM Item";
         let actual = plan(&storage, sql);
-        let expected = [("Item", Some(&[][..]))];
+        let expected = [("Item", projected_scan(&[]))];
         test!(actual, expected, "unknown name adds no scan column:\n{sql}");
 
         let sql = "SELECT x FROM Item AS i(x, y, z, w, extra)";
         let actual = plan(&storage, sql);
-        let expected = [("i", Some(&["a"][..]))];
+        let expected = [("i", projected_scan(&["a"]))];
         test!(
             actual,
             expected,
@@ -451,7 +462,7 @@ mod tests {
 
         let sql = "SELECT * FROM Item";
         let actual = plan(&storage, sql);
-        let expected = [("Item", None)];
+        let expected = [("Item", FullScan)];
         test!(
             actual,
             expected,
@@ -460,7 +471,7 @@ mod tests {
 
         let sql = "SELECT i.*, i.b FROM Item i";
         let actual = plan(&storage, sql);
-        let expected = [("i", None)];
+        let expected = [("i", FullScan)];
         test!(
             actual,
             expected,
@@ -469,7 +480,7 @@ mod tests {
 
         let sql = "SELECT 1 FROM Item";
         let actual = plan(&storage, sql);
-        let expected = [("Item", Some(&[][..]))];
+        let expected = [("Item", projected_scan(&[]))];
         test!(
             actual,
             expected,
@@ -478,7 +489,7 @@ mod tests {
 
         let sql = "SELECT COUNT(*) FROM Item";
         let actual = plan(&storage, sql);
-        let expected = [("Item", Some(&[][..]))];
+        let expected = [("Item", projected_scan(&[]))];
         test!(
             actual,
             expected,
@@ -487,7 +498,7 @@ mod tests {
 
         let sql = "SELECT COUNT(*) FROM Item WHERE b > 0";
         let actual = plan(&storage, sql);
-        let expected = [("Item", Some(&["b"][..]))];
+        let expected = [("Item", projected_scan(&["b"]))];
         test!(
             actual,
             expected,
@@ -496,7 +507,7 @@ mod tests {
 
         let sql = "SELECT COUNT(DISTINCT *) FROM Item";
         let actual = plan(&storage, sql);
-        let expected = [("Item", None)];
+        let expected = [("Item", FullScan)];
         test!(
             actual,
             expected,
@@ -505,7 +516,7 @@ mod tests {
 
         let sql = "SELECT DISTINCT b FROM Item";
         let actual = plan(&storage, sql);
-        let expected = [("Item", Some(&["b"][..]))];
+        let expected = [("Item", projected_scan(&["b"]))];
         test!(
             actual,
             expected,
@@ -519,7 +530,7 @@ mod tests {
             HAVING MAX(b) > 0
         ";
         let actual = plan(&storage, sql);
-        let expected = [("Item", Some(&["b", "c"][..]))];
+        let expected = [("Item", projected_scan(&["b", "c"]))];
         test!(
             actual,
             expected,
@@ -548,7 +559,7 @@ mod tests {
         }));
         let input = plan_schema_map(&storage, input.into()).unwrap();
         let actual = plan_scan_columns(input).unwrap();
-        let expected = [("Item", None)];
+        let expected = [("Item", FullScan)];
         test!(
             actual,
             expected,
@@ -569,7 +580,10 @@ mod tests {
             JOIN Item r ON l.c = r.c
         ";
         let actual = plan(&storage, sql);
-        let expected = [("l", Some(&["a", "c"][..])), ("r", Some(&["b", "c"][..]))];
+        let expected = [
+            ("l", projected_scan(&["a", "c"])),
+            ("r", projected_scan(&["b", "c"])),
+        ];
         test!(actual, expected, "columns per joined source:\n{sql}");
 
         let input = table("Item")
@@ -582,7 +596,10 @@ mod tests {
             .unwrap();
         let input = plan_schema_map(&storage, input).unwrap();
         let actual = plan_scan_columns(input).unwrap();
-        let expected = [("l", Some(&["a", "c"][..])), ("r", Some(&["b", "c"][..]))];
+        let expected = [
+            ("l", projected_scan(&["a", "c"])),
+            ("r", projected_scan(&["b", "c"])),
+        ];
         test!(
             actual,
             expected,
@@ -591,7 +608,10 @@ mod tests {
 
         let sql = "SELECT a FROM Item l JOIN Item r ON l.c = r.c";
         let actual = plan(&storage, sql);
-        let expected = [("l", Some(&["a", "c"][..])), ("r", Some(&["a", "c"][..]))];
+        let expected = [
+            ("l", projected_scan(&["a", "c"])),
+            ("r", projected_scan(&["a", "c"])),
+        ];
         test!(
             actual,
             expected,
@@ -600,7 +620,7 @@ mod tests {
 
         let sql = "SELECT l.* FROM Item l LEFT JOIN Item r ON l.c = r.c";
         let actual = plan(&storage, sql);
-        let expected = [("l", None), ("r", Some(&["c"][..]))];
+        let expected = [("l", FullScan), ("r", projected_scan(&["c"]))];
         test!(
             actual,
             expected,
@@ -615,7 +635,10 @@ mod tests {
             )
         ";
         let actual = plan(&storage, sql);
-        let expected = [("i", Some(&["a", "b"][..])), ("r", Some(&["ref"][..]))];
+        let expected = [
+            ("i", projected_scan(&["a", "b"])),
+            ("r", projected_scan(&["ref"])),
+        ];
         test!(
             actual,
             expected,
@@ -628,7 +651,7 @@ mod tests {
             WHERE EXISTS (SELECT * FROM Ref)
         ";
         let actual = plan(&storage, sql);
-        let expected = [("i", Some(&["a"][..])), ("Ref", None)];
+        let expected = [("i", projected_scan(&["a"])), ("Ref", FullScan)];
         test!(
             actual,
             expected,
@@ -641,7 +664,7 @@ mod tests {
             WHERE EXISTS (SELECT COUNT(DISTINCT *) FROM Ref)
         ";
         let actual = plan(&storage, sql);
-        let expected = [("i", None), ("Ref", None)];
+        let expected = [("i", FullScan), ("Ref", FullScan)];
         test!(
             actual,
             expected,
@@ -650,7 +673,7 @@ mod tests {
 
         let sql = "SELECT d.x FROM (SELECT a AS x, b FROM Item) d";
         let actual = plan(&storage, sql);
-        let expected = [("Item", Some(&["a", "b"][..]))];
+        let expected = [("Item", projected_scan(&["a", "b"]))];
         test!(
             actual,
             expected,
@@ -659,7 +682,7 @@ mod tests {
 
         let sql = "SELECT (SELECT i.b FROM SERIES(i.c)) FROM Item i";
         let actual = plan(&storage, sql);
-        let expected = [("i", Some(&["b", "c"][..]))];
+        let expected = [("i", projected_scan(&["b", "c"]))];
         test!(
             actual,
             expected,
@@ -674,9 +697,9 @@ mod tests {
         ";
         let actual = plan(&storage, sql);
         let expected = [
-            ("outer_item", Some(&[][..])),
-            ("l", Some(&["b"][..])),
-            ("r", Some(&["c"][..])),
+            ("outer_item", projected_scan(&[])),
+            ("l", projected_scan(&["b"])),
+            ("r", projected_scan(&["c"])),
         ];
         test!(
             actual,
@@ -686,7 +709,7 @@ mod tests {
 
         let sql = "VALUES ((SELECT b FROM Item))";
         let actual = plan(&storage, sql);
-        let expected = [("Item", Some(&["b"][..]))];
+        let expected = [("Item", projected_scan(&["b"]))];
         test!(actual, expected, "subquery inside values:\n{sql}");
     }
 
@@ -700,7 +723,7 @@ mod tests {
 
         let sql = "SELECT i.b, l.name FROM Item i JOIN Logs l ON i.a = l.id";
         let actual = plan(&storage, sql);
-        let expected = [("i", Some(&["a", "b"][..])), ("l", None)];
+        let expected = [("i", projected_scan(&["a", "b"])), ("l", FullScan)];
         test!(
             actual,
             expected,
@@ -709,7 +732,7 @@ mod tests {
 
         let sql = "SELECT COUNT(*) FROM Logs";
         let actual = plan(&storage, sql);
-        let expected = [("Logs", None)];
+        let expected = [("Logs", FullScan)];
         test!(
             actual,
             expected,
@@ -718,7 +741,7 @@ mod tests {
 
         let sql = "SELECT * FROM Missing";
         let actual = plan(&storage, sql);
-        let expected = [("Missing", None)];
+        let expected = [("Missing", FullScan)];
         test!(actual, expected, "missing schema keeps all columns:\n{sql}");
 
         let input = table("Item")
@@ -734,7 +757,7 @@ mod tests {
             .unwrap();
         let input = plan_schema_map(&storage, input).unwrap();
         let actual = plan_scan_columns(input).unwrap();
-        let expected = [("Item", Some(&["a", "b"][..]))];
+        let expected = [("Item", projected_scan(&["a", "b"]))];
         test!(
             actual,
             expected,
@@ -754,7 +777,7 @@ mod tests {
             .unwrap();
         let input = plan_schema_map(&storage, input).unwrap();
         let actual = plan_scan_columns(input).unwrap();
-        let expected = [("Item", Some(&["a", "b"][..]))];
+        let expected = [("Item", projected_scan(&["a", "b"]))];
         test!(actual, expected, "index lookup references outer source");
     }
 
@@ -767,12 +790,12 @@ mod tests {
 
         let sql = "INSERT INTO Item SELECT ref, 1 FROM Ref";
         let actual = plan(&storage, sql);
-        let expected = [("Ref", Some(&["ref"][..]))];
+        let expected = [("Ref", projected_scan(&["ref"]))];
         test!(actual, expected, "columns in INSERT source:\n{sql}");
 
         let sql = "CREATE TABLE Copy AS SELECT b FROM Item";
         let actual = plan(&storage, sql);
-        let expected = [("Item", Some(&["b"][..]))];
+        let expected = [("Item", projected_scan(&["b"]))];
         test!(actual, expected, "columns in CREATE TABLE source:\n{sql}");
 
         let sql = "
@@ -783,7 +806,10 @@ mod tests {
             )
         ";
         let actual = plan(&storage, sql);
-        let expected = [("Ref", Some(&["ref"][..])), ("Ref", Some(&["ref"][..]))];
+        let expected = [
+            ("Ref", projected_scan(&["ref"])),
+            ("Ref", projected_scan(&["ref"])),
+        ];
         test!(
             actual,
             expected,
@@ -799,7 +825,7 @@ mod tests {
             )
         ";
         let actual = plan(&storage, sql);
-        let expected = [("Ref", Some(&["ref"][..]))];
+        let expected = [("Ref", projected_scan(&["ref"]))];
         test!(actual, expected, "columns in DELETE subquery:\n{sql}");
 
         let sql = "UPDATE Item SET a = 1";

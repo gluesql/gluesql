@@ -12,7 +12,7 @@ use {
         error::Result,
         parse_sql::parse_data_type,
         prelude::{Error, Value},
-        store::{RowIter, ScanColumn, Store},
+        store::{RowIter, ScanColumns, Store},
         translate::translate_data_type,
     },
     mongodb::{
@@ -76,11 +76,7 @@ impl Store for MongoStorage {
             .transpose()
     }
 
-    fn scan_data<'a>(
-        &'a self,
-        table_name: &str,
-        columns: Option<&[ScanColumn]>,
-    ) -> Result<RowIter<'a>> {
+    fn scan_data<'a>(&'a self, table_name: &str, columns: ScanColumns<'_>) -> Result<RowIter<'a>> {
         let column_defs = self.get_column_defs(table_name)?;
 
         let primary_key = column_defs
@@ -108,8 +104,12 @@ impl Store for MongoStorage {
                 .collect::<Vec<_>>()
         });
 
-        let column_indexes =
-            columns.map(|columns| columns.iter().map(|(_, index)| *index).collect::<Vec<_>>());
+        let column_indexes = match columns {
+            ScanColumns::All => None,
+            ScanColumns::Selected(columns) => {
+                Some(columns.iter().map(|(_, index)| *index).collect::<Vec<_>>())
+            }
+        };
         let row_iter = cursor.map(move |doc| {
             let doc = doc.map_storage_err()?;
 

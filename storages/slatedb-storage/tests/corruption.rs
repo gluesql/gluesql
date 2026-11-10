@@ -2,7 +2,7 @@ use {
     gluesql_core::{
         data::{Key, Value},
         error::Error,
-        store::Store,
+        store::{ScanColumns, Store},
     },
     gluesql_slatedb_storage::{SlatedbStorage, object_store::memory::InMemory},
     slatedb::Db,
@@ -69,7 +69,7 @@ fn scan_decodes_rows_lazily_and_stops_after_an_error() {
         expected
     );
 
-    let mut rows = storage.scan_data("Items", None).unwrap();
+    let mut rows = storage.scan_data("Items", ScanColumns::All).unwrap();
     assert_eq!(rows.next(), Some(Ok((Key::I64(1), vec![Value::I64(1)]))));
     assert_eq!(rows.next(), Some(Err(expected)));
     assert_eq!(rows.next(), None);

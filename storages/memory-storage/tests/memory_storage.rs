@@ -41,13 +41,13 @@ macro_rules! test {
 fn memory_storage_index() {
     use gluesql_core::{
         prelude::{Error, Glue},
-        store::{Index, Store},
+        store::{Index, ScanColumns, Store},
     };
 
     let storage = MemoryStorage::default();
 
     assert_eq!(
-        Store::scan_data(&storage, "Idx", None)
+        Store::scan_data(&storage, "Idx", ScanColumns::All)
             .unwrap()
             .collect::<gluesql_core::prelude::Result<Vec<_>>>()
             .as_ref()

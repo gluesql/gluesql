@@ -8,7 +8,7 @@ use {
         executor::Referencing,
         plan::{ExprPlan, SchemaMap},
         result::Result,
-        store::GStore,
+        store::{GStore, ScanColumns},
     },
     serde::Serialize,
     std::{borrow::Cow, fmt::Debug, rc::Rc},
@@ -30,29 +30,31 @@ pub fn fetch<'a, T: GStore>(
     columns: Rc<[String]>,
     where_clause: Option<&'a ExprPlan>,
 ) -> Result<KeyedRows<'a>> {
-    let rows = storage.scan_data(table_name, None)?.filter_map(move |row| {
-        let (key, values) = match row {
-            Ok(row) => row,
-            Err(error) => return Some(Err(error)),
-        };
-        let row = Row {
-            columns: Rc::clone(&columns),
-            values,
-        };
+    let rows = storage
+        .scan_data(table_name, ScanColumns::All)?
+        .filter_map(move |row| {
+            let (key, values) = match row {
+                Ok(row) => row,
+                Err(error) => return Some(Err(error)),
+            };
+            let row = Row {
+                columns: Rc::clone(&columns),
+                values,
+            };
 
-        match where_clause {
-            Some(expr) => {
-                let context = RowContext::new(table_name, Cow::Borrowed(&row), None);
-                let context = Rc::new(context);
-                match check_expr(storage, stmt_context, Some(&context), None, expr) {
-                    Ok(true) => Some(Ok((key, row))),
-                    Ok(false) => None,
-                    Err(error) => Some(Err(error)),
+            match where_clause {
+                Some(expr) => {
+                    let context = RowContext::new(table_name, Cow::Borrowed(&row), None);
+                    let context = Rc::new(context);
+                    match check_expr(storage, stmt_context, Some(&context), None, expr) {
+                        Ok(true) => Some(Ok((key, row))),
+                        Ok(false) => None,
+                        Err(error) => Some(Err(error)),
+                    }
                 }
+                None => Some(Ok((key, row))),
             }
-            None => Some(Ok((key, row))),
-        }
-    });
+        });
 
     Ok(Box::new(rows))
 }
