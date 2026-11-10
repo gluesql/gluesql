@@ -1,11 +1,12 @@
 use {
     super::{
         Payload, Referencing,
-        fetch::{fetch, fetch_columns},
+        fetch::{fetch, fetch_columns, fetch_referencings},
     },
     crate::{
         ast::{BinaryOperator, ForeignKey, ReferentialAction},
-        plan::{CustomFunctionPlan, ExprPlan},
+        executor::context::StatementContext,
+        plan::ExprPlan,
         result::Result,
         store::{GStore, GStoreMut},
     },
@@ -25,23 +26,22 @@ pub enum DeleteError {
 
 pub fn delete<T: GStore + GStoreMut>(
     storage: &mut T,
-    functions: &[CustomFunctionPlan],
+    stmt_context: StatementContext<'_>,
     table_name: &str,
     selection: Option<&ExprPlan>,
 ) -> Result<Payload> {
-    let columns = Rc::from(fetch_columns(storage, table_name)?);
-    let referencings = storage
-        .fetch_referencings(table_name)?
+    let columns = Rc::from(fetch_columns(stmt_context, table_name)?);
+    let referencings = fetch_referencings(stmt_context.schema_map, table_name)
         .into_iter()
         .map(|referencing| {
-            fetch_columns(storage, &referencing.table_name)
+            fetch_columns(stmt_context, &referencing.table_name)
                 .map(Rc::from)
                 .map(|columns| (referencing, columns))
         })
         .collect::<Result<Vec<_>>>()?;
 
     let mut keys = Vec::new();
-    for item in fetch(storage, functions, table_name, columns, selection)? {
+    for item in fetch(storage, stmt_context, table_name, columns, selection)? {
         let (key, row) = item?;
 
         for (referencing, columns) in &referencings {
@@ -69,7 +69,7 @@ pub fn delete<T: GStore + GStoreMut>(
 
             let mut referencing_rows = fetch(
                 storage,
-                functions,
+                stmt_context,
                 referencing_table_name,
                 Rc::clone(columns),
                 Some(expr),

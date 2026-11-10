@@ -1,31 +1,55 @@
-use crate::{ast::Statement, plan::StatementPlan};
+use {
+    super::Build,
+    crate::{ast::Statement, plan::StatementPlan, result::Result},
+};
 
-pub fn begin() -> StatementPlan {
-    Statement::StartTransaction.into()
+#[derive(Clone, Debug)]
+pub enum TransactionNode {
+    Begin,
+    Commit,
+    Rollback,
 }
-pub fn commit() -> StatementPlan {
-    Statement::Commit.into()
+
+pub fn begin() -> TransactionNode {
+    TransactionNode::Begin
 }
-pub fn rollback() -> StatementPlan {
-    Statement::Rollback.into()
+
+pub fn commit() -> TransactionNode {
+    TransactionNode::Commit
+}
+
+pub fn rollback() -> TransactionNode {
+    TransactionNode::Rollback
+}
+
+impl Build for TransactionNode {
+    fn build(self) -> Result<StatementPlan> {
+        let statement = match self {
+            Self::Begin => Statement::StartTransaction,
+            Self::Commit => Statement::Commit,
+            Self::Rollback => Statement::Rollback,
+        };
+
+        Ok(statement.into())
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::query_builder::{begin, commit, rollback, test};
+    use crate::query_builder::{Build, begin, commit, rollback, test};
 
     #[test]
     fn transaction() {
-        let actual = begin();
+        let actual = begin().build();
         let expected = "START TRANSACTION";
-        test(&Ok(actual), expected);
+        test(&actual, expected);
 
-        let actual = commit();
+        let actual = commit().build();
         let expected = "COMMIT";
-        test(&Ok(actual), expected);
+        test(&actual, expected);
 
-        let actual = rollback();
+        let actual = rollback().build();
         let expected = "ROLLBACK";
-        test(&Ok(actual), expected);
+        test(&actual, expected);
     }
 }

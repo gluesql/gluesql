@@ -2,8 +2,11 @@ use {
     super::{LabeledRows, distinct, order_by, project, values},
     crate::{
         data::Value,
-        executor::{context::RowContext, evaluate::evaluate},
-        plan::{CustomFunctionPlan, ExprPlan, OffsetInputPlan, OffsetPlan},
+        executor::{
+            context::{RowContext, StatementContext},
+            evaluate::evaluate,
+        },
+        plan::{ExprPlan, OffsetInputPlan, OffsetPlan},
         result::Result,
         store::GStore,
     },
@@ -12,9 +15,9 @@ use {
 
 pub(super) fn execute<'a, T>(
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
-    plan: &'a OffsetPlan,
+    stmt_context: StatementContext<'a>,
     filter_context: Option<Rc<RowContext<'a>>>,
+    plan: &'a OffsetPlan,
 ) -> Result<LabeledRows<'a>>
 where
     T: GStore,
@@ -23,7 +26,7 @@ where
     let LabeledRows { labels, rows } = match &plan.input {
         OffsetInputPlan::Project(project) => {
             let project::ProjectedRows { labels, rows, .. } =
-                project::execute(storage, functions, project, filter_context)?;
+                project::execute(storage, stmt_context, filter_context, project)?;
             let rows = rows.map(|row| row.map(|(.., row)| row));
 
             Ok(LabeledRows {
@@ -32,19 +35,19 @@ where
             })
         }
         OffsetInputPlan::Values(values_plan) => {
-            values::execute(storage, functions, values_plan, filter_context.as_ref())
+            values::execute(storage, stmt_context, filter_context.as_ref(), values_plan)
         }
         OffsetInputPlan::SelectOrderBy(order_by) => {
-            order_by::select::execute(storage, functions, order_by, filter_context)
+            order_by::select::execute(storage, stmt_context, filter_context, order_by)
         }
         OffsetInputPlan::ValuesOrderBy(order_by) => {
-            order_by::values::execute(storage, functions, order_by, filter_context.as_ref())
+            order_by::values::execute(storage, stmt_context, filter_context.as_ref(), order_by)
         }
         OffsetInputPlan::Distinct(distinct) => {
-            distinct::execute(storage, functions, distinct, filter_context)
+            distinct::execute(storage, stmt_context, filter_context, distinct)
         }
     }?;
-    let count = evaluate_count(storage, functions, count_context.as_ref(), &plan.count)?;
+    let count = evaluate_count(storage, stmt_context, count_context.as_ref(), &plan.count)?;
 
     Ok(LabeledRows {
         labels,
@@ -54,11 +57,11 @@ where
 
 fn evaluate_count<T: GStore>(
     storage: &T,
-    functions: &[CustomFunctionPlan],
+    stmt_context: StatementContext<'_>,
     context: Option<&Rc<RowContext<'_>>>,
     expr: &ExprPlan,
 ) -> Result<usize> {
-    let evaluated = evaluate(storage, functions, context, None, expr)?;
+    let evaluated = evaluate(storage, stmt_context, context, None, expr)?;
     let size: usize = Value::try_from(evaluated)?.try_into()?;
 
     Ok(size)

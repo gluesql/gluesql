@@ -339,8 +339,7 @@ mod tests {
                 NestedLoopJoinInputPlan, NestedLoopJoinPlan, OffsetInputPlan, OffsetPlan,
                 OrderByExprPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
                 SelectItemPlan, SelectOrderByPlan, SeriesSourcePlan, SourcePlan, StatementPlan,
-                StatementPlanKind, TableAccessPlan, TableAliasPlan, TableColumnsPlan,
-                TableSourcePlan, ValuesPlan,
+                StatementPlanKind, TableAccessPlan, TableAliasPlan, TableSourcePlan, ValuesPlan,
             },
             query_builder::{Build, table},
             translate::{NO_PARAMS, translate, translate_query},
@@ -559,7 +558,6 @@ mod tests {
             table_name: "Target".to_owned(),
             columns: Vec::new(),
             source: parse_and_plan_query("SELECT COUNT(*) FROM Source"),
-            table_columns: TableColumnsPlan::Unplanned,
         }
         .into();
         assert_eq!(actual, expected);

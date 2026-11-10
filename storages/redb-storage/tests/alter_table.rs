@@ -4,9 +4,9 @@ pub mod database;
 use {
     database::TestFile,
     gluesql_core::{
-        data::{Key, Value},
+        data::{Key, Schema, Value},
         parse_sql::parse_expr,
-        prelude::{Error, Glue},
+        prelude::{Error, Glue, Payload},
         store::{AlterTable, Store, StoreMut, Transaction},
         translate::translate_expr,
     },
@@ -65,4 +65,49 @@ fn failed_rename_column_keeps_the_stored_index_definition() {
     );
     assert_eq!(glue.storage.fetch_schema("Items").unwrap(), Some(schema));
     glue.storage.rollback().unwrap();
+}
+
+#[test]
+fn cascade_metadata_and_child_rows_survive_reopening() {
+    let file = TestFile::empty();
+    let mut glue = Glue::new(RedbStorage::new(&file.0).unwrap());
+
+    glue.execute(
+        "
+        CREATE TABLE P1 (id INT PRIMARY KEY);
+        CREATE TABLE P2 (id INT PRIMARY KEY);
+        CREATE TABLE Child (
+            a INT,
+            b INT,
+            FOREIGN KEY (a) REFERENCES P1(id),
+            FOREIGN KEY (b) REFERENCES P2(id)
+        );
+        INSERT INTO P1 VALUES (1);
+        INSERT INTO P2 VALUES (2);
+        INSERT INTO Child VALUES (1, 2);
+    ",
+    )
+    .unwrap();
+
+    assert_eq!(
+        glue.execute("DROP TABLE P1, P2 CASCADE"),
+        Ok(vec![Payload::DropTable(2)])
+    );
+
+    drop(glue);
+    let mut glue = Glue::new(RedbStorage::new(&file.0).unwrap());
+
+    assert_eq!(
+        glue.storage.fetch_all_schemas(),
+        Ok(vec![
+            Schema::from_ddl("CREATE TABLE Child (a INT, b INT)").unwrap()
+        ])
+    );
+    assert_eq!(
+        glue.execute("SELECT * FROM Child"),
+        Ok(vec![Payload::Select {
+            labels: vec!["a".to_owned(), "b".to_owned()],
+            rows: vec![vec![Value::I64(1), Value::I64(2)]],
+        }])
+    );
 }

@@ -3,8 +3,12 @@ use {
     super::{JoinCandidateGroup, JoinCandidates, inner, left_outer},
     crate::{
         data::{Key, Row},
-        executor::{context::RowContext, evaluate::evaluate, filter::check_expr},
-        plan::{CustomFunctionPlan, ExprPlan, HashJoinInputPlan, HashJoinPlan},
+        executor::{
+            context::{RowContext, StatementContext},
+            evaluate::evaluate,
+            filter::check_expr,
+        },
+        plan::{ExprPlan, HashJoinInputPlan, HashJoinPlan},
         result::Result,
         store::GStore,
     },
@@ -14,9 +18,9 @@ use {
 
 pub(super) fn execute<'a, T: GStore>(
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
-    plan: &'a HashJoinPlan,
+    stmt_context: StatementContext<'a>,
     filter_context: Option<&Rc<RowContext<'a>>>,
+    plan: &'a HashJoinPlan,
 ) -> Result<JoinCandidates<'a>> {
     let HashJoinPlan {
         input,
@@ -26,20 +30,22 @@ pub(super) fn execute<'a, T: GStore>(
         right_filter,
     } = plan;
     let SelectedRows { mut sources, rows } = match input {
-        HashJoinInputPlan::Source(source_plan) => source::execute(storage, functions, source_plan)?
-            .rows(filter_context.map(Rc::clone))?
-            .into_selected(None),
+        HashJoinInputPlan::Source(source_plan) => {
+            source::execute(storage, stmt_context, source_plan)?
+                .rows(filter_context.map(Rc::clone))?
+                .into_selected(None)
+        }
         HashJoinInputPlan::InnerJoin(join) => {
-            inner::execute(storage, functions, join, filter_context)?
+            inner::execute(storage, stmt_context, filter_context, join)?
         }
         HashJoinInputPlan::LeftOuterJoin(join) => {
-            left_outer::execute(storage, functions, join, filter_context)?
+            left_outer::execute(storage, stmt_context, filter_context, join)?
         }
     };
-    let right = source::execute(storage, functions, right)?;
+    let right = source::execute(storage, stmt_context, right)?;
     let (rows_map, right_source) = build_rows(
         storage,
-        functions,
+        stmt_context,
         right,
         filter_context,
         right_key,
@@ -62,7 +68,7 @@ pub(super) fn execute<'a, T: GStore>(
         };
         let rows = evaluate(
             storage,
-            functions,
+            stmt_context,
             evaluation_context.as_ref(),
             None,
             input_key,
@@ -86,7 +92,7 @@ pub(super) fn execute<'a, T: GStore>(
 
 fn build_rows<'a, T: GStore>(
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
+    stmt_context: StatementContext<'a>,
     source: source::PreparedSource<'a>,
     filter_context: Option<&Rc<RowContext<'a>>>,
     right_key: &'a ExprPlan,
@@ -100,12 +106,13 @@ fn build_rows<'a, T: GStore>(
             Cow::Borrowed(&row),
             filter_context.map(Rc::clone),
         ));
-        let key: Key = evaluate(storage, functions, Some(&context), None, right_key)?.try_into()?;
+        let key: Key =
+            evaluate(storage, stmt_context, Some(&context), None, right_key)?.try_into()?;
         if matches!(key, Key::None) {
             continue;
         }
         let pass = match right_filter {
-            Some(expr) => check_expr(storage, functions, Some(&context), None, expr)?,
+            Some(expr) => check_expr(storage, stmt_context, Some(&context), None, expr)?,
             None => true,
         };
         if pass {

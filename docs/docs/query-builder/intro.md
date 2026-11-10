@@ -63,8 +63,6 @@ let actual = table("Foo")
     .select()
     .filter("name = 'Lemon'")
     .project("id, name")
-    .build()
-    .expect("build and execute")
     .execute(glue);
 ```
 

@@ -74,9 +74,7 @@ impl Store for MockStorage {
     }
 
     fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
-        let msg = "[Storage] fetch_all_schemas not supported".to_owned();
-
-        Err(Error::StorageMsg(msg))
+        Ok(self.schema_map.values().cloned().collect())
     }
 
     fn fetch_data(&self, _table_name: &str, _key: &Key) -> Result<Option<Vec<Value>>> {
@@ -171,7 +169,7 @@ mod tests {
         assert!(storage.scan_data("Foo").is_err());
         assert!(storage.fetch_data("Foo", &Key::None).is_err());
         assert!(storage.fetch_schema("__Err__").is_err());
-        assert!(storage.fetch_all_schemas().is_err());
+        assert_eq!(storage.fetch_all_schemas(), Ok(Vec::new()));
         assert!(storage.delete_schema("Foo").is_err());
         assert!(storage.append_data("Foo", Vec::new()).is_err());
         assert!(storage.insert_data("Foo", Vec::new()).is_err());

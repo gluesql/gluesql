@@ -1,8 +1,12 @@
 use {
-    super::{context::RowContext, filter::check_expr},
+    super::{
+        context::{RowContext, StatementContext},
+        filter::check_expr,
+    },
     crate::{
         data::{Key, Row, SCHEMALESS_DOC_COLUMN},
-        plan::{CustomFunctionPlan, ExprPlan},
+        executor::Referencing,
+        plan::{ExprPlan, SchemaMap},
         result::Result,
         store::GStore,
     },
@@ -21,7 +25,7 @@ pub enum FetchError {
 
 pub fn fetch<'a, T: GStore>(
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
+    stmt_context: StatementContext<'a>,
     table_name: &'a str,
     columns: Rc<[String]>,
     where_clause: Option<&'a ExprPlan>,
@@ -40,7 +44,7 @@ pub fn fetch<'a, T: GStore>(
             Some(expr) => {
                 let context = RowContext::new(table_name, Cow::Borrowed(&row), None);
                 let context = Rc::new(context);
-                match check_expr(storage, functions, Some(&context), None, expr) {
+                match check_expr(storage, stmt_context, Some(&context), None, expr) {
                     Ok(true) => Some(Ok((key, row))),
                     Ok(false) => None,
                     Err(error) => Some(Err(error)),
@@ -53,20 +57,40 @@ pub fn fetch<'a, T: GStore>(
     Ok(Box::new(rows))
 }
 
-pub fn fetch_columns<T: GStore>(storage: &T, table_name: &str) -> Result<Vec<String>> {
-    let columns = storage
-        .fetch_schema(table_name)?
+pub fn fetch_columns(stmt_context: StatementContext<'_>, table_name: &str) -> Result<Vec<String>> {
+    let columns = stmt_context
+        .schema_map
+        .get(table_name)
         .ok_or_else(|| FetchError::TableNotFound(table_name.to_owned()))?
         .column_defs
+        .as_ref()
         .map_or_else(
             || vec![SCHEMALESS_DOC_COLUMN.to_owned()],
             |column_defs| {
                 column_defs
-                    .into_iter()
-                    .map(|column_def| column_def.name)
+                    .iter()
+                    .map(|column_def| column_def.name.clone())
                     .collect()
             },
         );
 
     Ok(columns)
+}
+
+pub fn fetch_referencings(schema_map: &SchemaMap, table_name: &str) -> Vec<Referencing> {
+    schema_map
+        .iter()
+        .flat_map(|(name, schema)| {
+            schema
+                .foreign_keys
+                .iter()
+                .filter(move |foreign_key| {
+                    foreign_key.referenced_table_name == table_name && name != table_name
+                })
+                .map(move |foreign_key| Referencing {
+                    table_name: name.clone(),
+                    foreign_key: foreign_key.clone(),
+                })
+        })
+        .collect()
 }

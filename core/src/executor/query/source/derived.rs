@@ -7,8 +7,11 @@ use {
     },
     crate::{
         data::Row,
-        executor::{context::RowContext, query},
-        plan::{CustomFunctionPlan, DerivedSourcePlan},
+        executor::{
+            context::{RowContext, StatementContext},
+            query,
+        },
+        plan::DerivedSourcePlan,
         result::Result,
         store::GStore,
     },
@@ -17,10 +20,10 @@ use {
 
 pub(super) fn execute<'a, T: GStore>(
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
+    stmt_context: StatementContext<'a>,
     derived: &'a DerivedSourcePlan,
 ) -> Result<PreparedSource<'a>> {
-    let labels = output_labels::query(storage, functions, &derived.query)?;
+    let labels = output_labels::query(storage, stmt_context, &derived.query)?;
     let alias_columns = &derived.alias.columns;
     if alias_columns.len() > labels.len() {
         return Err(QueryError::TooManyColumnAliases(
@@ -47,13 +50,13 @@ pub(super) fn execute<'a, T: GStore>(
     let rows = Box::new(move |evaluation_context: Option<Rc<RowContext<'a>>>| {
         rows(
             storage,
-            functions,
-            derived,
+            stmt_context,
             SourceColumns {
                 alias: source.alias,
                 names: Rc::clone(&source.names),
             },
             evaluation_context.as_ref(),
+            derived,
         )
     });
 
@@ -62,17 +65,17 @@ pub(super) fn execute<'a, T: GStore>(
 
 fn rows<'a, T: GStore>(
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
-    derived: &'a DerivedSourcePlan,
+    stmt_context: StatementContext<'a>,
     source: SourceColumns<'a>,
     evaluation_context: Option<&Rc<RowContext<'a>>>,
+    derived: &'a DerivedSourcePlan,
 ) -> Result<SourceRows<'a>> {
     let columns = Rc::clone(&source.names);
     let rows = query::execute(
         storage,
-        functions,
-        &derived.query,
+        stmt_context,
         evaluation_context.map(Rc::clone),
+        &derived.query,
     )?
     .map({
         let columns = Rc::clone(&columns);

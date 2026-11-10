@@ -159,9 +159,9 @@ mod tests {
             plan::{
                 AggregateExprPlan, AggregateFunctionPlan, AggregationInputPlan, AggregationPlan,
                 CustomFunctionPlan, ExprPlan, FunctionPlan, OperateFunctionArgPlan,
-                ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
-                SeriesSourcePlan, SourcePlan, StatementPlan, StatementPlanKind, TableAliasPlan,
-                ValuesPlan,
+                ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan, SchemaMapPlan,
+                SelectItemPlan, SeriesSourcePlan, SourcePlan, StatementPlan, StatementPlanKind,
+                TableAliasPlan, ValuesPlan,
             },
             planner::{PlannerError, aggregate},
             result::Error,
@@ -260,6 +260,7 @@ mod tests {
             ("VALUES (f(1, 2))", vec![expr("1").into(), expr("2").into()]),
         ] {
             let expected = StatementPlan {
+                schema_map: SchemaMapPlan::Unplanned,
                 kind: StatementPlanKind::Query(QueryPlan::Values(ValuesPlan(vec![vec![
                     ExprPlan::Function(Box::new(FunctionPlan::Custom {
                         function_id: 0,
@@ -272,6 +273,7 @@ mod tests {
         }
 
         let mut input = StatementPlan {
+            schema_map: SchemaMapPlan::Unplanned,
             kind: StatementPlanKind::Query(QueryPlan::Values(ValuesPlan(vec![vec![
                 ExprPlan::Function(Box::new(FunctionPlan::Custom {
                     function_id: 0,
@@ -316,6 +318,7 @@ mod tests {
         let mut input = statement("VALUES (existing(), fresh(), EXISTING())");
         input.functions.push(existing.clone());
         let expected = StatementPlan {
+            schema_map: SchemaMapPlan::Unplanned,
             kind: StatementPlanKind::Query(QueryPlan::Values(ValuesPlan(vec![vec![
                 ExprPlan::Function(Box::new(FunctionPlan::Custom {
                     function_id: 0,
@@ -353,6 +356,7 @@ mod tests {
             slot: Some(0),
         };
         let expected = StatementPlan {
+            schema_map: SchemaMapPlan::Unplanned,
             kind: StatementPlanKind::Query(QueryPlan::Values(ValuesPlan(vec![vec![
                 ExprPlan::Function(Box::new(FunctionPlan::Custom {
                     function_id: 0,
@@ -402,6 +406,7 @@ mod tests {
         let sql = "VALUES (twice(2), plus_one())";
         let actual = plan(&storage, statement(sql));
         let expected = StatementPlan {
+            schema_map: SchemaMapPlan::Unplanned,
             kind: StatementPlanKind::Query(QueryPlan::Values(ValuesPlan(vec![vec![
                 ExprPlan::Function(Box::new(FunctionPlan::Custom {
                     function_id: 0,
@@ -457,6 +462,7 @@ mod tests {
             slot: Some(0),
         };
         let expected = StatementPlan {
+            schema_map: SchemaMapPlan::Unplanned,
             kind: StatementPlanKind::Query(QueryPlan::Project(ProjectPlan {
                 input: ProjectInputPlan::Aggregation(AggregationPlan {
                     input: AggregationInputPlan::Source(SourcePlan::Series(SeriesSourcePlan {
@@ -539,6 +545,7 @@ mod tests {
             exprs: Vec::new(),
         }));
         let expected = StatementPlan {
+            schema_map: SchemaMapPlan::Unplanned,
             kind: StatementPlanKind::Query(QueryPlan::Values(ValuesPlan(vec![vec![call.clone()]]))),
             functions: vec![CustomFunctionPlan {
                 name: "recur".to_owned(),
@@ -563,6 +570,7 @@ mod tests {
             exprs: Vec::new(),
         }));
         let expected = StatementPlan {
+            schema_map: SchemaMapPlan::Unplanned,
             kind: StatementPlanKind::Query(QueryPlan::Values(ValuesPlan(vec![vec![
                 first.clone(),
             ]]))),

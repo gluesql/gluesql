@@ -2,21 +2,18 @@ use {
     super::super::visit_mut::visit_mut_expr,
     crate::{
         ast::Literal,
-        data::{SCHEMALESS_DOC_COLUMN, Schema},
+        data::SCHEMALESS_DOC_COLUMN,
         plan::{
             AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
             FilterPlan, HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan,
             JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
             OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
-            SelectItemPlan, SelectOrderByPlan, SourcePlan, ValuesOrderByPlan, ValuesPlan,
+            SchemaMap, SelectItemPlan, SelectOrderByPlan, SourcePlan, ValuesOrderByPlan,
+            ValuesPlan,
         },
     },
-    std::{
-        collections::{HashMap, HashSet},
-        hash::BuildHasher,
-        mem,
-    },
+    std::{collections::HashSet, mem},
 };
 
 struct QueryRewriteState {
@@ -24,10 +21,7 @@ struct QueryRewriteState {
     schemaless_aliases: HashSet<String>,
 }
 
-pub(super) fn transform_query<S: BuildHasher>(
-    schema_map: &HashMap<String, Schema, S>,
-    query: &mut QueryPlan,
-) {
+pub(super) fn transform_query(schema_map: &SchemaMap, query: &mut QueryPlan) {
     match query {
         QueryPlan::Project(project) => {
             transform_project(schema_map, project);
@@ -65,8 +59,8 @@ pub(super) fn transform_query<S: BuildHasher>(
     }
 }
 
-fn transform_offset<S: BuildHasher>(
-    schema_map: &HashMap<String, Schema, S>,
+fn transform_offset(
+    schema_map: &SchemaMap,
     OffsetPlan { input, count }: &mut OffsetPlan,
 ) -> QueryRewriteState {
     let state = match input {
@@ -81,8 +75,8 @@ fn transform_offset<S: BuildHasher>(
     state
 }
 
-fn transform_distinct<S: BuildHasher>(
-    schema_map: &HashMap<String, Schema, S>,
+fn transform_distinct(
+    schema_map: &SchemaMap,
     DistinctPlan { input }: &mut DistinctPlan,
 ) -> QueryRewriteState {
     match input {
@@ -93,8 +87,8 @@ fn transform_distinct<S: BuildHasher>(
     }
 }
 
-fn transform_select_order_by<S: BuildHasher>(
-    schema_map: &HashMap<String, Schema, S>,
+fn transform_select_order_by(
+    schema_map: &SchemaMap,
     SelectOrderByPlan { input, exprs }: &mut SelectOrderByPlan,
 ) -> QueryRewriteState {
     let state = transform_project(schema_map, input);
@@ -105,8 +99,8 @@ fn transform_select_order_by<S: BuildHasher>(
     state
 }
 
-fn transform_values_order_by<S: BuildHasher>(
-    schema_map: &HashMap<String, Schema, S>,
+fn transform_values_order_by(
+    schema_map: &SchemaMap,
     ValuesOrderByPlan { input, exprs }: &mut ValuesOrderByPlan,
 ) -> QueryRewriteState {
     let state = transform_values(schema_map, input);
@@ -117,8 +111,8 @@ fn transform_values_order_by<S: BuildHasher>(
     state
 }
 
-fn transform_values<S: BuildHasher>(
-    schema_map: &HashMap<String, Schema, S>,
+fn transform_values(
+    schema_map: &SchemaMap,
     ValuesPlan(rows): &mut ValuesPlan,
 ) -> QueryRewriteState {
     let state = empty_rewrite_state();
@@ -136,10 +130,7 @@ fn empty_rewrite_state() -> QueryRewriteState {
     }
 }
 
-fn transform_project<S: BuildHasher>(
-    schema_map: &HashMap<String, Schema, S>,
-    project: &mut ProjectPlan,
-) -> QueryRewriteState {
+fn transform_project(schema_map: &SchemaMap, project: &mut ProjectPlan) -> QueryRewriteState {
     let ProjectPlan { input, projection } = project;
     let state = match input {
         ProjectInputPlan::Source(relation) => transform_source(schema_map, relation),
@@ -168,8 +159,8 @@ fn transform_project<S: BuildHasher>(
     state
 }
 
-fn transform_filter<S: BuildHasher>(
-    schema_map: &HashMap<String, Schema, S>,
+fn transform_filter(
+    schema_map: &SchemaMap,
     FilterPlan { input, expr }: &mut FilterPlan,
 ) -> QueryRewriteState {
     let state = match input {
@@ -182,8 +173,8 @@ fn transform_filter<S: BuildHasher>(
     state
 }
 
-fn transform_aggregation_input<S: BuildHasher>(
-    schema_map: &HashMap<String, Schema, S>,
+fn transform_aggregation_input(
+    schema_map: &SchemaMap,
     input: &mut AggregationInputPlan,
 ) -> QueryRewriteState {
     match input {
@@ -194,10 +185,7 @@ fn transform_aggregation_input<S: BuildHasher>(
     }
 }
 
-fn transform_source<S: BuildHasher>(
-    schema_map: &HashMap<String, Schema, S>,
-    relation: &mut SourcePlan,
-) -> QueryRewriteState {
+fn transform_source(schema_map: &SchemaMap, relation: &mut SourcePlan) -> QueryRewriteState {
     let rewrite_unqualified_identifiers = matches!(
         relation,
         SourcePlan::Table(table) if is_schemaless_table(schema_map, &table.name)
@@ -213,10 +201,7 @@ fn transform_source<S: BuildHasher>(
     state
 }
 
-fn transform_inner_join<S: BuildHasher>(
-    schema_map: &HashMap<String, Schema, S>,
-    join: &mut InnerJoinPlan,
-) -> QueryRewriteState {
+fn transform_inner_join(schema_map: &SchemaMap, join: &mut InnerJoinPlan) -> QueryRewriteState {
     let base_source = join.base_source();
     let rewrite_unqualified_identifiers = matches!(
         base_source,
@@ -236,8 +221,8 @@ fn transform_inner_join<S: BuildHasher>(
     state
 }
 
-fn transform_left_outer_join<S: BuildHasher>(
-    schema_map: &HashMap<String, Schema, S>,
+fn transform_left_outer_join(
+    schema_map: &SchemaMap,
     join: &mut LeftOuterJoinPlan,
 ) -> QueryRewriteState {
     let base_source = join.base_source();
@@ -260,7 +245,7 @@ fn transform_left_outer_join<S: BuildHasher>(
 }
 
 fn collect_schemaless_alias(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    schema_map: &SchemaMap,
     relation: &SourcePlan,
     aliases: &mut HashSet<String>,
 ) {
@@ -274,11 +259,7 @@ fn collect_schemaless_alias(
     }
 }
 
-fn rewrite_inner_join(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    join: &mut InnerJoinPlan,
-    state: &QueryRewriteState,
-) {
+fn rewrite_inner_join(schema_map: &SchemaMap, join: &mut InnerJoinPlan, state: &QueryRewriteState) {
     match &mut join.input {
         InnerJoinInputPlan::NestedLoop(join) => rewrite_nested_loop(schema_map, join, state),
         InnerJoinInputPlan::Hash(join) => rewrite_hash(schema_map, join, state),
@@ -289,7 +270,7 @@ fn rewrite_inner_join(
 }
 
 fn rewrite_left_outer_join(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    schema_map: &SchemaMap,
     join: &mut LeftOuterJoinPlan,
     state: &QueryRewriteState,
 ) {
@@ -303,7 +284,7 @@ fn rewrite_left_outer_join(
 }
 
 fn rewrite_condition(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    schema_map: &SchemaMap,
     condition: &mut JoinConditionPlan,
     state: &QueryRewriteState,
 ) {
@@ -315,7 +296,7 @@ fn rewrite_condition(
 }
 
 fn rewrite_nested_loop(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    schema_map: &SchemaMap,
     join: &mut NestedLoopJoinPlan,
     state: &QueryRewriteState,
 ) {
@@ -329,11 +310,7 @@ fn rewrite_nested_loop(
     rewrite_source(schema_map, &mut join.right);
 }
 
-fn rewrite_hash(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    join: &mut HashJoinPlan,
-    state: &QueryRewriteState,
-) {
+fn rewrite_hash(schema_map: &SchemaMap, join: &mut HashJoinPlan, state: &QueryRewriteState) {
     match &mut join.input {
         HashJoinInputPlan::Source(source) => rewrite_source(schema_map, source),
         HashJoinInputPlan::InnerJoin(join) => rewrite_inner_join(schema_map, join, state),
@@ -349,10 +326,7 @@ fn rewrite_hash(
     }
 }
 
-fn rewrite_source(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    relation: &mut SourcePlan,
-) {
+fn rewrite_source(schema_map: &SchemaMap, relation: &mut SourcePlan) {
     match relation {
         SourcePlan::Derived(derived) => transform_query(schema_map, &mut derived.query),
         SourcePlan::Series(series) => {
@@ -363,7 +337,7 @@ fn rewrite_source(
 }
 
 fn rewrite_projection(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    schema_map: &SchemaMap,
     projection: &mut ProjectionPlan,
     base_source: &SourcePlan,
     has_join: bool,
@@ -415,11 +389,7 @@ fn project_source(input: &ProjectInputPlan) -> (&SourcePlan, bool) {
     (input.base_source(), !input.joined_sources().is_empty())
 }
 
-fn transform_query_expr(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    expr: &mut ExprPlan,
-    state: &QueryRewriteState,
-) {
+fn transform_query_expr(schema_map: &SchemaMap, expr: &mut ExprPlan, state: &QueryRewriteState) {
     visit_mut_expr(expr, &mut |e| match e {
         ExprPlan::Identifier(ident) => {
             if state.rewrite_unqualified_identifiers {
@@ -479,10 +449,7 @@ fn transform_wildcard_projection(
     }
 }
 
-fn is_schemaless_table(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    table_name: &str,
-) -> bool {
+fn is_schemaless_table(schema_map: &SchemaMap, table_name: &str) -> bool {
     schema_map
         .get(table_name)
         .is_some_and(|schema| schema.column_defs.is_none())
@@ -495,12 +462,11 @@ mod tests {
         crate::{
             mock::run,
             parse_sql::parse_query,
-            plan::QueryPlan,
+            plan::{QueryPlan, SchemaMap},
             store::Store,
             translate::{NO_PARAMS, translate_query},
         },
         pretty_assertions::assert_eq,
-        std::collections::HashMap,
     };
 
     fn query(sql: &str) -> QueryPlan {
@@ -513,7 +479,7 @@ mod tests {
     fn values() {
         let storage = run("CREATE TABLE Doc");
         let schema = storage.fetch_schema("Doc").unwrap().unwrap();
-        let schema_map = HashMap::from([("Doc".to_owned(), schema)]);
+        let schema_map = SchemaMap::from([("Doc".to_owned(), schema.into())]);
         let test = |actual: &str, expected: &str, name: &str| {
             let mut result = query(actual);
             transform_query(&schema_map, &mut result);
@@ -602,7 +568,7 @@ mod tests {
     fn series() {
         let storage = run("CREATE TABLE Doc");
         let schema = storage.fetch_schema("Doc").unwrap().unwrap();
-        let schema_map = HashMap::from([("Doc".to_owned(), schema)]);
+        let schema_map = SchemaMap::from([("Doc".to_owned(), schema.into())]);
         let test = |actual: &str, expected: &str, name: &str| {
             let mut result = query(actual);
             transform_query(&schema_map, &mut result);

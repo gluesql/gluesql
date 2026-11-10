@@ -3,8 +3,8 @@ use {
     super::{JoinCandidateGroup, JoinCandidates, inner, left_outer},
     crate::{
         data::Row,
-        executor::context::RowContext,
-        plan::{CustomFunctionPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan},
+        executor::context::{RowContext, StatementContext},
+        plan::{NestedLoopJoinInputPlan, NestedLoopJoinPlan},
         result::Result,
         store::GStore,
     },
@@ -13,25 +13,25 @@ use {
 
 pub(super) fn execute<'a, T: GStore>(
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
-    plan: &'a NestedLoopJoinPlan,
+    stmt_context: StatementContext<'a>,
     filter_context: Option<&Rc<RowContext<'a>>>,
+    plan: &'a NestedLoopJoinPlan,
 ) -> Result<JoinCandidates<'a>> {
     let NestedLoopJoinPlan { input, right } = plan;
     let SelectedRows { mut sources, rows } = match input {
         NestedLoopJoinInputPlan::Source(source_plan) => {
-            source::execute(storage, functions, source_plan)?
+            source::execute(storage, stmt_context, source_plan)?
                 .rows(filter_context.map(Rc::clone))?
                 .into_selected(None)
         }
         NestedLoopJoinInputPlan::InnerJoin(join) => {
-            inner::execute(storage, functions, join, filter_context)?
+            inner::execute(storage, stmt_context, filter_context, join)?
         }
         NestedLoopJoinInputPlan::LeftOuterJoin(join) => {
-            left_outer::execute(storage, functions, join, filter_context)?
+            left_outer::execute(storage, stmt_context, filter_context, join)?
         }
     };
-    let right = source::execute(storage, functions, right)?;
+    let right = source::execute(storage, stmt_context, right)?;
     let output = SourceColumns {
         alias: right.output.alias,
         names: Rc::clone(&right.output.names),

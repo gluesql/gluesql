@@ -266,6 +266,7 @@ mod tests {
 
         // Single
         test("LOWER(id)", &["id"]);
+        test("LENGTH(name)", &["name"]);
         test("INITCAP(id)", &["id"]);
         test(r#"UPPER("Hello")"#, &[r#""Hello""#]);
         test("SIN(3.14)", &["3.14"]);
@@ -286,7 +287,7 @@ mod tests {
         test("LOG2(16)", &["16"]);
         test("LOG10(150 - 50)", &["150 - 50"]);
         test("SQRT(144)", &["144"]);
-        test("LASTDAY(DATE '2020-01-01')", &[r"DATE '2020-01-01'"]);
+        test("LAST_DAY(DATE '2020-01-01')", &[r"DATE '2020-01-01'"]);
         test(r#"LTRIM("  hello")"#, &[r#""  hello""#]);
         test(r#"RTRIM("world  ")"#, &[r#""world  ""#]);
         test(r#"TRIM("  rust  ")"#, &[r#""  rust  ""#]);
@@ -295,6 +296,14 @@ mod tests {
         test(r"IS_EMPTY(col)", &["col"]);
         test(r"VALUES(col)", &["col"]);
         test(r"HEX(10)", &["10"]);
+        test("ASCII('A')", &["'A'"]);
+        test("CHR(65)", &["65"]);
+        test("MD5(name)", &["name"]);
+        test("GET_X(location)", &["location"]);
+        test("GET_Y(location)", &["location"]);
+        test("SORT(list)", &["list"]);
+        test("ENTRIES(doc)", &["doc"]);
+        test("KEYS(doc)", &["doc"]);
 
         test(r"ABS(1)", &["1"]);
         test(r"ABS(-1)", &["-1"]);
@@ -335,6 +344,33 @@ mod tests {
         test("REPEAT(column, 2)", &["column", "2"]);
         test(r#"UNWRAP(field, "foo.1")"#, &["field", r#""foo.1""#]);
         test(r"SKIP(list, 2)", &[r#""list""#, r"2"]);
+        test(
+            "FORMAT(created_at, '%Y-%m-%d')",
+            &["created_at", "'%Y-%m-%d'"],
+        );
+        test(
+            "TO_DATE(date_text, '%Y-%m-%d')",
+            &["date_text", "'%Y-%m-%d'"],
+        );
+        test(
+            "TO_TIMESTAMP(timestamp_text, '%Y-%m-%d %H:%M:%S')",
+            &["timestamp_text", "'%Y-%m-%d %H:%M:%S'"],
+        );
+        test(
+            "TO_TIME(time_text, '%H:%M:%S')",
+            &["time_text", "'%H:%M:%S'"],
+        );
+        test("SUBSTR(name, 2)", &["name", "2"]);
+        test("IFNULL(name, 'anonymous')", &["name", "'anonymous'"]);
+        test("NULLIF(name, '')", &["name", "''"]);
+        test("APPEND(list, 3)", &["list", "3"]);
+        test("PREPEND(list, 3)", &["list", "3"]);
+        test("SORT(list, 'DESC')", &["list", "'DESC'"]);
+        test("POINT(x, y)", &["x", "y"]);
+        test(
+            "CALC_DISTANCE(origin, destination)",
+            &["origin", "destination"],
+        );
 
         // Triple
         test(
@@ -350,6 +386,9 @@ mod tests {
             &[r#"'   >++++("<   '"#, "3", "11"],
         );
         test(r"SPLICE(list, 2, 4)", &["list", "2", "4"]);
+        test("REPLACE(name, 'old', 'new')", &["name", "'old'", "'new'"]);
+        test("SLICE(list, 2, 4)", &["list", "2", "4"]);
+        test("FIND_IDX(name, 'a', 2)", &["name", "'a'", "2"]);
 
         // Quadruple
         test(r"SPLICE(list, 3, 5, values)", &["list", "3", "5", "values"]);

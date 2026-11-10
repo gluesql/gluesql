@@ -4,8 +4,9 @@ mod schemaless;
 mod values;
 
 use crate::{
-    data::{Key, Schema, Value},
-    plan::{CustomFunctionPlan, QueryPlan, TableColumnsPlan},
+    data::{Key, Value},
+    executor::context::StatementContext,
+    plan::{QueryPlan, SchemaPlan},
     result::Result,
     store::{GStore, GStoreMut},
 };
@@ -18,31 +19,31 @@ enum RowsData {
 
 pub fn insert<T: GStore + GStoreMut>(
     storage: &mut T,
-    functions: &[CustomFunctionPlan],
+    stmt_context: StatementContext<'_>,
     table_name: &str,
     columns: &[String],
     source: &QueryPlan,
-    table_columns: &TableColumnsPlan,
 ) -> Result<usize> {
-    let column_defs = match table_columns {
-        TableColumnsPlan::Unplanned => return Err(InsertError::UnplannedTableColumns.into()),
-        TableColumnsPlan::Schemaless => None,
-        TableColumnsPlan::Columns(column_defs) => Some(column_defs),
-    };
-    let Schema { foreign_keys, .. } = storage
-        .fetch_schema(table_name)?
+    let SchemaPlan {
+        column_defs,
+        foreign_keys,
+        ..
+    } = stmt_context
+        .schema_map
+        .get(table_name)
         .ok_or_else(|| InsertError::TableNotFound(table_name.to_owned()))?;
+    let column_defs = column_defs.as_deref();
 
     let rows = match column_defs {
-        None => schemaless::fetch_rows(storage, functions, source).map(RowsData::Append),
+        None => schemaless::fetch_rows(storage, stmt_context, source).map(RowsData::Append),
         Some(column_defs) => schemaful::fetch_rows(
             storage,
-            functions,
+            stmt_context,
             table_name,
             column_defs,
             columns,
+            foreign_keys.clone(),
             source,
-            foreign_keys,
         ),
     }?;
 
@@ -57,36 +58,5 @@ pub fn insert<T: GStore + GStoreMut>(
 
             storage.insert_data(table_name, rows).map(|()| num_rows)
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use {
-        super::{InsertError, insert},
-        crate::{
-            mock::MockStorage,
-            plan::{QueryPlan, TableColumnsPlan, ValuesPlan},
-            result::Error,
-        },
-    };
-
-    #[test]
-    fn unplanned_table_columns_are_rejected() {
-        let mut storage = MockStorage::default();
-        let source = QueryPlan::Values(ValuesPlan(Vec::new()));
-        let actual = insert(
-            &mut storage,
-            &[],
-            "Item",
-            &[],
-            &source,
-            &TableColumnsPlan::Unplanned,
-        );
-
-        assert_eq!(
-            actual,
-            Err(Error::Insert(InsertError::UnplannedTableColumns))
-        );
     }
 }

@@ -2,8 +2,11 @@ use {
     super::{LabeledRows, QueryError},
     crate::{
         data::{Row, Value},
-        executor::{context::RowContext, evaluate::evaluate},
-        plan::{CustomFunctionPlan, ValuesPlan},
+        executor::{
+            context::{RowContext, StatementContext},
+            evaluate::evaluate,
+        },
+        plan::ValuesPlan,
         result::Result,
         store::GStore,
     },
@@ -17,11 +20,12 @@ pub(super) struct MaterializedRows {
 
 pub(super) fn execute<'a, T: GStore>(
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
-    plan: &'a ValuesPlan,
+    stmt_context: StatementContext<'a>,
     filter_context: Option<&Rc<RowContext<'a>>>,
+    plan: &'a ValuesPlan,
 ) -> Result<LabeledRows<'a>> {
-    let MaterializedRows { labels, rows } = materialize(storage, functions, plan, filter_context)?;
+    let MaterializedRows { labels, rows } =
+        materialize(storage, stmt_context, filter_context, plan)?;
 
     Ok(LabeledRows {
         labels,
@@ -31,9 +35,9 @@ pub(super) fn execute<'a, T: GStore>(
 
 pub(super) fn materialize<'a, T: GStore>(
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
-    ValuesPlan(exprs_list): &'a ValuesPlan,
+    stmt_context: StatementContext<'a>,
     context: Option<&Rc<RowContext<'a>>>,
+    ValuesPlan(exprs_list): &'a ValuesPlan,
 ) -> Result<MaterializedRows> {
     let first_len = exprs_list.first().map_or(0, Vec::len);
     let labels = labels_from_len(first_len);
@@ -50,7 +54,7 @@ pub(super) fn materialize<'a, T: GStore>(
         let mut values = Vec::with_capacity(exprs.len());
 
         for (expr, column_type) in exprs.iter().zip(column_types.iter_mut()) {
-            let evaluated = evaluate(storage, functions, context, None, expr)?;
+            let evaluated = evaluate(storage, stmt_context, context, None, expr)?;
 
             let value = if let Some(data_type) = column_type.as_ref() {
                 evaluated.try_into_value(data_type, true)?

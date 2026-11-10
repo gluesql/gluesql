@@ -1,40 +1,45 @@
 use {
     self::lookup::PrimaryKeyLookupCandidate,
-    super::{context::Context, expr::evaluable::check_expr as check_evaluable, query::Planner},
+    super::{
+        PlannerError, context::Context, expr::evaluable::check_expr as check_evaluable,
+        query::Planner,
+    },
     crate::{
         ast::BinaryOperator,
-        data::Schema,
         plan::{
             AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
             FilterPlan, HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan,
             JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
-            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SourcePlan,
-            StatementPlan, StatementPlanKind, TableAccessPlan,
+            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SchemaMap,
+            SchemaMapPlan, SchemaPlan, SourcePlan, StatementPlan, StatementPlanKind,
+            TableAccessPlan,
         },
+        result::Result,
     },
-    std::{collections::HashMap, hash::BuildHasher, rc::Rc},
+    std::rc::Rc,
 };
 
 mod lookup;
 
-pub fn plan<S: BuildHasher>(
-    schema_map: &HashMap<String, Schema, S>,
-    mut statement: StatementPlan,
-) -> StatementPlan {
+pub fn plan(mut statement: StatementPlan) -> Result<StatementPlan> {
+    let SchemaMapPlan::Planned(schema_map) = &statement.schema_map else {
+        return Err(PlannerError::UnplannedSchemaMap.into());
+    };
+
     let planner = PrimaryKeyPlanner { schema_map };
     statement.kind = match statement.kind {
         StatementPlanKind::Query(query) => StatementPlanKind::Query(planner.query(None, query)),
         kind => kind,
     };
-    statement
+    Ok(statement)
 }
 
-struct PrimaryKeyPlanner<'a, S> {
-    schema_map: &'a HashMap<String, Schema, S>,
+struct PrimaryKeyPlanner<'a> {
+    schema_map: &'a SchemaMap,
 }
 
-impl<'a, S: BuildHasher> Planner<'a> for PrimaryKeyPlanner<'a, S> {
+impl<'a> Planner<'a> for PrimaryKeyPlanner<'a> {
     fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
         match query {
             QueryPlan::Project(project) => {
@@ -113,7 +118,7 @@ impl<'a, S: BuildHasher> Planner<'a> for PrimaryKeyPlanner<'a, S> {
         }
     }
 
-    fn get_schema(&self, name: &str) -> Option<&'a Schema> {
+    fn get_schema(&self, name: &str) -> Option<&'a SchemaPlan> {
         self.schema_map.get(name)
     }
 }
@@ -126,7 +131,7 @@ enum PrimaryKey {
     NotFound(ExprPlan),
 }
 
-impl<'a, S: BuildHasher> PrimaryKeyPlanner<'a, S> {
+impl<'a> PrimaryKeyPlanner<'a> {
     fn project(
         &self,
         outer_context: Option<&Rc<Context<'a>>>,
@@ -524,7 +529,7 @@ mod tests {
                 ExprPlan, ProjectInputPlan, QueryPlan, SourcePlan, StatementPlan,
                 StatementPlanKind, TableAccessPlan, TableAliasPlan, TableSourcePlan,
             },
-            planner::fetch_schema_map,
+            planner::{PlannerError, plan_schema_map},
             query_builder::{Build, col, exists, primary_key, subquery, table},
             translate::{NO_PARAMS, translate, translate_expr},
         },
@@ -551,9 +556,9 @@ mod tests {
 
     fn plan(storage: &MockStorage, sql: &str) -> StatementPlan {
         let statement = statement(sql);
-        let schema_map = fetch_schema_map(storage, &statement).unwrap();
+        let statement = plan_schema_map(storage, statement).unwrap();
 
-        plan_primary_key(&schema_map, statement)
+        plan_primary_key(statement).unwrap()
     }
 
     fn select(select: Select) -> StatementPlan {
@@ -569,6 +574,14 @@ mod tests {
         let parsed = parse_expr(sql).expect(sql);
 
         translate_expr(&parsed, NO_PARAMS).expect(sql)
+    }
+
+    #[test]
+    fn unplanned_schema_map() {
+        let input = table("Item").select().build().unwrap();
+        let actual = plan_primary_key(input);
+        let expected = Err(PlannerError::UnplannedSchemaMap.into());
+        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -588,7 +601,10 @@ mod tests {
             .offset(1)
             .build()
             .unwrap();
-        assert_eq!(actual, expected, "preserves order by before offset:\n{sql}");
+        assert_eq!(
+            actual.kind, expected.kind,
+            "preserves order by before offset:\n{sql}"
+        );
 
         let sql = "SELECT * FROM Player WHERE id = 1;";
         let actual = plan(&storage, sql);
@@ -597,7 +613,7 @@ mod tests {
             .select()
             .build()
             .unwrap();
-        assert_eq!(actual, expected, "primary key in lhs:\n{sql}");
+        assert_eq!(actual.kind, expected.kind, "primary key in lhs:\n{sql}");
 
         let sql = "SELECT * FROM Player WHERE 1 = id;";
         let actual = plan(&storage, sql);
@@ -606,7 +622,7 @@ mod tests {
             .select()
             .build()
             .unwrap();
-        assert_eq!(actual, expected, "primary key in rhs:\n{sql}");
+        assert_eq!(actual.kind, expected.kind, "primary key in rhs:\n{sql}");
 
         let sql = "SELECT * FROM Player WHERE id = 1 AND True;";
         let actual = plan(&storage, sql);
@@ -616,7 +632,7 @@ mod tests {
             .filter("True")
             .build()
             .unwrap();
-        assert_eq!(actual, expected, "AND binary op:\n{sql}");
+        assert_eq!(actual.kind, expected.kind, "AND binary op:\n{sql}");
 
         let sql = "
             SELECT * FROM Player
@@ -632,7 +648,7 @@ mod tests {
             .filter("name IS NOT NULL AND True")
             .build()
             .unwrap();
-        assert_eq!(actual, expected, "AND binary op 2:\n{sql}");
+        assert_eq!(actual.kind, expected.kind, "AND binary op 2:\n{sql}");
 
         let sql = "
             SELECT * FROM Player
@@ -642,7 +658,7 @@ mod tests {
                 AND id = 1;
         ";
         let actual = plan(&storage, sql);
-        assert_eq!(actual, expected, "AND binary op 3:\n{sql}");
+        assert_eq!(actual.kind, expected.kind, "AND binary op 3:\n{sql}");
 
         let sql = "
             SELECT * FROM Player
@@ -657,7 +673,7 @@ mod tests {
             .filter("name IS NOT NULL AND (True)")
             .build()
             .unwrap();
-        assert_eq!(actual, expected, "AND binary op 3:\n{sql}");
+        assert_eq!(actual.kind, expected.kind, "AND binary op 3:\n{sql}");
 
         let sql = "SELECT id FROM Player WHERE id = 1 GROUP BY id";
         let actual = plan(&storage, sql);
@@ -668,7 +684,10 @@ mod tests {
             .project("id")
             .build()
             .unwrap();
-        assert_eq!(actual, expected, "preserves aggregation wrapper:\n{sql}");
+        assert_eq!(
+            actual.kind, expected.kind,
+            "preserves aggregation wrapper:\n{sql}"
+        );
 
         let sql = "SELECT id FROM Player WHERE id = 1 GROUP BY id HAVING TRUE";
         let actual = plan(&storage, sql);
@@ -680,7 +699,10 @@ mod tests {
             .project("id")
             .build()
             .unwrap();
-        assert_eq!(actual, expected, "preserves having wrapper:\n{sql}");
+        assert_eq!(
+            actual.kind, expected.kind,
+            "preserves having wrapper:\n{sql}"
+        );
     }
 
     #[test]
@@ -696,7 +718,7 @@ mod tests {
             ($sql: literal) => {
                 let actual = plan(&storage, $sql);
                 let expected = statement($sql);
-                assert_eq!(actual, expected);
+                assert_eq!(actual.kind, expected.kind);
             };
         }
 
@@ -717,7 +739,7 @@ mod tests {
             .distinct()
             .build()
             .unwrap();
-        assert_eq!(actual, expected, "distinct project:\n{sql}");
+        assert_eq!(actual.kind, expected.kind, "distinct project:\n{sql}");
 
         let sql = "SELECT * FROM Player WHERE id = 1 OFFSET 2";
         let actual = plan(&storage, sql);
@@ -727,7 +749,7 @@ mod tests {
             .offset(2)
             .build()
             .unwrap();
-        assert_eq!(actual, expected, "offset project:\n{sql}");
+        assert_eq!(actual.kind, expected.kind, "offset project:\n{sql}");
 
         let sql = "SELECT DISTINCT * FROM Player WHERE id = 1 OFFSET 2";
         let actual = plan(&storage, sql);
@@ -738,7 +760,7 @@ mod tests {
             .offset(2)
             .build()
             .unwrap();
-        assert_eq!(actual, expected, "offset distinct:\n{sql}");
+        assert_eq!(actual.kind, expected.kind, "offset distinct:\n{sql}");
 
         let sql = "SELECT * FROM Player WHERE id = 1 ORDER BY id LIMIT 3";
         let actual = plan(&storage, sql);
@@ -749,7 +771,7 @@ mod tests {
             .limit(3)
             .build()
             .unwrap();
-        assert_eq!(actual, expected, "limit order by:\n{sql}");
+        assert_eq!(actual.kind, expected.kind, "limit order by:\n{sql}");
 
         let sql = "SELECT DISTINCT * FROM Player WHERE id = 1 LIMIT 3";
         let actual = plan(&storage, sql);
@@ -760,7 +782,7 @@ mod tests {
             .limit(3)
             .build()
             .unwrap();
-        assert_eq!(actual, expected, "limit distinct:\n{sql}");
+        assert_eq!(actual.kind, expected.kind, "limit distinct:\n{sql}");
 
         let sql = "SELECT * FROM Player WHERE id = 1 OFFSET 2 LIMIT 3";
         let actual = plan(&storage, sql);
@@ -771,7 +793,7 @@ mod tests {
             .limit(3)
             .build()
             .unwrap();
-        assert_eq!(actual, expected, "limit offset project:\n{sql}");
+        assert_eq!(actual.kind, expected.kind, "limit offset project:\n{sql}");
 
         let sql = "SELECT * FROM Player WHERE id = 1 ORDER BY id OFFSET 2 LIMIT 3";
         let actual = plan(&storage, sql);
@@ -783,7 +805,7 @@ mod tests {
             .limit(3)
             .build()
             .unwrap();
-        assert_eq!(actual, expected, "limit offset order by:\n{sql}");
+        assert_eq!(actual.kind, expected.kind, "limit offset order by:\n{sql}");
 
         let sql = "SELECT DISTINCT * FROM Player WHERE id = 1 ORDER BY id OFFSET 2 LIMIT 3";
         let actual = plan(&storage, sql);
@@ -796,7 +818,7 @@ mod tests {
             .limit(3)
             .build()
             .unwrap();
-        assert_eq!(actual, expected, "limit offset distinct:\n{sql}");
+        assert_eq!(actual.kind, expected.kind, "limit offset distinct:\n{sql}");
     }
 
     #[test]
@@ -815,12 +837,15 @@ mod tests {
         let sql = "SELECT * FROM Player JOIN Badge";
         let actual = plan(&storage, sql);
         let expected = table("Player").select().join("Badge").build().unwrap();
-        assert_eq!(actual, expected, "inner join project:\n{sql}");
+        assert_eq!(actual.kind, expected.kind, "inner join project:\n{sql}");
 
         let sql = "SELECT * FROM Player LEFT JOIN Badge";
         let actual = plan(&storage, sql);
         let expected = table("Player").select().left_join("Badge").build().unwrap();
-        assert_eq!(actual, expected, "left outer join project:\n{sql}");
+        assert_eq!(
+            actual.kind, expected.kind,
+            "left outer join project:\n{sql}"
+        );
 
         let sql = "SELECT id FROM Player GROUP BY id";
         let actual = plan(&storage, sql);
@@ -830,7 +855,7 @@ mod tests {
             .project("id")
             .build()
             .unwrap();
-        assert_eq!(actual, expected, "source aggregation:\n{sql}");
+        assert_eq!(actual.kind, expected.kind, "source aggregation:\n{sql}");
 
         let sql = "SELECT Player.id FROM Player JOIN Badge GROUP BY Player.id";
         let actual = plan(&storage, sql);
@@ -841,7 +866,7 @@ mod tests {
             .project("Player.id")
             .build()
             .unwrap();
-        assert_eq!(actual, expected, "inner join aggregation:\n{sql}");
+        assert_eq!(actual.kind, expected.kind, "inner join aggregation:\n{sql}");
 
         let sql = "SELECT Player.id FROM Player LEFT JOIN Badge GROUP BY Player.id";
         let actual = plan(&storage, sql);
@@ -852,7 +877,10 @@ mod tests {
             .project("Player.id")
             .build()
             .unwrap();
-        assert_eq!(actual, expected, "left outer join aggregation:\n{sql}");
+        assert_eq!(
+            actual.kind, expected.kind,
+            "left outer join aggregation:\n{sql}"
+        );
 
         let sql = "SELECT id FROM Player WHERE name = 'Alice' GROUP BY id";
         let actual = plan(&storage, sql);
@@ -864,7 +892,7 @@ mod tests {
             .build()
             .unwrap();
         assert_eq!(
-            actual, expected,
+            actual.kind, expected.kind,
             "aggregation preserves residual filter:\n{sql}"
         );
 
@@ -884,7 +912,7 @@ mod tests {
             .build()
             .unwrap();
         assert_eq!(
-            actual, expected,
+            actual.kind, expected.kind,
             "inner join aggregation consumes filter:\n{sql}"
         );
 
@@ -904,7 +932,7 @@ mod tests {
             .build()
             .unwrap();
         assert_eq!(
-            actual, expected,
+            actual.kind, expected.kind,
             "left outer join aggregation consumes filter:\n{sql}"
         );
     }
@@ -933,12 +961,12 @@ mod tests {
             .join("Badge")
             .build()
             .unwrap();
-        assert_eq!(actual, expected, "basic inner join:\n{sql}");
+        assert_eq!(actual.kind, expected.kind, "basic inner join:\n{sql}");
 
         let sql = "SELECT * FROM Player JOIN Badge WHERE id = 1";
         let actual = plan(&storage, sql);
         assert_eq!(
-            actual, expected,
+            actual.kind, expected.kind,
             "unqualified primary key on first relation:\n{sql}"
         );
 
@@ -982,7 +1010,10 @@ mod tests {
             group_by: Vec::new(),
             having: None,
         });
-        assert_eq!(actual, expected, "join but no primary key:\n{sql}");
+        assert_eq!(
+            actual.kind, expected.kind,
+            "join but no primary key:\n{sql}"
+        );
 
         let sql = "
             SELECT * FROM Player
@@ -995,7 +1026,7 @@ mod tests {
             .filter(col("name").in_list(table("Player").index_by(primary_key().eq("1")).select()))
             .build()
             .unwrap();
-        assert_eq!(actual, expected, "nested select:\n{sql}");
+        assert_eq!(actual.kind, expected.kind, "nested select:\n{sql}");
 
         let sql = "
             SELECT *
@@ -1015,7 +1046,7 @@ mod tests {
             .build()
             .unwrap();
         assert_eq!(
-            actual, expected,
+            actual.kind, expected.kind,
             "right conjunct plans nested primary key lookup:\n{sql}"
         );
 
@@ -1037,7 +1068,7 @@ mod tests {
             .build()
             .unwrap();
         assert_eq!(
-            actual, expected,
+            actual.kind, expected.kind,
             "preserves left residual and plans right conjunct subquery:\n{sql}"
         );
 
@@ -1061,7 +1092,7 @@ mod tests {
             .build()
             .unwrap();
         assert_eq!(
-            actual, expected,
+            actual.kind, expected.kind,
             "join condition plans nested primary key lookup:\n{sql}"
         );
 
@@ -1084,7 +1115,7 @@ mod tests {
             .build()
             .unwrap();
         assert_eq!(
-            actual, expected,
+            actual.kind, expected.kind,
             "nested loop plans through inner join input:\n{sql}"
         );
 
@@ -1107,7 +1138,7 @@ mod tests {
             .build()
             .unwrap();
         assert_eq!(
-            actual, expected,
+            actual.kind, expected.kind,
             "nested loop plans through left outer join input:\n{sql}"
         );
     }
@@ -1138,8 +1169,8 @@ mod tests {
             .on(exists(table("Player").select().filter("id = 4")))
             .build()
             .unwrap();
-        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
-        let actual = plan_primary_key(&schema_map, statement);
+        let statement = plan_schema_map(&storage, statement).unwrap();
+        let actual = plan_primary_key(statement).unwrap();
         let expected = table("Player")
             .select()
             .join("Badge")
@@ -1166,7 +1197,7 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(actual, expected);
+        assert_eq!(actual.kind, expected.kind);
 
         let statement = table("Player")
             .select()
@@ -1178,8 +1209,8 @@ mod tests {
             )
             .build()
             .unwrap();
-        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
-        let actual = plan_primary_key(&schema_map, statement);
+        let statement = plan_schema_map(&storage, statement).unwrap();
+        let actual = plan_primary_key(statement).unwrap();
         let expected = table("Player")
             .select()
             .join("Badge")
@@ -1200,7 +1231,7 @@ mod tests {
             )
             .build()
             .unwrap();
-        assert_eq!(actual, expected);
+        assert_eq!(actual.kind, expected.kind);
 
         let statement = table("Player")
             .select()
@@ -1212,8 +1243,8 @@ mod tests {
             )
             .build()
             .unwrap();
-        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
-        let actual = plan_primary_key(&schema_map, statement);
+        let statement = plan_schema_map(&storage, statement).unwrap();
+        let actual = plan_primary_key(statement).unwrap();
         let expected = table("Player")
             .select()
             .left_join("Badge")
@@ -1234,7 +1265,7 @@ mod tests {
             )
             .build()
             .unwrap();
-        assert_eq!(actual, expected);
+        assert_eq!(actual.kind, expected.kind);
     }
 
     #[test]
@@ -1266,7 +1297,10 @@ mod tests {
             .filter("p.id = 1 AND t.done = FALSE")
             .build()
             .unwrap();
-        assert_eq!(actual, expected, "qualified joined relation:\n{sql}");
+        assert_eq!(
+            actual.kind, expected.kind,
+            "qualified joined relation:\n{sql}"
+        );
 
         let sql = "
             SELECT *
@@ -1283,7 +1317,10 @@ mod tests {
             .filter("id = 1 AND t.done = FALSE")
             .build()
             .unwrap();
-        assert_eq!(actual, expected, "unqualified joined relation:\n{sql}");
+        assert_eq!(
+            actual.kind, expected.kind,
+            "unqualified joined relation:\n{sql}"
+        );
     }
 
     #[test]
@@ -1367,7 +1404,7 @@ mod tests {
         let expected = statement(sql);
 
         assert_eq!(
-            actual, expected,
+            actual.kind, expected.kind,
             "joined positional alias should preserve selection:\n{sql}"
         );
 
@@ -1386,7 +1423,7 @@ mod tests {
         let expected = statement(sql);
 
         assert_eq!(
-            actual, expected,
+            actual.kind, expected.kind,
             "shadowed primary key alias should preserve selection:\n{sql}"
         );
     }
@@ -1410,10 +1447,10 @@ mod tests {
             .filter("id = 1")
             .build()
             .unwrap();
-        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
-        let actual = plan_primary_key(&schema_map, statement.clone());
+        let statement = plan_schema_map(&storage, statement).unwrap();
+        let actual = plan_primary_key(statement.clone()).unwrap();
 
-        assert_eq!(actual, statement);
+        assert_eq!(actual.kind, statement.kind);
     }
 
     #[test]
@@ -1470,7 +1507,10 @@ mod tests {
                 having: None,
             })
         };
-        assert_eq!(actual, expected, "name is not primary key:\n{sql}");
+        assert_eq!(
+            actual.kind, expected.kind,
+            "name is not primary key:\n{sql}"
+        );
 
         let sql = "
             SELECT * FROM Player WHERE id IN (
@@ -1521,7 +1561,10 @@ mod tests {
                 having: None,
             })
         };
-        assert_eq!(actual, expected, "ambiguous nested contexts:\n{sql}");
+        assert_eq!(
+            actual.kind, expected.kind,
+            "ambiguous nested contexts:\n{sql}"
+        );
 
         let sql = "DELETE FROM Player WHERE id = 1;";
         let actual = plan(&storage, sql);
@@ -1533,7 +1576,7 @@ mod tests {
                 right: Box::new(Expr::Literal(Literal::Number(1.into()))),
             }),
         });
-        assert_eq!(actual, expected, "delete statement:\n{sql}");
+        assert_eq!(actual.kind, expected.kind, "delete statement:\n{sql}");
 
         let sql = "VALUES (1), (2);";
         let actual = plan(&storage, sql);
@@ -1546,7 +1589,7 @@ mod tests {
             offset: None,
             order_by: Vec::new(),
         }));
-        assert_eq!(actual, expected, "values:\n{sql}");
+        assert_eq!(actual.kind, expected.kind, "values:\n{sql}");
 
         let sql = "SELECT * FROM Player WHERE (name);";
         let actual = plan(&storage, sql);
@@ -1564,6 +1607,6 @@ mod tests {
             group_by: Vec::new(),
             having: None,
         });
-        assert_eq!(actual, expected, "nested:\n{sql}");
+        assert_eq!(actual.kind, expected.kind, "nested:\n{sql}");
     }
 }

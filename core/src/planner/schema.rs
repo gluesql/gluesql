@@ -1,436 +1,200 @@
 use {
-    super::expr::PlanExpr,
+    super::visit::{Visitor, walk_source},
     crate::{
-        data::Schema,
         plan::{
-            AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
-            FilterPlan, HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan,
-            JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
-            LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
-            OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan, ProjectPlan,
-            ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SourcePlan,
-            StatementPlan, StatementPlanKind, ValuesOrderByPlan, ValuesPlan,
+            AlterTableOperationPlan, SchemaMap, SchemaMapPlan, SourcePlan, StatementPlan,
+            StatementPlanKind,
         },
-        result::Result,
+        result::{Error, Result},
         store::Store,
     },
-    std::{collections::HashMap, iter},
+    std::collections::BTreeSet,
 };
 
-pub fn fetch_schema_map<T: Store + ?Sized>(
+/// Prepares schema dependencies on the statement for subsequent planning passes.
+/// An existing `Planned` map is preserved without storage reads or conversion.
+pub fn plan_schema_map<T: Store + ?Sized>(
     storage: &T,
-    statement: &StatementPlan,
-) -> Result<HashMap<String, Schema>> {
+    mut statement: StatementPlan,
+) -> Result<StatementPlan> {
+    if matches!(&statement.schema_map, SchemaMapPlan::Planned(_)) {
+        return Ok(statement);
+    }
+
+    let mut dependencies = SchemaDependencies::default();
+    let mut referencing_targets = BTreeSet::new();
+
     match &statement.kind {
-        StatementPlanKind::Query(query) => scan_query(storage, query),
+        StatementPlanKind::Query(query) => dependencies.visit_query(query)?,
         StatementPlanKind::Insert {
             table_name, source, ..
         } => {
-            let table_schema = storage
-                .fetch_schema(table_name)?
-                .map_or_else(HashMap::new, |schema| {
-                    HashMap::from([(table_name.to_owned(), schema)])
-                });
-            let source_schema_list = scan_query(storage, source)?;
-            let schema_list = table_schema.into_iter().chain(source_schema_list).collect();
-
-            Ok(schema_list)
-        }
-        StatementPlanKind::CreateTable { name, source, .. } => {
-            let table_schema = storage
-                .fetch_schema(name)?
-                .map_or_else(HashMap::new, |schema| {
-                    HashMap::from([(name.to_owned(), schema)])
-                });
-            let source_schema_list = match source {
-                Some(source) => scan_query(storage, source)?,
-                None => HashMap::new(),
-            };
-            let schema_list = table_schema.into_iter().chain(source_schema_list).collect();
-
-            Ok(schema_list)
-        }
-        StatementPlanKind::CreateIndex { table_name, .. } => {
-            let schema_map = storage
-                .fetch_schema(table_name)?
-                .map_or_else(HashMap::new, |schema| {
-                    HashMap::from([(table_name.to_owned(), schema)])
-                });
-
-            Ok(schema_map)
-        }
-        StatementPlanKind::DropTable { names, .. } => {
-            let mut schema_map = HashMap::new();
-            for table_name in names {
-                if let Some(schema) = storage.fetch_schema(table_name)? {
-                    schema_map.insert(table_name.clone(), schema);
-                }
-            }
-
-            Ok(schema_map)
+            dependencies.names.insert(table_name.clone());
+            dependencies.visit_query(source)?;
         }
         StatementPlanKind::Update {
             table_name,
+            assignments,
             selection,
-            ..
         } => {
-            let table_schema = storage
-                .fetch_schema(table_name)?
-                .map_or_else(HashMap::new, |schema| {
-                    HashMap::from([(table_name.to_owned(), schema)])
-                });
-            let selection_schema = match selection {
-                Some(expr) => scan_expr(storage, expr)?,
-                None => HashMap::new(),
-            };
-            Ok(table_schema.into_iter().chain(selection_schema).collect())
+            dependencies.names.insert(table_name.clone());
+
+            for assignment in assignments {
+                dependencies.visit_expr(&assignment.value)?;
+            }
+
+            if let Some(selection) = selection {
+                dependencies.visit_expr(selection)?;
+            }
         }
         StatementPlanKind::Delete {
             table_name,
             selection,
         } => {
-            let table_schema = storage
-                .fetch_schema(table_name)?
-                .map_or_else(HashMap::new, |schema| {
-                    HashMap::from([(table_name.to_owned(), schema)])
-                });
-            let selection_schema = match selection {
-                Some(expr) => scan_expr(storage, expr)?,
-                None => HashMap::new(),
-            };
-            Ok(table_schema.into_iter().chain(selection_schema).collect())
+            dependencies.names.insert(table_name.clone());
+            referencing_targets.insert(table_name.clone());
+
+            if let Some(selection) = selection {
+                dependencies.visit_expr(selection)?;
+            }
         }
-        _ => Ok(HashMap::new()),
+        StatementPlanKind::CreateTable {
+            name,
+            source,
+            foreign_keys,
+            ..
+        } => {
+            dependencies.names.insert(name.clone());
+
+            for foreign_key in foreign_keys {
+                if &foreign_key.referenced_table_name != name {
+                    dependencies
+                        .names
+                        .insert(foreign_key.referenced_table_name.clone());
+                }
+            }
+
+            if let Some(source) = source {
+                dependencies.visit_query(source)?;
+            }
+        }
+        StatementPlanKind::AlterTable { name, operation } => {
+            dependencies.names.insert(name.clone());
+
+            if matches!(
+                operation,
+                AlterTableOperationPlan::RenameColumn { .. }
+                    | AlterTableOperationPlan::DropColumn { .. }
+            ) {
+                referencing_targets.insert(name.clone());
+            }
+        }
+        StatementPlanKind::DropTable { names, .. } => {
+            dependencies.names.extend(names.iter().cloned());
+            referencing_targets.extend(names.iter().cloned());
+        }
+        StatementPlanKind::CreateIndex { table_name, .. }
+        | StatementPlanKind::ShowColumns { table_name } => {
+            dependencies.names.insert(table_name.clone());
+        }
+        StatementPlanKind::CreateFunction { .. }
+        | StatementPlanKind::DropFunction { .. }
+        | StatementPlanKind::DropIndex { .. }
+        | StatementPlanKind::StartTransaction
+        | StatementPlanKind::Commit
+        | StatementPlanKind::Rollback
+        | StatementPlanKind::ShowVariable(_)
+        | StatementPlanKind::ShowIndexes(_) => {}
     }
-}
 
-fn scan_query<T: Store + ?Sized>(
-    storage: &T,
-    query: &QueryPlan,
-) -> Result<HashMap<String, Schema>> {
-    match query {
-        QueryPlan::Project(project) => scan_project(storage, project),
-        QueryPlan::Values(values) => scan_values(storage, values),
-        QueryPlan::SelectOrderBy(order_by) => scan_select_order_by(storage, order_by),
-        QueryPlan::ValuesOrderBy(order_by) => scan_values_order_by(storage, order_by),
-        QueryPlan::Distinct(distinct) => scan_distinct(storage, distinct),
-        QueryPlan::Offset(offset) => scan_offset(storage, offset),
-        QueryPlan::Limit(LimitPlan { input, count }) => {
-            let schema_list = match input {
-                LimitInputPlan::Project(project) => scan_project(storage, project)?,
-                LimitInputPlan::Values(values) => scan_values(storage, values)?,
-                LimitInputPlan::SelectOrderBy(order_by) => scan_select_order_by(storage, order_by)?,
-                LimitInputPlan::ValuesOrderBy(order_by) => scan_values_order_by(storage, order_by)?,
-                LimitInputPlan::Distinct(distinct) => scan_distinct(storage, distinct)?,
-                LimitInputPlan::Offset(offset) => scan_offset(storage, offset)?,
-            };
+    for function in &statement.functions {
+        dependencies.visit_expr(&function.body)?;
 
-            Ok(schema_list
-                .into_iter()
-                .chain(scan_expr(storage, count)?)
-                .collect())
+        for arg in &function.args {
+            if let Some(default) = &arg.default {
+                dependencies.visit_expr(default)?;
+            }
         }
     }
-}
 
-fn scan_offset<T: Store + ?Sized>(
-    storage: &T,
-    OffsetPlan { input, count }: &OffsetPlan,
-) -> Result<HashMap<String, Schema>> {
-    let schema_list = match input {
-        OffsetInputPlan::Project(project) => scan_project(storage, project)?,
-        OffsetInputPlan::Values(values) => scan_values(storage, values)?,
-        OffsetInputPlan::SelectOrderBy(order_by) => scan_select_order_by(storage, order_by)?,
-        OffsetInputPlan::ValuesOrderBy(order_by) => scan_values_order_by(storage, order_by)?,
-        OffsetInputPlan::Distinct(distinct) => scan_distinct(storage, distinct)?,
-    };
+    let schema_map = if referencing_targets.is_empty() {
+        let mut schema_map = SchemaMap::new();
 
-    Ok(schema_list
-        .into_iter()
-        .chain(scan_expr(storage, count)?)
-        .collect())
-}
-
-fn scan_distinct<T: Store + ?Sized>(
-    storage: &T,
-    DistinctPlan { input }: &DistinctPlan,
-) -> Result<HashMap<String, Schema>> {
-    match input {
-        DistinctInputPlan::Project(project) => scan_project(storage, project),
-        DistinctInputPlan::SelectOrderBy(order_by) => scan_select_order_by(storage, order_by),
-    }
-}
-
-fn scan_select_order_by<T: Store + ?Sized>(
-    storage: &T,
-    SelectOrderByPlan { input, exprs }: &SelectOrderByPlan,
-) -> Result<HashMap<String, Schema>> {
-    let schema_list = scan_project(storage, input)?;
-
-    scan_order_by_exprs(storage, schema_list, exprs)
-}
-
-fn scan_values_order_by<T: Store + ?Sized>(
-    storage: &T,
-    ValuesOrderByPlan { input, exprs }: &ValuesOrderByPlan,
-) -> Result<HashMap<String, Schema>> {
-    let schema_list = scan_values(storage, input)?;
-
-    scan_order_by_exprs(storage, schema_list, exprs)
-}
-
-fn scan_values<T: Store + ?Sized>(
-    storage: &T,
-    ValuesPlan(rows): &ValuesPlan,
-) -> Result<HashMap<String, Schema>> {
-    let mut schema_map = HashMap::new();
-    for expr in rows.iter().flatten() {
-        schema_map.extend(scan_expr(storage, expr)?);
-    }
-
-    Ok(schema_map)
-}
-
-fn scan_order_by_exprs<T: Store + ?Sized>(
-    storage: &T,
-    schema_list: HashMap<String, Schema>,
-    exprs: &[OrderByExprPlan],
-) -> Result<HashMap<String, Schema>> {
-    let order_by = exprs
-        .iter()
-        .map(|order_by| scan_expr(storage, &order_by.expr))
-        .collect::<Result<Vec<_>>>()?
-        .into_iter()
-        .flatten();
-
-    Ok(schema_list.into_iter().chain(order_by).collect())
-}
-
-fn scan_project<T: Store + ?Sized>(
-    storage: &T,
-    ProjectPlan { input, projection }: &ProjectPlan,
-) -> Result<HashMap<String, Schema>> {
-    let schema_list = match input {
-        ProjectInputPlan::Source(relation) => scan_source(storage, relation)?,
-        ProjectInputPlan::InnerJoin(join) => scan_inner_join(storage, join)?,
-        ProjectInputPlan::LeftOuterJoin(join) => scan_left_outer_join(storage, join)?,
-        ProjectInputPlan::Filter(filter) => scan_filter(storage, filter)?,
-        ProjectInputPlan::Aggregation(aggregation) => {
-            let schema_list = scan_aggregation_input(storage, &aggregation.input)?;
-            let group_by = aggregation
-                .group_by
-                .iter()
-                .map(|expr| scan_expr(storage, expr))
-                .collect::<Result<Vec<_>>>()?
-                .into_iter()
-                .flatten();
-
-            schema_list.into_iter().chain(group_by).collect()
+        for name in dependencies.names {
+            if let Some(schema) = storage.fetch_schema(&name)? {
+                schema_map.insert(name, schema.into());
+            }
         }
-        ProjectInputPlan::Having(having) => {
-            let schema_list = scan_aggregation_input(storage, &having.input.input)?;
-            let aggregation = having
-                .input
-                .group_by
-                .iter()
-                .chain(iter::once(&having.expr))
-                .map(|expr| scan_expr(storage, expr))
-                .collect::<Result<Vec<_>>>()?
-                .into_iter()
-                .flatten();
 
-            schema_list.into_iter().chain(aggregation).collect()
-        }
-    };
-    let projection_items = match projection {
-        ProjectionPlan::SelectItems(items) => items.as_slice(),
-        ProjectionPlan::SchemalessMap => &[],
-    };
-
-    let projection = projection_items
-        .iter()
-        .map(|select_item| match select_item {
-            SelectItemPlan::Expr { expr, .. } => scan_expr(storage, expr),
-            SelectItemPlan::QualifiedWildcard(_) | SelectItemPlan::Wildcard => Ok(HashMap::new()),
-        })
-        .collect::<Result<Vec<HashMap<String, Schema>>>>()?
-        .into_iter()
-        .flatten();
-
-    Ok(schema_list.into_iter().chain(projection).collect())
-}
-
-fn scan_filter<T: Store + ?Sized>(
-    storage: &T,
-    FilterPlan { input, expr }: &FilterPlan,
-) -> Result<HashMap<String, Schema>> {
-    let input = match input {
-        FilterInputPlan::Source(relation) => scan_source(storage, relation)?,
-        FilterInputPlan::InnerJoin(join) => scan_inner_join(storage, join)?,
-        FilterInputPlan::LeftOuterJoin(join) => scan_left_outer_join(storage, join)?,
-    };
-    let expr = scan_expr(storage, expr)?;
-
-    Ok(input.into_iter().chain(expr).collect())
-}
-
-fn scan_aggregation_input<T: Store + ?Sized>(
-    storage: &T,
-    input: &AggregationInputPlan,
-) -> Result<HashMap<String, Schema>> {
-    match input {
-        AggregationInputPlan::Source(relation) => scan_source(storage, relation),
-        AggregationInputPlan::InnerJoin(join) => scan_inner_join(storage, join),
-        AggregationInputPlan::LeftOuterJoin(join) => scan_left_outer_join(storage, join),
-        AggregationInputPlan::Filter(filter) => scan_filter(storage, filter),
-    }
-}
-
-fn scan_inner_join<T: Store + ?Sized>(
-    storage: &T,
-    join: &InnerJoinPlan,
-) -> Result<HashMap<String, Schema>> {
-    match &join.input {
-        InnerJoinInputPlan::NestedLoop(join) => scan_nested_loop(storage, join),
-        InnerJoinInputPlan::Hash(join) => scan_hash(storage, join),
-        InnerJoinInputPlan::Condition(condition) => scan_condition(storage, condition),
-    }
-}
-
-fn scan_left_outer_join<T: Store + ?Sized>(
-    storage: &T,
-    join: &LeftOuterJoinPlan,
-) -> Result<HashMap<String, Schema>> {
-    match &join.input {
-        LeftOuterJoinInputPlan::NestedLoop(join) => scan_nested_loop(storage, join),
-        LeftOuterJoinInputPlan::Hash(join) => scan_hash(storage, join),
-        LeftOuterJoinInputPlan::Condition(condition) => scan_condition(storage, condition),
-    }
-}
-
-fn scan_condition<T: Store + ?Sized>(
-    storage: &T,
-    condition: &JoinConditionPlan,
-) -> Result<HashMap<String, Schema>> {
-    let input = match &condition.input {
-        JoinConditionInputPlan::NestedLoop(join) => scan_nested_loop(storage, join)?,
-        JoinConditionInputPlan::Hash(join) => scan_hash(storage, join)?,
-    };
-    let expr = scan_expr(storage, &condition.expr)?;
-
-    Ok(input.into_iter().chain(expr).collect())
-}
-
-fn scan_nested_loop<T: Store + ?Sized>(
-    storage: &T,
-    join: &NestedLoopJoinPlan,
-) -> Result<HashMap<String, Schema>> {
-    let input = match &join.input {
-        NestedLoopJoinInputPlan::Source(source) => scan_source(storage, source)?,
-        NestedLoopJoinInputPlan::InnerJoin(join) => scan_inner_join(storage, join)?,
-        NestedLoopJoinInputPlan::LeftOuterJoin(join) => scan_left_outer_join(storage, join)?,
-    };
-    let right = scan_source(storage, &join.right)?;
-
-    Ok(input.into_iter().chain(right).collect())
-}
-
-fn scan_hash<T: Store + ?Sized>(
-    storage: &T,
-    join: &HashJoinPlan,
-) -> Result<HashMap<String, Schema>> {
-    let input = match &join.input {
-        HashJoinInputPlan::Source(source) => scan_source(storage, source)?,
-        HashJoinInputPlan::InnerJoin(join) => scan_inner_join(storage, join)?,
-        HashJoinInputPlan::LeftOuterJoin(join) => scan_left_outer_join(storage, join)?,
-    };
-    let expressions = [&join.input_key, &join.right_key]
-        .into_iter()
-        .chain(join.right_filter.iter())
-        .map(|expr| scan_expr(storage, expr))
-        .collect::<Result<Vec<_>>>()?
-        .into_iter()
-        .flatten();
-    let right = scan_source(storage, &join.right)?;
-
-    Ok(input.into_iter().chain(right).chain(expressions).collect())
-}
-
-fn scan_source<T>(storage: &T, source: &SourcePlan) -> Result<HashMap<String, Schema>>
-where
-    T: Store + ?Sized,
-{
-    match source {
-        SourcePlan::Table(table) => {
-            let schema = storage.fetch_schema(&table.name)?;
-            let schema_list: HashMap<String, Schema> = schema.map_or_else(HashMap::new, |schema| {
-                HashMap::from([(table.name.clone(), schema)])
-            });
-
-            Ok(schema_list)
-        }
-        SourcePlan::Derived(derived) => scan_query(storage, &derived.query),
-        SourcePlan::Series(series) => scan_expr(storage, &series.size),
-        SourcePlan::Dictionary(_) => Ok(HashMap::new()),
-    }
-}
-
-fn scan_expr<T>(storage: &T, expr: &ExprPlan) -> Result<HashMap<String, Schema>>
-where
-    T: Store + ?Sized,
-{
-    let schema_list = match expr.into() {
-        PlanExpr::None | PlanExpr::Identifier(_) | PlanExpr::CompoundIdentifier { .. } => {
-            HashMap::new()
-        }
-        PlanExpr::Expr(expr) => scan_expr(storage, expr)?,
-        PlanExpr::TwoExprs(expr, expr2) => scan_expr(storage, expr)?
+        schema_map
+    } else {
+        storage
+            .fetch_all_schemas()?
             .into_iter()
-            .chain(scan_expr(storage, expr2)?)
-            .collect(),
-        PlanExpr::ThreeExprs(expr, expr2, expr3) => scan_expr(storage, expr)?
-            .into_iter()
-            .chain(scan_expr(storage, expr2)?)
-            .chain(scan_expr(storage, expr3)?)
-            .collect(),
-        PlanExpr::MultiExprs(exprs) => exprs
-            .iter()
-            .map(|expr| scan_expr(storage, expr))
-            .collect::<Result<Vec<HashMap<String, Schema>>>>()?
-            .into_iter()
-            .flatten()
-            .collect(),
-        PlanExpr::Query(query) => scan_query(storage, query)?,
-        PlanExpr::QueryAndExpr { query, expr } => scan_query(storage, query)?
-            .into_iter()
-            .chain(scan_expr(storage, expr)?)
-            .collect(),
+            .filter(|schema| {
+                dependencies.names.contains(&schema.table_name)
+                    || schema.foreign_keys.iter().any(|foreign_key| {
+                        referencing_targets.contains(&foreign_key.referenced_table_name)
+                    })
+            })
+            .map(|schema| (schema.table_name.clone(), schema.into()))
+            .collect()
     };
 
-    Ok(schema_list)
+    statement.schema_map = SchemaMapPlan::Planned(schema_map);
+
+    Ok(statement)
+}
+
+#[derive(Default)]
+struct SchemaDependencies {
+    names: BTreeSet<String>,
+}
+
+impl Visitor for SchemaDependencies {
+    type Error = Error;
+
+    fn visit_source(&mut self, source: &SourcePlan) -> Result<()> {
+        if let SourcePlan::Table(table) = source {
+            self.names.insert(table.name.clone());
+        }
+
+        walk_source(self, source)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use {
-        super::fetch_schema_map,
+        super::plan_schema_map,
         crate::{
+            ast::DataType,
             mock::{MockStorage, run},
-            parse_sql::parse,
+            parse_sql::{parse, parse_expr},
+            plan::{
+                CustomFunctionPlan, ExprPlan, OperateFunctionArgPlan, SchemaMap, SchemaMapPlan,
+                StatementPlan,
+            },
+            query_builder::{Build, non_clustered, primary_key, table},
             result::{Error, Result},
-            translate::translate,
+            translate::{NO_PARAMS, translate, translate_expr},
         },
     };
 
     fn plan(storage: &MockStorage, sql: &str) -> Result<Vec<String>> {
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
         let statement = translate(&parsed).unwrap().into();
-        let schema_map = fetch_schema_map(storage, &statement);
 
-        let mut schema_names = schema_map?.into_keys().collect::<Vec<_>>();
-        schema_names.sort();
+        plan_statement(storage, statement)
+    }
 
-        Ok(schema_names)
+    fn plan_statement(storage: &MockStorage, statement: StatementPlan) -> Result<Vec<String>> {
+        let statement = plan_schema_map(storage, statement)?;
+        let SchemaMapPlan::Planned(schema_map) = statement.schema_map else {
+            panic!("schema planning must produce a Planned map");
+        };
+
+        Ok(schema_map.into_keys().collect())
     }
 
     fn run_test(storage: &MockStorage, sql: &str, expected: &[&str]) {
@@ -454,6 +218,21 @@ mod tests {
         test("DROP TABLE Foo, Bar;", &["Bar", "Foo"]);
         test("UPDATE Foo SET id = 1;", &["Foo"]);
         test("DELETE FROM Foo;", &["Foo"]);
+        test(
+            "UPDATE Foo SET id = (SELECT name FROM Bar)",
+            &["Bar", "Foo"],
+        );
+        test(
+            "CREATE TABLE New (id INT, FOREIGN KEY (id) REFERENCES Foo(id))",
+            &["Foo"],
+        );
+        test(
+            "CREATE TABLE Foo (id INT, FOREIGN KEY (id) REFERENCES Foo(id))",
+            &["Foo"],
+        );
+        test("SHOW COLUMNS FROM Foo", &["Foo"]);
+        test("ALTER TABLE Foo ADD COLUMN n INT", &["Foo"]);
+        test("ALTER TABLE Foo RENAME TO Renamed", &["Foo"]);
     }
 
     #[test]
@@ -665,31 +444,144 @@ mod tests {
     }
 
     #[test]
-    fn storage_err() {
+    fn prepares_schema_map() {
+        let ddl = "CREATE TABLE Item (id INT DEFAULT 7)";
+        let storage = run(ddl);
+        let input = table("Item").select().build().unwrap();
+        let actual = plan_schema_map(&storage, input);
+        let expected = table("Item").select().with_schema(ddl).build();
+        assert_eq!(actual, expected);
+
+        let input = table("Missing").select().build().unwrap();
+        let expected = StatementPlan {
+            schema_map: SchemaMapPlan::Planned(SchemaMap::new()),
+            ..input.clone()
+        };
+        let actual = plan_schema_map(&storage, input);
+        assert_eq!(actual, Ok(expected));
+    }
+
+    #[test]
+    fn supplied_schema_map() {
+        let storage = run("CREATE TABLE Item (id INT)");
+        let input = table("Item")
+            .select()
+            .with_schema("CREATE TABLE Item")
+            .build()
+            .unwrap();
+        let expected = Ok(input.clone());
+        let actual = plan_schema_map(&storage, input);
+        assert_eq!(actual, expected);
+
+        let input = StatementPlan {
+            schema_map: SchemaMapPlan::Planned(SchemaMap::new()),
+            ..table("Item").select().build().unwrap()
+        };
+        let expected = Ok(input.clone());
+        let actual = plan_schema_map(&storage, input);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn referencing() {
         let storage = run("
-            CREATE TABLE Foo (id INTEGER);
-            CREATE TABLE Bar (id INTEGER);
-            CREATE TABLE Baz (flag BOOLEAN);
+            CREATE TABLE Parent (id INT PRIMARY KEY);
+            CREATE TABLE Child (
+                id INT, parent_id INT,
+                FOREIGN KEY (parent_id) REFERENCES Parent(id)
+            );
+            CREATE TABLE Other (id INT);
+            CREATE TABLE Unrelated (id INT);
+        ");
+        let test = |sql, expected| run_test(&storage, sql, expected);
+
+        test(
+            "DELETE FROM Parent WHERE id IN (SELECT id FROM Other)",
+            &["Child", "Other", "Parent"],
+        );
+        test("DROP TABLE Parent, Parent", &["Child", "Parent"]);
+        test(
+            "ALTER TABLE Parent RENAME COLUMN id TO new_id",
+            &["Child", "Parent"],
+        );
+        test("ALTER TABLE Parent DROP COLUMN id", &["Child", "Parent"]);
+    }
+
+    #[test]
+    fn table_access() {
+        let storage = run("
+            CREATE TABLE Item (id INT);
+            CREATE TABLE Lookup (id INT);
         ");
 
-        let test = |sql| assert!(plan(&storage, sql).is_err(), "{sql}");
+        let input = table("Item")
+            .index_by(primary_key().eq("(SELECT id FROM Lookup)"))
+            .select()
+            .build()
+            .unwrap();
+        let actual = plan_statement(&storage, input).unwrap();
+        let expected = ["Item", "Lookup"];
+        assert_eq!(actual, expected);
 
-        test("SELECT * FROM __Err__");
-        test("INSERT INTO __Err__ VALUES (1), (2)");
-        test("DROP TABLE __Err__");
+        let input = table("Item")
+            .index_by(non_clustered("by_id".to_owned()).eq("(SELECT id FROM Lookup)"))
+            .select()
+            .build()
+            .unwrap();
+        let actual = plan_statement(&storage, input).unwrap();
+        let expected = ["Item", "Lookup"];
+        assert_eq!(actual, expected);
+    }
 
-        test("SELECT * FROM Foo WHERE id = (SELECT foo_id FROM __Err__ LIMIT 1)");
-        test("SELECT * FROM Foo WHERE (SELECT foo_id FROM __Err__ LIMIT 1) = id");
-        test("SELECT * FROM Foo WHERE id BETWEEN (SELECT foo_id FROM __Err__ LIMIT 1) AND 100");
-        test("SELECT * FROM Foo WHERE (SELECT id FROM __Err__ LIMIT 1) BETWEEN 20 AND 50");
-        test("SELECT * FROM Foo WHERE id IN (1, 2, (SELECT foo_id FROM __Err__ LIMIT 1), 5)");
-        test("SELECT * FROM Foo WHERE id IN (SELECT * FROM __Err__)");
-        test("SELECT * FROM Foo LEFT JOIN Bar ON Bar.id = (SELECT id FROM __Err__ LIMIT 1)");
-        test("SELECT id, (SELECT id FROM __Err__ LIMIT 1) AS cc FROM Foo;");
-        test("VALUES (1), ((SELECT id FROM __Err__))");
-        test("VALUES ((SELECT id FROM __Err__)) ORDER BY column1");
-        test("VALUES ((SELECT id FROM __Err__)) LIMIT 1");
-        test("VALUES ((SELECT id FROM __Err__)) OFFSET 1");
-        test("SELECT * FROM SERIES((SELECT id FROM __Err__))");
+    #[test]
+    fn custom_function() {
+        let storage = run("
+            CREATE TABLE Item (id INT);
+            CREATE TABLE Body (id INT);
+            CREATE TABLE Arg (id INT);
+        ");
+        let expr =
+            |sql| ExprPlan::from(translate_expr(&parse_expr(sql).unwrap(), NO_PARAMS).unwrap());
+        let mut input = table("Item").select().build().unwrap();
+        input.functions = vec![CustomFunctionPlan {
+            name: "provided".to_owned(),
+            body: expr("(SELECT id FROM Body)"),
+            args: vec![
+                OperateFunctionArgPlan {
+                    name: "required".to_owned(),
+                    data_type: DataType::Int,
+                    default: None,
+                },
+                OperateFunctionArgPlan {
+                    name: "arg".to_owned(),
+                    data_type: DataType::Int,
+                    default: Some(expr("(SELECT id FROM Arg)")),
+                },
+            ],
+        }];
+        let actual = plan_statement(&storage, input).unwrap();
+        let expected = ["Arg", "Body", "Item"];
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn hash_join() {
+        let storage = run("
+            CREATE TABLE A (id INT);
+            CREATE TABLE B (id INT);
+            CREATE TABLE InputKey (id INT);
+            CREATE TABLE RightKey (id INT);
+            CREATE TABLE Filter (id INT);
+        ");
+        let input = table("A")
+            .select()
+            .join("B")
+            .hash_executor("(SELECT id FROM RightKey)", "(SELECT id FROM InputKey)")
+            .hash_filter("B.id = (SELECT id FROM Filter)")
+            .build()
+            .unwrap();
+        let actual = plan_statement(&storage, input).unwrap();
+        let expected = ["A", "B", "Filter", "InputKey", "RightKey"];
+        assert_eq!(actual, expected);
     }
 }

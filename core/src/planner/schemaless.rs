@@ -1,22 +1,22 @@
 use {
     self::{query::transform_query, validate::validate_statement},
-    super::visit_mut::visit_mut_expr,
+    super::{PlannerError, visit_mut::visit_mut_expr},
     crate::{
         ast::Literal,
-        data::{SCHEMALESS_DOC_COLUMN, Schema},
-        plan::{ExprPlan, StatementPlan, StatementPlanKind},
+        data::SCHEMALESS_DOC_COLUMN,
+        plan::{ExprPlan, SchemaMap, SchemaMapPlan, StatementPlan, StatementPlanKind},
         result::Result,
     },
-    std::{collections::HashMap, hash::BuildHasher},
 };
 
 mod query;
 mod validate;
 
-pub fn plan<S: BuildHasher>(
-    schema_map: &HashMap<String, Schema, S>,
-    statement: StatementPlan,
-) -> Result<StatementPlan> {
+pub fn plan(mut statement: StatementPlan) -> Result<StatementPlan> {
+    let SchemaMapPlan::Planned(schema_map) = &statement.schema_map else {
+        return Err(PlannerError::UnplannedSchemaMap.into());
+    };
+
     if !schema_map
         .values()
         .any(|schema| schema.column_defs.is_none())
@@ -24,15 +24,14 @@ pub fn plan<S: BuildHasher>(
         return Ok(statement);
     }
 
-    validate_statement(schema_map, &statement)?;
-    Ok(transform_statement(schema_map, statement))
+    validate_statement(schema_map, &statement.kind)?;
+    transform_statement(schema_map, &mut statement.kind);
+
+    Ok(statement)
 }
 
-fn transform_statement<S: BuildHasher>(
-    schema_map: &HashMap<String, Schema, S>,
-    mut statement: StatementPlan,
-) -> StatementPlan {
-    match &mut statement.kind {
+fn transform_statement(schema_map: &SchemaMap, kind: &mut StatementPlanKind) {
+    match kind {
         StatementPlanKind::Query(query) => {
             transform_query(schema_map, query);
         }
@@ -85,11 +84,10 @@ fn transform_statement<S: BuildHasher>(
         }
         _ => {}
     }
-    statement
 }
 
 fn transform_single_table_expr(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
+    schema_map: &SchemaMap,
     expr: &mut ExprPlan,
     table_name: &str,
     table_is_schemaless: bool,
@@ -123,10 +121,7 @@ fn transform_single_table_expr(
     });
 }
 
-fn is_schemaless_table(
-    schema_map: &HashMap<String, Schema, impl BuildHasher>,
-    table_name: &str,
-) -> bool {
+fn is_schemaless_table(schema_map: &SchemaMap, table_name: &str) -> bool {
     schema_map
         .get(table_name)
         .is_some_and(|schema| schema.column_defs.is_none())
@@ -140,7 +135,7 @@ mod tests {
             mock::{MockStorage, run},
             parse_sql::parse,
             plan::{ProjectionPlan, QueryPlan, StatementPlan, StatementPlanKind},
-            planner::fetch_schema_map,
+            planner::{PlannerError, plan_schema_map},
             query_builder::{Build, table},
             result::Result,
             translate::translate,
@@ -161,31 +156,27 @@ mod tests {
     }
 
     fn plan(storage: &MockStorage, statement: StatementPlan) -> Result<StatementPlan> {
-        let schema_map = fetch_schema_map(storage, &statement)?;
-        plan_schemaless(&schema_map, statement)
+        let statement = plan_schema_map(storage, statement)?;
+        plan_schemaless(statement)
+    }
+
+    #[test]
+    fn unplanned_schema_map() {
+        let input = table("Item").select().build().unwrap();
+        let actual = plan_schemaless(input);
+        let expected = Err(PlannerError::UnplannedSchemaMap.into());
+        assert_eq!(actual, expected);
     }
 
     #[test]
     fn plan_schemaless_transforms() {
         let storage = setup_schemaless_storage();
         let test = |actual: &str, expected: &str, name: &str| {
-            let parsed = parse(actual).expect(actual).into_iter().next().unwrap();
-            let statement = StatementPlan::from(translate(&parsed).unwrap());
-            let schema_map = fetch_schema_map(&storage, &statement).unwrap();
-            let result = plan_schemaless(&schema_map, statement).unwrap();
-
-            let expected_parsed = parse(expected).expect(expected).into_iter().next().unwrap();
-            let mut expected_stmt = StatementPlan::from(translate(&expected_parsed).unwrap());
-            if let (
-                StatementPlanKind::Query(QueryPlan::Project(actual_project)),
-                StatementPlanKind::Query(QueryPlan::Project(expected_project)),
-            ) = (&result.kind, &mut expected_stmt.kind)
-            {
-                expected_project.projection = actual_project.projection.clone();
-            }
+            let result = plan(&storage, statement(actual)).unwrap();
+            let expected_stmt = statement(expected);
 
             assert_eq!(
-                result, expected_stmt,
+                result.kind, expected_stmt.kind,
                 "\n[{name}]\nactual: {actual}\nexpected: {expected}"
             );
         };
@@ -224,22 +215,6 @@ mod tests {
         let expected = "SELECT _doc['id'] as id, _doc['name'] as name FROM Player";
         test(actual, expected, "multiple columns");
 
-        let actual = "SELECT * FROM Player";
-        let expected = "SELECT _doc as _doc FROM Player";
-        test(actual, expected, "wildcard");
-
-        let actual = "SELECT Player.* FROM Player";
-        let expected = "SELECT Player._doc as _doc FROM Player";
-        test(actual, expected, "qualified wildcard");
-
-        let actual = "SELECT * FROM Player AS P";
-        let expected = "SELECT _doc as _doc FROM Player AS P";
-        test(actual, expected, "wildcard with root alias");
-
-        let actual = "SELECT P.* FROM Player AS P";
-        let expected = "SELECT P._doc as _doc FROM Player AS P";
-        test(actual, expected, "qualified wildcard with root alias");
-
         let actual = r"
             SELECT Player.*, Team.*
             FROM Player
@@ -269,43 +244,6 @@ mod tests {
         let actual = "SELECT *, id FROM Player";
         let expected = "SELECT _doc as _doc, _doc['id'] as id FROM Player";
         test(actual, expected, "wildcard with extra projection");
-
-        let actual = "SELECT * FROM Player WHERE id = 1";
-        let expected = "SELECT _doc as _doc FROM Player WHERE _doc['id'] = 1";
-        test(actual, expected, "where clause");
-
-        let actual = "SELECT * FROM Player WHERE id = 1 AND name = 'foo'";
-        let expected =
-            "SELECT _doc as _doc FROM Player WHERE _doc['id'] = 1 AND _doc['name'] = 'foo'";
-        test(actual, expected, "where clause complex");
-
-        let actual = "SELECT * FROM Player WHERE name IS NULL";
-        let expected = "SELECT _doc as _doc FROM Player WHERE _doc['name'] IS NULL";
-        test(actual, expected, "is null");
-
-        let actual = "SELECT * FROM Player WHERE name IS NOT NULL";
-        let expected = "SELECT _doc as _doc FROM Player WHERE _doc['name'] IS NOT NULL";
-        test(actual, expected, "is not null");
-
-        let actual = "SELECT * FROM Player WHERE id IN (1, 2, 3)";
-        let expected = "SELECT _doc as _doc FROM Player WHERE _doc['id'] IN (1, 2, 3)";
-        test(actual, expected, "in list");
-
-        let actual = "SELECT * FROM Player WHERE id BETWEEN 1 AND 10";
-        let expected = "SELECT _doc as _doc FROM Player WHERE _doc['id'] BETWEEN 1 AND 10";
-        test(actual, expected, "between");
-
-        let actual = "SELECT * FROM Player WHERE name LIKE '%foo%'";
-        let expected = "SELECT _doc as _doc FROM Player WHERE _doc['name'] LIKE '%foo%'";
-        test(actual, expected, "like");
-
-        let actual = "SELECT * FROM Player WHERE name ILIKE '%foo%'";
-        let expected = "SELECT _doc as _doc FROM Player WHERE _doc['name'] ILIKE '%foo%'";
-        test(actual, expected, "ilike");
-
-        let actual = "SELECT * FROM Player WHERE (id = 1)";
-        let expected = "SELECT _doc as _doc FROM Player WHERE (_doc['id'] = 1)";
-        test(actual, expected, "nested");
 
         let actual = "SELECT -id as neg_id FROM Player";
         let expected = "SELECT -_doc['id'] as neg_id FROM Player";
@@ -484,22 +422,93 @@ mod tests {
     }
 
     #[test]
-    fn plan_schemaless_projection_mode() {
+    fn plan_schemaless_map() {
+        let storage = setup_schemaless_storage();
+        let test = |actual: &str, expected: &str, name: &str| {
+            let result = plan(&storage, statement(actual)).unwrap();
+            let mut expected_stmt = statement(expected);
+            let StatementPlanKind::Query(QueryPlan::Project(project)) = &mut expected_stmt.kind
+            else {
+                panic!("expected project query");
+            };
+            project.projection = ProjectionPlan::SchemalessMap;
+
+            assert_eq!(
+                result.kind, expected_stmt.kind,
+                "\n[{name}]\nactual: {actual}\nexpected: {expected}"
+            );
+        };
+
+        let actual = "SELECT * FROM Player";
+        let expected = "SELECT _doc as _doc FROM Player";
+        test(actual, expected, "wildcard");
+
+        let actual = "SELECT Player.* FROM Player";
+        let expected = "SELECT Player._doc as _doc FROM Player";
+        test(actual, expected, "qualified wildcard");
+
+        let actual = "SELECT * FROM Player AS P";
+        let expected = "SELECT _doc as _doc FROM Player AS P";
+        test(actual, expected, "wildcard with root alias");
+
+        let actual = "SELECT P.* FROM Player AS P";
+        let expected = "SELECT P._doc as _doc FROM Player AS P";
+        test(actual, expected, "qualified wildcard with root alias");
+
+        let actual = "SELECT * FROM Player WHERE id = 1";
+        let expected = "SELECT _doc as _doc FROM Player WHERE _doc['id'] = 1";
+        test(actual, expected, "where clause");
+
+        let actual = "SELECT * FROM Player WHERE id = 1 AND name = 'foo'";
+        let expected =
+            "SELECT _doc as _doc FROM Player WHERE _doc['id'] = 1 AND _doc['name'] = 'foo'";
+        test(actual, expected, "where clause complex");
+
+        let actual = "SELECT * FROM Player WHERE name IS NULL";
+        let expected = "SELECT _doc as _doc FROM Player WHERE _doc['name'] IS NULL";
+        test(actual, expected, "is null");
+
+        let actual = "SELECT * FROM Player WHERE name IS NOT NULL";
+        let expected = "SELECT _doc as _doc FROM Player WHERE _doc['name'] IS NOT NULL";
+        test(actual, expected, "is not null");
+
+        let actual = "SELECT * FROM Player WHERE id IN (1, 2, 3)";
+        let expected = "SELECT _doc as _doc FROM Player WHERE _doc['id'] IN (1, 2, 3)";
+        test(actual, expected, "in list");
+
+        let actual = "SELECT * FROM Player WHERE id BETWEEN 1 AND 10";
+        let expected = "SELECT _doc as _doc FROM Player WHERE _doc['id'] BETWEEN 1 AND 10";
+        test(actual, expected, "between");
+
+        let actual = "SELECT * FROM Player WHERE name LIKE '%foo%'";
+        let expected = "SELECT _doc as _doc FROM Player WHERE _doc['name'] LIKE '%foo%'";
+        test(actual, expected, "like");
+
+        let actual = "SELECT * FROM Player WHERE name ILIKE '%foo%'";
+        let expected = "SELECT _doc as _doc FROM Player WHERE _doc['name'] ILIKE '%foo%'";
+        test(actual, expected, "ilike");
+
+        let actual = "SELECT * FROM Player WHERE (id = 1)";
+        let expected = "SELECT _doc as _doc FROM Player WHERE (_doc['id'] = 1)";
+        test(actual, expected, "nested");
+    }
+
+    #[test]
+    fn plan_schemaless_ctas_projection() {
         let storage = setup_schemaless_storage();
         let test = |sql: &str, expected_schemaless_map: bool| {
             let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
             let statement = StatementPlan::from(translate(&parsed).unwrap());
-            let schema_map = fetch_schema_map(&storage, &statement).unwrap();
-            let planned = plan_schemaless(&schema_map, statement).unwrap();
-            let query = match planned.kind {
-                StatementPlanKind::Query(query) => query,
-                StatementPlanKind::CreateTable {
-                    source: Some(source),
-                    ..
-                } => *source,
-                _ => panic!("expected query or create table as select"),
+            let statement = plan_schema_map(&storage, statement).unwrap();
+            let planned = plan_schemaless(statement).unwrap();
+            let StatementPlanKind::CreateTable {
+                source: Some(source),
+                ..
+            } = planned.kind
+            else {
+                panic!("expected create table as select");
             };
-            let QueryPlan::Project(project) = query else {
+            let QueryPlan::Project(project) = *source else {
                 panic!("expected project query");
             };
             assert_eq!(
@@ -509,24 +518,6 @@ mod tests {
             );
         };
 
-        test("SELECT * FROM Player", true);
-        test("SELECT * FROM Player AS P", true);
-        test("SELECT P.* FROM Player AS P", true);
-        test("SELECT id FROM Player", false);
-        test(
-            r"
-                SELECT Player.*, Team.*
-                FROM Player
-                JOIN Team
-                WHERE Player.id = Team.id
-            ",
-            false,
-        );
-        test(
-            "SELECT P.*, T.* FROM Player AS P JOIN Team AS T WHERE P.id = T.id",
-            false,
-        );
-
         test("CREATE TABLE T AS SELECT * FROM Player", true);
         test("CREATE TABLE T AS SELECT id FROM Player", false);
         test("CREATE TABLE T AS SELECT * FROM Item", false);
@@ -535,13 +526,18 @@ mod tests {
     #[test]
     fn transforms_typed_terminal_query_inputs() {
         let storage = setup_schemaless_storage();
-        let schema_map = fetch_schema_map(&storage, &statement("SELECT * FROM Player")).unwrap();
 
         macro_rules! test_unchanged {
             ($sql: literal) => {
-                let actual = plan_schemaless(&schema_map, statement($sql));
-                let expected = Ok(statement($sql));
-                assert_eq!(actual, expected);
+                let parsed = parse($sql).expect($sql);
+                let input = translate(&parsed[0])
+                    .unwrap()
+                    .with_schema("CREATE TABLE Player")
+                    .build()
+                    .unwrap();
+                let actual = plan_schemaless(input).unwrap();
+                let expected = statement($sql);
+                assert_eq!(actual.kind, expected.kind);
             };
         }
 
@@ -558,10 +554,8 @@ mod tests {
             &storage,
             statement("SELECT DISTINCT id FROM Player LIMIT 1"),
         );
-        let expected = Ok(statement(
-            "SELECT DISTINCT _doc['id'] AS id FROM Player LIMIT 1",
-        ));
-        assert_eq!(actual, expected);
+        let expected = statement("SELECT DISTINCT _doc['id'] AS id FROM Player LIMIT 1");
+        assert_eq!(actual.unwrap().kind, expected.kind);
     }
 
     #[test]
@@ -571,8 +565,8 @@ mod tests {
         macro_rules! assert_plan_eq {
             ($actual: ident, $expected: ident) => {
                 let actual = plan(&storage, statement($actual));
-                let expected = Ok(statement($expected));
-                assert_eq!(actual, expected);
+                let expected = statement($expected);
+                assert_eq!(actual.unwrap().kind, expected.kind);
             };
         }
 
@@ -626,8 +620,8 @@ mod tests {
         macro_rules! assert_plan_eq {
             ($actual: ident, $expected: ident) => {
                 let actual = plan(&storage, $actual.build().unwrap());
-                let expected = $expected.build();
-                assert_eq!(actual, expected);
+                let expected = $expected.build().unwrap();
+                assert_eq!(actual.unwrap().kind, expected.kind);
             };
         }
 
@@ -716,14 +710,14 @@ mod tests {
         let test = |actual: &str, expected: &str, name: &str| {
             let parsed = parse(actual).expect(actual).into_iter().next().unwrap();
             let statement = StatementPlan::from(translate(&parsed).unwrap());
-            let schema_map = fetch_schema_map(&storage, &statement).unwrap();
-            let result = plan_schemaless(&schema_map, statement).unwrap();
+            let statement = plan_schema_map(&storage, statement).unwrap();
+            let result = plan_schemaless(statement).unwrap();
 
             let expected_parsed = parse(expected).expect(expected).into_iter().next().unwrap();
             let expected_stmt = StatementPlan::from(translate(&expected_parsed).unwrap());
 
             assert_eq!(
-                result, expected_stmt,
+                result.kind, expected_stmt.kind,
                 "\n[{name}]\nactual: {actual}\nexpected: {expected}"
             );
         };

@@ -8,8 +8,11 @@ use {
     },
     crate::{
         data::{Key, Row, Value},
-        executor::{context::RowContext, evaluate::evaluate},
-        plan::{CustomFunctionPlan, OrderByExprPlan, ValuesOrderByPlan},
+        executor::{
+            context::{RowContext, StatementContext},
+            evaluate::evaluate,
+        },
+        plan::{OrderByExprPlan, ValuesOrderByPlan},
         result::Result,
         store::GStore,
     },
@@ -18,13 +21,13 @@ use {
 
 pub(crate) fn execute<'a, T: GStore>(
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
-    ValuesOrderByPlan { input, exprs }: &'a ValuesOrderByPlan,
+    stmt_context: StatementContext<'a>,
     filter_context: Option<&Rc<RowContext<'a>>>,
+    ValuesOrderByPlan { input, exprs }: &'a ValuesOrderByPlan,
 ) -> Result<LabeledRows<'a>> {
     let MaterializedRows { labels, rows } =
-        values::materialize(storage, functions, input, filter_context)?;
-    let rows = sort(storage, functions, rows, exprs, filter_context)?;
+        values::materialize(storage, stmt_context, filter_context, input)?;
+    let rows = sort(storage, stmt_context, rows, filter_context, exprs)?;
 
     Ok(LabeledRows {
         labels,
@@ -34,10 +37,10 @@ pub(crate) fn execute<'a, T: GStore>(
 
 fn sort<T: GStore>(
     storage: &T,
-    functions: &[CustomFunctionPlan],
+    stmt_context: StatementContext<'_>,
     rows: Vec<Row>,
-    order_by: &[OrderByExprPlan],
     filter_context: Option<&Rc<RowContext<'_>>>,
+    order_by: &[OrderByExprPlan],
 ) -> Result<Vec<Row>> {
     let mut keyed_rows = Vec::with_capacity(rows.len());
     for row in rows {
@@ -49,7 +52,7 @@ fn sort<T: GStore>(
         let keys = order_by
             .iter()
             .map(|OrderByExprPlan { expr, asc }| {
-                evaluate(storage, functions, Some(&context), None, expr)
+                evaluate(storage, stmt_context, Some(&context), None, expr)
                     .and_then(Value::try_from)
                     .and_then(Key::try_from)
                     .map(|key| (key, *asc))

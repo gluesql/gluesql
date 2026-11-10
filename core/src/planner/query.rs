@@ -1,15 +1,13 @@
 use {
     super::context::Context,
-    crate::{
-        ast::ColumnDef,
-        data::Schema,
-        plan::{ExprPlan, FunctionPlan, QueryPlan, SourcePlan, TableAliasPlan},
+    crate::plan::{
+        ColumnDefPlan, ExprPlan, FunctionPlan, QueryPlan, SchemaPlan, SourcePlan, TableAliasPlan,
     },
     std::rc::Rc,
 };
 
 pub trait Planner<'a> {
-    fn get_schema(&self, name: &str) -> Option<&'a Schema>;
+    fn get_schema(&self, name: &str) -> Option<&'a SchemaPlan>;
 
     fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: QueryPlan) -> QueryPlan;
 
@@ -233,7 +231,7 @@ pub trait Planner<'a> {
             }
         };
 
-        let Some(Schema { column_defs, .. }) = self.get_schema(name) else {
+        let Some(SchemaPlan { column_defs, .. }) = self.get_schema(name) else {
             return next;
         };
 
@@ -243,7 +241,7 @@ pub trait Planner<'a> {
 
         let columns = column_defs
             .iter()
-            .map(|ColumnDef { name, .. }| name.as_str())
+            .map(|ColumnDefPlan { name, .. }| name.as_str())
             .collect::<Vec<_>>();
 
         let context = Context::new(alias.unwrap_or_else(|| name.to_owned()), columns, next);

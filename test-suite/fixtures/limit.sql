@@ -240,6 +240,28 @@ SELECT * FROM InsertDefault
 -- | ------------ | ------- |
 -- | 13           | 1       |
 
+-- @name: insert values with a failing limit expression
+INSERT INTO InsertTest VALUES (13, 1) LIMIT (1 / 0);
+-- @expect: error Evaluate.DivisorShouldNotBeZero
+
+SELECT id FROM InsertTest WHERE case_no = 13;
+-- @expect:
+-- | id  |
+-- | --- |
+
+CREATE TABLE InsertDoc;
+-- @expect: payload Create
+
+-- @name: schemaless insert values with a failing limit expression
+INSERT INTO InsertDoc VALUES ('{"id":1}') LIMIT (1 / 0);
+-- @expect: error Evaluate.DivisorShouldNotBeZero
+
+SELECT COUNT(*) AS count FROM InsertDoc;
+-- @expect:
+-- | count: I64 |
+-- | ---------- |
+-- | 0          |
+
 SELECT * FROM MissingTable LIMIT 1;
 -- @expect: error Fetch.TableNotFound
 -- @json: "MissingTable"

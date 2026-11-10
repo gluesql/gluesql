@@ -127,3 +127,19 @@ SELECT id, num, name FROM DropTable1;
 SELECT id, num, name FROM DropTable2;
 -- @expect: error Fetch.TableNotFound
 -- @json: "DropTable2"
+
+CREATE TABLE DuplicateDrop (id INT PRIMARY KEY);
+-- @expect: ok
+
+-- @name: IF EXISTS skips duplicate and missing targets, counting only the deleted table
+DROP TABLE IF EXISTS DuplicateDrop, DuplicateDrop, MissingDuplicateDrop CASCADE;
+-- @expect: payload DropTable
+-- @json: 1
+
+CREATE TABLE DuplicateDropError (id INT PRIMARY KEY);
+-- @expect: ok
+
+-- @name: Without IF EXISTS, the second occurrence of a dropped table is an error
+DROP TABLE DuplicateDropError, DuplicateDropError CASCADE;
+-- @expect: error Alter.TableNotFound
+-- @json: "DuplicateDropError"

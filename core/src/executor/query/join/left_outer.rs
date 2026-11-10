@@ -3,8 +3,8 @@ use {
     super::{JoinCandidates, condition, hash, nested_loop},
     crate::{
         data::{Row, Value},
-        executor::context::RowContext,
-        plan::{CustomFunctionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan},
+        executor::context::{RowContext, StatementContext},
+        plan::{LeftOuterJoinInputPlan, LeftOuterJoinPlan},
         result::Result,
         store::GStore,
     },
@@ -13,9 +13,9 @@ use {
 
 pub(crate) fn execute<'a, T: GStore>(
     storage: &'a T,
-    functions: &'a [CustomFunctionPlan],
-    plan: &'a LeftOuterJoinPlan,
+    stmt_context: StatementContext<'a>,
     filter_context: Option<&Rc<RowContext<'a>>>,
+    plan: &'a LeftOuterJoinPlan,
 ) -> Result<SelectedRows<'a>> {
     let JoinCandidates {
         sources,
@@ -23,13 +23,13 @@ pub(crate) fn execute<'a, T: GStore>(
         groups,
     } = match &plan.input {
         LeftOuterJoinInputPlan::NestedLoop(join) => {
-            nested_loop::execute(storage, functions, join, filter_context)?
+            nested_loop::execute(storage, stmt_context, filter_context, join)?
         }
         LeftOuterJoinInputPlan::Hash(join) => {
-            hash::execute(storage, functions, join, filter_context)?
+            hash::execute(storage, stmt_context, filter_context, join)?
         }
         LeftOuterJoinInputPlan::Condition(condition) => {
-            condition::execute(storage, functions, condition, filter_context)?
+            condition::execute(storage, stmt_context, filter_context, condition)?
         }
     };
     let rows = groups.flat_map(move |group| {

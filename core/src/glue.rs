@@ -1,10 +1,13 @@
-use crate::{
-    executor::{Payload, execute},
-    parse_sql::parse,
-    plan::StatementPlan,
-    result::Result,
-    store::{GStore, GStoreMut, Planner},
-    translate::{IntoParamLiteral, ParamLiteral, translate_with_params},
+use {
+    crate::{
+        executor::{Payload, execute},
+        parse_sql::parse,
+        plan::{StatementPlan, StatementPlanKind},
+        result::Result,
+        store::{GStore, GStoreMut, Planner},
+        translate::{IntoParamLiteral, ParamLiteral, translate_with_params},
+    },
+    std::borrow::Borrow,
 };
 
 #[derive(Debug)]
@@ -53,11 +56,7 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
         self.plan_with_params(sql, std::iter::empty::<ParamLiteral>())
     }
 
-    pub fn execute_stmt(&mut self, statement: &StatementPlan) -> Result<Payload> {
-        execute(&mut self.storage, statement)
-    }
-
-    /// Executes all statements in the SQL string using the supplied parameters.
+    /// Plans and executes all statements in the SQL string using the supplied parameters.
     ///
     /// # Errors
     ///
@@ -78,14 +77,13 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
 
         for parsed in parsed {
             let statement = translate_with_params(&parsed, &params)?;
-            let statement = self.storage.plan(statement.into())?;
-            payloads.push(self.execute_stmt(&statement)?);
+            payloads.push(self.execute_stmt(statement.into())?);
         }
 
         Ok(payloads)
     }
 
-    /// Executes all statements in the SQL string without parameters.
+    /// Plans and executes all statements in the SQL string without parameters.
     ///
     /// # Errors
     ///
@@ -93,13 +91,64 @@ impl<T: GStore + GStoreMut + Planner> Glue<T> {
     pub fn execute<Sql: AsRef<str>>(&mut self, sql: Sql) -> Result<Vec<Payload>> {
         self.execute_with_params(sql, std::iter::empty::<ParamLiteral>())
     }
+
+    /// Plans and executes a statement with automatic transaction handling.
+    ///
+    /// SQL and Query Builder execution use this entry point. Use
+    /// [`Self::execute_prepared`] to execute a prepared plan without planning.
+    pub fn execute_stmt(&mut self, statement: StatementPlan) -> Result<Payload> {
+        self.with_transaction(
+            |storage, statement| {
+                let statement = storage.plan(statement)?;
+
+                execute(storage, &statement)
+            },
+            statement,
+        )
+    }
+
+    /// Executes a prepared statement with automatic transaction handling, without planning.
+    pub fn execute_prepared(&mut self, statement: &StatementPlan) -> Result<Payload> {
+        self.with_transaction(execute, statement)
+    }
+
+    fn with_transaction<S: Borrow<StatementPlan>>(
+        &mut self,
+        operation: impl FnOnce(&mut T, S) -> Result<Payload>,
+        statement: S,
+    ) -> Result<Payload> {
+        if matches!(
+            &statement.borrow().kind,
+            StatementPlanKind::StartTransaction
+                | StatementPlanKind::Rollback
+                | StatementPlanKind::Commit
+        ) {
+            return operation(&mut self.storage, statement);
+        }
+
+        let autocommit = self.storage.begin(true)?;
+        let result = operation(&mut self.storage, statement);
+
+        if !autocommit {
+            return result;
+        }
+
+        match result {
+            Ok(payload) => self.storage.commit().map(|()| payload),
+            Err(error) => {
+                self.storage.rollback()?;
+
+                Err(error)
+            }
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use {
         super::Glue,
-        crate::{executor::InsertError, mock::MockStorage, result::Error},
+        crate::{mock::MockStorage, result::Error},
     };
 
     #[test]
@@ -112,9 +161,11 @@ mod tests {
             ",
         );
 
-        assert!(
-            !matches!(result, Err(Error::Insert(InsertError::TableNotFound(_)))),
-            "{result:?}"
+        assert_eq!(
+            result,
+            Err(Error::StorageMsg(
+                "[Storage] StoreMut::append_data is not supported".to_owned(),
+            ))
         );
     }
 }

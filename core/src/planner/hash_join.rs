@@ -1,37 +1,41 @@
 use {
-    super::{context::Context, expr::evaluable::check_expr as check_evaluable, query::Planner},
+    super::{
+        PlannerError, context::Context, expr::evaluable::check_expr as check_evaluable,
+        query::Planner,
+    },
     crate::{
         ast::BinaryOperator,
-        data::Schema,
         plan::{
             AggregationInputPlan, DistinctInputPlan, DistinctPlan, ExprPlan, FilterInputPlan,
             FilterPlan, HashJoinInputPlan, HashJoinPlan, InnerJoinInputPlan, InnerJoinPlan,
             JoinConditionInputPlan, JoinConditionPlan, LeftOuterJoinInputPlan, LeftOuterJoinPlan,
             LimitInputPlan, LimitPlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
-            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan, StatementPlan,
-            StatementPlanKind,
+            OffsetInputPlan, OffsetPlan, ProjectInputPlan, ProjectPlan, QueryPlan, SchemaMap,
+            SchemaMapPlan, SchemaPlan, StatementPlan, StatementPlanKind,
         },
+        result::Result,
     },
-    std::{collections::HashMap, hash::BuildHasher, rc::Rc},
+    std::rc::Rc,
 };
 
-pub fn plan<S: BuildHasher>(
-    schema_map: &HashMap<String, Schema, S>,
-    mut statement: StatementPlan,
-) -> StatementPlan {
+pub fn plan(mut statement: StatementPlan) -> Result<StatementPlan> {
+    let SchemaMapPlan::Planned(schema_map) = &statement.schema_map else {
+        return Err(PlannerError::UnplannedSchemaMap.into());
+    };
+
     let planner = HashJoinPlanner { schema_map };
     statement.kind = match statement.kind {
         StatementPlanKind::Query(query) => StatementPlanKind::Query(planner.query(None, query)),
         kind => kind,
     };
-    statement
+    Ok(statement)
 }
 
-struct HashJoinPlanner<'a, S> {
-    schema_map: &'a HashMap<String, Schema, S>,
+struct HashJoinPlanner<'a> {
+    schema_map: &'a SchemaMap,
 }
 
-impl<'a, S: BuildHasher> Planner<'a> for HashJoinPlanner<'a, S> {
+impl<'a> Planner<'a> for HashJoinPlanner<'a> {
     fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: QueryPlan) -> QueryPlan {
         match query {
             QueryPlan::Project(project) => {
@@ -110,12 +114,12 @@ impl<'a, S: BuildHasher> Planner<'a> for HashJoinPlanner<'a, S> {
         }
     }
 
-    fn get_schema(&self, name: &str) -> Option<&'a Schema> {
+    fn get_schema(&self, name: &str) -> Option<&'a SchemaPlan> {
         self.schema_map.get(name)
     }
 }
 
-impl<'a, S: BuildHasher> HashJoinPlanner<'a, S> {
+impl<'a> HashJoinPlanner<'a> {
     fn project(
         &self,
         outer_context: Option<&Rc<Context<'a>>>,
@@ -707,7 +711,7 @@ mod tests {
             mock::{MockStorage, run},
             parse_sql::parse,
             plan::StatementPlan,
-            planner::fetch_schema_map,
+            planner::{PlannerError, plan_schema_map},
             query_builder::{Build, QueryNode, col, exists, num, subquery, table},
             translate::translate,
         },
@@ -716,24 +720,32 @@ mod tests {
     fn plan_hash_join(storage: &MockStorage, sql: &str) -> StatementPlan {
         let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
         let statement = StatementPlan::from(translate(&parsed).unwrap());
-        let schema_map = fetch_schema_map(storage, &statement).unwrap();
+        let statement = plan_schema_map(storage, statement).unwrap();
 
-        plan(&schema_map, statement)
+        plan(statement).unwrap()
     }
 
     fn plan_builder(storage: &MockStorage, builder: impl Build) -> StatementPlan {
         let statement = builder.build().unwrap();
-        let schema_map = fetch_schema_map(storage, &statement).unwrap();
+        let statement = plan_schema_map(storage, statement).unwrap();
 
-        plan(&schema_map, statement)
+        plan(statement).unwrap()
     }
 
     macro_rules! test {
         ($actual: expr, $expected: expr, $name: literal) => {
             let expected = $expected.build().unwrap();
 
-            assert_eq!($actual, expected, $name);
+            assert_eq!(($actual).kind, expected.kind, $name);
         };
+    }
+
+    #[test]
+    fn unplanned_schema_map() {
+        let input = table("Item").select().build().unwrap();
+        let actual = plan(input);
+        let expected = Err(PlannerError::UnplannedSchemaMap.into());
+        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -886,9 +898,11 @@ mod tests {
         test!(actual, expected, "preserves having wrapper:\n{sql}");
 
         let statement = actual;
-        let schema_map = fetch_schema_map(&storage, &statement).unwrap();
-        let actual = plan(&schema_map, statement.clone());
-        assert_eq!(actual, statement, "planned hash join remains unchanged");
+        let actual = plan(statement.clone()).unwrap();
+        assert_eq!(
+            actual.kind, statement.kind,
+            "planned hash join remains unchanged"
+        );
 
         let sql = "
             SELECT * FROM Player

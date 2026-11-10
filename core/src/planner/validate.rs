@@ -1,19 +1,21 @@
 use {
     super::PlannerError,
     crate::{
-        data::Schema,
         plan::{
-            ExprPlan, ProjectInputPlan, ProjectionPlan, QueryPlan, SelectItemPlan, SourcePlan,
-            StatementPlan, StatementPlanKind,
+            ExprPlan, ProjectInputPlan, ProjectionPlan, QueryPlan, SchemaMap, SchemaMapPlan,
+            SchemaPlan, SelectItemPlan, SourcePlan, StatementPlan, StatementPlanKind,
         },
         result::Result,
     },
-    std::{collections::HashMap, rc::Rc},
+    std::rc::Rc,
 };
 
-type SchemaMap = HashMap<String, Schema>;
 /// Validate user select column should not be ambiguous
-pub fn validate(schema_map: &SchemaMap, statement: &StatementPlan) -> Result<()> {
+pub fn validate(statement: &StatementPlan) -> Result<()> {
+    let SchemaMapPlan::Planned(schema_map) = &statement.schema_map else {
+        return Err(PlannerError::UnplannedSchemaMap.into());
+    };
+
     let query = match &statement.kind {
         StatementPlanKind::Query(query) => Some(query),
         StatementPlanKind::Insert { source, .. } => Some(source),
@@ -101,7 +103,7 @@ impl<'a> Context<'a> {
     }
 }
 
-fn get_labels(schema: &Schema) -> Option<Vec<&str>> {
+fn get_labels(schema: &SchemaPlan) -> Option<Vec<&str>> {
     schema.column_defs.as_ref().map(|column_defs| {
         column_defs
             .iter()
@@ -147,9 +149,19 @@ fn contextualize_source<'a>(
 mod tests {
     use crate::{
         mock::run,
-        planner::{fetch_schema_map, validate},
+        planner::{PlannerError, plan_schema_map, validate},
         prelude::{parse, translate},
     };
+
+    #[test]
+    fn unplanned_schema_map() {
+        let input = translate(&parse("SELECT * FROM Item").unwrap()[0])
+            .unwrap()
+            .into();
+        let actual = validate(&input);
+        let expected = Err(PlannerError::UnplannedSchemaMap.into());
+        assert_eq!(actual, expected);
+    }
 
     #[test]
     fn validate_test() {
@@ -161,24 +173,27 @@ mod tests {
         ");
 
         let cases = [
-            ("SELECT * FROM (SELECT * FROM Users) AS Sub", true),
-            ("SELECT * FROM SERIES(3)", true),
-            ("SELECT id FROM Users A JOIN Users B on A.id = B.id", false),
+            ("SELECT * FROM (SELECT * FROM Users) AS Sub", Ok(())),
+            ("SELECT * FROM SERIES(3)", Ok(())),
+            (
+                "SELECT id FROM Users A JOIN Users B on A.id = B.id",
+                Err(PlannerError::ColumnReferenceAmbiguous("id".to_owned()).into()),
+            ),
             (
                 "INSERT INTO Users SELECT id FROM Users A JOIN Users B on A.id = B.id",
-                false,
+                Err(PlannerError::ColumnReferenceAmbiguous("id".to_owned()).into()),
             ),
             (
                 "CREATE TABLE Ids AS SELECT id FROM Users A JOIN Users B on A.id = B.id",
-                false,
+                Err(PlannerError::ColumnReferenceAmbiguous("id".to_owned()).into()),
             ),
         ];
 
         for (sql, expected) in cases {
             let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
             let statement = translate(&parsed).unwrap().into();
-            let schema_map = fetch_schema_map(&storage, &statement).unwrap();
-            let actual = validate(&schema_map, &statement).is_ok();
+            let statement = plan_schema_map(&storage, statement).unwrap();
+            let actual = validate(&statement);
 
             assert_eq!(actual, expected);
         }

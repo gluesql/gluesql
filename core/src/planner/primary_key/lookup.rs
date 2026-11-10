@@ -1,10 +1,9 @@
-use {
-    crate::{
-        ast::{ColumnDef, ColumnUniqueOption},
-        data::Schema,
-        plan::{ExprPlan, FilterInputPlan, SourcePlan, TableAccessPlan, TableAliasPlan},
+use crate::{
+    ast::ColumnUniqueOption,
+    plan::{
+        ColumnDefPlan, ExprPlan, FilterInputPlan, SchemaMap, SourcePlan, TableAccessPlan,
+        TableAliasPlan,
     },
-    std::{collections::HashMap, hash::BuildHasher},
 };
 
 pub(super) struct PrimaryKeyLookupCandidate {
@@ -13,10 +12,7 @@ pub(super) struct PrimaryKeyLookupCandidate {
 }
 
 impl PrimaryKeyLookupCandidate {
-    pub(super) fn new<S: BuildHasher>(
-        schema_map: &HashMap<String, Schema, S>,
-        input: &FilterInputPlan,
-    ) -> Option<Self> {
+    pub(super) fn new(schema_map: &SchemaMap, input: &FilterInputPlan) -> Option<Self> {
         let target = PrimaryKeyLookupTarget::new(schema_map, input.base_source())?;
         let joined_relations = input
             .joined_sources()
@@ -57,10 +53,7 @@ struct PrimaryKeyLookupTarget {
 }
 
 impl PrimaryKeyLookupTarget {
-    fn new<S: BuildHasher>(
-        schema_map: &HashMap<String, Schema, S>,
-        relation: &SourcePlan,
-    ) -> Option<Self> {
+    fn new(schema_map: &SchemaMap, relation: &SourcePlan) -> Option<Self> {
         let SourcePlan::Table(table) = relation else {
             return None;
         };
@@ -68,9 +61,12 @@ impl PrimaryKeyLookupTarget {
             return None;
         }
         let column_defs = schema_map.get(&table.name)?.column_defs.as_ref()?;
-        let primary_key_index = column_defs.iter().position(|ColumnDef { unique, .. }| {
-            unique == &Some(ColumnUniqueOption { is_primary: true })
-        })?;
+        let primary_key_index =
+            column_defs
+                .iter()
+                .position(|ColumnDefPlan { unique, .. }| {
+                    unique == &Some(ColumnUniqueOption { is_primary: true })
+                })?;
         let columns = effective_columns(column_defs, table.alias.as_ref())?;
         let primary_key_column = columns.get(primary_key_index)?;
         if columns
@@ -98,7 +94,7 @@ struct JoinedRelation {
 }
 
 impl JoinedRelation {
-    fn new<S: BuildHasher>(schema_map: &HashMap<String, Schema, S>, relation: &SourcePlan) -> Self {
+    fn new(schema_map: &SchemaMap, relation: &SourcePlan) -> Self {
         let columns = match relation {
             SourcePlan::Table(table) => schema_map
                 .get(&table.name)
@@ -134,7 +130,7 @@ enum RelationColumns {
 }
 
 fn effective_columns(
-    column_defs: &[ColumnDef],
+    column_defs: &[ColumnDefPlan],
     alias: Option<&TableAliasPlan>,
 ) -> Option<Vec<String>> {
     let mut columns = column_defs
@@ -165,20 +161,19 @@ mod tests {
             data::{Schema, Value},
             parse_sql::parse_query,
             plan::{
-                ExprPlan, FilterInputPlan, ProjectInputPlan, QueryPlan, SourcePlan,
+                ExprPlan, FilterInputPlan, ProjectInputPlan, QueryPlan, SchemaMap, SourcePlan,
                 TableAccessPlan, TableSourcePlan,
             },
             translate::{NO_PARAMS, translate_query},
         },
-        std::collections::HashMap,
     };
 
-    fn schema_map(ddls: &[&str]) -> HashMap<String, Schema> {
+    fn schema_map(ddls: &[&str]) -> SchemaMap {
         ddls.iter()
             .map(|ddl| {
                 let schema = Schema::from_ddl(ddl).unwrap();
 
-                (schema.table_name.clone(), schema)
+                (schema.table_name.clone(), schema.into())
             })
             .collect()
     }

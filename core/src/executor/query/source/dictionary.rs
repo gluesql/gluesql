@@ -62,11 +62,11 @@ pub(super) fn execute<'a, T: GStore>(
     let rows = Box::new(move |_: Option<Rc<RowContext<'a>>>| {
         rows(
             storage,
-            dictionary,
             SourceColumns {
                 alias: source.alias,
                 names: Rc::clone(&source.names),
             },
+            dictionary,
         )
     });
 
@@ -75,8 +75,8 @@ pub(super) fn execute<'a, T: GStore>(
 
 fn rows<'a, T: GStore>(
     storage: &'a T,
-    dictionary: &'a DictionarySourcePlan,
     source: SourceColumns<'a>,
+    dictionary: &'a DictionarySourcePlan,
 ) -> Result<SourceRows<'a>> {
     let columns = Rc::clone(&source.names);
     let rows = match &dictionary.dictionary {

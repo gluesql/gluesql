@@ -85,7 +85,8 @@ where
                 };
 
                 assert_indexes_with_context(statement, indexes, &context);
-                glue.execute_stmt(statement).map(|payload| vec![payload])
+                glue.execute_prepared(statement)
+                    .map(|payload| vec![payload])
             }
             None => glue.execute(&step.sql),
         };

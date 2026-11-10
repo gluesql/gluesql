@@ -6,6 +6,7 @@ use {
         ast::{Expr, OrderByExpr},
         data::{Key, Schema, Value},
         error::Error,
+        prelude::{Glue, execute},
         store::{IndexError, IndexMut, Store, StoreMut, Transaction},
     },
     gluesql_redb_storage::RedbStorage,
@@ -57,10 +58,10 @@ fn store_methods_without_transaction_return_transaction_not_found() {
     let path = &file.0;
     let mut storage = RedbStorage::new(path).expect("new storage");
 
-    let err = storage
-        .fetch_all_schemas()
-        .expect_err("fetch_all_schemas should fail");
-    assert_eq!(err, Error::StorageMsg("transaction not found".to_owned()));
+    assert_eq!(
+        storage.fetch_data("Foo", &Key::I64(1)),
+        Err(Error::StorageMsg("transaction not found".to_owned())),
+    );
 
     let schema = Schema::from_ddl("CREATE TABLE Foo (id INTEGER);").expect("parse schema");
     let err = storage
@@ -84,4 +85,15 @@ fn store_methods_without_transaction_return_transaction_not_found() {
     storage.commit().expect("commit without txn");
 
     drop(storage);
+}
+
+#[test]
+fn execute_without_transaction_returns_transaction_not_found() {
+    let file = database::TestFile::empty();
+    let mut glue = Glue::new(RedbStorage::new(&file.0).unwrap());
+    glue.execute("CREATE TABLE Item (id INT)").unwrap();
+    let statement = glue.plan("INSERT INTO Item VALUES (1)").unwrap().remove(0);
+    let actual = execute(&mut glue.storage, &statement);
+    let expected = Err(Error::StorageMsg("transaction not found".to_owned()));
+    assert_eq!(actual, expected);
 }
