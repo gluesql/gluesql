@@ -69,7 +69,7 @@ fn scan_decodes_rows_lazily_and_stops_after_an_error() {
         expected
     );
 
-    let mut rows = storage.scan_data("Items").unwrap();
+    let mut rows = storage.scan_data("Items", None).unwrap();
     assert_eq!(rows.next(), Some(Ok((Key::I64(1), vec![Value::I64(1)]))));
     assert_eq!(rows.next(), Some(Err(expected)));
     assert_eq!(rows.next(), None);

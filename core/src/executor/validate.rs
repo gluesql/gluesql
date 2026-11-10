@@ -136,7 +136,7 @@ pub fn validate_unique<'a, T: Store>(
                 return Ok(());
             }
 
-            for row in storage.scan_data(table_name)? {
+            for row in storage.scan_data(table_name, None)? {
                 let (_, values) = row?;
                 for constraint in &unique_constraints {
                     let col_idx = constraint.column_index;

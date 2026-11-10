@@ -272,7 +272,7 @@ impl<'a> IndexPlanner<'a> {
 
         if let (Some(indexes), Some(order_expr)) = (indexes.as_ref(), order_by.last())
             && let SourcePlan::Table(table) = source
-            && table.access == TableAccessPlan::FullScan
+            && matches!(&table.access, TableAccessPlan::FullScan { .. })
             && let Some(index_name) = indexes.find_ordered(order_expr)
         {
             table.access = TableAccessPlan::Index {
@@ -290,7 +290,7 @@ impl<'a> IndexPlanner<'a> {
 
         let filter_expr = filter_expr.and_then(|expr| {
             if let (Some(indexes), SourcePlan::Table(table)) = (indexes.as_ref(), &*source)
-                && table.access == TableAccessPlan::FullScan
+                && matches!(&table.access, TableAccessPlan::FullScan { .. })
             {
                 match self.plan_index_expr(outer_context.map(Rc::clone), indexes, expr) {
                     Planned::IndexedExpr {

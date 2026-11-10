@@ -12,7 +12,7 @@ use {
         error::Result,
         parse_sql::parse_data_type,
         prelude::{Error, Value},
-        store::{RowIter, Store},
+        store::{RowIter, ScanColumn, Store},
         translate::translate_data_type,
     },
     mongodb::{
@@ -76,7 +76,11 @@ impl Store for MongoStorage {
             .transpose()
     }
 
-    fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
+    fn scan_data<'a>(
+        &'a self,
+        table_name: &str,
+        columns: Option<&[ScanColumn]>,
+    ) -> Result<RowIter<'a>> {
         let column_defs = self.get_column_defs(table_name)?;
 
         let primary_key = column_defs
@@ -104,11 +108,19 @@ impl Store for MongoStorage {
                 .collect::<Vec<_>>()
         });
 
+        let column_indexes =
+            columns.map(|columns| columns.iter().map(|(_, index)| *index).collect::<Vec<_>>());
         let row_iter = cursor.map(move |doc| {
             let doc = doc.map_storage_err()?;
 
             if let Some(column_types) = &column_types {
-                doc.into_row(column_types.iter(), has_primary)
+                let (key, row) = doc.into_row(column_types.iter(), has_primary)?;
+                let row = match &column_indexes {
+                    Some(indexes) => indexes.iter().map(|index| row[*index].clone()).collect(),
+                    None => row,
+                };
+
+                Ok((key, row))
             } else {
                 let mut iter = doc.into_iter();
                 let (_, first_value) = iter

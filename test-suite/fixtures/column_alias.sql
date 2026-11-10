@@ -53,6 +53,14 @@ SELECT a FROM User AS Table(a, b)
 -- | 2      |
 -- | 3      |
 
+SELECT b FROM User AS Table(a, b)
+-- @expect:
+-- | b: Str    |
+-- | --------- |
+-- | "Taehoon" |
+-- | "Mike"    |
+-- | "Jorno"   |
+
 Select * from User as Table(a, b, c)
 -- @expect: error Query.TooManyColumnAliases
 -- @json:

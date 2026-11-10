@@ -249,7 +249,7 @@ impl<'a> PrimaryKeyPlanner<'a> {
         };
 
         if let SourcePlan::Table(table) = input.base_source_mut()
-            && table.access == TableAccessPlan::FullScan
+            && matches!(&table.access, TableAccessPlan::FullScan { .. })
             && let Some(access) = access
         {
             table.access = access;

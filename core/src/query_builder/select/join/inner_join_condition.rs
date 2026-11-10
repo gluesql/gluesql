@@ -189,12 +189,12 @@ mod tests {
                     input: NestedLoopJoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                         name: "A".to_owned(),
                         alias: None,
-                        access: TableAccessPlan::FullScan,
+                        access: TableAccessPlan::FullScan { columns: None },
                     })),
                     right: SourcePlan::Table(TableSourcePlan {
                         name: "B".to_owned(),
                         alias: None,
-                        access: TableAccessPlan::FullScan,
+                        access: TableAccessPlan::FullScan { columns: None },
                     }),
                 }),
                 expr: expr("A.id = B.id").build_expr_plan().unwrap(),
@@ -215,12 +215,12 @@ mod tests {
                     input: HashJoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                         name: "A".to_owned(),
                         alias: None,
-                        access: TableAccessPlan::FullScan,
+                        access: TableAccessPlan::FullScan { columns: None },
                     })),
                     right: SourcePlan::Table(TableSourcePlan {
                         name: "B".to_owned(),
                         alias: None,
-                        access: TableAccessPlan::FullScan,
+                        access: TableAccessPlan::FullScan { columns: None },
                     }),
                     input_key: col("A.id").build_expr_plan().unwrap(),
                     right_key: col("B.id").build_expr_plan().unwrap(),

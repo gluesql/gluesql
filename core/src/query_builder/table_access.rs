@@ -56,7 +56,7 @@ impl From<NonClusteredNode> for TableAccessNode<'_> {
 impl TableAccessNode<'_> {
     pub(super) fn build_table_access_plan(self) -> Result<TableAccessPlan> {
         match self {
-            Self::FullScan => Ok(TableAccessPlan::FullScan),
+            Self::FullScan => Ok(TableAccessPlan::FullScan { columns: None }),
             Self::Index {
                 name,
                 asc,

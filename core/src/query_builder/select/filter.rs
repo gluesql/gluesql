@@ -272,12 +272,12 @@ mod tests {
                     input: HashJoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                         name: "Player".to_owned(),
                         alias: None,
-                        access: TableAccessPlan::FullScan,
+                        access: TableAccessPlan::FullScan { columns: None },
                     })),
                     right: SourcePlan::Table(TableSourcePlan {
                         name: "PlayerItem".to_owned(),
                         alias: None,
-                        access: TableAccessPlan::FullScan,
+                        access: TableAccessPlan::FullScan { columns: None },
                     }),
                     input_key: col("Player.id").build_expr_plan().unwrap(),
                     right_key: col("PlayerItem.user_id").build_expr_plan().unwrap(),

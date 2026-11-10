@@ -38,7 +38,7 @@ mod tests {
             input: ProjectInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                 name: "Item".to_owned(),
                 alias: None,
-                access: TableAccessPlan::FullScan,
+                access: TableAccessPlan::FullScan { columns: None },
             })),
             projection: ProjectionPlan::SelectItems(Vec::new()),
         }

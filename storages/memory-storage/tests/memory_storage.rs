@@ -47,7 +47,7 @@ fn memory_storage_index() {
     let storage = MemoryStorage::default();
 
     assert_eq!(
-        Store::scan_data(&storage, "Idx")
+        Store::scan_data(&storage, "Idx", None)
             .unwrap()
             .collect::<gluesql_core::prelude::Result<Vec<_>>>()
             .as_ref()

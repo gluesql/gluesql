@@ -33,6 +33,9 @@ use crate::{
 
 pub type RowIter<'a> = Box<dyn Iterator<Item = Result<(Key, Vec<Value>)>> + 'a>;
 
+/// Original column name and zero-based position in the full row.
+pub type ScanColumn = (String, usize);
+
 /// By implementing `Store` trait, you can run `SELECT` query.
 pub trait Store {
     fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>>;
@@ -41,7 +44,20 @@ pub trait Store {
 
     fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Vec<Value>>>;
 
-    fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>>;
+    /// Scans rows, returning the requested columns in request order.
+    ///
+    /// `None` returns all columns. `Some(&[])` returns empty values for each row.
+    /// Column selection preserves the rows and their keys. Each requested name
+    /// and position must identify the same column in the full table schema.
+    /// Schemaless tables use `None` and return complete documents.
+    ///
+    /// The request is not borrowed by the returned iterator. Implementations
+    /// retain any positions or reader projection needed during iteration.
+    fn scan_data<'a>(
+        &'a self,
+        table_name: &str,
+        columns: Option<&[ScanColumn]>,
+    ) -> Result<RowIter<'a>>;
 }
 
 /// By implementing `StoreMut` trait,

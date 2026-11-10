@@ -5,8 +5,8 @@ use {
         plan::StatementPlan,
         planner::{
             plan_aggregate, plan_create_table_columns, plan_custom_function_calls, plan_hash_join,
-            plan_index, plan_primary_key, plan_schema_map, plan_schemaless, validate,
-            validate_create_function, validate_create_index, validate_insert,
+            plan_index, plan_primary_key, plan_scan_columns, plan_schema_map, plan_schemaless,
+            validate, validate_create_function, validate_create_index, validate_insert,
         },
         store::Planner,
     },
@@ -29,6 +29,7 @@ impl Planner for RedbStorage {
         let statement = plan_custom_function_calls(self, statement)?;
 
         validate_insert(&statement)?;
-        plan_create_table_columns(statement)
+        let statement = plan_create_table_columns(statement)?;
+        plan_scan_columns(statement)
     }
 }

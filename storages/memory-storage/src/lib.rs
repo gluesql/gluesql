@@ -10,7 +10,7 @@ use {
         chrono::Utc,
         data::{CustomFunction as StructCustomFunction, Key, Schema, Value},
         error::Result,
-        store::{CustomFunction, CustomFunctionMut, Planner, RowIter, Store, StoreMut},
+        store::{CustomFunction, CustomFunctionMut, Planner, RowIter, ScanColumn, Store, StoreMut},
     },
     serde::{Deserialize, Serialize},
     std::collections::{BTreeMap, HashMap},
@@ -31,9 +31,27 @@ pub struct MemoryStorage {
 }
 
 impl MemoryStorage {
-    pub fn scan_data(&self, table_name: &str) -> Vec<(Key, Vec<Value>)> {
+    pub fn scan_data(
+        &self,
+        table_name: &str,
+        columns: Option<&[ScanColumn]>,
+    ) -> Vec<(Key, Vec<Value>)> {
         match self.items.get(table_name) {
-            Some(item) => item.rows.clone().into_iter().collect(),
+            Some(item) => item
+                .rows
+                .iter()
+                .map(|(key, row)| {
+                    let row = match columns {
+                        Some(columns) => columns
+                            .iter()
+                            .map(|(_, index)| row[*index].clone())
+                            .collect(),
+                        None => row.clone(),
+                    };
+
+                    (key.clone(), row)
+                })
+                .collect(),
             None => vec![],
         }
     }
@@ -87,8 +105,12 @@ impl Store for MemoryStorage {
         Ok(row)
     }
 
-    fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
-        let rows = MemoryStorage::scan_data(self, table_name)
+    fn scan_data<'a>(
+        &'a self,
+        table_name: &str,
+        columns: Option<&[ScanColumn]>,
+    ) -> Result<RowIter<'a>> {
+        let rows = MemoryStorage::scan_data(self, table_name, columns)
             .into_iter()
             .map(Ok);
 

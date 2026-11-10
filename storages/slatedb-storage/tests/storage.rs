@@ -90,7 +90,10 @@ fn table_names_survive_reopen() {
         let expected = Schema::from_ddl(&format!(r#"CREATE TABLE "{name}" (value TEXT)"#)).unwrap();
         assert_eq!(storage.fetch_schema(name), Ok(Some(expected)));
         assert_eq!(
-            storage.scan_data(name).unwrap().collect::<Result<Vec<_>>>(),
+            storage
+                .scan_data(name, None)
+                .unwrap()
+                .collect::<Result<Vec<_>>>(),
             Ok(vec![(Key::I64(1), vec![Value::Str(name.into())])])
         );
     }
@@ -122,7 +125,7 @@ fn row_key_with_slash_survives_reopen() {
     );
     assert_eq!(
         storage
-            .scan_data("Items")
+            .scan_data("Items", None)
             .unwrap()
             .collect::<Result<Vec<_>>>(),
         Ok(vec![(key, vec![Value::Str("string key".into())])])
@@ -149,7 +152,7 @@ fn database_prefixes_isolate_schemas_and_rows() {
     assert_eq!(other.fetch_data("Items", &Key::I64(1)), Ok(None));
     assert_eq!(
         other
-            .scan_data("Items")
+            .scan_data("Items", None)
             .unwrap()
             .collect::<Result<Vec<_>>>(),
         Ok(vec![])
@@ -183,14 +186,14 @@ fn dropping_table_clears_only_its_own_prefix() {
     let storage = SlatedbStorage::new(objects, "drop_table").unwrap();
     assert_eq!(
         storage
-            .scan_data("users")
+            .scan_data("users", None)
             .unwrap()
             .collect::<Result<Vec<_>>>(),
         Ok(vec![])
     );
     assert_eq!(
         storage
-            .scan_data("users2")
+            .scan_data("users2", None)
             .unwrap()
             .collect::<Result<Vec<_>>>(),
         Ok(vec![(Key::I64(2), vec![Value::I64(2)])])
@@ -220,7 +223,7 @@ fn schema_update_preserves_rows_after_reopen() {
     assert_eq!(storage.fetch_schema("Items"), Ok(Some(schema)));
     assert_eq!(
         storage
-            .scan_data("Items")
+            .scan_data("Items", None)
             .unwrap()
             .collect::<Result<Vec<_>>>(),
         Ok(vec![(Key::I64(1), vec![Value::I64(1)])])
@@ -241,7 +244,7 @@ fn identical_rows_get_distinct_uuid_keys_that_survive_reopen() {
         .unwrap();
 
     let rows = storage
-        .scan_data("Items")
+        .scan_data("Items", None)
         .unwrap()
         .collect::<Result<Vec<_>>>()
         .unwrap();
@@ -263,7 +266,7 @@ fn identical_rows_get_distinct_uuid_keys_that_survive_reopen() {
     let storage = SlatedbStorage::new(objects, "uuid_keys").unwrap();
     assert_eq!(
         storage
-            .scan_data("Items")
+            .scan_data("Items", None)
             .unwrap()
             .collect::<Result<Vec<_>>>(),
         Ok(vec![
@@ -291,7 +294,7 @@ fn dropping_a_partly_consumed_scan_allows_further_writes() {
         )
         .unwrap();
 
-    let mut rows = storage.scan_data("Items").unwrap();
+    let mut rows = storage.scan_data("Items", None).unwrap();
     assert_eq!(rows.next(), Some(Ok((Key::I64(1), vec![Value::I64(1)]))));
     drop(rows);
 
@@ -300,7 +303,7 @@ fn dropping_a_partly_consumed_scan_allows_further_writes() {
     storage.commit().unwrap();
     assert_eq!(
         storage
-            .scan_data("Items")
+            .scan_data("Items", None)
             .unwrap()
             .collect::<Result<Vec<_>>>(),
         Ok(vec![(Key::I64(2), vec![Value::I64(2)])])
@@ -340,14 +343,14 @@ fn committed_alter_changes_survive_reopen() {
     assert_eq!(storage.fetch_schema("Items"), Ok(None));
     assert_eq!(
         storage
-            .scan_data("Items")
+            .scan_data("Items", None)
             .unwrap()
             .collect::<Result<Vec<_>>>(),
         Ok(vec![])
     );
     assert_eq!(
         storage
-            .scan_data("Renamed")
+            .scan_data("Renamed", None)
             .unwrap()
             .collect::<Result<Vec<_>>>(),
         Ok(vec![(Key::I64(1), vec![Value::I64(1), Value::I64(7)])])
@@ -384,14 +387,14 @@ fn rolled_back_rename_leaves_no_new_prefix_after_reopen() {
     assert_eq!(storage.fetch_schema("Discarded"), Ok(None));
     assert_eq!(
         storage
-            .scan_data("Discarded")
+            .scan_data("Discarded", None)
             .unwrap()
             .collect::<Result<Vec<_>>>(),
         Ok(vec![])
     );
     assert_eq!(
         storage
-            .scan_data("Items")
+            .scan_data("Items", None)
             .unwrap()
             .collect::<Result<Vec<_>>>(),
         Ok(vec![(Key::I64(1), vec![Value::I64(1)])])
@@ -424,7 +427,7 @@ fn close_discards_uncommitted_rows() {
     let storage = SlatedbStorage::new(objects, "close").unwrap();
     assert_eq!(
         storage
-            .scan_data("Items")
+            .scan_data("Items", None)
             .unwrap()
             .collect::<Result<Vec<_>>>(),
         Ok(vec![(Key::I64(1), vec![Value::I64(1)])])
@@ -457,7 +460,7 @@ fn drop_discards_uncommitted_rows() {
     let storage = SlatedbStorage::new(objects, "drop").unwrap();
     assert_eq!(
         storage
-            .scan_data("Items")
+            .scan_data("Items", None)
             .unwrap()
             .collect::<Result<Vec<_>>>(),
         Ok(vec![(Key::I64(1), vec![Value::I64(1)])])
@@ -500,7 +503,7 @@ fn sql_rejects_slashes_in_table_names_without_changing_existing_data() {
     );
     assert_eq!(
         storage
-            .scan_data("Items")
+            .scan_data("Items", None)
             .unwrap()
             .collect::<Result<Vec<_>>>(),
         Ok(vec![(Key::I64(1), vec![Value::I64(1)])])
@@ -538,7 +541,7 @@ fn storage_methods_reject_slashes_in_table_names() {
         storage.fetch_data("a/b", &Key::I64(1)).unwrap_err(),
         expected
     );
-    assert_eq!(storage.scan_data("a/b").err(), Some(expected));
+    assert_eq!(storage.scan_data("a/b", None).err(), Some(expected));
     storage.rollback().unwrap();
     storage.close().unwrap();
 }

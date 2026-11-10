@@ -30,7 +30,7 @@ pub fn fetch<'a, T: GStore>(
     columns: Rc<[String]>,
     where_clause: Option<&'a ExprPlan>,
 ) -> Result<KeyedRows<'a>> {
-    let rows = storage.scan_data(table_name)?.filter_map(move |row| {
+    let rows = storage.scan_data(table_name, None)?.filter_map(move |row| {
         let (key, values) = match row {
             Ok(row) => row,
             Err(error) => return Some(Err(error)),

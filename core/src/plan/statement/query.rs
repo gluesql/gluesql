@@ -297,7 +297,7 @@ mod tests {
         SourcePlan::Table(TableSourcePlan {
             name: "Item".to_owned(),
             alias: None,
-            access: TableAccessPlan::FullScan,
+            access: TableAccessPlan::FullScan { columns: None },
         })
     }
 
@@ -426,12 +426,12 @@ mod tests {
                     input: NestedLoopJoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                         name: "A".to_owned(),
                         alias: None,
-                        access: TableAccessPlan::FullScan,
+                        access: TableAccessPlan::FullScan { columns: None },
                     })),
                     right: SourcePlan::Table(TableSourcePlan {
                         name: "B".to_owned(),
                         alias: None,
-                        access: TableAccessPlan::FullScan,
+                        access: TableAccessPlan::FullScan { columns: None },
                     }),
                 }),
                 expr: ExprPlan::BinaryOp {
@@ -454,7 +454,7 @@ mod tests {
                     right: SourcePlan::Table(TableSourcePlan {
                         name: "C".to_owned(),
                         alias: None,
-                        access: TableAccessPlan::FullScan,
+                        access: TableAccessPlan::FullScan { columns: None },
                     }),
                 }),
             },

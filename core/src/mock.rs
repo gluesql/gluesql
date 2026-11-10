@@ -7,7 +7,7 @@ use {
         result::{Error, Result},
         store::{
             AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Planner,
-            RowIter, Store, StoreMut, Transaction,
+            RowIter, ScanColumn, Store, StoreMut, Transaction,
         },
     },
     std::collections::HashMap,
@@ -83,7 +83,11 @@ impl Store for MockStorage {
         ))
     }
 
-    fn scan_data<'a>(&'a self, _table_name: &str) -> Result<RowIter<'a>> {
+    fn scan_data<'a>(
+        &'a self,
+        _table_name: &str,
+        _columns: Option<&[ScanColumn]>,
+    ) -> Result<RowIter<'a>> {
         Err(Error::StorageMsg(
             "[MockStorage] scan_data not supported".to_owned(),
         ))
@@ -166,7 +170,7 @@ mod tests {
         let mut storage = MockStorage::default();
 
         // Store & StoreMut
-        assert!(storage.scan_data("Foo").is_err());
+        assert!(storage.scan_data("Foo", None).is_err());
         assert!(storage.fetch_data("Foo", &Key::None).is_err());
         assert!(storage.fetch_schema("__Err__").is_err());
         assert_eq!(storage.fetch_all_schemas(), Ok(Vec::new()));

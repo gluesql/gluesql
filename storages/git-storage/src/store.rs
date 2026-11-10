@@ -3,7 +3,7 @@ use {
     gluesql_core::{
         data::{Key, Schema, Value},
         error::Result,
-        store::{RowIter, Store},
+        store::{RowIter, ScanColumn, Store},
     },
 };
 
@@ -20,7 +20,11 @@ impl Store for GitStorage {
         self.get_store().fetch_data(table_name, key)
     }
 
-    fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
-        self.get_store().scan_data(table_name)
+    fn scan_data<'a>(
+        &'a self,
+        table_name: &str,
+        columns: Option<&[ScanColumn]>,
+    ) -> Result<RowIter<'a>> {
+        self.get_store().scan_data(table_name, columns)
     }
 }

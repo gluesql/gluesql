@@ -47,7 +47,7 @@ fn shared_memory_storage_index() {
 
     assert_eq!(
         storage
-            .scan_data("Idx")
+            .scan_data("Idx", None)
             .unwrap()
             .collect::<gluesql_core::prelude::Result<Vec<_>>>()
             .as_ref()

@@ -85,7 +85,7 @@ impl StoreMut for ParquetStorage {
 
     fn append_data(&mut self, table_name: &str, rows: Vec<Vec<Value>>) -> Result<()> {
         let schema_path = self.data_path(table_name);
-        let (prev_rows, schema) = self.scan_data(table_name)?;
+        let (prev_rows, schema) = self.scan_data(table_name, None)?;
 
         let rows = prev_rows
             .map(|item| Ok(item?.1))
@@ -97,7 +97,7 @@ impl StoreMut for ParquetStorage {
     }
 
     fn insert_data(&mut self, table_name: &str, mut rows: Vec<(Key, Vec<Value>)>) -> Result<()> {
-        let (prev_rows, schema) = self.scan_data(table_name)?;
+        let (prev_rows, schema) = self.scan_data(table_name, None)?;
 
         rows.sort_by(|(key_a, _), (key_b, _)| key_a.cmp(key_b));
 
@@ -107,7 +107,7 @@ impl StoreMut for ParquetStorage {
     }
 
     fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
-        let (prev_rows, schema) = self.scan_data(table_name)?;
+        let (prev_rows, schema) = self.scan_data(table_name, None)?;
         let rows = prev_rows
             .filter_map(|result| {
                 result

@@ -288,7 +288,7 @@ mod tests {
                 input: HashJoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                     name: "A".to_owned(),
                     alias: None,
-                    access: TableAccessPlan::FullScan,
+                    access: TableAccessPlan::FullScan { columns: None },
                 })),
                 right: SourcePlan::Table(TableSourcePlan {
                     name: "B".to_owned(),
@@ -296,7 +296,7 @@ mod tests {
                         name: "b".to_owned(),
                         columns: Vec::new(),
                     }),
-                    access: TableAccessPlan::FullScan,
+                    access: TableAccessPlan::FullScan { columns: None },
                 }),
                 input_key: col("A.id").build_expr_plan().unwrap(),
                 right_key: col("b.id").build_expr_plan().unwrap(),
@@ -313,12 +313,12 @@ mod tests {
                 input: HashJoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                     name: "A".to_owned(),
                     alias: None,
-                    access: TableAccessPlan::FullScan,
+                    access: TableAccessPlan::FullScan { columns: None },
                 })),
                 right: SourcePlan::Table(TableSourcePlan {
                     name: "B".to_owned(),
                     alias: None,
-                    access: TableAccessPlan::FullScan,
+                    access: TableAccessPlan::FullScan { columns: None },
                 }),
                 input_key: col("A.id").build_expr_plan().unwrap(),
                 right_key: col("B.id").build_expr_plan().unwrap(),
@@ -339,7 +339,7 @@ mod tests {
                 right: SourcePlan::Table(TableSourcePlan {
                     name: "C".to_owned(),
                     alias: None,
-                    access: TableAccessPlan::FullScan,
+                    access: TableAccessPlan::FullScan { columns: None },
                 }),
             }),
         };
@@ -361,7 +361,7 @@ mod tests {
                         name: "c".to_owned(),
                         columns: Vec::new(),
                     }),
-                    access: TableAccessPlan::FullScan,
+                    access: TableAccessPlan::FullScan { columns: None },
                 }),
             }),
         };
@@ -380,7 +380,7 @@ mod tests {
                 right: SourcePlan::Table(TableSourcePlan {
                     name: "C".to_owned(),
                     alias: None,
-                    access: TableAccessPlan::FullScan,
+                    access: TableAccessPlan::FullScan { columns: None },
                 }),
             }),
         };
@@ -402,7 +402,7 @@ mod tests {
                         name: "c".to_owned(),
                         columns: Vec::new(),
                     }),
-                    access: TableAccessPlan::FullScan,
+                    access: TableAccessPlan::FullScan { columns: None },
                 }),
             }),
         };
@@ -416,12 +416,12 @@ mod tests {
                 input: HashJoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                     name: "A".to_owned(),
                     alias: None,
-                    access: TableAccessPlan::FullScan,
+                    access: TableAccessPlan::FullScan { columns: None },
                 })),
                 right: SourcePlan::Table(TableSourcePlan {
                     name: "B".to_owned(),
                     alias: None,
-                    access: TableAccessPlan::FullScan,
+                    access: TableAccessPlan::FullScan { columns: None },
                 }),
                 input_key: col("A.id").build_expr_plan().unwrap(),
                 right_key: col("B.id").build_expr_plan().unwrap(),

@@ -218,7 +218,7 @@ fn write_dump<T: Store>(storage: &T, file: &mut File) -> Result<()> {
         writeln!(file, "{}", schema.to_ddl())?;
 
         let mut rows = storage
-            .scan_data(&schema.table_name)?
+            .scan_data(&schema.table_name, None)?
             .map(|result| result.map(|(_, row)| row));
 
         loop {

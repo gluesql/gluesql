@@ -18,7 +18,7 @@ use {
         error::Result,
         store::{
             AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, RowIter,
-            Store, StoreMut, Transaction,
+            ScanColumn, Store, StoreMut, Transaction,
         },
     },
     redb::Database,
@@ -50,10 +50,24 @@ impl Store for RedbStorage {
         self.0.fetch_data(table_name, key).map_err(Into::into)
     }
 
-    fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
+    fn scan_data<'a>(
+        &'a self,
+        table_name: &str,
+        columns: Option<&[ScanColumn]>,
+    ) -> Result<RowIter<'a>> {
         let rows = self.0.scan_data(table_name)?;
+        let column_indexes =
+            columns.map(|columns| columns.iter().map(|(_, index)| *index).collect::<Vec<_>>());
 
-        Ok(Box::new(rows.map(|row| row.map_err(Into::into))))
+        Ok(Box::new(rows.map(move |row| {
+            let (key, row) = row?;
+            let row = match &column_indexes {
+                Some(indexes) => indexes.iter().map(|index| row[*index].clone()).collect(),
+                None => row,
+            };
+
+            Ok((key, row))
+        })))
     }
 }
 

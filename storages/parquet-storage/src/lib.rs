@@ -5,11 +5,12 @@ use {
         data::Schema,
         error::Result,
         prelude::{DataType, Key, Value},
-        store::{Metadata, Planner, Store},
+        store::{Metadata, Planner, ScanColumn, Store},
     },
     parquet::{
-        file::serialized_reader::SerializedFileReader,
+        file::{reader::FileReader, serialized_reader::SerializedFileReader},
         record::{Row, reader::RowIter as ParquetRowIter},
+        schema::types::Type as ParquetType,
     },
     std::{
         collections::BTreeMap,
@@ -61,14 +62,18 @@ impl ParquetStorage {
         path
     }
 
-    fn scan_data(&self, table_name: &str) -> Result<(RowIter, Schema)> {
+    #[allow(clippy::too_many_lines)]
+    fn scan_data(
+        &self,
+        table_name: &str,
+        columns: Option<&[ScanColumn]>,
+    ) -> Result<(RowIter, Schema)> {
         let fetched_schema = <Self as Store>::fetch_schema(self, table_name)?.map_storage_err(
             ParquetStorageError::TableDoesNotExist(table_name.to_owned()),
         )?;
         let file = File::open(self.data_path(table_name)).map_storage_err()?;
 
         let parquet_reader = SerializedFileReader::new(file).map_storage_err()?;
-        let row_iter = ParquetRowIter::from_file_into(Box::new(parquet_reader));
         let scan_schema = fetched_schema.clone();
         let primary_key_index = scan_schema.column_defs.as_ref().and_then(|column_defs| {
             column_defs.iter().position(|column_def| {
@@ -76,7 +81,45 @@ impl ParquetStorage {
             })
         });
 
-        let rows: RowIter = if scan_schema.column_defs.is_some() {
+        let rows: RowIter = if let Some(column_defs) = &scan_schema.column_defs {
+            let projection = columns
+                .map(|columns| -> Result<_> {
+                    let mut read_columns = columns.to_vec();
+                    if let Some(index) = primary_key_index {
+                        read_columns.push((column_defs[index].name.clone(), index));
+                    }
+                    read_columns.sort_by_key(|(_, index)| *index);
+                    read_columns.dedup_by_key(|(_, index)| *index);
+
+                    let output_positions = columns
+                        .iter()
+                        .map(|(_, index)| {
+                            read_columns
+                                .binary_search_by_key(index, |(_, index)| *index)
+                                .expect("requested columns are included in read_columns")
+                        })
+                        .collect::<Vec<_>>();
+                    let file_schema = parquet_reader.metadata().file_metadata().schema();
+                    let mut fields = read_columns
+                        .iter()
+                        .map(|(_, index)| file_schema.get_fields()[*index].clone())
+                        .collect();
+                    let schema = ParquetType::group_type_builder(file_schema.name())
+                        .with_fields(&mut fields)
+                        .build()
+                        .map_storage_err()?;
+
+                    Ok((schema, read_columns, output_positions))
+                })
+                .transpose()?;
+            let row_iter = ParquetRowIter::from_file_into(Box::new(parquet_reader));
+            let (row_iter, projection) = match projection {
+                Some((schema, read_columns, output_positions)) => (
+                    row_iter.project(Some(schema)).map_storage_err()?,
+                    Some((read_columns, output_positions)),
+                ),
+                None => (row_iter, None),
+            };
             let mut key_counter = 0_u64;
 
             Box::new(row_iter.map(move |record| {
@@ -84,10 +127,14 @@ impl ParquetStorage {
                     let mut row = Vec::new();
                     let mut key = None;
 
-                    for (idx, (_, field)) in record.get_column_iter().enumerate() {
-                        let value = ParquetField(field.clone()).to_value(&scan_schema, idx)?;
+                    for (index, (_, field)) in record.get_column_iter().enumerate() {
+                        let original_index = projection
+                            .as_ref()
+                            .map_or(index, |(read_columns, _)| read_columns[index].1);
+                        let value =
+                            ParquetField(field.clone()).to_value(&scan_schema, original_index)?;
 
-                        if primary_key_index == Some(idx) {
+                        if primary_key_index == Some(original_index) {
                             key = Key::try_from(&value).ok();
                         }
 
@@ -100,10 +147,19 @@ impl ParquetStorage {
                         generated
                     });
 
+                    let row = match &projection {
+                        Some((_, output_positions)) => output_positions
+                            .iter()
+                            .map(|index| row[*index].clone())
+                            .collect(),
+                        None => row,
+                    };
+
                     Ok((generated_key, row))
                 })
             }))
         } else {
+            let row_iter = ParquetRowIter::from_file_into(Box::new(parquet_reader));
             let tmp_schema = Self::generate_temp_schema();
             let mut key_counter = 0_u64;
 
@@ -223,7 +279,7 @@ mod tests {
 
         file_writer.close().expect("close parquet writer");
 
-        let (mut rows, _) = storage.scan_data("Foo").expect("scan data");
+        let (mut rows, _) = storage.scan_data("Foo", None).expect("scan data");
         let error = rows
             .next()
             .expect("conversion error row")

@@ -292,12 +292,12 @@ mod tests {
                     input: HashJoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                         name: "Item".to_owned(),
                         alias: None,
-                        access: TableAccessPlan::FullScan,
+                        access: TableAccessPlan::FullScan { columns: None },
                     })),
                     right: SourcePlan::Table(TableSourcePlan {
                         name: "Category".to_owned(),
                         alias: None,
-                        access: TableAccessPlan::FullScan,
+                        access: TableAccessPlan::FullScan { columns: None },
                     }),
                     input_key: col("Category.id").build_expr_plan().unwrap(),
                     right_key: col("Item.category_id").build_expr_plan().unwrap(),

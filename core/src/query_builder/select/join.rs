@@ -24,7 +24,7 @@ fn table_source_plan(name: String, alias: Option<String>) -> SourcePlan {
             name,
             columns: Vec::new(),
         }),
-        access: TableAccessPlan::FullScan,
+        access: TableAccessPlan::FullScan { columns: None },
     })
 }
 

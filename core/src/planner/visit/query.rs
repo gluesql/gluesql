@@ -615,12 +615,12 @@ mod tests {
             input: HashJoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                 name: "Item".to_owned(),
                 alias: None,
-                access: TableAccessPlan::FullScan,
+                access: TableAccessPlan::FullScan { columns: None },
             })),
             right: SourcePlan::Table(TableSourcePlan {
                 name: "Other".to_owned(),
                 alias: None,
-                access: TableAccessPlan::FullScan,
+                access: TableAccessPlan::FullScan { columns: None },
             }),
             input_key: expr("left_key"),
             right_key: expr("right_key"),
@@ -696,12 +696,12 @@ mod tests {
             input: HashJoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                 name: "Item".to_owned(),
                 alias: None,
-                access: TableAccessPlan::FullScan,
+                access: TableAccessPlan::FullScan { columns: None },
             })),
             right: SourcePlan::Table(TableSourcePlan {
                 name: "Other".to_owned(),
                 alias: None,
-                access: TableAccessPlan::FullScan,
+                access: TableAccessPlan::FullScan { columns: None },
             }),
             input_key: expr("left_key"),
             right_key: expr("right_key"),
@@ -778,12 +778,12 @@ mod tests {
             input: HashJoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                 name: "Item".to_owned(),
                 alias: None,
-                access: TableAccessPlan::FullScan,
+                access: TableAccessPlan::FullScan { columns: None },
             })),
             right: SourcePlan::Table(TableSourcePlan {
                 name: "Other".to_owned(),
                 alias: None,
-                access: TableAccessPlan::FullScan,
+                access: TableAccessPlan::FullScan { columns: None },
             }),
             input_key: expr("left_key"),
             right_key: expr("right_key"),
@@ -840,12 +840,12 @@ mod tests {
             input: HashJoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                 name: "Item".to_owned(),
                 alias: None,
-                access: TableAccessPlan::FullScan,
+                access: TableAccessPlan::FullScan { columns: None },
             })),
             right: SourcePlan::Table(TableSourcePlan {
                 name: "Other".to_owned(),
                 alias: None,
-                access: TableAccessPlan::FullScan,
+                access: TableAccessPlan::FullScan { columns: None },
             }),
             input_key: expr("left_key"),
             right_key: expr("right_key"),

@@ -352,7 +352,7 @@ mod tests {
         let source = SourcePlan::Table(TableSourcePlan {
             name: "Item".to_owned(),
             alias: None,
-            access: TableAccessPlan::FullScan,
+            access: TableAccessPlan::FullScan { columns: None },
         });
         let test = |sql: &str, expected, name: &str| {
             let query = query(sql);

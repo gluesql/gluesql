@@ -14,7 +14,7 @@ pub fn walk_source_mut<V: VisitorMut + ?Sized>(
                 predicate: Some(predicate),
                 ..
             } => visitor.visit_expr(&mut predicate.expr)?,
-            TableAccessPlan::FullScan
+            TableAccessPlan::FullScan { .. }
             | TableAccessPlan::Index {
                 predicate: None, ..
             } => {}
@@ -100,8 +100,8 @@ mod tests {
             assert_eq!(actual, expected, "{name}");
         };
 
-        let actual = TableAccessPlan::FullScan;
-        let expected = TableAccessPlan::FullScan;
+        let actual = TableAccessPlan::FullScan { columns: None };
+        let expected = TableAccessPlan::FullScan { columns: None };
         test(actual, expected, "full scan");
 
         let actual = TableAccessPlan::PrimaryKey { expr: expr("key") };

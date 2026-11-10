@@ -12,7 +12,7 @@ use {
         chrono::Utc,
         data::{CustomFunction as StructCustomFunction, Key, Schema, Value},
         error::{Error, Result},
-        store::{CustomFunction, CustomFunctionMut, Planner, RowIter, Store, StoreMut},
+        store::{CustomFunction, CustomFunctionMut, Planner, RowIter, ScanColumn, Store, StoreMut},
     },
     redis::{Commands, Connection},
     std::{collections::BTreeMap, sync::Mutex},
@@ -333,7 +333,11 @@ impl Store for RedisStorage {
         Ok(None)
     }
 
-    fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
+    fn scan_data<'a>(
+        &'a self,
+        table_name: &str,
+        columns: Option<&[ScanColumn]>,
+    ) -> Result<RowIter<'a>> {
         // First read all keys of the table
         let redis_keys: Vec<String> = {
             let mut conn = self.conn.lock_err()?;
@@ -372,6 +376,14 @@ impl Store for RedisStorage {
                     "[RedisStorage] failed to deserialize value={value} error={e:?}"
                 ))
             })?;
+
+            let row = match columns {
+                Some(columns) => columns
+                    .iter()
+                    .map(|(_, index)| row[*index].clone())
+                    .collect(),
+                None => row,
+            };
 
             rows.insert(key, row);
         }

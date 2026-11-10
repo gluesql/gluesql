@@ -8,7 +8,7 @@ use {
     gluesql_core::{
         data::{Key, Schema, Value},
         error::{Error, Result},
-        store::{Metadata, Planner, RowIter, Store, StoreMut},
+        store::{Metadata, Planner, RowIter, ScanColumn, Store, StoreMut},
     },
     gluesql_memory_storage::MemoryStorage,
     std::sync::{Arc, RwLock},
@@ -60,12 +60,16 @@ impl Store for SharedMemoryStorage {
         database.fetch_data(table_name, key)
     }
 
-    fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
+    fn scan_data<'a>(
+        &'a self,
+        table_name: &str,
+        columns: Option<&[ScanColumn]>,
+    ) -> Result<RowIter<'a>> {
         let rows = self
             .database
             .read()
             .map_err(lock_error)?
-            .scan_data(table_name)
+            .scan_data(table_name, columns)
             .into_iter()
             .map(Ok);
 

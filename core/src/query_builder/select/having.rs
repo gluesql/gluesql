@@ -253,12 +253,12 @@ mod tests {
                             input: HashJoinInputPlan::Source(SourcePlan::Table(TableSourcePlan {
                                 name: "Foo".to_owned(),
                                 alias: None,
-                                access: TableAccessPlan::FullScan,
+                                access: TableAccessPlan::FullScan { columns: None },
                             })),
                             right: SourcePlan::Table(TableSourcePlan {
                                 name: "Bar".to_owned(),
                                 alias: None,
-                                access: TableAccessPlan::FullScan,
+                                access: TableAccessPlan::FullScan { columns: None },
                             }),
                             input_key: ExprPlan::CompoundIdentifier {
                                 alias: "Bar".to_owned(),

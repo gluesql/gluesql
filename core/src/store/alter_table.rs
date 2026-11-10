@@ -32,7 +32,9 @@ pub trait AlterTable: Store + StoreMut {
         new_table_name.clone_into(&mut schema.table_name);
         self.insert_schema(&schema)?;
 
-        let rows = self.scan_data(table_name)?.collect::<Result<Vec<_>>>()?;
+        let rows = self
+            .scan_data(table_name, None)?
+            .collect::<Result<Vec<_>>>()?;
 
         self.insert_data(new_table_name, rows)?;
         self.delete_schema(table_name)
@@ -68,7 +70,9 @@ pub trait AlterTable: Store + StoreMut {
                 .name,
         );
 
-        let rows = self.scan_data(table_name)?.collect::<Result<Vec<_>>>()?;
+        let rows = self
+            .scan_data(table_name, None)?
+            .collect::<Result<Vec<_>>>()?;
 
         self.insert_schema(&schema)?;
         self.insert_data(table_name, rows)
@@ -96,7 +100,7 @@ pub trait AlterTable: Store + StoreMut {
         column_defs.push(column_def.clone());
 
         let rows = self
-            .scan_data(table_name)?
+            .scan_data(table_name, None)?
             .map(|row| {
                 let (key, mut values) = row?;
                 let default_value = default_value.clone();
@@ -134,7 +138,7 @@ pub trait AlterTable: Store + StoreMut {
         column_defs.retain(|column_def| column_def.name != column_name);
 
         let rows = self
-            .scan_data(table_name)?
+            .scan_data(table_name, None)?
             .map(|row| {
                 let (key, mut values) = row?;
                 values.remove(i);

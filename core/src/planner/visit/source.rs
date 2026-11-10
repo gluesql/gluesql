@@ -14,7 +14,7 @@ pub fn walk_source<V: Visitor + ?Sized>(
                 predicate: Some(predicate),
                 ..
             } => visitor.visit_expr(&predicate.expr)?,
-            TableAccessPlan::FullScan
+            TableAccessPlan::FullScan { .. }
             | TableAccessPlan::Index {
                 predicate: None, ..
             } => {}
@@ -95,7 +95,7 @@ mod tests {
             assert_eq!(visitor.0, expected, "{name}");
         };
 
-        let actual = TableAccessPlan::FullScan;
+        let actual = TableAccessPlan::FullScan { columns: None };
         let expected = &[];
         test(actual, expected, "full scan");
 
