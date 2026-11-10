@@ -1,0 +1,153 @@
+name: Publish Badgers Coverage
+
+on:
+  workflow_run:
+    workflows: ["Coverage"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: write
+
+env:
+  BADGERS_VERSION: v2.5.0
+
+jobs:
+  comment:
+    # Same-repository pull requests already get this comment from the Coverage run
+    # itself. Forks cannot, because their token is read-only and secrets are withheld,
+    # so only they need republishing from this trusted context.
+    if: >-
+      github.repository == 'gluesql/gluesql' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name != github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # workflow_run.pull_requests is empty for forks, so the pull request is resolved
+      # by lookup and confirmed to still point at the commit that was measured.
+      - name: Resolve pull request
+        id: pr
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const [headOwner] = run.head_repository.full_name.split('/');
+            const response = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              base: 'main',
+              head: `${headOwner}:${run.head_branch}`,
+              state: 'open',
+            });
+
+            if (response.data.length !== 1) {
+              core.notice(`Expected one pull request for run ${run.id}, found ${response.data.length}`);
+              core.setOutput('publish', 'false');
+              return;
+            }
+
+            const pullRequest = response.data[0];
+            if (pullRequest.head.sha !== run.head_sha) {
+              core.notice(
+                `Skipping: run ${run.id} measured ${run.head_sha}, but PR #${pullRequest.number} now points at ${pullRequest.head.sha}`,
+              );
+              core.setOutput('publish', 'false');
+              return;
+            }
+
+            core.setOutput('publish', 'true');
+            core.setOutput('number', String(pullRequest.number));
+            core.setOutput('head_sha', run.head_sha);
+
+      - name: Download coverage artifact
+        if: steps.pr.outputs.publish == 'true'
+        uses: actions/download-artifact@v7
+        with:
+          name: coverage
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/coverage
+
+      - name: Install Badgers
+        if: steps.pr.outputs.publish == 'true'
+        run: |
+          curl -fsSL \
+            "https://github.com/devgony/badgers/releases/download/${BADGERS_VERSION}/badgers-x86_64-unknown-linux-gnu.tar.gz" \
+            | tar -xz -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Build coverage snapshot
+        if: steps.pr.outputs.publish == 'true'
+        env:
+          # The LCOV records absolute runner paths, and GITHUB_WORKSPACE is that same
+          # path even without a checkout, so they normalise to repo-relative ones.
+          # GITHUB_SHA would otherwise name the default branch, not the measured commit.
+          GITHUB_SHA: ${{ steps.pr.outputs.head_sha }}
+        run: |
+          xz -d "$RUNNER_TEMP/coverage/lcov.info.xz"
+          badgers collect lcov \
+            --lcov-file "$RUNNER_TEMP/coverage/lcov.info" \
+            --repo-root "$GITHUB_WORKSPACE" \
+            -o "$RUNNER_TEMP/head.json"
+
+      # The diff comes from the API rather than a checkout: this job must never place
+      # pull request code where a later step could execute it.
+      - name: Fetch pull request diff
+        if: steps.pr.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: gh pr diff "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" > "$RUNNER_TEMP/pr.diff"
+
+      # Without a baseline the comment still reports diff coverage, only the total
+      # delta is omitted, so every failure here is downgraded to a notice.
+      - name: Fetch stored baseline
+        id: baseline
+        if: steps.pr.outputs.publish == 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          MERGE_BASE=$(gh api "repos/${GITHUB_REPOSITORY}/compare/main...${HEAD_SHA}" \
+            --jq '.merge_base_commit.sha')
+          STORE=$(mktemp -d)
+          if ! git clone --quiet --no-checkout --depth 1 --single-branch \
+              --branch badgers-coverage \
+              "https://github.com/${GITHUB_REPOSITORY}.git" "$STORE"; then
+            echo "::notice::no badgers-coverage branch yet; reporting without a baseline"
+            exit 0
+          fi
+          git -C "$STORE" checkout --quiet badgers-coverage
+          badgers baseline fetch \
+            --merge-base "$MERGE_BASE" \
+            --base-ref main \
+            --local-dir "$STORE" \
+            --prefix badgers \
+            --repo "$GITHUB_REPOSITORY" \
+            -o "$RUNNER_TEMP/base.json"
+
+      - name: Publish coverage comment
+        if: steps.pr.outputs.publish == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          BASE_ARGS=()
+          if [ -f "$RUNNER_TEMP/base.json" ]; then
+            BASE_ARGS=(--base "$RUNNER_TEMP/base.json")
+          fi
+          badgers report github \
+            --head "$RUNNER_TEMP/head.json" \
+            "${BASE_ARGS[@]}" \
+            --diff-file "$RUNNER_TEMP/pr.diff" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pr "$PR_NUMBER" \
+            --head-sha "$HEAD_SHA" \
+            --repo-root "$RUNNER_TEMP"
