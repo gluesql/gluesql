@@ -77,13 +77,6 @@ impl Store for SlatedbStorage {
         let prefix = data_prefix(table_name)?;
         let entries = self.scan(&prefix)?;
         let mut entries = Some(entries);
-        let column_indexes = match columns {
-            ScanColumns::All => None,
-            ScanColumns::Selected(columns) => {
-                Some(columns.iter().map(|(_, index)| *index).collect::<Vec<_>>())
-            }
-        };
-
         let rows = iter::from_fn(move || {
             let iter = entries.as_mut()?;
             let entry = match self.runtime.block_on(iter.next()) {
@@ -99,19 +92,32 @@ impl Store for SlatedbStorage {
             };
 
             match deserialize::<(Key, Vec<Value>)>(&entry.value) {
-                Ok((key, row)) => {
-                    let row = match &column_indexes {
-                        Some(indexes) => indexes.iter().map(|index| row[*index].clone()).collect(),
-                        None => row,
-                    };
-
-                    Some(Ok((key, row)))
-                }
+                Ok(row) => Some(Ok(row)),
                 Err(error) => {
                     entries = None;
                     Some(Err(StorageError::Bincode(error).into()))
                 }
             }
+        });
+        let ScanColumns::Selected(requested_columns) = columns else {
+            return Ok(Box::new(rows));
+        };
+
+        let column_indexes = requested_columns
+            .iter()
+            .map(|(_, index)| *index)
+            .collect::<Vec<_>>();
+
+        let rows = rows.map(move |row| {
+            let (key, row) = row?;
+            let mut selected_indexes = column_indexes.iter().copied().peekable();
+            let row = row
+                .into_iter()
+                .enumerate()
+                .filter_map(|(index, value)| selected_indexes.next_if_eq(&index).map(|_| value))
+                .collect();
+
+            Ok((key, row))
         });
 
         Ok(Box::new(rows))

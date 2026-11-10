@@ -50,11 +50,12 @@ pub trait Store {
 
     fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Vec<Value>>>;
 
-    /// Scans rows, returning the requested columns in request order.
+    /// Scans rows, returning the selected columns in full schema order.
     ///
     /// `All` returns all columns. `Selected(&[])` returns empty values for each row.
     /// Column selection preserves the rows and their keys. Each requested name
     /// and position must identify the same column in the full table schema.
+    /// Selected positions must be strictly increasing, without duplicates.
     /// Schemaless tables use `All` and return complete documents.
     ///
     /// The request is not borrowed by the returned iterator. Implementations

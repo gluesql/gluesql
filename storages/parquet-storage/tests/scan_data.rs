@@ -111,9 +111,9 @@ fn projected_fields_use_original_schema_positions() {
 
     let rows = {
         let columns = [
-            ("stamped".to_owned(), 4),
             ("at".to_owned(), 2),
             ("token".to_owned(), 3),
+            ("stamped".to_owned(), 4),
         ];
         storage
             .scan_data("Item", ScanColumns::Selected(&columns))
@@ -122,7 +122,7 @@ fn projected_fields_use_original_schema_positions() {
     let actual = rows.collect::<Result<Vec<_>>>().unwrap();
     let expected = vec![(
         Key::I64(7),
-        vec![Value::Timestamp(stamped), Value::Time(at), Value::Uuid(42)],
+        vec![Value::Time(at), Value::Uuid(42), Value::Timestamp(stamped)],
     )];
     assert_eq!(actual, expected);
 

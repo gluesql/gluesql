@@ -376,10 +376,16 @@ impl Store for RedisStorage {
             })?;
 
             let row = match columns {
-                ScanColumns::Selected(columns) => columns
-                    .iter()
-                    .map(|(_, index)| row[*index].clone())
-                    .collect(),
+                ScanColumns::Selected(columns) => {
+                    let mut selected_indexes = columns.iter().map(|(_, index)| *index).peekable();
+
+                    row.into_iter()
+                        .enumerate()
+                        .filter_map(|(index, value)| {
+                            selected_indexes.next_if_eq(&index).map(|_| value)
+                        })
+                        .collect()
+                }
                 ScanColumns::All => row,
             };
 

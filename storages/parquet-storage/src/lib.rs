@@ -77,45 +77,44 @@ impl ParquetStorage {
             })
         });
 
-        let rows: RowIter = if let Some(column_defs) = &scan_schema.column_defs {
+        let rows: RowIter = if scan_schema.column_defs.is_some() {
             let projection = match columns {
                 ScanColumns::All => None,
-                ScanColumns::Selected(columns) => {
-                    let mut read_columns = columns.to_vec();
-                    if let Some(index) = primary_key_index {
-                        read_columns.push((column_defs[index].name.clone(), index));
-                    }
-                    read_columns.sort_by_key(|(_, index)| *index);
-                    read_columns.dedup_by_key(|(_, index)| *index);
-
-                    let output_positions = columns
+                ScanColumns::Selected(requested_columns) => {
+                    let mut read_column_indexes = requested_columns
                         .iter()
-                        .map(|(_, index)| {
-                            read_columns
-                                .binary_search_by_key(index, |(_, index)| *index)
-                                .expect("requested columns are included in read_columns")
-                        })
+                        .map(|(_, index)| *index)
                         .collect::<Vec<_>>();
+                    let mut hidden_primary_key_index = None;
+
+                    if let Some(index) = primary_key_index
+                        && let Err(position) = read_column_indexes.binary_search(&index)
+                    {
+                        read_column_indexes.insert(position, index);
+                        hidden_primary_key_index = Some(index);
+                    }
+
                     let file_schema = parquet_reader.metadata().file_metadata().schema();
-                    let mut fields = read_columns
+                    let mut fields = read_column_indexes
                         .iter()
-                        .map(|(_, index)| file_schema.get_fields()[*index].clone())
+                        .map(|index| file_schema.get_fields()[*index].clone())
                         .collect();
                     let schema = ParquetType::group_type_builder(file_schema.name())
                         .with_fields(&mut fields)
                         .build()
                         .map_storage_err()?;
 
-                    Some((schema, read_columns, output_positions))
+                    Some((schema, read_column_indexes, hidden_primary_key_index))
                 }
             };
             let row_iter = ParquetRowIter::from_file_into(Box::new(parquet_reader));
-            let (row_iter, projection) = match projection {
-                Some((schema, read_columns, output_positions)) => (
+            let (row_iter, read_column_indexes, hidden_primary_key_index) = match projection {
+                Some((schema, read_column_indexes, hidden_primary_key_index)) => (
                     row_iter.project(Some(schema)).map_storage_err()?,
-                    Some((read_columns, output_positions)),
+                    Some(read_column_indexes),
+                    hidden_primary_key_index,
                 ),
-                None => (row_iter, None),
+                None => (row_iter, None, None),
             };
             let mut key_counter = 0_u64;
 
@@ -125,9 +124,9 @@ impl ParquetStorage {
                     let mut key = None;
 
                     for (index, (_, field)) in record.get_column_iter().enumerate() {
-                        let original_index = projection
+                        let original_index = read_column_indexes
                             .as_ref()
-                            .map_or(index, |(read_columns, _)| read_columns[index].1);
+                            .map_or(index, |indexes| indexes[index]);
                         let value =
                             ParquetField(field.clone()).to_value(&scan_schema, original_index)?;
 
@@ -135,7 +134,9 @@ impl ParquetStorage {
                             key = Key::try_from(&value).ok();
                         }
 
-                        row.push(value);
+                        if hidden_primary_key_index != Some(original_index) {
+                            row.push(value);
+                        }
                     }
 
                     let generated_key = key.unwrap_or_else(|| {
@@ -143,14 +144,6 @@ impl ParquetStorage {
                         key_counter += 1;
                         generated
                     });
-
-                    let row = match &projection {
-                        Some((_, output_positions)) => output_positions
-                            .iter()
-                            .map(|index| row[*index].clone())
-                            .collect(),
-                        None => row,
-                    };
 
                     Ok((generated_key, row))
                 })

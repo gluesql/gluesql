@@ -43,9 +43,10 @@ pub trait Store {
 ```
 
 Each `ScanColumn` contains an original column name and its zero-based position
-in the full table schema. Return values in the requested order. For example,
-given `[id, name, payload, price]`, the request `[("price", 3), ("name", 1)]`
-returns `[price, name]` for each row.
+in the full table schema. Supply selected columns in strictly increasing index
+order, without duplicates. Return their values in that same schema order. For
+example, given `[id, name, payload, price]`, the request
+`[("name", 1), ("price", 3)]` returns `[name, price]` for each row.
 
 `ScanColumns::All` requests all columns. An empty request,
 `ScanColumns::Selected(&[])`, returns an empty value vector for every row.

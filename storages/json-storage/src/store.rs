@@ -99,18 +99,23 @@ impl Store for JsonStorage {
 
     fn scan_data<'a>(&'a self, table_name: &str, columns: ScanColumns<'_>) -> Result<RowIter<'a>> {
         let rows = self.scan_data(table_name)?.0;
-        let column_indexes = match columns {
-            ScanColumns::All => None,
-            ScanColumns::Selected(columns) => {
-                Some(columns.iter().map(|(_, index)| *index).collect::<Vec<_>>())
-            }
+        let ScanColumns::Selected(requested_columns) = columns else {
+            return Ok(rows);
         };
+
+        let column_indexes = requested_columns
+            .iter()
+            .map(|(_, index)| *index)
+            .collect::<Vec<_>>();
+
         let rows = rows.map(move |row| {
             let (key, row) = row?;
-            let row = match &column_indexes {
-                Some(indexes) => indexes.iter().map(|index| row[*index].clone()).collect(),
-                None => row,
-            };
+            let mut selected_indexes = column_indexes.iter().copied().peekable();
+            let row = row
+                .into_iter()
+                .enumerate()
+                .filter_map(|(index, value)| selected_indexes.next_if_eq(&index).map(|_| value))
+                .collect();
 
             Ok((key, row))
         });

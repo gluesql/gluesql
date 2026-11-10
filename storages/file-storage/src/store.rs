@@ -76,25 +76,32 @@ impl Store for FileStorage {
 
         entries.sort();
 
-        let column_indexes = match columns {
-            ScanColumns::All => None,
-            ScanColumns::Selected(columns) => {
-                Some(columns.iter().map(|(_, index)| *index).collect::<Vec<_>>())
-            }
-        };
-        let rows = entries.into_iter().map(move |path| {
+        let rows = entries.into_iter().map(|path| {
             let data = fs::read_to_string(path).map_storage_err()?;
 
             ron::from_str(&data)
                 .map_storage_err()
-                .map(|FileRow { key, row }| {
-                    let row = match &column_indexes {
-                        Some(indexes) => indexes.iter().map(|index| row[*index].clone()).collect(),
-                        None => row,
-                    };
+                .map(|FileRow { key, row }| (key, row))
+        });
+        let ScanColumns::Selected(requested_columns) = columns else {
+            return Ok(Box::new(rows));
+        };
 
-                    (key, row)
-                })
+        let column_indexes = requested_columns
+            .iter()
+            .map(|(_, index)| *index)
+            .collect::<Vec<_>>();
+
+        let rows = rows.map(move |row| {
+            let (key, row) = row?;
+            let mut selected_indexes = column_indexes.iter().copied().peekable();
+            let row = row
+                .into_iter()
+                .enumerate()
+                .filter_map(|(index, value)| selected_indexes.next_if_eq(&index).map(|_| value))
+                .collect();
+
+            Ok((key, row))
         });
 
         Ok(Box::new(rows))

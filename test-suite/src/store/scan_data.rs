@@ -56,13 +56,13 @@ test_case!(scan_data, {
     ];
     assert_eq!(actual, expected, "all columns");
 
-    let columns = [("price".to_owned(), 3), ("name".to_owned(), 1)];
+    let columns = [("name".to_owned(), 1), ("price".to_owned(), 3)];
     let (selected_keys, actual) = scan(ScanColumns::Selected(&columns));
     let expected = vec![
-        row!(I64 Str; 30 "Apple".to_owned()),
-        row!(I64 Str; 20 "Pear".to_owned()),
+        row!(Str I64; "Apple".to_owned() 30),
+        row!(Str I64; "Pear".to_owned() 20),
     ];
-    assert_eq!(actual, expected, "nonadjacent columns in request order");
+    assert_eq!(actual, expected, "nonadjacent columns in schema order");
     assert_eq!(selected_keys, all_keys, "projection preserves keys");
 
     let (empty_keys, actual) = scan(ScanColumns::Selected(&[]));

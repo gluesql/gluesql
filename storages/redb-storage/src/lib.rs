@@ -52,19 +52,23 @@ impl Store for RedbStorage {
 
     fn scan_data<'a>(&'a self, table_name: &str, columns: ScanColumns<'_>) -> Result<RowIter<'a>> {
         let rows = self.0.scan_data(table_name)?;
-        let column_indexes = match columns {
-            ScanColumns::All => None,
-            ScanColumns::Selected(columns) => {
-                Some(columns.iter().map(|(_, index)| *index).collect::<Vec<_>>())
-            }
+        let ScanColumns::Selected(requested_columns) = columns else {
+            return Ok(Box::new(rows.map(|row| row.map_err(Into::into))));
         };
+
+        let column_indexes = requested_columns
+            .iter()
+            .map(|(_, index)| *index)
+            .collect::<Vec<_>>();
 
         Ok(Box::new(rows.map(move |row| {
             let (key, row) = row?;
-            let row = match &column_indexes {
-                Some(indexes) => indexes.iter().map(|index| row[*index].clone()).collect(),
-                None => row,
-            };
+            let mut selected_indexes = column_indexes.iter().copied().peekable();
+            let row = row
+                .into_iter()
+                .enumerate()
+                .filter_map(|(index, value)| selected_indexes.next_if_eq(&index).map(|_| value))
+                .collect();
 
             Ok((key, row))
         })))

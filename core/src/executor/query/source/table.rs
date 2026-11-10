@@ -60,6 +60,12 @@ pub(super) fn execute<'a, T: GStore>(
                 .filter(|(_, name)| columns.contains(name))
                 .map(|(index, name)| ((name, index), source.names[index].clone()))
                 .unzip();
+
+            assert!(
+                scan_columns.windows(2).all(|pair| pair[0].1 < pair[1].1),
+                "scan column indexes must be strictly increasing"
+            );
+
             source.names = Rc::from(names);
 
             prepare_source(source, move |_| {

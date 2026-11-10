@@ -116,7 +116,16 @@ impl Store for MongoStorage {
             if let Some(column_types) = &column_types {
                 let (key, row) = doc.into_row(column_types.iter(), has_primary)?;
                 let row = match &column_indexes {
-                    Some(indexes) => indexes.iter().map(|index| row[*index].clone()).collect(),
+                    Some(indexes) => {
+                        let mut selected_indexes = indexes.iter().copied().peekable();
+
+                        row.into_iter()
+                            .enumerate()
+                            .filter_map(|(index, value)| {
+                                selected_indexes.next_if_eq(&index).map(|_| value)
+                            })
+                            .collect()
+                    }
                     None => row,
                 };
 
