@@ -11,6 +11,11 @@ INSERT INTO Foo VALUES
     (3, 700, TRUE);
 -- @expect: ok
 
+-- @name: delete rejects a non-boolean WHERE without removing rows
+DELETE FROM Foo WHERE 1;
+-- @expect: error Evaluate.BooleanTypeRequired
+-- @json: "1"
+
 SELECT * FROM Foo
 -- @expect:
 -- | id: I64 | score: I64 | flag: Bool |

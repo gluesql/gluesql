@@ -844,6 +844,19 @@ CREATE TABLE Other (other_id INTEGER);
         let expected = table("Test").select().order_by("id + name").distinct();
         test!(actual, expected, "keeps distinct order by:\n{sql}");
 
+        let sql = "SELECT DISTINCT * FROM Test WHERE id = 1 OFFSET 1";
+        let actual = plan_index(&storage, sql);
+        let expected = table("Test")
+            .index_by(non_clustered("idx_id".to_owned()).eq(num(1)))
+            .select()
+            .distinct()
+            .offset(1);
+        test!(
+            actual,
+            expected,
+            "uses index inside distinct offset:\n{sql}"
+        );
+
         let sql = "SELECT * FROM Test OFFSET 1";
         let actual = plan_index(&storage, sql);
         let expected = table("Test").select().offset(1);
@@ -1039,24 +1052,19 @@ CREATE TABLE Other (other_id INTEGER);
 
     #[test]
     fn index_planning_keeps_existing_access_path() {
-        let storage = storage_with_indexes();
+        let storage = run("
+CREATE TABLE Test (id INTEGER PRIMARY KEY, name TEXT);
+CREATE INDEX idx_name ON Test (name);
+");
 
-        // Simulate the statement produced by the primary key planner, which runs
-        // before the index planner: the table already carries an access path
-        // (here a `PrimaryKey`) while the residual filter still references an
-        // indexed column (`name`). The index planner must leave the existing
-        // access path untouched instead of overwriting it with `idx_name`,
-        // otherwise the primary key predicate would be silently dropped.
         let statement = table("Test")
             .index_by(primary_key().eq(num(1)))
             .select()
             .filter("name = 'x'")
             .build()
             .unwrap();
-
         let statement = plan_schema_map(&storage, statement).unwrap();
         let actual = plan(statement).unwrap();
-
         let expected = table("Test")
             .index_by(primary_key().eq(num(1)))
             .select()
@@ -1064,7 +1072,25 @@ CREATE TABLE Other (other_id INTEGER);
         test!(
             actual,
             expected,
-            "keeps existing access path instead of clobbering it with a secondary index"
+            "preserves primary key access with an indexed filter"
+        );
+
+        let statement = table("Test")
+            .index_by(primary_key().eq(num(1)))
+            .select()
+            .order_by("name")
+            .build()
+            .unwrap();
+        let statement = plan_schema_map(&storage, statement).unwrap();
+        let actual = plan(statement).unwrap();
+        let expected = table("Test")
+            .index_by(primary_key().eq(num(1)))
+            .select()
+            .order_by("name");
+        test!(
+            actual,
+            expected,
+            "preserves primary key access and ordering on an indexed column"
         );
     }
 

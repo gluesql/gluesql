@@ -21,6 +21,10 @@ SELECT id, name FROM Allegro WHERE id = 1
 -- | ------- | --------- |
 -- | 1       | "hello"   |
 
+-- @name: PRIMARY KEY lookup propagates expression evaluation errors
+SELECT id FROM Allegro WHERE id = 1 / 0;
+-- @expect: error Evaluate.DivisorShouldNotBeZero
+
 -- @name: missing PRIMARY KEY lookup returns an empty result
 SELECT id, name FROM Allegro WHERE id = 999
 -- @expect:
