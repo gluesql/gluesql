@@ -1693,6 +1693,7 @@ dependencies = [
 name = "gluesql_memory_storage"
 version = "0.20.0"
 dependencies = [
+ "criterion",
  "gluesql-core",
  "gluesql-test-suite",
  "serde",
