@@ -40,7 +40,12 @@ struct ScanSource<'a> {
     source_name: String,
     column_aliases: Vec<String>,
     column_defs: &'a [ColumnDefPlan],
-    required_columns: Option<BTreeSet<String>>,
+    required_columns: RequiredColumns,
+}
+
+enum RequiredColumns {
+    All,
+    Selected(BTreeSet<String>),
 }
 
 impl ScanColumnsPlanner<'_> {
@@ -82,7 +87,7 @@ impl ScanColumnsPlanner<'_> {
             if alias.is_some_and(|alias| alias != source.source_name) {
                 continue;
             }
-            let Some(required_columns) = &mut source.required_columns else {
+            let RequiredColumns::Selected(required_columns) = &mut source.required_columns else {
                 continue;
             };
 
@@ -97,7 +102,7 @@ impl ScanColumnsPlanner<'_> {
 
     fn require_all_columns(&mut self) {
         for source in self.scope_stack.iter_mut().flatten() {
-            source.required_columns = None;
+            source.required_columns = RequiredColumns::All;
         }
     }
 }
@@ -113,11 +118,11 @@ impl VisitorMut for ScanColumnsPlanner<'_> {
             for item in items {
                 for source in &mut scope {
                     match item {
-                        SelectItemPlan::Wildcard => source.required_columns = None,
+                        SelectItemPlan::Wildcard => source.required_columns = RequiredColumns::All,
                         SelectItemPlan::QualifiedWildcard(alias)
                             if alias == &source.source_name =>
                         {
-                            source.required_columns = None;
+                            source.required_columns = RequiredColumns::All;
                         }
                         _ => {}
                     }
@@ -206,7 +211,7 @@ fn collect_scan_sources<'a>(schema_map: &'a SchemaMap, query: &QueryPlan) -> Sca
                     .as_ref()
                     .map_or_else(Vec::new, |alias| alias.columns.clone()),
                 column_defs,
-                required_columns: Some(BTreeSet::new()),
+                required_columns: RequiredColumns::Selected(BTreeSet::new()),
             })
         })
         .collect()
@@ -247,14 +252,14 @@ impl VisitorMut for ScanColumnsApplier<'_> {
             .next()
             .expect("collected scan sources follow query source order");
         table.access = match source.required_columns {
-            Some(required_columns) => TableAccessPlan::ProjectedScan {
+            RequiredColumns::All => TableAccessPlan::FullScan,
+            RequiredColumns::Selected(required_columns) => TableAccessPlan::ProjectedScan {
                 columns: column_defs
                     .iter()
                     .filter(|column| required_columns.contains(&column.name))
                     .map(|column| column.name.clone())
                     .collect(),
             },
-            None => TableAccessPlan::FullScan,
         };
 
         Ok(())
