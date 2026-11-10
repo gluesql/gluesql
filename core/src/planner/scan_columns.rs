@@ -5,13 +5,13 @@ use {
     },
     crate::{
         plan::{
-            AggregateExprPlan, AggregateFunctionPlan, ColumnDefPlan, CountArgExprPlan, ExprPlan,
-            ProjectInputPlan, ProjectionPlan, QueryPlan, SchemaMap, SchemaMapPlan, SelectItemPlan,
-            SourcePlan, StatementPlan, StatementPlanKind, TableAccessPlan, TableSourcePlan,
+            AggregateExprPlan, AggregateFunctionPlan, CountArgExprPlan, ExprPlan, ProjectInputPlan,
+            ProjectionPlan, QueryPlan, SchemaMap, SchemaMapPlan, SelectItemPlan, SourcePlan,
+            StatementPlan, StatementPlanKind, TableAccessPlan,
         },
         result::Result,
     },
-    std::{collections::BTreeSet, convert::Infallible, iter, vec::IntoIter},
+    std::{collections::BTreeSet, convert::Infallible},
 };
 
 pub fn plan(mut statement: StatementPlan) -> Result<StatementPlan> {
@@ -21,31 +21,47 @@ pub fn plan(mut statement: StatementPlan) -> Result<StatementPlan> {
 
     let mut planner = ScanColumnsPlanner {
         schema_map,
-        scope_stack: Vec::new(),
+        required_columns: RequiredColumns::Selected(BTreeSet::new()),
     };
     planner.statement(&mut statement.kind);
 
     Ok(statement)
 }
 
-// Schemaful scan sources belonging to one query.
-type ScanScope<'a> = Vec<ScanSource<'a>>;
-
 struct ScanColumnsPlanner<'a> {
     schema_map: &'a SchemaMap,
-    scope_stack: Vec<ScanScope<'a>>,
-}
-
-struct ScanSource<'a> {
-    source_name: String,
-    column_aliases: Vec<String>,
-    column_defs: &'a [ColumnDefPlan],
     required_columns: RequiredColumns,
 }
 
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+struct ColumnReference {
+    source_name: Option<String>,
+    column_name: String,
+}
+
 enum RequiredColumns {
+    // COUNT(DISTINCT *) includes outer row context values in its distinct key.
     All,
-    Selected(BTreeSet<String>),
+    Selected(BTreeSet<ColumnReference>),
+}
+
+impl RequiredColumns {
+    fn require_column(&mut self, source_name: Option<&str>, column_name: &str) {
+        if let Self::Selected(columns) = self {
+            columns.insert(ColumnReference {
+                source_name: source_name.map(str::to_owned),
+                column_name: column_name.to_owned(),
+            });
+        }
+    }
+
+    fn merge(&mut self, other: Self) {
+        match (self, other) {
+            (columns, Self::All) => *columns = Self::All,
+            (Self::Selected(columns), Self::Selected(other)) => columns.extend(other),
+            (Self::All, Self::Selected(_)) => {}
+        }
+    }
 }
 
 impl ScanColumnsPlanner<'_> {
@@ -81,86 +97,47 @@ impl ScanColumnsPlanner<'_> {
             _ => {}
         }
     }
-
-    fn require_column(&mut self, alias: Option<&str>, ident: &str) {
-        for source in self.scope_stack.iter_mut().flatten() {
-            if alias.is_some_and(|alias| alias != source.source_name) {
-                continue;
-            }
-            let RequiredColumns::Selected(required_columns) = &mut source.required_columns else {
-                continue;
-            };
-
-            for (index, column) in source.column_defs.iter().enumerate() {
-                let exposed_name = source.column_aliases.get(index).unwrap_or(&column.name);
-                if exposed_name == ident {
-                    required_columns.insert(column.name.clone());
-                }
-            }
-        }
-    }
-
-    fn require_all_columns(&mut self) {
-        for source in self.scope_stack.iter_mut().flatten() {
-            source.required_columns = RequiredColumns::All;
-        }
-    }
 }
 
 impl VisitorMut for ScanColumnsPlanner<'_> {
     type Error = Infallible;
 
     fn visit_query(&mut self, query: &mut QueryPlan) -> Result<(), Self::Error> {
-        let mut scope = collect_scan_sources(self.schema_map, query);
-        if let Some(project) = query.project()
-            && let ProjectionPlan::SelectItems(items) = &project.projection
-        {
-            for item in items {
-                for source in &mut scope {
-                    match item {
-                        SelectItemPlan::Wildcard => source.required_columns = RequiredColumns::All,
-                        SelectItemPlan::QualifiedWildcard(alias)
-                            if alias == &source.source_name =>
-                        {
-                            source.required_columns = RequiredColumns::All;
-                        }
-                        _ => {}
-                    }
-                }
-            }
-        }
-        self.scope_stack.push(scope);
+        let mut query_planner = ScanColumnsPlanner {
+            schema_map: self.schema_map,
+            required_columns: RequiredColumns::Selected(BTreeSet::new()),
+        };
 
         let aggregation = query.project().and_then(|project| match &project.input {
             ProjectInputPlan::Aggregation(aggregation) => Some(aggregation),
             ProjectInputPlan::Having(having) => Some(&having.input),
             _ => None,
         });
-        if aggregation
-            .is_some_and(|aggregation| aggregation.aggregate_slots.iter().any(is_distinct_wildcard))
-        {
-            self.require_all_columns();
+        if aggregation.is_some_and(|aggregation| {
+            aggregation
+                .aggregate_slots
+                .iter()
+                .any(is_count_distinct_wildcard)
+        }) {
+            query_planner.required_columns = RequiredColumns::All;
         }
 
-        walk_query_mut(self, query)?;
+        walk_query_mut(&mut query_planner, query)?;
 
-        let scope = self
-            .scope_stack
-            .pop()
-            .expect("query scope was pushed before walking");
-        apply_scan_columns(self.schema_map, scope, query);
+        apply_scan_columns(self.schema_map, &query_planner.required_columns, query);
+        self.required_columns.merge(query_planner.required_columns);
 
         Ok(())
     }
 
     fn visit_expr(&mut self, expr: &mut ExprPlan) -> Result<(), Self::Error> {
         match expr {
-            ExprPlan::Identifier(ident) => self.require_column(None, ident),
+            ExprPlan::Identifier(ident) => self.required_columns.require_column(None, ident),
             ExprPlan::CompoundIdentifier { alias, ident } => {
-                self.require_column(Some(alias), ident);
+                self.required_columns.require_column(Some(alias), ident);
             }
-            ExprPlan::Aggregate(aggregate) if is_distinct_wildcard(aggregate) => {
-                self.require_all_columns();
+            ExprPlan::Aggregate(aggregate) if is_count_distinct_wildcard(aggregate) => {
+                self.required_columns = RequiredColumns::All;
             }
             _ => {}
         }
@@ -169,7 +146,7 @@ impl VisitorMut for ScanColumnsPlanner<'_> {
     }
 }
 
-fn is_distinct_wildcard(aggregate: &AggregateExprPlan) -> bool {
+fn is_count_distinct_wildcard(aggregate: &AggregateExprPlan) -> bool {
     aggregate.distinct
         && matches!(
             aggregate.func,
@@ -177,57 +154,56 @@ fn is_distinct_wildcard(aggregate: &AggregateExprPlan) -> bool {
         )
 }
 
-fn scan_column_defs<'a>(
-    schema_map: &'a SchemaMap,
-    table: &TableSourcePlan,
-) -> Option<&'a [ColumnDefPlan]> {
-    if !matches!(
-        table.access,
-        TableAccessPlan::FullScan | TableAccessPlan::ProjectedScan { .. }
-    ) {
-        return None;
-    }
-
-    schema_map.get(&table.name)?.column_defs.as_deref()
-}
-
-fn collect_scan_sources<'a>(schema_map: &'a SchemaMap, query: &QueryPlan) -> ScanScope<'a> {
-    let Some(project) = query.project() else {
-        return Vec::new();
-    };
-
-    iter::once(project.input.base_source())
-        .chain(project.input.joined_sources())
-        .filter_map(|source| {
-            let SourcePlan::Table(table) = source else {
-                return None;
-            };
-            let column_defs = scan_column_defs(schema_map, table)?;
-
-            Some(ScanSource {
-                source_name: source.alias_name().to_owned(),
-                column_aliases: table
-                    .alias
-                    .as_ref()
-                    .map_or_else(Vec::new, |alias| alias.columns.clone()),
-                column_defs,
-                required_columns: RequiredColumns::Selected(BTreeSet::new()),
-            })
-        })
-        .collect()
-}
-
-fn apply_scan_columns<'a>(schema_map: &'a SchemaMap, scope: ScanScope<'a>, query: &mut QueryPlan) {
+fn apply_scan_columns(
+    schema_map: &SchemaMap,
+    required_columns: &RequiredColumns,
+    query: &mut QueryPlan,
+) {
     let mut applier = ScanColumnsApplier {
         schema_map,
-        sources: scope.into_iter(),
+        required_columns,
+        wildcards: ProjectionWildcards::from_query(query),
     };
     walk_query_mut(&mut applier, query).unwrap();
 }
 
 struct ScanColumnsApplier<'a> {
     schema_map: &'a SchemaMap,
-    sources: IntoIter<ScanSource<'a>>,
+    required_columns: &'a RequiredColumns,
+    wildcards: ProjectionWildcards,
+}
+
+enum ProjectionWildcards {
+    All,
+    Qualified(BTreeSet<String>),
+}
+
+impl ProjectionWildcards {
+    fn from_query(query: &QueryPlan) -> Self {
+        let mut sources = BTreeSet::new();
+        if let Some(project) = query.project()
+            && let ProjectionPlan::SelectItems(items) = &project.projection
+        {
+            for item in items {
+                match item {
+                    SelectItemPlan::Wildcard => return Self::All,
+                    SelectItemPlan::QualifiedWildcard(alias) => {
+                        sources.insert(alias.clone());
+                    }
+                    SelectItemPlan::Expr { .. } => {}
+                }
+            }
+        }
+
+        Self::Qualified(sources)
+    }
+
+    fn includes(&self, source_name: &str) -> bool {
+        match self {
+            Self::All => true,
+            Self::Qualified(sources) => sources.contains(source_name),
+        }
+    }
 }
 
 impl VisitorMut for ScanColumnsApplier<'_> {
@@ -243,23 +219,47 @@ impl VisitorMut for ScanColumnsApplier<'_> {
         ) {
             return Ok(());
         }
-        let Some(column_defs) = scan_column_defs(self.schema_map, table) else {
+        let Some(column_defs) = self
+            .schema_map
+            .get(&table.name)
+            .and_then(|schema| schema.column_defs.as_deref())
+        else {
             table.access = TableAccessPlan::FullScan;
             return Ok(());
         };
-        let source = self
-            .sources
-            .next()
-            .expect("collected scan sources follow query source order");
-        table.access = match source.required_columns {
-            RequiredColumns::All => TableAccessPlan::FullScan,
-            RequiredColumns::Selected(required_columns) => TableAccessPlan::ProjectedScan {
-                columns: column_defs
-                    .iter()
-                    .filter(|column| required_columns.contains(&column.name))
-                    .map(|column| column.name.clone())
-                    .collect(),
-            },
+        let source_name = table
+            .alias
+            .as_ref()
+            .map_or(table.name.as_str(), |alias| alias.name.as_str());
+
+        table.access = match self.required_columns {
+            RequiredColumns::Selected(required_columns)
+                if !self.wildcards.includes(source_name) =>
+            {
+                TableAccessPlan::ProjectedScan {
+                    columns: column_defs
+                        .iter()
+                        .enumerate()
+                        .filter(|(index, column)| {
+                            let exposed_name = table
+                                .alias
+                                .as_ref()
+                                .and_then(|alias| alias.columns.get(*index))
+                                .unwrap_or(&column.name);
+
+                            required_columns.iter().any(|reference| {
+                                reference.column_name == *exposed_name
+                                    && reference
+                                        .source_name
+                                        .as_deref()
+                                        .is_none_or(|name| name == source_name)
+                            })
+                        })
+                        .map(|(_, column)| column.name.clone())
+                        .collect(),
+                }
+            }
+            _ => TableAccessPlan::FullScan,
         };
 
         Ok(())
@@ -276,6 +276,7 @@ mod tests {
     use {
         super::plan as plan_scan_columns,
         crate::{
+            data::Value,
             mock::{MockStorage, run},
             parse_sql::parse,
             plan::{
@@ -555,11 +556,11 @@ mod tests {
             input: ProjectInputPlan::Aggregation(AggregationPlan {
                 input: AggregationInputPlan::Source(table_source("Item")),
                 group_by: Vec::new(),
-                aggregate_slots: vec![aggregate.clone()],
+                aggregate_slots: vec![aggregate],
             }),
             projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
-                expr: ExprPlan::Aggregate(Box::new(aggregate)),
-                label: "COUNT(DISTINCT *)".to_owned(),
+                expr: ExprPlan::Value(Value::I64(1)),
+                label: "1".to_owned(),
             }]),
         }));
         let input = plan_schema_map(&storage, input.into()).unwrap();
@@ -651,6 +652,21 @@ mod tests {
         );
 
         let sql = "
+            SELECT 1
+            FROM Item AS i(x, y, z)
+            WHERE EXISTS (
+                SELECT i.x FROM Item AS i(y, z, x)
+            )
+        ";
+        let actual = plan(&storage, sql);
+        let expected = [("i", projected_scan(&["a"])), ("i", projected_scan(&["c"]))];
+        test!(
+            actual,
+            expected,
+            "each scope resolves matching positional aliases independently:\n{sql}"
+        );
+
+        let sql = "
             SELECT i.a
             FROM Item i
             WHERE EXISTS (SELECT * FROM Ref)
@@ -696,20 +712,38 @@ mod tests {
 
         let sql = "
             SELECT
-                (SELECT l.b FROM Item l),
-                (SELECT r.c FROM Item r)
+                (SELECT i.b FROM Item i),
+                (SELECT i.c FROM Item i)
             FROM Item outer_item
         ";
         let actual = plan(&storage, sql);
         let expected = [
             ("outer_item", projected_scan(&[])),
-            ("l", projected_scan(&["b"])),
-            ("r", projected_scan(&["c"])),
+            ("i", projected_scan(&["b"])),
+            ("i", projected_scan(&["c"])),
         ];
         test!(
             actual,
             expected,
-            "sibling subqueries collect their own columns:\n{sql}"
+            "sibling subqueries keep reused aliases independent:\n{sql}"
+        );
+
+        let sql = "
+            SELECT
+                (SELECT COUNT(DISTINCT *) FROM Item i),
+                (SELECT i.c FROM Item i)
+            FROM Item outer_item
+        ";
+        let actual = plan(&storage, sql);
+        let expected = [
+            ("outer_item", FullScan),
+            ("i", FullScan),
+            ("i", projected_scan(&["c"])),
+        ];
+        test!(
+            actual,
+            expected,
+            "distinct wildcard propagates outward without affecting siblings:\n{sql}"
         );
 
         let sql = "VALUES ((SELECT b FROM Item))";
