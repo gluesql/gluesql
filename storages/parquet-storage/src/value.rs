@@ -11,11 +11,11 @@ use {
 };
 
 #[derive(Debug)]
-pub struct ParquetField(pub Field);
+pub struct ParquetField<'a>(pub &'a Field);
 
-impl ParquetField {
+impl ParquetField<'_> {
     pub fn as_field(&self) -> &Field {
-        &self.0
+        self.0
     }
 
     #[allow(clippy::too_many_lines)]
@@ -125,7 +125,7 @@ impl ParquetField {
             Field::Group(v) => {
                 let mut map = BTreeMap::new();
                 for (name, field) in v.get_column_iter() {
-                    let value: Value = ParquetField(field.clone()).to_value(schema, idx)?;
+                    let value: Value = ParquetField(field).to_value(schema, idx)?;
                     map.insert(name.clone(), value);
                 }
                 Ok(Value::Map(map))
@@ -133,7 +133,7 @@ impl ParquetField {
             Field::ListInternal(v) => {
                 let mut list = Vec::new();
                 for field in v.elements() {
-                    let value: Value = ParquetField(field.clone()).to_value(schema, idx)?;
+                    let value: Value = ParquetField(field).to_value(schema, idx)?;
                     list.push(value);
                 }
                 Ok(Value::List(list))
@@ -177,8 +177,7 @@ impl ParquetField {
                 for (key_field, value_field) in m.entries() {
                     match key_field {
                         Field::Str(key_str) => {
-                            let glue_value =
-                                ParquetField(value_field.clone()).to_value(schema, idx)?;
+                            let glue_value = ParquetField(value_field).to_value(schema, idx)?;
                             result_map.insert(key_str.clone(), glue_value);
                         }
                         _ => {

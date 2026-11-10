@@ -120,7 +120,6 @@ impl Store for ParquetStorage {
     }
 
     fn scan_data<'a>(&'a self, table_name: &str, columns: ScanColumns<'_>) -> Result<RowIter<'a>> {
-        let rows = self.scan_data(table_name, columns)?.0;
-        Ok(Box::new(rows))
+        Ok(self.scan_data(table_name, columns)?.0)
     }
 }
