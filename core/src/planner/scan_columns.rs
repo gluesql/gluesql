@@ -265,9 +265,14 @@ mod tests {
         crate::{
             mock::{MockStorage, run},
             parse_sql::parse,
-            plan::{SourcePlan, StatementPlan, StatementPlanKind, TableAccessPlan},
+            plan::{
+                AggregateExprPlan, AggregateFunctionPlan, AggregationInputPlan, AggregationPlan,
+                CountArgExprPlan, ExprPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan,
+                QueryPlan, SelectItemPlan, SourcePlan, StatementPlan, StatementPlanKind,
+                TableAccessPlan, TableSourcePlan,
+            },
             planner::{
-                PlannerError, plan_aggregate, plan_hash_join, plan_schema_map,
+                PlannerError, plan_schema_map,
                 visit::{Visitor, walk_source},
             },
             query_builder::{Build, exists, non_clustered, primary_key, table},
@@ -281,8 +286,18 @@ mod tests {
         translate(&parsed).expect(sql).into()
     }
 
-    fn input(storage: &MockStorage, sql: &str) -> StatementPlan {
-        plan_aggregate(plan_schema_map(storage, statement(sql)).unwrap())
+    fn plan(storage: &MockStorage, sql: &str) -> StatementPlan {
+        let input = plan_schema_map(storage, statement(sql)).unwrap();
+
+        plan_scan_columns(input).unwrap()
+    }
+
+    fn table_source(name: &str) -> SourcePlan {
+        SourcePlan::Table(TableSourcePlan {
+            name: name.to_owned(),
+            alias: None,
+            access: TableAccessPlan::FullScan { columns: None },
+        })
     }
 
     #[derive(Default)]
@@ -302,10 +317,9 @@ mod tests {
         }
     }
 
-    fn test_plan(input: StatementPlan, expected: &[(&str, Option<&[&str]>)], name: &str) {
-        let actual = plan_scan_columns(input).unwrap();
+    fn collect_scan_columns(statement: &StatementPlan) -> Vec<(String, Option<Vec<String>>)> {
         let mut columns = ScanColumns::default();
-        match &actual.kind {
+        match &statement.kind {
             StatementPlanKind::Query(query) | StatementPlanKind::Insert { source: query, .. } => {
                 columns.visit_query(query).unwrap();
             }
@@ -335,21 +349,28 @@ mod tests {
             }
             _ => {}
         }
-        let expected = expected
-            .iter()
-            .map(|(source, columns)| {
-                (
-                    (*source).to_owned(),
-                    columns
-                        .map(|columns| columns.iter().map(|column| (*column).to_owned()).collect()),
-                )
-            })
-            .collect::<Vec<_>>();
-        assert_eq!(columns.0, expected, "{name}");
+
+        columns.0
     }
 
-    fn test(storage: &MockStorage, sql: &str, expected: &[(&str, Option<&[&str]>)]) {
-        test_plan(input(storage, sql), expected, sql);
+    macro_rules! test {
+        ($actual:expr, $expected:expr, $name:literal) => {
+            let actual = collect_scan_columns(&$actual);
+            let expected: &[(&str, Option<&[&str]>)] = &$expected;
+            let expected = expected
+                .iter()
+                .map(|(source, columns)| {
+                    (
+                        (*source).to_owned(),
+                        columns.map(|columns| {
+                            columns.iter().map(|column| (*column).to_owned()).collect()
+                        }),
+                    )
+                })
+                .collect::<Vec<_>>();
+
+            assert_eq!(actual, expected, $name);
+        };
     }
 
     #[test]
@@ -357,31 +378,71 @@ mod tests {
         let storage = run("CREATE TABLE Item (a INT, b INT, c INT, d INT)");
 
         let sql = "SELECT COALESCE(b, 0) FROM Item WHERE c > 0 ORDER BY d";
-        test(&storage, sql, &[("Item", Some(&["b", "c", "d"]))]);
-        let actual = plan_scan_columns(input(&storage, sql)).unwrap();
-        test_plan(
+        let actual = plan(&storage, sql);
+        let expected = [("Item", Some(&["b", "c", "d"][..]))];
+        test!(
             actual,
-            &[("Item", Some(&["b", "c", "d"]))],
-            "repeat planning retains column dependencies",
+            expected,
+            "projection, filter, and order columns:\n{sql}"
+        );
+
+        let actual = plan_scan_columns(actual).unwrap();
+        let expected = [("Item", Some(&["b", "c", "d"][..]))];
+        test!(
+            actual,
+            expected,
+            "repeat planning retains column dependencies:\n{sql}"
         );
 
         let sql = "SELECT y FROM Item AS i(x, y, z, w)";
-        test(&storage, sql, &[("i", Some(&["b"]))]);
+        let actual = plan(&storage, sql);
+        let expected = [("i", Some(&["b"][..]))];
+        test!(
+            actual,
+            expected,
+            "positional alias resolves to original name:\n{sql}"
+        );
 
         let sql = "SELECT b AS a FROM Item ORDER BY a";
-        test(&storage, sql, &[("Item", Some(&["a", "b"]))]);
+        let actual = plan(&storage, sql);
+        let expected = [("Item", Some(&["a", "b"][..]))];
+        test!(
+            actual,
+            expected,
+            "keeps both projection and source alias candidates:\n{sql}"
+        );
 
         let sql = "SELECT x FROM Item AS i(x, x, z, w)";
-        test(&storage, sql, &[("i", Some(&["a", "b"]))]);
+        let actual = plan(&storage, sql);
+        let expected = [("i", Some(&["a", "b"][..]))];
+        test!(
+            actual,
+            expected,
+            "keeps columns sharing a positional alias:\n{sql}"
+        );
 
         let sql = "SELECT Item.a FROM Item AS i";
-        test(&storage, sql, &[("i", Some(&[]))]);
+        let actual = plan(&storage, sql);
+        let expected = [("i", Some(&[][..]))];
+        test!(
+            actual,
+            expected,
+            "table name does not match an aliased source:\n{sql}"
+        );
 
         let sql = "SELECT missing FROM Item";
-        test(&storage, sql, &[("Item", Some(&[]))]);
+        let actual = plan(&storage, sql);
+        let expected = [("Item", Some(&[][..]))];
+        test!(actual, expected, "unknown name adds no scan column:\n{sql}");
 
         let sql = "SELECT x FROM Item AS i(x, y, z, w, extra)";
-        test(&storage, sql, &[("i", Some(&["a"]))]);
+        let actual = plan(&storage, sql);
+        let expected = [("i", Some(&["a"][..]))];
+        test!(
+            actual,
+            expected,
+            "resolves existing columns with excess aliases:\n{sql}"
+        );
     }
 
     #[test]
@@ -389,115 +450,278 @@ mod tests {
         let storage = run("CREATE TABLE Item (a INT, b INT, c INT)");
 
         let sql = "SELECT * FROM Item";
-        test(&storage, sql, &[("Item", None)]);
+        let actual = plan(&storage, sql);
+        let expected = [("Item", None)];
+        test!(
+            actual,
+            expected,
+            "wildcard requires all source columns:\n{sql}"
+        );
 
         let sql = "SELECT i.*, i.b FROM Item i";
-        test(&storage, sql, &[("i", None)]);
+        let actual = plan(&storage, sql);
+        let expected = [("i", None)];
+        test!(
+            actual,
+            expected,
+            "qualified wildcard requires all matching columns:\n{sql}"
+        );
 
         let sql = "SELECT 1 FROM Item";
-        test(&storage, sql, &[("Item", Some(&[]))]);
+        let actual = plan(&storage, sql);
+        let expected = [("Item", Some(&[][..]))];
+        test!(
+            actual,
+            expected,
+            "constant projection requires rows without columns:\n{sql}"
+        );
 
         let sql = "SELECT COUNT(*) FROM Item";
-        test(&storage, sql, &[("Item", Some(&[]))]);
+        let actual = plan(&storage, sql);
+        let expected = [("Item", Some(&[][..]))];
+        test!(
+            actual,
+            expected,
+            "count wildcard requires rows without columns:\n{sql}"
+        );
 
         let sql = "SELECT COUNT(*) FROM Item WHERE b > 0";
-        test(&storage, sql, &[("Item", Some(&["b"]))]);
+        let actual = plan(&storage, sql);
+        let expected = [("Item", Some(&["b"][..]))];
+        test!(
+            actual,
+            expected,
+            "count wildcard retains filter columns:\n{sql}"
+        );
 
         let sql = "SELECT COUNT(DISTINCT *) FROM Item";
-        test(&storage, sql, &[("Item", None)]);
-        let actual = plan_schema_map(&storage, statement(sql)).unwrap();
-        test_plan(
+        let actual = plan(&storage, sql);
+        let expected = [("Item", None)];
+        test!(
             actual,
-            &[("Item", None)],
-            "distinct wildcard before aggregate slots",
+            expected,
+            "distinct wildcard expression requires all columns:\n{sql}"
         );
 
         let sql = "SELECT DISTINCT b FROM Item";
-        test(&storage, sql, &[("Item", Some(&["b"]))]);
+        let actual = plan(&storage, sql);
+        let expected = [("Item", Some(&["b"][..]))];
+        test!(
+            actual,
+            expected,
+            "distinct projection requires selected columns:\n{sql}"
+        );
 
-        let sql = "SELECT SUM(b) FROM Item GROUP BY c HAVING MAX(b) > 0";
-        test(&storage, sql, &[("Item", Some(&["b", "c"]))]);
+        let sql = "
+            SELECT SUM(b)
+            FROM Item
+            GROUP BY c
+            HAVING MAX(b) > 0
+        ";
+        let actual = plan(&storage, sql);
+        let expected = [("Item", Some(&["b", "c"][..]))];
+        test!(
+            actual,
+            expected,
+            "aggregate, group, and having columns:\n{sql}"
+        );
+    }
+
+    #[test]
+    fn aggregate_slots() {
+        let storage = run("CREATE TABLE Item (a INT, b INT, c INT)");
+        let aggregate = AggregateExprPlan {
+            func: AggregateFunctionPlan::Count(CountArgExprPlan::Wildcard),
+            distinct: true,
+            slot: Some(0),
+        };
+        let input = StatementPlanKind::Query(QueryPlan::Project(ProjectPlan {
+            input: ProjectInputPlan::Aggregation(AggregationPlan {
+                input: AggregationInputPlan::Source(table_source("Item")),
+                group_by: Vec::new(),
+                aggregate_slots: vec![aggregate.clone()],
+            }),
+            projection: ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
+                expr: ExprPlan::Aggregate(Box::new(aggregate)),
+                label: "COUNT(DISTINCT *)".to_owned(),
+            }]),
+        }));
+        let input = plan_schema_map(&storage, input.into()).unwrap();
+        let actual = plan_scan_columns(input).unwrap();
+        let expected = [("Item", None)];
+        test!(
+            actual,
+            expected,
+            "distinct wildcard in aggregate slots requires all columns"
+        );
     }
 
     #[test]
     fn joins_and_nested_scopes() {
-        let storage = run(
-            "CREATE TABLE Item (a INT, b INT, c INT); CREATE TABLE Ref (ref INT, payload TEXT)",
-        );
+        let storage = run("
+            CREATE TABLE Item (a INT, b INT, c INT);
+            CREATE TABLE Ref (ref INT, payload TEXT);
+        ");
 
-        let sql = "SELECT l.a, r.b FROM Item l JOIN Item r ON l.c = r.c";
-        test(
-            &storage,
-            sql,
-            &[("l", Some(&["a", "c"])), ("r", Some(&["b", "c"]))],
-        );
-        let actual = plan_hash_join(input(&storage, sql)).unwrap();
-        test_plan(
+        let sql = "
+            SELECT l.a, r.b
+            FROM Item l
+            JOIN Item r ON l.c = r.c
+        ";
+        let actual = plan(&storage, sql);
+        let expected = [("l", Some(&["a", "c"][..])), ("r", Some(&["b", "c"][..]))];
+        test!(actual, expected, "columns per joined source:\n{sql}");
+
+        let input = table("Item")
+            .alias_as("l")
+            .select()
+            .join_as("Item", "r")
+            .hash_executor("r.c", "l.c")
+            .project("l.a, r.b")
+            .build()
+            .unwrap();
+        let input = plan_schema_map(&storage, input).unwrap();
+        let actual = plan_scan_columns(input).unwrap();
+        let expected = [("l", Some(&["a", "c"][..])), ("r", Some(&["b", "c"][..]))];
+        test!(
             actual,
-            &[("l", Some(&["a", "c"])), ("r", Some(&["b", "c"]))],
-            sql,
+            expected,
+            "projection and hash keys contribute source columns"
         );
 
         let sql = "SELECT a FROM Item l JOIN Item r ON l.c = r.c";
-        test(
-            &storage,
-            sql,
-            &[("l", Some(&["a", "c"])), ("r", Some(&["a", "c"]))],
+        let actual = plan(&storage, sql);
+        let expected = [("l", Some(&["a", "c"][..])), ("r", Some(&["a", "c"][..]))];
+        test!(
+            actual,
+            expected,
+            "unqualified name retains matching source columns:\n{sql}"
         );
 
         let sql = "SELECT l.* FROM Item l LEFT JOIN Item r ON l.c = r.c";
-        test(&storage, sql, &[("l", None), ("r", Some(&["c"]))]);
-
-        let sql = "SELECT i.a FROM Item i WHERE EXISTS (SELECT 1 FROM Ref r WHERE r.ref = i.b)";
-        test(
-            &storage,
-            sql,
-            &[("i", Some(&["a", "b"])), ("r", Some(&["ref"]))],
+        let actual = plan(&storage, sql);
+        let expected = [("l", None), ("r", Some(&["c"][..]))];
+        test!(
+            actual,
+            expected,
+            "qualified wildcard leaves joined source columns selective:\n{sql}"
         );
 
-        let sql = "SELECT i.a FROM Item i WHERE EXISTS (SELECT * FROM Ref)";
-        test(&storage, sql, &[("i", Some(&["a"])), ("Ref", None)]);
+        let sql = "
+            SELECT i.a
+            FROM Item i
+            WHERE EXISTS (
+                SELECT 1 FROM Ref r WHERE r.ref = i.b
+            )
+        ";
+        let actual = plan(&storage, sql);
+        let expected = [("i", Some(&["a", "b"][..])), ("r", Some(&["ref"][..]))];
+        test!(
+            actual,
+            expected,
+            "correlated subquery retains outer columns:\n{sql}"
+        );
 
-        let sql = "SELECT i.a FROM Item i WHERE EXISTS (SELECT COUNT(DISTINCT *) FROM Ref)";
-        test(&storage, sql, &[("i", None), ("Ref", None)]);
+        let sql = "
+            SELECT i.a
+            FROM Item i
+            WHERE EXISTS (SELECT * FROM Ref)
+        ";
+        let actual = plan(&storage, sql);
+        let expected = [("i", Some(&["a"][..])), ("Ref", None)];
+        test!(
+            actual,
+            expected,
+            "nested wildcard applies to its own sources:\n{sql}"
+        );
+
+        let sql = "
+            SELECT i.a
+            FROM Item i
+            WHERE EXISTS (SELECT COUNT(DISTINCT *) FROM Ref)
+        ";
+        let actual = plan(&storage, sql);
+        let expected = [("i", None), ("Ref", None)];
+        test!(
+            actual,
+            expected,
+            "distinct wildcard retains all visible source columns:\n{sql}"
+        );
 
         let sql = "SELECT d.x FROM (SELECT a AS x, b FROM Item) d";
-        test(&storage, sql, &[("Item", Some(&["a", "b"]))]);
+        let actual = plan(&storage, sql);
+        let expected = [("Item", Some(&["a", "b"][..]))];
+        test!(
+            actual,
+            expected,
+            "derived query retains its projected columns:\n{sql}"
+        );
 
         let sql = "SELECT (SELECT i.b FROM SERIES(i.c)) FROM Item i";
-        test(&storage, sql, &[("i", Some(&["b", "c"]))]);
+        let actual = plan(&storage, sql);
+        let expected = [("i", Some(&["b", "c"][..]))];
+        test!(
+            actual,
+            expected,
+            "series and nested projection reference outer columns:\n{sql}"
+        );
 
-        let sql = "SELECT (SELECT l.b FROM Item l), (SELECT r.c FROM Item r) FROM Item outer_item";
-        test(
-            &storage,
-            sql,
-            &[
-                ("outer_item", Some(&[])),
-                ("l", Some(&["b"])),
-                ("r", Some(&["c"])),
-            ],
+        let sql = "
+            SELECT
+                (SELECT l.b FROM Item l),
+                (SELECT r.c FROM Item r)
+            FROM Item outer_item
+        ";
+        let actual = plan(&storage, sql);
+        let expected = [
+            ("outer_item", Some(&[][..])),
+            ("l", Some(&["b"][..])),
+            ("r", Some(&["c"][..])),
+        ];
+        test!(
+            actual,
+            expected,
+            "sibling subqueries collect their own columns:\n{sql}"
         );
 
         let sql = "VALUES ((SELECT b FROM Item))";
-        test(&storage, sql, &[("Item", Some(&["b"]))]);
+        let actual = plan(&storage, sql);
+        let expected = [("Item", Some(&["b"][..]))];
+        test!(actual, expected, "subquery inside values:\n{sql}");
     }
 
     #[test]
     fn excluded_sources_and_lookup_dependencies() {
-        let storage = run(
-            "CREATE TABLE Item (a INT, b INT); CREATE TABLE Lookup (id INT PRIMARY KEY, payload TEXT); CREATE TABLE Logs",
-        );
+        let storage = run("
+            CREATE TABLE Item (a INT, b INT);
+            CREATE TABLE Lookup (id INT PRIMARY KEY, payload TEXT);
+            CREATE TABLE Logs;
+        ");
 
         let sql = "SELECT i.b, l.name FROM Item i JOIN Logs l ON i.a = l.id";
-        test(&storage, sql, &[("i", Some(&["a", "b"])), ("l", None)]);
+        let actual = plan(&storage, sql);
+        let expected = [("i", Some(&["a", "b"][..])), ("l", None)];
+        test!(
+            actual,
+            expected,
+            "schemaful source stays selective beside schemaless source:\n{sql}"
+        );
 
         let sql = "SELECT COUNT(*) FROM Logs";
-        test(&storage, sql, &[("Logs", None)]);
+        let actual = plan(&storage, sql);
+        let expected = [("Logs", None)];
+        test!(
+            actual,
+            expected,
+            "schemaless source keeps all columns:\n{sql}"
+        );
 
         let sql = "SELECT * FROM Missing";
-        test(&storage, sql, &[("Missing", None)]);
+        let actual = plan(&storage, sql);
+        let expected = [("Missing", None)];
+        test!(actual, expected, "missing schema keeps all columns:\n{sql}");
 
-        let actual = table("Item")
+        let input = table("Item")
             .select()
             .filter(exists(
                 table("Lookup")
@@ -508,14 +732,16 @@ mod tests {
             .project("b")
             .build()
             .unwrap();
-        let actual = plan_schema_map(&storage, actual).unwrap();
-        test_plan(
+        let input = plan_schema_map(&storage, input).unwrap();
+        let actual = plan_scan_columns(input).unwrap();
+        let expected = [("Item", Some(&["a", "b"][..]))];
+        test!(
             actual,
-            &[("Item", Some(&["a", "b"]))],
-            "primary-key lookup references outer source",
+            expected,
+            "primary-key lookup references outer source"
         );
 
-        let actual = table("Item")
+        let input = table("Item")
             .select()
             .filter(exists(
                 table("Lookup")
@@ -526,43 +752,82 @@ mod tests {
             .project("b")
             .build()
             .unwrap();
-        let actual = plan_schema_map(&storage, actual).unwrap();
-        test_plan(
-            actual,
-            &[("Item", Some(&["a", "b"]))],
-            "index lookup references outer source",
-        );
+        let input = plan_schema_map(&storage, input).unwrap();
+        let actual = plan_scan_columns(input).unwrap();
+        let expected = [("Item", Some(&["a", "b"][..]))];
+        test!(actual, expected, "index lookup references outer source");
     }
 
     #[test]
     fn statement_sources() {
-        let storage =
-            run("CREATE TABLE Item (a INT, b INT); CREATE TABLE Ref (ref INT, payload TEXT)");
+        let storage = run("
+            CREATE TABLE Item (a INT, b INT);
+            CREATE TABLE Ref (ref INT, payload TEXT);
+        ");
 
         let sql = "INSERT INTO Item SELECT ref, 1 FROM Ref";
-        test(&storage, sql, &[("Ref", Some(&["ref"]))]);
+        let actual = plan(&storage, sql);
+        let expected = [("Ref", Some(&["ref"][..]))];
+        test!(actual, expected, "columns in INSERT source:\n{sql}");
 
         let sql = "CREATE TABLE Copy AS SELECT b FROM Item";
-        test(&storage, sql, &[("Item", Some(&["b"]))]);
+        let actual = plan(&storage, sql);
+        let expected = [("Item", Some(&["b"][..]))];
+        test!(actual, expected, "columns in CREATE TABLE source:\n{sql}");
 
-        let sql = "UPDATE Item SET a = (SELECT ref FROM Ref WHERE ref = Item.b) WHERE EXISTS (SELECT 1 FROM Ref WHERE ref = Item.a)";
-        test(
-            &storage,
-            sql,
-            &[("Ref", Some(&["ref"])), ("Ref", Some(&["ref"]))],
+        let sql = "
+            UPDATE Item
+            SET a = (SELECT ref FROM Ref WHERE ref = Item.b)
+            WHERE EXISTS (
+                SELECT 1 FROM Ref WHERE ref = Item.a
+            )
+        ";
+        let actual = plan(&storage, sql);
+        let expected = [("Ref", Some(&["ref"][..])), ("Ref", Some(&["ref"][..]))];
+        test!(
+            actual,
+            expected,
+            "columns in UPDATE assignment and filter subqueries:\n{sql}"
         );
 
-        let sql = "DELETE FROM Item WHERE EXISTS (SELECT ref FROM Ref WHERE ref = Item.b)";
-        test(&storage, sql, &[("Ref", Some(&["ref"]))]);
+        let sql = "
+            DELETE FROM Item
+            WHERE EXISTS (
+                SELECT ref
+                FROM Ref
+                WHERE ref = Item.b
+            )
+        ";
+        let actual = plan(&storage, sql);
+        let expected = [("Ref", Some(&["ref"][..]))];
+        test!(actual, expected, "columns in DELETE subquery:\n{sql}");
 
         let sql = "UPDATE Item SET a = 1";
-        test(&storage, sql, &[]);
+        let actual = plan(&storage, sql);
+        let expected = [];
+        test!(
+            actual,
+            expected,
+            "UPDATE target is not a scan source:\n{sql}"
+        );
 
         let sql = "DELETE FROM Item";
-        test(&storage, sql, &[]);
+        let actual = plan(&storage, sql);
+        let expected = [];
+        test!(
+            actual,
+            expected,
+            "DELETE target is not a scan source:\n{sql}"
+        );
 
         let sql = "BEGIN";
-        test(&storage, sql, &[]);
+        let actual = plan(&storage, sql);
+        let expected = [];
+        test!(
+            actual,
+            expected,
+            "transaction statement has no scan sources:\n{sql}"
+        );
     }
 
     #[test]
