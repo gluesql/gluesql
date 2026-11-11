@@ -357,6 +357,7 @@ macro_rules! generate_store_tests {
         sql_case!(schemaless::project);
 
         rust_case!(store::insert_schema);
+        rust_case!(store::scan_data);
     };
 }
 

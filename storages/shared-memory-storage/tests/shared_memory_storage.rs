@@ -40,14 +40,14 @@ fn shared_memory_storage_index() {
     use gluesql_core::{
         error::Error,
         prelude::Glue,
-        store::{Index, Store},
+        store::{Index, ScanColumns, Store},
     };
 
     let storage = SharedMemoryStorage::new();
 
     assert_eq!(
         storage
-            .scan_data("Idx")
+            .scan_data("Idx", ScanColumns::All)
             .unwrap()
             .collect::<gluesql_core::prelude::Result<Vec<_>>>()
             .as_ref()

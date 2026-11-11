@@ -6,7 +6,7 @@ use {
     gluesql_core::{
         data::{Key, Schema, Value},
         error::{Error, Result},
-        store::{RowIter, Store},
+        store::{RowIter, ScanColumns, Store},
     },
     std::{
         ffi::OsStr,
@@ -97,8 +97,28 @@ impl Store for JsonStorage {
         Ok(None)
     }
 
-    fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
+    fn scan_data<'a>(&'a self, table_name: &str, columns: ScanColumns<'_>) -> Result<RowIter<'a>> {
         let rows = self.scan_data(table_name)?.0;
+        let ScanColumns::Selected(requested_columns) = columns else {
+            return Ok(rows);
+        };
+
+        let column_indexes = requested_columns
+            .iter()
+            .map(|(_, index)| *index)
+            .collect::<Vec<_>>();
+
+        let rows = rows.map(move |row| {
+            let (key, row) = row?;
+            let mut selected_indexes = column_indexes.iter().copied().peekable();
+            let row = row
+                .into_iter()
+                .enumerate()
+                .filter_map(|(index, value)| selected_indexes.next_if_eq(&index).map(|_| value))
+                .collect();
+
+            Ok((key, row))
+        });
 
         Ok(Box::new(rows))
     }

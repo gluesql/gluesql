@@ -9,7 +9,7 @@ use {
         data::{Key, Schema},
         error::{Error, Result},
         prelude::Value,
-        store::{RowIter, Store},
+        store::{RowIter, ScanColumns, Store},
     },
     parquet::file::{reader::FileReader, serialized_reader::SerializedFileReader},
     serde_json::from_str,
@@ -109,7 +109,7 @@ impl Store for ParquetStorage {
     }
 
     fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<Vec<Value>>> {
-        for item in self.scan_data(table_name)?.0 {
+        for item in self.scan_data(table_name, ScanColumns::All)?.0 {
             let (key, row) = item?;
 
             if &key == target {
@@ -119,8 +119,7 @@ impl Store for ParquetStorage {
         Ok(None)
     }
 
-    fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
-        let rows = self.scan_data(table_name)?.0;
-        Ok(Box::new(rows))
+    fn scan_data<'a>(&'a self, table_name: &str, columns: ScanColumns<'_>) -> Result<RowIter<'a>> {
+        Ok(self.scan_data(table_name, columns)?.0)
     }
 }

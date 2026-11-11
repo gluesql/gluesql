@@ -7,7 +7,7 @@ use {
     gluesql_core::{
         data::{Key, Schema, Value},
         error::Error,
-        store::{Store, StoreMut, Transaction},
+        store::{ScanColumns, Store, StoreMut, Transaction},
     },
     gluesql_slatedb_storage::{
         SlatedbStorage,
@@ -281,7 +281,10 @@ fn object_read_failure_reaches_fetch_and_scan_open() {
         storage.fetch_data("Items", &Key::I64(1)).unwrap_err(),
         expected
     );
-    assert_eq!(storage.scan_data("Items").err().unwrap(), expected);
+    assert_eq!(
+        storage.scan_data("Items", ScanColumns::All).err().unwrap(),
+        expected
+    );
 
     storage.begin(false).unwrap();
     assert_eq!(storage.delete_schema("Items"), Err(expected));
@@ -383,7 +386,7 @@ fn failed_schema_deletion_can_be_rolled_back() {
 
     assert_eq!(storage.fetch_schema("Items").unwrap(), Some(schema));
     let restored_rows = storage
-        .scan_data("Items")
+        .scan_data("Items", ScanColumns::All)
         .unwrap()
         .collect::<Result<Vec<_>, _>>()
         .unwrap();
@@ -413,7 +416,7 @@ fn object_read_failure_during_iteration_is_returned_once() {
     storage.close().unwrap();
 
     let storage = SlatedbStorage::new(objects.clone(), "lazy_read_failure").unwrap();
-    let mut rows = storage.scan_data("Items").unwrap();
+    let mut rows = storage.scan_data("Items", ScanColumns::All).unwrap();
     assert_eq!(
         rows.next().unwrap().unwrap(),
         (Key::I64(0), vec![Value::Str(payload)])

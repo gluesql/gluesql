@@ -10,6 +10,10 @@ use {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TableAccessPlan {
     FullScan,
+    ProjectedScan {
+        /// Original column names in schema order.
+        columns: Vec<String>,
+    },
     PrimaryKey {
         expr: ExprPlan,
     },

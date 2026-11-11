@@ -1,8 +1,9 @@
 use {
     gluesql_core::{
-        data::{Key, Value},
+        data::{Key, Schema, Value},
         error::Error,
-        store::Store,
+        prelude::Glue,
+        store::{ScanColumns, Store},
     },
     gluesql_slatedb_storage::{SlatedbStorage, object_store::memory::InMemory},
     slatedb::Db,
@@ -40,7 +41,8 @@ fn schema_decode_errors_reach_the_store_boundary() {
 }
 
 #[test]
-fn scan_decodes_rows_lazily_and_stops_after_an_error() {
+fn row_decode_errors_stop_scans_and_abort_deletes() {
+    let schema = Schema::from_ddl("CREATE TABLE Items (id INTEGER PRIMARY KEY)").unwrap();
     let first_key = [
         b"data/Items/".as_slice(),
         &Key::I64(1).to_cmp_be_bytes().unwrap(),
@@ -54,6 +56,10 @@ fn scan_decodes_rows_lazily_and_stops_after_an_error() {
     let objects = write_raw(
         "rows",
         vec![
+            (
+                b"schema/Items".to_vec(),
+                bincode::serialize(&schema).unwrap(),
+            ),
             (
                 first_key,
                 bincode::serialize(&(Key::I64(1), vec![Value::I64(1)])).unwrap(),
@@ -69,12 +75,21 @@ fn scan_decodes_rows_lazily_and_stops_after_an_error() {
         expected
     );
 
-    let mut rows = storage.scan_data("Items").unwrap();
+    let mut rows = storage.scan_data("Items", ScanColumns::All).unwrap();
     assert_eq!(rows.next(), Some(Ok((Key::I64(1), vec![Value::I64(1)]))));
     assert_eq!(rows.next(), Some(Err(expected)));
     assert_eq!(rows.next(), None);
     assert_eq!(rows.next(), None);
 
     drop(rows);
-    storage.close().unwrap();
+
+    let mut glue = Glue::new(storage);
+    let actual = glue.execute("DELETE FROM Items");
+    let expected = Err(Error::StorageMsg("io error: unexpected end of file".into()));
+    assert_eq!(actual, expected);
+    assert_eq!(
+        glue.storage.fetch_data("Items", &Key::I64(1)),
+        Ok(Some(vec![Value::I64(1)]))
+    );
+    glue.storage.close().unwrap();
 }

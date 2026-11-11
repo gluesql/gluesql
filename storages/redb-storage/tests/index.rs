@@ -8,7 +8,7 @@ use {
         data::{Key, Schema, Value},
         error::{Error, Result},
         prelude::{Glue, Payload},
-        store::{Index, IndexError, Store, StoreMut, Transaction},
+        store::{Index, IndexError, ScanColumns, Store, StoreMut, Transaction},
     },
     gluesql_redb_storage::{MigrationReport, RedbStorage, migrate_to_latest},
     redb::{Database, MultimapTableHandle, TableDefinition},
@@ -315,7 +315,7 @@ fn insert_schema_rejects_missing_index_table() {
     assert_eq!(storage.fetch_schema("Items").unwrap(), Some(schema));
     assert_eq!(
         storage
-            .scan_data("Items")
+            .scan_data("Items", ScanColumns::All)
             .unwrap()
             .collect::<Result<Vec<_>>>(),
         Ok(vec![(Key::I64(1), vec![Value::I64(1), Value::I64(10)])])
@@ -353,7 +353,7 @@ fn failed_append_keeps_rows_and_indexes_unchanged() {
     .unwrap();
     let before = glue
         .storage
-        .scan_data("Items")
+        .scan_data("Items", ScanColumns::All)
         .unwrap()
         .collect::<Result<Vec<_>>>()
         .unwrap();

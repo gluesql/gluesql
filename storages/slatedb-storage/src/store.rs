@@ -8,7 +8,7 @@ use {
     gluesql_core::{
         data::{Key, Schema, Value},
         error::Result,
-        store::{RowIter, Store},
+        store::{RowIter, ScanColumns, Store},
     },
     slatedb::{DbIterator, bytes::Bytes},
     std::iter,
@@ -73,11 +73,10 @@ impl Store for SlatedbStorage {
         Ok(Some(row))
     }
 
-    fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
+    fn scan_data<'a>(&'a self, table_name: &str, columns: ScanColumns<'_>) -> Result<RowIter<'a>> {
         let prefix = data_prefix(table_name)?;
         let entries = self.scan(&prefix)?;
         let mut entries = Some(entries);
-
         let rows = iter::from_fn(move || {
             let iter = entries.as_mut()?;
             let entry = match self.runtime.block_on(iter.next()) {
@@ -92,13 +91,33 @@ impl Store for SlatedbStorage {
                 }
             };
 
-            match deserialize(&entry.value) {
+            match deserialize::<(Key, Vec<Value>)>(&entry.value) {
                 Ok(row) => Some(Ok(row)),
                 Err(error) => {
                     entries = None;
                     Some(Err(StorageError::Bincode(error).into()))
                 }
             }
+        });
+        let ScanColumns::Selected(requested_columns) = columns else {
+            return Ok(Box::new(rows));
+        };
+
+        let column_indexes = requested_columns
+            .iter()
+            .map(|(_, index)| *index)
+            .collect::<Vec<_>>();
+
+        let rows = rows.map(move |row| {
+            let (key, row) = row?;
+            let mut selected_indexes = column_indexes.iter().copied().peekable();
+            let row = row
+                .into_iter()
+                .enumerate()
+                .filter_map(|(index, value)| selected_indexes.next_if_eq(&index).map(|_| value))
+                .collect();
+
+            Ok((key, row))
         });
 
         Ok(Box::new(rows))

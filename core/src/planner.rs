@@ -7,8 +7,9 @@
 //! [`Build::with_schema`](crate::query_builder::Build::with_schema).
 //!
 //! [`validate`], [`validate_create_index`], [`validate_insert`],
-//! [`plan_schemaless`], [`plan_primary_key`], [`plan_index`], [`plan_hash_join`], and
-//! [`plan_create_table_columns`] read that map from the statement. They return
+//! [`plan_schemaless`], [`plan_primary_key`], [`plan_index`], [`plan_hash_join`],
+//! [`plan_create_table_columns`], and [`plan_scan_columns`] read that map from the
+//! statement. They return
 //! [`PlannerError::UnplannedSchemaMap`] if schema preparation has not run.
 //! The transformation passes return `Result<StatementPlan>` and preserve the map.
 //!
@@ -40,6 +41,7 @@ mod hash_join;
 mod index;
 mod primary_key;
 mod query;
+mod scan_columns;
 mod schema;
 mod schemaless;
 mod validate;
@@ -57,6 +59,7 @@ pub use {
     hash_join::plan as plan_hash_join,
     index::plan as plan_index,
     primary_key::plan as plan_primary_key,
+    scan_columns::plan as plan_scan_columns,
     schema::plan_schema_map,
     schemaless::plan as plan_schemaless,
     validate_create_index::validate as validate_create_index,
