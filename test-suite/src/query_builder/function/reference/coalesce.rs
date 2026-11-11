@@ -20,7 +20,7 @@ test_case!(coalesce, {
         .add_column("third TIMESTAMP")
         .execute(glue);
     let expected = Ok(Payload::Create);
-    assert_eq!(actual, expected, "create table - Foo");
+    test!(actual, expected, "create table - Foo");
 
     // insert into Foo
     let actual = table("Foo")
@@ -34,7 +34,7 @@ test_case!(coalesce, {
         ])
         .execute(glue);
     let expected = Ok(Payload::Insert(4));
-    assert_eq!(actual, expected, "insert into Foo");
+    test!(actual, expected, "insert into Foo");
 
     let actual = table("Foo")
         .select()
@@ -54,7 +54,7 @@ test_case!(coalesce, {
         I64(300)    Timestamp("2023-06-01T12:00:00".parse::<NaiveDateTime>().unwrap());
         I64(400)    Null
     ));
-    assert_eq!(actual, expected, "coalesce with table columns");
+    test!(actual, expected, "coalesce with table columns");
 
     let actual = values(vec![vec![
         f::coalesce(vec![text("뀨")]),
@@ -66,5 +66,5 @@ test_case!(coalesce, {
         column1             | column2 | column3;
         Str("뀨".to_owned())   I64(1)    Date("2000-01-01".parse::<NaiveDate>().unwrap())
     ));
-    assert_eq!(actual, expected, "coalesce without table");
+    test!(actual, expected, "coalesce without table");
 });

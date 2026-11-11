@@ -16,7 +16,7 @@ test_case!(index_by, {
         .add_column("name TEXT")
         .execute(glue);
     let expected = Ok(Payload::Create);
-    assert_eq!(actual, expected, "create table - Foo");
+    test!(actual, expected, "create table - Foo");
 
     let actual = table("Foo")
         .insert()
@@ -24,7 +24,7 @@ test_case!(index_by, {
         .values(vec![vec![num(1), text("Drink")]])
         .execute(glue);
     let expected = Ok(Payload::Insert(1));
-    assert_eq!(actual, expected, "insert - specifying columns");
+    test!(actual, expected, "insert - specifying columns");
 
     let actual = table("Foo")
         .index_by(primary_key().eq("1"))
@@ -36,22 +36,23 @@ test_case!(index_by, {
         I64 | Str;
         1     "Drink".to_owned()
     ));
-    assert_eq!(actual, expected, "basic select with index by");
+    test!(actual, expected, "basic select with index by");
 
     let actual = table("NoPrimaryKey")
         .create_table()
         .add_column("id INTEGER")
         .execute(glue);
     let expected = Ok(Payload::Create);
-    assert_eq!(actual, expected, "create table without primary key");
+    test!(actual, expected, "create table without primary key");
 
     let actual = table("NoPrimaryKey")
         .index_by(primary_key().eq("1"))
         .select()
         .execute(glue);
     let expected = Err(QueryError::PrimaryKeyColumnNotFound("NoPrimaryKey".to_owned()).into());
-    assert_eq!(
-        actual, expected,
+    test!(
+        actual,
+        expected,
         "primary key access requires a primary key"
     );
 });

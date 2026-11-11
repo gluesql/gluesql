@@ -35,8 +35,9 @@ test_case!(padding, {
         Str("hel".to_owned())          Str("hel".to_owned());
         Null                           Null
     ));
-    assert_eq!(
-        actual, expected,
+    test!(
+        actual,
+        expected,
         "lpad and rpad should pad the string with given length"
     );
 });

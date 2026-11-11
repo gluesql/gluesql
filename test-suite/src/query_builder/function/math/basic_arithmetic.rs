@@ -17,7 +17,7 @@ test_case!(basic_arithmetic, {
         .add_column("number INTEGER")
         .execute(glue);
     let expected = Ok(Payload::Create);
-    assert_eq!(actual, expected, "create table - Number");
+    test!(actual, expected, "create table - Number");
 
     // Insert a row into the Number
     let actual = table("Number")
@@ -25,7 +25,7 @@ test_case!(basic_arithmetic, {
         .values(vec!["0, 0", "1, 3", "2, 4", "3, 29"])
         .execute(glue);
     let expected = Ok(Payload::Insert(4));
-    assert_eq!(actual, expected, "insert into Number");
+    test!(actual, expected, "insert into Number");
 
     // Example Using ABS
     let actual = values(vec!["0, 0", "1, -3", "2, 4", "3, -29"])
@@ -43,7 +43,7 @@ test_case!(basic_arithmetic, {
         2         4                       4;
         3         29                      29
     ));
-    assert_eq!(actual, expected, "Example Using ABS");
+    test!(actual, expected, "Example Using ABS");
 
     //Example Using DIV
     let actual = table("Number")
@@ -60,7 +60,7 @@ test_case!(basic_arithmetic, {
         2     1                       1;
         3     9                       9
     ));
-    assert_eq!(actual, expected, "Example Using DIV");
+    test!(actual, expected, "Example Using DIV");
 
     //Example Using MOD
     let actual = table("Number")
@@ -77,7 +77,7 @@ test_case!(basic_arithmetic, {
         2     0                       0;
         3     1                       1
     ));
-    assert_eq!(actual, expected, "Example Using MOD");
+    test!(actual, expected, "Example Using MOD");
 
     //Example Using GCD
     let actual = table("Number")
@@ -94,7 +94,7 @@ test_case!(basic_arithmetic, {
         2     4                       4;
         3     1                       1
     ));
-    assert_eq!(actual, expected, "Example Using GCD");
+    test!(actual, expected, "Example Using GCD");
 
     //Example Using LCM
     let actual = table("Number")
@@ -111,5 +111,5 @@ test_case!(basic_arithmetic, {
         2     12                      12;
         3     87                      87
     ));
-    assert_eq!(actual, expected, "Example Using LCM");
+    test!(actual, expected, "Example Using LCM");
 });

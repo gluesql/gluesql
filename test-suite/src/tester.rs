@@ -11,6 +11,7 @@ use {
     pretty_assertions::assert_eq,
 };
 
+pub(crate) mod assertions;
 pub mod macros;
 
 pub fn test_indexes(statement: &StatementPlan, indexes: Option<Vec<TableAccessPlan>>) {

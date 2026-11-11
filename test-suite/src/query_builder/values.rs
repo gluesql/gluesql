@@ -16,7 +16,7 @@ test_case!(values, {
         3         "Rust".to_owned()
 
     ));
-    assert_eq!(actual, expected, "values - row as string");
+    test!(actual, expected, "values - row as string");
 
     let actual = values(vec![
         vec!["1", "'Glue'"],
@@ -32,14 +32,14 @@ test_case!(values, {
         3         "Rust".to_owned()
 
     ));
-    assert_eq!(actual, expected, "values - row as vec");
+    test!(actual, expected, "values - row as vec");
 
     let actual = values(Vec::<&str>::new()).execute(glue);
     let expected = Ok(Payload::Select {
         labels: Vec::new(),
         rows: Vec::new(),
     });
-    assert_eq!(actual, expected, "values - empty");
+    test!(actual, expected, "values - empty");
 
     let actual = values(Vec::<&str>::new())
         .alias_as("Sub")
@@ -49,7 +49,7 @@ test_case!(values, {
         labels: Vec::new(),
         rows: Vec::new(),
     });
-    assert_eq!(actual, expected, "values - empty derived source");
+    test!(actual, expected, "values - empty derived source");
 
     let actual = values(vec!["1, 'Glue'", "2, 'SQL'", "3, 'Rust'"])
         .order_by("column2 desc")
@@ -61,7 +61,7 @@ test_case!(values, {
         3         "Rust".to_owned();
         1         "Glue".to_owned()
     ));
-    assert_eq!(actual, expected, "values - order by");
+    test!(actual, expected, "values - order by");
 
     let actual = values(vec!["1, 'Glue'", "2, 'SQL'", "3, 'Rust'"])
         .offset(1)
@@ -72,7 +72,7 @@ test_case!(values, {
         2         "SQL".to_owned();
         3         "Rust".to_owned()
     ));
-    assert_eq!(actual, expected, "values - offset");
+    test!(actual, expected, "values - offset");
 
     let actual = values(vec!["1, 'Glue'", "2, 'SQL'", "3, 'Rust'"])
         .limit(2)
@@ -83,7 +83,7 @@ test_case!(values, {
         1         "Glue".to_owned();
         2         "SQL".to_owned()
     ));
-    assert_eq!(actual, expected, "values - limit");
+    test!(actual, expected, "values - limit");
 
     let actual = values(vec!["1, 'Glue'", "2, 'SQL'", "3, 'Rust'"])
         .alias_as("Sub")
@@ -98,5 +98,5 @@ test_case!(values, {
         2     "SQL".to_owned();
         3     "Rust".to_owned()
     ));
-    assert_eq!(actual, expected, "values - alias as");
+    test!(actual, expected, "values - alias as");
 });

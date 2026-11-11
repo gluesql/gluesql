@@ -18,7 +18,7 @@ test_case!(case_conversion, {
         .add_column("capped_name TEXT DEFAULT 'pascal'")
         .execute(glue);
     let expected = Ok(Payload::Create);
-    assert_eq!(actual, expected, "create table - Item");
+    test!(actual, expected, "create table - Item");
 
     let actual = table("Item")
         .insert()
@@ -29,7 +29,7 @@ test_case!(case_conversion, {
         ])
         .execute(glue);
     let expected = Ok(Payload::Insert(3));
-    assert_eq!(actual, expected, "insert - Item");
+    test!(actual, expected, "insert - Item");
 
     //check upper,lower case
     let actual = table("Item")
@@ -45,7 +45,7 @@ test_case!(case_conversion, {
         "Abcd".to_owned()    "abcd".to_owned();
         "ABCD".to_owned()    "abcd".to_owned()
     ));
-    assert_eq!(actual, expected, "check lower case");
+    test!(actual, expected, "check lower case");
 
     let actual = table("Item")
         .select()
@@ -59,7 +59,7 @@ test_case!(case_conversion, {
         "abcd".to_owned()    "ABCD".to_owned();
         "abcd".to_owned()    "ABCD".to_owned()
     ));
-    assert_eq!(actual, expected, "check upper case");
+    test!(actual, expected, "check upper case");
 
     let actual = table("Item")
         .select()
@@ -72,7 +72,7 @@ test_case!(case_conversion, {
         Null                      Null;
         Str("efgi".to_owned())    Str("EFGI".to_owned())
     ));
-    assert_eq!(actual, expected, "check upper & lower null case");
+    test!(actual, expected, "check upper & lower null case");
 
     //check initcap case
     let actual = table("Item")
@@ -86,5 +86,5 @@ test_case!(case_conversion, {
         "h/i jk".to_owned();
         "H/I JK".to_owned()
     ));
-    assert_eq!(actual, expected, "check initcap case");
+    test!(actual, expected, "check initcap case");
 });

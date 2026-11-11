@@ -22,7 +22,7 @@ test_case!(current_date, {
         .add_column("date_stamp DATE")
         .execute(glue);
     let expected = Ok(Payload::Create);
-    assert_eq!(actual, expected, "create table - Record");
+    test!(actual, expected, "create table - Record");
 
     // insert into Record
     let actual = table("Record")
@@ -34,7 +34,7 @@ test_case!(current_date, {
         ])
         .execute(glue);
     let expected = Ok(Payload::Insert(3));
-    assert_eq!(actual, expected, "insert into Record");
+    test!(actual, expected, "insert into Record");
 
     // Current Date
     let actual = table("Record")
@@ -47,5 +47,5 @@ test_case!(current_date, {
         I64 | Date;
         3     date!("9999-12-31")
     ));
-    assert_eq!(actual, expected, "current date");
+    test!(actual, expected, "current date");
 });

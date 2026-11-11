@@ -18,7 +18,7 @@ test_case!(ifnull, {
         .add_column("nickname TEXT")
         .execute(glue);
     let expected = Ok(Payload::Create);
-    assert_eq!(actual, expected, "create table - Foo");
+    test!(actual, expected, "create table - Foo");
 
     // insert into Foo
     let actual = table("Foo")
@@ -30,7 +30,7 @@ test_case!(ifnull, {
         ])
         .execute(glue);
     let expected = Ok(Payload::Insert(2));
-    assert_eq!(actual, expected, "insert into Foo");
+    test!(actual, expected, "insert into Foo");
 
     // Replace with text using ifnull
     let actual = table("Foo")
@@ -44,7 +44,7 @@ test_case!(ifnull, {
         100   "Pickle".to_owned();
         200   "isnull".to_owned()
     ));
-    assert_eq!(actual, expected, "replace with text using ifnull");
+    test!(actual, expected, "replace with text using ifnull");
 
     // Replace with other column using ifnull
     let actual = table("Foo")
@@ -58,7 +58,7 @@ test_case!(ifnull, {
         100   "Pickle".to_owned();
         200   "Hello".to_owned()
     ));
-    assert_eq!(actual, expected, "replace with other column using ifnull");
+    test!(actual, expected, "replace with other column using ifnull");
 
     // ifnull without table
     let actual = values(vec![
@@ -72,5 +72,5 @@ test_case!(ifnull, {
         "HELLO".to_owned();
         "WORLD".to_owned()
     ));
-    assert_eq!(actual, expected, "ifnull without table");
+    test!(actual, expected, "ifnull without table");
 });

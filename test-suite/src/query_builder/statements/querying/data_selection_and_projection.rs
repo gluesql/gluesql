@@ -13,7 +13,7 @@ test_case!(data_selection_and_projection, {
         .add_column("age INT")
         .execute(glue);
     let expected = Ok(Payload::Create);
-    assert_eq!(actual, expected, "create table");
+    test!(actual, expected, "create table");
 
     let actual = table("User")
         .insert()
@@ -27,7 +27,7 @@ test_case!(data_selection_and_projection, {
         ])
         .execute(glue);
     let expected = Ok(Payload::Insert(5));
-    assert_eq!(actual, expected, "insert");
+    test!(actual, expected, "insert");
 
     let actual = table("User")
         .select()
@@ -40,7 +40,7 @@ test_case!(data_selection_and_projection, {
         4     50    "Dave".to_owned();
         5     50    "Eve".to_owned()
     ));
-    assert_eq!(actual, expected, "filter");
+    test!(actual, expected, "filter");
 
     let actual = table("User")
         .select()
@@ -55,5 +55,5 @@ test_case!(data_selection_and_projection, {
         4     50    "Dave".to_owned();
         5     50    "Eve".to_owned()
     ));
-    assert_eq!(actual, expected, "project");
+    test!(actual, expected, "project");
 });

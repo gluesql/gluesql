@@ -12,7 +12,7 @@ test_case!(basic, {
         .add_column("name TEXT")
         .execute(glue);
     let expected = Ok(Payload::Create);
-    assert_eq!(actual, expected, "create table");
+    test!(actual, expected, "create table");
 
     let actual = table("Foo")
         .insert()
@@ -23,7 +23,7 @@ test_case!(basic, {
         ])
         .execute(glue);
     let expected = Ok(Payload::Insert(2));
-    assert_eq!(actual, expected, "insert");
+    test!(actual, expected, "insert");
 
     let actual = table("Foo").select().project("id, name").execute(glue);
     let expected = Ok(select!(
@@ -32,7 +32,7 @@ test_case!(basic, {
         100   "Pickle".to_owned();
         200   "Lemon".to_owned()
     ));
-    assert_eq!(actual, expected, "select");
+    test!(actual, expected, "select");
 
     let actual = table("Foo")
         .update()
@@ -40,7 +40,7 @@ test_case!(basic, {
         .set("id", col("id").mul(2))
         .execute(glue);
     let expected = Ok(Payload::Update(1));
-    assert_eq!(actual, expected, "update");
+    test!(actual, expected, "update");
 
     let actual = table("Foo")
         .select()
@@ -52,14 +52,14 @@ test_case!(basic, {
         I64 | Str;
         400   "Lemon".to_owned()
     ));
-    assert_eq!(actual, expected, "select after update");
+    test!(actual, expected, "select after update");
 
     let actual = table("Foo")
         .delete()
         .filter(col("id").gt(200))
         .execute(glue);
     let expected = Ok(Payload::Delete(1));
-    assert_eq!(actual, expected, "delete");
+    test!(actual, expected, "delete");
 
     let actual = table("Foo").select().execute(glue);
     let expected = Ok(select!(
@@ -67,16 +67,16 @@ test_case!(basic, {
         I64 | Str;
         100   "Pickle".to_owned()
     ));
-    assert_eq!(actual, expected, "select after delete");
+    test!(actual, expected, "select after delete");
 
     let actual = table("Foo").drop_table().execute(glue);
     let expected = Ok(Payload::DropTable(1));
-    assert_eq!(actual, expected, "drop table");
+    test!(actual, expected, "drop table");
 
     let actual = table("Foo")
         .select()
         .filter(num("NAN").gt(300))
         .execute(glue);
     let expected = Err(QueryBuilderError::FailedToParseNumeric("NAN".to_owned()).into());
-    assert_eq!(actual, expected, "error");
+    test!(actual, expected, "error");
 });

@@ -19,7 +19,7 @@ test_case!(position_and_indexing, {
         .add_column("index INTEGER")
         .execute(glue);
     let expected = Ok(Payload::Create);
-    assert_eq!(actual, expected, "create table - Item");
+    test!(actual, expected, "create table - Item");
 
     // insert table - Item
     let test_num = f::find_idx(text("strawberry"), text("berry"), None);
@@ -29,7 +29,7 @@ test_case!(position_and_indexing, {
         .values(vec![vec![num(1), test_num]])
         .execute(glue);
     let expected = Ok(Payload::Insert(1));
-    assert_eq!(actual, expected, "insert - find_idx");
+    test!(actual, expected, "insert - find_idx");
 
     // select - table - Item
     let actual = table("Item").select().execute(glue);
@@ -38,7 +38,7 @@ test_case!(position_and_indexing, {
         I64 | I64;
         1     6
     ));
-    assert_eq!(actual, expected, "select from Item");
+    test!(actual, expected, "select from Item");
 
     let test_num = f::find_idx(
         text("Oracle Database 12c Release"),
@@ -51,7 +51,7 @@ test_case!(position_and_indexing, {
         .values(vec![vec![num(2), test_num]])
         .execute(glue);
     let expected = Ok(Payload::Insert(1));
-    assert_eq!(actual, expected, "insert - find_idx");
+    test!(actual, expected, "insert - find_idx");
 
     // select - table - Item
     let actual = table("Item").select().execute(glue);
@@ -61,7 +61,7 @@ test_case!(position_and_indexing, {
         1     6;
         2     25
     ));
-    assert_eq!(actual, expected, "select from Item");
+    test!(actual, expected, "select from Item");
 
     let test_num = text("Oracle Database 12c Release").find_idx(text("as"), Some(num(15)));
     let actual = table("Item")
@@ -70,7 +70,7 @@ test_case!(position_and_indexing, {
         .values(vec![vec![num(3), test_num]])
         .execute(glue);
     let expected = Ok(Payload::Insert(1));
-    assert_eq!(actual, expected, "insert - find_idx");
+    test!(actual, expected, "insert - find_idx");
 
     // select - table - Item
     let actual = table("Item").select().execute(glue);
@@ -81,7 +81,7 @@ test_case!(position_and_indexing, {
         2     25;
         3     25
     ));
-    assert_eq!(actual, expected, "select from Item");
+    test!(actual, expected, "select from Item");
 
     // test - position
     let test_num = f::position(text("cake"), text("ke"));
@@ -94,7 +94,7 @@ test_case!(position_and_indexing, {
         .execute(glue);
 
     let expected = Ok(Payload::Insert(1));
-    assert_eq!(actual, expected, "insert - position");
+    test!(actual, expected, "insert - position");
 
     // select - table - Item
     let actual = table("Item").select().execute(glue);
@@ -106,7 +106,7 @@ test_case!(position_and_indexing, {
         3     25;
         4     3
     ));
-    assert_eq!(actual, expected, "select from Item");
+    test!(actual, expected, "select from Item");
 
     // test - left
     let actual = table("LeftRight")
@@ -114,7 +114,7 @@ test_case!(position_and_indexing, {
         .add_column("value TEXT")
         .execute(glue);
     let expected = Ok(Payload::Create);
-    assert_eq!(actual, expected, "create table - LeftRight");
+    test!(actual, expected, "create table - LeftRight");
 
     let test_str = f::left(text("Hello, World"), num(7));
 
@@ -125,7 +125,7 @@ test_case!(position_and_indexing, {
         .execute(glue);
 
     let expected = Ok(Payload::Insert(1));
-    assert_eq!(actual, expected, "insert - left");
+    test!(actual, expected, "insert - left");
 
     // select - table - Item
     let actual = table("LeftRight").select().execute(glue);
@@ -134,7 +134,7 @@ test_case!(position_and_indexing, {
         Str;
         "Hello, ".to_owned()
     ));
-    assert_eq!(actual, expected, "select from LeftRight");
+    test!(actual, expected, "select from LeftRight");
 
     // test - right
     let test_str = f::right(text("Hello, World"), num(7));
@@ -144,7 +144,7 @@ test_case!(position_and_indexing, {
         .values(vec![vec![test_str]])
         .execute(glue);
     let expected = Ok(Payload::Insert(1));
-    assert_eq!(actual, expected, "insert - right");
+    test!(actual, expected, "insert - right");
 
     // select - table - Item
     let actual = table("LeftRight").select().execute(glue);
@@ -154,5 +154,5 @@ test_case!(position_and_indexing, {
         "Hello, ".to_owned();
         ", World".to_owned()
     ));
-    assert_eq!(actual, expected, "select from LeftRight");
+    test!(actual, expected, "select from LeftRight");
 });

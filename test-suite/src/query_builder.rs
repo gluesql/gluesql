@@ -1,3 +1,9 @@
+macro_rules! test {
+    ($actual:expr, $expected:expr, $name:literal $(,)?) => {
+        $crate::tester::assertions::assert_result(&$actual, &$expected, &format!($name));
+    };
+}
+
 pub mod alias_as;
 pub mod basic;
 pub mod delete;

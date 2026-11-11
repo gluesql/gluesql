@@ -13,7 +13,7 @@ test_case!(pattern_matching, {
         .add_column("name TEXT")
         .execute(glue);
     let expected = Ok(Payload::Create);
-    assert_eq!(actual, expected, "create table - Category");
+    test!(actual, expected, "create table - Category");
 
     // insert into Category
     let actual = table("Category")
@@ -21,7 +21,7 @@ test_case!(pattern_matching, {
         .values(vec!["1, 'Meat'", "2, 'meat'", "3, 'Drink'", "4, 'drink'"])
         .execute(glue);
     let expected = Ok(Payload::Insert(4));
-    assert_eq!(actual, expected, "insert into - Category");
+    test!(actual, expected, "insert into - Category");
 
     // like
     let actual = table("Category")
@@ -38,7 +38,7 @@ test_case!(pattern_matching, {
         1     "Meat".to_owned();
         3     "Drink".to_owned()
     ));
-    assert_eq!(actual, expected, "like");
+    test!(actual, expected, "like");
 
     // ilike
     let actual = table("Category")
@@ -57,7 +57,7 @@ test_case!(pattern_matching, {
         3     "Drink".to_owned();
         4     "drink".to_owned()
     ));
-    assert_eq!(actual, expected, "ilike");
+    test!(actual, expected, "ilike");
 
     // not_like
     let actual = table("Category")
@@ -74,7 +74,7 @@ test_case!(pattern_matching, {
         2     "meat".to_owned();
         4     "drink".to_owned()
     ));
-    assert_eq!(actual, expected, "not_like");
+    test!(actual, expected, "not_like");
 
     // not_ilike
     let actual = table("Category")
@@ -89,7 +89,7 @@ test_case!(pattern_matching, {
         labels: vec!["id".to_owned(), "name".to_owned()],
         rows: vec![],
     });
-    assert_eq!(actual, expected, "not_ilike");
+    test!(actual, expected, "not_ilike");
 
     // regex
     let actual = table("Category")
@@ -101,7 +101,7 @@ test_case!(pattern_matching, {
         I64 | Str;
         1     "Meat".to_owned()
     ));
-    assert_eq!(actual, expected, "regex");
+    test!(actual, expected, "regex");
 
     // iregex
     let actual = table("Category")
@@ -114,7 +114,7 @@ test_case!(pattern_matching, {
         1     "Meat".to_owned();
         2     "meat".to_owned()
     ));
-    assert_eq!(actual, expected, "iregex");
+    test!(actual, expected, "iregex");
 
     // not_regex
     let actual = table("Category")
@@ -128,7 +128,7 @@ test_case!(pattern_matching, {
         3     "Drink".to_owned();
         4     "drink".to_owned()
     ));
-    assert_eq!(actual, expected, "not_regex");
+    test!(actual, expected, "not_regex");
 
     // not_iregex
     let actual = table("Category")
@@ -139,5 +139,5 @@ test_case!(pattern_matching, {
         labels: vec!["id".to_owned(), "name".to_owned()],
         rows: vec![],
     });
-    assert_eq!(actual, expected, "not_iregex");
+    test!(actual, expected, "not_iregex");
 });
