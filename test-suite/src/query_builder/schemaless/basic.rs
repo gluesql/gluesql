@@ -10,7 +10,7 @@ test_case!(basic, {
 
     let actual = table("Logs").create_table().execute(glue);
     let expected = Ok(Payload::Create);
-    assert_eq!(actual, expected, "create schemaless table");
+    test!(actual, expected, "create schemaless table");
 
     let row1 = json!({ "id": 1, "value": 30 }).to_string();
     let row2 = json!({ "id": 2, "rate": 3.5, "list": [1, 2, 3] }).to_string();
@@ -20,32 +20,33 @@ test_case!(basic, {
         .values(vec![vec![text(&row1)], vec![text(&row2)]])
         .execute(glue);
     let expected = Ok(Payload::Insert(2));
-    assert_eq!(actual, expected, "insert schemaless data");
+    test!(actual, expected, "insert schemaless data");
 
     let actual = table("Logs").select().execute(glue);
     let expected = Ok(select_map![
         json!({ "id": 1, "value": 30 }),
         json!({ "id": 2, "rate": 3.5, "list": [1, 2, 3] })
     ]);
-    assert_eq!(actual, expected, "select schemaless data");
+    test!(actual, expected, "select schemaless data");
 
     let actual = table("Logs").delete().filter("id = 1").execute(glue);
     let expected = Ok(Payload::Delete(1));
-    assert_eq!(actual, expected, "delete schemaless row");
+    test!(actual, expected, "delete schemaless row");
 
     let actual = table("Logs").select().execute(glue);
     let expected = Ok(select_map![
         json!({ "id": 2, "rate": 3.5, "list": [1, 2, 3] })
     ]);
-    assert_eq!(actual, expected, "select after delete");
+    test!(actual, expected, "select after delete");
 
     let actual = table("Logs")
         .insert()
         .values(vec![Vec::<&str>::new()])
         .execute(glue);
     let expected = Err(InsertError::OnlySingleValueAcceptedForSchemalessRow(0).into());
-    assert_eq!(
-        actual, expected,
+    test!(
+        actual,
+        expected,
         "insert schemaless data - empty tuple should fail"
     );
 
@@ -54,17 +55,18 @@ test_case!(basic, {
         .as_select(table("Logs").select().project(Vec::<&str>::new()).limit(1))
         .execute(glue);
     let expected = Err(InsertError::OnlySingleValueAcceptedForSchemalessRow(0).into());
-    assert_eq!(
-        actual, expected,
+    test!(
+        actual,
+        expected,
         "insert-select with empty projection should fail"
     );
 
     let row = Value::Map(BTreeMap::from([("id".to_owned(), Value::I64(3))]));
     let actual = table("Logs").insert().values(vec![vec![row]]).execute(glue);
     let expected = Ok(Payload::Insert(1));
-    assert_eq!(actual, expected, "insert schemaless map value");
+    test!(actual, expected, "insert schemaless map value");
 
     let actual = table("Logs").drop_table().execute(glue);
     let expected = Ok(Payload::DropTable(1));
-    assert_eq!(actual, expected, "drop schemaless table");
+    test!(actual, expected, "drop schemaless table");
 });

@@ -17,7 +17,7 @@ test_case!(rounding, {
         .add_column("number FLOAT")
         .execute(glue);
     let expected = Ok(Payload::Create);
-    assert_eq!(actual, expected, "create table - Number");
+    test!(actual, expected, "create table - Number");
 
     // insert into Number
     let actual = table("Number")
@@ -25,7 +25,7 @@ test_case!(rounding, {
         .values(vec!["1, 0.3", "2, -0.8", "3, 10", "4, 6.87421"])
         .execute(glue);
     let expected = Ok(Payload::Insert(4));
-    assert_eq!(actual, expected, "insert into Number");
+    test!(actual, expected, "insert into Number");
 
     // ceil
     let actual = table("Number")
@@ -42,7 +42,7 @@ test_case!(rounding, {
         3     10.0                 10.0;
         4     7.0                  7.0
     ));
-    assert_eq!(actual, expected, "ceil");
+    test!(actual, expected, "ceil");
 
     //floor
     let actual = table("Number")
@@ -59,7 +59,7 @@ test_case!(rounding, {
         3     10.0                  10.0;
         4     6.0                   6.0
     ));
-    assert_eq!(actual, expected, "floor");
+    test!(actual, expected, "floor");
 
     //round
     let actual = table("Number")
@@ -76,7 +76,7 @@ test_case!(rounding, {
         3     10.0                  10.0;
         4     7.0                   7.0
     ));
-    assert_eq!(actual, expected, "round");
+    test!(actual, expected, "round");
 
     //trunc
     let actual = table("Number")
@@ -93,5 +93,5 @@ test_case!(rounding, {
         3     10.0                  10.0;
         4     6.0                   6.0
     ));
-    assert_eq!(actual, expected, "trunc");
+    test!(actual, expected, "trunc");
 });

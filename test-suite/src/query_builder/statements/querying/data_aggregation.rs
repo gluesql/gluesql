@@ -13,7 +13,7 @@ test_case!(data_aggregation, {
         .add_column("age INT")
         .execute(glue);
     let expected = Ok(Payload::Create);
-    assert_eq!(actual, expected, "create table");
+    test!(actual, expected, "create table");
 
     let actual = table("User")
         .insert()
@@ -25,7 +25,7 @@ test_case!(data_aggregation, {
         ])
         .execute(glue);
     let expected = Ok(Payload::Insert(3));
-    assert_eq!(actual, expected, "insert");
+    test!(actual, expected, "insert");
 
     let actual = table("User")
         .select()
@@ -38,7 +38,7 @@ test_case!(data_aggregation, {
         20    2;
         40    1
     ));
-    assert_eq!(actual, expected, "group by");
+    test!(actual, expected, "group by");
 
     let actual = table("User")
         .select()
@@ -51,7 +51,7 @@ test_case!(data_aggregation, {
         I64 | I64;
         20    2
     ));
-    assert_eq!(actual, expected, "having");
+    test!(actual, expected, "having");
 
     let actual = table("User")
         .select()
@@ -62,7 +62,7 @@ test_case!(data_aggregation, {
         I64;
         2
     ));
-    assert_eq!(actual, expected, "Query Builder COUNT DISTINCT example");
+    test!(actual, expected, "Query Builder COUNT DISTINCT example");
 
     let actual = table("User")
         .select()
@@ -73,7 +73,7 @@ test_case!(data_aggregation, {
         I64;
         60
     ));
-    assert_eq!(actual, expected, "Query Builder SUM DISTINCT example");
+    test!(actual, expected, "Query Builder SUM DISTINCT example");
 
     let actual = table("User")
         .select()
@@ -84,7 +84,7 @@ test_case!(data_aggregation, {
         F64;
         30.0
     ));
-    assert_eq!(actual, expected, "Query Builder AVG DISTINCT example");
+    test!(actual, expected, "Query Builder AVG DISTINCT example");
 
     let actual = table("User")
         .select()
@@ -95,7 +95,7 @@ test_case!(data_aggregation, {
         I64;
         20
     ));
-    assert_eq!(actual, expected, "Query Builder MIN DISTINCT example");
+    test!(actual, expected, "Query Builder MIN DISTINCT example");
 
     let actual = table("User")
         .select()
@@ -106,7 +106,7 @@ test_case!(data_aggregation, {
         I64;
         40
     ));
-    assert_eq!(actual, expected, "Query Builder MAX DISTINCT example");
+    test!(actual, expected, "Query Builder MAX DISTINCT example");
 
     let actual = table("User")
         .select()
@@ -117,7 +117,7 @@ test_case!(data_aggregation, {
         F64;
         100.0
     ));
-    assert_eq!(actual, expected, "Query Builder VARIANCE DISTINCT example");
+    test!(actual, expected, "Query Builder VARIANCE DISTINCT example");
 
     let actual = table("User")
         .select()
@@ -128,5 +128,5 @@ test_case!(data_aggregation, {
         F64;
         10.0
     ));
-    assert_eq!(actual, expected, "Query Builder STDEV DISTINCT example");
+    test!(actual, expected, "Query Builder STDEV DISTINCT example");
 });

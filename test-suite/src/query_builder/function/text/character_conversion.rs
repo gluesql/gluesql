@@ -44,5 +44,5 @@ test_case!(character_conversion, {
         39       "'".to_owned();
         44        ",".to_owned()
     ));
-    assert_eq!(actual, expected, "ascii and char set should match");
+    test!(actual, expected, "ascii and char set should match");
 });

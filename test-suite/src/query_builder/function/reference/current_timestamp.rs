@@ -22,7 +22,7 @@ test_case!(current_timestamp, {
         .add_column("time_stamp TIMESTAMP")
         .execute(glue);
     let expected = Ok(Payload::Create);
-    assert_eq!(actual, expected, "create table - Record");
+    test!(actual, expected, "create table - Record");
 
     // insert into Record
     let actual = table("Record")
@@ -34,7 +34,7 @@ test_case!(current_timestamp, {
         ])
         .execute(glue);
     let expected = Ok(Payload::Insert(3));
-    assert_eq!(actual, expected, "insert into Record");
+    test!(actual, expected, "insert into Record");
 
     // Current timestamp
     let actual = table("Record")
@@ -47,5 +47,5 @@ test_case!(current_timestamp, {
         I64 | Timestamp;
         3     t!("9999-12-31T23:59:40.364832862")
     ));
-    assert_eq!(actual, expected, "current timestamp");
+    test!(actual, expected, "current timestamp");
 });

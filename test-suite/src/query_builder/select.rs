@@ -18,7 +18,7 @@ test_case!(select, {
         .add_column("name TEXT")
         .execute(glue);
     let expected = Ok(Payload::Create);
-    assert_eq!(actual, expected, "create table - Category");
+    test!(actual, expected, "create table - Category");
 
     // create table - Item
     let actual = table("Item")
@@ -29,7 +29,7 @@ test_case!(select, {
         .add_column("price INTEGER")
         .execute(glue);
     let expected = Ok(Payload::Create);
-    assert_eq!(actual, expected, "create table - Item");
+    test!(actual, expected, "create table - Item");
 
     // insert into Category
     let actual = table("Category")
@@ -37,7 +37,7 @@ test_case!(select, {
         .values(vec!["1, 'Fruit'", "2, 'Meat'", "3, 'Drink'"])
         .execute(glue);
     let expected = Ok(Payload::Insert(3));
-    assert_eq!(actual, expected, "insert into Category");
+    test!(actual, expected, "insert into Category");
 
     // insert into Item
     let actual = table("Item")
@@ -51,7 +51,7 @@ test_case!(select, {
         ])
         .execute(glue);
     let expected = Ok(Payload::Insert(5));
-    assert_eq!(actual, expected, "insert into Item");
+    test!(actual, expected, "insert into Item");
 
     // basic select
     let actual = table("Category").select().execute(glue);
@@ -62,7 +62,7 @@ test_case!(select, {
         2     "Meat".to_owned();
         3     "Drink".to_owned()
     ));
-    assert_eq!(actual, expected, "basic select");
+    test!(actual, expected, "basic select");
 
     // filter (WHERE name = "Meat")
     let actual = table("Category")
@@ -74,7 +74,7 @@ test_case!(select, {
         I64 | Str;
         2     "Meat".to_owned()
     ));
-    assert_eq!(actual, expected, "filter (WHERE name = 'Meat')");
+    test!(actual, expected, "filter (WHERE name = 'Meat')");
 
     // inner join
     let actual = table("Item")
@@ -93,7 +93,7 @@ test_case!(select, {
         "Pork belly".to_owned()   "Meat".to_owned();
         "Strawberry".to_owned()   "Fruit".to_owned()
     ));
-    assert_eq!(actual, expected, "inner join");
+    test!(actual, expected, "inner join");
 
     // left outer join
     let actual = table("Category")
@@ -114,7 +114,7 @@ test_case!(select, {
         Str("Meat".to_owned())    Str("Pork belly".to_owned())     I64(90);
         Str("Drink".to_owned())   Str("Orange juice".to_owned())   I64(60)
     ));
-    assert_eq!(actual, expected, "left outer join");
+    test!(actual, expected, "left outer join");
 
     // explicit hash join skips NULL right keys
     let actual = table("Item")
@@ -129,7 +129,7 @@ test_case!(select, {
         item                        | category;
         Str("Pineapple".to_owned())   Null
     ));
-    assert_eq!(actual, expected, "explicit hash join skips NULL right keys");
+    test!(actual, expected, "explicit hash join skips NULL right keys");
 
     // explicit hash join propagates right key errors during preparation
     let actual = table("Item")
@@ -138,8 +138,9 @@ test_case!(select, {
         .hash_executor("1 / 0", "Item.category_id")
         .execute(glue);
     let expected = Err(Error::Evaluate(EvaluateError::DivisorShouldNotBeZero));
-    assert_eq!(
-        actual, expected,
+    test!(
+        actual,
+        expected,
         "explicit hash join propagates right key errors during preparation"
     );
 
@@ -159,7 +160,7 @@ test_case!(select, {
         "Meat".to_owned()    90;
         "Drink".to_owned()   85
     ));
-    assert_eq!(actual, expected, "group by - having");
+    test!(actual, expected, "group by - having");
 
     // order by
     let actual = table("Item")
@@ -176,7 +177,7 @@ test_case!(select, {
         "Strawberry".to_owned()     30;
         "Coffee".to_owned()         25
     ));
-    assert_eq!(actual, expected, "order by");
+    test!(actual, expected, "order by");
 
     // offset, limit
     let actual = table("Item")
@@ -192,7 +193,7 @@ test_case!(select, {
         "Orange juice".to_owned()   60;
         "Pineapple".to_owned()      40
     ));
-    assert_eq!(actual, expected, "offset, limit");
+    test!(actual, expected, "offset, limit");
 
     // distinct
     let actual = table("Item")
@@ -208,7 +209,7 @@ test_case!(select, {
         2;
         3
     ));
-    assert_eq!(actual, expected, "distinct");
+    test!(actual, expected, "distinct");
 
     // distinct with multiple columns
     let actual = table("Item")
@@ -226,7 +227,7 @@ test_case!(select, {
         3             25;
         3             60
     ));
-    assert_eq!(actual, expected, "distinct with multiple columns");
+    test!(actual, expected, "distinct with multiple columns");
 
     // distinct * (all columns)
     let actual = table("Item").select().project("*").distinct().execute(glue);
@@ -239,5 +240,5 @@ test_case!(select, {
         400 3 "Coffee".to_owned() 25;
         500 3 "Orange juice".to_owned() 60
     ));
-    assert_eq!(actual, expected, "distinct * (all columns)");
+    test!(actual, expected, "distinct * (all columns)");
 });

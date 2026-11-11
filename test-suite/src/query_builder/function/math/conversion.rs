@@ -18,7 +18,7 @@ test_case!(conversion, {
         .add_column("radians FLOAT")
         .execute(glue);
     let expected = Ok(Payload::Create);
-    assert_eq!(actual, expected, "create table - Angle");
+    test!(actual, expected, "create table - Angle");
 
     // Insert angles in degrees and radians
     let actual = table("Angle")
@@ -26,7 +26,7 @@ test_case!(conversion, {
         .values(vec!["0, 0.0", "90, PI() / 2", "180, PI()", "360, PI() * 2"])
         .execute(glue);
     let expected = Ok(Payload::Insert(4));
-    assert_eq!(actual, expected, "insert into Angle");
+    test!(actual, expected, "insert into Angle");
 
     // Example Using DEGREES
     let actual = table("Angle")
@@ -43,7 +43,7 @@ test_case!(conversion, {
         PI          180.0                      180.0;
         TAU         360.0                      360.0
     ));
-    assert_eq!(actual, expected, "Example Using DEGREES");
+    test!(actual, expected, "Example Using DEGREES");
 
     // Example Using RADIANS
     let actual = table("Angle")
@@ -60,5 +60,5 @@ test_case!(conversion, {
         180.0     PI                         PI;
         360.0     TAU                        TAU
     ));
-    assert_eq!(actual, expected, "Example Using RADIANS");
+    test!(actual, expected, "Example Using RADIANS");
 });

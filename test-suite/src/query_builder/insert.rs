@@ -14,7 +14,7 @@ test_case!(insert, {
         .add_column("rate FLOAT DEFAULT 0.0")
         .execute(glue);
     let expected = Ok(Payload::Create);
-    assert_eq!(actual, expected, "create table - Foo");
+    test!(actual, expected, "create table - Foo");
 
     // create table - Bar
     let actual = table("Bar")
@@ -23,7 +23,7 @@ test_case!(insert, {
         .add_column("name TEXT")
         .execute(glue);
     let expected = Ok(Payload::Create);
-    assert_eq!(actual, expected, "create table - Bar");
+    test!(actual, expected, "create table - Bar");
 
     // insert - basic
     let actual = table("Foo")
@@ -31,7 +31,7 @@ test_case!(insert, {
         .values(vec!["1, 'Fruit', 0.1", "2, 'Meat', 0.8"])
         .execute(glue);
     let expected = Ok(Payload::Insert(2));
-    assert_eq!(actual, expected, "insert - basic");
+    test!(actual, expected, "insert - basic");
 
     // insert - specifying columns
     let actual = table("Foo")
@@ -40,7 +40,7 @@ test_case!(insert, {
         .values(vec![vec![num(3), text("Drink")]])
         .execute(glue);
     let expected = Ok(Payload::Insert(1));
-    assert_eq!(actual, expected, "insert - specifying columns");
+    test!(actual, expected, "insert - specifying columns");
 
     // insert - from source
     let actual = table("Bar")
@@ -48,7 +48,7 @@ test_case!(insert, {
         .as_select(table("Foo").select().project("id, name"))
         .execute(glue);
     let expected = Ok(Payload::Insert(3));
-    assert_eq!(actual, expected, "insert - from source");
+    test!(actual, expected, "insert - from source");
 
     // select from Foo
     let actual = table("Foo").select().execute(glue);
@@ -59,7 +59,7 @@ test_case!(insert, {
         2     "Meat".to_owned()    0.8;
         3     "Drink".to_owned()   0.0
     ));
-    assert_eq!(actual, expected, "select from Foo");
+    test!(actual, expected, "select from Foo");
 
     // select from Bar
     let actual = table("Bar").select().execute(glue);
@@ -70,5 +70,5 @@ test_case!(insert, {
         2     "Meat".to_owned();
         3     "Drink".to_owned()
     ));
-    assert_eq!(actual, expected, "select from Bar");
+    test!(actual, expected, "select from Bar");
 });

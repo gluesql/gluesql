@@ -18,7 +18,7 @@ test_case!(nullif, {
         .add_column("nickname TEXT")
         .execute(glue);
     let expected = Ok(Payload::Create);
-    assert_eq!(actual, expected, "create table - Foo");
+    test!(actual, expected, "create table - Foo");
 
     // insert into Foo
     let actual = table("Foo")
@@ -30,7 +30,7 @@ test_case!(nullif, {
         ])
         .execute(glue);
     let expected = Ok(Payload::Insert(2));
-    assert_eq!(actual, expected, "insert into Foo");
+    test!(actual, expected, "insert into Foo");
 
     // Return null when text equal
     let actual = table("Foo")
@@ -43,7 +43,7 @@ test_case!(nullif, {
         I64(100)   Null;
         I64(200)   Str("world".to_owned())
     ));
-    assert_eq!(actual, expected, "return null when text value equal");
+    test!(actual, expected, "return null when text value equal");
 
     // Return first argument when other column text different
     let actual = table("Foo")
@@ -56,8 +56,9 @@ test_case!(nullif, {
         I64(100) Str("hello".to_owned());
         I64(200) Null
     ));
-    assert_eq!(
-        actual, expected,
+    test!(
+        actual,
+        expected,
         "return first argument with other column using nullif"
     );
 
@@ -72,5 +73,5 @@ test_case!(nullif, {
         Str("HELLO".to_owned());
         Null
     ));
-    assert_eq!(actual, expected, "nullif without table");
+    test!(actual, expected, "nullif without table");
 });
