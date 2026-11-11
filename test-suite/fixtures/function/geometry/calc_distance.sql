@@ -1,7 +1,7 @@
 CREATE TABLE Foo (geo1 Point, geo2 Point, bar Float)
 -- @expect: payload Create
 
-INSERT INTO Foo VALUES (POINT(0.3134, 3.156), POINT(1.415, 3.231), 3)
+INSERT INTO Foo VALUES (POINT(1.0, 2.0), POINT(4.0, 6.0), 3)
 -- @expect: payload Insert
 -- @json: 1
 
@@ -9,7 +9,7 @@ SELECT CALC_DISTANCE(geo1, geo2) AS georesult FROM Foo
 -- @expect:
 -- | georesult: F64 |
 -- | -------------- |
--- | 1.104150152832 |
+-- | 5.0            |
 
 SELECT CALC_DISTANCE(geo1) AS georesult FROM Foo
 -- @expect: error Translate.FunctionArgsLengthNotMatching

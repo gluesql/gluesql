@@ -1,11 +1,17 @@
 SELECT
     LOG(64.0, 2.0) as log_1,
-    LOG(0.04, 10.0) as log_2
+    LOG(0.01, 10.0) as log_2
     ;
 -- @expect:
--- | log_1: F64 | log_2: F64      |
--- | ---------- | --------------- |
--- | 6.0        | -1.397940008672 |
+-- | log_1: F64 | log_2: F64 |
+-- | ---------- | ---------- |
+-- | 6.0        | -2.0       |
+
+SELECT LOG(2.0, 4.0) AS log_fractional
+-- @expect:
+-- | log_fractional: F64 |
+-- | ------------------- |
+-- | 0.5                 |
 
 SELECT LOG(10, 10) as log_with_int
 -- @expect:

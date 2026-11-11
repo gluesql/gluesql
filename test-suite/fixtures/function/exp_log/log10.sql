@@ -1,11 +1,17 @@
 SELECT
-    LOG10(64.0) as log10_1,
-    LOG10(0.04) as log10_2
+    LOG10(100.0) as log10_1,
+    LOG10(0.01) as log10_2
     ;
 -- @expect:
--- | log10_1: F64   | log10_2: F64    |
--- | -------------- | --------------- |
--- | 1.806179973984 | -1.397940008672 |
+-- | log10_1: F64 | log10_2: F64 |
+-- | ------------ | ------------ |
+-- | 2.0          | -2.0         |
+
+SELECT LOG10(SQRT(10.0)) AS log10_fractional
+-- @expect:
+-- | log10_fractional: F64 |
+-- | --------------------- |
+-- | 0.5                   |
 
 SELECT LOG10(10) as log10_with_int
 -- @expect:
