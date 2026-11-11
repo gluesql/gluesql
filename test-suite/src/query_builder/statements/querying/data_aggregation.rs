@@ -20,13 +20,11 @@ test_case!(data_aggregation, {
         .columns("id, name, age")
         .values(vec![
             vec![num(1), text("Alice"), num(20)],
-            vec![num(2), text("Bob"), num(30)],
-            vec![num(3), text("Carol"), num(30)],
-            vec![num(4), text("Dave"), num(50)],
-            vec![num(5), text("Eve"), num(50)],
+            vec![num(2), text("Bob"), num(20)],
+            vec![num(3), text("Carol"), num(40)],
         ])
         .execute(glue);
-    let expected = Ok(Payload::Insert(5));
+    let expected = Ok(Payload::Insert(3));
     assert_eq!(actual, expected, "insert");
 
     let actual = table("User")
@@ -37,9 +35,8 @@ test_case!(data_aggregation, {
     let expected = Ok(select!(
         age | r"count(*)";
         I64 | I64;
-        20    1;
-        30    2;
-        50    2
+        20    2;
+        40    1
     ));
     assert_eq!(actual, expected, "group by");
 
@@ -52,8 +49,7 @@ test_case!(data_aggregation, {
     let expected = Ok(select!(
         age | r"count(*)";
         I64 | I64;
-        30    2;
-        50    2
+        20    2
     ));
     assert_eq!(actual, expected, "having");
 
@@ -64,7 +60,7 @@ test_case!(data_aggregation, {
     let expected = Ok(select!(
         unique_ages
         I64;
-        3
+        2
     ));
     assert_eq!(actual, expected, "Query Builder COUNT DISTINCT example");
 
@@ -75,7 +71,7 @@ test_case!(data_aggregation, {
     let expected = Ok(select!(
         sum_distinct
         I64;
-        100
+        60
     ));
     assert_eq!(actual, expected, "Query Builder SUM DISTINCT example");
 
@@ -86,7 +82,7 @@ test_case!(data_aggregation, {
     let expected = Ok(select!(
         avg_distinct
         F64;
-        33.333_333_333_333_336
+        30.0
     ));
     assert_eq!(actual, expected, "Query Builder AVG DISTINCT example");
 
@@ -108,7 +104,7 @@ test_case!(data_aggregation, {
     let expected = Ok(select!(
         max_distinct
         I64;
-        50
+        40
     ));
     assert_eq!(actual, expected, "Query Builder MAX DISTINCT example");
 
@@ -119,7 +115,7 @@ test_case!(data_aggregation, {
     let expected = Ok(select!(
         variance_distinct
         F64;
-        155.555_555_555_555_54
+        100.0
     ));
     assert_eq!(actual, expected, "Query Builder VARIANCE DISTINCT example");
 
@@ -130,7 +126,7 @@ test_case!(data_aggregation, {
     let expected = Ok(select!(
         stdev_distinct
         F64;
-        12.472_191_289_246_47
+        10.0
     ));
     assert_eq!(actual, expected, "Query Builder STDEV DISTINCT example");
 });

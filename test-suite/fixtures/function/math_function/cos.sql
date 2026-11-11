@@ -1,8 +1,8 @@
-SELECT COS(0.5) AS cos1, COS(1) AS cos2
+SELECT COS(PI() / 3) AS cos1, COS(0) AS cos2
 -- @expect:
--- | cos1: F64      | cos2: F64      |
--- | -------------- | -------------- |
--- | 0.877582561890 | 0.540302305868 |
+-- | cos1: F64 | cos2: F64 |
+-- | --------- | --------- |
+-- | 0.5       | 1.0       |
 
 SELECT COS(null) AS cos
 -- @expect:

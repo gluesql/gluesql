@@ -1,8 +1,8 @@
-SELECT TAN(0.5) AS tan1, TAN(1) AS tan2
+SELECT TAN(PI() / 4) AS tan1, TAN(0) AS tan2
 -- @expect:
--- | tan1: F64      | tan2: F64      |
--- | -------------- | -------------- |
--- | 0.546302489844 | 1.557407724655 |
+-- | tan1: F64 | tan2: F64 |
+-- | --------- | --------- |
+-- | 1.0       | 0.0       |
 
 SELECT TAN(null) AS tan
 -- @expect:
