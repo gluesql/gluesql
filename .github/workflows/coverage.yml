@@ -14,8 +14,6 @@ env:
 jobs:
   coverage:
     runs-on: ubuntu-latest
-    env:
-      COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     services:
       redis:
         image: redis
@@ -90,38 +88,3 @@ jobs:
         uses: coverallsapp/github-action@master
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Compress coverage report
-        run: |
-          xz -T0 -9e -c coverage/lcov.info > coverage/lcov.info.xz
-          rm -f coverage/lcov.info
-      - name: Record PR number
-        if: github.event_name == 'pull_request'
-        run: echo "${{ github.event.pull_request.number }}" > coverage/pr-number
-      - name: Set timestamp
-        run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H%M%SZ')" >> $GITHUB_ENV
-      - name: Create GitHub App token
-        if: github.repository == 'gluesql/gluesql' && github.event_name == 'push' && github.ref == 'refs/heads/main'
-        id: app-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.COVERAGE_APP_ID }}
-          installation-id: ${{ secrets.COVERAGE_APP_INSTALLATION_ID }}
-          private-key: ${{ secrets.COVERAGE_APP_PRIVATE_KEY }}
-          owner: gluesql
-          repositories: gluesql, gluesql.github.io
-      - name: Publish coverage to gluesql.github.io
-        if: github.repository == 'gluesql/gluesql' && github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          git clone https://github.com/gluesql/gluesql.github.io.git
-          cd gluesql.github.io
-          git checkout gh-pages
-          mkdir -p coverage/main
-          cp ../coverage/lcov.info.xz coverage/main/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
-          git add coverage/main/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
-          git commit -m "Coverage: main@${COMMIT_SHA}"
-          git push https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/gluesql/gluesql.github.io.git
-      - name: Upload coverage artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage
-          path: coverage
