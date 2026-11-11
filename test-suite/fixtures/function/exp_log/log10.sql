@@ -7,6 +7,12 @@ SELECT
 -- | ------------ | ------------ |
 -- | 2.0          | -2.0         |
 
+SELECT LOG10(SQRT(10.0)) AS log10_fractional
+-- @expect:
+-- | log10_fractional: F64 |
+-- | --------------------- |
+-- | 0.5                   |
+
 SELECT LOG10(10) as log10_with_int
 -- @expect:
 -- | log10_with_int: F64 |

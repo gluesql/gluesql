@@ -7,6 +7,12 @@ SELECT
 -- | ---------- | ---------- |
 -- | 6.0        | -2.0       |
 
+SELECT LOG(2.0, 4.0) AS log_fractional
+-- @expect:
+-- | log_fractional: F64 |
+-- | ------------------- |
+-- | 0.5                 |
+
 SELECT LOG(10, 10) as log_with_int
 -- @expect:
 -- | log_with_int: F64 |

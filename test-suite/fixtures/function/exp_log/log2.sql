@@ -7,6 +7,12 @@ SELECT
 -- | ----------- | ----------- |
 -- | 6.0         | -2.0        |
 
+SELECT LOG2(SQRT(2.0)) AS log2_fractional
+-- @expect:
+-- | log2_fractional: F64 |
+-- | -------------------- |
+-- | 0.5                  |
+
 SELECT LOG2(32) as log2_with_int;
 -- @expect:
 -- | log2_with_int: F64 |

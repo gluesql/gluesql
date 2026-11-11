@@ -1,7 +1,7 @@
 CREATE TABLE Foo (geo1 Point, geo2 Point, bar Float)
 -- @expect: payload Create
 
-INSERT INTO Foo VALUES (POINT(0.0, 0.0), POINT(3.0, 4.0), 3)
+INSERT INTO Foo VALUES (POINT(1.0, 2.0), POINT(4.0, 6.0), 3)
 -- @expect: payload Insert
 -- @json: 1
 
