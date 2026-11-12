@@ -4,9 +4,11 @@ use {
     self::row_iter::SqliteRowIter,
     crate::{
         Result, SqliteStorage, SqliteStorageError,
+        codec::{decode, encode},
         schema::{columns, is_reserved, primary_key, quote, rowid_name},
     },
     gluesql_core::{
+        ast::DataType,
         data::{Key, Schema, Value},
         error::Result as GlueResult,
         store::{RowIter, ScanColumns, Store},
@@ -31,11 +33,7 @@ impl Store for SqliteStorage {
     fn fetch_data(&self, table_name: &str, key: &Key) -> GlueResult<Option<Vec<Value>>> {
         let schema = self.require_schema(table_name)?;
 
-        Ok(self
-            .read_rows(&schema, ScanColumns::All)?
-            .into_iter()
-            .find(|row| &row.key == key)
-            .map(|row| row.values))
+        self.read_row(&schema, key).map_err(Into::into)
     }
 
     fn scan_data<'a>(
@@ -80,6 +78,55 @@ impl SqliteStorage {
             .filter(|name| !is_reserved(name))
             .map(|name| self.require_schema(&name))
             .collect()
+    }
+
+    fn read_row(&self, schema: &Schema, key: &Key) -> Result<Option<Vec<Value>>> {
+        let columns = columns(schema);
+        let (key_column, key_type) = match primary_key(&columns) {
+            Some(index) => (columns[index].name.as_str(), &columns[index].data_type),
+            None => (rowid_name(schema)?, &DataType::Int),
+        };
+        let value = Value::from(key.clone());
+
+        // Key equality does not coerce types, and SQLite cannot store NaN.
+        if value.get_type().as_ref() != Some(key_type)
+            || matches!(value, Value::F32(v) if v.is_nan())
+            || matches!(value, Value::F64(v) if v.is_nan())
+        {
+            return Ok(None);
+        }
+
+        // Decimal keys such as 1.0 and 1.00 compare equal despite different TEXT encodings.
+        if *key_type == DataType::Decimal {
+            return Ok(self
+                .read_rows(schema, ScanColumns::All)?
+                .into_iter()
+                .find(|row| &row.key == key)
+                .map(|row| row.values));
+        }
+
+        let projection = columns
+            .iter()
+            .map(|column| quote(&column.name))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let sql = format!(
+            "SELECT {projection} FROM {} WHERE {} = ?1",
+            quote(&schema.table_name),
+            quote(key_column)
+        );
+        let mut statement = self.connection.prepare(&sql)?;
+        let mut rows = statement.query([encode(&value, key_type)?])?;
+        let Some(row) = rows.next()? else {
+            return Ok(None);
+        };
+
+        columns
+            .iter()
+            .enumerate()
+            .map(|(index, column)| decode(row.get_ref(index)?, &column.data_type))
+            .collect::<Result<Vec<_>>>()
+            .map(Some)
     }
 
     pub(super) fn read_rows(
