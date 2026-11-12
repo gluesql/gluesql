@@ -98,6 +98,22 @@ SELECT id, num, num2 FROM TableA
 -- | 2       | 4        | 7         |
 -- | 2       | 7        | 4         |
 
+-- @name: UPDATE changes only rows where a nullable OR condition is TRUE
+UPDATE TableA
+SET num2 = 0
+WHERE num = 9 OR NULL;
+-- @expect: payload Update
+-- @json: 1
+
+SELECT num, num2 FROM TableA;
+-- @expect:
+-- | num: I64 | num2: I64 |
+-- | -------- | --------- |
+-- | 2        | 1         |
+-- | 9        | 0         |
+-- | 4        | 7         |
+-- | 7        | 4         |
+
 CREATE TABLE ErrTestTable (id INTEGER);
 -- @expect: ok
 

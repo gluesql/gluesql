@@ -25,6 +25,25 @@ INSERT INTO Hunter (id, name) VALUES
     (3,     'Maria');
 -- @expect: ok
 
+-- @name: WHERE retains TRUE OR NULL and discards unknown conditions
+SELECT id
+FROM Hunter
+WHERE id = 2 OR NULL;
+-- @expect:
+-- | id: I64 |
+-- | ------- |
+-- | 2       |
+
+-- @name: NOT distinguishes FALSE AND NULL from an unknown condition
+SELECT id
+FROM Hunter
+WHERE NOT (id = 2 AND NULL);
+-- @expect:
+-- | id: I64 |
+-- | ------- |
+-- | 1       |
+-- | 3       |
+
 SELECT id, name FROM Boss WHERE id BETWEEN 2 AND 4
 -- @expect: count 3
 

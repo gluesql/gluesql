@@ -10,7 +10,7 @@ use {
         query,
     },
     crate::{
-        data::{Interval, Row, Value},
+        data::{Interval, Row, Tribool, Value},
         mock::MockStorage,
         plan::{ExprPlan, FunctionPlan, ProjectionPlan},
         result::{Error, Result},
@@ -164,14 +164,18 @@ where
                 return Ok(target);
             }
 
-            let matched = list
-                .iter()
-                .map(eval)
-                .collect::<Result<Vec<_>>>()?
-                .into_iter()
-                .any(|v| v.evaluate_eq(&target).is_true());
+            let values = list.iter().map(eval).collect::<Result<Vec<_>>>()?;
+            let mut matched = Tribool::False;
 
-            Ok(Evaluated::Value(Cow::Owned(Value::Bool(matched ^ negated))))
+            for value in values {
+                matched = matched.or(value.evaluate_eq(&target));
+
+                if matched.is_true() {
+                    break;
+                }
+            }
+
+            Ok(Evaluated::from(if negated { !matched } else { matched }))
         }
         ExprPlan::InSubquery {
             expr: target_expr,
@@ -192,18 +196,20 @@ where
                 return Err(EvaluateError::InSubqueryMustReturnOneColumn.into());
             }
 
-            let mut matched = false;
+            let mut matched = Tribool::False;
+
             for row in rows {
                 let value = row?.into_values().into_iter().next().unwrap_or(Value::Null);
                 let evaluated = Evaluated::Value(Cow::Owned(value));
 
-                if evaluated.evaluate_eq(&target).is_true() {
-                    matched = true;
+                matched = matched.or(evaluated.evaluate_eq(&target));
+
+                if matched.is_true() {
                     break;
                 }
             }
 
-            Ok(Evaluated::Value(Cow::Owned(Value::Bool(matched ^ negated))))
+            Ok(Evaluated::from(if *negated { !matched } else { matched }))
         }
         ExprPlan::Between {
             expr,

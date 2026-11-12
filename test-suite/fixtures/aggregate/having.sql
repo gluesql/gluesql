@@ -40,6 +40,16 @@ SELECT SUM(quantity), COUNT(*), city FROM Item GROUP BY city HAVING COUNT(*) > 1
 -- | ------------------ | ------------- | --------- |
 -- | 21                 | 2             | "Seoul"   |
 
+-- @name: HAVING retains a TRUE aggregate condition combined with NULL
+SELECT city, COUNT(*) AS count
+FROM Item
+GROUP BY city
+HAVING COUNT(*) > 1 OR NULL;
+-- @expect:
+-- | city: Str | count: I64 |
+-- | --------- | ---------- |
+-- | "Seoul"   | 2          |
+
 SELECT city FROM Item GROUP BY city HAVING COALESCE(COUNT(*), 0) > 1
 -- @expect:
 -- | city: Str |
