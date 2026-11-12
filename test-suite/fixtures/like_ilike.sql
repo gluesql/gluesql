@@ -14,6 +14,50 @@ VALUES
 -- | true          |
 -- | true          |
 
+CREATE TABLE Pattern (
+    id INTEGER,
+    name TEXT
+);
+-- @expect: ok
+
+INSERT INTO Pattern VALUES
+    (1, 'Abc'),
+    (2,  NULL);
+-- @expect: ok
+
+-- @name: LIKE and NOT LIKE preserve NULL in a nullable column
+SELECT
+    id,
+    name LIKE 'a%' AS matched,
+    name NOT LIKE 'a%' AS negated
+FROM Pattern;
+-- @expect:
+-- | id: I64 | matched     | negated    |
+-- | ------- | ----------- | ---------- |
+-- | 1       | Bool(false) | Bool(true) |
+-- | 2       | NULL        | NULL       |
+
+-- @name: ILIKE shares NULL handling while retaining case-insensitive matching
+SELECT
+    id,
+    name ILIKE 'a%' AS matched,
+    name NOT ILIKE 'a%' AS negated
+FROM Pattern;
+-- @expect:
+-- | id: I64 | matched    | negated     |
+-- | ------- | ---------- | ----------- |
+-- | 1       | Bool(true) | Bool(false) |
+-- | 2       | NULL       | NULL        |
+
+-- @name: WHERE LIKE skips a nullable string without failing the query
+SELECT id
+FROM Pattern
+WHERE name LIKE 'A%';
+-- @expect:
+-- | id: I64 |
+-- | ------- |
+-- | 1       |
+
 CREATE TABLE Item (
     id INTEGER,
     name TEXT

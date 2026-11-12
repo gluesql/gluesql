@@ -24,6 +24,20 @@ SELECT * FROM Foo
 -- | 2       | 300        | false      |
 -- | 3       | 700        | true       |
 
+-- @name: DELETE preserves rows when NOT IN is FALSE or unknown
+DELETE FROM Foo
+WHERE id NOT IN (1, NULL);
+-- @expect: payload Delete
+-- @json: 0
+
+SELECT * FROM Foo;
+-- @expect:
+-- | id: I64 | score: I64 | flag: Bool |
+-- | ------- | ---------- | ---------- |
+-- | 1       | 100        | true       |
+-- | 2       | 300        | false      |
+-- | 3       | 700        | true       |
+
 -- @name: delete using WHERE
 DELETE FROM Foo WHERE flag = FALSE
 -- @expect: payload Delete
