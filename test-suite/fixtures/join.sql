@@ -77,6 +77,16 @@ WHERE i.id = 101;
 -- | id: I64 |
 -- | ------- |
 
+-- @name: ON matches TRUE OR NULL and rejects unknown comparisons
+SELECT i.id AS item_id, p.id AS player_id
+FROM Item i
+INNER JOIN Player p ON p.id = i.player_id OR NULL
+WHERE i.id = 101;
+-- @expect:
+-- | item_id: I64 | player_id: I64 |
+-- | ------------ | -------------- |
+-- | 101          | 1              |
+
 -- @name: Derived JOIN source propagates row errors
 SELECT i.id
 FROM Item i

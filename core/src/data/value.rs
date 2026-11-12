@@ -702,6 +702,7 @@ impl Value {
 
         match (self, other) {
             (Str(a), Str(b)) => a.like(b, case_sensitive).map(Bool),
+            (Null, Str(_) | Null) | (Str(_), Null) => Ok(Null),
             _ => Err(ValueError::LikeOnNonString {
                 base: self.clone(),
                 pattern: other.clone(),
@@ -3185,6 +3186,41 @@ mod tests {
         let mut map2 = BTreeMap::new();
         map2.insert("a".to_owned(), I64(1));
         assert_eq!(Map(map1), Map(map2));
+    }
+
+    #[test]
+    fn like() {
+        let str = |value: &str| Str(value.to_owned());
+
+        // Case-sensitive and case-insensitive matching
+        assert_eq!(str("Hello").like(&str("H%"), true), Ok(Bool(true)));
+        assert_eq!(str("Hello").like(&str("h%"), true), Ok(Bool(false)));
+        assert_eq!(str("Hello").like(&str("h%"), false), Ok(Bool(true)));
+
+        // NULL operands
+        assert_eq!(Null.like(&str("h%"), true), Ok(Null));
+        assert_eq!(str("Hello").like(&Null, true), Ok(Null));
+        assert_eq!(Null.like(&Null, true), Ok(Null));
+
+        // Non-string operands
+        assert_eq!(
+            I64(1).like(&str("%"), true),
+            Err(ValueError::LikeOnNonString {
+                base: I64(1),
+                pattern: str("%"),
+                case_sensitive: true,
+            }
+            .into())
+        );
+        assert_eq!(
+            str("Hello").like(&I64(1), false),
+            Err(ValueError::LikeOnNonString {
+                base: str("Hello"),
+                pattern: I64(1),
+                case_sensitive: false,
+            }
+            .into())
+        );
     }
 
     #[test]

@@ -2,7 +2,7 @@ use {
     super::{EvaluateError, Evaluated},
     crate::{
         ast::{BinaryOperator, DataType, Literal, UnaryOperator},
-        data::Value,
+        data::{Tribool, Value},
         executor::evaluate::evaluated::convert::text_to_value,
         result::Result,
     },
@@ -42,7 +42,18 @@ pub fn binary_op<'a>(
     }
 
     if l.is_null() || r.is_null() {
-        return Ok(Evaluated::Value(Cow::Owned(Value::Null)));
+        let other = if l.is_null() { r } else { l };
+        let Evaluated::Value(value) = other else {
+            return Ok(Evaluated::from(Tribool::Null));
+        };
+
+        let result = match (op, value.as_ref()) {
+            (BinaryOperator::And, Value::Bool(false)) => Tribool::False,
+            (BinaryOperator::Or, Value::Bool(true)) => Tribool::True,
+            _ => Tribool::Null,
+        };
+
+        return Ok(Evaluated::from(result));
     }
 
     match op {
@@ -91,15 +102,21 @@ pub fn between<'a>(
     low: &Evaluated<'a>,
     high: &Evaluated<'a>,
 ) -> Evaluated<'a> {
-    if target.is_null() || low.is_null() || high.is_null() {
-        return Evaluated::Value(Cow::Owned(Value::Null));
-    }
+    let lower = if low.is_null() || target.is_null() {
+        Tribool::Null
+    } else {
+        Tribool::from(low.evaluate_cmp(target) != Some(Ordering::Greater))
+    };
 
-    let v = low.evaluate_cmp(target) != Some(Ordering::Greater)
-        && target.evaluate_cmp(high) != Some(Ordering::Greater);
-    let v = negated ^ v;
+    let upper = if target.is_null() || high.is_null() {
+        Tribool::Null
+    } else {
+        Tribool::from(target.evaluate_cmp(high) != Some(Ordering::Greater))
+    };
 
-    Evaluated::Value(Cow::Owned(Value::Bool(v)))
+    let matched = lower.and(upper);
+
+    Evaluated::from(if negated { !matched } else { matched })
 }
 
 pub fn array_index<'a>(obj: Evaluated<'a>, indexes: Vec<Evaluated<'a>>) -> Result<Evaluated<'a>> {

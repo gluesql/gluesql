@@ -77,3 +77,61 @@ SELECT id FROM Player WHERE id IN (SELECT id, name FROM Player)
 
 SELECT id FROM Player WHERE id IN (SELECT id, name FROM Player WHERE id = 0)
 -- @expect: error Evaluate.InSubqueryMustReturnOneColumn
+
+CREATE TABLE Candidate (id INTEGER);
+-- @expect: ok
+
+INSERT INTO Candidate VALUES (NULL), (1);
+-- @expect: ok
+
+-- @name: a subquery match determines IN despite a NULL row
+SELECT
+    1 IN (SELECT id FROM Candidate) AS included,
+    1 NOT IN (SELECT id FROM Candidate) AS excluded;
+-- @expect:
+-- | included: Bool | excluded: Bool |
+-- | -------------- | -------------- |
+-- | true           | false          |
+
+-- @name: an unmatched value remains unknown when a subquery contains NULL
+SELECT
+    2 IN (SELECT id FROM Candidate) AS included,
+    2 NOT IN (SELECT id FROM Candidate) AS excluded;
+-- @expect:
+-- | included | excluded |
+-- | -------- | -------- |
+-- | NULL     | NULL     |
+
+-- @name: a NULL target is unknown for a nonempty subquery
+SELECT
+    NULL IN (SELECT id FROM Candidate) AS included,
+    NULL NOT IN (SELECT id FROM Candidate) AS excluded;
+-- @expect:
+-- | included | excluded |
+-- | -------- | -------- |
+-- | NULL     | NULL     |
+
+-- @name: a subquery containing only NULL still has a comparison result
+SELECT 1 IN (SELECT id FROM Candidate WHERE id IS NULL) AS res;
+-- @expect:
+-- | res  |
+-- | ---- |
+-- | NULL |
+
+-- @name: an unmatched value is FALSE when the subquery has no NULL rows
+SELECT
+    2 IN (SELECT id FROM Candidate WHERE id IS NOT NULL) AS included,
+    2 NOT IN (SELECT id FROM Candidate WHERE id IS NOT NULL) AS excluded;
+-- @expect:
+-- | included: Bool | excluded: Bool |
+-- | -------------- | -------------- |
+-- | false          | true           |
+
+-- @name: an empty subquery yields FALSE for IN and TRUE for NOT IN even with a NULL target
+SELECT
+    NULL IN (SELECT id FROM Candidate WHERE id = 2) AS included,
+    NULL NOT IN (SELECT id FROM Candidate WHERE id = 2) AS excluded;
+-- @expect:
+-- | included: Bool | excluded: Bool |
+-- | -------------- | -------------- |
+-- | false          | true           |
