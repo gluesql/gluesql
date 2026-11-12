@@ -70,7 +70,6 @@ mod tests {
             planner::{PlannerError, plan_schema_map},
             query_builder::ColumnDefNode,
             result::Error,
-            store::Planner,
             translate::{NO_PARAMS, translate, translate_expr},
         },
     };
@@ -263,20 +262,5 @@ mod tests {
         let actual = validate_index_expr(&columns, &Expr::Value(Value::I64(1)));
         let expected = Err(Error::Planner(PlannerError::UnsupportedIndexExpr));
         assert_eq!(actual, expected, "Value is not an index literal");
-    }
-
-    #[test]
-    fn planner_chain() {
-        let storage = run("CREATE TABLE Item (id INTEGER)");
-        let sql = "CREATE INDEX idx ON Item (100)";
-        let actual = storage.plan(statement(sql));
-        let expected = Err(Error::Planner(
-            PlannerError::IndexExprRequiresColumnReference,
-        ));
-
-        assert_eq!(
-            actual, expected,
-            "planner validates before execution: {sql}"
-        );
     }
 }

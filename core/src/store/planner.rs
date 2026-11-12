@@ -5,7 +5,7 @@ use {
         planner::{
             plan_aggregate, plan_create_table_columns, plan_custom_function_calls, plan_hash_join,
             plan_primary_key, plan_scan_columns, plan_schema_map, plan_schemaless, validate,
-            validate_create_function, validate_create_index, validate_insert,
+            validate_create_function, validate_insert,
         },
         result::Result,
     },
@@ -16,7 +16,6 @@ pub trait Planner: Store + CustomFunction {
         let statement = plan_schema_map(self, statement)?;
 
         validate(&statement)?;
-        validate_create_index(&statement)?;
 
         let statement = plan_schemaless(statement)?;
         let statement = plan_primary_key(statement)?;
@@ -61,6 +60,23 @@ mod tests {
             .select()
             .with_schema(ddl)
             .with_schema("CREATE TABLE Unused (name TEXT)")
+            .build();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn create_index_skips_validation() {
+        let storage = MockStorage::default();
+        let ddl = "CREATE TABLE Item (id INTEGER)";
+        let input = table("Item")
+            .create_index("idx", "100")
+            .with_schema(ddl)
+            .build()
+            .unwrap();
+        let actual = storage.plan(input);
+        let expected = table("Item")
+            .create_index("idx", "100")
+            .with_schema(ddl)
             .build();
         assert_eq!(actual, expected);
     }

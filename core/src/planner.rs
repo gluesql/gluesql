@@ -13,6 +13,10 @@
 //! [`PlannerError::UnplannedSchemaMap`] if schema preparation has not run.
 //! The transformation passes return `Result<StatementPlan>` and preserve the map.
 //!
+//! [`validate_create_index`] and [`plan_index`] are opt-in passes for storage
+//! planners with index support. The default [`Planner::plan`](crate::store::Planner::plan)
+//! does not run them.
+//!
 //! ```
 //! use gluesql_core::{
 //!     error::Result,

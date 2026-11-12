@@ -72,6 +72,10 @@ fn memory_storage_index() {
         Err(Error::StorageMsg("[MemoryStorage] index is not supported".to_owned()))
     );
     test!(
+        glue "CREATE INDEX idx_constant ON Idx (100);",
+        Err(Error::StorageMsg("[MemoryStorage] index is not supported".to_owned()))
+    );
+    test!(
         glue "DROP INDEX Idx.idx_id;",
         Err(Error::StorageMsg("[MemoryStorage] index is not supported".to_owned()))
     );
