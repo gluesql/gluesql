@@ -1,0 +1,23 @@
+[package]
+name = "gluesql-sqlite-storage"
+version.workspace = true
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation.workspace = true
+
+[dependencies]
+gluesql-core.workspace = true
+ouroboros = "0.18.5"
+rusqlite = { version = "0.41.1", default-features = false, features = ["bundled"] }
+ron = { version = "0.8.1", features = ["integer128"] }
+sqlparser = { version = "0.52", features = ["bigdecimal"] }
+thiserror = "2.0.3"
+
+[dev-dependencies]
+test-suite.workspace = true
+tempfile = "3"
+
+[lints]
+workspace = true

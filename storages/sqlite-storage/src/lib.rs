@@ -1,0 +1,55 @@
+#![deny(clippy::str_to_string)]
+
+mod codec;
+mod error;
+mod schema;
+mod store;
+mod store_mut;
+mod transaction;
+
+pub use error::SqliteStorageError;
+
+use {
+    crate::transaction::TransactionState,
+    gluesql_core::store::{
+        AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Planner,
+    },
+    rusqlite::Connection,
+    std::path::Path,
+};
+
+type Result<T> = std::result::Result<T, SqliteStorageError>;
+
+/// Stores `GlueSQL` tables in a `SQLite` database using STRICT columns and logical type metadata.
+///
+/// The initial backend uses `GlueSQL`'s planner and executor. Tables created by other
+/// `SQLite` applications and native query delegation are not yet supported.
+#[derive(Debug)]
+pub struct SqliteStorage {
+    connection: Connection,
+    transaction: TransactionState,
+}
+
+impl SqliteStorage {
+    pub fn new(path: impl AsRef<Path>) -> Result<Self> {
+        Ok(Self {
+            connection: Connection::open(path)?,
+            transaction: TransactionState::Idle,
+        })
+    }
+
+    pub fn in_memory() -> Result<Self> {
+        Ok(Self {
+            connection: Connection::open_in_memory()?,
+            transaction: TransactionState::Idle,
+        })
+    }
+}
+
+impl Planner for SqliteStorage {}
+impl Index for SqliteStorage {}
+impl IndexMut for SqliteStorage {}
+impl Metadata for SqliteStorage {}
+impl AlterTable for SqliteStorage {}
+impl CustomFunction for SqliteStorage {}
+impl CustomFunctionMut for SqliteStorage {}
