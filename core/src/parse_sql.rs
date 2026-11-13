@@ -15,7 +15,7 @@ use {
 const DIALECT: PostgreSqlDialect = PostgreSqlDialect {};
 
 pub fn parse<Sql: AsRef<str>>(sql: Sql) -> Result<Vec<SqlStatement>> {
-    Parser::parse_sql(&DIALECT, sql.as_ref()).map_err(|e| Error::Parser(format!("{e:#?}")))
+    Parser::parse_sql(&DIALECT, sql.as_ref()).map_err(|e| Error::Parser(format!("{e}")))
 }
 
 macro_rules! generate_parse_fn {
@@ -23,24 +23,24 @@ macro_rules! generate_parse_fn {
         pub fn $fn_name<Sql: AsRef<str>>(sql_expr: Sql) -> Result<$output_type> {
             let tokens = Tokenizer::new(&DIALECT, sql_expr.as_ref())
                 .tokenize()
-                .map_err(|e| Error::Parser(format!("{:#?}", e)))?;
+                .map_err(|e| Error::Parser(format!("{e}")))?;
 
             Parser::new(&DIALECT)
                 .with_tokens(tokens)
                 .$fn_name()
-                .map_err(|e| Error::Parser(format!("{:#?}", e)))
+                .map_err(|e| Error::Parser(format!("{e}")))
         }
     };
     ($fn_name: ident, $parse_fn_name: ident, $parse_fn_arg: ident, $output_type: ty) => {
         pub fn $fn_name<Sql: AsRef<str>>(sql_expr: Sql) -> Result<$output_type> {
             let tokens = Tokenizer::new(&DIALECT, sql_expr.as_ref())
                 .tokenize()
-                .map_err(|e| Error::Parser(format!("{:#?}", e)))?;
+                .map_err(|e| Error::Parser(format!("{e}")))?;
 
             Parser::new(&DIALECT)
                 .with_tokens(tokens)
                 .$parse_fn_name(Parser::$parse_fn_arg)
-                .map_err(|e| Error::Parser(format!("{:#?}", e)))
+                .map_err(|e| Error::Parser(format!("{e}")))
         }
     };
 }
