@@ -1497,6 +1497,7 @@ dependencies = [
  "bigdecimal",
  "cfg-if",
  "chrono",
+ "criterion",
  "hex",
  "im",
  "iter-enum",
