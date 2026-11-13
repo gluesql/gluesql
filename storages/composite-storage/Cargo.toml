@@ -15,6 +15,7 @@ serde = { version = "1", features = ["derive"] }
 test-suite.workspace = true
 gluesql_memory_storage.workspace = true
 gluesql-redb-storage.workspace = true
+gluesql-json-storage.workspace = true
 
 [lints]
 workspace = true

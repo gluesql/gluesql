@@ -31,6 +31,7 @@ mod transaction;
 mod value;
 
 type RowIter = Box<dyn Iterator<Item = Result<(Key, Vec<Value>)>>>;
+const ENGINE_METADATA_KEY: &str = "gluesql.engine";
 
 #[derive(Debug, Clone)]
 pub struct ParquetStorage {
