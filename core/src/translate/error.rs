@@ -106,6 +106,14 @@ pub enum UpdateOption {
     /// `UPDATE ... RETURNING ...`
     #[strum(to_string = "RETURNING clause")]
     Returning,
+
+    /// `UPDATE <table> AS <alias> ...`
+    #[strum(to_string = "table alias")]
+    TableAlias,
+
+    /// `UPDATE <table> AS <alias>(<columns>) ...`
+    #[strum(to_string = "table column alias")]
+    TableColumnAlias,
 }
 
 /// `DELETE` clauses that `GlueSQL` does not support yet.
@@ -134,6 +142,14 @@ pub enum DeleteOption {
     /// `DELETE FROM t1, t2 ...`
     #[strum(to_string = "multiple tables")]
     MultipleTables,
+
+    /// `DELETE FROM <table> AS <alias> ...`
+    #[strum(to_string = "table alias")]
+    TableAlias,
+
+    /// `DELETE FROM <table> AS <alias>(<columns>) ...`
+    #[strum(to_string = "table column alias")]
+    TableColumnAlias,
 }
 
 /// Transaction statement (`START TRANSACTION`/`COMMIT`/`ROLLBACK`) clauses
