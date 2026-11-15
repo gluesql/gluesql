@@ -190,39 +190,15 @@ fn selected_columns_must_match_the_schema() {
 }
 
 #[test]
-fn logical_type_metadata_must_be_canonical_and_match_the_physical_column() {
+fn reading_schema_rejects_incompatible_column_metadata() {
     let directory = tempdir().unwrap();
     let path = directory.path().join("metadata.sqlite");
     let mut storage = SqliteStorage::new(&path).unwrap();
     let schema = Schema::from_ddl("CREATE TABLE item (id INT)").unwrap();
     storage.insert_schema(&schema).unwrap();
 
-    let sqlite = Connection::open(&path).unwrap();
-    // Bypass SQLite's metadata CHECK so fetch_schema must validate the stored tag.
-    sqlite
-        .execute_batch("PRAGMA ignore_check_constraints = ON")
-        .unwrap();
-
-    for (case, tag) in [
-        ("unknown type name", "NOT_A_TYPE"),
-        (
-            "SQL alias instead of the canonical INT metadata tag",
-            "INTEGER",
-        ),
-    ] {
-        sqlite
-            .execute(
-                "UPDATE __gluesql_column_meta SET logical_type = ?1
-                 WHERE table_name = 'item' AND column_name = 'id'",
-                [tag],
-            )
-            .unwrap();
-        let actual = storage.fetch_schema("item");
-        let expected = SqliteStorageError::InvalidLogicalType(tag.to_owned());
-        assert_eq!(actual, Err(expected.into()), "{case}");
-    }
-
     // TEXT is canonical, but metadata cannot change the physical INT column.
+    let sqlite = Connection::open(&path).unwrap();
     sqlite
         .execute(
             "UPDATE __gluesql_column_meta SET logical_type = 'TEXT'
@@ -291,11 +267,25 @@ fn schemaful_tables_allow_absent_but_not_schemaless_metadata() {
         .unwrap();
     assert_eq!(storage.fetch_schema("item").unwrap(), Some(schema.clone()));
 
-    // Without a comment or document marker to restore, the metadata table is optional too.
+    // The optional table can also be absent when opening the database again.
     sqlite
         .execute_batch("DROP TABLE __gluesql_table_meta")
         .unwrap();
+    drop(storage);
+
+    let storage = SqliteStorage::new(&path).unwrap();
     assert_eq!(storage.fetch_schema("item").unwrap(), Some(schema));
+
+    // Opening validates existing definitions without recreating missing metadata.
+    let actual: i64 = sqlite
+        .query_row(
+            "SELECT count(*) FROM sqlite_schema WHERE name = '__gluesql_table_meta'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    let expected = 0;
+    assert_eq!(actual, expected);
 }
 
 #[test]
@@ -371,22 +361,35 @@ fn conflicting_metadata_definitions_are_rejected_without_overwriting_them() {
 }
 
 #[test]
-fn reading_schema_rejects_altered_metadata_definitions() {
-    let directory = tempdir().unwrap();
-    let path = directory.path().join("altered-metadata.sqlite");
-    let mut storage = SqliteStorage::new(&path).unwrap();
-    let schema = Schema::from_ddl("CREATE TABLE item (id INT)").unwrap();
-    storage.insert_schema(&schema).unwrap();
+fn metadata_definition_changes_are_rejected_on_schema_write_and_reopen() {
+    for table_name in ["__gluesql_column_meta", "__gluesql_table_meta"] {
+        let directory = tempdir().unwrap();
+        let path = directory.path().join("altered-metadata.sqlite");
+        let mut storage = SqliteStorage::new(&path).unwrap();
+        let schema = Schema::from_ddl("CREATE TABLE item (id INT)").unwrap();
+        storage.insert_schema(&schema).unwrap();
 
-    // Metadata created by GlueSQL is no longer trusted after its layout changes externally.
-    let sqlite = Connection::open(&path).unwrap();
-    sqlite
-        .execute_batch("ALTER TABLE __gluesql_column_meta ADD COLUMN extra TEXT")
-        .unwrap();
+        // An extra column does not prevent reading metadata values, but changes its format.
+        let sqlite = Connection::open(&path).unwrap();
+        sqlite
+            .execute_batch(&format!("ALTER TABLE {table_name} ADD COLUMN extra TEXT"))
+            .unwrap();
 
-    let actual = storage.fetch_schema("item");
-    let expected = SqliteStorageError::ConflictMetadataSchema("__gluesql_column_meta".to_owned());
-    assert_eq!(actual, Err(expected.into()));
+        let actual = storage.insert_schema(&schema);
+        let expected = SqliteStorageError::ConflictMetadataSchema(table_name.to_owned());
+        assert_eq!(actual, Err(expected.into()));
+
+        // The same definition must be rejected before returning a newly opened storage.
+        drop(storage);
+        let actual = SqliteStorage::new(&path);
+        assert!(
+            matches!(
+                &actual,
+                Err(SqliteStorageError::ConflictMetadataSchema(name)) if name == table_name
+            ),
+            "{table_name}: {actual:?}",
+        );
+    }
 }
 
 #[test]

@@ -34,10 +34,13 @@ pub struct SqliteStorage {
 
 impl SqliteStorage {
     pub fn new(path: impl AsRef<Path>) -> Result<Self> {
-        Ok(Self {
+        let storage = Self {
             connection: Connection::open(path)?,
             transaction: TransactionState::Idle,
-        })
+        };
+        storage.validate_metadata()?;
+
+        Ok(storage)
     }
 
     pub fn in_memory() -> Result<Self> {

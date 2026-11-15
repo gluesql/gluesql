@@ -275,6 +275,85 @@ fn schema_rebuild_preserves_rows_and_rolls_back_failed_replacement() {
 }
 
 #[test]
+fn rewriting_schema_replaces_column_metadata_and_removes_unused_table_metadata() {
+    let directory = tempdir().unwrap();
+    let path = directory.path().join("metadata.sqlite");
+    let mut storage = SqliteStorage::new(&path).unwrap();
+    let original = Schema::from_ddl(
+        "CREATE TABLE item (
+             id INT PRIMARY KEY,
+             level INT8 DEFAULT CAST(1 AS INT8) COMMENT 'old',
+             obsolete TEXT
+         ) COMMENT = 'original'",
+    )
+    .unwrap();
+    storage.insert_schema(&original).unwrap();
+
+    // Replace the logical type, remove an expression/comment and drop an entire column.
+    let updated = Schema::from_ddl(
+        "CREATE TABLE item (
+             id INT PRIMARY KEY,
+             level INT16 DEFAULT 2
+         ) COMMENT = 'updated'",
+    )
+    .unwrap();
+    storage.insert_schema(&updated).unwrap();
+    let actual = storage.fetch_schema("ITEM").unwrap();
+    let expected = Some(updated);
+    assert_eq!(actual, expected);
+
+    // Old metadata must be deleted, including the row for the dropped column.
+    let sqlite = Connection::open(&path).unwrap();
+    let actual = sqlite
+        .prepare(
+            "SELECT column_name, logical_type, comment, default_sql
+             FROM __gluesql_column_meta
+             WHERE table_name = 'item'
+             ORDER BY column_name",
+        )
+        .unwrap()
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(2)?,
+                row.get::<_, Option<String>>(3)?,
+            ))
+        })
+        .unwrap()
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .unwrap();
+    let expected = vec![
+        ("id".to_owned(), "INT".to_owned(), None, None),
+        ("level".to_owned(), "INT16".to_owned(), None, None),
+    ];
+    assert_eq!(actual, expected);
+
+    // A schemaful table no longer needs a table metadata row once its comment is removed.
+    let without_comment = Schema::from_ddl(
+        "CREATE TABLE item (
+             id INT PRIMARY KEY,
+             level INT16 DEFAULT 2
+         )",
+    )
+    .unwrap();
+    storage.insert_schema(&without_comment).unwrap();
+    let actual: i64 = sqlite
+        .query_row(
+            "SELECT count(*) FROM __gluesql_table_meta WHERE table_name = 'item'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    let expected = 0;
+    assert_eq!(actual, expected);
+
+    let actual = storage.fetch_schema("item").unwrap();
+    let expected = Some(without_comment);
+    assert_eq!(actual, expected);
+}
+
+#[test]
 fn projected_scan_does_not_decode_unrequested_columns() {
     let directory = tempdir().unwrap();
     let path = directory.path().join("projection.sqlite");
