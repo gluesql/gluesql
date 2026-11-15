@@ -55,7 +55,8 @@ impl SelectItemNode<'_> {
                     .map_err(|error| match error {
                         Error::QueryBuilder(
                             QueryBuilderError::HashJoinExecutorRequiresPlan
-                            | QueryBuilderError::IndexByRequiresPlan,
+                            | QueryBuilderError::IndexByRequiresPlan
+                            | QueryBuilderError::NativeQueryRequiresPlan,
                         ) => QueryBuilderError::ProjectionLabelRequiresAlias.into(),
                         error => error,
                     })?;
@@ -98,9 +99,10 @@ mod tests {
         crate::{
             ast::SelectItem,
             parse_sql::parse_select_item,
-            plan::SelectItemPlan,
+            plan::{ExprPlan, SelectItemPlan},
             query_builder::{
-                QueryBuilderError, SelectItemNode, col, expr, primary_key, subquery, table,
+                QueryBuilderError, SelectItemNode, col, expr, native_query, primary_key,
+                select::BuildQueryPlan, subquery, table,
             },
             result::Error,
             translate::{NO_PARAMS, translate_select_item},
@@ -200,5 +202,28 @@ mod tests {
         let actual: SelectItemNode = expr(")").into();
         let actual = actual.build_select_item_plan().map(|_| ());
         assert!(matches!(actual, Err(Error::Parser(_))));
+    }
+
+    #[test]
+    fn native_subquery_projection_requires_alias() {
+        let inner = native_query("SELECT id FROM Item")
+            .columns([("id", "INT")])
+            .alias_as("i")
+            .select()
+            .project("id");
+        let actual: SelectItemNode = subquery(inner.clone()).into();
+        assert_eq!(
+            actual.build_select_item_plan(),
+            Err(Error::QueryBuilder(
+                QueryBuilderError::ProjectionLabelRequiresAlias
+            ))
+        );
+
+        let expected = SelectItemPlan::Expr {
+            expr: ExprPlan::Subquery(Box::new(inner.clone().build_query_plan().unwrap())),
+            label: "native_id".to_owned(),
+        };
+        let actual: SelectItemNode = subquery(inner).alias_as("native_id").into();
+        assert_eq!(actual.build_select_item_plan(), Ok(expected));
     }
 }

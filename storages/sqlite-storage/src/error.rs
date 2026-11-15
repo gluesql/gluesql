@@ -75,6 +75,12 @@ pub enum SqliteStorageError {
     #[error("invalid scan projection for {0}")]
     InvalidProjection(String),
 
+    #[error("native query must be read-only")]
+    NativeStatementNotReadOnly,
+
+    #[error("native query returned {actual} columns, expected {expected}")]
+    NativeColumnCountMismatch { expected: usize, actual: usize },
+
     #[error("nested SQLite transactions are not supported")]
     NestedTransaction,
 

@@ -2,6 +2,8 @@
 
 mod codec;
 mod error;
+mod native_query;
+mod planner;
 mod schema;
 mod store;
 mod store_mut;
@@ -12,7 +14,7 @@ pub use error::SqliteStorageError;
 use {
     crate::transaction::TransactionState,
     gluesql_core::store::{
-        AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Planner,
+        AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata,
     },
     rusqlite::Connection,
     std::path::Path,
@@ -22,8 +24,8 @@ type Result<T> = std::result::Result<T, SqliteStorageError>;
 
 /// Stores `GlueSQL` tables in a `SQLite` database using STRICT columns and logical type metadata.
 ///
-/// The initial backend uses `GlueSQL`'s planner and executor. Tables created by other
-/// `SQLite` applications and native query delegation are not yet supported.
+/// Supported filters use `SQLite`'s native planner. Remaining operations use the
+/// common executor. Tables created by other `SQLite` applications are not yet supported.
 #[derive(Debug)]
 pub struct SqliteStorage {
     connection: Connection,
@@ -46,7 +48,6 @@ impl SqliteStorage {
     }
 }
 
-impl Planner for SqliteStorage {}
 impl Index for SqliteStorage {}
 impl IndexMut for SqliteStorage {}
 impl Metadata for SqliteStorage {}

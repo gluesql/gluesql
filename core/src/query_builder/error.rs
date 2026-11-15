@@ -11,6 +11,9 @@ pub enum QueryBuilderError {
     #[error("index_by can only be built as an execution plan")]
     IndexByRequiresPlan,
 
+    #[error("native_query can only be built as an execution plan")]
+    NativeQueryRequiresPlan,
+
     #[error(
         "projection expression label cannot be derived from a plan-only expression; use an explicit alias"
     )]

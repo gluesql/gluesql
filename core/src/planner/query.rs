@@ -226,7 +226,10 @@ pub trait Planner<'a> {
 
                 (&table.name, alias)
             }
-            SourcePlan::Derived(_) | SourcePlan::Series(_) | SourcePlan::Dictionary(_) => {
+            SourcePlan::Derived(_)
+            | SourcePlan::Series(_)
+            | SourcePlan::Dictionary(_)
+            | SourcePlan::Native(_) => {
                 return next;
             }
         };

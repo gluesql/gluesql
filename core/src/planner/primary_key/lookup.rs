@@ -104,6 +104,13 @@ impl JoinedRelation {
                 .and_then(|schema| schema.column_defs.as_deref())
                 .and_then(|column_defs| effective_columns(column_defs, table.alias.as_ref()))
                 .map_or(RelationColumns::Unknown, RelationColumns::Known),
+            SourcePlan::Native(native) => RelationColumns::Known(
+                native
+                    .columns
+                    .iter()
+                    .map(|column| column.name.clone())
+                    .collect(),
+            ),
             SourcePlan::Derived(_) | SourcePlan::Series(_) | SourcePlan::Dictionary(_) => {
                 RelationColumns::Unknown
             }

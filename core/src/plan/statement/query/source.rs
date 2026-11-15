@@ -1,5 +1,6 @@
 mod derived;
 mod dictionary;
+mod native;
 mod series;
 mod table;
 mod table_access;
@@ -7,6 +8,7 @@ mod table_access;
 pub use {
     derived::DerivedSourcePlan,
     dictionary::DictionarySourcePlan,
+    native::{NativeColumnPlan, NativeSourcePlan},
     series::SeriesSourcePlan,
     table::TableSourcePlan,
     table_access::{IndexPredicatePlan, TableAccessPlan},
@@ -20,6 +22,7 @@ use {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SourcePlan {
     Table(TableSourcePlan),
+    Native(NativeSourcePlan),
     Derived(DerivedSourcePlan),
     Series(SeriesSourcePlan),
     Dictionary(DictionarySourcePlan),
@@ -34,6 +37,7 @@ pub struct TableAliasPlan {
 impl SourcePlan {
     pub fn alias_name(&self) -> &str {
         match self {
+            Self::Native(native) => &native.alias,
             Self::Table(TableSourcePlan { name, alias, .. }) => alias
                 .as_ref()
                 .map_or(name.as_str(), |alias| alias.name.as_str()),

@@ -265,7 +265,7 @@ fn validate_source(schema_map: &SchemaMap, source: &SourcePlan) -> ValidateResul
     match source {
         SourcePlan::Derived(derived) => validate_query(schema_map, &derived.query),
         SourcePlan::Series(series) => validate_expr(schema_map, &series.size),
-        SourcePlan::Table(_) | SourcePlan::Dictionary(_) => Ok(()),
+        SourcePlan::Table(_) | SourcePlan::Dictionary(_) | SourcePlan::Native(_) => Ok(()),
     }
 }
 

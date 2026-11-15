@@ -241,6 +241,7 @@ fn check_source(context: Option<&Rc<Context<'_>>>, source: &SourcePlan) -> bool 
             contains_alias(&series.alias.name) && check_expr(context.map(Rc::clone), &series.size)
         }
         SourcePlan::Dictionary(dictionary) => contains_alias(&dictionary.alias.name),
+        SourcePlan::Native(native) => contains_alias(&native.alias),
     }
 }
 

@@ -2,11 +2,12 @@ mod alter_table;
 mod function;
 mod index;
 mod metadata;
+mod native_query;
 mod planner;
 mod transaction;
 
-pub trait GStore: Store + Index + Metadata + CustomFunction {}
-impl<S: Store + Index + Metadata + CustomFunction> GStore for S {}
+pub trait GStore: Store + Index + Metadata + CustomFunction + NativeQuery {}
+impl<S: Store + Index + Metadata + CustomFunction + NativeQuery> GStore for S {}
 
 pub trait GStoreMut:
     StoreMut + IndexMut + AlterTable + Transaction + CustomFunction + CustomFunctionMut
@@ -22,6 +23,7 @@ pub use {
     function::{CustomFunction, CustomFunctionMut},
     index::{Index, IndexError, IndexMut},
     metadata::{MetaIter, Metadata},
+    native_query::{NativeQuery, NativeRowIter},
     planner::Planner,
     transaction::Transaction,
 };

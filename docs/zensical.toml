@@ -249,6 +249,7 @@ nav = [
         "storages/developing-custom-storages/store-traits/index-trait.md",
         "storages/developing-custom-storages/store-traits/index-mut.md",
         "storages/developing-custom-storages/store-traits/metadata.md",
+        "storages/developing-custom-storages/store-traits/native-query.md",
       ]},
       "storages/developing-custom-storages/using-test-suite.md",
     ]},

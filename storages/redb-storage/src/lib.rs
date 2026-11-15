@@ -17,8 +17,8 @@ use {
         data::{Key, Schema, Value},
         error::Result,
         store::{
-            AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, RowIter,
-            ScanColumns, Store, StoreMut, Transaction,
+            AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, NativeQuery,
+            RowIter, ScanColumns, Store, StoreMut, Transaction,
         },
     },
     redb::Database,
@@ -183,3 +183,4 @@ impl IndexMut for RedbStorage {
 impl Metadata for RedbStorage {}
 impl CustomFunction for RedbStorage {}
 impl CustomFunctionMut for RedbStorage {}
+impl NativeQuery for RedbStorage {}

@@ -1,5 +1,6 @@
 mod derived;
 mod dictionary;
+mod native;
 mod series;
 mod table;
 
@@ -31,6 +32,7 @@ pub(super) fn execute<'a, T: GStore>(
     source: &'a SourcePlan,
 ) -> Result<PreparedSource<'a>> {
     match source {
+        SourcePlan::Native(native) => Ok(native::execute(storage, native)),
         SourcePlan::Table(table) => table::execute(storage, stmt_context, table),
         SourcePlan::Derived(derived) => derived::execute(storage, stmt_context, derived),
         SourcePlan::Series(series) => Ok(series::execute(storage, stmt_context, series)),

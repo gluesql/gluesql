@@ -22,7 +22,7 @@ pub fn walk_source_mut<V: VisitorMut + ?Sized>(
         },
         SourcePlan::Derived(derived) => visitor.visit_query(&mut derived.query)?,
         SourcePlan::Series(series) => visitor.visit_expr(&mut series.size)?,
-        SourcePlan::Dictionary(_) => {}
+        SourcePlan::Dictionary(_) | SourcePlan::Native(_) => {}
     }
     Ok(())
 }

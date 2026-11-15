@@ -26,6 +26,7 @@ A Rust storage implements these traits:
 * `Index` - Reads rows through secondary indexes.
 * `IndexMut` - Creates and drops secondary indexes.
 * `Metadata` - Returns table metadata.
+* `NativeQuery` - Executes native read queries produced by a storage's planner.
 * `Planner` - Plans queries.
 
 `Store` requires four read methods. For the other traits, start with empty implementations and override the methods your storage needs. For example, `impl Planner for MyStorage {}` uses GlueSQL's default planner. Each trait's page describes its defaults.

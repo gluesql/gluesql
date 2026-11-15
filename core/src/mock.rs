@@ -6,8 +6,8 @@ use {
         },
         result::{Error, Result},
         store::{
-            AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Planner,
-            RowIter, ScanColumns, Store, StoreMut, Transaction,
+            AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, NativeQuery,
+            Planner, RowIter, ScanColumns, Store, StoreMut, Transaction,
         },
     },
     std::collections::HashMap,
@@ -149,6 +149,7 @@ impl IndexMut for MockStorage {
 impl Transaction for MockStorage {}
 impl Metadata for MockStorage {}
 impl Planner for MockStorage {}
+impl NativeQuery for MockStorage {}
 
 #[cfg(test)]
 mod tests {

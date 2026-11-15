@@ -95,6 +95,27 @@ fn memory_storage_transaction() {
 }
 
 #[test]
+fn memory_storage_native_query() {
+    use gluesql_core::{
+        prelude::Error,
+        query_builder::{Build, native_query},
+    };
+
+    let mut glue = Glue::new(MemoryStorage::default());
+    let statement = native_query("SELECT 1")
+        .columns([("n", "INT")])
+        .alias_as("native")
+        .select()
+        .build()
+        .unwrap();
+    let actual = glue.execute_stmt(statement);
+    let expected = Err(Error::StorageMsg(
+        "[Storage] NativeQuery::query_native is not supported".to_owned(),
+    ));
+    assert_eq!(actual, expected);
+}
+
+#[test]
 fn schemaless_update_conflict_on_non_map_row() {
     use gluesql_core::{
         data::Value,

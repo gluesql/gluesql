@@ -12,7 +12,7 @@ use {
         ast::ColumnUniqueOption,
         data::{Key, Schema, Value, value::BTreeMapJsonExt},
         error::{Error, Result},
-        store::{Metadata, Planner, Store},
+        store::{Metadata, NativeQuery, Planner, Store},
     },
     iter_enum::Iterator,
     serde_json::Value as JsonValue,
@@ -157,3 +157,4 @@ where
 
 impl Metadata for JsonStorage {}
 impl Planner for JsonStorage {}
+impl NativeQuery for JsonStorage {}

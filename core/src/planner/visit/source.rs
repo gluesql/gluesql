@@ -22,7 +22,7 @@ pub fn walk_source<V: Visitor + ?Sized>(
         },
         SourcePlan::Derived(derived) => visitor.visit_query(&derived.query)?,
         SourcePlan::Series(series) => visitor.visit_expr(&series.size)?,
-        SourcePlan::Dictionary(_) => {}
+        SourcePlan::Dictionary(_) | SourcePlan::Native(_) => {}
     }
     Ok(())
 }

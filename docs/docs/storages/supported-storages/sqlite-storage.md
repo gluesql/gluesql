@@ -1,8 +1,8 @@
 # SQLite Storage
 
 `SqliteStorage` stores GlueSQL tables as SQLite STRICT tables in a database file
-or an in-memory database. It implements `Store`, `StoreMut`, and `Transaction`
-using a bundled SQLite library.
+or an in-memory database. It implements `Store`, `StoreMut`, `Transaction`, and
+`NativeQuery` using a bundled SQLite library.
 
 ## Example
 
@@ -50,21 +50,44 @@ logical types, comments, schemaless identity, and default expressions that are n
 written into the SQLite table definition. These names are reserved. Schemaless
 tables store one Map value per row in a `_doc` TEXT column.
 
+## Native filters
+
+The SQLite planner can replace a single-table scan with a native query that
+applies supported WHERE conditions. This also applies inside subqueries. SQLite
+filters rows before GlueSQL decodes them; remaining filter conditions, projection
+functions, joins, sorting, DISTINCT, OFFSET, and LIMIT use GlueSQL's executor.
+
+Supported conditions include compatible integer, Text, Boolean, and Bytea
+comparisons; Float32 and Float ordering comparisons; NULL checks; IN and BETWEEN;
+and AND, OR, and NOT. Operands can be local columns, literals, or bound values.
+Floating-point equality, mixed floating-point types, out-of-range integer
+literals, functions, and arithmetic in WHERE remain in GlueSQL filters.
+For a column declared `n INT8`, `n < 1000` remains common, while `n < 100` can be native.
+Supported AND terms can be delegated independently. OR and NOT groups move only
+when the whole group is supported. If no condition can be delegated, the original
+filter and scan stay common.
+
+Native conditions follow SQL three-valued NULL logic, matching the common
+executor for supported AND/OR, IN/NOT IN, and BETWEEN/NOT BETWEEN expressions.
+
+Native reads use the same connection and transaction as other storage methods.
+They stream in rowid order, or logical primary-key order for integer, Boolean,
+Text, and Bytea keys. Tables with other primary-key types keep the common scan.
+Native execution errors are returned directly without retrying a common scan.
+
 ## Current scope
 
-Queries use GlueSQL's planner and executor. Predicates, joins, and other query
-operations are not yet delegated to SQLite. Tables without a primary key stream
-rows in SQLite rowid order. Their scan iterator owns the prepared statement and
-cursor until it is dropped, exhausted, or encounters an error. Row read errors
-are returned as iterator items when those rows are reached.
+The common scan for tables without a primary key also streams in rowid order.
+Both native and common scan iterators own their statement and cursor until
+dropped, exhausted, or an error occurs. Row errors are returned when reached.
 
 Primary key scans still collect and sort by GlueSQL's logical keys, including
-keys stored as text. Key lookup and whole-row updates can also collect a table
-scan.
+keys stored as text. Decimal key lookup and whole-row updates can also collect a
+table scan.
 
 The backend currently supports tables created through GlueSQL. Compatibility
-with databases created by other applications and native query delegation are
-future work. Explicit indexes, custom stored functions, and the separate ALTER
+with databases created by other applications is future work. Explicit indexes,
+custom stored functions, and the separate ALTER
 TABLE feature set are not part of this first implementation. WebAssembly support
 has not been validated.
 

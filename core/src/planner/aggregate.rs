@@ -215,7 +215,7 @@ fn plan_hash_join(join: &mut HashJoinPlan) {
 
 fn plan_source(source: &mut SourcePlan) {
     match source {
-        SourcePlan::Table(_) | SourcePlan::Dictionary(_) => {}
+        SourcePlan::Table(_) | SourcePlan::Dictionary(_) | SourcePlan::Native(_) => {}
         SourcePlan::Derived(derived) => plan_query(&mut derived.query),
         SourcePlan::Series(series) => plan_expr(&mut series.size),
     }
