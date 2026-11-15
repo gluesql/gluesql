@@ -335,6 +335,7 @@ mod tests {
                 assert_eq!(StatementPlanKind::Query(query), expected, "{sql}");
             }
         }
+
         for suffix in [
             "",
             " ORDER BY column1",

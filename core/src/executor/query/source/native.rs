@@ -14,20 +14,26 @@ pub(super) fn execute<'a>(
         .map(|column| column.name.clone())
         .collect::<Vec<_>>();
     let names: Rc<[String]> = Rc::from(names);
-    let output = SourceColumns {
-        alias: &native.alias,
-        names: Rc::clone(&names),
-    };
+
     let output_types = native
         .columns
         .iter()
         .map(|column| column.data_type.clone())
         .collect::<Vec<_>>();
+
+    let output = SourceColumns {
+        alias: &native.alias,
+        names: Rc::clone(&names),
+    };
+
     let rows = Box::new(move |_| {
-        let rows = storage.query_native(&native.query, &native.params, &output_types)?;
+        let native_rows = storage.query_native(&native.query, &native.params, &output_types)?;
+
         let columns = Rc::clone(&names);
-        let rows = rows.map(move |values| {
-            values.map(|values| Row {
+        let rows = native_rows.map(move |values| {
+            let values = values?;
+
+            Ok(Row {
                 columns: Rc::clone(&columns),
                 values,
             })

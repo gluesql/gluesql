@@ -22,6 +22,7 @@ fn expect_query(plan: &StatementPlan) -> &QueryPlan {
     let StatementPlanKind::Query(query) = &plan.kind else {
         panic!("expected query: {plan:?}");
     };
+
     query
 }
 
@@ -30,6 +31,7 @@ fn expect_native_source(query: &QueryPlan) -> &NativeSourcePlan {
     else {
         panic!("expected native source: {query:?}");
     };
+
     native
 }
 
@@ -41,6 +43,7 @@ fn expect_partial_native_source(query: &QueryPlan) -> &NativeSourcePlan {
     else {
         panic!("expected a remaining filter over a native source: {query:?}");
     };
+
     native
 }
 
@@ -440,9 +443,11 @@ fn native_scalar_subquery_preserves_the_outer_row_projection() {
     let plan = glue.plan(sql).unwrap().remove(0);
     let outer = expect_query(&plan);
     expect_native_source(outer);
+
     let ProjectionPlan::SelectItems(items) = &outer.project().unwrap().projection else {
         panic!("expected select items");
     };
+
     let [
         SelectItemPlan::Expr {
             expr: ExprPlan::Subquery(inner),
@@ -452,6 +457,7 @@ fn native_scalar_subquery_preserves_the_outer_row_projection() {
     else {
         panic!("expected scalar subquery: {items:?}");
     };
+
     expect_native_source(inner);
 
     let actual = glue.execute_prepared(&plan).unwrap();

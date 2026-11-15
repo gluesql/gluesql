@@ -303,7 +303,8 @@ fn column_type_metadata_is_required() {
     for (case, remove_metadata) in [
         (
             "column metadata row is missing",
-            "DELETE FROM __gluesql_column_meta WHERE table_name = 'item' AND column_name = 'id'",
+            "DELETE FROM __gluesql_column_meta
+             WHERE table_name = 'item' AND column_name = 'id'",
         ),
         (
             "column metadata table is missing",

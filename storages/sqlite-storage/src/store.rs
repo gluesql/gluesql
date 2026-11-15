@@ -159,6 +159,7 @@ impl SqliteStorage {
                             schema.table_name.clone(),
                         ));
                     }
+
                     previous = Some(*index);
                 }
 
@@ -171,6 +172,7 @@ impl SqliteStorage {
         if let Some(index) = primary {
             projection.push(quote(&columns[index].name));
         }
+
         projection.extend(selected.iter().map(|index| quote(&columns[*index].name)));
 
         let sql = format!(

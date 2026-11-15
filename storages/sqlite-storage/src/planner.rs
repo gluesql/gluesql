@@ -32,6 +32,7 @@ impl Planner for SqliteStorage {
         let statement = plan_custom_function_calls(self, statement)?;
         validate_insert(&statement)?;
         let statement = plan_create_table_columns(statement)?;
+
         // Resolve required scan columns before replacing a scan with a native source.
         let mut statement = plan_scan_columns(statement)?;
 

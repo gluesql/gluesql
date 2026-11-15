@@ -235,7 +235,7 @@ mod tests {
                     "price".to_owned(),
                     Value::Decimal("1.2300".parse().unwrap()),
                 )])),
-                SqlValue::Text("Map({\"price\":Decimal(\"1.2300\")})".to_owned()),
+                SqlValue::Text(r#"Map({"price":Decimal("1.2300")})"#.to_owned()),
             ),
         ];
 

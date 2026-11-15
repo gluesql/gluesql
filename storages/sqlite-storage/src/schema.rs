@@ -209,6 +209,7 @@ impl SqliteStorage {
         if columns.is_empty() {
             return Err(SqliteStorageError::EmptySchema(schema.table_name.clone()));
         }
+
         rowid_name(schema)?;
 
         let old = self.read_schema(&schema.table_name)?;

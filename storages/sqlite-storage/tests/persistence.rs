@@ -150,8 +150,8 @@ fn reopen_preserves_types_defaults_comments_and_schemaless_documents() {
 
     let physical: (String, String, String, String, String, String) = sqlite
         .query_row(
-            "SELECT typeof(i8), typeof(f32), typeof(bytes), typeof(decimal), decimal, interval
-             FROM \"typed\"\"table\"",
+            r#"SELECT typeof(i8), typeof(f32), typeof(bytes), typeof(decimal), decimal, interval
+               FROM "typed""table""#,
             [],
             |row| {
                 Ok((

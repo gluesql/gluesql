@@ -46,6 +46,7 @@ impl Iterator for SqliteNativeRowIter<'_> {
             let Some(row) = rows.next()? else {
                 return Ok(None);
             };
+
             self.output_types
                 .iter()
                 .enumerate()

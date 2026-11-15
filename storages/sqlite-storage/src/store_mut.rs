@@ -148,6 +148,7 @@ impl SqliteStorage {
                 let Key::I64(rowid) = key else {
                     return Err(SqliteStorageError::InvalidRowidKey(key.clone()));
                 };
+
                 names.push(quote(rowid_name(schema)?));
                 values.push(SqlValue::Integer(*rowid));
             }

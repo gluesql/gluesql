@@ -137,6 +137,7 @@ fn convert_integer_value(value: &Value, data_type: &DataType) -> Option<Value> {
         Value::U32(value) => i128::from(*value),
         _ => return None,
     };
+
     Some(match data_type {
         DataType::Int8 => Value::I8(value.try_into().ok()?),
         DataType::Int16 => Value::I16(value.try_into().ok()?),

@@ -58,6 +58,7 @@ impl VisitorMut for NativeFilterPlanner<'_> {
                 }
             }
         }
+
         Ok(())
     }
 }
@@ -152,6 +153,7 @@ fn plan_filter(filter: &FilterPlan, schemas: &SchemaMap) -> NativeFilterRewrite 
     // Both lists must preserve the common scan's column order.
     let mut projection = Vec::new();
     let mut output_columns = Vec::new();
+
     for (column, name) in columns.iter().zip(logical_names) {
         if selected_columns.is_some_and(|selected| !selected.contains(&column.name)) {
             continue;
@@ -163,6 +165,7 @@ fn plan_filter(filter: &FilterPlan, schemas: &SchemaMap) -> NativeFilterRewrite 
             data_type: column.data_type.clone(),
         });
     }
+
     // Never silently drop unknown or repeated requested column names.
     if selected_columns.is_some_and(|selected| selected.len() != output_columns.len()) {
         return NativeFilterRewrite::Unchanged;
@@ -216,13 +219,16 @@ mod tests {
     fn input(sql: &str, ddl: &str) -> (QueryPlan, SchemaMap) {
         let schema = Schema::from_ddl(ddl).unwrap();
         let schemas: SchemaMap = [(schema.table_name.clone(), schema.into())].into();
+
         let parsed = parse(sql).expect(sql).into_iter().next().expect(sql);
         let mut statement: StatementPlan = translate(&parsed).expect(sql).into();
         statement.schema_map = SchemaMapPlan::Planned(schemas.clone());
         let statement = plan_scan_columns(statement).unwrap();
+
         let StatementPlanKind::Query(query) = statement.kind else {
             panic!("{sql}");
         };
+
         (query, schemas)
     }
 

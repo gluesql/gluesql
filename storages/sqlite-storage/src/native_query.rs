@@ -41,6 +41,7 @@ impl NativeQuery for SqliteStorage {
                 None => Ok(SqlValue::Null),
             })
             .collect::<crate::Result<Vec<_>>>()?;
+
         let rows = SqliteNativeRowIter::new(statement, &params, output_types.to_vec())?;
 
         Ok(Box::new(rows.map(|row| row.map_err(Into::into))))

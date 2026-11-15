@@ -27,6 +27,7 @@ pub(super) fn plan(
 ) -> Option<PlannedCondition> {
     let mut planner = ConditionPlanner::new(alias, columns, column_aliases);
     let remaining = planner.extract(expr);
+
     if planner.sql_conditions.is_empty() {
         return None;
     }
@@ -66,6 +67,7 @@ impl<'a> ConditionPlanner<'a> {
             } => {
                 let left = self.extract(left);
                 let right = self.extract(right);
+
                 match (left, right) {
                     (Some(left), Some(right)) => Some(ExprPlan::BinaryOp {
                         left: Box::new(left),
@@ -110,6 +112,7 @@ impl<'a> ConditionPlanner<'a> {
             } => {
                 let left = self.translate(left)?;
                 let right = self.translate(right)?;
+
                 Some(format!("({left} {} {right})", op.to_sql()))
             }
             ExprPlan::BinaryOp {
@@ -130,11 +133,13 @@ impl<'a> ConditionPlanner<'a> {
                 } else {
                     self.translate(inner)?
                 };
+
                 let op = if matches!(expr, ExprPlan::IsNull(_)) {
                     "IS NULL"
                 } else {
                     "IS NOT NULL"
                 };
+
                 Some(format!("({sql} {op})"))
             }
             ExprPlan::InList {
@@ -152,6 +157,7 @@ impl<'a> ConditionPlanner<'a> {
                 // target <= high. Typed-value conversions can depend on the lhs type.
                 let low = self.comparison(low, &BinaryOperator::LtEq, expr)?;
                 let high = self.comparison(expr, &BinaryOperator::LtEq, high)?;
+
                 let between = format!("({low} AND {high})");
                 Some(if *negated {
                     format!("(NOT {between})")
@@ -191,8 +197,10 @@ impl<'a> ConditionPlanner<'a> {
         }
 
         let right = left.coerce_rhs(right)?;
+
         let left = self.bind(left)?;
         let right = self.bind(right)?;
+
         Some(format!("({left} {} {right})", op.to_sql()))
     }
 
@@ -200,6 +208,7 @@ impl<'a> ConditionPlanner<'a> {
         let target = self.operand_from_expr(expr)?;
         let mut resolved_target = None;
         let mut items = Vec::new();
+
         for item in list {
             let item = self.operand_from_expr(item)?;
             let target = target.clone().resolve(item.data_type().as_ref())?;
@@ -224,12 +233,15 @@ impl<'a> ConditionPlanner<'a> {
             resolved_target = Some(target);
             items.push(item);
         }
+
         let target = self.bind(resolved_target?)?;
         let items = items
             .into_iter()
             .map(|item| self.bind(item))
             .collect::<Option<Vec<_>>>()?;
+
         let op = if negated { "NOT IN" } else { "IN" };
+
         Some(format!("({target} {op} ({}))", items.join(", ")))
     }
 
@@ -850,6 +862,7 @@ mod tests {
             let expected = Some(placeholder.to_owned());
             assert_eq!(actual, expected);
         }
+
         let expected = vec![Value::I64(10), Value::I64(10), Value::Null];
         assert_eq!(planner.params, expected);
 

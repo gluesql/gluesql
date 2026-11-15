@@ -141,16 +141,15 @@ fn contextualize_source<'a>(
             schema.map(|schema| Rc::from(Context::new(get_labels(schema), None)))
         }
         SourcePlan::Derived(derived) => contextualize_query(schema_map, &derived.query),
-        SourcePlan::Native(native) => Some(Rc::new(Context::new(
-            Some(
-                native
-                    .columns
-                    .iter()
-                    .map(|column| column.name.as_str())
-                    .collect(),
-            ),
-            None,
-        ))),
+        SourcePlan::Native(native) => {
+            let labels = native
+                .columns
+                .iter()
+                .map(|column| column.name.as_str())
+                .collect();
+
+            Some(Rc::new(Context::new(Some(labels), None)))
+        }
         SourcePlan::Series(_) | SourcePlan::Dictionary(_) => None,
     }
 }
