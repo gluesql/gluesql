@@ -4,62 +4,65 @@ use {
         prelude::{Error, Glue},
     },
     gluesql_json_storage::{JsonStorage, error::JsonStorageError},
+    std::path::Path,
 };
 
 #[test]
 fn json_error() {
-    let path = "./tests/samples/";
-    let json_storage = JsonStorage::new(path).unwrap();
-    let mut glue = Glue::new(json_storage);
-
-    let cases = vec![
+    let cases = [
         (
-            glue.execute("SELECT * FROM WrongFormatJsonl"),
-            Err(ValueError::InvalidJsonString("[".to_owned()).into()),
+            "wrong-format-jsonl",
+            "SELECT * FROM WrongFormatJsonl",
+            ValueError::InvalidJsonString("[".to_owned()).into(),
         ),
         (
-            glue.execute("SELECT * FROM WrongFormatJson"),
-            Err(Error::StorageMsg(
+            "wrong-format-json",
+            "SELECT * FROM WrongFormatJson",
+            Error::StorageMsg(
                 JsonStorageError::InvalidJsonContent("WrongFormatJson.json".to_owned()).to_string(),
-            )),
+            ),
         ),
         (
-            glue.execute("SELECT * FROM WrongSchema"),
-            Err(Error::Schema(SchemaParseError::CannotParseDDL)),
+            "wrong-schema",
+            "SELECT * FROM WrongSchema",
+            Error::Schema(SchemaParseError::CannotParseDDL),
         ),
         (
-            glue.execute("SELECT * FROM WrongTableName"),
-            Err(Error::StorageMsg(
-                JsonStorageError::TableNameDoesNotMatchWithFile.to_string(),
-            )),
+            "wrong-table-name",
+            "SELECT * FROM WrongTableName",
+            Error::StorageMsg(JsonStorageError::TableNameDoesNotMatchWithFile.to_string()),
         ),
         (
-            glue.execute("SELECT * FROM Duplicated"),
-            Err(Error::StorageMsg(
+            "duplicated",
+            "SELECT * FROM Duplicated",
+            Error::StorageMsg(
                 JsonStorageError::BothJsonlAndJsonExist("Duplicated".to_owned()).to_string(),
-            )),
+            ),
         ),
         (
-            glue.execute("DROP TABLE Duplicated"),
-            Err(Error::StorageMsg(
+            "duplicated",
+            "DROP TABLE Duplicated",
+            Error::StorageMsg(
                 JsonStorageError::BothJsonlAndJsonExist("Duplicated".to_owned()).to_string(),
-            )),
+            ),
         ),
         (
-            glue.execute("SELECT * FROM JsonObjectTypeRequired"),
-            Err(Error::StorageMsg(
-                JsonStorageError::JsonObjectTypeRequired.to_string(),
-            )),
+            "json-object-type-required",
+            "SELECT * FROM JsonObjectTypeRequired",
+            Error::StorageMsg(JsonStorageError::JsonObjectTypeRequired.to_string()),
         ),
         (
-            glue.execute("SELECT * FROM JsonArrayTypeRequired"),
-            Err(Error::StorageMsg(
-                JsonStorageError::JsonArrayTypeRequired.to_string(),
-            )),
+            "json-array-type-required",
+            "SELECT * FROM JsonArrayTypeRequired",
+            Error::StorageMsg(JsonStorageError::JsonArrayTypeRequired.to_string()),
         ),
     ];
 
-    for (actual, expected) in cases {
-        assert_eq!(actual.map(|mut payloads| payloads.remove(0)), expected);
+    let samples = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/samples/errors");
+
+    for (directory, sql, expected) in cases {
+        let storage = JsonStorage::new(samples.join(directory)).unwrap();
+        let mut glue = Glue::new(storage);
+        assert_eq!(glue.execute(sql).unwrap_err(), expected, "{sql}");
     }
 }
