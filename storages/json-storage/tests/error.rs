@@ -40,12 +40,6 @@ fn json_error() {
             )),
         ),
         (
-            glue.execute("DROP TABLE Duplicated"),
-            Err(Error::StorageMsg(
-                JsonStorageError::BothJsonlAndJsonExist("Duplicated".to_owned()).to_string(),
-            )),
-        ),
-        (
             glue.execute("SELECT * FROM JsonObjectTypeRequired"),
             Err(Error::StorageMsg(
                 JsonStorageError::JsonObjectTypeRequired.to_string(),
@@ -62,4 +56,15 @@ fn json_error() {
     for (actual, expected) in cases {
         assert_eq!(actual.map(|mut payloads| payloads.remove(0)), expected);
     }
+
+    let duplicated_storage = JsonStorage::new("./tests/samples_duplicated/").unwrap();
+    let mut duplicated_glue = Glue::new(duplicated_storage);
+    assert_eq!(
+        duplicated_glue
+            .execute("DROP TABLE Duplicated")
+            .map(|mut payloads| payloads.remove(0)),
+        Err(Error::StorageMsg(
+            JsonStorageError::BothJsonlAndJsonExist("Duplicated".to_owned()).to_string(),
+        )),
+    );
 }
