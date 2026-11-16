@@ -1,4 +1,5 @@
-//! Runs the common planning passes, then delegates supported table filters to `SQLite`.
+//! Preserves primary-key lookups and delegates remaining scan filters before
+//! common JOIN and aggregate planning.
 
 mod native_filter;
 
@@ -24,17 +25,10 @@ impl Planner for SqliteStorage {
         validate(&statement)?;
 
         let statement = plan_schemaless(statement)?;
-        let statement = plan_primary_key(statement)?;
-        let statement = plan_hash_join(statement)?;
-        let statement = plan_aggregate(statement);
-
-        validate_create_function(&statement)?;
-        let statement = plan_custom_function_calls(self, statement)?;
-        validate_insert(&statement)?;
-        let statement = plan_create_table_columns(statement)?;
 
         // Resolve required scan columns before replacing a scan with a native source.
-        let mut statement = plan_scan_columns(statement)?;
+        let statement = plan_scan_columns(statement)?;
+        let mut statement = plan_primary_key(statement)?;
 
         if let StatementPlanKind::Query(query) = &mut statement.kind
             && let SchemaMapPlan::Planned(schemas) = &statement.schema_map
@@ -42,6 +36,12 @@ impl Planner for SqliteStorage {
             plan_native_filter(query, schemas);
         }
 
-        Ok(statement)
+        let statement = plan_hash_join(statement)?;
+        let statement = plan_aggregate(statement);
+
+        validate_create_function(&statement)?;
+        let statement = plan_custom_function_calls(self, statement)?;
+        validate_insert(&statement)?;
+        plan_create_table_columns(statement)
     }
 }

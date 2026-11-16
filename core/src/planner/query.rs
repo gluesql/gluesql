@@ -1,9 +1,7 @@
 use {
     super::context::Context,
-    crate::plan::{
-        ColumnDefPlan, ExprPlan, FunctionPlan, QueryPlan, SchemaPlan, SourcePlan, TableAliasPlan,
-    },
-    std::rc::Rc,
+    crate::plan::{ExprPlan, FunctionPlan, QueryPlan, SchemaPlan, SourcePlan},
+    std::{borrow::Cow, rc::Rc},
 };
 
 pub trait Planner<'a> {
@@ -217,37 +215,32 @@ pub trait Planner<'a> {
         next: Option<Rc<Context<'a>>>,
         source: &SourcePlan,
     ) -> Option<Rc<Context<'a>>> {
-        let (name, alias) = match source {
+        let columns = match source {
             SourcePlan::Table(table) => {
-                let alias = table
-                    .alias
-                    .as_ref()
-                    .map(|TableAliasPlan { name, .. }| name.clone());
+                let Some(SchemaPlan {
+                    column_defs: Some(column_defs),
+                    ..
+                }) = self.get_schema(&table.name)
+                else {
+                    return next;
+                };
 
-                (&table.name, alias)
+                column_defs
+                    .iter()
+                    .map(|column| Cow::Borrowed(column.name.as_str()))
+                    .collect()
             }
-            SourcePlan::Derived(_)
-            | SourcePlan::Series(_)
-            | SourcePlan::Dictionary(_)
-            | SourcePlan::Native(_) => {
+            SourcePlan::Native(native) => native
+                .columns
+                .iter()
+                .map(|column| Cow::Owned(column.name.clone()))
+                .collect(),
+            SourcePlan::Derived(_) | SourcePlan::Series(_) | SourcePlan::Dictionary(_) => {
                 return next;
             }
         };
 
-        let Some(SchemaPlan { column_defs, .. }) = self.get_schema(name) else {
-            return next;
-        };
-
-        let Some(column_defs) = column_defs else {
-            return next;
-        };
-
-        let columns = column_defs
-            .iter()
-            .map(|ColumnDefPlan { name, .. }| name.as_str())
-            .collect::<Vec<_>>();
-
-        let context = Context::new(alias.unwrap_or_else(|| name.to_owned()), columns, next);
+        let context = Context::new(source.alias_name().to_owned(), columns, next);
         Some(Rc::new(context))
     }
 }

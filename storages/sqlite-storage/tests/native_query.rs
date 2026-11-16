@@ -2,11 +2,11 @@ use {
     gluesql_core::{
         ast::DataType,
         data::Value,
-        error::Result,
+        error::{Error, Result},
         plan::{
-            ExprPlan, FilterInputPlan, FilterPlan, NativeSourcePlan, ProjectInputPlan,
-            ProjectionPlan, QueryPlan, SelectItemPlan, SourcePlan, StatementPlan,
-            StatementPlanKind, TableAccessPlan,
+            AggregationInputPlan, ExprPlan, FilterInputPlan, FilterPlan, InnerJoinInputPlan,
+            NativeSourcePlan, ProjectInputPlan, ProjectionPlan, QueryPlan, SelectItemPlan,
+            SourcePlan, StatementPlan, StatementPlanKind, TableAccessPlan,
         },
         prelude::{Glue, Payload},
         query_builder::{Build, native_query},
@@ -263,8 +263,8 @@ fn primary_key_lookup_keeps_the_existing_storage_path() {
     let mut glue = Glue::new(SqliteStorage::in_memory().unwrap());
     glue.execute(
         "
-        CREATE TABLE Item (id INT PRIMARY KEY);
-        INSERT INTO Item VALUES (2), (1), (3);
+        CREATE TABLE Item (id INT PRIMARY KEY, qty INT);
+        INSERT INTO Item VALUES (2, 12), (1, 7), (3, 20);
         ",
     )
     .unwrap();
@@ -281,6 +281,98 @@ fn primary_key_lookup_keeps_the_existing_storage_path() {
 
     let actual = glue.execute_prepared(&plan).unwrap();
     let expected = select(&["id"], vec![vec![Value::I64(2)]]);
+    assert_eq!(actual, expected);
+
+    // Native can translate qty, but the arithmetic key must retain its lookup.
+    let sql = "
+        SELECT qty
+        FROM Item
+        WHERE id = 1 + 1 AND qty > 10
+    ";
+    let plan = glue.plan(sql).unwrap().remove(0);
+    let ProjectInputPlan::Filter(FilterPlan {
+        input: FilterInputPlan::Source(SourcePlan::Table(table)),
+        ..
+    }) = &expect_query(&plan).project().unwrap().input
+    else {
+        panic!("expected a residual filter over a table lookup: {plan:?}");
+    };
+    assert!(matches!(table.access, TableAccessPlan::PrimaryKey { .. }));
+
+    let actual = glue.execute_prepared(&plan).unwrap();
+    let expected = select(&["qty"], vec![vec![Value::I64(12)]]);
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn native_filtered_rows_feed_common_aggregates() {
+    let mut glue = Glue::new(SqliteStorage::in_memory().unwrap());
+    glue.execute(
+        "
+        CREATE TABLE Item (id INT, name TEXT, qty INT);
+        INSERT INTO Item VALUES
+            (1, 'APPLE', 7),
+            (2, 'LIME', 12),
+            (3, 'PEAR', 20);
+        ",
+    )
+    .unwrap();
+
+    let sql = "
+        SELECT COUNT(*) AS count, SUM(qty) AS total
+        FROM Item
+        WHERE qty > 10
+    ";
+    let plan = glue.plan(sql).unwrap().remove(0);
+    let ProjectInputPlan::Aggregation(aggregation) = &expect_query(&plan).project().unwrap().input
+    else {
+        panic!("expected common aggregation: {plan:?}");
+    };
+    let AggregationInputPlan::Source(SourcePlan::Native(source)) = &aggregation.input else {
+        panic!("expected native rows below the aggregate: {plan:?}");
+    };
+    let actual = source
+        .columns
+        .iter()
+        .map(|column| column.name.as_str())
+        .collect::<Vec<_>>();
+    let expected = vec!["qty"];
+    assert_eq!(actual, expected);
+
+    let actual = glue.execute_prepared(&plan).unwrap();
+    let expected = select(
+        &["count", "total"],
+        vec![vec![Value::I64(2), Value::I64(32)]],
+    );
+    assert_eq!(actual, expected);
+
+    // Replanning must keep both native output and the aggregate bindings valid.
+    let actual = glue.execute_stmt(plan).unwrap();
+    assert_eq!(actual, expected);
+
+    let sql = "
+        SELECT COUNT(*) AS count, SUM(qty) AS total
+        FROM Item
+        WHERE qty > 10 AND LOWER(name) = 'pear'
+    ";
+    let plan = glue.plan(sql).unwrap().remove(0);
+    let ProjectInputPlan::Aggregation(aggregation) = &expect_query(&plan).project().unwrap().input
+    else {
+        panic!("expected common aggregation: {plan:?}");
+    };
+    let AggregationInputPlan::Filter(FilterPlan {
+        input: FilterInputPlan::Source(SourcePlan::Native(_)),
+        ..
+    }) = &aggregation.input
+    else {
+        panic!("expected the residual condition below the aggregate: {plan:?}");
+    };
+
+    let actual = glue.execute_prepared(&plan).unwrap();
+    let expected = select(
+        &["count", "total"],
+        vec![vec![Value::I64(1), Value::I64(20)]],
+    );
     assert_eq!(actual, expected);
 }
 
@@ -612,6 +704,57 @@ fn nested_native_filters_preserve_the_correlated_condition() {
 }
 
 #[test]
+fn native_outer_rows_feed_a_correlated_hash_join() {
+    let mut glue = Glue::new(SqliteStorage::in_memory().unwrap());
+    glue.execute(
+        "
+        CREATE TABLE Item (id INT, name TEXT, qty INT);
+        CREATE TABLE A (id INT);
+        CREATE TABLE B (id INT);
+        INSERT INTO Item VALUES
+            (1, 'APPLE', 7),
+            (2, 'LIME', 12),
+            (3, 'PEAR', 20);
+        INSERT INTO A VALUES (10);
+        INSERT INTO B VALUES (11), (13);
+        ",
+    )
+    .unwrap();
+
+    // Native filters Item; the common hash key still depends on each outer id.
+    let sql = "
+        SELECT o.name
+        FROM Item o
+        WHERE o.qty > 10 AND EXISTS (
+            SELECT a.id
+            FROM A a
+            JOIN B b ON b.id = a.id + o.id
+        )
+    ";
+    let plan = glue.plan(sql).unwrap().remove(0);
+    let outer = expect_query(&plan);
+    expect_partial_native_source(outer);
+    let ProjectInputPlan::Filter(FilterPlan {
+        expr: ExprPlan::Exists { subquery, .. },
+        ..
+    }) = &outer.project().unwrap().input
+    else {
+        panic!("expected a residual EXISTS: {plan:?}");
+    };
+    let ProjectInputPlan::InnerJoin(join) = &subquery.project().unwrap().input else {
+        panic!("expected a common inner join: {subquery:?}");
+    };
+    assert!(
+        matches!(join.input, InnerJoinInputPlan::Hash(_)),
+        "{join:?}"
+    );
+
+    let actual = glue.execute_prepared(&plan).unwrap();
+    let expected = select(&["name"], vec![vec![Value::Str("PEAR".to_owned())]]);
+    assert_eq!(actual, expected);
+}
+
+#[test]
 fn native_reads_use_the_current_transaction() {
     let mut glue = Glue::new(SqliteStorage::in_memory().unwrap());
     glue.execute(
@@ -637,6 +780,24 @@ fn native_reads_use_the_current_transaction() {
     glue.execute("ROLLBACK").unwrap();
     let actual = glue.execute_prepared(&plan).unwrap();
     let expected = select(&["id"], vec![vec![Value::I64(1)]]);
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn native_query_reports_custom_function_planning_error() {
+    let mut glue = Glue::new(SqliteStorage::in_memory().unwrap());
+
+    let statement = native_query("SELECT 1 AS qty")
+        .columns([("qty", "INT")])
+        .alias_as("native")
+        .select()
+        .project("missing(qty)")
+        .build()
+        .unwrap();
+    let actual = glue.execute_stmt(statement);
+    let expected = Err(Error::StorageMsg(
+        "[Storage] CustomFunction is not supported".to_owned(),
+    ));
     assert_eq!(actual, expected);
 }
 

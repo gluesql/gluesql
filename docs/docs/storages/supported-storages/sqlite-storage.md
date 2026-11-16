@@ -55,7 +55,13 @@ tables store one Map value per row in a `_doc` TEXT column.
 The SQLite planner can replace a single-table scan with a native query that
 applies supported WHERE conditions. This also applies inside subqueries. SQLite
 filters rows before GlueSQL decodes them; remaining filter conditions, projection
-functions, joins, sorting, DISTINCT, OFFSET, and LIMIT use GlueSQL's executor.
+functions, aggregates, joins, sorting, DISTINCT, OFFSET, and LIMIT use GlueSQL's
+executor.
+
+For aggregate queries without GROUP BY or HAVING, supported WHERE conditions can
+run in SQLite before GlueSQL computes the aggregates. For example,
+`SELECT COUNT(*) FROM Item WHERE qty > 10` can delegate the qty filter while
+counting the returned rows in GlueSQL.
 
 Supported conditions include compatible integer, Text, Boolean, and Bytea
 comparisons; Float32 and Float ordering comparisons; NULL checks; IN and BETWEEN;

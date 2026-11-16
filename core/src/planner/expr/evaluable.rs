@@ -264,13 +264,13 @@ mod tests {
         let left_child = Context::new("Empty".to_owned(), Vec::new(), None);
         let left = Context::new(
             "Foo".to_owned(),
-            vec!["id", "name"],
+            vec!["id".into(), "name".into()],
             Some(Rc::new(left_child)),
         );
         let right_child = Context::new("Src".to_owned(), Vec::new(), None);
         let right = Context::new(
             "Bar".to_owned(),
-            vec!["id", "rate"],
+            vec!["id".into(), "rate".into()],
             Some(Rc::new(right_child)),
         );
 

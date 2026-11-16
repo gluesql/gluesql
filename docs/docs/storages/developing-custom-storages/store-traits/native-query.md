@@ -36,9 +36,10 @@ pub trait NativeQuery {
 [SQLite Storage](../../supported-storages/sqlite-storage.md) implements both a
 custom planner and `NativeQuery`. Its
 [planner](https://github.com/gluesql/gluesql/blob/main/storages/sqlite-storage/src/planner.rs)
-runs the common planning passes first, then applies a SQLite-specific pass. This
-lets the native pass use the resolved schemas and required scan columns while
-keeping access paths, such as primary-key lookups, selected by the common planner.
+prepares schemas, normalizes schemaless expressions, selects scan columns, and
+plans primary-key lookups before applying a SQLite-specific filter pass. Common
+JOIN, aggregate, and function planning follows. The native pass keeps existing
+primary-key lookups and uses the required scan columns to define its output.
 
 The [native filter pass](https://github.com/gluesql/gluesql/blob/main/storages/sqlite-storage/src/planner/native_filter.rs)
 replaces eligible table scans with `SourcePlan::Native(NativeSourcePlan)`.

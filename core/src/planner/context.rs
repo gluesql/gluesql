@@ -1,9 +1,9 @@
-use std::rc::Rc;
+use std::{borrow::Cow, rc::Rc};
 
 pub enum Context<'a> {
     Data {
         alias: String,
-        columns: Vec<&'a str>,
+        columns: Vec<Cow<'a, str>>,
         next: Option<Rc<Context<'a>>>,
     },
     Bridge {
@@ -13,7 +13,7 @@ pub enum Context<'a> {
 }
 
 impl<'a> Context<'a> {
-    pub fn new(alias: String, columns: Vec<&'a str>, next: Option<Rc<Context<'a>>>) -> Self {
+    pub fn new(alias: String, columns: Vec<Cow<'a, str>>, next: Option<Rc<Context<'a>>>) -> Self {
         Context::Data {
             alias,
             columns,
@@ -46,7 +46,11 @@ impl<'a> Context<'a> {
 
     pub fn contains_column(&self, target: &str) -> bool {
         match self {
-            Self::Data { columns, .. } if columns.iter().any(|column| column == &target) => true,
+            Self::Data { columns, .. }
+                if columns.iter().any(|column| column.as_ref() == target) =>
+            {
+                true
+            }
             Self::Data { next, .. } => next
                 .as_ref()
                 .is_some_and(|next| next.contains_column(target)),
@@ -58,9 +62,9 @@ impl<'a> Context<'a> {
 
     pub fn contains_aliased_column(&self, target_alias: &str, target_column: &str) -> bool {
         match self {
-            Self::Data { alias, columns, .. } if alias == target_alias => {
-                columns.iter().any(|column| column == &target_column)
-            }
+            Self::Data { alias, columns, .. } if alias == target_alias => columns
+                .iter()
+                .any(|column| column.as_ref() == target_column),
             Self::Data { next, .. } => next
                 .as_ref()
                 .is_some_and(|next| next.contains_aliased_column(target_alias, target_column)),
