@@ -1,3 +1,5 @@
+mod schema;
+
 use {
     crate::{
         Result, SqliteStorage, SqliteStorageError,
@@ -42,37 +44,6 @@ impl StoreMut for SqliteStorage {
 }
 
 impl SqliteStorage {
-    fn atomic(&self, operation: impl FnOnce(&Self) -> Result<()>) -> Result<()> {
-        let outermost = self.connection.is_autocommit();
-        self.connection.execute_batch("SAVEPOINT __gluesql_write")?;
-
-        let result = operation(self).and_then(|()| {
-            self.connection
-                .execute_batch("RELEASE __gluesql_write")
-                .map_err(Into::into)
-        });
-
-        match result {
-            Err(operation) if !self.connection.is_autocommit() => {
-                let sql = if outermost {
-                    "ROLLBACK"
-                } else {
-                    "ROLLBACK TO __gluesql_write; RELEASE __gluesql_write"
-                };
-
-                if let Err(rollback) = self.connection.execute_batch(sql) {
-                    return Err(SqliteStorageError::SavepointRollback {
-                        operation: Box::new(operation),
-                        rollback,
-                    });
-                }
-
-                Err(operation)
-            }
-            result => result,
-        }
-    }
-
     fn append_rows(&self, table_name: &str, rows: &[Vec<Value>]) -> Result<()> {
         let schema = self.require_schema(table_name)?;
         let columns = columns(&schema);

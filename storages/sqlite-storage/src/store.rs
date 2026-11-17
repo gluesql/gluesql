@@ -1,11 +1,12 @@
 mod row_iter;
+mod schema;
 
 use {
     self::row_iter::SqliteRowIter,
     crate::{
         Result, SqliteStorage, SqliteStorageError,
         codec::{decode, encode},
-        schema::{columns, is_reserved, primary_key, quote, rowid_name},
+        schema::{columns, primary_key, quote, rowid_name},
     },
     gluesql_core::{
         ast::DataType,
@@ -62,24 +63,6 @@ impl Store for SqliteStorage {
 }
 
 impl SqliteStorage {
-    fn read_all_schemas(&self) -> Result<Vec<Schema>> {
-        let mut statement = self.connection.prepare(
-            "SELECT name
-             FROM sqlite_schema
-             WHERE type = 'table' AND name NOT GLOB 'sqlite_*'
-             ORDER BY name",
-        )?;
-        let names = statement
-            .query_map([], |row| row.get::<_, String>(0))?
-            .collect::<rusqlite::Result<Vec<_>>>()?;
-
-        names
-            .into_iter()
-            .filter(|name| !is_reserved(name))
-            .map(|name| self.require_schema(&name))
-            .collect()
-    }
-
     fn read_row(&self, schema: &Schema, key: &Key) -> Result<Option<Vec<Value>>> {
         let columns = columns(schema);
         let (key_column, key_type) = match primary_key(&columns) {

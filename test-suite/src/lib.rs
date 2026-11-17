@@ -374,7 +374,8 @@ macro_rules! generate_alter_table_tests {
             };
         }
 
-        sql_case!(alter::alter_table::rename);
+        sql_case!(alter::alter_table::rename_table);
+        sql_case!(alter::alter_table::rename_column);
         sql_case!(alter::alter_table::add_drop);
     };
 }

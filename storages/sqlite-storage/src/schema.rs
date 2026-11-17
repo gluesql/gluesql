@@ -1,20 +1,19 @@
 use {
-    crate::{Result, SqliteStorage, SqliteStorageError, codec::physical_type},
+    crate::{Result, SqliteStorageError, codec::physical_type},
     gluesql_core::{
         ast::{ColumnDef, DataType, Expr, Literal, Statement, ToSql},
         data::{Schema, Value},
         parse_sql::{parse, parse_data_type, parse_expr},
         translate::{translate, translate_data_type, translate_expr},
     },
-    rusqlite::{OptionalExtension, params},
     sqlparser::ast::{DataType as SqlDataType, Statement as SqlStatement},
     std::borrow::Cow,
 };
 
-const TABLE_META: &str = "__gluesql_table_meta";
-const COLUMN_META: &str = "__gluesql_column_meta";
+pub(super) const TABLE_META: &str = "__gluesql_table_meta";
+pub(super) const COLUMN_META: &str = "__gluesql_column_meta";
 
-const TABLE_META_DDL: &str = "
+pub(super) const TABLE_META_DDL: &str = "
 CREATE TABLE __gluesql_table_meta (
     table_name TEXT COLLATE NOCASE NOT NULL PRIMARY KEY,
     is_schemaless INTEGER NOT NULL DEFAULT 0 CHECK (is_schemaless IN (0, 1)),
@@ -22,7 +21,7 @@ CREATE TABLE __gluesql_table_meta (
 ) STRICT
 ";
 
-const COLUMN_META_DDL: &str = "
+pub(super) const COLUMN_META_DDL: &str = "
 CREATE TABLE __gluesql_column_meta (
     table_name TEXT COLLATE NOCASE NOT NULL,
     column_name TEXT COLLATE NOCASE NOT NULL,
@@ -37,122 +36,7 @@ CREATE TABLE __gluesql_column_meta (
 ) STRICT
 ";
 
-impl SqliteStorage {
-    pub(super) fn validate_metadata(&self) -> Result<()> {
-        for (name, ddl) in [(TABLE_META, TABLE_META_DDL), (COLUMN_META, COLUMN_META_DDL)] {
-            if let Some(stored) = self.read_metadata_ddl(name)?
-                && stored != ddl.trim()
-            {
-                return Err(SqliteStorageError::ConflictMetadataSchema(name.to_owned()));
-            }
-        }
-
-        Ok(())
-    }
-
-    pub(super) fn read_schema(&self, table_name: &str) -> Result<Option<Schema>> {
-        if is_reserved(table_name) {
-            return Ok(None);
-        }
-
-        let sql: Option<String> = self
-            .connection
-            .query_row(
-                "SELECT sql
-                 FROM sqlite_schema
-                 WHERE type = 'table' AND name = ?1 COLLATE NOCASE",
-                [table_name],
-                |row| row.get(0),
-            )
-            .optional()?;
-        let Some(sql) = sql else {
-            return Ok(None);
-        };
-
-        let mut schema = parse_physical_schema(&sql)?;
-        if !self.metadata_exists(COLUMN_META)? {
-            return Err(SqliteStorageError::MissingLogicalType {
-                table: table_name.to_owned(),
-                column: columns(&schema)[0].name.clone(),
-            });
-        }
-
-        let table_metadata = self.read_table_metadata(table_name)?;
-
-        let mut statement = self.connection.prepare(
-            "SELECT logical_type, comment, default_sql
-             FROM __gluesql_column_meta
-             WHERE table_name = ?1 AND column_name = ?2",
-        )?;
-
-        for column in schema.column_defs.iter_mut().flatten() {
-            let metadata = statement
-                .query_row(params![table_name, column.name], |row| {
-                    Ok(ColumnMetadata {
-                        logical_type: row.get(0)?,
-                        comment: row.get(1)?,
-                        default_sql: row.get(2)?,
-                    })
-                })
-                .optional()?
-                .ok_or_else(|| SqliteStorageError::MissingLogicalType {
-                    table: table_name.to_owned(),
-                    column: column.name.clone(),
-                })?;
-
-            metadata.restore_column(column)?;
-        }
-
-        if let Some(metadata) = table_metadata {
-            metadata.restore_table(&mut schema)?;
-        }
-
-        Ok(Some(schema))
-    }
-
-    pub(super) fn require_schema(&self, table_name: &str) -> Result<Schema> {
-        self.read_schema(table_name)?
-            .ok_or_else(|| SqliteStorageError::TableNotFound(table_name.to_owned()))
-    }
-
-    fn read_table_metadata(&self, table_name: &str) -> Result<Option<TableMetadata>> {
-        if !self.metadata_exists(TABLE_META)? {
-            return Ok(None);
-        }
-
-        let metadata = self
-            .connection
-            .query_row(
-                "SELECT is_schemaless, comment
-                 FROM __gluesql_table_meta
-                 WHERE table_name = ?1",
-                [table_name],
-                |row| {
-                    Ok(TableMetadata {
-                        is_schemaless: row.get(0)?,
-                        comment: row.get(1)?,
-                    })
-                },
-            )
-            .optional()?;
-
-        Ok(metadata)
-    }
-
-    fn metadata_exists(&self, name: &str) -> Result<bool> {
-        let exists = self.connection.query_row(
-            "SELECT EXISTS (
-                 SELECT 1 FROM sqlite_schema WHERE name = ?1 COLLATE NOCASE
-             )",
-            [name],
-            |row| row.get(0),
-        )?;
-
-        Ok(exists)
-    }
-}
-
-fn parse_physical_schema(sql: &str) -> Result<Schema> {
+pub(super) fn parse_physical_schema(sql: &str) -> Result<Schema> {
     let sql = sql.strip_suffix(" STRICT").unwrap_or(sql);
     let mut parsed = parse(sql)?;
     let Some(statement @ SqlStatement::CreateTable(_)) = parsed.first_mut() else {
@@ -192,14 +76,14 @@ fn parse_physical_schema(sql: &str) -> Result<Schema> {
     })
 }
 
-struct ColumnMetadata {
-    logical_type: String,
-    comment: Option<String>,
-    default_sql: Option<String>,
+pub(super) struct ColumnMetadata {
+    pub(super) logical_type: String,
+    pub(super) comment: Option<String>,
+    pub(super) default_sql: Option<String>,
 }
 
 impl ColumnMetadata {
-    fn restore_column(self, column: &mut ColumnDef) -> Result<()> {
+    pub(super) fn restore_column(self, column: &mut ColumnDef) -> Result<()> {
         let data_type = parse_data_type(&self.logical_type)
             .and_then(|parsed| translate_data_type(&parsed))
             .map_err(|_| SqliteStorageError::InvalidLogicalType(self.logical_type.clone()))?;
@@ -225,13 +109,13 @@ impl ColumnMetadata {
     }
 }
 
-struct TableMetadata {
-    is_schemaless: bool,
-    comment: Option<String>,
+pub(super) struct TableMetadata {
+    pub(super) is_schemaless: bool,
+    pub(super) comment: Option<String>,
 }
 
 impl TableMetadata {
-    fn restore_table(self, schema: &mut Schema) -> Result<()> {
+    pub(super) fn restore_table(self, schema: &mut Schema) -> Result<()> {
         schema.comment = self.comment;
 
         if !self.is_schemaless {
@@ -253,210 +137,7 @@ impl TableMetadata {
     }
 }
 
-impl SqliteStorage {
-    pub(super) fn write_schema(&self, schema: &Schema) -> Result<()> {
-        if is_reserved(&schema.table_name) {
-            return Err(SqliteStorageError::ReservedTableName(
-                schema.table_name.clone(),
-            ));
-        }
-
-        if !schema.indexes.is_empty() {
-            return Err(SqliteStorageError::SchemaIndexesNotSupported);
-        }
-
-        if let Some(engine) = &schema.engine {
-            return Err(SqliteStorageError::EngineNotSupported(engine.clone()));
-        }
-
-        let columns = columns(schema);
-        if columns.is_empty() {
-            return Err(SqliteStorageError::EmptySchema(schema.table_name.clone()));
-        }
-
-        rowid_name(schema)?;
-
-        let old = self.read_schema(&schema.table_name)?;
-        if let Some(old) = &old
-            && old.column_defs.is_none() != schema.column_defs.is_none()
-        {
-            return Err(SqliteStorageError::SchemaKindChangeNotSupported(
-                schema.table_name.clone(),
-            ));
-        }
-
-        self.ensure_metadata()?;
-
-        if let Some(old) = &old {
-            self.rebuild_table(old, schema)?;
-        } else {
-            self.connection.execute_batch(&create_table_sql(schema))?;
-        }
-
-        self.write_table_metadata(schema)?;
-        self.write_column_metadata(&schema.table_name, &columns)
-    }
-
-    fn write_table_metadata(&self, schema: &Schema) -> Result<()> {
-        if schema.column_defs.is_none() || schema.comment.is_some() {
-            self.connection.execute(
-                "INSERT INTO __gluesql_table_meta (table_name, is_schemaless, comment)
-                 VALUES (?1, ?2, ?3)
-                 ON CONFLICT(table_name) DO UPDATE
-                 SET is_schemaless = excluded.is_schemaless, comment = excluded.comment",
-                params![
-                    schema.table_name,
-                    schema.column_defs.is_none(),
-                    schema.comment
-                ],
-            )?;
-        } else {
-            self.connection.execute(
-                "DELETE FROM __gluesql_table_meta WHERE table_name = ?1",
-                [&schema.table_name],
-            )?;
-        }
-
-        Ok(())
-    }
-
-    fn write_column_metadata(&self, table_name: &str, columns: &[ColumnDef]) -> Result<()> {
-        self.connection.execute(
-            "DELETE FROM __gluesql_column_meta WHERE table_name = ?1",
-            [table_name],
-        )?;
-
-        for column in columns {
-            let default_sql = column
-                .default
-                .as_ref()
-                .filter(|expr| !physical_default(expr))
-                .map(ToSql::to_sql);
-
-            self.connection.execute(
-                "INSERT INTO __gluesql_column_meta
-                     (table_name, column_name, logical_type, comment, default_sql)
-                 VALUES (?1, ?2, ?3, ?4, ?5)",
-                params![
-                    table_name,
-                    column.name,
-                    column.data_type.to_string(),
-                    column.comment,
-                    default_sql,
-                ],
-            )?;
-        }
-
-        Ok(())
-    }
-
-    fn ensure_metadata(&self) -> Result<()> {
-        for (name, ddl) in [(TABLE_META, TABLE_META_DDL), (COLUMN_META, COLUMN_META_DDL)] {
-            let ddl = ddl.trim();
-            match self.read_metadata_ddl(name)? {
-                Some(stored) if stored != ddl => {
-                    return Err(SqliteStorageError::ConflictMetadataSchema(name.to_owned()));
-                }
-                Some(_) => {}
-                None => self.connection.execute_batch(ddl)?,
-            }
-        }
-
-        Ok(())
-    }
-
-    fn read_metadata_ddl(&self, name: &str) -> Result<Option<String>> {
-        let ddl = self
-            .connection
-            .query_row(
-                "SELECT sql
-                 FROM sqlite_schema
-                 WHERE name = ?1 COLLATE NOCASE",
-                [name],
-                |row| row.get(0),
-            )
-            .optional()?;
-
-        Ok(ddl)
-    }
-
-    fn rebuild_table(&self, old: &Schema, new: &Schema) -> Result<()> {
-        let old_columns = columns(old);
-        let new_columns = columns(new);
-        let common = old_columns
-            .iter()
-            .filter(|old| new_columns.iter().any(|new| old.name == new.name))
-            .map(|column| quote(&column.name))
-            .collect::<Vec<_>>();
-
-        let mut select = vec![quote(rowid_name(old)?)];
-        select.extend(common.iter().cloned());
-        let sql = format!(
-            "SELECT {} FROM {} ORDER BY {}",
-            select.join(", "),
-            quote(&old.table_name),
-            select[0]
-        );
-
-        let mut statement = self.connection.prepare(&sql)?;
-        let saved = statement
-            .query_map([], |row| {
-                (0..select.len())
-                    .map(|index| row.get::<_, rusqlite::types::Value>(index))
-                    .collect::<rusqlite::Result<Vec<_>>>()
-            })?
-            .collect::<rusqlite::Result<Vec<_>>>()?;
-        drop(statement);
-
-        self.connection.execute_batch(&format!(
-            "DROP TABLE {}; {}",
-            quote(&old.table_name),
-            create_table_sql(new)
-        ))?;
-
-        let mut target = vec![quote(rowid_name(new)?)];
-        target.extend(common);
-        let parameters = vec!["?"; target.len()].join(", ");
-        let sql = format!(
-            "INSERT INTO {} ({}) VALUES ({parameters})",
-            quote(&new.table_name),
-            target.join(", ")
-        );
-
-        let mut statement = self.connection.prepare(&sql)?;
-        for row in saved {
-            statement.execute(rusqlite::params_from_iter(row))?;
-        }
-
-        Ok(())
-    }
-
-    pub(super) fn remove_schema(&self, table_name: &str) -> Result<()> {
-        if is_reserved(table_name) {
-            return Err(SqliteStorageError::ReservedTableName(table_name.to_owned()));
-        }
-
-        if self.read_schema(table_name)?.is_none() {
-            return Ok(());
-        }
-
-        self.connection
-            .execute_batch(&format!("DROP TABLE {}", quote(table_name)))?;
-
-        self.connection.execute(
-            "DELETE FROM __gluesql_column_meta WHERE table_name = ?1",
-            [table_name],
-        )?;
-        self.connection.execute(
-            "DELETE FROM __gluesql_table_meta WHERE table_name = ?1",
-            [table_name],
-        )?;
-
-        Ok(())
-    }
-}
-
-fn create_table_sql(schema: &Schema) -> String {
+pub(super) fn create_table_sql(schema: &Schema) -> String {
     let mut definitions = columns(schema)
         .iter()
         .map(|column| {
@@ -552,7 +233,7 @@ pub(super) fn rowid_name(schema: &Schema) -> Result<&'static str> {
         .ok_or_else(|| SqliteStorageError::RowidUnavailable(schema.table_name.clone()))
 }
 
-fn physical_default(expr: &Expr) -> bool {
+pub(super) fn physical_default(expr: &Expr) -> bool {
     match expr {
         Expr::Literal(Literal::QuotedString(value)) => !value.contains('\0'),
         Expr::Literal(Literal::Number(_)) | Expr::Value(Value::Null | Value::Bool(_)) => true,

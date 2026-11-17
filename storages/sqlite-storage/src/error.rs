@@ -1,5 +1,9 @@
 use {
-    gluesql_core::{ast::DataType, data::Key, error::Error},
+    gluesql_core::{
+        ast::DataType,
+        data::Key,
+        error::{AlterTableError, Error},
+    },
     rusqlite::types::Type,
     thiserror::Error as ThisError,
 };
@@ -116,6 +120,12 @@ pub enum SqliteStorageError {
         commit: Box<rusqlite::Error>,
         rollback: rusqlite::Error,
     },
+}
+
+impl From<AlterTableError> for SqliteStorageError {
+    fn from(error: AlterTableError) -> Self {
+        Self::Glue(error.into())
+    }
 }
 
 impl From<SqliteStorageError> for Error {

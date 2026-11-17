@@ -17,4 +17,6 @@ impl Tester<SqliteStorage> for SqliteTester {
 }
 
 generate_store_tests!(test, SqliteTester);
+generate_alter_table_tests!(test, SqliteTester);
 generate_transaction_tests!(test, SqliteTester);
+generate_transaction_alter_table_tests!(test, SqliteTester);

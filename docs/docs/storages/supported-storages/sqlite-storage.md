@@ -103,8 +103,8 @@ they fail.
 
 ## Things to keep in mind
 
-- Explicit indexes, custom stored functions, and `ALTER TABLE` are not yet
-  supported by this backend.
+- Explicit indexes and custom stored functions are not yet supported by this
+  backend.
 - Floating-point NaN values cannot be stored. SQLite cannot preserve them
   separately from NULL.
 - Leave at least one of `_rowid_`, `rowid`, and `oid` unused as a column name in

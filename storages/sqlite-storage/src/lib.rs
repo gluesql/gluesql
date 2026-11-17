@@ -1,5 +1,6 @@
 #![deny(clippy::str_to_string)]
 
+mod alter_table;
 mod codec;
 mod error;
 mod native_query;
@@ -13,9 +14,7 @@ pub use error::SqliteStorageError;
 
 use {
     crate::transaction::TransactionState,
-    gluesql_core::store::{
-        AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata,
-    },
+    gluesql_core::store::{CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata},
     rusqlite::Connection,
     std::path::Path,
 };
@@ -54,6 +53,5 @@ impl SqliteStorage {
 impl Index for SqliteStorage {}
 impl IndexMut for SqliteStorage {}
 impl Metadata for SqliteStorage {}
-impl AlterTable for SqliteStorage {}
 impl CustomFunction for SqliteStorage {}
 impl CustomFunctionMut for SqliteStorage {}
