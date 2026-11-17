@@ -4,7 +4,7 @@ use {
         data::{Key, Schema, Value},
         error::{AlterTableError, Error},
         parse_sql::parse_column_def,
-        prelude::Glue,
+        prelude::{Glue, Payload},
         store::{AlterTable, Store, StoreMut, Transaction},
         translate::translate_column_def,
     },
@@ -104,6 +104,34 @@ fn schemaless_rename_preserves_the_document_marker_on_reopen() {
 }
 
 #[test]
+fn schemaless_column_changes_leave_documents_unchanged() {
+    let mut storage = SqliteStorage::in_memory().unwrap();
+    let schema = Schema::from_ddl("CREATE TABLE documents").unwrap();
+    storage.insert_schema(&schema).unwrap();
+    let document = Value::Map(BTreeMap::from([("id".to_owned(), Value::I64(10))]));
+    storage
+        .append_data("documents", vec![vec![document.clone()]])
+        .unwrap();
+    let expected = Err(Error::AlterTable(AlterTableError::SchemalessTableFound(
+        "documents".to_owned(),
+    )));
+
+    let actual = storage.add_column("documents", &column("label TEXT"), Value::Null);
+    assert_eq!(actual, expected);
+
+    let actual = storage.rename_column("documents", "id", "label");
+    assert_eq!(actual, expected);
+
+    let actual = storage.drop_column("documents", "label", true);
+    assert_eq!(actual, expected);
+
+    assert_eq!(storage.fetch_schema("documents").unwrap(), Some(schema));
+    let actual = storage.fetch_data("documents", &Key::I64(1)).unwrap();
+    let expected = Some(vec![document]);
+    assert_eq!(actual, expected);
+}
+
+#[test]
 fn column_rebuilds_preserve_rowids_and_encoded_defaults() {
     let directory = tempdir().unwrap();
     let path = directory.path().join("columns.sqlite");
@@ -171,6 +199,56 @@ fn column_rebuilds_preserve_rowids_and_encoded_defaults() {
         .collect::<rusqlite::Result<Vec<_>>>()
         .unwrap();
     let expected = vec!["_rowid_", "amount", "rowid"];
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn dropping_primary_key_preserves_rows_and_later_writes() {
+    let mut glue = Glue::new(SqliteStorage::in_memory().unwrap());
+
+    // The logical primary keys differ from the SQLite rowids used after the drop.
+    glue.execute(
+        "
+        CREATE TABLE item (id INT PRIMARY KEY, name TEXT);
+        INSERT INTO item VALUES (10, 'a'), (20, 'b');
+        ",
+    )
+    .unwrap();
+
+    let actual = glue.execute("ALTER TABLE item DROP COLUMN id").unwrap();
+    let expected = vec![Payload::AlterTable];
+    assert_eq!(actual, expected);
+
+    let actual = glue.execute("SELECT name FROM item ORDER BY name").unwrap();
+    let expected = vec![Payload::Select {
+        labels: vec!["name".to_owned()],
+        rows: vec![
+            vec![Value::Str("a".to_owned())],
+            vec![Value::Str("b".to_owned())],
+        ],
+    }];
+    assert_eq!(actual, expected);
+
+    let actual = glue
+        .execute(
+            "
+            UPDATE item SET name = 'changed' WHERE name = 'a';
+            DELETE FROM item WHERE name = 'b';
+            INSERT INTO item VALUES ('new');
+            ",
+        )
+        .unwrap();
+    let expected = vec![Payload::Update(1), Payload::Delete(1), Payload::Insert(1)];
+    assert_eq!(actual, expected);
+
+    let actual = glue.execute("SELECT name FROM item ORDER BY name").unwrap();
+    let expected = vec![Payload::Select {
+        labels: vec!["name".to_owned()],
+        rows: vec![
+            vec![Value::Str("changed".to_owned())],
+            vec![Value::Str("new".to_owned())],
+        ],
+    }];
     assert_eq!(actual, expected);
 }
 
