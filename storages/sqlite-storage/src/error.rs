@@ -109,6 +109,19 @@ pub enum SqliteStorageError {
     #[error("invalid physical schema for schemaless table: {0}")]
     ConflictSchemalessSchema(String),
 
+    #[error("foreign key violation in {table} at rowid {rowid}, referencing {parent}")]
+    ConflictForeignKey {
+        table: String,
+        rowid: i64,
+        parent: String,
+    },
+
+    #[error("operation failed ({operation}); foreign key deferral restore failed ({restore})")]
+    ForeignKeyDeferralRestore {
+        operation: Box<SqliteStorageError>,
+        restore: rusqlite::Error,
+    },
+
     #[error("operation failed ({operation}); savepoint cleanup failed ({rollback})")]
     SavepointRollback {
         operation: Box<SqliteStorageError>,

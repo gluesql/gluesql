@@ -142,12 +142,45 @@ impl SqliteStorage {
         columns: &[String],
         rows: &[Vec<SqlValue>],
     ) -> Result<()> {
-        self.connection.execute_batch(&format!(
-            "DROP TABLE {}; {}",
-            quote(&schema.table_name),
-            create_table_sql(schema)
-        ))?;
+        let deferred: bool =
+            self.connection
+                .pragma_query_value(None, "defer_foreign_keys", |row| row.get(0))?;
+        self.connection
+            .pragma_update(None, "defer_foreign_keys", true)?;
 
+        let result = self
+            .connection
+            .execute_batch(&format!(
+                "DROP TABLE {}; {}",
+                quote(&schema.table_name),
+                create_table_sql(schema)
+            ))
+            .map_err(Into::into)
+            .and_then(|()| self.insert_rows_for_rebuild(schema, columns, rows))
+            .and_then(|()| self.check_foreign_keys());
+
+        // Disabling deferral clears SQLite's violation tracking. Check first;
+        // on failure, the caller's atomic operation rolls back the rebuild.
+        let restored = self
+            .connection
+            .pragma_update(None, "defer_foreign_keys", deferred);
+
+        match (result, restored) {
+            (result, Ok(())) => result,
+            (Ok(()), Err(error)) => Err(error.into()),
+            (Err(operation), Err(restore)) => Err(SqliteStorageError::ForeignKeyDeferralRestore {
+                operation: Box::new(operation),
+                restore,
+            }),
+        }
+    }
+
+    fn insert_rows_for_rebuild(
+        &self,
+        schema: &Schema,
+        columns: &[String],
+        rows: &[Vec<SqlValue>],
+    ) -> Result<()> {
         let mut target = vec![quote(rowid_name(schema)?)];
         target.extend(columns.iter().map(|name| quote(name)));
         let parameters = vec!["?"; target.len()].join(", ");
@@ -160,6 +193,21 @@ impl SqliteStorage {
         let mut statement = self.connection.prepare(&sql)?;
         for row in rows {
             statement.execute(rusqlite::params_from_iter(row))?;
+        }
+
+        Ok(())
+    }
+
+    fn check_foreign_keys(&self) -> Result<()> {
+        // Checking only the rebuilt table would miss references from its children.
+        let mut statement = self.connection.prepare("PRAGMA foreign_key_check")?;
+        let mut rows = statement.query([])?;
+        if let Some(row) = rows.next()? {
+            return Err(SqliteStorageError::ConflictForeignKey {
+                table: row.get(0)?,
+                rowid: row.get(1)?,
+                parent: row.get(2)?,
+            });
         }
 
         Ok(())
