@@ -5,6 +5,7 @@ use {
     },
     gluesql_sqlite_storage::{SqliteStorage, SqliteStorageError},
     rusqlite::{Connection, Error as SqliteError, ffi},
+    rust_decimal::Decimal,
     tempfile::tempdir,
 };
 
@@ -225,6 +226,14 @@ fn decimal_writes_reuse_rowids_across_scales_within_a_batch() {
 
     // Resolving logical decimal keys must not decode the other columns.
     let sqlite = Connection::open(path).unwrap();
+    sqlite
+        .create_collation("gluesql_decimal", |left, right| {
+            let left: Decimal = left.parse().unwrap();
+            let right: Decimal = right.parse().unwrap();
+
+            left.cmp(&right)
+        })
+        .unwrap();
     sqlite
         .execute("UPDATE item SET flag = 2 WHERE id = '2.0'", [])
         .unwrap();

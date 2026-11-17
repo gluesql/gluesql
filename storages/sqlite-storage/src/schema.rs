@@ -1,5 +1,5 @@
 use {
-    crate::{Result, SqliteStorageError, codec::physical_type},
+    crate::{Result, SqliteStorageError, codec::physical_type, collation::DECIMAL_COLLATION},
     gluesql_core::{
         ast::{ColumnDef, DataType, Expr, Literal, Statement, ToSql},
         data::{Schema, Value},
@@ -149,6 +149,11 @@ pub(super) fn create_table_sql(schema: &Schema) -> String {
             };
 
             let mut sql = format!("{} {physical}", quote(&column.name));
+            if column.data_type == DataType::Decimal {
+                sql.push_str(" COLLATE ");
+                sql.push_str(DECIMAL_COLLATION);
+            }
+
             if !column.nullable {
                 sql.push_str(" NOT NULL");
             }
@@ -277,7 +282,8 @@ mod tests {
                  id INT NOT NULL PRIMARY KEY,
                  amount REAL DEFAULT 1.5,
                  bytes BLOB,
-                 name TEXT UNIQUE
+                 name TEXT UNIQUE,
+                 price TEXT COLLATE gluesql_decimal
              ) STRICT",
         )
         .unwrap();
@@ -286,7 +292,8 @@ mod tests {
                  id INT NOT NULL PRIMARY KEY,
                  amount FLOAT DEFAULT 1.5,
                  bytes BYTEA,
-                 name TEXT UNIQUE
+                 name TEXT UNIQUE,
+                 price TEXT
              )",
         )
         .unwrap();
@@ -476,6 +483,23 @@ mod tests {
             r#"CREATE TABLE "item" ("id" INT NOT NULL PRIMARY KEY, "#,
             r#""level" INTEGER NOT NULL DEFAULT 1, "code" INTEGER UNIQUE, "#,
             r#""label" TEXT) STRICT"#,
+        );
+        assert_eq!(actual, expected);
+
+        // Decimal comparisons use the same numeric collation for keys and ordinary columns.
+        let schema = Schema::from_ddl(
+            "CREATE TABLE prices (
+                 id DECIMAL PRIMARY KEY,
+                 code DECIMAL UNIQUE,
+                 amount DECIMAL
+             )",
+        )
+        .unwrap();
+        let actual = super::create_table_sql(&schema);
+        let expected = concat!(
+            r#"CREATE TABLE "prices" ("id" TEXT COLLATE gluesql_decimal NOT NULL PRIMARY KEY, "#,
+            r#""code" TEXT COLLATE gluesql_decimal UNIQUE, "#,
+            r#""amount" TEXT COLLATE gluesql_decimal) STRICT"#,
         );
         assert_eq!(actual, expected);
 

@@ -114,13 +114,18 @@ WebAssembly support has not been validated.
 
 ## Inspecting the database file
 
-You can open the file with SQLite tools to inspect the stored data. GlueSQL
-creates SQLite STRICT tables and keeps additional schema information in
-`__gluesql_table_meta` and `__gluesql_column_meta`. These table names are reserved;
-keep the metadata tables intact so GlueSQL can restore the schema when reopening
-the file.
+You can open a GlueSQL database file with SQLite tools to inspect its tables and
+stored values. Keep the following in mind:
 
-Some values look different in SQLite tools. For example, DECIMAL values are
-stored as text, and MAP and LIST values use RON (Rusty Object Notation) text,
-which SQLite's JSON functions cannot read. Querying through GlueSQL restores
-these values to their GlueSQL types automatically.
+- **Schema metadata:** GlueSQL creates STRICT tables and keeps additional schema
+  information in `__gluesql_table_meta` and `__gluesql_column_meta`. These names
+  are reserved. Leave the metadata tables unchanged so GlueSQL can restore the
+  schema when reopening the file.
+- **Stored values:** DECIMAL values appear as text. MAP and LIST values use RON
+  (Rusty Object Notation) text, which SQLite's JSON functions cannot read.
+- **Decimal comparisons:** Use GlueSQL when comparing or updating DECIMAL values.
+  It supplies the numeric comparison rule that treats `1.0` and `1.00` as equal;
+  ordinary SQLite tools do not include that rule.
+
+When you query through GlueSQL, the stored values are converted back to their
+declared GlueSQL types automatically.

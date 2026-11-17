@@ -10,6 +10,7 @@ use {
     },
     gluesql_sqlite_storage::{SqliteStorage, SqliteStorageError},
     rusqlite::{Connection, Error as SqliteError, ffi},
+    rust_decimal::Decimal,
     std::collections::BTreeMap,
     tempfile::tempdir,
 };
@@ -144,6 +145,14 @@ fn column_rebuilds_preserve_rowids_and_encoded_defaults() {
 
     // Keep a physical rowid unrelated to the logical primary key or row count.
     let sqlite = Connection::open(&path).unwrap();
+    sqlite
+        .create_collation("gluesql_decimal", |left, right| {
+            let left: Decimal = left.parse().unwrap();
+            let right: Decimal = right.parse().unwrap();
+
+            left.cmp(&right)
+        })
+        .unwrap();
     sqlite.execute("UPDATE item SET rowid = 41", []).unwrap();
 
     // Adding rowid changes the usable alias to oid; defaults need logical encoding.
