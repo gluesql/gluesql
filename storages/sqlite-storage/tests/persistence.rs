@@ -298,9 +298,9 @@ fn rewriting_schema_replaces_column_metadata_and_removes_unused_table_metadata()
     )
     .unwrap();
     storage.insert_schema(&updated).unwrap();
-    let actual = storage.fetch_schema("ITEM").unwrap();
-    let expected = Some(updated);
-    assert_eq!(actual, expected);
+
+    assert_eq!(storage.fetch_schema("item").unwrap(), Some(updated));
+    assert_eq!(storage.fetch_schema("ITEM").unwrap(), None);
 
     // Old metadata must be deleted, including the row for the dropped column.
     let sqlite = Connection::open(&path).unwrap();

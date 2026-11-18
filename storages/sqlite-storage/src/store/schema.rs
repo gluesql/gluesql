@@ -21,7 +21,7 @@ impl SqliteStorage {
             .query_row(
                 "SELECT sql
                  FROM sqlite_schema
-                 WHERE type = 'table' AND name = ?1 COLLATE NOCASE",
+                 WHERE type = 'table' AND name = ?1",
                 [table_name],
                 |row| row.get(0),
             )

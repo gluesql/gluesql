@@ -27,7 +27,7 @@ fn rename_preserves_metadata_and_rowids_on_reopen() {
         .unwrap();
 
     // Native identifiers are quoted, while metadata names are bound values.
-    storage.rename_schema("ITEM", "renamed\"table").unwrap();
+    storage.rename_schema("item", "renamed\"table").unwrap();
     storage
         .rename_column("renamed\"table", "level", "renamed\"level")
         .unwrap();
