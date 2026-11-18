@@ -216,7 +216,10 @@ impl Expr {
             Expr::Nested(expr) => format!("({})", expr.to_sql_with(quoted)),
             Expr::Literal(s) => s.to_sql(),
             Expr::Value(v) => v.to_sql(),
-            Expr::TypedString { data_type, value } => format!("{data_type} '{value}'"),
+            Expr::TypedString { data_type, value } => {
+                let escaped = value.replace('\'', "''");
+                format!("{data_type} '{escaped}'")
+            }
             Expr::Case {
                 operand,
                 when_then,
@@ -389,6 +392,14 @@ mod tests {
             Expr::TypedString {
                 data_type: DataType::Int,
                 value: "1".to_owned()
+            }
+            .to_sql()
+        );
+        assert_eq!(
+            "TEXT 'O''Brien'",
+            Expr::TypedString {
+                data_type: DataType::Text,
+                value: "O'Brien".to_owned()
             }
             .to_sql()
         );
