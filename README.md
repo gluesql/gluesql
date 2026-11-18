@@ -52,6 +52,7 @@ GlueSQL provides reference storage implementations for in-memory data, embedded 
 | Use case | Recommended storage |
 | --- | --- |
 | Persistent embedded database | [Redb](https://gluesql.org/docs/dev/storages/supported-storages/redb-storage/) |
+| Using GlueSQL types and functions with SQLite's storage and query engine | [SQLite](https://gluesql.org/docs/dev/storages/supported-storages/sqlite-storage/) |
 | Persistent database on S3 or Cloudflare R2 | [SlateDB](https://gluesql.org/docs/dev/storages/supported-storages/slatedb-storage/) |
 | Existing MongoDB or Redis data | [Mongo](https://gluesql.org/docs/dev/storages/supported-storages/mongo-storage/) or [Redis](https://gluesql.org/docs/dev/storages/supported-storages/redis-storage/) |
 | Temporary data, tests, and prototypes, data across threads | [Memory](https://gluesql.org/docs/dev/storages/supported-storages/memory-storage/), [Shared Memory](https://gluesql.org/docs/dev/storages/supported-storages/shared-memory-storage/) |
