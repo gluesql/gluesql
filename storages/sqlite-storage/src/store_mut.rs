@@ -3,15 +3,15 @@ mod schema;
 use {
     crate::{
         Result, SqliteStorage, SqliteStorageError,
-        codec::encode,
-        schema::{columns, primary_key, quote, rowid_name},
+        codec::{encode, encode_key},
+        schema::{columns, key_column, primary_key, quote, rowid_name},
     },
     gluesql_core::{
         data::{Key, Schema, Value},
         error::Result as GlueResult,
-        store::{ScanColumns, StoreMut},
+        store::StoreMut,
     },
-    rusqlite::{params_from_iter, types::Value as SqlValue},
+    rusqlite::{params_from_iter, types::Value as SqlValue, vtab::array::Array},
 };
 
 impl StoreMut for SqliteStorage {
@@ -36,7 +36,7 @@ impl StoreMut for SqliteStorage {
     }
 
     fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> GlueResult<()> {
-        self.atomic(|storage| storage.delete_rows(table_name, &keys))
+        self.atomic(|storage| storage.delete_rows(table_name, keys))
             .map_err(Into::into)
     }
 }
@@ -121,22 +121,27 @@ impl SqliteStorage {
         Ok(())
     }
 
-    fn delete_rows(&self, table_name: &str, keys: &[Key]) -> Result<()> {
+    fn delete_rows(&self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let schema = self.require_schema(table_name)?;
-        let rows = self.read_rows(&schema, ScanColumns::All)?;
-
-        let sql = format!(
-            "DELETE FROM {} WHERE {} = ?1",
-            quote(table_name),
-            quote(rowid_name(&schema)?)
-        );
-        let mut statement = self.connection.prepare(&sql)?;
-
-        for row in rows {
-            if keys.contains(&row.key) {
-                statement.execute([row.rowid])?;
+        let (key_name, key_type) = key_column(&schema)?;
+        let mut values = Vec::with_capacity(keys.len());
+        for key in keys {
+            if let Some(value) = encode_key(key, key_type)? {
+                values.push(value);
             }
         }
+
+        if values.is_empty() {
+            return Ok(());
+        }
+
+        // A user table named rarray in main must not shadow the array module.
+        let sql = format!(
+            "DELETE FROM {} WHERE {} IN (SELECT value FROM temp.rarray(?1))",
+            quote(table_name),
+            quote(key_name)
+        );
+        self.connection.execute(&sql, [Array::new(values)])?;
 
         Ok(())
     }

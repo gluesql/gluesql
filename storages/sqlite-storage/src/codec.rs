@@ -1,6 +1,9 @@
 use {
     crate::{Result, SqliteStorageError},
-    gluesql_core::{ast::DataType, data::Value},
+    gluesql_core::{
+        ast::DataType,
+        data::{Key, Value},
+    },
     rusqlite::types::{Value as SqlValue, ValueRef},
 };
 
@@ -73,6 +76,20 @@ fn encode_float(value: f64) -> Result<SqlValue> {
     }
 
     Ok(SqlValue::Real(value))
+}
+
+pub(super) fn encode_key(key: Key, key_type: &DataType) -> Result<Option<SqlValue>> {
+    let value = Value::from(key);
+
+    // Key equality does not coerce types, and SQLite cannot store NaN.
+    if value.get_type().as_ref() != Some(key_type)
+        || matches!(value, Value::F32(v) if v.is_nan())
+        || matches!(value, Value::F64(v) if v.is_nan())
+    {
+        return Ok(None);
+    }
+
+    encode(&value, key_type).map(Some)
 }
 
 pub(super) fn decode(value: ValueRef<'_>, data_type: &DataType) -> Result<Value> {

@@ -19,7 +19,7 @@ use {
         transaction::TransactionState,
     },
     gluesql_core::store::{CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata},
-    rusqlite::Connection,
+    rusqlite::{Connection, vtab::array},
     std::path::Path,
 };
 
@@ -37,21 +37,19 @@ pub struct SqliteStorage {
 
 impl SqliteStorage {
     pub fn new(path: impl AsRef<Path>) -> Result<Self> {
-        let connection = Connection::open(path)?;
-        connection.create_collation(DECIMAL_COLLATION, compare_decimal)?;
-
-        let storage = Self {
-            connection,
-            transaction: TransactionState::Idle,
-        };
+        let storage = Self::from_connection(Connection::open(path)?)?;
         storage.validate_metadata()?;
 
         Ok(storage)
     }
 
     pub fn in_memory() -> Result<Self> {
-        let connection = Connection::open_in_memory()?;
+        Self::from_connection(Connection::open_in_memory()?)
+    }
+
+    fn from_connection(connection: Connection) -> Result<Self> {
         connection.create_collation(DECIMAL_COLLATION, compare_decimal)?;
+        array::load_module(&connection)?;
 
         Ok(Self {
             connection,

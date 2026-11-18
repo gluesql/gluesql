@@ -5,22 +5,15 @@ use {
     self::row_iter::SqliteRowIter,
     crate::{
         Result, SqliteStorage, SqliteStorageError,
-        codec::{decode, encode},
-        schema::{columns, primary_key, quote, rowid_name},
+        codec::{decode, encode_key},
+        schema::{columns, key_column, primary_key, quote, rowid_name},
     },
     gluesql_core::{
-        ast::DataType,
         data::{Key, Schema, Value},
         error::Result as GlueResult,
         store::{RowIter, ScanColumns, Store},
     },
 };
-
-pub(super) struct StoredRow {
-    pub(super) rowid: i64,
-    pub(super) key: Key,
-    pub(super) values: Vec<Value>,
-}
 
 impl Store for SqliteStorage {
     fn fetch_schema(&self, table_name: &str) -> GlueResult<Option<Schema>> {
@@ -43,42 +36,28 @@ impl Store for SqliteStorage {
         requested: ScanColumns<'_>,
     ) -> GlueResult<RowIter<'a>> {
         let schema = self.require_schema(table_name)?;
-
-        if primary_key(&columns(&schema)).is_some() {
-            let mut rows = self.read_rows(&schema, requested)?;
-            // TEXT-backed primary keys need logical Key order for scan results.
-            rows.sort_by(|left, right| left.key.cmp(&right.key));
-
-            return Ok(Box::new(
-                rows.into_iter().map(|row| Ok((row.key, row.values))),
-            ));
-        }
-
         let rows = self.scan_rows(&schema, requested)?;
 
-        Ok(Box::new(rows.map(|row| {
-            row.map(|row| (row.key, row.values)).map_err(Into::into)
-        })))
+        if primary_key(&columns(&schema)).is_some() {
+            let mut rows = rows.collect::<Result<Vec<_>>>()?;
+            // TEXT-backed primary keys need logical Key order for scan results.
+            rows.sort_by(|(left, _), (right, _)| left.cmp(right));
+
+            return Ok(Box::new(rows.into_iter().map(Ok)));
+        }
+
+        Ok(Box::new(rows.map(|row| row.map_err(Into::into))))
     }
 }
 
 impl SqliteStorage {
     fn read_row(&self, schema: &Schema, key: &Key) -> Result<Option<Vec<Value>>> {
-        let columns = columns(schema);
-        let (key_column, key_type) = match primary_key(&columns) {
-            Some(index) => (columns[index].name.as_str(), &columns[index].data_type),
-            None => (rowid_name(schema)?, &DataType::Int),
-        };
-        let value = Value::from(key.clone());
-
-        // Key equality does not coerce types, and SQLite cannot store NaN.
-        if value.get_type().as_ref() != Some(key_type)
-            || matches!(value, Value::F32(v) if v.is_nan())
-            || matches!(value, Value::F64(v) if v.is_nan())
-        {
+        let (key_name, key_type) = key_column(schema)?;
+        let Some(value) = encode_key(key.clone(), key_type)? else {
             return Ok(None);
-        }
+        };
 
+        let columns = columns(schema);
         let projection = columns
             .iter()
             .map(|column| quote(&column.name))
@@ -87,10 +66,10 @@ impl SqliteStorage {
         let sql = format!(
             "SELECT {projection} FROM {} WHERE {} = ?1",
             quote(&schema.table_name),
-            quote(key_column)
+            quote(key_name)
         );
         let mut statement = self.connection.prepare(&sql)?;
-        let mut rows = statement.query([encode(&value, key_type)?])?;
+        let mut rows = statement.query([value])?;
         let Some(row) = rows.next()? else {
             return Ok(None);
         };
@@ -101,14 +80,6 @@ impl SqliteStorage {
             .map(|(index, column)| decode(row.get_ref(index)?, &column.data_type))
             .collect::<Result<Vec<_>>>()
             .map(Some)
-    }
-
-    pub(super) fn read_rows(
-        &self,
-        schema: &Schema,
-        requested: ScanColumns<'_>,
-    ) -> Result<Vec<StoredRow>> {
-        self.scan_rows(schema, requested)?.collect()
     }
 
     fn scan_rows(&self, schema: &Schema, requested: ScanColumns<'_>) -> Result<SqliteRowIter<'_>> {
@@ -141,28 +112,23 @@ impl SqliteStorage {
             }
         };
 
-        let primary = primary_key(&columns);
-        let mut projection = vec![quote(rowid_name(schema)?)];
-        if let Some(index) = primary {
-            projection.push(quote(&columns[index].name));
-        }
-
+        let (key_name, key_type) = key_column(schema)?;
+        let mut projection = vec![quote(key_name)];
         projection.extend(selected.iter().map(|index| quote(&columns[*index].name)));
 
         let sql = format!(
             "SELECT {} FROM {} ORDER BY {}",
             projection.join(", "),
             quote(&schema.table_name),
-            projection[0]
+            quote(rowid_name(schema)?)
         );
         let statement = self.connection.prepare(&sql)?;
 
-        let primary_type = primary.map(|index| columns[index].data_type.clone());
         let selected_types = selected
             .into_iter()
             .map(|index| columns[index].data_type.clone())
             .collect();
 
-        SqliteRowIter::new(statement, primary_type, selected_types)
+        SqliteRowIter::new(statement, key_type.clone(), selected_types)
     }
 }

@@ -226,6 +226,17 @@ pub(super) fn primary_key(columns: &[ColumnDef]) -> Option<usize> {
         .position(|column| column.unique.is_some_and(|unique| unique.is_primary))
 }
 
+pub(super) fn key_column(schema: &Schema) -> Result<(&str, &DataType)> {
+    if let Some(columns) = &schema.column_defs
+        && let Some(index) = primary_key(columns)
+    {
+        let column = &columns[index];
+        return Ok((&column.name, &column.data_type));
+    }
+
+    Ok((rowid_name(schema)?, &DataType::Int))
+}
+
 pub(super) fn rowid_name(schema: &Schema) -> Result<&'static str> {
     let columns = columns(schema);
     ["_rowid_", "rowid", "oid"]

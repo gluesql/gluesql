@@ -10,7 +10,7 @@ documentation.workspace = true
 [dependencies]
 gluesql-core.workspace = true
 ouroboros = "0.18.5"
-rusqlite = { version = "0.41.1", default-features = false, features = ["bundled", "collation"] }
+rusqlite = { version = "0.41.1", default-features = false, features = ["array", "bundled", "collation"] }
 rust_decimal = "1"
 ron = { version = "0.8.1", features = ["integer128"] }
 sqlparser = { version = "0.52", features = ["bigdecimal"] }

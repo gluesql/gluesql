@@ -1,7 +1,9 @@
 use {
-    super::StoredRow,
     crate::{Result, codec::decode},
-    gluesql_core::{ast::DataType, data::Key},
+    gluesql_core::{
+        ast::DataType,
+        data::{Key, Value},
+    },
     ouroboros::self_referencing,
     rusqlite::{Rows, Statement},
 };
@@ -17,14 +19,14 @@ struct RowCursor<'conn> {
 
 pub(super) struct SqliteRowIter<'conn> {
     cursor: Option<RowCursor<'conn>>,
-    primary_type: Option<DataType>,
+    key_type: DataType,
     selected_types: Vec<DataType>,
 }
 
 impl<'conn> SqliteRowIter<'conn> {
     pub(super) fn new(
         statement: Statement<'conn>,
-        primary_type: Option<DataType>,
+        key_type: DataType,
         selected_types: Vec<DataType>,
     ) -> Result<Self> {
         let cursor = RowCursorTryBuilder {
@@ -35,38 +37,31 @@ impl<'conn> SqliteRowIter<'conn> {
 
         Ok(Self {
             cursor: Some(cursor),
-            primary_type,
+            key_type,
             selected_types,
         })
     }
 }
 
 impl Iterator for SqliteRowIter<'_> {
-    type Item = Result<StoredRow>;
+    type Item = Result<(Key, Vec<Value>)>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let cursor = self.cursor.as_mut()?;
-        let result = cursor.with_rows_mut(|rows| -> Result<Option<StoredRow>> {
+        let result = cursor.with_rows_mut(|rows| -> Result<_> {
             let Some(row) = rows.next()? else {
                 return Ok(None);
             };
 
-            let rowid = row.get(0)?;
-            let (key, offset) = if let Some(data_type) = &self.primary_type {
-                let value = decode(row.get_ref(1)?, data_type)?;
-                (Key::try_from(&value)?, 2)
-            } else {
-                (Key::I64(rowid), 1)
-            };
-
+            let key = Key::try_from(decode(row.get_ref(0)?, &self.key_type)?)?;
             let values = self
                 .selected_types
                 .iter()
                 .enumerate()
-                .map(|(position, data_type)| decode(row.get_ref(position + offset)?, data_type))
+                .map(|(position, data_type)| decode(row.get_ref(position + 1)?, data_type))
                 .collect::<Result<Vec<_>>>()?;
 
-            Ok(Some(StoredRow { rowid, key, values }))
+            Ok(Some((key, values)))
         });
 
         if !matches!(result, Ok(Some(_))) {
