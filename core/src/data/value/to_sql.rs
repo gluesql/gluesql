@@ -34,7 +34,7 @@ impl ToSql for Value {
                 let escaped = json.to_string().replace('\'', "''");
                 format!("'{escaped}'")
             }
-            Value::Point(p) => format!("POINT({} {})", p.x, p.y),
+            Value::Point(p) => format!("POINT({}, {})", p.x, p.y),
             Value::Null => "NULL".to_owned(),
         }
     }
@@ -149,7 +149,7 @@ mod tests {
         // Point
         assert_eq!(
             Value::Point(Point::new(1.5, 2.5)).to_sql(),
-            "POINT(1.5 2.5)"
+            "POINT(1.5, 2.5)"
         );
 
         // Null
