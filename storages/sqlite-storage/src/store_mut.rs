@@ -93,8 +93,10 @@ impl SqliteStorage {
             rowid
         };
         let placeholders = vec!["?"; names.len()].join(", ");
+
+        // A table named "excluded" would otherwise shadow the incoming row in DO UPDATE.
         let sql = format!(
-            "INSERT INTO {} ({}) VALUES ({placeholders})
+            "INSERT INTO {} AS target ({}) VALUES ({placeholders})
              ON CONFLICT ({conflict_column}) DO UPDATE SET {assignments}",
             quote(table_name),
             names.join(", ")

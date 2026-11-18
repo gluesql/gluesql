@@ -1,6 +1,7 @@
 use {
     gluesql_core::{
         data::{Interval, Key, Schema, Value},
+        prelude::{Glue, Payload},
         store::{Store, StoreMut},
     },
     gluesql_sqlite_storage::{SqliteStorage, SqliteStorageError},
@@ -127,6 +128,33 @@ fn rowid_writes_use_the_unshadowed_alias() {
         .unwrap();
     let expected = vec![(-7, 100, 200, 2), (20, 500, 600, 1), (21, 700, 800, 0)];
     assert_eq!(actual, expected);
+}
+
+#[test]
+fn updates_to_a_table_named_excluded_store_the_new_value() {
+    for ddl in [
+        "CREATE TABLE excluded (id INT PRIMARY KEY, qty INT)",
+        "CREATE TABLE excluded (id INT, qty INT)",
+    ] {
+        let mut glue = Glue::new(SqliteStorage::in_memory().unwrap());
+        glue.execute(ddl).unwrap();
+        glue.execute("INSERT INTO excluded VALUES (1, 11)").unwrap();
+
+        let actual = glue
+            .execute(
+                "UPDATE excluded SET qty = 22 WHERE id = 1;
+                 SELECT qty FROM excluded",
+            )
+            .unwrap();
+        let expected = vec![
+            Payload::Update(1),
+            Payload::Select {
+                labels: vec!["qty".to_owned()],
+                rows: vec![vec![Value::I64(22)]],
+            },
+        ];
+        assert_eq!(actual, expected, "{ddl}");
+    }
 }
 
 #[test]
