@@ -207,12 +207,15 @@ impl Expr {
                     pattern.to_sql_with(quoted)
                 )
             }
-            Expr::UnaryOp { op, expr } => match op {
-                UnaryOperator::Factorial => {
-                    format!("{}{}", expr.to_sql_with(quoted), op.to_sql())
+            Expr::UnaryOp { op, expr } => {
+                let expr = expr.to_sql_with(quoted);
+
+                match op {
+                    UnaryOperator::Minus if expr.starts_with('-') => format!("- {expr}"),
+                    UnaryOperator::Factorial => format!("{expr}{}", op.to_sql()),
+                    _ => format!("{}{expr}", op.to_sql()),
                 }
-                _ => format!("{}{}", op.to_sql(), expr.to_sql_with(quoted)),
-            },
+            }
             Expr::Nested(expr) => format!("({})", expr.to_sql_with(quoted)),
             Expr::Literal(s) => s.to_sql(),
             Expr::Value(v) => v.to_sql(),
@@ -311,9 +314,13 @@ impl Expr {
 mod tests {
 
     use {
-        crate::ast::{
-            BinaryOperator, DataType, DateTimeField, Expr, Literal, Projection, Query, Select,
-            SelectItem, SetExpr, TableFactor, TableWithJoins, ToSql, ToSqlUnquoted, UnaryOperator,
+        crate::{
+            ast::{
+                BinaryOperator, DataType, DateTimeField, Expr, Literal, Projection, Query, Select,
+                SelectItem, SetExpr, TableFactor, TableWithJoins, ToSql, ToSqlUnquoted,
+                UnaryOperator,
+            },
+            data::Value,
         },
         bigdecimal::BigDecimal,
         regex::Regex,
@@ -354,6 +361,25 @@ mod tests {
                 expected,
             );
         }
+
+        assert_eq!(
+            "- -1",
+            Expr::UnaryOp {
+                op: UnaryOperator::Minus,
+                expr: Box::new(Expr::Value(Value::I64(-1))),
+            }
+            .to_sql(),
+        );
+
+        assert_eq!(
+            "5!",
+            Expr::UnaryOp {
+                op: UnaryOperator::Factorial,
+                expr: Box::new(Expr::Literal(Literal::Number(5.into()))),
+            }
+            .to_sql(),
+        );
+
         assert_eq!(
             r#"-"id""#,
             Expr::UnaryOp {

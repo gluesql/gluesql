@@ -48,6 +48,7 @@ impl Schema {
             comment,
         } = self;
 
+        let table_name = table_name.replace('"', "\"\"");
         let columns = column_defs.as_ref().map(|column_defs| {
             let foreign_keys = foreign_keys.iter().map(ToSql::to_sql);
             let body = column_defs
@@ -256,6 +257,27 @@ mod tests {
 
         let actual = Schema::from_ddl(ddl).unwrap();
         assert_schema(actual, schema);
+    }
+
+    #[test]
+    fn to_ddl_escapes_table_name_in_create_table_and_create_index() {
+        let ddl = r#"
+CREATE TABLE "a""b" ("id" INT NULL);
+CREATE INDEX "idx" ON "a""b" ("id");
+"#
+        .trim();
+        let schema = Schema::from_ddl(ddl).unwrap();
+
+        assert_eq!(schema.table_name, r#"a"b"#);
+        assert_eq!(schema.to_ddl(), ddl);
+    }
+
+    #[test]
+    fn ddl_round_trip_preserves_consecutive_quotes_in_table_name() {
+        let schema = Schema::from_ddl(r#"CREATE TABLE "a""""b";"#).unwrap();
+        let restored = Schema::from_ddl(&schema.to_ddl()).unwrap();
+
+        assert_eq!(restored.table_name, r#"a""b"#);
     }
 
     #[test]
