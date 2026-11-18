@@ -116,7 +116,7 @@ fn plan_filter(filter: &FilterPlan, schemas: &SchemaMap) -> NativeFilterRewrite 
     };
 
     // Preserve scan_data's GlueSQL Key or rowid order.
-    let order_by = if let Some(index) = primary_key(storage_columns) {
+    let order_column = if let Some(index) = primary_key(storage_columns) {
         let column = &columns[index];
         // TEXT encodings such as DECIMAL do not preserve numeric Key order.
         if !matches!(
@@ -135,17 +135,19 @@ fn plan_filter(filter: &FilterPlan, schemas: &SchemaMap) -> NativeFilterRewrite 
             return NativeFilterRewrite::Unchanged;
         }
 
-        quote(&column.name)
+        column.name.as_str()
     } else {
         // A shadowed rowid alias would sort by a user column instead.
         let Ok(rowid) = rowid_name(&storage_schema) else {
             return NativeFilterRewrite::Unchanged;
         };
 
-        quote(rowid)
+        rowid
     };
 
-    let Some(condition) = condition::plan(&filter.expr, alias, columns, column_aliases) else {
+    let Some(condition) =
+        condition::plan(&filter.expr, &table.name, alias, columns, column_aliases)
+    else {
         return NativeFilterRewrite::Unchanged;
     };
 
@@ -159,7 +161,7 @@ fn plan_filter(filter: &FilterPlan, schemas: &SchemaMap) -> NativeFilterRewrite 
             continue;
         }
 
-        projection.push(quote(&column.name));
+        projection.push(qualified_column(&table.name, &column.name));
         output_columns.push(NativeColumnPlan {
             name: name.clone(),
             data_type: column.data_type.clone(),
@@ -183,7 +185,7 @@ fn plan_filter(filter: &FilterPlan, schemas: &SchemaMap) -> NativeFilterRewrite 
             projection.join(", "),
             quote(&table.name),
             condition.sql,
-            order_by
+            qualified_column(&table.name, order_column)
         ),
         params: condition.params,
         alias: alias.to_owned(),
@@ -194,6 +196,10 @@ fn plan_filter(filter: &FilterPlan, schemas: &SchemaMap) -> NativeFilterRewrite 
         Some(remaining) => NativeFilterRewrite::Partial { source, remaining },
         None => NativeFilterRewrite::Full { source },
     }
+}
+
+fn qualified_column(table: &str, column: &str) -> String {
+    format!("{}.{}", quote(table), quote(column))
 }
 
 #[cfg(test)]
@@ -262,10 +268,10 @@ mod tests {
         ";
         let actual = plan(sql, ddl);
         let inner = native_query(concat!(
-            r#"SELECT "id", "qty" "#,
+            r#"SELECT "Item"."id", "Item"."qty" "#,
             r#"FROM "Item" "#,
-            r#"WHERE ("qty" > ?1) "#,
-            r#"ORDER BY "_rowid_" ASC"#,
+            r#"WHERE ("Item"."qty" > ?1) "#,
+            r#"ORDER BY "Item"."_rowid_" ASC"#,
         ))
         .params([10_i64])
         .columns([("id", "INT"), ("qty", "INT")])
@@ -301,10 +307,10 @@ mod tests {
         ";
         let actual = plan(sql, ddl);
         let inner = native_query(concat!(
-            r#"SELECT "qty" "#,
+            r#"SELECT "Item"."qty" "#,
             r#"FROM "Item" "#,
-            r#"WHERE ("qty" > ?1) "#,
-            r#"ORDER BY "_rowid_" ASC"#,
+            r#"WHERE ("Item"."qty" > ?1) "#,
+            r#"ORDER BY "Item"."_rowid_" ASC"#,
         ))
         .params([10_i64])
         .columns([("qty", "INT")])
@@ -328,10 +334,10 @@ mod tests {
         ";
         let actual = plan(sql, ddl);
         let inner = native_query(concat!(
-            r#"SELECT "id", "qty" "#,
+            r#"SELECT "Item"."id", "Item"."qty" "#,
             r#"FROM "Item" "#,
-            r#"WHERE ("qty" > ?1) "#,
-            r#"ORDER BY "_rowid_" ASC"#,
+            r#"WHERE ("Item"."qty" > ?1) "#,
+            r#"ORDER BY "Item"."_rowid_" ASC"#,
         ))
         .params([10_i64])
         .columns([("id", "INT"), ("qty", "INT")])
@@ -386,10 +392,10 @@ mod tests {
         let sql = "SELECT * FROM Item WHERE qty > 0";
         let actual = plan(sql, ddl);
         let expected = native_query(concat!(
-            r#"SELECT "id", "qty" "#,
+            r#"SELECT "Item"."id", "Item"."qty" "#,
             r#"FROM "Item" "#,
-            r#"WHERE ("qty" > ?1) "#,
-            r#"ORDER BY "_rowid_" ASC"#,
+            r#"WHERE ("Item"."qty" > ?1) "#,
+            r#"ORDER BY "Item"."_rowid_" ASC"#,
         ))
         .params([0_i64])
         .columns([("id", "INT"), ("qty", "INT")])
@@ -465,10 +471,10 @@ mod tests {
         ";
         let actual = plan(sql, ddl);
         let expected = native_query(concat!(
-            r#"SELECT "name", "qty" "#,
+            r#"SELECT "Item"."name", "Item"."qty" "#,
             r#"FROM "Item" "#,
-            r#"WHERE ("qty" >= ?1) "#,
-            r#"ORDER BY "id" ASC"#,
+            r#"WHERE ("Item"."qty" >= ?1) "#,
+            r#"ORDER BY "Item"."id" ASC"#,
         ))
         .params([10_i64])
         .columns([("name", "TEXT"), ("qty", "INT")])
@@ -564,11 +570,12 @@ mod tests {
         let ddl = "CREATE TABLE Item (id INT, qty INT)";
         let sql = "SELECT 1 FROM Item WHERE TRUE";
         let actual = plan(sql, ddl);
-        let expected = native_query(r#"SELECT 1 FROM "Item" WHERE ?1 ORDER BY "_rowid_" ASC"#)
-            .params([true])
-            .alias_as("Item")
-            .select()
-            .project("1");
+        let expected =
+            native_query(r#"SELECT 1 FROM "Item" WHERE ?1 ORDER BY "Item"."_rowid_" ASC"#)
+                .params([true])
+                .alias_as("Item")
+                .select()
+                .project("1");
         assert_query(actual, expected, ddl);
 
         // Partial: retain the residual filter and its logical column aliases.
@@ -581,10 +588,10 @@ mod tests {
         ";
         let actual = plan(sql, ddl);
         let expected = native_query(concat!(
-            r#"SELECT "id", "name", "qty" "#,
+            r#"SELECT "Item"."id", "Item"."name", "Item"."qty" "#,
             r#"FROM "Item" "#,
-            r#"WHERE ("qty" > ?1) "#,
-            r#"ORDER BY "_rowid_" ASC"#,
+            r#"WHERE ("Item"."qty" > ?1) "#,
+            r#"ORDER BY "Item"."_rowid_" ASC"#,
         ))
         .params([10_i64])
         .columns([("key", "INT"), ("label", "TEXT"), ("amount", "INT")])
@@ -602,10 +609,10 @@ mod tests {
         ";
         let actual = plan(sql, ddl);
         let expected = native_query(concat!(
-            r#"SELECT "name", "qty" "#,
+            r#"SELECT "Item"."name", "Item"."qty" "#,
             r#"FROM "Item" "#,
-            r#"WHERE ("qty" > ?1) "#,
-            r#"ORDER BY "_rowid_" ASC"#,
+            r#"WHERE ("Item"."qty" > ?1) "#,
+            r#"ORDER BY "Item"."_rowid_" ASC"#,
         ))
         .params([0_i64])
         .columns([("label", "TEXT"), ("amount", "INT")])

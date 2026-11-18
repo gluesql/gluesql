@@ -198,6 +198,41 @@ fn replanning_native_sources_preserves_common_processing() {
 }
 
 #[test]
+fn prepared_native_query_reports_a_renamed_column() {
+    let mut glue = Glue::new(SqliteStorage::in_memory().unwrap());
+    glue.execute(
+        "
+        CREATE TABLE Item (id INT, name TEXT);
+        INSERT INTO Item VALUES (1, 'Apple');
+        ",
+    )
+    .unwrap();
+
+    let plan = glue
+        .plan("SELECT i.name FROM Item AS i WHERE i.id > 0")
+        .unwrap()
+        .remove(0);
+    expect_native_source(expect_query(&plan));
+
+    let actual = glue.execute_prepared(&plan).unwrap();
+    let expected = select(&["name"], vec![vec![Value::Str("Apple".to_owned())]]);
+    assert_eq!(actual, expected);
+
+    glue.execute("ALTER TABLE Item RENAME COLUMN name TO label")
+        .unwrap();
+
+    let error = glue.execute_prepared(&plan).unwrap_err();
+    let Error::StorageMsg(message) = error else {
+        panic!("expected a SQLite error, got {error:?}");
+    };
+
+    assert!(
+        message.starts_with("no such column: Item.name"),
+        "{message}"
+    );
+}
+
+#[test]
 fn bound_native_rows_feed_common_distinct_order_and_limit() {
     let mut glue = Glue::new(SqliteStorage::in_memory().unwrap());
     glue.execute(

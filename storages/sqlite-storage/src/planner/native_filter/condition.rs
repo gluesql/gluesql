@@ -4,7 +4,7 @@ mod operand_type;
 
 use {
     self::operand_type::{Operand, ResolvedOperand},
-    crate::schema::quote,
+    super::qualified_column,
     gluesql_core::{
         ast::{BinaryOperator, DataType, Literal, ToSql, UnaryOperator},
         data::Value,
@@ -21,11 +21,12 @@ pub(super) struct PlannedCondition {
 
 pub(super) fn plan(
     expr: &ExprPlan,
+    table_name: &str,
     alias: &str,
     columns: &[ColumnDefPlan],
     column_aliases: &[String],
 ) -> Option<PlannedCondition> {
-    let mut planner = ConditionPlanner::new(alias, columns, column_aliases);
+    let mut planner = ConditionPlanner::new(table_name, alias, columns, column_aliases);
     let remaining = planner.extract(expr);
 
     if planner.sql_conditions.is_empty() {
@@ -40,6 +41,7 @@ pub(super) fn plan(
 }
 
 struct ConditionPlanner<'a> {
+    table_name: &'a str,
     alias: &'a str,
     columns: &'a [ColumnDefPlan],
     aliases: &'a [String],
@@ -48,8 +50,14 @@ struct ConditionPlanner<'a> {
 }
 
 impl<'a> ConditionPlanner<'a> {
-    fn new(alias: &'a str, columns: &'a [ColumnDefPlan], aliases: &'a [String]) -> Self {
+    fn new(
+        table_name: &'a str,
+        alias: &'a str,
+        columns: &'a [ColumnDefPlan],
+        aliases: &'a [String],
+    ) -> Self {
         Self {
+            table_name,
             alias,
             columns,
             aliases,
@@ -284,7 +292,9 @@ impl<'a> ConditionPlanner<'a> {
 
     fn bind(&mut self, operand: ResolvedOperand<'_>) -> Option<String> {
         match operand {
-            ResolvedOperand::Column(column) => Some(quote(&column.name)),
+            ResolvedOperand::Column(column) => {
+                Some(qualified_column(self.table_name, &column.name))
+            }
             ResolvedOperand::Value(value) => {
                 // The codec rejects NaN, so leave its evaluation on the common path.
                 if matches!(&value, Value::F32(v) if v.is_nan())
@@ -330,7 +340,13 @@ mod tests {
             .map(ColumnDefPlan::from)
             .collect::<Vec<_>>();
 
-        plan_condition(&expr(sql, &[]), &schema.table_name, &columns, &[])
+        plan_condition(
+            &expr(sql, &[]),
+            &schema.table_name,
+            &schema.table_name,
+            &columns,
+            &[],
+        )
     }
 
     fn translate_condition(
@@ -345,7 +361,8 @@ mod tests {
             .into_iter()
             .map(ColumnDefPlan::from)
             .collect::<Vec<_>>();
-        let mut planner = ConditionPlanner::new(&schema.table_name, &columns, &[]);
+        let mut planner =
+            ConditionPlanner::new(&schema.table_name, &schema.table_name, &columns, &[]);
         let sql = planner.translate(&expr(sql, params))?;
         Some((sql, planner.params))
     }
@@ -367,7 +384,7 @@ mod tests {
         ";
         let actual = plan(ddl, sql);
         let expected = Some(PlannedCondition {
-            sql: r#"("qty" > ?1) AND ("id" < ?2)"#.to_owned(),
+            sql: r#"("Item"."qty" > ?1) AND ("Item"."id" < ?2)"#.to_owned(),
             params: vec![Value::I64(10), Value::I64(20)],
             remaining: Some(expr("(LOWER(name) = 'apple') AND (LENGTH(name) > 3)", &[])),
         });
@@ -380,7 +397,7 @@ mod tests {
         ] {
             let actual = plan(ddl, sql);
             let expected = Some(PlannedCondition {
-                sql: r#"("qty" > ?1)"#.to_owned(),
+                sql: r#"("Item"."qty" > ?1)"#.to_owned(),
                 params: vec![Value::I64(10)],
                 remaining: Some(expr("LOWER(name) = 'apple'", &[])),
             });
@@ -391,7 +408,7 @@ mod tests {
         for sql in ["qty > 10 AND id < 20", "((qty > 10 AND id < 20))"] {
             let actual = plan(ddl, sql);
             let expected = Some(PlannedCondition {
-                sql: r#"("qty" > ?1) AND ("id" < ?2)"#.to_owned(),
+                sql: r#"("Item"."qty" > ?1) AND ("Item"."id" < ?2)"#.to_owned(),
                 params: vec![Value::I64(10), Value::I64(20)],
                 remaining: None,
             });
@@ -401,7 +418,7 @@ mod tests {
         // Nested preserves the wrapper around the remaining expression.
         let actual = plan(ddl, "(qty > 10 AND LOWER(name) = 'apple')");
         let expected = Some(PlannedCondition {
-            sql: r#"("qty" > ?1)"#.to_owned(),
+            sql: r#"("Item"."qty" > ?1)"#.to_owned(),
             params: vec![Value::I64(10)],
             remaining: Some(expr("(LOWER(name) = 'apple')", &[])),
         });
@@ -414,7 +431,8 @@ mod tests {
         ";
         let actual = plan(ddl, sql);
         let expected = Some(PlannedCondition {
-            sql: r#"(("qty" > ?1) OR ("qty" < ?2)) AND (NOT ("id" = ?3))"#.to_owned(),
+            sql: r#"(("Item"."qty" > ?1) OR ("Item"."qty" < ?2)) AND (NOT ("Item"."id" = ?3))"#
+                .to_owned(),
             params: vec![Value::I64(10), Value::I64(0), Value::I64(5)],
             remaining: None,
         });
@@ -438,7 +456,7 @@ mod tests {
         ";
         let actual = plan(ddl, sql);
         let expected = Some(PlannedCondition {
-            sql: r#"("qty" > ?1) AND ("id" < ?2)"#.to_owned(),
+            sql: r#"("Item"."qty" > ?1) AND ("Item"."id" < ?2)"#.to_owned(),
             params: vec![Value::I64(10), Value::I64(20)],
             remaining: Some(expr("(id = 99 OR LOWER(name) = 'apple')", &[])),
         });
@@ -451,12 +469,12 @@ mod tests {
 
         // Nested syntax does not add another wrapper to the emitted condition.
         let actual = translate_condition(ddl, "((n > 10))", &[]);
-        let expected = Some((r#"("n" > ?1)"#.to_owned(), vec![Value::I8(10)]));
+        let expected = Some((r#"("q"."n" > ?1)"#.to_owned(), vec![Value::I8(10)]));
         assert_eq!(actual, expected);
 
         let actual = translate_condition(ddl, "NOT (enabled AND FALSE)", &[]);
         let expected = Some((
-            r#"(NOT ("enabled" AND ?1))"#.to_owned(),
+            r#"(NOT ("q"."enabled" AND ?1))"#.to_owned(),
             vec![Value::Bool(false)],
         ));
         assert_eq!(actual, expected);
@@ -468,14 +486,14 @@ mod tests {
         // AND/OR translate both children; splitting AND terms belongs to extract.
         let actual = translate_condition(ddl, "-10 < n AND n <= +12", &[]);
         let expected = Some((
-            r#"((?1 < "n") AND ("n" <= ?2))"#.to_owned(),
+            r#"((?1 < "q"."n") AND ("q"."n" <= ?2))"#.to_owned(),
             vec![Value::I8(-10), Value::I8(12)],
         ));
         assert_eq!(actual, expected);
 
         let actual = translate_condition(ddl, "enabled OR n >= 10", &[]);
         let expected = Some((
-            r#"("enabled" OR ("n" >= ?1))"#.to_owned(),
+            r#"("q"."enabled" OR ("q"."n" >= ?1))"#.to_owned(),
             vec![Value::I8(10)],
         ));
         assert_eq!(actual, expected);
@@ -488,8 +506,8 @@ mod tests {
 
         // IS NULL accepts scalar operands without comparison support, such as MAP.
         for (sql, native_sql, params) in [
-            ("doc IS NULL", r#"("doc" IS NULL)"#, vec![]),
-            ("doc IS NOT NULL", r#"("doc" IS NOT NULL)"#, vec![]),
+            ("doc IS NULL", r#"("q"."doc" IS NULL)"#, vec![]),
+            ("doc IS NOT NULL", r#"("q"."doc" IS NOT NULL)"#, vec![]),
             ("1 IS NOT NULL", "(?1 IS NOT NULL)", vec![Value::I64(1)]),
         ] {
             let actual = translate_condition(ddl, sql, &[]);
@@ -503,7 +521,10 @@ mod tests {
 
         // A composite operand of IS NULL must itself translate as a condition.
         let actual = translate_condition(ddl, "(n > 10) IS NULL", &[]);
-        let expected = Some((r#"(("n" > ?1) IS NULL)"#.to_owned(), vec![Value::I8(10)]));
+        let expected = Some((
+            r#"(("q"."n" > ?1) IS NULL)"#.to_owned(),
+            vec![Value::I8(10)],
+        ));
         assert_eq!(actual, expected);
 
         let actual = translate_condition(ddl, "LENGTH(label) IS NULL", &[]);
@@ -513,14 +534,14 @@ mod tests {
         // BETWEEN builds low <= target and target <= high, then applies NOT.
         let actual = translate_condition(ddl, "f BETWEEN 0.1 AND 0.5", &[]);
         let expected = Some((
-            r#"((?1 <= "f") AND ("f" <= ?2))"#.to_owned(),
+            r#"((?1 <= "q"."f") AND ("q"."f" <= ?2))"#.to_owned(),
             vec![Value::F32(0.1), Value::F32(0.5)],
         ));
         assert_eq!(actual, expected);
 
         let actual = translate_condition(ddl, "n NOT BETWEEN 1 AND n", &[]);
         let expected = Some((
-            r#"(NOT ((?1 <= "n") AND ("n" <= "n")))"#.to_owned(),
+            r#"(NOT ((?1 <= "q"."n") AND ("q"."n" <= "q"."n")))"#.to_owned(),
             vec![Value::I8(1)],
         ));
         assert_eq!(actual, expected);
@@ -533,7 +554,7 @@ mod tests {
 
         // A bare condition must resolve to BOOLEAN or NULL.
         for (sql, native_sql, params) in [
-            ("enabled", r#""enabled""#, vec![]),
+            ("enabled", r#""q"."enabled""#, vec![]),
             ("TRUE", "?1", vec![Value::Bool(true)]),
             ("NULL", "?1", vec![Value::Null]),
         ] {
@@ -571,7 +592,10 @@ mod tests {
         }
 
         // Literals acquire their peer's type in either direction.
-        for (sql, native_sql) in [("12 = n", r#"(?1 = "n")"#), ("n = 12", r#"("n" = ?1)"#)] {
+        for (sql, native_sql) in [
+            ("12 = n", r#"(?1 = "q"."n")"#),
+            ("n = 12", r#"("q"."n" = ?1)"#),
+        ] {
             let actual = translate_condition(ddl, sql, &[]);
             let expected = Some((native_sql.to_owned(), vec![Value::I8(12)]));
             assert_eq!(actual, expected, "{sql}");
@@ -604,7 +628,7 @@ mod tests {
             for op in ["=", "<>", "<", "<=", ">", ">="] {
                 let sql = format!("q.{column} {op} {literal}");
                 let actual = translate_condition(ddl, &sql, &[]);
-                let expected = Some((format!(r#"("{column}" {op} ?1)"#), vec![value.clone()]));
+                let expected = Some((format!(r#"("q"."{column}" {op} ?1)"#), vec![value.clone()]));
                 assert_eq!(actual, expected, "{sql}");
             }
         }
@@ -613,7 +637,7 @@ mod tests {
             for (column, value) in [("f", Value::F32(0.1)), ("d", Value::F64(0.1))] {
                 let sql = format!("{column} {op} 0.1");
                 let actual = translate_condition(ddl, &sql, &[]);
-                let expected = Some((format!(r#"("{column}" {op} ?1)"#), vec![value]));
+                let expected = Some((format!(r#"("q"."{column}" {op} ?1)"#), vec![value]));
                 assert_eq!(actual, expected, "{sql}");
             }
         }
@@ -626,15 +650,15 @@ mod tests {
 
         // NULL and equal types need no rhs conversion.
         let actual = translate_condition(ddl, "n = NULL", &[]);
-        let expected = Some((r#"("n" = ?1)"#.to_owned(), vec![Value::Null]));
+        let expected = Some((r#"("q"."n" = ?1)"#.to_owned(), vec![Value::Null]));
         assert_eq!(actual, expected);
 
         let actual = translate_condition(ddl, "label = label", &[]);
-        let expected = Some((r#"("label" = "label")"#.to_owned(), vec![]));
+        let expected = Some((r#"("q"."label" = "q"."label")"#.to_owned(), vec![]));
         assert_eq!(actual, expected);
 
         let actual = translate_condition(ddl, "f < $1", &[0.1_f32.into_param_literal()]);
-        let expected = Some((r#"("f" < ?1)"#.to_owned(), vec![Value::F32(0.1)]));
+        let expected = Some((r#"("q"."f" < ?1)"#.to_owned(), vec![Value::F32(0.1)]));
         assert_eq!(actual, expected);
 
         for sql in ["n = TRUE", "f < d", "n < f"] {
@@ -653,7 +677,7 @@ mod tests {
 
         // A rhs column must fit the lhs's whole range; operand order matters.
         let actual = translate_condition(ddl, "$1 > n", &[1000_i64.into_param_literal()]);
-        let expected = Some((r#"(?1 > "n")"#.to_owned(), vec![Value::I64(1000)]));
+        let expected = Some((r#"(?1 > "q"."n")"#.to_owned(), vec![Value::I64(1000)]));
         assert_eq!(actual, expected);
 
         let actual = translate_condition(ddl, "$1 > wide", &[12_i8.into_param_literal()]);
@@ -661,7 +685,7 @@ mod tests {
         assert_eq!(actual, expected);
 
         let actual = translate_condition(ddl, "wide > n", &[]);
-        let expected = Some((r#"("wide" > "n")"#.to_owned(), vec![]));
+        let expected = Some((r#"("q"."wide" > "q"."n")"#.to_owned(), vec![]));
         assert_eq!(actual, expected);
 
         let actual = translate_condition(ddl, "n < wide", &[]);
@@ -670,7 +694,7 @@ mod tests {
 
         // A known rhs value only needs that value to fit before binding.
         let actual = translate_condition(ddl, "n < $1", &[12_i64.into_param_literal()]);
-        let expected = Some((r#"("n" < ?1)"#.to_owned(), vec![Value::I8(12)]));
+        let expected = Some((r#"("q"."n" < ?1)"#.to_owned(), vec![Value::I8(12)]));
         assert_eq!(actual, expected);
 
         let actual = translate_condition(ddl, "n < $1", &[1000_i64.into_param_literal()]);
@@ -693,7 +717,7 @@ mod tests {
                 list: vec![],
                 negated,
             };
-            let mut planner = ConditionPlanner::new("q", &[], &[]);
+            let mut planner = ConditionPlanner::new("q", "q", &[], &[]);
             let actual = planner.translate(&expr).map(|sql| (sql, planner.params));
             let expected = None;
             assert_eq!(actual, expected);
@@ -719,7 +743,7 @@ mod tests {
         }
 
         let actual = translate_condition(ddl, "n IN ($1)", &[12_i64.into_param_literal()]);
-        let expected = Some((r#"("n" IN (?1))"#.to_owned(), vec![Value::I8(12)]));
+        let expected = Some((r#"("q"."n" IN (?1))"#.to_owned(), vec![Value::I8(12)]));
         assert_eq!(actual, expected);
 
         // The target must resolve to one value/type for the whole list.
@@ -728,20 +752,23 @@ mod tests {
         assert_eq!(actual, expected);
 
         let actual = translate_condition(ddl, "1 IN (n, n)", &[]);
-        let expected = Some((r#"(?1 IN ("n", "n"))"#.to_owned(), vec![Value::I8(1)]));
+        let expected = Some((
+            r#"(?1 IN ("q"."n", "q"."n"))"#.to_owned(),
+            vec![Value::I8(1)],
+        ));
         assert_eq!(actual, expected);
 
         // Bind the target once, then items in list order; apply negation last.
         let actual = translate_condition(ddl, "n IN (1, NULL, n)", &[]);
         let expected = Some((
-            r#"("n" IN (?1, ?2, "n"))"#.to_owned(),
+            r#"("q"."n" IN (?1, ?2, "q"."n"))"#.to_owned(),
             vec![Value::I8(1), Value::Null],
         ));
         assert_eq!(actual, expected);
 
         let actual = translate_condition(ddl, "label NOT IN ('KR', 'JP')", &[]);
         let expected = Some((
-            r#"("label" NOT IN (?1, ?2))"#.to_owned(),
+            r#"("q"."label" NOT IN (?1, ?2))"#.to_owned(),
             vec![Value::Str("KR".to_owned()), Value::Str("JP".to_owned())],
         ));
         assert_eq!(actual, expected);
@@ -756,7 +783,7 @@ mod tests {
             .into_iter()
             .map(ColumnDefPlan::from)
             .collect::<Vec<_>>();
-        let planner = ConditionPlanner::new("q", &columns, &[]);
+        let planner = ConditionPlanner::new(&schema.table_name, "q", &columns, &[]);
 
         // Nested, unqualified and source-qualified names resolve to the same column.
         for sql in ["((n))", "n", "q.n"] {
@@ -774,7 +801,7 @@ mod tests {
 
         // A positional alias replaces the visible name, not the physical column.
         let aliases = ["renamed".to_owned()];
-        let planner = ConditionPlanner::new("q", &columns, &aliases);
+        let planner = ConditionPlanner::new(&schema.table_name, "q", &columns, &aliases);
         for (sql, expected) in [
             ("renamed", &columns[0]),
             ("q.renamed", &columns[0]),
@@ -834,14 +861,14 @@ mod tests {
 
     #[test]
     fn bind() {
-        let schema = Schema::from_ddl(r#"CREATE TABLE q ("a""b" INT)"#).unwrap();
+        let schema = Schema::from_ddl(r#"CREATE TABLE "q""1" ("a""b" INT)"#).unwrap();
         let columns = schema.column_defs.unwrap();
         let column = ColumnDefPlan::from(columns[0].clone());
-        let mut planner = ConditionPlanner::new("q", &[], &[]);
+        let mut planner = ConditionPlanner::new(&schema.table_name, "q", &[], &[]);
 
         // A column is quoted SQL syntax and does not consume a parameter position.
         let actual = planner.bind(ResolvedOperand::Column(&column));
-        let expected = Some(r#""a""b""#.to_owned());
+        let expected = Some(r#""q""1"."a""b""#.to_owned());
         assert_eq!(actual, expected);
         assert_eq!(planner.params, Vec::<Value>::new());
 
@@ -869,7 +896,10 @@ mod tests {
         // Translation keeps infinity but abandons a comparison when binding fails.
         let ddl = "CREATE TABLE q (f FLOAT32, d FLOAT)";
         let actual = translate_condition(ddl, "d < $1", &[f64::INFINITY.into_param_literal()]);
-        let expected = Some((r#"("d" < ?1)"#.to_owned(), vec![Value::F64(f64::INFINITY)]));
+        let expected = Some((
+            r#"("q"."d" < ?1)"#.to_owned(),
+            vec![Value::F64(f64::INFINITY)],
+        ));
         assert_eq!(actual, expected);
 
         for (sql, param) in [
