@@ -7,13 +7,11 @@ use {
         schema::{columns, primary_key, quote, rowid_name},
     },
     gluesql_core::{
-        ast::DataType,
         data::{Key, Schema, Value},
         error::Result as GlueResult,
         store::{ScanColumns, StoreMut},
     },
     rusqlite::{params_from_iter, types::Value as SqlValue},
-    std::collections::HashMap,
 };
 
 impl StoreMut for SqliteStorage {
@@ -75,14 +73,6 @@ impl SqliteStorage {
         }
 
         let columns = columns(&schema);
-        let primary = primary_key(&columns);
-
-        if let Some(index) = primary
-            && columns[index].data_type == DataType::Decimal
-        {
-            return self.write_decimal_rows(&schema, index, rows);
-        }
-
         let mut names = columns
             .iter()
             .map(|column| quote(&column.name))
@@ -93,6 +83,7 @@ impl SqliteStorage {
             .collect::<Vec<_>>()
             .join(", ");
 
+        let primary = primary_key(&columns);
         let conflict_column = if let Some(index) = primary {
             names[index].clone()
         } else {
@@ -123,61 +114,6 @@ impl SqliteStorage {
             }
 
             statement.execute(params_from_iter(values))?;
-        }
-
-        Ok(())
-    }
-
-    fn write_decimal_rows(
-        &self,
-        schema: &Schema,
-        primary: usize,
-        rows: &[(Key, Vec<Value>)],
-    ) -> Result<()> {
-        let columns = columns(schema);
-
-        // Decimal keys can be equal even when their stored TEXT scales differ.
-        let stored_rows = self.read_rows(schema, ScanColumns::Selected(&[]))?;
-        let mut rowids = HashMap::with_capacity(stored_rows.len());
-        for row in stored_rows {
-            rowids.entry(row.key).or_insert(row.rowid);
-        }
-
-        let mut names = columns
-            .iter()
-            .map(|column| quote(&column.name))
-            .collect::<Vec<_>>();
-        let assignments = names
-            .iter()
-            .map(|name| format!("{name} = excluded.{name}"))
-            .collect::<Vec<_>>()
-            .join(", ");
-        let rowid_column = quote(rowid_name(schema)?);
-        names.push(rowid_column.clone());
-
-        let placeholders = vec!["?"; names.len()].join(", ");
-        let sql = format!(
-            "INSERT INTO {} ({}) VALUES ({placeholders})
-             ON CONFLICT ({rowid_column}) DO UPDATE SET {assignments}",
-            quote(&schema.table_name),
-            names.join(", ")
-        );
-        let mut statement = self.connection.prepare(&sql)?;
-
-        for (key, row) in rows {
-            let mut values = encode_row(row, &columns)?;
-            validate_primary_key(key, &row[primary])?;
-
-            let rowid = rowids
-                .get(key)
-                .copied()
-                .map_or(SqlValue::Null, SqlValue::Integer);
-            values.push(rowid);
-
-            statement.execute(params_from_iter(values))?;
-            rowids
-                .entry(key.clone())
-                .or_insert_with(|| self.connection.last_insert_rowid());
         }
 
         Ok(())

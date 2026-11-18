@@ -46,6 +46,36 @@ fn primary_key_lookup_decodes_only_the_requested_row() {
 }
 
 #[test]
+fn decimal_key_lookup_decodes_only_the_matching_row() {
+    let directory = tempdir().unwrap();
+    let path = directory.path().join("decimal.sqlite");
+    let mut glue = Glue::new(SqliteStorage::new(&path).unwrap());
+    glue.execute(
+        "
+        CREATE TABLE item (id DECIMAL PRIMARY KEY, flag BOOLEAN);
+        INSERT INTO item VALUES
+            (CAST('1.00' AS DECIMAL), FALSE),
+            (CAST('2.00' AS DECIMAL), TRUE);
+        ",
+    )
+    .unwrap();
+
+    // A full scan would try to decode the first row's invalid BOOLEAN.
+    let sqlite = Connection::open(path).unwrap();
+    sqlite
+        .execute("UPDATE item SET flag = 2 WHERE flag = 0", [])
+        .unwrap();
+
+    let key = Key::Decimal("2.0".parse().unwrap());
+    let actual = glue.storage.fetch_data("item", &key);
+    let expected = Ok(Some(vec![
+        Value::Decimal("2.00".parse().unwrap()),
+        Value::Bool(true),
+    ]));
+    assert_eq!(actual, expected);
+}
+
+#[test]
 fn rowid_lookup_uses_the_unshadowed_alias() {
     let directory = tempdir().unwrap();
     let path = directory.path().join("rowid.sqlite");

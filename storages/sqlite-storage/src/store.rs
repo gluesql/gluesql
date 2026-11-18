@@ -79,15 +79,6 @@ impl SqliteStorage {
             return Ok(None);
         }
 
-        // Decimal keys such as 1.0 and 1.00 compare equal despite different TEXT encodings.
-        if *key_type == DataType::Decimal {
-            return Ok(self
-                .read_rows(schema, ScanColumns::All)?
-                .into_iter()
-                .find(|row| &row.key == key)
-                .map(|row| row.values));
-        }
-
         let projection = columns
             .iter()
             .map(|column| quote(&column.name))
