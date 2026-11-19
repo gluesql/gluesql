@@ -254,7 +254,7 @@ mod tests {
             parse_sql::{parse_expr, parse_query},
             plan::{ExprPlan, QueryPlan, StatementPlan, StatementPlanKind},
             planner::{context::Context, plan_schema_map, plan_schemaless},
-            query_builder::{Build, table},
+            query_builder::{Build, native_query, table},
             translate::{NO_PARAMS, translate_expr, translate_query},
         },
         std::rc::Rc,
@@ -469,6 +469,20 @@ mod tests {
         test_query!("SELECT Foo.id FROM Foo LEFT JOIN Bar GROUP BY Foo.id", true);
         test_query!("SELECT id FROM Foo WHERE id = 1 GROUP BY id", true);
         test_query!("SELECT id FROM Foo WHERE unknown = 1 GROUP BY id", false);
+
+        let actual = native_query("SELECT 1 AS id")
+            .columns([("id", "INT")])
+            .alias_as("Foo")
+            .select();
+        let expected = true;
+        test_query_builder(context.as_ref(), actual, expected);
+
+        let actual = native_query("SELECT 1 AS id")
+            .columns([("id", "INT")])
+            .alias_as("Unknown")
+            .select();
+        let expected = false;
+        test_query_builder(context.as_ref(), actual, expected);
 
         let actual = table("Foo").create_table();
         let expected = false;

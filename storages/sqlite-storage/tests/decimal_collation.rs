@@ -4,12 +4,85 @@ use {
         data::{Key, Schema, Value},
         error::Result,
         prelude::Glue,
-        store::{NativeQuery, StoreMut},
+        store::{NativeQuery, ScanColumns, Store, StoreMut},
     },
     gluesql_sqlite_storage::{SqliteStorage, SqliteStorageError},
     rusqlite::{Error as SqliteError, ffi},
     tempfile::tempdir,
 };
+
+#[test]
+fn decimal_keys_keep_numeric_equality_across_text_scales() {
+    let directory = tempdir().unwrap();
+    let path = directory.path().join("decimal.sqlite");
+    let mut storage = SqliteStorage::new(&path).unwrap();
+    let schema = Schema::from_ddl("CREATE TABLE item (id DECIMAL PRIMARY KEY, name TEXT)").unwrap();
+    storage.insert_schema(&schema).unwrap();
+
+    // Different text scales describe the same logical primary key.
+    storage
+        .insert_data(
+            "item",
+            vec![(
+                Key::Decimal("1.0".parse().unwrap()),
+                vec![
+                    Value::Decimal("1.00".parse().unwrap()),
+                    Value::Str("first".to_owned()),
+                ],
+            )],
+        )
+        .unwrap();
+    drop(storage);
+    let mut storage = SqliteStorage::new(path).unwrap();
+    assert_eq!(
+        storage
+            .fetch_data("item", &Key::Decimal("1".parse().unwrap()))
+            .unwrap(),
+        Some(vec![
+            Value::Decimal("1.00".parse().unwrap()),
+            Value::Str("first".to_owned())
+        ])
+    );
+
+    // Rewriting that key must update the existing row rather than create a second one.
+    storage
+        .insert_data(
+            "item",
+            vec![(
+                Key::Decimal("1.000".parse().unwrap()),
+                vec![
+                    Value::Decimal("1.0".parse().unwrap()),
+                    Value::Str("updated".to_owned()),
+                ],
+            )],
+        )
+        .unwrap();
+    let rows = storage
+        .scan_data("item", ScanColumns::All)
+        .unwrap()
+        .collect::<Result<Vec<_>>>()
+        .unwrap();
+    assert_eq!(
+        rows,
+        vec![(
+            Key::Decimal("1".parse().unwrap()),
+            vec![
+                Value::Decimal("1.0".parse().unwrap()),
+                Value::Str("updated".to_owned())
+            ]
+        )]
+    );
+
+    storage
+        .delete_data("item", vec![Key::Decimal("1.00".parse().unwrap())])
+        .unwrap();
+    assert_eq!(
+        storage
+            .fetch_data("item", &Key::Decimal("1".parse().unwrap()))
+            .unwrap(),
+        None
+    );
+}
 
 #[test]
 fn decimal_unique_values_use_numeric_equality_and_order() {

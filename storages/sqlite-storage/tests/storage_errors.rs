@@ -6,7 +6,7 @@ use {
         store::{ScanColumns, Store, StoreMut},
     },
     gluesql_sqlite_storage::{SqliteStorage, SqliteStorageError},
-    rusqlite::Connection,
+    rusqlite::{Connection, Error as SqliteError, ffi},
     tempfile::tempdir,
 };
 
@@ -318,6 +318,51 @@ fn column_type_metadata_is_required() {
         };
         assert_eq!(actual, Err(expected.into()), "{case}");
     }
+}
+
+#[test]
+fn reading_schema_reports_the_missing_logical_type_column() {
+    let directory = tempdir().unwrap();
+    let path = directory.path().join("missing-logical-type.sqlite");
+    let mut storage = SqliteStorage::new(&path).unwrap();
+    let schema = Schema::from_ddl("CREATE TABLE item (id INT)").unwrap();
+    storage.insert_schema(&schema).unwrap();
+
+    let sqlite = Connection::open(&path).unwrap();
+    sqlite
+        .execute_batch("ALTER TABLE __gluesql_column_meta RENAME COLUMN logical_type TO old_type")
+        .unwrap();
+
+    let actual = storage.fetch_schema("item").unwrap_err();
+    let expected = "no such column: logical_type in ";
+    assert!(
+        matches!(&actual, Error::StorageMsg(message) if message.starts_with(expected)),
+        "{actual:?}"
+    );
+}
+
+#[test]
+fn listing_schemas_recovers_after_a_schema_lock_is_released() {
+    let uri = "file:schema_list_lock?mode=memory&cache=shared";
+    let mut storage = SqliteStorage::new(uri).unwrap();
+    let schema = Schema::from_ddl("CREATE TABLE item (id INT)").unwrap();
+    storage.insert_schema(&schema).unwrap();
+
+    let writer = Connection::open(uri).unwrap();
+    writer
+        .execute_batch("BEGIN; CREATE TABLE pending (id INTEGER)")
+        .unwrap();
+
+    let actual = storage.fetch_all_schemas();
+    let expected = Err(SqliteStorageError::Sqlite(SqliteError::SqliteFailure(
+        ffi::Error::new(ffi::SQLITE_LOCKED_SHAREDCACHE),
+        Some("database schema is locked: main".to_owned()),
+    ))
+    .into());
+    assert_eq!(actual, expected);
+
+    writer.execute_batch("ROLLBACK").unwrap();
+    assert_eq!(storage.fetch_all_schemas().unwrap(), vec![schema]);
 }
 
 #[test]

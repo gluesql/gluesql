@@ -12,6 +12,49 @@ use {
 };
 
 #[test]
+fn projected_scan_does_not_decode_unrequested_columns() {
+    let directory = tempdir().unwrap();
+    let path = directory.path().join("projection.sqlite");
+    let mut storage = SqliteStorage::new(&path).unwrap();
+    let schema = Schema::from_ddl("CREATE TABLE item (id INT PRIMARY KEY, flag BOOLEAN)").unwrap();
+    storage.insert_schema(&schema).unwrap();
+    storage
+        .insert_data(
+            "item",
+            vec![(Key::I64(5), vec![Value::I64(5), Value::Bool(true)])],
+        )
+        .unwrap();
+
+    // SQLite accepts INTEGER 2, but GlueSQL cannot decode it as a BOOLEAN.
+    Connection::open(path)
+        .unwrap()
+        .execute("UPDATE item SET flag = 2", [])
+        .unwrap();
+
+    // Neither selecting id nor selecting no values should touch the invalid flag.
+    let selected = [("id".to_owned(), 0)];
+    let rows = storage
+        .scan_data("item", ScanColumns::Selected(&selected))
+        .unwrap()
+        .collect::<Result<Vec<_>>>()
+        .unwrap();
+    assert_eq!(rows, vec![(Key::I64(5), vec![Value::I64(5)])]);
+
+    let empty = storage
+        .scan_data("item", ScanColumns::Selected(&[]))
+        .unwrap()
+        .collect::<Result<Vec<_>>>()
+        .unwrap();
+    assert_eq!(empty, vec![(Key::I64(5), vec![])]);
+
+    // Reading the full row confirms the invalid value is still present.
+    assert_eq!(
+        storage.fetch_data("item", &Key::I64(5)),
+        Err(SqliteStorageError::InvalidBoolean(2).into())
+    );
+}
+
+#[test]
 fn rowid_scan_streams_projected_rows_and_releases_the_cursor_on_drop() {
     let directory = tempdir().unwrap();
     let path = directory.path().join("lazy.sqlite");

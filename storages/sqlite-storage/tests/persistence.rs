@@ -2,16 +2,16 @@ use {
     gluesql_core::{
         ast::{Expr, Literal},
         data::{Interval, Key, Point, Schema, Value},
-        store::{ScanColumns, Store, StoreMut, Transaction},
+        store::{Store, StoreMut, Transaction},
     },
-    gluesql_sqlite_storage::{SqliteStorage, SqliteStorageError},
-    rusqlite::{Connection, Error as SqliteError, ffi},
+    gluesql_sqlite_storage::SqliteStorage,
+    rusqlite::Connection,
     std::collections::BTreeMap,
     tempfile::tempdir,
 };
 
 #[test]
-fn reopen_preserves_types_defaults_comments_and_schemaless_documents() {
+fn reopen_preserves_types_defaults_and_comments() {
     let directory = tempdir().unwrap();
     let path = directory.path().join("values.sqlite");
 
@@ -94,14 +94,6 @@ fn reopen_preserves_types_defaults_comments_and_schemaless_documents() {
         Value::Null,
     ];
 
-    // A document uses the same nested value encoding, but restores a schemaless schema.
-    let mut document = Schema::from_ddl("CREATE TABLE documents").unwrap();
-    document.comment = Some(String::new());
-    let document_row = vec![Value::Map(BTreeMap::from([(
-        "items".to_owned(),
-        Value::List(vec![Value::U128(u128::MAX), Value::Bool(false)]),
-    )]))];
-
     {
         let mut storage = SqliteStorage::new(&path).unwrap();
         storage.begin(false).unwrap();
@@ -109,45 +101,23 @@ fn reopen_preserves_types_defaults_comments_and_schemaless_documents() {
         storage
             .insert_data(&schema.table_name, vec![(Key::I64(7), row.clone())])
             .unwrap();
-
-        storage.insert_schema(&document).unwrap();
-        storage
-            .append_data("documents", vec![document_row.clone()])
-            .unwrap();
         storage.commit().unwrap();
     }
 
-    // Read both schemas and rows through a new connection, with no in-memory state to reuse.
     let storage = SqliteStorage::new(&path).unwrap();
     assert_eq!(
         storage.fetch_schema(&schema.table_name).unwrap(),
         Some(schema.clone())
     );
-    assert_eq!(storage.fetch_schema("documents").unwrap(), Some(document));
-
     assert_eq!(
         storage
             .fetch_data(&schema.table_name, &Key::I64(7))
             .unwrap(),
         Some(row)
     );
-    assert_eq!(
-        storage.fetch_data("documents", &Key::I64(1)).unwrap(),
-        Some(document_row)
-    );
-    assert_eq!(storage.fetch_all_schemas().unwrap().len(), 2);
 
     // Inspect the physical representation independently of GlueSQL's decoding.
     let sqlite = Connection::open(path).unwrap();
-    let strict_count: i64 = sqlite
-        .query_row(
-            "SELECT count(*) FROM pragma_table_list WHERE strict = 1",
-            [],
-            |row| row.get(0),
-        )
-        .unwrap();
-    assert_eq!(strict_count, 4, "two user tables and two metadata tables");
-
     let physical: (String, String, String, String, String, String) = sqlite
         .query_row(
             r#"SELECT typeof(i8), typeof(f32), typeof(bytes), typeof(decimal), decimal, interval
@@ -202,269 +172,48 @@ fn reopen_preserves_types_defaults_comments_and_schemaless_documents() {
 }
 
 #[test]
-fn schema_rebuild_preserves_rows_and_rolls_back_failed_replacement() {
+fn reopen_preserves_schemaless_documents() {
     let directory = tempdir().unwrap();
-    let path = directory.path().join("schema.sqlite");
-    let mut storage = SqliteStorage::new(&path).unwrap();
+    let path = directory.path().join("documents.sqlite");
+    let items = Schema::from_ddl("CREATE TABLE items (id INT)").unwrap();
+    let mut documents = Schema::from_ddl("CREATE TABLE documents").unwrap();
+    documents.comment = Some(String::new());
+    let row = vec![Value::Map(BTreeMap::from([(
+        "items".to_owned(),
+        Value::List(vec![Value::U128(u128::MAX), Value::Bool(false)]),
+    )]))];
 
-    let initial = Schema::from_ddl("CREATE TABLE item (id INT PRIMARY KEY, name TEXT)").unwrap();
-    storage.insert_schema(&initial).unwrap();
-    storage
-        .insert_data(
-            "item",
-            vec![(
-                Key::I64(4),
-                vec![Value::I64(4), Value::Str("apple".to_owned())],
-            )],
-        )
-        .unwrap();
+    {
+        let mut storage = SqliteStorage::new(&path).unwrap();
+        storage.begin(false).unwrap();
+        storage.insert_schema(&items).unwrap();
+        storage.insert_schema(&documents).unwrap();
+        storage.append_data("documents", vec![row.clone()]).unwrap();
+        storage.commit().unwrap();
+    }
 
-    let expanded = Schema::from_ddl(
-        "CREATE TABLE item (
-             id INT PRIMARY KEY,
-             name TEXT,
-             qty INT NOT NULL DEFAULT 3 COMMENT 'new'
-         ) COMMENT = 'expanded'",
-    )
-    .unwrap();
-    storage.insert_schema(&expanded).unwrap();
-
-    assert_eq!(
-        storage.fetch_data("item", &Key::I64(4)).unwrap(),
-        Some(vec![
-            Value::I64(4),
-            Value::Str("apple".to_owned()),
-            Value::I64(3)
-        ])
-    );
-    assert_eq!(
-        storage.fetch_schema("item").unwrap(),
-        Some(expanded.clone())
-    );
-
-    // Existing rows cannot populate a required column without a default.
-    let invalid = Schema::from_ddl(
-        "CREATE TABLE item (
-             id INT PRIMARY KEY,
-             name TEXT,
-             qty INT NOT NULL DEFAULT 3 COMMENT 'new',
-             required INT NOT NULL COMMENT 'new'
-         ) COMMENT = 'expanded'",
-    )
-    .unwrap();
-
-    let actual = storage.insert_schema(&invalid);
-    let expected = SqliteStorageError::Sqlite(SqliteError::SqliteFailure(
-        ffi::Error::new(ffi::SQLITE_CONSTRAINT_NOTNULL),
-        Some("NOT NULL constraint failed: item.required".to_owned()),
-    ));
-    assert_eq!(actual, Err(expected.into()));
-
-    // Reopening must expose the last successful schema and its rows.
-    drop(storage);
     let storage = SqliteStorage::new(&path).unwrap();
-    assert_eq!(storage.fetch_schema("item").unwrap(), Some(expanded));
     assert_eq!(
-        storage.fetch_data("item", &Key::I64(4)).unwrap(),
-        Some(vec![
-            Value::I64(4),
-            Value::Str("apple".to_owned()),
-            Value::I64(3)
-        ])
+        storage.fetch_schema("documents").unwrap(),
+        Some(documents.clone())
     );
-}
+    assert_eq!(
+        storage.fetch_data("documents", &Key::I64(1)).unwrap(),
+        Some(row)
+    );
 
-#[test]
-fn rewriting_schema_replaces_column_metadata_and_removes_unused_table_metadata() {
-    let directory = tempdir().unwrap();
-    let path = directory.path().join("metadata.sqlite");
-    let mut storage = SqliteStorage::new(&path).unwrap();
-    let original = Schema::from_ddl(
-        "CREATE TABLE item (
-             id INT PRIMARY KEY,
-             level INT8 DEFAULT CAST(1 AS INT8) COMMENT 'old',
-             obsolete TEXT
-         ) COMMENT = 'original'",
-    )
-    .unwrap();
-    storage.insert_schema(&original).unwrap();
+    let schemas = storage.fetch_all_schemas().unwrap();
+    assert_eq!(schemas.len(), 2);
+    assert!(schemas.contains(&documents));
+    assert!(schemas.contains(&items));
 
-    // Replace the logical type, remove an expression/comment and drop an entire column.
-    let updated = Schema::from_ddl(
-        "CREATE TABLE item (
-             id INT PRIMARY KEY,
-             level INT16 DEFAULT 2
-         ) COMMENT = 'updated'",
-    )
-    .unwrap();
-    storage.insert_schema(&updated).unwrap();
-
-    assert_eq!(storage.fetch_schema("item").unwrap(), Some(updated));
-    assert_eq!(storage.fetch_schema("ITEM").unwrap(), None);
-
-    // Old metadata must be deleted, including the row for the dropped column.
-    let sqlite = Connection::open(&path).unwrap();
-    let actual = sqlite
-        .prepare(
-            "SELECT column_name, logical_type, comment, default_sql
-             FROM __gluesql_column_meta
-             WHERE table_name = 'item'
-             ORDER BY column_name",
-        )
-        .unwrap()
-        .query_map([], |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, Option<String>>(2)?,
-                row.get::<_, Option<String>>(3)?,
-            ))
-        })
-        .unwrap()
-        .collect::<rusqlite::Result<Vec<_>>>()
-        .unwrap();
-    let expected = vec![
-        ("id".to_owned(), "INT".to_owned(), None, None),
-        ("level".to_owned(), "INT16".to_owned(), None, None),
-    ];
-    assert_eq!(actual, expected);
-
-    // A schemaful table no longer needs a table metadata row once its comment is removed.
-    let without_comment = Schema::from_ddl(
-        "CREATE TABLE item (
-             id INT PRIMARY KEY,
-             level INT16 DEFAULT 2
-         )",
-    )
-    .unwrap();
-    storage.insert_schema(&without_comment).unwrap();
-    let actual: i64 = sqlite
+    let sqlite = Connection::open(path).unwrap();
+    let strict_count: i64 = sqlite
         .query_row(
-            "SELECT count(*) FROM __gluesql_table_meta WHERE table_name = 'item'",
+            "SELECT count(*) FROM pragma_table_list WHERE strict = 1",
             [],
             |row| row.get(0),
         )
         .unwrap();
-    let expected = 0;
-    assert_eq!(actual, expected);
-
-    let actual = storage.fetch_schema("item").unwrap();
-    let expected = Some(without_comment);
-    assert_eq!(actual, expected);
-}
-
-#[test]
-fn projected_scan_does_not_decode_unrequested_columns() {
-    let directory = tempdir().unwrap();
-    let path = directory.path().join("projection.sqlite");
-    let mut storage = SqliteStorage::new(&path).unwrap();
-    let schema = Schema::from_ddl("CREATE TABLE item (id INT PRIMARY KEY, flag BOOLEAN)").unwrap();
-    storage.insert_schema(&schema).unwrap();
-    storage
-        .insert_data(
-            "item",
-            vec![(Key::I64(5), vec![Value::I64(5), Value::Bool(true)])],
-        )
-        .unwrap();
-
-    // SQLite accepts INTEGER 2, but GlueSQL cannot decode it as a BOOLEAN.
-    Connection::open(path)
-        .unwrap()
-        .execute("UPDATE item SET flag = 2", [])
-        .unwrap();
-
-    // Neither selecting id nor selecting no values should touch the invalid flag.
-    let selected = [("id".to_owned(), 0)];
-    let rows = storage
-        .scan_data("item", ScanColumns::Selected(&selected))
-        .unwrap()
-        .collect::<gluesql_core::error::Result<Vec<_>>>()
-        .unwrap();
-    assert_eq!(rows, vec![(Key::I64(5), vec![Value::I64(5)])]);
-
-    let empty = storage
-        .scan_data("item", ScanColumns::Selected(&[]))
-        .unwrap()
-        .collect::<gluesql_core::error::Result<Vec<_>>>()
-        .unwrap();
-    assert_eq!(empty, vec![(Key::I64(5), vec![])]);
-
-    // Reading the full row confirms the invalid value is still present.
-    assert_eq!(
-        storage.fetch_data("item", &Key::I64(5)),
-        Err(SqliteStorageError::InvalidBoolean(2).into())
-    );
-}
-
-#[test]
-fn decimal_keys_keep_numeric_equality_across_text_scales() {
-    let directory = tempdir().unwrap();
-    let path = directory.path().join("decimal.sqlite");
-    let mut storage = SqliteStorage::new(&path).unwrap();
-    let schema = Schema::from_ddl("CREATE TABLE item (id DECIMAL PRIMARY KEY, name TEXT)").unwrap();
-    storage.insert_schema(&schema).unwrap();
-
-    // Different text scales describe the same logical primary key.
-    storage
-        .insert_data(
-            "item",
-            vec![(
-                Key::Decimal("1.0".parse().unwrap()),
-                vec![
-                    Value::Decimal("1.00".parse().unwrap()),
-                    Value::Str("first".to_owned()),
-                ],
-            )],
-        )
-        .unwrap();
-    drop(storage);
-    let mut storage = SqliteStorage::new(path).unwrap();
-    assert_eq!(
-        storage
-            .fetch_data("item", &Key::Decimal("1".parse().unwrap()))
-            .unwrap(),
-        Some(vec![
-            Value::Decimal("1.00".parse().unwrap()),
-            Value::Str("first".to_owned())
-        ])
-    );
-
-    // Rewriting that key must update the existing row rather than create a second one.
-    storage
-        .insert_data(
-            "item",
-            vec![(
-                Key::Decimal("1.000".parse().unwrap()),
-                vec![
-                    Value::Decimal("1.0".parse().unwrap()),
-                    Value::Str("updated".to_owned()),
-                ],
-            )],
-        )
-        .unwrap();
-    let rows = storage
-        .scan_data("item", ScanColumns::All)
-        .unwrap()
-        .collect::<gluesql_core::error::Result<Vec<_>>>()
-        .unwrap();
-    assert_eq!(
-        rows,
-        vec![(
-            Key::Decimal("1".parse().unwrap()),
-            vec![
-                Value::Decimal("1.0".parse().unwrap()),
-                Value::Str("updated".to_owned())
-            ]
-        )]
-    );
-
-    storage
-        .delete_data("item", vec![Key::Decimal("1.00".parse().unwrap())])
-        .unwrap();
-    assert_eq!(
-        storage
-            .fetch_data("item", &Key::Decimal("1".parse().unwrap()))
-            .unwrap(),
-        None
-    );
+    assert_eq!(strict_count, 4, "two user tables and two metadata tables");
 }

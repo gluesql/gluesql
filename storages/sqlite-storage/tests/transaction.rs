@@ -116,6 +116,39 @@ fn failed_commits_clean_up_automatic_writes_and_allow_explicit_retry() {
 }
 
 #[test]
+fn automatic_commit_reports_both_errors_when_rollback_also_fails() {
+    let uri = "file:automatic_commit_lock?mode=memory&cache=shared";
+    let mut storage = SqliteStorage::new(uri).unwrap();
+    let writer = Connection::open(uri).unwrap();
+
+    storage.begin(true).unwrap();
+    writer
+        .execute_batch("BEGIN; CREATE TABLE pending (id INTEGER)")
+        .unwrap();
+
+    let locked = || {
+        SqliteError::SqliteFailure(
+            ffi::Error::new(ffi::SQLITE_LOCKED_SHAREDCACHE),
+            Some("database schema is locked: main".to_owned()),
+        )
+    };
+
+    let actual = storage.commit();
+    let expected = Err(SqliteStorageError::AutoCommitRollback {
+        commit: Box::new(locked()),
+        rollback: locked(),
+    }
+    .into());
+    assert_eq!(actual, expected);
+
+    // The automatic transaction is still open until its rollback can be retried.
+    writer.execute_batch("ROLLBACK").unwrap();
+    storage.rollback().unwrap();
+    assert!(storage.begin(false).unwrap());
+    storage.commit().unwrap();
+}
+
+#[test]
 fn sqlite_transaction_abort_preserves_the_original_error() {
     let directory = tempdir().unwrap();
     let path = directory.path().join("abort.sqlite");

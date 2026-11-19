@@ -107,7 +107,7 @@ fn schemaless_rename_preserves_the_document_marker_and_rowid_on_reopen() {
 }
 
 #[test]
-fn failed_metadata_rename_preserves_the_table_and_earlier_transaction_writes() {
+fn failed_table_and_column_renames_preserve_the_schema_and_earlier_writes() {
     let directory = tempdir().unwrap();
     let path = directory.path().join("rename_failure.sqlite");
     let mut storage = SqliteStorage::new(&path).unwrap();
@@ -139,6 +139,9 @@ fn failed_metadata_rename_preserves_the_table_and_earlier_transaction_writes() {
     assert_eq!(actual, expected);
     assert_eq!(storage.fetch_schema("item").unwrap(), Some(schema.clone()));
     assert_eq!(storage.fetch_schema("renamed").unwrap(), None);
+
+    let actual = storage.rename_column("item", "id", "renamed_id");
+    assert_eq!(actual, expected);
 
     storage.commit().unwrap();
     drop(storage);
