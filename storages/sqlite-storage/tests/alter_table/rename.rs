@@ -22,8 +22,10 @@ fn rename_preserves_metadata_and_rowids_on_reopen() {
     )
     .unwrap();
     storage.insert_schema(&schema).unwrap();
-    storage
-        .append_data("item", vec![vec![Value::I64(10), Value::I8(4)]])
+
+    Connection::open(&path)
+        .unwrap()
+        .execute("INSERT INTO item (rowid, id, level) VALUES (42, 10, 4)", [])
         .unwrap();
 
     // Native identifiers are quoted, while metadata names are bound values.
@@ -55,30 +57,40 @@ fn rename_preserves_metadata_and_rowids_on_reopen() {
             },
         )
         .unwrap();
-    let expected = (1, 10, 4);
+    let expected = (42, 10, 4);
     assert_eq!(actual, expected);
 
-    let actual: i64 = sqlite
+    let old_table_rows: i64 = sqlite
+        .query_row(
+            "SELECT count(*) FROM __gluesql_table_meta WHERE table_name = 'item'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(old_table_rows, 0);
+
+    let old_column_rows: i64 = sqlite
         .query_row(
             "SELECT count(*) FROM __gluesql_column_meta WHERE table_name = 'item'",
             [],
             |row| row.get(0),
         )
         .unwrap();
-    assert_eq!(actual, 0);
+    assert_eq!(old_column_rows, 0);
 }
 
 #[test]
-fn schemaless_rename_preserves_the_document_marker_on_reopen() {
+fn schemaless_rename_preserves_the_document_marker_and_rowid_on_reopen() {
     let directory = tempdir().unwrap();
     let path = directory.path().join("documents.sqlite");
     let mut storage = SqliteStorage::new(&path).unwrap();
     storage
         .insert_schema(&Schema::from_ddl("CREATE TABLE documents").unwrap())
         .unwrap();
+
     let document = Value::Map(BTreeMap::from([("id".to_owned(), Value::I64(10))]));
     storage
-        .append_data("documents", vec![vec![document.clone()]])
+        .insert_data("documents", vec![(Key::I64(42), vec![document.clone()])])
         .unwrap();
 
     storage.rename_schema("documents", "renamed").unwrap();
@@ -89,7 +101,7 @@ fn schemaless_rename_preserves_the_document_marker_on_reopen() {
     let expected = Some(Schema::from_ddl("CREATE TABLE renamed").unwrap());
     assert_eq!(actual, expected);
 
-    let actual = storage.fetch_data("renamed", &Key::I64(1)).unwrap();
+    let actual = storage.fetch_data("renamed", &Key::I64(42)).unwrap();
     let expected = Some(vec![document]);
     assert_eq!(actual, expected);
 }
