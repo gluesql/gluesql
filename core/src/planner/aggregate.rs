@@ -215,7 +215,7 @@ fn plan_hash_join(join: &mut HashJoinPlan) {
 
 fn plan_source(source: &mut SourcePlan) {
     match source {
-        SourcePlan::Table(_) | SourcePlan::Dictionary(_) => {}
+        SourcePlan::Table(_) | SourcePlan::Dictionary(_) | SourcePlan::Native(_) => {}
         SourcePlan::Derived(derived) => plan_query(&mut derived.query),
         SourcePlan::Series(series) => plan_expr(&mut series.size),
     }
@@ -327,7 +327,7 @@ mod tests {
     use {
         super::{plan, plan_query},
         crate::{
-            ast::{BinaryOperator, Dictionary, Literal},
+            ast::{BinaryOperator, DataType, Dictionary, Literal},
             parse_sql::{parse, parse_query},
             plan::{
                 AggregateExprPlan, AggregateFunctionPlan, AggregationInputPlan, AggregationPlan,
@@ -336,10 +336,11 @@ mod tests {
                 FilterPlan, FunctionPlan, HashJoinInputPlan, HashJoinPlan, HavingPlan,
                 InnerJoinInputPlan, InnerJoinPlan, JoinConditionInputPlan, JoinConditionPlan,
                 LeftOuterJoinInputPlan, LeftOuterJoinPlan, LimitInputPlan, LimitPlan,
-                NestedLoopJoinInputPlan, NestedLoopJoinPlan, OffsetInputPlan, OffsetPlan,
-                OrderByExprPlan, ProjectInputPlan, ProjectPlan, ProjectionPlan, QueryPlan,
-                SelectItemPlan, SelectOrderByPlan, SeriesSourcePlan, SourcePlan, StatementPlan,
-                StatementPlanKind, TableAccessPlan, TableAliasPlan, TableSourcePlan, ValuesPlan,
+                NativeColumnPlan, NativeSourcePlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan,
+                OffsetInputPlan, OffsetPlan, OrderByExprPlan, ProjectInputPlan, ProjectPlan,
+                ProjectionPlan, QueryPlan, SelectItemPlan, SelectOrderByPlan, SeriesSourcePlan,
+                SourcePlan, StatementPlan, StatementPlanKind, TableAccessPlan, TableAliasPlan,
+                TableSourcePlan, ValuesPlan,
             },
             query_builder::{Build, table},
             translate::{NO_PARAMS, translate, translate_query},
@@ -461,6 +462,64 @@ mod tests {
             }],
         });
 
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn binds_aggregates_over_native_sources() {
+        let native = SourcePlan::Native(NativeSourcePlan {
+            query: "SELECT qty FROM Item WHERE qty > 10".to_owned(),
+            params: vec![],
+            alias: "Item".to_owned(),
+            columns: vec![NativeColumnPlan {
+                name: "qty".to_owned(),
+                data_type: DataType::Int,
+            }],
+        });
+        let projection = |slot| {
+            ProjectionPlan::SelectItems(vec![SelectItemPlan::Expr {
+                expr: count_wildcard_expr(slot),
+                label: "COUNT(*)".to_owned(),
+            }])
+        };
+
+        let mut actual = QueryPlan::Project(ProjectPlan {
+            input: ProjectInputPlan::Source(native.clone()),
+            projection: projection(None),
+        });
+        plan_query(&mut actual);
+        let expected = QueryPlan::Project(ProjectPlan {
+            input: ProjectInputPlan::Aggregation(AggregationPlan {
+                input: AggregationInputPlan::Source(native.clone()),
+                group_by: vec![],
+                aggregate_slots: vec![count_wildcard(Some(0))],
+            }),
+            projection: projection(Some(0)),
+        });
+        assert_eq!(actual, expected);
+
+        // A residual condition must run before rows enter the aggregate.
+        let filter = FilterPlan {
+            input: FilterInputPlan::Source(native),
+            expr: greater_than(
+                ExprPlan::Identifier("qty".to_owned()),
+                ExprPlan::Literal(Literal::Number(20.into())),
+            ),
+        };
+
+        let mut actual = QueryPlan::Project(ProjectPlan {
+            input: ProjectInputPlan::Filter(filter.clone()),
+            projection: projection(None),
+        });
+        plan_query(&mut actual);
+        let expected = QueryPlan::Project(ProjectPlan {
+            input: ProjectInputPlan::Aggregation(AggregationPlan {
+                input: AggregationInputPlan::Filter(filter),
+                group_by: vec![],
+                aggregate_slots: vec![count_wildcard(Some(0))],
+            }),
+            projection: projection(Some(0)),
+        });
         assert_eq!(actual, expected);
     }
 

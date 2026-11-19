@@ -77,6 +77,11 @@ Shared Memory Storage is a storage option designed to provide more comfortable u
 ### Redb Storage
 Redb Storage leverages the [redb](https://docs.rs/redb) embedded database for persistent storage with transactional support. It keeps all tables in a single database file, offering another simple way to keep your data on disk while enjoying GlueSQL's query capabilities.
 
+### SQLite Storage
+
+With [SQLite Storage](storages/supported-storages/sqlite-storage.md), you create and query tables using GlueSQL's SQL syntax, types, and functions. SQLite stores the tables in a file or in memory.
+GlueSQL's planner chooses which parts of a query to send to SQLite. SQLite optimizes and executes those parts, and GlueSQL handles the rest.
+
 ### SlateDB Storage
 [SlateDB Storage](storages/supported-storages/slatedb-storage.md) stores GlueSQL schemas and rows in an embedded key-value engine backed by object storage, including Amazon S3 and Cloudflare R2. It supports reads, writes, and transactions, while SlateDB manages caching and compaction.
 

@@ -22,7 +22,7 @@ use {
         parse_sql::{parse_comma_separated_exprs, parse_expr, parse_query},
         plan::{ExprPlan, QueryPlan},
         prelude::DataType,
-        query_builder::QueryNode,
+        query_builder::{QueryNode, ValueNode},
         result::Result,
         translate::{NO_PARAMS, translate_expr, translate_query},
     },
@@ -633,8 +633,8 @@ pub fn null() -> ExprNode<'static> {
     ExprNode::Expr(Cow::Owned(Expr::Value(Value::Null)))
 }
 
-pub fn value(v: Value) -> ExprNode<'static> {
-    ExprNode::Expr(Cow::Owned(Expr::Value(v)))
+pub fn value<T: Into<ValueNode>>(v: T) -> ExprNode<'static> {
+    ExprNode::Expr(Cow::Owned(Expr::Value(v.into().0)))
 }
 
 #[cfg(test)]
@@ -765,5 +765,11 @@ mod tests {
         );
         test(value(Value::I64(100)), ExprPlan::Value(Value::I64(100)));
         test(value(Value::Bool(true)), ExprPlan::Value(Value::Bool(true)));
+        test(value(10_i64), ExprPlan::Value(Value::I64(10)));
+        test(value(0.1_f32), ExprPlan::Value(Value::F32(0.1)));
+        test(
+            value("name + 1"),
+            ExprPlan::Value(Value::Str("name + 1".to_owned())),
+        );
     }
 }

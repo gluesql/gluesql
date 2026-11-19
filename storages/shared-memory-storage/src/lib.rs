@@ -8,7 +8,7 @@ use {
     gluesql_core::{
         data::{Key, Schema, Value},
         error::{Error, Result},
-        store::{Metadata, Planner, RowIter, ScanColumns, Store, StoreMut},
+        store::{Metadata, NativeQuery, Planner, RowIter, ScanColumns, Store, StoreMut},
     },
     gluesql_memory_storage::MemoryStorage,
     std::sync::{Arc, RwLock},
@@ -109,6 +109,7 @@ impl Metadata for SharedMemoryStorage {}
 impl Planner for SharedMemoryStorage {}
 impl gluesql_core::store::CustomFunction for SharedMemoryStorage {}
 impl gluesql_core::store::CustomFunctionMut for SharedMemoryStorage {}
+impl NativeQuery for SharedMemoryStorage {}
 
 fn lock_error<T>(_: std::sync::PoisonError<T>) -> Error {
     Error::StorageMsg("[Shared MemoryStorage] lock poisoned".to_owned())

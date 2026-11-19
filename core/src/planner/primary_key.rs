@@ -523,13 +523,15 @@ mod tests {
         super::plan as plan_primary_key,
         crate::{
             ast::{
-                BinaryOperator, Expr, Join, JoinConstraint, JoinOperator, Literal, Projection,
-                Query, Select, SelectItem, SetExpr, Statement, TableFactor, TableWithJoins, Values,
+                BinaryOperator, DataType, Expr, Join, JoinConstraint, JoinOperator, Literal,
+                Projection, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
+                TableWithJoins, Values,
             },
             mock::{MockStorage, run},
             parse_sql::{parse, parse_expr},
             plan::{
-                ExprPlan, ProjectInputPlan, QueryPlan, SourcePlan, StatementPlan,
+                ExprPlan, FilterInputPlan, FilterPlan, InnerJoinInputPlan, NativeColumnPlan,
+                NativeSourcePlan, ProjectInputPlan, QueryPlan, SourcePlan, StatementPlan,
                 StatementPlanKind, TableAccessPlan, TableAliasPlan, TableSourcePlan,
             },
             planner::{PlannerError, plan_schema_map},
@@ -1434,6 +1436,117 @@ mod tests {
     #[test]
     fn direct_project_base_source_rejects_values() {
         assert!(direct_project_base_source(&statement("VALUES (1)")).is_none());
+    }
+
+    #[test]
+    fn projected_scan_can_become_a_primary_key_lookup() {
+        let ddl = "CREATE TABLE Item (id INT PRIMARY KEY, qty INT)";
+
+        let mut input = table("Item")
+            .select()
+            .filter("id = 1 + 1 AND qty > 10")
+            .project("qty")
+            .with_schema(ddl)
+            .build()
+            .unwrap();
+        let StatementPlanKind::Query(QueryPlan::Project(project)) = &mut input.kind else {
+            panic!("expected project");
+        };
+        let ProjectInputPlan::Filter(filter) = &mut project.input else {
+            panic!("expected filter");
+        };
+        let SourcePlan::Table(source) = filter.input.base_source_mut() else {
+            panic!("expected table source");
+        };
+        source.access = TableAccessPlan::ProjectedScan {
+            columns: vec!["id".to_owned(), "qty".to_owned()],
+        };
+        let actual = plan_primary_key(input).unwrap();
+        let expected = table("Item")
+            .index_by(primary_key().eq("1 + 1"))
+            .select()
+            .filter("qty > 10")
+            .project("qty")
+            .with_schema(ddl)
+            .build()
+            .unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn native_join_output_controls_primary_key_rewrite() {
+        let ddl = "CREATE TABLE Tasks (id INT PRIMARY KEY, done BOOLEAN)";
+        let native = NativeSourcePlan {
+            query: "SELECT id FROM Projects".to_owned(),
+            params: vec![],
+            alias: "p".to_owned(),
+            columns: vec![NativeColumnPlan {
+                name: "project_id".to_owned(),
+                data_type: DataType::Int,
+            }],
+        };
+
+        let input = table("Tasks")
+            .select()
+            .join_as("Projects", "p")
+            .filter("id = 1 AND Tasks.done = TRUE")
+            .with_schema(ddl)
+            .build()
+            .unwrap();
+        let input = replace_right_join_with_native(input, native.clone());
+        let actual = plan_primary_key(input).unwrap();
+        let expected = table("Tasks")
+            .index_by(primary_key().eq("1"))
+            .select()
+            .join_as("Projects", "p")
+            .filter("Tasks.done = TRUE")
+            .with_schema(ddl)
+            .build()
+            .unwrap();
+        let expected = replace_right_join_with_native(expected, native.clone());
+        assert_eq!(actual, expected);
+
+        // Both sources now expose id, so the filter cannot identify Tasks' key.
+        let native = NativeSourcePlan {
+            columns: vec![NativeColumnPlan {
+                name: "id".to_owned(),
+                data_type: DataType::Int,
+            }],
+            ..native
+        };
+        let input = table("Tasks")
+            .select()
+            .join_as("Projects", "p")
+            .filter("id = 1")
+            .with_schema(ddl)
+            .build()
+            .unwrap();
+        let input = replace_right_join_with_native(input, native);
+        let actual = plan_primary_key(input.clone()).unwrap();
+        let expected = input;
+        assert_eq!(actual, expected);
+    }
+
+    fn replace_right_join_with_native(
+        mut statement: StatementPlan,
+        native: NativeSourcePlan,
+    ) -> StatementPlan {
+        let StatementPlanKind::Query(QueryPlan::Project(project)) = &mut statement.kind else {
+            panic!("expected project");
+        };
+        let ProjectInputPlan::Filter(FilterPlan {
+            input: FilterInputPlan::InnerJoin(join),
+            ..
+        }) = &mut project.input
+        else {
+            panic!("expected a filter over an inner join");
+        };
+        let InnerJoinInputPlan::NestedLoop(join) = &mut join.input else {
+            panic!("expected nested loop");
+        };
+
+        join.right = SourcePlan::Native(native);
+        statement
     }
 
     #[test]

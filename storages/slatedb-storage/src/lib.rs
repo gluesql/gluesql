@@ -31,7 +31,8 @@ use {
     gluesql_core::{
         error::Result,
         store::{
-            AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Planner,
+            AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, NativeQuery,
+            Planner,
         },
     },
     object_store::{ObjectStore, parse_url_opts, path::Path},
@@ -158,3 +159,4 @@ impl Index for SlatedbStorage {}
 impl IndexMut for SlatedbStorage {}
 impl CustomFunction for SlatedbStorage {}
 impl CustomFunctionMut for SlatedbStorage {}
+impl NativeQuery for SlatedbStorage {}

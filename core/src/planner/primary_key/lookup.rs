@@ -104,6 +104,13 @@ impl JoinedRelation {
                 .and_then(|schema| schema.column_defs.as_deref())
                 .and_then(|column_defs| effective_columns(column_defs, table.alias.as_ref()))
                 .map_or(RelationColumns::Unknown, RelationColumns::Known),
+            SourcePlan::Native(native) => RelationColumns::Known(
+                native
+                    .columns
+                    .iter()
+                    .map(|column| column.name.clone())
+                    .collect(),
+            ),
             SourcePlan::Derived(_) | SourcePlan::Series(_) | SourcePlan::Dictionary(_) => {
                 RelationColumns::Unknown
             }
@@ -160,12 +167,13 @@ mod tests {
     use {
         super::PrimaryKeyLookupCandidate,
         crate::{
-            ast::Literal,
+            ast::{DataType, Literal},
             data::{Schema, Value},
             parse_sql::parse_query,
             plan::{
-                ExprPlan, FilterInputPlan, ProjectInputPlan, QueryPlan, SchemaMap, SourcePlan,
-                TableAccessPlan, TableSourcePlan,
+                ExprPlan, FilterInputPlan, InnerJoinInputPlan, InnerJoinPlan, NativeColumnPlan,
+                NativeSourcePlan, NestedLoopJoinInputPlan, NestedLoopJoinPlan, ProjectInputPlan,
+                QueryPlan, SchemaMap, SourcePlan, TableAccessPlan, TableSourcePlan,
             },
             translate::{NO_PARAMS, translate_query},
         },
@@ -286,6 +294,45 @@ mod tests {
 
             assert!(!candidate.contains(&identifier("id")), "{sql}");
             assert!(candidate.contains(&qualified("t", "id")), "{sql}");
+        }
+    }
+
+    #[test]
+    fn checks_native_join_outputs_for_primary_key_conflicts() {
+        let schemas = schema_map(&["CREATE TABLE Tasks (id INT PRIMARY KEY)"]);
+        let target = parse_source_input("SELECT * FROM Tasks t")
+            .base_source()
+            .clone();
+
+        // SQL's physical name does not determine the column visible to GlueSQL.
+        for (alias, column, unqualified_matches, qualified_matches) in [
+            ("p", "project_id", true, true),
+            ("p", "id", false, true),
+            ("t", "id", false, false),
+            ("t", "project_id", true, true),
+        ] {
+            let native = SourcePlan::Native(NativeSourcePlan {
+                query: "SELECT id FROM Projects".to_owned(),
+                params: vec![],
+                alias: alias.to_owned(),
+                columns: vec![NativeColumnPlan {
+                    name: column.to_owned(),
+                    data_type: DataType::Int,
+                }],
+            });
+            let from = FilterInputPlan::InnerJoin(Box::new(InnerJoinPlan {
+                input: InnerJoinInputPlan::NestedLoop(NestedLoopJoinPlan {
+                    input: NestedLoopJoinInputPlan::Source(target.clone()),
+                    right: native,
+                }),
+            }));
+            let candidate = PrimaryKeyLookupCandidate::new(&schemas, &from).unwrap();
+            let actual = (
+                candidate.contains(&identifier("id")),
+                candidate.contains(&qualified("t", "id")),
+            );
+            let expected = (unqualified_matches, qualified_matches);
+            assert_eq!(actual, expected, "native output {alias}.{column}");
         }
     }
 

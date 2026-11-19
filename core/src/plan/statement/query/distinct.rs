@@ -15,6 +15,13 @@ impl DistinctPlan {
             DistinctInputPlan::SelectOrderBy(order_by) => &order_by.input,
         }
     }
+
+    pub(super) fn project_mut(&mut self) -> &mut ProjectPlan {
+        match &mut self.input {
+            DistinctInputPlan::Project(project) => project,
+            DistinctInputPlan::SelectOrderBy(order_by) => &mut order_by.input,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

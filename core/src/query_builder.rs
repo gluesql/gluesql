@@ -14,6 +14,7 @@ mod expr_list;
 mod expr_with_alias;
 mod index;
 mod insert;
+mod native_query;
 mod order_by_expr;
 mod order_by_expr_list;
 mod query;
@@ -27,6 +28,7 @@ mod table_access;
 mod table_name;
 mod transaction;
 mod update;
+mod value;
 mod with_schema;
 
 /// Available expression builder functions
@@ -63,6 +65,7 @@ pub use {
     expr_with_alias::ExprWithAliasNode,
     index::{CreateIndexNode, DropIndexNode},
     insert::InsertNode,
+    native_query::{NativeQueryColumnsNode, NativeQueryNode, native_query},
     order_by_expr::OrderByExprNode,
     order_by_expr_list::OrderByExprList,
     query::QueryNode,
@@ -84,6 +87,7 @@ pub use {
     table_name::table,
     transaction::TransactionNode,
     update::UpdateNode,
+    value::ValueNode,
     with_schema::WithSchemaNode,
 };
 

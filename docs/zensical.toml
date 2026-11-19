@@ -235,6 +235,7 @@ nav = [
       "storages/supported-storages/redis-storage.md",
       "storages/supported-storages/shared-memory-storage.md",
       "storages/supported-storages/slatedb-storage.md",
+      "storages/supported-storages/sqlite-storage.md",
     ]},
     {"Developing Custom Storages" = [
       "storages/developing-custom-storages/intro.md",
@@ -248,6 +249,7 @@ nav = [
         "storages/developing-custom-storages/store-traits/index-trait.md",
         "storages/developing-custom-storages/store-traits/index-mut.md",
         "storages/developing-custom-storages/store-traits/metadata.md",
+        "storages/developing-custom-storages/store-traits/native-query.md",
       ]},
       "storages/developing-custom-storages/using-test-suite.md",
     ]},

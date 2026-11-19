@@ -11,7 +11,8 @@ use {
         data::{CustomFunction as StructCustomFunction, Key, Schema, Value},
         error::Result,
         store::{
-            CustomFunction, CustomFunctionMut, Planner, RowIter, ScanColumns, Store, StoreMut,
+            CustomFunction, CustomFunctionMut, NativeQuery, Planner, RowIter, ScanColumns, Store,
+            StoreMut,
         },
     },
     serde::{Deserialize, Serialize},
@@ -172,3 +173,4 @@ impl StoreMut for MemoryStorage {
 }
 
 impl Planner for MemoryStorage {}
+impl NativeQuery for MemoryStorage {}

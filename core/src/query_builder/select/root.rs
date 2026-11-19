@@ -130,6 +130,9 @@ impl BuildSourcePlan for SelectNode<'_> {
                     columns: Vec::new(),
                 },
             })),
+            SourceNode::Native { query, alias } => query
+                .build_native_source_plan(alias)
+                .map(SourcePlan::Native),
         }
     }
 }
@@ -184,6 +187,9 @@ impl BuildSelect for SelectNode<'_> {
                     columns: Vec::new(),
                 },
             },
+            SourceNode::Native { .. } => {
+                return Err(QueryBuilderError::NativeQueryRequiresPlan.into());
+            }
         };
 
         let from = TableWithJoins {
@@ -216,7 +222,7 @@ mod tests {
     use {
         crate::{
             query_builder::{
-                QueryBuilderError, primary_key, select, select::BuildSelect, table,
+                QueryBuilderError, native_query, primary_key, select, select::BuildSelect, table,
                 test_query_builder,
             },
             result::Error,
@@ -266,6 +272,21 @@ mod tests {
         assert_eq!(
             actual,
             Err(Error::QueryBuilder(QueryBuilderError::IndexByRequiresPlan))
+        );
+    }
+
+    #[test]
+    fn native_query_ast_build_requires_plan() {
+        let actual = native_query("SELECT 1")
+            .alias_as("source")
+            .select()
+            .build_select();
+
+        assert_eq!(
+            actual,
+            Err(Error::QueryBuilder(
+                QueryBuilderError::NativeQueryRequiresPlan
+            ))
         );
     }
 }

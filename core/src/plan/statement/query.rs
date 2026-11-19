@@ -27,8 +27,9 @@ pub use {
     project::{ProjectInputPlan, ProjectPlan},
     select_order_by::SelectOrderByPlan,
     source::{
-        DerivedSourcePlan, DictionarySourcePlan, IndexPredicatePlan, SeriesSourcePlan, SourcePlan,
-        TableAccessPlan, TableAliasPlan, TableSourcePlan,
+        DerivedSourcePlan, DictionarySourcePlan, IndexPredicatePlan, NativeColumnPlan,
+        NativeSourcePlan, SeriesSourcePlan, SourcePlan, TableAccessPlan, TableAliasPlan,
+        TableSourcePlan,
     },
     values::{ValuesOrderByPlan, ValuesPlan},
 };
@@ -58,6 +59,17 @@ impl QueryPlan {
             Self::Distinct(distinct) => Some(distinct.project()),
             Self::Offset(offset) => offset.project(),
             Self::Limit(limit) => limit.project(),
+        }
+    }
+
+    pub fn project_mut(&mut self) -> Option<&mut ProjectPlan> {
+        match self {
+            Self::Project(project) => Some(project),
+            Self::Values(_) | Self::ValuesOrderBy(_) => None,
+            Self::SelectOrderBy(order_by) => Some(&mut order_by.input),
+            Self::Distinct(distinct) => Some(distinct.project_mut()),
+            Self::Offset(offset) => offset.project_mut(),
+            Self::Limit(limit) => limit.project_mut(),
         }
     }
 }
@@ -299,6 +311,45 @@ mod tests {
             alias: None,
             access: TableAccessPlan::FullScan,
         })
+    }
+
+    #[test]
+    fn mutable_project_preserves_query_wrappers() {
+        for suffix in [
+            "",
+            " ORDER BY id",
+            " OFFSET 2",
+            " LIMIT 3",
+            " LIMIT 3 OFFSET 2",
+            " ORDER BY id OFFSET 2",
+            " ORDER BY id LIMIT 3 OFFSET 2",
+        ] {
+            for distinct in ["", "DISTINCT "] {
+                let sql = format!("SELECT {distinct}id FROM Item{suffix}");
+                let StatementPlanKind::Query(mut query) = statement_plan(&sql) else {
+                    panic!("{sql}");
+                };
+                query.project_mut().unwrap().projection =
+                    ProjectionPlan::SelectItems(vec![SelectItemPlan::Wildcard]);
+                let expected = statement_plan(&format!("SELECT {distinct}* FROM Item{suffix}"));
+                assert_eq!(StatementPlanKind::Query(query), expected, "{sql}");
+            }
+        }
+
+        for suffix in [
+            "",
+            " ORDER BY column1",
+            " OFFSET 2",
+            " LIMIT 3",
+            " LIMIT 3 OFFSET 2",
+            " ORDER BY column1 LIMIT 3 OFFSET 2",
+        ] {
+            let sql = format!("VALUES (1){suffix}");
+            let StatementPlanKind::Query(mut query) = statement_plan(&sql) else {
+                panic!("{sql}");
+            };
+            assert_eq!(query.project_mut(), None, "{sql}");
+        }
     }
 
     fn filter_plan() -> FilterPlan {

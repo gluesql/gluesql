@@ -1,5 +1,5 @@
 use {
-    super::{ExprNode, QueryNode, SelectNode, TableAccessNode},
+    super::{ExprNode, NativeQueryColumnsNode, QueryNode, SelectNode, TableAccessNode},
     crate::ast::Dictionary,
 };
 
@@ -20,6 +20,10 @@ pub enum SourceNode<'a> {
     },
     Derived {
         query: Box<QueryNode<'a>>,
+        alias: String,
+    },
+    Native {
+        query: NativeQueryColumnsNode,
         alias: String,
     },
 }

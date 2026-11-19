@@ -13,7 +13,8 @@ use {
         data::{CustomFunction as StructCustomFunction, Key, Schema, Value},
         error::{Error, Result},
         store::{
-            CustomFunction, CustomFunctionMut, Planner, RowIter, ScanColumns, Store, StoreMut,
+            CustomFunction, CustomFunctionMut, NativeQuery, Planner, RowIter, ScanColumns, Store,
+            StoreMut,
         },
     },
     redis::{Commands, Connection},
@@ -502,3 +503,5 @@ impl StoreMut for RedisStorage {
         Ok(())
     }
 }
+
+impl NativeQuery for RedisStorage {}

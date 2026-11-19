@@ -67,7 +67,7 @@ impl Visitor for FunctionBodyValidator {
 
     fn visit_source(&mut self, source: &SourcePlan) -> std::result::Result<(), PlannerError> {
         match source {
-            SourcePlan::Table(_) | SourcePlan::Dictionary(_) => {
+            SourcePlan::Table(_) | SourcePlan::Dictionary(_) | SourcePlan::Native(_) => {
                 Err(PlannerError::StorageAccessInFunctionBody)
             }
             SourcePlan::Derived(_) | SourcePlan::Series(_) => walk_source(self, source),

@@ -59,7 +59,10 @@ fn find_indexes(statement: &StatementPlan) -> Vec<&TableAccessPlan> {
                 vec![&table.access]
             }
             SourcePlan::Derived(derived) => find_query_indexes(&derived.query),
-            SourcePlan::Table(_) | SourcePlan::Series(_) | SourcePlan::Dictionary(_) => Vec::new(),
+            SourcePlan::Table(_)
+            | SourcePlan::Series(_)
+            | SourcePlan::Dictionary(_)
+            | SourcePlan::Native(_) => Vec::new(),
         }
     }
 

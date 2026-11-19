@@ -712,7 +712,7 @@ mod tests {
             parse_sql::parse,
             plan::StatementPlan,
             planner::{PlannerError, plan_schema_map},
-            query_builder::{Build, QueryNode, col, exists, num, subquery, table},
+            query_builder::{Build, QueryNode, col, exists, native_query, num, subquery, table},
             translate::translate,
         },
     };
@@ -1392,6 +1392,65 @@ mod tests {
             expected,
             "left outer hash join feeds a later planned hash join:\n{sql}"
         );
+    }
+
+    #[test]
+    fn native_columns_support_correlated_hash_join() {
+        let native = native_query("SELECT physical_id FROM Item")
+            .columns([("id", "INT")])
+            .alias_as("o");
+
+        let input = native
+            .clone()
+            .select()
+            .filter(exists(
+                table("A")
+                    .alias_as("a")
+                    .select()
+                    .join_as("B", "b")
+                    .on("b.id = a.id + o.id"),
+            ))
+            .with_schema("CREATE TABLE A (id INT)")
+            .with_schema("CREATE TABLE B (id INT)")
+            .build()
+            .unwrap();
+        let actual = plan(input).unwrap();
+        let expected = native
+            .select()
+            .filter(exists(
+                table("A")
+                    .alias_as("a")
+                    .select()
+                    .join_as("B", "b")
+                    .hash_executor("b.id", "a.id + o.id"),
+            ))
+            .with_schema("CREATE TABLE A (id INT)")
+            .with_schema("CREATE TABLE B (id INT)")
+            .build()
+            .unwrap();
+        assert_eq!(actual, expected);
+
+        // A missing logical column or a different alias cannot resolve o.id.
+        for (alias, column) in [("o", "physical_id"), ("other", "id")] {
+            let input = native_query("SELECT physical_id FROM Item")
+                .columns([(column, "INT")])
+                .alias_as(alias)
+                .select()
+                .filter(exists(
+                    table("A")
+                        .alias_as("a")
+                        .select()
+                        .join_as("B", "b")
+                        .on("b.id = a.id + o.id"),
+                ))
+                .with_schema("CREATE TABLE A (id INT)")
+                .with_schema("CREATE TABLE B (id INT)")
+                .build()
+                .unwrap();
+            let actual = plan(input.clone()).unwrap();
+            let expected = input;
+            assert_eq!(actual, expected, "native output {alias}.{column}");
+        }
     }
 
     #[test]

@@ -332,7 +332,7 @@ fn rewrite_source(schema_map: &SchemaMap, relation: &mut SourcePlan) {
         SourcePlan::Series(series) => {
             transform_query_expr(schema_map, &mut series.size, &empty_rewrite_state());
         }
-        SourcePlan::Table(_) | SourcePlan::Dictionary(_) => {}
+        SourcePlan::Table(_) | SourcePlan::Dictionary(_) | SourcePlan::Native(_) => {}
     }
 }
 

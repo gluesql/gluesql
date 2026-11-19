@@ -5,7 +5,7 @@ use {
         data::Schema,
         error::Result,
         prelude::{DataType, Key, Value},
-        store::{Metadata, Planner, ScanColumns, Store},
+        store::{Metadata, NativeQuery, Planner, ScanColumns, Store},
     },
     parquet::{
         file::{reader::FileReader, serialized_reader::SerializedFileReader},
@@ -204,6 +204,7 @@ impl ParquetStorage {
 
 impl Metadata for ParquetStorage {}
 impl Planner for ParquetStorage {}
+impl NativeQuery for ParquetStorage {}
 
 #[cfg(test)]
 mod tests {

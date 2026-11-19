@@ -11,8 +11,8 @@ use {
         data::{Key, Schema, Value},
         error::{Error, Result},
         store::{
-            AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Planner,
-            Transaction,
+            AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, NativeQuery,
+            Planner, Transaction,
         },
     },
     hex::ToHex,
@@ -85,3 +85,4 @@ impl Metadata for FileStorage {}
 impl CustomFunction for FileStorage {}
 impl CustomFunctionMut for FileStorage {}
 impl Planner for FileStorage {}
+impl NativeQuery for FileStorage {}
