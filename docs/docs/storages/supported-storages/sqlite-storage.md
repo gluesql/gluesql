@@ -65,12 +65,9 @@ SQLite-specific planner chooses which parts to send to SQLite and translates
 them into SQLite SQL. SQLite's own planner decides how to run that SQL, and its
 engine executes it. GlueSQL uses the returned rows to finish the query.
 
-The first optimization handles some WHERE conditions on a single table in SELECT
-queries. SQLite filters the rows before returning them to GlueSQL. GlueSQL
-evaluates the other conditions and handles joins, aggregates, sorting, and writes.
-
-For example, using the `Item` table created above, this query finds items with a
-quantity greater than 10 and at least one tag:
+In the example above, GlueSQL sends SQLite a query to read the `Item` table.
+To find items with more than 10 units in stock and at least one tag, put both
+conditions in the same `WHERE` clause.
 
 ```sql
 SELECT name, qty

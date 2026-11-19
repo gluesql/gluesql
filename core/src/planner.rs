@@ -68,5 +68,5 @@ pub use {
     schemaless::plan as plan_schemaless,
     validate_create_index::validate as validate_create_index,
     validate_insert::validate as validate_insert,
-    visit_mut::{VisitorMut, walk_query_mut},
+    visit_mut::{VisitorMut, walk_query_mut, walk_source_mut},
 };

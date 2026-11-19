@@ -4,7 +4,7 @@ mod operand_type;
 
 use {
     self::operand_type::{Operand, ResolvedOperand},
-    super::qualified_column,
+    crate::schema::qualified_column,
     gluesql_core::{
         ast::{BinaryOperator, DataType, Literal, ToSql, UnaryOperator},
         data::Value,

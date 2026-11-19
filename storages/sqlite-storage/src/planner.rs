@@ -1,10 +1,11 @@
-//! Preserves primary-key lookups and delegates remaining scan filters before
-//! common JOIN and aggregate planning.
+//! Delegates filters before JOIN planning and remaining table scans after it.
 
 mod native_filter;
+mod native_scan;
+mod table_read;
 
 use {
-    self::native_filter::plan as plan_native_filter,
+    self::{native_filter::plan as plan_native_filter, native_scan::plan as plan_native_scan},
     crate::SqliteStorage,
     gluesql_core::{
         error::Result,
@@ -36,7 +37,13 @@ impl Planner for SqliteStorage {
             plan_native_filter(query, schemas);
         }
 
-        let statement = plan_hash_join(statement)?;
+        let mut statement = plan_hash_join(statement)?;
+        if let StatementPlanKind::Query(query) = &mut statement.kind
+            && let SchemaMapPlan::Planned(schemas) = &statement.schema_map
+        {
+            plan_native_scan(query, schemas);
+        }
+
         let statement = plan_aggregate(statement);
 
         validate_create_function(&statement)?;

@@ -4,12 +4,11 @@
 mod condition;
 
 use {
-    crate::schema::{primary_key, quote, rowid_name},
+    super::table_read::{self, ScanOrder},
     gluesql_core::{
-        ast::DataType,
         plan::{
-            ExprPlan, FilterInputPlan, FilterPlan, NativeColumnPlan, NativeSourcePlan,
-            ProjectInputPlan, QueryPlan, SchemaMap, SourcePlan, TableAccessPlan,
+            ExprPlan, FilterInputPlan, FilterPlan, NativeSourcePlan, ProjectInputPlan, QueryPlan,
+            SchemaMap, SourcePlan,
         },
         planner::{VisitorMut, walk_query_mut},
     },
@@ -68,21 +67,15 @@ fn plan_filter(filter: &FilterPlan, schemas: &SchemaMap) -> NativeFilterRewrite 
         return NativeFilterRewrite::Unchanged;
     };
 
-    // PK lookups already use SQLite through fetch_data; keep the chosen access path.
-    let selected_columns = match &table.access {
-        TableAccessPlan::FullScan => None,
-        TableAccessPlan::ProjectedScan { columns } => Some(columns),
-        TableAccessPlan::PrimaryKey { .. } | TableAccessPlan::Index { .. } => {
-            return NativeFilterRewrite::Unchanged;
-        }
-    };
-
-    // Native row decoding requires fixed output types.
     let Some(schema) = schemas.get(&table.name) else {
         return NativeFilterRewrite::Unchanged;
     };
 
     let Some(columns) = schema.column_defs.as_ref() else {
+        return NativeFilterRewrite::Unchanged;
+    };
+
+    let Some(projection) = table_read::scan_projection(table, columns) else {
         return NativeFilterRewrite::Unchanged;
     };
 
@@ -95,54 +88,18 @@ fn plan_filter(filter: &FilterPlan, schemas: &SchemaMap) -> NativeFilterRewrite 
         .as_ref()
         .map_or(&[][..], |alias| alias.columns.as_slice());
 
-    if column_aliases.len() > columns.len() {
-        return NativeFilterRewrite::Unchanged;
-    }
-
-    let logical_names = columns
+    // Duplicate logical names make filter operands ambiguous.
+    let mut names = BTreeSet::new();
+    if columns
         .iter()
         .enumerate()
-        .map(|(index, column)| column_aliases.get(index).unwrap_or(&column.name))
-        .collect::<Vec<_>>();
-
-    // Duplicate logical names make physical column lookup ambiguous.
-    if logical_names.iter().collect::<BTreeSet<_>>().len() != logical_names.len() {
+        .any(|(index, column)| !names.insert(column_aliases.get(index).unwrap_or(&column.name)))
+    {
         return NativeFilterRewrite::Unchanged;
     }
 
-    let storage_schema = schema.to_schema(&table.name);
-    let Some(storage_columns) = storage_schema.column_defs.as_deref() else {
+    let Some(ScanOrder::Sqlite(order)) = table_read::scan_order(&table.name, columns) else {
         return NativeFilterRewrite::Unchanged;
-    };
-
-    // Preserve scan_data's GlueSQL Key or rowid order.
-    let order_column = if let Some(index) = primary_key(storage_columns) {
-        let column = &columns[index];
-        // TEXT encodings such as DECIMAL do not preserve numeric Key order.
-        if !matches!(
-            column.data_type,
-            DataType::Int8
-                | DataType::Int16
-                | DataType::Int32
-                | DataType::Int
-                | DataType::Uint8
-                | DataType::Uint16
-                | DataType::Uint32
-                | DataType::Boolean
-                | DataType::Text
-                | DataType::Bytea
-        ) {
-            return NativeFilterRewrite::Unchanged;
-        }
-
-        column.name.as_str()
-    } else {
-        // A shadowed rowid alias would sort by a user column instead.
-        let Ok(rowid) = rowid_name(&storage_schema) else {
-            return NativeFilterRewrite::Unchanged;
-        };
-
-        rowid
     };
 
     let Some(condition) =
@@ -151,55 +108,14 @@ fn plan_filter(filter: &FilterPlan, schemas: &SchemaMap) -> NativeFilterRewrite 
         return NativeFilterRewrite::Unchanged;
     };
 
-    // SQL uses physical column names; output metadata keeps GlueSQL's logical names.
-    // Both lists must preserve the common scan's column order.
-    let mut projection = Vec::new();
-    let mut output_columns = Vec::new();
-
-    for (column, name) in columns.iter().zip(logical_names) {
-        if selected_columns.is_some_and(|selected| !selected.contains(&column.name)) {
-            continue;
-        }
-
-        projection.push(qualified_column(&table.name, &column.name));
-        output_columns.push(NativeColumnPlan {
-            name: name.clone(),
-            data_type: column.data_type.clone(),
-        });
-    }
-
-    // Never silently drop unknown or repeated requested column names.
-    if selected_columns.is_some_and(|selected| selected.len() != output_columns.len()) {
-        return NativeFilterRewrite::Unchanged;
-    }
-
-    // SQLite still needs a SELECT item when GlueSQL needs no values from each row.
-    // query_native accepts this dummy column and returns an empty value list per row.
-    if projection.is_empty() {
-        projection.push("1".to_owned());
-    }
-
-    let source = NativeSourcePlan {
-        query: format!(
-            "SELECT {} FROM {} WHERE {} ORDER BY {} ASC",
-            projection.join(", "),
-            quote(&table.name),
-            condition.sql,
-            qualified_column(&table.name, order_column)
-        ),
-        params: condition.params,
-        alias: alias.to_owned(),
-        columns: output_columns,
-    };
+    let mut source = table_read::native_select(table, projection);
+    source.query = format!("{} WHERE {} {order}", source.query, condition.sql);
+    source.params = condition.params;
 
     match condition.remaining {
         Some(remaining) => NativeFilterRewrite::Partial { source, remaining },
         None => NativeFilterRewrite::Full { source },
     }
-}
-
-fn qualified_column(table: &str, column: &str) -> String {
-    format!("{}.{}", quote(table), quote(column))
 }
 
 #[cfg(test)]
@@ -209,10 +125,7 @@ mod tests {
         gluesql_core::{
             data::Schema,
             parse_sql::parse,
-            plan::{
-                FilterInputPlan, ProjectInputPlan, QueryPlan, SchemaMap, SchemaMapPlan, SourcePlan,
-                StatementPlan, StatementPlanKind, TableAccessPlan,
-            },
+            plan::{QueryPlan, SchemaMap, SchemaMapPlan, StatementPlan, StatementPlanKind},
             planner::plan_scan_columns,
             query_builder::{
                 Build, col, native_query, non_clustered, primary_key, subquery, table, value,
@@ -388,20 +301,16 @@ mod tests {
             .project("i.id");
         assert_query(actual, expected, ddl);
 
-        // FullScan keeps every column; projected columns are checked below.
-        let sql = "SELECT * FROM Item WHERE qty > 0";
-        let actual = plan(sql, ddl);
-        let expected = native_query(concat!(
-            r#"SELECT "Item"."id", "Item"."qty" "#,
-            r#"FROM "Item" "#,
-            r#"WHERE ("Item"."qty" > ?1) "#,
-            r#"ORDER BY "Item"."_rowid_" ASC"#,
-        ))
-        .params([0_i64])
-        .columns([("id", "INT"), ("qty", "INT")])
-        .alias_as("Item")
-        .select();
+        // A table filter needs a schema with fixed columns.
+        let (mut actual, _) = input("SELECT id FROM Item WHERE qty > 1", ddl);
+        plan_native_filter(&mut actual, &SchemaMap::new());
+        let expected = table("Item").select().filter("qty > 1").project("id");
         assert_query(actual, expected, ddl);
+
+        let schemaless = "CREATE TABLE Item";
+        let actual = plan("SELECT * FROM Item WHERE qty > 1", schemaless);
+        let expected = table("Item").select().filter("qty > 1");
+        assert_query(actual, expected, schemaless);
 
         // PrimaryKey and Index access paths are preserved.
         for source in [
@@ -421,88 +330,24 @@ mod tests {
             assert_query(actual, expected, ddl);
         }
 
-        // The source must have a schema.
-        let (mut actual, _) = input(
-            "SELECT id FROM Item WHERE qty > 1",
-            "CREATE TABLE Item (id INT, qty INT)",
-        );
-        let expected = actual.clone();
-        plan_native_filter(&mut actual, &SchemaMap::new());
-        assert_eq!(actual, expected, "the table schema is missing");
+        // Duplicate logical names make the filter column ambiguous.
+        let (expected, schemas) = input("SELECT * FROM Item i (same, same) WHERE i.same > 1", ddl);
+        let mut actual = expected.clone();
+        plan_native_filter(&mut actual, &schemas);
+        assert_eq!(actual, expected);
 
-        // Schemaless rows have no fixed output columns for native decoding.
-        let ddl = "CREATE TABLE Item";
-        let actual = plan("SELECT * FROM Item WHERE qty > 1", ddl);
-        let expected = table("Item").select().filter("qty > 1");
-        assert_query(actual, expected, ddl);
-
-        // Column aliases must fit the schema and have unique logical names.
-        let ddl = "CREATE TABLE Item (id INT, qty INT)";
-        for (sql, reason) in [
-            (
-                "SELECT * FROM Item i (a, b, c) WHERE a > 1",
-                "aliases exceed the number of physical columns",
-            ),
-            (
-                "SELECT * FROM Item i (same, same) WHERE i.same > 1",
-                "duplicate aliases do not identify a unique output column",
-            ),
-        ] {
-            let (mut actual, schemas) = input(sql, ddl);
-            let expected = actual.clone();
-            plan_native_filter(&mut actual, &schemas);
-            assert_eq!(actual, expected, "{reason}: {sql}");
-        }
-
-        // TEXT storage order for DECIMAL does not preserve logical key order.
-        let ddl = "CREATE TABLE Item (id DECIMAL PRIMARY KEY, qty INT)";
-        let actual = plan("SELECT * FROM Item WHERE qty > 1", ddl);
-        let expected = table("Item").select().filter("qty > 1");
-        assert_query(actual, expected, ddl);
-
-        // A supported PK supplies the source order, even when it is not projected.
-        let ddl = "CREATE TABLE Item (id INT PRIMARY KEY, name TEXT, qty INT)";
-        let sql = "
-            SELECT DISTINCT LOWER(i.name) AS label
-            FROM Item i
-            WHERE i.qty >= 10
-            ORDER BY label
-            LIMIT 2 OFFSET 1
-        ";
-        let actual = plan(sql, ddl);
-        let expected = native_query(concat!(
-            r#"SELECT "Item"."name", "Item"."qty" "#,
-            r#"FROM "Item" "#,
-            r#"WHERE ("Item"."qty" >= ?1) "#,
-            r#"ORDER BY "Item"."id" ASC"#,
-        ))
-        .params([10_i64])
-        .columns([("name", "TEXT"), ("qty", "INT")])
-        .alias_as("i")
-        .select()
-        .project("LOWER(i.name) AS label")
-        .order_by("label")
-        .distinct()
-        .offset(1)
-        .limit(2);
-        assert_query(actual, expected, ddl);
-
-        // Every SQLite rowid spelling is shadowed by a user column.
-        let ddl = "
-            CREATE TABLE Item (
-                id INT,
-                qty INT,
-                rowid INT,
-                _rowid_ INT,
-                oid INT
-            )
-        ";
-        let actual = plan("SELECT id FROM Item WHERE qty > 1", ddl);
+        // GlueSQL must sort an INT128 primary key.
+        let sql = "SELECT id FROM Item WHERE qty > 1";
+        let wide_key = "CREATE TABLE Item (id INT128 PRIMARY KEY, qty INT)";
+        let actual = plan(sql, wide_key);
         let expected = table("Item").select().filter("qty > 1").project("id");
-        assert_query(actual, expected, ddl);
+        assert_query(actual, expected, wide_key);
 
-        // No compiled conditions: keep the original filter.
-        let ddl = "CREATE TABLE Item (id INT, qty INT)";
+        // With no primary key, shadowing all three rowid names leaves no ordering key.
+        let shadowed_rowid = "CREATE TABLE Item (id INT, qty INT, _rowid_ INT, rowid INT, oid INT)";
+        let actual = plan(sql, shadowed_rowid);
+        let expected = table("Item").select().filter("qty > 1").project("id");
+        assert_query(actual, expected, shadowed_rowid);
 
         // Arithmetic expressions are evaluated by the common executor.
         let sql = "SELECT id FROM Item WHERE qty + 1 > 2";
@@ -545,40 +390,7 @@ mod tests {
         let expected = table("Numbers").select().filter("f < d").project("id");
         assert_query(actual, expected, ddl);
 
-        // Requested output columns must all exist in the schema.
-        let (mut actual, schemas) = input(
-            "SELECT id FROM Item WHERE qty > 1",
-            "CREATE TABLE Item (id INT, qty INT)",
-        );
-        let ProjectInputPlan::Filter(filter) = &mut actual.project_mut().unwrap().input else {
-            panic!("expected filter");
-        };
-        let FilterInputPlan::Source(SourcePlan::Table(table)) = &mut filter.input else {
-            panic!("expected table source");
-        };
-        table.access = TableAccessPlan::ProjectedScan {
-            columns: vec!["missing".to_owned()],
-        };
-        let expected = actual.clone();
-        plan_native_filter(&mut actual, &schemas);
-        assert_eq!(
-            actual, expected,
-            "a projected column is missing from the schema"
-        );
-
-        // An empty projection still needs a SQLite SELECT item.
-        let ddl = "CREATE TABLE Item (id INT, qty INT)";
-        let sql = "SELECT 1 FROM Item WHERE TRUE";
-        let actual = plan(sql, ddl);
-        let expected =
-            native_query(r#"SELECT 1 FROM "Item" WHERE ?1 ORDER BY "Item"."_rowid_" ASC"#)
-                .params([true])
-                .alias_as("Item")
-                .select()
-                .project("1");
-        assert_query(actual, expected, ddl);
-
-        // Partial: retain the residual filter and its logical column aliases.
+        // A partial rewrite leaves the residual filter on the native source.
         let ddl = "CREATE TABLE Item (id INT, name TEXT, qty INT)";
         let sql = "
             SELECT i.key
@@ -601,7 +413,7 @@ mod tests {
         .project("i.key");
         assert_query(actual, expected, ddl);
 
-        // Full: replace the filter, keeping physical SQL and logical output names.
+        // The native source exposes the logical names used by the projection.
         let sql = "
             SELECT i.label
             FROM Item AS i (key, label, amount)
@@ -619,6 +431,60 @@ mod tests {
         .alias_as("i")
         .select()
         .project("i.label");
+        assert_query(actual, expected, ddl);
+
+        // A fully delegated filter keeps all columns for SELECT *.
+        let ddl = "CREATE TABLE Item (id INT, qty INT)";
+        let sql = "SELECT * FROM Item WHERE qty > 0";
+        let actual = plan(sql, ddl);
+        let expected = native_query(concat!(
+            r#"SELECT "Item"."id", "Item"."qty" "#,
+            r#"FROM "Item" "#,
+            r#"WHERE ("Item"."qty" > ?1) "#,
+            r#"ORDER BY "Item"."_rowid_" ASC"#,
+        ))
+        .params([0_i64])
+        .columns([("id", "INT"), ("qty", "INT")])
+        .alias_as("Item")
+        .select();
+        assert_query(actual, expected, ddl);
+
+        // An empty projection still needs a SQLite SELECT item.
+        let sql = "SELECT 1 FROM Item WHERE TRUE";
+        let actual = plan(sql, ddl);
+        let expected =
+            native_query(r#"SELECT 1 FROM "Item" WHERE ?1 ORDER BY "Item"."_rowid_" ASC"#)
+                .params([true])
+                .alias_as("Item")
+                .select()
+                .project("1");
+        assert_query(actual, expected, ddl);
+
+        // The unprojected PK orders the source beneath DISTINCT, ORDER BY and LIMIT.
+        let ddl = "CREATE TABLE Item (id DECIMAL PRIMARY KEY, name TEXT, qty INT)";
+        let sql = "
+            SELECT DISTINCT LOWER(i.name) AS label
+            FROM Item i
+            WHERE i.qty >= 10
+            ORDER BY label
+            LIMIT 2 OFFSET 1
+        ";
+        let actual = plan(sql, ddl);
+        let expected = native_query(concat!(
+            r#"SELECT "Item"."name", "Item"."qty" "#,
+            r#"FROM "Item" "#,
+            r#"WHERE ("Item"."qty" >= ?1) "#,
+            r#"ORDER BY "Item"."id" ASC"#,
+        ))
+        .params([10_i64])
+        .columns([("name", "TEXT"), ("qty", "INT")])
+        .alias_as("i")
+        .select()
+        .project("LOWER(i.name) AS label")
+        .order_by("label")
+        .distinct()
+        .offset(1)
+        .limit(2);
         assert_query(actual, expected, ddl);
     }
 }

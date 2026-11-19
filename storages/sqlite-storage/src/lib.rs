@@ -27,8 +27,8 @@ type Result<T> = std::result::Result<T, SqliteStorageError>;
 
 /// Stores `GlueSQL` tables in a `SQLite` database using STRICT columns and logical type metadata.
 ///
-/// Supported filters use `SQLite`'s native planner. Remaining operations use the
-/// common executor. Tables created by other `SQLite` applications are not yet supported.
+/// Table scans and eligible filters run directly in `SQLite`. The common executor
+/// consumes the returned rows. This backend supports tables created through `GlueSQL`.
 #[derive(Debug)]
 pub struct SqliteStorage {
     connection: Connection,

@@ -202,6 +202,10 @@ pub(super) fn quote(name: &str) -> String {
     format!("\"{}\"", name.replace('"', "\"\""))
 }
 
+pub(super) fn qualified_column(table: &str, column: &str) -> String {
+    format!("{}.{}", quote(table), quote(column))
+}
+
 pub(super) fn is_reserved(name: &str) -> bool {
     name.eq_ignore_ascii_case(TABLE_META) || name.eq_ignore_ascii_case(COLUMN_META)
 }
@@ -209,14 +213,18 @@ pub(super) fn is_reserved(name: &str) -> bool {
 pub(super) fn columns(schema: &Schema) -> Cow<'_, [ColumnDef]> {
     match &schema.column_defs {
         Some(columns) => Cow::Borrowed(columns),
-        None => Cow::Owned(vec![ColumnDef {
-            name: "_doc".to_owned(),
-            data_type: DataType::Map,
-            nullable: false,
-            default: None,
-            unique: None,
-            comment: None,
-        }]),
+        None => Cow::Owned(vec![document_column()]),
+    }
+}
+
+pub(super) fn document_column() -> ColumnDef {
+    ColumnDef {
+        name: "_doc".to_owned(),
+        data_type: DataType::Map,
+        nullable: false,
+        default: None,
+        unique: None,
+        comment: None,
     }
 }
 
@@ -239,14 +247,16 @@ pub(super) fn key_column(schema: &Schema) -> Result<(&str, &DataType)> {
 
 pub(super) fn rowid_name(schema: &Schema) -> Result<&'static str> {
     let columns = columns(schema);
-    ["_rowid_", "rowid", "oid"]
-        .into_iter()
-        .find(|alias| {
-            !columns
-                .iter()
-                .any(|column| column.name.eq_ignore_ascii_case(alias))
-        })
+    available_rowid(&columns, |column| &column.name)
         .ok_or_else(|| SqliteStorageError::RowidUnavailable(schema.table_name.clone()))
+}
+
+pub(super) fn available_rowid<T>(columns: &[T], name: impl Fn(&T) -> &str) -> Option<&'static str> {
+    ["_rowid_", "rowid", "oid"].into_iter().find(|alias| {
+        !columns
+            .iter()
+            .any(|column| name(column).eq_ignore_ascii_case(alias))
+    })
 }
 
 pub(super) fn physical_default(expr: &Expr) -> bool {
