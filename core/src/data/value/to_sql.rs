@@ -28,15 +28,66 @@ impl ToSql for Value {
             Value::Time(t) => format!("TIME '{t}'"),
             Value::Interval(i) => format!("INTERVAL {}", i.to_sql_str()),
             Value::Uuid(u) => format!("'{}'", uuid::Uuid::from_u128(*u).hyphenated()),
-            Value::Map(_) | Value::List(_) => {
+            Value::Map(_) => {
                 let json: serde_json::Value =
                     self.clone().try_into().unwrap_or(serde_json::Value::Null);
                 let escaped = json.to_string().replace('\'', "''");
                 format!("'{escaped}'")
             }
+            Value::List(values) => {
+                let elements = values
+                    .iter()
+                    .map(list_element_to_sql)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("[{elements}]")
+            }
             Value::Point(p) => format!("POINT({}, {})", p.x, p.y),
             Value::Null => "NULL".to_owned(),
         }
+    }
+}
+
+fn list_element_to_sql(value: &Value) -> String {
+    use crate::ast::DataType::*;
+
+    let sql = match value {
+        Value::Point(p) => format!("POINT(CAST('{}' AS FLOAT), CAST('{}' AS FLOAT))", p.x, p.y),
+        Value::Bool(_)
+        | Value::I8(_)
+        | Value::I16(_)
+        | Value::I32(_)
+        | Value::I64(_)
+        | Value::I128(_)
+        | Value::U8(_)
+        | Value::U16(_)
+        | Value::U32(_)
+        | Value::U64(_)
+        | Value::U128(_)
+        | Value::F32(_)
+        | Value::F64(_)
+        | Value::Decimal(_)
+        | Value::Str(_)
+        | Value::Bytea(_)
+        | Value::Inet(_)
+        | Value::Date(_)
+        | Value::Timestamp(_)
+        | Value::Time(_)
+        | Value::Interval(_)
+        | Value::Uuid(_)
+        | Value::Map(_)
+        | Value::List(_)
+        | Value::Null => value.to_sql(),
+    };
+
+    match value.get_type() {
+        Some(ty @ (Float32 | Float | Decimal)) => format!("CAST('{sql}' AS {ty})"),
+        Some(
+            ty @ (Int8 | Int16 | Int32 | Int128 | Uint8 | Uint16 | Uint32 | Uint64 | Uint128 | Inet
+            | Uuid | Map),
+        ) => format!("CAST({sql} AS {ty})"),
+        Some(Boolean | Int | Text | Bytea | Date | Timestamp | Time | Interval | Point | List)
+        | None => sql,
     }
 }
 
@@ -144,7 +195,7 @@ mod tests {
 
         // List
         let list = vec![Value::I64(1), Value::I64(2), Value::I64(3)];
-        assert_eq!(Value::List(list).to_sql(), "'[1,2,3]'");
+        assert_eq!(Value::List(list).to_sql(), "[1, 2, 3]");
 
         // Point
         assert_eq!(
@@ -154,5 +205,65 @@ mod tests {
 
         // Null
         assert_eq!(Value::Null.to_sql(), "NULL");
+    }
+
+    #[test]
+    fn list_element_to_sql() {
+        macro_rules! test {
+            ($value:expr, $expected:literal) => {
+                assert_eq!(super::list_element_to_sql(&$value), $expected);
+            };
+        }
+
+        test!(
+            Value::Point(Point::new(f64::INFINITY, f64::NAN)),
+            "POINT(CAST('inf' AS FLOAT), CAST('NaN' AS FLOAT))"
+        );
+
+        test!(Value::F32(-0.0), "CAST('-0' AS FLOAT32)");
+        test!(Value::F64(1.0), "CAST('1' AS FLOAT)");
+        test!(
+            Value::Decimal(Decimal::new(25, 1)),
+            "CAST('2.5' AS DECIMAL)"
+        );
+
+        test!(Value::I8(-1), "CAST(-1 AS INT8)");
+        test!(Value::I16(2), "CAST(2 AS INT16)");
+        test!(Value::I32(3), "CAST(3 AS INT32)");
+        test!(Value::I128(4), "CAST(4 AS INT128)");
+        test!(Value::U8(5), "CAST(5 AS UINT8)");
+        test!(Value::U16(6), "CAST(6 AS UINT16)");
+        test!(Value::U32(7), "CAST(7 AS UINT32)");
+        test!(Value::U64(8), "CAST(8 AS UINT64)");
+        test!(Value::U128(9), "CAST(9 AS UINT128)");
+        test!(Value::Inet("::1".parse().unwrap()), "CAST('::1' AS INET)");
+        test!(
+            Value::Uuid(0),
+            "CAST('00000000-0000-0000-0000-000000000000' AS UUID)"
+        );
+        let map = BTreeMap::from([("it's".to_owned(), Value::I64(1))]);
+        test!(Value::Map(map), r#"CAST('{"it''s":1}' AS MAP)"#);
+
+        test!(Value::Bool(true), "TRUE");
+        test!(Value::I64(1), "1");
+        test!(Value::Str("2026-01-01".to_owned()), "'2026-01-01'");
+        test!(Value::Bytea(vec![0xff]), "X'ff'");
+        let date = NaiveDate::from_ymd_opt(2026, 1, 1).unwrap();
+        test!(Value::Date(date), "DATE '2026-01-01'");
+        test!(
+            Value::Timestamp(date.and_hms_opt(12, 30, 0).unwrap()),
+            "TIMESTAMP '2026-01-01 12:30:00'"
+        );
+        test!(
+            Value::Time(NaiveTime::from_hms_opt(12, 30, 0).unwrap()),
+            "TIME '12:30:00'"
+        );
+        test!(
+            Value::Interval(Interval::Month(14)),
+            "INTERVAL '1-2' YEAR TO MONTH"
+        );
+        test!(Value::List(vec![]), "[]");
+        test!(Value::List(vec![Value::I8(1)]), "[CAST(1 AS INT8)]");
+        test!(Value::Null, "NULL");
     }
 }
