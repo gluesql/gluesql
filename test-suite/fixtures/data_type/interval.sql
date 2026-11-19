@@ -82,10 +82,6 @@ SELECT INTERVAL '111' DAY TO HOUR FROM IntervalLog;
 -- @expect: error Interval.FailedToParseDayToHour
 -- @json: "111"
 
-SELECT INTERVAL '111' DAY TO HOUR FROM IntervalLog;
--- @expect: error Interval.FailedToParseDayToHour
--- @json: "111"
-
 SELECT INTERVAL '111' DAY TO MINUTE FROM IntervalLog;
 -- @expect: error Interval.FailedToParseDayToMinute
 -- @json: "111"
