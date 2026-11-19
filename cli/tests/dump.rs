@@ -119,6 +119,40 @@ fn dump_and_import() {
 }
 
 #[test]
+fn dump_and_import_preserves_list_element_types() {
+    let mut source = Glue::new(MemoryStorage::default());
+    source
+        .execute(
+            "CREATE TABLE TypedList (items LIST);
+             INSERT INTO TypedList VALUES ([
+                 DATE '2026-01-01', '2026-01-01',
+                 1, CAST(1 AS INT8), CAST(1 AS FLOAT), CAST(1.1 AS DECIMAL),
+                 [
+                     CAST('340282366920938463463374607431768211455' AS UINT128),
+                     CAST('::1' AS INET),
+                     CAST('550e8400-e29b-41d4-a716-446655440000' AS UUID)
+                 ],
+                 POINT(CAST('inf' AS FLOAT), CAST('NaN' AS FLOAT)),
+                 CAST('-inf' AS FLOAT32),
+                 INTERVAL '1-2' YEAR TO MONTH
+             ]);",
+        )
+        .unwrap();
+    let select = "SELECT items FROM TypedList";
+    let expected = source.execute(select).unwrap();
+
+    let dir = tempfile::tempdir().unwrap();
+    let dump_path = dir.path().join("dump.sql");
+    dump_database(&mut source.storage, dump_path.clone()).unwrap();
+    let dump = fs::read_to_string(dump_path).unwrap();
+
+    let mut restored = Glue::new(MemoryStorage::default());
+    restored.execute(dump).unwrap();
+    let actual = restored.execute(select).unwrap();
+    assert_eq!(actual, expected);
+}
+
+#[test]
 fn dump_memory_storage() {
     let dir = tempfile::tempdir().unwrap();
     let dump_path = dir.path().join("dump.sql");
