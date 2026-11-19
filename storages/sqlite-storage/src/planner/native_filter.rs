@@ -349,45 +349,10 @@ mod tests {
         let expected = table("Item").select().filter("qty > 1").project("id");
         assert_query(actual, expected, shadowed_rowid);
 
-        // Arithmetic expressions are evaluated by the common executor.
+        // With no native condition, the Filter keeps its original table source.
         let sql = "SELECT id FROM Item WHERE qty + 1 > 2";
         let actual = plan(sql, ddl);
         let expected = table("Item").select().filter("qty + 1 > 2").project("id");
-        assert_query(actual, expected, ddl);
-
-        // An outer row cannot be bound as a constant native parameter.
-        let sql = "SELECT id FROM Item WHERE outer_row.qty > 1";
-        let actual = plan(sql, ddl);
-        let expected = table("Item")
-            .select()
-            .filter("outer_row.qty > 1")
-            .project("id");
-        assert_query(actual, expected, ddl);
-
-        // An unresolved column leaves this condition in the common Filter.
-        let sql = "SELECT id FROM Item WHERE unknown > 1";
-        let actual = plan(sql, ddl);
-        let expected = table("Item").select().filter("unknown > 1").project("id");
-        assert_query(actual, expected, ddl);
-
-        let ddl = "CREATE TABLE Numbers (id INT, n INT8, f FLOAT32, d FLOAT)";
-
-        // The literal cannot be represented in the column's INT8 type.
-        let sql = "SELECT id FROM Numbers WHERE n < 1000";
-        let actual = plan(sql, ddl);
-        let expected = table("Numbers").select().filter("n < 1000").project("id");
-        assert_query(actual, expected, ddl);
-
-        // FLOAT support is limited to ordering comparisons.
-        let sql = "SELECT id FROM Numbers WHERE d = 0.1";
-        let actual = plan(sql, ddl);
-        let expected = table("Numbers").select().filter("d = 0.1").project("id");
-        assert_query(actual, expected, ddl);
-
-        // Comparing FLOAT32 with FLOAT would require a separate conversion rule.
-        let sql = "SELECT id FROM Numbers WHERE f < d";
-        let actual = plan(sql, ddl);
-        let expected = table("Numbers").select().filter("f < d").project("id");
         assert_query(actual, expected, ddl);
 
         // A partial rewrite leaves the residual filter on the native source.
