@@ -119,3 +119,62 @@ impl SqliteStorage {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use {
+        crate::{SqliteStorage, SqliteStorageError},
+        gluesql_core::{
+            data::Schema,
+            store::{Store, StoreMut, Transaction},
+        },
+        rusqlite::{Connection, Error as SqliteError, ffi},
+    };
+
+    #[test]
+    fn atomic_reports_both_errors_when_savepoint_rollback_fails() {
+        let uri = "file:savepoint_rollback_lock?mode=memory&cache=shared";
+        let mut storage = SqliteStorage::new(uri).unwrap();
+        let writer = Connection::open(uri).unwrap();
+        let reserved = Schema::from_ddl("CREATE TABLE __gluesql_table_meta (id INT)").unwrap();
+        storage.begin(false).unwrap();
+
+        let error = storage
+            .atomic(|storage| {
+                // Take the schema lock after the savepoint opens so it blocks the rollback.
+                writer
+                    .execute_batch("BEGIN; CREATE TABLE pending (id INTEGER)")
+                    .unwrap();
+                storage.write_schema(&reserved)
+            })
+            .unwrap_err();
+        let SqliteStorageError::SavepointRollback {
+            operation,
+            rollback,
+        } = error
+        else {
+            panic!("expected SavepointRollback, got {error:?}");
+        };
+
+        assert!(
+            matches!(
+                operation.as_ref(),
+                SqliteStorageError::ReservedTableName(name) if name == "__gluesql_table_meta"
+            ),
+            "{operation:?}"
+        );
+
+        let expected = SqliteError::SqliteFailure(
+            ffi::Error::new(ffi::SQLITE_LOCKED_SHAREDCACHE),
+            Some("database schema is locked: main".to_owned()),
+        );
+        assert_eq!(rollback, expected);
+
+        writer.execute_batch("ROLLBACK").unwrap();
+        storage.rollback().unwrap();
+
+        let schema = Schema::from_ddl("CREATE TABLE item (id INT)").unwrap();
+        storage.insert_schema(&schema).unwrap();
+        assert_eq!(storage.fetch_schema("item").unwrap(), Some(schema));
+    }
+}
