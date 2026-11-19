@@ -4,9 +4,9 @@ use {
         ast::{ColumnDef, DataType, Expr, Literal, Statement, ToSql},
         data::{Schema, Value},
         parse_sql::{parse, parse_data_type, parse_expr},
+        sqlparser::ast::{DataType as SqlDataType, Statement as SqlStatement},
         translate::{translate, translate_data_type, translate_expr},
     },
-    sqlparser::ast::{DataType as SqlDataType, Statement as SqlStatement},
     std::borrow::Cow,
 };
 

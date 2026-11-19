@@ -1695,7 +1695,6 @@ dependencies = [
  "ron",
  "rusqlite",
  "rust_decimal",
- "sqlparser",
  "tempfile",
  "thiserror 2.0.3",
 ]
