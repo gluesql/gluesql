@@ -1,12 +1,9 @@
 //! Builds a native `SELECT` for one table and determines its scan order.
 
 use {
-    crate::schema::{available_rowid, qualified_column, quote},
-    gluesql_core::{
-        ast::DataType,
-        plan::{
-            ColumnDefPlan, NativeColumnPlan, NativeSourcePlan, TableAccessPlan, TableSourcePlan,
-        },
+    crate::schema::{available_rowid, key_type_supports_sqlite_order, qualified_column, quote},
+    gluesql_core::plan::{
+        ColumnDefPlan, NativeColumnPlan, NativeSourcePlan, TableAccessPlan, TableSourcePlan,
     },
 };
 
@@ -58,20 +55,8 @@ pub(super) fn scan_order<'a>(table: &str, columns: &'a [ColumnDefPlan]) -> Optio
         .find(|column| column.unique.is_some_and(|unique| unique.is_primary));
     let name = match key {
         None => available_rowid(columns, |column| &column.name)?,
-        Some(key) => match key.data_type {
-            DataType::Int8
-            | DataType::Int16
-            | DataType::Int32
-            | DataType::Int
-            | DataType::Uint8
-            | DataType::Uint16
-            | DataType::Uint32
-            | DataType::Boolean
-            | DataType::Text
-            | DataType::Bytea
-            | DataType::Decimal => &key.name,
-            _ => return Some(ScanOrder::GlueSql(key)),
-        },
+        Some(key) if key_type_supports_sqlite_order(&key.data_type) => &key.name,
+        Some(key) => return Some(ScanOrder::GlueSql(key)),
     };
 
     Some(ScanOrder::Sqlite(format!(

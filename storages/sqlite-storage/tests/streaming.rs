@@ -2,6 +2,7 @@ use {
     gluesql_core::{
         data::{Key, Schema, Value},
         error::{Error, Result},
+        prelude::Glue,
         store::{ScanColumns, Store, StoreMut},
     },
     gluesql_sqlite_storage::{SqliteStorage, SqliteStorageError},
@@ -164,13 +165,44 @@ fn a_sqlite_step_error_ends_the_scan() {
 }
 
 #[test]
-fn primary_key_scan_keeps_logical_order_for_text_encoded_keys() {
+fn integer_primary_key_scan_decodes_rows_as_consumed() {
+    let directory = tempdir().unwrap();
+    let path = directory.path().join("primary-key.sqlite");
+    let mut glue = Glue::new(SqliteStorage::new(&path).unwrap());
+    glue.execute(
+        "CREATE TABLE item (flag BOOLEAN, id INT PRIMARY KEY);
+         INSERT INTO item VALUES (FALSE, 10), (TRUE, 2);",
+    )
+    .unwrap();
+
+    Connection::open(&path)
+        .unwrap()
+        .execute("UPDATE item SET flag = 2 WHERE id = 10", [])
+        .unwrap();
+
+    let projection = [("flag".to_owned(), 0)];
+    let mut rows = glue
+        .storage
+        .scan_data("item", ScanColumns::Selected(&projection))
+        .unwrap();
+    assert_eq!(
+        rows.next(),
+        Some(Ok((Key::I64(2), vec![Value::Bool(true)])))
+    );
+    assert_eq!(
+        rows.next(),
+        Some(Err(SqliteStorageError::InvalidBoolean(2).into()))
+    );
+}
+
+#[test]
+fn decimal_primary_key_scan_uses_numeric_order() {
     let mut storage = SqliteStorage::in_memory().unwrap();
     storage
         .insert_schema(&Schema::from_ddl("CREATE TABLE item (id DECIMAL PRIMARY KEY)").unwrap())
         .unwrap();
 
-    // SQLite TEXT order would put "10" before "2"; Store must use numeric Key order.
+    // The DECIMAL collation puts "2" before "10" even though the key is stored as TEXT.
     storage
         .append_data(
             "item",
@@ -200,6 +232,61 @@ fn primary_key_scan_keeps_logical_order_for_text_encoded_keys() {
             Key::Decimal("10".parse().unwrap()),
             vec![Value::Decimal("10".parse().unwrap())],
         ),
+    ];
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn int128_primary_key_scan_sorts_text_encoded_keys_as_integers() {
+    let mut glue = Glue::new(SqliteStorage::in_memory().unwrap());
+    glue.execute(
+        "CREATE TABLE item (id INT128 PRIMARY KEY);
+         INSERT INTO item VALUES (10), (2);",
+    )
+    .unwrap();
+
+    let actual = glue
+        .storage
+        .scan_data("item", ScanColumns::Selected(&[]))
+        .unwrap()
+        .collect::<Result<Vec<_>>>()
+        .unwrap();
+    let expected = vec![(Key::I128(2), vec![]), (Key::I128(10), vec![])];
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn text_primary_key_scan_preserves_string_order_in_utf16_databases() {
+    let directory = tempdir().unwrap();
+    let path = directory.path().join("utf16.sqlite");
+
+    // SQLite records the file encoding when the first table is created.
+    Connection::open(&path)
+        .unwrap()
+        .execute_batch(
+            "PRAGMA encoding = 'UTF-16le';
+             CREATE TABLE seed (id);
+             DROP TABLE seed;",
+        )
+        .unwrap();
+
+    let mut glue = Glue::new(SqliteStorage::new(&path).unwrap());
+    glue.execute(
+        "CREATE TABLE item (id TEXT PRIMARY KEY);
+         INSERT INTO item VALUES ('Ā'), ('ÿ');",
+    )
+    .unwrap();
+
+    // UTF-16le stores Ā as 00 01 and ÿ as FF 00, reversing their Rust string order.
+    let actual = glue
+        .storage
+        .scan_data("item", ScanColumns::Selected(&[]))
+        .unwrap()
+        .collect::<Result<Vec<_>>>()
+        .unwrap();
+    let expected = vec![
+        (Key::Str("ÿ".to_owned()), vec![]),
+        (Key::Str("Ā".to_owned()), vec![]),
     ];
     assert_eq!(actual, expected);
 }

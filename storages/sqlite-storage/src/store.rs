@@ -6,12 +6,13 @@ use {
     crate::{
         Result, SqliteStorage, SqliteStorageError,
         codec::{decode, encode_key},
-        schema::{columns, key_column, primary_key, quote, rowid_name},
+        schema::{columns, key_column, key_type_supports_sqlite_order, quote, rowid_name},
     },
     gluesql_core::{
+        ast::DataType,
         data::{Key, Schema, Value},
         error::Result as GlueResult,
-        store::{RowIter, ScanColumns, Store},
+        store::{RowIter, ScanColumn, ScanColumns, Store},
     },
 };
 
@@ -36,17 +37,8 @@ impl Store for SqliteStorage {
         requested: ScanColumns<'_>,
     ) -> GlueResult<RowIter<'a>> {
         let schema = self.require_schema(table_name)?;
-        let rows = self.scan_rows(&schema, requested)?;
 
-        if primary_key(&columns(&schema)).is_some() {
-            let mut rows = rows.collect::<Result<Vec<_>>>()?;
-            // TEXT-backed primary keys need logical Key order for scan results.
-            rows.sort_by(|(left, _), (right, _)| left.cmp(right));
-
-            return Ok(Box::new(rows.into_iter().map(Ok)));
-        }
-
-        Ok(Box::new(rows.map(|row| row.map_err(Into::into))))
+        self.scan_rows(&schema, requested).map_err(Into::into)
     }
 }
 
@@ -82,37 +74,24 @@ impl SqliteStorage {
             .map(Some)
     }
 
-    fn scan_rows(&self, schema: &Schema, requested: ScanColumns<'_>) -> Result<SqliteRowIter<'_>> {
+    fn scan_rows(&self, schema: &Schema, requested: ScanColumns<'_>) -> Result<RowIter<'_>> {
         let columns = columns(schema);
         let selected = match requested {
             ScanColumns::All => (0..columns.len()).collect::<Vec<_>>(),
-            ScanColumns::Selected(requested) => {
-                if schema.column_defs.is_none() {
-                    return Err(SqliteStorageError::InvalidProjection(
-                        schema.table_name.clone(),
-                    ));
-                }
-
-                let mut previous = None;
-                for (name, index) in requested {
-                    if previous.is_some_and(|previous| previous >= *index)
-                        || columns
-                            .get(*index)
-                            .is_none_or(|column| &column.name != name)
-                    {
-                        return Err(SqliteStorageError::InvalidProjection(
-                            schema.table_name.clone(),
-                        ));
-                    }
-
-                    previous = Some(*index);
-                }
-
-                requested.iter().map(|(_, index)| *index).collect()
-            }
+            ScanColumns::Selected(requested) => projected_column_indexes(schema, requested)?,
         };
 
         let (key_name, key_type) = key_column(schema)?;
+        let in_key_order = match key_type {
+            DataType::Text => self.text_keys_use_utf8()?,
+            _ => key_type_supports_sqlite_order(key_type),
+        };
+        let order_by = if in_key_order {
+            key_name
+        } else {
+            rowid_name(schema)?
+        };
+
         let mut projection = vec![quote(key_name)];
         projection.extend(selected.iter().map(|index| quote(&columns[*index].name)));
 
@@ -120,7 +99,7 @@ impl SqliteStorage {
             "SELECT {} FROM {} ORDER BY {}",
             projection.join(", "),
             quote(&schema.table_name),
-            quote(rowid_name(schema)?)
+            quote(order_by)
         );
         let statement = self.connection.prepare(&sql)?;
 
@@ -129,6 +108,42 @@ impl SqliteStorage {
             .map(|index| columns[index].data_type.clone())
             .collect();
 
-        SqliteRowIter::new(statement, key_type.clone(), selected_types)
+        let rows = SqliteRowIter::new(statement, key_type.clone(), selected_types)?;
+
+        if in_key_order {
+            return Ok(Box::new(rows.map(|row| row.map_err(Into::into))));
+        }
+
+        let mut rows = rows.collect::<Result<Vec<_>>>()?;
+        rows.sort_by(|(left, _), (right, _)| left.cmp(right));
+        Ok(Box::new(rows.into_iter().map(Ok)))
     }
+
+    fn text_keys_use_utf8(&self) -> Result<bool> {
+        // SQLite's BINARY collation compares bytes in the database encoding.
+        let encoding: String = self
+            .connection
+            .pragma_query_value(None, "encoding", |row| row.get(0))?;
+        Ok(encoding == "UTF-8")
+    }
+}
+
+fn projected_column_indexes(schema: &Schema, requested: &[ScanColumn]) -> Result<Vec<usize>> {
+    let invalid_projection = || SqliteStorageError::InvalidProjection(schema.table_name.clone());
+    let columns = schema.column_defs.as_ref().ok_or_else(invalid_projection)?;
+    let mut indexes = Vec::with_capacity(requested.len());
+
+    for (name, index) in requested {
+        if indexes.last().is_some_and(|previous| previous >= index)
+            || columns
+                .get(*index)
+                .is_none_or(|column| &column.name != name)
+        {
+            return Err(invalid_projection());
+        }
+
+        indexes.push(*index);
+    }
+
+    Ok(indexes)
 }

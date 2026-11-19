@@ -245,6 +245,23 @@ pub(super) fn key_column(schema: &Schema) -> Result<(&str, &DataType)> {
     Ok((rowid_name(schema)?, &DataType::Int))
 }
 
+pub(super) fn key_type_supports_sqlite_order(data_type: &DataType) -> bool {
+    matches!(
+        data_type,
+        DataType::Int8
+            | DataType::Int16
+            | DataType::Int32
+            | DataType::Int
+            | DataType::Uint8
+            | DataType::Uint16
+            | DataType::Uint32
+            | DataType::Boolean
+            | DataType::Text
+            | DataType::Bytea
+            | DataType::Decimal
+    )
+}
+
 pub(super) fn rowid_name(schema: &Schema) -> Result<&'static str> {
     let columns = columns(schema);
     available_rowid(&columns, |column| &column.name)
