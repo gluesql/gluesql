@@ -38,19 +38,16 @@ CREATE TABLE __gluesql_column_meta (
 
 pub(super) fn parse_physical_schema(sql: &str) -> Result<Schema> {
     let sql = sql.strip_suffix(" STRICT").unwrap_or(sql);
-    let mut parsed = parse(sql)?;
-    let Some(statement @ SqlStatement::CreateTable(_)) = parsed.first_mut() else {
+    let Some(SqlStatement::CreateTable(mut table)) = parse(sql)?.into_iter().next() else {
         return Err(SqliteStorageError::InvalidTableDefinition);
     };
 
-    if let SqlStatement::CreateTable(table) = statement {
-        for column in &mut table.columns {
-            column.data_type = match &column.data_type {
-                SqlDataType::Real => SqlDataType::Float(None),
-                SqlDataType::Blob(_) => SqlDataType::Bytea,
-                other => other.clone(),
-            };
-        }
+    for column in &mut table.columns {
+        column.data_type = match &column.data_type {
+            SqlDataType::Real => SqlDataType::Float(None),
+            SqlDataType::Blob(_) => SqlDataType::Bytea,
+            other => other.clone(),
+        };
     }
 
     let Statement::CreateTable {
@@ -60,7 +57,7 @@ pub(super) fn parse_physical_schema(sql: &str) -> Result<Schema> {
         foreign_keys,
         comment,
         ..
-    } = translate(statement)?
+    } = translate(&SqlStatement::CreateTable(table))?
     else {
         // translate maps the matched SqlStatement::CreateTable only to CreateTable.
         return Err(SqliteStorageError::UnreachableCreateTableTranslation);
