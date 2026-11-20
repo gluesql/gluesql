@@ -1,5 +1,5 @@
 use {
-    crate::{ParquetStorage, ParquetStorageError, error::ResultExt},
+    crate::{ENGINE_METADATA_KEY, ParquetStorage, ParquetStorageError, error::ResultExt},
     gluesql_core::{
         ast::{ColumnDef, ToSql},
         chrono::{NaiveDate, Timelike},
@@ -606,6 +606,12 @@ impl ParquetStorage {
 
     fn gather_metadata_from_glue_schema(schema: &Schema) -> Result<Option<Vec<KeyValue>>> {
         let mut metadata = Vec::new();
+        if let Some(engine) = &schema.engine {
+            metadata.push(KeyValue {
+                key: ENGINE_METADATA_KEY.to_owned(),
+                value: Some(engine.clone()),
+            });
+        }
 
         for foreign_key in &schema.foreign_keys {
             metadata.push(KeyValue {

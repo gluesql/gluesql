@@ -1,6 +1,6 @@
 use {
     crate::{
-        ParquetStorage,
+        ENGINE_METADATA_KEY, ParquetStorage,
         column_def::ParquetSchemaType,
         error::{OptionExt, ParquetStorageError, ResultExt},
     },
@@ -36,9 +36,12 @@ impl Store for ParquetStorage {
         let mut is_schemaless = false;
         let mut foreign_keys = Vec::new();
         let mut comment = None;
+        let mut engine = None;
         if let Some(metadata) = key_value_file_metadata {
             for kv in metadata {
-                if kv.key == "schemaless" {
+                if kv.key == ENGINE_METADATA_KEY {
+                    engine.clone_from(&kv.value);
+                } else if kv.key == "schemaless" {
                     is_schemaless = matches!(kv.value.as_deref(), Some("true"));
                 } else if kv.key == "comment" {
                     comment.clone_from(&kv.value);
@@ -78,7 +81,7 @@ impl Store for ParquetStorage {
             table_name: table_name.to_owned(),
             column_defs,
             indexes: vec![],
-            engine: None,
+            engine,
             foreign_keys,
             comment,
         }))

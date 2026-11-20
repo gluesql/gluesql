@@ -31,7 +31,7 @@ impl Store for JsonStorage {
         }
 
         let schema_path = self.schema_path(table_name);
-        let (column_defs, foreign_keys, comment) = if schema_path.exists() {
+        let (column_defs, engine, foreign_keys, comment) = if schema_path.exists() {
             let mut file = File::open(&schema_path).map_storage_err()?;
             let mut ddl = String::new();
             file.read_to_string(&mut ddl).map_storage_err()?;
@@ -43,16 +43,21 @@ impl Store for JsonStorage {
                 ));
             }
 
-            (schema.column_defs, schema.foreign_keys, schema.comment)
+            (
+                schema.column_defs,
+                schema.engine,
+                schema.foreign_keys,
+                schema.comment,
+            )
         } else {
-            (None, Vec::new(), None)
+            (None, None, Vec::new(), None)
         };
 
         Ok(Some(Schema {
             table_name: table_name.to_owned(),
             column_defs,
             indexes: vec![],
-            engine: None,
+            engine,
             foreign_keys,
             comment,
         }))
