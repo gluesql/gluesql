@@ -3,10 +3,9 @@
 mod alter_table;
 mod index;
 mod metadata;
-mod mutex;
+pub mod pool;
 mod transaction;
 
-use mutex::MutexExt;
 use {
     gluesql_core::{
         chrono::Utc,
@@ -17,26 +16,28 @@ use {
             StoreMut,
         },
     },
-    redis::{Commands, Connection},
-    std::{collections::BTreeMap, sync::Mutex},
+    pool::ConnectionPool,
+    redis::Commands,
+    std::collections::BTreeMap,
 };
 
 pub struct RedisStorage {
     pub namespace: String,
-    pub conn: Mutex<Connection>,
+    pub pool: ConnectionPool,
 }
 
 impl RedisStorage {
     pub fn new(namespace: &str, url: &str, port: u16) -> Self {
         let redis_url = format!("redis://{url}:{port}");
-        let conn = redis::Client::open(redis_url)
-            .expect("Invalid connection URL")
-            .get_connection()
-            .expect("failed to connect to Redis");
+        let client = redis::Client::open(redis_url).expect("Invalid connection URL");
+        let pool_size = std::thread::available_parallelism()
+            .map(std::num::NonZero::get)
+            .unwrap_or(1);
+        let pool = ConnectionPool::new(&client, pool_size).expect("failed to connect to Redis");
 
         RedisStorage {
             namespace: namespace.to_owned(),
-            conn: Mutex::new(conn),
+            pool,
         }
     }
 
@@ -108,7 +109,7 @@ impl RedisStorage {
     }
 
     fn redis_execute_get(&mut self, key: &str) -> Result<Option<String>> {
-        let mut conn = self.conn.lock_err()?;
+        let mut conn = self.pool.checkout()?;
         let value = redis::cmd("GET")
             .arg(key)
             .query::<String>(&mut *conn)
@@ -122,7 +123,7 @@ impl RedisStorage {
     }
 
     fn redis_execute_set(&mut self, key: &str, value: &str) -> Result<()> {
-        let mut conn = self.conn.lock_err()?;
+        let mut conn = self.pool.checkout()?;
         redis::cmd("SET")
             .arg(key)
             .arg(value)
@@ -137,7 +138,7 @@ impl RedisStorage {
     }
 
     pub fn redis_execute_del(&mut self, key: &str) -> Result<()> {
-        let mut conn = self.conn.lock_err()?;
+        let mut conn = self.pool.checkout()?;
         redis::cmd("DEL")
             .arg(key)
             .query::<()>(&mut *conn)
@@ -153,7 +154,7 @@ impl RedisStorage {
     pub fn redis_execute_scan(&mut self, table_name: &str) -> Result<Vec<String>> {
         let key = Self::redis_generate_scankey(&self.namespace, table_name);
         let redis_keys: Vec<String> = {
-            let mut conn = self.conn.lock_err()?;
+            let mut conn = self.pool.checkout()?;
             conn.scan_match(&key)
                 .map(Iterator::collect::<Vec<String>>)
                 .map_err(|e| {
@@ -231,7 +232,7 @@ impl Store for RedisStorage {
         let mut schemas = Vec::<Schema>::new();
         let scan_schema_key = Self::redis_generate_scan_schema_key(&self.namespace);
         let redis_keys: Vec<String> = {
-            let mut conn = self.conn.lock_err()?;
+            let mut conn = self.pool.checkout()?;
             conn.scan_match(&scan_schema_key)
                 .map(Iterator::collect::<Vec<String>>)
                 .map_err(|e| {
@@ -247,7 +248,7 @@ impl Store for RedisStorage {
             // Another client just has removed the value with the key.
             // It's not a problem. Just ignore it.
             let value = {
-                let mut conn = self.conn.lock_err()?;
+                let mut conn = self.pool.checkout()?;
                 redis::cmd("GET")
                     .arg(&redis_key)
                     .query::<String>(&mut *conn)
@@ -273,7 +274,7 @@ impl Store for RedisStorage {
         let mut found = None;
         let scan_schema_key = Self::redis_generate_scan_schema_key(&self.namespace);
         let redis_keys: Vec<String> = {
-            let mut conn = self.conn.lock_err()?;
+            let mut conn = self.pool.checkout()?;
             conn.scan_match(&scan_schema_key)
                 .map(Iterator::collect::<Vec<String>>)
                 .map_err(|e| {
@@ -289,7 +290,7 @@ impl Store for RedisStorage {
             // Another client just has removed the value with the key.
             // It's not a problem. Just ignore it.
             let value = {
-                let mut conn = self.conn.lock_err()?;
+                let mut conn = self.pool.checkout()?;
                 redis::cmd("GET")
                     .arg(&redis_key)
                     .query::<String>(&mut *conn)
@@ -321,7 +322,7 @@ impl Store for RedisStorage {
         let key = Self::redis_generate_key(&self.namespace, table_name, key)?;
         // It's not a problem if the value with the key is removed by another client.
         let value = {
-            let mut conn = self.conn.lock_err()?;
+            let mut conn = self.pool.checkout()?;
             redis::cmd("GET").arg(&key).query::<String>(&mut *conn)
         };
         if let Ok(value) = value {
@@ -339,7 +340,7 @@ impl Store for RedisStorage {
     fn scan_data<'a>(&'a self, table_name: &str, columns: ScanColumns<'_>) -> Result<RowIter<'a>> {
         // First read all keys of the table
         let redis_keys: Vec<String> = {
-            let mut conn = self.conn.lock_err()?;
+            let mut conn = self.pool.checkout()?;
             conn.scan_match(Self::redis_generate_scankey(&self.namespace, table_name))
                 .map(Iterator::collect::<Vec<String>>)
                 .map_err(|e| {
@@ -355,7 +356,7 @@ impl Store for RedisStorage {
             // Another client just has removed the value with the key.
             // It's not a problem. Just ignore it.
             let value = {
-                let mut conn = self.conn.lock_err()?;
+                let mut conn = self.pool.checkout()?;
                 redis::cmd("GET")
                     .arg(&redis_key)
                     .query::<String>(&mut *conn)
@@ -434,7 +435,7 @@ impl StoreMut for RedisStorage {
         // delete metadata
         let metadata_scan_key = Self::redis_generate_scan_metadata_key(&self.namespace, table_name);
         let metadata_redis_keys: Vec<String> = {
-            let mut conn = self.conn.lock_err()?;
+            let mut conn = self.pool.checkout()?;
             conn.scan_match(&metadata_scan_key)
                 .map(Iterator::collect::<Vec<String>>)
                 .map_err(|e| {
@@ -458,7 +459,7 @@ impl StoreMut for RedisStorage {
             // Even multiple clients can get an unique value with INCR command.
             // and a shared key "globalkey"
             let k = {
-                let mut conn = self.conn.lock_err()?;
+                let mut conn = self.pool.checkout()?;
                 redis::cmd("INCR")
                     .arg("globalkey")
                     .query::<i64>(&mut *conn)
