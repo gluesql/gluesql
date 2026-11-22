@@ -749,7 +749,7 @@ mod tests {
             ),
             (
                 "DELETE Foo, Bar FROM Foo WHERE id = 1",
-                TranslateError::UnsupportedDeleteOption(DeleteOption::MultipleTables), 
+                TranslateError::UnsupportedDeleteOption(DeleteOption::MultipleTables),
             ),
         ];
 
