@@ -90,12 +90,10 @@ fn source_for_schema_copy(project: &ProjectPlan) -> Option<&SourcePlan> {
 
     match &project.projection {
         ProjectionPlan::SchemalessMap => true,
-        ProjectionPlan::SelectItems(items) => items.iter().all(|item| {
-            matches!(
-                item,
-                SelectItemPlan::Wildcard | SelectItemPlan::QualifiedWildcard(_)
-            )
-        }),
+        ProjectionPlan::SelectItems(items) => matches!(
+            items.as_slice(),
+            [SelectItemPlan::Wildcard | SelectItemPlan::QualifiedWildcard(_)]
+        ),
     }
     .then_some(source)
 }
