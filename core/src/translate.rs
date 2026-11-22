@@ -147,6 +147,7 @@ pub fn translate_with_params(
             })
         }
         SqlStatement::Delete(SqlDelete {
+            tables,
             from,
             using,
             selection,
@@ -163,7 +164,9 @@ pub fn translate_with_params(
                 Some(DeleteOption::OrderBy)
             } else if limit.is_some() {
                 Some(DeleteOption::Limit)
-            } else if matches!(from, SqlFromTable::WithFromKeyword(tables) if tables.len() > 1) {
+            } else if tables.len() > 1
+                || matches!(from, SqlFromTable::WithFromKeyword(tables) if tables.len() > 1)
+            {
                 Some(DeleteOption::MultipleTables)
             } else {
                 None
@@ -745,6 +748,10 @@ mod tests {
             ),
             (
                 "DELETE FROM Foo, Bar WHERE id = 1",
+                TranslateError::UnsupportedDeleteOption(DeleteOption::MultipleTables),
+            ),
+            (
+                "DELETE Foo, Bar FROM Foo WHERE id = 1",
                 TranslateError::UnsupportedDeleteOption(DeleteOption::MultipleTables),
             ),
         ];
