@@ -34,13 +34,13 @@ impl Tester<RedisStorage> for RedisStorageTester {
             format!("#metadata#{namespace}#*"),
         ] {
             let key_iter: Vec<String> = {
-                let mut conn = storage.conn.lock().unwrap();
+                let mut conn = storage.pool.checkout().unwrap();
                 conn.scan_match(pattern).unwrap().collect()
             };
 
             for key in key_iter {
                 let _: () = {
-                    let mut conn = storage.conn.lock().unwrap();
+                    let mut conn = storage.pool.checkout().unwrap();
                     redis::cmd("DEL")
                         .arg(&key)
                         .query::<()>(&mut *conn)
