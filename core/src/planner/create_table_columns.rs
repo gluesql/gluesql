@@ -367,6 +367,11 @@ mod tests {
             "qualified wildcard",
         );
         test(
+            "SELECT *, * FROM Item",
+            None,
+            "multiple wildcards cannot reuse the source definitions",
+        );
+        test(
             "SELECT DISTINCT * FROM Item WHERE id > 0 ORDER BY id LIMIT 2 OFFSET 1",
             Some(&source),
             "row operations preserve the source definitions",
