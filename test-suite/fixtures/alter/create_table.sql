@@ -223,6 +223,17 @@ CREATE TABLE TargetTableWithData2 AS SELECT * FROM NonExistentTable
 -- @expect: error Planner.CtasSourceTableNotFound
 -- @json: "NonExistentTable"
 
+-- @name: CTAS rejects multiple wildcards instead of copying the schema once
+CREATE TABLE TargetTableWithWildcards AS SELECT *, * FROM CreateTable2
+-- @expect: error Alter.DuplicateColumnName
+-- @json: "id"
+
+-- @name: CTAS rejects multiple qualified wildcards
+CREATE TABLE TargetTableWithQualifiedWildcards AS
+SELECT CreateTable2.*, CreateTable2.* FROM CreateTable2
+-- @expect: error Alter.DuplicateColumnName
+-- @json: "id"
+
 CREATE TABLE DuplicateColumns (id INT, id INT)
 -- @expect: error Alter.DuplicateColumnName
 -- @json: "id"
