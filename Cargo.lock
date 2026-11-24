@@ -1449,7 +1449,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "gluesql-cli",
  "gluesql-composite-storage",
@@ -1472,7 +1472,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-cli"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -1494,7 +1494,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-composite-storage"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "gluesql-core",
  "gluesql-redb-storage",
@@ -1505,7 +1505,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-core"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "bigdecimal",
  "cfg-if",
@@ -1530,7 +1530,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-csv-storage"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "csv",
  "gluesql-core",
@@ -1544,7 +1544,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-file-storage"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "gluesql-core",
  "gluesql-test-suite",
@@ -1556,7 +1556,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-git-storage"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "gluesql-core",
  "gluesql-csv-storage",
@@ -1569,7 +1569,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-json-storage"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "gluesql-core",
  "gluesql-test-suite",
@@ -1583,7 +1583,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-macros"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "chrono",
  "gluesql-core",
@@ -1598,7 +1598,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-mongo-storage"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "bson",
  "chrono",
@@ -1615,7 +1615,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-parquet-storage"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "bincode",
  "byteorder",
@@ -1632,7 +1632,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-redb-storage"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "bigdecimal",
  "bincode",
@@ -1648,7 +1648,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-redis-storage"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "chrono",
  "gluesql-core",
@@ -1661,7 +1661,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-shared-memory-storage"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "gluesql-core",
  "gluesql-test-suite",
@@ -1671,7 +1671,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-slatedb-storage"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "async-trait",
  "bincode",
@@ -1687,7 +1687,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-sqlite-storage"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "gluesql-core",
  "gluesql-test-suite",
@@ -1701,7 +1701,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-test-suite"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "bigdecimal",
  "chrono",
@@ -1718,7 +1718,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql_memory_storage"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "gluesql-core",
  "gluesql-test-suite",
