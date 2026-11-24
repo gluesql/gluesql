@@ -21,7 +21,7 @@ GlueSQL is quite sticky: it brings SQL to your application's storage. Use a prov
 - **Work with flexible data:** query schema-defined and schemaless tables together, including MAP and LIST values.
 - **Choose a query interface:** write SQL or compose queries with the Rust Query Builder, both backed by the same engine.
 
-[Explore the documentation →](https://gluesql.org/docs/dev/)
+[Explore the documentation →](https://gluesql.org/docs/0.21.0/)
 
 ## Installation
 
@@ -51,22 +51,22 @@ GlueSQL provides reference storage implementations for in-memory data, embedded 
 
 | Use case | Recommended storage |
 | --- | --- |
-| Persistent embedded database | [Redb](https://gluesql.org/docs/dev/storages/supported-storages/redb-storage/) |
-| Persistent database on S3 or Cloudflare R2 | [SlateDB](https://gluesql.org/docs/dev/storages/supported-storages/slatedb-storage/) |
-| Existing MongoDB or Redis data | [Mongo](https://gluesql.org/docs/dev/storages/supported-storages/mongo-storage/) or [Redis](https://gluesql.org/docs/dev/storages/supported-storages/redis-storage/) |
-| Using GlueSQL types and functions with SQLite's storage and query engine | [SQLite](https://gluesql.org/docs/dev/storages/supported-storages/sqlite-storage/) |
-| Temporary data, tests, and prototypes, data across threads | [Memory](https://gluesql.org/docs/dev/storages/supported-storages/memory-storage/), [Shared Memory](https://gluesql.org/docs/dev/storages/supported-storages/shared-memory-storage/) |
-| Querying CSV, JSON, or Parquet files | [CSV](https://gluesql.org/docs/dev/storages/supported-storages/csv-storage/), [JSON](https://gluesql.org/docs/dev/storages/supported-storages/json-storage/), or [Parquet](https://gluesql.org/docs/dev/storages/supported-storages/parquet-storage/) |
-| Lightweight filesystem persistence | [File](https://gluesql.org/docs/dev/storages/supported-storages/file-storage/) |
-| Version-controlled data | [Git](https://gluesql.org/docs/dev/storages/supported-storages/git-storage/) |
-| Queries across multiple storage backends | [Composite](https://gluesql.org/docs/dev/storages/supported-storages/composite-storage/) |
+| Persistent embedded database | [Redb](https://gluesql.org/docs/0.21.0/storages/supported-storages/redb-storage/) |
+| Persistent database on S3 or Cloudflare R2 | [SlateDB](https://gluesql.org/docs/0.21.0/storages/supported-storages/slatedb-storage/) |
+| Existing MongoDB or Redis data | [Mongo](https://gluesql.org/docs/0.21.0/storages/supported-storages/mongo-storage/) or [Redis](https://gluesql.org/docs/0.21.0/storages/supported-storages/redis-storage/) |
+| Using GlueSQL types and functions with SQLite's storage and query engine | [SQLite](https://gluesql.org/docs/0.21.0/storages/supported-storages/sqlite-storage/) |
+| Temporary data, tests, and prototypes, data across threads | [Memory](https://gluesql.org/docs/0.21.0/storages/supported-storages/memory-storage/), [Shared Memory](https://gluesql.org/docs/0.21.0/storages/supported-storages/shared-memory-storage/) |
+| Querying CSV, JSON, or Parquet files | [CSV](https://gluesql.org/docs/0.21.0/storages/supported-storages/csv-storage/), [JSON](https://gluesql.org/docs/0.21.0/storages/supported-storages/json-storage/), or [Parquet](https://gluesql.org/docs/0.21.0/storages/supported-storages/parquet-storage/) |
+| Lightweight filesystem persistence | [File](https://gluesql.org/docs/0.21.0/storages/supported-storages/file-storage/) |
+| Version-controlled data | [Git](https://gluesql.org/docs/0.21.0/storages/supported-storages/git-storage/) |
+| Queries across multiple storage backends | [Composite](https://gluesql.org/docs/0.21.0/storages/supported-storages/composite-storage/) |
 | Browser / JS applications | [JavaScript: memory, local Storage, or OPFS](https://github.com/gluesql/gluesql-js#pick-the-storage-that-matches-your-data) |
 
-See the [Storage documentation](https://gluesql.org/docs/dev/storages/intro/) for setup, examples, and limitations.
+See the [Storage documentation](https://gluesql.org/docs/0.21.0/storages/intro/) for setup, examples, and limitations.
 
 ## SQL and Query Builder
 
-GlueSQL supports both SQL and a Query Builder. Use SQL for familiar or dynamic queries, and use the Query Builder when composing queries in Rust or controlling execution more precisely. Both interfaces run through the same GlueSQL engine and storage backend. For more information, check out the [Query Builder documentation](https://gluesql.org/docs/dev/query-builder/intro/) and [SQL documentation](https://gluesql.org/docs/dev/sql-syntax/intro/).
+GlueSQL supports both SQL and a Query Builder. Use SQL for familiar or dynamic queries, and use the Query Builder when composing queries in Rust or controlling execution more precisely. Both interfaces run through the same GlueSQL engine and storage backend. For more information, check out the [Query Builder documentation](https://gluesql.org/docs/0.21.0/query-builder/intro/) and [SQL documentation](https://gluesql.org/docs/0.21.0/sql-syntax/intro/).
 
 ### SQL
 
@@ -117,7 +117,7 @@ SELECT * FROM Names JOIN Logs ON Names.id = Logs.id;
 
 ## Adapting GlueSQL to Your Environment: Creating Custom Storage
 
-Connect GlueSQL to your files, databases, or APIs through the storage traits. `Store` handles reads and `StoreMut` handles writes. See the [custom storage guide](https://gluesql.org/docs/dev/storages/developing-custom-storages/intro/) to get started.
+Connect GlueSQL to your files, databases, or APIs through the storage traits. `Store` handles reads and `StoreMut` handles writes. See the [custom storage guide](https://gluesql.org/docs/0.21.0/storages/developing-custom-storages/intro/) to get started.
 
 ## Contributing
 
