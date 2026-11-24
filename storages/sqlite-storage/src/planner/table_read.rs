@@ -44,25 +44,27 @@ pub(super) fn scan_projection<'a>(
     Some(projection)
 }
 
+#[derive(Debug, PartialEq)]
 pub(super) enum ScanOrder<'a> {
     Sqlite(String),
     GlueSql(&'a ColumnDefPlan),
+    Unavailable,
 }
 
-pub(super) fn scan_order<'a>(table: &str, columns: &'a [ColumnDefPlan]) -> Option<ScanOrder<'a>> {
+pub(super) fn scan_order<'a>(table: &str, columns: &'a [ColumnDefPlan]) -> ScanOrder<'a> {
     let key = columns
         .iter()
         .find(|column| column.unique.is_some_and(|unique| unique.is_primary));
     let name = match key {
-        None => available_rowid(columns, |column| &column.name)?,
+        None => match available_rowid(columns, |column| &column.name) {
+            Some(rowid) => rowid,
+            None => return ScanOrder::Unavailable,
+        },
         Some(key) if key_type_supports_sqlite_order(&key.data_type) => &key.name,
-        Some(key) => return Some(ScanOrder::GlueSql(key)),
+        Some(key) => return ScanOrder::GlueSql(key),
     };
 
-    Some(ScanOrder::Sqlite(format!(
-        "ORDER BY {} ASC",
-        qualified_column(table, name)
-    )))
+    ScanOrder::Sqlite(format!("ORDER BY {} ASC", qualified_column(table, name)))
 }
 
 pub(super) fn native_select(
@@ -200,34 +202,32 @@ mod tests {
     #[test]
     fn scan_order() {
         let columns = [column("_rowid_ INT")];
-        let Some(ScanOrder::Sqlite(actual)) = super::scan_order("Item", &columns) else {
-            panic!("expected SQLite to order by the available rowid");
-        };
-        assert_eq!(actual, r#"ORDER BY "Item"."rowid" ASC"#);
+        let actual = super::scan_order("Item", &columns);
+        let expected = ScanOrder::Sqlite(r#"ORDER BY "Item"."rowid" ASC"#.to_owned());
+        assert_eq!(actual, expected);
 
         let columns = [
             column("_rowid_ INT"),
             column("rowid INT"),
             column("oid INT"),
         ];
-        assert!(super::scan_order("Item", &columns).is_none());
+        let actual = super::scan_order("Item", &columns);
+        assert_eq!(actual, ScanOrder::Unavailable);
 
         for key_type in [
             "INT8", "INT16", "INT32", "INT", "UINT8", "UINT16", "UINT32", "BOOLEAN", "TEXT",
             "BYTEA", "DECIMAL",
         ] {
             let columns = [column(&format!("id {key_type} PRIMARY KEY"))];
-            let Some(ScanOrder::Sqlite(actual)) = super::scan_order("Item", &columns) else {
-                panic!("expected SQLite to order a {key_type} key");
-            };
-            assert_eq!(actual, r#"ORDER BY "Item"."id" ASC"#, "{key_type}");
+            let actual = super::scan_order("Item", &columns);
+            let expected = ScanOrder::Sqlite(r#"ORDER BY "Item"."id" ASC"#.to_owned());
+            assert_eq!(actual, expected, "{key_type}");
         }
 
         let columns = [column("name TEXT"), column("id INT128 PRIMARY KEY")];
-        let Some(ScanOrder::GlueSql(actual)) = super::scan_order("Item", &columns) else {
-            panic!("expected GlueSQL to order an INT128 key");
-        };
-        assert_eq!(actual, &columns[1]);
+        let actual = super::scan_order("Item", &columns);
+        let expected = ScanOrder::GlueSql(&columns[1]);
+        assert_eq!(actual, expected);
     }
 
     #[test]

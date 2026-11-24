@@ -45,13 +45,14 @@ fn plan_table_scan(table: &TableSourcePlan, schema: &SchemaPlan) -> Option<Sourc
     };
     let projection = table_read::scan_projection(table, &columns)?;
 
-    match table_read::scan_order(&table.name, &columns)? {
+    match table_read::scan_order(&table.name, &columns) {
         ScanOrder::Sqlite(order) => {
             let mut source = table_read::native_select(table, projection);
             source.query = format!("{} {order}", source.query);
             Some(SourcePlan::Native(source))
         }
         ScanOrder::GlueSql(key) => Some(sort_by_primary_key(table, projection, key)),
+        ScanOrder::Unavailable => None,
     }
 }
 

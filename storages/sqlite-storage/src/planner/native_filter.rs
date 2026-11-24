@@ -4,12 +4,10 @@
 mod condition;
 
 use {
+    self::condition::ConditionPlan,
     super::table_read::{self, ScanOrder},
     gluesql_core::{
-        plan::{
-            ExprPlan, FilterInputPlan, FilterPlan, NativeSourcePlan, ProjectInputPlan, QueryPlan,
-            SchemaMap, SourcePlan,
-        },
+        plan::{FilterInputPlan, FilterPlan, ProjectInputPlan, QueryPlan, SchemaMap, SourcePlan},
         planner::{VisitorMut, walk_query_mut},
     },
     std::{collections::BTreeSet, convert::Infallible},
@@ -23,17 +21,6 @@ struct NativeFilterPlanner<'a> {
     schemas: &'a SchemaMap,
 }
 
-enum NativeFilterRewrite {
-    Unchanged,
-    Full {
-        source: NativeSourcePlan,
-    },
-    Partial {
-        source: NativeSourcePlan,
-        remaining: ExprPlan,
-    },
-}
-
 impl VisitorMut for NativeFilterPlanner<'_> {
     type Error = Infallible;
 
@@ -43,41 +30,23 @@ impl VisitorMut for NativeFilterPlanner<'_> {
 
         if let Some(project) = query.project_mut()
             && let ProjectInputPlan::Filter(filter) = &project.input
+            && let Some(input) = plan_filter(filter, self.schemas)
         {
-            match plan_filter(filter, self.schemas) {
-                NativeFilterRewrite::Unchanged => {}
-                NativeFilterRewrite::Full { source } => {
-                    project.input = ProjectInputPlan::Source(SourcePlan::Native(source));
-                }
-                NativeFilterRewrite::Partial { source, remaining } => {
-                    project.input = ProjectInputPlan::Filter(FilterPlan {
-                        input: FilterInputPlan::Source(SourcePlan::Native(source)),
-                        expr: remaining,
-                    });
-                }
-            }
+            project.input = input;
         }
 
         Ok(())
     }
 }
 
-fn plan_filter(filter: &FilterPlan, schemas: &SchemaMap) -> NativeFilterRewrite {
+fn plan_filter(filter: &FilterPlan, schemas: &SchemaMap) -> Option<ProjectInputPlan> {
     let FilterInputPlan::Source(SourcePlan::Table(table)) = &filter.input else {
-        return NativeFilterRewrite::Unchanged;
+        return None;
     };
 
-    let Some(schema) = schemas.get(&table.name) else {
-        return NativeFilterRewrite::Unchanged;
-    };
-
-    let Some(columns) = schema.column_defs.as_ref() else {
-        return NativeFilterRewrite::Unchanged;
-    };
-
-    let Some(projection) = table_read::scan_projection(table, columns) else {
-        return NativeFilterRewrite::Unchanged;
-    };
+    let schema = schemas.get(&table.name)?;
+    let columns = schema.column_defs.as_ref()?;
+    let projection = table_read::scan_projection(table, columns)?;
 
     let alias = table
         .alias
@@ -95,27 +64,37 @@ fn plan_filter(filter: &FilterPlan, schemas: &SchemaMap) -> NativeFilterRewrite 
         .enumerate()
         .any(|(index, column)| !names.insert(column_aliases.get(index).unwrap_or(&column.name)))
     {
-        return NativeFilterRewrite::Unchanged;
+        return None;
     }
 
-    let Some(ScanOrder::Sqlite(order)) = table_read::scan_order(&table.name, columns) else {
-        return NativeFilterRewrite::Unchanged;
+    let ScanOrder::Sqlite(order) = table_read::scan_order(&table.name, columns) else {
+        return None;
     };
 
-    let Some(condition) =
-        condition::plan(&filter.expr, &table.name, alias, columns, column_aliases)
-    else {
-        return NativeFilterRewrite::Unchanged;
+    let condition = condition::plan(&filter.expr, &table.name, alias, columns, column_aliases);
+    let native_source = |sql, params| {
+        let mut source = table_read::native_select(table, projection);
+        source.query = format!("{} WHERE {sql} {order}", source.query);
+        source.params = params;
+        SourcePlan::Native(source)
     };
 
-    let mut source = table_read::native_select(table, projection);
-    source.query = format!("{} WHERE {} {order}", source.query, condition.sql);
-    source.params = condition.params;
-
-    match condition.remaining {
-        Some(remaining) => NativeFilterRewrite::Partial { source, remaining },
-        None => NativeFilterRewrite::Full { source },
-    }
+    let input = match condition {
+        ConditionPlan::Unchanged => return None,
+        ConditionPlan::Full { sql, params } => ProjectInputPlan::Source(native_source(sql, params)),
+        ConditionPlan::Partial {
+            sql,
+            params,
+            remaining,
+        } => {
+            let source = native_source(sql, params);
+            ProjectInputPlan::Filter(FilterPlan {
+                input: FilterInputPlan::Source(source),
+                expr: remaining,
+            })
+        }
+    };
+    Some(input)
 }
 
 #[cfg(test)]
