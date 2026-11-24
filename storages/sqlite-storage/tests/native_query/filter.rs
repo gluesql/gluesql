@@ -3,6 +3,7 @@ use {
     gluesql_core::{
         data::Value,
         error::Result,
+        executor::EvaluateError,
         prelude::{Glue, Payload},
         store::NativeQuery,
     },
@@ -57,6 +58,83 @@ fn native_filter_reduces_source_rows_and_keeps_common_projection() {
             vec![Value::Str("pear".to_owned())],
         ],
     );
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn native_null_functions_choose_a_display_name() {
+    let mut glue = Glue::new(SqliteStorage::in_memory().unwrap());
+    glue.execute(
+        "
+        CREATE TABLE Location (id INT PRIMARY KEY, name TEXT, label TEXT, qty INT);
+        INSERT INTO Location VALUES
+            (1, 'Seoul', NULL, 4),
+            (2, NULL, 'Seoul', 0),
+            (3, 'Busan', 'Seoul', 10),
+            (4, NULL, NULL, 10),
+            (5, '', 'Seoul', 10),
+            (6, 'Seoul', NULL, -1);
+        ",
+    )
+    .unwrap();
+
+    let sql = "
+        SELECT id FROM Location
+        WHERE qty >= 0 AND IFNULL(name, label) = 'Seoul'
+    ";
+    let actual = execute_fully_delegated_filter(&mut glue, sql);
+    let expected = select(&["id"], vec![vec![Value::I64(1)], vec![Value::I64(2)]]);
+    assert_eq!(actual, expected);
+
+    let sql = "
+        SELECT id FROM Location
+        WHERE qty >= 0 AND COALESCE(NULLIF(name, ''), label, 'Seoul') = 'Seoul'
+    ";
+    let actual = execute_fully_delegated_filter(&mut glue, sql);
+    let expected = select(
+        &["id"],
+        vec![
+            vec![Value::I64(1)],
+            vec![Value::I64(2)],
+            vec![Value::I64(4)],
+            vec![Value::I64(5)],
+        ],
+    );
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn unused_fallbacks_preserve_gluesql_evaluation_errors() {
+    let mut glue = Glue::new(SqliteStorage::in_memory().unwrap());
+    glue.execute("CREATE TABLE Item (qty INT); INSERT INTO Item VALUES (10);")
+        .unwrap();
+
+    let sql = "SELECT qty FROM Item WHERE IFNULL(qty, 1 / 0) = 10";
+    let plan = glue.plan(sql).unwrap().remove(0);
+    expect_native_source_under_filter(expect_query(&plan));
+
+    let actual = glue.execute_prepared(&plan);
+    let expected = Err(EvaluateError::DivisorShouldNotBeZero.into());
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn nullif_keeps_gluesql_float_equality() {
+    let mut glue = Glue::new(SqliteStorage::in_memory().unwrap());
+    glue.execute(
+        "
+        CREATE TABLE Sample (id INT, a FLOAT32, b FLOAT32);
+        INSERT INTO Sample VALUES (1, 1.0, 0.99999994), (2, 1.0, 0.5);
+        ",
+    )
+    .unwrap();
+
+    let sql = "SELECT id FROM Sample WHERE NULLIF(a, b) IS NULL";
+    let plan = glue.plan(sql).unwrap().remove(0);
+    expect_native_source_under_filter(expect_query(&plan));
+
+    let actual = glue.execute_prepared(&plan).unwrap();
+    let expected = select(&["id"], vec![vec![Value::I64(1)]]);
     assert_eq!(actual, expected);
 }
 
