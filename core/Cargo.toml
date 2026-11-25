@@ -35,6 +35,11 @@ features = ["v4"]
 
 [dev-dependencies]
 pretty_assertions = "1"
+criterion = "0.3"
+
+[[bench]]
+name = "evaluator"
+harness = false
 
 [lints]
 workspace = true

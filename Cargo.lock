@@ -1510,6 +1510,7 @@ dependencies = [
  "bigdecimal",
  "cfg-if",
  "chrono",
+ "criterion",
  "hex",
  "im",
  "iter-enum",
@@ -1720,6 +1721,7 @@ dependencies = [
 name = "gluesql_memory_storage"
 version = "0.21.0"
 dependencies = [
+ "criterion",
  "gluesql-core",
  "gluesql-test-suite",
  "serde",
