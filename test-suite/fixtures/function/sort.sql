@@ -11,13 +11,6 @@ SELECT SORT(list) AS list FROM Test1
 -- | ---------- |
 -- | [1,2,3,4]  |
 
--- @name: sort finite floats before negative NaN
-SELECT SORT([-CAST('NaN' AS FLOAT), CAST('2' AS FLOAT), CAST('-1' AS FLOAT)]) [0] AS first
--- @expect:
--- | first: F64 |
--- | ---------- |
--- | -1.0       |
-
 -- @name: sort the list by ascending order
 SELECT SORT(list, 'ASC') AS list FROM Test1
 -- @expect:

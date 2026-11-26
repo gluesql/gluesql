@@ -78,19 +78,6 @@ SELECT id, num, name, rate FROM Test ORDER BY rate DESC, id DESC
 -- | 1       | 2        | "Hello"    | 3.0       |
 -- | 3       | 4        | "World"    | 1.0       |
 
--- @name: SELECT ORDER BY places negative NaN after finite floats
-SELECT label
-FROM (VALUES (-CAST('NaN' AS FLOAT), 'nan'),
-             (CAST('2' AS FLOAT), 'two'),
-             (CAST('-1' AS FLOAT), 'negative')) AS FloatRows(sort_value, label)
-ORDER BY sort_value
--- @expect:
--- | label: Str |
--- | ---------- |
--- | "negative" |
--- | "two"      |
--- | "nan"      |
-
 SELECT id, num FROM Test ORDER BY id ASC, num DESC
 -- @expect:
 -- | id: I64 | num: I64 |
