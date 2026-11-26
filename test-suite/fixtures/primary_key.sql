@@ -4,6 +4,16 @@ CREATE TABLE Allegro (
 );
 -- @expect: ok
 
+-- @name: A repeated primary key rejects the entire multi-row INSERT
+INSERT INTO Allegro VALUES (1, 'first'), (2, 'middle'), (1, 'last');
+-- @expect: error Insert.DuplicateEntryOnPrimaryKeyField
+-- @json: {"I64": 1}
+
+SELECT id, name FROM Allegro;
+-- @expect:
+-- | id  | name |
+-- | --- | ---- |
+
 INSERT INTO Allegro VALUES (1, 'hello'), (3, 'world');
 -- @expect: payload Insert
 -- @json: 2
