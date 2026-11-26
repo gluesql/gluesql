@@ -506,32 +506,30 @@ mod tests {
         assert!(Key::U128(1) > Key::Decimal(dec("1")));
 
         assert!(Key::F32(10.0_f32.into()) > Key::F32(3.0_f32.into()));
+        assert_eq!(
+            Key::F32((-0.0_f32).into()).cmp(&Key::F32(0.0_f32.into())),
+            Ordering::Equal,
+        );
+        assert_eq!(
+            Key::F32(f32::from_bits(0xffc0_0001).into())
+                .cmp(&Key::F32(f32::from_bits(0x7fc0_0002).into())),
+            Ordering::Equal,
+            "F32 NaNs with different signs and payloads should compare equal",
+        );
         assert!(Key::F32(1.0_f32.into()) > Key::F64(1.0.into()));
 
-        for (left, right) in [
-            (Key::F32((-0.0_f32).into()), Key::F32(0.0_f32.into())),
-            (
-                Key::F32(f32::from_bits(0xffc0_0001).into()),
-                Key::F32(f32::from_bits(0x7fc0_0002).into()),
-            ),
-        ] {
-            assert_eq!(left, right);
-            assert_eq!(left.cmp(&right), Ordering::Equal);
-        }
-
         assert!(Key::F64(10.0.into()) > Key::F64(3.0.into()));
+        assert_eq!(
+            Key::F64((-0.0).into()).cmp(&Key::F64(0.0.into())),
+            Ordering::Equal,
+        );
+        assert_eq!(
+            Key::F64(f64::from_bits(0xfff8_0000_0000_0001).into())
+                .cmp(&Key::F64(f64::from_bits(0x7ff8_0000_0000_0002).into())),
+            Ordering::Equal,
+            "F64 NaNs with different signs and payloads should compare equal",
+        );
         assert!(Key::F64(1.0.into()) > Key::Decimal(dec("1")));
-
-        for (left, right) in [
-            (Key::F64((-0.0_f64).into()), Key::F64(0.0_f64.into())),
-            (
-                Key::F64(f64::from_bits(0xfff8_0000_0000_0001).into()),
-                Key::F64(f64::from_bits(0x7ff8_0000_0000_0002).into()),
-            ),
-        ] {
-            assert_eq!(left, right);
-            assert_eq!(left.cmp(&right), Ordering::Equal);
-        }
 
         assert!(Key::Decimal(dec("123.45")) > Key::Decimal(dec("0.11")));
         assert!(Key::Decimal(dec("1")) > Key::Bool(true));
