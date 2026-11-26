@@ -13,7 +13,7 @@ use {
         result::Result,
         store::GStore,
     },
-    std::rc::Rc,
+    std::{collections::HashSet, rc::Rc},
 };
 
 pub(super) fn fetch_rows<T: GStore>(
@@ -112,12 +112,13 @@ fn validate_unique<T: GStore>(
             .iter()
             .any(|column_def| column_def.unique == Some(ColumnUniqueOption { is_primary: false }))
     {
+        let mut seen_keys = HashSet::new();
         for key in rows
             .iter()
             .filter_map(|row| row.get(index).map(Key::try_from))
         {
             let key = key?;
-            if storage.fetch_data(table_name, &key)?.is_some() {
+            if !seen_keys.insert(key.clone()) || storage.fetch_data(table_name, &key)?.is_some() {
                 return Err(InsertError::DuplicateEntryOnPrimaryKeyField(key).into());
             }
         }
