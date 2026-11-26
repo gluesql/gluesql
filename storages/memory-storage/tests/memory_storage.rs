@@ -1,4 +1,11 @@
-use {gluesql_core::prelude::Glue, gluesql_memory_storage::MemoryStorage, test_suite::*};
+use {
+    gluesql_core::{
+        prelude::{Glue, Key, Value},
+        store::{Store, StoreMut},
+    },
+    gluesql_memory_storage::MemoryStorage,
+    test_suite::*,
+};
 
 struct MemoryTester {
     glue: Glue<MemoryStorage>,
@@ -223,4 +230,97 @@ fn memory_storage_dynamic_metadata_union() {
             ],
         }])
     );
+}
+
+fn float_key_bits(key: &Key) -> u64 {
+    match key {
+        Key::F32(value) => u64::from(value.0.to_bits()),
+        Key::F64(value) => value.0.to_bits(),
+        other => panic!("expected a float key, got {other:?}"),
+    }
+}
+
+fn storage_with_float_key(data_type: &str, key: Key, row: Vec<Value>) -> Glue<MemoryStorage> {
+    let mut glue = Glue::new(MemoryStorage::default());
+    glue.execute(format!("CREATE TABLE Zero (id {data_type}, tag TEXT)"))
+        .unwrap();
+    glue.storage.insert_data("Zero", vec![(key, row)]).unwrap();
+    glue
+}
+
+#[test]
+fn float_key_fetch_data_by_equal_key() {
+    for (data_type, negative_key, negative_value, positive_key, negative_bits) in [
+        (
+            "FLOAT32",
+            Key::F32((-0.0_f32).into()),
+            Value::F32(-0.0_f32),
+            Key::F32(0.0_f32.into()),
+            0x8000_0000_u64,
+        ),
+        (
+            "FLOAT",
+            Key::F64((-0.0_f64).into()),
+            Value::F64(-0.0_f64),
+            Key::F64(0.0_f64.into()),
+            0x8000_0000_0000_0000_u64,
+        ),
+    ] {
+        let original = vec![negative_value, Value::Str("neg".to_owned())];
+        let glue = storage_with_float_key(data_type, negative_key, original.clone());
+        let rows = &glue.storage.items["Zero"].rows;
+        assert_eq!(rows.len(), 1, "{data_type}");
+        let (stored_key, stored_row) = rows.first_key_value().unwrap();
+        assert_eq!(float_key_bits(stored_key), negative_bits, "{data_type}");
+        let stored_value_bits = match &stored_row[0] {
+            Value::F32(value) => u64::from(value.to_bits()),
+            Value::F64(value) => value.to_bits(),
+            other => panic!("expected a float value, got {other:?}"),
+        };
+        assert_eq!(stored_value_bits, negative_bits, "{data_type}");
+        assert_eq!(
+            glue.storage.fetch_data("Zero", &positive_key).unwrap(),
+            Some(original),
+            "{data_type}"
+        );
+    }
+}
+
+#[test]
+fn float_key_insert_data_replaces_equal_key() {
+    for (data_type, negative_key, negative_value, positive_key, positive_value) in [
+        (
+            "FLOAT32",
+            Key::F32((-0.0_f32).into()),
+            Value::F32(-0.0_f32),
+            Key::F32(0.0_f32.into()),
+            Value::F32(0.0_f32),
+        ),
+        (
+            "FLOAT",
+            Key::F64((-0.0_f64).into()),
+            Value::F64(-0.0_f64),
+            Key::F64(0.0_f64.into()),
+            Value::F64(0.0_f64),
+        ),
+    ] {
+        let original = vec![negative_value, Value::Str("neg".to_owned())];
+        let mut glue = storage_with_float_key(data_type, negative_key.clone(), original);
+        let replacement = vec![positive_value, Value::Str("pos".to_owned())];
+        glue.storage
+            .insert_data("Zero", vec![(positive_key.clone(), replacement.clone())])
+            .unwrap();
+
+        assert_eq!(glue.storage.items["Zero"].rows.len(), 1, "{data_type}");
+        assert_eq!(
+            glue.storage.fetch_data("Zero", &negative_key).unwrap(),
+            Some(replacement.clone()),
+            "{data_type}"
+        );
+        assert_eq!(
+            glue.storage.fetch_data("Zero", &positive_key).unwrap(),
+            Some(replacement),
+            "{data_type}"
+        );
+    }
 }

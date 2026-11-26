@@ -23,6 +23,19 @@ VALUES (1, 'a'), (2, 'b') ORDER BY column1 DESC
 -- | 2            | "b"          |
 -- | 1            | "a"          |
 
+-- @name: VALUES ORDER BY places NaN after finite floats
+SELECT label
+FROM (VALUES (-CAST('NaN' AS FLOAT), 'nan'),
+             (CAST('2' AS FLOAT), 'two'),
+             (CAST('-1' AS FLOAT), 'negative')
+      ORDER BY column1) AS OrderedValues(sort_value, label)
+-- @expect:
+-- | label: Str |
+-- | ---------- |
+-- | "negative" |
+-- | "two"      |
+-- | "nan"      |
+
 VALUES (1, 'a'), (3, 'c'), (2, 'b') ORDER BY column1 DESC LIMIT 2
 -- @expect:
 -- | column1: I64 | column2: Str |

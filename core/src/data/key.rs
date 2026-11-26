@@ -66,8 +66,8 @@ impl Ord for Key {
             (Key::U32(l), Key::U32(r)) => l.cmp(r),
             (Key::U64(l), Key::U64(r)) => l.cmp(r),
             (Key::U128(l), Key::U128(r)) | (Key::Uuid(l), Key::Uuid(r)) => l.cmp(r),
-            (Key::F32(l), Key::F32(r)) => l.total_cmp(&r.0),
-            (Key::F64(l), Key::F64(r)) => l.total_cmp(&r.0),
+            (Key::F32(l), Key::F32(r)) => l.cmp(r),
+            (Key::F64(l), Key::F64(r)) => l.cmp(r),
             (Key::Decimal(l), Key::Decimal(r)) => l.cmp(r),
             (Key::Bool(l), Key::Bool(r)) => l.cmp(r),
             (Key::Str(l), Key::Str(r)) => l.cmp(r),
@@ -553,6 +553,140 @@ mod tests {
 
         assert_eq!(Key::None.partial_cmp(&Key::None), Some(Ordering::Equal));
         assert!(Key::None > Key::I8(100));
+    }
+
+    #[test]
+    fn float_key_eq_and_ord_agree() {
+        let cases = [
+            (
+                "f32",
+                [
+                    ("-inf", Key::F32(f32::NEG_INFINITY.into()), 0_u8),
+                    ("-1", Key::F32((-1.0_f32).into()), 1),
+                    ("-0", Key::F32((-0.0_f32).into()), 2),
+                    ("+0", Key::F32(0.0_f32.into()), 2),
+                    ("+1", Key::F32(1.0_f32.into()), 3),
+                    ("+inf", Key::F32(f32::INFINITY.into()), 4),
+                    ("-NaN", Key::F32(f32::from_bits(0xffc0_0001).into()), 5),
+                    ("+NaN", Key::F32(f32::from_bits(0x7fc0_0001).into()), 5),
+                    (
+                        "+NaN payload",
+                        Key::F32(f32::from_bits(0x7fc0_0002).into()),
+                        5,
+                    ),
+                ],
+            ),
+            (
+                "f64",
+                [
+                    ("-inf", Key::F64(f64::NEG_INFINITY.into()), 0),
+                    ("-1", Key::F64((-1.0_f64).into()), 1),
+                    ("-0", Key::F64((-0.0_f64).into()), 2),
+                    ("+0", Key::F64(0.0_f64.into()), 2),
+                    ("+1", Key::F64(1.0_f64.into()), 3),
+                    ("+inf", Key::F64(f64::INFINITY.into()), 4),
+                    (
+                        "-NaN",
+                        Key::F64(f64::from_bits(0xfff8_0000_0000_0001).into()),
+                        5,
+                    ),
+                    (
+                        "+NaN",
+                        Key::F64(f64::from_bits(0x7ff8_0000_0000_0001).into()),
+                        5,
+                    ),
+                    (
+                        "+NaN payload",
+                        Key::F64(f64::from_bits(0x7ff8_0000_0000_0002).into()),
+                        5,
+                    ),
+                ],
+            ),
+        ];
+
+        for (float_type, values) in cases {
+            for (left_name, left, left_rank) in &values {
+                for (right_name, right, right_rank) in &values {
+                    let expected_order = left_rank.cmp(right_rank);
+                    assert_eq!(
+                        left.cmp(right),
+                        expected_order,
+                        "{float_type}: {left_name} compared with {right_name}"
+                    );
+                    assert_eq!(
+                        left == right,
+                        expected_order == Ordering::Equal,
+                        "{float_type}: equality of {left_name} and {right_name}"
+                    );
+                    assert_eq!(
+                        left.partial_cmp(right),
+                        Some(expected_order),
+                        "{float_type}: partial order of {left_name} and {right_name}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn float_key_btree_lookup_by_equal_key() {
+        let actual = [
+            ("f32", Key::F32((-0.0_f32).into()), Key::F32(0.0_f32.into())),
+            ("f64", Key::F64((-0.0_f64).into()), Key::F64(0.0_f64.into())),
+            (
+                "f32 NaN",
+                Key::F32(f32::from_bits(0xffc0_0001).into()),
+                Key::F32(f32::from_bits(0x7fc0_0002).into()),
+            ),
+            (
+                "f64 NaN",
+                Key::F64(f64::from_bits(0xfff8_0000_0000_0001).into()),
+                Key::F64(f64::from_bits(0x7ff8_0000_0000_0002).into()),
+            ),
+        ]
+        .map(|(case, negative, positive)| {
+            let mut map = BTreeMap::new();
+            map.insert(negative, 11);
+            (case, map.get(&positive).copied())
+        });
+
+        assert_eq!(
+            actual,
+            [
+                ("f32", Some(11)),
+                ("f64", Some(11)),
+                ("f32 NaN", Some(11)),
+                ("f64 NaN", Some(11)),
+            ]
+        );
+    }
+
+    #[test]
+    fn float_key_btree_replaces_equal_key() {
+        let actual = [
+            ("f32", Key::F32((-0.0_f32).into()), Key::F32(0.0_f32.into())),
+            ("f64", Key::F64((-0.0_f64).into()), Key::F64(0.0_f64.into())),
+        ]
+        .map(|(case, negative, positive)| {
+            let mut map = BTreeMap::new();
+            map.insert(negative.clone(), 11);
+            let previous = map.insert(positive.clone(), 22);
+            (
+                case,
+                previous,
+                map.len(),
+                map.get(&negative).copied(),
+                map.get(&positive).copied(),
+            )
+        });
+
+        assert_eq!(
+            actual,
+            [
+                ("f32", Some(11), 1, Some(22), Some(22)),
+                ("f64", Some(11), 1, Some(22), Some(22)),
+            ]
+        );
     }
 
     #[test]
