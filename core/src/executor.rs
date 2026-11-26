@@ -8,8 +8,8 @@ mod filter;
 mod insert;
 mod query;
 mod select;
+mod unique;
 mod update;
-mod validate;
 
 pub use {
     alter::{AlterError, Referencing},
@@ -20,6 +20,6 @@ pub use {
     fetch::FetchError,
     insert::InsertError,
     query::QueryError,
+    unique::UniqueError,
     update::UpdateError,
-    validate::ValidateError,
 };

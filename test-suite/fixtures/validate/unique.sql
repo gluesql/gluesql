@@ -41,7 +41,7 @@ UPDATE TestC SET id = NULL WHERE num = 1
 -- @expect: ok
 
 INSERT INTO TestA VALUES (2, 2)
--- @expect: error Validate.DuplicateEntryOnUniqueField
+-- @expect: error Unique.DuplicateEntryOnUniqueField
 -- @json:
 -- [
 --   {
@@ -51,7 +51,7 @@ INSERT INTO TestA VALUES (2, 2)
 -- ]
 
 INSERT INTO TestA VALUES (4, 4), (4, 5)
--- @expect: error Validate.DuplicateEntryOnUniqueField
+-- @expect: error Unique.DuplicateEntryOnUniqueField
 -- @json:
 -- [
 --   {
@@ -61,7 +61,7 @@ INSERT INTO TestA VALUES (4, 4), (4, 5)
 -- ]
 
 UPDATE TestA SET id = 2 WHERE id = 1
--- @expect: error Validate.DuplicateEntryOnUniqueField
+-- @expect: error Unique.DuplicateEntryOnUniqueField
 -- @json:
 -- [
 --   {
@@ -71,7 +71,7 @@ UPDATE TestA SET id = 2 WHERE id = 1
 -- ]
 
 INSERT INTO TestB VALUES (1, 3)
--- @expect: error Validate.DuplicateEntryOnUniqueField
+-- @expect: error Unique.DuplicateEntryOnUniqueField
 -- @json:
 -- [
 --   {
@@ -81,7 +81,7 @@ INSERT INTO TestB VALUES (1, 3)
 -- ]
 
 INSERT INTO TestB VALUES (4, 2)
--- @expect: error Validate.DuplicateEntryOnUniqueField
+-- @expect: error Unique.DuplicateEntryOnUniqueField
 -- @json:
 -- [
 --   {
@@ -91,7 +91,7 @@ INSERT INTO TestB VALUES (4, 2)
 -- ]
 
 INSERT INTO TestB VALUES (5, 5), (6, 5)
--- @expect: error Validate.DuplicateEntryOnUniqueField
+-- @expect: error Unique.DuplicateEntryOnUniqueField
 -- @json:
 -- [
 --   {
@@ -101,7 +101,7 @@ INSERT INTO TestB VALUES (5, 5), (6, 5)
 -- ]
 
 UPDATE TestB SET num = 2 WHERE id = 1
--- @expect: error Validate.DuplicateEntryOnUniqueField
+-- @expect: error Unique.DuplicateEntryOnUniqueField
 -- @json:
 -- [
 --   {
@@ -111,7 +111,7 @@ UPDATE TestB SET num = 2 WHERE id = 1
 -- ]
 
 INSERT INTO TestC VALUES (2, 4)
--- @expect: error Validate.DuplicateEntryOnUniqueField
+-- @expect: error Unique.DuplicateEntryOnUniqueField
 -- @json:
 -- [
 --   {
@@ -121,7 +121,7 @@ INSERT INTO TestC VALUES (2, 4)
 -- ]
 
 INSERT INTO TestC VALUES (NULL, 5), (3, 5), (3, 6)
--- @expect: error Validate.DuplicateEntryOnUniqueField
+-- @expect: error Unique.DuplicateEntryOnUniqueField
 -- @json:
 -- [
 --   {
@@ -131,7 +131,7 @@ INSERT INTO TestC VALUES (NULL, 5), (3, 5), (3, 6)
 -- ]
 
 UPDATE TestC SET id = 1
--- @expect: error Validate.DuplicateEntryOnUniqueField
+-- @expect: error Unique.DuplicateEntryOnUniqueField
 -- @json:
 -- [
 --   {
@@ -139,3 +139,32 @@ UPDATE TestC SET id = 1
 --   },
 --   "id"
 -- ]
+
+-- @name: UPDATE checks only the unique columns assigned in SET
+UPDATE TestA SET num = 9 WHERE id = 2;
+-- @expect: payload Update
+-- @json: 1
+
+SELECT id, num FROM TestA WHERE id = 2;
+-- @expect:
+-- | id: I64 | num: I64 |
+-- | ------- | -------- |
+-- | 2       | 9        |
+
+CREATE TABLE WithPrimaryKey (id INTEGER PRIMARY KEY, email TEXT UNIQUE);
+-- @expect: ok
+
+INSERT INTO WithPrimaryKey VALUES (1, 'a');
+-- @expect: payload Insert
+-- @json: 1
+
+-- @name: INSERT checks non-primary unique columns even when a primary key exists
+INSERT INTO WithPrimaryKey VALUES (2, 'a');
+-- @expect: error Unique.DuplicateEntryOnUniqueField
+-- @json: [{"Str": "a"}, "email"]
+
+SELECT id, email FROM WithPrimaryKey ORDER BY id;
+-- @expect:
+-- | id: I64 | email: Str |
+-- | ------- | ---------- |
+-- | 1       | "a"        |

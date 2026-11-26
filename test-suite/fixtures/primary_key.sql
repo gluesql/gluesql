@@ -103,7 +103,7 @@ INSERT INTO Strslice VALUES (SUBSTR(SUBSTR('foo', 1), 1));
 
 -- @name: PRIMARY KEY includes UNIQUE constraint
 INSERT INTO Allegro VALUES (1, 'another hello');
--- @expect: error Validate.DuplicateEntryOnPrimaryKeyField
+-- @expect: error Insert.DuplicateEntryOnPrimaryKeyField
 -- @json:
 -- {
 --   "I64": 1

@@ -10,7 +10,6 @@ use {
         insert::insert,
         query, select,
         update::Update,
-        validate::{ColumnValidation, validate_unique},
     },
     crate::{
         ast::{BinaryOperator, DataType, Dictionary, Literal, Variable},
@@ -199,10 +198,6 @@ pub fn execute<T: GStore + GStoreMut>(
                 || Rc::from(vec![SCHEMALESS_DOC_COLUMN.to_owned()]),
                 |columns| columns.iter().map(|col_def| col_def.name.clone()).collect(),
             );
-            let columns_to_update: Vec<String> = assignments
-                .iter()
-                .map(|assignment| assignment.id.clone())
-                .collect();
 
             let update = Update::new(
                 storage,
@@ -229,13 +224,7 @@ pub fn execute<T: GStore + GStoreMut>(
             })
             .collect::<Result<Vec<(Key, Row)>>>()?;
 
-            if let Some(column_defs) = column_defs {
-                let column_validation =
-                    ColumnValidation::SpecifiedColumns(column_defs, columns_to_update);
-                let rows = rows.iter().map(|(_, row)| row.values.as_slice());
-
-                validate_unique(storage, table_name, &column_validation, rows)?;
-            }
+            update.validate_unique(&rows)?;
 
             let num_rows = rows.len();
             let rows = rows
