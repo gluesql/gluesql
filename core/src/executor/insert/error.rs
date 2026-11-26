@@ -1,4 +1,4 @@
-use {serde::Serialize, std::fmt::Debug, thiserror::Error};
+use {crate::data::Key, serde::Serialize, std::fmt::Debug, thiserror::Error};
 
 #[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum InsertError {
@@ -16,6 +16,9 @@ pub enum InsertError {
 
     #[error("literals have more values than target columns")]
     TooManyValues,
+
+    #[error("duplicate entry '{0:?}' for primary_key field")]
+    DuplicateEntryOnPrimaryKeyField(Key),
 
     #[error("only single value accepted for schemaless row insert: got {0}")]
     OnlySingleValueAcceptedForSchemalessRow(usize),

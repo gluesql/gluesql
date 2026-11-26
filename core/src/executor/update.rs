@@ -2,6 +2,7 @@ use {
     super::{
         context::{RowContext, StatementContext},
         evaluate::evaluate,
+        unique::validate_unique_columns,
     },
     crate::{
         ast::{ColumnUniqueOption, ForeignKey},
@@ -174,5 +175,24 @@ impl<'a, T: GStore> Update<'a, T> {
         };
 
         Ok(Row { columns, values })
+    }
+
+    pub(super) fn validate_unique(&self, rows: &[(Key, Row)]) -> Result<()> {
+        let Some(column_defs) = self.column_defs else {
+            return Ok(());
+        };
+
+        let unique_columns = column_defs
+            .iter()
+            .enumerate()
+            .filter(|(_, column)| {
+                column.unique.is_some() && self.fields.iter().any(|field| field.id == column.name)
+            })
+            .map(|(index, column)| (index, column.name.clone()))
+            .collect();
+
+        let values = rows.iter().map(|(_, row)| row.values.as_slice());
+
+        validate_unique_columns(self.storage, self.table_name, unique_columns, &values)
     }
 }

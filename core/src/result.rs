@@ -4,7 +4,7 @@ pub use crate::{
     data::{IntervalError, KeyError, SchemaParseError, StringExtError, TableError, ValueError},
     executor::{
         AlterError, DeleteError, EvaluateError, ExecuteError, FetchError, InsertError, QueryError,
-        UpdateError, ValidateError,
+        UniqueError, UpdateError,
     },
     planner::PlannerError,
     query_builder::QueryBuilderError,
@@ -49,8 +49,8 @@ pub enum Error {
     Update(#[from] UpdateError),
     #[error("table: {0}")]
     Table(#[from] TableError),
-    #[error("validate: {0}")]
-    Validate(#[from] ValidateError),
+    #[error("unique: {0}")]
+    Unique(#[from] UniqueError),
     #[error("key: {0}")]
     Key(#[from] KeyError),
     #[error("value: {0}")]

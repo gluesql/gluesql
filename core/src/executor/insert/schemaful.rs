@@ -7,7 +7,7 @@ use {
             context::StatementContext,
             evaluate::{evaluate, evaluate_stateless},
             query,
-            validate::{ColumnValidation, validate_unique},
+            unique::validate_unique_columns,
         },
         plan::{ColumnDefPlan, ExprPlan, QueryPlan, ValuesPlan},
         result::Result,
@@ -26,7 +26,6 @@ pub(super) fn fetch_rows<T: GStore>(
     source: &QueryPlan,
 ) -> Result<RowsData> {
     let column_defs = Rc::<[ColumnDefPlan]>::from(column_defs);
-    let column_validation = ColumnValidation::All(&column_defs);
 
     let rows_iter: Box<dyn Iterator<Item = Result<Vec<Value>>> + '_> = if let Some(rows) =
         values::execute(
@@ -79,18 +78,12 @@ pub(super) fn fetch_rows<T: GStore>(
     };
     let rows = rows_iter.collect::<Result<Vec<Vec<Value>>>>()?;
 
-    validate_unique(
-        storage,
-        table_name,
-        &column_validation,
-        rows.iter().map(std::vec::Vec::as_slice),
-    )?;
-
-    validate_foreign_key(storage, &column_defs, foreign_keys, &rows)?;
-
     let primary_key = column_defs
         .iter()
         .position(|column_def| column_def.unique == Some(ColumnUniqueOption { is_primary: true }));
+
+    validate_unique(storage, table_name, &column_defs, primary_key, &rows)?;
+    validate_foreign_key(storage, &column_defs, foreign_keys, &rows)?;
 
     match primary_key {
         Some(i) => rows
@@ -105,6 +98,45 @@ pub(super) fn fetch_rows<T: GStore>(
             .map(RowsData::Insert),
         None => Ok(RowsData::Append(rows)),
     }
+}
+
+fn validate_unique<T: GStore>(
+    storage: &T,
+    table_name: &str,
+    column_defs: &[ColumnDefPlan],
+    primary_key: Option<usize>,
+    rows: &[Vec<Value>],
+) -> Result<()> {
+    if let Some(index) = primary_key
+        && !column_defs
+            .iter()
+            .any(|column_def| column_def.unique == Some(ColumnUniqueOption { is_primary: false }))
+    {
+        for key in rows
+            .iter()
+            .filter_map(|row| row.get(index).map(Key::try_from))
+        {
+            let key = key?;
+            if storage.fetch_data(table_name, &key)?.is_some() {
+                return Err(InsertError::DuplicateEntryOnPrimaryKeyField(key).into());
+            }
+        }
+
+        return Ok(());
+    }
+
+    let unique_columns = column_defs
+        .iter()
+        .enumerate()
+        .filter_map(|(index, column)| column.unique.map(|_| (index, column.name.clone())))
+        .collect();
+
+    validate_unique_columns(
+        storage,
+        table_name,
+        unique_columns,
+        &rows.iter().map(Vec::as_slice),
+    )
 }
 
 fn values_rows<'a, T: GStore>(
