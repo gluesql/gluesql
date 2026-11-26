@@ -108,3 +108,51 @@ UPDATE ReferencingWithTwoFK SET referenced_id_2 = 9 WHERE id = 1;
 --   "referenced_value": "9",
 --   "table_name": "ReferencedTableWithPK_2"
 -- }
+
+CREATE TABLE Employee (
+    id INT PRIMARY KEY,
+    manager_id INT,
+    FOREIGN KEY (manager_id) REFERENCES Employee (id)
+);
+-- @expect: ok
+
+-- @name: INSERT accepts a self-referencing value created earlier in the same statement
+INSERT INTO Employee (id, manager_id) VALUES (1, NULL), (2, 1);
+-- @expect: payload Insert
+-- @json: 2
+
+-- @name: INSERT accepts a self-referencing value created later in the same statement
+INSERT INTO Employee (id, manager_id) VALUES (4, 3), (3, NULL);
+-- @expect: payload Insert
+-- @json: 2
+
+-- @name: INSERT accepts a row referencing itself
+INSERT INTO Employee (id, manager_id) VALUES (5, 5);
+-- @expect: payload Insert
+-- @json: 1
+
+-- @name: INSERT accepts a self-referencing value from an earlier statement
+INSERT INTO Employee (id, manager_id) VALUES (6, 1);
+-- @expect: payload Insert
+-- @json: 1
+
+-- @name: INSERT rejects a self-referencing value missing from both storage and the statement
+INSERT INTO Employee (id, manager_id) VALUES (7, NULL), (8, 999);
+-- @expect: error Insert.CannotFindReferencedValue
+-- @json:
+-- {
+--   "column_name": "id",
+--   "referenced_value": "999",
+--   "table_name": "Employee"
+-- }
+
+SELECT id, manager_id FROM Employee ORDER BY id;
+-- @expect:
+-- | id: I64 | manager_id: I64 |
+-- | ------- | --------------- |
+-- | 1       | NULL            |
+-- | 2       | 1               |
+-- | 3       | NULL            |
+-- | 4       | 3               |
+-- | 5       | 5               |
+-- | 6       | 1               |

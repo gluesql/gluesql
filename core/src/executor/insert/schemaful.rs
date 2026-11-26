@@ -13,7 +13,7 @@ use {
         result::Result,
         store::GStore,
     },
-    std::rc::Rc,
+    std::{collections::HashSet, rc::Rc},
 };
 
 pub(super) fn fetch_rows<T: GStore>(
@@ -86,7 +86,7 @@ pub(super) fn fetch_rows<T: GStore>(
         rows.iter().map(std::vec::Vec::as_slice),
     )?;
 
-    validate_foreign_key(storage, &column_defs, foreign_keys, &rows)?;
+    validate_foreign_key(storage, table_name, &column_defs, foreign_keys, &rows)?;
 
     let primary_key = column_defs
         .iter()
@@ -220,7 +220,8 @@ fn assign_values(
 
 fn validate_foreign_key<T: GStore>(
     storage: &T,
-    column_defs: &Rc<[ColumnDefPlan]>,
+    table_name: &str,
+    column_defs: &[ColumnDefPlan],
     foreign_keys: Vec<ForeignKey>,
     rows: &[Vec<Value>],
 ) -> Result<()> {
@@ -234,26 +235,45 @@ fn validate_foreign_key<T: GStore>(
 
         let target_index = column_defs
             .iter()
-            .enumerate()
-            .find(|(_, c)| &c.name == referencing_column_name)
+            .position(|c| &c.name == referencing_column_name)
             .ok_or_else(|| {
                 InsertError::ConflictReferencingColumnName(referencing_column_name.to_owned())
             })?;
 
+        let self_referenced_keys = if referenced_table_name == table_name {
+            column_defs
+                .iter()
+                .position(|c| &c.name == referenced_column_name)
+                .map(|referenced_index| {
+                    rows.iter()
+                        .filter_map(|row| row.get(referenced_index))
+                        .filter(|value| *value != &Value::Null)
+                        .map(Key::try_from)
+                        .collect::<Result<HashSet<Key>>>()
+                })
+                .transpose()?
+        } else {
+            None
+        };
+
         for row in rows {
-            let value =
-                row.get(target_index.0)
-                    .ok_or(InsertError::ConflictReferencingColumnName(
-                        referencing_column_name.to_owned(),
-                    ))?;
+            let value = row.get(target_index).ok_or_else(|| {
+                InsertError::ConflictReferencingColumnName(referencing_column_name.to_owned())
+            })?;
 
             if value == &Value::Null {
                 continue;
             }
 
-            let no_referenced = storage
-                .fetch_data(referenced_table_name, &Key::try_from(value)?)?
-                .is_none();
+            let key = Key::try_from(value)?;
+            if self_referenced_keys
+                .as_ref()
+                .is_some_and(|keys| keys.contains(&key))
+            {
+                continue;
+            }
+
+            let no_referenced = storage.fetch_data(referenced_table_name, &key)?.is_none();
 
             if no_referenced {
                 return Err(InsertError::CannotFindReferencedValue {
