@@ -7,11 +7,11 @@ use {
             context::StatementContext,
             evaluate::{evaluate, evaluate_stateless},
             query,
-            unique::validate_unique_columns,
+            unique::create_unique_constraints,
         },
         plan::{ColumnDefPlan, ExprPlan, QueryPlan, ValuesPlan},
         result::Result,
-        store::GStore,
+        store::{GStore, ScanColumns},
     },
     std::{collections::HashSet, rc::Rc},
 };
@@ -132,12 +132,20 @@ fn validate_unique<T: GStore>(
         .filter_map(|(index, column)| column.unique.map(|_| (index, column.name.clone())))
         .collect();
 
-    validate_unique_columns(
-        storage,
-        table_name,
-        unique_columns,
-        &rows.iter().map(Vec::as_slice),
-    )
+    let constraints = create_unique_constraints(unique_columns, &rows.iter().map(Vec::as_slice))?;
+    if constraints.is_empty() {
+        return Ok(());
+    }
+
+    for row in storage.scan_data(table_name, ScanColumns::All)? {
+        let (_, values) = row?;
+        for constraint in &constraints {
+            let key = constraint.key_from_row(&values)?;
+            constraint.check_duplicate(&key)?;
+        }
+    }
+
+    Ok(())
 }
 
 fn values_rows<'a, T: GStore>(

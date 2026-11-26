@@ -2,17 +2,17 @@ use {
     super::{
         context::{RowContext, StatementContext},
         evaluate::evaluate,
-        unique::validate_unique_columns,
+        unique::create_unique_constraints,
     },
     crate::{
         ast::{ColumnUniqueOption, ForeignKey},
         data::{Key, Row, Value},
         plan::{AssignmentPlan, ColumnDefPlan},
         result::Result,
-        store::GStore,
+        store::{GStore, ScanColumns},
     },
     serde::Serialize,
-    std::{borrow::Cow, fmt::Debug, rc::Rc},
+    std::{borrow::Cow, collections::HashMap, fmt::Debug, rc::Rc},
     thiserror::Error,
 };
 
@@ -192,7 +192,28 @@ impl<'a, T: GStore> Update<'a, T> {
             .collect();
 
         let values = rows.iter().map(|(_, row)| row.values.as_slice());
+        let constraints = create_unique_constraints(unique_columns, &values)?;
+        if constraints.is_empty() {
+            return Ok(());
+        }
 
-        validate_unique_columns(self.storage, self.table_name, unique_columns, &values)
+        let updated_rows: HashMap<_, _> = rows.iter().map(|(key, row)| (key, row)).collect();
+        for stored in self.storage.scan_data(self.table_name, ScanColumns::All)? {
+            let (row_key, stored_values) = stored?;
+            let updated_row = updated_rows.get(&row_key);
+
+            for constraint in &constraints {
+                let stored_value = constraint.key_from_row(&stored_values)?;
+                if let Some(row) = updated_row
+                    && constraint.key_from_row(&row.values)? == stored_value
+                {
+                    continue;
+                }
+
+                constraint.check_duplicate(&stored_value)?;
+            }
+        }
+
+        Ok(())
     }
 }

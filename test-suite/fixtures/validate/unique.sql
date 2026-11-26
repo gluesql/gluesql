@@ -100,7 +100,8 @@ INSERT INTO TestB VALUES (5, 5), (6, 5)
 --   "num"
 -- ]
 
-UPDATE TestB SET num = 2 WHERE id = 1
+-- @name: keeping one UNIQUE value still checks changes to another UNIQUE column
+UPDATE TestB SET id = 1, num = 2 WHERE id = 1
 -- @expect: error Unique.DuplicateEntryOnUniqueField
 -- @json:
 -- [
@@ -109,6 +110,12 @@ UPDATE TestB SET num = 2 WHERE id = 1
 --   },
 --   "num"
 -- ]
+
+SELECT id, num FROM TestB WHERE id = 1;
+-- @expect:
+-- | id: I64 | num: I64 |
+-- | ------- | -------- |
+-- | 1       | 1        |
 
 INSERT INTO TestC VALUES (2, 4)
 -- @expect: error Unique.DuplicateEntryOnUniqueField
@@ -150,6 +157,17 @@ SELECT id, num FROM TestA WHERE id = 2;
 -- | id: I64 | num: I64 |
 -- | ------- | -------- |
 -- | 2       | 9        |
+
+-- @name: UPDATE can keep a row's own UNIQUE value while changing another column
+UPDATE TestA SET id = 2, num = 10 WHERE id = 2;
+-- @expect: payload Update
+-- @json: 1
+
+SELECT id, num FROM TestA WHERE id = 2;
+-- @expect:
+-- | id: I64 | num: I64 |
+-- | ------- | -------- |
+-- | 2       | 10       |
 
 CREATE TABLE WithPrimaryKey (id INTEGER PRIMARY KEY, email TEXT UNIQUE);
 -- @expect: ok

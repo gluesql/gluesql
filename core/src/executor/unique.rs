@@ -2,7 +2,6 @@ use {
     crate::{
         data::{Key, Value},
         result::Result,
-        store::{ScanColumns, Store},
     },
     im::HashSet,
     serde::Serialize,
@@ -20,7 +19,7 @@ pub enum UniqueError {
 }
 
 #[derive(Debug)]
-struct UniqueConstraint {
+pub(super) struct UniqueConstraint {
     column_index: usize,
     column_name: String,
     keys: HashSet<Key>,
@@ -35,14 +34,14 @@ impl UniqueConstraint {
         }
     }
 
-    fn add(self, value: &Value) -> Result<Self> {
-        let new_key = self.check(value)?;
+    fn add(self, key: Key) -> Result<Self> {
+        self.check_duplicate(&key)?;
 
-        if matches!(new_key, Key::None) {
+        if matches!(key, Key::None) {
             return Ok(self);
         }
 
-        let keys = self.keys.update(new_key);
+        let keys = self.keys.update(key);
 
         Ok(Self {
             column_index: self.column_index,
@@ -51,47 +50,28 @@ impl UniqueConstraint {
         })
     }
 
-    fn check(&self, value: &Value) -> Result<Key> {
-        let key = Key::try_from(value)?;
+    pub(super) fn key_from_row(&self, row: &[Value]) -> Result<Key> {
+        let value = row
+            .get(self.column_index)
+            .ok_or(UniqueError::ConflictOnStorageColumnIndex(self.column_index))?;
 
-        if self.keys.contains(&key) {
-            Err(
-                UniqueError::DuplicateEntryOnUniqueField(value.clone(), self.column_name.clone())
-                    .into(),
+        Key::try_from(value)
+    }
+
+    pub(super) fn check_duplicate(&self, key: &Key) -> Result<()> {
+        if self.keys.contains(key) {
+            Err(UniqueError::DuplicateEntryOnUniqueField(
+                key.clone().into(),
+                self.column_name.clone(),
             )
+            .into())
         } else {
-            Ok(key)
+            Ok(())
         }
     }
 }
 
-pub(super) fn validate_unique_columns<'a, T: Store>(
-    storage: &T,
-    table_name: &str,
-    columns: Vec<(usize, String)>,
-    row_iter: &(impl Iterator<Item = &'a [Value]> + Clone),
-) -> Result<()> {
-    let unique_constraints = create_unique_constraints(columns, row_iter)?;
-    if unique_constraints.is_empty() {
-        return Ok(());
-    }
-
-    for row in storage.scan_data(table_name, ScanColumns::All)? {
-        let (_, values) = row?;
-        for constraint in &unique_constraints {
-            let col_idx = constraint.column_index;
-            let val = values
-                .get(col_idx)
-                .ok_or(UniqueError::ConflictOnStorageColumnIndex(col_idx))?;
-
-            constraint.check(val)?;
-        }
-    }
-
-    Ok(())
-}
-
-fn create_unique_constraints<'a>(
+pub(super) fn create_unique_constraints<'a>(
     unique_columns: Vec<(usize, String)>,
     row_iter: &(impl Iterator<Item = &'a [Value]> + Clone),
 ) -> Result<Vec<UniqueConstraint>> {
@@ -102,11 +82,8 @@ fn create_unique_constraints<'a>(
         let new_constraint = row_iter
             .clone()
             .try_fold(new_constraint, |constraint, row| {
-                let val = row
-                    .get(col_idx)
-                    .ok_or(UniqueError::ConflictOnStorageColumnIndex(col_idx))?;
-
-                constraint.add(val)
+                let key = constraint.key_from_row(row)?;
+                constraint.add(key)
             })?;
 
         constraints.push(new_constraint);
