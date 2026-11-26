@@ -90,12 +90,10 @@ fn source_for_schema_copy(project: &ProjectPlan) -> Option<&SourcePlan> {
 
     match &project.projection {
         ProjectionPlan::SchemalessMap => true,
-        ProjectionPlan::SelectItems(items) => items.iter().all(|item| {
-            matches!(
-                item,
-                SelectItemPlan::Wildcard | SelectItemPlan::QualifiedWildcard(_)
-            )
-        }),
+        ProjectionPlan::SelectItems(items) => matches!(
+            items.as_slice(),
+            [SelectItemPlan::Wildcard | SelectItemPlan::QualifiedWildcard(_)]
+        ),
     }
     .then_some(source)
 }
@@ -365,6 +363,11 @@ mod tests {
             "SELECT Item.* FROM Item",
             Some(&source),
             "qualified wildcard",
+        );
+        test(
+            "SELECT *, * FROM Item",
+            None,
+            "multiple wildcards cannot reuse the source definitions",
         );
         test(
             "SELECT DISTINCT * FROM Item WHERE id > 0 ORDER BY id LIMIT 2 OFFSET 1",
