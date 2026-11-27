@@ -165,6 +165,48 @@ SELECT SUBSTR(SUBSTR('ABC', 2, 3), 1, 1) AS test FROM SingleItem
 -- | --------- |
 -- | "B"       |
 
+SELECT SUBSTR(SUBSTR('ABCDEF', 1, 3), 2, 10) AS test FROM SingleItem
+-- @expect:
+-- | test: Str |
+-- | --------- |
+-- | "BC"      |
+
+SELECT SUBSTR(SUBSTR('ABCDEF', 3), -1, 3) AS test FROM SingleItem
+-- @expect:
+-- | test: Str |
+-- | --------- |
+-- | "C"       |
+
+SELECT SUBSTR('가나다', 2, 1) AS test FROM SingleItem
+-- @expect:
+-- | test: Str |
+-- | --------- |
+-- | "나"       |
+
+SELECT SUBSTR('héllo', 2) AS test FROM SingleItem
+-- @expect:
+-- | test: Str |
+-- | --------- |
+-- | "éllo"    |
+
+SELECT SUBSTR(SUBSTR('가나다라', 2), 2, 1) AS test FROM SingleItem
+-- @expect:
+-- | test: Str |
+-- | --------- |
+-- | "다"       |
+
+SELECT SUBSTR('ABC', 9223372036854775807, 2) AS test FROM SingleItem
+-- @expect:
+-- | test: Str |
+-- | --------- |
+-- | ""        |
+
+SELECT SUBSTR('ABC', -9223372036854775808, 2) AS test FROM SingleItem
+-- @expect:
+-- | test: Str |
+-- | --------- |
+-- | ""        |
+
 SELECT SUBSTR('ABC', -1, NULL) AS test FROM SingleItem
 -- @expect:
 -- | test |
